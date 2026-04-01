@@ -1,0 +1,30 @@
+import { House } from '@phosphor-icons/react'
+import { useAppStore } from '../../state/store'
+import { Screen } from '../../state/types'
+import styles from './BackToHome.module.css'
+
+interface BackToHomeProps {
+  onPress?: () => void
+}
+
+export function BackToHome({ onPress }: BackToHomeProps) {
+  const setScreen = useAppStore(s => s.setScreen)
+
+  const handleClick = () => {
+    if (onPress) {
+      onPress()
+    } else {
+      setScreen(Screen.Home)
+    }
+  }
+
+  return (
+    <button
+      className={styles.button}
+      onClick={handleClick}
+      aria-label="חזרה למסך הבית"
+    >
+      <House weight="fill" size={24} />
+    </button>
+  )
+}

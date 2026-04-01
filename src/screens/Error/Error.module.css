@@ -1,0 +1,28 @@
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--abu-space-24);
+  height: 100%;
+  padding: var(--abu-space-32);
+  text-align: center;
+}
+
+.icon {
+  color: var(--abu-color-danger);
+}
+
+.title {
+  font-size: var(--abu-font-size-section);
+  font-weight: var(--abu-font-weight-section);
+  line-height: var(--abu-line-height-section);
+  color: var(--abu-color-text-primary);
+}
+
+.message {
+  font-size: var(--abu-font-size-body);
+  font-weight: var(--abu-font-weight-body);
+  line-height: var(--abu-line-height-body);
+  color: var(--abu-color-text-secondary);
+}

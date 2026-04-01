@@ -1,0 +1,54 @@
+.offline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--abu-space-24);
+  height: 100%;
+  padding: var(--abu-space-32);
+  text-align: center;
+}
+
+.icon {
+  color: var(--abu-color-text-disabled);
+}
+
+.title {
+  font-size: var(--abu-font-size-section);
+  font-weight: var(--abu-font-weight-section);
+  line-height: var(--abu-line-height-section);
+  color: var(--abu-color-text-primary);
+}
+
+.message {
+  font-size: var(--abu-font-size-body);
+  font-weight: var(--abu-font-weight-body);
+  line-height: var(--abu-line-height-body);
+  color: var(--abu-color-text-secondary);
+}
+
+.retryButton {
+  min-width: var(--abu-space-64);
+  min-height: var(--abu-space-64);
+  padding: var(--abu-space-16) var(--abu-space-32);
+  background: var(--abu-color-primary);
+  color: var(--abu-color-bg);
+  border: none;
+  border-radius: var(--abu-radius-button);
+  cursor: pointer;
+  font-size: var(--abu-font-size-label);
+  font-weight: var(--abu-font-weight-label);
+  line-height: var(--abu-line-height-label);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.retryButton:active {
+  background: var(--abu-color-primary-pressed);
+}
+
+.retryButton:disabled {
+  background: var(--abu-color-primary-disabled);
+  cursor: default;
+}

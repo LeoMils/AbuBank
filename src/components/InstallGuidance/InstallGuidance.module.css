@@ -1,0 +1,57 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--abu-space-8) var(--abu-space-16);
+  background: var(--abu-color-surface);
+  border-top: 1px solid var(--abu-color-border);
+  flex-shrink: 0;
+}
+
+.text {
+  font-size: var(--abu-font-size-caption);
+  font-weight: var(--abu-font-weight-caption);
+  line-height: var(--abu-line-height-caption);
+  color: var(--abu-color-text-secondary);
+  flex: 1;
+}
+
+.installButton {
+  font-size: var(--abu-font-size-label);
+  font-weight: var(--abu-font-weight-label);
+  line-height: var(--abu-line-height-label);
+  color: var(--abu-color-bg);
+  background: var(--abu-color-primary);
+  border: none;
+  border-radius: var(--abu-radius-button);
+  min-width: var(--abu-space-64);
+  min-height: var(--abu-space-64);
+  padding: var(--abu-space-8) var(--abu-space-16);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  margin-inline-start: var(--abu-space-8);
+  flex-shrink: 0;
+}
+
+.installButton:active {
+  background: var(--abu-color-primary-pressed);
+}
+
+.dismissButton {
+  border: none;
+  background: transparent;
+  color: var(--abu-color-text-disabled);
+  cursor: pointer;
+  min-width: var(--abu-space-64);
+  min-height: var(--abu-space-64);
+  padding: var(--abu-space-8);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  font-size: var(--abu-font-size-caption);
+  font-weight: var(--abu-font-weight-caption);
+  line-height: var(--abu-line-height-caption);
+  flex-shrink: 0;
+}

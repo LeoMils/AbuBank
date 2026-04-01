@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Lmilstein/ClaudeCode/Abu-Bank/**)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)",
+      "Bash(find /c/Users/Lmilstein/ClaudeCode/Abu-Bank -type f \\\\\\(-name *game* -o -name *games* \\\\\\))",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=he&client=gtx&q=%D7%A9%D7%9C%D7%95%D7%9D&textlen=4&idx=0&total=1\")",
+      "WebSearch",
+      "WebFetch(domain:developer.puter.com)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:docs.puter.com)",
+      "WebFetch(domain:dev.to)",
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(node:*)",
+      "Bash(npm ls:*)"
+    ]
+  }
+}

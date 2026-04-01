@@ -1,0 +1,44 @@
+.opening {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--abu-space-24);
+  height: 100%;
+  padding: var(--abu-space-32);
+  text-align: center;
+}
+
+.label {
+  font-size: var(--abu-font-size-section);
+  font-weight: var(--abu-font-weight-section);
+  line-height: var(--abu-line-height-section);
+  color: var(--abu-color-text-primary);
+}
+
+.hint {
+  font-size: var(--abu-font-size-caption);
+  font-weight: var(--abu-font-weight-caption);
+  line-height: var(--abu-line-height-caption);
+  color: var(--abu-color-text-secondary);
+  max-width: 280px;
+}
+
+.pulse {
+  width: var(--abu-tile-icon);
+  height: var(--abu-tile-icon);
+  border-radius: 50%;
+  background: var(--abu-color-primary);
+  animation: pulseAnim var(--abu-dur-pulse) ease-in-out infinite;
+}
+
+@keyframes pulseAnim {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.15);
+  }
+}

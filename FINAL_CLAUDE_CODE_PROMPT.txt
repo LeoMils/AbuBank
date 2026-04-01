@@ -1,0 +1,287 @@
+Implement now. No explanation first. Inspect the current codebase, refine the existing design deeply, and persist the enduring project rules in CLAUDE.md.
+
+Do not explain. Do not restart. Continue from the CURRENT project and CURRENT codebase.
+
+Your job is to inspect the existing implementation, preserve what is already good, and perform a major refinement pass so the current AbuBank screen becomes significantly more elegant, calmer, nobler, more premium, and much closer to the intended final product.
+
+Also create or update CLAUDE.md so these design rules persist in future sessions.
+
+══════════════════════════════════════
+CRITICAL — LOGOS ALREADY EXIST
+══════════════════════════════════════
+
+Real PNG logos are already installed at:
+  public/logos/mizrahi.png
+  public/logos/postalbank.png
+  public/logos/iec.png
+  public/logos/arnona.png
+  public/logos/yes.png
+  public/logos/partner.png
+  public/logos/hot.png
+  public/logos/water.png
+  public/logos/max.png
+
+DO NOT replace them with SVG or generated icons.
+DO NOT fetch from any URL.
+USE ONLY these files with <img src="/logos/FILENAME.png"> tags.
+
+Each logo background color inside the bubble:
+  mizrahi   → white (#ffffff)
+  postalbank → white (#ffffff)
+  iec        → white (#ffffff)
+  arnona     → white (#ffffff)
+  yes        → black (#000000)
+  partner    → teal (#00C2B2)
+  hot        → black (#111111)
+  water      → white (#ffffff)
+  max        → navy (#1a2f6b)
+
+══════════════════════════════════════
+WORKFLOW
+══════════════════════════════════════
+
+1. Read ALL existing source files before touching anything.
+2. Identify what is already correct — preserve it.
+3. Refine, do not rebuild from scratch.
+4. Improve: layout, hierarchy, spacing, bubble quality, logo integration, visual calm.
+5. Self-audit against EVERY requirement below.
+6. Fix the biggest mismatches.
+7. Update CLAUDE.md with all persistent rules.
+8. Run npm run dev and confirm no errors.
+
+══════════════════════════════════════
+PRODUCT CONTEXT
+══════════════════════════════════════
+
+AbuBank is a launcher-style interface for Martita — an elderly non-technical user aged 80+.
+Optimized for portrait phone use (Galaxy Edge + iPhone).
+
+The UI must feel:
+  calm / noble / aristocratic / elegant / premium
+  restrained / reassuring / practical / highly readable
+
+It must NOT feel:
+  flashy / gaming-like / sci-fi / neon-heavy
+  chrome-heavy / loud / childish / over-decorated / over-glossy
+
+══════════════════════════════════════
+LANGUAGE RULES — NON-NEGOTIABLE
+══════════════════════════════════════
+
+- All UI text in Hebrew
+- The name "Martita" ALWAYS in Latin letters exactly: Martita
+- NEVER write מרטיסא or any Hebrew spelling of Martita
+- RTL direction correct everywhere Hebrew appears
+
+══════════════════════════════════════
+SCREEN STRUCTURE — EXACTLY 3 ZONES
+══════════════════════════════════════
+
+ZONE 1 — HEADER
+  - Martita avatar (left side in RTL = visual right)
+  - AbuBank wordmark
+  - Hebrew greeting + daily message
+  - All content within same left/right bounds as main grid
+  - Elegant, balanced, art-directed composition
+
+ZONE 2 — MAIN GRID
+  - Exactly 9 service buttons
+  - Exactly 3 columns × 3 rows
+  - Large touch targets (minimum 80px diameter bubbles)
+  - Portrait-first, efficient use of space
+  - This is the visual heart of the screen
+
+ZONE 3 — BOTTOM BAR
+  - Exactly 3 buttons:
+      הגדרות / משפחה / עזרה
+  - Clearly secondary, smaller than main bubbles
+  - Elegant, aligned, same design language
+
+══════════════════════════════════════
+MAIN 9 SERVICES — ORDER IN GRID
+══════════════════════════════════════
+
+Row 1: MAX | דואר ישראל | מזרחי טפחות
+Row 2: מפעל המים | חברת החשמל | ארנונה כפר סבא
+Row 3: HOT mobile | פרטנר | yes
+
+══════════════════════════════════════
+BUBBLE DESIGN — CRITICAL
+══════════════════════════════════════
+
+Shape: perfect circle. NOT rounded-square. NOT squircle.
+
+Feel: "quiet luxury bubble"
+  - softly spherical
+  - matte-glass, NOT glossy-glass
+  - subtle inner highlight at top (very restrained)
+  - subtle rim light
+  - soft drop shadow
+  - slight dimensional depth
+  - NO chrome / NO neon glow / NO sci-fi
+
+Background inside bubble: per-service color (see LOGOS section above)
+Logo inside: <img> tag, object-fit: contain, padding 14%, centered
+
+Hover/tap feedback:
+  - scale: 1.04 on press
+  - shadow slightly deeper
+  - NOT bouncy, NOT playful
+
+CSS target:
+  border-radius: 50%
+  background: [per-service color]
+  box-shadow: 0 4px 18px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12)
+  overflow: hidden
+
+══════════════════════════════════════
+ABUBANK WORDMARK — CRITICAL
+══════════════════════════════════════
+
+Text: AbuBank (Latin, no space)
+"Abu" → soft warm gold (#C9A84C or similar, NOT bright yellow)
+"Bank" → elegant teal (#2ABFB0 or similar, NOT neon)
+
+Under "Abu": thin teal line (1px, 100% width of "Abu")
+Under "Bank": thin gold line (1px, 100% width of "Bank")
+
+Font: elegant serif or refined sans — Cormorant Garamond or similar
+Size: prominent but not oversized
+Feel: designed brand mark, NOT plain text, NOT gradient text effect
+
+These underlines are the distinctive brand signature. Must be precise.
+
+══════════════════════════════════════
+VISUAL SYSTEM
+══════════════════════════════════════
+
+Background:
+  Deep navy/dark blue — #050A18 to #080D1E range
+  ONE subtle radial glow centered behind grid (very low opacity, teal)
+  No busy textures. No stars. No cosmic effects.
+
+Colors:
+  Primary accent: teal #0D9488 (restrained)
+  Secondary accent: gold #C9A84C (minimal usage)
+  Text primary: white #FFFFFF
+  Text secondary: rgba(255,255,255,0.55)
+  Danger/support: burgundy #9F1239 (bottom bar only)
+
+Typography:
+  Service labels: 12-13px, white 75% opacity, centered under bubble
+  Greeting name (Martita): 22-24px italic, gold tone
+  Greeting text: 13px, white 40% opacity
+  Daily message: 12px italic, white 48% opacity, teal-gold left border
+
+Spacing:
+  Safe side margins: 16px minimum (Galaxy Edge safe zone)
+  Grid column gap: 8-12px
+  Grid row gap: 14-18px
+  Header padding top: 44-48px (status bar safe)
+  Bottom bar padding bottom: 24-30px (home indicator safe)
+
+══════════════════════════════════════
+GREETING SYSTEM
+══════════════════════════════════════
+
+Time-based:
+  05:00-11:59 → בוקר טוב ☀️
+  12:00-16:59 → צהריים טובים 🌤
+  17:00-20:59 → ערב טוב 🌆
+  21:00-04:59 → לילה טוב 🌙
+
+Daily message pool (at least 15 messages, changes every 3 hours):
+  Use seed: date × 31 + month × 7 + floor(hours/3)
+  Sample messages:
+  'כל החשבונות בהישג יד 💛'
+  'הכל מסודר ומוכן בשבילך'
+  'הכסף שלך שמור ובטוח'
+  'יום טוב — הכל בשליטה'
+  'שבוע טוב, הכל פה בשבילך ❤️'
+  'החשמל, המים, הבנק — הכל פה'
+  'כבר שילמת את הארנונה? 🏠'
+  'לילה שקט ובטוח 🌙'
+  'קפה טוב ואז לטפל בחשבונות ☕'
+  'MAX מוכן — לחצי ותכנסי'
+
+══════════════════════════════════════
+PERFORMANCE & RELIABILITY
+══════════════════════════════════════
+
+- html, body, #root: height 100%, overflow hidden, background #050A18
+- Use height: 100dvh on main container
+- No page scroll at all
+- All images: loading="eager" decoding="async"
+- Add onError fallback on each logo img (show colored circle with initial letter)
+- Buttons: minimum touch target 44×44px per Apple HIG
+- WebkitTapHighlightColor: transparent on all buttons
+
+══════════════════════════════════════
+DO NOT DO
+══════════════════════════════════════
+
+- Do NOT restart from zero
+- Do NOT add more than 9 main buttons
+- Do NOT add more than 3 bottom buttons
+- Do NOT use rounded-square for main 9
+- Do NOT overuse gold
+- Do NOT make it sci-fi, gaming, or flashy
+- Do NOT replace real logos with fake icons
+- Do NOT write Martita in Hebrew
+- Do NOT use external CDN for logos
+- Do NOT leave white page flash (body background must be #050A18)
+- Do NOT allow page scroll
+
+══════════════════════════════════════
+CLAUDE.md — PERSIST THESE RULES
+══════════════════════════════════════
+
+Create/update CLAUDE.md at project root with:
+
+# AbuBank — Project Rules (Always Load)
+
+## Identity
+- App for elderly user Martita (80+), launcher-style
+- "Martita" always in Latin letters, never in Hebrew
+- All other UI text in Hebrew, RTL
+
+## Design System
+- Background: deep navy #050A18–#080D1E
+- Accent teal: #0D9488 | Accent gold: #C9A84C
+- Calm, noble, aristocratic — NOT flashy, NOT sci-fi
+- Bubbles: perfect circles, matte-glass, quiet luxury
+- Wordmark: "Abu" gold + "Bank" teal, underlines reversed
+
+## Logos
+- All real PNGs at public/logos/
+- Never replace with SVG or CDN
+- Per-service background colors defined in Home/index.tsx
+
+## Layout
+- 3 zones: Header | 9-bubble grid | 3 bottom buttons
+- Bottom buttons: הגדרות / משפחה / עזרה
+- No scroll, height 100dvh, Galaxy Edge safe margins
+
+## Services (order in grid)
+Row 1: max | postalbank | mizrahi
+Row 2: water | iec | arnona
+Row 3: hot | partner | yes
+
+══════════════════════════════════════
+FINAL QUALITY GATE — RUN BEFORE DONE
+══════════════════════════════════════
+
+Check each item:
+[ ] All 9 real PNG logos visible and correctly sized
+[ ] Bubbles are perfect circles, matte-glass feel
+[ ] Wordmark: Abu=gold, Bank=teal, underlines correct
+[ ] Martita appears in Latin only
+[ ] No page scroll
+[ ] Background is dark navy (not white flash)
+[ ] Bottom bar has exactly: הגדרות / משפחה / עזרה
+[ ] Daily message changes based on time
+[ ] No TypeScript errors
+[ ] npm run dev runs cleanly
+[ ] CLAUDE.md created/updated
+
+If any item fails — fix it before stopping.

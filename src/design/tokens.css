@@ -1,0 +1,159 @@
+:root {
+  /* Typography — font-family declared ONCE here, never per-element */
+  --abu-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+              'Segoe UI', Roboto, sans-serif;
+  font-family: var(--abu-font);
+
+  /* Colors */
+  --abu-color-bg:               #FFFFFF;
+  --abu-color-surface:          #F5F7FA;
+  --abu-color-surface-elevated: #FFFFFF;
+  --abu-color-border:           #E4E8EF;
+  --abu-color-text-primary:     #0D1117;
+  --abu-color-text-secondary:   #475467;
+  --abu-color-text-disabled:    #B0B8C4;
+  --abu-color-primary:          #0B5FFF;
+  --abu-color-primary-pressed:  #0047CC;
+  --abu-color-primary-disabled: #A0BCFF;
+  --abu-color-success:          #1E8A4C;
+  --abu-color-warning:          #C27A00;
+  --abu-color-danger:           #D93025;
+  --abu-color-overlay:          rgba(13,17,23,0.55);
+  --abu-color-focus-ring:       #0B5FFF;
+
+  /* Spacing */
+  --abu-space-8:  8px;
+  --abu-space-16: 16px;
+  --abu-space-24: 24px;
+  --abu-space-32: 32px;
+  --abu-space-40: 40px;
+  --abu-space-48: 48px;
+  --abu-space-56: 56px;
+  --abu-space-64: 64px;
+
+  /* Radius */
+  --abu-radius-tile:   14px;
+  --abu-radius-button: 12px;
+  --abu-radius-modal:  16px;
+  --abu-radius-icon:   20px;
+
+  /* Shadow */
+  --abu-shadow-tile:       0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+  --abu-shadow-tile-hover: 0 2px 8px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05);
+  --abu-shadow-modal:      0 8px 32px rgba(0,0,0,.12);
+  --abu-shadow-wordmark:   0 1px 2px rgba(0,0,0,.05);
+
+  /* Typography sizes — ALWAYS three declarations per element, NEVER font: shorthand */
+  --abu-font-size-title:      22px;
+  --abu-font-weight-title:    600;
+  --abu-line-height-title:    1.25;
+
+  --abu-font-size-section:    18px;
+  --abu-font-weight-section:  600;
+  --abu-line-height-section:  1.35;
+
+  --abu-font-size-body:       16px;
+  --abu-font-weight-body:     400;
+  --abu-line-height-body:     1.50;
+
+  --abu-font-size-label:      14px;
+  --abu-font-weight-label:    600;
+  --abu-line-height-label:    1.40;
+
+  --abu-font-size-caption:    12px;
+  --abu-font-weight-caption:  400;
+  --abu-line-height-caption:  1.40;
+
+  /* Motion */
+  --abu-dur-tap-press:    120ms;
+  --abu-dur-tap-release:  80ms;
+  --abu-dur-screen-in:    180ms;
+  --abu-dur-screen-out:   120ms;
+  --abu-dur-modal-in:     280ms;
+  --abu-dur-modal-out:    220ms;
+  --abu-dur-pulse:        1200ms;
+  --abu-dur-wordmark:     240ms;
+
+  /* Z-Index */
+  --abu-z-base:    0;
+  --abu-z-chrome:  100;
+  --abu-z-overlay: 200;
+  --abu-z-toast:   300;
+
+  /* Tile Dimensions */
+  --abu-tile-w:         171px;
+  --abu-tile-h:         80px;
+  --abu-tile-icon:      40px;
+  --abu-tile-pt:        12px;
+  --abu-tile-label-max: 155px;
+  --abu-tile-gap:       8px;
+
+  /* Grid Dimensions */
+  --abu-grid-gap-col:   16px;
+  --abu-grid-gap-row:   16px;
+  --abu-grid-padding:   16px;
+  --abu-grid-max-w:     577px;
+
+  /* Home dark theme */
+  --abu-font-display: 'Cormorant Garamond', Georgia, serif;
+  --abu-home-teal:          #0d9488;
+  --abu-home-gold:          #f59e0b;
+  --abu-home-bordeaux:      #9f1239;
+  --abu-home-bg-from:       #040714;
+  --abu-home-bg-to:         #0b1026;
+  --abu-home-circle:        84px;
+  --abu-home-portrait-w:    72px;
+  --abu-home-portrait-h:    100px;
+  --abu-home-portrait-r:    14px;
+  --abu-home-text-dim:      rgba(255,255,255,0.5);
+  --abu-home-text-label:    rgba(255,255,255,0.6);
+  --abu-home-tab-inactive:  rgba(255,255,255,0.4);
+  --abu-home-border-subtle: rgba(255,255,255,0.06);
+  --abu-home-glow-center:   rgba(80,100,180,0.18);
+  --abu-home-vignette:      rgba(0,0,0,0.55);
+  --abu-home-surface-dark:  rgba(10,15,30,0.90);
+
+  /* Layout */
+  --abu-header-h:         76px;
+  --abu-header-h-tablet:  84px;
+  --abu-bottombar-h:      88px;
+  --abu-safe-top:         max(16px, env(safe-area-inset-top));
+  --abu-safe-bottom:      env(safe-area-inset-bottom);
+}
+
+/* iOS rubber-band kill */
+html, body {
+  overscroll-behavior-y: none;
+  overflow: hidden;
+}
+
+/* Shell height order — 100vh FIRST, 100dvh LAST */
+.shell {
+  height: 100vh;
+  height: 100lvh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tap feel — eliminates 300ms delay, double-tap zoom, highlight */
+button, a, [role="button"], [tabindex] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Focus ring — keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--abu-color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}

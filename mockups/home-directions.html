@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AbuBank Home — 3 Directions</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400;1,700&family=Heebo:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #1a1a2e;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 40px;
+    padding: 40px 20px;
+    font-family: 'DM Sans','Heebo',sans-serif;
+  }
+
+  .direction-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .direction-label {
+    color: rgba(255,255,255,0.7);
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+  }
+  .direction-sublabel {
+    color: rgba(255,255,255,0.35);
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    text-align: center;
+    max-width: 300px;
+    line-height: 1.5;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: 412px;
+    height: 870px;
+    border-radius: 28px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.08), 0 20px 60px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ─── SHARED STYLES ─── */
+  .service-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.82);
+    font-family: 'Heebo', sans-serif;
+    text-align: center;
+    line-height: 1.3;
+    direction: rtl;
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .grid-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px 16px 16px;
+  }
+
+  .service-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    row-gap: 16px;
+    column-gap: 8px;
+    width: 100%;
+  }
+
+  .service-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+  }
+
+  /* ─── SHARED BUBBLE BASE ─── */
+  .bubble {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .bubble-logo {
+    width: 46px;
+    height: 46px;
+    object-fit: contain;
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  }
+
+  /* Specular layers */
+  .bubble::before {
+    content: '';
+    position: absolute;
+    top: 2%; left: 12%;
+    width: 50%; height: 28%;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 3;
+    transform: rotate(-15deg);
+  }
+  .bubble::after {
+    content: '';
+    position: absolute;
+    bottom: 2%; left: 10%;
+    width: 80%; height: 16%;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  /* Bottom bar shared */
+  .bottom-bar {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    padding: 6px 4px;
+    padding-bottom: 14px;
+    flex-shrink: 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .bar-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: default;
+    padding: 4px;
+  }
+  .bar-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .bar-label {
+    font-size: 10px;
+    font-family: 'Heebo', sans-serif;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* ───────────────────────────────────────────
+     DIRECTION A — LUXURY / ELEGANT
+     ─────────────────────────────────────────── */
+  .phone-a {
+    background: linear-gradient(180deg, #080e20 0%, #050A18 35%, #050A18 100%);
+  }
+
+  .header-a {
+    display: flex;
+    align-items: center;
+    direction: ltr;
+    padding: 16px 16px 6px;
+    gap: 14;
+    flex-shrink: 0;
+  }
+
+  .portrait-a {
+    width: 62px; height: 62px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid rgba(191,161,74,0.5);
+    box-shadow:
+      0 0 0 4px rgba(191,161,74,0.06),
+      0 0 16px rgba(191,161,74,0.12),
+      0 4px 12px rgba(0,0,0,0.4);
+  }
+  .portrait-a img { width:100%; height:100%; object-fit:cover; object-position:center 15%; display:block; }
+
+  .brand-a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 0;
+  }
+
+  /* Direction A mark: horizontal bar containment with gold pinstripes */
+  .mark-a {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    direction: ltr;
+    padding: 5px 24px;
+    position: relative;
+    border-top: 1px solid rgba(191,161,74,0.25);
+    border-bottom: 1px solid rgba(191,161,74,0.25);
+  }
+  .mark-a .abu {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 46px;
+    font-weight: 700;
+    font-style: italic;
+    letter-spacing: 3px;
+    color: #0d9488;
+    text-shadow:
+      0 0 6px rgba(13,148,136,0.45),
+      0 0 20px rgba(13,148,136,0.15),
+      0 2px 4px rgba(0,0,0,0.7);
+  }
+  .mark-a .bank {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 46px;
+    font-weight: 700;
+    font-style: italic;
+    letter-spacing: 3px;
+    color: #BFA14A;
+    text-shadow:
+      0 0 6px rgba(191,161,74,0.45),
+      0 0 20px rgba(191,161,74,0.15),
+      0 2px 4px rgba(0,0,0,0.7);
+  }
+
+  .greeting-a {
+    font-family: 'Heebo', sans-serif;
+    font-size: 19px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.9);
+    text-align: center;
+    direction: rtl;
+    letter-spacing: 0.3px;
+    text-shadow: 0 0 12px rgba(191,161,74,0.15), 0 1px 3px rgba(0,0,0,0.5);
+  }
+  .greeting-a .name {
+    color: #BFA14A;
+    font-weight: 500;
+    text-shadow: 0 0 12px rgba(191,161,74,0.35), 0 1px 3px rgba(0,0,0,0.6);
+  }
+
+  /* Direction A bubbles — classic glass orb, strong specular */
+  .phone-a .bubble {
+    background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.13) 0%, rgba(30,35,55,0.9) 50%, rgba(10,14,28,0.97) 100%);
+    border: 1.5px solid rgba(255,255,255,0.15);
+    box-shadow:
+      0 0 16px var(--svc-glow, rgba(255,255,255,0.08)),
+      0 4px 14px rgba(0,0,0,0.45),
+      inset 0 3px 5px rgba(255,255,255,0.18),
+      inset 0 -4px 10px rgba(0,0,0,0.45),
+      inset 0 0 14px var(--svc-inner, rgba(255,255,255,0.04));
+  }
+  .phone-a .bubble::before {
+    background: radial-gradient(ellipse, rgba(255,255,255,0.50) 0%, rgba(255,255,255,0.12) 40%, transparent 75%);
+  }
+  .phone-a .bubble::after {
+    background: radial-gradient(ellipse, rgba(255,255,255,0.07) 0%, transparent 70%);
+  }
+
+  /* Direction A footer */
+  .phone-a .bottom-bar {
+    background: linear-gradient(180deg, rgba(8,14,32,0.96), rgba(3,5,18,0.99));
+  }
+  .phone-a .bar-icon {
+    background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.10) 0%, rgba(20,24,40,0.9) 55%, rgba(8,12,24,0.97) 100%);
+    border: 1.5px solid var(--bar-color-border, rgba(255,255,255,0.15));
+    box-shadow:
+      0 0 12px var(--bar-glow, rgba(255,255,255,0.06)),
+      0 3px 8px rgba(0,0,0,0.35),
+      inset 0 2px 3px rgba(255,255,255,0.14),
+      inset 0 -3px 6px rgba(0,0,0,0.35);
+  }
+  /* Mini specular on bar icons */
+  .phone-a .bar-icon::before {
+    content: '';
+    position: absolute;
+    top: 5%; left: 16%;
+    width: 42%; height: 22%;
+    background: radial-gradient(ellipse, rgba(255,255,255,0.35) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: rotate(-12deg);
+    z-index: 1;
+  }
+
+  /* ───────────────────────────────────────────
+     DIRECTION B — WARM / HUMAN
+     ─────────────────────────────────────────── */
+  .phone-b {
+    background: linear-gradient(180deg, #0a0f1e 0%, #060b18 35%, #050A18 100%);
+  }
+
+  .header-b {
+    display: flex;
+    align-items: center;
+    direction: ltr;
+    padding: 16px 16px 6px;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+
+  .portrait-b {
+    width: 68px; height: 68px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2.5px solid rgba(191,161,74,0.55);
+    box-shadow:
+      0 0 0 5px rgba(191,161,74,0.07),
+      0 0 24px rgba(191,161,74,0.18),
+      0 4px 12px rgba(0,0,0,0.4);
+  }
+  .portrait-b img { width:100%; height:100%; object-fit:cover; object-position:center 15%; display:block; }
+
+  .brand-b {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+  }
+
+  /* Direction B mark: warm glow field — no hard borders, radiant warmth behind the text */
+  .mark-b-wrapper {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    direction: ltr;
+    padding: 8px 20px;
+  }
+  /* Warm ambient field behind mark */
+  .mark-b-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 130%; height: 180%;
+    background: radial-gradient(ellipse, rgba(191,161,74,0.08) 0%, rgba(13,148,136,0.04) 40%, transparent 70%);
+    pointer-events: none;
+    border-radius: 50%;
+  }
+
+  .mark-b .abu {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 46px;
+    font-weight: 700;
+    font-style: italic;
+    letter-spacing: 2px;
+    color: #0d9488;
+    position: relative;
+    text-shadow:
+      0 0 12px rgba(13,148,136,0.55),
+      0 0 35px rgba(13,148,136,0.2),
+      0 2px 4px rgba(0,0,0,0.65);
+  }
+  .mark-b .bank {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 46px;
+    font-weight: 700;
+    font-style: italic;
+    letter-spacing: 2px;
+    color: #BFA14A;
+    position: relative;
+    text-shadow:
+      0 0 12px rgba(191,161,74,0.55),
+      0 0 35px rgba(191,161,74,0.2),
+      0 2px 4px rgba(0,0,0,0.65);
+  }
+
+  /* Warm gradient underline */
+  .accent-b {
+    width: 70%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #0d9488, #BFA14A, transparent);
+    border-radius: 1px;
+    box-shadow: 0 0 10px rgba(191,161,74,0.2), 0 0 20px rgba(13,148,136,0.1);
+    opacity: 0.6;
+  }
+
+  .greeting-b {
+    font-family: 'Heebo', sans-serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.92);
+    text-align: center;
+    direction: rtl;
+    text-shadow: 0 0 14px rgba(191,161,74,0.2), 0 1px 3px rgba(0,0,0,0.5);
+    margin-top: 2px;
+  }
+  .greeting-b .name {
+    color: #BFA14A;
+    font-weight: 500;
+    text-shadow: 0 0 14px rgba(191,161,74,0.4), 0 1px 3px rgba(0,0,0,0.6);
+  }
+
+  /* Direction B bubbles — warm color-tinted, softer */
+  .phone-b .bubble {
+    border: 2px solid var(--svc-border, rgba(255,255,255,0.18));
+    box-shadow:
+      0 0 18px var(--svc-glow, rgba(255,255,255,0.10)),
+      0 4px 12px rgba(0,0,0,0.4),
+      inset 0 2px 4px rgba(255,255,255,0.16),
+      inset 0 -3px 8px rgba(0,0,0,0.4),
+      inset 0 0 18px var(--svc-inner, rgba(255,255,255,0.04)),
+      inset 0 -8px 12px var(--svc-caustic, rgba(255,255,255,0.03));
+  }
+  .phone-b .bubble::before {
+    background: radial-gradient(ellipse, rgba(255,255,255,0.48) 0%, rgba(255,255,255,0.10) 40%, transparent 75%);
+  }
+  .phone-b .bubble::after {
+    background: radial-gradient(ellipse, var(--svc-caustic, rgba(255,255,255,0.06)) 0%, transparent 70%);
+  }
+
+  .phone-b .bottom-bar {
+    background: linear-gradient(180deg, rgba(10,15,30,0.96), rgba(3,5,18,0.99));
+  }
+  .phone-b .bar-icon {
+    border: 1.5px solid var(--bar-color-border, rgba(255,255,255,0.18));
+    box-shadow:
+      0 0 14px var(--bar-glow, rgba(255,255,255,0.08)),
+      0 3px 8px rgba(0,0,0,0.35),
+      inset 0 2px 3px rgba(255,255,255,0.14),
+      inset 0 -3px 6px rgba(0,0,0,0.35),
+      inset 0 0 10px var(--bar-inner, rgba(255,255,255,0.03));
+  }
+  .phone-b .bar-icon::before {
+    content: '';
+    position: absolute;
+    top: 4%; left: 14%;
+    width: 44%; height: 24%;
+    background: radial-gradient(ellipse, rgba(255,255,255,0.32) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: rotate(-12deg);
+    z-index: 1;
+  }
+
+  /* ───────────────────────────────────────────
+     DIRECTION C — PREMIUM / MODERN
+     ─────────────────────────────────────────── */
+  .phone-c {
+    background: linear-gradient(180deg, #070c1c 0%, #050A18 35%, #050A18 100%);
+  }
+
+  .header-c {
+    display: flex;
+    align-items: center;
+    direction: ltr;
+    padding: 14px 16px 6px;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+
+  .portrait-c {
+    width: 62px; height: 62px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid rgba(13,148,136,0.45);
+    box-shadow:
+      0 0 0 3px rgba(13,148,136,0.06),
+      0 0 14px rgba(13,148,136,0.12),
+      0 4px 10px rgba(0,0,0,0.4);
+  }
+  .portrait-c img { width:100%; height:100%; object-fit:cover; object-position:center 15%; display:block; }
+
+  .brand-c {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* Direction C mark: sharp keyline box — architectural, modern */
+  .mark-c {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    direction: ltr;
+    padding: 6px 24px;
+    border-radius: 4px;
+    border: 1.5px solid rgba(255,255,255,0.16);
+    background: linear-gradient(160deg, rgba(255,255,255,0.04) 0%, rgba(13,148,136,0.02) 50%, rgba(191,161,74,0.015) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      0 0 20px rgba(191,161,74,0.05),
+      0 0 10px rgba(13,148,136,0.04),
+      0 2px 8px rgba(0,0,0,0.3);
+    position: relative;
+  }
+  /* Corner accents */
+  .mark-c::before, .mark-c::after {
+    content: '';
+    position: absolute;
+    width: 8px; height: 8px;
+    border-color: rgba(191,161,74,0.35);
+    border-style: solid;
+  }
+  .mark-c::before {
+    top: -1px; left: -1px;
+    border-width: 1.5px 0 0 1.5px;
+    border-radius: 2px 0 0 0;
+  }
+  .mark-c::after {
+    bottom: -1px; right: -1px;
+    border-width: 0 1.5px 1.5px 0;
+    border-radius: 0 0 2px 0;
+  }
+
+  .mark-c .abu {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 44px;
+    font-weight: 700;
+    font-style: italic;
+    letter-spacing: 4px;
+    color: #0d9488;
+    text-shadow:
+      0 0 6px rgba(13,148,136,0.4),
+      0 0 18px rgba(13,148,136,0.12),
+      0 2px 4px rgba(0,0,0,0.7);
+  }
+  .mark-c .bank {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 44px;
+    font-weight: 700;
+    font-style: italic;
+    letter-spacing: 4px;
+    color: #BFA14A;
+    text-shadow:
+      0 0 6px rgba(191,161,74,0.4),
+      0 0 18px rgba(191,161,74,0.12),
+      0 2px 4px rgba(0,0,0,0.7);
+  }
+
+  /* Thin teal line accent */
+  .accent-c {
+    width: 65%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(13,148,136,0.4), rgba(191,161,74,0.3), transparent);
+  }
+
+  .greeting-c {
+    font-family: 'Heebo', sans-serif;
+    font-size: 19px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.88);
+    text-align: center;
+    direction: rtl;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+  .greeting-c .name {
+    color: #BFA14A;
+    font-weight: 500;
+    text-shadow: 0 0 10px rgba(191,161,74,0.3), 0 1px 3px rgba(0,0,0,0.5);
+  }
+
+  /* Direction C bubbles — sharp, clean, minimal specular */
+  .phone-c .bubble {
+    background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.10) 0%, rgba(15,20,35,0.92) 50%, rgba(5,8,18,0.97) 100%);
+    border: 1.5px solid var(--svc-border, rgba(255,255,255,0.14));
+    box-shadow:
+      0 0 14px var(--svc-glow, rgba(255,255,255,0.08)),
+      0 4px 12px rgba(0,0,0,0.45),
+      inset 0 2px 4px rgba(255,255,255,0.15),
+      inset 0 -3px 8px rgba(0,0,0,0.4);
+  }
+  .phone-c .bubble::before {
+    background: radial-gradient(ellipse, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.08) 45%, transparent 75%);
+  }
+  .phone-c .bubble::after {
+    background: radial-gradient(ellipse, rgba(255,255,255,0.05) 0%, transparent 70%);
+  }
+
+  .phone-c .bottom-bar {
+    background: linear-gradient(180deg, rgba(7,12,28,0.96), rgba(3,5,18,0.99));
+  }
+  .phone-c .bar-icon {
+    background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.08) 0%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);
+    border: 1.5px solid var(--bar-color-border, rgba(255,255,255,0.14));
+    box-shadow:
+      0 0 10px var(--bar-glow, rgba(255,255,255,0.06)),
+      0 3px 8px rgba(0,0,0,0.35),
+      inset 0 2px 3px rgba(255,255,255,0.12),
+      inset 0 -2px 5px rgba(0,0,0,0.35);
+  }
+  .phone-c .bar-icon::before {
+    content: '';
+    position: absolute;
+    top: 5%; left: 18%;
+    width: 38%; height: 20%;
+    background: radial-gradient(ellipse, rgba(255,255,255,0.30) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: rotate(-10deg);
+    z-index: 1;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     DIRECTION A — LUXURY / ELEGANT
+     ═══════════════════════════════════════════ -->
+<div class="direction-wrapper">
+  <div class="direction-label">Direction A — Luxury / Elegant</div>
+  <div class="direction-sublabel">Gold pinstripe framing. Classic luxury brand containment. Restrained, regal, quiet confidence.</div>
+  <div class="phone phone-a">
+
+    <div class="header-a">
+      <div class="portrait-a">
+        <img src="../public/martita.jpg" alt="Martita"
+          onerror="this.onerror=null; this.src='../public/martita.png'; this.onerror=function(){this.style.display='none'};">
+      </div>
+      <div class="brand-a">
+        <div class="mark-a">
+          <span class="abu">Abu</span><span class="bank">Bank</span>
+        </div>
+        <div class="greeting-a">
+          ☀️ בוקר טוב, <span class="name">Martita</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-zone">
+      <div class="service-grid">
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(249,115,22,0.15); --svc-inner:rgba(249,115,22,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.13) 0%, rgba(249,115,22,0.08) 25%, rgba(30,35,55,0.9) 50%, rgba(10,14,28,0.97) 100%); border-color: rgba(249,115,22,0.25);">
+            <img class="bubble-logo" src="../public/logos/mizrahi.png" alt="מזרחי">
+          </div>
+          <span class="service-label">מזרחי טפחות</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(59,130,246,0.15); --svc-inner:rgba(59,130,246,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.13) 0%, rgba(59,130,246,0.08) 25%, rgba(30,35,55,0.9) 50%, rgba(10,14,28,0.97) 100%); border-color: rgba(59,130,246,0.25);">
+            <img class="bubble-logo" src="../public/logos/postalbank.png" alt="דואר">
+          </div>
+          <span class="service-label">דואר ישראל</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(168,85,247,0.15); --svc-inner:rgba(168,85,247,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.13) 0%, rgba(168,85,247,0.08) 25%, rgba(30,35,55,0.9) 50%, rgba(10,14,28,0.97) 100%); border-color: rgba(168,85,247,0.25);">
+            <img class="bubble-logo" src="../public/logos/max.png" alt="MAX">
+          </div>
+          <span class="service-label">MAX</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(6,182,212,0.15); --svc-inner:rgba(6,182,212,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.13) 0%, rgba(6,182,212,0.08) 25%, rgba(30,35,55,0.9) 50%, rgba(10,14,28,0.97) 100%); border-color: rgba(6,182,212,0.25);">
+            <img class="bubble-logo" src="../public/logos/WATER.jpg" alt="מים">
+          </div>
+          <span class="service-label">מפעל המים</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(234,179,8,0.15); --svc-inner:rgba(234,179,8,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.13) 0%, rgba(234,179,8,0.08) 25%, rgba(30,35,55,0.9) 50%, rgba(10,14,28,0.97) 100%); border-color: rgba(234,179,8,0.25);">
+            <img class="bubble-logo" src="../public/logos/iec.png" alt="חשמל">
+          </div>
+          <span class="service-label">חברת החשמל</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(34,197,94,0.15); --svc-inner:rgba(34,197,94,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.13) 0%, rgba(34,197,94,0.08) 25%, rgba(30,35,55,0.9) 50%, rgba(10,14,28,0.97) 100%); border-color: rgba(34,197,94,0.25);">
+            <img class="bubble-logo" src="../public/logos/arnona.png" alt="ארנונה">
+          </div>
+          <span class="service-label">ארנונה כ"ס</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(239,68,68,0.18); --svc-inner:rgba(239,68,68,0.07); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.13) 0%, rgba(239,68,68,0.10) 25%, rgba(30,35,55,0.9) 50%, rgba(10,14,28,0.97) 100%); border-color: rgba(239,68,68,0.30);">
+            <img class="bubble-logo" src="../public/logos/hot.png" alt="HOT">
+          </div>
+          <span class="service-label">HOT mobile</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(139,92,246,0.18); --svc-inner:rgba(139,92,246,0.07); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.13) 0%, rgba(139,92,246,0.10) 25%, rgba(30,35,55,0.9) 50%, rgba(10,14,28,0.97) 100%); border-color: rgba(139,92,246,0.30);">
+            <img class="bubble-logo" src="../public/logos/partner.png" alt="פרטנר">
+          </div>
+          <span class="service-label">פרטנר</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(14,165,233,0.18); --svc-inner:rgba(14,165,233,0.07); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.13) 0%, rgba(14,165,233,0.10) 25%, rgba(30,35,55,0.9) 50%, rgba(10,14,28,0.97) 100%); border-color: rgba(14,165,233,0.30);">
+            <img class="bubble-logo" src="../public/logos/yes.png" alt="yes">
+          </div>
+          <span class="service-label">yes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(225,29,72,0.30); --bar-glow:rgba(225,29,72,0.12); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.10) 0%, rgba(225,29,72,0.08) 25%, rgba(20,24,40,0.9) 55%, rgba(8,12,24,0.97) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(225,29,72,0.35))">
+            <defs><linearGradient id="a-gear" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fb7185"/><stop offset="100%" stop-color="#9f1239"/></linearGradient></defs>
+            <circle cx="12" cy="12" r="3" fill="url(#a-gear)"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" fill="url(#a-gear)" stroke="rgba(255,255,255,0.1)" stroke-width="0.4"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#fb7185;font-weight:600">Settings</span></span>
+      </div>
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(13,148,136,0.30); --bar-glow:rgba(13,148,136,0.12); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.10) 0%, rgba(13,148,136,0.08) 25%, rgba(20,24,40,0.9) 55%, rgba(8,12,24,0.97) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(13,148,136,0.35))">
+            <defs><linearGradient id="a-pin" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2dd4bf"/><stop offset="100%" stop-color="#065f56"/></linearGradient></defs>
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" fill="url(#a-pin)"/>
+            <circle cx="12" cy="10" r="3" fill="rgba(5,10,24,0.8)"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#2dd4bf;font-weight:600">Location</span></span>
+      </div>
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(37,211,102,0.30); --bar-glow:rgba(37,211,102,0.12); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.10) 0%, rgba(37,211,102,0.08) 25%, rgba(20,24,40,0.9) 55%, rgba(8,12,24,0.97) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(37,211,102,0.35))">
+            <defs><linearGradient id="a-wa" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#128C7E"/></linearGradient></defs>
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" fill="url(#a-wa)"/>
+            <circle cx="9" cy="10" r="1" fill="rgba(255,255,255,0.3)"/><circle cx="12" cy="10" r="1" fill="rgba(255,255,255,0.3)"/><circle cx="15" cy="10" r="1" fill="rgba(255,255,255,0.3)"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#34d399;font-weight:600">WhatsApp</span></span>
+      </div>
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(191,161,74,0.30); --bar-glow:rgba(191,161,74,0.12); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.10) 0%, rgba(191,161,74,0.08) 25%, rgba(20,24,40,0.9) 55%, rgba(8,12,24,0.97) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(191,161,74,0.35))">
+            <defs><linearGradient id="a-ai" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d4b85c"/><stop offset="100%" stop-color="#8B6914"/></linearGradient></defs>
+            <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="url(#a-ai)"/>
+            <path d="M19 3L19.8 5.2L22 6L19.8 6.8L19 9L18.2 6.8L16 6L18.2 5.2L19 3Z" fill="url(#a-ai)" opacity="0.65"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#BFA14A;font-weight:600">AI</span></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     DIRECTION B — WARM / HUMAN
+     ═══════════════════════════════════════════ -->
+<div class="direction-wrapper">
+  <div class="direction-label">Direction B — Warm / Human</div>
+  <div class="direction-sublabel">No hard frame. Warm radiant glow field. Larger portrait. Organic, inviting, personal warmth.</div>
+  <div class="phone phone-b">
+
+    <div class="header-b">
+      <div class="portrait-b">
+        <img src="../public/martita.jpg" alt="Martita"
+          onerror="this.onerror=null; this.src='../public/martita.png'; this.onerror=function(){this.style.display='none'};">
+      </div>
+      <div class="brand-b">
+        <div class="mark-b-wrapper">
+          <div class="mark-b">
+            <span class="abu">Abu</span><span class="bank">Bank</span>
+          </div>
+        </div>
+        <div class="accent-b"></div>
+        <div class="greeting-b">
+          ☀️ בוקר טוב, <span class="name">Martita</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-zone">
+      <div class="service-grid">
+        <div class="service-cell">
+          <div class="bubble" style="--svc-border:rgba(249,115,22,0.28); --svc-glow:rgba(249,115,22,0.16); --svc-inner:rgba(249,115,22,0.07); --svc-caustic:rgba(249,115,22,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.12) 0%, rgba(249,115,22,0.12) 22%, rgba(249,115,22,0.04) 40%, rgba(12,16,30,0.88) 58%, rgba(5,8,18,0.96) 100%);">
+            <img class="bubble-logo" src="../public/logos/mizrahi.png" alt="מזרחי">
+          </div>
+          <span class="service-label">מזרחי טפחות</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-border:rgba(59,130,246,0.28); --svc-glow:rgba(59,130,246,0.16); --svc-inner:rgba(59,130,246,0.07); --svc-caustic:rgba(59,130,246,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.12) 0%, rgba(59,130,246,0.12) 22%, rgba(59,130,246,0.04) 40%, rgba(12,16,30,0.88) 58%, rgba(5,8,18,0.96) 100%);">
+            <img class="bubble-logo" src="../public/logos/postalbank.png" alt="דואר">
+          </div>
+          <span class="service-label">דואר ישראל</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-border:rgba(168,85,247,0.28); --svc-glow:rgba(168,85,247,0.16); --svc-inner:rgba(168,85,247,0.07); --svc-caustic:rgba(168,85,247,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.12) 0%, rgba(168,85,247,0.12) 22%, rgba(168,85,247,0.04) 40%, rgba(12,16,30,0.88) 58%, rgba(5,8,18,0.96) 100%);">
+            <img class="bubble-logo" src="../public/logos/max.png" alt="MAX">
+          </div>
+          <span class="service-label">MAX</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-border:rgba(6,182,212,0.28); --svc-glow:rgba(6,182,212,0.16); --svc-inner:rgba(6,182,212,0.07); --svc-caustic:rgba(6,182,212,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.12) 0%, rgba(6,182,212,0.12) 22%, rgba(6,182,212,0.04) 40%, rgba(12,16,30,0.88) 58%, rgba(5,8,18,0.96) 100%);">
+            <img class="bubble-logo" src="../public/logos/WATER.jpg" alt="מים">
+          </div>
+          <span class="service-label">מפעל המים</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-border:rgba(234,179,8,0.28); --svc-glow:rgba(234,179,8,0.16); --svc-inner:rgba(234,179,8,0.07); --svc-caustic:rgba(234,179,8,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.12) 0%, rgba(234,179,8,0.12) 22%, rgba(234,179,8,0.04) 40%, rgba(12,16,30,0.88) 58%, rgba(5,8,18,0.96) 100%);">
+            <img class="bubble-logo" src="../public/logos/iec.png" alt="חשמל">
+          </div>
+          <span class="service-label">חברת החשמל</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-border:rgba(34,197,94,0.28); --svc-glow:rgba(34,197,94,0.16); --svc-inner:rgba(34,197,94,0.07); --svc-caustic:rgba(34,197,94,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.12) 0%, rgba(34,197,94,0.12) 22%, rgba(34,197,94,0.04) 40%, rgba(12,16,30,0.88) 58%, rgba(5,8,18,0.96) 100%);">
+            <img class="bubble-logo" src="../public/logos/arnona.png" alt="ארנונה">
+          </div>
+          <span class="service-label">ארנונה כ"ס</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-border:rgba(239,68,68,0.35); --svc-glow:rgba(239,68,68,0.20); --svc-inner:rgba(239,68,68,0.08); --svc-caustic:rgba(239,68,68,0.07); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.12) 0%, rgba(239,68,68,0.14) 22%, rgba(239,68,68,0.05) 40%, rgba(12,16,30,0.88) 58%, rgba(5,8,18,0.96) 100%);">
+            <img class="bubble-logo" src="../public/logos/hot.png" alt="HOT">
+          </div>
+          <span class="service-label">HOT mobile</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-border:rgba(139,92,246,0.35); --svc-glow:rgba(139,92,246,0.20); --svc-inner:rgba(139,92,246,0.08); --svc-caustic:rgba(139,92,246,0.07); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.12) 0%, rgba(139,92,246,0.14) 22%, rgba(139,92,246,0.05) 40%, rgba(12,16,30,0.88) 58%, rgba(5,8,18,0.96) 100%);">
+            <img class="bubble-logo" src="../public/logos/partner.png" alt="פרטנר">
+          </div>
+          <span class="service-label">פרטנר</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-border:rgba(14,165,233,0.35); --svc-glow:rgba(14,165,233,0.20); --svc-inner:rgba(14,165,233,0.08); --svc-caustic:rgba(14,165,233,0.07); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.12) 0%, rgba(14,165,233,0.14) 22%, rgba(14,165,233,0.05) 40%, rgba(12,16,30,0.88) 58%, rgba(5,8,18,0.96) 100%);">
+            <img class="bubble-logo" src="../public/logos/yes.png" alt="yes">
+          </div>
+          <span class="service-label">yes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(225,29,72,0.30); --bar-glow:rgba(225,29,72,0.14); --bar-inner:rgba(225,29,72,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.10) 0%, rgba(225,29,72,0.10) 25%, rgba(12,16,30,0.88) 55%, rgba(5,8,18,0.96) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(225,29,72,0.35))">
+            <defs><linearGradient id="b-gear" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fb7185"/><stop offset="100%" stop-color="#9f1239"/></linearGradient></defs>
+            <circle cx="12" cy="12" r="3" fill="url(#b-gear)"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" fill="url(#b-gear)" stroke="rgba(255,255,255,0.1)" stroke-width="0.4"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#fb7185;font-weight:600">Settings</span></span>
+      </div>
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(13,148,136,0.30); --bar-glow:rgba(13,148,136,0.14); --bar-inner:rgba(13,148,136,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.10) 0%, rgba(13,148,136,0.10) 25%, rgba(12,16,30,0.88) 55%, rgba(5,8,18,0.96) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(13,148,136,0.35))">
+            <defs><linearGradient id="b-pin" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2dd4bf"/><stop offset="100%" stop-color="#065f56"/></linearGradient></defs>
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" fill="url(#b-pin)"/><circle cx="12" cy="10" r="3" fill="rgba(5,10,24,0.8)"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#2dd4bf;font-weight:600">Location</span></span>
+      </div>
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(37,211,102,0.30); --bar-glow:rgba(37,211,102,0.14); --bar-inner:rgba(37,211,102,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.10) 0%, rgba(37,211,102,0.10) 25%, rgba(12,16,30,0.88) 55%, rgba(5,8,18,0.96) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(37,211,102,0.35))">
+            <defs><linearGradient id="b-wa" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#128C7E"/></linearGradient></defs>
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" fill="url(#b-wa)"/><circle cx="9" cy="10" r="1" fill="rgba(255,255,255,0.3)"/><circle cx="12" cy="10" r="1" fill="rgba(255,255,255,0.3)"/><circle cx="15" cy="10" r="1" fill="rgba(255,255,255,0.3)"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#34d399;font-weight:600">WhatsApp</span></span>
+      </div>
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(191,161,74,0.30); --bar-glow:rgba(191,161,74,0.14); --bar-inner:rgba(191,161,74,0.06); background: radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.10) 0%, rgba(191,161,74,0.10) 25%, rgba(12,16,30,0.88) 55%, rgba(5,8,18,0.96) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(191,161,74,0.35))">
+            <defs><linearGradient id="b-ai" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d4b85c"/><stop offset="100%" stop-color="#8B6914"/></linearGradient></defs>
+            <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="url(#b-ai)"/><path d="M19 3L19.8 5.2L22 6L19.8 6.8L19 9L18.2 6.8L16 6L18.2 5.2L19 3Z" fill="url(#b-ai)" opacity="0.65"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#BFA14A;font-weight:600">AI</span></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     DIRECTION C — PREMIUM / MODERN
+     ═══════════════════════════════════════════ -->
+<div class="direction-wrapper">
+  <div class="direction-label">Direction C — Premium / Modern</div>
+  <div class="direction-sublabel">Architectural keyline box with gold corner accents. Sharp, precise, modern luxury. Wider letter-spacing.</div>
+  <div class="phone phone-c">
+
+    <div class="header-c">
+      <div class="portrait-c">
+        <img src="../public/martita.jpg" alt="Martita"
+          onerror="this.onerror=null; this.src='../public/martita.png'; this.onerror=function(){this.style.display='none'};">
+      </div>
+      <div class="brand-c">
+        <div class="mark-c">
+          <span class="abu">Abu</span><span class="bank">Bank</span>
+        </div>
+        <div class="accent-c"></div>
+        <div class="greeting-c">
+          ☀️ בוקר טוב, <span class="name">Martita</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-zone">
+      <div class="service-grid">
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(249,115,22,0.12); --svc-border:rgba(249,115,22,0.22); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.10) 0%, rgba(249,115,22,0.06) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+            <img class="bubble-logo" src="../public/logos/mizrahi.png" alt="מזרחי">
+          </div>
+          <span class="service-label">מזרחי טפחות</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(59,130,246,0.12); --svc-border:rgba(59,130,246,0.22); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.10) 0%, rgba(59,130,246,0.06) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+            <img class="bubble-logo" src="../public/logos/postalbank.png" alt="דואר">
+          </div>
+          <span class="service-label">דואר ישראל</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(168,85,247,0.12); --svc-border:rgba(168,85,247,0.22); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.10) 0%, rgba(168,85,247,0.06) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+            <img class="bubble-logo" src="../public/logos/max.png" alt="MAX">
+          </div>
+          <span class="service-label">MAX</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(6,182,212,0.12); --svc-border:rgba(6,182,212,0.22); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.10) 0%, rgba(6,182,212,0.06) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+            <img class="bubble-logo" src="../public/logos/WATER.jpg" alt="מים">
+          </div>
+          <span class="service-label">מפעל המים</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(234,179,8,0.12); --svc-border:rgba(234,179,8,0.22); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.10) 0%, rgba(234,179,8,0.06) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+            <img class="bubble-logo" src="../public/logos/iec.png" alt="חשמל">
+          </div>
+          <span class="service-label">חברת החשמל</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(34,197,94,0.12); --svc-border:rgba(34,197,94,0.22); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.10) 0%, rgba(34,197,94,0.06) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+            <img class="bubble-logo" src="../public/logos/arnona.png" alt="ארנונה">
+          </div>
+          <span class="service-label">ארנונה כ"ס</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(239,68,68,0.15); --svc-border:rgba(239,68,68,0.28); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.10) 0%, rgba(239,68,68,0.08) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+            <img class="bubble-logo" src="../public/logos/hot.png" alt="HOT">
+          </div>
+          <span class="service-label">HOT mobile</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(139,92,246,0.15); --svc-border:rgba(139,92,246,0.28); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.10) 0%, rgba(139,92,246,0.08) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+            <img class="bubble-logo" src="../public/logos/partner.png" alt="פרטנר">
+          </div>
+          <span class="service-label">פרטנר</span>
+        </div>
+        <div class="service-cell">
+          <div class="bubble" style="--svc-glow:rgba(14,165,233,0.15); --svc-border:rgba(14,165,233,0.28); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.10) 0%, rgba(14,165,233,0.08) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+            <img class="bubble-logo" src="../public/logos/yes.png" alt="yes">
+          </div>
+          <span class="service-label">yes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(225,29,72,0.25); --bar-glow:rgba(225,29,72,0.10); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.08) 0%, rgba(225,29,72,0.06) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(225,29,72,0.35))">
+            <defs><linearGradient id="c-gear" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fb7185"/><stop offset="100%" stop-color="#9f1239"/></linearGradient></defs>
+            <circle cx="12" cy="12" r="3" fill="url(#c-gear)"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" fill="url(#c-gear)" stroke="rgba(255,255,255,0.1)" stroke-width="0.4"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#fb7185;font-weight:600">Settings</span></span>
+      </div>
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(13,148,136,0.25); --bar-glow:rgba(13,148,136,0.10); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.08) 0%, rgba(13,148,136,0.06) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(13,148,136,0.35))">
+            <defs><linearGradient id="c-pin" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2dd4bf"/><stop offset="100%" stop-color="#065f56"/></linearGradient></defs>
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" fill="url(#c-pin)"/><circle cx="12" cy="10" r="3" fill="rgba(5,10,24,0.8)"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#2dd4bf;font-weight:600">Location</span></span>
+      </div>
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(37,211,102,0.25); --bar-glow:rgba(37,211,102,0.10); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.08) 0%, rgba(37,211,102,0.06) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(37,211,102,0.35))">
+            <defs><linearGradient id="c-wa" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#128C7E"/></linearGradient></defs>
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" fill="url(#c-wa)"/><circle cx="9" cy="10" r="1" fill="rgba(255,255,255,0.3)"/><circle cx="12" cy="10" r="1" fill="rgba(255,255,255,0.3)"/><circle cx="15" cy="10" r="1" fill="rgba(255,255,255,0.3)"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#34d399;font-weight:600">WhatsApp</span></span>
+      </div>
+      <div class="bar-item">
+        <div class="bar-icon" style="--bar-color-border:rgba(191,161,74,0.25); --bar-glow:rgba(191,161,74,0.10); background: radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.08) 0%, rgba(191,161,74,0.06) 30%, rgba(15,20,35,0.92) 55%, rgba(5,8,18,0.97) 100%);">
+          <svg viewBox="0 0 24 24" width="22" height="22" style="position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(191,161,74,0.35))">
+            <defs><linearGradient id="c-ai" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d4b85c"/><stop offset="100%" stop-color="#8B6914"/></linearGradient></defs>
+            <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="url(#c-ai)"/><path d="M19 3L19.8 5.2L22 6L19.8 6.8L19 9L18.2 6.8L16 6L18.2 5.2L19 3Z" fill="url(#c-ai)" opacity="0.65"/>
+          </svg>
+        </div>
+        <span class="bar-label"><span style="color:rgba(13,148,136,0.5)">Abu </span><span style="color:#BFA14A;font-weight:600">AI</span></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

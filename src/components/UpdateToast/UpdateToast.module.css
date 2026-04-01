@@ -1,0 +1,54 @@
+.toast {
+  position: fixed;
+  bottom: calc(var(--abu-bottombar-h) + var(--abu-space-16));
+  left: var(--abu-space-16);
+  right: var(--abu-space-16);
+  z-index: var(--abu-z-toast);
+  background: var(--abu-color-surface-elevated);
+  border-radius: var(--abu-radius-modal);
+  box-shadow: var(--abu-shadow-modal);
+  padding: var(--abu-space-16);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: slideIn var(--abu-dur-modal-in) ease-out;
+}
+
+.message {
+  font-size: var(--abu-font-size-body);
+  font-weight: var(--abu-font-weight-body);
+  line-height: var(--abu-line-height-body);
+  color: var(--abu-color-text-primary);
+}
+
+.button {
+  font-size: var(--abu-font-size-label);
+  font-weight: var(--abu-font-weight-label);
+  line-height: var(--abu-line-height-label);
+  color: var(--abu-color-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  min-width: var(--abu-space-64);
+  min-height: var(--abu-space-64);
+  padding: var(--abu-space-8) var(--abu-space-16);
+  border-radius: var(--abu-radius-button);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.button:active {
+  color: var(--abu-color-primary-pressed);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(var(--abu-space-16));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

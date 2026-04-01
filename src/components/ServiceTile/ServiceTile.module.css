@@ -1,0 +1,57 @@
+.tile {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--abu-radius-tile);
+  background: var(--abu-color-surface-elevated);
+  box-shadow: var(--abu-shadow-tile);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--abu-tile-gap);
+  transition: transform var(--abu-dur-tap-press) ease-out,
+              box-shadow var(--abu-dur-tap-press) ease-out;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.tile:active {
+  transform: scale(0.97);
+  transition-duration: var(--abu-dur-tap-press);
+}
+
+.tile:not(:active) {
+  transform: scale(1);
+  transition-duration: var(--abu-dur-tap-release);
+}
+
+.tile:hover {
+  box-shadow: var(--abu-shadow-tile-hover);
+}
+
+.iconContainer {
+  width: var(--abu-tile-icon);
+  height: var(--abu-tile-icon);
+  border-radius: 50%;
+  background: var(--abu-color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.label {
+  max-width: 90%;
+  font-size: var(--abu-font-size-label);
+  font-weight: var(--abu-font-weight-label);
+  line-height: var(--abu-line-height-label);
+  color: var(--abu-color-text-primary);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

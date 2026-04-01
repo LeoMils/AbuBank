@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AbuBank — Galaxy S25 Edge Preview</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      background: #1a1a2e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 20px;
+    }
+    .phone {
+      position: relative;
+      width: 444px;   /* 412 + 16 bezel each side */
+      height: 940px;  /* 870 + top/bottom bezel */
+      background: #111;
+      border-radius: 42px;
+      box-shadow:
+        0 0 0 2px #333,
+        0 0 0 4px #111,
+        0 20px 60px rgba(0,0,0,0.6),
+        inset 0 0 8px rgba(255,255,255,0.05);
+      overflow: hidden;
+      padding: 32px 16px 38px;
+    }
+    /* Edge curves - subtle gradient on sides */
+    .phone::before,
+    .phone::after {
+      content: '';
+      position: absolute;
+      top: 40px;
+      bottom: 40px;
+      width: 6px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .phone::before {
+      left: 0;
+      background: linear-gradient(90deg, rgba(255,255,255,0.06), transparent);
+      border-radius: 0 4px 4px 0;
+    }
+    .phone::after {
+      right: 0;
+      background: linear-gradient(-90deg, rgba(255,255,255,0.06), transparent);
+      border-radius: 4px 0 0 4px;
+    }
+    /* Camera punch-hole */
+    .camera {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 12px;
+      height: 12px;
+      background: #000;
+      border-radius: 50%;
+      border: 1.5px solid #222;
+      z-index: 20;
+    }
+    /* Status bar overlay */
+    .status-bar {
+      position: absolute;
+      top: 32px;
+      left: 16px;
+      right: 16px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      z-index: 15;
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
+      font-weight: 500;
+      pointer-events: none;
+    }
+    .status-bar .time { font-weight: 600; }
+    .status-icons { display: flex; gap: 4px; align-items: center; }
+    .status-icons svg { opacity: 0.7; }
+    /* The actual app iframe */
+    .screen {
+      width: 412px;
+      height: 870px;
+      border: none;
+      border-radius: 26px;
+      background: #030508;
+      overflow: hidden;
+    }
+    /* Label */
+    .label {
+      position: absolute;
+      bottom: -50px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.4);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .wrapper {
+      position: relative;
+    }
+    /* Navigation gesture bar */
+    .gesture-bar {
+      position: absolute;
+      bottom: 42px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 4px;
+      background: rgba(255,255,255,0.25);
+      border-radius: 2px;
+      z-index: 15;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="phone">
+      <div class="camera"></div>
+      <div class="status-bar">
+        <span class="time" id="clock">12:00</span>
+        <div class="status-icons">
+          <!-- WiFi -->
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
+            <path d="M5 12.55a11 11 0 0114.08 0"/>
+            <path d="M1.42 9a16 16 0 0121.16 0"/>
+            <path d="M8.53 16.11a6 6 0 016.95 0"/>
+            <circle cx="12" cy="20" r="1" fill="white"/>
+          </svg>
+          <!-- Signal -->
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+            <rect x="2" y="16" width="4" height="6" rx="1"/>
+            <rect x="8" y="11" width="4" height="11" rx="1"/>
+            <rect x="14" y="6" width="4" height="16" rx="1"/>
+            <rect x="20" y="2" width="4" height="20" rx="1"/>
+          </svg>
+          <!-- Battery -->
+          <svg width="22" height="14" viewBox="0 0 28 14" fill="none">
+            <rect x="0.5" y="1" width="24" height="12" rx="2.5" stroke="white" stroke-opacity="0.5"/>
+            <rect x="2" y="2.5" width="18" height="9" rx="1.5" fill="#4ade80"/>
+            <path d="M26 5v4a1.5 1.5 0 000-4z" fill="white" fill-opacity="0.4"/>
+          </svg>
+        </div>
+      </div>
+      <iframe class="screen" src="http://localhost:5173/" title="AbuBank"></iframe>
+      <div class="gesture-bar"></div>
+    </div>
+    <div class="label">Samsung Galaxy S25 Edge — 412 × 870px · Standalone PWA</div>
+  </div>
+  <script>
+    // Live clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent =
+        now.getHours().toString().padStart(2,'0') + ':' +
+        now.getMinutes().toString().padStart(2,'0');
+    }
+    updateClock();
+    setInterval(updateClock, 10000);
+  </script>
+</body>
+</html>

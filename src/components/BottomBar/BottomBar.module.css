@@ -1,0 +1,26 @@
+.bottomBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--abu-z-chrome);
+  height: var(--abu-bottombar-h);
+  padding-bottom: var(--abu-safe-bottom);
+  border-top: 1px solid var(--abu-color-border);
+  background: var(--abu-color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.version {
+  font-size: var(--abu-font-size-caption);
+  font-weight: var(--abu-font-weight-caption);
+  line-height: var(--abu-line-height-caption);
+  color: var(--abu-color-text-disabled);
+}
+
+.ltrSpan {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
