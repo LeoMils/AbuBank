@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { useAppStore } from './state/store'
 import { Screen, SCREEN_LABELS } from './state/types'
 import { IMMUTABLE_DEFAULTS } from './state/defaults'
@@ -148,6 +149,8 @@ export function App() {
       <div aria-live="polite" aria-atomic="true" className={styles.srOnly}>
         {SCREEN_LABELS[currentScreen]}
       </div>
+
+      <SpeedInsights />
     </>
   )
 }
