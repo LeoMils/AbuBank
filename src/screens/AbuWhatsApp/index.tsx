@@ -117,10 +117,16 @@ export function AbuWhatsApp() {
   const startRecording = async () => {
     setError('')
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // iOS Safari requires explicit audio constraints for microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 16000 }
+      })
       streamRef.current = stream
       const mimeType = getSupportedMimeType()
-      const recorder = new MediaRecorder(stream, { mimeType })
+      // Empty mimeType = let the browser choose (iOS-safe fallback)
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
       recorderRef.current = recorder
       chunksRef.current = []
 
@@ -133,7 +139,9 @@ export function AbuWhatsApp() {
         streamRef.current = null
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
 
-        const blob = new Blob(chunksRef.current, { type: mimeType })
+        // Use the recorder's actual mimeType (iOS may differ from requested mimeType)
+        const actualType = recorder.mimeType || mimeType || 'audio/mp4'
+        const blob = new Blob(chunksRef.current, { type: actualType })
         if (blob.size < 1000) {
           handleError('ההקלטה קצרה מדי. נסי שוב.')
           return
@@ -258,10 +266,16 @@ export function AbuWhatsApp() {
     setAudioLevel(0)
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // iOS Safari requires explicit audio constraints for microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 16000 }
+      })
       streamRef.current = stream
       const mimeType = getSupportedMimeType()
-      const recorder = new MediaRecorder(stream, { mimeType })
+      // Empty mimeType = let the browser choose (iOS-safe fallback)
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
       recorderRef.current = recorder
       chunksRef.current = []
 
@@ -278,7 +292,9 @@ export function AbuWhatsApp() {
 
         if (!voiceModeRef.current) return
 
-        const blob = new Blob(chunksRef.current, { type: mimeType })
+        // Use the recorder's actual mimeType (iOS may differ from requested mimeType)
+        const actualType = recorder.mimeType || mimeType || 'audio/mp4'
+        const blob = new Blob(chunksRef.current, { type: actualType })
         if (blob.size < 1000) {
           if (voiceModeRef.current) startVoiceListening()
           return
@@ -453,15 +469,20 @@ export function AbuWhatsApp() {
     >
       {/* ─── PREMIUM HEADER ─── */}
       <header style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: 78, flexShrink: 0,
-        padding: '0 16px',
+        flexShrink: 0,
         position: 'relative',
         background: 'linear-gradient(180deg, rgba(14,22,44,1) 0%, rgba(8,14,32,1) 50%, rgba(5,10,24,1) 100%)',
         borderBottom: '1px solid rgba(255,255,255,0.10)',
         boxShadow: '0 4px 20px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.03)',
         zIndex: 20,
       }}>
+        {/* Inner: fixed-height content zone — always 78 px below the notch */}
+        <div style={{
+          position: 'relative',
+          height: 78,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '0 16px',
+        }}>
         {/* Back button */}
         <button
           type="button"
@@ -534,6 +555,7 @@ export function AbuWhatsApp() {
             onError={handleMartitaImgError}
           />
         </div>
+        </div>{/* end inner content wrapper */}
       </header>
 
       {/* ─── CONTENT ─── */}
@@ -543,7 +565,7 @@ export function AbuWhatsApp() {
         paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         WebkitOverflowScrolling: 'touch',
-        background: 'radial-gradient(ellipse at 50% 20%, rgba(37,211,102,0.012) 0%, transparent 60%)',
+        background: 'radial-gradient(ellipse at 50% 10%, rgba(37,211,102,0.045) 0%, transparent 55%)',
         position: 'relative',
       }}>
         {/* ERROR */}

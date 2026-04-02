@@ -97,7 +97,10 @@ async function speakAzureTTS(text: string): Promise<boolean> {
   for (const chunk of chunks) {
     try {
       const url = `/api/aztts?text=${encodeURIComponent(chunk)}&lang=${lang}`
-      const res = await fetch(url)
+      const controller = new AbortController()
+      const t = setTimeout(() => controller.abort(), 5000) // fast timeout — iPhone can't reach proxy
+      const res = await fetch(url, { signal: controller.signal })
+      clearTimeout(t)
       if (res.status === 503) return false   // no key configured — skip silently
       if (!res.ok) { console.log('[TTS] Azure TTS status:', res.status); return false }
       const blob = await res.blob()
@@ -192,7 +195,10 @@ async function speakGoogleTTS(text: string): Promise<boolean> {
   for (const chunk of chunks) {
     try {
       const url = `/api/gtts?text=${encodeURIComponent(chunk)}&lang=${lang}`
-      const res = await fetch(url)
+      const controller = new AbortController()
+      const t = setTimeout(() => controller.abort(), 5000) // fast timeout — iPhone can't reach proxy
+      const res = await fetch(url, { signal: controller.signal })
+      clearTimeout(t)
       if (!res.ok) { console.log('[TTS] Google TTS status:', res.status); return false }
       const blob = await res.blob()
       if (blob.size < 100) { console.log('[TTS] Google TTS: empty audio'); return false }
@@ -215,7 +221,10 @@ async function speakEdgeTTS(text: string): Promise<boolean> {
   for (const chunk of chunks) {
     try {
       const url = `/api/tts?text=${encodeURIComponent(chunk)}&lang=${lang}`
-      const res = await fetch(url)
+      const controller = new AbortController()
+      const t = setTimeout(() => controller.abort(), 5000) // fast timeout — iPhone can't reach proxy
+      const res = await fetch(url, { signal: controller.signal })
+      clearTimeout(t)
       if (!res.ok) { console.log('[TTS] Edge TTS status:', res.status); return false }
       const blob = await res.blob()
       if (blob.size < 100) { console.log('[TTS] Edge TTS: empty audio'); return false }

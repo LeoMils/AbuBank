@@ -227,10 +227,14 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   }
 
   const formData = new FormData()
-  const ext = audioBlob.type.includes('mp4') ? 'mp4'
-    : audioBlob.type.includes('webm') ? 'webm'
-    : audioBlob.type.includes('ogg') ? 'ogg'
-    : 'webm'
+  // Whisper accepts: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, webm
+  // iOS records as audio/mp4 → use m4a extension (Whisper-compatible)
+  const t = audioBlob.type
+  const ext = t.includes('mp4') || t.includes('m4a') || t.includes('aac') ? 'm4a'
+    : t.includes('webm') ? 'webm'
+    : t.includes('ogg')  ? 'ogg'
+    : t.includes('wav')  ? 'wav'
+    : 'webm' // fallback — Whisper still tries webm
   formData.append('file', audioBlob, `recording.${ext}`)
   formData.append('model', WHISPER_MODEL)
 
@@ -266,18 +270,20 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
 }
 
 export function getSupportedMimeType(): string {
+  // iOS Safari supports only audio/mp4 — test it first before webm variants
   const types = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/mp4',
-    'audio/ogg;codecs=opus',
+    'audio/mp4;codecs=mp4a.40.2', // iOS Safari (AAC in MP4)
+    'audio/mp4',                   // iOS Safari generic
+    'audio/webm;codecs=opus',      // Chrome / Android
+    'audio/webm',                  // Chrome / Android fallback
+    'audio/ogg;codecs=opus',       // Firefox
   ]
   for (const type of types) {
     if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
       return type
     }
   }
-  return 'audio/webm'
+  return '' // Empty string = let the browser choose (iOS-safe)
 }
 
 // ─── Chat ───

@@ -320,7 +320,7 @@ export function Home() {
               >
                 {/* 3D Water-drop — per-service volumetric gradient, glass caustics on top */}
                 <div style={{
-                  width: 61, height: 61, borderRadius: '50%',
+                  width: 68, height: 68, borderRadius: '50%',
                   position: 'relative', overflow: 'hidden',
                   background: (() => {
                     const g: Record<string, string> = {
@@ -339,8 +339,9 @@ export function Home() {
                   boxShadow: pressed === svc.id
                     ? `0 1px 4px rgba(0,0,0,0.6)`
                     : [
-                        `0 0 18px rgba(${rgb},0.45)`,
-                        `0 8px 20px rgba(0,0,0,0.50)`,
+                        `0 0 22px rgba(${rgb},0.62)`,
+                        `0 0 8px rgba(${rgb},0.28)`,
+                        `0 10px 24px rgba(0,0,0,0.55)`,
                       ].join(', '),
                   transform: pressed === svc.id ? 'scale(0.92)' : 'scale(1)',
                   transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
@@ -387,10 +388,11 @@ export function Home() {
                   }}/>
                 </div>
                 <span style={{
-                  fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.88)',
+                  fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.95)',
                   fontFamily: "'Heebo',sans-serif", textAlign: 'center',
                   lineHeight: 1.25, direction: 'rtl',
                   maxWidth: 110, wordBreak: 'break-word',
+                  textShadow: '0 1px 4px rgba(0,0,0,0.6)',
                 }}>
                   {svc.label}
                 </span>
@@ -502,8 +504,14 @@ export function Home() {
         paddingTop: 10, paddingLeft: 4, paddingRight: 4,
         paddingBottom: 'calc(8px + env(safe-area-inset-bottom,0px))',
         flexShrink: 0,
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        background: 'linear-gradient(180deg, rgba(7,13,30,0.97), rgba(3,5,18,0.99))',
+        borderTop: '1px solid transparent',
+        backgroundImage: [
+          'linear-gradient(180deg, rgba(7,13,30,0.98), rgba(3,5,18,1.0))',
+          'linear-gradient(90deg, transparent 0%, rgba(201,168,76,0.28) 25%, rgba(201,168,76,0.42) 50%, rgba(201,168,76,0.28) 75%, transparent 100%)',
+        ].join(', '),
+        backgroundOrigin: 'padding-box, border-box',
+        backgroundClip: 'padding-box, border-box',
+        borderImage: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.40) 30%, rgba(201,168,76,0.55) 50%, rgba(201,168,76,0.40) 70%, transparent) 1',
       }}>
         {/* Settings — 3 sharp dots, tucked top-right corner */}
         <button

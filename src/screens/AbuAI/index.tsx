@@ -193,10 +193,16 @@ export function AbuAI() {
 
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // iOS Safari requires explicit audio constraints for microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 16000 }
+      })
       streamRef.current = stream
       const mimeType = getSupportedMimeType()
-      const recorder = new MediaRecorder(stream, { mimeType })
+      // Empty mimeType = let the browser choose (iOS-safe fallback)
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
       recorderRef.current = recorder
       chunksRef.current = []
 
@@ -210,7 +216,9 @@ export function AbuAI() {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
         setRecording(false)
 
-        const blob = new Blob(chunksRef.current, { type: mimeType })
+        // Use the recorder's actual mimeType (iOS may differ from requested mimeType)
+        const actualType = recorder.mimeType || mimeType || 'audio/mp4'
+        const blob = new Blob(chunksRef.current, { type: actualType })
         if (blob.size < 1000) return
 
         setTranscribing(true)
@@ -259,10 +267,16 @@ export function AbuAI() {
     setAudioLevel(0)
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // iOS Safari requires explicit audio constraints for microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 16000 }
+      })
       streamRef.current = stream
       const mimeType = getSupportedMimeType()
-      const recorder = new MediaRecorder(stream, { mimeType })
+      // Empty mimeType = let the browser choose (iOS-safe fallback)
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
       recorderRef.current = recorder
       chunksRef.current = []
 
@@ -279,7 +293,9 @@ export function AbuAI() {
 
         if (!voiceModeRef.current) return
 
-        const blob = new Blob(chunksRef.current, { type: mimeType })
+        // Use the recorder's actual mimeType (iOS may differ from requested mimeType)
+        const actualType = recorder.mimeType || mimeType || 'audio/mp4'
+        const blob = new Blob(chunksRef.current, { type: actualType })
         if (blob.size < 1000) {
           if (voiceModeRef.current) startVoiceListening()
           return
@@ -415,24 +431,19 @@ export function AbuAI() {
       <div aria-hidden="true" style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
         background: [
-          'radial-gradient(ellipse 90% 50% at 50% -5%, rgba(20,184,166,0.10) 0%, transparent 60%)',
-          'radial-gradient(ellipse 60% 40% at 10% 85%, rgba(201,168,76,0.06) 0%, transparent 55%)',
-          'radial-gradient(ellipse 50% 35% at 90% 75%, rgba(20,184,166,0.05) 0%, transparent 50%)',
+          'radial-gradient(ellipse 90% 50% at 50% -5%, rgba(20,184,166,0.16) 0%, transparent 60%)',
+          'radial-gradient(ellipse 60% 40% at 10% 85%, rgba(201,168,76,0.10) 0%, transparent 55%)',
+          'radial-gradient(ellipse 50% 35% at 90% 75%, rgba(20,184,166,0.08) 0%, transparent 50%)',
         ].join(', '),
       }} />
 
       {/* ─── HEADER ─── */}
       <header
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: 68,
           flexShrink: 0,
-          padding: '0 16px',
           position: 'relative',
           background: 'linear-gradient(180deg, rgba(5,10,24,1.0) 0%, rgba(5,12,26,0.97) 100%)',
-          borderBottom: '1px solid rgba(20,184,166,0.18)',
+          borderBottom: '1px solid rgba(20,184,166,0.30)',
           zIndex: 20,
         }}
       >
@@ -440,6 +451,15 @@ export function AbuAI() {
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1,
           background: 'linear-gradient(90deg,transparent,rgba(20,184,166,0.35) 30%,rgba(20,184,166,0.55) 50%,rgba(20,184,166,0.35) 70%,transparent)'
         }} />
+        {/* Inner: fixed-height content zone — always 68 px below the notch */}
+        <div style={{
+          position: 'relative',
+          height: 68,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '0 16px',
+        }}>
         {/* Martita portrait — left side (RTL = left) */}
         <div
           style={{
@@ -536,6 +556,7 @@ export function AbuAI() {
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
+        </div>{/* end inner content wrapper */}
       </header>
 
       {/* ─── CHAT AREA ─── */}
@@ -808,14 +829,16 @@ export function AbuAI() {
                     style={isUser ? {
                       padding: '13px 18px',
                       borderRadius: '20px 6px 20px 20px',
-                      background: 'linear-gradient(135deg, rgba(20,184,166,0.20) 0%, rgba(20,184,166,0.10) 100%)',
-                      border: '1px solid rgba(20,184,166,0.32)',
+                      background: 'linear-gradient(135deg, rgba(20,184,166,0.30) 0%, rgba(20,184,166,0.16) 100%)',
+                      border: '1px solid rgba(20,184,166,0.45)',
+                      boxShadow: '0 4px 16px rgba(20,184,166,0.14)',
                     } : {
                       padding: '13px 18px',
                       borderRadius: '6px 20px 20px 20px',
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      backdropFilter: 'blur(4px)',
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.04) 100%)',
+                      border: '1px solid rgba(255,255,255,0.14)',
+                      backdropFilter: 'blur(6px)',
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.22)',
                     }}
                   >
                     <div

@@ -497,8 +497,9 @@ export function AbuGames() {
       <div aria-hidden="true" style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
         background: [
-          'radial-gradient(ellipse 55% 35% at 8% 8%, rgba(201,168,76,0.10) 0%, transparent 60%)',
-          'radial-gradient(ellipse 50% 40% at 90% 88%, rgba(20,184,166,0.09) 0%, transparent 60%)',
+          'radial-gradient(ellipse 55% 35% at 8% 8%, rgba(201,168,76,0.16) 0%, transparent 60%)',
+          'radial-gradient(ellipse 50% 40% at 90% 88%, rgba(20,184,166,0.14) 0%, transparent 60%)',
+          'radial-gradient(ellipse 40% 30% at 50% 50%, rgba(124,58,237,0.04) 0%, transparent 70%)',
         ].join(', '),
       }}/>
 
@@ -529,15 +530,16 @@ export function AbuGames() {
       <header style={{
         position: 'relative',
         zIndex: 3,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'column',
-        height: 64,
-        paddingTop: 'env(safe-area-inset-top, 44px)',
         background: 'linear-gradient(180deg, rgba(7,9,26,0.98) 0%, rgba(8,11,30,0.95) 100%)',
         borderBottom: '1px solid rgba(201,168,76,0.14)',
       }}>
+        {/* Inner: fixed 64 px below notch — flex-column centers wordmark + subtitle */}
+        <div style={{
+          position: 'relative',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexDirection: 'column',
+          height: 64,
+        }}>
         {/* Wordmark */}
         <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, direction: 'ltr' }}>
           <span style={{
@@ -557,8 +559,8 @@ export function AbuGames() {
         </div>
         {/* Subtitle */}
         <div style={{
-          fontSize: 12,
-          color: 'rgba(255,255,255,0.45)',
+          fontSize: 14,
+          color: 'rgba(255,255,255,0.62)',
           marginTop: 1,
           direction: 'rtl',
           fontFamily: "'Heebo',sans-serif",
@@ -585,6 +587,7 @@ export function AbuGames() {
           <ChevronLeft />
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontFamily: "'Heebo',sans-serif" }}>חזרה</span>
         </button>
+        </div>{/* end inner content wrapper */}
       </header>
 
       {/* ── CONTENT ── */}
@@ -613,10 +616,10 @@ export function AbuGames() {
             height: 150,
             borderRadius: 22,
             overflow: 'hidden',
-            background: 'linear-gradient(135deg, #052e16 0%, #14532d 25%, #16a34a 60%, #22c55e 80%, #4ade80 100%)',
+            background: 'linear-gradient(135deg, #031a0d 0%, #0a3d1f 20%, #166534 45%, #22c55e 72%, #4ade80 88%, #86efac 100%)',
             boxShadow: heroPressed
-              ? '0 6px 20px rgba(34,197,94,0.45), 0 2px 8px rgba(0,0,0,0.7)'
-              : '0 12px 40px rgba(34,197,94,0.35), 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15)',
+              ? '0 6px 20px rgba(34,197,94,0.50), 0 2px 8px rgba(0,0,0,0.7)'
+              : '0 14px 44px rgba(34,197,94,0.45), 0 4px 16px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.15)',
             transform: heroPressed ? 'scale(0.97)' : 'scale(1)',
             transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
             cursor: 'pointer',
@@ -677,10 +680,11 @@ export function AbuGames() {
               </div>
               {/* CTA */}
               <div style={{
-                fontSize: 14, fontWeight: 600,
-                color: '#4ade80',
+                fontSize: 15, fontWeight: 700,
+                color: '#86efac',
                 fontFamily: "'DM Sans',sans-serif",
-                letterSpacing: '0.2px',
+                letterSpacing: '0.3px',
+                textShadow: '0 0 14px rgba(74,222,128,0.55)',
               }}>
                 שחקי עכשיו →
               </div>
@@ -702,16 +706,17 @@ export function AbuGames() {
                 direction: 'rtl',
               }}>
                 <span style={{
-                  fontSize: 13, fontWeight: 600,
-                  color: '#C9A84C',
+                  fontSize: 16, fontWeight: 700,
+                  color: '#D4AF52',
                   fontFamily: "'Heebo',sans-serif",
                   letterSpacing: '0.5px',
+                  textShadow: '0 0 12px rgba(201,168,76,0.40)',
                 }}>
                   {group.label}
                 </span>
                 <div style={{
                   flex: 1, height: 1,
-                  background: 'linear-gradient(90deg, rgba(201,168,76,0.35) 0%, transparent 100%)',
+                  background: 'linear-gradient(90deg, rgba(201,168,76,0.55) 0%, rgba(201,168,76,0.15) 60%, transparent 100%)',
                 }}/>
               </div>
 
@@ -740,14 +745,14 @@ export function AbuGames() {
                       style={{
                         flex: '1 1 155px',
                         minWidth: 155,
-                        height: 130,
+                        height: 142,
                         borderRadius: 18,
                         position: 'relative',
                         overflow: 'hidden',
                         background: game.gradient,
                         boxShadow: isP
-                          ? `0 4px 16px rgba(${rgb},0.55), 0 0 0 1px rgba(255,255,255,0.10), inset 0 1px 0 rgba(255,255,255,0.15)`
-                          : `0 8px 24px rgba(0,0,0,0.50), 0 0 0 1px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.12)`,
+                          ? `0 4px 16px rgba(${rgb},0.60), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.18)`
+                          : `0 10px 28px rgba(0,0,0,0.55), 0 0 16px rgba(${rgb},0.22), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.16)`,
                         transform: isP ? 'scale(0.93)' : 'scale(1)',
                         transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
                         cursor: 'pointer',

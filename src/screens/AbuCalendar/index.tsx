@@ -43,12 +43,13 @@ function ApptCard({ appt, onDelete }: { appt: Appointment; onDelete: () => void 
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
-      background: `${appt.color}18`,
-      border: `1px solid ${appt.color}44`,
+      background: `${appt.color}28`,
+      border: `1px solid ${appt.color}55`,
       borderLeft: `4px solid ${appt.color}`,
       borderRadius: 14, padding: '14px 12px',
       position: 'relative',
       marginBottom: 8,
+      boxShadow: `0 4px 16px ${appt.color}18, 0 2px 6px rgba(0,0,0,0.30)`,
     }}>
       <span style={{ fontSize: 28, lineHeight: 1 }}>{appt.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -450,7 +451,7 @@ export function AbuCalendar() {
       dir="rtl"
       style={{
         height: '100%', width: '100%', overflowY: 'auto', overflowX: 'hidden',
-        background: BG,
+        background: 'linear-gradient(160deg, #060820 0%, #080518 35%, #050A18 70%, #050A18 100%)',
         display: 'flex', flexDirection: 'column',
         fontFamily: "'Heebo',sans-serif",
         userSelect: 'none', WebkitUserSelect: 'none',
@@ -529,8 +530,8 @@ export function AbuCalendar() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
           {DAY_HEADERS.map(h => (
             <div key={h} style={{
-              textAlign: 'center', fontSize: 13, fontWeight: 600,
-              color: 'rgba(255,255,255,0.40)', padding: '4px 0',
+              textAlign: 'center', fontSize: 13, fontWeight: 700,
+              color: 'rgba(196,181,253,0.70)', padding: '4px 0',
               fontFamily: "'Heebo',sans-serif",
             }}>{h}</div>
           ))}
@@ -550,13 +551,13 @@ export function AbuCalendar() {
                 type="button"
                 onClick={() => setSelectedDay(ds)}
                 style={{
-                  height: 44, borderRadius: 10, border: 'none',
+                  height: 46, borderRadius: 10, border: 'none',
                   background: isSelected
-                    ? 'rgba(20,184,166,0.15)'
+                    ? 'rgba(167,139,250,0.18)'
                     : isToday
-                    ? 'rgba(201,168,76,0.12)'
+                    ? 'rgba(201,168,76,0.14)'
                     : 'transparent',
-                  outline: isSelected ? `2px solid ${TEAL}` : 'none',
+                  outline: isSelected ? `2px solid rgba(167,139,250,0.80)` : 'none',
                   cursor: 'pointer',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
                   position: 'relative',
@@ -564,13 +565,14 @@ export function AbuCalendar() {
                 }}
               >
                 <div style={{
-                  width: 30, height: 30, borderRadius: '50%',
+                  width: 32, height: 32, borderRadius: '50%',
                   background: isToday ? GOLD : 'transparent',
+                  boxShadow: isToday ? `0 0 14px rgba(201,168,76,0.65), 0 0 4px rgba(201,168,76,0.40)` : 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <span style={{
-                    fontSize: 15, fontWeight: isToday ? 700 : 400,
-                    color: isToday ? '#000' : isSelected ? TEAL : 'rgba(255,255,255,0.82)',
+                    fontSize: 15, fontWeight: isToday ? 800 : 400,
+                    color: isToday ? '#000' : isSelected ? '#c4b5fd' : 'rgba(255,255,255,0.85)',
                     fontFamily: "'Heebo',sans-serif",
                   }}>{day}</span>
                 </div>
@@ -621,16 +623,18 @@ export function AbuCalendar() {
       {upcomingAppts.length > 0 && (
         <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
           <div style={{
-            fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,0.65)',
+            fontSize: 17, fontWeight: 700, color: GOLD,
             marginBottom: 10, fontFamily: "'Heebo',sans-serif",
+            letterSpacing: '0.3px',
           }}>🗓️ בקרוב</div>
           {upcomingAppts.map(a => (
             <div key={a.id} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 12px', borderRadius: 12,
-              background: `${a.color}12`,
-              border: `1px solid ${a.color}30`,
+              background: `${a.color}1e`,
+              border: `1px solid ${a.color}44`,
               borderRight: `3px solid ${a.color}`,
+              boxShadow: `0 2px 10px ${a.color}14`,
               marginBottom: 6,
             }}>
               <span style={{ fontSize: 22 }}>{a.emoji}</span>
@@ -664,9 +668,10 @@ export function AbuCalendar() {
           type="button"
           onClick={() => setShowManual(true)}
           style={{
-            flex: 1, padding: '15px 8px', borderRadius: 14, border: 'none',
-            background: 'linear-gradient(135deg, rgba(196,181,253,0.15), rgba(124,58,237,0.20))',
-            border2: '1px solid rgba(196,181,253,0.25)',
+            flex: 1, padding: '15px 8px', borderRadius: 14,
+            border: '1px solid rgba(196,181,253,0.35)',
+            background: 'linear-gradient(135deg, rgba(196,181,253,0.18), rgba(124,58,237,0.28))',
+            boxShadow: '0 4px 16px rgba(124,58,237,0.20)',
             color: '#c4b5fd', fontSize: 15, fontWeight: 700,
             fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,

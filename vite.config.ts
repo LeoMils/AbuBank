@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import pkg from './package.json'
 
 /**
@@ -222,9 +223,8 @@ function stitchProxyPlugin(): Plugin {
             let resolvedProjectId = incomingProjectId
             if (!resolvedProjectId) {
               const created = await client.callTool<Record<string,unknown>>('create_project', { title: 'AbuBank' })
-              console.log('[stitch] create_project raw:', JSON.stringify(created).slice(0, 300))
               const nameField = (created as Record<string,unknown>)?.name as string | undefined
-              resolvedProjectId = nameField?.replace('projects/', '') ?? (created as Record<string,unknown>)?.projectId as string
+              resolvedProjectId = nameField?.replace('projects/', '') ?? String((created as Record<string,unknown>)?.projectId ?? '')
             }
 
             // Step 2: generate screen
@@ -232,56 +232,51 @@ function stitchProxyPlugin(): Plugin {
               projectId: resolvedProjectId,
               prompt,
               deviceType: 'MOBILE',
+              modelId: 'GEMINI_3_FLASH',
             })
-            console.log('[stitch] generate raw keys:', Object.keys(genRaw || {}))
-            console.log('[stitch] generate raw (truncated):', JSON.stringify(genRaw).slice(0, 500))
 
-            // Step 3: extract screenId and HTML — handle multiple possible shapes
-            const raw = genRaw as Record<string,unknown>
+            // Step 3: extract screenId — it's in outputComponents[1].design.screens[0].id
+            const outputComponents = (genRaw?.outputComponents as unknown[]) ?? []
             let screenId: string | undefined
-            let html = ''
-
-            // Shape A: outputComponents[0].design.screens[0]
-            const compA = (raw?.outputComponents as unknown[])
-            if (compA?.[0]) {
-              const des = (compA[0] as Record<string,unknown>)?.design as Record<string,unknown> | undefined
-              const scr = des?.screens as unknown[] | undefined
-              if (scr?.[0]) {
-                const s = scr[0] as Record<string,unknown>
-                screenId = s?.screenId as string ?? s?.name as string
-                html = s?.html as string ?? ''
+            for (const comp of outputComponents) {
+              const design = (comp as Record<string,unknown>)?.design as Record<string,unknown> | undefined
+              const screens = design?.screens as unknown[] | undefined
+              if (screens?.[0]) {
+                screenId = ((screens[0] as Record<string,unknown>)?.id as string)
+                  ?? ((screens[0] as Record<string,unknown>)?.name as string)?.split('/').pop()
+                break
               }
             }
 
-            // Shape B: screens[0] directly on root
             if (!screenId) {
-              const scrB = (raw?.screens as unknown[])
-              if (scrB?.[0]) {
-                const s = scrB[0] as Record<string,unknown>
-                screenId = s?.screenId as string ?? s?.name as string
-                html = s?.html as string ?? ''
-              }
+              res.writeHead(502, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Could not find screenId in Stitch response', raw: JSON.stringify(genRaw).slice(0, 300) }))
+              return
             }
 
-            // Shape C: screenId at root level
-            if (!screenId && raw?.screenId) screenId = raw.screenId as string
-            if (!html && raw?.html) html = raw.html as string
+            // Step 4: get_screen to obtain the htmlCode download URL
+            const scrRaw = await client.callTool<Record<string,unknown>>('get_screen', {
+              projectId: resolvedProjectId,
+              screenId,
+              name: `projects/${resolvedProjectId}/screens/${screenId}`,
+            })
 
-            // If we have screenId but no html, fetch it
-            if (screenId && !html) {
-              const getScr = await client.callTool<Record<string,unknown>>('get_screen', {
-                projectId: resolvedProjectId,
-                screenId,
-                name: `projects/${resolvedProjectId}/screens/${screenId}`,
-              })
-              console.log('[stitch] get_screen raw keys:', Object.keys(getScr || {}))
-              html = (getScr as Record<string,unknown>)?.html as string
-                ?? (getScr as Record<string,unknown>)?.content as string
-                ?? JSON.stringify(getScr).slice(0, 200)
+            const htmlCodeObj = (scrRaw as Record<string,unknown>)?.htmlCode as Record<string,unknown> | undefined
+            const downloadUrl = htmlCodeObj?.downloadUrl as string | undefined
+
+            if (!downloadUrl) {
+              res.writeHead(502, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'No downloadUrl in htmlCode', keys: Object.keys(scrRaw || {}) }))
+              return
             }
 
+            // Step 5: download the actual HTML from the signed URL
+            const htmlResp = await fetch(downloadUrl)
+            const html = await htmlResp.text()
+
+            console.log(`[stitch] generated screen ${screenId}, html ${html.length} chars`)
             res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
-            res.end(JSON.stringify({ html: html || '<!-- no html in response -->', projectId: resolvedProjectId, screenId: screenId ?? 'unknown' }))
+            res.end(JSON.stringify({ html, projectId: resolvedProjectId, screenId }))
 
           } else if (req.url === '/api/stitch/debug') {
             // Raw tool introspection — lists available tools
@@ -300,19 +295,36 @@ function stitchProxyPlugin(): Plugin {
               screenIds: [screenId],
               prompt,
               deviceType: 'MOBILE',
+              modelId: 'GEMINI_3_FLASH',
             })
-            console.log('[stitch] edit raw:', JSON.stringify(editRaw).slice(0, 300))
 
-            const editedScreenId = screenId // editing returns same id typically
+            // Extract new screenId from edit response (same structure as generate)
+            const editComps = (editRaw?.outputComponents as unknown[]) ?? []
+            let editedScreenId = screenId
+            for (const comp of editComps) {
+              const design = (comp as Record<string,unknown>)?.design as Record<string,unknown> | undefined
+              const screens = design?.screens as unknown[] | undefined
+              if (screens?.[0]) {
+                editedScreenId = ((screens[0] as Record<string,unknown>)?.id as string)
+                  ?? ((screens[0] as Record<string,unknown>)?.name as string)?.split('/').pop()
+                  ?? screenId
+                break
+              }
+            }
+
             const getScr = await client.callTool<Record<string,unknown>>('get_screen', {
               projectId,
               screenId: editedScreenId,
               name: `projects/${projectId}/screens/${editedScreenId}`,
             })
-            const html = (getScr as Record<string,unknown>)?.html as string ?? ''
 
+            const editHtmlUrl = ((getScr as Record<string,unknown>)?.htmlCode as Record<string,unknown>)?.downloadUrl as string
+            const editHtmlResp = await fetch(editHtmlUrl)
+            const editHtml = await editHtmlResp.text()
+
+            console.log(`[stitch] edited screen ${editedScreenId}, html ${editHtml.length} chars`)
             res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
-            res.end(JSON.stringify({ html, projectId, screenId: editedScreenId }))
+            res.end(JSON.stringify({ html: editHtml, projectId, screenId: editedScreenId }))
 
           } else {
             res.writeHead(404); res.end(JSON.stringify({ error: 'unknown stitch route' }))
@@ -422,15 +434,17 @@ function ttsProxyPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [
+    basicSsl(),
     stitchProxyPlugin(),
     ttsProxyPlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      devOptions: { enabled: false },   // no SW interference during dev
       workbox: {
         runtimeCaching: [],
         cleanupOutdatedCaches: true,
-        skipWaiting: false,
+        skipWaiting: true,              // new SW takes over immediately on update
       },
       manifest: {
         name: 'AbuBank',
@@ -460,6 +474,15 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    host: true,   // listen on all interfaces (LAN access from iPhone)
+    https: {},    // enable HTTPS — required by iOS Safari for microphone/camera
+    headers: {
+      // Prevent iPhone Safari from serving stale JS/CSS during development
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+    },
+  },
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
   },

@@ -148,13 +148,13 @@ function BriefingCard({ briefing }: { briefing: Briefing }) {
   const isAlert = briefing.level === 'alert'
   const isRain  = briefing.level === 'rain'
 
-  const bg     = isAlert ? 'rgba(239,68,68,0.10)'
-               : isRain  ? 'rgba(56,189,248,0.10)'
-               :            'rgba(52,211,153,0.07)'
+  const bg     = isAlert ? 'rgba(239,68,68,0.14)'
+               : isRain  ? 'rgba(56,189,248,0.13)'
+               :            'rgba(52,211,153,0.10)'
 
-  const border = isAlert ? '1.5px solid rgba(239,68,68,0.38)'
-               : isRain  ? '1.5px solid rgba(56,189,248,0.36)'
-               :            '1.5px solid rgba(52,211,153,0.28)'
+  const border = isAlert ? '1.5px solid rgba(239,68,68,0.50)'
+               : isRain  ? '1.5px solid rgba(56,189,248,0.48)'
+               :            '1.5px solid rgba(52,211,153,0.38)'
 
   const badgeColor = isAlert ? '#EF4444'
                    : isRain  ? '#38BDF8'
@@ -267,10 +267,11 @@ function TimeCard({ period, accent }: { period: TimePeriod; accent: string }) {
   return (
     <div style={{
       display:'flex', flexDirection:'column', alignItems:'center', gap:6,
-      padding:'14px 16px', borderRadius:20, minWidth:84, flexShrink:0,
-      background:'rgba(255,255,255,0.055)',
-      border:`1px solid rgba(255,255,255,0.10)`,
-      backdropFilter:'blur(6px)',
+      padding:'14px 16px', borderRadius:20, minWidth:88, flexShrink:0,
+      background: `linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.06) 100%)`,
+      border:`1px solid ${accent}30`,
+      backdropFilter:'blur(8px)',
+      boxShadow: `0 4px 16px rgba(0,0,0,0.25), 0 0 10px ${accent}14`,
     }}>
       <span style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.55)',
         fontFamily:"'Heebo',sans-serif", letterSpacing:'0.04em' }}>
@@ -304,9 +305,10 @@ function HourCard({ hour, temp, code }: { hour: string; temp: number; code: numb
   return (
     <div style={{
       display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-      padding:'10px 8px', borderRadius:14, minWidth:52, flexShrink:0,
-      background:'rgba(255,255,255,0.04)',
-      border:'1px solid rgba(255,255,255,0.07)',
+      padding:'10px 8px', borderRadius:14, minWidth:54, flexShrink:0,
+      background:'rgba(255,255,255,0.08)',
+      border:'1px solid rgba(255,255,255,0.12)',
+      boxShadow:'0 2px 8px rgba(0,0,0,0.20)',
     }}>
       <span style={{ fontSize:11, color:'rgba(255,255,255,0.40)', fontFamily:"'Heebo',sans-serif",
         fontWeight:600 }}>
@@ -329,9 +331,10 @@ function MartitaCard({ text, accent }: { text: string; accent: string }) {
       margin:'0 20px',
       padding:'18px 20px',
       borderRadius:22,
-      background:'rgba(255,255,255,0.04)',
-      border:`1px solid ${accent}30`,
-      backdropFilter:'blur(8px)',
+      background:`linear-gradient(160deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.05) 100%)`,
+      border:`1.5px solid ${accent}40`,
+      backdropFilter:'blur(10px)',
+      boxShadow:`0 6px 24px rgba(0,0,0,0.28), 0 0 16px ${accent}12`,
     }}>
       <div style={{
         fontSize:11, fontWeight:800,
@@ -344,11 +347,11 @@ function MartitaCard({ text, accent }: { text: string; accent: string }) {
       </div>
       {lines.map((line, i) => (
         <div key={i} style={{
-          fontSize: i === 0 ? 16 : 14,
-          lineHeight: 1.70,
-          color: i === 0 ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.68)',
+          fontSize: i === 0 ? 17 : 15,
+          lineHeight: 1.72,
+          color: i === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.72)',
           fontFamily:"'Heebo',sans-serif",
-          fontWeight: i === 0 ? 600 : 400,
+          fontWeight: i === 0 ? 700 : 400,
           marginTop: i > 0 && line.startsWith('🌅') ? 8 : 0,
           whiteSpace: 'pre-wrap',
         }}>
@@ -366,13 +369,14 @@ function DayTab({ label, active, accent, onClick }: {
 }) {
   return (
     <button onClick={onClick} style={{
-      padding:'7px 13px', borderRadius:18, cursor:'pointer',
-      border: active ? `1.5px solid ${accent}` : '1.5px solid rgba(255,255,255,0.14)',
-      background: active ? `${accent}22` : 'rgba(255,255,255,0.06)',
-      color: active ? accent : 'rgba(255,255,255,0.50)',
-      fontSize:12, fontWeight: active ? 700 : 500,
+      padding:'8px 15px', borderRadius:20, cursor:'pointer',
+      border: active ? `1.5px solid ${accent}` : '1.5px solid rgba(255,255,255,0.16)',
+      background: active ? `${accent}30` : 'rgba(255,255,255,0.08)',
+      color: active ? accent : 'rgba(255,255,255,0.60)',
+      fontSize:13, fontWeight: active ? 800 : 500,
       fontFamily:"'Heebo',sans-serif",
       whiteSpace:'nowrap',
+      boxShadow: active ? `0 0 14px ${accent}30` : 'none',
       transition:'all 0.18s',
     }}>
       {label}
@@ -585,7 +589,7 @@ export function AbuWeather() {
           <div style={{
             position:'relative', zIndex:4, width:'100%',
             display:'flex', alignItems:'center', justifyContent:'space-between',
-            padding:'52px 16px 8px',
+            padding: '16px 16px 8px',
             gap:8,
           }}>
             <button onClick={() => setScreen(Screen.Home)} style={{
