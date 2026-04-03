@@ -388,7 +388,7 @@ export function Home() {
                   }}/>
                 </div>
                 <span style={{
-                  fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.95)',
+                  fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.95)',
                   fontFamily: "'Heebo',sans-serif", textAlign: 'center',
                   lineHeight: 1.25, direction: 'rtl',
                   maxWidth: 110, wordBreak: 'break-word',
@@ -473,29 +473,6 @@ export function Home() {
         </div>
       )}
 
-      {/* ─── FLOATING WHATSAPP BUTTON ─── */}
-      <button
-        type="button"
-        onClick={() => setScreen(Screen.AbuWhatsApp)}
-        aria-label="Abu WhatsApp הודעות"
-        style={{
-          position: 'absolute',
-          bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
-          right: 16,
-          zIndex: 10,
-          width: 52, height: 52, borderRadius: '50%',
-          border: 'none', cursor: 'pointer',
-          background: 'linear-gradient(135deg, #4ade80, #16a34a)',
-          boxShadow: '0 4px 18px rgba(34,197,94,0.45), 0 2px 8px rgba(0,0,0,0.40)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-        }}
-      >
-        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-          <path d="M12 2C6.48 2 2 5.92 2 10.67c0 2.58 1.3 4.88 3.35 6.43L4 22l4.2-2.1c1.15.37 2.4.57 3.8.57 5.52 0 10-3.92 10-8.8C22 6.8 17.52 2 12 2z"
-            fill="rgba(255,255,255,0.92)"/>
-        </svg>
-        <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.90)', fontFamily: "'Heebo',sans-serif", lineHeight: 1 }}>הודעות</span>
-      </button>
 
       {/* ─── ABU FAMILY FOOTER ─── */}
       <footer style={{
@@ -538,19 +515,20 @@ export function Home() {
             key={item.id}
             type="button"
             className="btn-focus"
-            onClick={item.id === 'calendar' ? () => setScreen(Screen.AbuCalendar)
-              : item.id === 'ai'      ? () => setScreen(Screen.AbuAI)
-              : item.id === 'games'   ? () => setScreen(Screen.AbuGames)
-              : item.id === 'weather' ? () => setScreen(Screen.AbuWeather)
+            onClick={item.id === 'calendar'  ? () => setScreen(Screen.AbuCalendar)
+              : item.id === 'ai'       ? () => setScreen(Screen.AbuAI)
+              : item.id === 'games'    ? () => setScreen(Screen.AbuGames)
+              : item.id === 'weather'  ? () => setScreen(Screen.AbuWeather)
+              : item.id === 'whatsapp' ? () => setScreen(Screen.AbuWhatsApp)
               : undefined}
             aria-label={item.hebrewLabel}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              padding: '2px 2px', minWidth: 56, minHeight: 44,
+              padding: '2px 0px', minWidth: 48, minHeight: 44,
               cursor: 'pointer', background: 'none', border: 'none',
             }}
           >
-            <svg viewBox="0 0 24 24" width="43" height="43" aria-hidden="true"
+            <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"
               style={{
                 filter: `drop-shadow(0 3px 8px rgba(0,0,0,0.45)) drop-shadow(0 0 12px rgba(${item.rgb},0.35))`,
               }}>
@@ -560,7 +538,7 @@ export function Home() {
               {item.svgContent}
             </svg>
             <span style={{
-              fontSize: 11, fontWeight: 600,
+              fontSize: 13, fontWeight: 700,
               fontFamily: "'Heebo',sans-serif",
               lineHeight: 1.2, textAlign: 'center', whiteSpace: 'nowrap',
               color: item.labelColor, opacity: 0.92,
@@ -860,6 +838,48 @@ const footerItems: {
         <ellipse cx="7" cy="4.8" rx="2" ry="0.9" fill="rgba(255,255,255,0.32)" transform="rotate(-28 7 4.8)"/>
         {/* Emerald rim */}
         <circle cx="12" cy="12" r="11.3" fill="none" stroke="rgba(34,197,94,0.18)" strokeWidth="0.4"/>
+      </>
+    ),
+  },
+  {
+    id: 'whatsapp',
+    hebrewLabel: 'הודעות',
+    labelColor: '#4ade80',
+    rgb: '74,222,128',
+    rgbDark: '21,128,61',
+    gradId: 'waG',
+    gradStart: '#4ade80',
+    gradEnd: '#15803d',
+    svgContent: (
+      <>
+        <defs>
+          <radialGradient id="wa_bg" cx="40%" cy="35%" r="60%">
+            <stop offset="0%" stopColor="#4ade80"/>
+            <stop offset="45%" stopColor="#16a34a"/>
+            <stop offset="100%" stopColor="#052e16"/>
+          </radialGradient>
+          <radialGradient id="wa_hi" cx="32%" cy="26%" r="42%">
+            <stop offset="0%" stopColor="rgba(240,255,248,0.65)"/>
+            <stop offset="100%" stopColor="rgba(240,255,248,0)"/>
+          </radialGradient>
+        </defs>
+        {/* Green circle base */}
+        <circle cx="12" cy="12" r="11" fill="url(#wa_bg)"/>
+        {/* WhatsApp speech bubble path */}
+        <path d="M12 3.5C7.31 3.5 3.5 7.31 3.5 12c0 1.52.41 2.94 1.12 4.17L3.5 20.5l4.43-1.16A8.46 8.46 0 0 0 12 20.5c4.69 0 8.5-3.81 8.5-8.5S16.69 3.5 12 3.5z"
+          fill="white" opacity="0.92"/>
+        {/* Inner bubble fill */}
+        <path d="M12 5C8.14 5 5 8.14 5 12c0 1.32.36 2.56.99 3.62L4.5 19.5l3.97-1.04A7 7 0 0 0 12 19c3.86 0 7-3.14 7-7s-3.14-7-7-7z"
+          fill="url(#wa_bg)"/>
+        {/* 3 chat dots */}
+        <circle cx="9"  cy="12" r="1.1" fill="white" opacity="0.90"/>
+        <circle cx="12" cy="12" r="1.1" fill="white" opacity="0.90"/>
+        <circle cx="15" cy="12" r="1.1" fill="white" opacity="0.90"/>
+        {/* Specular highlight */}
+        <circle cx="12" cy="12" r="11" fill="url(#wa_hi)"/>
+        <ellipse cx="7.5" cy="5.5" rx="4" ry="2.5" fill="rgba(255,255,255,0.18)" transform="rotate(-28 7.5 5.5)"/>
+        {/* Rim */}
+        <circle cx="12" cy="12" r="11" fill="none" stroke="rgba(74,222,128,0.22)" strokeWidth="0.5"/>
       </>
     ),
   },

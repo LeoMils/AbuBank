@@ -122,8 +122,8 @@ const GAME_ORBS: Record<string, string> = {
 /* ─────────────────────────────────────────────────────────────
    GAME ICONS — S=52
 ───────────────────────────────────────────────────────────── */
-function GameIcon({ id, accent }: { id: string; accent: string }) {
-  const S = 52
+function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?: number }) {
+  const S = size
 
   switch (id) {
 
@@ -427,18 +427,48 @@ const FLOAT_SUITS = [
   { symbol: '♣', top: '22%', left: '46%', size: 70, opacity: 0.04, delay: '2.6s', dur: '9s',   rot: '-8deg' },
 ]
 
-/* ─── category group helper ─── */
-const HERO_ID = 'klondike'
-const REST_GAMES = GAMES.filter(g => g.id !== HERO_ID)
+/* ─── Section layout helpers ─── */
+// Row 1 "חדשים ואהובים": Spider, Mahjong, Tri Peaks, Pyramid
+const NEW_ROW_IDS = ['spider', 'mahjong', 'tripeaks', 'pyramid']
+// Row 2 "קלאסיקות": FreeCell, Hearts, Canfield, Yukon, Golf
+const CLASSIC_ROW_IDS = ['freecell', 'hearts', 'canfield', 'yukon', 'golf']
+// Top charts: remaining games
+const CHART_IDS = ['spider2', 'forty', 'klondike']
 
-function groupByCategory(games: Game[]): { label: string; games: Game[] }[] {
-  const map = new Map<string, Game[]>()
-  for (const g of games) {
-    const arr = map.get(g.category) ?? []
-    arr.push(g)
-    map.set(g.category, arr)
-  }
-  return Array.from(map.entries()).map(([label, gs]) => ({ label, games: gs }))
+function gameById(id: string): Game {
+  const found = GAMES.find(g => g.id === id)
+  // GAMES is non-empty; index 0 always exists
+  return found ?? (GAMES[0] as Game)
+}
+
+/* ─── Section header component ─── */
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 14,
+      direction: 'rtl',
+    }}>
+      <span style={{
+        fontSize: 20,
+        fontWeight: 700,
+        color: 'white',
+        fontFamily: "'Heebo',sans-serif",
+        letterSpacing: '0.2px',
+      }}>
+        {title}
+      </span>
+      <div style={{
+        height: 3,
+        width: 32,
+        borderRadius: 2,
+        background: 'linear-gradient(90deg, #C9A84C 0%, rgba(201,168,76,0.0) 100%)',
+        flexShrink: 0,
+      }}/>
+    </div>
+  )
 }
 
 /* ─── Main screen ─── */
@@ -464,6 +494,29 @@ export function AbuGames() {
         50%  { opacity: 0.18; }
         100% { opacity: 0.08; }
       }
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .abu-games-scroll-row {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: 12px;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .abu-games-scroll-row::-webkit-scrollbar {
+        display: none;
+      }
+      .abu-games-main-scroll {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .abu-games-main-scroll::-webkit-scrollbar {
+        display: none;
+      }
     `
     document.head.appendChild(style)
     const t = setTimeout(() => setLoaded(true), 60)
@@ -476,9 +529,8 @@ export function AbuGames() {
     }
   }, [])
 
-  const heroGame = GAMES.find(g => g.id === HERO_ID)!
-  const heroPressed = pressed === HERO_ID
-  const groups = groupByCategory(REST_GAMES)
+  const heroGame = gameById('klondike')
+  const heroPressed = pressed === 'klondike'
 
   return (
     <div style={{
@@ -491,7 +543,9 @@ export function AbuGames() {
       userSelect: 'none',
       WebkitUserSelect: 'none',
       position: 'relative',
-    }}>
+    }}
+    className="abu-games-main-scroll"
+    >
 
       {/* ── Ambient glow blobs ── */}
       <div aria-hidden="true" style={{
@@ -526,296 +580,494 @@ export function AbuGames() {
         </div>
       ))}
 
-      {/* ── HEADER ── */}
+      {/* ════════════════════════════════
+          FIXED HEADER (64px)
+      ════════════════════════════════ */}
       <header style={{
-        position: 'relative',
-        zIndex: 3,
-        background: 'linear-gradient(180deg, rgba(7,9,26,0.98) 0%, rgba(8,11,30,0.95) 100%)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        background: 'linear-gradient(180deg, rgba(7,9,26,0.98) 0%, rgba(8,11,30,0.96) 100%)',
         borderBottom: '1px solid rgba(201,168,76,0.14)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
       }}>
-        {/* Inner: fixed 64 px below notch — flex-column centers wordmark + subtitle */}
         <div style={{
           position: 'relative',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexDirection: 'column',
           height: 64,
         }}>
-        {/* Wordmark */}
-        <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, direction: 'ltr' }}>
-          <span style={{
-            fontFamily: "'Cormorant Garamond',Georgia,serif",
-            fontSize: 26, fontWeight: 600, letterSpacing: '2px',
-            background: 'linear-gradient(135deg, #5EEAD4 0%, #2DD4BF 22%, #0D9488 48%, #5EEAD4 72%, #14B8A6 92%)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-            filter: 'drop-shadow(0 0 8px rgba(94,234,212,0.30))',
-          } as React.CSSProperties}>Abu</span>
-          <span style={{
-            fontFamily: "'DM Sans',sans-serif",
-            fontSize: 24, fontWeight: 500, letterSpacing: '1.5px',
-            background: 'linear-gradient(135deg, #FDE68A 0%, #F59E0B 25%, #D97706 50%, #C9A84C 75%, #F59E0B 100%)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-            filter: 'drop-shadow(0 0 8px rgba(201,168,76,0.28))',
-          } as React.CSSProperties}>Games</span>
-        </div>
-        {/* Subtitle */}
-        <div style={{
-          fontSize: 14,
-          color: 'rgba(255,255,255,0.62)',
-          marginTop: 1,
-          direction: 'rtl',
-          fontFamily: "'Heebo',sans-serif",
-        }}>
-          בחרי משחק ותהני 🎮
-        </div>
+          {/* Wordmark */}
+          <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, direction: 'ltr' }}>
+            <span style={{
+              fontFamily: "'Cormorant Garamond',Georgia,serif",
+              fontSize: 26, fontWeight: 600, letterSpacing: '2px',
+              background: 'linear-gradient(135deg, #5EEAD4 0%, #2DD4BF 22%, #0D9488 48%, #5EEAD4 72%, #14B8A6 92%)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              filter: 'drop-shadow(0 0 8px rgba(94,234,212,0.30))',
+            } as React.CSSProperties}>Abu</span>
+            <span style={{
+              fontFamily: "'DM Sans',sans-serif",
+              fontSize: 24, fontWeight: 500, letterSpacing: '1.5px',
+              background: 'linear-gradient(135deg, #FDE68A 0%, #F59E0B 25%, #D97706 50%, #C9A84C 75%, #F59E0B 100%)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              filter: 'drop-shadow(0 0 8px rgba(201,168,76,0.28))',
+            } as React.CSSProperties}>Games</span>
+          </div>
+          {/* Subtitle */}
+          <div style={{
+            fontSize: 13,
+            color: 'rgba(255,255,255,0.55)',
+            marginTop: 1,
+            direction: 'rtl',
+            fontFamily: "'Heebo',sans-serif",
+          }}>
+            בחרי משחק ותהני 🎮
+          </div>
 
-        {/* Back button */}
-        <button
-          type="button"
-          onClick={() => setScreen(Screen.Home)}
-          aria-label="חזרה"
-          style={{
-            position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-            display: 'flex', alignItems: 'center', gap: 4,
-            padding: '6px 12px',
-            borderRadius: 20,
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            cursor: 'pointer',
-            WebkitTapHighlightColor: 'transparent',
-          }}
-        >
-          <ChevronLeft />
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontFamily: "'Heebo',sans-serif" }}>חזרה</span>
-        </button>
-        </div>{/* end inner content wrapper */}
+          {/* Back button — top right */}
+          <button
+            type="button"
+            onClick={() => setScreen(Screen.Home)}
+            aria-label="חזרה"
+            style={{
+              position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '6px 12px',
+              borderRadius: 20,
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <ChevronLeft />
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontFamily: "'Heebo',sans-serif" }}>חזרה</span>
+          </button>
+        </div>
       </header>
 
-      {/* ── CONTENT ── */}
+      {/* ════════════════════════════════
+          SCROLLABLE CONTENT
+      ════════════════════════════════ */}
       <div style={{
         position: 'relative',
         zIndex: 2,
-        padding: '16px 20px 32px',
+        padding: '20px 16px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 20,
+        gap: 28,
+        paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
       }}>
 
-        {/* ── HERO FEATURED CARD ── */}
-        <div
-          role="button"
-          aria-label={`פתח ${heroGame.label}`}
-          tabIndex={0}
-          onClick={() => handleTap(heroGame.url)}
-          onPointerDown={() => setPressed(HERO_ID)}
-          onPointerUp={() => setPressed(null)}
-          onPointerLeave={() => setPressed(null)}
-          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(heroGame.url) } }}
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: 150,
-            borderRadius: 22,
-            overflow: 'hidden',
-            background: 'linear-gradient(135deg, #031a0d 0%, #0a3d1f 20%, #166534 45%, #22c55e 72%, #4ade80 88%, #86efac 100%)',
-            boxShadow: heroPressed
-              ? '0 6px 20px rgba(34,197,94,0.50), 0 2px 8px rgba(0,0,0,0.7)'
-              : '0 14px 44px rgba(34,197,94,0.45), 0 4px 16px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.15)',
-            transform: heroPressed ? 'scale(0.97)' : 'scale(1)',
-            transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
-            cursor: 'pointer',
-            opacity: loaded ? 1 : 0,
-            animation: loaded ? 'cardIn 0.5s cubic-bezier(0.34,1.2,0.64,1) 0.05s both' : 'none',
-          }}
-        >
-          {/* Card shine overlay */}
-          <div aria-hidden="true" style={{
-            position: 'absolute', top: 0, left: 0, right: 0, height: '45%',
-            background: 'linear-gradient(180deg, rgba(255,255,255,0.13) 0%, transparent 100%)',
-            borderRadius: 'inherit',
-            pointerEvents: 'none',
-            zIndex: 2,
-          }}/>
+        {/* ══════════════════════════════
+            FEATURED "TODAY" CARD
+        ══════════════════════════════ */}
+        <div style={{
+          opacity: loaded ? 1 : 0,
+          animation: loaded ? 'fadeUp 0.5s cubic-bezier(0.34,1.1,0.64,1) 0.05s both' : 'none',
+        }}>
+          <div
+            role="button"
+            aria-label={`פתח ${heroGame.label}`}
+            tabIndex={0}
+            onClick={() => handleTap(heroGame.url)}
+            onPointerDown={() => setPressed('klondike')}
+            onPointerUp={() => setPressed(null)}
+            onPointerLeave={() => setPressed(null)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(heroGame.url) } }}
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: 200,
+              borderRadius: 24,
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #031a0d 0%, #0a3d1f 18%, #166534 44%, #22c55e 68%, #4ade80 84%, #86efac 100%)',
+              boxShadow: heroPressed
+                ? '0 6px 20px rgba(34,197,94,0.50), 0 2px 8px rgba(0,0,0,0.7)'
+                : '0 16px 48px rgba(34,197,94,0.40), 0 4px 16px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.20)',
+              transform: heroPressed ? 'scale(0.97)' : 'scale(1)',
+              transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
+              cursor: 'pointer',
+            }}
+          >
+            {/* Shine */}
+            <div aria-hidden="true" style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: '42%',
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%)',
+              borderRadius: 'inherit', pointerEvents: 'none', zIndex: 2,
+            }}/>
 
-          {/* Content layout: icon left, text right */}
-          <div style={{
-            position: 'relative', zIndex: 3,
-            display: 'flex', alignItems: 'center',
-            height: '100%', padding: '0 24px', gap: 20,
-          }}>
-            {/* Icon */}
+            {/* Layout: icon LEFT, text RIGHT */}
             <div style={{
-              flexShrink: 0,
-              width: 72, height: 72,
-              borderRadius: 16,
-              background: 'rgba(0,0,0,0.25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '1px solid rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(4px)',
+              position: 'relative', zIndex: 3,
+              display: 'flex', alignItems: 'center',
+              height: '100%', padding: '0 24px', gap: 20,
+              direction: 'ltr',
             }}>
-              <GameIcon id={heroGame.id} accent={heroGame.accent} />
-            </div>
-
-            {/* Text */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, direction: 'ltr' }}>
+              {/* Icon 80×80 glass */}
               <div style={{
-                fontSize: 28, fontWeight: 700, color: 'white',
-                textShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                fontFamily: "'DM Sans','Heebo',sans-serif",
-                letterSpacing: '-0.3px',
-              }}>
-                {heroGame.label}
-              </div>
-              {/* Category badge */}
-              <div style={{
-                display: 'inline-flex', alignItems: 'center',
-                padding: '3px 10px', borderRadius: 20,
-                background: 'rgba(0,0,0,0.30)',
+                flexShrink: 0,
+                width: 80, height: 80,
+                borderRadius: 16,
+                background: 'rgba(0,0,0,0.28)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: '1px solid rgba(255,255,255,0.18)',
-                fontSize: 11, color: 'rgba(255,255,255,0.80)',
-                fontFamily: "'Heebo',sans-serif",
-                direction: 'rtl',
-                width: 'fit-content',
+                backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.20)',
               }}>
-                {heroGame.category}
+                <GameIcon id="klondike" accent={heroGame.accent} size={60} />
               </div>
-              {/* CTA */}
-              <div style={{
-                fontSize: 15, fontWeight: 700,
-                color: '#86efac',
-                fontFamily: "'DM Sans',sans-serif",
-                letterSpacing: '0.3px',
-                textShadow: '0 0 14px rgba(74,222,128,0.55)',
-              }}>
-                שחקי עכשיו →
+
+              {/* Text block */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {/* "משחק היום" label */}
+                <div style={{
+                  fontSize: 12, fontWeight: 700, letterSpacing: '1.2px',
+                  color: '#C9A84C',
+                  fontFamily: "'DM Sans','Heebo',sans-serif",
+                  textTransform: 'uppercase',
+                  direction: 'rtl',
+                  textShadow: '0 0 10px rgba(201,168,76,0.50)',
+                }}>
+                  משחק היום
+                </div>
+                {/* Game name big */}
+                <div style={{
+                  fontSize: 28, fontWeight: 700, color: 'white',
+                  textShadow: '0 2px 10px rgba(0,0,0,0.50)',
+                  fontFamily: "'DM Sans','Heebo',sans-serif",
+                  letterSpacing: '-0.4px',
+                  lineHeight: 1.1,
+                }}>
+                  {heroGame.label}
+                </div>
+                {/* Tagline */}
+                <div style={{
+                  fontSize: 14, color: 'rgba(255,255,255,0.75)',
+                  fontFamily: "'Heebo',sans-serif",
+                  direction: 'rtl',
+                }}>
+                  הקלאסיקה הבלתי-נגמרת
+                </div>
+                {/* CTA */}
+                <div style={{
+                  fontSize: 16, fontWeight: 700,
+                  color: '#86efac',
+                  fontFamily: "'DM Sans',sans-serif",
+                  textShadow: '0 0 14px rgba(74,222,128,0.60)',
+                  direction: 'ltr',
+                }}>
+                  שחקי ←
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── GAME GROUPS ── */}
-        {groups.map((group, gi) => {
-          // global offset for stagger: hero is index 0, then group games follow
-          const baseOffset = 1 + groups.slice(0, gi).reduce((acc, g) => acc + g.games.length, 0)
+        {/* ══════════════════════════════
+            HORIZONTAL SCROLL ROW 1
+            "חדשים ואהובים"
+        ══════════════════════════════ */}
+        <div style={{
+          opacity: loaded ? 1 : 0,
+          animation: loaded ? 'fadeUp 0.5s ease 0.12s both' : 'none',
+        }}>
+          <SectionHeader title="חדשים ואהובים" />
+          <div className="abu-games-scroll-row" style={{ paddingRight: 2, paddingLeft: 2 }}>
+            {NEW_ROW_IDS.map((id, idx) => {
+              const game = gameById(id)
+              const isP = pressed === `new-${id}`
+              const rgb = hexToRgb(game.accent)
+              return (
+                <div
+                  key={id}
+                  role="button"
+                  aria-label={`פתח ${game.label}`}
+                  tabIndex={0}
+                  onClick={() => handleTap(game.url)}
+                  onPointerDown={() => setPressed(`new-${id}`)}
+                  onPointerUp={() => setPressed(null)}
+                  onPointerLeave={() => setPressed(null)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(game.url) } }}
+                  style={{
+                    flexShrink: 0,
+                    width: 120,
+                    height: 160,
+                    borderRadius: 18,
+                    scrollSnapAlign: 'start',
+                    background: game.gradient,
+                    boxShadow: isP
+                      ? `0 4px 14px rgba(${rgb},0.55), inset 0 1px 0 rgba(255,255,255,0.15)`
+                      : `0 8px 24px rgba(0,0,0,0.55), 0 0 12px rgba(${rgb},0.18), inset 0 1px 0 rgba(255,255,255,0.14)`,
+                    transform: isP ? 'scale(0.94)' : 'scale(1)',
+                    transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    animation: loaded ? `fadeUp 0.4s ease ${0.10 + idx * 0.05}s both` : 'none',
+                  }}
+                >
+                  {/* Shine */}
+                  <div aria-hidden="true" style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, height: '42%',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%)',
+                    borderRadius: 'inherit', pointerEvents: 'none', zIndex: 1,
+                  }}/>
+                  {/* Icon */}
+                  <div style={{ position: 'relative', zIndex: 2 }}>
+                    <GameIcon id={id} accent={game.accent} size={54} />
+                  </div>
+                  {/* Name */}
+                  <div style={{
+                    position: 'relative', zIndex: 2,
+                    fontSize: 14, fontWeight: 700,
+                    color: 'white', textAlign: 'center',
+                    fontFamily: "'DM Sans','Heebo',sans-serif",
+                    textShadow: '0 1px 5px rgba(0,0,0,0.55)',
+                    letterSpacing: '-0.2px',
+                    direction: 'ltr',
+                    paddingInline: 6,
+                  }}>
+                    {game.label}
+                  </div>
+                  {/* שחקי pill */}
+                  <div style={{
+                    position: 'relative', zIndex: 2,
+                    padding: '3px 12px', borderRadius: 20,
+                    background: 'rgba(0,0,0,0.30)',
+                    border: '1px solid rgba(255,255,255,0.20)',
+                    fontSize: 12, color: 'rgba(255,255,255,0.85)',
+                    fontFamily: "'Heebo',sans-serif",
+                  }}>
+                    שחקי
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
-          return (
-            <div key={group.label} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* ══════════════════════════════
+            HORIZONTAL SCROLL ROW 2
+            "קלאסיקות"
+        ══════════════════════════════ */}
+        <div style={{
+          opacity: loaded ? 1 : 0,
+          animation: loaded ? 'fadeUp 0.5s ease 0.20s both' : 'none',
+        }}>
+          <SectionHeader title="קלאסיקות" />
+          <div className="abu-games-scroll-row" style={{ paddingRight: 2, paddingLeft: 2 }}>
+            {CLASSIC_ROW_IDS.map((id, idx) => {
+              const game = gameById(id)
+              const isP = pressed === `classic-${id}`
+              const rgb = hexToRgb(game.accent)
+              return (
+                <div
+                  key={id}
+                  role="button"
+                  aria-label={`פתח ${game.label}`}
+                  tabIndex={0}
+                  onClick={() => handleTap(game.url)}
+                  onPointerDown={() => setPressed(`classic-${id}`)}
+                  onPointerUp={() => setPressed(null)}
+                  onPointerLeave={() => setPressed(null)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(game.url) } }}
+                  style={{
+                    flexShrink: 0,
+                    width: 120,
+                    height: 160,
+                    borderRadius: 18,
+                    scrollSnapAlign: 'start',
+                    background: game.gradient,
+                    boxShadow: isP
+                      ? `0 4px 14px rgba(${rgb},0.55), inset 0 1px 0 rgba(255,255,255,0.15)`
+                      : `0 8px 24px rgba(0,0,0,0.55), 0 0 12px rgba(${rgb},0.18), inset 0 1px 0 rgba(255,255,255,0.14)`,
+                    transform: isP ? 'scale(0.94)' : 'scale(1)',
+                    transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    animation: loaded ? `fadeUp 0.4s ease ${0.18 + idx * 0.05}s both` : 'none',
+                  }}
+                >
+                  {/* Shine */}
+                  <div aria-hidden="true" style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, height: '42%',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%)',
+                    borderRadius: 'inherit', pointerEvents: 'none', zIndex: 1,
+                  }}/>
+                  {/* Icon */}
+                  <div style={{ position: 'relative', zIndex: 2 }}>
+                    <GameIcon id={id} accent={game.accent} size={54} />
+                  </div>
+                  {/* Name */}
+                  <div style={{
+                    position: 'relative', zIndex: 2,
+                    fontSize: 14, fontWeight: 700,
+                    color: 'white', textAlign: 'center',
+                    fontFamily: "'DM Sans','Heebo',sans-serif",
+                    textShadow: '0 1px 5px rgba(0,0,0,0.55)',
+                    letterSpacing: '-0.2px',
+                    direction: 'ltr',
+                    paddingInline: 6,
+                  }}>
+                    {game.label}
+                  </div>
+                  {/* שחקי pill */}
+                  <div style={{
+                    position: 'relative', zIndex: 2,
+                    padding: '3px 12px', borderRadius: 20,
+                    background: 'rgba(0,0,0,0.30)',
+                    border: '1px solid rgba(255,255,255,0.20)',
+                    fontSize: 12, color: 'rgba(255,255,255,0.85)',
+                    fontFamily: "'Heebo',sans-serif",
+                  }}>
+                    שחקי
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
-              {/* Section label */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                direction: 'rtl',
-              }}>
-                <span style={{
-                  fontSize: 16, fontWeight: 700,
-                  color: '#D4AF52',
-                  fontFamily: "'Heebo',sans-serif",
-                  letterSpacing: '0.5px',
-                  textShadow: '0 0 12px rgba(201,168,76,0.40)',
-                }}>
-                  {group.label}
-                </span>
-                <div style={{
-                  flex: 1, height: 1,
-                  background: 'linear-gradient(90deg, rgba(201,168,76,0.55) 0%, rgba(201,168,76,0.15) 60%, transparent 100%)',
-                }}/>
-              </div>
+        {/* ══════════════════════════════
+            TOP CHARTS — "הטובות ביותר"
+        ══════════════════════════════ */}
+        <div style={{
+          opacity: loaded ? 1 : 0,
+          animation: loaded ? 'fadeUp 0.5s ease 0.28s both' : 'none',
+        }}>
+          <SectionHeader title="הטובות ביותר" />
 
-              {/* 2-column grid */}
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 10,
-              }}>
-                {group.games.map((game, idx) => {
-                  const globalIdx = baseOffset + idx
-                  const isP = pressed === game.id
-                  const rgb = hexToRgb(game.accent)
+          <div style={{
+            borderRadius: 20,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            overflow: 'hidden',
+          }}>
+            {GAMES.map((game, idx) => {
+              const isP = pressed === `chart-${game.id}`
+              const isLast = idx === GAMES.length - 1
+              return (
+                <div
+                  key={game.id}
+                  role="button"
+                  aria-label={`פתח ${game.label}`}
+                  tabIndex={0}
+                  onClick={() => handleTap(game.url)}
+                  onPointerDown={() => setPressed(`chart-${game.id}`)}
+                  onPointerUp={() => setPressed(null)}
+                  onPointerLeave={() => setPressed(null)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(game.url) } }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    padding: '12px 16px',
+                    cursor: 'pointer',
+                    background: isP ? 'rgba(255,255,255,0.06)' : 'transparent',
+                    transition: 'background 0.12s ease',
+                    borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.06)',
+                    animation: loaded ? `fadeUp 0.4s ease ${0.28 + idx * 0.035}s both` : 'none',
+                    direction: 'ltr',
+                  }}
+                >
+                  {/* Rank number */}
+                  <div style={{
+                    fontSize: 28,
+                    fontWeight: 800,
+                    color: 'rgba(201,168,76,0.60)',
+                    minWidth: 36,
+                    textAlign: 'center',
+                    fontFamily: "'DM Sans',sans-serif",
+                    lineHeight: 1,
+                    flexShrink: 0,
+                  }}>
+                    {idx + 1}
+                  </div>
 
-                  return (
-                    <div
-                      key={game.id}
-                      role="button"
-                      aria-label={`פתח ${game.label}`}
-                      tabIndex={0}
-                      onClick={() => handleTap(game.url)}
-                      onPointerDown={() => setPressed(game.id)}
-                      onPointerUp={() => setPressed(null)}
-                      onPointerLeave={() => setPressed(null)}
-                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(game.url) } }}
-                      style={{
-                        flex: '1 1 155px',
-                        minWidth: 155,
-                        height: 142,
-                        borderRadius: 18,
-                        position: 'relative',
-                        overflow: 'hidden',
-                        background: game.gradient,
-                        boxShadow: isP
-                          ? `0 4px 16px rgba(${rgb},0.60), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.18)`
-                          : `0 10px 28px rgba(0,0,0,0.55), 0 0 16px rgba(${rgb},0.22), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.16)`,
-                        transform: isP ? 'scale(0.93)' : 'scale(1)',
-                        transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        opacity: loaded ? 1 : 0,
-                        animation: loaded ? `cardIn 0.45s cubic-bezier(0.34,1.2,0.64,1) ${0.05 + globalIdx * 0.04}s both` : 'none',
-                      }}
-                    >
-                      {/* Card shine overlay */}
-                      <div aria-hidden="true" style={{
-                        position: 'absolute', top: 0, left: 0, right: 0, height: '45%',
-                        background: 'linear-gradient(180deg, rgba(255,255,255,0.13) 0%, transparent 100%)',
-                        borderRadius: 'inherit',
-                        pointerEvents: 'none',
-                        zIndex: 1,
-                      }}/>
+                  {/* Game icon 54×54 */}
+                  <div style={{
+                    flexShrink: 0,
+                    width: 54, height: 54,
+                    borderRadius: 12,
+                    background: game.gradient,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.40)',
+                  }}>
+                    <GameIcon id={game.id} accent={game.accent} size={40} />
+                  </div>
 
-                      {/* Icon */}
-                      <div style={{ position: 'relative', zIndex: 2 }}>
-                        <GameIcon id={game.id} accent={game.accent} />
-                      </div>
-
-                      {/* Game name */}
-                      <div style={{
-                        position: 'relative', zIndex: 2,
-                        fontSize: 17, fontWeight: 700,
-                        color: 'white',
-                        fontFamily: "'DM Sans','Heebo',sans-serif",
-                        textShadow: '0 1px 6px rgba(0,0,0,0.55)',
-                        letterSpacing: '-0.2px',
-                        direction: 'ltr',
-                        textAlign: 'center',
-                      }}>
-                        {game.label}
-                      </div>
-
-                      {/* Category badge */}
-                      <div style={{
-                        position: 'relative', zIndex: 2,
-                        padding: '2px 8px', borderRadius: 12,
-                        background: `rgba(${rgb},0.25)`,
-                        border: `1px solid rgba(${rgb},0.40)`,
-                        fontSize: 10, color: `rgba(255,255,255,0.75)`,
-                        fontFamily: "'Heebo',sans-serif",
-                        direction: 'rtl',
-                      }}>
-                        {game.category}
-                      </div>
+                  {/* Name + category */}
+                  <div style={{ flex: 1, minWidth: 0, direction: 'rtl' }}>
+                    <div style={{
+                      fontSize: 17,
+                      fontWeight: 600,
+                      color: 'white',
+                      fontFamily: "'DM Sans','Heebo',sans-serif",
+                      letterSpacing: '-0.2px',
+                      direction: 'ltr',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
+                      {game.label}
                     </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })}
+                    <div style={{
+                      fontSize: 13,
+                      color: 'rgba(255,255,255,0.45)',
+                      fontFamily: "'Heebo',sans-serif",
+                      marginTop: 2,
+                      direction: 'rtl',
+                    }}>
+                      {game.category}
+                    </div>
+                  </div>
 
-        {/* Bottom safe area padding */}
-        <div style={{ height: 'env(safe-area-inset-bottom, 16px)' }}/>
-      </div>
+                  {/* שחקי button */}
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); handleTap(game.url) }}
+                    style={{
+                      flexShrink: 0,
+                      padding: '6px 16px',
+                      borderRadius: 20,
+                      background: 'transparent',
+                      border: '1px solid rgba(74,222,128,0.55)',
+                      color: '#4ade80',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      fontFamily: "'Heebo',sans-serif",
+                      cursor: 'pointer',
+                      WebkitTapHighlightColor: 'transparent',
+                    }}
+                  >
+                    שחקי
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+      </div>{/* end content */}
     </div>
   )
 }
+
+/* silence unused-variable warnings for GAME_ORBS (kept for future use) */
+void GAME_ORBS
