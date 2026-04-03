@@ -10,18 +10,20 @@ const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
 const WA_GREEN = '#25D366'
 
-const STYLES = ['רגיל', 'חם', 'רגשי', 'מצחיק'] as const
+const STYLES = ['מקורי', 'יותר שגיאות', 'יותר אימוג\'יס', 'מצחיק'] as const
 type Style = typeof STYLES[number]
 
 type Phase = 'idle' | 'recording' | 'transcribing' | 'generating' | 'result'
 
 // Style detection from voice commands
 const STYLE_KEYWORDS: Record<string, Style> = {
-  'רגיל': 'רגיל',
-  'חם': 'חם',
-  'חמה': 'חם',
-  'רגשי': 'רגשי',
-  'רגשית': 'רגשי',
+  'מקורי': 'מקורי',
+  'רגיל': 'מקורי',
+  'רגילה': 'מקורי',
+  'שגיאות': 'יותר שגיאות',
+  'טעויות': 'יותר שגיאות',
+  'אימוג': 'יותר אימוג\'יס',
+  'עם אימוג': 'יותר אימוג\'יס',
   'מצחיק': 'מצחיק',
   'מצחיקה': 'מצחיק',
   'מצחיקי': 'מצחיק',
@@ -66,7 +68,7 @@ export function AbuWhatsApp() {
   const [input, setInput] = useState('')
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
-  const [activeStyle, setActiveStyle] = useState<Style>('רגיל')
+  const [activeStyle, setActiveStyle] = useState<Style>('מקורי')
   const [recordingTime, setRecordingTime] = useState(0)
   const [lastIntent, setLastIntent] = useState('')
 
@@ -88,7 +90,7 @@ export function AbuWhatsApp() {
   const silenceRef = useRef<SilenceDetector | null>(null)
   const levelRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastIntentRef = useRef('')
-  const activeStyleRef = useRef<Style>('רגיל')
+  const activeStyleRef = useRef<Style>('מקורי')
   const resultRef = useRef('')
   const hasResultRef = useRef(false)
   const recognitionRef = useRef<any>(null)

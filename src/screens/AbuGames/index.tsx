@@ -6,86 +6,33 @@ import { Screen } from '../../state/types'
 interface Game {
   id: string
   label: string
+  labelHe: string
   url: string
   accent: string
-  gradient: string
-  category: string
+  category: 'solitaire' | 'mahjong'
 }
 
 const GAMES: Game[] = [
-  {
-    id: 'klondike', label: 'Solitario', accent: '#22c55e',
-    url: 'https://www.google.com/search?q=solitaire',
-    gradient: 'linear-gradient(135deg, #052e16 0%, #14532d 50%, #166534 100%)',
-    category: 'קלפים 🃏',
-  },
-  {
-    id: 'spider', label: 'Spider', accent: '#a78bfa',
-    url: 'https://www.arkadium.com/games/spider-solitaire/',
-    gradient: 'linear-gradient(135deg, #2e1065 0%, #4c1d95 50%, #5b21b6 100%)',
-    category: 'קלפים 🃏',
-  },
-  {
-    id: 'freecell', label: 'FreeCell', accent: '#3b82f6',
-    url: 'https://www.arkadium.com/games/freecell/',
-    gradient: 'linear-gradient(135deg, #172554 0%, #1e3a8a 50%, #1d4ed8 100%)',
-    category: 'קלפים 🃏',
-  },
-  {
-    id: 'mahjong', label: 'Mahjong', accent: '#ef4444',
-    url: 'https://www.arkadium.com/games/mahjongg-solitaire/',
-    gradient: 'linear-gradient(135deg, #450a0a 0%, #7f1d1d 50%, #991b1b 100%)',
-    category: 'אריחים 🀄',
-  },
-  {
-    id: 'pyramid', label: 'Pirámide', accent: '#f59e0b',
-    url: 'https://games.aarp.org/games/pyramid-solitaire',
-    gradient: 'linear-gradient(135deg, #451a03 0%, #78350f 50%, #92400e 100%)',
-    category: 'קלפים 🃏',
-  },
-  {
-    id: 'tripeaks', label: 'Tri Peaks', accent: '#14b8a6',
-    url: 'https://www.arkadium.com/games/tripeaks-solitaire-free/',
-    gradient: 'linear-gradient(135deg, #042f2e 0%, #134e4a 50%, #115e59 100%)',
-    category: 'קלפים 🃏',
-  },
-  {
-    id: 'hearts', label: 'Corazones', accent: '#f43f5e',
-    url: 'https://cardgames.io/hearts/',
-    gradient: 'linear-gradient(135deg, #4c0519 0%, #881337 50%, #be123c 100%)',
-    category: 'קלפים ♥',
-  },
-  {
-    id: 'canfield', label: 'Canfield', accent: '#06b6d4',
-    url: 'https://solitaired.com/canfield',
-    gradient: 'linear-gradient(135deg, #083344 0%, #155e75 50%, #0e7490 100%)',
-    category: 'קלפים 🃏',
-  },
-  {
-    id: 'golf', label: 'Golf', accent: '#16a34a',
-    url: 'https://www.solitaire-play.com/golf/',
-    gradient: 'linear-gradient(135deg, #052e16 0%, #14532d 50%, #15803d 100%)',
-    category: 'קלפים 🃏',
-  },
-  {
-    id: 'yukon', label: 'Yukon', accent: '#0ea5e9',
-    url: 'https://solitaired.com/yukon',
-    gradient: 'linear-gradient(135deg, #0c1445 0%, #1e3a8a 50%, #0369a1 100%)',
-    category: 'קלפים 🃏',
-  },
-  {
-    id: 'spider2', label: 'Spider ×2', accent: '#f97316',
-    url: 'https://www.arkadium.com/games/spider-solitaire-2-suits/',
-    gradient: 'linear-gradient(135deg, #431407 0%, #7c2d12 50%, #9a3412 100%)',
-    category: 'קלפים 🃏',
-  },
-  {
-    id: 'forty', label: '40 Ladrones', accent: '#818cf8',
-    url: 'https://solitaired.com/forty-thieves',
-    gradient: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #3730a3 100%)',
-    category: 'קלפים 🃏',
-  },
+  // ── Solitaire ──────────────────────────────────────────────────────────────
+  { id: 'klondike',       label: 'Solitario',    labelHe: 'סוליטר קלאסי',  accent: '#22c55e', category: 'solitaire', url: 'https://www.arkadium.com/games/klondike-solitaire/' },
+  { id: 'spider',         label: 'Spider',        labelHe: 'עכביש',          accent: '#a78bfa', category: 'solitaire', url: 'https://www.arkadium.com/games/spider-solitaire/' },
+  { id: 'freecell',       label: 'FreeCell',      labelHe: 'פריסל',          accent: '#3b82f6', category: 'solitaire', url: 'https://www.arkadium.com/games/freecell/' },
+  { id: 'pyramid',        label: 'Pirámide',      labelHe: 'פירמידה',        accent: '#f59e0b', category: 'solitaire', url: 'https://games.aarp.org/games/pyramid-solitaire' },
+  { id: 'tripeaks',       label: 'Tri Peaks',     labelHe: 'שלושה פסגות',    accent: '#14b8a6', category: 'solitaire', url: 'https://www.arkadium.com/games/tripeaks-solitaire-free/' },
+  { id: 'hearts',         label: 'Corazones',     labelHe: 'לבבות',          accent: '#f43f5e', category: 'solitaire', url: 'https://cardgames.io/hearts/' },
+  { id: 'canfield',       label: 'Canfield',      labelHe: 'קאנפילד',        accent: '#06b6d4', category: 'solitaire', url: 'https://solitaired.com/canfield' },
+  { id: 'golf',           label: 'Golf',          labelHe: 'גולף',           accent: '#16a34a', category: 'solitaire', url: 'https://www.solitaire-play.com/golf/' },
+  { id: 'yukon',          label: 'Yukon',         labelHe: 'יוקון',          accent: '#0ea5e9', category: 'solitaire', url: 'https://solitaired.com/yukon' },
+  { id: 'spider2',        label: 'Spider ×2',     labelHe: 'עכביש ×2',       accent: '#f97316', category: 'solitaire', url: 'https://www.arkadium.com/games/spider-solitaire-2-suits/' },
+  { id: 'forty',          label: '40 Ladrones',   labelHe: '40 ליסטים',      accent: '#818cf8', category: 'solitaire', url: 'https://solitaired.com/forty-thieves' },
+  // ── Mahjong ────────────────────────────────────────────────────────────────
+  { id: 'mahjong',        label: 'Mahjong',       labelHe: 'מהג\'ונג',        accent: '#ef4444', category: 'mahjong',   url: 'https://www.arkadium.com/games/mahjongg-solitaire/' },
+  { id: 'mahjong-connect',label: 'Connect',       labelHe: 'חיבור',          accent: '#f97316', category: 'mahjong',   url: 'https://www.arkadium.com/games/mahjong-connect/' },
+  { id: 'mahjong-3d',     label: 'Dimensiones',   labelHe: 'תלת-מימד',       accent: '#8b5cf6', category: 'mahjong',   url: 'https://www.arkadium.com/games/mahjongg-dimensions/' },
 ]
+
+const SOLITAIRE_GAMES = GAMES.filter(g => g.category === 'solitaire')
+const MAHJONG_GAMES   = GAMES.filter(g => g.category === 'mahjong')
 
 /* ─── Navigation guard ─── */
 let isNavigating = false
@@ -103,20 +50,22 @@ function hexToRgb(hex: string): string {
   return `${parseInt(h.substring(0, 2), 16)},${parseInt(h.substring(2, 4), 16)},${parseInt(h.substring(4, 6), 16)}`
 }
 
-/* ─── GAME ORBS ─── */
+/* ─── 3D ORB GRADIENTS ─── */
 const GAME_ORBS: Record<string, string> = {
-  klondike: 'radial-gradient(circle at 36% 30%, rgba(230,255,242,0.98) 0%, #6ee7b7 20%, #10b981 46%, #065f46 74%, #022c22 100%)',
-  spider:   'radial-gradient(circle at 36% 30%, rgba(242,238,255,0.98) 0%, #c4b5fd 20%, #7c3aed 46%, #3b0764 74%, #180033 100%)',
-  freecell: 'radial-gradient(circle at 36% 30%, rgba(232,242,255,0.98) 0%, #93c5fd 20%, #2563eb 46%, #1e3a8a 74%, #0d1f52 100%)',
-  mahjong:  'radial-gradient(circle at 36% 30%, rgba(255,235,235,0.98) 0%, #fca5a5 20%, #dc2626 46%, #7f1d1d 74%, #3d0505 100%)',
-  pyramid:  'radial-gradient(circle at 36% 30%, rgba(255,252,225,0.98) 0%, #fde68a 20%, #d97706 46%, #78350f 74%, #3a1505 100%)',
-  tripeaks: 'radial-gradient(circle at 36% 30%, rgba(224,255,252,0.98) 0%, #5eead4 20%, #0d9488 46%, #134e4a 74%, #021f1e 100%)',
-  hearts:   'radial-gradient(circle at 36% 30%, rgba(255,232,238,0.98) 0%, #fda4af 20%, #e11d48 46%, #881337 74%, #3d0219 100%)',
-  canfield: 'radial-gradient(circle at 36% 30%, rgba(224,252,255,0.98) 0%, #67e8f9 20%, #0891b2 46%, #155e75 74%, #042030 100%)',
-  golf:     'radial-gradient(circle at 36% 30%, rgba(225,255,235,0.98) 0%, #86efac 20%, #16a34a 46%, #14532d 74%, #042210 100%)',
-  yukon:    'radial-gradient(circle at 36% 30%, rgba(224,244,255,0.98) 0%, #7dd3fc 20%, #0284c7 46%, #0c4a6e 74%, #041828 100%)',
-  spider2:  'radial-gradient(circle at 36% 30%, rgba(255,242,228,0.98) 0%, #fdba74 20%, #ea580c 46%, #7c2d12 74%, #340c02 100%)',
-  forty:    'radial-gradient(circle at 36% 30%, rgba(238,235,255,0.98) 0%, #a5b4fc 20%, #4f46e5 46%, #312e81 74%, #12103a 100%)',
+  klondike:         'radial-gradient(circle at 35% 28%, #ffffff 0%, #86efac 14%, #22c55e 38%, #15803d 62%, #064e20 84%, #021a0b 100%)',
+  spider:           'radial-gradient(circle at 35% 28%, #ffffff 0%, #ddd6fe 14%, #8b5cf6 38%, #5b21b6 62%, #2d0a72 84%, #12002e 100%)',
+  freecell:         'radial-gradient(circle at 35% 28%, #ffffff 0%, #bfdbfe 14%, #3b82f6 38%, #1d4ed8 62%, #0d2e8a 84%, #050f38 100%)',
+  mahjong:          'radial-gradient(circle at 35% 28%, #ffffff 0%, #fecaca 14%, #ef4444 38%, #b91c1c 62%, #6b0f0f 84%, #2a0303 100%)',
+  pyramid:          'radial-gradient(circle at 35% 28%, #ffffff 0%, #fde68a 14%, #f59e0b 38%, #b45309 62%, #5c2a00 84%, #200e00 100%)',
+  tripeaks:         'radial-gradient(circle at 35% 28%, #ffffff 0%, #99f6e4 14%, #14b8a6 38%, #0f766e 62%, #044640 84%, #01181a 100%)',
+  hearts:           'radial-gradient(circle at 35% 28%, #ffffff 0%, #fecdd3 14%, #f43f5e 38%, #be123c 62%, #6d0520 84%, #270008 100%)',
+  canfield:         'radial-gradient(circle at 35% 28%, #ffffff 0%, #a5f3fc 14%, #06b6d4 38%, #0e7490 62%, #083344 84%, #01101a 100%)',
+  golf:             'radial-gradient(circle at 35% 28%, #ffffff 0%, #bbf7d0 14%, #16a34a 38%, #15803d 62%, #064e20 84%, #011f0a 100%)',
+  yukon:            'radial-gradient(circle at 35% 28%, #ffffff 0%, #bae6fd 14%, #0ea5e9 38%, #0369a1 62%, #0a3858 84%, #010e1e 100%)',
+  spider2:          'radial-gradient(circle at 35% 28%, #ffffff 0%, #fed7aa 14%, #f97316 38%, #c2410c 62%, #6b1c02 84%, #220800 100%)',
+  forty:            'radial-gradient(circle at 35% 28%, #ffffff 0%, #c7d2fe 14%, #818cf8 38%, #4338ca 62%, #20165c 84%, #090520 100%)',
+  'mahjong-connect':'radial-gradient(circle at 35% 28%, #ffffff 0%, #fed7aa 14%, #fb923c 38%, #ea580c 62%, #7c2d12 84%, #280800 100%)',
+  'mahjong-3d':     'radial-gradient(circle at 35% 28%, #ffffff 0%, #ede9fe 14%, #8b5cf6 38%, #6d28d9 62%, #3b0764 84%, #14002a 100%)',
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -127,21 +76,18 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
 
   switch (id) {
 
-    /* ── Klondike / Solitario ── green felt + Ace of Spades ── */
     case 'klondike':
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
           <ellipse cx="24" cy="26" rx="19" ry="13" fill="#16a34a" opacity="0.90"/>
-          <ellipse cx="24" cy="26" rx="19" ry="13" fill="none" stroke="#15803d" strokeWidth="1"/>
-          <rect x="10" y="8" width="17" height="23" rx="2.5" fill="#166534" opacity="0.6" transform="rotate(-10 18 19)"/>
-          <rect x="12" y="6" width="17" height="23" rx="2.5" fill="#14532d" opacity="0.5" transform="rotate(-5 20 17)"/>
+          <rect x="10" y="8" width="17" height="23" rx="2.5" fill="#166534" opacity="0.5" transform="rotate(-10 18 19)"/>
+          <rect x="12" y="6" width="17" height="23" rx="2.5" fill="#14532d" opacity="0.4" transform="rotate(-5 20 17)"/>
           <rect x="16" y="4" width="17" height="24" rx="2.5" fill="white" stroke="#d1d5db" strokeWidth="0.8"/>
           <text x="19.5" y="14" fill="#111827" fontSize="8.5" fontWeight="900" fontFamily="Georgia,serif">A</text>
           <text x="24" y="25" textAnchor="middle" fill="#111827" fontSize="14" fontFamily="serif">♠</text>
         </svg>
       )
 
-    /* ── Spider ── purple web + stacked cards ── */
     case 'spider':
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
@@ -158,20 +104,13 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
           <circle cx="19" cy="15.5" r="2.5" fill="#7c3aed"/>
           <circle cx="18" cy="14.8" r="0.7" fill="white"/>
           <circle cx="20" cy="14.8" r="0.7" fill="white"/>
-          <path d="M15.5 19 Q12 17 10 15" stroke="#7c3aed" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-          <path d="M15.5 21 Q11.5 20 9.5 19" stroke="#7c3aed" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-          <path d="M15.5 23 Q11.5 23 9.5 24" stroke="#7c3aed" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-          <path d="M16 25 Q12 26 10.5 29" stroke="#7c3aed" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-          <path d="M22.5 19 Q26 17 28 15" stroke="#7c3aed" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-          <path d="M22.5 21 Q26.5 20 28.5 19" stroke="#7c3aed" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-          <path d="M22.5 23 Q26.5 23 28.5 24" stroke="#7c3aed" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-          <path d="M22 25 Q26 26 27.5 29" stroke="#7c3aed" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-          <path d="M19 13 L19 7" stroke="#a78bfa" strokeWidth="0.8" opacity="0.6" strokeDasharray="1.5,1"/>
-          <text x="27" y="31.5" fill="#7c3aed" fontSize="7" fontFamily="serif">♠</text>
+          <path d="M15.5 19 Q12 17 10 15M15.5 21 Q11.5 20 9.5 19M15.5 23 Q11.5 23 9.5 24M16 25 Q12 26 10.5 29"
+            stroke="#7c3aed" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+          <path d="M22.5 19 Q26 17 28 15M22.5 21 Q26.5 20 28.5 19M22.5 23 Q26.5 23 28.5 24M22 25 Q26 26 27.5 29"
+            stroke="#7c3aed" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
         </svg>
       )
 
-    /* ── FreeCell ── 4 foundation slots + cards ── */
     case 'freecell':
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
@@ -188,19 +127,9 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
           ))}
           {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
             <g key={i}>
-              <rect x={2 + i * 5.7} y="19" width="4.8" height="6" rx="1"
-                fill="white" stroke="#bfdbfe" strokeWidth="0.6"/>
-              <rect x={2 + i * 5.7} y="24" width="4.8" height="6" rx="1"
-                fill="white" stroke="#bfdbfe" strokeWidth="0.6"/>
-              <rect x={2 + i * 5.7} y="29" width="4.8" height="6" rx="1"
-                fill="white" stroke="#93c5fd" strokeWidth="0.8"/>
-              {i < 4 && (
-                <text x={4.4 + i * 5.7} y="33.5" textAnchor="middle"
-                  fill="#2563eb" fontSize="5" fontFamily="serif"
-                  opacity={0.7 + i * 0.06}>
-                  {['A', '2', '3', '4'][i]}
-                </text>
-              )}
+              <rect x={2 + i * 5.7} y="19" width="4.8" height="6" rx="1" fill="white" stroke="#bfdbfe" strokeWidth="0.6"/>
+              <rect x={2 + i * 5.7} y="24" width="4.8" height="6" rx="1" fill="white" stroke="#bfdbfe" strokeWidth="0.6"/>
+              <rect x={2 + i * 5.7} y="29" width="4.8" height="6" rx="1" fill="white" stroke="#93c5fd" strokeWidth="0.8"/>
             </g>
           ))}
           {[0, 1, 2, 3].map(i => (
@@ -210,12 +139,11 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
         </svg>
       )
 
-    /* ── Mahjong ── red dragon tile ── */
     case 'mahjong':
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
-          <rect x="5" y="7" width="26" height="34" rx="4" fill="#dc2626" opacity="0.3" transform="rotate(-6 18 24)"/>
-          <rect x="7" y="5" width="26" height="34" rx="4" fill="#dc2626" opacity="0.5" transform="rotate(-3 20 22)"/>
+          <rect x="5" y="7" width="26" height="34" rx="4" fill="#dc2626" opacity="0.25" transform="rotate(-6 18 24)"/>
+          <rect x="7" y="5" width="26" height="34" rx="4" fill="#dc2626" opacity="0.45" transform="rotate(-3 20 22)"/>
           <rect x="10" y="4" width="28" height="36" rx="4" fill="white" stroke="#dc2626" strokeWidth="1.5"/>
           <rect x="12" y="6" width="24" height="32" rx="3" fill="#fee2e2" stroke="#fca5a5" strokeWidth="0.5"/>
           <text x="24" y="28" textAnchor="middle" fill="#dc2626" fontSize="22" fontWeight="bold" fontFamily="serif">中</text>
@@ -226,7 +154,6 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
         </svg>
       )
 
-    /* ── Pyramid ── gold pyramid of cards ── */
     case 'pyramid':
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
@@ -247,13 +174,11 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
         </svg>
       )
 
-    /* ── Tri Peaks ── three teal card mountains ── */
     case 'tripeaks':
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
           <rect x="1"  y="14" width="9"  height="12" rx="1.5" fill="#99f6e4" stroke="#14b8a6" strokeWidth="0.8"/>
           <rect x="6"  y="8"  width="9"  height="12" rx="1.5" fill="#2dd4bf" stroke="#0d9488" strokeWidth="0.8"/>
-          <rect x="11" y="14" width="9"  height="12" rx="1.5" fill="#99f6e4" stroke="#14b8a6" strokeWidth="0.8"/>
           <rect x="11" y="14" width="9"  height="12" rx="1.5" fill="#ccfbf1" stroke="#14b8a6" strokeWidth="0.8"/>
           <rect x="16.5" y="5" width="10" height="13" rx="1.5" fill="#14b8a6" stroke="#0d9488" strokeWidth="1"/>
           <rect x="21"  y="14" width="9"  height="12" rx="1.5" fill="#ccfbf1" stroke="#14b8a6" strokeWidth="0.8"/>
@@ -264,11 +189,9 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
             <rect key={i} x={1 + i * 7.8} y="29" width="7" height="10" rx="1.2"
               fill={i % 2 === 0 ? '#ccfbf1' : '#a5f3fc'} stroke="#14b8a6" strokeWidth="0.6"/>
           ))}
-          <text x="21.5" y="14.5" textAnchor="middle" fill="white" fontSize="7" fontFamily="serif">♦</text>
         </svg>
       )
 
-    /* ── Hearts ── big red heart + suits ── */
     case 'hearts':
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
@@ -282,7 +205,6 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
         </svg>
       )
 
-    /* ── Canfield ── fan spread of cyan cards ── */
     case 'canfield':
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
@@ -295,8 +217,7 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
             return (
               <g key={i} transform={`translate(${tx},${ty}) rotate(${angle})`}>
                 <rect x="-7" y="-22" width="14" height="22" rx="2"
-                  fill={colors[i]}
-                  stroke="#0891b2"
+                  fill={colors[i]} stroke="#0891b2"
                   strokeWidth={i === 3 ? 1 : 0.5}
                   opacity={0.7 + i * 0.04}
                 />
@@ -308,24 +229,19 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
         </svg>
       )
 
-    /* ── Golf ── green hill + flag + ball ── */
     case 'golf':
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
-          <rect x="0" y="0" width="48" height="48" rx="0" fill="#e0f2fe" opacity="0.4"/>
           <ellipse cx="24" cy="40" rx="24" ry="14" fill="#16a34a"/>
           <ellipse cx="24" cy="38" rx="24" ry="12" fill="#22c55e"/>
-          <ellipse cx="32" cy="38" rx="3" ry="1.2" fill="#15803d"/>
           <line x1="32" y1="38" x2="32" y2="16" stroke="#4b5563" strokeWidth="1.5" strokeLinecap="round"/>
           <polygon points="32,16 32,24 42,20" fill="#ef4444"/>
           <rect x="8" y="24" width="9" height="12" rx="1.5" fill="white" stroke="#16a34a" strokeWidth="0.8"/>
           <text x="12.5" y="32" textAnchor="middle" fill="#16a34a" fontSize="8" fontFamily="serif">2</text>
           <circle cx="20" cy="37" r="3" fill="white" stroke="#d1d5db" strokeWidth="0.8"/>
-          <circle cx="20" cy="37" r="1" fill="none" stroke="#9ca3af" strokeWidth="0.4" strokeDasharray="1,1"/>
         </svg>
       )
 
-    /* ── Yukon ── snowflake + playing card ── */
     case 'yukon':
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
@@ -336,25 +252,17 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
               <g key={angle}>
                 <line x1="20" y1="23" x2={20 + Math.cos(r) * 13} y2={23 + Math.sin(r) * 13}
                   stroke="#0ea5e9" strokeWidth="1.8" strokeLinecap="round"/>
-                <line x1={20 + Math.cos(r) * 7} y1={23 + Math.sin(r) * 7}
-                  x2={20 + Math.cos(r + Math.PI / 3) * 3 + Math.cos(r) * 7} y2={23 + Math.sin(r + Math.PI / 3) * 3 + Math.sin(r) * 7}
-                  stroke="#38bdf8" strokeWidth="1" strokeLinecap="round"/>
-                <line x1={20 + Math.cos(r) * 7} y1={23 + Math.sin(r) * 7}
-                  x2={20 + Math.cos(r - Math.PI / 3) * 3 + Math.cos(r) * 7} y2={23 + Math.sin(r - Math.PI / 3) * 3 + Math.sin(r) * 7}
-                  stroke="#38bdf8" strokeWidth="1" strokeLinecap="round"/>
               </g>
             )
           })}
           <circle cx="20" cy="23" r="2.5" fill="#0ea5e9"/>
           <text x="9" y="14" fill="#0ea5e9" fontSize="7.5" fontWeight="bold" fontFamily="sans-serif">Y</text>
-          <text x="9" y="21" fill="#0ea5e9" fontSize="7" fontFamily="sans-serif">K</text>
           <rect x="32" y="10" width="11" height="15" rx="2" fill="#e0f2fe" stroke="#0ea5e9" strokeWidth="0.8"/>
           <rect x="33" y="18" width="11" height="15" rx="2" fill="#bae6fd" stroke="#0ea5e9" strokeWidth="0.8"/>
           <rect x="34" y="26" width="11" height="15" rx="2" fill="#7dd3fc" stroke="#0369a1" strokeWidth="0.8"/>
         </svg>
       )
 
-    /* ── Spider ×2 — two orange overlapping spiders ── */
     case 'spider2':
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
@@ -369,8 +277,6 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
           <ellipse cx="35" cy="14" rx="3" ry="2.2" fill="#f97316"/>
           <ellipse cx="35" cy="19" rx="3.5" ry="2.8" fill="#ea580c"/>
           <circle cx="35" cy="10" r="2.2" fill="#f97316"/>
-          <circle cx="34" cy="9.3" r="0.6" fill="white"/>
-          <circle cx="36" cy="9.3" r="0.6" fill="white"/>
           <path d="M32 14 Q29 12 27 11M32 16 Q28.5 15.5 27 15M32 18 Q29 18.5 27 20M32 21 Q29 22 28 24"
             stroke="#f97316" strokeWidth="1.1" fill="none" strokeLinecap="round"/>
           <path d="M38 14 Q41 12 43 11M38 16 Q41.5 15.5 43 15M38 18 Q41 18.5 43 20M38 21 Q41 22 42 24"
@@ -380,21 +286,16 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
         </svg>
       )
 
-    /* ── 40 Ladrones ── tall stack of cards + badge ── */
     case 'forty':
-    default:
       return (
         <svg viewBox="0 0 48 48" width={S} height={S}>
           {[0, 1, 2, 3, 4].map(i => {
             const colors = ['#c7d2fe', '#a5b4fc', '#818cf8', '#6366f1', '#4f46e5']
             return (
               <g key={i}>
-                <rect x={2 + i * 9.2} y="4" width="8" height="12" rx="1.5"
-                  fill={colors[i]} stroke="#6366f1" strokeWidth="0.5"/>
-                <rect x={2 + i * 9.2} y="17" width="8" height="12" rx="1.5"
-                  fill={colors[i]} stroke="#6366f1" strokeWidth="0.5" opacity="0.85"/>
-                <rect x={2 + i * 9.2} y="30" width="8" height="12" rx="1.5"
-                  fill={colors[i]} stroke="#6366f1" strokeWidth="0.5" opacity="0.7"/>
+                <rect x={2 + i * 9.2} y="4" width="8" height="12" rx="1.5" fill={colors[i]} stroke="#6366f1" strokeWidth="0.5"/>
+                <rect x={2 + i * 9.2} y="17" width="8" height="12" rx="1.5" fill={colors[i]} stroke="#6366f1" strokeWidth="0.5" opacity="0.85"/>
+                <rect x={2 + i * 9.2} y="30" width="8" height="12" rx="1.5" fill={colors[i]} stroke="#6366f1" strokeWidth="0.5" opacity="0.7"/>
               </g>
             )
           })}
@@ -402,10 +303,52 @@ function GameIcon({ id, accent, size = 52 }: { id: string; accent: string; size?
           <text x="24" y="28" textAnchor="middle" fill="white" fontSize="14" fontWeight="900" fontFamily="sans-serif" letterSpacing="-0.5">40</text>
         </svg>
       )
+
+    case 'mahjong-connect':
+      return (
+        <svg viewBox="0 0 48 48" width={S} height={S}>
+          {/* Left tile */}
+          <rect x="2" y="12" width="17" height="24" rx="3" fill="white" stroke="#f97316" strokeWidth="1.5"/>
+          <rect x="4" y="14" width="13" height="20" rx="2" fill="#fff7ed"/>
+          <text x="10.5" y="28" textAnchor="middle" fill="#f97316" fontSize="14" fontFamily="serif" fontWeight="bold">發</text>
+          {/* Right tile */}
+          <rect x="29" y="12" width="17" height="24" rx="3" fill="white" stroke="#f97316" strokeWidth="1.5"/>
+          <rect x="31" y="14" width="13" height="20" rx="2" fill="#fff7ed"/>
+          <text x="37.5" y="28" textAnchor="middle" fill="#f97316" fontSize="14" fontFamily="serif" fontWeight="bold">發</text>
+          {/* Connection line with glow */}
+          <line x1="19" y1="24" x2="29" y2="24" stroke="#fed7aa" strokeWidth="4" strokeLinecap="round"/>
+          <line x1="19" y1="24" x2="29" y2="24" stroke="#f97316" strokeWidth="2" strokeLinecap="round"/>
+          <circle cx="19" cy="24" r="3" fill="#f97316"/>
+          <circle cx="29" cy="24" r="3" fill="#f97316"/>
+          {/* Match sparkles */}
+          <circle cx="24" cy="7"  r="1.5" fill="#fbbf24"/>
+          <circle cx="24" cy="41" r="1.5" fill="#fbbf24"/>
+        </svg>
+      )
+
+    case 'mahjong-3d':
+    default:
+      return (
+        <svg viewBox="0 0 48 48" width={S} height={S}>
+          {/* 3D cube — isometric tiles */}
+          {/* Top face */}
+          <polygon points="24,4 43,14 24,24 5,14" fill="#c4b5fd" stroke="#8b5cf6" strokeWidth="0.8"/>
+          {/* Left face */}
+          <polygon points="5,14 24,24 24,44 5,34" fill="#7c3aed" stroke="#5b21b6" strokeWidth="0.8"/>
+          {/* Right face */}
+          <polygon points="24,24 43,14 43,34 24,44" fill="#6d28d9" stroke="#4c1d95" strokeWidth="0.8"/>
+          {/* Characters on faces */}
+          <text x="24" y="17" textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize="9" fontFamily="serif" fontWeight="bold">發</text>
+          <text x="15" y="35" textAnchor="middle" fill="rgba(255,255,255,0.75)" fontSize="9" fontFamily="serif">中</text>
+          <text x="33" y="35" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="9" fontFamily="serif">白</text>
+          {/* Shine on top */}
+          <polygon points="24,4 35,9 24,14 13,9" fill="rgba(255,255,255,0.20)"/>
+        </svg>
+      )
   }
 }
 
-/* ─── Arrow chevron ─── */
+/* ─── Back arrow ─── */
 function ChevronLeft() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
@@ -415,58 +358,144 @@ function ChevronLeft() {
   )
 }
 
-/* ─── floating suit data ─── */
-const FLOAT_SUITS = [
-  { symbol: '♠', top: '6%',  left: '8%',  size: 72, opacity: 0.05, delay: '0s',   dur: '6s',  rot: '-12deg' },
-  { symbol: '♥', top: '12%', left: '78%', size: 88, opacity: 0.04, delay: '1.4s', dur: '7.5s', rot: '8deg'  },
-  { symbol: '♦', top: '32%', left: '88%', size: 64, opacity: 0.06, delay: '0.8s', dur: '5.5s', rot: '20deg' },
-  { symbol: '♣', top: '48%', left: '4%',  size: 80, opacity: 0.04, delay: '2.1s', dur: '8s',   rot: '-5deg' },
-  { symbol: '♠', top: '65%', left: '82%', size: 56, opacity: 0.05, delay: '0.3s', dur: '6.8s', rot: '15deg' },
-  { symbol: '♥', top: '76%', left: '14%', size: 96, opacity: 0.03, delay: '1.9s', dur: '7.2s', rot: '-18deg'},
-  { symbol: '♦', top: '88%', left: '55%', size: 60, opacity: 0.05, delay: '1.1s', dur: '5.8s', rot: '6deg'  },
-  { symbol: '♣', top: '22%', left: '46%', size: 70, opacity: 0.04, delay: '2.6s', dur: '9s',   rot: '-8deg' },
-]
+/* ─── Single 3D bubble + label ─── */
+function GameBubble({
+  game, pressKey, onPress, onRelease, delay,
+}: {
+  game: Game
+  pressKey: string | null
+  onPress: (k: string) => void
+  onRelease: () => void
+  delay: number
+}) {
+  const orbGrad = GAME_ORBS[game.id] ?? GAME_ORBS['klondike']
+  const rgb = hexToRgb(game.accent)
+  const isP = pressKey === game.id
 
-/* ─── Section layout helpers ─── */
-// Row 1 "חדשים ואהובים": Spider, Mahjong, Tri Peaks, Pyramid
-const NEW_ROW_IDS = ['spider', 'mahjong', 'tripeaks', 'pyramid']
-// Row 2 "קלאסיקות": FreeCell, Hearts, Canfield, Yukon, Golf
-const CLASSIC_ROW_IDS = ['freecell', 'hearts', 'canfield', 'yukon', 'golf']
-// Top charts: remaining games
-const CHART_IDS = ['spider2', 'forty', 'klondike']
-
-function gameById(id: string): Game {
-  const found = GAMES.find(g => g.id === id)
-  // GAMES is non-empty; index 0 always exists
-  return found ?? (GAMES[0] as Game)
-}
-
-/* ─── Section header component ─── */
-function SectionHeader({ title }: { title: string }) {
   return (
     <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 10,
-      marginBottom: 14,
-      direction: 'rtl',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9,
+      animation: `bubbleIn 0.45s cubic-bezier(0.34,1.20,0.64,1) ${delay}s both`,
     }}>
+      {/* The orb */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={game.labelHe}
+        onClick={() => handleTap(game.url)}
+        onPointerDown={() => onPress(game.id)}
+        onPointerUp={onRelease}
+        onPointerLeave={onRelease}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(game.url) } }}
+        style={{
+          width: 90, height: 90,
+          borderRadius: '50%',
+          background: orbGrad,
+          boxShadow: isP
+            ? `0 3px 10px rgba(${rgb},0.40), 0 1px 4px rgba(0,0,0,0.60)`
+            : `0 8px 28px rgba(0,0,0,0.55), 0 2px 12px rgba(${rgb},0.40), inset 0 2px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.25)`,
+          transform: isP ? 'scale(0.91) translateY(2px)' : 'scale(1)',
+          transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+          WebkitTapHighlightColor: 'transparent',
+          flexShrink: 0,
+        }}
+      >
+        {/* Specular highlight — top-left bright spot */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', top: 7, left: 10,
+          width: 30, height: 20,
+          borderRadius: '50%',
+          background: 'radial-gradient(ellipse, rgba(255,255,255,0.60) 0%, transparent 70%)',
+          pointerEvents: 'none',
+          transform: 'rotate(-20deg)',
+        }}/>
+        {/* Bottom shadow-rim for depth */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', bottom: 5, left: '20%', right: '20%',
+          height: 8,
+          borderRadius: '50%',
+          background: 'radial-gradient(ellipse, rgba(0,0,0,0.30) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }}/>
+        <GameIcon id={game.id} accent={game.accent} size={50} />
+      </div>
+
+      {/* Label */}
       <span style={{
-        fontSize: 20,
-        fontWeight: 700,
-        color: 'white',
+        fontSize: 12, fontWeight: 700,
+        color: 'rgba(255,255,255,0.88)',
         fontFamily: "'Heebo',sans-serif",
-        letterSpacing: '0.2px',
+        textAlign: 'center',
+        lineHeight: 1.25,
+        maxWidth: 90,
+        direction: 'rtl',
+        textShadow: `0 0 10px rgba(${rgb},0.35)`,
       }}>
-        {title}
+        {game.labelHe}
       </span>
+    </div>
+  )
+}
+
+/* ─── Category section ─── */
+function CategorySection({
+  emoji, title, titleHe, accent, games, pressKey, onPress, onRelease, baseDelay,
+}: {
+  emoji: string; title: string; titleHe: string; accent: string
+  games: Game[]; pressKey: string | null
+  onPress: (k: string) => void; onRelease: () => void; baseDelay: number
+}) {
+  const rgb = hexToRgb(accent)
+  return (
+    <div>
+      {/* Section header */}
       <div style={{
-        height: 3,
-        width: 32,
-        borderRadius: 2,
-        background: 'linear-gradient(90deg, #C9A84C 0%, rgba(201,168,76,0.0) 100%)',
-        flexShrink: 0,
-      }}/>
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 22, direction: 'rtl',
+      }}>
+        <span style={{ fontSize: 28, lineHeight: 1 }}>{emoji}</span>
+        <div>
+          <div style={{
+            fontSize: 22, fontWeight: 800,
+            background: `linear-gradient(135deg, white 0%, rgba(${rgb},0.85) 100%)`,
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+            fontFamily: "'Heebo','DM Sans',sans-serif",
+            letterSpacing: '0.3px',
+            lineHeight: 1,
+          } as React.CSSProperties}>{titleHe}</div>
+          <div style={{
+            fontSize: 12, color: `rgba(${rgb},0.70)`,
+            fontFamily: "'DM Sans',sans-serif",
+            letterSpacing: '1.2px', textTransform: 'uppercase',
+            marginTop: 2,
+          }}>{title}</div>
+        </div>
+        {/* Decorative rule */}
+        <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, rgba(${rgb},0.35), transparent)` }}/>
+      </div>
+
+      {/* Bubble grid — 3 per row */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '20px 10px',
+        justifyItems: 'center',
+      }}>
+        {games.map((game, idx) => (
+          <GameBubble
+            key={game.id}
+            game={game}
+            pressKey={pressKey}
+            onPress={onPress}
+            onRelease={onRelease}
+            delay={baseDelay + idx * 0.04}
+          />
+        ))}
+      </div>
     </div>
   )
 }
@@ -478,47 +507,27 @@ export function AbuGames() {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    const style = document.createElement('style')
-    style.id = 'abu-games-anim'
-    style.textContent = `
-      @keyframes cardIn {
-        from { opacity: 0; transform: translateY(28px) scale(0.88); }
-        to   { opacity: 1; transform: translateY(0) scale(1); }
-      }
-      @keyframes suitFloat {
-        0%, 100% { transform: translateY(0px) rotate(var(--rot, 0deg)); }
-        50%       { transform: translateY(-18px) rotate(var(--rot, 0deg)); }
-      }
-      @keyframes shimmer {
-        0%   { opacity: 0.08; }
-        50%  { opacity: 0.18; }
-        100% { opacity: 0.08; }
-      }
-      @keyframes fadeUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to   { opacity: 1; transform: translateY(0); }
-      }
-      .abu-games-scroll-row {
-        display: flex;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        gap: 12px;
-        padding-bottom: 4px;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-      }
-      .abu-games-scroll-row::-webkit-scrollbar {
-        display: none;
-      }
-      .abu-games-main-scroll {
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-      }
-      .abu-games-main-scroll::-webkit-scrollbar {
-        display: none;
-      }
-    `
-    document.head.appendChild(style)
+    if (!document.getElementById('abu-games-anim')) {
+      const style = document.createElement('style')
+      style.id = 'abu-games-anim'
+      style.textContent = `
+        @keyframes bubbleIn {
+          from { opacity: 0; transform: scale(0.55) translateY(30px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes floatTile {
+          0%,100% { transform: translateY(0px) rotate(var(--tr,0deg)); }
+          50%      { transform: translateY(-14px) rotate(var(--tr,0deg)); }
+        }
+        @keyframes headerSlide {
+          from { opacity:0; transform:translateY(-12px); }
+          to   { opacity:1; transform:translateY(0); }
+        }
+        .abu-games-scroll { scrollbar-width:none; -ms-overflow-style:none; }
+        .abu-games-scroll::-webkit-scrollbar { display:none; }
+      `
+      document.head.appendChild(style)
+    }
     const t = setTimeout(() => setLoaded(true), 60)
     const onVis = () => { if (!document.hidden) isNavigating = false }
     document.addEventListener('visibilitychange', onVis)
@@ -529,545 +538,139 @@ export function AbuGames() {
     }
   }, [])
 
-  const heroGame = gameById('klondike')
-  const heroPressed = pressed === 'klondike'
+  // Suppress unused warning
+  void loaded
 
   return (
-    <div style={{
-      height: '100%',
-      width: '100%',
-      overflowY: 'auto',
-      overflowX: 'hidden',
-      background: 'linear-gradient(160deg, #07091A 0%, #0D0B22 40%, #080B1E 100%)',
-      fontFamily: "'Heebo','DM Sans',sans-serif",
-      userSelect: 'none',
-      WebkitUserSelect: 'none',
-      position: 'relative',
-    }}
-    className="abu-games-main-scroll"
+    <div
+      className="abu-games-scroll"
+      style={{
+        height: '100%', width: '100%',
+        overflowY: 'auto', overflowX: 'hidden',
+        background: 'linear-gradient(160deg, #07091A 0%, #0E0B24 45%, #080B1E 100%)',
+        fontFamily: "'Heebo','DM Sans',sans-serif",
+        userSelect: 'none', WebkitUserSelect: 'none',
+        position: 'relative',
+      }}
     >
 
-      {/* ── Ambient glow blobs ── */}
+      {/* ── Ambient blobs ── */}
       <div aria-hidden="true" style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
         background: [
-          'radial-gradient(ellipse 55% 35% at 8% 8%, rgba(201,168,76,0.16) 0%, transparent 60%)',
-          'radial-gradient(ellipse 50% 40% at 90% 88%, rgba(20,184,166,0.14) 0%, transparent 60%)',
-          'radial-gradient(ellipse 40% 30% at 50% 50%, rgba(124,58,237,0.04) 0%, transparent 70%)',
+          'radial-gradient(ellipse 60% 35% at 15% 5%, rgba(201,168,76,0.18) 0%, transparent 60%)',
+          'radial-gradient(ellipse 50% 40% at 88% 88%, rgba(239,68,68,0.12) 0%, transparent 60%)',
+          'radial-gradient(ellipse 45% 30% at 50% 50%, rgba(139,92,246,0.06) 0%, transparent 65%)',
         ].join(', '),
       }}/>
 
-      {/* ── Floating card suits ── */}
-      {FLOAT_SUITS.map((s, i) => (
-        <div
-          key={i}
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            top: s.top,
-            left: s.left,
-            fontSize: s.size,
-            color: 'white',
-            opacity: s.opacity,
-            pointerEvents: 'none',
-            zIndex: 0,
-            animation: `suitFloat ${s.dur} ease-in-out ${s.delay} infinite`,
-            ['--rot' as string]: s.rot,
-            lineHeight: 1,
-          } as React.CSSProperties}
-        >
-          {s.symbol}
-        </div>
+      {/* ── Floating background tiles ── */}
+      {[
+        { ch: '中', top: '5%',  left: '6%',  size: 52, op: 0.05, delay: '0s',   dur: '6.5s', rot: '-12deg' },
+        { ch: '♠', top: '10%', left: '82%', size: 64, op: 0.04, delay: '1.2s', dur: '7.8s', rot: '8deg' },
+        { ch: '發', top: '35%', left: '90%', size: 48, op: 0.05, delay: '0.6s', dur: '5.8s', rot: '18deg' },
+        { ch: '♥', top: '55%', left: '3%',  size: 72, op: 0.04, delay: '2s',   dur: '8.2s', rot: '-6deg' },
+        { ch: '🀄', top: '72%', left: '84%', size: 56, op: 0.04, delay: '0.4s', dur: '6.2s', rot: '10deg' },
+        { ch: '♦', top: '88%', left: '50%', size: 60, op: 0.04, delay: '1.8s', dur: '7s',   rot: '-15deg' },
+      ].map((f, i) => (
+        <div key={i} aria-hidden="true" style={{
+          position: 'absolute', top: f.top, left: f.left,
+          fontSize: f.size, color: 'white', opacity: f.op,
+          pointerEvents: 'none', zIndex: 0, lineHeight: 1,
+          animation: `floatTile ${f.dur} ease-in-out ${f.delay} infinite`,
+          ['--tr' as string]: f.rot,
+        } as React.CSSProperties}>{f.ch}</div>
       ))}
 
-      {/* ════════════════════════════════
-          FIXED HEADER (64px)
-      ════════════════════════════════ */}
+      {/* ════ STICKY HEADER ════ */}
       <header style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-        background: 'linear-gradient(180deg, rgba(7,9,26,0.98) 0%, rgba(8,11,30,0.96) 100%)',
-        borderBottom: '1px solid rgba(201,168,76,0.14)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        position: 'sticky', top: 0, zIndex: 10,
+        background: 'linear-gradient(180deg, rgba(7,9,26,0.98) 0%, rgba(8,11,30,0.95) 100%)',
+        borderBottom: '1px solid rgba(201,168,76,0.16)',
+        backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+        animation: 'headerSlide 0.4s ease both',
       }}>
         <div style={{
-          position: 'relative',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexDirection: 'column',
-          height: 64,
+          flexDirection: 'column', height: 68, position: 'relative',
         }}>
           {/* Wordmark */}
           <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, direction: 'ltr' }}>
             <span style={{
               fontFamily: "'Cormorant Garamond',Georgia,serif",
-              fontSize: 26, fontWeight: 600, letterSpacing: '2px',
-              background: 'linear-gradient(135deg, #5EEAD4 0%, #2DD4BF 22%, #0D9488 48%, #5EEAD4 72%, #14B8A6 92%)',
+              fontSize: 27, fontWeight: 600, letterSpacing: '2px',
+              background: 'linear-gradient(135deg,#5EEAD4 0%,#2DD4BF 22%,#0D9488 48%,#5EEAD4 72%,#14B8A6 92%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
               filter: 'drop-shadow(0 0 8px rgba(94,234,212,0.30))',
             } as React.CSSProperties}>Abu</span>
             <span style={{
               fontFamily: "'DM Sans',sans-serif",
-              fontSize: 24, fontWeight: 500, letterSpacing: '1.5px',
-              background: 'linear-gradient(135deg, #FDE68A 0%, #F59E0B 25%, #D97706 50%, #C9A84C 75%, #F59E0B 100%)',
+              fontSize: 25, fontWeight: 500, letterSpacing: '1.5px',
+              background: 'linear-gradient(135deg,#FDE68A 0%,#F59E0B 25%,#D97706 50%,#C9A84C 75%,#F59E0B 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
               filter: 'drop-shadow(0 0 8px rgba(201,168,76,0.28))',
             } as React.CSSProperties}>Games</span>
           </div>
-          {/* Subtitle */}
           <div style={{
-            fontSize: 13,
-            color: 'rgba(255,255,255,0.55)',
-            marginTop: 1,
-            direction: 'rtl',
-            fontFamily: "'Heebo',sans-serif",
-          }}>
-            בחרי משחק ותהני 🎮
-          </div>
+            fontSize: 13, color: 'rgba(255,255,255,0.50)',
+            marginTop: 1, fontFamily: "'Heebo',sans-serif",
+          }}>שחקי ותהני! 🎉</div>
 
-          {/* Back button — top right */}
-          <button
-            type="button"
-            onClick={() => setScreen(Screen.Home)}
-            aria-label="חזרה"
+          {/* Back */}
+          <button type="button" onClick={() => setScreen(Screen.Home)} aria-label="חזרה"
             style={{
               position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-              display: 'flex', alignItems: 'center', gap: 4,
-              padding: '6px 12px',
-              borderRadius: 20,
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px',
+              borderRadius: 20, background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.10)', cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent',
-            }}
-          >
+            }}>
             <ChevronLeft />
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontFamily: "'Heebo',sans-serif" }}>חזרה</span>
           </button>
         </div>
       </header>
 
-      {/* ════════════════════════════════
-          SCROLLABLE CONTENT
-      ════════════════════════════════ */}
+      {/* ════ SCROLLABLE CONTENT ════ */}
       <div style={{
-        position: 'relative',
-        zIndex: 2,
-        padding: '20px 16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 28,
-        paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+        position: 'relative', zIndex: 2,
+        padding: '28px 16px',
+        display: 'flex', flexDirection: 'column', gap: 44,
+        paddingBottom: 'calc(36px + env(safe-area-inset-bottom, 0px))',
       }}>
 
-        {/* ══════════════════════════════
-            FEATURED "TODAY" CARD
-        ══════════════════════════════ */}
+        {/* ── SOLITAIRE SECTION ── */}
+        <CategorySection
+          emoji="🃏" title="Solitaire" titleHe="סוליטר"
+          accent="#C9A84C"
+          games={SOLITAIRE_GAMES}
+          pressKey={pressed}
+          onPress={setPressed}
+          onRelease={() => setPressed(null)}
+          baseDelay={0.08}
+        />
+
+        {/* ── Divider ── */}
         <div style={{
-          opacity: loaded ? 1 : 0,
-          animation: loaded ? 'fadeUp 0.5s cubic-bezier(0.34,1.1,0.64,1) 0.05s both' : 'none',
+          display: 'flex', alignItems: 'center', gap: 12,
         }}>
-          <div
-            role="button"
-            aria-label={`פתח ${heroGame.label}`}
-            tabIndex={0}
-            onClick={() => handleTap(heroGame.url)}
-            onPointerDown={() => setPressed('klondike')}
-            onPointerUp={() => setPressed(null)}
-            onPointerLeave={() => setPressed(null)}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(heroGame.url) } }}
-            style={{
-              position: 'relative',
-              width: '100%',
-              height: 200,
-              borderRadius: 24,
-              overflow: 'hidden',
-              background: 'linear-gradient(135deg, #031a0d 0%, #0a3d1f 18%, #166534 44%, #22c55e 68%, #4ade80 84%, #86efac 100%)',
-              boxShadow: heroPressed
-                ? '0 6px 20px rgba(34,197,94,0.50), 0 2px 8px rgba(0,0,0,0.7)'
-                : '0 16px 48px rgba(34,197,94,0.40), 0 4px 16px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.20)',
-              transform: heroPressed ? 'scale(0.97)' : 'scale(1)',
-              transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
-              cursor: 'pointer',
-            }}
-          >
-            {/* Shine */}
-            <div aria-hidden="true" style={{
-              position: 'absolute', top: 0, left: 0, right: 0, height: '42%',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%)',
-              borderRadius: 'inherit', pointerEvents: 'none', zIndex: 2,
-            }}/>
-
-            {/* Layout: icon LEFT, text RIGHT */}
-            <div style={{
-              position: 'relative', zIndex: 3,
-              display: 'flex', alignItems: 'center',
-              height: '100%', padding: '0 24px', gap: 20,
-              direction: 'ltr',
-            }}>
-              {/* Icon 80×80 glass */}
-              <div style={{
-                flexShrink: 0,
-                width: 80, height: 80,
-                borderRadius: 16,
-                background: 'rgba(0,0,0,0.28)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: '1px solid rgba(255,255,255,0.18)',
-                backdropFilter: 'blur(4px)',
-                WebkitBackdropFilter: 'blur(4px)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.20)',
-              }}>
-                <GameIcon id="klondike" accent={heroGame.accent} size={60} />
-              </div>
-
-              {/* Text block */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
-                {/* "משחק היום" label */}
-                <div style={{
-                  fontSize: 12, fontWeight: 700, letterSpacing: '1.2px',
-                  color: '#C9A84C',
-                  fontFamily: "'DM Sans','Heebo',sans-serif",
-                  textTransform: 'uppercase',
-                  direction: 'rtl',
-                  textShadow: '0 0 10px rgba(201,168,76,0.50)',
-                }}>
-                  משחק היום
-                </div>
-                {/* Game name big */}
-                <div style={{
-                  fontSize: 28, fontWeight: 700, color: 'white',
-                  textShadow: '0 2px 10px rgba(0,0,0,0.50)',
-                  fontFamily: "'DM Sans','Heebo',sans-serif",
-                  letterSpacing: '-0.4px',
-                  lineHeight: 1.1,
-                }}>
-                  {heroGame.label}
-                </div>
-                {/* Tagline */}
-                <div style={{
-                  fontSize: 14, color: 'rgba(255,255,255,0.75)',
-                  fontFamily: "'Heebo',sans-serif",
-                  direction: 'rtl',
-                }}>
-                  הקלאסיקה הבלתי-נגמרת
-                </div>
-                {/* CTA */}
-                <div style={{
-                  fontSize: 16, fontWeight: 700,
-                  color: '#86efac',
-                  fontFamily: "'DM Sans',sans-serif",
-                  textShadow: '0 0 14px rgba(74,222,128,0.60)',
-                  direction: 'ltr',
-                }}>
-                  שחקי ←
-                </div>
-              </div>
-            </div>
-          </div>
+          <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, transparent, rgba(239,68,68,0.35))' }}/>
+          <span style={{ fontSize: 20, opacity: 0.5 }}>🀄</span>
+          <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(239,68,68,0.35), transparent)' }}/>
         </div>
 
-        {/* ══════════════════════════════
-            HORIZONTAL SCROLL ROW 1
-            "חדשים ואהובים"
-        ══════════════════════════════ */}
-        <div style={{
-          opacity: loaded ? 1 : 0,
-          animation: loaded ? 'fadeUp 0.5s ease 0.12s both' : 'none',
-        }}>
-          <SectionHeader title="חדשים ואהובים" />
-          <div className="abu-games-scroll-row" style={{ paddingRight: 2, paddingLeft: 2 }}>
-            {NEW_ROW_IDS.map((id, idx) => {
-              const game = gameById(id)
-              const isP = pressed === `new-${id}`
-              const rgb = hexToRgb(game.accent)
-              return (
-                <div
-                  key={id}
-                  role="button"
-                  aria-label={`פתח ${game.label}`}
-                  tabIndex={0}
-                  onClick={() => handleTap(game.url)}
-                  onPointerDown={() => setPressed(`new-${id}`)}
-                  onPointerUp={() => setPressed(null)}
-                  onPointerLeave={() => setPressed(null)}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(game.url) } }}
-                  style={{
-                    flexShrink: 0,
-                    width: 120,
-                    height: 160,
-                    borderRadius: 18,
-                    scrollSnapAlign: 'start',
-                    background: game.gradient,
-                    boxShadow: isP
-                      ? `0 4px 14px rgba(${rgb},0.55), inset 0 1px 0 rgba(255,255,255,0.15)`
-                      : `0 8px 24px rgba(0,0,0,0.55), 0 0 12px rgba(${rgb},0.18), inset 0 1px 0 rgba(255,255,255,0.14)`,
-                    transform: isP ? 'scale(0.94)' : 'scale(1)',
-                    transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    animation: loaded ? `fadeUp 0.4s ease ${0.10 + idx * 0.05}s both` : 'none',
-                  }}
-                >
-                  {/* Shine */}
-                  <div aria-hidden="true" style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, height: '42%',
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%)',
-                    borderRadius: 'inherit', pointerEvents: 'none', zIndex: 1,
-                  }}/>
-                  {/* Icon */}
-                  <div style={{ position: 'relative', zIndex: 2 }}>
-                    <GameIcon id={id} accent={game.accent} size={54} />
-                  </div>
-                  {/* Name */}
-                  <div style={{
-                    position: 'relative', zIndex: 2,
-                    fontSize: 14, fontWeight: 700,
-                    color: 'white', textAlign: 'center',
-                    fontFamily: "'DM Sans','Heebo',sans-serif",
-                    textShadow: '0 1px 5px rgba(0,0,0,0.55)',
-                    letterSpacing: '-0.2px',
-                    direction: 'ltr',
-                    paddingInline: 6,
-                  }}>
-                    {game.label}
-                  </div>
-                  {/* שחקי pill */}
-                  <div style={{
-                    position: 'relative', zIndex: 2,
-                    padding: '3px 12px', borderRadius: 20,
-                    background: 'rgba(0,0,0,0.30)',
-                    border: '1px solid rgba(255,255,255,0.20)',
-                    fontSize: 12, color: 'rgba(255,255,255,0.85)',
-                    fontFamily: "'Heebo',sans-serif",
-                  }}>
-                    שחקי
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        {/* ── MAHJONG SECTION ── */}
+        <CategorySection
+          emoji="🀄" title="Mahjong" titleHe="מהג'ונג"
+          accent="#ef4444"
+          games={MAHJONG_GAMES}
+          pressKey={pressed}
+          onPress={setPressed}
+          onRelease={() => setPressed(null)}
+          baseDelay={0.50}
+        />
 
-        {/* ══════════════════════════════
-            HORIZONTAL SCROLL ROW 2
-            "קלאסיקות"
-        ══════════════════════════════ */}
-        <div style={{
-          opacity: loaded ? 1 : 0,
-          animation: loaded ? 'fadeUp 0.5s ease 0.20s both' : 'none',
-        }}>
-          <SectionHeader title="קלאסיקות" />
-          <div className="abu-games-scroll-row" style={{ paddingRight: 2, paddingLeft: 2 }}>
-            {CLASSIC_ROW_IDS.map((id, idx) => {
-              const game = gameById(id)
-              const isP = pressed === `classic-${id}`
-              const rgb = hexToRgb(game.accent)
-              return (
-                <div
-                  key={id}
-                  role="button"
-                  aria-label={`פתח ${game.label}`}
-                  tabIndex={0}
-                  onClick={() => handleTap(game.url)}
-                  onPointerDown={() => setPressed(`classic-${id}`)}
-                  onPointerUp={() => setPressed(null)}
-                  onPointerLeave={() => setPressed(null)}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(game.url) } }}
-                  style={{
-                    flexShrink: 0,
-                    width: 120,
-                    height: 160,
-                    borderRadius: 18,
-                    scrollSnapAlign: 'start',
-                    background: game.gradient,
-                    boxShadow: isP
-                      ? `0 4px 14px rgba(${rgb},0.55), inset 0 1px 0 rgba(255,255,255,0.15)`
-                      : `0 8px 24px rgba(0,0,0,0.55), 0 0 12px rgba(${rgb},0.18), inset 0 1px 0 rgba(255,255,255,0.14)`,
-                    transform: isP ? 'scale(0.94)' : 'scale(1)',
-                    transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    animation: loaded ? `fadeUp 0.4s ease ${0.18 + idx * 0.05}s both` : 'none',
-                  }}
-                >
-                  {/* Shine */}
-                  <div aria-hidden="true" style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, height: '42%',
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%)',
-                    borderRadius: 'inherit', pointerEvents: 'none', zIndex: 1,
-                  }}/>
-                  {/* Icon */}
-                  <div style={{ position: 'relative', zIndex: 2 }}>
-                    <GameIcon id={id} accent={game.accent} size={54} />
-                  </div>
-                  {/* Name */}
-                  <div style={{
-                    position: 'relative', zIndex: 2,
-                    fontSize: 14, fontWeight: 700,
-                    color: 'white', textAlign: 'center',
-                    fontFamily: "'DM Sans','Heebo',sans-serif",
-                    textShadow: '0 1px 5px rgba(0,0,0,0.55)',
-                    letterSpacing: '-0.2px',
-                    direction: 'ltr',
-                    paddingInline: 6,
-                  }}>
-                    {game.label}
-                  </div>
-                  {/* שחקי pill */}
-                  <div style={{
-                    position: 'relative', zIndex: 2,
-                    padding: '3px 12px', borderRadius: 20,
-                    background: 'rgba(0,0,0,0.30)',
-                    border: '1px solid rgba(255,255,255,0.20)',
-                    fontSize: 12, color: 'rgba(255,255,255,0.85)',
-                    fontFamily: "'Heebo',sans-serif",
-                  }}>
-                    שחקי
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* ══════════════════════════════
-            TOP CHARTS — "הטובות ביותר"
-        ══════════════════════════════ */}
-        <div style={{
-          opacity: loaded ? 1 : 0,
-          animation: loaded ? 'fadeUp 0.5s ease 0.28s both' : 'none',
-        }}>
-          <SectionHeader title="הטובות ביותר" />
-
-          <div style={{
-            borderRadius: 20,
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            overflow: 'hidden',
-          }}>
-            {GAMES.map((game, idx) => {
-              const isP = pressed === `chart-${game.id}`
-              const isLast = idx === GAMES.length - 1
-              return (
-                <div
-                  key={game.id}
-                  role="button"
-                  aria-label={`פתח ${game.label}`}
-                  tabIndex={0}
-                  onClick={() => handleTap(game.url)}
-                  onPointerDown={() => setPressed(`chart-${game.id}`)}
-                  onPointerUp={() => setPressed(null)}
-                  onPointerLeave={() => setPressed(null)}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(game.url) } }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    padding: '12px 16px',
-                    cursor: 'pointer',
-                    background: isP ? 'rgba(255,255,255,0.06)' : 'transparent',
-                    transition: 'background 0.12s ease',
-                    borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.06)',
-                    animation: loaded ? `fadeUp 0.4s ease ${0.28 + idx * 0.035}s both` : 'none',
-                    direction: 'ltr',
-                  }}
-                >
-                  {/* Rank number */}
-                  <div style={{
-                    fontSize: 28,
-                    fontWeight: 800,
-                    color: 'rgba(201,168,76,0.60)',
-                    minWidth: 36,
-                    textAlign: 'center',
-                    fontFamily: "'DM Sans',sans-serif",
-                    lineHeight: 1,
-                    flexShrink: 0,
-                  }}>
-                    {idx + 1}
-                  </div>
-
-                  {/* Game icon 54×54 */}
-                  <div style={{
-                    flexShrink: 0,
-                    width: 54, height: 54,
-                    borderRadius: 12,
-                    background: game.gradient,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    overflow: 'hidden',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.40)',
-                  }}>
-                    <GameIcon id={game.id} accent={game.accent} size={40} />
-                  </div>
-
-                  {/* Name + category */}
-                  <div style={{ flex: 1, minWidth: 0, direction: 'rtl' }}>
-                    <div style={{
-                      fontSize: 17,
-                      fontWeight: 600,
-                      color: 'white',
-                      fontFamily: "'DM Sans','Heebo',sans-serif",
-                      letterSpacing: '-0.2px',
-                      direction: 'ltr',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}>
-                      {game.label}
-                    </div>
-                    <div style={{
-                      fontSize: 13,
-                      color: 'rgba(255,255,255,0.45)',
-                      fontFamily: "'Heebo',sans-serif",
-                      marginTop: 2,
-                      direction: 'rtl',
-                    }}>
-                      {game.category}
-                    </div>
-                  </div>
-
-                  {/* שחקי button */}
-                  <button
-                    type="button"
-                    onClick={e => { e.stopPropagation(); handleTap(game.url) }}
-                    style={{
-                      flexShrink: 0,
-                      padding: '6px 16px',
-                      borderRadius: 20,
-                      background: 'transparent',
-                      border: '1px solid rgba(74,222,128,0.55)',
-                      color: '#4ade80',
-                      fontSize: 14,
-                      fontWeight: 600,
-                      fontFamily: "'Heebo',sans-serif",
-                      cursor: 'pointer',
-                      WebkitTapHighlightColor: 'transparent',
-                    }}
-                  >
-                    שחקי
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-      </div>{/* end content */}
+      </div>
     </div>
   )
 }
-
-/* silence unused-variable warnings for GAME_ORBS (kept for future use) */
-void GAME_ORBS
