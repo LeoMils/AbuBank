@@ -233,7 +233,7 @@ export function AbuAI() {
         }
       }
 
-      recorder.start()
+      recorder.start(100) // timeslice required on iOS for ondataavailable to fire
       setRecordingTime(0)
       setRecording(true)
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
@@ -353,7 +353,7 @@ export function AbuAI() {
         }
       }
 
-      recorder.start()
+      recorder.start(100) // timeslice required on iOS for ondataavailable to fire
 
       const detector = createSilenceDetector(stream, () => {
         if (recorderRef.current?.state === 'recording') recorderRef.current.stop()

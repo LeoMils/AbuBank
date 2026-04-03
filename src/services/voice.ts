@@ -360,6 +360,8 @@ export function createSilenceDetector(
 
   try {
     ctx = new AudioContext()
+    // iOS Safari starts AudioContext in 'suspended' state — must resume explicitly
+    ctx.resume().catch(() => {})
     const source = ctx.createMediaStreamSource(stream)
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 512
