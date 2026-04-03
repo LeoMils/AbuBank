@@ -152,6 +152,7 @@ export function AbuAI() {
   const voiceModeRef = useRef(false)
   const silenceRef = useRef<SilenceDetector | null>(null)
   const levelRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const recognitionRef = useRef<any>(null)
 
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
@@ -283,131 +284,183 @@ export function AbuAI() {
   // ─── Voice Conversation Mode ──────────────────────────────────────────────
 
   const cleanupVoiceResources = useCallback(() => {
+    // Stop Web Speech Recognition if active
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort() } catch {}
+      recognitionRef.current = null
+    }
     silenceRef.current?.stop()
     silenceRef.current = null
+    setListenCountdown(null)
     if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
   }, [])
 
-  const startVoiceListening = useCallback(async () => {
+  const startVoiceListening = useCallback(() => {
     if (!voiceModeRef.current) return
     setVoicePhase('listening')
     setAudioLevel(0)
+    setListenCountdown(null)
 
-    try {
-      // iOS Safari requires explicit audio constraints for microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true }
-      })
-      streamRef.current = stream
-      const mimeType = getSupportedMimeType()
-      // Empty mimeType = let the browser choose (iOS-safe fallback)
-      const recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream)
-      recorderRef.current = recorder
-      chunksRef.current = []
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
+    // ── Shared: transcribed text → AI response → speak → listen again ────────
+    const handleText = async (text: string) => {
+      if (!voiceModeRef.current) return
+      const lower = text.trim()
+      if (/^(ביי|להתראות|תודה|עצור|עצרי|סטופ|stop|bye)$/i.test(lower)) {
+        exitVoiceMode(); return
       }
-
-      recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop())
-        streamRef.current = null
-        if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
-        silenceRef.current?.stop()
-        silenceRef.current = null
-
+      const userMsg: ChatMessage = { id: nextId(), role: 'user', content: text, timestamp: Date.now() }
+      const currentMsgs = [...messagesRef.current, userMsg]
+      setMessages(currentMsgs)
+      try {
+        const response = await sendMessage(currentMsgs, true)
+        const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }
+        setMessages(prev => [...prev, aiMsg])
         if (!voiceModeRef.current) return
-
-        // Use the recorder's actual mimeType (iOS may differ from requested mimeType)
-        const actualType = recorder.mimeType || mimeType || 'audio/mp4'
-        const blob = new Blob(chunksRef.current, { type: actualType })
-        if (blob.size < 300) {
-          if (voiceModeRef.current) startVoiceListening()
-          return
-        }
-
-        setVoicePhase('processing')
-
-        try {
-          const text = await transcribeAudio(blob)
-
-          if (!text.trim()) {
-            if (voiceModeRef.current) startVoiceListening()
-            return
-          }
-
-          const lower = text.trim()
-          if (/^(ביי|להתראות|תודה|עצור|עצרי|סטופ|stop|bye)$/i.test(lower)) {
-            exitVoiceMode()
-            return
-          }
-
-          const userMsg: ChatMessage = { id: nextId(), role: 'user', content: text, timestamp: Date.now() }
-          const currentMsgs = [...messagesRef.current, userMsg]
-          setMessages(currentMsgs)
-
-          const response = await sendMessage(currentMsgs, true)
-          const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }
-          setMessages(prev => [...prev, aiMsg])
-
-          if (!voiceModeRef.current) return
-
-          setVoicePhase('speaking')
-          setIsSpeaking(true)
-          await speak(response)
+        setVoicePhase('speaking')
+        setIsSpeaking(true)
+        await speak(response)
+        setIsSpeaking(false)
+        if (!voiceModeRef.current) return
+        await new Promise(r => setTimeout(r, 500))
+        if (voiceModeRef.current) startVoiceListening()
+      } catch (err) {
+        setIsSpeaking(false)
+        const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
+        if (voiceModeRef.current) {
+          setVoicePhase('speaking'); setIsSpeaking(true)
+          await speak(errText)
           setIsSpeaking(false)
-
-          if (!voiceModeRef.current) return
-
-          await new Promise(r => setTimeout(r, 500))
+          await new Promise(r => setTimeout(r, 600))
           if (voiceModeRef.current) startVoiceListening()
-        } catch (err) {
-          setIsSpeaking(false)
-          const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
-          const errMsg: ChatMessage = { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }
-          setMessages(prev => [...prev, errMsg])
-
-          if (voiceModeRef.current) {
-            setVoicePhase('speaking')
-            setIsSpeaking(true)
-            await speak(errText)
-            setIsSpeaking(false)
-            await new Promise(r => setTimeout(r, 600))
-            if (voiceModeRef.current) startVoiceListening()
-          }
         }
       }
-
-      recorder.start(100) // timeslice required on iOS for ondataavailable to fire
-
-      // ── 10-second countdown auto-stop ─────────────────────────────────────
-      // Simple, reliable, works on all platforms. Martita can see the countdown
-      // and knows exactly how long she has. No AudioContext / chunk-size needed.
-      const LISTEN_SEC = 10
-      setListenCountdown(LISTEN_SEC)
-      let cdSec = LISTEN_SEC
-      const cdInterval = setInterval(() => {
-        cdSec--
-        if (cdSec > 0) {
-          setListenCountdown(cdSec)
-        } else {
-          clearInterval(cdInterval)
-          setListenCountdown(null)
-          if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-        }
-      }, 1000)
-      silenceRef.current = {
-        stop: () => { clearInterval(cdInterval); setListenCountdown(null) },
-        getLevel: () => 0,
-      }
-    } catch (err) {
-      console.error('[AbuAI] getUserMedia error:', err)
-      exitVoiceMode()
     }
+
+    // ── Primary: Web Speech Recognition (iOS Safari → Apple Hebrew model) ─────
+    // webkitSpeechRecognition with lang='he-IL' outputs actual Hebrew characters.
+    // This is the definitive fix for "Hebrew spoken → English letters" on iOS.
+    const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (WSR) {
+      const rec = new WSR() as any
+      rec.lang = 'he-IL'          // Apple's on-device Siri model → real Hebrew script
+      rec.continuous = false
+      rec.interimResults = false
+      rec.maxAlternatives = 1
+
+      let gotResult = false
+
+      rec.onresult = (e: any) => {
+        gotResult = true
+        recognitionRef.current = null
+        const transcript = (e.results[0]?.[0]?.transcript ?? '').trim()
+        if (transcript) {
+          setVoicePhase('processing')
+          handleText(transcript)
+        } else {
+          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 200)
+        }
+      }
+
+      rec.onerror = (e: any) => {
+        recognitionRef.current = null
+        if (e.error === 'not-allowed') {
+          exitVoiceMode()
+        } else {
+          // 'no-speech', 'audio-capture', 'network', etc. → just restart
+          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 300)
+        }
+      }
+
+      rec.onend = () => {
+        recognitionRef.current = null
+        if (!gotResult && voiceModeRef.current) setTimeout(() => startVoiceListening(), 150)
+      }
+
+      try {
+        rec.start()
+        recognitionRef.current = rec
+        return  // ← Web Speech started — skip MediaRecorder fallback
+      } catch {
+        recognitionRef.current = null
+        // fall through to MediaRecorder
+      }
+    }
+
+    // ── Fallback: MediaRecorder + Whisper (non-WebKit / desktop Chrome) ───────
+    ;(async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true }
+        })
+        streamRef.current = stream
+        const mimeType = getSupportedMimeType()
+        const recorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream)
+        recorderRef.current = recorder
+        chunksRef.current = []
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunksRef.current.push(e.data)
+        }
+
+        recorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop())
+          streamRef.current = null
+          if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
+          silenceRef.current?.stop()
+          silenceRef.current = null
+          if (!voiceModeRef.current) return
+
+          const actualType = recorder.mimeType || mimeType || 'audio/mp4'
+          const blob = new Blob(chunksRef.current, { type: actualType })
+          if (blob.size < 300) {
+            if (voiceModeRef.current) startVoiceListening()
+            return
+          }
+          setVoicePhase('processing')
+          try {
+            const text = await transcribeAudio(blob)
+            if (!text.trim()) {
+              if (voiceModeRef.current) startVoiceListening()
+              return
+            }
+            handleText(text.trim())
+          } catch (err) {
+            const errText = err instanceof Error ? err.message : 'שגיאה בתמלול.'
+            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
+            if (voiceModeRef.current) startVoiceListening()
+          }
+        }
+
+        recorder.start(100) // timeslice required on iOS
+
+        // 10-second countdown — visible to Martita
+        const LISTEN_SEC = 10
+        setListenCountdown(LISTEN_SEC)
+        let cdSec = LISTEN_SEC
+        const cdInterval = setInterval(() => {
+          cdSec--
+          if (cdSec > 0) {
+            setListenCountdown(cdSec)
+          } else {
+            clearInterval(cdInterval)
+            setListenCountdown(null)
+            if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+          }
+        }, 1000)
+        silenceRef.current = {
+          stop: () => { clearInterval(cdInterval); setListenCountdown(null) },
+          getLevel: () => 0,
+        }
+      } catch (err) {
+        console.error('[AbuAI] getUserMedia error:', err)
+        exitVoiceMode()
+      }
+    })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const enterVoiceMode = useCallback(() => {

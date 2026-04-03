@@ -91,6 +91,7 @@ export function AbuWhatsApp() {
   const activeStyleRef = useRef<Style>('רגיל')
   const resultRef = useRef('')
   const hasResultRef = useRef(false)
+  const recognitionRef = useRef<any>(null)
 
   // Keep refs in sync
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
@@ -240,8 +241,13 @@ export function AbuWhatsApp() {
   // ─── Voice Conversation Mode ───
 
   const cleanupVoiceResources = useCallback(() => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort() } catch {}
+      recognitionRef.current = null
+    }
     silenceRef.current?.stop()
     silenceRef.current = null
+    setListenCountdown(null)
     if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
@@ -261,176 +267,195 @@ export function AbuWhatsApp() {
     }
   }, [])
 
-  const startVoiceListening = useCallback(async () => {
+  const startVoiceListening = useCallback(() => {
     if (!voiceModeRef.current) return
     setVoicePhase('listening')
     setAudioLevel(0)
+    setListenCountdown(null)
 
-    try {
-      // iOS Safari requires explicit audio constraints for microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true }
-      })
-      streamRef.current = stream
-      const mimeType = getSupportedMimeType()
-      // Empty mimeType = let the browser choose (iOS-safe fallback)
-      const recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream)
-      recorderRef.current = recorder
-      chunksRef.current = []
+    // ── Shared: process transcribed text → command logic → speak → listen ────
+    const handleText = async (text: string) => {
+      if (!voiceModeRef.current) return
+      const cmd = detectVoiceCommand(text)
 
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
+      if (cmd.type === 'exit') { exitVoiceMode(); return }
+
+      if (cmd.type === 'send' && hasResultRef.current) {
+        setVoicePhase('speaking')
+        await speak('שולחת למשפחה')
+        handleSendToFamily()
+        if (voiceModeRef.current) {
+          await new Promise(r => setTimeout(r, 1000))
+          if (voiceModeRef.current) {
+            await speak('ההודעה נשלחה. רוצה לכתוב עוד הודעה?')
+            hasResultRef.current = false
+            setResult('')
+            setPhase('idle')
+            await new Promise(r => setTimeout(r, 400))
+            if (voiceModeRef.current) startVoiceListening()
+          }
+        }
+        return
       }
 
-      recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop())
-        streamRef.current = null
-        if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
-        silenceRef.current?.stop()
-        silenceRef.current = null
+      if (cmd.type === 'retry' && lastIntentRef.current) {
+        setVoicePhase('processing')
+        const msg = await voiceGenerate(lastIntentRef.current, activeStyleRef.current)
+        if (msg && voiceModeRef.current) {
+          setVoicePhase('speaking'); await speak(msg)
+          if (voiceModeRef.current) { await new Promise(r => setTimeout(r, 500)); if (voiceModeRef.current) startVoiceListening() }
+        } else if (voiceModeRef.current) { startVoiceListening() }
+        return
+      }
 
-        if (!voiceModeRef.current) return
+      if (cmd.type === 'style') {
+        setActiveStyle(cmd.style); activeStyleRef.current = cmd.style
+        const intent = lastIntentRef.current || 'הודעה למשפחה'
+        setVoicePhase('processing')
+        const msg = await voiceGenerate(intent, cmd.style)
+        if (msg && voiceModeRef.current) {
+          setVoicePhase('speaking'); await speak(msg)
+          if (voiceModeRef.current) { await new Promise(r => setTimeout(r, 500)); if (voiceModeRef.current) startVoiceListening() }
+        } else if (voiceModeRef.current) { startVoiceListening() }
+        return
+      }
 
-        // Use the recorder's actual mimeType (iOS may differ from requested mimeType)
-        const actualType = recorder.mimeType || mimeType || 'audio/mp4'
-        const blob = new Blob(chunksRef.current, { type: actualType })
-        if (blob.size < 300) {
-          if (voiceModeRef.current) startVoiceListening()
-          return
+      // New intent
+      const intent = cmd.type === 'newIntent' ? cmd.intent : text
+      setVoicePhase('processing')
+      const msg = await voiceGenerate(intent, activeStyleRef.current)
+      if (msg && voiceModeRef.current) {
+        setVoicePhase('speaking'); await speak(msg)
+        if (voiceModeRef.current) { await new Promise(r => setTimeout(r, 500)); if (voiceModeRef.current) startVoiceListening() }
+      } else if (voiceModeRef.current) {
+        setVoicePhase('speaking')
+        if (error) await speak(error)
+        await new Promise(r => setTimeout(r, 600))
+        if (voiceModeRef.current) startVoiceListening()
+      }
+    }
+
+    // ── Primary: Web Speech Recognition (iOS Safari → Apple Hebrew model) ─────
+    const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (WSR) {
+      const rec = new WSR() as any
+      rec.lang = 'he-IL'          // Apple's on-device Siri model → real Hebrew script
+      rec.continuous = false
+      rec.interimResults = false
+      rec.maxAlternatives = 1
+
+      let gotResult = false
+
+      rec.onresult = (e: any) => {
+        gotResult = true
+        recognitionRef.current = null
+        const transcript = (e.results[0]?.[0]?.transcript ?? '').trim()
+        if (transcript) {
+          setVoicePhase('processing')
+          handleText(transcript)
+        } else {
+          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 200)
+        }
+      }
+
+      rec.onerror = (e: any) => {
+        recognitionRef.current = null
+        if (e.error === 'not-allowed') {
+          exitVoiceMode()
+        } else {
+          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 300)
+        }
+      }
+
+      rec.onend = () => {
+        recognitionRef.current = null
+        if (!gotResult && voiceModeRef.current) setTimeout(() => startVoiceListening(), 150)
+      }
+
+      try {
+        rec.start()
+        recognitionRef.current = rec
+        return  // ← Web Speech started — skip MediaRecorder fallback
+      } catch {
+        recognitionRef.current = null
+      }
+    }
+
+    // ── Fallback: MediaRecorder + Whisper (non-WebKit / desktop Chrome) ───────
+    ;(async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true }
+        })
+        streamRef.current = stream
+        const mimeType = getSupportedMimeType()
+        const recorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream)
+        recorderRef.current = recorder
+        chunksRef.current = []
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunksRef.current.push(e.data)
         }
 
-        setVoicePhase('processing')
+        recorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop())
+          streamRef.current = null
+          if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
+          silenceRef.current?.stop()
+          silenceRef.current = null
+          if (!voiceModeRef.current) return
 
-        try {
-          const text = await transcribeAudio(blob)
-          if (!text.trim()) {
+          const actualType = recorder.mimeType || mimeType || 'audio/mp4'
+          const blob = new Blob(chunksRef.current, { type: actualType })
+          if (blob.size < 300) {
             if (voiceModeRef.current) startVoiceListening()
             return
           }
-
-          // Detect voice command
-          const cmd = detectVoiceCommand(text)
-
-          if (cmd.type === 'exit') {
-            exitVoiceMode()
-            return
-          }
-
-          if (cmd.type === 'send' && hasResultRef.current) {
-            // Send the current message
-            setVoicePhase('speaking')
-            await speak('שולחת למשפחה')
-            handleSendToFamily()
-            if (voiceModeRef.current) {
-              // Ask if they want another message
-              await new Promise(r => setTimeout(r, 1000))
-              if (voiceModeRef.current) {
-                await speak('ההודעה נשלחה. רוצה לכתוב עוד הודעה?')
-                hasResultRef.current = false
-                setResult('')
-                setPhase('idle')
-                if (voiceModeRef.current) {
-                  await new Promise(r => setTimeout(r, 400))
-                  if (voiceModeRef.current) startVoiceListening()
-                }
-              }
-            }
-            return
-          }
-
-          if (cmd.type === 'retry' && lastIntentRef.current) {
-            setVoicePhase('processing')
-            const msg = await voiceGenerate(lastIntentRef.current, activeStyleRef.current)
-            if (msg && voiceModeRef.current) {
-              setVoicePhase('speaking')
-              await speak(msg)
-              if (voiceModeRef.current) {
-                await new Promise(r => setTimeout(r, 500))
-                if (voiceModeRef.current) startVoiceListening()
-              }
-            } else if (voiceModeRef.current) {
-              startVoiceListening()
-            }
-            return
-          }
-
-          if (cmd.type === 'style') {
-            setActiveStyle(cmd.style)
-            activeStyleRef.current = cmd.style
-            const intent = lastIntentRef.current || 'הודעה למשפחה'
-            setVoicePhase('processing')
-            const msg = await voiceGenerate(intent, cmd.style)
-            if (msg && voiceModeRef.current) {
-              setVoicePhase('speaking')
-              await speak(msg)
-              if (voiceModeRef.current) {
-                await new Promise(r => setTimeout(r, 500))
-                if (voiceModeRef.current) startVoiceListening()
-              }
-            } else if (voiceModeRef.current) {
-              startVoiceListening()
-            }
-            return
-          }
-
-          // New intent
-          const intent = cmd.type === 'newIntent' ? cmd.intent : text
           setVoicePhase('processing')
-          const msg = await voiceGenerate(intent, activeStyleRef.current)
-          if (msg && voiceModeRef.current) {
-            setVoicePhase('speaking')
-            await speak(msg)
-            if (voiceModeRef.current) {
-              await new Promise(r => setTimeout(r, 500))
+          try {
+            const text = await transcribeAudio(blob)
+            if (!text.trim()) {
               if (voiceModeRef.current) startVoiceListening()
+              return
             }
-          } else if (voiceModeRef.current) {
-            if (error) {
-              setVoicePhase('speaking')
-              await speak(error)
-            }
+            handleText(text.trim())
+          } catch (err) {
+            const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
+            setError(errText)
             if (voiceModeRef.current) {
+              setVoicePhase('speaking')
+              await speak(errText)
               await new Promise(r => setTimeout(r, 600))
               if (voiceModeRef.current) startVoiceListening()
             }
           }
-        } catch (err) {
-          const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
-          setError(errText)
-          if (voiceModeRef.current) {
-            setVoicePhase('speaking')
-            await speak(errText)
-            await new Promise(r => setTimeout(r, 600))
-            if (voiceModeRef.current) startVoiceListening()
+        }
+
+        recorder.start(100)
+
+        let cdSec = 10
+        setListenCountdown(cdSec)
+        const cdInterval = setInterval(() => {
+          cdSec--
+          if (cdSec > 0) {
+            setListenCountdown(cdSec)
+          } else {
+            clearInterval(cdInterval)
+            setListenCountdown(null)
+            if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
           }
+        }, 1000)
+        silenceRef.current = {
+          stop: () => { clearInterval(cdInterval); setListenCountdown(null) },
+          getLevel: () => 0,
         }
+      } catch (err) {
+        console.error('[AbuWhatsApp] getUserMedia error:', err)
+        exitVoiceMode()
       }
-
-      recorder.start(100) // timeslice required on iOS for ondataavailable to fire
-
-      // ── 10-second countdown auto-stop ─────────────────────────────────────
-      let cdSec = 10
-      setListenCountdown(cdSec)
-      const cdInterval = setInterval(() => {
-        cdSec--
-        if (cdSec > 0) {
-          setListenCountdown(cdSec)
-        } else {
-          clearInterval(cdInterval)
-          setListenCountdown(null)
-          if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-        }
-      }, 1000)
-      silenceRef.current = {
-        stop: () => { clearInterval(cdInterval); setListenCountdown(null) },
-        getLevel: () => 0,
-      }
-    } catch (err) {
-      console.error('[AbuWhatsApp] getUserMedia error:', err)
-      exitVoiceMode()
-    }
+    })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const enterVoiceMode = useCallback(() => {
