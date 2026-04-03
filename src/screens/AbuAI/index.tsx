@@ -138,6 +138,7 @@ export function AbuAI() {
   const [voiceMode, setVoiceMode] = useState(false)
   const [voicePhase, setVoicePhase] = useState<'greeting' | 'listening' | 'processing' | 'speaking' | null>(null)
   const [audioLevel, setAudioLevel] = useState(0)
+  const [listenCountdown, setListenCountdown] = useState<number | null>(null)
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
 
@@ -308,25 +309,8 @@ export function AbuAI() {
       recorderRef.current = recorder
       chunksRef.current = []
 
-      // ── Chunk-size silence detection ─────────────────────────────────────────
-      // Replaces AudioContext analyser — works on iOS/Android with no extra permissions.
-      // iOS audio/mp4 AAC: silence ~100-500 bytes/100ms, speech ~2000-8000 bytes/100ms
-      let _cnt = 0, _speech = false, _silStart = 0
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data)
-        _cnt++
-        const sz = e.data.size
-        // Drive the visual level indicator directly from compressed audio chunk size
-        if (voiceModeRef.current) setAudioLevel(Math.min(100, sz / 50))
-        if (_cnt < 10) return  // skip first ~1s (mic warmup)
-        if (sz > 1200) { _speech = true; _silStart = 0 }           // speech
-        else if (_speech && sz < 600) {                              // silence after speech
-          if (!_silStart) _silStart = Date.now()
-          else if (Date.now() - _silStart > 2000) {                 // 2s silence → stop
-            if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-          }
-        } else if (sz >= 600) { _silStart = 0 }                    // not silence, reset streak
-        if (_cnt >= 180 && recorderRef.current?.state === 'recording') recorderRef.current.stop() // 18s max
       }
 
       recorder.onstop = async () => {
@@ -400,11 +384,26 @@ export function AbuAI() {
 
       recorder.start(100) // timeslice required on iOS for ondataavailable to fire
 
-      // Absolute fallback: stop after 22s if chunk detection misses
-      const _safetyTimer = setTimeout(() => {
-        if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-      }, 22000)
-      silenceRef.current = { stop: () => clearTimeout(_safetyTimer), getLevel: () => 0 }
+      // ── 10-second countdown auto-stop ─────────────────────────────────────
+      // Simple, reliable, works on all platforms. Martita can see the countdown
+      // and knows exactly how long she has. No AudioContext / chunk-size needed.
+      const LISTEN_SEC = 10
+      setListenCountdown(LISTEN_SEC)
+      let cdSec = LISTEN_SEC
+      const cdInterval = setInterval(() => {
+        cdSec--
+        if (cdSec > 0) {
+          setListenCountdown(cdSec)
+        } else {
+          clearInterval(cdInterval)
+          setListenCountdown(null)
+          if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+        }
+      }, 1000)
+      silenceRef.current = {
+        stop: () => { clearInterval(cdInterval); setListenCountdown(null) },
+        getLevel: () => 0,
+      }
     } catch (err) {
       console.error('[AbuAI] getUserMedia error:', err)
       exitVoiceMode()
@@ -1174,7 +1173,7 @@ export function AbuAI() {
               }}
             >
               {voicePhase === 'listening'
-                ? 'מקשיבה...'
+                ? (listenCountdown !== null ? `מקשיבה... ${listenCountdown}` : 'מקשיבה...')
                 : voicePhase === 'processing'
                   ? 'חושבת...'
                   : voicePhase === 'speaking'

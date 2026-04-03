@@ -237,6 +237,9 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     : 'webm' // fallback — Whisper still tries webm
   formData.append('file', audioBlob, `recording.${ext}`)
   formData.append('model', WHISPER_MODEL)
+  // Multilingual prompt: primes Whisper to expect Hebrew or Spanish (Rioplatense).
+  // Without this, Whisper sometimes transcribes Hebrew/Spanish speech in English letters.
+  formData.append('prompt', 'שלום מרטיטה, בוקר טוב, מה שלומך, תודה. Hola Martita, buenos días, gracias, cómo estás.')
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30000)

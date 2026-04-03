@@ -74,6 +74,7 @@ export function AbuWhatsApp() {
   const [voiceMode, setVoiceMode] = useState(false)
   const [voicePhase, setVoicePhase] = useState<'listening' | 'processing' | 'speaking' | null>(null)
   const [audioLevel, setAudioLevel] = useState(0)
+  const [listenCountdown, setListenCountdown] = useState<number | null>(null)
   const [copyToast, setCopyToast] = useState(false)
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
@@ -279,22 +280,8 @@ export function AbuWhatsApp() {
       recorderRef.current = recorder
       chunksRef.current = []
 
-      // ── Chunk-size silence detection ─────────────────────────────────────────
-      let _cnt = 0, _speech = false, _silStart = 0
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data)
-        _cnt++
-        const sz = e.data.size
-        if (voiceModeRef.current) setAudioLevel(Math.min(100, sz / 50))
-        if (_cnt < 10) return
-        if (sz > 1200) { _speech = true; _silStart = 0 }
-        else if (_speech && sz < 600) {
-          if (!_silStart) _silStart = Date.now()
-          else if (Date.now() - _silStart > 2000) {
-            if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-          }
-        } else if (sz >= 600) { _silStart = 0 }
-        if (_cnt >= 180 && recorderRef.current?.state === 'recording') recorderRef.current.stop()
       }
 
       recorder.onstop = async () => {
@@ -423,11 +410,23 @@ export function AbuWhatsApp() {
 
       recorder.start(100) // timeslice required on iOS for ondataavailable to fire
 
-      // Absolute fallback: stop after 22s
-      const _safetyTimer = setTimeout(() => {
-        if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-      }, 22000)
-      silenceRef.current = { stop: () => clearTimeout(_safetyTimer), getLevel: () => 0 }
+      // ── 10-second countdown auto-stop ─────────────────────────────────────
+      let cdSec = 10
+      setListenCountdown(cdSec)
+      const cdInterval = setInterval(() => {
+        cdSec--
+        if (cdSec > 0) {
+          setListenCountdown(cdSec)
+        } else {
+          clearInterval(cdInterval)
+          setListenCountdown(null)
+          if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+        }
+      }, 1000)
+      silenceRef.current = {
+        stop: () => { clearInterval(cdInterval); setListenCountdown(null) },
+        getLevel: () => 0,
+      }
     } catch (err) {
       console.error('[AbuWhatsApp] getUserMedia error:', err)
       exitVoiceMode()
@@ -1117,7 +1116,8 @@ export function AbuWhatsApp() {
             color: 'rgba(37,211,102,0.85)',
             textShadow: '0 0 16px rgba(37,211,102,0.15)',
           }}>
-            {voicePhase === 'listening' ? 'מקשיבה...'
+            {voicePhase === 'listening'
+              ? (listenCountdown !== null ? `מקשיבה... ${listenCountdown}` : 'מקשיבה...')
               : voicePhase === 'processing' ? 'מכינה הודעה...'
               : voicePhase === 'speaking' ? 'מקריאה...'
               : 'מתחברת...'}
