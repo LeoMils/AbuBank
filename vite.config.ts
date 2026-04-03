@@ -1,7 +1,6 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import basicSsl from '@vitejs/plugin-basic-ssl'
 import pkg from './package.json'
 
 /**
@@ -434,7 +433,6 @@ function ttsProxyPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [
-    basicSsl(),
     stitchProxyPlugin(),
     ttsProxyPlugin(),
     react(),
@@ -476,7 +474,6 @@ export default defineConfig({
   ],
   server: {
     host: true,   // listen on all interfaces (LAN access from iPhone)
-    https: {},    // enable HTTPS — required by iOS Safari for microphone/camera
     headers: {
       // Prevent iPhone Safari from serving stale JS/CSS during development
       'Cache-Control': 'no-store, no-cache, must-revalidate',
