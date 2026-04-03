@@ -360,8 +360,6 @@ export function createSilenceDetector(
 
   try {
     ctx = new AudioContext()
-    // iOS Safari starts AudioContext in 'suspended' state — must resume explicitly
-    ctx.resume().catch(() => {})
     const source = ctx.createMediaStreamSource(stream)
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 512
@@ -386,7 +384,18 @@ export function createSilenceDetector(
       if (Date.now() - startTime > maxMs) { cleanup(); onSilence(); return }
       frame = requestAnimationFrame(tick)
     }
-    frame = requestAnimationFrame(tick)
+
+    // iOS Safari: AudioContext starts 'suspended' — wait for 'running' before analysing.
+    // On all other browsers ctx.state is already 'running' so the else branch fires immediately.
+    if (ctx.state === 'running') {
+      frame = requestAnimationFrame(tick)
+    } else {
+      ctx.resume().then(() => {
+        if (!stopped) frame = requestAnimationFrame(tick)
+      }).catch(() => {
+        if (!stopped) frame = requestAnimationFrame(tick) // try anyway
+      })
+    }
   } catch {
     const t = setTimeout(() => { if (!stopped) { cleanup(); onSilence() } }, maxMs)
     return { stop: () => { stopped = true; clearTimeout(t) }, getLevel: () => 0 }
