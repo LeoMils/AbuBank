@@ -357,7 +357,7 @@ export function AbuAI() {
 
       const detector = createSilenceDetector(stream, () => {
         if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-      }, { silenceMs: 600, threshold: 12 })
+      }, { silenceMs: 2000, threshold: 10, minActiveMs: 1500 })
       silenceRef.current = detector
 
       levelRef.current = setInterval(() => {
@@ -557,6 +557,14 @@ export function AbuAI() {
           </svg>
         </button>
         </div>{/* end inner content wrapper */}
+        {/* Version badge */}
+        <div style={{
+          position: 'absolute', bottom: 4, left: 10,
+          fontSize: 9, fontWeight: 700, letterSpacing: '1px',
+          color: 'rgba(201,168,76,0.55)',
+          fontFamily: "'DM Sans',monospace",
+          userSelect: 'none',
+        }}>v4</div>
       </header>
 
       {/* ─── CHAT AREA ─── */}

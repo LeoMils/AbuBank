@@ -411,7 +411,7 @@ export function AbuWhatsApp() {
 
       const detector = createSilenceDetector(stream, () => {
         if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-      })
+      }, { silenceMs: 2000, threshold: 10, minActiveMs: 1500 })
       silenceRef.current = detector
 
       levelRef.current = setInterval(() => {
@@ -555,6 +555,14 @@ export function AbuWhatsApp() {
             onError={handleMartitaImgError}
           />
         </div>
+        {/* Version badge */}
+        <div style={{
+          position: 'absolute', bottom: 4, left: 10,
+          fontSize: 9, fontWeight: 700, letterSpacing: '1px',
+          color: 'rgba(37,211,102,0.55)',
+          fontFamily: "'DM Sans',monospace",
+          userSelect: 'none',
+        }}>v4</div>
         </div>{/* end inner content wrapper */}
       </header>
 

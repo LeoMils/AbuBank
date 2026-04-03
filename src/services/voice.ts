@@ -344,11 +344,12 @@ export interface SilenceDetector {
 export function createSilenceDetector(
   stream: MediaStream,
   onSilence: () => void,
-  options?: { threshold?: number; silenceMs?: number; maxMs?: number },
+  options?: { threshold?: number; silenceMs?: number; maxMs?: number; minActiveMs?: number },
 ): SilenceDetector {
-  const threshold = options?.threshold ?? 15
-  const silenceMs = options?.silenceMs ?? 1800
-  const maxMs = options?.maxMs ?? 25000
+  const threshold    = options?.threshold   ?? 10    // lower = more sensitive
+  const silenceMs    = options?.silenceMs   ?? 2000  // ms quiet after speech → stop
+  const maxMs        = options?.maxMs       ?? 20000 // absolute max recording time
+  const minActiveMs  = options?.minActiveMs ?? 1500  // never stop before this many ms
 
   let stopped = false
   let level = 0
@@ -358,9 +359,16 @@ export function createSilenceDetector(
   let ctx: AudioContext | null = null
   let frame = 0
 
+  // ── HARD SAFETY TIMER ──────────────────────────────────────────────────────
+  // This fires regardless of AudioContext state.  Guarantees onSilence is ALWAYS
+  // called eventually even if AudioContext stays suspended forever on iOS Safari.
+  const hardTimer = setTimeout(() => {
+    if (!stopped) { cleanup(); onSilence() }
+  }, maxMs + 1500)
+
   try {
     ctx = new AudioContext()
-    const source = ctx.createMediaStreamSource(stream)
+    const source  = ctx.createMediaStreamSource(stream)
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 512
     source.connect(analyser)
@@ -376,34 +384,53 @@ export function createSilenceDetector(
       }
       level = Math.min(100, Math.sqrt(sum / buf.length) * 300)
 
-      if (level > threshold) { hasSpeech = true; silenceStart = 0 }
-      else if (hasSpeech) {
-        if (!silenceStart) silenceStart = Date.now()
-        else if (Date.now() - silenceStart > silenceMs) { cleanup(); onSilence(); return }
+      const elapsed = Date.now() - startTime
+
+      // Only evaluate silence AFTER minActiveMs (prevents premature stops)
+      if (elapsed >= minActiveMs) {
+        if (level > threshold) {
+          hasSpeech = true
+          silenceStart = 0
+        } else if (hasSpeech) {
+          if (!silenceStart) silenceStart = Date.now()
+          else if (Date.now() - silenceStart > silenceMs) {
+            cleanup(); onSilence(); return
+          }
+        }
+        // Max time exceeded
+        if (elapsed > maxMs) { cleanup(); onSilence(); return }
       }
-      if (Date.now() - startTime > maxMs) { cleanup(); onSilence(); return }
+
       frame = requestAnimationFrame(tick)
     }
 
-    // iOS Safari: AudioContext starts 'suspended' — wait for 'running' before analysing.
-    // On all other browsers ctx.state is already 'running' so the else branch fires immediately.
     if (ctx.state === 'running') {
       frame = requestAnimationFrame(tick)
     } else {
+      // iOS Safari: ctx.resume() may never resolve outside a user gesture.
+      // We add a 1200 ms timeout so tick() starts even if the promise hangs.
+      const resumeGuard = setTimeout(() => {
+        if (!stopped && frame === 0) {
+          frame = requestAnimationFrame(tick)
+        }
+      }, 1200)
+
       ctx.resume().then(() => {
+        clearTimeout(resumeGuard)
         if (!stopped) frame = requestAnimationFrame(tick)
       }).catch(() => {
-        if (!stopped) frame = requestAnimationFrame(tick) // try anyway
+        clearTimeout(resumeGuard)
+        if (!stopped) frame = requestAnimationFrame(tick)
       })
     }
   } catch {
-    const t = setTimeout(() => { if (!stopped) { cleanup(); onSilence() } }, maxMs)
-    return { stop: () => { stopped = true; clearTimeout(t) }, getLevel: () => 0 }
+    // AudioContext not supported — hard timer above will call onSilence after maxMs
   }
 
   function cleanup() {
     if (stopped) return
     stopped = true
+    clearTimeout(hardTimer)
     cancelAnimationFrame(frame)
     ctx?.close().catch(() => {})
   }

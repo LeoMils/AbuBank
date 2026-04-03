@@ -509,6 +509,15 @@ export function Home() {
             }}/>
           ))}
         </button>
+        {/* Version indicator */}
+        <div style={{
+          position: 'absolute', top: 7, left: 10,
+          fontSize: 10, fontWeight: 700, letterSpacing: '0.8px',
+          color: 'rgba(201,168,76,0.65)',
+          fontFamily: "'DM Sans',monospace",
+          userSelect: 'none',
+          pointerEvents: 'none',
+        }}>v4</div>
         {/* 4 main icons — evenly spaced */}
         {footerItems.map(item => (
           <button
