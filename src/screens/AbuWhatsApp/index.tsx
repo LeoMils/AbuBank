@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { generateMessage, transcribeAudio, getSupportedMimeType } from './service'
-import { speak, stopSpeaking, createSilenceDetector } from '../../services/voice'
+import { speak, stopSpeaking } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { SilenceDetector } from '../../services/voice'
 
@@ -279,8 +279,22 @@ export function AbuWhatsApp() {
       recorderRef.current = recorder
       chunksRef.current = []
 
+      // ── Chunk-size silence detection ─────────────────────────────────────────
+      let _cnt = 0, _speech = false, _silStart = 0
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data)
+        _cnt++
+        const sz = e.data.size
+        if (voiceModeRef.current) setAudioLevel(Math.min(100, sz / 50))
+        if (_cnt < 10) return
+        if (sz > 1200) { _speech = true; _silStart = 0 }
+        else if (_speech && sz < 600) {
+          if (!_silStart) _silStart = Date.now()
+          else if (Date.now() - _silStart > 2000) {
+            if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+          }
+        } else if (sz >= 600) { _silStart = 0 }
+        if (_cnt >= 180 && recorderRef.current?.state === 'recording') recorderRef.current.stop()
       }
 
       recorder.onstop = async () => {
@@ -295,7 +309,7 @@ export function AbuWhatsApp() {
         // Use the recorder's actual mimeType (iOS may differ from requested mimeType)
         const actualType = recorder.mimeType || mimeType || 'audio/mp4'
         const blob = new Blob(chunksRef.current, { type: actualType })
-        if (blob.size < 1000) {
+        if (blob.size < 300) {
           if (voiceModeRef.current) startVoiceListening()
           return
         }
@@ -409,17 +423,13 @@ export function AbuWhatsApp() {
 
       recorder.start(100) // timeslice required on iOS for ondataavailable to fire
 
-      const detector = createSilenceDetector(stream, () => {
+      // Absolute fallback: stop after 22s
+      const _safetyTimer = setTimeout(() => {
         if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-      }, { silenceMs: 2000, threshold: 10, minActiveMs: 1500 })
-      silenceRef.current = detector
-
-      levelRef.current = setInterval(() => {
-        if (silenceRef.current && voiceModeRef.current) {
-          setAudioLevel(silenceRef.current.getLevel())
-        }
-      }, 80)
-    } catch {
+      }, 22000)
+      silenceRef.current = { stop: () => clearTimeout(_safetyTimer), getLevel: () => 0 }
+    } catch (err) {
+      console.error('[AbuWhatsApp] getUserMedia error:', err)
       exitVoiceMode()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

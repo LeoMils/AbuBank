@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { sendMessage, transcribeAudio, getSupportedMimeType } from './service'
-import { speak, stopSpeaking, createSilenceDetector } from '../../services/voice'
+import { speak, stopSpeaking } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
@@ -280,8 +280,25 @@ export function AbuAI() {
       recorderRef.current = recorder
       chunksRef.current = []
 
+      // ── Chunk-size silence detection ─────────────────────────────────────────
+      // Replaces AudioContext analyser — works on iOS/Android with no extra permissions.
+      // iOS audio/mp4 AAC: silence ~100-500 bytes/100ms, speech ~2000-8000 bytes/100ms
+      let _cnt = 0, _speech = false, _silStart = 0
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data)
+        _cnt++
+        const sz = e.data.size
+        // Drive the visual level indicator directly from compressed audio chunk size
+        if (voiceModeRef.current) setAudioLevel(Math.min(100, sz / 50))
+        if (_cnt < 10) return  // skip first ~1s (mic warmup)
+        if (sz > 1200) { _speech = true; _silStart = 0 }           // speech
+        else if (_speech && sz < 600) {                              // silence after speech
+          if (!_silStart) _silStart = Date.now()
+          else if (Date.now() - _silStart > 2000) {                 // 2s silence → stop
+            if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+          }
+        } else if (sz >= 600) { _silStart = 0 }                    // not silence, reset streak
+        if (_cnt >= 180 && recorderRef.current?.state === 'recording') recorderRef.current.stop() // 18s max
       }
 
       recorder.onstop = async () => {
@@ -296,7 +313,7 @@ export function AbuAI() {
         // Use the recorder's actual mimeType (iOS may differ from requested mimeType)
         const actualType = recorder.mimeType || mimeType || 'audio/mp4'
         const blob = new Blob(chunksRef.current, { type: actualType })
-        if (blob.size < 1000) {
+        if (blob.size < 300) {
           if (voiceModeRef.current) startVoiceListening()
           return
         }
@@ -355,17 +372,13 @@ export function AbuAI() {
 
       recorder.start(100) // timeslice required on iOS for ondataavailable to fire
 
-      const detector = createSilenceDetector(stream, () => {
+      // Absolute fallback: stop after 22s if chunk detection misses
+      const _safetyTimer = setTimeout(() => {
         if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-      }, { silenceMs: 2000, threshold: 10, minActiveMs: 1500 })
-      silenceRef.current = detector
-
-      levelRef.current = setInterval(() => {
-        if (silenceRef.current && voiceModeRef.current) {
-          setAudioLevel(silenceRef.current.getLevel())
-        }
-      }, 80)
-    } catch {
+      }, 22000)
+      silenceRef.current = { stop: () => clearTimeout(_safetyTimer), getLevel: () => 0 }
+    } catch (err) {
+      console.error('[AbuAI] getUserMedia error:', err)
       exitVoiceMode()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
