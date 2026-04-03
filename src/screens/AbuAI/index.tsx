@@ -96,6 +96,34 @@ const KEYFRAMES = `
   }
 `
 
+// ─── Dynamic voice greeting ──────────────────────────────────────────────────
+// Time-appropriate salutation + rotating warm invitation phrase.
+function getVoiceGreeting(): string {
+  const h = new Date().getHours()
+  const salutation =
+    h >= 5  && h < 12 ? 'בוקר טוב' :
+    h >= 12 && h < 17 ? 'צהריים טובים' :
+    h >= 17 && h < 21 ? 'ערב טוב' :
+                         'לילה טוב'
+
+  const continuations = [
+    'מה שלומך? אפשר לדבר גם בספרדית מתי שתרצי.',
+    'על מה תרצי לדבר היום?',
+    'שאלי אותי כל דבר בכל נושא — איתי את יכולה לדבר ולהתייעץ על הכל.',
+    'מה עובר עלייך? אני כאן לכל שאלה ושיחה.',
+    'ספרי לי — מה חדש אצלך?',
+    'כאן בשבילך — בעברית, בספרדית, בכל נושא שתרצי.',
+    'מה בלבך היום? שאלי, ספרי, בקשי.',
+    'רפואה, משפחה, בישול, טיולים — הכל פתוח לשיחה.',
+    'אחרי כמה שתרצי — שאלי, ספרי, שוחחי.',
+    'יש משהו שמעסיק אותך? אני כאן.',
+    'מה תרצי לדעת היום?',
+    'שאלי אותי הכל — אין נושא שאני לא אענה עליו.',
+  ]
+  const cont = continuations[Math.floor(Math.random() * continuations.length)]
+  return `${salutation}, מרטיטה! ${cont}`
+}
+
 export function AbuAI() {
   const setScreen = useAppStore(s => s.setScreen)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -389,7 +417,7 @@ export function AbuAI() {
     // Greet Martita before listening
     setVoicePhase('greeting')
     setIsSpeaking(true)
-    speak('מרטיטה, בא לך לשוחח?')
+    speak(getVoiceGreeting())
       .then(() => {
         setIsSpeaking(false)
         if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 350)
@@ -1127,7 +1155,10 @@ export function AbuAI() {
                 color: 'rgba(255,255,255,0.92)',
                 letterSpacing: '-0.2px',
               }}>
-                בא לך לשוחח?
+                {new Date().getHours() >= 5 && new Date().getHours() < 12
+                  ? 'בוקר טוב' : new Date().getHours() < 17
+                  ? 'צהריים טובים' : new Date().getHours() < 21
+                  ? 'ערב טוב' : 'לילה טוב'} 🌟
               </div>
             </div>
           ) : (
