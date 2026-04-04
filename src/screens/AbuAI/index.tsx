@@ -753,7 +753,7 @@ export function AbuAI() {
               <path d="M15 18l-6-6 6-6" />
             </svg>
             <span style={{
-              fontSize: 11, color: 'rgba(255,255,255,0.55)',
+              fontSize: 12, color: 'rgba(255,255,255,0.55)',
               fontFamily: "'Heebo',sans-serif", fontWeight: 500, lineHeight: 1,
             }}>חזרה</span>
           </button>
@@ -762,7 +762,7 @@ export function AbuAI() {
         {/* Version badge */}
         <div style={{
           position: 'absolute', bottom: 5, left: 10,
-          fontSize: 9, fontWeight: 700, letterSpacing: '1px',
+          fontSize: 12, fontWeight: 700, letterSpacing: '1px',
           color: 'rgba(212,168,83,0.65)',
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
@@ -1028,7 +1028,7 @@ export function AbuAI() {
                 }}>
                   {/* Sender label */}
                   <div style={{
-                    fontSize: 10,
+                    fontSize: 12,
                     fontFamily: "'DM Sans',sans-serif",
                     fontWeight: 600,
                     letterSpacing: '1px',

@@ -106,8 +106,8 @@ function ApptCard({ appt, onDelete }: { appt: Appointment; onDelete: () => void 
         onClick={onDelete}
         aria-label="מחקי פגישה"
         style={{
-          width: 30,
-          height: 30,
+          width: 44,
+          height: 44,
           borderRadius: '50%',
           background: 'rgba(255,255,255,0.06)',
           border: '1px solid rgba(255,255,255,0.10)',
@@ -316,20 +316,32 @@ function ManualModal({ onClose, onSave, defaultDate }: ManualModalProps) {
                 onClick={() => setColorIdx(i)}
                 aria-label={`צבע ${i + 1}`}
                 style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  padding: 0,
+                }}
+              >
+                <span style={{
+                  display: 'block',
                   width: 28,
                   height: 28,
                   borderRadius: '50%',
                   background: c,
-                  border: 'none',
-                  cursor: 'pointer',
                   outline: colorIdx === i ? `3px solid ${GOLD}` : '3px solid transparent',
                   outlineOffset: 3,
                   boxShadow: colorIdx === i ? `0 0 14px ${c}88` : 'none',
                   transition: 'outline 0.15s, box-shadow 0.15s, transform 0.15s',
                   transform: colorIdx === i ? 'scale(1.15)' : 'scale(1)',
-                  flexShrink: 0,
-                }}
-              />
+                }} />
+              </button>
             ))}
           </div>
         </div>
@@ -843,7 +855,7 @@ export function AbuCalendar() {
             return (
               <div key={h} style={{
                 textAlign: 'center',
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: 700,
                 color: isShabbat ? 'rgba(201,168,76,0.65)' : 'rgba(255,255,255,0.35)',
                 padding: '4px 0',
@@ -1055,9 +1067,10 @@ export function AbuCalendar() {
               <button
                 type="button"
                 onClick={() => { deleteAppointment(a.id); reload() }}
+                aria-label="מחקי פגישה"
                 style={{
-                  width: 28,
-                  height: 28,
+                  width: 44,
+                  height: 44,
                   borderRadius: '50%',
                   background: 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.08)',
