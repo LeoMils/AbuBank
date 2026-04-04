@@ -123,6 +123,34 @@ function playBlob(blob: Blob): Promise<boolean> {
   })
 }
 
+// ─── Play via pre-unlocked AudioContext ───────────────────
+// iOS Safari: once an AudioContext is resumed inside a user gesture, its
+// createBufferSource().start() works from ANY async context — even after
+// the microphone session ends.  HTMLAudioElement.play() gets blocked after
+// mic use; AudioContext.start() does not.
+async function playBlobViaAudioCtx(blob: Blob): Promise<boolean> {
+  try {
+    if (!_sharedAudioCtx || _sharedAudioCtx.state === 'closed') {
+      _sharedAudioCtx = new AudioContext()
+    }
+    if (_sharedAudioCtx.state === 'suspended') {
+      await _sharedAudioCtx.resume().catch(() => {})
+    }
+    const arrayBuf = await blob.arrayBuffer()
+    const audioBuf = await _sharedAudioCtx.decodeAudioData(arrayBuf)
+    return new Promise<boolean>((resolve) => {
+      const src = _sharedAudioCtx!.createBufferSource()
+      src.buffer = audioBuf
+      src.connect(_sharedAudioCtx!.destination)
+      src.onended = () => resolve(true)
+      src.start(0)
+    })
+  } catch (e) {
+    console.log('[TTS] AudioContext playback error:', e)
+    return false
+  }
+}
+
 // ─── 0. OpenAI TTS (primary — direct REST, works on iPhone) ──
 // "nova" voice: warm, clear, slightly husky female — the most natural-sounding
 // for Hebrew and Spanish. No proxy required. Works in Vercel production.
@@ -373,25 +401,54 @@ function speakWebAPI(text: string): Promise<void> {
     console.log('[TTS] Web Speech voice:', bestVoice?.name ?? 'default', 'lang:', u.lang)
     u.onend = () => resolve()
     u.onerror = () => resolve()
-    speechSynthesis.speak(u)
+
+    // iOS fix: after microphone session ends, speechSynthesis enters a "suspended"
+    // state.  resume() + a 60 ms tick lets the audio system reset before speak().
+    speechSynthesis.resume()
+    setTimeout(() => speechSynthesis.speak(u), 60)
   })
 }
 
 // ─── Public API ────────────────────────────────────────────
 
 // speakVoiceMode — for LIVE CONVERSATION (AbuAI voice mode)
-// Uses Web Speech API (speechSynthesis) FIRST — it is the ONLY method that
-// works reliably on iOS Safari from an async context (no user-gesture requirement).
-// Falls back to OpenAI TTS (better quality but may be blocked on older iOS).
+// iOS strategy: play OpenAI TTS through the pre-unlocked AudioContext.
+// The shared AudioContext was resumed during the user's tap (unlockIOSAudio),
+// and AudioContext.createBufferSource().start() is NEVER blocked by iOS after
+// mic use — unlike HTMLAudioElement.play() or speechSynthesis which can silently
+// fail after a WebSpeechRecognition session ends.
+// Falls back to speechSynthesis (with resume fix) if no OpenAI key.
 export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
-  // Web Speech API — always allowed on iOS, instant, no network
-  if ('speechSynthesis' in window) {
-    await speakWebAPI(text)
-    return
+
+  // 1) OpenAI TTS → AudioContext playback (best quality, works on iOS after mic)
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
+  if (apiKey) {
+    try {
+      const controller = new AbortController()
+      const t = setTimeout(() => controller.abort(), 12000)
+      const res = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: 0.88, response_format: 'mp3' }),
+        signal: controller.signal,
+      })
+      clearTimeout(t)
+      if (res.ok) {
+        const blob = await res.blob()
+        if (blob.size > 100) {
+          const ok = await playBlobViaAudioCtx(blob)
+          if (ok) return
+          console.log('[TTS] AudioCtx failed, trying HTMLAudioElement fallback')
+          if (await playBlob(blob)) return
+        }
+      }
+    } catch (e) {
+      console.log('[TTS] speakVoiceMode OpenAI error:', e)
+    }
   }
-  // Fallback if speechSynthesis somehow unavailable
-  if (await speakOpenAI(text)) return
+
+  // 2) Web Speech API fallback (resume fix applied inside speakWebAPI)
   await speakWebAPI(text)
 }
 
