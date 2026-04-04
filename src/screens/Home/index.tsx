@@ -490,24 +490,27 @@ export function Home() {
         backgroundClip: 'padding-box, border-box',
         borderImage: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.40) 30%, rgba(201,168,76,0.55) 50%, rgba(201,168,76,0.40) 70%, transparent) 1',
       }}>
-        {/* Settings — 3 sharp dots, tucked top-right corner */}
+        {/* Settings — gear icon, top-right corner */}
         <button
           type="button"
           className="btn-focus"
           onClick={() => setScreen(Screen.Settings)}
-          aria-label="Settings"
+          aria-label="הגדרות"
           style={{
-            position: 'absolute', top: 6, right: 10,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-            padding: 6, cursor: 'pointer', background: 'none', border: 'none',
+            position: 'absolute', top: 5, right: 8,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+            padding: '4px 6px', cursor: 'pointer', background: 'none', border: 'none',
+            minWidth: 40, minHeight: 40,
           }}
         >
-          {[0,1,2].map(i => (
-            <div key={i} style={{
-              width: 3.5, height: 3.5, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.30)',
-            }}/>
-          ))}
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+            stroke="rgba(255,255,255,0.70)" strokeWidth="1.7"
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.62)',
+            fontFamily: "'Heebo',sans-serif", lineHeight: 1 }}>הגדרות</span>
         </button>
         {/* Version indicator */}
         <div style={{
@@ -517,7 +520,7 @@ export function Home() {
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
           pointerEvents: 'none',
-        }}>v4</div>
+        }}>v11</div>
         {/* 4 main icons — evenly spaced */}
         {footerItems.map(item => (
           <button
