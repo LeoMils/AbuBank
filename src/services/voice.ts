@@ -5,28 +5,40 @@
 //           4) Google Translate TTS  5) Web Speech API
 
 let currentAudio: HTMLAudioElement | null = null
-let _iosUnlocked = false
+
+// Shared AudioContext — created once, reused across all unlock calls.
+// iOS Safari: once an AudioContext is resumed inside a user gesture, it stays
+// "running" for the tab's lifetime, allowing async audio.play() to work even
+// after mic sessions end.
+let _sharedAudioCtx: AudioContext | null = null
 
 // ─── iOS Audio Unlock ──────────────────────────────────────
-// iOS Safari blocks audio playback unless it originates from a user gesture.
-// Call this SYNCHRONOUSLY inside a tap/click handler to unlock audio for the session.
-// After this, async audio.play() calls work without restriction.
+// Call this SYNCHRONOUSLY inside any tap/click handler (user gesture context).
+// Safe to call multiple times — important because WebSpeechRecognition can
+// reset iOS's audio output session when the mic session ends.
 export function unlockIOSAudio(): void {
-  if (_iosUnlocked || typeof window === 'undefined') return
+  if (typeof window === 'undefined') return
   try {
-    // A 1-sample AudioContext buffer played synchronously from a tap handler
-    // is the most reliable iOS audio unlock technique.
-    const ctx = new AudioContext()
-    const buf = ctx.createBuffer(1, 1, 22050)
-    const src = ctx.createBufferSource()
+    // 1) Web Audio API unlock — shared AudioContext, resumed every call
+    if (!_sharedAudioCtx || _sharedAudioCtx.state === 'closed') {
+      _sharedAudioCtx = new AudioContext()
+    }
+    const buf = _sharedAudioCtx.createBuffer(1, 1, 22050)
+    const src = _sharedAudioCtx.createBufferSource()
     src.buffer = buf
-    src.connect(ctx.destination)
+    src.connect(_sharedAudioCtx.destination)
     src.start(0)
-    ctx.resume().catch(() => {})
-    _iosUnlocked = true
-    console.log('[TTS] iOS audio unlocked ✅')
+    _sharedAudioCtx.resume().catch(() => {})
+
+    // 2) HTMLAudioElement unlock — iOS treats this separately from AudioContext.
+    //    A silent play() from a user-gesture context primes HTMLAudioElement.play()
+    //    for the rest of the session, even from async callbacks.
+    const silent = new Audio()
+    silent.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+    silent.volume = 0
+    silent.play().catch(() => {})
   } catch {
-    // Non-iOS or AudioContext not available — no-op
+    // Non-iOS or API not available — safe no-op
   }
 }
 

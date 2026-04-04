@@ -320,6 +320,12 @@ export function AbuAI() {
         if (!voiceModeRef.current) return
         setVoicePhase('speaking')
         setIsSpeaking(true)
+        // iOS: WebSpeechRecognition can reset the audio output session when the
+        // mic session ends.  Re-unlock here (from async context — safe because
+        // the shared AudioContext created during the original tap stays running).
+        unlockIOSAudio()
+        // Give iOS ~300 ms to release the audio capture session before output starts.
+        await new Promise(r => setTimeout(r, 300))
         await speak(response)
         setIsSpeaking(false)
         if (!voiceModeRef.current) return
@@ -464,23 +470,22 @@ export function AbuAI() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const enterVoiceMode = useCallback(() => {
-    // Unlock iOS audio SYNCHRONOUSLY here — this IS a user tap context.
-    // Must happen before any async calls so iOS allows audio.play() later.
+    // Unlock iOS audio SYNCHRONOUSLY — this IS a user tap context.
+    // Also primes HTMLAudioElement.play() for the whole session.
     unlockIOSAudio()
     setVoiceMode(true)
     voiceModeRef.current = true
-    // Greet Martita before listening
-    setVoicePhase('greeting')
-    setIsSpeaking(true)
-    speak(getVoiceGreeting())
-      .then(() => {
-        setIsSpeaking(false)
-        if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 350)
-      })
-      .catch(() => {
-        setIsSpeaking(false)
-        if (voiceModeRef.current) startVoiceListening()
-      })
+
+    // Show greeting as instant chat bubble — no TTS network call needed.
+    // This saves 2–4 seconds of startup latency.
+    const greeting = getVoiceGreeting()
+    const greetMsg: ChatMessage = { id: nextId(), role: 'assistant', content: greeting, timestamp: Date.now() }
+    setMessages(prev => [...prev, greetMsg])
+
+    // Start listening after a short display pause
+    setTimeout(() => {
+      if (voiceModeRef.current) startVoiceListening()
+    }, 500)
   }, [startVoiceListening])
 
   const exitVoiceMode = useCallback(() => {
@@ -664,7 +669,7 @@ export function AbuAI() {
           color: 'rgba(201,168,76,0.55)',
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
-        }}>v4</div>
+        }}>v11</div>
       </header>
 
       {/* ─── CHAT AREA ─── */}
