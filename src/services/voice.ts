@@ -5,6 +5,30 @@
 //           4) Google Translate TTS  5) Web Speech API
 
 let currentAudio: HTMLAudioElement | null = null
+let _iosUnlocked = false
+
+// ─── iOS Audio Unlock ──────────────────────────────────────
+// iOS Safari blocks audio playback unless it originates from a user gesture.
+// Call this SYNCHRONOUSLY inside a tap/click handler to unlock audio for the session.
+// After this, async audio.play() calls work without restriction.
+export function unlockIOSAudio(): void {
+  if (_iosUnlocked || typeof window === 'undefined') return
+  try {
+    // A 1-sample AudioContext buffer played synchronously from a tap handler
+    // is the most reliable iOS audio unlock technique.
+    const ctx = new AudioContext()
+    const buf = ctx.createBuffer(1, 1, 22050)
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    src.connect(ctx.destination)
+    src.start(0)
+    ctx.resume().catch(() => {})
+    _iosUnlocked = true
+    console.log('[TTS] iOS audio unlocked ✅')
+  } catch {
+    // Non-iOS or AudioContext not available — no-op
+  }
+}
 
 // ─── Language detection ────────────────────────────────────
 
@@ -87,7 +111,53 @@ function playBlob(blob: Blob): Promise<boolean> {
   })
 }
 
-// ─── 1. Azure Cognitive Services TTS (primary) ────────────
+// ─── 0. OpenAI TTS (primary — direct REST, works on iPhone) ──
+// "nova" voice: warm, clear, slightly husky female — the most natural-sounding
+// for Hebrew and Spanish. No proxy required. Works in Vercel production.
+// Speed 0.88: comfortable pace for Martita's ears without sounding slow.
+
+async function speakOpenAI(text: string): Promise<boolean> {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
+  if (!apiKey) return false
+
+  const chunks = splitText(text, 400)
+  for (const chunk of chunks) {
+    try {
+      const controller = new AbortController()
+      const t = setTimeout(() => controller.abort(), 15000)
+      const res = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'tts-1',            // tts-1 = low latency (best for real-time conversation)
+          input: chunk,
+          voice: 'nova',             // warm, feminine, clear — most pleasant for ear
+          speed: 0.88,               // slightly slower → easier to follow for 80+ listener
+          response_format: 'mp3',
+        }),
+        signal: controller.signal,
+      })
+      clearTimeout(t)
+      if (!res.ok) {
+        console.log('[TTS] OpenAI status:', res.status)
+        return false
+      }
+      const blob = await res.blob()
+      if (blob.size < 100) { console.log('[TTS] OpenAI: empty audio'); return false }
+      const ok = await playBlob(blob)
+      if (!ok) return false
+    } catch (e) {
+      console.log('[TTS] OpenAI error:', e)
+      return false
+    }
+  }
+  return true
+}
+
+// ─── 1. Azure Cognitive Services TTS (secondary) ──────────
 // Official REST API — same HilaNeural / ElenaNeural voices as Edge TTS.
 // Requires VITE_AZURE_TTS_KEY. Free tier: 500K chars/month.
 
@@ -300,27 +370,30 @@ function speakWebAPI(text: string): Promise<void> {
 export async function speak(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 1) Azure TTS — HilaNeural (Israeli Hebrew) / ElenaNeural (Argentine Spanish) — official REST API
-  console.log('[TTS] Trying Azure TTS...')
-  if (await speakAzureTTS(text)) { console.log('[TTS] ✅ Azure TTS worked'); return }
-  console.log('[TTS] ❌ Azure TTS failed (no key or error)')
+  // 0) OpenAI TTS — nova voice — direct REST API, works on iPhone/Vercel (no proxy needed)
+  //    This is the primary voice: warm, clear, comfortable for Martita's ears.
+  console.log('[TTS] Trying OpenAI nova...')
+  if (await speakOpenAI(text)) { console.log('[TTS] ✅ OpenAI nova worked'); return }
+  console.log('[TTS] ❌ OpenAI failed (no key or network error)')
 
-  // 2) Edge TTS — same voices via WebSocket (unofficial, sometimes works)
-  console.log('[TTS] Trying Edge TTS...')
-  if (await speakEdgeTTS(text)) { console.log('[TTS] ✅ Edge TTS worked'); return }
-  console.log('[TTS] ❌ Edge TTS failed')
-
-  // 3) Gemini TTS — multilingual Aoede (sounds human, not specifically Israeli/Argentine)
+  // 1) Gemini TTS — multilingual Aoede (direct API, works in production)
   console.log('[TTS] Trying Gemini...')
   if (await speakGemini(text)) { console.log('[TTS] ✅ Gemini worked'); return }
   console.log('[TTS] ❌ Gemini failed')
 
-  // 4) Google Translate TTS — free, decent Hebrew
+  // 2) Azure TTS — HilaNeural/ElenaNeural — dev proxy only, will skip in production
+  console.log('[TTS] Trying Azure TTS...')
+  if (await speakAzureTTS(text)) { console.log('[TTS] ✅ Azure TTS worked'); return }
+
+  // 3) Edge TTS — dev proxy only, will skip in production
+  console.log('[TTS] Trying Edge TTS...')
+  if (await speakEdgeTTS(text)) { console.log('[TTS] ✅ Edge TTS worked'); return }
+
+  // 4) Google Translate TTS — dev proxy only, will skip in production
   console.log('[TTS] Trying Google TTS...')
   if (await speakGoogleTTS(text)) { console.log('[TTS] ✅ Google TTS worked'); return }
-  console.log('[TTS] ❌ Google TTS failed')
 
-  // 5) Last resort — browser built-in
+  // 5) Last resort — browser built-in Web Speech (works on iOS but voice quality varies)
   console.log('[TTS] Falling back to Web Speech API')
   await speakWebAPI(text)
 }

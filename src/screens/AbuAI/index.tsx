@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { sendMessage, transcribeAudio, getSupportedMimeType } from './service'
-import { speak, stopSpeaking } from '../../services/voice'
+import { speak, stopSpeaking, unlockIOSAudio } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
@@ -464,6 +464,9 @@ export function AbuAI() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const enterVoiceMode = useCallback(() => {
+    // Unlock iOS audio SYNCHRONOUSLY here — this IS a user tap context.
+    // Must happen before any async calls so iOS allows audio.play() later.
+    unlockIOSAudio()
     setVoiceMode(true)
     voiceModeRef.current = true
     // Greet Martita before listening

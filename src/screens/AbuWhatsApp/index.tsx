@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { generateMessage, transcribeAudio, getSupportedMimeType } from './service'
-import { speak, stopSpeaking } from '../../services/voice'
+import { speak, stopSpeaking, unlockIOSAudio } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { SilenceDetector } from '../../services/voice'
 
@@ -461,6 +461,7 @@ export function AbuWhatsApp() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const enterVoiceMode = useCallback(() => {
+    unlockIOSAudio() // unlock iOS audio synchronously from this tap context
     setVoiceMode(true)
     voiceModeRef.current = true
     setError('')
