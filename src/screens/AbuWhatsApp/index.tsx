@@ -4,6 +4,7 @@ import { Screen } from '../../state/types'
 import { generateMessage, transcribeAudio, getSupportedMimeType } from './service'
 import { speak, speakVoiceMode, stopSpeaking, unlockIOSAudio } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
+import { soundTap, soundSuccess, soundSend, soundCopy } from '../../services/sounds'
 import type { SilenceDetector } from '../../services/voice'
 
 const TEAL = '#14b8a6'
@@ -199,12 +200,14 @@ export function AbuWhatsApp() {
   const handleTextGenerate = async () => {
     const text = input.trim()
     if (!text) return
+    soundTap()
     setError('')
     setLastIntent(text)
     setPhase('generating')
     try {
       const msg = await generateMessage(text, activeStyle)
       setResult(msg)
+      soundSuccess()
       setPhase('result')
     } catch (err: unknown) {
       handleError(err instanceof Error ? err.message : 'שגיאה. נסי שוב.')
@@ -213,12 +216,14 @@ export function AbuWhatsApp() {
 
   const handleStyleTap = async (style: Style) => {
     if (!lastIntent) return
+    soundTap()
     setActiveStyle(style)
     setPhase('generating')
     setError('')
     try {
       const msg = await generateMessage(lastIntent, style)
       setResult(msg)
+      soundSuccess()
       setPhase('result')
     } catch (err: unknown) {
       handleError(err instanceof Error ? err.message : 'שגיאה. נסי שוב.')
@@ -232,6 +237,7 @@ export function AbuWhatsApp() {
   const handleSendToFamily = async () => {
     // WhatsApp cannot open a specific group with pre-filled text via any URL scheme.
     // Best solution: copy message to clipboard → open family group → user pastes and sends.
+    soundSend()
     try { await navigator.clipboard.writeText(result) } catch { /* ignore — message still visible */ }
     setCopyToast(true)
     setTimeout(() => setCopyToast(false), 5000)
@@ -270,6 +276,7 @@ export function AbuWhatsApp() {
       const msg = await generateMessage(intent, style)
       setResult(msg)
       setLastIntent(intent)
+      soundSuccess()
       setPhase('result')
       return msg
     } catch (err) {
@@ -471,6 +478,7 @@ export function AbuWhatsApp() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const enterVoiceMode = useCallback(() => {
+    soundTap()
     unlockIOSAudio() // unlock iOS audio synchronously from this tap context
     setVoiceMode(true)
     voiceModeRef.current = true
@@ -708,7 +716,7 @@ export function AbuWhatsApp() {
                 <button
                   key={style}
                   type="button"
-                  onClick={() => setActiveStyle(style)}
+                  onClick={() => { soundTap(); setActiveStyle(style) }}
                   style={{
                     height: 46,
                     padding: '0 22px',
@@ -963,6 +971,7 @@ export function AbuWhatsApp() {
               <button
                 type="button"
                 onClick={async () => {
+                  soundCopy()
                   try { await navigator.clipboard.writeText(result) } catch {}
                   setCopyToast(true)
                   setTimeout(() => setCopyToast(false), 5000)

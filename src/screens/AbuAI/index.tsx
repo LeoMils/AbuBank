@@ -9,14 +9,16 @@ import type { SilenceDetector } from '../../services/voice'
 
 // ─── Color tokens ────────────────────────────────────────────────────────────
 const GOLD            = '#C9A84C'
+const GOLD_BRIGHT     = '#F0C060'  // for highlights and active states
 const BG              = '#0C0A08'
-const SURFACE         = 'rgba(255,250,240,0.04)'
+const SURFACE         = 'rgba(255,250,240,0.06)'
 const BORDER          = 'rgba(201,168,76,0.14)'
 const TEXT            = '#F5F0E8'
 const TEXT_MUTED      = 'rgba(245,240,232,0.48)'
 
 // suppress unused lint
 void BORDER
+void GOLD_BRIGHT
 
 let msgCounter = 0
 function nextId(): string {
@@ -446,7 +448,7 @@ export function AbuAI() {
 
   // Shared gold gradient text style
   const goldGradText: React.CSSProperties = {
-    background: 'linear-gradient(135deg, #F5E6C0 0%, #D4A853 25%, #C9A84C 50%, #B8912A 75%, #D4A853 100%)',
+    background: 'linear-gradient(135deg, #FFF0C0 0%, #F0C060 20%, #D4A853 45%, #C9A84C 60%, #B8912A 80%, #E8C060 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
@@ -469,13 +471,17 @@ export function AbuAI() {
         position: 'relative',
       }}
     >
-      {/* ── Ambient background — ONE layer only ── */}
+      {/* ── Ambient background — 3 layers combined ── */}
       <div aria-hidden="true" style={{
         position: 'absolute',
         inset: 0,
         pointerEvents: 'none',
         zIndex: 0,
-        background: 'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(201,168,76,0.10) 0%, transparent 60%)',
+        background: [
+          'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(201,168,76,0.10) 0%, transparent 60%)',
+          'radial-gradient(ellipse 60% 50% at 15% 95%, rgba(201,168,76,0.08) 0%, transparent 55%)',
+          'radial-gradient(ellipse 45% 35% at 88% 80%, rgba(201,168,76,0.05) 0%, transparent 50%)',
+        ].join(', '),
       }} />
 
       {/* ─────────────────────── HEADER ─────────────────────── */}
@@ -483,8 +489,9 @@ export function AbuAI() {
         flexShrink: 0,
         position: 'relative',
         background: 'rgba(12,10,8,0.96)',
-        borderBottom: '1px solid rgba(201,168,76,0.18)',
+        borderBottom: '1px solid rgba(201,168,76,0.28)',
         backdropFilter: 'blur(16px)',
+        boxShadow: '0 1px 0 rgba(201,168,76,0.12)',
         zIndex: 20,
       }}>
         {/* Bottom glow line */}
@@ -494,7 +501,7 @@ export function AbuAI() {
           left: 0,
           right: 0,
           height: 1,
-          background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.28) 30%, rgba(201,168,76,0.45) 50%, rgba(201,168,76,0.28) 70%, transparent)',
+          background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.45) 30%, rgba(201,168,76,0.70) 50%, rgba(201,168,76,0.45) 70%, transparent)',
         }} />
 
         {/* Header content row — 72px */}
@@ -662,13 +669,13 @@ export function AbuAI() {
                 position: 'absolute',
                 width: '168%', height: '168%',
                 borderRadius: '50%',
-                border: '1px solid rgba(201,168,76,0.18)',
+                border: '1px solid rgba(201,168,76,0.28)',
               }} />
               {/* Static halo ring 2 */}
               <div aria-hidden="true" style={{
                 position: 'absolute',
                 borderRadius: '50%',
-                border: '1px solid rgba(201,168,76,0.09)',
+                border: '1px solid rgba(201,168,76,0.15)',
                 width: '210%', height: '210%',
               }} />
               {/* Orb body */}
@@ -677,8 +684,8 @@ export function AbuAI() {
                 height: 120,
                 borderRadius: '50%',
                 background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.20) 0%, rgba(201,168,76,0.12) 38%, rgba(201,168,76,0.04) 62%, transparent 80%)',
-                border: '1.5px solid rgba(201,168,76,0.35)',
-                boxShadow: '0 0 0 1px rgba(201,168,76,0.18), 0 0 48px rgba(201,168,76,0.14), 0 0 96px rgba(201,168,76,0.06), inset 0 1px 0 rgba(255,250,240,0.10)',
+                border: '1.5px solid rgba(201,168,76,0.55)',
+                boxShadow: '0 0 0 1px rgba(201,168,76,0.18), 0 0 60px rgba(201,168,76,0.22), 0 0 120px rgba(201,168,76,0.10), inset 0 1px 0 rgba(255,250,240,0.10)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -687,7 +694,7 @@ export function AbuAI() {
               }}>
                 <span style={{
                   fontFamily: "'Cormorant Garamond',Georgia,serif",
-                  fontSize: 52,
+                  fontSize: 58,
                   fontWeight: 600,
                   fontStyle: 'italic',
                   ...goldGradText,
@@ -820,14 +827,14 @@ export function AbuAI() {
                   ...(isUser ? {
                     padding: '14px 18px',
                     borderRadius: '18px 4px 18px 18px',
-                    background: 'rgba(201,168,76,0.08)',
-                    border: '1px solid rgba(201,168,76,0.22)',
+                    background: 'rgba(201,168,76,0.13)',
+                    border: '1px solid rgba(201,168,76,0.35)',
                   } : {
                     padding: '14px 18px',
                     borderRadius: '4px 18px 18px 18px',
                     background: SURFACE,
-                    border: '1px solid rgba(201,168,76,0.12)',
-                    borderRight: '3px solid rgba(201,168,76,0.32)',
+                    border: '1px solid rgba(201,168,76,0.20)',
+                    borderRight: '3px solid rgba(201,168,76,0.50)',
                   }),
                 }}>
                   <div style={{
@@ -936,8 +943,8 @@ export function AbuAI() {
               inset: 0,
               borderRadius: '50%',
               ...(voicePhase === 'speaking' || voicePhase === 'greeting' ? {
-                border: '2px solid rgba(201,168,76,0.85)',
-                boxShadow: '0 0 0 1px rgba(201,168,76,0.30), 0 0 60px rgba(201,168,76,0.24), 0 0 120px rgba(201,168,76,0.10), inset 0 1px 0 rgba(255,250,240,0.12)',
+                border: '2px solid rgba(201,168,76,1.0)',
+                boxShadow: '0 0 0 1px rgba(201,168,76,0.50), 0 0 80px rgba(201,168,76,0.35), 0 0 150px rgba(201,168,76,0.15), inset 0 1px 0 rgba(255,250,240,0.15)',
                 background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.28) 0%, rgba(201,168,76,0.16) 38%, rgba(201,168,76,0.06) 65%, transparent 82%)',
               } : {
                 border: '1.5px solid rgba(201,168,76,0.55)',
@@ -1128,7 +1135,7 @@ export function AbuAI() {
                   : 'rgba(201,168,76,0.10)',
                 border: recording
                   ? '1.5px solid rgba(239,68,68,0.48)'
-                  : '1.5px solid rgba(201,168,76,0.35)',
+                  : '1.5px solid rgba(201,168,76,0.50)',
                 cursor: micDisabled ? 'default' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -1171,14 +1178,14 @@ export function AbuAI() {
               placeholder={recording ? 'מקשיבה...' : transcribing ? 'מתמללת...' : 'כתבי לי...'}
               rows={1}
               disabled={loading || recording}
-              onFocus={e => { e.currentTarget.style.border = '1px solid rgba(201,168,76,0.50)' }}
-              onBlur={e => { e.currentTarget.style.border = '1px solid rgba(201,168,76,0.20)' }}
+              onFocus={e => { e.currentTarget.style.border = '1px solid rgba(201,168,76,0.55)' }}
+              onBlur={e => { e.currentTarget.style.border = '1px solid rgba(201,168,76,0.30)' }}
               style={{
                 flex: 1,
                 resize: 'none',
                 padding: '14px 18px',
                 borderRadius: 14,
-                border: '1px solid rgba(201,168,76,0.20)',
+                border: '1px solid rgba(201,168,76,0.30)',
                 background: 'rgba(255,250,240,0.05)',
                 color: TEXT,
                 fontSize: 16,
@@ -1248,7 +1255,7 @@ export function AbuAI() {
                 padding: '8px 22px',
                 borderRadius: 20,
                 background: 'rgba(201,168,76,0.06)',
-                border: '1px solid rgba(201,168,76,0.35)',
+                border: '1px solid rgba(201,168,76,0.48)',
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
                 transition: 'background 0.15s ease',
@@ -1267,7 +1274,7 @@ export function AbuAI() {
               <span style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: 'rgba(201,168,76,0.80)',
+                color: 'rgba(201,168,76,0.95)',
                 fontFamily: "'Heebo',sans-serif",
                 direction: 'rtl',
               }}>

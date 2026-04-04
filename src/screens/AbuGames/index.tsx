@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
+import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
+import { soundTap } from '../../services/sounds'
 
 /* ─── GAMES DATA ─── */
 interface Game {
@@ -43,6 +45,7 @@ function handleTap(url: string): void {
   isNavigating = true
   if (navTimer) clearTimeout(navTimer)
   navTimer = setTimeout(() => { isNavigating = false }, 800)
+  soundTap()
   window.location.href = url
 }
 
@@ -249,6 +252,7 @@ function CategorySection({
 export function AbuGames() {
   const setScreen = useAppStore(s => s.setScreen)
   const [pressed, setPressed] = useState<string | null>(null)
+  const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
 
   useEffect(() => {
     if (!document.getElementById('abu-games-redesign-anim')) {
@@ -354,6 +358,25 @@ export function AbuGames() {
             background: 'radial-gradient(ellipse at center, rgba(201,168,76,0.10) 0%, transparent 65%)',
             pointerEvents: 'none', filter: 'blur(10px)',
           }} />
+
+          {/* Martita portrait — left */}
+          <div style={{
+            position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+            width: 42, height: 42, borderRadius: '50%',
+            border: '1.5px solid rgba(201,168,76,0.45)',
+            boxShadow: '0 0 0 2px rgba(201,168,76,0.07), 0 2px 10px rgba(0,0,0,0.35)',
+            overflow: 'hidden',
+            background: 'linear-gradient(145deg, #1a1a2e, #050A18)',
+            flexShrink: 0,
+          }}>
+            <img
+              src={martitaPhoto}
+              alt="Martita"
+              loading="eager"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
+              onError={handleMartitaImgError}
+            />
+          </div>
 
           {/* Wordmark: Abu Games 🎮 */}
           <div style={{

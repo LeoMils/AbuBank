@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import {
@@ -14,6 +14,8 @@ import {
   type Appointment,
 } from './service'
 import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
+import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
+import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 
 const GOLD = '#C9A84C'
 const TEAL = '#14b8a6'
@@ -553,7 +555,42 @@ export function AbuCalendar() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
+  // ─── Feature 1: Alert state ──────────────────────────────────────────────────
+  const [alertMinutes, setAlertMinutes] = useState<number>(() => {
+    return parseInt(localStorage.getItem('abubank-alert-minutes') ?? '60', 10)
+  })
+  const [activeAlert, setActiveAlert] = useState<{ id: string; title: string; minutesLeft: number } | null>(null)
+  const alertedIdsRef = useRef<Set<string>>(new Set())
+
+  // ─── Feature 2: Martita photo ────────────────────────────────────────────────
+  const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
+
   const reload = useCallback(() => setAppointments(loadAppointments()), [])
+
+  // ─── Feature 1: Alert interval ───────────────────────────────────────────────
+  useEffect(() => {
+    const check = () => {
+      const now = Date.now()
+      const allAppts = loadAppointments()
+      for (const appt of allAppts) {
+        if (alertedIdsRef.current.has(appt.id)) continue
+        // Build appointment timestamp
+        const apptTime = new Date(`${appt.date}T${appt.time}:00`).getTime()
+        if (isNaN(apptTime)) continue
+        const diff = apptTime - now
+        if (diff > 0 && diff <= alertMinutes * 60_000) {
+          alertedIdsRef.current.add(appt.id)
+          const minutesLeft = Math.round(diff / 60_000)
+          setActiveAlert({ id: appt.id, title: appt.title, minutesLeft })
+          soundAlert()
+          break // show one alert at a time
+        }
+      }
+    }
+    check()
+    const interval = setInterval(check, 60_000)
+    return () => clearInterval(interval)
+  }, [alertMinutes])
 
   // Month navigation
   function prevMonth() {
@@ -599,6 +636,7 @@ export function AbuCalendar() {
     reload()
     setShowManual(false)
     playChime()
+    soundSuccess()
     showToast()
   }
 
@@ -645,6 +683,7 @@ export function AbuCalendar() {
     setVoiceParsed(null)
     setVoiceStatus('')
     playChime()
+    soundSuccess()
     showToast()
   }
 
@@ -676,6 +715,61 @@ export function AbuCalendar() {
       } as React.CSSProperties}
     >
       {/* ══════════════════════════════════════════
+          FEATURE 1: ALERT BANNER
+      ══════════════════════════════════════════ */}
+      {activeAlert && (
+        <div style={{
+          position: 'fixed',
+          top: 72,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          background: 'rgba(12,10,8,0.95)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '2px solid rgba(201,168,76,0.60)',
+          padding: '14px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          animation: 'alertSlideIn 0.35s cubic-bezier(0.34,1.2,0.64,1) both',
+        } as React.CSSProperties}>
+          <span style={{ fontSize: 22, flexShrink: 0 }}>🔔</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: GOLD,
+              fontFamily: "'Heebo',sans-serif",
+              direction: 'rtl',
+            }}>
+              תזכורת: {activeAlert.title} בעוד {activeAlert.minutesLeft} דקות
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveAlert(null)}
+            aria-label="סגרי התראה"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: 'rgba(201,168,76,0.12)',
+              border: '1px solid rgba(201,168,76,0.30)',
+              color: GOLD,
+              fontSize: 16,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >×</button>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
           HEADER — 72px hero bar
       ══════════════════════════════════════════ */}
       <header style={{
@@ -691,7 +785,6 @@ export function AbuCalendar() {
         zIndex: 30,
         borderBottom: '1px solid transparent',
         backgroundClip: 'padding-box',
-        // Gold glow line at bottom via box-shadow
         boxShadow: `0 1px 0 rgba(201,168,76,0.20), 0 4px 24px rgba(0,0,0,0.40)`,
       }}>
         {/* Back button — right side (RTL) */}
@@ -745,27 +838,49 @@ export function AbuCalendar() {
           } as React.CSSProperties}>לוח שנה</span>
         </div>
 
-        {/* Left — month + year */}
+        {/* Left — Martita photo + month/year (Feature 2) */}
         <div style={{
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
+          alignItems: 'center',
+          gap: 10,
           flexShrink: 0,
-          minWidth: 80,
         }}>
-          <span style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: 'rgba(255,255,255,0.70)',
-            fontFamily: "'Heebo',sans-serif",
-            lineHeight: 1.3,
-          }}>{hebrewMonthLabel.split(' ')[0]}</span>
-          <span style={{
-            fontSize: 12,
-            color: TEAL,
-            fontFamily: "'DM Sans',sans-serif",
-            fontWeight: 500,
-          }}>{hebrewMonthLabel.split(' ')[1]}</span>
+          {/* Month + year label */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            minWidth: 60,
+          }}>
+            <span style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'rgba(255,255,255,0.70)',
+              fontFamily: "'Heebo',sans-serif",
+              lineHeight: 1.3,
+            }}>{hebrewMonthLabel.split(' ')[0]}</span>
+            <span style={{
+              fontSize: 12,
+              color: TEAL,
+              fontFamily: "'DM Sans',sans-serif",
+              fontWeight: 500,
+            }}>{hebrewMonthLabel.split(' ')[1]}</span>
+          </div>
+          {/* Martita portrait circle */}
+          <img
+            src={martitaPhoto}
+            alt="Martita"
+            onError={handleMartitaImgError}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: '50%',
+              objectFit: 'cover',
+              border: '1.5px solid rgba(201,168,76,0.45)',
+              flexShrink: 0,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.40)',
+            }}
+          />
         </div>
       </header>
 
@@ -882,7 +997,7 @@ export function AbuCalendar() {
               <button
                 key={ds}
                 type="button"
-                onClick={() => setSelectedDay(ds)}
+                onClick={() => { setSelectedDay(ds); soundTap() }}
                 style={{
                   height: 50,
                   borderRadius: 12,
@@ -1003,7 +1118,7 @@ export function AbuCalendar() {
             <ApptCard
               key={a.id}
               appt={a}
-              onDelete={() => { deleteAppointment(a.id); reload() }}
+              onDelete={() => { soundTap(); deleteAppointment(a.id); reload() }}
             />
           ))
         )}
@@ -1066,7 +1181,7 @@ export function AbuCalendar() {
               </div>
               <button
                 type="button"
-                onClick={() => { deleteAppointment(a.id); reload() }}
+                onClick={() => { soundTap(); deleteAppointment(a.id); reload() }}
                 aria-label="מחקי פגישה"
                 style={{
                   width: 44,
@@ -1089,7 +1204,7 @@ export function AbuCalendar() {
       )}
 
       {/* ══════════════════════════════════════════
-          ADD APPOINTMENT BUTTON + VOICE
+          ADD APPOINTMENT BUTTON + VOICE + ALERT SETTINGS
       ══════════════════════════════════════════ */}
       <div style={{
         padding: '24px 16px calc(28px + env(safe-area-inset-bottom, 0px))',
@@ -1099,10 +1214,56 @@ export function AbuCalendar() {
         flexShrink: 0,
         marginTop: 'auto',
       }}>
+        {/* Feature 1: Alert minutes setting */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(201,168,76,0.15)',
+        }}>
+          <span style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.65)',
+            fontFamily: "'Heebo',sans-serif",
+            direction: 'rtl',
+          }}>🔔 התראה</span>
+          <select
+            value={alertMinutes}
+            onChange={e => {
+              const v = parseInt(e.target.value, 10)
+              setAlertMinutes(v)
+              localStorage.setItem('abubank-alert-minutes', String(v))
+            }}
+            style={{
+              background: 'rgba(201,168,76,0.10)',
+              border: '1px solid rgba(201,168,76,0.25)',
+              borderRadius: 10,
+              color: GOLD,
+              fontSize: 14,
+              fontWeight: 600,
+              fontFamily: "'DM Sans',sans-serif",
+              padding: '6px 10px',
+              cursor: 'pointer',
+              outline: 'none',
+              colorScheme: 'dark' as React.CSSProperties['colorScheme'],
+              direction: 'rtl',
+            } as React.CSSProperties}
+          >
+            <option value={15}>15 דקות לפני</option>
+            <option value={30}>30 דקות לפני</option>
+            <option value={60}>60 דקות לפני</option>
+            <option value={120}>120 דקות לפני</option>
+          </select>
+        </div>
+
         {/* Primary add button — full-width gold pill */}
         <button
           type="button"
-          onClick={() => setShowManual(true)}
+          onClick={() => { soundOpen(); setShowManual(true) }}
           style={{
             width: '100%',
             height: 56,
@@ -1153,7 +1314,7 @@ export function AbuCalendar() {
             transition: 'background 0.2s, border-color 0.2s, color 0.2s',
           }}
         >
-          {/* Pulsing gold orb when recording */}
+          {/* Pulsing red orb when recording */}
           {isRecording ? (
             <span style={{
               width: 18,
@@ -1274,6 +1435,10 @@ export function AbuCalendar() {
         @keyframes sheetUp {
           from { transform: translateY(40px); opacity: 0; }
           to   { transform: translateY(0);    opacity: 1; }
+        }
+        @keyframes alertSlideIn {
+          from { opacity: 0; transform: translateY(-12px); }
+          to   { opacity: 1; transform: translateY(0);     }
         }
       `}</style>
     </div>
