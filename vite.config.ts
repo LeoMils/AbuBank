@@ -442,7 +442,8 @@ export default defineConfig({
       workbox: {
         runtimeCaching: [],
         cleanupOutdatedCaches: true,
-        skipWaiting: true,              // new SW takes over immediately on update
+        skipWaiting: true,              // new SW installs immediately
+        clientsClaim: true,             // new SW takes control of ALL open tabs/windows immediately
       },
       manifest: {
         name: 'AbuBank',
