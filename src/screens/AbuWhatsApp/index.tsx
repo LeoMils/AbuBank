@@ -10,7 +10,7 @@ const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
 const WA_GREEN = '#25D366'
 
-const STYLES = ['מקורי', 'יותר שגיאות', 'יותר אימוג\'יס', 'מצחיק'] as const
+const STYLES = ['מקורי', 'בדיחה', 'חידה', 'טריק'] as const
 type Style = typeof STYLES[number]
 
 type Phase = 'idle' | 'recording' | 'transcribing' | 'generating' | 'result'
@@ -20,13 +20,15 @@ const STYLE_KEYWORDS: Record<string, Style> = {
   'מקורי': 'מקורי',
   'רגיל': 'מקורי',
   'רגילה': 'מקורי',
-  'שגיאות': 'יותר שגיאות',
-  'טעויות': 'יותר שגיאות',
-  'אימוג': 'יותר אימוג\'יס',
-  'עם אימוג': 'יותר אימוג\'יס',
-  'מצחיק': 'מצחיק',
-  'מצחיקה': 'מצחיק',
-  'מצחיקי': 'מצחיק',
+  'בדיחה': 'בדיחה',
+  'בדיחות': 'בדיחה',
+  'תבדחי': 'בדיחה',
+  'חידה': 'חידה',
+  'חידות': 'חידה',
+  'שאלה': 'חידה',
+  'טריק': 'טריק',
+  'טיפ': 'טריק',
+  'עצה': 'טריק',
 }
 
 // Send commands
@@ -60,6 +62,14 @@ function detectVoiceCommand(text: string): { type: 'send' } | { type: 'retry' } 
 
   // Default: new intent
   return { type: 'newIntent', intent: trimmed }
+}
+
+// Per-style accent colors for pill buttons (unselected state)
+const STYLE_ACCENT: Record<Style, string> = {
+  'מקורי': 'rgba(255,255,255,0.55)',
+  'בדיחה': 'rgba(251,191,36,0.70)',
+  'חידה': 'rgba(167,139,250,0.75)',
+  'טריק': 'rgba(52,211,153,0.75)',
 }
 
 export function AbuWhatsApp() {
@@ -639,9 +649,9 @@ export function AbuWhatsApp() {
         )}
 
         {/* ════════════════════════════════════
-            IDLE STATE
+            IDLE + RECORDING STATE
            ════════════════════════════════════ */}
-        {phase === 'idle' && !voiceMode && (
+        {(phase === 'idle' || phase === 'recording') && !voiceMode && (
           <>
             {/* Voice conversation CTA */}
             <button
@@ -700,17 +710,17 @@ export function AbuWhatsApp() {
                   type="button"
                   onClick={() => setActiveStyle(style)}
                   style={{
-                    height: 44,
-                    padding: '0 20px',
-                    borderRadius: 22,
+                    height: 46,
+                    padding: '0 22px',
+                    borderRadius: 23,
                     border: activeStyle === style
                       ? '1.5px solid rgba(20,184,166,0.70)'
                       : '1px solid rgba(255,255,255,0.13)',
                     background: activeStyle === style
                       ? `linear-gradient(135deg, #14b8a6 0%, #0d9488 60%, #0f766e 100%)`
                       : 'rgba(255,255,255,0.04)',
-                    color: activeStyle === style ? 'white' : 'rgba(255,255,255,0.55)',
-                    fontSize: 18, fontWeight: activeStyle === style ? 700 : 500,
+                    color: activeStyle === style ? 'white' : STYLE_ACCENT[style],
+                    fontSize: 16, fontWeight: activeStyle === style ? 700 : 500,
                     fontFamily: "'Heebo',sans-serif",
                     cursor: 'pointer',
                     boxShadow: activeStyle === style
@@ -1056,15 +1066,15 @@ export function AbuWhatsApp() {
                   type="button"
                   onClick={() => handleStyleTap(style)}
                   style={{
-                    height: 44, padding: '0 20px', borderRadius: 22,
+                    height: 46, padding: '0 22px', borderRadius: 23,
                     border: activeStyle === style
                       ? '1.5px solid rgba(20,184,166,0.70)'
                       : '1px solid rgba(255,255,255,0.13)',
                     background: activeStyle === style
                       ? `linear-gradient(135deg, #14b8a6 0%, #0d9488 60%, #0f766e 100%)`
                       : 'rgba(255,255,255,0.04)',
-                    color: activeStyle === style ? 'white' : 'rgba(255,255,255,0.55)',
-                    fontSize: 18, fontWeight: activeStyle === style ? 700 : 500,
+                    color: activeStyle === style ? 'white' : STYLE_ACCENT[style],
+                    fontSize: 16, fontWeight: activeStyle === style ? 700 : 500,
                     fontFamily: "'Heebo',sans-serif",
                     cursor: 'pointer',
                     boxShadow: activeStyle === style

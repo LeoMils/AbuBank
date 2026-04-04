@@ -430,7 +430,7 @@ export async function speakVoiceMode(text: string): Promise<void> {
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: 0.88, response_format: 'mp3' }),
+        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: 1.0, response_format: 'mp3' }),
         signal: controller.signal,
       })
       clearTimeout(t)

@@ -19,9 +19,9 @@ function getProviders(voiceMode = false): Array<{ url: string; model: string; ap
   const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
 
   if (voiceMode) {
-    // Voice mode: SPEED + RELIABILITY — OpenAI mini first if available, then free providers
-    if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_VOICE,   apiKey: openaiKey })
+    // Voice mode: SPEED — Groq llama is fastest (sub-second P50, no cold start), then OpenAI mini, then Gemini
     if (groqKey)   providers.push({ url: GROQ_URL,   model: GROQ_MODEL,           apiKey: groqKey })
+    if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_VOICE,   apiKey: openaiKey })
     if (geminiKey) providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,         apiKey: geminiKey })
   } else {
     // Text mode: search model first → regular gpt-4o fallback → free providers
@@ -335,9 +335,7 @@ function wait(ms: number): Promise<void> {
 
 const VOICE_SUFFIX = `
 
-מצב קול. דברי בטבעיות — 1-2 משפטים קצרים, עד 20 מילה.
-ללא רשימות. ללא הסברים ארוכים. ללא שאלות בסוף.
-כמו שמדברים בטלפון — קצר, חם, אמיתי.`
+מצב קול. תשובה ב-1 משפט קצר בלבד. מקסימום 15 מילה. לא רשימות. לא שאלות בסוף. כמו שמדברים בטלפון.`
 
 // Search-preview models don't support the temperature parameter
 const isSearchModel = (model: string) => model.includes('search')
@@ -350,8 +348,8 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
     ...FEW_SHOT,
     ...messages.map(m => ({ role: m.role, content: m.content })),
   ]
-  const maxTokens = voiceMode ? 80 : 1024
-  const temperature = voiceMode ? 0.55 : 0.65
+  const maxTokens = voiceMode ? 60 : 1024
+  const temperature = voiceMode ? 0.5 : 0.65
 
   // Try all providers, then retry once with backoff if all were rate-limited
   for (let attempt = 0; attempt < 2; attempt++) {
