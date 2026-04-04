@@ -569,7 +569,8 @@ export function AbuAI() {
             border: '2px solid rgba(201,168,76,0.55)',
             overflow: 'hidden',
             background: '#0c2228',
-            animation: isSpeaking ? 'avatarGlow 1.4s ease-in-out infinite' : 'avatarGlowAlways 2.5s ease-in-out infinite',
+            animation: isSpeaking ? 'avatarGlow 1.4s ease-in-out infinite' : 'none',
+            boxShadow: isSpeaking ? undefined : '0 0 0 2px rgba(201,168,76,0.25)',
             transition: 'box-shadow 0.4s ease',
             flexShrink: 0,
           }}
@@ -624,33 +625,36 @@ export function AbuAI() {
           aria-label="חזרה לדף הבית"
           style={{
             position: 'absolute',
-            right: 16,
+            right: 12,
             top: '50%',
             transform: 'translateY(-50%)',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            background: 'transparent',
-            border: 'none',
+            gap: 2,
+            width: 56,
+            height: 56,
+            borderRadius: 14,
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.12)',
             cursor: 'pointer',
             WebkitTapHighlightColor: 'transparent',
           }}
         >
           <svg
             viewBox="0 0 24 24"
-            width="22"
-            height="22"
+            width="26"
+            height="26"
             fill="none"
-            stroke="rgba(255,255,255,0.50)"
-            strokeWidth="2"
+            stroke="rgba(255,255,255,0.85)"
+            strokeWidth="2.2"
             strokeLinecap="round"
             aria-hidden="true"
           >
             <path d="M15 18l-6-6 6-6" />
           </svg>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', fontFamily: "'Heebo',sans-serif", fontWeight: 500, lineHeight: 1 }}>חזרה</span>
         </button>
         </div>{/* end inner content wrapper */}
         {/* Version badge */}
@@ -703,8 +707,8 @@ export function AbuAI() {
                   position: 'absolute',
                   inset: 0,
                   borderRadius: '50%',
-                  border: '1.5px solid rgba(20,184,166,0.35)',
-                  animation: 'ripple1 3.0s ease-out 0s infinite',
+                  border: '1.5px solid rgba(201,168,76,0.30)',
+                  animation: 'ripple1 4.0s ease-out 0s infinite',
                 }}
               />
               <div
@@ -713,28 +717,8 @@ export function AbuAI() {
                   position: 'absolute',
                   inset: 0,
                   borderRadius: '50%',
-                  border: '1.5px solid rgba(20,184,166,0.28)',
-                  animation: 'ripple2 3.0s ease-out 0.8s infinite',
-                }}
-              />
-              <div
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: '50%',
-                  border: '1px solid rgba(20,184,166,0.18)',
-                  animation: 'ripple3 3.0s ease-out 1.6s infinite',
-                }}
-              />
-              <div
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: '50%',
-                  border: '1px solid rgba(20,184,166,0.12)',
-                  animation: 'ripple1 4.5s ease-out 2.4s infinite',
+                  border: '1px solid rgba(201,168,76,0.18)',
+                  animation: 'ripple2 4.0s ease-out 1.2s infinite',
                 }}
               />
               {/* Main orb */}
@@ -743,9 +727,9 @@ export function AbuAI() {
                   position: 'absolute',
                   inset: 0,
                   borderRadius: '50%',
-                  background: 'radial-gradient(circle at 38% 32%, rgba(94,234,212,0.22) 0%, rgba(20,184,166,0.14) 40%, rgba(5,10,24,0.95) 75%)',
-                  border: '1.5px solid rgba(20,184,166,0.50)',
-                  animation: 'orbFloat 4s ease-in-out infinite, orbGlowTeal 4s ease-in-out infinite',
+                  background: 'radial-gradient(circle at 40% 34%, rgba(255,228,140,0.20) 0%, rgba(201,168,76,0.12) 38%, rgba(18,32,42,0.96) 75%)',
+                  border: '1.5px solid rgba(201,168,76,0.45)',
+                  animation: 'orbGlowGold 3.5s ease-in-out infinite',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -777,12 +761,12 @@ export function AbuAI() {
               style={{
                 marginTop: 28,
                 fontFamily: "'Heebo',sans-serif",
-                fontSize: 23,
-                fontWeight: 600,
-                color: 'rgba(255,255,255,0.95)',
+                fontSize: 26,
+                fontWeight: 700,
+                color: '#F0F4F8',
                 textAlign: 'center',
                 direction: 'rtl',
-                lineHeight: 1.3,
+                lineHeight: 1.35,
                 letterSpacing: '-0.2px',
               }}
             >
@@ -794,7 +778,7 @@ export function AbuAI() {
               style={{
                 marginTop: 6,
                 fontFamily: "'Cormorant Garamond',Georgia,serif",
-                fontSize: 24,
+                fontSize: 28,
                 fontStyle: 'italic',
                 background: 'linear-gradient(135deg, #FDE68A, #C9A84C, #A88A35)',
                 WebkitBackgroundClip: 'text',
@@ -810,14 +794,16 @@ export function AbuAI() {
             <div
               style={{
                 marginTop: 10,
-                fontSize: 15,
-                color: 'rgba(255,255,255,0.42)',
+                fontSize: 19,
+                color: 'rgba(255,255,255,0.68)',
                 textAlign: 'center',
                 direction: 'rtl',
                 fontFamily: "'Heebo',sans-serif",
+                fontWeight: 500,
+                lineHeight: 1.7,
               }}
             >
-              כאן בשבילך — שאלי אותי הכל 💫
+              כאן בשבילך, מרטיטה{'\n'}שאלי אותי על כל דבר
             </div>
 
             {/* Voice invitation card */}
@@ -826,11 +812,11 @@ export function AbuAI() {
               onClick={enterVoiceMode}
               style={{
                 marginTop: 26,
-                padding: '18px 28px',
-                borderRadius: 20,
-                background: 'linear-gradient(135deg, rgba(201,168,76,0.13) 0%, rgba(201,168,76,0.07) 100%)',
-                border: '1px solid rgba(201,168,76,0.38)',
-                boxShadow: '0 4px 24px rgba(201,168,76,0.12), inset 0 1px 0 rgba(255,255,255,0.06)',
+                padding: '22px 32px',
+                borderRadius: 24,
+                background: 'linear-gradient(135deg, rgba(201,168,76,0.12) 0%, rgba(201,168,76,0.06) 100%)',
+                border: '1.5px solid rgba(201,168,76,0.45)',
+                boxShadow: '0 4px 28px rgba(201,168,76,0.14), inset 0 1px 0 rgba(255,255,255,0.07)',
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
                 transition: 'transform 0.12s ease, box-shadow 0.12s ease',
@@ -838,8 +824,8 @@ export function AbuAI() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 6,
-                minWidth: 220,
+                gap: 8,
+                minWidth: 260,
               }}
               onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.96)' }}
               onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
@@ -847,13 +833,13 @@ export function AbuAI() {
             >
               {/* Mic icon with gold glow */}
               <div style={{
-                width: 44, height: 44, borderRadius: '50%',
+                width: 52, height: 52, borderRadius: '50%',
                 background: 'rgba(201,168,76,0.15)',
-                border: '1px solid rgba(201,168,76,0.40)',
+                border: '1.5px solid rgba(201,168,76,0.45)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 16px rgba(201,168,76,0.20)',
+                boxShadow: '0 0 20px rgba(201,168,76,0.22)',
               }}>
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
                   stroke="#C9A84C" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                   <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                   <path d="M19 10v2a7 7 0 01-14 0v-2" />
@@ -864,9 +850,9 @@ export function AbuAI() {
               {/* Invitation text */}
               <div style={{
                 fontFamily: "'Heebo',sans-serif",
-                fontSize: 17,
-                fontWeight: 600,
-                color: 'rgba(255,255,255,0.92)',
+                fontSize: 22,
+                fontWeight: 700,
+                color: '#F0F4F8',
                 direction: 'rtl',
                 letterSpacing: '-0.1px',
               }}>
@@ -874,11 +860,20 @@ export function AbuAI() {
               </div>
               <div style={{
                 fontFamily: "'Heebo',sans-serif",
-                fontSize: 13,
-                color: 'rgba(201,168,76,0.75)',
+                fontSize: 17,
+                fontWeight: 500,
+                color: 'rgba(201,168,76,0.85)',
                 direction: 'rtl',
               }}>
                 על כל דבר שבא לך 💛
+              </div>
+              <div style={{
+                fontFamily: "'Heebo',sans-serif",
+                fontSize: 16,
+                color: 'rgba(255,255,255,0.55)',
+                direction: 'rtl',
+              }}>
+                דברי ואני אענה לך קולית
               </div>
             </button>
           </div>
@@ -898,58 +893,61 @@ export function AbuAI() {
                   display: 'flex',
                   flexDirection: isUser ? 'row-reverse' : 'row',
                   alignItems: 'flex-end',
-                  gap: 8,
-                  marginBottom: 16,
-                  animation: isLast ? 'msgIn 0.22s ease-out both' : 'none',
+                  gap: 10,
+                  marginBottom: 20,
+                  animation: isLast ? 'msgIn 0.30s ease-out both' : 'none',
                 }}
               >
-                {/* AI avatar */}
+                {/* AI avatar — gold star on teal disc */}
                 {!isUser && (
                   <div
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: 36, height: 36,
                       borderRadius: '50%',
-                      border: '1.5px solid rgba(201,168,76,0.40)',
-                      overflow: 'hidden',
+                      background: 'rgba(20,184,166,0.14)',
+                      border: '1.5px solid rgba(20,184,166,0.50)',
                       flexShrink: 0,
-                      background: '#0c2228',
-                      boxShadow: '0 1px 6px rgba(0,0,0,0.30)',
-                      marginBottom: 18, // align with timestamp below bubble
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 1px 8px rgba(20,184,166,0.20)',
+                      marginBottom: 20,
                     }}
                   >
-                    <img
-                      src={martitaPhoto}
-                      alt="Abu AI"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
-                      onError={handleMartitaImgError}
-                    />
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="aiStarG" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#FDE68A"/>
+                          <stop offset="55%" stopColor="#C9A84C"/>
+                          <stop offset="100%" stopColor="#A07830"/>
+                        </linearGradient>
+                      </defs>
+                      <path d="M12 2 L13.2 10.8 L22 12 L13.2 13.2 L12 22 L10.8 13.2 L2 12 L10.8 10.8 Z" fill="url(#aiStarG)"/>
+                    </svg>
                   </div>
                 )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start', maxWidth: isUser ? '78%' : '82%' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start', maxWidth: isUser ? '80%' : '84%' }}>
                   {/* Bubble */}
                   <div
                     style={isUser ? {
-                      padding: '13px 18px',
-                      borderRadius: '20px 6px 20px 20px',
-                      background: 'linear-gradient(135deg, rgba(20,184,166,0.30) 0%, rgba(20,184,166,0.16) 100%)',
-                      border: '1px solid rgba(20,184,166,0.45)',
+                      padding: '16px 20px',
+                      borderRadius: '22px 6px 22px 22px',
+                      background: 'linear-gradient(135deg, rgba(20,184,166,0.28) 0%, rgba(20,184,166,0.15) 100%)',
+                      border: '1px solid rgba(20,184,166,0.50)',
                       boxShadow: '0 4px 16px rgba(20,184,166,0.14)',
                     } : {
-                      padding: '13px 18px',
-                      borderRadius: '6px 20px 20px 20px',
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.04) 100%)',
-                      border: '1px solid rgba(255,255,255,0.14)',
+                      padding: '16px 20px',
+                      borderRadius: '6px 22px 22px 22px',
+                      background: 'rgba(255,255,255,0.10)',
+                      border: '1px solid rgba(255,255,255,0.18)',
                       backdropFilter: 'blur(6px)',
                       boxShadow: '0 2px 10px rgba(0,0,0,0.22)',
                     }}
                   >
                     <div
                       style={{
-                        fontSize: 18,
-                        lineHeight: 1.7,
-                        color: isUser ? 'white' : 'rgba(255,255,255,0.92)',
+                        fontSize: 21,
+                        lineHeight: 1.8,
+                        color: '#F0F4F8',
                         direction: 'rtl',
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
@@ -963,9 +961,9 @@ export function AbuAI() {
                   {/* Timestamp */}
                   <div
                     style={{
-                      marginTop: 4,
-                      fontSize: 11,
-                      color: 'rgba(255,255,255,0.35)',
+                      marginTop: 5,
+                      fontSize: 14,
+                      color: 'rgba(255,255,255,0.55)',
                       textAlign: isUser ? 'right' : 'left',
                       fontFamily: "'DM Sans',sans-serif",
                       direction: 'ltr',
@@ -1022,12 +1020,12 @@ export function AbuAI() {
                     <div
                       key={i}
                       style={{
-                        width: 9,
-                        height: 9,
+                        width: 12,
+                        height: 12,
                         borderRadius: '50%',
                         background: 'linear-gradient(135deg, #5EEAD4, #14b8a6)',
-                        boxShadow: '0 0 6px rgba(20,184,166,0.40)',
-                        animation: `dotPulse 1.4s ease-in-out ${i * 0.18}s infinite`,
+                        boxShadow: '0 0 8px rgba(20,184,166,0.40)',
+                        animation: `dotPulse 1.8s ease-in-out ${i * 0.22}s infinite`,
                       }}
                     />
                   ))}
@@ -1061,53 +1059,17 @@ export function AbuAI() {
         >
           {/* Large orb with ripples */}
           <div style={{ position: 'relative', width: 168, height: 168 }}>
-            {/* Ripple rings — active when listening */}
-            {voicePhase === 'listening' && (<>
+            {/* Ripple rings — only 2, slow, breathing pace */}
+            {(voicePhase === 'listening' || voicePhase === 'greeting' || voicePhase === 'speaking') && (<>
               <div aria-hidden="true" style={{
                 position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1.5px solid rgba(20,184,166,0.45)',
-                animation: 'ripple1 2.2s ease-out 0s infinite',
-              }} />
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1.5px solid rgba(20,184,166,0.32)',
-                animation: 'ripple2 2.2s ease-out 0.55s infinite',
-              }} />
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1px solid rgba(20,184,166,0.20)',
-                animation: 'ripple3 2.2s ease-out 1.1s infinite',
-              }} />
-            </>)}
-            {/* Gold ripple rings when greeting */}
-            {voicePhase === 'greeting' && (<>
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1.5px solid rgba(201,168,76,0.55)',
-                animation: 'ripple1 2.4s ease-out 0s infinite',
-              }} />
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1.5px solid rgba(201,168,76,0.38)',
-                animation: 'ripple2 2.4s ease-out 0.6s infinite',
+                border: '1.5px solid rgba(201,168,76,0.40)',
+                animation: 'ripple1 3.5s ease-out 0s infinite',
               }} />
               <div aria-hidden="true" style={{
                 position: 'absolute', inset: 0, borderRadius: '50%',
                 border: '1px solid rgba(201,168,76,0.22)',
-                animation: 'ripple3 2.4s ease-out 1.2s infinite',
-              }} />
-            </>)}
-            {/* Gold ripple rings when speaking */}
-            {voicePhase === 'speaking' && (<>
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1.5px solid rgba(201,168,76,0.50)',
-                animation: 'ripple1 1.8s ease-out 0s infinite',
-              }} />
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1.5px solid rgba(201,168,76,0.35)',
-                animation: 'ripple2 1.8s ease-out 0.45s infinite',
+                animation: 'ripple2 3.5s ease-out 1.4s infinite',
               }} />
             </>)}
 
@@ -1117,30 +1079,22 @@ export function AbuAI() {
                 position: 'absolute',
                 inset: 0,
                 borderRadius: '50%',
-                background: (voicePhase === 'speaking' || voicePhase === 'greeting')
-                  ? 'radial-gradient(circle at 38% 32%, rgba(255,215,100,0.22) 0%, rgba(201,168,76,0.14) 45%, rgba(5,10,24,0.95) 80%)'
-                  : voicePhase === 'processing'
-                    ? 'radial-gradient(circle at 38% 32%, rgba(94,234,212,0.15) 0%, rgba(20,184,166,0.10) 45%, rgba(5,10,24,0.95) 80%)'
-                    : 'radial-gradient(circle at 38% 32%, rgba(94,234,212,0.22) 0%, rgba(20,184,166,0.14) 45%, rgba(5,10,24,0.95) 80%)',
-                border: (voicePhase === 'speaking' || voicePhase === 'greeting')
-                  ? '1.5px solid rgba(201,168,76,0.60)'
-                  : '1.5px solid rgba(20,184,166,0.55)',
-                animation: (voicePhase === 'speaking' || voicePhase === 'greeting')
-                  ? 'orbGlowGold 1.8s ease-in-out infinite'
-                  : voicePhase === 'listening'
-                    ? 'orbGlowTeal 2.2s ease-in-out infinite'
-                    : 'none',
+                background: 'radial-gradient(circle at 40% 34%, rgba(255,228,140,0.22) 0%, rgba(201,168,76,0.14) 38%, rgba(18,32,42,0.96) 75%)',
+                border: (voicePhase === 'listening')
+                  ? '2px solid rgba(201,168,76,0.50)'
+                  : '2px solid rgba(201,168,76,0.60)',
+                animation: 'orbGlowGold 3.0s ease-in-out infinite',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'border-color 0.5s ease, background 0.5s ease',
               }}
             >
-              {/* Listening: mic icon */}
+              {/* Listening: gold mic icon */}
               {voicePhase === 'listening' && (
                 <svg viewBox="0 0 24 24" width="52" height="52" fill="none"
-                  stroke={TEAL} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"
-                  style={{ filter: 'drop-shadow(0 0 12px rgba(20,184,166,0.50))' }}
+                  stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"
+                  style={{ filter: 'drop-shadow(0 0 14px rgba(201,168,76,0.60))' }}
                 >
                   <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                   <path d="M19 10v2a7 7 0 01-14 0v-2" />
@@ -1148,39 +1102,35 @@ export function AbuAI() {
                   <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
               )}
-              {/* Processing: 3 dots */}
+              {/* Processing: single rotating gold ring — thoughtful, not mechanical */}
               {voicePhase === 'processing' && (
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  {[0, 1, 2].map(i => (
-                    <div key={i} style={{
-                      width: 13, height: 13, borderRadius: '50%',
-                      background: TEAL,
-                      animation: `dotPulse 1.3s ease-in-out ${i * 0.18}s infinite`,
-                    }} />
-                  ))}
-                </div>
+                <div style={{
+                  width: 40, height: 40, borderRadius: '50%',
+                  border: '3px solid rgba(201,168,76,0.22)',
+                  borderTopColor: GOLD,
+                  animation: 'spin 1.2s linear infinite',
+                }} />
               )}
-              {/* Speaking/Greeting: wave bars */}
+              {/* Speaking/Greeting: 7 symmetrical wave bars */}
               {(voicePhase === 'speaking' || voicePhase === 'greeting') && (
-                <div style={{ display: 'flex', gap: 5, alignItems: 'center', height: 46 }}>
-                  {[0.4, 0.7, 1.0, 0.75, 0.55, 0.9, 0.65, 0.45, 0.8].map((h, i) => (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', height: 48 }}>
+                  {[18, 28, 36, 44, 36, 28, 18].map((h, i) => (
                     <div key={i} style={{
-                      width: 4, borderRadius: 3,
+                      width: 5, borderRadius: 3,
                       background: `linear-gradient(180deg, #FDE68A, #C9A84C)`,
-                      height: `${Math.round(h * 36)}px`,
-                      animation: `waveBar ${0.7 + i * 0.05}s ease-in-out ${i * 0.09}s infinite`,
-                      filter: 'drop-shadow(0 0 3px rgba(201,168,76,0.50))',
+                      height: `${h}px`,
+                      animation: `waveBar ${1.0 + i * 0.07}s ease-in-out ${i * 0.10}s infinite`,
                     }} />
                   ))}
                 </div>
               )}
-              {/* Connecting: spinner */}
+              {/* Connecting: gold spinner */}
               {!voicePhase && (
                 <div style={{
-                  width: 22, height: 22, borderRadius: '50%',
-                  border: '2.5px solid rgba(20,184,166,0.35)',
-                  borderTopColor: TEAL,
-                  animation: 'spin 0.9s linear infinite',
+                  width: 36, height: 36, borderRadius: '50%',
+                  border: '3px solid rgba(201,168,76,0.22)',
+                  borderTopColor: GOLD,
+                  animation: 'spin 1.2s linear infinite',
                 }} />
               )}
             </div>
@@ -1217,69 +1167,65 @@ export function AbuAI() {
               </div>
             </div>
           ) : (
-            <div
-              style={{
-                marginTop: 32,
-                fontSize: 32,
-                fontWeight: 600,
+            <div style={{ marginTop: 28, textAlign: 'center', direction: 'rtl', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <div style={{
+                fontSize: 34, fontWeight: 700,
                 fontFamily: "'Heebo',sans-serif",
-                color: 'rgba(255,255,255,0.95)',
-                letterSpacing: '-0.3px',
-                direction: 'rtl',
-              }}
-            >
-              {voicePhase === 'listening'
-                ? (listenCountdown !== null ? `מקשיבה... ${listenCountdown}` : 'מקשיבה...')
-                : voicePhase === 'processing'
-                  ? 'חושבת...'
-                  : voicePhase === 'speaking'
-                    ? 'מדברת...'
-                    : 'מתחברת...'}
+                color: '#F0F4F8', letterSpacing: '-0.3px',
+              }}>
+                {voicePhase === 'listening' ? 'מקשיבה לך'
+                  : voicePhase === 'processing' ? 'חושבת...'
+                  : voicePhase === 'speaking'   ? 'מדברת...'
+                  : 'מתחברת...'}
+              </div>
+              <div style={{
+                fontSize: 20, fontWeight: 500,
+                color: 'rgba(255,255,255,0.68)',
+                fontFamily: "'Heebo',sans-serif",
+              }}>
+                {voicePhase === 'listening'   ? 'דברי בשקט — שומעת אותך'
+                  : voicePhase === 'processing' ? 'רגע קטן'
+                  : voicePhase === 'speaking'   ? 'הקשי לי'
+                  : ''}
+              </div>
             </div>
           )}
 
-          <div
-            style={{
-              marginTop: 10,
-              fontSize: 16,
-              color: 'rgba(255,255,255,0.32)',
-              fontFamily: "'Heebo',sans-serif",
-              direction: 'rtl',
-            }}
-          >
-            {voicePhase === 'greeting' ? '' : voicePhase === 'speaking' ? 'הקשי כדי לעצור' : 'אמרי "ביי" כדי לסיים'}
+          <div style={{
+            marginTop: 10, fontSize: 18,
+            color: 'rgba(255,255,255,0.60)',
+            fontFamily: "'Heebo',sans-serif",
+            direction: 'rtl', fontWeight: 500,
+          }}>
+            {voicePhase === 'greeting' ? '' : voicePhase === 'speaking' ? 'לחצי כדי לעצור' : '"ביי" — לסיום השיחה'}
           </div>
 
-          {/* Stop button */}
-          <button
-            type="button"
-            onClick={exitVoiceMode}
-            aria-label="סיים שיחה קולית"
-            style={{
-              marginTop: 36,
-              width: 64,
-              height: 64,
-              borderRadius: '50%',
-              background: 'rgba(239,68,68,0.12)',
-              border: '1.5px solid rgba(239,68,68,0.38)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'transform 0.10s ease-out, background 0.15s ease',
-              WebkitTapHighlightColor: 'transparent',
-            }}
-            onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.88)'; e.currentTarget.style.background = 'rgba(239,68,68,0.22)' }}
-            onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(239,68,68,0.12)' }}
-            onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(239,68,68,0.12)' }}
-          >
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-              stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"
+          {/* Stop button — calm slate at rest, red only on press */}
+          <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              onClick={exitVoiceMode}
+              aria-label="סיים שיחה קולית"
+              style={{
+                width: 72, height: 72, borderRadius: '50%',
+                background: 'rgba(100,116,139,0.20)',
+                border: '1.5px solid rgba(100,116,139,0.40)',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'transform 0.10s ease-out, background 0.12s ease, border-color 0.12s ease',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+              onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.90)'; e.currentTarget.style.background = 'rgba(239,68,68,0.20)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.50)' }}
+              onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(100,116,139,0.20)'; e.currentTarget.style.borderColor = 'rgba(100,116,139,0.40)' }}
+              onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(100,116,139,0.20)'; e.currentTarget.style.borderColor = 'rgba(100,116,139,0.40)' }}
             >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+              {/* Square stop symbol — universally recognised for audio/video stop */}
+              <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+                <rect x="6" y="6" width="12" height="12" rx="2.5" fill="rgba(255,255,255,0.75)"/>
+              </svg>
+            </button>
+            <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.60)', fontFamily: "'Heebo',sans-serif", fontWeight: 500 }}>סיום</span>
+          </div>
         </div>
       )}
 
@@ -1289,8 +1235,8 @@ export function AbuAI() {
           style={{
             display: 'flex',
             alignItems: 'flex-end',
-            gap: 8,
-            padding: '10px 14px',
+            gap: 12,
+            padding: '10px 16px',
             paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
             borderTop: '1px solid rgba(20,184,166,0.15)',
             background: 'rgba(5,10,24,0.95)',
@@ -1342,8 +1288,8 @@ export function AbuAI() {
             disabled={micDisabled}
             aria-label={recording ? 'עצרי הקלטה' : 'הקלטה קולית'}
             style={{
-              width: 40,
-              height: 40,
+              width: 52,
+              height: 52,
               borderRadius: '50%',
               background: recording
                 ? 'rgba(239,68,68,0.15)'
@@ -1379,8 +1325,8 @@ export function AbuAI() {
             ) : (
               <svg
                 viewBox="0 0 24 24"
-                width="20"
-                height="20"
+                width="22"
+                height="22"
                 fill="none"
                 stroke={micDisabled ? 'rgba(255,255,255,0.25)' : TEAL}
                 strokeWidth="2"
@@ -1407,17 +1353,17 @@ export function AbuAI() {
             style={{
               flex: 1,
               resize: 'none',
-              padding: '11px 18px',
+              padding: '14px 20px',
               borderRadius: 24,
               border: '1px solid rgba(20,184,166,0.22)',
               background: 'rgba(20,184,166,0.07)',
               color: 'rgba(255,255,255,0.95)',
-              fontSize: 17,
+              fontSize: 20,
               fontFamily: "'Heebo',sans-serif",
               direction: 'rtl',
               lineHeight: 1.55,
               outline: 'none',
-              minHeight: 44,
+              minHeight: 52,
               maxHeight: 120,
               overflowY: 'auto',
               opacity: (loading || recording) ? 0.5 : 1,
@@ -1432,8 +1378,8 @@ export function AbuAI() {
             disabled={sendDisabled}
             aria-label="שלח הודעה"
             style={{
-              width: 40,
-              height: 40,
+              width: 52,
+              height: 52,
               borderRadius: '50%',
               background: sendDisabled
                 ? 'rgba(255,255,255,0.08)'
@@ -1453,8 +1399,8 @@ export function AbuAI() {
           >
             <svg
               viewBox="0 0 24 24"
-              width="18"
-              height="18"
+              width="22"
+              height="22"
               fill="none"
               stroke={sendDisabled ? 'rgba(255,255,255,0.25)' : 'white'}
               strokeWidth="2.2"
