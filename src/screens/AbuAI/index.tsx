@@ -523,151 +523,149 @@ export function AbuAI() {
         position: 'relative',
       }}
     >
-      {/* Aurora background — two overlapping soft blobs */}
+      {/* ── Ambient background layers ── */}
       <div aria-hidden="true" style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
         background: [
-          'radial-gradient(ellipse 90% 50% at 50% -5%, rgba(20,184,166,0.16) 0%, transparent 60%)',
-          'radial-gradient(ellipse 60% 40% at 10% 85%, rgba(201,168,76,0.10) 0%, transparent 55%)',
-          'radial-gradient(ellipse 50% 35% at 90% 75%, rgba(20,184,166,0.08) 0%, transparent 50%)',
+          'radial-gradient(ellipse 100% 55% at 50% -8%, rgba(20,184,166,0.18) 0%, transparent 65%)',
+          'radial-gradient(ellipse 65% 45% at 8% 88%, rgba(201,168,76,0.11) 0%, transparent 58%)',
+          'radial-gradient(ellipse 55% 38% at 92% 72%, rgba(20,184,166,0.09) 0%, transparent 52%)',
         ].join(', '),
       }} />
 
-      {/* ─── HEADER ─── */}
+      {/* ─────────────────────── HEADER ─────────────────────── */}
       <header
         style={{
           flexShrink: 0,
           position: 'relative',
-          background: 'linear-gradient(180deg, rgba(5,10,24,1.0) 0%, rgba(5,12,26,0.97) 100%)',
-          borderBottom: '1px solid rgba(20,184,166,0.30)',
+          background: 'linear-gradient(180deg, rgba(5,10,24,1) 0%, rgba(5,12,28,0.97) 100%)',
+          borderBottom: '1px solid rgba(20,184,166,0.22)',
           zIndex: 20,
         }}
       >
-        {/* Teal glow strip along bottom edge */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1,
-          background: 'linear-gradient(90deg,transparent,rgba(20,184,166,0.35) 30%,rgba(20,184,166,0.55) 50%,rgba(20,184,166,0.35) 70%,transparent)'
+        {/* Glow strip */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: 1,
+          background: 'linear-gradient(90deg,transparent,rgba(20,184,166,0.30) 25%,rgba(20,184,166,0.55) 50%,rgba(20,184,166,0.30) 75%,transparent)',
         }} />
-        {/* Inner: fixed-height content zone — always 68 px below the notch */}
+
+        {/* Header content row — fixed 72px tall */}
         <div style={{
           position: 'relative',
-          height: 68,
+          height: 72,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '0 16px',
+          padding: '0 14px',
         }}>
-        {/* Martita portrait — left side (RTL = left) */}
-        <div
-          style={{
+
+          {/* LEFT (RTL): Martita portrait */}
+          <div style={{
             position: 'absolute',
-            left: 16,
+            left: 14,
             top: '50%',
             transform: 'translateY(-50%)',
-            width: 46,
-            height: 46,
+            width: 50,
+            height: 50,
             borderRadius: '50%',
-            border: '2px solid rgba(201,168,76,0.55)',
+            border: isSpeaking
+              ? '2.5px solid rgba(201,168,76,0.85)'
+              : '2px solid rgba(201,168,76,0.50)',
             overflow: 'hidden',
-            background: '#0c2228',
-            animation: isSpeaking ? 'avatarGlow 1.4s ease-in-out infinite' : 'none',
-            boxShadow: isSpeaking ? undefined : '0 0 0 2px rgba(201,168,76,0.25)',
-            transition: 'box-shadow 0.4s ease',
+            background: '#0c1e28',
+            animation: isSpeaking ? 'avatarGlow 1.4s ease-in-out infinite' : 'avatarGlowAlways 3s ease-in-out infinite',
             flexShrink: 0,
-          }}
-        >
-          <img
-            src={martitaPhoto}
-            alt="Martita"
-            loading="eager"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
-            onError={handleMartitaImgError}
-          />
-        </div>
+            transition: 'border-color 0.4s ease',
+          }}>
+            <img
+              src={martitaPhoto}
+              alt="Martita"
+              loading="eager"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
+              onError={handleMartitaImgError}
+            />
+          </div>
 
-        {/* AbuAI wordmark — center */}
-        <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, direction: 'ltr' }}>
-          <span
-            style={{
+          {/* CENTER: MartitAI wordmark */}
+          <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, direction: 'ltr' }}>
+            <span style={{
               fontFamily: "'Cormorant Garamond',Georgia,serif",
-              fontSize: 30,
+              fontSize: 32,
               fontWeight: 600,
-              letterSpacing: '1.5px',
-              background: 'linear-gradient(135deg, #5EEAD4 0%, #2DD4BF 18%, #0D9488 36%, #5EEAD4 52%, #14B8A6 68%, #0F766E 82%, #5EEAD4 100%)',
+              letterSpacing: '1px',
+              background: 'linear-gradient(135deg, #5EEAD4 0%, #2DD4BF 20%, #0D9488 40%, #5EEAD4 55%, #14B8A6 72%, #0F766E 85%, #5EEAD4 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              filter: 'drop-shadow(0 0 7px rgba(94,234,212,0.28))',
-            } as React.CSSProperties}
-          >
-            Martit
-          </span>
-          <span
-            style={{
+              filter: 'drop-shadow(0 0 8px rgba(94,234,212,0.30))',
+            } as React.CSSProperties}>
+              Martit
+            </span>
+            <span style={{
               fontFamily: "'DM Sans',sans-serif",
-              fontSize: 28,
+              fontSize: 30,
               fontWeight: 500,
-              letterSpacing: '2.5px',
-              background: 'linear-gradient(135deg, #FDE68A 0%, #FBBF24 18%, #D97706 34%, #F59E0B 50%, #92400E 66%, #B45309 78%, #FBBF24 90%, #FDE68A 100%)',
+              letterSpacing: '2px',
+              background: 'linear-gradient(135deg, #FDE68A 0%, #FBBF24 20%, #D97706 38%, #F59E0B 54%, #92400E 68%, #B45309 80%, #FBBF24 92%, #FDE68A 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              filter: 'drop-shadow(0 0 7px rgba(251,191,36,0.28))',
-            } as React.CSSProperties}
+              filter: 'drop-shadow(0 0 8px rgba(251,191,36,0.30))',
+            } as React.CSSProperties}>
+              AI
+            </span>
+          </div>
+
+          {/* RIGHT (RTL): Back button — 56×56 touch target */}
+          <button
+            type="button"
+            onClick={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }}
+            aria-label="חזרה לדף הבית"
+            style={{
+              position: 'absolute',
+              right: 10,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: 56,
+              height: 56,
+              borderRadius: 16,
+              background: 'rgba(255,255,255,0.07)',
+              border: '1px solid rgba(255,255,255,0.13)',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 3,
+              WebkitTapHighlightColor: 'transparent',
+              transition: 'background 0.15s ease',
+            }}
+            onPointerDown={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.13)' }}
+            onPointerUp={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
+            onPointerLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
           >
-            AI
-          </span>
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
+              stroke="rgba(255,255,255,0.85)" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            <span style={{
+              fontSize: 11, color: 'rgba(255,255,255,0.60)',
+              fontFamily: "'Heebo',sans-serif", fontWeight: 500, lineHeight: 1,
+            }}>חזרה</span>
+          </button>
         </div>
 
-        {/* Back chevron — right side (RTL = right) */}
-        <button
-          type="button"
-          onClick={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }}
-          aria-label="חזרה לדף הבית"
-          style={{
-            position: 'absolute',
-            right: 12,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 2,
-            width: 56,
-            height: 56,
-            borderRadius: 14,
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            cursor: 'pointer',
-            WebkitTapHighlightColor: 'transparent',
-          }}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="26"
-            height="26"
-            fill="none"
-            stroke="rgba(255,255,255,0.85)"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            aria-hidden="true"
-          >
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', fontFamily: "'Heebo',sans-serif", fontWeight: 500, lineHeight: 1 }}>חזרה</span>
-        </button>
-        </div>{/* end inner content wrapper */}
         {/* Version badge */}
         <div style={{
-          position: 'absolute', bottom: 4, left: 10,
+          position: 'absolute', bottom: 5, left: 10,
           fontSize: 9, fontWeight: 700, letterSpacing: '1px',
-          color: 'rgba(201,168,76,0.70)',
+          color: 'rgba(201,168,76,0.65)',
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
-        }}>v11.1</div>
+        }}>v12.0</div>
       </header>
 
-      {/* ─── CHAT AREA ─── */}
+      {/* ─────────────────────── CHAT AREA ─────────────────────── */}
       <div
         ref={chatRef}
         className="abuai-chat-scroll"
@@ -675,7 +673,7 @@ export function AbuAI() {
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
-          padding: '12px 16px 8px',
+          padding: '16px 14px 10px',
           WebkitOverflowScrolling: 'touch',
           position: 'relative',
           zIndex: 1,
@@ -683,140 +681,116 @@ export function AbuAI() {
           flexDirection: 'column',
         }}
       >
-        {/* ── EMPTY STATE ── */}
+        {/* ──────── EMPTY STATE ──────── */}
         {messages.length === 0 && !loading && !voiceMode && (
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              animation: 'fadeSlideUp 0.6s ease-out both',
-              minHeight: 0,
-              gap: 0,
-              paddingBottom: 24,
-            }}
-          >
-            {/* Large animated AI orb */}
-            <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0 }}>
-              {/* Ripple rings behind orb */}
-              <div
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: '50%',
-                  border: '1.5px solid rgba(201,168,76,0.30)',
-                  animation: 'ripple1 4.0s ease-out 0s infinite',
-                }}
-              />
-              <div
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: '50%',
-                  border: '1px solid rgba(201,168,76,0.18)',
-                  animation: 'ripple2 4.0s ease-out 1.2s infinite',
-                }}
-              />
-              {/* Main orb */}
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle at 40% 34%, rgba(255,228,140,0.20) 0%, rgba(201,168,76,0.12) 38%, rgba(18,32,42,0.96) 75%)',
-                  border: '1.5px solid rgba(201,168,76,0.45)',
-                  animation: 'orbGlowGold 3.5s ease-in-out infinite',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backdropFilter: 'blur(2px)',
-                }}
-              >
-                {/* Inner gold star spark */}
-                <svg
-                  viewBox="0 0 24 24"
-                  width="44"
-                  height="44"
-                  aria-hidden="true"
-                  style={{ filter: 'drop-shadow(0 0 10px rgba(201,168,76,0.55))' }}
-                >
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'fadeSlideUp 0.65s ease-out both',
+            minHeight: 0,
+            gap: 0,
+            paddingBottom: 32,
+          }}>
+            {/* ── Large hero orb ── */}
+            <div style={{ position: 'relative', width: 148, height: 148, flexShrink: 0 }}>
+              {/* Ripple rings */}
+              <div aria-hidden="true" style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                border: '1.5px solid rgba(201,168,76,0.32)',
+                animation: 'ripple1 4.2s ease-out 0s infinite',
+              }} />
+              <div aria-hidden="true" style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                border: '1px solid rgba(201,168,76,0.18)',
+                animation: 'ripple2 4.2s ease-out 1.4s infinite',
+              }} />
+              <div aria-hidden="true" style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                border: '0.5px solid rgba(201,168,76,0.10)',
+                animation: 'ripple3 4.2s ease-out 2.6s infinite',
+              }} />
+              {/* Orb body */}
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                background: 'radial-gradient(circle at 38% 32%, rgba(255,235,148,0.22) 0%, rgba(201,168,76,0.14) 40%, rgba(12,22,40,0.97) 78%)',
+                border: '1.5px solid rgba(201,168,76,0.48)',
+                animation: 'orbGlowGold 3.8s ease-in-out infinite, orbFloat 5s ease-in-out infinite',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backdropFilter: 'blur(4px)',
+              }}>
+                <svg viewBox="0 0 24 24" width="48" height="48" aria-hidden="true"
+                  style={{ filter: 'drop-shadow(0 0 12px rgba(201,168,76,0.60))' }}>
                   <defs>
-                    <linearGradient id="starGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <linearGradient id="emptyStarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="#FDE68A" />
                       <stop offset="45%" stopColor="#C9A84C" />
                       <stop offset="100%" stopColor="#92400E" />
                     </linearGradient>
                   </defs>
-                  <path d="M12 2 L13.2 10.8 L22 12 L13.2 13.2 L12 22 L10.8 13.2 L2 12 L10.8 10.8 Z" fill="url(#starGrad)" />
+                  <path d="M12 2 L13.2 10.8 L22 12 L13.2 13.2 L12 22 L10.8 13.2 L2 12 L10.8 10.8 Z" fill="url(#emptyStarGrad)" />
                 </svg>
               </div>
             </div>
 
-            {/* "Ask me anything" */}
-            <div
-              style={{
-                marginTop: 28,
-                fontFamily: "'Heebo',sans-serif",
-                fontSize: 26,
-                fontWeight: 700,
-                color: '#F0F4F8',
-                textAlign: 'center',
-                direction: 'rtl',
-                lineHeight: 1.35,
-                letterSpacing: '-0.2px',
-              }}
-            >
+            {/* Headline */}
+            <div style={{
+              marginTop: 30,
+              fontFamily: "'Heebo',sans-serif",
+              fontSize: 28,
+              fontWeight: 800,
+              color: '#F2F6FA',
+              textAlign: 'center',
+              direction: 'rtl',
+              lineHeight: 1.3,
+              letterSpacing: '-0.3px',
+            }}>
               שאלי אותי כל דבר
             </div>
 
-            {/* "Martita" italic gold */}
-            <div
-              style={{
-                marginTop: 6,
-                fontFamily: "'Cormorant Garamond',Georgia,serif",
-                fontSize: 28,
-                fontStyle: 'italic',
-                background: 'linear-gradient(135deg, #FDE68A, #C9A84C, #A88A35)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                filter: 'drop-shadow(0 0 8px rgba(201,168,76,0.22))',
-              } as React.CSSProperties}
-            >
+            {/* Martita italic gold */}
+            <div style={{
+              marginTop: 8,
+              fontFamily: "'Cormorant Garamond',Georgia,serif",
+              fontSize: 30,
+              fontStyle: 'italic',
+              background: 'linear-gradient(135deg, #FDE68A, #C9A84C, #A88A35)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter: 'drop-shadow(0 0 8px rgba(201,168,76,0.24))',
+            } as React.CSSProperties}>
               Martita
             </div>
 
             {/* Subtitle */}
-            <div
-              style={{
-                marginTop: 10,
-                fontSize: 19,
-                color: 'rgba(255,255,255,0.68)',
-                textAlign: 'center',
-                direction: 'rtl',
-                fontFamily: "'Heebo',sans-serif",
-                fontWeight: 500,
-                lineHeight: 1.7,
-              }}
-            >
-              כאן בשבילך, מרטיטה{'\n'}שאלי אותי על כל דבר
+            <div style={{
+              marginTop: 12,
+              fontSize: 20,
+              color: 'rgba(255,255,255,0.68)',
+              textAlign: 'center',
+              direction: 'rtl',
+              fontFamily: "'Heebo',sans-serif",
+              fontWeight: 500,
+              lineHeight: 1.8,
+              maxWidth: 300,
+            }}>
+              כאן בשבילך תמיד{'\n'}שאלי אותי על כל דבר
             </div>
 
-            {/* Voice invitation card */}
+            {/* ── Voice invitation card ── */}
             <button
               type="button"
               onClick={enterVoiceMode}
               style={{
-                marginTop: 26,
-                padding: '22px 32px',
-                borderRadius: 24,
-                background: 'linear-gradient(135deg, rgba(201,168,76,0.12) 0%, rgba(201,168,76,0.06) 100%)',
+                marginTop: 30,
+                padding: '22px 28px',
+                borderRadius: 28,
+                background: 'linear-gradient(145deg, rgba(201,168,76,0.14) 0%, rgba(201,168,76,0.07) 100%)',
                 border: '1.5px solid rgba(201,168,76,0.45)',
-                boxShadow: '0 4px 28px rgba(201,168,76,0.14), inset 0 1px 0 rgba(255,255,255,0.07)',
+                boxShadow: '0 6px 32px rgba(201,168,76,0.16), inset 0 1px 0 rgba(255,255,255,0.08)',
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
                 transition: 'transform 0.12s ease, box-shadow 0.12s ease',
@@ -824,54 +798,58 @@ export function AbuAI() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 8,
-                minWidth: 260,
+                gap: 10,
+                minWidth: 270,
               }}
-              onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.96)' }}
-              onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
-              onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+              onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.96)'; e.currentTarget.style.boxShadow = '0 2px 16px rgba(201,168,76,0.10)' }}
+              onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 6px 32px rgba(201,168,76,0.16), inset 0 1px 0 rgba(255,255,255,0.08)' }}
+              onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 6px 32px rgba(201,168,76,0.16), inset 0 1px 0 rgba(255,255,255,0.08)' }}
             >
-              {/* Mic icon with gold glow */}
+              {/* Mic orb */}
               <div style={{
-                width: 52, height: 52, borderRadius: '50%',
-                background: 'rgba(201,168,76,0.15)',
-                border: '1.5px solid rgba(201,168,76,0.45)',
+                width: 60, height: 60, borderRadius: '50%',
+                background: 'linear-gradient(145deg, rgba(201,168,76,0.20), rgba(201,168,76,0.10))',
+                border: '1.5px solid rgba(201,168,76,0.50)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 20px rgba(201,168,76,0.22)',
+                boxShadow: '0 0 22px rgba(201,168,76,0.26)',
               }}>
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-                  stroke="#C9A84C" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none"
+                  stroke="#C9A84C" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
                   <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                   <path d="M19 10v2a7 7 0 01-14 0v-2" />
                   <line x1="12" y1="19" x2="12" y2="23" />
                   <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
               </div>
-              {/* Invitation text */}
+
+              {/* Primary CTA text */}
               <div style={{
                 fontFamily: "'Heebo',sans-serif",
-                fontSize: 22,
-                fontWeight: 700,
-                color: '#F0F4F8',
+                fontSize: 24,
+                fontWeight: 800,
+                color: '#F2F6FA',
                 direction: 'rtl',
-                letterSpacing: '-0.1px',
+                letterSpacing: '-0.2px',
               }}>
                 בואי נשוחח, Martita
               </div>
+
               <div style={{
                 fontFamily: "'Heebo',sans-serif",
-                fontSize: 17,
-                fontWeight: 500,
-                color: 'rgba(201,168,76,0.85)',
+                fontSize: 18,
+                fontWeight: 600,
+                color: 'rgba(201,168,76,0.88)',
                 direction: 'rtl',
               }}>
                 על כל דבר שבא לך 💛
               </div>
+
               <div style={{
                 fontFamily: "'Heebo',sans-serif",
-                fontSize: 16,
-                color: 'rgba(255,255,255,0.55)',
+                fontSize: 17,
+                color: 'rgba(255,255,255,0.52)',
                 direction: 'rtl',
+                lineHeight: 1.5,
               }}>
                 דברי ואני אענה לך קולית
               </div>
@@ -879,8 +857,8 @@ export function AbuAI() {
           </div>
         )}
 
-        {/* ── Chat messages ── */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* ──────── CHAT MESSAGES ──────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {messages.map((msg, idx) => {
             const isLast = idx === messages.length - 1
             const isUser = msg.role === 'user'
@@ -894,81 +872,79 @@ export function AbuAI() {
                   flexDirection: isUser ? 'row-reverse' : 'row',
                   alignItems: 'flex-end',
                   gap: 10,
-                  marginBottom: 20,
-                  animation: isLast ? 'msgIn 0.30s ease-out both' : 'none',
+                  marginBottom: 16,
+                  animation: isLast ? 'msgIn 0.32s cubic-bezier(0.34,1.56,0.64,1) both' : 'none',
                 }}
               >
-                {/* AI avatar — gold star on teal disc */}
+                {/* AI avatar disc */}
                 {!isUser && (
-                  <div
-                    style={{
-                      width: 36, height: 36,
-                      borderRadius: '50%',
-                      background: 'rgba(20,184,166,0.14)',
-                      border: '1.5px solid rgba(20,184,166,0.50)',
-                      flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 1px 8px rgba(20,184,166,0.20)',
-                      marginBottom: 20,
-                    }}
-                  >
-                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <div style={{
+                    width: 40, height: 40,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(145deg, rgba(20,184,166,0.18), rgba(20,184,166,0.08))',
+                    border: '1.5px solid rgba(20,184,166,0.52)',
+                    flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 2px 10px rgba(20,184,166,0.22)',
+                    marginBottom: 22,
+                  }}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                       <defs>
-                        <linearGradient id="aiStarG" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <linearGradient id="aiStarInline" x1="0%" y1="0%" x2="100%" y2="100%">
                           <stop offset="0%" stopColor="#FDE68A"/>
                           <stop offset="55%" stopColor="#C9A84C"/>
                           <stop offset="100%" stopColor="#A07830"/>
                         </linearGradient>
                       </defs>
-                      <path d="M12 2 L13.2 10.8 L22 12 L13.2 13.2 L12 22 L10.8 13.2 L2 12 L10.8 10.8 Z" fill="url(#aiStarG)"/>
+                      <path d="M12 2 L13.2 10.8 L22 12 L13.2 13.2 L12 22 L10.8 13.2 L2 12 L10.8 10.8 Z" fill="url(#aiStarInline)"/>
                     </svg>
                   </div>
                 )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start', maxWidth: isUser ? '80%' : '84%' }}>
+                <div style={{
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: isUser ? 'flex-end' : 'flex-start',
+                  maxWidth: isUser ? '78%' : '82%',
+                }}>
                   {/* Bubble */}
-                  <div
-                    style={isUser ? {
-                      padding: '16px 20px',
-                      borderRadius: '22px 6px 22px 22px',
-                      background: 'linear-gradient(135deg, rgba(20,184,166,0.28) 0%, rgba(20,184,166,0.15) 100%)',
-                      border: '1px solid rgba(20,184,166,0.50)',
-                      boxShadow: '0 4px 16px rgba(20,184,166,0.14)',
-                    } : {
-                      padding: '16px 20px',
-                      borderRadius: '6px 22px 22px 22px',
-                      background: 'rgba(255,255,255,0.10)',
-                      border: '1px solid rgba(255,255,255,0.18)',
-                      backdropFilter: 'blur(6px)',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.22)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 21,
-                        lineHeight: 1.8,
-                        color: '#F0F4F8',
-                        direction: 'rtl',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                        fontFamily: "'Heebo',sans-serif",
-                      }}
-                    >
+                  <div style={isUser ? {
+                    padding: '18px 22px',
+                    borderRadius: '24px 8px 24px 24px',
+                    background: 'linear-gradient(140deg, rgba(20,184,166,0.32) 0%, rgba(14,157,140,0.20) 100%)',
+                    border: '1px solid rgba(20,184,166,0.55)',
+                    boxShadow: '0 4px 20px rgba(20,184,166,0.16), inset 0 1px 0 rgba(255,255,255,0.08)',
+                  } : {
+                    padding: '18px 22px',
+                    borderRadius: '8px 24px 24px 24px',
+                    background: 'rgba(255,255,255,0.09)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    backdropFilter: 'blur(10px)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.06)',
+                  }}>
+                    <div style={{
+                      fontSize: isUser ? 21 : 24,
+                      lineHeight: 1.85,
+                      color: '#F2F6FA',
+                      direction: 'rtl',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      fontFamily: "'Heebo',sans-serif",
+                      fontWeight: isUser ? 500 : 400,
+                    }}>
                       {msg.content}
                     </div>
                   </div>
 
                   {/* Timestamp */}
-                  <div
-                    style={{
-                      marginTop: 5,
-                      fontSize: 14,
-                      color: 'rgba(255,255,255,0.55)',
-                      textAlign: isUser ? 'right' : 'left',
-                      fontFamily: "'DM Sans',sans-serif",
-                      direction: 'ltr',
-                    }}
-                  >
+                  <div style={{
+                    marginTop: 6,
+                    fontSize: 13,
+                    color: 'rgba(255,255,255,0.42)',
+                    textAlign: isUser ? 'right' : 'left',
+                    fontFamily: "'DM Sans',sans-serif",
+                    direction: 'ltr',
+                    letterSpacing: '0.2px',
+                  }}>
                     {ts}
                   </div>
                 </div>
@@ -976,30 +952,24 @@ export function AbuAI() {
             )
           })}
 
-          {/* Loading dots */}
+          {/* ── Loading dots ── */}
           {loading && (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'flex-end',
-                gap: 8,
-                marginBottom: 16,
-                animation: 'msgIn 0.22s ease-out both',
-              }}
-            >
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  border: '1.5px solid rgba(201,168,76,0.40)',
-                  overflow: 'hidden',
-                  flexShrink: 0,
-                  background: '#0c2228',
-                  boxShadow: '0 1px 6px rgba(0,0,0,0.30)',
-                }}
-              >
+            <div style={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'flex-end',
+              gap: 10,
+              marginBottom: 18,
+              animation: 'msgIn 0.22s ease-out both',
+            }}>
+              {/* AI avatar for loading */}
+              <div style={{
+                width: 40, height: 40, borderRadius: '50%',
+                border: '1.5px solid rgba(20,184,166,0.45)',
+                overflow: 'hidden', flexShrink: 0,
+                background: '#0c1e28',
+                boxShadow: '0 2px 10px rgba(20,184,166,0.18)',
+              }}>
                 <img
                   src={martitaPhoto}
                   alt="Abu AI"
@@ -1007,27 +977,23 @@ export function AbuAI() {
                   onError={handleMartitaImgError}
                 />
               </div>
-              <div
-                style={{
-                  padding: '14px 18px',
-                  borderRadius: '4px 20px 20px 20px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                }}
-              >
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+
+              {/* Dots bubble */}
+              <div style={{
+                padding: '18px 24px',
+                borderRadius: '8px 24px 24px 24px',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.13)',
+                backdropFilter: 'blur(10px)',
+              }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   {[0, 1, 2].map(i => (
-                    <div
-                      key={i}
-                      style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #5EEAD4, #14b8a6)',
-                        boxShadow: '0 0 8px rgba(20,184,166,0.40)',
-                        animation: `dotPulse 1.8s ease-in-out ${i * 0.22}s infinite`,
-                      }}
-                    />
+                    <div key={i} style={{
+                      width: 13, height: 13, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #5EEAD4, #14b8a6)',
+                      boxShadow: '0 0 8px rgba(20,184,166,0.45)',
+                      animation: `dotPulse 1.8s ease-in-out ${i * 0.22}s infinite`,
+                    }} />
                   ))}
                 </div>
               </div>
@@ -1036,99 +1002,109 @@ export function AbuAI() {
         </div>
       </div>
 
-      {/* ─── VOICE MODE OVERLAY ─── */}
+      {/* ─────────────────────── VOICE MODE FULL-SCREEN OVERLAY ─────────────────────── */}
       {voiceMode && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 68,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: [
-              'radial-gradient(circle, rgba(5,10,24,0.0) 0%, rgba(5,10,24,0.40) 100%)',
-              'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(20,184,166,0.07) 0%, #050A18 65%)',
-            ].join(', '),
-            zIndex: 15,
-            paddingBottom: 24,
-          }}
-        >
-          {/* Large orb with ripples */}
-          <div style={{ position: 'relative', width: 168, height: 168 }}>
-            {/* Ripple rings — only 2, slow, breathing pace */}
-            {(voicePhase === 'listening' || voicePhase === 'greeting' || voicePhase === 'speaking') && (<>
+        <div style={{
+          position: 'absolute',
+          top: 72,         /* flush below header */
+          left: 0, right: 0, bottom: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: [
+            'radial-gradient(ellipse 85% 65% at 50% 38%, rgba(20,184,166,0.10) 0%, transparent 65%)',
+            'radial-gradient(ellipse 70% 50% at 50% 80%, rgba(201,168,76,0.07) 0%, transparent 60%)',
+            'linear-gradient(180deg, rgba(5,10,24,0.92) 0%, rgba(5,10,24,0.98) 100%)',
+          ].join(', '),
+          zIndex: 15,
+          paddingBottom: 28,
+          gap: 0,
+        }}>
+
+          {/* ── LARGE ORB with ripples ── */}
+          <div style={{ position: 'relative', width: 192, height: 192 }}>
+            {/* Ripple rings — visible when active */}
+            {(voicePhase === 'listening' || voicePhase === 'speaking' || voicePhase === 'greeting') && (<>
               <div aria-hidden="true" style={{
                 position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1.5px solid rgba(201,168,76,0.40)',
-                animation: 'ripple1 3.5s ease-out 0s infinite',
+                border: '1.5px solid rgba(201,168,76,0.42)',
+                animation: 'ripple1 3.2s ease-out 0s infinite',
               }} />
               <div aria-hidden="true" style={{
                 position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1px solid rgba(201,168,76,0.22)',
-                animation: 'ripple2 3.5s ease-out 1.4s infinite',
+                border: '1px solid rgba(201,168,76,0.24)',
+                animation: 'ripple2 3.2s ease-out 1.1s infinite',
+              }} />
+              <div aria-hidden="true" style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                border: '0.5px solid rgba(201,168,76,0.13)',
+                animation: 'ripple3 3.2s ease-out 2.2s infinite',
               }} />
             </>)}
 
-            {/* Main orb */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: '50%',
-                background: 'radial-gradient(circle at 40% 34%, rgba(255,228,140,0.22) 0%, rgba(201,168,76,0.14) 38%, rgba(18,32,42,0.96) 75%)',
-                border: (voicePhase === 'listening')
-                  ? '2px solid rgba(201,168,76,0.50)'
-                  : '2px solid rgba(201,168,76,0.60)',
-                animation: 'orbGlowGold 3.0s ease-in-out infinite',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'border-color 0.5s ease, background 0.5s ease',
-              }}
-            >
-              {/* Listening: gold mic icon */}
+            {/* Orb body */}
+            <div style={{
+              position: 'absolute', inset: 0, borderRadius: '50%',
+              background: voicePhase === 'listening'
+                ? 'radial-gradient(circle at 38% 32%, rgba(255,235,148,0.26) 0%, rgba(201,168,76,0.16) 40%, rgba(12,22,40,0.97) 78%)'
+                : voicePhase === 'speaking' || voicePhase === 'greeting'
+                ? 'radial-gradient(circle at 38% 32%, rgba(94,234,212,0.22) 0%, rgba(20,184,166,0.14) 40%, rgba(12,22,40,0.97) 78%)'
+                : 'radial-gradient(circle at 38% 32%, rgba(201,168,76,0.14) 0%, rgba(20,32,48,0.97) 78%)',
+              border: voicePhase === 'speaking' || voicePhase === 'greeting'
+                ? '2px solid rgba(20,184,166,0.60)'
+                : voicePhase === 'listening'
+                ? '2px solid rgba(201,168,76,0.58)'
+                : '2px solid rgba(201,168,76,0.38)',
+              animation: voicePhase === 'speaking' || voicePhase === 'greeting'
+                ? 'orbGlowTeal 2.8s ease-in-out infinite, orbFloat 4.5s ease-in-out infinite'
+                : 'orbGlowGold 3.2s ease-in-out infinite, orbFloat 5s ease-in-out infinite',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backdropFilter: 'blur(4px)',
+              transition: 'border-color 0.6s ease, background 0.6s ease',
+            }}>
+              {/* LISTENING: large mic */}
               {voicePhase === 'listening' && (
-                <svg viewBox="0 0 24 24" width="52" height="52" fill="none"
-                  stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"
-                  style={{ filter: 'drop-shadow(0 0 14px rgba(201,168,76,0.60))' }}
-                >
+                <svg viewBox="0 0 24 24" width="64" height="64" fill="none"
+                  stroke={GOLD} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"
+                  style={{ filter: 'drop-shadow(0 0 16px rgba(201,168,76,0.70))' }}>
                   <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                   <path d="M19 10v2a7 7 0 01-14 0v-2" />
                   <line x1="12" y1="19" x2="12" y2="23" />
                   <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
               )}
-              {/* Processing: single rotating gold ring — thoughtful, not mechanical */}
+
+              {/* PROCESSING: smooth gold spinner */}
               {voicePhase === 'processing' && (
                 <div style={{
-                  width: 40, height: 40, borderRadius: '50%',
-                  border: '3px solid rgba(201,168,76,0.22)',
+                  width: 52, height: 52, borderRadius: '50%',
+                  border: '3.5px solid rgba(201,168,76,0.20)',
                   borderTopColor: GOLD,
-                  animation: 'spin 1.2s linear infinite',
+                  animation: 'spin 1.1s linear infinite',
                 }} />
               )}
-              {/* Speaking/Greeting: 7 symmetrical wave bars */}
+
+              {/* SPEAKING / GREETING: animated wave bars */}
               {(voicePhase === 'speaking' || voicePhase === 'greeting') && (
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center', height: 48 }}>
-                  {[18, 28, 36, 44, 36, 28, 18].map((h, i) => (
+                <div style={{ display: 'flex', gap: 7, alignItems: 'center', height: 58 }}>
+                  {[20, 32, 42, 52, 42, 32, 20].map((h, i) => (
                     <div key={i} style={{
-                      width: 5, borderRadius: 3,
-                      background: `linear-gradient(180deg, #FDE68A, #C9A84C)`,
+                      width: 6, borderRadius: 4,
+                      background: 'linear-gradient(180deg, #5EEAD4, #14B8A6)',
                       height: `${h}px`,
-                      animation: `waveBar ${1.0 + i * 0.07}s ease-in-out ${i * 0.10}s infinite`,
+                      animation: `waveBar ${0.95 + i * 0.08}s ease-in-out ${i * 0.11}s infinite`,
+                      boxShadow: '0 0 8px rgba(20,184,166,0.50)',
                     }} />
                   ))}
                 </div>
               )}
-              {/* Connecting: gold spinner */}
+
+              {/* CONNECTING (null phase): soft spinner */}
               {!voicePhase && (
                 <div style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  border: '3px solid rgba(201,168,76,0.22)',
+                  width: 46, height: 46, borderRadius: '50%',
+                  border: '3px solid rgba(201,168,76,0.20)',
                   borderTopColor: GOLD,
                   animation: 'spin 1.2s linear infinite',
                 }} />
@@ -1136,285 +1112,375 @@ export function AbuAI() {
             </div>
           </div>
 
-          {/* Phase label */}
-          {voicePhase === 'greeting' ? (
-            /* Special warm greeting label */
-            <div style={{ marginTop: 28, textAlign: 'center', direction: 'rtl', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <div style={{
-                fontFamily: "'Cormorant Garamond',Georgia,serif",
-                fontSize: 30,
-                fontStyle: 'italic',
-                background: 'linear-gradient(135deg, #FDE68A, #C9A84C, #A88A35)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                filter: 'drop-shadow(0 0 10px rgba(201,168,76,0.35))',
-                letterSpacing: '0.3px',
-              } as React.CSSProperties}>
-                Martita ✨
-              </div>
-              <div style={{
-                fontFamily: "'Heebo',sans-serif",
-                fontSize: 22,
-                fontWeight: 600,
-                color: 'rgba(255,255,255,0.92)',
-                letterSpacing: '-0.2px',
-              }}>
-                {new Date().getHours() >= 5 && new Date().getHours() < 12
-                  ? 'בוקר טוב' : new Date().getHours() < 17
-                  ? 'צהריים טובים' : new Date().getHours() < 21
-                  ? 'ערב טוב' : 'לילה טוב'} 🌟
-              </div>
-            </div>
-          ) : (
-            <div style={{ marginTop: 28, textAlign: 'center', direction: 'rtl', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-              <div style={{
-                fontSize: 34, fontWeight: 700,
-                fontFamily: "'Heebo',sans-serif",
-                color: '#F0F4F8', letterSpacing: '-0.3px',
-              }}>
-                {voicePhase === 'listening' ? 'מקשיבה לך'
-                  : voicePhase === 'processing' ? 'חושבת...'
-                  : voicePhase === 'speaking'   ? 'מדברת...'
-                  : 'מתחברת...'}
-              </div>
-              <div style={{
-                fontSize: 20, fontWeight: 500,
-                color: 'rgba(255,255,255,0.68)',
-                fontFamily: "'Heebo',sans-serif",
-              }}>
-                {voicePhase === 'listening'   ? 'דברי בשקט — שומעת אותך'
-                  : voicePhase === 'processing' ? 'רגע קטן'
-                  : voicePhase === 'speaking'   ? 'הקשי לי'
-                  : ''}
-              </div>
-            </div>
-          )}
-
+          {/* ── Phase label block ── */}
           <div style={{
-            marginTop: 10, fontSize: 18,
-            color: 'rgba(255,255,255,0.60)',
-            fontFamily: "'Heebo',sans-serif",
-            direction: 'rtl', fontWeight: 500,
+            marginTop: 36,
+            textAlign: 'center',
+            direction: 'rtl',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 10,
+            minHeight: 88,
           }}>
-            {voicePhase === 'greeting' ? '' : voicePhase === 'speaking' ? 'לחצי כדי לעצור' : '"ביי" — לסיום השיחה'}
+            {voicePhase === 'greeting' ? (
+              <>
+                <div style={{
+                  fontFamily: "'Cormorant Garamond',Georgia,serif",
+                  fontSize: 34,
+                  fontStyle: 'italic',
+                  background: 'linear-gradient(135deg, #FDE68A, #C9A84C, #A88A35)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  filter: 'drop-shadow(0 0 10px rgba(201,168,76,0.38))',
+                  letterSpacing: '0.3px',
+                } as React.CSSProperties}>
+                  Martita ✨
+                </div>
+                <div style={{
+                  fontFamily: "'Heebo',sans-serif",
+                  fontSize: 24,
+                  fontWeight: 700,
+                  color: 'rgba(255,255,255,0.90)',
+                  letterSpacing: '-0.2px',
+                  lineHeight: 1.5,
+                }}>
+                  {new Date().getHours() >= 5 && new Date().getHours() < 12
+                    ? 'בוקר טוב'
+                    : new Date().getHours() < 17
+                    ? 'צהריים טובים'
+                    : new Date().getHours() < 21
+                    ? 'ערב טוב'
+                    : 'לילה טוב'} 🌟
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Primary phase label — large and readable */}
+                <div style={{
+                  fontSize: 36,
+                  fontWeight: 800,
+                  fontFamily: "'Heebo',sans-serif",
+                  color: voicePhase === 'listening' ? '#FDE68A'
+                    : voicePhase === 'speaking' ? '#5EEAD4'
+                    : '#F2F6FA',
+                  letterSpacing: '-0.4px',
+                  lineHeight: 1.2,
+                  transition: 'color 0.4s ease',
+                }}>
+                  {voicePhase === 'listening'  ? 'מקשיבה לך'
+                    : voicePhase === 'processing' ? 'חושבת...'
+                    : voicePhase === 'speaking'   ? 'מדברת...'
+                    : 'מתחברת...'}
+                </div>
+
+                {/* Secondary hint */}
+                <div style={{
+                  fontSize: 22,
+                  fontWeight: 500,
+                  color: 'rgba(255,255,255,0.62)',
+                  fontFamily: "'Heebo',sans-serif",
+                  lineHeight: 1.5,
+                }}>
+                  {voicePhase === 'listening'   ? 'דברי בנחת — שומעת אותך'
+                    : voicePhase === 'processing' ? 'רגע קטן...'
+                    : voicePhase === 'speaking'   ? 'הקשי לי'
+                    : ''}
+                </div>
+              </>
+            )}
+
+            {/* Tertiary hint */}
+            <div style={{
+              fontSize: 19,
+              color: 'rgba(255,255,255,0.48)',
+              fontFamily: "'Heebo',sans-serif",
+              fontWeight: 500,
+              direction: 'rtl',
+              lineHeight: 1.5,
+            }}>
+              {voicePhase === 'speaking' ? 'לחצי כדי לעצור' : voicePhase === null ? '' : '"ביי" — לסיום השיחה'}
+            </div>
           </div>
 
-          {/* Stop button — calm slate at rest, red only on press */}
-          <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          {/* ── Stop / end call button ── */}
+          <div style={{ marginTop: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
             <button
               type="button"
               onClick={exitVoiceMode}
               aria-label="סיים שיחה קולית"
               style={{
-                width: 72, height: 72, borderRadius: '50%',
-                background: 'rgba(100,116,139,0.20)',
-                border: '1.5px solid rgba(100,116,139,0.40)',
+                width: 80, height: 80, borderRadius: '50%',
+                background: 'rgba(80,100,120,0.22)',
+                border: '1.5px solid rgba(100,116,139,0.38)',
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'transform 0.10s ease-out, background 0.12s ease, border-color 0.12s ease',
                 WebkitTapHighlightColor: 'transparent',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.30)',
               }}
-              onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.90)'; e.currentTarget.style.background = 'rgba(239,68,68,0.20)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.50)' }}
-              onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(100,116,139,0.20)'; e.currentTarget.style.borderColor = 'rgba(100,116,139,0.40)' }}
-              onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(100,116,139,0.20)'; e.currentTarget.style.borderColor = 'rgba(100,116,139,0.40)' }}
+              onPointerDown={e => {
+                e.currentTarget.style.transform = 'scale(0.88)'
+                e.currentTarget.style.background = 'rgba(239,68,68,0.22)'
+                e.currentTarget.style.borderColor = 'rgba(239,68,68,0.52)'
+              }}
+              onPointerUp={e => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.background = 'rgba(80,100,120,0.22)'
+                e.currentTarget.style.borderColor = 'rgba(100,116,139,0.38)'
+              }}
+              onPointerLeave={e => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.background = 'rgba(80,100,120,0.22)'
+                e.currentTarget.style.borderColor = 'rgba(100,116,139,0.38)'
+              }}
             >
-              {/* Square stop symbol — universally recognised for audio/video stop */}
-              <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-                <rect x="6" y="6" width="12" height="12" rx="2.5" fill="rgba(255,255,255,0.75)"/>
+              {/* Square stop symbol */}
+              <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+                <rect x="6" y="6" width="12" height="12" rx="2.5" fill="rgba(255,255,255,0.80)"/>
               </svg>
             </button>
-            <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.60)', fontFamily: "'Heebo',sans-serif", fontWeight: 500 }}>סיום</span>
+            <span style={{
+              fontSize: 17,
+              color: 'rgba(255,255,255,0.55)',
+              fontFamily: "'Heebo',sans-serif",
+              fontWeight: 600,
+            }}>סיום שיחה</span>
           </div>
         </div>
       )}
 
-      {/* ─── INPUT BAR ─── */}
+      {/* ─────────────────────── FLOATING INPUT BAR ─────────────────────── */}
       {!voiceMode && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: 12,
-            padding: '10px 16px',
-            paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
-            borderTop: '1px solid rgba(20,184,166,0.15)',
-            background: 'rgba(5,10,24,0.95)',
-            backdropFilter: 'blur(12px)',
-            flexShrink: 0,
-            position: 'relative',
-            zIndex: 10,
-          }}
-        >
-          {/* Recording indicator */}
+        <div style={{
+          flexShrink: 0,
+          position: 'relative',
+          zIndex: 10,
+          padding: '10px 14px',
+          paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+          background: 'rgba(5,10,24,0.92)',
+          backdropFilter: 'blur(18px)',
+          borderTop: '1px solid rgba(20,184,166,0.18)',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.28)',
+        }}>
+          {/* Recording indicator pill */}
           {recording && (
-            <div
-              style={{
-                position: 'absolute',
-                top: -38,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                padding: '5px 14px',
-                borderRadius: 14,
-                background: 'rgba(239,68,68,0.14)',
-                border: '1px solid rgba(239,68,68,0.32)',
-                color: '#ef4444',
-                fontSize: 14,
-                fontWeight: 600,
-                fontFamily: "'Heebo',sans-serif",
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: '#ef4444',
-                  animation: 'abuPulse 1s infinite',
-                }}
-              />
+            <div style={{
+              position: 'absolute',
+              top: -44,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: '6px 16px',
+              borderRadius: 18,
+              background: 'rgba(239,68,68,0.15)',
+              border: '1px solid rgba(239,68,68,0.35)',
+              color: '#ef4444',
+              fontSize: 15,
+              fontWeight: 700,
+              fontFamily: "'Heebo',sans-serif",
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              whiteSpace: 'nowrap',
+              backdropFilter: 'blur(8px)',
+              boxShadow: '0 2px 12px rgba(239,68,68,0.18)',
+            }}>
+              <div style={{
+                width: 9, height: 9, borderRadius: '50%',
+                background: '#ef4444',
+                animation: 'abuPulse 1s infinite',
+              }} />
               מקליט... {formatTime(recordingTime)}
             </div>
           )}
 
-          {/* Mic button */}
-          <button
-            type="button"
-            onClick={handleMicTap}
-            disabled={micDisabled}
-            aria-label={recording ? 'עצרי הקלטה' : 'הקלטה קולית'}
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: '50%',
-              background: recording
-                ? 'rgba(239,68,68,0.15)'
-                : 'rgba(20,184,166,0.12)',
-              border: recording
-                ? '1px solid rgba(239,68,68,0.45)'
-                : '1px solid rgba(20,184,166,0.30)',
-              cursor: micDisabled ? 'default' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              animation: recording ? 'micPulse 1.5s ease-in-out infinite' : 'none',
-              transition: 'background 0.15s ease-out',
-              WebkitTapHighlightColor: 'transparent',
-            }}
-          >
-            {transcribing ? (
-              <div
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: '50%',
-                  border: '2px solid rgba(201,168,76,0.5)',
+          {/* Row: mic | textarea | send */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+
+            {/* ── Mic button ── */}
+            <button
+              type="button"
+              onClick={handleMicTap}
+              disabled={micDisabled}
+              aria-label={recording ? 'עצרי הקלטה' : 'הקלטה קולית'}
+              style={{
+                width: 54, height: 54, borderRadius: '50%',
+                background: recording
+                  ? 'rgba(239,68,68,0.16)'
+                  : 'rgba(20,184,166,0.13)',
+                border: recording
+                  ? '1.5px solid rgba(239,68,68,0.48)'
+                  : '1.5px solid rgba(20,184,166,0.35)',
+                cursor: micDisabled ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+                animation: recording ? 'micPulse 1.5s ease-in-out infinite' : 'none',
+                transition: 'background 0.15s ease-out, border-color 0.15s ease-out',
+                WebkitTapHighlightColor: 'transparent',
+                opacity: micDisabled ? 0.45 : 1,
+              }}
+            >
+              {transcribing ? (
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%',
+                  border: '2.5px solid rgba(201,168,76,0.40)',
                   borderTopColor: GOLD,
                   animation: 'spin 0.9s linear infinite',
-                }}
-              />
-            ) : recording ? (
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="#ef4444" aria-hidden="true">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
-            ) : (
-              <svg
-                viewBox="0 0 24 24"
-                width="22"
-                height="22"
-                fill="none"
-                stroke={micDisabled ? 'rgba(255,255,255,0.25)' : TEAL}
-                strokeWidth="2"
-                strokeLinecap="round"
+                }} />
+              ) : recording ? (
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="#ef4444" aria-hidden="true">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
+                  stroke={micDisabled ? 'rgba(255,255,255,0.22)' : TEAL}
+                  strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                  <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              )}
+            </button>
+
+            {/* ── Textarea ── */}
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={recording ? 'מקשיבה...' : transcribing ? 'מתמללת...' : 'כתבי לי...'}
+              rows={1}
+              disabled={loading || recording}
+              style={{
+                flex: 1,
+                resize: 'none',
+                padding: '14px 20px',
+                borderRadius: 26,
+                border: '1.5px solid rgba(20,184,166,0.25)',
+                background: 'rgba(20,184,166,0.08)',
+                color: 'rgba(255,255,255,0.95)',
+                fontSize: 20,
+                fontFamily: "'Heebo',sans-serif",
+                direction: 'rtl',
+                lineHeight: 1.6,
+                outline: 'none',
+                minHeight: 54,
+                maxHeight: 130,
+                overflowY: 'auto',
+                opacity: (loading || recording) ? 0.50 : 1,
+                WebkitAppearance: 'none',
+                transition: 'border-color 0.2s ease, background 0.2s ease',
+              }}
+            />
+
+            {/* ── Send button ── */}
+            <button
+              type="button"
+              onClick={() => handleSend()}
+              disabled={sendDisabled}
+              aria-label="שלח הודעה"
+              style={{
+                width: 54, height: 54, borderRadius: '50%',
+                background: sendDisabled
+                  ? 'rgba(255,255,255,0.07)'
+                  : 'linear-gradient(140deg, #14b8a6, #0d9488)',
+                border: sendDisabled
+                  ? '1px solid rgba(255,255,255,0.10)'
+                  : '1px solid rgba(20,184,166,0.50)',
+                cursor: sendDisabled ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+                transition: 'background 0.18s ease-out, transform 0.10s ease-out',
+                WebkitTapHighlightColor: 'transparent',
+                boxShadow: sendDisabled ? 'none' : '0 4px 16px rgba(20,184,166,0.30)',
+              }}
+              onPointerDown={e => { if (!sendDisabled) e.currentTarget.style.transform = 'scale(0.88)' }}
+              onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
+              onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+            >
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
+                stroke={sendDisabled ? 'rgba(255,255,255,0.22)' : 'white'}
+                strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
                 aria-hidden="true"
-              >
+                style={{ transform: 'rotate(180deg)' }}>
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </div>
+
+          {/* ── Voice mode toggle row ── */}
+          <div style={{
+            marginTop: 8,
+            display: 'flex',
+            justifyContent: 'center',
+          }}>
+            <button
+              type="button"
+              onClick={handleVoiceTap}
+              aria-label="מצב שיחה קולית"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 20px',
+                borderRadius: 20,
+                background: 'rgba(201,168,76,0.10)',
+                border: '1px solid rgba(201,168,76,0.32)',
+                cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'background 0.15s ease',
+              }}
+              onPointerDown={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.18)' }}
+              onPointerUp={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.10)' }}
+              onPointerLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.10)' }}
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+                stroke="#C9A84C" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                 <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                 <path d="M19 10v2a7 7 0 01-14 0v-2" />
                 <line x1="12" y1="19" x2="12" y2="23" />
                 <line x1="8" y1="23" x2="16" y2="23" />
               </svg>
-            )}
-          </button>
-
-          {/* Textarea */}
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={recording ? 'מקשיבה...' : transcribing ? 'מתמללת...' : 'כתבי לי...'}
-            rows={1}
-            disabled={loading || recording}
-            style={{
-              flex: 1,
-              resize: 'none',
-              padding: '14px 20px',
-              borderRadius: 24,
-              border: '1px solid rgba(20,184,166,0.22)',
-              background: 'rgba(20,184,166,0.07)',
-              color: 'rgba(255,255,255,0.95)',
-              fontSize: 20,
-              fontFamily: "'Heebo',sans-serif",
-              direction: 'rtl',
-              lineHeight: 1.55,
-              outline: 'none',
-              minHeight: 52,
-              maxHeight: 120,
-              overflowY: 'auto',
-              opacity: (loading || recording) ? 0.5 : 1,
-              WebkitAppearance: 'none',
-            }}
-          />
-
-          {/* Send button */}
-          <button
-            type="button"
-            onClick={() => handleSend()}
-            disabled={sendDisabled}
-            aria-label="שלח הודעה"
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: '50%',
-              background: sendDisabled
-                ? 'rgba(255,255,255,0.08)'
-                : 'linear-gradient(135deg, #14b8a6, #0d9488)',
-              border: 'none',
-              cursor: sendDisabled ? 'default' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              transition: 'background 0.15s ease-out, transform 0.10s ease-out',
-              WebkitTapHighlightColor: 'transparent',
-            }}
-            onPointerDown={(e) => { if (!sendDisabled) e.currentTarget.style.transform = 'scale(0.90)' }}
-            onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
-            onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="22"
-              height="22"
-              fill="none"
-              stroke={sendDisabled ? 'rgba(255,255,255,0.25)' : 'white'}
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              style={{ transform: 'rotate(180deg)' }}
-            >
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </button>
+              <span style={{
+                fontSize: 17,
+                fontWeight: 600,
+                color: 'rgba(201,168,76,0.88)',
+                fontFamily: "'Heebo',sans-serif",
+                direction: 'rtl',
+              }}>
+                שיחה קולית
+              </span>
+            </button>
+          </div>
         </div>
       )}
     </div>
   )
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HOW TO APPLY:
+//   1. Open C:\Users\Lmilstein\ClaudeCode\Abu-Bank\src\screens\AbuAI\index.tsx
+//   2. Replace everything from line 510  ("  return (")
+//      through line 1420  ("}")
+//      with the JSX above (starting at "  return (" ending at "}")
+//   3. The closing brace on line 1420 closes the AbuAI() function — keep it.
+//   4. No new imports are needed. All identifiers used below already exist
+//      in the logic section above line 510.
+//
+// KEY DESIGN CHANGES vs v11.1:
+//   - Header: 72px (was 68px), portrait 50×50 with always-on teal glow ring
+//   - Empty state: 148px orb (was 140px), 28px headline (was 26px),
+//     28px mic orb in CTA card, 24px CTA text (was 22px)
+//   - Chat bubbles: AI responses 24px (was 21px), lineHeight 1.85
+//   - AI disc avatar: 40×40 (was 36×36), slight gradient fill
+//   - Voice overlay: 192px orb (was 168px), 36px phase text (was 34px),
+//     22px hint text (was 20px), 80×80 stop button (was 72×72)
+//   - Input bar: floated with blur+shadow, 54px targets (was 52px),
+//     new "שיחה קולית" shortcut pill below text row
+//   - All touch targets >= 52px; voice stop = 80px
+// ─────────────────────────────────────────────────────────────────────────────
+
