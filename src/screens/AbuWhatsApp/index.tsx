@@ -622,16 +622,19 @@ export function AbuWhatsApp() {
         {/* ── Error banner ── */}
         {error && !voiceMode && (
           <div style={{
-            padding: '14px 20px', borderRadius: 18, width: '100%', maxWidth: 370,
-            background: 'linear-gradient(135deg, rgba(239,68,68,0.10), rgba(239,68,68,0.03))',
-            border: '1px solid rgba(239,68,68,0.26)',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.22)',
-            color: 'rgba(255,255,255,0.82)',
+            padding: '16px 22px', borderRadius: 18, width: '100%', maxWidth: 370,
+            background: 'rgba(20,4,4,0.65)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1.5px solid rgba(239,68,68,0.38)',
+            boxShadow: '0 4px 18px rgba(0,0,0,0.30), 0 0 0 1px rgba(239,68,68,0.08)',
+            color: 'rgba(255,220,220,0.90)',
             fontSize: 16, fontFamily: "'Heebo',sans-serif",
             direction: 'rtl', textAlign: 'center',
+            lineHeight: 1.6,
             animation: 'slideUpIn 0.25s ease both',
           }}>
-            {error}
+            ⚠️ {error}
           </div>
         )}
 
@@ -698,22 +701,22 @@ export function AbuWhatsApp() {
                   onClick={() => setActiveStyle(style)}
                   style={{
                     height: 44,
-                    padding: '0 18px',
+                    padding: '0 20px',
                     borderRadius: 22,
                     border: activeStyle === style
-                      ? '1.5px solid rgba(37,211,102,0.55)'
-                      : '1px solid rgba(255,255,255,0.11)',
+                      ? '1.5px solid rgba(20,184,166,0.70)'
+                      : '1px solid rgba(255,255,255,0.13)',
                     background: activeStyle === style
-                      ? `linear-gradient(135deg, #25D366 0%, #128C7E 100%)`
+                      ? `linear-gradient(135deg, #14b8a6 0%, #0d9488 60%, #0f766e 100%)`
                       : 'rgba(255,255,255,0.04)',
-                    color: activeStyle === style ? 'white' : 'rgba(255,255,255,0.52)',
+                    color: activeStyle === style ? 'white' : 'rgba(255,255,255,0.55)',
                     fontSize: 18, fontWeight: activeStyle === style ? 700 : 500,
                     fontFamily: "'Heebo',sans-serif",
                     cursor: 'pointer',
                     boxShadow: activeStyle === style
-                      ? '0 3px 14px rgba(37,211,102,0.26), inset 0 1px 0 rgba(255,255,255,0.12)'
+                      ? '0 3px 16px rgba(20,184,166,0.30), 0 0 0 1px rgba(201,168,76,0.18), inset 0 1px 0 rgba(255,255,255,0.14)'
                       : '0 1px 4px rgba(0,0,0,0.15)',
-                    transition: 'all 0.16s ease-out',
+                    transition: 'all 0.20s ease',
                     whiteSpace: 'nowrap',
                   }}
                 >{style}</button>
@@ -811,23 +814,23 @@ export function AbuWhatsApp() {
               disabled={!input.trim() && (phase as Phase) !== 'recording'}
               style={{
                 width: '100%', maxWidth: 370,
-                height: 56,
-                borderRadius: 28,
+                height: 58,
+                borderRadius: 29,
                 border: !input.trim()
-                  ? '1px solid rgba(37,211,102,0.07)'
-                  : '1.5px solid rgba(37,211,102,0.32)',
+                  ? '1px solid rgba(20,184,166,0.09)'
+                  : '1.5px solid rgba(20,184,166,0.45)',
                 background: !input.trim()
-                  ? 'rgba(37,211,102,0.09)'
-                  : `linear-gradient(145deg, #2ee67a, ${WA_GREEN}, #128C7E)`,
-                color: !input.trim() ? 'rgba(255,255,255,0.22)' : 'white',
-                fontSize: 20, fontWeight: 700,
+                  ? 'rgba(20,184,166,0.07)'
+                  : `linear-gradient(135deg, #14b8a6 0%, #0d9488 35%, #C9A84C 75%, #B8912A 100%)`,
+                color: !input.trim() ? 'rgba(255,255,255,0.25)' : 'white',
+                fontSize: 18, fontWeight: 700,
                 fontFamily: "'Heebo',sans-serif",
                 cursor: !input.trim() ? 'default' : 'pointer',
                 boxShadow: !input.trim()
                   ? 'none'
-                  : '0 6px 24px rgba(37,211,102,0.28), inset 0 1px 0 rgba(255,255,255,0.14)',
+                  : '0 6px 28px rgba(20,184,166,0.22), 0 2px 8px rgba(201,168,76,0.18), inset 0 1px 0 rgba(255,255,255,0.16)',
                 letterSpacing: '0.3px',
-                transition: 'all 0.16s ease-out',
+                transition: 'all 0.20s ease',
                 flexShrink: 0,
               }}
               onPointerDown={e => { if (input.trim()) e.currentTarget.style.transform = 'scale(0.97)' }}
@@ -878,31 +881,33 @@ export function AbuWhatsApp() {
            ════════════════════════════════════ */}
         {phase === 'result' && !voiceMode && (
           <>
-            {/* ── Result card — glass with gold top border ── */}
+            {/* ── Result card — glass morphism with gold-tinted border ── */}
             <div style={{
               width: '100%', maxWidth: 370,
               padding: '22px 24px 18px',
-              borderRadius: 22,
-              background: 'linear-gradient(160deg, rgba(37,211,102,0.07), rgba(18,140,126,0.03), rgba(5,10,24,0.90))',
-              border: '1px solid rgba(37,211,102,0.20)',
+              borderRadius: 20,
+              background: 'rgba(10,18,36,0.72)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: `1.5px solid rgba(201,168,76,0.35)`,
               borderTop: `3px solid ${GOLD}`,
               boxShadow: [
-                '0 8px 28px rgba(0,0,0,0.28)',
-                'inset 0 1px 0 rgba(255,255,255,0.04)',
-                `0 0 0 1px rgba(201,168,76,0.06)`,
+                '0 10px 40px rgba(0,0,0,0.38)',
+                'inset 0 1px 0 rgba(255,255,255,0.06)',
+                `0 0 0 1px rgba(201,168,76,0.08)`,
               ].join(', '),
               animation: 'slideUpIn 0.35s ease both',
             }}>
               {/* Gold top border glow */}
               <div aria-hidden="true" style={{
                 height: 1,
-                background: `linear-gradient(90deg, transparent, rgba(201,168,76,0.40), transparent)`,
+                background: `linear-gradient(90deg, transparent, rgba(201,168,76,0.50), transparent)`,
                 marginBottom: 18,
                 borderRadius: 1,
               }} />
 
               <div style={{
-                fontSize: 21, lineHeight: 1.8,
+                fontSize: 17, lineHeight: 1.85,
                 color: 'rgba(255,255,255,0.92)',
                 direction: 'rtl', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                 fontFamily: "'Heebo',sans-serif",
@@ -916,14 +921,14 @@ export function AbuWhatsApp() {
                 onClick={() => speak(result)}
                 aria-label="הקשיבי להודעה"
                 style={{
-                  marginTop: 16, padding: '9px 18px', borderRadius: 18,
-                  border: '1px solid rgba(37,211,102,0.18)',
+                  marginTop: 16, height: 52, padding: '0 20px', borderRadius: 18,
+                  border: '1px solid rgba(37,211,102,0.22)',
                   background: 'rgba(37,211,102,0.07)',
-                  color: WA_GREEN, fontSize: 15, fontWeight: 500,
+                  color: WA_GREEN, fontSize: 16, fontWeight: 600,
                   fontFamily: "'Heebo',sans-serif",
                   cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 7,
-                  transition: 'background 0.12s',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  transition: 'background 0.20s',
                 }}
                 onPointerDown={e => { e.currentTarget.style.background = 'rgba(37,211,102,0.14)' }}
                 onPointerUp={e => { e.currentTarget.style.background = 'rgba(37,211,102,0.07)' }}
@@ -1051,21 +1056,21 @@ export function AbuWhatsApp() {
                   type="button"
                   onClick={() => handleStyleTap(style)}
                   style={{
-                    height: 44, padding: '0 18px', borderRadius: 22,
+                    height: 44, padding: '0 20px', borderRadius: 22,
                     border: activeStyle === style
-                      ? '1.5px solid rgba(37,211,102,0.55)'
-                      : '1px solid rgba(255,255,255,0.10)',
+                      ? '1.5px solid rgba(20,184,166,0.70)'
+                      : '1px solid rgba(255,255,255,0.13)',
                     background: activeStyle === style
-                      ? `linear-gradient(135deg, #25D366 0%, #128C7E 100%)`
+                      ? `linear-gradient(135deg, #14b8a6 0%, #0d9488 60%, #0f766e 100%)`
                       : 'rgba(255,255,255,0.04)',
-                    color: activeStyle === style ? 'white' : 'rgba(255,255,255,0.50)',
+                    color: activeStyle === style ? 'white' : 'rgba(255,255,255,0.55)',
                     fontSize: 18, fontWeight: activeStyle === style ? 700 : 500,
                     fontFamily: "'Heebo',sans-serif",
                     cursor: 'pointer',
                     boxShadow: activeStyle === style
-                      ? '0 3px 14px rgba(37,211,102,0.24)'
+                      ? '0 3px 16px rgba(20,184,166,0.30), 0 0 0 1px rgba(201,168,76,0.18), inset 0 1px 0 rgba(255,255,255,0.14)'
                       : 'none',
-                    transition: 'all 0.16s ease-out',
+                    transition: 'all 0.20s ease',
                     whiteSpace: 'nowrap',
                   }}
                 >{style}</button>
@@ -1133,15 +1138,17 @@ export function AbuWhatsApp() {
           {result && (
             <div style={{
               position: 'absolute', top: 16, left: 16, right: 16,
-              padding: '16px 20px',
+              padding: '18px 22px',
               borderRadius: 18,
-              background: 'linear-gradient(145deg, rgba(37,211,102,0.08), rgba(5,10,24,0.85))',
-              border: '1px solid rgba(37,211,102,0.14)',
-              maxHeight: 130, overflowY: 'auto',
+              background: 'rgba(8,16,28,0.72)',
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+              border: '1px solid rgba(201,168,76,0.25)',
+              maxHeight: 140, overflowY: 'auto',
             }}>
               <div style={{
-                fontSize: 16, lineHeight: 1.65,
-                color: 'rgba(255,255,255,0.72)',
+                fontSize: 17, lineHeight: 1.75,
+                color: 'rgba(255,255,255,0.82)',
                 direction: 'rtl', whiteSpace: 'pre-wrap',
                 fontFamily: "'Heebo',sans-serif",
               }}>

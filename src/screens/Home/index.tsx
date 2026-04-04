@@ -497,19 +497,19 @@ export function Home() {
           onClick={() => setScreen(Screen.Settings)}
           aria-label="הגדרות"
           style={{
-            position: 'absolute', top: 5, right: 8,
+            position: 'absolute', top: 4, right: 8,
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-            padding: '4px 6px', cursor: 'pointer', background: 'none', border: 'none',
-            minWidth: 40, minHeight: 40,
+            padding: '6px 8px', cursor: 'pointer', background: 'none', border: 'none',
+            minWidth: 44, minHeight: 52,
           }}
         >
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
-            stroke="rgba(255,255,255,0.70)" strokeWidth="1.7"
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
+            stroke="rgba(255,255,255,0.78)" strokeWidth="1.7"
             strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
-          <span style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.62)',
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.72)',
             fontFamily: "'Heebo',sans-serif", lineHeight: 1 }}>הגדרות</span>
         </button>
         {/* Version indicator */}
@@ -536,7 +536,7 @@ export function Home() {
             aria-label={item.hebrewLabel}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              padding: '2px 0px', minWidth: 48, minHeight: 44,
+              padding: '4px 2px', minWidth: 52, minHeight: 56,
               cursor: 'pointer', background: 'none', border: 'none',
             }}
           >
@@ -550,10 +550,10 @@ export function Home() {
               {item.svgContent}
             </svg>
             <span style={{
-              fontSize: 13, fontWeight: 700,
+              fontSize: 14, fontWeight: 700,
               fontFamily: "'Heebo',sans-serif",
               lineHeight: 1.2, textAlign: 'center', whiteSpace: 'nowrap',
-              color: item.labelColor, opacity: 0.92,
+              color: item.labelColor, opacity: 0.95,
               textShadow: `0 1px 3px rgba(0,0,0,0.5), 0 0 8px rgba(${item.rgb},0.20)`,
             }}>
               {item.hebrewLabel}
