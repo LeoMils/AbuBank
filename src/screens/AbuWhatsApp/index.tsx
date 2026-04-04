@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { generateMessage, transcribeAudio, getSupportedMimeType } from './service'
-import { speak, stopSpeaking, unlockIOSAudio } from '../../services/voice'
+import { speak, speakVoiceMode, stopSpeaking, unlockIOSAudio } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { SilenceDetector } from '../../services/voice'
 
@@ -284,12 +284,12 @@ export function AbuWhatsApp() {
 
       if (cmd.type === 'send' && hasResultRef.current) {
         setVoicePhase('speaking')
-        await speak('שולחת למשפחה')
+        await speakVoiceMode('שולחת למשפחה')
         handleSendToFamily()
         if (voiceModeRef.current) {
           await new Promise(r => setTimeout(r, 1000))
           if (voiceModeRef.current) {
-            await speak('ההודעה נשלחה. רוצה לכתוב עוד הודעה?')
+            await speakVoiceMode('ההודעה נשלחה. רוצה לכתוב עוד הודעה?')
             hasResultRef.current = false
             setResult('')
             setPhase('idle')
@@ -304,7 +304,7 @@ export function AbuWhatsApp() {
         setVoicePhase('processing')
         const msg = await voiceGenerate(lastIntentRef.current, activeStyleRef.current)
         if (msg && voiceModeRef.current) {
-          setVoicePhase('speaking'); await speak(msg)
+          setVoicePhase('speaking'); await speakVoiceMode(msg)
           if (voiceModeRef.current) { await new Promise(r => setTimeout(r, 500)); if (voiceModeRef.current) startVoiceListening() }
         } else if (voiceModeRef.current) { startVoiceListening() }
         return
@@ -316,7 +316,7 @@ export function AbuWhatsApp() {
         setVoicePhase('processing')
         const msg = await voiceGenerate(intent, cmd.style)
         if (msg && voiceModeRef.current) {
-          setVoicePhase('speaking'); await speak(msg)
+          setVoicePhase('speaking'); await speakVoiceMode(msg)
           if (voiceModeRef.current) { await new Promise(r => setTimeout(r, 500)); if (voiceModeRef.current) startVoiceListening() }
         } else if (voiceModeRef.current) { startVoiceListening() }
         return
@@ -327,11 +327,11 @@ export function AbuWhatsApp() {
       setVoicePhase('processing')
       const msg = await voiceGenerate(intent, activeStyleRef.current)
       if (msg && voiceModeRef.current) {
-        setVoicePhase('speaking'); await speak(msg)
+        setVoicePhase('speaking'); await speakVoiceMode(msg)
         if (voiceModeRef.current) { await new Promise(r => setTimeout(r, 500)); if (voiceModeRef.current) startVoiceListening() }
       } else if (voiceModeRef.current) {
         setVoicePhase('speaking')
-        if (error) await speak(error)
+        if (error) await speakVoiceMode(error)
         await new Promise(r => setTimeout(r, 600))
         if (voiceModeRef.current) startVoiceListening()
       }
@@ -428,7 +428,7 @@ export function AbuWhatsApp() {
             setError(errText)
             if (voiceModeRef.current) {
               setVoicePhase('speaking')
-              await speak(errText)
+              await speakVoiceMode(errText)
               await new Promise(r => setTimeout(r, 600))
               if (voiceModeRef.current) startVoiceListening()
             }
@@ -469,7 +469,7 @@ export function AbuWhatsApp() {
     setTimeout(async () => {
       if (!voiceModeRef.current) return
       setVoicePhase('speaking')
-      await speak('מה תרצי לכתוב למשפחה?')
+      await speakVoiceMode('מה תרצי לכתוב למשפחה?')
       if (voiceModeRef.current) {
         await new Promise(r => setTimeout(r, 300))
         if (voiceModeRef.current) startVoiceListening()

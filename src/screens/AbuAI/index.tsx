@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { sendMessage, transcribeAudio, getSupportedMimeType } from './service'
-import { speak, stopSpeaking, unlockIOSAudio } from '../../services/voice'
+import { speak, speakVoiceMode, stopSpeaking, unlockIOSAudio } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
@@ -320,16 +320,11 @@ export function AbuAI() {
         if (!voiceModeRef.current) return
         setVoicePhase('speaking')
         setIsSpeaking(true)
-        // iOS: WebSpeechRecognition can reset the audio output session when the
-        // mic session ends.  Re-unlock here (from async context — safe because
-        // the shared AudioContext created during the original tap stays running).
-        unlockIOSAudio()
-        // Give iOS ~300 ms to release the audio capture session before output starts.
-        await new Promise(r => setTimeout(r, 300))
-        await speak(response)
+        // speakVoiceMode uses speechSynthesis — always works on iOS from async context
+        await speakVoiceMode(response)
         setIsSpeaking(false)
         if (!voiceModeRef.current) return
-        await new Promise(r => setTimeout(r, 500))
+        await new Promise(r => setTimeout(r, 400))
         if (voiceModeRef.current) startVoiceListening()
       } catch (err) {
         setIsSpeaking(false)
@@ -337,9 +332,9 @@ export function AbuAI() {
         setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
         if (voiceModeRef.current) {
           setVoicePhase('speaking'); setIsSpeaking(true)
-          await speak(errText)
+          await speakVoiceMode(errText)
           setIsSpeaking(false)
-          await new Promise(r => setTimeout(r, 600))
+          await new Promise(r => setTimeout(r, 400))
           if (voiceModeRef.current) startVoiceListening()
         }
       }

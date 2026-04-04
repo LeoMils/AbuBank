@@ -379,11 +379,28 @@ function speakWebAPI(text: string): Promise<void> {
 
 // ─── Public API ────────────────────────────────────────────
 
+// speakVoiceMode — for LIVE CONVERSATION (AbuAI voice mode)
+// Uses Web Speech API (speechSynthesis) FIRST — it is the ONLY method that
+// works reliably on iOS Safari from an async context (no user-gesture requirement).
+// Falls back to OpenAI TTS (better quality but may be blocked on older iOS).
+export async function speakVoiceMode(text: string): Promise<void> {
+  if (!text.trim()) return
+  // Web Speech API — always allowed on iOS, instant, no network
+  if ('speechSynthesis' in window) {
+    await speakWebAPI(text)
+    return
+  }
+  // Fallback if speechSynthesis somehow unavailable
+  if (await speakOpenAI(text)) return
+  await speakWebAPI(text)
+}
+
+// speak — for TEXT CHAT and other non-realtime uses
+// OpenAI nova is primary (best quality), falls back to Web Speech.
 export async function speak(text: string): Promise<void> {
   if (!text.trim()) return
 
   // 0) OpenAI TTS — nova voice — direct REST API, works on iPhone/Vercel (no proxy needed)
-  //    This is the primary voice: warm, clear, comfortable for Martita's ears.
   console.log('[TTS] Trying OpenAI nova...')
   if (await speakOpenAI(text)) { console.log('[TTS] ✅ OpenAI nova worked'); return }
   console.log('[TTS] ❌ OpenAI failed (no key or network error)')
@@ -405,7 +422,7 @@ export async function speak(text: string): Promise<void> {
   console.log('[TTS] Trying Google TTS...')
   if (await speakGoogleTTS(text)) { console.log('[TTS] ✅ Google TTS worked'); return }
 
-  // 5) Last resort — browser built-in Web Speech (works on iOS but voice quality varies)
+  // 5) Last resort — browser built-in Web Speech
   console.log('[TTS] Falling back to Web Speech API')
   await speakWebAPI(text)
 }
