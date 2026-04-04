@@ -666,10 +666,10 @@ export function AbuAI() {
         <div style={{
           position: 'absolute', bottom: 4, left: 10,
           fontSize: 9, fontWeight: 700, letterSpacing: '1px',
-          color: 'rgba(201,168,76,0.55)',
+          color: 'rgba(201,168,76,0.70)',
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
-        }}>v11</div>
+        }}>v11.1</div>
       </header>
 
       {/* ─── CHAT AREA ─── */}
