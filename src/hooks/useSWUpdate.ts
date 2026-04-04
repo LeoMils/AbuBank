@@ -5,13 +5,29 @@ export function useSWUpdate(): { updateReady: boolean; applyUpdate: () => void }
   const [registration, setRegistration] =
     useState<ServiceWorkerRegistration | null>(null)
 
-  // Listen for SW update lifecycle events
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
+
+    // ── Auto-reload on controllerchange ──────────────────────────────────────
+    // When skipWaiting:true + clientsClaim:true, the new SW takes over
+    // immediately (no waiting state). The browser fires controllerchange when
+    // the new SW becomes the active controller for this page.
+    // Reloading here picks up the new JS/CSS bundle immediately.
+    let reloading = false
+    const handleControllerChange = () => {
+      if (reloading) return
+      reloading = true
+      window.location.reload()
+    }
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange)
+
+    // ── Fallback: waiting-state detection (manual skipWaiting flow) ───────────
     navigator.serviceWorker.getRegistration().then(reg => {
       if (!reg) return
       setRegistration(reg)
-      if (reg.waiting) setUpdateReady(true)
+      // Already waiting (loaded after update installed)
+      if (reg.waiting) { setUpdateReady(true); return }
+      // New SW being installed right now
       reg.addEventListener('updatefound', () => {
         const newSW = reg.installing
         if (!newSW) return
@@ -22,6 +38,10 @@ export function useSWUpdate(): { updateReady: boolean; applyUpdate: () => void }
         })
       })
     })
+
+    return () => {
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange)
+    }
   }, [])
 
   return {
