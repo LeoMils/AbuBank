@@ -7,123 +7,49 @@ import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/mar
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
 
-const VIOLET = '#8B5CF6'
-const GOLD = '#D4A853'
+// ─── Color tokens ────────────────────────────────────────────────────────────
+const GOLD            = '#C9A84C'
+const BG              = '#0C0A08'
+const SURFACE         = 'rgba(255,250,240,0.04)'
+const BORDER          = 'rgba(201,168,76,0.14)'
+const TEXT            = '#F5F0E8'
+const TEXT_MUTED      = 'rgba(245,240,232,0.48)'
+
+// suppress unused lint
+void BORDER
 
 let msgCounter = 0
 function nextId(): string {
   return `m${++msgCounter}-${Date.now()}`
 }
 
-// ─── CSS keyframes injected once ────────────────────────────────────────────
+// ─── CSS keyframes injected once ─────────────────────────────────────────────
 const KEYFRAMES_ID = 'abuai-anim'
 
 const KEYFRAMES = `
   .abuai-chat-scroll { scrollbar-width: none; }
   .abuai-chat-scroll::-webkit-scrollbar { display: none; }
 
-  @keyframes abuPulse {
-    0%,100% { opacity:0.3; transform:scale(0.8); }
-    50%      { opacity:0.9; transform:scale(1.15); }
-  }
-  @keyframes micPulse {
-    0%,100% { box-shadow: 0 4px 16px rgba(239,68,68,0.35), 0 0 0 0 rgba(239,68,68,0.3); }
-    50%     { box-shadow: 0 4px 16px rgba(239,68,68,0.35), 0 0 0 12px rgba(239,68,68,0); }
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  @keyframes orbFloat {
-    0%,100% { transform: translateY(0px) scale(1); }
-    50%     { transform: translateY(-8px) scale(1.03); }
-  }
-  @keyframes orbGlowViolet {
-    0%,100% { box-shadow: 0 0 40px rgba(139,92,246,0.30), 0 0 80px rgba(139,92,246,0.15), inset 0 0 30px rgba(139,92,246,0.08); }
-    50%     { box-shadow: 0 0 65px rgba(139,92,246,0.50), 0 0 120px rgba(139,92,246,0.25), inset 0 0 40px rgba(139,92,246,0.12); }
-  }
-  @keyframes orbGlowGold {
-    0%,100% { box-shadow: 0 0 40px rgba(212,168,83,0.30), 0 0 80px rgba(212,168,83,0.15), inset 0 0 30px rgba(212,168,83,0.08); }
-    50%     { box-shadow: 0 0 65px rgba(212,168,83,0.50), 0 0 120px rgba(212,168,83,0.25), inset 0 0 40px rgba(212,168,83,0.12); }
-  }
-  @keyframes ripple1 {
-    0%   { transform: scale(1);   opacity: 0.55; }
-    100% { transform: scale(1.9); opacity: 0; }
-  }
-  @keyframes ripple2 {
-    0%   { transform: scale(1);   opacity: 0.40; }
-    100% { transform: scale(2.4); opacity: 0; }
-  }
-  @keyframes ripple3 {
-    0%   { transform: scale(1);   opacity: 0.25; }
-    100% { transform: scale(2.9); opacity: 0; }
-  }
-  @keyframes ripple4 {
-    0%   { transform: scale(1);   opacity: 0.15; }
-    100% { transform: scale(3.4); opacity: 0; }
-  }
-
-  @keyframes voiceGlowViolet {
-    0%,100% { box-shadow: 0 0 28px rgba(139,92,246,0.25); }
-    50%      { box-shadow: 0 0 52px rgba(139,92,246,0.45); }
-  }
-  @keyframes voiceGlowGold {
-    0%,100% { box-shadow: 0 0 28px rgba(212,168,83,0.22); }
-    50%      { box-shadow: 0 0 52px rgba(212,168,83,0.40); }
-  }
-
   @keyframes fadeSlideUp {
-    from { opacity:0; transform:translateY(14px); }
+    from { opacity:0; transform:translateY(12px); }
     to   { opacity:1; transform:translateY(0); }
   }
   @keyframes msgIn {
-    from { opacity:0; transform:translateY(10px); }
+    from { opacity:0; transform:translateY(8px); }
     to   { opacity:1; transform:translateY(0); }
-  }
-  @keyframes speakWave {
-    0%,100% { transform: scaleY(0.4); }
-    50%     { transform: scaleY(1); }
-  }
-  @keyframes avatarGlow {
-    0%,100% { box-shadow: 0 0 0 2px rgba(212,168,83,0.35), 0 0 18px rgba(212,168,83,0.18); }
-    50%     { box-shadow: 0 0 0 3px rgba(212,168,83,0.55), 0 0 28px rgba(212,168,83,0.32); }
-  }
-  @keyframes avatarGlowAlways {
-    0%,100% { box-shadow: 0 0 0 2px rgba(139,92,246,0.25), 0 0 10px rgba(139,92,246,0.10); }
-    50%     { box-shadow: 0 0 0 2px rgba(139,92,246,0.45), 0 0 18px rgba(139,92,246,0.20); }
   }
   @keyframes dotPulse {
     0%,80%,100% { opacity: 0.25; transform: scale(0.75); }
-    40%          { opacity: 1;    transform: scale(1.0); }
+    40%         { opacity: 1; transform: scale(1.0); }
   }
   @keyframes waveBar {
-    0%,100% { transform: scaleY(0.3); }
+    0%,100% { transform: scaleY(0.25); }
     50%     { transform: scaleY(1.0); }
   }
-  @keyframes particleFloat1 {
-    0%,100% { transform: translate(0px, 0px); opacity: 0.10; }
-    33%     { transform: translate(6px, -18px); opacity: 0.14; }
-    66%     { transform: translate(-4px, -8px); opacity: 0.08; }
-  }
-  @keyframes particleFloat2 {
-    0%,100% { transform: translate(0px, 0px); opacity: 0.08; }
-    40%     { transform: translate(-8px, -22px); opacity: 0.13; }
-    70%     { transform: translate(5px, -12px); opacity: 0.06; }
-  }
-  @keyframes particleFloat3 {
-    0%,100% { transform: translate(0px, 0px); opacity: 0.12; }
-    50%     { transform: translate(10px, -16px); opacity: 0.15; }
-  }
-  @keyframes particleFloat4 {
-    0%,100% { transform: translate(0px, 0px); opacity: 0.07; }
-    45%     { transform: translate(-6px, -20px); opacity: 0.12; }
-    80%     { transform: translate(4px, -9px); opacity: 0.09; }
-  }
-  @keyframes breathe {
-    0%,100% { opacity: 0.10; }
-    50%     { opacity: 0.18; }
-  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 `
 
-// ─── Dynamic voice greeting ──────────────────────────────────────────────────
+// ─── Dynamic voice greeting ───────────────────────────────────────────────────
 function getVoiceGreeting(): string {
   const h = new Date().getHours()
   const salutation =
@@ -212,7 +138,7 @@ export function AbuAI() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Text chat ───────────────────────────────────────────────────────────
+  // ─── Text chat ────────────────────────────────────────────────────────────
 
   const handleSend = async (text?: string) => {
     const msgText = (text ?? input).trim()
@@ -245,17 +171,15 @@ export function AbuAI() {
     }
   }
 
-  // ─── Manual voice recording (fills text input) ───────────────────────────
+  // ─── Manual voice recording (fills text input) ────────────────────────────
 
   const startRecording = useCallback(async () => {
     try {
-      // iOS Safari requires explicit audio constraints for microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true }
       })
       streamRef.current = stream
       const mimeType = getSupportedMimeType()
-      // Empty mimeType = let the browser choose (iOS-safe fallback)
       const recorder = mimeType
         ? new MediaRecorder(stream, { mimeType })
         : new MediaRecorder(stream)
@@ -272,7 +196,6 @@ export function AbuAI() {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
         setRecording(false)
 
-        // Use the recorder's actual mimeType (iOS may differ from requested mimeType)
         const actualType = recorder.mimeType || mimeType || 'audio/mp4'
         const blob = new Blob(chunksRef.current, { type: actualType })
         if (blob.size < 1000) return
@@ -289,7 +212,7 @@ export function AbuAI() {
         }
       }
 
-      recorder.start(100) // timeslice required on iOS for ondataavailable to fire
+      recorder.start(100)
       setRecordingTime(0)
       setRecording(true)
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
@@ -310,7 +233,6 @@ export function AbuAI() {
   // ─── Voice Conversation Mode ──────────────────────────────────────────────
 
   const cleanupVoiceResources = useCallback(() => {
-    // Stop Web Speech Recognition if active
     if (recognitionRef.current) {
       try { recognitionRef.current.abort() } catch {}
       recognitionRef.current = null
@@ -329,7 +251,6 @@ export function AbuAI() {
     setAudioLevel(0)
     setListenCountdown(null)
 
-    // ── Shared: transcribed text → AI response → speak → listen again ────────
     const handleText = async (text: string) => {
       if (!voiceModeRef.current) return
       const lower = text.trim()
@@ -346,7 +267,6 @@ export function AbuAI() {
         if (!voiceModeRef.current) return
         setVoicePhase('speaking')
         setIsSpeaking(true)
-        // speakVoiceMode uses speechSynthesis — always works on iOS from async context
         await speakVoiceMode(response)
         setIsSpeaking(false)
         if (!voiceModeRef.current) return
@@ -366,7 +286,7 @@ export function AbuAI() {
       }
     }
 
-    // ── Primary: Web Speech Recognition (iOS Safari → Apple Hebrew model) ─────
+    // Primary: Web Speech Recognition
     const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (WSR) {
       const rec = new WSR() as any
@@ -409,11 +329,10 @@ export function AbuAI() {
         return
       } catch {
         recognitionRef.current = null
-        // fall through to MediaRecorder
       }
     }
 
-    // ── Fallback: MediaRecorder + Whisper (non-WebKit / desktop Chrome) ───────
+    // Fallback: MediaRecorder + Whisper
     ;(async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -460,9 +379,8 @@ export function AbuAI() {
           }
         }
 
-        recorder.start(100) // timeslice required on iOS
+        recorder.start(100)
 
-        // 10-second countdown — visible to Martita
         const LISTEN_SEC = 10
         setListenCountdown(LISTEN_SEC)
         let cdSec = LISTEN_SEC
@@ -522,10 +440,18 @@ export function AbuAI() {
   const sendDisabled = !hasInput || loading
   const micDisabled = loading || transcribing
 
-  // suppress unused warning — audioLevel is used for voice UI future expansion
+  // suppress unused warnings
   void audioLevel
-  // suppress unused warning — listenCountdown rendered implicitly
   void listenCountdown
+
+  // Shared gold gradient text style
+  const goldGradText: React.CSSProperties = {
+    background: 'linear-gradient(135deg, #F5E6C0 0%, #D4A853 25%, #C9A84C 50%, #B8912A 75%, #D4A853 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    filter: 'drop-shadow(0 0 10px rgba(201,168,76,0.35))',
+  }
 
   return (
     <div
@@ -536,92 +462,42 @@ export function AbuAI() {
         maxWidth: 412,
         margin: '0 auto',
         overflow: 'hidden',
-        background: '#0D0A1A',
+        background: BG,
         display: 'flex',
         flexDirection: 'column',
-        fontFamily: "'Heebo','DM Sans',sans-serif",
+        fontFamily: "'DM Sans','Heebo',sans-serif",
         position: 'relative',
       }}
     >
-      {/* ── Ambient background layers ── */}
-      <div aria-hidden="true" style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
-        background: [
-          'radial-gradient(ellipse 90% 50% at 50% -5%, rgba(139,92,246,0.20) 0%, transparent 60%)',
-          'radial-gradient(ellipse 50% 40% at 5% 85%, rgba(212,168,83,0.10) 0%, transparent 55%)',
-          'radial-gradient(ellipse 45% 35% at 95% 70%, rgba(139,92,246,0.08) 0%, transparent 50%)',
-        ].join(', '),
-      }} />
-
-      {/* ── Breathing ambient glow (bottom-center depth layer) ── */}
+      {/* ── Ambient background — ONE layer only ── */}
       <div aria-hidden="true" style={{
         position: 'absolute',
-        bottom: 0,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 320,
-        height: 220,
-        borderRadius: '50%',
-        background: 'radial-gradient(ellipse at center, rgba(139,92,246,0.12) 0%, transparent 70%)',
+        inset: 0,
         pointerEvents: 'none',
         zIndex: 0,
-        animation: 'breathe 6s ease-in-out infinite',
+        background: 'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(201,168,76,0.10) 0%, transparent 60%)',
       }} />
 
-      {/* ── Ambient floating particles ── */}
-      <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-        {/* Particle 1 — violet */}
-        <div style={{
-          position: 'absolute', top: '22%', left: '18%',
-          width: 4, height: 4, borderRadius: '50%',
-          background: 'rgba(167,139,250,0.55)',
-          animation: 'particleFloat1 11s ease-in-out infinite',
-          boxShadow: '0 0 6px rgba(167,139,250,0.35)',
-        }} />
-        {/* Particle 2 — gold */}
-        <div style={{
-          position: 'absolute', top: '55%', left: '78%',
-          width: 3, height: 3, borderRadius: '50%',
-          background: 'rgba(212,168,83,0.50)',
-          animation: 'particleFloat2 14s ease-in-out 2s infinite',
-          boxShadow: '0 0 5px rgba(212,168,83,0.30)',
-        }} />
-        {/* Particle 3 — violet */}
-        <div style={{
-          position: 'absolute', top: '38%', left: '88%',
-          width: 3, height: 3, borderRadius: '50%',
-          background: 'rgba(139,92,246,0.45)',
-          animation: 'particleFloat3 9s ease-in-out 1s infinite',
-          boxShadow: '0 0 5px rgba(139,92,246,0.25)',
-        }} />
-        {/* Particle 4 — gold */}
-        <div style={{
-          position: 'absolute', top: '72%', left: '12%',
-          width: 4, height: 4, borderRadius: '50%',
-          background: 'rgba(212,168,83,0.42)',
-          animation: 'particleFloat4 16s ease-in-out 3.5s infinite',
-          boxShadow: '0 0 6px rgba(212,168,83,0.22)',
-        }} />
-      </div>
-
       {/* ─────────────────────── HEADER ─────────────────────── */}
-      <header
-        style={{
-          flexShrink: 0,
-          position: 'relative',
-          background: 'linear-gradient(180deg, rgba(18,12,36,0.98) 0%, rgba(13,10,26,0.96) 100%)',
-          borderBottom: '1px solid rgba(139,92,246,0.22)',
-          zIndex: 20,
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.40)',
-        }}
-      >
-        {/* Glow strip */}
+      <header style={{
+        flexShrink: 0,
+        position: 'relative',
+        background: 'rgba(12,10,8,0.96)',
+        borderBottom: '1px solid rgba(201,168,76,0.18)',
+        backdropFilter: 'blur(16px)',
+        zIndex: 20,
+      }}>
+        {/* Bottom glow line */}
         <div aria-hidden="true" style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: 1,
-          background: 'linear-gradient(90deg,transparent,rgba(139,92,246,0.30) 25%,rgba(139,92,246,0.55) 50%,rgba(139,92,246,0.30) 75%,transparent)',
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 1,
+          background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.28) 30%, rgba(201,168,76,0.45) 50%, rgba(201,168,76,0.28) 70%, transparent)',
         }} />
 
-        {/* Header content row — fixed 72px tall */}
+        {/* Header content row — 72px */}
         <div style={{
           position: 'relative',
           height: 72,
@@ -631,96 +507,67 @@ export function AbuAI() {
           padding: '0 14px',
         }}>
 
-          {/* RIGHT (RTL): Martita portrait — 54×54 with violet outer ring + gold inner ring */}
+          {/* LEFT (RTL): Martita portrait — 50×50px */}
           <div style={{
             position: 'absolute',
             left: 14,
             top: '50%',
             transform: 'translateY(-50%)',
-            width: 54,
-            height: 54,
+            width: 50,
+            height: 50,
             borderRadius: '50%',
+            border: isSpeaking ? '2.5px solid rgba(201,168,76,0.80)' : '2px solid rgba(201,168,76,0.42)',
+            boxShadow: isSpeaking ? '0 0 0 2.5px rgba(201,168,76,0.75), 0 0 24px rgba(201,168,76,0.30)' : '0 0 0 2px rgba(201,168,76,0.42), 0 0 16px rgba(201,168,76,0.12)',
+            transition: 'box-shadow 0.4s ease',
+            overflow: 'hidden',
+            background: '#1a140a',
             flexShrink: 0,
           }}>
-            {/* Outer violet ring */}
-            <div style={{
-              position: 'absolute',
-              inset: -3,
-              borderRadius: '50%',
-              border: isSpeaking
-                ? '2px solid rgba(139,92,246,0.75)'
-                : '1.5px solid rgba(139,92,246,0.40)',
-              transition: 'border-color 0.4s ease',
-            }} />
-            {/* Inner gold ring */}
-            <div style={{
-              position: 'absolute',
-              inset: -1,
-              borderRadius: '50%',
-              border: isSpeaking
-                ? '2px solid rgba(212,168,83,0.85)'
-                : '1.5px solid rgba(212,168,83,0.50)',
-              animation: isSpeaking ? 'avatarGlow 1.4s ease-in-out infinite' : 'avatarGlowAlways 3s ease-in-out infinite',
-              transition: 'border-color 0.4s ease',
-            }} />
-            {/* Photo */}
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: '50%',
-              overflow: 'hidden', background: '#1a1028',
-            }}>
-              <img
-                src={martitaPhoto}
-                alt="Martita"
-                loading="eager"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
-                onError={handleMartitaImgError}
-              />
-            </div>
+            <img
+              src={martitaPhoto}
+              alt="Martita"
+              loading="eager"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
+              onError={handleMartitaImgError}
+            />
           </div>
 
-          {/* CENTER: Dual two-line wordmark */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 2,
-            direction: 'ltr',
-          }}>
-            {/* Line 1: ABU AI — DM Sans, violet gradient, small caps */}
-            <div style={{
-              fontFamily: "'DM Sans',sans-serif",
-              fontSize: 16,
-              fontWeight: 700,
-              letterSpacing: '3px',
-              textTransform: 'uppercase',
-              background: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 40%, #7C3AED 70%, #A78BFA 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              filter: 'drop-shadow(0 0 8px rgba(139,92,246,0.40))',
-              lineHeight: 1,
-            } as React.CSSProperties}>
-              ABU AI
+          {/* CENTER: Single wordmark */}
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, direction: 'ltr' }}>
+              <span style={{
+                fontFamily: "'Cormorant Garamond',Georgia,serif",
+                fontSize: 34,
+                fontWeight: 600,
+                letterSpacing: '1px',
+                fontStyle: 'italic',
+                ...goldGradText,
+              }}>Martit</span>
+              <span style={{
+                fontFamily: "'DM Sans',sans-serif",
+                fontSize: 30,
+                fontWeight: 700,
+                letterSpacing: '2px',
+                ...goldGradText,
+              }}>AI</span>
             </div>
-            {/* Line 2: MartitAI — Cormorant Garamond, warm gold, italic */}
+            {/* Sub-label */}
             <div style={{
-              fontFamily: "'Cormorant Garamond',Georgia,serif",
-              fontSize: 28,
-              fontStyle: 'italic',
+              position: 'absolute',
+              bottom: -16,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: 10,
+              letterSpacing: '2.5px',
               fontWeight: 600,
-              letterSpacing: '0.5px',
-              background: 'linear-gradient(135deg, #FDE68A 0%, #D4A853 35%, #B8922A 65%, #FDE68A 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              filter: 'drop-shadow(0 0 10px rgba(212,168,83,0.35))',
-              lineHeight: 1,
-            } as React.CSSProperties}>
-              MartitAI
-            </div>
+              color: 'rgba(201,168,76,0.50)',
+              fontFamily: "'DM Sans',sans-serif",
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+            }}>ABU AI</div>
           </div>
 
-          {/* LEFT (RTL): Back button with small label — 56×56 touch target */}
+          {/* RIGHT (RTL): Back button */}
           <button
             type="button"
             onClick={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }}
@@ -732,41 +579,44 @@ export function AbuAI() {
               transform: 'translateY(-50%)',
               width: 56,
               height: 56,
-              borderRadius: 16,
-              background: 'rgba(139,92,246,0.09)',
-              border: '1px solid rgba(139,92,246,0.22)',
+              minHeight: 44,
+              background: 'transparent',
+              border: 'none',
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 3,
+              gap: 2,
               WebkitTapHighlightColor: 'transparent',
-              transition: 'background 0.15s ease',
             }}
-            onPointerDown={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.18)' }}
-            onPointerUp={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.09)' }}
-            onPointerLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.09)' }}
           >
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-              stroke="rgba(255,255,255,0.85)" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              stroke="rgba(245,240,232,0.80)" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
               <path d="M15 18l-6-6 6-6" />
             </svg>
             <span style={{
-              fontSize: 12, color: 'rgba(255,255,255,0.55)',
-              fontFamily: "'Heebo',sans-serif", fontWeight: 500, lineHeight: 1,
+              fontSize: 12,
+              color: 'rgba(245,240,232,0.55)',
+              fontFamily: "'Heebo',sans-serif",
+              fontWeight: 500,
+              lineHeight: 1,
             }}>חזרה</span>
           </button>
         </div>
 
         {/* Version badge */}
         <div style={{
-          position: 'absolute', bottom: 5, left: 10,
-          fontSize: 12, fontWeight: 700, letterSpacing: '1px',
-          color: 'rgba(212,168,83,0.65)',
+          position: 'absolute',
+          bottom: 5,
+          left: 10,
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: '1px',
+          color: 'rgba(201,168,76,0.45)',
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
-        }}>v13.0</div>
+        }}>v14.0</div>
       </header>
 
       {/* ─────────────────────── CHAT AREA ─────────────────────── */}
@@ -777,12 +627,13 @@ export function AbuAI() {
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
-          padding: '16px 14px 10px',
+          padding: '20px 16px 12px',
           WebkitOverflowScrolling: 'touch',
           position: 'relative',
           zIndex: 1,
           display: 'flex',
           flexDirection: 'column',
+          background: 'transparent',
         }}
       >
         {/* ──────── EMPTY STATE ──────── */}
@@ -792,188 +643,141 @@ export function AbuAI() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
+            paddingTop: 60,
+            gap: 24,
             animation: 'fadeSlideUp 0.65s ease-out both',
-            minHeight: 0,
-            gap: 0,
-            paddingBottom: 32,
           }}>
-            {/* ── Large hero orb — 160px with 4 ripple rings ── */}
-            <div style={{ position: 'relative', width: 160, height: 160, flexShrink: 0 }}>
-              {/* Ripple ring 1 — violet */}
+            {/* Monogram circle 120px with 2 ripple rings */}
+            <div style={{
+              position: 'relative',
+              width: 120,
+              height: 120,
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              {/* Ripple ring 1 */}
               <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1.5px solid rgba(139,92,246,0.38)',
-                animation: 'ripple1 4.2s ease-out 0s infinite',
+                position: 'absolute',
+                width: '168%', height: '168%',
+                borderRadius: '50%',
+                border: '1px solid rgba(201,168,76,0.18)',
               }} />
-              {/* Ripple ring 2 — violet */}
+              {/* Static halo ring 2 */}
               <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1px solid rgba(139,92,246,0.22)',
-                animation: 'ripple2 4.2s ease-out 1.05s infinite',
+                position: 'absolute',
+                borderRadius: '50%',
+                border: '1px solid rgba(201,168,76,0.09)',
+                width: '210%', height: '210%',
               }} />
-              {/* Ripple ring 3 — violet */}
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '0.5px solid rgba(139,92,246,0.13)',
-                animation: 'ripple3 4.2s ease-out 2.1s infinite',
-              }} />
-              {/* Ripple ring 4 — violet */}
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '0.5px solid rgba(139,92,246,0.07)',
-                animation: 'ripple4 4.2s ease-out 3.15s infinite',
-              }} />
-              {/* Orb body — gold stays gold */}
+              {/* Orb body */}
               <div style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                background: 'radial-gradient(circle at 38% 32%, rgba(255,235,148,0.22) 0%, rgba(212,168,83,0.14) 40%, rgba(13,8,26,0.97) 78%)',
-                border: '1.5px solid rgba(212,168,83,0.48)',
-                animation: 'orbGlowGold 3.8s ease-in-out infinite, orbFloat 5s ease-in-out infinite',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                backdropFilter: 'blur(4px)',
+                width: 120,
+                height: 120,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.20) 0%, rgba(201,168,76,0.12) 38%, rgba(201,168,76,0.04) 62%, transparent 80%)',
+                border: '1.5px solid rgba(201,168,76,0.35)',
+                boxShadow: '0 0 0 1px rgba(201,168,76,0.18), 0 0 48px rgba(201,168,76,0.14), 0 0 96px rgba(201,168,76,0.06), inset 0 1px 0 rgba(255,250,240,0.10)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                zIndex: 1,
               }}>
-                <svg viewBox="0 0 24 24" width="52" height="52" aria-hidden="true"
-                  style={{ filter: 'drop-shadow(0 0 14px rgba(212,168,83,0.65))' }}>
-                  <defs>
-                    <linearGradient id="emptyStarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#FDE68A" />
-                      <stop offset="45%" stopColor="#D4A853" />
-                      <stop offset="100%" stopColor="#92400E" />
-                    </linearGradient>
-                  </defs>
-                  <path d="M12 2 L13.2 10.8 L22 12 L13.2 13.2 L12 22 L10.8 13.2 L2 12 L10.8 10.8 Z" fill="url(#emptyStarGrad)" />
-                </svg>
+                <span style={{
+                  fontFamily: "'Cormorant Garamond',Georgia,serif",
+                  fontSize: 52,
+                  fontWeight: 600,
+                  fontStyle: 'italic',
+                  ...goldGradText,
+                }}>M</span>
               </div>
             </div>
 
-            {/* Headline row: "שאלי אותי כל דבר" + italic gold "Martita" */}
+            {/* Headline */}
             <div style={{
-              marginTop: 30,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 4,
+              fontSize: 22,
+              fontWeight: 700,
+              color: TEXT,
+              fontFamily: "'DM Sans',sans-serif",
+              textAlign: 'center',
               direction: 'rtl',
+              lineHeight: 1.5,
             }}>
-              <div style={{
-                fontFamily: "'Heebo',sans-serif",
-                fontSize: 28,
-                fontWeight: 800,
-                color: '#F5F2EE',
-                textAlign: 'center',
-                lineHeight: 1.3,
-                letterSpacing: '-0.3px',
-              }}>
-                שאלי אותי כל דבר
-              </div>
-              <div style={{
-                fontFamily: "'Cormorant Garamond',Georgia,serif",
-                fontSize: 32,
+              שלום{' '}
+              <span style={{
+                fontFamily: "'Cormorant Garamond',serif",
                 fontStyle: 'italic',
-                fontWeight: 600,
-                background: 'linear-gradient(135deg, #FDE68A 0%, #D4A853 50%, #A88A35 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                filter: 'drop-shadow(0 0 10px rgba(212,168,83,0.28))',
-                letterSpacing: '0.5px',
-              } as React.CSSProperties}>
-                Martita
-              </div>
+                fontSize: 26,
+                color: '#D4A853',
+                WebkitTextFillColor: '#D4A853',
+              }}>Martita</span>
             </div>
 
             {/* Subtitle */}
             <div style={{
-              marginTop: 12,
               fontSize: 16,
-              color: 'rgba(245,242,238,0.55)',
+              color: 'rgba(245,240,232,0.50)',
               textAlign: 'center',
               direction: 'rtl',
+              lineHeight: 1.7,
+              maxWidth: 260,
               fontFamily: "'Heebo',sans-serif",
-              fontWeight: 500,
-              lineHeight: 1.8,
-              maxWidth: 300,
             }}>
-              כאן בשבילך תמיד{'\n'}שאלי אותי על כל דבר
+              שאלי אותי כל דבר — עברית, ספרדית, כל נושא
             </div>
 
-            {/* ── Voice invitation card — violet/gold accents ── */}
-            <button
-              type="button"
+            {/* Voice invitation card */}
+            <div
+              role="button"
+              tabIndex={0}
               onClick={enterVoiceMode}
+              onKeyDown={e => e.key === 'Enter' && enterVoiceMode()}
               style={{
                 marginTop: 32,
-                padding: '24px 32px',
-                borderRadius: 28,
-                background: 'linear-gradient(145deg, rgba(139,92,246,0.14) 0%, rgba(139,92,246,0.07) 100%)',
-                border: '1.5px solid rgba(139,92,246,0.35)',
-                borderRight: '4px solid rgba(139,92,246,0.60)',
-                boxShadow: '0 8px 36px rgba(139,92,246,0.18), inset 0 1px 0 rgba(255,255,255,0.06)',
+                padding: '20px 28px',
+                background: 'rgba(255,250,240,0.03)',
+                border: '1px solid rgba(201,168,76,0.22)',
+                borderRight: '4px solid rgba(201,168,76,0.65)',
+                borderRadius: 16,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
-                transition: 'transform 0.12s ease, box-shadow 0.12s ease',
-                flexShrink: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 12,
-                minWidth: 270,
               }}
-              onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.96)'; e.currentTarget.style.boxShadow = '0 2px 16px rgba(139,92,246,0.10)' }}
-              onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 8px 36px rgba(139,92,246,0.18), inset 0 1px 0 rgba(255,255,255,0.06)' }}
-              onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 8px 36px rgba(139,92,246,0.18), inset 0 1px 0 rgba(255,255,255,0.06)' }}
             >
-              {/* Mic orb — violet glow */}
+              {/* Mic icon circle */}
               <div style={{
-                width: 68, height: 68, borderRadius: '50%',
-                background: 'linear-gradient(145deg, rgba(139,92,246,0.28), rgba(139,92,246,0.14))',
-                border: '1.5px solid rgba(139,92,246,0.55)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 28px rgba(139,92,246,0.35)',
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                background: 'rgba(201,168,76,0.12)',
+                border: '1.5px solid rgba(201,168,76,0.40)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
               }}>
-                <svg viewBox="0 0 24 24" width="30" height="30" fill="none"
-                  stroke={VIOLET} strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"
-                  style={{ filter: 'drop-shadow(0 0 6px rgba(139,92,246,0.55))' }}>
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none"
+                  stroke={GOLD} strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                   <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                   <path d="M19 10v2a7 7 0 01-14 0v-2" />
                   <line x1="12" y1="19" x2="12" y2="23" />
                   <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
               </div>
-
-              {/* Primary CTA text */}
-              <div style={{
-                fontFamily: "'Heebo',sans-serif",
-                fontSize: 24,
-                fontWeight: 800,
-                color: '#F5F2EE',
-                direction: 'rtl',
-                letterSpacing: '-0.2px',
-              }}>
-                בואי נשוחח, Martita
+              {/* Text column */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, direction: 'rtl' }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: TEXT, fontFamily: "'DM Sans',sans-serif" }}>
+                  שיחה קולית
+                </div>
+                <div style={{ fontSize: 14, color: TEXT_MUTED, fontFamily: "'Heebo',sans-serif" }}>
+                  דברי איתי ישירות
+                </div>
               </div>
-
-              <div style={{
-                fontFamily: "'Heebo',sans-serif",
-                fontSize: 18,
-                fontWeight: 600,
-                color: 'rgba(212,168,83,0.92)',
-                direction: 'rtl',
-              }}>
-                על כל דבר שבא לך 💛
-              </div>
-
-              <div style={{
-                fontFamily: "'Heebo',sans-serif",
-                fontSize: 15,
-                color: 'rgba(245,242,238,0.52)',
-                direction: 'rtl',
-                lineHeight: 1.5,
-              }}>
-                דברי ואני אענה לך קולית
-              </div>
-            </button>
+            </div>
           </div>
         )}
 
@@ -989,148 +793,107 @@ export function AbuAI() {
                 key={msg.id}
                 style={{
                   display: 'flex',
-                  flexDirection: isUser ? 'row-reverse' : 'row',
-                  alignItems: 'flex-end',
-                  gap: 10,
+                  flexDirection: 'column',
+                  alignItems: isUser ? 'flex-start' : 'flex-end',
                   marginBottom: 16,
-                  animation: isLast ? 'msgIn 0.32s cubic-bezier(0.34,1.56,0.64,1) both' : 'none',
+                  animation: isLast ? 'msgIn 0.3s ease both' : 'none',
                 }}
               >
-                {/* AI avatar disc — violet */}
-                {!isUser && (
-                  <div style={{
-                    width: 40, height: 40,
-                    borderRadius: '50%',
-                    background: 'linear-gradient(145deg, rgba(139,92,246,0.18), rgba(139,92,246,0.08))',
-                    border: '1.5px solid rgba(139,92,246,0.52)',
-                    flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 2px 10px rgba(139,92,246,0.22)',
-                    marginBottom: 22,
-                  }}>
-                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                      <defs>
-                        <linearGradient id="aiStarInline" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#FDE68A"/>
-                          <stop offset="55%" stopColor="#D4A853"/>
-                          <stop offset="100%" stopColor="#A07830"/>
-                        </linearGradient>
-                      </defs>
-                      <path d="M12 2 L13.2 10.8 L22 12 L13.2 13.2 L12 22 L10.8 13.2 L2 12 L10.8 10.8 Z" fill="url(#aiStarInline)"/>
-                    </svg>
-                  </div>
-                )}
-
+                {/* Sender label */}
                 <div style={{
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: isUser ? 'flex-end' : 'flex-start',
-                  maxWidth: isUser ? '78%' : '82%',
+                  fontSize: 12,
+                  fontFamily: "'DM Sans',sans-serif",
+                  fontWeight: 600,
+                  letterSpacing: '1px',
+                  textTransform: 'uppercase',
+                  color: isUser ? 'rgba(245,240,232,0.42)' : 'rgba(201,168,76,0.55)',
+                  marginBottom: 5,
+                  direction: 'ltr',
+                  paddingInline: 4,
                 }}>
-                  {/* Sender label */}
-                  <div style={{
-                    fontSize: 12,
-                    fontFamily: "'DM Sans',sans-serif",
-                    fontWeight: 600,
-                    letterSpacing: '1px',
-                    textTransform: 'uppercase',
-                    color: isUser
-                      ? 'rgba(167,139,250,0.70)'   /* violet for "את" */
-                      : 'rgba(212,168,83,0.70)',    /* gold for "אבו AI" */
-                    marginBottom: 5,
-                    direction: 'ltr',
-                    paddingInline: 4,
-                  }}>
-                    {isUser ? 'את' : 'אבו AI'}
-                  </div>
+                  {isUser ? 'את' : 'אבו AI'}
+                </div>
 
-                  {/* Bubble */}
-                  <div style={isUser ? {
-                    padding: '18px 22px',
-                    borderRadius: '20px 20px 6px 20px',
-                    background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
-                    border: '1px solid rgba(139,92,246,0.55)',
-                    boxShadow: '0 4px 20px rgba(109,40,217,0.30), inset 0 1px 0 rgba(255,255,255,0.10)',
+                {/* Bubble */}
+                <div style={{
+                  maxWidth: '82%',
+                  ...(isUser ? {
+                    padding: '14px 18px',
+                    borderRadius: '18px 4px 18px 18px',
+                    background: 'rgba(201,168,76,0.08)',
+                    border: '1px solid rgba(201,168,76,0.22)',
                   } : {
-                    padding: '18px 22px',
-                    borderRadius: '8px 24px 24px 24px',
-                    background: 'rgba(139,92,246,0.08)',
-                    border: '1px solid rgba(139,92,246,0.15)',
-                    borderRight: '3px solid rgba(139,92,246,0.45)',
-                    backdropFilter: 'blur(24px)',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.05)',
-                  }}>
-                    <div style={{
-                      fontSize: isUser ? 21 : 16,
-                      lineHeight: isUser ? 1.75 : 1.9,
-                      color: '#F5F2EE',
-                      direction: 'rtl',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      fontFamily: "'Heebo',sans-serif",
-                      fontWeight: isUser ? 500 : 400,
-                    }}>
-                      {msg.content}
-                    </div>
-                  </div>
-
-                  {/* Timestamp */}
+                    padding: '14px 18px',
+                    borderRadius: '4px 18px 18px 18px',
+                    background: SURFACE,
+                    border: '1px solid rgba(201,168,76,0.12)',
+                    borderRight: '3px solid rgba(201,168,76,0.32)',
+                  }),
+                }}>
                   <div style={{
-                    marginTop: 6,
-                    fontSize: 13,
-                    color: 'rgba(245,242,238,0.38)',
-                    textAlign: isUser ? 'right' : 'left',
-                    fontFamily: "'DM Sans',sans-serif",
-                    direction: 'ltr',
-                    letterSpacing: '0.2px',
+                    fontSize: 16,
+                    lineHeight: isUser ? 1.85 : 1.9,
+                    color: TEXT,
+                    direction: 'rtl',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    fontFamily: "'Heebo',sans-serif",
+                    animation: 'msgIn 0.3s ease',
                   }}>
-                    {ts}
+                    {msg.content}
                   </div>
+                </div>
+
+                {/* Timestamp */}
+                <div style={{
+                  marginTop: 5,
+                  fontSize: 12,
+                  color: 'rgba(245,240,232,0.30)',
+                  textAlign: isUser ? 'right' : 'left',
+                  fontFamily: "'DM Sans',sans-serif",
+                  direction: 'ltr',
+                  paddingInline: 4,
+                }}>
+                  {ts}
                 </div>
               </div>
             )
           })}
 
-          {/* ── Loading dots — violet ── */}
+          {/* Loading dots */}
           {loading && (
             <div style={{
               display: 'flex',
-              flexDirection: 'row',
+              flexDirection: 'column',
               alignItems: 'flex-end',
-              gap: 10,
               marginBottom: 18,
               animation: 'msgIn 0.22s ease-out both',
             }}>
-              {/* AI avatar for loading — violet */}
               <div style={{
-                width: 40, height: 40, borderRadius: '50%',
-                border: '1.5px solid rgba(139,92,246,0.45)',
-                overflow: 'hidden', flexShrink: 0,
-                background: '#1a1028',
-                boxShadow: '0 2px 10px rgba(139,92,246,0.18)',
-              }}>
-                <img
-                  src={martitaPhoto}
-                  alt="Abu AI"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
-                  onError={handleMartitaImgError}
-                />
-              </div>
-
-              {/* Dots bubble — violet glass with violet left bar */}
+                fontSize: 12,
+                fontFamily: "'DM Sans',sans-serif",
+                fontWeight: 600,
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                color: 'rgba(201,168,76,0.55)',
+                marginBottom: 5,
+                paddingInline: 4,
+                direction: 'ltr',
+              }}>אבו AI</div>
               <div style={{
-                padding: '18px 24px',
-                borderRadius: '8px 24px 24px 24px',
-                background: 'rgba(139,92,246,0.08)',
-                border: '1px solid rgba(139,92,246,0.15)',
-                borderRight: '3px solid rgba(139,92,246,0.45)',
-                backdropFilter: 'blur(24px)',
+                padding: '14px 18px',
+                borderRadius: '4px 18px 18px 18px',
+                background: SURFACE,
+                border: '1px solid rgba(201,168,76,0.12)',
+                borderRight: '3px solid rgba(201,168,76,0.32)',
               }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
                   {[0, 1, 2].map(i => (
                     <div key={i} style={{
-                      width: 13, height: 13, borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #A78BFA, #8B5CF6)',
-                      boxShadow: '0 0 8px rgba(139,92,246,0.50)',
+                      width: 11,
+                      height: 11,
+                      borderRadius: '50%',
+                      background: 'rgba(201,168,76,0.80)',
                       animation: `dotPulse 1.8s ease-in-out ${i * 0.22}s infinite`,
                     }} />
                   ))}
@@ -1141,82 +904,56 @@ export function AbuAI() {
         </div>
       </div>
 
-      {/* ─────────────────────── VOICE MODE FULL-SCREEN OVERLAY ─────────────────────── */}
+      {/* ─────────────────────── VOICE MODE FULLSCREEN OVERLAY ─────────────────────── */}
       {voiceMode && (
         <div style={{
           position: 'absolute',
           top: 72,
-          left: 0, right: 0, bottom: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: [
-            'radial-gradient(ellipse 85% 65% at 50% 38%, rgba(139,92,246,0.12) 0%, transparent 65%)',
-            'radial-gradient(ellipse 70% 50% at 50% 80%, rgba(212,168,83,0.08) 0%, transparent 60%)',
-            'linear-gradient(180deg, rgba(13,10,26,0.93) 0%, rgba(13,10,26,0.98) 100%)',
-          ].join(', '),
+          background: BG,
           zIndex: 15,
           paddingBottom: 28,
           gap: 0,
         }}>
 
-          {/* ── LARGE ORB — 200px with ripples ── */}
-          <div style={{ position: 'relative', width: 200, height: 200 }}>
-            {/* Ripple rings — visible when active */}
-            {(voicePhase === 'listening' || voicePhase === 'speaking' || voicePhase === 'greeting') && (<>
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1.5px solid rgba(212,168,83,0.42)',
-                animation: 'ripple1 3.2s ease-out 0s infinite',
-              }} />
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '1px solid rgba(212,168,83,0.24)',
-                animation: 'ripple2 3.2s ease-out 1.1s infinite',
-              }} />
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                border: '0.5px solid rgba(212,168,83,0.13)',
-                animation: 'ripple3 3.2s ease-out 2.2s infinite',
-              }} />
-            </>)}
-
-            {/* Orb body — listening = violet/purple glow; speaking = warm gold glow */}
+          {/* Large gold ring — 192px */}
+          <div style={{
+            position: 'relative',
+            width: 192,
+            height: 192,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
             <div style={{
-              position: 'absolute', inset: 0, borderRadius: '50%',
-              background: voicePhase === 'listening'
-                ? 'radial-gradient(circle at 38% 32%, rgba(167,139,250,0.28) 0%, rgba(139,92,246,0.18) 40%, rgba(13,8,26,0.97) 78%)'
-                : voicePhase === 'speaking' || voicePhase === 'greeting'
-                ? 'radial-gradient(circle at 38% 32%, rgba(255,235,148,0.24) 0%, rgba(212,168,83,0.16) 40%, rgba(13,8,26,0.97) 78%)'
-                : 'radial-gradient(circle at 38% 32%, rgba(139,92,246,0.14) 0%, rgba(13,8,26,0.97) 78%)',
-              border: voicePhase === 'speaking' || voicePhase === 'greeting'
-                ? '2px solid rgba(212,168,83,0.65)'
-                : voicePhase === 'listening'
-                ? '2px solid rgba(139,92,246,0.65)'
-                : '2px solid rgba(139,92,246,0.38)',
-              animation: voicePhase === 'speaking' || voicePhase === 'greeting'
-                ? 'orbGlowGold 2.8s ease-in-out infinite, orbFloat 4.5s ease-in-out infinite'
-                : 'orbGlowViolet 3.2s ease-in-out infinite, orbFloat 5s ease-in-out infinite',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              backdropFilter: 'blur(4px)',
-              transition: 'border-color 0.6s ease, background 0.6s ease',
-              overflow: 'hidden',
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              ...(voicePhase === 'speaking' || voicePhase === 'greeting' ? {
+                border: '2px solid rgba(201,168,76,0.85)',
+                boxShadow: '0 0 0 1px rgba(201,168,76,0.30), 0 0 60px rgba(201,168,76,0.24), 0 0 120px rgba(201,168,76,0.10), inset 0 1px 0 rgba(255,250,240,0.12)',
+                background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.28) 0%, rgba(201,168,76,0.16) 38%, rgba(201,168,76,0.06) 65%, transparent 82%)',
+              } : {
+                border: '1.5px solid rgba(201,168,76,0.55)',
+                boxShadow: '0 0 0 1px rgba(201,168,76,0.18), 0 0 40px rgba(201,168,76,0.16), 0 0 80px rgba(201,168,76,0.07), inset 0 1px 0 rgba(255,250,240,0.08)',
+                background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.18) 0%, rgba(201,168,76,0.10) 40%, rgba(201,168,76,0.04) 62%, transparent 80%)',
+              }),
+              transition: 'border-color 0.5s ease, box-shadow 0.5s ease, background 0.5s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}>
-              {/* Subtle noise texture overlay via SVG filter */}
-              <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                opacity: 0.06,
-                backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
-                backgroundSize: 'cover',
-                pointerEvents: 'none',
-              }} />
-
-              {/* LISTENING: large mic — violet glow */}
+              {/* LISTENING: Mic icon 64px, stroke=GOLD */}
               {voicePhase === 'listening' && (
-                <svg viewBox="0 0 24 24" width="68" height="68" fill="none"
-                  stroke={VIOLET} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"
-                  style={{ filter: 'drop-shadow(0 0 18px rgba(139,92,246,0.80))', position: 'relative', zIndex: 1 }}>
+                <svg viewBox="0 0 24 24" width="64" height="64" fill="none"
+                  stroke={GOLD} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"
+                  style={{ filter: 'drop-shadow(0 0 12px rgba(201,168,76,0.60))' }}>
                   <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                   <path d="M19 10v2a7 7 0 01-14 0v-2" />
                   <line x1="12" y1="19" x2="12" y2="23" />
@@ -1224,215 +961,114 @@ export function AbuAI() {
                 </svg>
               )}
 
-              {/* PROCESSING: smooth violet spinner */}
+              {/* PROCESSING: Spinner */}
               {voicePhase === 'processing' && (
                 <div style={{
-                  width: 54, height: 54, borderRadius: '50%',
-                  border: '3.5px solid rgba(139,92,246,0.20)',
-                  borderTopColor: VIOLET,
-                  animation: 'spin 1.1s linear infinite',
-                  position: 'relative', zIndex: 1,
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  border: '2.5px solid rgba(201,168,76,0.20)',
+                  borderTop: `2.5px solid ${GOLD}`,
+                  animation: 'spin 0.9s linear infinite',
                 }} />
               )}
 
-              {/* SPEAKING / GREETING: animated wave bars — warm gold */}
+              {/* SPEAKING / GREETING: 7 wave bars */}
               {(voicePhase === 'speaking' || voicePhase === 'greeting') && (
-                <div style={{ display: 'flex', gap: 7, alignItems: 'center', height: 60, position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', gap: 5, alignItems: 'center', height: 56 }}>
                   {[20, 32, 44, 56, 44, 32, 20].map((h, i) => (
                     <div key={i} style={{
-                      width: 6, borderRadius: 4,
-                      background: 'linear-gradient(180deg, #FDE68A, #D4A853)',
+                      width: 4,
+                      background: GOLD,
+                      borderRadius: 2,
                       height: `${h}px`,
+                      transformOrigin: 'bottom',
                       animation: `waveBar ${0.95 + i * 0.08}s ease-in-out ${i * 0.11}s infinite`,
-                      boxShadow: '0 0 8px rgba(212,168,83,0.55)',
                     }} />
                   ))}
                 </div>
               )}
 
-              {/* CONNECTING (null phase): soft violet spinner */}
+              {/* NULL phase: spinner */}
               {!voicePhase && (
                 <div style={{
-                  width: 48, height: 48, borderRadius: '50%',
-                  border: '3px solid rgba(139,92,246,0.20)',
-                  borderTopColor: VIOLET,
-                  animation: 'spin 1.2s linear infinite',
-                  position: 'relative', zIndex: 1,
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  border: '2.5px solid rgba(201,168,76,0.20)',
+                  borderTop: `2.5px solid ${GOLD}`,
+                  animation: 'spin 1.1s linear infinite',
                 }} />
               )}
             </div>
           </div>
 
-          {/* ── Phase label block ── */}
-          <div style={{
-            marginTop: 36,
-            textAlign: 'center',
-            direction: 'rtl',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 10,
-            minHeight: 88,
-          }}>
-            {voicePhase === 'greeting' ? (
-              <>
-                <div style={{
-                  fontFamily: "'Cormorant Garamond',Georgia,serif",
-                  fontSize: 36,
-                  fontStyle: 'italic',
-                  background: 'linear-gradient(135deg, #FDE68A, #D4A853, #A88A35)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  filter: 'drop-shadow(0 0 10px rgba(212,168,83,0.38))',
-                  letterSpacing: '0.5px',
-                } as React.CSSProperties}>
-                  Martita ✨
-                </div>
-                <div style={{
-                  fontFamily: "'Heebo',sans-serif",
-                  fontSize: 24,
-                  fontWeight: 700,
-                  color: 'rgba(245,242,238,0.90)',
-                  letterSpacing: '-0.2px',
-                  lineHeight: 1.5,
-                }}>
-                  {new Date().getHours() >= 5 && new Date().getHours() < 12
-                    ? 'בוקר טוב'
-                    : new Date().getHours() < 17
-                    ? 'צהריים טובים'
-                    : new Date().getHours() < 21
-                    ? 'ערב טוב'
-                    : 'לילה טוב'} 🌟
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Primary phase label */}
-                <div style={{
-                  fontSize: 38,
-                  fontWeight: 800,
-                  fontFamily: "'Heebo',sans-serif",
-                  color: voicePhase === 'listening' ? '#A78BFA'
-                    : voicePhase === 'speaking' ? '#FDE68A'
-                    : '#F5F2EE',
-                  letterSpacing: '0.5px',
-                  lineHeight: 1.2,
-                  transition: 'color 0.4s ease',
-                }}>
-                  {voicePhase === 'listening'  ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      מקשיב...
-                      {/* Animated dot pulse for listening — violet */}
-                      <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-                        {[0,1,2].map(i => (
-                          <span key={i} style={{
-                            display: 'inline-block',
-                            width: 8, height: 8, borderRadius: '50%',
-                            background: '#A78BFA',
-                            animation: `dotPulse 1.4s ease-in-out ${i * 0.22}s infinite`,
-                          }} />
-                        ))}
-                      </span>
-                    </span>
-                  )
-                    : voicePhase === 'processing' ? 'חושבת...'
-                    : voicePhase === 'speaking'   ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                        מדברת...
-                        {/* Mini waveform for speaking — warm gold */}
-                        <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center', height: 28 }}>
-                          {[12,20,28,20,12].map((h, i) => (
-                            <span key={i} style={{
-                              display: 'inline-block',
-                              width: 4, borderRadius: 2,
-                              background: '#FDE68A',
-                              height: `${h}px`,
-                              animation: `waveBar ${0.8 + i * 0.1}s ease-in-out ${i * 0.12}s infinite`,
-                            }} />
-                          ))}
-                        </span>
-                      </span>
-                    )
-                    : 'מתחברת...'}
-                </div>
-
-                {/* Secondary hint */}
-                <div style={{
-                  fontSize: 22,
-                  fontWeight: 500,
-                  color: 'rgba(245,242,238,0.60)',
-                  fontFamily: "'Heebo',sans-serif",
-                  lineHeight: 1.5,
-                }}>
-                  {voicePhase === 'listening'   ? 'דברי בנחת — שומעת אותך'
-                    : voicePhase === 'processing' ? 'רגע קטן...'
-                    : voicePhase === 'speaking'   ? 'הקשי לי'
-                    : ''}
-                </div>
-              </>
-            )}
-
-            {/* Tertiary hint */}
+          {/* Phase text */}
+          <div style={{ marginTop: 32, textAlign: 'center', direction: 'rtl' }}>
             <div style={{
-              fontSize: 19,
-              color: 'rgba(245,242,238,0.45)',
-              fontFamily: "'Heebo',sans-serif",
-              fontWeight: 500,
-              direction: 'rtl',
-              lineHeight: 1.5,
+              fontSize: 38,
+              fontWeight: 300,
+              letterSpacing: '0.5px',
+              color: TEXT,
+              fontFamily: "'Cormorant Garamond',Georgia,serif",
+              fontStyle: 'italic',
             }}>
-              {voicePhase === 'speaking' ? 'לחצי כדי לעצור' : voicePhase === null ? '' : '"ביי" — לסיום השיחה'}
+              {voicePhase === 'listening' ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  מקשיב...
+                  <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                    {[0, 1, 2].map(i => (
+                      <span key={i} style={{
+                        display: 'inline-block',
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        background: 'rgba(201,168,76,0.80)',
+                        animation: `dotPulse 1.4s ease-in-out ${i * 0.22}s infinite`,
+                      }} />
+                    ))}
+                  </span>
+                </span>
+              ) : voicePhase === 'processing' ? 'חושב...'
+                : voicePhase === 'speaking' ? 'מדבר...'
+                : voicePhase === 'greeting' ? 'שלום...'
+                : 'מתחבר...'}
             </div>
           </div>
 
-          {/* ── Stop / end call button ── */}
-          <div style={{ marginTop: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            <button
-              type="button"
-              onClick={exitVoiceMode}
-              aria-label="סיים שיחה קולית"
-              style={{
-                width: 80, height: 80, borderRadius: '50%',
-                background: 'rgba(80,60,120,0.22)',
-                border: '1.5px solid rgba(139,92,246,0.28)',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'transform 0.10s ease-out, background 0.12s ease, border-color 0.12s ease',
-                WebkitTapHighlightColor: 'transparent',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.30)',
-              }}
-              onPointerDown={e => {
-                e.currentTarget.style.transform = 'scale(0.88)'
-                e.currentTarget.style.background = 'rgba(239,68,68,0.22)'
-                e.currentTarget.style.borderColor = 'rgba(239,68,68,0.52)'
-              }}
-              onPointerUp={e => {
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.background = 'rgba(80,60,120,0.22)'
-                e.currentTarget.style.borderColor = 'rgba(139,92,246,0.28)'
-              }}
-              onPointerLeave={e => {
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.background = 'rgba(80,60,120,0.22)'
-                e.currentTarget.style.borderColor = 'rgba(139,92,246,0.28)'
-              }}
-            >
-              <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
-                <rect x="6" y="6" width="12" height="12" rx="2.5" fill="rgba(255,255,255,0.80)"/>
-              </svg>
-            </button>
-            <span style={{
-              fontSize: 17,
-              color: 'rgba(245,242,238,0.52)',
-              fontFamily: "'Heebo',sans-serif",
+          {/* Stop button */}
+          <button
+            type="button"
+            onClick={exitVoiceMode}
+            aria-label="סיים שיחה קולית"
+            style={{
+              marginTop: 48,
+              width: 72,
+              height: 72,
+              borderRadius: '50%',
+              background: 'rgba(201,168,76,0.10)',
+              border: '1.5px solid rgba(201,168,76,0.40)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: TEXT,
+              fontSize: 14,
               fontWeight: 600,
-            }}>סיום שיחה</span>
-          </div>
+              fontFamily: "'DM Sans',sans-serif",
+              WebkitTapHighlightColor: 'transparent',
+              transition: 'transform 0.10s ease-out, background 0.12s ease',
+            }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.90)' }}
+            onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
+            onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+          >
+            סיום
+          </button>
         </div>
       )}
 
-      {/* ─────────────────────── FLOATING INPUT BAR ─────────────────────── */}
+      {/* ─────────────────────── INPUT BAR ─────────────────────── */}
       {!voiceMode && (
         <div style={{
           flexShrink: 0,
@@ -1440,10 +1076,9 @@ export function AbuAI() {
           zIndex: 10,
           padding: '10px 14px',
           paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
-          background: 'linear-gradient(180deg, rgba(13,10,26,0.88) 0%, rgba(13,10,26,0.97) 100%)',
-          backdropFilter: 'blur(22px)',
-          borderTop: '1px solid rgba(139,92,246,0.18)',
-          boxShadow: '0 -8px 36px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.04)',
+          background: 'rgba(12,10,8,0.95)',
+          backdropFilter: 'blur(20px)',
+          borderTop: '1px solid rgba(201,168,76,0.16)',
         }}>
           {/* Recording indicator pill */}
           {recording && (
@@ -1465,12 +1100,11 @@ export function AbuAI() {
               gap: 8,
               whiteSpace: 'nowrap',
               backdropFilter: 'blur(8px)',
-              boxShadow: '0 2px 12px rgba(239,68,68,0.18)',
             }}>
               <div style={{
                 width: 9, height: 9, borderRadius: '50%',
                 background: '#ef4444',
-                animation: 'abuPulse 1s infinite',
+                boxShadow: '0 0 6px rgba(239,68,68,0.70)',
               }} />
               מקליט... {formatTime(recordingTime)}
             </div>
@@ -1479,41 +1113,37 @@ export function AbuAI() {
           {/* Row: mic | textarea | send */}
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
 
-            {/* ── Mic button — 56×56, violet gradient ── */}
+            {/* Mic button — 56×56 */}
             <button
               type="button"
               onClick={handleMicTap}
               disabled={micDisabled}
               aria-label={recording ? 'עצרי הקלטה' : 'הקלטה קולית'}
               style={{
-                width: 56, height: 56, borderRadius: '50%',
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
                 background: recording
                   ? 'rgba(239,68,68,0.16)'
-                  : micDisabled
-                  ? 'rgba(139,92,246,0.07)'
-                  : 'linear-gradient(145deg, rgba(139,92,246,0.28), rgba(139,92,246,0.14))',
+                  : 'rgba(201,168,76,0.10)',
                 border: recording
                   ? '1.5px solid rgba(239,68,68,0.48)'
-                  : '1.5px solid rgba(139,92,246,0.45)',
+                  : '1.5px solid rgba(201,168,76,0.35)',
                 cursor: micDisabled ? 'default' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 flexShrink: 0,
-                animation: recording ? 'micPulse 1.5s ease-in-out infinite' : 'none',
-                transition: 'background 0.15s ease-out, border-color 0.15s ease-out',
                 WebkitTapHighlightColor: 'transparent',
                 opacity: micDisabled ? 0.45 : 1,
-                boxShadow: recording
-                  ? '0 4px 16px rgba(239,68,68,0.25)'
-                  : micDisabled
-                  ? 'none'
-                  : '0 4px 16px rgba(139,92,246,0.28)',
+                transition: 'background 0.15s ease, border-color 0.15s ease',
               }}
             >
               {transcribing ? (
                 <div style={{
                   width: 22, height: 22, borderRadius: '50%',
-                  border: '2.5px solid rgba(212,168,83,0.40)',
-                  borderTopColor: GOLD,
+                  border: '2.5px solid rgba(201,168,76,0.30)',
+                  borderTop: `2.5px solid ${GOLD}`,
                   animation: 'spin 0.9s linear infinite',
                 }} />
               ) : recording ? (
@@ -1522,7 +1152,7 @@ export function AbuAI() {
                 </svg>
               ) : (
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none"
-                  stroke={micDisabled ? 'rgba(255,255,255,0.22)' : VIOLET}
+                  stroke={micDisabled ? 'rgba(245,240,232,0.22)' : GOLD}
                   strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                   <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                   <path d="M19 10v2a7 7 0 01-14 0v-2" />
@@ -1532,7 +1162,7 @@ export function AbuAI() {
               )}
             </button>
 
-            {/* ── Textarea — violet glass ── */}
+            {/* Textarea */}
             <textarea
               ref={inputRef}
               value={input}
@@ -1541,50 +1171,54 @@ export function AbuAI() {
               placeholder={recording ? 'מקשיבה...' : transcribing ? 'מתמללת...' : 'כתבי לי...'}
               rows={1}
               disabled={loading || recording}
+              onFocus={e => { e.currentTarget.style.border = '1px solid rgba(201,168,76,0.50)' }}
+              onBlur={e => { e.currentTarget.style.border = '1px solid rgba(201,168,76,0.20)' }}
               style={{
                 flex: 1,
                 resize: 'none',
-                padding: '18px 20px',
-                borderRadius: 28,
-                border: '1.5px solid rgba(139,92,246,0.28)',
-                background: 'rgba(139,92,246,0.06)',
-                backdropFilter: 'blur(24px)',
-                color: '#F5F2EE',
-                fontSize: 20,
+                padding: '14px 18px',
+                borderRadius: 14,
+                border: '1px solid rgba(201,168,76,0.20)',
+                background: 'rgba(255,250,240,0.05)',
+                color: TEXT,
+                fontSize: 16,
                 fontFamily: "'Heebo',sans-serif",
                 direction: 'rtl',
                 lineHeight: 1.6,
                 outline: 'none',
-                minHeight: 62,
+                minHeight: 52,
                 maxHeight: 130,
                 overflowY: 'auto',
                 opacity: (loading || recording) ? 0.50 : 1,
                 WebkitAppearance: 'none',
-                transition: 'border-color 0.2s ease, background 0.2s ease',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                transition: 'border-color 0.2s ease',
               }}
             />
 
-            {/* ── Send button — 56×56, gold gradient ── */}
+            {/* Send button — 56×56 */}
             <button
               type="button"
               onClick={() => handleSend()}
               disabled={sendDisabled}
               aria-label="שלח הודעה"
               style={{
-                width: 56, height: 56, borderRadius: '50%',
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
                 background: sendDisabled
                   ? 'rgba(255,255,255,0.07)'
-                  : 'linear-gradient(140deg, #D4A853 0%, #B8922A 50%, #A07828 100%)',
+                  : 'linear-gradient(135deg, #C9A84C 0%, #B8912A 60%, #A07828 100%)',
                 border: sendDisabled
                   ? '1px solid rgba(255,255,255,0.10)'
-                  : '1px solid rgba(212,168,83,0.55)',
+                  : 'none',
                 cursor: sendDisabled ? 'default' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 flexShrink: 0,
-                transition: 'background 0.18s ease-out, transform 0.10s ease-out',
+                boxShadow: sendDisabled ? 'none' : '0 4px 16px rgba(201,168,76,0.35)',
+                transition: 'background 0.18s ease, transform 0.10s ease',
                 WebkitTapHighlightColor: 'transparent',
-                boxShadow: sendDisabled ? 'none' : '0 4px 20px rgba(212,168,83,0.35)',
               }}
               onPointerDown={e => { if (!sendDisabled) e.currentTarget.style.transform = 'scale(0.88)' }}
               onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
@@ -1601,12 +1235,8 @@ export function AbuAI() {
             </button>
           </div>
 
-          {/* ── Voice mode toggle pill — violet border, violet text ── */}
-          <div style={{
-            marginTop: 10,
-            display: 'flex',
-            justifyContent: 'center',
-          }}>
+          {/* "שיחה קולית" pill */}
+          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center' }}>
             <button
               type="button"
               onClick={handleVoiceTap}
@@ -1615,33 +1245,31 @@ export function AbuAI() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                padding: '10px 26px',
-                borderRadius: 22,
-                background: 'rgba(139,92,246,0.10)',
-                border: '1.5px solid rgba(139,92,246,0.38)',
+                padding: '8px 22px',
+                borderRadius: 20,
+                background: 'rgba(201,168,76,0.06)',
+                border: '1px solid rgba(201,168,76,0.35)',
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
-                transition: 'background 0.15s ease, box-shadow 0.15s ease',
-                boxShadow: '0 2px 12px rgba(139,92,246,0.14)',
+                transition: 'background 0.15s ease',
               }}
-              onPointerDown={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.20)' }}
-              onPointerUp={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.10)' }}
-              onPointerLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.10)' }}
+              onPointerDown={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.14)' }}
+              onPointerUp={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.06)' }}
+              onPointerLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.06)' }}
             >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-                stroke={VIOLET} strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                stroke={GOLD} strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                 <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                 <path d="M19 10v2a7 7 0 01-14 0v-2" />
                 <line x1="12" y1="19" x2="12" y2="23" />
                 <line x1="8" y1="23" x2="16" y2="23" />
               </svg>
               <span style={{
-                fontSize: 17,
-                fontWeight: 700,
-                color: 'rgba(167,139,250,0.92)',
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'rgba(201,168,76,0.80)',
                 fontFamily: "'Heebo',sans-serif",
                 direction: 'rtl',
-                letterSpacing: '0.2px',
               }}>
                 שיחה קולית
               </span>
