@@ -230,6 +230,31 @@ export function AbuWhatsApp() {
     }
   }
 
+  // Direct generate — for בדיחה/חידה/טריק pills clicked from idle state.
+  // No user intent needed — the style prompt is fully self-contained.
+  // Each tap generates fresh content (random topic seed in service).
+  const handleDirectGenerate = async (style: Style) => {
+    soundTap()
+    setActiveStyle(style)
+    activeStyleRef.current = style
+    setPhase('generating')
+    setError('')
+    // Use style name as minimal intent — the style prompt overrides everything
+    const intent = style
+    setLastIntent(intent)
+    lastIntentRef.current = intent
+    try {
+      const msg = await generateMessage(intent, style)
+      setResult(msg)
+      resultRef.current = msg
+      hasResultRef.current = true
+      soundSuccess()
+      setPhase('result')
+    } catch (err: unknown) {
+      handleError(err instanceof Error ? err.message : 'שגיאה. נסי שוב.')
+    }
+  }
+
   const handleRetry = () => {
     if (lastIntent) handleStyleTap(activeStyle)
   }
@@ -716,7 +741,10 @@ export function AbuWhatsApp() {
                 <button
                   key={style}
                   type="button"
-                  onClick={() => { soundTap(); setActiveStyle(style) }}
+                  onClick={() => {
+                    if (style === 'מקורי') { soundTap(); setActiveStyle(style) }
+                    else handleDirectGenerate(style)
+                  }}
                   style={{
                     height: 46,
                     padding: '0 22px',
