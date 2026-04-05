@@ -6,6 +6,7 @@ import { speakVoiceMode, stopSpeaking, unlockIOSAudio } from '../../services/voi
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
+import { InfoButton } from '../../components/InfoButton'
 
 // ─── Color tokens ────────────────────────────────────────────────────────────
 const GOLD            = '#C9A84C'
@@ -54,28 +55,27 @@ const KEYFRAMES = `
 // ─── Dynamic voice greeting ───────────────────────────────────────────────────
 function getVoiceGreeting(): string {
   const h = new Date().getHours()
-  const salutation =
-    h >= 5  && h < 12 ? 'בוקר טוב' :
-    h >= 12 && h < 17 ? 'צהריים טובים' :
-    h >= 17 && h < 21 ? 'ערב טוב' :
-                         'לילה טוב'
+  const timeGreet = h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : h < 21 ? 'ערב טוב' : 'לילה טוב'
 
-  const continuations = [
-    'מה שלומך? אפשר לדבר גם בספרדית מתי שתרצי.',
-    'על מה תרצי לדבר היום?',
-    'שאלי אותי כל דבר בכל נושא — איתי את יכולה לדבר ולהתייעץ על הכל.',
-    'מה עובר עלייך? אני כאן לכל שאלה ושיחה.',
-    'ספרי לי — מה חדש אצלך?',
-    'כאן בשבילך — בעברית, בספרדית, בכל נושא שתרצי.',
-    'מה בלבך היום? שאלי, ספרי, בקשי.',
-    'רפואה, משפחה, בישול, טיולים — הכל פתוח לשיחה.',
-    'אחרי כמה שתרצי — שאלי, ספרי, שוחחי.',
-    'יש משהו שמעסיק אותך? אני כאן.',
-    'מה תרצי לדעת היום?',
-    'שאלי אותי הכל — אין נושא שאני לא אענה עליו.',
+  const openers = [
+    `${timeGreet}, Martita! ספרי לי — מה עובר עלייך היום?`,
+    `${timeGreet}! מה שלום טוצי? ומה שלומך את?`,
+    `${timeGreet}, Martita. יש משהו שרצית לדעת? אני כאן.`,
+    `${timeGreet}! שמחתי שהתקשרת. מה בסדר?`,
+    `${timeGreet}, Martita. שאלי אותי כל דבר — אפילו הדברים שמביך לשאול אחרים.`,
+    `${timeGreet}! מה חדש אצלך? ספרי לי.`,
+    `${timeGreet}, Martita. אני כאן — שאלי, ספרי, שוחח. מה בא לך?`,
+    `${timeGreet}! מה אכלת היום? ומה שלום המשפחה?`,
+    `${timeGreet}, Martita. מה עלה בדעתך עכשיו?`,
+    `${timeGreet}! חיכיתי שתתקשרי. מה קורה?`,
+    `${timeGreet}, Martita. יש משהו מעניין שקרה היום?`,
+    `${timeGreet}! רוצה לדעת משהו מעניין? או פשוט לשוחח?`,
+    `${timeGreet}, Martita. בואי נדבר — על מה שרוצה, בעברית או בספרדית.`,
+    `${timeGreet}! מה שלומך היום באמת?`,
+    `${timeGreet}, Martita. אני פה. מה על הלב?`,
+    `${timeGreet}! ספרי לי משהו — כל דבר שתרצי.`,
   ]
-  const cont = continuations[Math.floor(Math.random() * continuations.length)]
-  return `${salutation}, מרטיטה! ${cont}`
+  return openers[Math.floor(Math.random() * openers.length)] ?? openers[0]!
 }
 
 export function AbuAI() {
@@ -412,13 +412,44 @@ export function AbuAI() {
     setVoiceMode(true)
     voiceModeRef.current = true
 
-    const greeting = getVoiceGreeting()
+    const todayKey = new Date().toISOString().split('T')[0]!
+    const isFirstToday = localStorage.getItem('abuai-voice-date') !== todayKey
+    if (isFirstToday) localStorage.setItem('abuai-voice-date', todayKey)
+
+    let greeting = getVoiceGreeting()
+    if (Math.random() < 0.20) {
+      const reminders = [
+        ' — ואם רוצה, אפשר גם בספרדית.',
+        ' Acordate que podés hablarme en español.',
+        ' — y también hablo español, si preferís.',
+      ]
+      greeting += reminders[Math.floor(Math.random() * reminders.length)]!
+    }
+
     const greetMsg: ChatMessage = { id: nextId(), role: 'assistant', content: greeting, timestamp: Date.now() }
     setMessages(prev => [...prev, greetMsg])
 
-    setTimeout(() => {
-      if (voiceModeRef.current) startVoiceListening()
-    }, 500)
+    if (isFirstToday) {
+      setTimeout(() => {
+        const checkMsg: ChatMessage = { id: nextId(), role: 'assistant', content: 'רגע, בודקת מה מיוחד היום...', timestamp: Date.now() }
+        setMessages(prev => [...prev, checkMsg])
+        const dateStr = new Date().toLocaleDateString('he-IL', { month: 'long', day: 'numeric' })
+        sendMessage(
+          [{ id: 'date-q', role: 'user', content: `מה מיוחד בתאריך ${dateStr}? אירוע היסטורי, יום הולדת מפורסם, חג — 2-3 משפטים, עברית.`, timestamp: Date.now() }],
+          false
+        )
+          .then(dateFactResponse => {
+            const factMsg: ChatMessage = { id: nextId(), role: 'assistant', content: dateFactResponse, timestamp: Date.now() }
+            setMessages(prev => prev.map(m => m.id === checkMsg.id ? factMsg : m))
+            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 600)
+          })
+          .catch(() => { setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 300) })
+      }, 600)
+    } else {
+      setTimeout(() => {
+        if (voiceModeRef.current) startVoiceListening()
+      }, 500)
+    }
   }, [startVoiceListening])
 
   const exitVoiceMode = useCallback(() => {
@@ -610,6 +641,13 @@ export function AbuAI() {
               lineHeight: 1,
             }}>חזרה</span>
           </button>
+
+          <InfoButton
+            title="אבו AI — MartitAI"
+            lines={['אבו AI היא העוזרת האישית החכמה שלך — שואלת, מסבירה, מצחיקה.', 'יש לה גישה לאינטרנט בזמן אמת. אפשר לדבר עברית או ספרדית.']}
+            howTo={['כתבי שאלה בתיבת הטקסט ולחצי שלח', 'לחצי "שיחה קולית" לדבר ישירות', 'לחצי על "חזרה" לחזור לתפריט הראשי']}
+            position="top-left"
+          />
         </div>
 
         {/* Version badge */}

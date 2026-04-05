@@ -3,6 +3,7 @@ import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap } from '../../services/sounds'
+import { InfoButton } from '../../components/InfoButton'
 
 /* ─── GAMES DATA ─── */
 interface Game {
@@ -429,6 +430,13 @@ export function AbuGames() {
               fontFamily: "'Heebo',sans-serif",
             }}>חזרה</span>
           </button>
+
+          <InfoButton
+            title="Abu Games"
+            lines={['משחקי קלפים וסוליטר — 14 משחקים שונים.', "סוליטר, עכביש, מהג'ונג ועוד."]}
+            howTo={['לחצי על כרטיס המשחק הרצוי', 'המשחק נפתח בדפדפן', 'לחצי חזרה לחזור לתפריט']}
+            position="top-left"
+          />
         </div>
       </header>
 

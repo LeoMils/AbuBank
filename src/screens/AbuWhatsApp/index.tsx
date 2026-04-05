@@ -6,6 +6,7 @@ import { speak, speakVoiceMode, stopSpeaking, unlockIOSAudio } from '../../servi
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundSend, soundCopy } from '../../services/sounds'
 import type { SilenceDetector } from '../../services/voice'
+import { InfoButton } from '../../components/InfoButton'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -89,6 +90,7 @@ export function AbuWhatsApp() {
   const [audioLevel, setAudioLevel] = useState(0)
   const [listenCountdown, setListenCountdown] = useState<number | null>(null)
   const [copyToast, setCopyToast] = useState(false)
+  const [isReading, setIsReading] = useState(false)
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
 
@@ -105,6 +107,7 @@ export function AbuWhatsApp() {
   const resultRef = useRef('')
   const hasResultRef = useRef(false)
   const recognitionRef = useRef<any>(null)
+  const isReadingRef = useRef(false)
 
   // Keep refs in sync
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
@@ -645,6 +648,13 @@ export function AbuWhatsApp() {
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
+
+          <InfoButton
+            title="Abu הודעות"
+            lines={['כתיבת הודעות WhatsApp בסגנון של מרטיטה — כולל שגיאות אמיתיות.', 'בחרי בדיחה, חידה, או טריק לתוכן מיידי.']}
+            howTo={['לחצי על בדיחה / חידה / טריק לתוכן מיידי', 'כתבי נושא בשדה ולחצי "כתבי לי" להודעה מותאמת אישית', 'לחצי "שלחי למשפחה" לשליחה קבוצת הווצאפ', 'לחצי על "תקשיבי" לשמיעת ההודעה']}
+            position="top-left"
+          />
         </div>
       </header>
 
@@ -964,28 +974,41 @@ export function AbuWhatsApp() {
               {/* Listen button inside card */}
               <button
                 type="button"
-                onClick={() => speak(result)}
+                onClick={async () => {
+                  if (isReadingRef.current) {
+                    stopSpeaking()
+                    isReadingRef.current = false
+                    setIsReading(false)
+                    return
+                  }
+                  isReadingRef.current = true
+                  setIsReading(true)
+                  try {
+                    await speak(result)
+                  } finally {
+                    isReadingRef.current = false
+                    setIsReading(false)
+                  }
+                }}
                 aria-label="הקשיבי להודעה"
                 style={{
                   marginTop: 16, height: 52, padding: '0 20px', borderRadius: 18,
-                  border: '1px solid rgba(37,211,102,0.22)',
-                  background: 'rgba(37,211,102,0.07)',
-                  color: WA_GREEN, fontSize: 16, fontWeight: 600,
+                  border: isReading ? '1.5px solid rgba(201,168,76,0.60)' : '1px solid rgba(37,211,102,0.22)',
+                  background: isReading ? 'rgba(201,168,76,0.20)' : 'rgba(37,211,102,0.07)',
+                  color: isReading ? '#D4A853' : WA_GREEN,
+                  fontSize: 16, fontWeight: 600,
                   fontFamily: "'Heebo',sans-serif",
                   cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: 8,
-                  transition: 'background 0.20s',
+                  transition: 'all 0.2s ease',
                 }}
-                onPointerDown={e => { e.currentTarget.style.background = 'rgba(37,211,102,0.14)' }}
-                onPointerUp={e => { e.currentTarget.style.background = 'rgba(37,211,102,0.07)' }}
-                onPointerLeave={e => { e.currentTarget.style.background = 'rgba(37,211,102,0.07)' }}
               >
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-                  stroke={WA_GREEN} strokeWidth="2" strokeLinecap="round">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="rgba(37,211,102,0.15)" />
+                  stroke={isReading ? '#D4A853' : WA_GREEN} strokeWidth="2" strokeLinecap="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill={isReading ? 'rgba(201,168,76,0.25)' : 'rgba(37,211,102,0.15)'} />
                   <path d="M15.54 8.46a5 5 0 010 7.08" />
                 </svg>
-                הקשיבי
+                {isReading ? 'עוצרת...' : 'תקשיבי'}
               </button>
             </div>
 

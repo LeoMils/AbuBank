@@ -16,6 +16,7 @@ import {
 import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
+import { InfoButton } from '../../components/InfoButton'
 
 const GOLD = '#C9A84C'
 const TEAL = '#14b8a6'
@@ -882,6 +883,13 @@ export function AbuCalendar() {
             }}
           />
         </div>
+
+        <InfoButton
+          title="Abu יומן"
+          lines={['יומן אישי עם תזכורות. הוסיפי אירועים ביד או בקול.', 'התראות אוטומטיות לפני כל אירוע.']}
+          howTo={['לחצי על יום בלוח לראות אירועים', 'לחצי + להוספת אירוע חדש', 'לחצי על מיקרופון לתיאור קולי של האירוע', 'שנות זמן ההתראה בתחתית המסך']}
+          position="top-left"
+        />
       </header>
 
       {/* ══════════════════════════════════════════
