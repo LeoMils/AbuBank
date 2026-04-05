@@ -4,6 +4,7 @@ import { Screen } from '../../state/types'
 import { generateMessage, transcribeAudio, getSupportedMimeType } from './service'
 import { speak, speakVoiceMode, stopSpeaking, unlockIOSAudio } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
+import { getRandomFamilyPhoto, handleFamilyImgError } from '../../services/familyPhotos'
 import { soundTap, soundSuccess, soundSend, soundCopy } from '../../services/sounds'
 import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
@@ -93,6 +94,7 @@ export function AbuWhatsApp() {
   const [isReading, setIsReading] = useState(false)
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
+  const familyPhoto = useMemo(() => getRandomFamilyPhoto(), [])
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -579,7 +581,7 @@ export function AbuWhatsApp() {
           padding: '0 16px',
         }}>
 
-          {/* Martita portrait — left */}
+          {/* Family portrait — left */}
           <div style={{
             position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
             width: 54, height: 54, borderRadius: '50%',
@@ -589,11 +591,11 @@ export function AbuWhatsApp() {
             background: 'linear-gradient(145deg, #0b2220, #050A18)',
           }}>
             <img
-              src={martitaPhoto}
-              alt="Martita"
+              src={familyPhoto}
+              alt="Family"
               loading="eager"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
-              onError={handleMartitaImgError}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%', display: 'block' }}
+              onError={handleFamilyImgError}
             />
           </div>
 

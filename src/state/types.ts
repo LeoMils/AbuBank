@@ -12,6 +12,7 @@ export enum Screen {
   AbuGames    = 'AbuGames',
   AbuWeather  = 'AbuWeather',
   AbuCalendar = 'AbuCalendar',
+  FamilyGallery = 'FamilyGallery',
 }
 
 // Co-located with enum — used by aria-live announcer in App.tsx
@@ -27,6 +28,7 @@ export const SCREEN_LABELS: Record<Screen, string> = {
   [Screen.AbuGames]:    'משחקים',
   [Screen.AbuWeather]:  'מזג האוויר',
   [Screen.AbuCalendar]: 'יומן פגישות',
+  [Screen.FamilyGallery]: 'אלבום משפחתי',
 }
 
 export interface ServiceConfig {

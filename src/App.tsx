@@ -22,6 +22,7 @@ import { Settings } from './screens/Settings'
 import { AbuGames } from './screens/AbuGames'
 import { AbuWeather } from './screens/AbuWeather'
 import { AbuCalendar } from './screens/AbuCalendar'
+import { FamilyGallery } from './screens/FamilyGallery'
 import styles from './App.module.css'
 
 function renderScreen(currentScreen: Screen): JSX.Element | null {
@@ -37,6 +38,7 @@ function renderScreen(currentScreen: Screen): JSX.Element | null {
     case Screen.AbuGames:    return <ErrorBoundary><AbuGames /></ErrorBoundary>
     case Screen.AbuWeather:  return <ErrorBoundary><AbuWeather /></ErrorBoundary>
     case Screen.AbuCalendar: return <ErrorBoundary><AbuCalendar /></ErrorBoundary>
+    case Screen.FamilyGallery: return <ErrorBoundary><FamilyGallery /></ErrorBoundary>
     default:              return null
   }
 }

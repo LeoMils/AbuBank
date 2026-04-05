@@ -168,19 +168,29 @@ export function Home() {
           pointerEvents: 'none',
         }} />
 
-        {/* Martita portrait */}
-        <div style={{
-          width: 74, height: 74, borderRadius: '50%',
-          overflow: 'hidden', position: 'relative', flexShrink: 0,
-          marginLeft: 32,
-          border: '2.5px solid rgba(201,168,76,0.60)',
-          boxShadow: [
-            '0 0 0 3px rgba(201,168,76,0.07)',
-            '0 0 24px rgba(201,168,76,0.20)',
-            '0 4px 14px rgba(0,0,0,0.45)',
-          ].join(', '),
-          background: 'linear-gradient(145deg, #0c2228, #050A18)',
-        }}>
+        {/* Martita portrait — tap to open family gallery */}
+        <div
+          role="button"
+          aria-label="אלבום תמונות משפחתי"
+          onClick={() => setScreen(Screen.FamilyGallery)}
+          style={{
+            width: 74, height: 74, borderRadius: '50%',
+            overflow: 'hidden', position: 'relative', flexShrink: 0,
+            marginLeft: 32,
+            border: '2.5px solid rgba(201,168,76,0.60)',
+            boxShadow: [
+              '0 0 0 3px rgba(201,168,76,0.07)',
+              '0 0 24px rgba(201,168,76,0.20)',
+              '0 4px 14px rgba(0,0,0,0.45)',
+            ].join(', '),
+            background: 'linear-gradient(145deg, #0c2228, #050A18)',
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease',
+          }}
+          onPointerDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.93)' }}
+          onPointerUp={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)' }}
+          onPointerLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)' }}
+        >
           <img
             src={martitaPhoto} alt="Martita" loading="eager" decoding="async"
             fetchPriority="high"
@@ -520,7 +530,7 @@ export function Home() {
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
           pointerEvents: 'none',
-        }}>v13.0</div>
+        }}>v14.0</div>
         {/* 4 main icons — evenly spaced */}
         {footerItems.map(item => (
           <button

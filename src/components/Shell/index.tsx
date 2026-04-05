@@ -14,7 +14,7 @@ export function Shell({ children }: ShellProps) {
   const installDismissed = useAppStore(s => s.installDismissed)
   const currentScreen = useAppStore(s => s.currentScreen)
   const isHome = currentScreen === Screen.Home
-  const isFullScreen = isHome || currentScreen === Screen.AbuAI || currentScreen === Screen.AbuWhatsApp || currentScreen === Screen.Settings || currentScreen === Screen.AbuGames || currentScreen === Screen.AbuWeather || currentScreen === Screen.AbuCalendar
+  const isFullScreen = isHome || currentScreen === Screen.AbuAI || currentScreen === Screen.AbuWhatsApp || currentScreen === Screen.Settings || currentScreen === Screen.AbuGames || currentScreen === Screen.AbuWeather || currentScreen === Screen.AbuCalendar || currentScreen === Screen.FamilyGallery
 
   return (
     <div className={styles.shell}>
