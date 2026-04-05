@@ -8,6 +8,11 @@ export interface Appointment {
   emoji: string
   color: string
   notes?: string
+  // Family Intelligence
+  type?: 'regular' | 'birthday' | 'anniversary' | 'memory'
+  personName?: string    // for birthdays: the person's name
+  birthYear?: number     // for age calculation
+  isRecurring?: boolean  // birthdays/anniversaries repeat every year
 }
 
 export const APPT_COLORS = [
@@ -97,7 +102,13 @@ export function playChime(): void {
   }
 }
 
-export async function parseAppointmentText(text: string): Promise<{ title: string; date: string; time: string; emoji: string }> {
+function detectFamilyType(text: string): Pick<Appointment, 'type' | 'isRecurring'> {
+  if (/יום הולדת/i.test(text)) return { type: 'birthday', isRecurring: true }
+  if (/יום נישואין|יום נישואים/i.test(text)) return { type: 'anniversary', isRecurring: true }
+  return {}
+}
+
+export async function parseAppointmentText(text: string): Promise<{ title: string; date: string; time: string; emoji: string } & Pick<Appointment, 'type' | 'isRecurring'>> {
   const today = new Date().toISOString().split('T')[0]!
   const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
 
@@ -132,7 +143,7 @@ export async function parseAppointmentText(text: string): Promise<{ title: strin
           const date = parsed.date ?? today
           const time = parsed.time ?? '09:00'
           const emoji = parsed.emoji ?? detectEmoji(title)
-          return { title, date, time, emoji }
+          return { title, date, time, emoji, ...detectFamilyType(text) }
         }
       }
     } catch {
@@ -146,6 +157,7 @@ export async function parseAppointmentText(text: string): Promise<{ title: strin
     date: today,
     time: '09:00',
     emoji: detectEmoji(text),
+    ...detectFamilyType(text),
   }
 }
 
@@ -171,4 +183,43 @@ export function formatHebrewDate(dateStr: string): string {
 export function formatHebrewMonth(year: number, month: number): string {
   const monthName = HEBREW_MONTHS[month - 1] ?? ''
   return `${monthName} ${year}`
+}
+
+// ─── Family Intelligence ──────────────────────────────────────────────────────
+
+// Returns appointments that match today's month/day (for recurring events)
+export function getBirthdayToday(appointments: Appointment[]): Appointment[] {
+  const today = new Date()
+  const mm = String(today.getMonth() + 1).padStart(2, '0')
+  const dd = String(today.getDate()).padStart(2, '0')
+  return appointments.filter(a =>
+    a.isRecurring &&
+    a.date.slice(5) === `${mm}-${dd}` &&
+    (a.type === 'birthday' || a.type === 'anniversary')
+  )
+}
+
+// Returns upcoming birthdays/anniversaries in next N days
+export function getUpcomingBirthdays(
+  appointments: Appointment[],
+  days = 30,
+): Array<Appointment & { daysUntil: number }> {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const results: Array<Appointment & { daysUntil: number }> = []
+
+  for (const appt of appointments) {
+    if (!appt.isRecurring || (appt.type !== 'birthday' && appt.type !== 'anniversary')) continue
+    const [, mm, dd] = appt.date.split('-')
+    if (!mm || !dd) continue
+
+    // This year's date
+    const thisYear = new Date(today.getFullYear(), parseInt(mm) - 1, parseInt(dd))
+    if (thisYear < today) thisYear.setFullYear(today.getFullYear() + 1)
+
+    const daysUntil = Math.round((thisYear.getTime() - today.getTime()) / 86400000)
+    if (daysUntil <= days) results.push({ ...appt, daysUntil })
+  }
+
+  return results.sort((a, b) => a.daysUntil - b.daysUntil)
 }
