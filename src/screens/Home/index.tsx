@@ -122,8 +122,8 @@ export function Home() {
   const tapTimestamps = useRef<number[]>([]);
   function handleWordmarkTap() {
     const now = Date.now();
-    tapTimestamps.current = [...tapTimestamps.current, now].filter(t => now - t < 1500);
-    if (tapTimestamps.current.length >= 3) {
+    tapTimestamps.current = [...tapTimestamps.current, now].filter(t => now - t < 2000);
+    if (tapTimestamps.current.length >= 5) {
       tapTimestamps.current = [];
       setScreen(Screen.Admin);
     }
@@ -530,7 +530,7 @@ export function Home() {
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
           pointerEvents: 'none',
-        }}>v14.1</div>
+        }}>v14.2</div>
         {/* 4 main icons — evenly spaced */}
         {footerItems.map(item => (
           <button

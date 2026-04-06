@@ -88,25 +88,24 @@ function PhotoCard({ item, index, onInfo }: { item: FamilyMediaItem; index: numb
         {item.caption}
       </div>
 
-      {/* Info button */}
+      {/* Info button — top-left corner, away from photo content */}
       <button
         type="button"
         aria-label="מידע על התמונה"
         onClick={(e) => { e.stopPropagation(); onInfo() }}
         style={{
-          position: 'absolute', bottom: 10, left: 10,
-          width: 30, height: 30, borderRadius: '50%',
-          background: 'rgba(201,168,76,0.20)',
-          backdropFilter: 'blur(8px)',
-          border: '1.5px solid rgba(201,168,76,0.45)',
+          position: 'absolute', top: 8, left: 8,
+          width: 28, height: 28, borderRadius: '50%',
+          background: 'rgba(0,0,0,0.50)',
+          border: '1.5px solid rgba(201,168,76,0.50)',
           color: GOLD,
-          fontSize: 15, fontWeight: 700,
+          fontSize: 14, fontWeight: 700,
           fontFamily: "'Cormorant Garamond',Georgia,serif",
           fontStyle: 'italic',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer',
-          transition: 'transform 0.15s ease, background 0.15s ease',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
+          transition: 'transform 0.15s ease',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
         }}
         onPointerDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.9)' }}
         onPointerUp={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)' }}
@@ -118,18 +117,28 @@ function PhotoCard({ item, index, onInfo }: { item: FamilyMediaItem; index: numb
   )
 }
 
-// ── Info Panel ─────────────────────────────────────────────────────
+// ── Info Panel — fixed: stopPropagation, no backdrop-filter, mobile-safe ──
 function InfoPanel({ item, onClose }: { item: FamilyMediaItem; onClose: () => void }) {
+  const close = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    onClose()
+  }
+
   return (
-    <>
-      {/* Backdrop */}
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 100 }}
+      onClick={close}
+      onTouchEnd={close}
+    >
+      {/* Backdrop — no backdrop-filter (blocks touch on mobile Safari) */}
       <div
-        onClick={onClose}
+        aria-hidden="true"
         style={{
-          position: 'fixed', inset: 0, zIndex: 100,
-          background: 'rgba(0,0,0,0.65)',
-          backdropFilter: 'blur(8px)',
-          animation: 'fgFadeIn 0.25s ease both',
+          position: 'absolute', inset: 0,
+          background: 'rgba(0,0,0,0.70)',
+          animation: 'fgFadeIn 0.2s ease both',
+          pointerEvents: 'none',
         }}
       />
       {/* Panel */}
@@ -137,66 +146,44 @@ function InfoPanel({ item, onClose }: { item: FamilyMediaItem; onClose: () => vo
         role="dialog"
         aria-modal="true"
         aria-label="פרטי תמונה"
+        onClick={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
         style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101,
-          maxHeight: '55vh',
+          position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 101,
+          maxHeight: '60vh',
           borderRadius: '20px 20px 0 0',
           background: 'linear-gradient(180deg, #141008 0%, #0C0A08 100%)',
           borderTop: '1px solid rgba(201,168,76,0.28)',
           boxShadow: '0 -12px 40px rgba(0,0,0,0.5)',
-          padding: '20px 24px 32px',
-          animation: 'fgPanelUp 0.35s ease-out both',
+          padding: '16px 24px 28px',
+          animation: 'fgPanelUp 0.3s ease-out both',
           overflowY: 'auto',
         }}
       >
-        {/* Close button — large, prominent for easy tap */}
+        {/* Close X — top right */}
         <button
           type="button"
           aria-label="סגור"
-          onClick={onClose}
+          onClick={close}
+          onTouchEnd={close}
           className="btn-focus"
           style={{
-            position: 'absolute', top: 12, left: 12,
-            width: 40, height: 40, borderRadius: '50%',
-            background: 'rgba(201,168,76,0.15)',
-            border: '1.5px solid rgba(201,168,76,0.40)',
-            color: 'rgba(255,250,240,0.85)',
-            fontSize: 20, fontWeight: 700, cursor: 'pointer',
+            position: 'absolute', top: 12, left: 14,
+            width: 44, height: 44, borderRadius: '50%',
+            background: 'rgba(255,255,255,0.10)',
+            border: '1.5px solid rgba(255,255,255,0.20)',
+            color: 'rgba(255,255,255,0.85)',
+            fontSize: 22, fontWeight: 700, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 10,
           }}
         >
           ✕
         </button>
 
-        {/* Back to gallery button — bottom of panel */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="btn-focus"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            margin: '20px auto 0',
-            padding: '10px 28px',
-            borderRadius: 24,
-            background: 'rgba(201,168,76,0.12)',
-            border: '1px solid rgba(201,168,76,0.30)',
-            color: GOLD,
-            fontSize: 15, fontWeight: 600,
-            fontFamily: "'Heebo',sans-serif",
-            cursor: 'pointer',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          חזרה לאלבום
-        </button>
-
         {/* Thumbnail */}
         <div style={{
-          width: 90, height: 90, borderRadius: 14,
-          overflow: 'hidden', margin: '0 auto 16px',
+          width: 100, height: 100, borderRadius: 16,
+          overflow: 'hidden', margin: '6px auto 14px',
           border: '2px solid rgba(201,168,76,0.40)',
           boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
         }}>
@@ -214,7 +201,7 @@ function InfoPanel({ item, onClose }: { item: FamilyMediaItem; onClose: () => vo
           fontSize: 20, fontWeight: 600,
           fontFamily: "'Heebo',sans-serif",
           textAlign: 'center',
-          margin: '0 0 10px',
+          margin: '0 0 8px',
         }}>
           {item.caption}
         </h2>
@@ -225,12 +212,37 @@ function InfoPanel({ item, onClose }: { item: FamilyMediaItem; onClose: () => vo
           fontSize: 16, lineHeight: 1.6,
           fontFamily: "'Heebo',sans-serif",
           textAlign: 'center',
-          margin: 0,
+          margin: '0 0 16px',
         }}>
           {item.description}
         </p>
+
+        {/* Back to gallery button — prominent at bottom */}
+        <button
+          type="button"
+          onClick={close}
+          onTouchEnd={close}
+          className="btn-focus"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            margin: '0 auto',
+            padding: '12px 32px',
+            borderRadius: 24,
+            background: 'rgba(201,168,76,0.18)',
+            border: '1.5px solid rgba(201,168,76,0.40)',
+            color: GOLD,
+            fontSize: 16, fontWeight: 600,
+            fontFamily: "'Heebo',sans-serif",
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          חזרה לאלבום
+        </button>
       </div>
-    </>
+    </div>
   )
 }
 

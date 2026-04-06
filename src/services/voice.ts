@@ -172,9 +172,9 @@ async function speakOpenAI(text: string): Promise<boolean> {
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'tts-1',            // tts-1 = low latency (best for real-time conversation)
+          model: 'tts-1-hd',         // HD = higher quality, more natural sounding
           input: chunk,
-          voice: 'nova',             // warm, feminine, clear — most pleasant for ear
+          voice: 'shimmer',          // shimmer = warm, expressive, very human-like
           speed: 0.88,               // slightly slower → easier to follow for 80+ listener
           response_format: 'mp3',
         }),
@@ -430,7 +430,7 @@ export async function speakVoiceMode(text: string): Promise<void> {
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: 0.88, response_format: 'mp3' }),
+        body: JSON.stringify({ model: 'tts-1-hd', input: text, voice: 'shimmer', speed: 0.88, response_format: 'mp3' }),
         signal: controller.signal,
       })
       clearTimeout(t)
