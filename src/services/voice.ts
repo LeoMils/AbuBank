@@ -208,7 +208,7 @@ async function speakAzureTTS(text: string): Promise<boolean> {
     try {
       const url = `/api/aztts?text=${encodeURIComponent(chunk)}&lang=${lang}`
       const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 5000) // fast timeout — iPhone can't reach proxy
+      const t = setTimeout(() => controller.abort(), 10000) // reasonable timeout for slow networks
       const res = await fetch(url, { signal: controller.signal })
       clearTimeout(t)
       if (res.status === 503) return false   // no key configured — skip silently
@@ -306,7 +306,7 @@ async function speakGoogleTTS(text: string): Promise<boolean> {
     try {
       const url = `/api/gtts?text=${encodeURIComponent(chunk)}&lang=${lang}`
       const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 5000) // fast timeout — iPhone can't reach proxy
+      const t = setTimeout(() => controller.abort(), 10000) // reasonable timeout for slow networks
       const res = await fetch(url, { signal: controller.signal })
       clearTimeout(t)
       if (!res.ok) { console.log('[TTS] Google TTS status:', res.status); return false }
@@ -332,7 +332,7 @@ async function speakEdgeTTS(text: string): Promise<boolean> {
     try {
       const url = `/api/tts?text=${encodeURIComponent(chunk)}&lang=${lang}`
       const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 5000) // fast timeout — iPhone can't reach proxy
+      const t = setTimeout(() => controller.abort(), 10000) // reasonable timeout for slow networks
       const res = await fetch(url, { signal: controller.signal })
       clearTimeout(t)
       if (!res.ok) { console.log('[TTS] Edge TTS status:', res.status); return false }
@@ -430,7 +430,7 @@ export async function speakVoiceMode(text: string): Promise<void> {
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: 1.0, response_format: 'mp3' }),
+        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: 0.88, response_format: 'mp3' }),
         signal: controller.signal,
       })
       clearTimeout(t)

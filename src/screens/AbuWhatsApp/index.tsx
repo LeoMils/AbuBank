@@ -584,7 +584,7 @@ export function AbuWhatsApp() {
           {/* Family portrait — left */}
           <div style={{
             position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
-            width: 54, height: 54, borderRadius: '50%',
+            width: 62, height: 62, borderRadius: '50%',
             border: '2px solid rgba(37,211,102,0.55)',
             boxShadow: '0 0 0 3px rgba(37,211,102,0.07), 0 0 20px rgba(37,211,102,0.18), 0 4px 12px rgba(0,0,0,0.45)',
             overflow: 'hidden',

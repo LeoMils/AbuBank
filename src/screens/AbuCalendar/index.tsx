@@ -718,8 +718,8 @@ export function AbuCalendar() {
             alt="Martita"
             onError={handleMartitaImgError}
             style={{
-              width: 42, height: 42, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
-              boxShadow: '0 0 0 2px rgba(201,168,76,0.45), 0 2px 12px rgba(0,0,0,0.40)',
+              width: 58, height: 58, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
+              boxShadow: '0 0 0 2px rgba(201,168,76,0.50), 0 2px 14px rgba(0,0,0,0.45)',
             }}
           />
           <InfoButton

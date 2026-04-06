@@ -149,22 +149,48 @@ function InfoPanel({ item, onClose }: { item: FamilyMediaItem; onClose: () => vo
           overflowY: 'auto',
         }}
       >
-        {/* Close button */}
+        {/* Close button — large, prominent for easy tap */}
         <button
           type="button"
           aria-label="סגור"
           onClick={onClose}
+          className="btn-focus"
           style={{
-            position: 'absolute', top: 14, left: 14,
-            width: 32, height: 32, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            color: 'rgba(255,255,255,0.7)',
-            fontSize: 18, cursor: 'pointer',
+            position: 'absolute', top: 12, left: 12,
+            width: 40, height: 40, borderRadius: '50%',
+            background: 'rgba(201,168,76,0.15)',
+            border: '1.5px solid rgba(201,168,76,0.40)',
+            color: 'rgba(255,250,240,0.85)',
+            fontSize: 20, fontWeight: 700, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10,
           }}
         >
           ✕
+        </button>
+
+        {/* Back to gallery button — bottom of panel */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="btn-focus"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            margin: '20px auto 0',
+            padding: '10px 28px',
+            borderRadius: 24,
+            background: 'rgba(201,168,76,0.12)',
+            border: '1px solid rgba(201,168,76,0.30)',
+            color: GOLD,
+            fontSize: 15, fontWeight: 600,
+            fontFamily: "'Heebo',sans-serif",
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          חזרה לאלבום
         </button>
 
         {/* Thumbnail */}

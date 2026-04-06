@@ -443,7 +443,11 @@ export function AbuAI() {
             setMessages(prev => prev.map(m => m.id === checkMsg.id ? factMsg : m))
             setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 600)
           })
-          .catch(() => { setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 300) })
+          .catch(() => {
+            // Remove the stale "checking..." message on error
+            setMessages(prev => prev.filter(m => m.id !== checkMsg.id))
+            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 300)
+          })
       }, 600)
     } else {
       setTimeout(() => {
@@ -545,14 +549,14 @@ export function AbuAI() {
           padding: '0 14px',
         }}>
 
-          {/* LEFT (RTL): Martita portrait — 50×50px */}
+          {/* LEFT (RTL): Martita portrait */}
           <div style={{
             position: 'absolute',
             left: 14,
             top: '50%',
             transform: 'translateY(-50%)',
-            width: 50,
-            height: 50,
+            width: 64,
+            height: 64,
             borderRadius: '50%',
             border: isSpeaking ? '2.5px solid rgba(201,168,76,0.80)' : '2px solid rgba(201,168,76,0.42)',
             boxShadow: isSpeaking ? '0 0 0 2.5px rgba(201,168,76,0.75), 0 0 24px rgba(201,168,76,0.30)' : '0 0 0 2px rgba(201,168,76,0.42), 0 0 16px rgba(201,168,76,0.12)',
@@ -565,7 +569,7 @@ export function AbuAI() {
               src={martitaPhoto}
               alt="Martita"
               loading="eager"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 25%', display: 'block' }}
               onError={handleMartitaImgError}
             />
           </div>

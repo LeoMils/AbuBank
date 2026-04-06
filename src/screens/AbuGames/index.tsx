@@ -363,9 +363,9 @@ export function AbuGames() {
           {/* Martita portrait — left */}
           <div style={{
             position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-            width: 42, height: 42, borderRadius: '50%',
-            border: '1.5px solid rgba(201,168,76,0.45)',
-            boxShadow: '0 0 0 2px rgba(201,168,76,0.07), 0 2px 10px rgba(0,0,0,0.35)',
+            width: 58, height: 58, borderRadius: '50%',
+            border: '2px solid rgba(201,168,76,0.50)',
+            boxShadow: '0 0 0 2px rgba(201,168,76,0.07), 0 2px 12px rgba(0,0,0,0.40)',
             overflow: 'hidden',
             background: 'linear-gradient(145deg, #1a1a2e, #050A18)',
             flexShrink: 0,

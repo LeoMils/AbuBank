@@ -206,12 +206,13 @@ const FEW_SHOT: Array<{ role: 'user' | 'assistant'; content: string }> = [
 
 function stripMarkdown(text: string): string {
   return text
-    .replace(/\*\*\*(.*?)\*\*\*/g, '$1')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/\*\*\*(.*?)\*\*\*/gs, '$1')
+    .replace(/\*\*(.*?)\*\*/gs, '$1')
+    .replace(/(?<!\w)\*(.*?)\*(?!\w)/gs, '$1')
     .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^[-*+]\s+/gm, '')
-    .replace(/`{1,3}(.*?)`{1,3}/g, '$1')
+    .replace(/^[-*+]\s+/gm, '• ')
+    .replace(/`{1,3}(.*?)`{1,3}/gs, '$1')
+    .replace(/\*{1,3}$/g, '')  // strip trailing unclosed markdown
     .trim()
 }
 
@@ -335,7 +336,7 @@ function wait(ms: number): Promise<void> {
 
 const VOICE_SUFFIX = `
 
-מצב קול. תשובה ב-1 משפט קצר בלבד. מקסימום 15 מילה. לא רשימות. לא שאלות בסוף. כמו שמדברים בטלפון.`
+מצב קול. תשובה קצרה וברורה, 1-3 משפטים. כמו שמדברים בטלפון. לא רשימות. לא שאלות בסוף.`
 
 // Search-preview models don't support the temperature parameter
 const isSearchModel = (model: string) => model.includes('search')
@@ -348,7 +349,7 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
     ...FEW_SHOT,
     ...messages.map(m => ({ role: m.role, content: m.content })),
   ]
-  const maxTokens = voiceMode ? 60 : 1024
+  const maxTokens = voiceMode ? 150 : 2048
   const temperature = voiceMode ? 0.5 : 0.65
 
   // Try all providers, then retry once with backoff if all were rate-limited
