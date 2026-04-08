@@ -338,7 +338,10 @@ function wait(ms: number): Promise<void> {
 
 const VOICE_SUFFIX = `
 
-מצב קול. תשובה קצרה וברורה, 1-3 משפטים. כמו שמדברים בטלפון. לא רשימות. לא שאלות בסוף.`
+מצב קול — שיחה חיה כמו טלפון.
+אורך טבעי: שאלה פשוטה → 2-3 משפטים. שאלה מעניינת → 4-6 משפטים עם תוכן אמיתי. לא לקצץ בתוכן — Martita חכמה ורוצה תשובות עשירות.
+לא רשימות. לא שאלות בסוף. לא להתנשא. לא לפשט יותר מדי. שפה חיה, חמה, ישירה.
+עברית או ספרדית — לפי מה שהיא דיברה.`
 
 // Search-preview models don't support the temperature parameter
 const isSearchModel = (model: string) => model.includes('search')
@@ -351,8 +354,8 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
     ...FEW_SHOT,
     ...messages.map(m => ({ role: m.role, content: m.content })),
   ]
-  const maxTokens = voiceMode ? 150 : 2048
-  const temperature = voiceMode ? 0.5 : 0.65
+  const maxTokens = voiceMode ? 400 : 2048
+  const temperature = voiceMode ? 0.6 : 0.65
 
   // Try all providers, then retry once with backoff if all were rate-limited
   for (let attempt = 0; attempt < 2; attempt++) {

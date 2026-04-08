@@ -430,7 +430,7 @@ export async function speakVoiceMode(text: string): Promise<void> {
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'tts-1-hd', input: text, voice: 'shimmer', speed: 0.88, response_format: 'mp3' }),
+        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'shimmer', speed: 0.92, response_format: 'mp3' }),
         signal: controller.signal,
       })
       clearTimeout(t)
@@ -505,10 +505,10 @@ export function createSilenceDetector(
   onSilence: () => void,
   options?: { threshold?: number; silenceMs?: number; maxMs?: number; minActiveMs?: number },
 ): SilenceDetector {
-  const threshold    = options?.threshold   ?? 10    // lower = more sensitive
-  const silenceMs    = options?.silenceMs   ?? 2000  // ms quiet after speech → stop
-  const maxMs        = options?.maxMs       ?? 20000 // absolute max recording time
-  const minActiveMs  = options?.minActiveMs ?? 1500  // never stop before this many ms
+  const threshold    = options?.threshold   ?? 22    // higher = less sensitive to background noise
+  const silenceMs    = options?.silenceMs   ?? 2800  // ms quiet after speech → stop (longer = tolerates pauses)
+  const maxMs        = options?.maxMs       ?? 25000 // absolute max recording time
+  const minActiveMs  = options?.minActiveMs ?? 2500  // never stop before this many ms (let her finish)
 
   let stopped = false
   let level = 0

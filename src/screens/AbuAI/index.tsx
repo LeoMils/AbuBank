@@ -272,7 +272,7 @@ export function AbuAI() {
         await speakVoiceMode(response)
         setIsSpeaking(false)
         if (!voiceModeRef.current) return
-        await new Promise(r => setTimeout(r, 400))
+        await new Promise(r => setTimeout(r, 150))
         if (voiceModeRef.current) startVoiceListening()
       } catch (err) {
         setIsSpeaking(false)
@@ -282,7 +282,7 @@ export function AbuAI() {
           setVoicePhase('speaking'); setIsSpeaking(true)
           await speakVoiceMode(errText)
           setIsSpeaking(false)
-          await new Promise(r => setTimeout(r, 400))
+          await new Promise(r => setTimeout(r, 150))
           if (voiceModeRef.current) startVoiceListening()
         }
       }
@@ -293,36 +293,58 @@ export function AbuAI() {
     if (WSR) {
       const rec = new WSR() as any
       rec.lang = 'he-IL'
-      rec.continuous = false
-      rec.interimResults = false
+      rec.continuous = true
+      rec.interimResults = true
       rec.maxAlternatives = 1
 
       let gotResult = false
+      let speechTimeout: ReturnType<typeof setTimeout> | null = null
+      let lastTranscript = ''
 
       rec.onresult = (e: any) => {
-        gotResult = true
-        recognitionRef.current = null
-        const transcript = (e.results[0]?.[0]?.transcript ?? '').trim()
-        if (transcript) {
-          setVoicePhase('processing')
-          handleText(transcript)
-        } else {
-          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 200)
+        // Collect the best final or interim transcript
+        let finalText = ''
+        let interimText = ''
+        for (let i = 0; i < e.results.length; i++) {
+          const r = e.results[i]
+          const t = (r[0]?.transcript ?? '').trim()
+          if (r.isFinal) finalText += (finalText ? ' ' : '') + t
+          else interimText += (interimText ? ' ' : '') + t
+        }
+        lastTranscript = finalText || interimText
+
+        // Reset the silence-after-speech timer each time we get speech
+        if (speechTimeout) clearTimeout(speechTimeout)
+        if (lastTranscript) {
+          speechTimeout = setTimeout(() => {
+            // Speech ended — stop recognition and process
+            gotResult = true
+            try { rec.stop() } catch {}
+            recognitionRef.current = null
+            if (lastTranscript.trim()) {
+              setVoicePhase('processing')
+              handleText(lastTranscript.trim())
+            } else {
+              if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 100)
+            }
+          }, 2000) // 2s of silence after last speech → commit
         }
       }
 
       rec.onerror = (e: any) => {
+        if (speechTimeout) clearTimeout(speechTimeout)
         recognitionRef.current = null
         if (e.error === 'not-allowed') {
           exitVoiceMode()
         } else {
-          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 300)
+          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 150)
         }
       }
 
       rec.onend = () => {
+        if (speechTimeout) clearTimeout(speechTimeout)
         recognitionRef.current = null
-        if (!gotResult && voiceModeRef.current) setTimeout(() => startVoiceListening(), 150)
+        if (!gotResult && voiceModeRef.current) setTimeout(() => startVoiceListening(), 100)
       }
 
       try {
@@ -338,7 +360,7 @@ export function AbuAI() {
     ;(async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true }
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false }
         })
         streamRef.current = stream
         const mimeType = getSupportedMimeType()
@@ -441,18 +463,18 @@ export function AbuAI() {
           .then(dateFactResponse => {
             const factMsg: ChatMessage = { id: nextId(), role: 'assistant', content: dateFactResponse, timestamp: Date.now() }
             setMessages(prev => prev.map(m => m.id === checkMsg.id ? factMsg : m))
-            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 600)
+            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 300)
           })
           .catch(() => {
             // Remove the stale "checking..." message on error
             setMessages(prev => prev.filter(m => m.id !== checkMsg.id))
-            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 300)
+            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 150)
           })
-      }, 600)
+      }, 400)
     } else {
       setTimeout(() => {
         if (voiceModeRef.current) startVoiceListening()
-      }, 500)
+      }, 250)
     }
   }, [startVoiceListening])
 
