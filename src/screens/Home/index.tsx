@@ -542,7 +542,7 @@ export function Home() {
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
           pointerEvents: 'none',
-        }}>v15</div>
+        }}>v15.2</div>
         {/* 4 main icons — evenly spaced */}
         {footerItems.map(item => (
           <button
