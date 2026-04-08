@@ -11,11 +11,19 @@ import { loadLocContacts } from '../Settings';
 let isNavigating = false;
 let navTimer: ReturnType<typeof setTimeout> | null = null;
 
-function handleTap(url: string): void {
+function handleTap(url: string, androidPackage?: string): void {
   if (isNavigating) return;
   isNavigating = true;
   if (navTimer) clearTimeout(navTimer);
   navTimer = setTimeout(() => { isNavigating = false; }, 800);
+
+  // On Android, try to open the native app via intent
+  if (androidPackage && /android/i.test(navigator.userAgent)) {
+    const intentUrl = `intent://#Intent;package=${androidPackage};end`;
+    window.location.href = intentUrl;
+    return;
+  }
+
   window.location.href = url;
 }
 
@@ -251,6 +259,13 @@ export function Home() {
               position: 'relative',
             } as React.CSSProperties}>Bank</span>
           </div>
+          {/* Reversed 1px underline — architectural gap */}
+          <div aria-hidden="true" style={{
+            width: '72%', height: 1,
+            background: 'linear-gradient(90deg, transparent 0%, rgba(201,168,76,0.50) 20%, rgba(94,234,212,0.35) 50%, rgba(201,168,76,0.50) 80%, transparent 100%)',
+            marginTop: 6,
+            borderRadius: 1,
+          }} />
 
           {/* Greeting — luxury metallic matching Abu family logos */}
           <div style={{
@@ -315,11 +330,11 @@ export function Home() {
                 role="button"
                 aria-label={`פתח ${svc.label}`}
                 tabIndex={0}
-                onClick={() => handleTap(svc.url)}
+                onClick={() => handleTap(svc.url, svc.androidPackage)}
                 onPointerDown={() => setPressed(svc.id)}
                 onPointerUp={() => setPressed(null)}
                 onPointerLeave={() => setPressed(null)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(svc.url); } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(svc.url, svc.androidPackage); } }}
                 style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
                   cursor: 'pointer', width: '100%',
@@ -347,14 +362,19 @@ export function Home() {
                     return g[svc.id] ?? `radial-gradient(circle at 38% 32%, rgba(255,255,255,0.90) 0%, ${svc.color} 42%, #111 100%)`;
                   })(),
                   boxShadow: pressed === svc.id
-                    ? `0 1px 4px rgba(0,0,0,0.6)`
+                    ? [
+                        `0 0 18px rgba(201,168,76,0.35)`,
+                        `0 0 6px rgba(201,168,76,0.20)`,
+                        `0 2px 8px rgba(0,0,0,0.5)`,
+                      ].join(', ')
                     : [
                         `0 0 22px rgba(${rgb},0.62)`,
                         `0 0 8px rgba(${rgb},0.28)`,
-                        `0 10px 24px rgba(0,0,0,0.55)`,
+                        `0 20px 40px rgba(0,0,0,0.50)`,
+                        `inset 0 2px 10px rgba(255,255,255,0.10)`,
                       ].join(', '),
-                  transform: pressed === svc.id ? 'scale(0.92)' : 'scale(1)',
-                  transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out',
+                  transform: pressed === svc.id ? 'scale(0.93)' : 'scale(1)',
+                  transition: 'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
                 }}>
                   {/* Logo — fills entire sphere */}
                   <div style={{
@@ -530,7 +550,7 @@ export function Home() {
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
           pointerEvents: 'none',
-        }}>v14.2</div>
+        }}>v15</div>
         {/* 4 main icons — evenly spaced */}
         {footerItems.map(item => (
           <button

@@ -41,12 +41,18 @@ const MAHJONG_GAMES   = GAMES.filter(g => g.category === 'mahjong')
 /* ─── Navigation guard ─── */
 let isNavigating = false
 let navTimer: ReturnType<typeof setTimeout> | null = null
-function handleTap(url: string): void {
+function handleTap(url: string, androidPackage?: string): void {
   if (isNavigating) return
   isNavigating = true
   if (navTimer) clearTimeout(navTimer)
   navTimer = setTimeout(() => { isNavigating = false }, 800)
   soundTap()
+
+  if (androidPackage && /android/i.test(navigator.userAgent)) {
+    window.location.href = `intent://#Intent;package=${androidPackage};end`
+    return
+  }
+
   window.location.href = url
 }
 
@@ -433,8 +439,8 @@ export function AbuGames() {
 
           <InfoButton
             title="Abu Games"
-            lines={['משחקי קלפים וסוליטר — 14 משחקים שונים.', "סוליטר, עכביש, מהג'ונג ועוד."]}
-            howTo={['לחצי על כרטיס המשחק הרצוי', 'המשחק נפתח בדפדפן', 'לחצי חזרה לחזור לתפריט']}
+            lines={['Words of Wonders — המשחק הראשי!', 'משחקי קלפים וסוליטר — 14 משחקים נוספים.', "סוליטר, עכביש, מהג'ונג ועוד."]}
+            howTo={['לחצי על WOW לשחק במשחק המילים', 'או בחרי משחק קלפים מהרשימה', 'המשחק נפתח בדפדפן', 'לחצי חזרה לחזור לתפריט']}
             position="top-left"
           />
         </div>
@@ -447,6 +453,131 @@ export function AbuGames() {
         display: 'flex', flexDirection: 'column', gap: 48,
         paddingBottom: 'calc(40px + env(safe-area-inset-bottom, 0px))',
       }}>
+
+        {/* ═══════ WOW HERO CARD ═══════ */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Words of Wonders — המשחק הראשי"
+          onClick={() => handleTap('https://www.crazygames.com/game/words-of-wonders', 'com.fugo.wow')}
+          onPointerDown={() => setPressed('wow-hero')}
+          onPointerUp={() => setPressed(null)}
+          onPointerLeave={() => setPressed(null)}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap('https://www.crazygames.com/game/words-of-wonders', 'com.fugo.wow') } }}
+          style={{
+            position: 'relative',
+            width: '100%',
+            borderRadius: 20,
+            overflow: 'hidden',
+            cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+            transform: pressed === 'wow-hero' ? 'scale(0.98)' : 'scale(1)',
+            transition: 'transform 0.12s ease-out, box-shadow 0.12s',
+            background: 'linear-gradient(145deg, rgba(201,168,76,0.15) 0%, rgba(201,168,76,0.04) 40%, rgba(139,92,246,0.08) 100%)',
+            border: pressed === 'wow-hero'
+              ? '1.5px solid rgba(201,168,76,0.65)'
+              : '1px solid rgba(201,168,76,0.25)',
+            boxShadow: pressed === 'wow-hero'
+              ? '0 4px 24px rgba(201,168,76,0.22), inset 0 0 0 1px rgba(201,168,76,0.10)'
+              : '0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05)',
+            animation: 'cardIn 0.45s cubic-bezier(0.34,1.20,0.64,1) 0s both',
+            padding: '28px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 16,
+          }}
+        >
+          {/* Top shimmer */}
+          <div aria-hidden="true" style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: 80,
+            background: 'linear-gradient(180deg, rgba(201,168,76,0.08) 0%, transparent 100%)',
+            pointerEvents: 'none',
+          }} />
+
+          {/* Crown + WOW title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, direction: 'ltr' }}>
+            <span style={{ fontSize: 38, lineHeight: 1, userSelect: 'none' }}>👑</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{
+                fontFamily: "'Cormorant Garamond',Georgia,serif",
+                fontSize: 32, fontWeight: 700, letterSpacing: '3px',
+                background: 'linear-gradient(135deg, #FDE68A 0%, #F59E0B 30%, #C9A84C 60%, #FDE68A 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                filter: 'drop-shadow(0 0 12px rgba(201,168,76,0.35))',
+              } as React.CSSProperties}>WOW</span>
+              <span style={{
+                fontSize: 13, fontWeight: 600, letterSpacing: '1.5px',
+                color: 'rgba(255,255,255,0.50)',
+                fontFamily: "'DM Sans',sans-serif",
+                marginTop: -2,
+              }}>WORDS OF WONDERS</span>
+            </div>
+            <span style={{ fontSize: 38, lineHeight: 1, userSelect: 'none' }}>🌍</span>
+          </div>
+
+          {/* Hebrew subtitle */}
+          <div style={{
+            fontSize: 17, fontWeight: 600,
+            color: 'rgba(255,255,255,0.75)',
+            fontFamily: "'Heebo',sans-serif",
+            direction: 'rtl',
+            textAlign: 'center',
+            lineHeight: 1.5,
+          }}>
+            משחק המילים המפורסם בעולם
+          </div>
+
+          {/* Letter tiles decoration */}
+          <div style={{
+            display: 'flex', gap: 6, marginTop: 4,
+          }}>
+            {['W','O','R','D','S'].map((letter, i) => (
+              <div key={i} style={{
+                width: 38, height: 38,
+                borderRadius: 8,
+                background: 'linear-gradient(145deg, rgba(201,168,76,0.25), rgba(201,168,76,0.10))',
+                border: '1px solid rgba(201,168,76,0.35)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, fontWeight: 800,
+                color: '#FDE68A',
+                fontFamily: "'DM Sans',sans-serif",
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                animation: `cardIn 0.35s cubic-bezier(0.34,1.20,0.64,1) ${0.15 + i * 0.06}s both`,
+              }}>{letter}</div>
+            ))}
+          </div>
+
+          {/* Play button */}
+          <div style={{
+            marginTop: 4,
+            padding: '10px 36px',
+            borderRadius: 24,
+            background: 'linear-gradient(135deg, #C9A84C 0%, #F59E0B 50%, #C9A84C 100%)',
+            boxShadow: '0 4px 16px rgba(201,168,76,0.30)',
+            fontSize: 18, fontWeight: 800,
+            color: '#050A18',
+            fontFamily: "'Heebo',sans-serif",
+            letterSpacing: '0.5px',
+          }}>
+            🎮 שחקי עכשיו
+          </div>
+
+          {/* "Main game" badge */}
+          <div style={{
+            position: 'absolute', top: 12, right: 14,
+            padding: '4px 10px', borderRadius: 10,
+            background: 'rgba(201,168,76,0.18)',
+            border: '1px solid rgba(201,168,76,0.30)',
+            fontSize: 11, fontWeight: 700,
+            color: 'rgba(253,230,138,0.85)',
+            fontFamily: "'Heebo',sans-serif",
+          }}>
+            ⭐ המשחק הראשי
+          </div>
+        </div>
 
         {/* ── SOLITAIRE SECTION ── */}
         <CategorySection
