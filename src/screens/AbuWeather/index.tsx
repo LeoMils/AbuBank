@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
+import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import {
   fetchWeather,
   codeToMood,
@@ -419,6 +420,7 @@ function getTimeGreeting(): string {
 
 export function AbuWeather() {
   const setScreen = useAppStore(s => s.setScreen)
+  const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
 
   const [data,    setData]    = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -603,6 +605,24 @@ export function AbuWeather() {
             }}>
               ← חזרה
             </button>
+
+            {/* Martita portrait */}
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,0.25)',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
+              overflow: 'hidden',
+              background: 'rgba(0,0,0,0.3)',
+              flexShrink: 0,
+            }}>
+              <img
+                src={martitaPhoto}
+                alt="Martita"
+                loading="eager"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
+                onError={handleMartitaImgError}
+              />
+            </div>
 
             {/* Day tabs */}
             <div style={{
