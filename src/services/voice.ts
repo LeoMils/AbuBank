@@ -231,7 +231,6 @@ async function speakAzureTTS(text: string): Promise<boolean> {
 
 const GEMINI_TTS_MODELS = [
   'gemini-2.5-flash-preview-tts',
-  'gemini-2.0-flash-preview-tts',
 ]
 
 async function speakGemini(text: string): Promise<boolean> {

@@ -245,7 +245,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   formData.append('prompt', 'שלום מרטיטה, בוקר טוב, מה שלומך, תודה. Hola Martita, buenos días, gracias, cómo estás.')
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 30000)
+  const timeout = setTimeout(() => controller.abort(), 12000)
 
   try {
     const res = await fetch(WHISPER_URL, {
@@ -299,7 +299,7 @@ async function tryProvider(
   body: object,
 ): Promise<{ result: string | null; retryAfter: number }> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 20000)
+  const timeout = setTimeout(() => controller.abort(), 10000)
   try {
     const res = await fetch(provider.url, {
       method: 'POST',
@@ -338,7 +338,7 @@ function wait(ms: number): Promise<void> {
 
 const VOICE_SUFFIX = `
 
-מצב קול. תשובה קצרה וברורה, 1-3 משפטים. כמו שמדברים בטלפון. לא רשימות. לא שאלות בסוף.`
+מצב קול. תשובה קצרה וישירה, משפט אחד או שניים מקסימום. כמו SMS. לא רשימות. לא שאלות. לא סיכומים.`
 
 // Search-preview models don't support the temperature parameter
 const isSearchModel = (model: string) => model.includes('search')
@@ -351,8 +351,8 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
     ...FEW_SHOT,
     ...messages.map(m => ({ role: m.role, content: m.content })),
   ]
-  const maxTokens = voiceMode ? 150 : 2048
-  const temperature = voiceMode ? 0.5 : 0.65
+  const maxTokens = voiceMode ? 80 : 2048
+  const temperature = voiceMode ? 0.4 : 0.65
 
   // Try all providers, then retry once with backoff if all were rate-limited
   for (let attempt = 0; attempt < 2; attempt++) {

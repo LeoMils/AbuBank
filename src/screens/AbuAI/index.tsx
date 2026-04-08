@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { sendMessage, transcribeAudio, getSupportedMimeType } from './service'
-import { speakVoiceMode, stopSpeaking, unlockIOSAudio } from '../../services/voice'
+import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
@@ -272,7 +272,7 @@ export function AbuAI() {
         await speakVoiceMode(response)
         setIsSpeaking(false)
         if (!voiceModeRef.current) return
-        await new Promise(r => setTimeout(r, 400))
+        await new Promise(r => setTimeout(r, 150))
         if (voiceModeRef.current) startVoiceListening()
       } catch (err) {
         setIsSpeaking(false)
@@ -282,7 +282,7 @@ export function AbuAI() {
           setVoicePhase('speaking'); setIsSpeaking(true)
           await speakVoiceMode(errText)
           setIsSpeaking(false)
-          await new Promise(r => setTimeout(r, 400))
+          await new Promise(r => setTimeout(r, 150))
           if (voiceModeRef.current) startVoiceListening()
         }
       }
@@ -383,7 +383,14 @@ export function AbuAI() {
 
         recorder.start(100)
 
-        const LISTEN_SEC = 10
+        // Real silence detection — stops after 1.8s of silence post-speech
+        const detector = createSilenceDetector(stream, () => {
+          if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+        }, { threshold: 10, silenceMs: 1800, maxMs: 12000, minActiveMs: 1200 })
+        silenceRef.current = detector
+
+        // Visual countdown (max 12 seconds)
+        const LISTEN_SEC = 12
         setListenCountdown(LISTEN_SEC)
         let cdSec = LISTEN_SEC
         const cdInterval = setInterval(() => {
@@ -393,13 +400,10 @@ export function AbuAI() {
           } else {
             clearInterval(cdInterval)
             setListenCountdown(null)
-            if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
           }
         }, 1000)
-        silenceRef.current = {
-          stop: () => { clearInterval(cdInterval); setListenCountdown(null) },
-          getLevel: () => 0,
-        }
+        const origStop = detector.stop
+        detector.stop = () => { origStop(); clearInterval(cdInterval); setListenCountdown(null) }
       } catch (err) {
         console.error('[AbuAI] getUserMedia error:', err)
         exitVoiceMode()
@@ -429,31 +433,24 @@ export function AbuAI() {
     const greetMsg: ChatMessage = { id: nextId(), role: 'assistant', content: greeting, timestamp: Date.now() }
     setMessages(prev => [...prev, greetMsg])
 
+    // Start listening IMMEDIATELY — no delays
+    // Date facts load in background, don't block voice
     if (isFirstToday) {
-      setTimeout(() => {
-        const checkMsg: ChatMessage = { id: nextId(), role: 'assistant', content: 'רגע, בודקת מה מיוחד היום...', timestamp: Date.now() }
-        setMessages(prev => [...prev, checkMsg])
-        const dateStr = new Date().toLocaleDateString('he-IL', { month: 'long', day: 'numeric' })
-        sendMessage(
-          [{ id: 'date-q', role: 'user', content: `מה מיוחד בתאריך ${dateStr}? אירוע היסטורי, יום הולדת מפורסם, חג — 2-3 משפטים, עברית.`, timestamp: Date.now() }],
-          false
-        )
-          .then(dateFactResponse => {
-            const factMsg: ChatMessage = { id: nextId(), role: 'assistant', content: dateFactResponse, timestamp: Date.now() }
-            setMessages(prev => prev.map(m => m.id === checkMsg.id ? factMsg : m))
-            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 600)
-          })
-          .catch(() => {
-            // Remove the stale "checking..." message on error
-            setMessages(prev => prev.filter(m => m.id !== checkMsg.id))
-            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 300)
-          })
-      }, 600)
-    } else {
-      setTimeout(() => {
-        if (voiceModeRef.current) startVoiceListening()
-      }, 500)
+      const dateStr = new Date().toLocaleDateString('he-IL', { month: 'long', day: 'numeric' })
+      sendMessage(
+        [{ id: 'date-q', role: 'user', content: `מה מיוחד בתאריך ${dateStr}? אירוע היסטורי, יום הולדת מפורסם, חג — 2-3 משפטים, עברית.`, timestamp: Date.now() }],
+        false
+      )
+        .then(dateFactResponse => {
+          const factMsg: ChatMessage = { id: nextId(), role: 'assistant', content: dateFactResponse, timestamp: Date.now() }
+          setMessages(prev => [...prev, factMsg])
+        })
+        .catch(() => { /* silent — don't block voice */ })
     }
+    // Start listening with minimal delay (just enough for iOS audio unlock)
+    setTimeout(() => {
+      if (voiceModeRef.current) startVoiceListening()
+    }, 150)
   }, [startVoiceListening])
 
   const exitVoiceMode = useCallback(() => {
