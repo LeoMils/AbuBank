@@ -11,19 +11,11 @@ import { loadLocContacts } from '../Settings';
 let isNavigating = false;
 let navTimer: ReturnType<typeof setTimeout> | null = null;
 
-function handleTap(url: string, androidPackage?: string): void {
+function handleTap(url: string): void {
   if (isNavigating) return;
   isNavigating = true;
   if (navTimer) clearTimeout(navTimer);
   navTimer = setTimeout(() => { isNavigating = false; }, 800);
-
-  // On Android, try to open the native app via intent
-  if (androidPackage && /android/i.test(navigator.userAgent)) {
-    const intentUrl = `intent://#Intent;package=${androidPackage};end`;
-    window.location.href = intentUrl;
-    return;
-  }
-
   window.location.href = url;
 }
 
@@ -330,11 +322,11 @@ export function Home() {
                 role="button"
                 aria-label={`פתח ${svc.label}`}
                 tabIndex={0}
-                onClick={() => handleTap(svc.url, svc.androidPackage)}
+                onClick={() => handleTap(svc.url)}
                 onPointerDown={() => setPressed(svc.id)}
                 onPointerUp={() => setPressed(null)}
                 onPointerLeave={() => setPressed(null)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(svc.url, svc.androidPackage); } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(svc.url); } }}
                 style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
                   cursor: 'pointer', width: '100%',

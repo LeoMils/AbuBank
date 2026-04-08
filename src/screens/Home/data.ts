@@ -7,19 +7,18 @@ export interface Service {
   color: string;
   logo: string;
   bgColor: string;
-  androidPackage?: string;
 }
 
 export const SERVICES: Service[] = [
-  {id:'mizrahi', label:'מזרחי טפחות',  url:'https://www.mizrahi-tefahot.co.il/login/',  color:'#f97316', logo:'/logos/mizrahi.png',    bgColor:'#fff',    androidPackage:'com.MizrahiTefahot.nh'},
-  {id:'postal',  label:'דואר ישראל',   url:'https://www.postalfinance.co.il/',           color:'#3b82f6', logo:'/logos/postalbank.png', bgColor:'#fff',    androidPackage:'ratesen.bankhadoar.co.il'},
-  {id:'max',     label:'MAX',           url:'https://www.max.co.il/login',               color:'#a855f7', logo:'/logos/max.png',        bgColor:'#1a2f6b', androidPackage:'com.ideomobile.leumicard'},
+  {id:'mizrahi', label:'מזרחי טפחות',  url:'https://www.mizrahi-tefahot.co.il/login/',  color:'#f97316', logo:'/logos/mizrahi.png',    bgColor:'#fff'},
+  {id:'postal',  label:'דואר ישראל',   url:'https://www.postalfinance.co.il/',           color:'#3b82f6', logo:'/logos/postalbank.png', bgColor:'#fff'},
+  {id:'max',     label:'MAX',           url:'https://www.max.co.il/login',               color:'#a855f7', logo:'/logos/max.png',        bgColor:'#1a2f6b'},
   {id:'water',   label:'מפעל המים',    url:'https://www.city4u.co.il/water/kfar-saba',  color:'#06b6d4', logo:'/logos/WATER.jpg',      bgColor:'#fff'},
-  {id:'iec',     label:'חברת החשמל',  url:'https://enes.iec.co.il/LoginBZ1.aspx',      color:'#eab308', logo:'/logos/iec.png',        bgColor:'#fff',    androidPackage:'com.ewavemobile.electriccompany'},
+  {id:'iec',     label:'חברת החשמל',  url:'https://enes.iec.co.il/LoginBZ1.aspx',      color:'#eab308', logo:'/logos/iec.png',        bgColor:'#fff'},
   {id:'arnona',  label:'ארנונה כ"ס',  url:'https://www.city4u.co.il/arnona/kfar-saba', color:'#22c55e', logo:'/logos/arnona.png',     bgColor:'#fff'},
-  {id:'hot',     label:'HOT mobile',   url:'https://www.hotmobile.co.il',               color:'#ef4444', logo:'/logos/hot.png',        bgColor:'#1a1a2e', androidPackage:'ii.co.hotmobile.HotMobileApp'},
-  {id:'partner', label:'פרטנר',        url:'https://www.partner.co.il/n/login/',        color:'#8b5cf6', logo:'/logos/partner.png',    bgColor:'#0A4A45', androidPackage:'il.co.orange.app.myorange'},
-  {id:'yes',     label:'yes',          url:'https://www.yes.co.il/personal-account/',   color:'#0ea5e9', logo:'/logos/yes.png',        bgColor:'#1a1a2e', androidPackage:'il.co.yes.yesplus'},
+  {id:'hot',     label:'HOT mobile',   url:'https://www.hotmobile.co.il',               color:'#ef4444', logo:'/logos/hot.png',        bgColor:'#1a1a2e'},
+  {id:'partner', label:'פרטנר',        url:'https://www.partner.co.il/n/login/',        color:'#8b5cf6', logo:'/logos/partner.png',    bgColor:'#0A4A45'},
+  {id:'yes',     label:'yes',          url:'https://www.yes.co.il/personal-account/',   color:'#0ea5e9', logo:'/logos/yes.png',        bgColor:'#1a1a2e'},
 ];
 
 export const MSGS = [

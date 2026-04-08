@@ -172,10 +172,10 @@ async function speakOpenAI(text: string): Promise<boolean> {
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'tts-1-hd',         // HD = higher quality, more natural sounding
+          model: 'tts-1',            // fast model, lower latency
           input: chunk,
-          voice: 'shimmer',          // shimmer = warm, expressive, very human-like
-          speed: 0.88,               // slightly slower → easier to follow for 80+ listener
+          voice: 'nova',             // nova = warm, clear, natural
+          speed: 0.95,               // natural pace, not sluggish
           response_format: 'mp3',
         }),
         signal: controller.signal,
@@ -421,16 +421,20 @@ function speakWebAPI(text: string): Promise<void> {
 export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 1) OpenAI TTS → AudioContext playback (best quality, works on iOS after mic)
+  // 1) Gemini TTS — native multilingual voice, best Hebrew accent
+  console.log('[TTS-VM] Trying Gemini TTS...')
+  if (await speakGeminiViaAudioCtx(text)) { console.log('[TTS-VM] ✅ Gemini worked'); return }
+
+  // 2) OpenAI TTS → AudioContext playback (fast model, works on iOS after mic)
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
   if (apiKey) {
     try {
       const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 12000)
+      const t = setTimeout(() => controller.abort(), 8000)
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'tts-1-hd', input: text, voice: 'shimmer', speed: 0.88, response_format: 'mp3' }),
+        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: 0.95, response_format: 'mp3' }),
         signal: controller.signal,
       })
       clearTimeout(t)
@@ -439,17 +443,63 @@ export async function speakVoiceMode(text: string): Promise<void> {
         if (blob.size > 100) {
           const ok = await playBlobViaAudioCtx(blob)
           if (ok) return
-          console.log('[TTS] AudioCtx failed, trying HTMLAudioElement fallback')
+          console.log('[TTS-VM] AudioCtx failed, trying HTMLAudioElement fallback')
           if (await playBlob(blob)) return
         }
       }
     } catch (e) {
-      console.log('[TTS] speakVoiceMode OpenAI error:', e)
+      console.log('[TTS-VM] OpenAI error:', e)
     }
   }
 
-  // 2) Web Speech API fallback (resume fix applied inside speakWebAPI)
+  // 3) Web Speech API fallback (resume fix applied inside speakWebAPI)
   await speakWebAPI(text)
+}
+
+// Gemini TTS via AudioContext for voice mode (bypasses iOS audio restrictions)
+async function speakGeminiViaAudioCtx(text: string): Promise<boolean> {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
+  if (!apiKey) return false
+
+  for (const model of GEMINI_TTS_MODELS) {
+    try {
+      const controller = new AbortController()
+      const t = setTimeout(() => controller.abort(), 10000)
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text }] }],
+            generationConfig: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: 'Aoede' },
+                },
+              },
+            },
+          }),
+          signal: controller.signal,
+        }
+      )
+      clearTimeout(t)
+      if (!res.ok) continue
+      const json = await res.json()
+      const audioData = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
+      if (!audioData) continue
+
+      // Convert base64 L16 PCM to WAV blob
+      const raw = Uint8Array.from(atob(audioData), c => c.charCodeAt(0))
+      const wavBlob = pcmToWav(raw, 24000)
+      const ok = await playBlobViaAudioCtx(wavBlob)
+      if (ok) return true
+    } catch {
+      continue
+    }
+  }
+  return false
 }
 
 // speak — for TEXT CHAT and other non-realtime uses
@@ -457,15 +507,15 @@ export async function speakVoiceMode(text: string): Promise<void> {
 export async function speak(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 0) OpenAI TTS — nova voice — direct REST API, works on iPhone/Vercel (no proxy needed)
-  console.log('[TTS] Trying OpenAI nova...')
-  if (await speakOpenAI(text)) { console.log('[TTS] ✅ OpenAI nova worked'); return }
-  console.log('[TTS] ❌ OpenAI failed (no key or network error)')
-
-  // 1) Gemini TTS — multilingual Aoede (direct API, works in production)
+  // 0) Gemini TTS — native multilingual voice, best Hebrew accent
   console.log('[TTS] Trying Gemini...')
   if (await speakGemini(text)) { console.log('[TTS] ✅ Gemini worked'); return }
   console.log('[TTS] ❌ Gemini failed')
+
+  // 1) OpenAI TTS — nova voice — fast model, direct REST API
+  console.log('[TTS] Trying OpenAI nova...')
+  if (await speakOpenAI(text)) { console.log('[TTS] ✅ OpenAI nova worked'); return }
+  console.log('[TTS] ❌ OpenAI failed (no key or network error)')
 
   // 2) Azure TTS — HilaNeural/ElenaNeural — dev proxy only, will skip in production
   console.log('[TTS] Trying Azure TTS...')

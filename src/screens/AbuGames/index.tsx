@@ -41,18 +41,12 @@ const MAHJONG_GAMES   = GAMES.filter(g => g.category === 'mahjong')
 /* ─── Navigation guard ─── */
 let isNavigating = false
 let navTimer: ReturnType<typeof setTimeout> | null = null
-function handleTap(url: string, androidPackage?: string): void {
+function handleTap(url: string): void {
   if (isNavigating) return
   isNavigating = true
   if (navTimer) clearTimeout(navTimer)
   navTimer = setTimeout(() => { isNavigating = false }, 800)
   soundTap()
-
-  if (androidPackage && /android/i.test(navigator.userAgent)) {
-    window.location.href = `intent://#Intent;package=${androidPackage};end`
-    return
-  }
-
   window.location.href = url
 }
 
@@ -459,11 +453,11 @@ export function AbuGames() {
           role="button"
           tabIndex={0}
           aria-label="Words of Wonders — המשחק הראשי"
-          onClick={() => handleTap('https://www.crazygames.com/game/words-of-wonders', 'com.fugo.wow')}
+          onClick={() => handleTap('https://www.crazygames.com/game/words-of-wonders')}
           onPointerDown={() => setPressed('wow-hero')}
           onPointerUp={() => setPressed(null)}
           onPointerLeave={() => setPressed(null)}
-          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap('https://www.crazygames.com/game/words-of-wonders', 'com.fugo.wow') } }}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap('https://www.crazygames.com/game/words-of-wonders') } }}
           style={{
             position: 'relative',
             width: '100%',
