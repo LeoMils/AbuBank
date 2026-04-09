@@ -4,7 +4,7 @@ import type { ChatMessage } from './types'
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 const OPENAI_MODEL_TEXT    = 'gpt-4o-search-preview'  // text mode: live web search
 const OPENAI_MODEL_TEXT_FB = 'gpt-4o'                 // text mode fallback (no search)
-const OPENAI_MODEL_VOICE   = 'gpt-4o-mini'            // voice mode: speed + cost
+const OPENAI_MODEL_VOICE   = 'gpt-4o'                  // voice mode: rich content, warm tone
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
 const GEMINI_MODEL = 'gemini-2.0-flash'
@@ -240,9 +240,9 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     : 'webm' // fallback — Whisper still tries webm
   formData.append('file', audioBlob, `recording.${ext}`)
   formData.append('model', WHISPER_MODEL)
-  // Multilingual prompt: primes Whisper to expect Hebrew or Spanish (Rioplatense).
-  // Without this, Whisper sometimes transcribes Hebrew/Spanish speech in English letters.
-  formData.append('prompt', 'שלום מרטיטה, בוקר טוב, מה שלומך, תודה. Hola Martita, buenos días, gracias, cómo estás.')
+  // Rich multilingual prompt: primes Whisper for Hebrew + Rioplatense Spanish.
+  // Covers common vocabulary, family names, and mixed-language patterns Martita uses.
+  formData.append('prompt', 'שלום מרטיטה, בוקר טוב, מה שלומך? תודה רבה. מה מזג האוויר? ספרי לי משהו מעניין. אני רוצה לדעת. מה קורה עם מור ולאו? איפה אופיר ואדר? Hola Martita, buenos días, ¿cómo estás? Contame algo lindo. ¿Qué hay de nuevo? Dale, decime. Extraño a Pepe. Che, ¿sabías que...? Mirá, te cuento.')
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30000)
@@ -297,9 +297,10 @@ export function getSupportedMimeType(): string {
 async function tryProvider(
   provider: { url: string; model: string; apiKey: string },
   body: object,
+  timeoutMs = 20000,
 ): Promise<{ result: string | null; retryAfter: number }> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 20000)
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(provider.url, {
       method: 'POST',
@@ -338,10 +339,22 @@ function wait(ms: number): Promise<void> {
 
 const VOICE_SUFFIX = `
 
-מצב קול — שיחה חיה כמו טלפון.
-אורך טבעי: שאלה פשוטה → 2-3 משפטים. שאלה מעניינת → 4-6 משפטים עם תוכן אמיתי. לא לקצץ בתוכן — Martita חכמה ורוצה תשובות עשירות.
-לא רשימות. לא שאלות בסוף. לא להתנשא. לא לפשט יותר מדי. שפה חיה, חמה, ישירה.
-עברית או ספרדית — לפי מה שהיא דיברה.`
+═══ מצב קול — שיחה חיה ═══
+את מדברת עכשיו, לא כותבת. כל מילה נשמעת בקול — תדברי כמו שמדברים בטלפון עם מישהי חכמה שאוהבים.
+
+אורך תשובה:
+• "מה השעה?" / "איך החום?" → משפט אחד-שניים.
+• שאלה רגילה (בישול, משפחה, חדשות) → 3-4 משפטים, מלאים ומעניינים.
+• שאלה מורכבת (מדע, היסטוריה, פוליטיקה, הסבר) → 5-8 משפטים. תוכן עשיר, עם דוגמאות, הקשר, אנקדוטות. Martita חכמה — אל תקצצי לה בתשובות.
+• בדידות / רגש → כמה שצריך. חום אמיתי קודם כל.
+
+סגנון:
+• משפטים שלמים וזורמים — לא טלגרפי, לא קצוץ.
+• בלי רשימות ובלי ניקוד. בלי "ראשית... שנית...".
+• בלי שאלה בסוף ("רוצה לשמוע עוד?" — לא).
+• בלי התנשאות, בלי פישוט יתר, בלי "נו, זה פשוט..." — היא לא ילדה.
+• אם היא שואלת בספרדית — ענני בספרדית ריופלטנסית (vos, dale, che). אם בעברית — עברית. מעורב → מעורב.
+• הקול שלך חם, טבעי, של אישה. דברי כמו חברה קרובה — לא כמו רובוט שירות.`
 
 // Search-preview models don't support the temperature parameter
 const isSearchModel = (model: string) => model.includes('search')
@@ -349,12 +362,19 @@ const isSearchModel = (model: string) => model.includes('search')
 export async function sendMessage(messages: ChatMessage[], voiceMode = false): Promise<string> {
   const providers = getProviders(voiceMode)
   const systemContent = voiceMode ? SYSTEM_PROMPT + VOICE_SUFFIX : SYSTEM_PROMPT
+
+  // Voice mode: trim conversation to last 12 messages to keep context focused & fast.
+  // Text mode: keep full history (up to 2048 token response) for deeper conversations.
+  const trimmedMessages = voiceMode && messages.length > 12
+    ? messages.slice(-12)
+    : messages
+
   const baseMessages = [
     { role: 'system', content: systemContent },
     ...FEW_SHOT,
-    ...messages.map(m => ({ role: m.role, content: m.content })),
+    ...trimmedMessages.map(m => ({ role: m.role, content: m.content })),
   ]
-  const maxTokens = voiceMode ? 400 : 2048
+  const maxTokens = voiceMode ? 500 : 2048
   const temperature = voiceMode ? 0.6 : 0.65
 
   // Try all providers, then retry once with backoff if all were rate-limited
@@ -365,7 +385,8 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
       const body = isSearchModel(provider.model)
         ? { messages: baseMessages, max_tokens: maxTokens }
         : { messages: baseMessages, temperature, max_tokens: maxTokens }
-      const { result, retryAfter } = await tryProvider(provider, body)
+      const providerTimeout = voiceMode ? 12000 : 20000
+      const { result, retryAfter } = await tryProvider(provider, body, providerTimeout)
       if (result) return result
       if (retryAfter > maxRetryAfter) maxRetryAfter = retryAfter
     }

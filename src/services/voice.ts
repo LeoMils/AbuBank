@@ -1,10 +1,12 @@
 // ─── Text-to-Speech ─────────────────────────────────────────
-// Priority: 1) Azure TTS REST API (HilaNeural/ElenaNeural — needs VITE_AZURE_TTS_KEY)
-//           2) Edge TTS WebSocket (same voices, unofficial fallback)
-//           3) Gemini TTS (Aoede — human but not Israeli/Argentine)
-//           4) Google Translate TTS  5) Web Speech API
+// Priority: 1) OpenAI TTS (shimmer — warm woman, direct REST)
+//           2) Gemini TTS (Aoede — multilingual)
+//           3) Azure TTS (HilaNeural/ElenaNeural — dev proxy)
+//           4) Edge TTS (same voices, WebSocket fallback)
+//           5) Google Translate TTS  6) Web Speech API
 
 let currentAudio: HTMLAudioElement | null = null
+let currentAudioCtxSource: AudioBufferSourceNode | null = null
 
 // Shared AudioContext — created once, reused across all unlock calls.
 // iOS Safari: once an AudioContext is resumed inside a user gesture, it stays
@@ -44,15 +46,15 @@ export function unlockIOSAudio(): void {
 
 // ─── Language detection ────────────────────────────────────
 
-function detectLang(text: string): 'he' | 'es' {
+export function detectLang(text: string): 'he' | 'es' {
   // Count Hebrew Unicode characters
   const heChars = (text.match(/[\u0590-\u05FF]/g) ?? []).length
   // Count Spanish-indicator characters (accented Latin)
   const esChars = (text.match(/[áéíóúüñ¿¡]/gi) ?? []).length
   // If Hebrew chars dominate → Hebrew
   if (heChars > 2) return 'he'
-  // Explicit Spanish words (Rioplatense-aware vocabulary)
-  const esWords = /\b(hola|gracias|buenos|buenas|cómo|qué|por|favor|sí|estoy|tengo|quiero|puedo|mamá|abuela|bien|mucho|todo|nada|casa|amor|vida|sabes|sabías|cuéntame|rico|claro|bueno|ja ja|querida|familia|che)\b/i
+  // Rioplatense + general Spanish vocabulary (broad coverage)
+  const esWords = /\b(hola|gracias|buenos|buenas|cómo|qué|por|favor|sí|estoy|tengo|quiero|puedo|mamá|abuela|bien|mucho|todo|nada|casa|amor|vida|sabes|sabías|cuéntame|rico|claro|bueno|ja ja|querida|familia|che|dale|vos|sos|andá|mirá|decime|contame|bancame|tranqui|boludo|pibe|mina|laburar|re|piola|bárbaro|genial|lindo|hermoso|extraño|recuerdo|siempre|nunca|cuando|donde|porque|entonces|también|después|antes|ahora|todavía|ojalá|chau|basta|parar)\b/i
   if (esChars > 0 || esWords.test(text)) return 'es'
   // Mixed or unknown — default Hebrew (most messages will be Hebrew)
   return 'he'
@@ -140,9 +142,10 @@ async function playBlobViaAudioCtx(blob: Blob): Promise<boolean> {
     const audioBuf = await _sharedAudioCtx.decodeAudioData(arrayBuf)
     return new Promise<boolean>((resolve) => {
       const src = _sharedAudioCtx!.createBufferSource()
+      currentAudioCtxSource = src
       src.buffer = audioBuf
       src.connect(_sharedAudioCtx!.destination)
-      src.onended = () => resolve(true)
+      src.onended = () => { currentAudioCtxSource = null; resolve(true) }
       src.start(0)
     })
   } catch (e) {
@@ -421,6 +424,10 @@ function speakWebAPI(text: string): Promise<void> {
 export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
 
+  // Language-aware speed: Hebrew slightly slower (denser info), Spanish natural pace
+  const lang = detectLang(text)
+  const speed = lang === 'he' ? 0.90 : 0.94
+
   // 1) OpenAI TTS → AudioContext playback (best quality, works on iOS after mic)
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
   if (apiKey) {
@@ -430,7 +437,7 @@ export async function speakVoiceMode(text: string): Promise<void> {
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'shimmer', speed: 0.92, response_format: 'mp3' }),
+        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'shimmer', speed, response_format: 'mp3' }),
         signal: controller.signal,
       })
       clearTimeout(t)
@@ -484,7 +491,16 @@ export async function speak(text: string): Promise<void> {
   await speakWebAPI(text)
 }
 
+export function isSpeaking(): boolean {
+  return !!(currentAudio || currentAudioCtxSource) ||
+    (typeof speechSynthesis !== 'undefined' && speechSynthesis.speaking)
+}
+
 export function stopSpeaking(): void {
+  if (currentAudioCtxSource) {
+    try { currentAudioCtxSource.stop() } catch {}
+    currentAudioCtxSource = null
+  }
   if (currentAudio) {
     currentAudio.pause()
     currentAudio.currentTime = 0
@@ -494,6 +510,12 @@ export function stopSpeaking(): void {
 }
 
 // ─── Silence Detection (AudioContext + AnalyserNode) ────────
+// Professional voice activity detection:
+// 1. Ambient calibration — first 600ms measures room noise floor
+// 2. Frequency-weighted energy — band-pass 250Hz-3500Hz (human voice range)
+// 3. Speech frame debounce — requires 3+ consecutive frames to confirm speech
+// 4. Exponential moving average — smooths level for UI and prevents flicker
+// 5. Adaptive threshold — auto-adjusts above ambient noise floor
 
 export interface SilenceDetector {
   stop: () => void
@@ -505,59 +527,109 @@ export function createSilenceDetector(
   onSilence: () => void,
   options?: { threshold?: number; silenceMs?: number; maxMs?: number; minActiveMs?: number },
 ): SilenceDetector {
-  const threshold    = options?.threshold   ?? 22    // higher = less sensitive to background noise
-  const silenceMs    = options?.silenceMs   ?? 2800  // ms quiet after speech → stop (longer = tolerates pauses)
-  const maxMs        = options?.maxMs       ?? 25000 // absolute max recording time
-  const minActiveMs  = options?.minActiveMs ?? 2500  // never stop before this many ms (let her finish)
+  const baseThreshold = options?.threshold   ?? 18    // base threshold (adjusted by ambient calibration)
+  const silenceMs     = options?.silenceMs   ?? 3000  // ms quiet after speech → stop (tolerates natural pauses)
+  const maxMs         = options?.maxMs       ?? 30000 // absolute max recording time
+  const minActiveMs   = options?.minActiveMs ?? 2500  // never stop before this many ms
 
   let stopped = false
-  let level = 0
+  let smoothLevel = 0                // exponential moving average of level
   let hasSpeech = false
   let silenceStart = 0
   const startTime = Date.now()
   let ctx: AudioContext | null = null
   let frame = 0
 
+  // Ambient calibration state
+  let calibrating = true
+  const CALIBRATION_MS = 600         // how long to measure ambient noise
+  let ambientSamples: number[] = []
+  let effectiveThreshold = baseThreshold
+
+  // Speech debounce state — require N consecutive frames above threshold
+  const SPEECH_CONFIRM_FRAMES = 3
+  let consecutiveSpeechFrames = 0
+
   // ── HARD SAFETY TIMER ──────────────────────────────────────────────────────
-  // This fires regardless of AudioContext state.  Guarantees onSilence is ALWAYS
-  // called eventually even if AudioContext stays suspended forever on iOS Safari.
   const hardTimer = setTimeout(() => {
     if (!stopped) { cleanup(); onSilence() }
-  }, maxMs + 1500)
+  }, maxMs + 2000)
 
   try {
     ctx = new AudioContext()
-    const source  = ctx.createMediaStreamSource(stream)
+    const source   = ctx.createMediaStreamSource(stream)
     const analyser = ctx.createAnalyser()
-    analyser.fftSize = 512
+    analyser.fftSize = 1024              // more frequency resolution for band-pass
+    analyser.smoothingTimeConstant = 0.3 // slight smoothing at analyser level
     source.connect(analyser)
-    const buf = new Uint8Array(analyser.frequencyBinCount)
+
+    const freqBins = analyser.frequencyBinCount
+    const freqBuf  = new Uint8Array(freqBins)
+    const sampleRate = ctx.sampleRate
+    const binHz = sampleRate / analyser.fftSize  // Hz per bin
+
+    // Pre-calculate which bins fall in human voice range (250Hz – 3500Hz)
+    const voiceLowBin  = Math.max(1, Math.floor(250 / binHz))
+    const voiceHighBin = Math.min(freqBins - 1, Math.ceil(3500 / binHz))
 
     const tick = () => {
       if (stopped) return
-      analyser.getByteTimeDomainData(buf)
-      let sum = 0
-      for (let i = 0; i < buf.length; i++) {
-        const v = (buf[i]! - 128) / 128
-        sum += v * v
-      }
-      level = Math.min(100, Math.sqrt(sum / buf.length) * 300)
-
       const elapsed = Date.now() - startTime
 
-      // Only evaluate silence AFTER minActiveMs (prevents premature stops)
-      if (elapsed >= minActiveMs) {
-        if (level > threshold) {
-          hasSpeech = true
-          silenceStart = 0
-        } else if (hasSpeech) {
-          if (!silenceStart) silenceStart = Date.now()
-          else if (Date.now() - silenceStart > silenceMs) {
-            cleanup(); onSilence(); return
+      // Use frequency-domain data for voice band energy
+      analyser.getByteFrequencyData(freqBuf)
+      let voiceEnergy = 0
+      let voiceBins = 0
+      for (let i = voiceLowBin; i <= voiceHighBin; i++) {
+        voiceEnergy += freqBuf[i]!
+        voiceBins++
+      }
+      const rawLevel = voiceBins > 0 ? (voiceEnergy / voiceBins) / 2.55 : 0  // normalize 0-100
+
+      // Exponential moving average (alpha=0.3 → responsive but smooth)
+      smoothLevel = smoothLevel * 0.7 + rawLevel * 0.3
+
+      // ── Phase 1: Ambient calibration (first 600ms) ──
+      if (calibrating) {
+        ambientSamples.push(rawLevel)
+        if (elapsed >= CALIBRATION_MS) {
+          calibrating = false
+          if (ambientSamples.length > 0) {
+            // Set threshold at ambient floor + base margin (never below baseThreshold)
+            const ambientAvg = ambientSamples.reduce((a, b) => a + b, 0) / ambientSamples.length
+            effectiveThreshold = Math.max(baseThreshold, ambientAvg + 12)
           }
         }
-        // Max time exceeded
+        frame = requestAnimationFrame(tick)
+        return
+      }
+
+      // ── Phase 2: Voice activity detection ──
+      if (elapsed >= minActiveMs) {
+        if (smoothLevel > effectiveThreshold) {
+          consecutiveSpeechFrames++
+          if (consecutiveSpeechFrames >= SPEECH_CONFIRM_FRAMES) {
+            hasSpeech = true
+          }
+          silenceStart = 0
+        } else {
+          consecutiveSpeechFrames = 0
+          if (hasSpeech) {
+            if (!silenceStart) silenceStart = Date.now()
+            else if (Date.now() - silenceStart > silenceMs) {
+              cleanup(); onSilence(); return
+            }
+          }
+        }
         if (elapsed > maxMs) { cleanup(); onSilence(); return }
+      } else {
+        // Before minActiveMs: still track speech but don't evaluate silence
+        if (smoothLevel > effectiveThreshold) {
+          consecutiveSpeechFrames++
+          if (consecutiveSpeechFrames >= SPEECH_CONFIRM_FRAMES) hasSpeech = true
+        } else {
+          consecutiveSpeechFrames = 0
+        }
       }
 
       frame = requestAnimationFrame(tick)
@@ -566,12 +638,8 @@ export function createSilenceDetector(
     if (ctx.state === 'running') {
       frame = requestAnimationFrame(tick)
     } else {
-      // iOS Safari: ctx.resume() may never resolve outside a user gesture.
-      // We add a 1200 ms timeout so tick() starts even if the promise hangs.
       const resumeGuard = setTimeout(() => {
-        if (!stopped && frame === 0) {
-          frame = requestAnimationFrame(tick)
-        }
+        if (!stopped && frame === 0) frame = requestAnimationFrame(tick)
       }, 1200)
 
       ctx.resume().then(() => {
@@ -594,5 +662,5 @@ export function createSilenceDetector(
     ctx?.close().catch(() => {})
   }
 
-  return { stop: cleanup, getLevel: () => level }
+  return { stop: cleanup, getLevel: () => smoothLevel }
 }

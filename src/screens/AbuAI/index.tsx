@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { sendMessage, transcribeAudio, getSupportedMimeType } from './service'
-import { speakVoiceMode, stopSpeaking, unlockIOSAudio } from '../../services/voice'
+import { speakVoiceMode, stopSpeaking, unlockIOSAudio, isSpeaking as isTTSSpeaking, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
@@ -178,7 +178,7 @@ export function AbuAI() {
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true }
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false }
       })
       streamRef.current = stream
       const mimeType = getSupportedMimeType()
@@ -256,7 +256,7 @@ export function AbuAI() {
     const handleText = async (text: string) => {
       if (!voiceModeRef.current) return
       const lower = text.trim()
-      if (/^(ביי|להתראות|תודה|עצור|עצרי|סטופ|stop|bye)$/i.test(lower)) {
+      if (/^(ביי|להתראות|תודה|עצור|עצרי|סטופ|מספיק|יאללה ביי|stop|bye|chau|basta|parar|adiós|hasta luego)$/i.test(lower)) {
         exitVoiceMode(); return
       }
       const userMsg: ChatMessage = { id: nextId(), role: 'user', content: text, timestamp: Date.now() }
@@ -288,6 +288,9 @@ export function AbuAI() {
       }
     }
 
+    // Stop any ongoing TTS before listening (prevents echo feedback loop)
+    if (isTTSSpeaking()) stopSpeaking()
+
     // Primary: Web Speech Recognition
     const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (WSR) {
@@ -300,6 +303,15 @@ export function AbuAI() {
       let gotResult = false
       let speechTimeout: ReturnType<typeof setTimeout> | null = null
       let lastTranscript = ''
+
+      // Safety timeout — if WSR hangs with no events, restart after 15s
+      const wsrSafetyTimeout = setTimeout(() => {
+        if (!gotResult && voiceModeRef.current) {
+          try { rec.abort() } catch {}
+          recognitionRef.current = null
+          startVoiceListening()
+        }
+      }, 15000)
 
       rec.onresult = (e: any) => {
         // Collect the best final or interim transcript
@@ -319,32 +331,44 @@ export function AbuAI() {
           speechTimeout = setTimeout(() => {
             // Speech ended — stop recognition and process
             gotResult = true
+            clearTimeout(wsrSafetyTimeout)
             try { rec.stop() } catch {}
             recognitionRef.current = null
             if (lastTranscript.trim()) {
               setVoicePhase('processing')
               handleText(lastTranscript.trim())
             } else {
-              if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 100)
+              if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 80)
             }
-          }, 2000) // 2s of silence after last speech → commit
+          }, 2200) // 2.2s of silence after last speech → commit (tolerates natural pauses)
         }
       }
 
       rec.onerror = (e: any) => {
+        clearTimeout(wsrSafetyTimeout)
         if (speechTimeout) clearTimeout(speechTimeout)
         recognitionRef.current = null
         if (e.error === 'not-allowed') {
           exitVoiceMode()
+        } else if (e.error === 'no-speech') {
+          // No speech detected — silently restart (don't show error to user)
+          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 80)
+        } else if (e.error === 'aborted') {
+          // Aborted (e.g., by us calling rec.abort()) — silent restart if still in voice mode
+          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 80)
+        } else if (e.error === 'network') {
+          // Network error — brief pause then retry
+          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 500)
         } else {
           if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 150)
         }
       }
 
       rec.onend = () => {
+        clearTimeout(wsrSafetyTimeout)
         if (speechTimeout) clearTimeout(speechTimeout)
         recognitionRef.current = null
-        if (!gotResult && voiceModeRef.current) setTimeout(() => startVoiceListening(), 100)
+        if (!gotResult && voiceModeRef.current) setTimeout(() => startVoiceListening(), 80)
       }
 
       try {
@@ -405,23 +429,17 @@ export function AbuAI() {
 
         recorder.start(100)
 
-        const LISTEN_SEC = 10
-        setListenCountdown(LISTEN_SEC)
-        let cdSec = LISTEN_SEC
-        const cdInterval = setInterval(() => {
-          cdSec--
-          if (cdSec > 0) {
-            setListenCountdown(cdSec)
-          } else {
-            clearInterval(cdInterval)
-            setListenCountdown(null)
-            if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-          }
-        }, 1000)
-        silenceRef.current = {
-          stop: () => { clearInterval(cdInterval); setListenCountdown(null) },
-          getLevel: () => 0,
-        }
+        // Use the professional silence detector instead of a simple countdown
+        const detector = createSilenceDetector(stream, () => {
+          // Silence confirmed — stop recording and process
+          if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+        })
+        silenceRef.current = detector
+
+        // Update audio level UI from the detector
+        levelRef.current = setInterval(() => {
+          setAudioLevel(detector.getLevel())
+        }, 80)
       } catch (err) {
         console.error('[AbuAI] getUserMedia error:', err)
         exitVoiceMode()
@@ -439,11 +457,13 @@ export function AbuAI() {
     if (isFirstToday) localStorage.setItem('abuai-voice-date', todayKey)
 
     let greeting = getVoiceGreeting()
-    if (Math.random() < 0.20) {
+    if (Math.random() < 0.35) {
       const reminders = [
         ' — ואם רוצה, אפשר גם בספרדית.',
         ' Acordate que podés hablarme en español.',
         ' — y también hablo español, si preferís.',
+        ' — en español o en hebreo, como quieras.',
+        ' — podemos hablar en español también, eh.',
       ]
       greeting += reminders[Math.floor(Math.random() * reminders.length)]!
     }
