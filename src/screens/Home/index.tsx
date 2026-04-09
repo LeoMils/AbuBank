@@ -6,6 +6,7 @@ import type { Service } from './data';
 import { ICONS } from './icons';
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos';
 import { loadLocContacts } from '../Settings';
+import { injectSharedKeyframes } from '../../design/animations';
 
 // Module-level navigation guard
 let isNavigating = false;
@@ -65,6 +66,7 @@ export function Home() {
   const [pressed, setPressed] = useState<string | null>(null);
   const [loaded,  setLoaded]  = useState(false);
   const setScreen = useAppStore(s => s.setScreen);
+  const appVersion = useAppStore(s => s.appVersion);
   const greeting = useMemo(() => getGreeting(), []);
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), []);
 
@@ -130,6 +132,7 @@ export function Home() {
   }
 
   useEffect(() => {
+    injectSharedKeyframes();
     const t = setTimeout(() => setLoaded(true), 60);
     const onVisibility = () => { if (!document.hidden) isNavigating = false; };
     document.addEventListener('visibilitychange', onVisibility);
@@ -298,6 +301,39 @@ export function Home() {
 
           </div>
         </div>
+
+        {/* Three-dots settings — top-right of header (visually top-left in RTL) */}
+        <button
+          type="button"
+          onClick={() => setScreen(Screen.Settings)}
+          aria-label="הגדרות"
+          style={{
+            position: 'absolute',
+            right: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 48,
+            height: 48,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+            transition: 'background 0.15s ease',
+          }}
+          onPointerDown={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.12)' }}
+          onPointerUp={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)' }}
+          onPointerLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)' }}
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="rgba(255,255,255,0.65)" aria-hidden="true">
+            <circle cx="12" cy="5" r="2.2"/>
+            <circle cx="12" cy="12" r="2.2"/>
+            <circle cx="12" cy="19" r="2.2"/>
+          </svg>
+        </button>
       </header>
 
       {/* ─── SERVICE GRID ─── */}
@@ -512,28 +548,7 @@ export function Home() {
         backgroundClip: 'padding-box, border-box',
         borderImage: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.40) 30%, rgba(201,168,76,0.55) 50%, rgba(201,168,76,0.40) 70%, transparent) 1',
       }}>
-        {/* Settings — gear icon, top-right corner */}
-        <button
-          type="button"
-          className="btn-focus"
-          onClick={() => setScreen(Screen.Settings)}
-          aria-label="הגדרות"
-          style={{
-            position: 'absolute', top: 4, right: 8,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-            padding: '6px 8px', cursor: 'pointer', background: 'none', border: 'none',
-            minWidth: 44, minHeight: 52,
-          }}
-        >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-            stroke="rgba(255,255,255,0.78)" strokeWidth="1.7"
-            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.72)',
-            fontFamily: "'Heebo',sans-serif", lineHeight: 1 }}>Abu הגדרות</span>
-        </button>
+        {/* Settings moved to header three-dots */}
         {/* Version indicator */}
         <div style={{
           position: 'absolute', top: 7, left: 10,
@@ -542,46 +557,76 @@ export function Home() {
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
           pointerEvents: 'none',
-        }}>v16.0</div>
-        {/* 4 main icons — evenly spaced */}
-        {footerItems.map(item => (
-          <button
-            key={item.id}
-            type="button"
-            className="btn-focus"
-            onClick={item.id === 'calendar'  ? () => setScreen(Screen.AbuCalendar)
-              : item.id === 'ai'       ? () => setScreen(Screen.AbuAI)
-              : item.id === 'games'    ? () => setScreen(Screen.AbuGames)
-              : item.id === 'weather'  ? () => setScreen(Screen.AbuWeather)
-              : item.id === 'whatsapp' ? () => setScreen(Screen.AbuWhatsApp)
-              : undefined}
-            aria-label={item.hebrewLabel}
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              padding: '4px 2px', minWidth: 52, minHeight: 56,
-              cursor: 'pointer', background: 'none', border: 'none',
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"
+        }}>{appVersion ? `v${appVersion}` : ''}</div>
+        {/* 5 nav icons — with micro-animations */}
+        {footerItems.map((item, idx) => {
+          const iconAnims: Record<string, string> = {
+            weather: 'weatherSway 6s ease-in-out infinite',
+            calendar: 'calendarBounce 5s ease-in-out infinite',
+            ai: 'aiGlow 4s ease-in-out infinite',
+            games: 'gamesShuffle 7s ease-in-out infinite',
+            whatsapp: 'whatsappPulse 5s ease-in-out infinite',
+          }
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className="btn-focus"
+              onClick={item.id === 'calendar'  ? () => setScreen(Screen.AbuCalendar)
+                : item.id === 'ai'       ? () => setScreen(Screen.AbuAI)
+                : item.id === 'games'    ? () => setScreen(Screen.AbuGames)
+                : item.id === 'weather'  ? () => setScreen(Screen.AbuWeather)
+                : item.id === 'whatsapp' ? () => setScreen(Screen.AbuWhatsApp)
+                : undefined}
+              aria-label={item.hebrewLabel}
               style={{
-                filter: `drop-shadow(0 3px 8px rgba(0,0,0,0.45)) drop-shadow(0 0 12px rgba(${item.rgb},0.35))`,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                padding: '4px 2px', minWidth: 52, minHeight: 56,
+                cursor: 'pointer', background: 'none', border: 'none',
+              }}
+              onPointerDown={(e) => {
+                const svg = e.currentTarget.querySelector('svg') as HTMLElement | null
+                if (svg) svg.style.transform = 'scale(0.88)'
+              }}
+              onPointerUp={(e) => {
+                const svg = e.currentTarget.querySelector('svg') as HTMLElement | null
+                if (svg) svg.style.transform = ''
+              }}
+              onPointerLeave={(e) => {
+                const svg = e.currentTarget.querySelector('svg') as HTMLElement | null
+                if (svg) svg.style.transform = ''
+              }}
+            >
+              <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"
+                style={{
+                  filter: `drop-shadow(0 3px 8px rgba(0,0,0,0.45)) drop-shadow(0 0 12px rgba(${item.rgb},0.35))`,
+                  animation: iconAnims[item.id] ?? 'none',
+                  animationDelay: `${idx * 0.8}s`,
+                  transition: 'transform 0.12s ease',
+                }}>
+                <defs><linearGradient id={item.gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor={item.gradStart}/><stop offset="100%" stopColor={item.gradEnd}/>
+                </linearGradient></defs>
+                {item.svgContent}
+              </svg>
+              <span style={{
+                fontSize: 14, fontWeight: 700,
+                fontFamily: "'Heebo',sans-serif",
+                lineHeight: 1.2, textAlign: 'center', whiteSpace: 'nowrap',
+                color: item.labelColor, opacity: 0.95,
+                textShadow: `0 1px 3px rgba(0,0,0,0.5), 0 0 8px rgba(${item.rgb},0.20)`,
               }}>
-              <defs><linearGradient id={item.gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={item.gradStart}/><stop offset="100%" stopColor={item.gradEnd}/>
-              </linearGradient></defs>
-              {item.svgContent}
-            </svg>
-            <span style={{
-              fontSize: 14, fontWeight: 700,
-              fontFamily: "'Heebo',sans-serif",
-              lineHeight: 1.2, textAlign: 'center', whiteSpace: 'nowrap',
-              color: item.labelColor, opacity: 0.95,
-              textShadow: `0 1px 3px rgba(0,0,0,0.5), 0 0 8px rgba(${item.rgb},0.20)`,
-            }}>
-              {item.hebrewLabel}
-            </span>
-          </button>
-        ))}
+                {item.hebrewLabel}
+              </span>
+              {/* Accent bar */}
+              <div style={{
+                width: 20, height: 3, borderRadius: 2,
+                background: `linear-gradient(90deg, transparent, ${item.gradStart}, transparent)`,
+                opacity: 0.30, marginTop: 2,
+              }} />
+            </button>
+          )
+        })}
       </footer>
     </div>
   );

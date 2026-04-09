@@ -4,6 +4,7 @@ import { Screen } from '../../state/types'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap } from '../../services/sounds'
 import { InfoButton } from '../../components/InfoButton'
+import { injectSharedKeyframes } from '../../design/animations'
 
 /* ─── GAMES DATA ─── */
 interface Game {
@@ -256,6 +257,7 @@ export function AbuGames() {
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
 
   useEffect(() => {
+    injectSharedKeyframes()
     if (!document.getElementById('abu-games-redesign-anim')) {
       const style = document.createElement('style')
       style.id = 'abu-games-redesign-anim'
@@ -302,7 +304,7 @@ export function AbuGames() {
       }}
     >
 
-      {/* ── Ambient background glow blobs ── */}
+      {/* ── Ambient background glow blobs — with live color shift ── */}
       <div aria-hidden="true" style={{
         position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
         background: [
@@ -310,6 +312,7 @@ export function AbuGames() {
           'radial-gradient(ellipse 45% 35% at 90% 85%, rgba(239,68,68,0.09) 0%,  transparent 60%)',
           'radial-gradient(ellipse 40% 25% at 50% 45%, rgba(139,92,246,0.05) 0%, transparent 65%)',
         ].join(', '),
+        animation: 'ambientColorShift 25s ease-in-out infinite',
       }} />
 
       {/* ── Floating game particles (♠ ♣ 🀄 etc.) ── */}

@@ -1,8 +1,23 @@
-// InfoButton — minimal ℹ icon + full-screen modal with close button
-// Teal/green theme matching AbuWhatsApp. Almost invisible button, prominent close.
-import { useState } from 'react'
+// InfoButton — ℹ icon + full-screen modal with close button
+// Teal/green theme matching AbuWhatsApp. Visible enough for 80+ user, prominent close.
+import { useState, useEffect } from 'react'
 import { speak, stopSpeaking } from '../services/voice'
 import { soundTap } from '../services/sounds'
+
+// Inject pulse animation once
+const INFO_PULSE_ID = 'abu-info-pulse-anim'
+function injectInfoPulse() {
+  if (document.getElementById(INFO_PULSE_ID)) return
+  const style = document.createElement('style')
+  style.id = INFO_PULSE_ID
+  style.textContent = `
+    @keyframes infoButtonPulse {
+      0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+      50% { box-shadow: 0 0 0 6px rgba(20,184,166,0.15), 0 2px 8px rgba(0,0,0,0.25); }
+    }
+  `
+  document.head.appendChild(style)
+}
 
 interface InfoButtonProps {
   title: string
@@ -27,32 +42,36 @@ export function InfoButton({ title, lines, howTo, position = 'top-right' }: Info
 
   const closeModal = () => { stopSpeaking(); setIsReading(false); setOpen(false) }
 
+  // Inject pulse keyframe on mount
+  useEffect(() => { injectInfoPulse() }, [])
+
   // Position: bottom-right by default to avoid covering Martita photo
   const posStyle: React.CSSProperties = position === 'top-right'
-    ? { position: 'absolute', top: 10, right: 10, zIndex: 30 }
+    ? { position: 'absolute', top: 14, right: 14, zIndex: 30 }
     : position === 'top-left'
-    ? { position: 'absolute', top: 10, left: 10, zIndex: 30 }
+    ? { position: 'absolute', top: 14, left: 14, zIndex: 30 }
     : { position: 'absolute', bottom: 80, right: 14, zIndex: 30 }
 
   return (
     <>
-      {/* ℹ Button — almost invisible, ghost style */}
+      {/* ℹ Button — visible for 80+ user, with discovery pulse */}
       <button
         type="button"
         onClick={() => { soundTap(); setOpen(true) }}
         style={{
           ...posStyle,
-          width: 28, height: 28, borderRadius: '50%',
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          color: 'rgba(255,255,255,0.25)',
-          fontSize: 13, fontWeight: 600,
+          width: 44, height: 44, borderRadius: '50%',
+          background: 'rgba(255,255,255,0.08)',
+          border: '1.5px solid rgba(255,255,255,0.18)',
+          color: 'rgba(255,255,255,0.55)',
+          fontSize: 16, fontWeight: 700,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer',
-          boxShadow: 'none',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
           fontFamily: "'DM Sans',sans-serif",
-          transition: 'opacity 0.2s ease',
+          transition: 'opacity 0.2s ease, box-shadow 0.3s ease',
           WebkitTapHighlightColor: 'transparent',
+          animation: 'infoButtonPulse 2.5s ease-in-out 1.5s 3',
         }}
         aria-label={`מידע על ${title}`}
       >ℹ</button>

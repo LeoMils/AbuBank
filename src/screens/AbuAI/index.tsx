@@ -7,6 +7,7 @@ import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/mar
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
+import { injectSharedKeyframes } from '../../design/animations'
 
 // ─── Color tokens (green/teal — matches AbuWhatsApp) ────────────────────────
 const GOLD            = '#14b8a6'   // teal (was gold)
@@ -80,6 +81,7 @@ function getVoiceGreeting(): string {
 
 export function AbuAI() {
   const setScreen = useAppStore(s => s.setScreen)
+  const appVersion = useAppStore(s => s.appVersion)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -117,6 +119,7 @@ export function AbuAI() {
 
   // Inject keyframes
   useEffect(() => {
+    injectSharedKeyframes()
     if (!document.getElementById(KEYFRAMES_ID)) {
       const style = document.createElement('style')
       style.id = KEYFRAMES_ID
@@ -566,7 +569,7 @@ export function AbuAI() {
         position: 'relative',
       }}
     >
-      {/* ── Ambient background — 3 layers combined ── */}
+      {/* ── Ambient background — 3 layers with live color shift ── */}
       <div aria-hidden="true" style={{
         position: 'absolute',
         inset: 0,
@@ -575,8 +578,9 @@ export function AbuAI() {
         background: [
           'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(20,184,166,0.10) 0%, transparent 60%)',
           'radial-gradient(ellipse 60% 50% at 15% 95%, rgba(20,184,166,0.08) 0%, transparent 55%)',
-          'radial-gradient(ellipse 45% 35% at 88% 80%, rgba(20,184,166,0.05) 0%, transparent 50%)',
+          'radial-gradient(ellipse 45% 35% at 88% 80%, rgba(139,92,246,0.05) 0%, transparent 50%)',
         ].join(', '),
+        animation: 'ambientColorShift 35s ease-in-out infinite',
       }} />
 
       {/* ─────────────────────── HEADER ─────────────────────── */}
@@ -741,7 +745,7 @@ export function AbuAI() {
           color: 'rgba(20,184,166,0.45)',
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
-        }}>v16.0</div>
+        }}>{appVersion ? `v${appVersion}` : ''}</div>
       </header>
 
       {/* ─────────────────────── CHAT AREA ─────────────────────── */}

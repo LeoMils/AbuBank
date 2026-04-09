@@ -17,6 +17,7 @@ import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 import { InfoButton } from '../../components/InfoButton'
+import { injectSharedKeyframes } from '../../design/animations'
 
 const GOLD = '#C9A84C'
 const BRIGHT_GOLD = '#D4A853'
@@ -485,6 +486,8 @@ export function AbuCalendar() {
   const reload = useCallback(() => setAppointments(loadAppointments()), [])
 
   // ─── Feature 1: Alert interval ───────────────────────────────────────────────
+  useEffect(() => { injectSharedKeyframes() }, [])
+
   useEffect(() => {
     const check = () => {
       const now = Date.now()
@@ -625,6 +628,16 @@ export function AbuCalendar() {
         WebkitUserSelect: 'none',
       } as React.CSSProperties}
     >
+      {/* Ambient glow — warm gold/teal */}
+      <div aria-hidden="true" style={{
+        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
+        background: [
+          'radial-gradient(ellipse 50% 30% at 15% 10%, rgba(201,168,76,0.10) 0%, transparent 60%)',
+          'radial-gradient(ellipse 40% 35% at 85% 80%, rgba(20,184,166,0.07) 0%, transparent 60%)',
+        ].join(', '),
+        animation: 'ambientColorShift 30s ease-in-out infinite',
+      }} />
+
       {/* ALERT BANNER */}
       {activeAlert && (
         <div style={{
@@ -838,6 +851,7 @@ export function AbuCalendar() {
                     ? 'linear-gradient(135deg, #D4A853 0%, #C9A84C 100%)'
                     : isSelected ? 'rgba(201,168,76,0.18)' : 'transparent',
                   boxShadow: isToday ? '0 2px 12px rgba(201,168,76,0.40)' : 'none',
+                  animation: isToday ? 'softPulseRing 3s ease-in-out infinite' : 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <span style={{
