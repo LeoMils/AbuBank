@@ -564,14 +564,18 @@ export class AudioChunkQueue {
     if (!this.ctx || this.ctx.state === 'closed') {
       this.ctx = new AudioContext()
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {})
+    // Don't resume here — let enqueue() trigger it when first blob arrives (Bug #7 fix)
   }
 
   /** Enqueue an audio blob for playback */
   enqueue(blob: Blob): void {
     if (this.aborted) return
     this.queue.push(blob)
-    if (!this.playing) this.playNext()
+    if (!this.playing) {
+      // Resume AudioContext on first blob (Bug #7 fix — avoids init silence)
+      if (this.ctx?.state === 'suspended') this.ctx.resume().catch(() => {})
+      this.playNext()
+    }
   }
 
   /** Signal that no more chunks will arrive */
@@ -636,7 +640,9 @@ export class AudioChunkQueue {
 /**
  * Stream-speak: plays TTS audio for each sentence as LLM tokens arrive.
  * Accumulates tokens until a sentence boundary, then sends to TTS and queues audio.
- * First audio starts playing while remaining sentences still generating.
+ * First audio plays while remaining sentences still generating.
+ *
+ * v16.2: Fixed critical bugs — await TTS, proper abort, non-blocking fallback.
  */
 export async function streamSpeakVoiceMode(
   tokenStream: AsyncIterable<string>,
@@ -652,8 +658,8 @@ export async function streamSpeakVoiceMode(
   let buffer = ''
   const sentenceEnd = /[.?!،]\s/
 
-  const speakChunk = async (text: string) => {
-    if (signal?.aborted || queue['aborted']) return
+  const speakChunk = async (text: string): Promise<void> => {
+    if (signal?.aborted) return
     // Try OpenAI TTS first (fastest, best quality)
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
     if (apiKey) {
@@ -670,11 +676,14 @@ export async function streamSpeakVoiceMode(
         }
       } catch { /* try fallback */ }
     }
-    // Fallback: Web Speech (synchronous, blocks queue — but better than silence)
-    await speakWebAPI(text)
+    // Fallback: Web Speech — don't block the queue, let it play independently
+    speakWebAPI(text).catch(() => {})
   }
 
   onPhaseChange?.('speaking')
+
+  // Collect TTS promises so we can await them all before finishing
+  const ttsPromises: Promise<void>[] = []
 
   for await (const token of tokenStream) {
     if (signal?.aborted) break
@@ -687,7 +696,8 @@ export async function streamSpeakVoiceMode(
       const sentence = buffer.substring(0, splitIdx).trim()
       buffer = buffer.substring(splitIdx)
       if (sentence.length > 2) {
-        speakChunk(sentence) // fire-and-forget — queue handles ordering
+        // Bug #1 fix: Track the promise so we wait for all TTS to enqueue
+        ttsPromises.push(speakChunk(sentence))
       }
     }
   }
@@ -695,8 +705,11 @@ export async function streamSpeakVoiceMode(
   // Flush remaining text
   const remaining = buffer.trim()
   if (remaining.length > 2 && !signal?.aborted) {
-    await speakChunk(remaining)
+    ttsPromises.push(speakChunk(remaining))
   }
+
+  // Wait for all TTS requests to complete (blobs enqueued to audio queue)
+  await Promise.all(ttsPromises)
 
   queue.finish()
 }

@@ -267,16 +267,26 @@ export function AbuAI() {
       setMessages(currentMsgs)
 
       try {
-        // STREAMING: LLM tokens flow directly into streaming TTS
+        // v16.2: Fixed streaming pipeline — proper await chain, abort handling
         const abortCtrl = new AbortController()
         const tokenStream = streamMessage(currentMsgs, true, abortCtrl.signal)
 
-        // Collect full response text while streaming audio plays
+        // Add a placeholder AI message that updates in real-time
+        const streamMsgId = nextId()
         let fullResponse = ''
-        const textCollector = (async function* () {
+        setMessages(prev => [...prev, { id: streamMsgId, role: 'assistant', content: '...', timestamp: Date.now() }])
+
+        if (!voiceModeRef.current) { abortCtrl.abort(); return }
+
+        setVoicePhase('speaking')
+        setIsSpeaking(true)
+
+        // Generator that consumes tokenStream, updates UI, and re-yields to TTS
+        const uiTokenStream = (async function* () {
           for await (const token of tokenStream) {
+            if (abortCtrl.signal.aborted) return  // Bug #4 fix: check abort in generator
             fullResponse += token
-            // Update the "live" AI message as tokens arrive
+            // Update live message bubble
             setMessages(prev => {
               const last = prev[prev.length - 1]
               if (last && last.role === 'assistant' && last.id === streamMsgId) {
@@ -288,18 +298,9 @@ export function AbuAI() {
           }
         })()
 
-        // Add a placeholder AI message that updates in real-time
-        const streamMsgId = nextId()
-        setMessages(prev => [...prev, { id: streamMsgId, role: 'assistant', content: '...', timestamp: Date.now() }])
-
-        if (!voiceModeRef.current) { abortCtrl.abort(); return }
-
-        setVoicePhase('speaking')
-        setIsSpeaking(true)
-
         // Stream tokens → sentence chunks → TTS audio → gapless playback
         await streamSpeakVoiceMode(
-          textCollector,
+          uiTokenStream,
           (phase) => {
             if (phase === 'done') {
               setIsSpeaking(false)
