@@ -266,62 +266,29 @@ export function AbuAI() {
       const currentMsgs = [...messagesRef.current, userMsg]
       setMessages(currentMsgs)
 
+      // v16.2: BULLETPROOF voice response — old reliable path as primary,
+      // streaming as enhancement. NEVER leave Martita in silence.
       try {
-        // v16.2: Fixed streaming pipeline — proper await chain, abort handling
-        const abortCtrl = new AbortController()
-        const tokenStream = streamMessage(currentMsgs, true, abortCtrl.signal)
+        setVoicePhase('processing')
 
-        // Add a placeholder AI message that updates in real-time
-        const streamMsgId = nextId()
-        let fullResponse = ''
-        setMessages(prev => [...prev, { id: streamMsgId, role: 'assistant', content: '...', timestamp: Date.now() }])
+        // Step 1: Get LLM response (non-streaming — RELIABLE)
+        const response = await sendMessage(currentMsgs, true)
+        const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }
+        setMessages(prev => [...prev, aiMsg])
 
-        if (!voiceModeRef.current) { abortCtrl.abort(); return }
+        if (!voiceModeRef.current) return
 
+        // Step 2: Speak it (proven TTS chain — Gemini → OpenAI → Web Speech)
         setVoicePhase('speaking')
         setIsSpeaking(true)
+        await speakVoiceMode(response)
+        setIsSpeaking(false)
 
-        // Generator that consumes tokenStream, updates UI, and re-yields to TTS
-        const uiTokenStream = (async function* () {
-          for await (const token of tokenStream) {
-            if (abortCtrl.signal.aborted) return  // Bug #4 fix: check abort in generator
-            fullResponse += token
-            // Update live message bubble
-            setMessages(prev => {
-              const last = prev[prev.length - 1]
-              if (last && last.role === 'assistant' && last.id === streamMsgId) {
-                return [...prev.slice(0, -1), { ...last, content: fullResponse }]
-              }
-              return prev
-            })
-            yield token
-          }
-        })()
+        if (!voiceModeRef.current) return
 
-        // Stream tokens → sentence chunks → TTS audio → gapless playback
-        await streamSpeakVoiceMode(
-          uiTokenStream,
-          (phase) => {
-            if (phase === 'done') {
-              setIsSpeaking(false)
-              if (voiceModeRef.current) {
-                setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 150)
-              }
-            }
-          },
-          abortCtrl.signal,
-        )
-
-        // Finalize the message with complete text
-        if (fullResponse.trim()) {
-          setMessages(prev => {
-            const last = prev[prev.length - 1]
-            if (last && last.id === streamMsgId) {
-              return [...prev.slice(0, -1), { ...last, content: fullResponse.trim() }]
-            }
-            return prev
-          })
-        }
+        // Step 3: Loop back to listening
+        await new Promise(r => setTimeout(r, 150))
+        if (voiceModeRef.current) startVoiceListening()
       } catch (err) {
         setIsSpeaking(false)
         const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
