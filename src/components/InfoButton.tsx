@@ -9,9 +9,10 @@ interface InfoButtonProps {
   lines: string[]      // description lines (shown as a list)
   howTo: string[]      // "how to use" steps
   position?: 'top-left' | 'top-right' | 'bottom-right'
+  positionStyle?: React.CSSProperties  // custom override for button placement
 }
 
-export function InfoButton({ title, lines, howTo, position = 'top-right' }: InfoButtonProps) {
+export function InfoButton({ title, lines, howTo, position = 'top-right', positionStyle }: InfoButtonProps) {
   const [open, setOpen] = useState(false)
   const [isReading, setIsReading] = useState(false)
 
@@ -23,7 +24,9 @@ export function InfoButton({ title, lines, howTo, position = 'top-right' }: Info
     try { await speak(fullText) } finally { setIsReading(false) }
   }
 
-  const posStyle: React.CSSProperties = position === 'top-right'
+  const posStyle: React.CSSProperties = positionStyle
+    ? { position: 'absolute', zIndex: 30, ...positionStyle }
+    : position === 'top-right'
     ? { position: 'absolute', top: 14, right: 14, zIndex: 30 }
     : position === 'top-left'
     ? { position: 'absolute', top: 14, left: 14, zIndex: 30 }

@@ -569,7 +569,7 @@ export function AbuGames() {
             title="Abu Games"
             lines={['משחקי קלפים וסוליטר — 15 משחקים שונים.', "סוליטר, עכביש, מהג'ונג ועוד."]}
             howTo={['לחצי על כרטיס המשחק הרצוי', 'המשחק נפתח בדפדפן', 'לחצי חזרה לחזור לתפריט']}
-            position="top-left"
+            positionStyle={{ left: 80, top: 6 }}
           />
         </div>
       </header>
