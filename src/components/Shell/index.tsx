@@ -19,7 +19,7 @@ export function Shell({ children }: ShellProps) {
   return (
     <div className={styles.shell}>
       {!isFullScreen && <Header />}
-      <main role="main" className={isFullScreen ? styles.mainFull : styles.main}>
+      <main role="main" key={currentScreen} className={isFullScreen ? styles.mainFull : styles.main}>
         {children}
       </main>
       {!installDismissed && !isFullScreen && <InstallGuidance />}

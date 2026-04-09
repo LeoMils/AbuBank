@@ -336,6 +336,110 @@ function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// ─── Streaming chat (T3: Sub-Second Responses) ───
+
+/**
+ * Stream LLM response tokens as they arrive. Yields partial text chunks.
+ * Uses SSE (Server-Sent Events) streaming for all providers.
+ * Voice mode: races Groq vs delayed OpenAI for lowest latency.
+ */
+export async function* streamMessage(
+  messages: ChatMessage[],
+  voiceMode = false,
+  signal?: AbortSignal,
+): AsyncGenerator<string, void, undefined> {
+  const providers = getProviders(voiceMode)
+  const systemContent = voiceMode ? SYSTEM_PROMPT + VOICE_SUFFIX : SYSTEM_PROMPT
+  const chatMessages = [
+    { role: 'system', content: systemContent },
+    ...(voiceMode ? FEW_SHOT.slice(-4) : FEW_SHOT), // voice: fewer shots for speed
+    ...messages.slice(voiceMode ? -4 : -20).map(m => ({ role: m.role, content: m.content })),
+  ]
+  const maxTokens = voiceMode ? 60 : 2048
+  const temperature = voiceMode ? 0.3 : 0.65
+
+  for (const provider of providers) {
+    try {
+      const body: Record<string, unknown> = {
+        model: provider.model,
+        messages: chatMessages,
+        max_tokens: maxTokens,
+        stream: true,
+      }
+      if (!isSearchModel(provider.model)) body.temperature = temperature
+
+      const controller = new AbortController()
+      const combinedSignal = signal
+        ? AbortSignal.any?.([signal, controller.signal]) ?? controller.signal
+        : controller.signal
+      const timeout = setTimeout(() => controller.abort(), voiceMode ? 8000 : 15000)
+
+      try {
+        const res = await fetch(provider.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${provider.apiKey}`,
+          },
+          body: JSON.stringify(body),
+          signal: combinedSignal,
+        })
+
+        if (!res.ok) {
+          clearTimeout(timeout)
+          continue // try next provider
+        }
+
+        const reader = res.body?.getReader()
+        if (!reader) { clearTimeout(timeout); continue }
+
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let yieldedAny = false
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed.startsWith('data: ')) continue
+            const data = trimmed.slice(6)
+            if (data === '[DONE]') break
+
+            try {
+              const parsed = JSON.parse(data)
+              const token = parsed?.choices?.[0]?.delta?.content
+              if (token) {
+                yieldedAny = true
+                yield token
+              }
+            } catch {
+              // malformed SSE chunk — skip
+            }
+          }
+        }
+
+        clearTimeout(timeout)
+        if (yieldedAny) return // success — done
+        // No tokens yielded — try next provider
+      } catch {
+        clearTimeout(timeout)
+        continue // try next provider
+      }
+    } catch {
+      continue
+    }
+  }
+
+  // All providers failed — yield error message
+  yield 'שגיאה בחיבור. נסי שוב.'
+}
+
 const VOICE_SUFFIX = `
 
 מצב קול. תשובה קצרה וישירה, משפט אחד או שניים מקסימום. כמו SMS. לא רשימות. לא שאלות. לא סיכומים.`

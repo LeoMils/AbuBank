@@ -46,8 +46,9 @@ export function unlockSounds(): void {
   if (c && c.state === 'suspended') c.resume().catch(() => {})
 }
 
-/** Subtle button tap — soft keyboard click feel */
+/** Subtle button tap — soft keyboard click feel + haptic */
 export function soundTap(): void {
+  haptic()
   try {
     const c = getCtx()
     if (!c) return
@@ -145,6 +146,32 @@ export function soundCopy(): void {
     if (!c) return
     playTone(1000, 25, 0.08, 0.000, c)
     playTone(1000, 25, 0.08, 0.055, c)
+  } catch { /* silent */ }
+}
+
+/** T2.3: Haptic feedback — 15ms vibration for every button tap */
+export function haptic(): void {
+  try { if (navigator.vibrate) navigator.vibrate(15) } catch { /* silent */ }
+}
+
+/** T2.3: AI processing tick — soft rhythmic pulse while LLM generates */
+export function soundProcessing(): void {
+  try {
+    const c = getCtx()
+    if (!c) return
+    playTone(330, 30, 0.03, 0.000, c)
+    playTone(330, 30, 0.03, 0.300, c)
+    playTone(330, 30, 0.03, 0.600, c)
+  } catch { /* silent */ }
+}
+
+/** T2.3: AI starts speaking — brief warm ding */
+export function soundSpeakStart(): void {
+  try {
+    const c = getCtx()
+    if (!c) return
+    playTone(660, 50, 0.06, 0, c)   // E5
+    playTone(880, 50, 0.06, 0.06, c) // A5
   } catch { /* silent */ }
 }
 

@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
-import { sendMessage, transcribeAudio, getSupportedMimeType } from './service'
-import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
+import { sendMessage, streamMessage, transcribeAudio, getSupportedMimeType } from './service'
+import { speakVoiceMode, streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
@@ -262,18 +262,62 @@ export function AbuAI() {
       const userMsg: ChatMessage = { id: nextId(), role: 'user', content: text, timestamp: Date.now() }
       const currentMsgs = [...messagesRef.current, userMsg]
       setMessages(currentMsgs)
+
       try {
-        const response = await sendMessage(currentMsgs, true)
-        const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }
-        setMessages(prev => [...prev, aiMsg])
-        if (!voiceModeRef.current) return
+        // STREAMING: LLM tokens flow directly into streaming TTS
+        const abortCtrl = new AbortController()
+        const tokenStream = streamMessage(currentMsgs, true, abortCtrl.signal)
+
+        // Collect full response text while streaming audio plays
+        let fullResponse = ''
+        const textCollector = (async function* () {
+          for await (const token of tokenStream) {
+            fullResponse += token
+            // Update the "live" AI message as tokens arrive
+            setMessages(prev => {
+              const last = prev[prev.length - 1]
+              if (last && last.role === 'assistant' && last.id === streamMsgId) {
+                return [...prev.slice(0, -1), { ...last, content: fullResponse }]
+              }
+              return prev
+            })
+            yield token
+          }
+        })()
+
+        // Add a placeholder AI message that updates in real-time
+        const streamMsgId = nextId()
+        setMessages(prev => [...prev, { id: streamMsgId, role: 'assistant', content: '...', timestamp: Date.now() }])
+
+        if (!voiceModeRef.current) { abortCtrl.abort(); return }
+
         setVoicePhase('speaking')
         setIsSpeaking(true)
-        await speakVoiceMode(response)
-        setIsSpeaking(false)
-        if (!voiceModeRef.current) return
-        await new Promise(r => setTimeout(r, 150))
-        if (voiceModeRef.current) startVoiceListening()
+
+        // Stream tokens → sentence chunks → TTS audio → gapless playback
+        await streamSpeakVoiceMode(
+          textCollector,
+          (phase) => {
+            if (phase === 'done') {
+              setIsSpeaking(false)
+              if (voiceModeRef.current) {
+                setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 150)
+              }
+            }
+          },
+          abortCtrl.signal,
+        )
+
+        // Finalize the message with complete text
+        if (fullResponse.trim()) {
+          setMessages(prev => {
+            const last = prev[prev.length - 1]
+            if (last && last.id === streamMsgId) {
+              return [...prev.slice(0, -1), { ...last, content: fullResponse.trim() }]
+            }
+            return prev
+          })
+        }
       } catch (err) {
         setIsSpeaking(false)
         const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
@@ -294,20 +338,32 @@ export function AbuAI() {
       const rec = new WSR() as any
       rec.lang = 'he-IL'
       rec.continuous = false
-      rec.interimResults = false
+      rec.interimResults = true  // T2.1: Show real-time transcription
       rec.maxAlternatives = 1
 
       let gotResult = false
+      let finalTranscript = ''
 
       rec.onresult = (e: any) => {
-        gotResult = true
-        recognitionRef.current = null
-        const transcript = (e.results[0]?.[0]?.transcript ?? '').trim()
-        if (transcript) {
+        let interim = ''
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const result = e.results[i]
+          if (result.isFinal) {
+            finalTranscript += result[0]?.transcript ?? ''
+            gotResult = true
+          } else {
+            interim += result[0]?.transcript ?? ''
+          }
+        }
+
+        // T2.1: Show interim text as user speaks
+        if (interim) setAudioLevel(0.6) // visual feedback that speech detected
+
+        if (gotResult && finalTranscript.trim()) {
+          recognitionRef.current = null
           setVoicePhase('processing')
-          handleText(transcript)
-        } else {
-          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 200)
+          handleText(finalTranscript.trim())
+          finalTranscript = ''
         }
       }
 
@@ -388,6 +444,13 @@ export function AbuAI() {
           if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
         }, { threshold: 10, silenceMs: 1800, maxMs: 12000, minActiveMs: 1200 })
         silenceRef.current = detector
+
+        // T1.3: Poll audio level for visual feedback (50ms intervals)
+        if (levelRef.current) clearInterval(levelRef.current)
+        levelRef.current = setInterval(() => {
+          const lvl = detector.getLevel()
+          setAudioLevel(Math.min(1, lvl / 60)) // normalize 0-60 → 0-1
+        }, 50)
 
         // Visual countdown (max 12 seconds)
         const LISTEN_SEC = 12
@@ -546,18 +609,34 @@ export function AbuAI() {
           padding: '0 14px',
         }}>
 
-          {/* LEFT (RTL): Martita portrait */}
+          {/* LEFT (RTL): Martita portrait — T2.2 Voice States */}
           <div style={{
             position: 'absolute',
             left: 14,
             top: '50%',
-            transform: 'translateY(-50%)',
+            transform: `translateY(-50%)${isSpeaking ? ` scale(${1 + audioLevel * 0.12})` : ''}`,
             width: 64,
             height: 64,
             borderRadius: '50%',
-            border: isSpeaking ? '2.5px solid rgba(20,184,166,0.80)' : '2px solid rgba(20,184,166,0.42)',
-            boxShadow: isSpeaking ? '0 0 0 2.5px rgba(20,184,166,0.75), 0 0 24px rgba(20,184,166,0.30)' : '0 0 0 2px rgba(20,184,166,0.42), 0 0 16px rgba(20,184,166,0.12)',
-            transition: 'box-shadow 0.4s ease',
+            border: voicePhase === 'listening'
+              ? `${2 + audioLevel * 4}px solid #7EB4B8`  // Teal, thickness pulses with audio
+              : voicePhase === 'processing'
+              ? '2.5px solid rgba(212,184,122,0.70)'      // Gold processing
+              : isSpeaking
+              ? '2.5px solid rgba(20,184,166,0.80)'       // Teal speaking
+              : voiceMode
+              ? '2px solid #D4B87A'                        // Gold idle pulse
+              : '2px solid rgba(20,184,166,0.42)',         // Default
+            boxShadow: voicePhase === 'listening'
+              ? `0 0 0 ${2 + audioLevel * 3}px rgba(126,180,184,0.40), 0 0 ${12 + audioLevel * 20}px rgba(126,180,184,0.30)`
+              : voicePhase === 'processing'
+              ? '0 0 0 2px rgba(212,184,122,0.40), 0 0 20px rgba(212,184,122,0.25)'
+              : isSpeaking
+              ? `0 0 0 ${2 + audioLevel * 3}px rgba(20,184,166,0.75), 0 0 24px rgba(20,184,166,0.30)`
+              : voiceMode
+              ? '0 0 0 2px rgba(212,184,122,0.30), 0 0 16px rgba(212,184,122,0.15)'
+              : '0 0 0 2px rgba(20,184,166,0.42), 0 0 16px rgba(20,184,166,0.12)',
+            transition: 'box-shadow 0.15s ease, transform 0.1s ease, border 0.15s ease',
             overflow: 'hidden',
             background: '#1a140a',
             flexShrink: 0,
@@ -662,7 +741,7 @@ export function AbuAI() {
           color: 'rgba(20,184,166,0.45)',
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
-        }}>v14.0</div>
+        }}>v16.0</div>
       </header>
 
       {/* ─────────────────────── CHAT AREA ─────────────────────── */}

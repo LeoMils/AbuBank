@@ -175,7 +175,7 @@ async function speakOpenAI(text: string): Promise<boolean> {
           model: 'tts-1',            // fast model, lower latency
           input: chunk,
           voice: 'nova',             // nova = warm, clear, natural
-          speed: 0.95,               // natural pace, not sluggish
+          speed: 0.88,               // T4.3: comfortable pace for elderly listener
           response_format: 'mp3',
         }),
         signal: controller.signal,
@@ -251,7 +251,7 @@ async function speakGemini(text: string): Promise<boolean> {
               responseModalities: ['AUDIO'],
               speechConfig: {
                 voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: 'Aoede' },
+                  prebuiltVoiceConfig: { voiceName: 'Kore' },  // T4.2: Kore better for Hebrew than Aoede
                 },
               },
             },
@@ -393,7 +393,7 @@ function speakWebAPI(text: string): Promise<void> {
 
     const u = new SpeechSynthesisUtterance(text)
     u.lang = lang === 'es' ? 'es-AR' : 'he-IL'
-    u.rate = lang === 'he' ? 0.82 : 0.88   // slightly slower for Hebrew (80-year-old listener)
+    u.rate = lang === 'he' ? 0.78 : 0.85   // T4.3: slower for 80-year-old listener
     u.pitch = 1.0                            // neutral pitch — no robot adjustment
     u.volume = 1.0
     if (bestVoice) u.voice = bestVoice
@@ -475,7 +475,7 @@ async function speakGeminiViaAudioCtx(text: string): Promise<boolean> {
               responseModalities: ['AUDIO'],
               speechConfig: {
                 voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: 'Aoede' },
+                  prebuiltVoiceConfig: { voiceName: 'Kore' },  // T4.2: Kore better for Hebrew than Aoede
                 },
               },
             },
@@ -540,6 +540,165 @@ export function stopSpeaking(): void {
     currentAudio = null
   }
   if ('speechSynthesis' in window) speechSynthesis.cancel()
+  // Stop streaming TTS queue
+  if (_activeQueue) { _activeQueue.abort(); _activeQueue = null }
+}
+
+// ─── Streaming TTS — Audio Chunk Queue ───────────────────────
+// Plays audio chunks as they arrive with zero gap.
+// Used by streaming voice mode: LLM tokens → sentence chunks → TTS → gapless playback.
+
+let _activeQueue: AudioChunkQueue | null = null
+
+export class AudioChunkQueue {
+  private queue: Blob[] = []
+  private playing = false
+  private aborted = false
+  private ctx: AudioContext | null = null
+  private currentSource: AudioBufferSourceNode | null = null
+  private onDone: (() => void) | null = null
+
+  constructor(onDone?: () => void) {
+    this.onDone = onDone ?? null
+    this.ctx = _sharedAudioCtx
+    if (!this.ctx || this.ctx.state === 'closed') {
+      this.ctx = new AudioContext()
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {})
+  }
+
+  /** Enqueue an audio blob for playback */
+  enqueue(blob: Blob): void {
+    if (this.aborted) return
+    this.queue.push(blob)
+    if (!this.playing) this.playNext()
+  }
+
+  /** Signal that no more chunks will arrive */
+  finish(): void {
+    if (this.aborted) return
+    if (!this.playing && this.queue.length === 0) {
+      this.onDone?.()
+    }
+    // Otherwise playNext() will call onDone when queue empties
+  }
+
+  /** Immediately stop all playback and clear queue */
+  abort(): void {
+    this.aborted = true
+    this.queue = []
+    if (this.currentSource) {
+      try { this.currentSource.stop() } catch { /* already stopped */ }
+      this.currentSource = null
+    }
+  }
+
+  /** Get current audio level for visual feedback (0-1) */
+  get isPlaying(): boolean { return this.playing && !this.aborted }
+
+  private async playNext(): Promise<void> {
+    if (this.aborted) return
+    const blob = this.queue.shift()
+    if (!blob) {
+      this.playing = false
+      this.onDone?.()
+      return
+    }
+
+    this.playing = true
+    try {
+      if (!this.ctx || this.ctx.state === 'closed') {
+        this.ctx = new AudioContext()
+      }
+      if (this.ctx.state === 'suspended') await this.ctx.resume().catch(() => {})
+
+      const arrayBuf = await blob.arrayBuffer()
+      const audioBuf = await this.ctx.decodeAudioData(arrayBuf)
+      if (this.aborted) return
+
+      const src = this.ctx.createBufferSource()
+      this.currentSource = src
+      src.buffer = audioBuf
+      src.connect(this.ctx.destination)
+      src.onended = () => {
+        this.currentSource = null
+        this.playNext()
+      }
+      src.start(0)
+    } catch (e) {
+      console.log('[AudioQueue] playback error:', e)
+      this.currentSource = null
+      this.playNext() // skip failed chunk, play next
+    }
+  }
+}
+
+/**
+ * Stream-speak: plays TTS audio for each sentence as LLM tokens arrive.
+ * Accumulates tokens until a sentence boundary, then sends to TTS and queues audio.
+ * First audio starts playing while remaining sentences still generating.
+ */
+export async function streamSpeakVoiceMode(
+  tokenStream: AsyncIterable<string>,
+  onPhaseChange?: (phase: 'speaking' | 'done') => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const queue = new AudioChunkQueue(() => {
+    _activeQueue = null
+    onPhaseChange?.('done')
+  })
+  _activeQueue = queue
+
+  let buffer = ''
+  const sentenceEnd = /[.?!،]\s/
+
+  const speakChunk = async (text: string) => {
+    if (signal?.aborted || queue['aborted']) return
+    // Try OpenAI TTS first (fastest, best quality)
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
+    if (apiKey) {
+      try {
+        const res = await fetch('https://api.openai.com/v1/audio/speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: 0.88, response_format: 'mp3' }),
+          signal: signal ?? null,
+        })
+        if (res.ok) {
+          const blob = await res.blob()
+          if (blob.size > 100) { queue.enqueue(blob); return }
+        }
+      } catch { /* try fallback */ }
+    }
+    // Fallback: Web Speech (synchronous, blocks queue — but better than silence)
+    await speakWebAPI(text)
+  }
+
+  onPhaseChange?.('speaking')
+
+  for await (const token of tokenStream) {
+    if (signal?.aborted) break
+    buffer += token
+
+    // Check for sentence boundary
+    const match = sentenceEnd.exec(buffer)
+    if (match) {
+      const splitIdx = (match.index ?? 0) + match[0].length
+      const sentence = buffer.substring(0, splitIdx).trim()
+      buffer = buffer.substring(splitIdx)
+      if (sentence.length > 2) {
+        speakChunk(sentence) // fire-and-forget — queue handles ordering
+      }
+    }
+  }
+
+  // Flush remaining text
+  const remaining = buffer.trim()
+  if (remaining.length > 2 && !signal?.aborted) {
+    await speakChunk(remaining)
+  }
+
+  queue.finish()
 }
 
 // ─── Silence Detection (AudioContext + AnalyserNode) ────────

@@ -15,9 +15,29 @@
   flex: 1;
   overflow: hidden;
   padding-bottom: var(--abu-bottombar-h);
+  animation: screenSlideIn 400ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 .mainFull {
   flex: 1;
   overflow: hidden;
+  animation: screenSlideIn 400ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* T5.1: Screen transitions — RTL horizontal slide */
+@keyframes screenSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main, .mainFull {
+    animation: none;
+  }
 }
