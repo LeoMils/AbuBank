@@ -707,7 +707,7 @@ export function AbuAI() {
           color: 'rgba(201,168,76,0.45)',
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
-        }}>v14.0</div>
+        }}>v15.0</div>
       </header>
 
       {/* ─────────────────────── CHAT AREA ─────────────────────── */}
