@@ -1,98 +1,156 @@
-# Birthdays & Recurring Important Dates
-# Purpose: Abu Calendar intelligence, proactive reminders
-# Confidence: confirmed = from system prompt | inferred = from context | unknown = not found
-# Reminder policy: days_before = when to show pre-birthday countdown
+# Birthdays & Important Dates Registry
+# Source: User direct input, 2026-04-10
+# All dates confirmed by family member (Leo)
+# Format: MM-DD
 
 birthdays:
-  - person: "Martita"
-    date: "04-01"               # April 1
-    confidence: confirmed
-    source: "AbuAI system prompt"
-    reminder:
-      days_before: [7, 3, 1, 0]
-      style: "warm, celebratory"
-    emotional_significance: high
-    notes: "The matriarch's birthday — entire family celebrates"
+  # ─── January ──────────────────────────────────
+  # (Papi memorial — see memorials section)
 
-  # Children — dates unknown, need to be collected
-  - person: "Mor"
-    date: null
-    confidence: unknown
-    source: "not yet collected"
-    reminder:
-      days_before: [7, 3, 1, 0]
-      style: "warm, loving"
-    notes: "Daughter. Birthday date needed."
-
-  - person: "Leo"
-    date: null
-    confidence: unknown
-    source: "not yet collected"
-    reminder:
-      days_before: [7, 3, 1, 0]
-      style: "warm, loving"
-    notes: "Son. Birthday date needed."
-
-  # Grandchildren — dates unknown
+  # ─── February ─────────────────────────────────
   - person: "Ofir"
-    date: null
-    confidence: unknown
-
-  - person: "Eylon"
-    date: null
-    confidence: unknown
-
-  - person: "Ilai"
-    date: null
-    confidence: unknown
+    hebrew: "אופיר"
+    date: "02-15"               # 15 בפברואר
+    relationship: "grandson (Mor's son)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
 
   - person: "Adar"
-    date: null
-    confidence: unknown
+    hebrew: "אדר"
+    date: "02-28"               # 28 בפברואר
+    relationship: "grandson (Mor's youngest)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  # ─── March ────────────────────────────────────
+  # (none)
+
+  # ─── April ────────────────────────────────────
+  - person: "Martita"
+    hebrew: "מרתה"
+    date: "04-01"               # 1 באפריל
+    relationship: "self — the matriarch"
+    confidence: confirmed
+    reminder: { days_before: [14, 7, 3, 1, 0] }
+    emotional_significance: very_high
+    notes: "Entire family celebrates"
 
   - person: "Adi"
-    date: null
-    confidence: unknown
+    hebrew: "עדי"
+    date: "04-05"               # 5 באפריל
+    relationship: "granddaughter (Leo's daughter)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
 
   - person: "Noam"
-    date: null
-    confidence: unknown
+    hebrew: "נועם"
+    date: "04-05"               # 5 באפריל — same day as Adi!
+    relationship: "grandson (Leo's son)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+    notes: "Shares birthday with Adi"
 
-  # Spouses — dates unknown
+  - person: "Ilai"
+    hebrew: "עילאי"
+    aliases: ["עילי"]
+    date: "04-08"               # 8 באפריל
+    relationship: "grandson (Mor's son)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  - person: "Papi"
+    hebrew: "פפי"
+    date: "04-19"               # 19 באפריל
+    relationship: "deceased husband"
+    confidence: confirmed
+    reminder: { days_before: [3, 1, 0], style: "warm, remembering with love 🕯️" }
+    notes: "Born 1941. Passed Jan 1, 2025. Birthday remembered with love."
+
+  # ─── July ─────────────────────────────────────
   - person: "Raphi"
-    date: null
-    confidence: unknown
+    hebrew: "רפי"
+    date: "07-29"               # 29 ביולי
+    relationship: "son-in-law (Mor's husband)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  - person: "Eylon"
+    hebrew: "אילון"
+    date: "07-31"               # 31 ביולי
+    relationship: "grandson (Mor's son)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  # ─── August ───────────────────────────────────
+  - person: "Mor"
+    hebrew: "מור"
+    date: "08-10"               # 10 באוגוסט
+    relationship: "daughter"
+    confidence: confirmed
+    reminder: { days_before: [14, 7, 3, 1, 0] }
+    emotional_significance: high
+
+  - person: "Leo"
+    hebrew: "לאו"
+    date: "08-22"               # 22 באוגוסט
+    relationship: "son"
+    confidence: confirmed
+    reminder: { days_before: [14, 7, 3, 1, 0] }
+    emotional_significance: high
+
+  # ─── September ────────────────────────────────
+  - person: "Sharon"
+    hebrew: "שרון"
+    date: "09-11"               # 11 בספטמבר
+    confidence: confirmed
+    notes: "New family member — relationship to be clarified"
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  # ─── October ──────────────────────────────────
+  - person: "Anabel"
+    hebrew: "אנאבל"
+    date: "10-01"               # 1 באוקטובר
+    confidence: confirmed
+    notes: "New family member — relationship to be clarified"
+    reminder: { days_before: [7, 3, 1, 0] }
 
   - person: "Yarden"
-    date: null
-    confidence: unknown
+    hebrew: "ירדן"
+    date: "10-12"               # 12 באוקטובר
+    relationship: "granddaughter-in-law (Ofir's wife)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
 
-  - person: "Gilad"
-    date: null
-    confidence: unknown
+  # ─── November ─────────────────────────────────
+  - person: "Ari"
+    hebrew: "ארי"
+    date: "11-26"               # 26 בנובמבר
+    confidence: confirmed
+    notes: "New family member — relationship to be clarified"
+    reminder: { days_before: [7, 3, 1, 0] }
 
 memorials:
-  - person: "Pepe"
-    date: "12-26"               # December 26
+  - person: "Papi"
+    hebrew: "פפי"
+    aliases: ["Pepe"]
+    relationship: "husband"
+    birthday: "04-19"
+    birth_year: 1941
+    date_of_passing: "2025-01-01"
+    memorial_date: "01-01"          # 1 בינואר — יום הזיכרון
+    memorial_emoji: "🕯️"
     confidence: confirmed
-    source: "AbuAI system prompt"
-    type: "memorial"
+    source: "user direct input 2026-04-10"
     reminder:
-      days_before: [3, 1, 0]
-      style: "gentle, respectful, loving"
+      birthday: { days_before: [3, 1, 0], style: "warm, remembering with love" }
+      memorial: { days_before: [7, 3, 1, 0], style: "gentle, respectful, loving 🕯️" }
     emotional_significance: very_high
-    notes: "Deceased husband. Approach with warmth and respect, never clinical."
 
 recurring_events:
   - name: "Friday dinner"
     recurrence: "weekly"
     day: "Friday"
     significance: "Most important weekly family event"
-    notes: "Martita hosts. Family gathers. Central to her identity."
 
-# UPDATE PROTOCOL:
-# When a new birthday is learned (from conversation, user input, or WhatsApp):
-# 1. Add entry here with confirmed/inferred confidence
-# 2. Set appropriate reminder days_before
-# 3. Abu Calendar should pick up new entries automatically
-# 4. Never invent dates — leave null until confirmed
+# TOTAL: 15 birthdays + 1 memorial
+# 3 new names (Sharon, Anabel, Ari) — relationships need clarification from user

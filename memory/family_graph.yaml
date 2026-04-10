@@ -45,8 +45,10 @@ children:
         notes: "recently traveled to Buenos Aires"
 
 deceased:
-  - canonical_name: "Pepe"
+  - canonical_name: "Papi"
     hebrew: "פפי"
+    aliases: ["Pepe", "Papi"]
     relationship: "husband"
-    memorial_date: "12-26"          # December 26
-    notes: "remembered with love, memorial date is emotionally significant"
+    birthday: "04-19"               # April 19, born 1941
+    date_of_passing: "2025-01-01"   # January 1st, 2025
+    notes: "remembered with love. Memorial date Jan 1. Birthday Apr 19."
