@@ -434,14 +434,15 @@ export function AbuGames() {
             }}>חזרה</span>
           </button>
 
-          <InfoButton
-            title="Abu Games"
-            lines={['Words of Wonders — המשחק הראשי!', 'משחקי קלפים וסוליטר — 14 משחקים נוספים.', "סוליטר, עכביש, מהג'ונג ועוד."]}
-            howTo={['לחצי על WOW לשחק במשחק המילים', 'או בחרי משחק קלפים מהרשימה', 'המשחק נפתח בדפדפן', 'לחצי חזרה לחזור לתפריט']}
-            position="top-left"
-          />
         </div>
       </header>
+
+      <InfoButton
+        title="Abu Games"
+        lines={['Words of Wonders — המשחק הראשי!', 'משחקי קלפים וסוליטר — 14 משחקים נוספים.', "סוליטר, עכביש, מהג'ונג ועוד."]}
+        howTo={['לחצי על WOW לשחק במשחק המילים', 'או בחרי משחק קלפים מהרשימה', 'המשחק נפתח בדפדפן', 'לחצי חזרה לחזור לתפריט']}
+        position="top-left"
+      />
 
       {/* ════ SCROLLABLE CONTENT ════ */}
       <div style={{

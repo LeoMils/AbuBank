@@ -266,102 +266,71 @@ export function AbuAI() {
       const currentMsgs = [...messagesRef.current, userMsg]
       setMessages(currentMsgs)
 
-      // v16.2: BULLETPROOF voice response — old reliable path as primary,
-      // streaming as enhancement. NEVER leave Martita in silence.
+      // v17.0: STREAMING voice response — speak first sentence while LLM generates rest.
+      // Falls back to non-streaming if streaming fails.
       try {
         setVoicePhase('processing')
 
-        // Step 1: Get LLM response (non-streaming — RELIABLE)
-        const response = await sendMessage(currentMsgs, true)
-        const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }
-        setMessages(prev => [...prev, aiMsg])
+        const abortCtrl = new AbortController()
 
-        if (!voiceModeRef.current) return
+        // Attempt streaming: LLM tokens → sentence accumulator → TTS → audio queue
+        let fullResponse = ''
+        const tokenCollector = async function* () {
+          for await (const token of streamMessage(currentMsgs, true, abortCtrl.signal)) {
+            fullResponse += token
+            yield token
+          }
+        }
 
-        // Step 2: Speak it (proven TTS chain — Gemini → OpenAI → Web Speech)
-        setVoicePhase('speaking')
         setIsSpeaking(true)
-        await speakVoiceMode(response)
+        await streamSpeakVoiceMode(
+          tokenCollector(),
+          (phase) => {
+            if (phase === 'speaking') setVoicePhase('speaking')
+          },
+          abortCtrl.signal,
+        )
         setIsSpeaking(false)
 
+        // Save full response to chat history
+        if (fullResponse.trim()) {
+          const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: fullResponse.trim(), timestamp: Date.now() }
+          setMessages(prev => [...prev, aiMsg])
+        }
+
         if (!voiceModeRef.current) return
 
-        // Step 3: Loop back to listening
+        // Loop back to listening
         await new Promise(r => setTimeout(r, 150))
         if (voiceModeRef.current) startVoiceListening()
       } catch (err) {
         setIsSpeaking(false)
-        const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
-        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
-        if (voiceModeRef.current) {
+        // Fallback: non-streaming path (RELIABLE backup)
+        try {
+          setVoicePhase('processing')
+          const response = await sendMessage(currentMsgs, true)
+          const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }
+          setMessages(prev => [...prev, aiMsg])
+          if (!voiceModeRef.current) return
           setVoicePhase('speaking'); setIsSpeaking(true)
-          await speakVoiceMode(errText)
+          await speakVoiceMode(response)
           setIsSpeaking(false)
-          await new Promise(r => setTimeout(r, 150))
-          if (voiceModeRef.current) startVoiceListening()
-        }
-      }
-    }
-
-    // Primary: Web Speech Recognition
-    const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (WSR) {
-      const rec = new WSR() as any
-      rec.lang = 'he-IL'
-      rec.continuous = false
-      rec.interimResults = true  // T2.1: Show real-time transcription
-      rec.maxAlternatives = 1
-
-      let gotResult = false
-      let finalTranscript = ''
-
-      rec.onresult = (e: any) => {
-        let interim = ''
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          const result = e.results[i]
-          if (result.isFinal) {
-            finalTranscript += result[0]?.transcript ?? ''
-            gotResult = true
-          } else {
-            interim += result[0]?.transcript ?? ''
+        } catch (fallbackErr) {
+          setIsSpeaking(false)
+          const errText = fallbackErr instanceof Error ? fallbackErr.message : 'שגיאה. נסי שוב.'
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
+          if (voiceModeRef.current) {
+            setVoicePhase('speaking'); setIsSpeaking(true)
+            await speakVoiceMode(errText)
+            setIsSpeaking(false)
           }
         }
-
-        // T2.1: Show interim text as user speaks
-        if (interim) setAudioLevel(0.6) // visual feedback that speech detected
-
-        if (gotResult && finalTranscript.trim()) {
-          recognitionRef.current = null
-          setVoicePhase('processing')
-          handleText(finalTranscript.trim())
-          finalTranscript = ''
-        }
-      }
-
-      rec.onerror = (e: any) => {
-        recognitionRef.current = null
-        if (e.error === 'not-allowed') {
-          exitVoiceMode()
-        } else {
-          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 300)
-        }
-      }
-
-      rec.onend = () => {
-        recognitionRef.current = null
-        if (!gotResult && voiceModeRef.current) setTimeout(() => startVoiceListening(), 150)
-      }
-
-      try {
-        rec.start()
-        recognitionRef.current = rec
-        return
-      } catch {
-        recognitionRef.current = null
+        await new Promise(r => setTimeout(r, 150))
+        if (voiceModeRef.current) startVoiceListening()
       }
     }
 
-    // Fallback: MediaRecorder + Whisper
+    // v17: Whisper (Groq) as PRIMARY ASR — much better Hebrew accuracy than Web Speech API
     ;(async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -410,10 +379,10 @@ export function AbuAI() {
 
         recorder.start(100)
 
-        // Real silence detection — stops after 1.8s of silence post-speech
+        // v17: Elderly-adapted silence detection — 2.5s patience for pauses
         const detector = createSilenceDetector(stream, () => {
           if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-        }, { threshold: 10, silenceMs: 1800, maxMs: 12000, minActiveMs: 1200 })
+        }, { threshold: 10, silenceMs: 2500, maxMs: 20000, minActiveMs: 1500 })
         silenceRef.current = detector
 
         // T1.3: Poll audio level for visual feedback (50ms intervals)
@@ -694,12 +663,6 @@ export function AbuAI() {
             }}>חזרה</span>
           </button>
 
-          <InfoButton
-            title="אבו AI — MartitAI"
-            lines={['אבו AI היא העוזרת האישית החכמה שלך — שואלת, מסבירה, מצחיקה.', 'יש לה גישה לאינטרנט בזמן אמת. אפשר לדבר עברית או ספרדית.']}
-            howTo={['כתבי שאלה בתיבת הטקסט ולחצי שלח', 'לחצי "שיחה קולית" לדבר ישירות', 'לחצי על "חזרה" לחזור לתפריט הראשי']}
-            position="top-left"
-          />
         </div>
 
         {/* Version badge */}
@@ -715,6 +678,13 @@ export function AbuAI() {
           userSelect: 'none',
         }}>{appVersion ? `v${appVersion}` : ''}</div>
       </header>
+
+      <InfoButton
+        title="אבו AI — MartitAI"
+        lines={['אבו AI היא העוזרת האישית החכמה שלך — שואלת, מסבירה, מצחיקה.', 'יש לה גישה לאינטרנט בזמן אמת. אפשר לדבר עברית או ספרדית.']}
+        howTo={['כתבי שאלה בתיבת הטקסט ולחצי שלח', 'לחצי "שיחה קולית" לדבר ישירות', 'לחצי על "חזרה" לחזור לתפריט הראשי']}
+        position="top-left"
+      />
 
       {/* ─────────────────────── CHAT AREA ─────────────────────── */}
       <div

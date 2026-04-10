@@ -45,12 +45,12 @@ export function InfoButton({ title, lines, howTo, position = 'top-right' }: Info
   // Inject pulse keyframe on mount
   useEffect(() => { injectInfoPulse() }, [])
 
-  // Position: bottom-right by default to avoid covering Martita photo
+  // Position: avoid covering Martita photo — top-left maps to bottom-right (absolute)
   const posStyle: React.CSSProperties = position === 'top-right'
     ? { position: 'absolute', top: 14, right: 14, zIndex: 30 }
     : position === 'top-left'
-    ? { position: 'absolute', top: 14, left: 14, zIndex: 30 }
-    : { position: 'absolute', bottom: 80, right: 14, zIndex: 30 }
+    ? { position: 'absolute', bottom: 140, right: 16, zIndex: 30 }
+    : { position: 'absolute', bottom: 140, right: 16, zIndex: 30 }
 
   return (
     <>

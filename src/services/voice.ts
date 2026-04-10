@@ -656,7 +656,9 @@ export async function streamSpeakVoiceMode(
   _activeQueue = queue
 
   let buffer = ''
-  const sentenceEnd = /[.?!،]\s/
+  let tokenCount = 0
+  // v17: Extended sentence boundaries + token-count fallback for Hebrew (rarely uses commas)
+  const sentenceEnd = /[.?!،,;:—–]\s/
 
   const speakChunk = async (text: string): Promise<void> => {
     if (signal?.aborted) return
@@ -688,15 +690,25 @@ export async function streamSpeakVoiceMode(
   for await (const token of tokenStream) {
     if (signal?.aborted) break
     buffer += token
+    tokenCount++
 
-    // Check for sentence boundary
+    // Check for sentence boundary OR token-count fallback (Hebrew has few commas)
     const match = sentenceEnd.exec(buffer)
-    if (match) {
-      const splitIdx = (match.index ?? 0) + match[0].length
-      const sentence = buffer.substring(0, splitIdx).trim()
-      buffer = buffer.substring(splitIdx)
+    const tokenOverflow = tokenCount >= 12 && buffer.trim().length > 10
+
+    if (match || tokenOverflow) {
+      let sentence: string
+      if (match) {
+        const splitIdx = (match.index ?? 0) + match[0].length
+        sentence = buffer.substring(0, splitIdx).trim()
+        buffer = buffer.substring(splitIdx)
+      } else {
+        // Token overflow: flush entire buffer as one chunk
+        sentence = buffer.trim()
+        buffer = ''
+      }
+      tokenCount = 0
       if (sentence.length > 2) {
-        // Bug #1 fix: Track the promise so we wait for all TTS to enqueue
         ttsPromises.push(speakChunk(sentence))
       }
     }
