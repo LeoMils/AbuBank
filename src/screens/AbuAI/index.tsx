@@ -8,6 +8,7 @@ import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
 import { injectSharedKeyframes } from '../../design/animations'
+import { soundProcessing } from '../../services/sounds'
 
 // ─── Color tokens (green/teal — matches AbuWhatsApp) ────────────────────────
 const GOLD            = '#14b8a6'   // teal (was gold)
@@ -270,8 +271,14 @@ export function AbuAI() {
       // Falls back to non-streaming if streaming fails.
       try {
         setVoicePhase('processing')
+        soundProcessing() // v17: audio feedback while thinking
 
         const abortCtrl = new AbortController()
+        // v17: Watchdog — force recovery if stuck >15s in processing+speaking
+        const watchdog = setTimeout(() => {
+          abortCtrl.abort()
+          if (voiceModeRef.current) startVoiceListening()
+        }, 15000)
 
         // Attempt streaming: LLM tokens → sentence accumulator → TTS → audio queue
         let fullResponse = ''
@@ -286,10 +293,14 @@ export function AbuAI() {
         await streamSpeakVoiceMode(
           tokenCollector(),
           (phase) => {
-            if (phase === 'speaking') setVoicePhase('speaking')
+            if (phase === 'speaking') {
+              setVoicePhase('speaking')
+              clearTimeout(watchdog) // Watchdog no longer needed once speaking
+            }
           },
           abortCtrl.signal,
         )
+        clearTimeout(watchdog)
         setIsSpeaking(false)
 
         // Save full response to chat history
@@ -379,10 +390,10 @@ export function AbuAI() {
 
         recorder.start(100)
 
-        // v17: Elderly-adapted silence detection — 2.5s patience for pauses
+        // v17: Elderly-adapted silence detection — 2.5s patience for pauses, 30s max
         const detector = createSilenceDetector(stream, () => {
           if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-        }, { threshold: 10, silenceMs: 2500, maxMs: 20000, minActiveMs: 1500 })
+        }, { threshold: 10, silenceMs: 2500, maxMs: 30000, minActiveMs: 1500 })
         silenceRef.current = detector
 
         // T1.3: Poll audio level for visual feedback (50ms intervals)
@@ -392,8 +403,8 @@ export function AbuAI() {
           setAudioLevel(Math.min(1, lvl / 60)) // normalize 0-60 → 0-1
         }, 50)
 
-        // Visual countdown (max 12 seconds)
-        const LISTEN_SEC = 12
+        // Visual countdown (max 30 seconds — elderly needs more time)
+        const LISTEN_SEC = 30
         setListenCountdown(LISTEN_SEC)
         let cdSec = LISTEN_SEC
         const cdInterval = setInterval(() => {
