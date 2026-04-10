@@ -607,9 +607,14 @@ export function AbuCalendar() {
       mr.start()
       setIsRecording(true)
       setVoiceStatus('מקשיבה... (לחצי שוב לסיום)')
-    } catch {
-      setVoiceStatus('מיקרופון לא זמין')
-      setTimeout(() => setVoiceStatus(''), 3000)
+    } catch (err) {
+      const msg = err instanceof DOMException && err.name === 'NotAllowedError'
+        ? 'צריך לאשר גישה למיקרופון'
+        : err instanceof DOMException && err.name === 'NotFoundError'
+        ? 'לא נמצא מיקרופון'
+        : 'מיקרופון לא זמין — נסי ב-HTTPS'
+      setVoiceStatus(msg)
+      setTimeout(() => setVoiceStatus(''), 4000)
     }
   }
 
@@ -1018,8 +1023,8 @@ export function AbuCalendar() {
         )
       })()}
 
-      {/* SELECTED DAY APPOINTMENTS */}
-      <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
+      {/* SELECTED DAY APPOINTMENTS — flex to fill remaining space */}
+      <div style={{ padding: '8px 16px 0', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14,
         }}>
@@ -1127,9 +1132,9 @@ export function AbuCalendar() {
         </div>
       )}
 
-      {/* ALERT SETTINGS — hidden to save space (accessible in Settings) */}
-      <div style={{
-        display: 'none', margin: '20px 16px 0',
+      {/* ALERT SETTINGS — completely hidden to save space */}
+      {false && <div style={{
+        margin: '20px 16px 0',
         padding: '0 16px', height: 44, borderRadius: 12,
         background: 'rgba(255,250,240,0.02)', border: '1px solid rgba(201,168,76,0.12)',
         flexShrink: 0,
@@ -1158,7 +1163,7 @@ export function AbuCalendar() {
           <option value={60}>60 דקות לפני</option>
           <option value={120}>120 דקות לפני</option>
         </select>
-      </div>
+      </div>}
 
       {/* HERO VOICE BUTTON — compact bottom bar */}
       <div style={{
