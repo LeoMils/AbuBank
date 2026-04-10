@@ -9,6 +9,8 @@ import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
 import { injectSharedKeyframes } from '../../design/animations'
 import { soundProcessing } from '../../services/sounds'
+import { RealtimeVoiceSession } from '../../services/realtimeVoice'
+import type { RealtimeState } from '../../services/realtimeVoice'
 
 // ─── Color tokens (green/teal — matches AbuWhatsApp) ────────────────────────
 const GOLD            = '#14b8a6'   // teal (was gold)
@@ -112,6 +114,12 @@ export function AbuAI() {
   const [listenCountdown, setListenCountdown] = useState<number | null>(null)
   const [lastHeardText, setLastHeardText] = useState('')  // v20: transcript feedback
   const [streamingText, setStreamingText] = useState('')   // v20: streaming response text
+
+  // v20.2: OpenAI Realtime API (WebRTC) — true real-time conversation
+  const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
+  const [realtimeTranscript, setRealtimeTranscript] = useState('')
+  const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
+  const useRealtime = !!import.meta.env.VITE_OPENAI_API_KEY // use Realtime if OpenAI key exists
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
 
@@ -608,12 +616,64 @@ export function AbuAI() {
     try { wakeLockRef.current?.release(); wakeLockRef.current = null } catch { /* silent */ }
   }
 
+  // v20.2: Build Realtime system prompt (same as SYSTEM_PROMPT but imported inline)
+  const realtimeInstructions = useMemo(() => {
+    const h = new Date().getHours()
+    const timeGreet = h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : h < 21 ? 'ערב טוב' : 'לילה טוב'
+    return `את MartitAI — עוזרת אישית חכמה של Martita.
+שיחה טלפונית טבעית. פנייה בנקבה (את). עברית או ספרדית לפי מה שהיא מדברת.
+Martita בת 80+ מארגנטינה, גרה בכפר סבא. אלמנה, בעלה Pepe נפטר. אוהבת משפחה, אוכל, שיחות.
+ילדים: Mor (מור) ו-Leo (לאו). נכדים: Ofir, Eylon, Ilai, Adar, Adi, Noam.
+טון: חם, ישיר, חכם, הומוריסטי. לא להתחיל ב"כמובן!" או "בהחלט!".
+שאלה קצרה → תשובה קצרה. שאלה מעניינת → תשובה ארוכה ועשירה.
+כשהשיחה מתחילה, ברכי אותה: "${timeGreet}, Martita!"`
+  }, [])
+
   const enterVoiceMode = useCallback(() => {
     unlockIOSAudio()
-    acquireWakeLock() // Keep screen on during voice
+    acquireWakeLock()
     setVoiceMode(true)
     voiceModeRef.current = true
 
+    // v20.2: Use OpenAI Realtime API (WebRTC) if available — true real-time conversation
+    if (useRealtime) {
+      setRealtimeTranscript('')
+      const session = new RealtimeVoiceSession(
+        {
+          onStateChange: (state) => {
+            setRealtimeState(state)
+            // Map realtime states to voice phases for UI
+            if (state === 'listening') setVoicePhase('listening')
+            else if (state === 'speaking') { setVoicePhase('speaking'); setIsSpeaking(true) }
+            else if (state === 'connecting') setVoicePhase('greeting')
+            else if (state === 'error') setVoicePhase(null)
+
+            if (state === 'listening') setIsSpeaking(false)
+          },
+          onUserTranscript: (text) => {
+            setLastHeardText(text)
+            setMessages(prev => [...prev, { id: nextId(), role: 'user', content: text, timestamp: Date.now() }])
+          },
+          onAssistantTranscript: (text) => {
+            setRealtimeTranscript('')
+            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: text, timestamp: Date.now() }])
+          },
+          onAssistantDelta: (delta) => {
+            setRealtimeTranscript(prev => prev + delta)
+          },
+          onError: (error) => {
+            console.error('[Realtime] Error:', error)
+            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: `שגיאה: ${error}`, timestamp: Date.now() }])
+          },
+        },
+        realtimeInstructions,
+      )
+      realtimeRef.current = session
+      session.connect()
+      return
+    }
+
+    // FALLBACK: Old voice mode (Web Speech + Whisper + TTS)
     const todayKey = new Date().toISOString().split('T')[0]!
     const isFirstToday = localStorage.getItem('abuai-voice-date') !== todayKey
     if (isFirstToday) localStorage.setItem('abuai-voice-date', todayKey)
@@ -631,8 +691,6 @@ export function AbuAI() {
     const greetMsg: ChatMessage = { id: nextId(), role: 'assistant', content: greeting, timestamp: Date.now() }
     setMessages(prev => [...prev, greetMsg])
 
-    // Start listening IMMEDIATELY — no delays
-    // Date facts load in background, don't block voice
     if (isFirstToday) {
       const dateStr = new Date().toLocaleDateString('he-IL', { month: 'long', day: 'numeric' })
       sendMessage(
@@ -643,9 +701,8 @@ export function AbuAI() {
           const factMsg: ChatMessage = { id: nextId(), role: 'assistant', content: dateFactResponse, timestamp: Date.now() }
           setMessages(prev => [...prev, factMsg])
         })
-        .catch(() => { /* silent — don't block voice */ })
+        .catch(() => {})
     }
-    // v20: Speak the greeting, THEN start listening
     transitionVoice('RESPONDING', 'greeting')
     setVoicePhase('greeting')
     setIsSpeaking(true)
@@ -653,19 +710,24 @@ export function AbuAI() {
       .then(() => {
         setIsSpeaking(false)
         if (voiceModeRef.current) {
-          setTimeout(() => {
-            if (voiceModeRef.current) startVoiceListening()
-          }, 150)
+          setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 150)
         }
       })
       .catch(() => {
         setIsSpeaking(false)
-        // Even if TTS fails, start listening
         if (voiceModeRef.current) startVoiceListening()
       })
-  }, [startVoiceListening, transitionVoice])
+  }, [startVoiceListening, transitionVoice, useRealtime, realtimeInstructions])
 
   const exitVoiceMode = useCallback(() => {
+    // v20.2: Disconnect Realtime session if active
+    if (realtimeRef.current) {
+      realtimeRef.current.disconnect()
+      realtimeRef.current = null
+      setRealtimeState('idle')
+      setRealtimeTranscript('')
+    }
+
     transitionVoice('IDLE', 'exit-voice-mode')
     voiceModeRef.current = false
     setVoiceMode(false)
@@ -675,10 +737,9 @@ export function AbuAI() {
     setLastHeardText('')
     setStreamingText('')
     stopSpeaking()
-    // Abort any in-flight LLM request
     if (abortControllerRef.current) { abortControllerRef.current.abort(); abortControllerRef.current = null }
     cleanupVoiceResources()
-    releaseWakeLock() // Allow screen to dim again
+    releaseWakeLock()
   }, [cleanupVoiceResources, transitionVoice])
 
   const handleVoiceTap = () => {
@@ -686,8 +747,12 @@ export function AbuAI() {
     else enterVoiceMode()
   }
 
-  // v20: Tap the orb during speaking to interrupt
+  // v20.2: Tap anywhere during speaking to interrupt (works for both old + Realtime)
   const handleOrbTap = () => {
+    if (realtimeRef.current && realtimeState === 'speaking') {
+      realtimeRef.current.interrupt()
+      return
+    }
     const state = voiceStateRef.current
     if (state === 'RESPONDING' || voicePhase === 'speaking') {
       interruptAndListen()
@@ -1199,8 +1264,11 @@ export function AbuAI() {
       {voiceMode && (
         <div
           onClick={() => {
-            // v20.1: Tap ANYWHERE during speaking → interrupt and resume listening
-            if (voicePhase === 'speaking') interruptAndListen()
+            // v20.2: Tap ANYWHERE during speaking → interrupt
+            if (voicePhase === 'speaking') {
+              if (realtimeRef.current) realtimeRef.current.interrupt()
+              else interruptAndListen()
+            }
           }}
           style={{
             position: 'absolute',
@@ -1355,8 +1423,8 @@ export function AbuAI() {
               </div>
             )}
 
-            {/* v20: Show streaming response text */}
-            {streamingText && voicePhase === 'speaking' && (
+            {/* v20.2: Show streaming response text (old mode or Realtime) */}
+            {(streamingText || realtimeTranscript) && voicePhase === 'speaking' && (
               <div style={{
                 marginTop: 12,
                 fontSize: 16,
@@ -1368,7 +1436,7 @@ export function AbuAI() {
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
               }}>
-                {streamingText}
+                {realtimeTranscript || streamingText}
               </div>
             )}
 
