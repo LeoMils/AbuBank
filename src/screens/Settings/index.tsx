@@ -232,6 +232,10 @@ export function Settings() {
     setLocContacts(updated); saveLocContacts(updated)
   }
 
+  // Voice settings (v20: reactive state instead of raw localStorage reads)
+  const [voiceLang, setVoiceLang] = useState(() => localStorage.getItem('abu-voice-lang') || 'auto')
+  const [voiceSpeed, setVoiceSpeed] = useState(() => parseFloat(localStorage.getItem('abu-voice-speed') || '0.88'))
+
   // Location map
   const [locStatus, setLocStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
 
@@ -533,11 +537,10 @@ export function Settings() {
             <div style={sectionLabel}>שפת דיבור</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
               {(['auto', 'he', 'es'] as const).map(lang => {
-                const current = localStorage.getItem('abu-voice-lang') || 'auto'
-                const isActive = current === lang
+                const isActive = voiceLang === lang
                 const label = lang === 'auto' ? 'אוטומטי' : lang === 'he' ? 'עברית' : 'ספרדית'
                 return (
-                  <button key={lang} onClick={() => { localStorage.setItem('abu-voice-lang', lang) }}
+                  <button key={lang} onClick={() => { localStorage.setItem('abu-voice-lang', lang); setVoiceLang(lang) }}
                     style={{
                       flex: 1, padding: '10px 0', borderRadius: 10,
                       background: isActive ? 'rgba(20,184,166,0.20)' : 'rgba(255,255,255,0.05)',
@@ -556,11 +559,10 @@ export function Settings() {
             <div style={sectionLabel}>מהירות דיבור</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
               {([0.80, 0.88, 0.95] as const).map(speed => {
-                const current = parseFloat(localStorage.getItem('abu-voice-speed') || '0.88')
-                const isActive = Math.abs(current - speed) < 0.02
+                const isActive = Math.abs(voiceSpeed - speed) < 0.02
                 const label = speed === 0.80 ? 'איטי' : speed === 0.88 ? 'רגיל' : 'מהיר'
                 return (
-                  <button key={speed} onClick={() => { localStorage.setItem('abu-voice-speed', String(speed)) }}
+                  <button key={speed} onClick={() => { localStorage.setItem('abu-voice-speed', String(speed)); setVoiceSpeed(speed) }}
                     style={{
                       flex: 1, padding: '10px 0', borderRadius: 10,
                       background: isActive ? 'rgba(20,184,166,0.20)' : 'rgba(255,255,255,0.05)',

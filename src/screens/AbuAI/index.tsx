@@ -28,6 +28,19 @@ function nextId(): string {
   return `m${++msgCounter}-${Date.now()}`
 }
 
+// ─── Voice State Machine ─────────────────────────────────────────────────────
+// Explicit states with instrumented transitions
+type VoiceState = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'RESPONDING' | 'INTERRUPTED' | 'RECOVERING' | 'ERROR'
+
+const VOICE_STATE_LOG: Array<{ from: VoiceState; to: VoiceState; ts: number; reason: string }> = []
+
+function logVoiceTransition(from: VoiceState, to: VoiceState, reason: string) {
+  const entry = { from, to, ts: Date.now(), reason }
+  VOICE_STATE_LOG.push(entry)
+  if (VOICE_STATE_LOG.length > 100) VOICE_STATE_LOG.shift()
+  console.log(`[VoiceState] ${from} → ${to} (${reason}) +${VOICE_STATE_LOG.length > 1 ? Date.now() - VOICE_STATE_LOG[VOICE_STATE_LOG.length - 2]!.ts : 0}ms`)
+}
+
 // ─── CSS keyframes injected once ─────────────────────────────────────────────
 const KEYFRAMES_ID = 'abuai-anim'
 
@@ -91,11 +104,14 @@ export function AbuAI() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [isSpeaking, setIsSpeaking] = useState(false)
 
-  // Voice conversation mode
+  // Voice conversation mode — explicit state machine (v20)
   const [voiceMode, setVoiceMode] = useState(false)
   const [voicePhase, setVoicePhase] = useState<'greeting' | 'listening' | 'processing' | 'speaking' | null>(null)
+  const [voiceState, setVoiceState] = useState<VoiceState>('IDLE')
   const [audioLevel, setAudioLevel] = useState(0)
   const [listenCountdown, setListenCountdown] = useState<number | null>(null)
+  const [lastHeardText, setLastHeardText] = useState('')  // v20: transcript feedback
+  const [streamingText, setStreamingText] = useState('')   // v20: streaming response text
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
 
@@ -107,12 +123,24 @@ export function AbuAI() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const messagesRef = useRef<ChatMessage[]>([])
   const voiceModeRef = useRef(false)
+  const voiceStateRef = useRef<VoiceState>('IDLE')
   const silenceRef = useRef<SilenceDetector | null>(null)
   const levelRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recognitionRef = useRef<any>(null)
+  const abortControllerRef = useRef<AbortController | null>(null) // v20: for interruption
+  const startVoiceListeningRef = useRef<() => void>(() => {}) // v20: stable ref for interrupt→listen
 
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
+
+  // Sync voice state ref
+  const transitionVoice = useCallback((to: VoiceState, reason: string) => {
+    const from = voiceStateRef.current
+    if (from === to) return
+    logVoiceTransition(from, to, reason)
+    voiceStateRef.current = to
+    setVoiceState(to)
+  }, [])
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
@@ -146,6 +174,17 @@ export function AbuAI() {
 
   // ─── Text chat ────────────────────────────────────────────────────────────
 
+  // v20.1: Streaming text chat — token-by-token with auto-scroll
+  const [isStreaming, setIsStreaming] = useState(false)
+  const streamingMsgIdRef = useRef<string | null>(null)
+
+  // Auto-scroll during streaming
+  useEffect(() => {
+    if (isStreaming && chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight
+    }
+  })
+
   const handleSend = async (text?: string) => {
     const msgText = (text ?? input).trim()
     if (!msgText || loading) return
@@ -156,16 +195,53 @@ export function AbuAI() {
     setInput('')
     setLoading(true)
 
+    const aiMsgId = nextId()
+    streamingMsgIdRef.current = aiMsgId
+    let accumulated = ''
+
     try {
-      const response = await sendMessage(newMessages)
-      const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }
-      setMessages(prev => [...prev, aiMsg])
+      // Create placeholder AI message for streaming
+      const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: '▍', timestamp: Date.now() }
+      setMessages(prev => [...prev, placeholderMsg])
+      setLoading(false)
+      setIsStreaming(true)
+
+      for await (const token of streamMessage(newMessages, false)) {
+        accumulated += token
+        // Update the AI message with accumulated text + cursor
+        setMessages(prev => {
+          const updated = [...prev]
+          const idx = updated.findIndex(m => m.id === aiMsgId)
+          if (idx !== -1) {
+            updated[idx] = { ...updated[idx]!, content: accumulated + '▍' }
+          }
+          return updated
+        })
+      }
+
+      // Remove cursor, set final content
+      setMessages(prev => {
+        const updated = [...prev]
+        const idx = updated.findIndex(m => m.id === aiMsgId)
+        if (idx !== -1) {
+          updated[idx] = { ...updated[idx]!, content: accumulated.trim() || 'שגיאה בחיבור. נסי שוב.' }
+        }
+        return updated
+      })
     } catch (err: unknown) {
       const errorText = err instanceof Error ? err.message : 'שגיאה לא צפויה. נסי שוב.'
-      const errMsg: ChatMessage = { id: nextId(), role: 'assistant', content: errorText, timestamp: Date.now() }
-      setMessages(prev => [...prev, errMsg])
+      setMessages(prev => {
+        const updated = [...prev]
+        const idx = updated.findIndex(m => m.id === aiMsgId)
+        if (idx !== -1) {
+          updated[idx] = { ...updated[idx]!, content: accumulated ? accumulated + '\n\n' + errorText : errorText }
+        }
+        return updated
+      })
     } finally {
       setLoading(false)
+      setIsStreaming(false)
+      streamingMsgIdRef.current = null
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }
@@ -251,11 +327,41 @@ export function AbuAI() {
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
   }, [])
 
+  // v20: Interrupt handler — stops TTS/LLM and resumes listening immediately
+  const interruptAndListen = useCallback(() => {
+    if (!voiceModeRef.current) return
+    transitionVoice('INTERRUPTED', 'user-tap')
+
+    // Abort any in-flight LLM request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+
+    // Stop any TTS playback
+    stopSpeaking()
+    setIsSpeaking(false)
+    setStreamingText('')
+
+    // Cleanup any active mic/recognition from previous listen
+    cleanupVoiceResources()
+
+    // Small delay then resume listening via ref
+    transitionVoice('RECOVERING', 'post-interrupt')
+    setTimeout(() => {
+      if (voiceModeRef.current) {
+        startVoiceListeningRef.current()
+      }
+    }, 250)
+  }, [cleanupVoiceResources, transitionVoice])
+
   const startVoiceListening = useCallback(() => {
     if (!voiceModeRef.current) return
+    transitionVoice('LISTENING', 'start-listen')
     setVoicePhase('listening')
     setAudioLevel(0)
     setListenCountdown(null)
+    setStreamingText('')
 
     const handleText = async (text: string) => {
       if (!voiceModeRef.current) return
@@ -263,48 +369,75 @@ export function AbuAI() {
       if (/^(ביי|להתראות|תודה|עצור|עצרי|סטופ|stop|bye)$/i.test(lower)) {
         exitVoiceMode(); return
       }
+
+      setLastHeardText(text) // v20: Show what was heard
+
       const userMsg: ChatMessage = { id: nextId(), role: 'user', content: text, timestamp: Date.now() }
       const currentMsgs = [...messagesRef.current, userMsg]
       setMessages(currentMsgs)
 
-      // v17.3: RELIABLE voice response — proven TTS chain (Gemini→OpenAI→Web Speech)
-      // with fast LLM + proper language-aware voices. No streaming TTS (caused quality issues).
+      // v20.1: PROVEN non-streaming voice path — fast LLM + full TTS (no cutoff)
       try {
+        transitionVoice('PROCESSING', 'got-text')
         setVoicePhase('processing')
         soundProcessing()
 
-        // Watchdog: force recovery if stuck >12s
-        const watchdog = setTimeout(() => {
-          if (voiceModeRef.current) startVoiceListening()
-        }, 12000)
+        // Create abort controller for interruption
+        const ac = new AbortController()
+        abortControllerRef.current = ac
 
-        // Get LLM response (non-streaming for reliability)
+        // Watchdog: force recovery if stuck >20s in processing
+        const watchdog = setTimeout(() => {
+          if (voiceModeRef.current && voiceStateRef.current === 'PROCESSING') {
+            transitionVoice('RECOVERING', 'watchdog-20s')
+            ac.abort()
+            startVoiceListening()
+          }
+        }, 20000)
+
+        // Get full LLM response (non-streaming — more reliable, Groq is fast enough)
         const response = await sendMessage(currentMsgs, true)
         clearTimeout(watchdog)
+
+        if (ac.signal.aborted) return // interrupted during LLM call
 
         const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }
         setMessages(prev => [...prev, aiMsg])
         if (!voiceModeRef.current) return
 
-        // Speak with full TTS chain (Gemini=best Hebrew → OpenAI → Web Speech)
+        // Speak the full response (Gemini→OpenAI→Web Speech — proven chain)
+        transitionVoice('RESPONDING', 'speak-start')
         setVoicePhase('speaking')
         setIsSpeaking(true)
+        setStreamingText(response)
+
         await speakVoiceMode(response)
+
         setIsSpeaking(false)
+        setStreamingText('')
+        abortControllerRef.current = null
 
         if (!voiceModeRef.current) return
-        await new Promise(r => setTimeout(r, 150))
+        // Minimal gap before resuming listen
+        await new Promise(r => setTimeout(r, 120))
         if (voiceModeRef.current) startVoiceListening()
       } catch (err) {
+        abortControllerRef.current = null
         setIsSpeaking(false)
+        setStreamingText('')
+        if ((err as DOMException)?.name === 'AbortError') return // interrupted
+        transitionVoice('ERROR', err instanceof Error ? err.message : 'unknown')
         const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
         setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
         if (voiceModeRef.current) {
           setVoicePhase('speaking'); setIsSpeaking(true)
           await speakVoiceMode(errText)
           setIsSpeaking(false)
-          await new Promise(r => setTimeout(r, 150))
-          if (voiceModeRef.current) startVoiceListening()
+          await new Promise(r => setTimeout(r, 120))
+          if (voiceModeRef.current) {
+            transitionVoice('RECOVERING', 'post-error')
+            startVoiceListening()
+          }
         }
       }
     }
@@ -313,7 +446,9 @@ export function AbuAI() {
     const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (WSR) {
       const rec = new WSR() as any
-      rec.lang = 'he-IL'
+      // v20: Respect language setting from Settings
+      const voiceLangSetting = localStorage.getItem('abu-voice-lang') || 'auto'
+      rec.lang = voiceLangSetting === 'es' ? 'es-AR' : 'he-IL'
       rec.continuous = false
       rec.interimResults = true
       rec.maxAlternatives = 1
@@ -354,8 +489,8 @@ export function AbuAI() {
       rec.onend = () => {
         recognitionRef.current = null
         if (!gotResult && voiceModeRef.current) {
-          // No result from Web Speech — try Whisper or restart
-          setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 150)
+          // No result from Web Speech — restart immediately
+          setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 50)
         }
       }
 
@@ -457,6 +592,9 @@ export function AbuAI() {
     } // end startWhisperFallback
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // v20: Keep ref in sync for interruption→listen cycle
+  startVoiceListeningRef.current = startVoiceListening
+
   // v17: WakeLock prevents screen dimming during voice mode
   const wakeLockRef = useRef<any>(null)
   const acquireWakeLock = async () => {
@@ -507,26 +645,53 @@ export function AbuAI() {
         })
         .catch(() => { /* silent — don't block voice */ })
     }
-    // Start listening with minimal delay (just enough for iOS audio unlock)
-    setTimeout(() => {
-      if (voiceModeRef.current) startVoiceListening()
-    }, 150)
-  }, [startVoiceListening])
+    // v20: Speak the greeting, THEN start listening
+    transitionVoice('RESPONDING', 'greeting')
+    setVoicePhase('greeting')
+    setIsSpeaking(true)
+    speakVoiceMode(greeting)
+      .then(() => {
+        setIsSpeaking(false)
+        if (voiceModeRef.current) {
+          setTimeout(() => {
+            if (voiceModeRef.current) startVoiceListening()
+          }, 150)
+        }
+      })
+      .catch(() => {
+        setIsSpeaking(false)
+        // Even if TTS fails, start listening
+        if (voiceModeRef.current) startVoiceListening()
+      })
+  }, [startVoiceListening, transitionVoice])
 
   const exitVoiceMode = useCallback(() => {
+    transitionVoice('IDLE', 'exit-voice-mode')
     voiceModeRef.current = false
     setVoiceMode(false)
     setVoicePhase(null)
     setAudioLevel(0)
     setIsSpeaking(false)
+    setLastHeardText('')
+    setStreamingText('')
     stopSpeaking()
+    // Abort any in-flight LLM request
+    if (abortControllerRef.current) { abortControllerRef.current.abort(); abortControllerRef.current = null }
     cleanupVoiceResources()
     releaseWakeLock() // Allow screen to dim again
-  }, [cleanupVoiceResources])
+  }, [cleanupVoiceResources, transitionVoice])
 
   const handleVoiceTap = () => {
     if (voiceMode) exitVoiceMode()
     else enterVoiceMode()
+  }
+
+  // v20: Tap the orb during speaking to interrupt
+  const handleOrbTap = () => {
+    const state = voiceStateRef.current
+    if (state === 'RESPONDING' || voicePhase === 'speaking') {
+      interruptAndListen()
+    }
   }
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
@@ -538,6 +703,7 @@ export function AbuAI() {
   // suppress unused warnings
   void audioLevel
   void listenCountdown
+  void voiceState
 
   // Shared gold gradient text style
   const goldGradText: React.CSSProperties = {
@@ -1031,31 +1197,45 @@ export function AbuAI() {
 
       {/* ─────────────────────── VOICE MODE FULLSCREEN OVERLAY ─────────────────────── */}
       {voiceMode && (
-        <div style={{
-          position: 'absolute',
-          top: 72,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: BG,
-          zIndex: 15,
-          paddingBottom: 28,
-          gap: 0,
-        }}>
-
-          {/* Large gold ring — 192px */}
-          <div style={{
-            position: 'relative',
-            width: 192,
-            height: 192,
+        <div
+          onClick={() => {
+            // v20.1: Tap ANYWHERE during speaking → interrupt and resume listening
+            if (voicePhase === 'speaking') interruptAndListen()
+          }}
+          style={{
+            position: 'absolute',
+            top: 72,
+            left: 0,
+            right: 0,
+            bottom: 0,
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
+            background: BG,
+            zIndex: 15,
+            paddingBottom: 28,
+            gap: 0,
+            cursor: voicePhase === 'speaking' ? 'pointer' : 'default',
           }}>
+
+          {/* Large gold ring — 192px — v20: tappable for interruption */}
+          <div
+            role={voicePhase === 'speaking' ? 'button' : undefined}
+            tabIndex={voicePhase === 'speaking' ? 0 : undefined}
+            onClick={handleOrbTap}
+            onKeyDown={e => e.key === 'Enter' && handleOrbTap()}
+            aria-label={voicePhase === 'speaking' ? 'הפסיקי דיבור' : undefined}
+            style={{
+              position: 'relative',
+              width: 192,
+              height: 192,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: voicePhase === 'speaking' ? 'pointer' : 'default',
+            }}
+          >
             <div style={{
               position: 'absolute',
               inset: 0,
@@ -1128,10 +1308,10 @@ export function AbuAI() {
             </div>
           </div>
 
-          {/* Phase text */}
-          <div style={{ marginTop: 32, textAlign: 'center', direction: 'rtl' }}>
+          {/* Phase text — v20: feminine Hebrew + transcript feedback */}
+          <div style={{ marginTop: 28, textAlign: 'center', direction: 'rtl', maxWidth: 320, padding: '0 20px' }}>
             <div style={{
-              fontSize: 38,
+              fontSize: 34,
               fontWeight: 300,
               letterSpacing: '0.5px',
               color: TEXT,
@@ -1140,7 +1320,7 @@ export function AbuAI() {
             }}>
               {voicePhase === 'listening' ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  מקשיב...
+                  מקשיבה...
                   <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
                     {[0, 1, 2].map(i => (
                       <span key={i} style={{
@@ -1154,20 +1334,64 @@ export function AbuAI() {
                     ))}
                   </span>
                 </span>
-              ) : voicePhase === 'processing' ? 'חושב...'
-                : voicePhase === 'speaking' ? 'מדבר...'
+              ) : voicePhase === 'processing' ? 'חושבת...'
+                : voicePhase === 'speaking' ? 'מדברת...'
                 : voicePhase === 'greeting' ? 'שלום...'
-                : 'מתחבר...'}
+                : 'מתחברת...'}
             </div>
+
+            {/* v20: Show what was heard */}
+            {lastHeardText && voicePhase !== 'listening' && (
+              <div style={{
+                marginTop: 14,
+                fontSize: 15,
+                color: 'rgba(245,240,232,0.50)',
+                fontFamily: "'Heebo',sans-serif",
+                lineHeight: 1.6,
+                direction: 'rtl',
+              }}>
+                <span style={{ color: 'rgba(245,240,232,0.35)', fontSize: 12 }}>שמעתי: </span>
+                &ldquo;{lastHeardText}&rdquo;
+              </div>
+            )}
+
+            {/* v20: Show streaming response text */}
+            {streamingText && voicePhase === 'speaking' && (
+              <div style={{
+                marginTop: 12,
+                fontSize: 16,
+                color: 'rgba(20,184,166,0.85)',
+                fontFamily: "'Heebo',sans-serif",
+                lineHeight: 1.7,
+                direction: 'rtl',
+                maxHeight: 120,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
+                {streamingText}
+              </div>
+            )}
+
+            {/* v20: Tap to interrupt hint */}
+            {voicePhase === 'speaking' && (
+              <div style={{
+                marginTop: 16,
+                fontSize: 13,
+                color: 'rgba(245,240,232,0.30)',
+                fontFamily: "'Heebo',sans-serif",
+              }}>
+                לחצי בכל מקום כדי להפסיק
+              </div>
+            )}
           </div>
 
-          {/* Stop button */}
+          {/* Stop button — stopPropagation prevents overlay interrupt */}
           <button
             type="button"
-            onClick={exitVoiceMode}
+            onClick={(e) => { e.stopPropagation(); exitVoiceMode() }}
             aria-label="סיים שיחה קולית"
             style={{
-              marginTop: 48,
+              marginTop: 36,
               width: 72,
               height: 72,
               borderRadius: '50%',

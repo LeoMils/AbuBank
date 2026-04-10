@@ -4,6 +4,15 @@
 //           3) Gemini TTS (Aoede — human but not Israeli/Argentine)
 //           4) Google Translate TTS  5) Web Speech API
 
+// v20: Read user voice settings from Settings screen
+function getVoiceSpeed(): number {
+  try {
+    const saved = localStorage.getItem('abu-voice-speed')
+    if (saved) return parseFloat(saved)
+  } catch {}
+  return 0.88 // default
+}
+
 let currentAudio: HTMLAudioElement | null = null
 
 // Shared AudioContext — created once, reused across all unlock calls.
@@ -175,7 +184,7 @@ async function speakOpenAI(text: string): Promise<boolean> {
           model: 'tts-1',            // fast model, lower latency
           input: chunk,
           voice: 'nova',             // nova = warm, clear, natural
-          speed: 0.88,               // T4.3: comfortable pace for elderly listener
+          speed: getVoiceSpeed(),    // v20: from Settings
           response_format: 'mp3',
         }),
         signal: controller.signal,
@@ -433,7 +442,7 @@ export async function speakVoiceMode(text: string): Promise<void> {
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: 0.95, response_format: 'mp3' }),
+        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: getVoiceSpeed(), response_format: 'mp3' }),
         signal: controller.signal,
       })
       clearTimeout(t)
@@ -669,7 +678,7 @@ export async function streamSpeakVoiceMode(
         const res = await fetch('https://api.openai.com/v1/audio/speech', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: 0.88, response_format: 'mp3' }),
+          body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: getVoiceSpeed(), response_format: 'mp3' }),
           signal: signal ?? null,
         })
         if (res.ok) {

@@ -240,10 +240,19 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     : 'webm' // fallback — Whisper still tries webm
   formData.append('file', audioBlob, `recording.${ext}`)
   formData.append('model', WHISPER_MODEL)
-  // Force Hebrew language detection — prevents English/Arabic misidentification
-  formData.append('language', 'he')
-  // Priming prompt with appointment-related Hebrew vocabulary
-  formData.append('prompt', 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.')
+  // v20: Read language setting — 'auto' lets Whisper detect, 'he'/'es' forces language
+  const voiceLang = localStorage.getItem('abu-voice-lang') || 'auto'
+  if (voiceLang === 'he') {
+    formData.append('language', 'he')
+    formData.append('prompt', 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.')
+  } else if (voiceLang === 'es') {
+    formData.append('language', 'es')
+    formData.append('prompt', 'Hola Martita, cómo estás, dale, bueno, familia, receta, empanadas, asado, Buenos Aires.')
+  } else {
+    // Auto: default to Hebrew (most common) but let Whisper detect Spanish
+    formData.append('language', 'he')
+    formData.append('prompt', 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.')
+  }
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 12000)
@@ -356,7 +365,7 @@ export async function* streamMessage(
     ...(voiceMode ? FEW_SHOT.slice(-4) : FEW_SHOT), // voice: fewer shots for speed
     ...messages.slice(voiceMode ? -4 : -20).map(m => ({ role: m.role, content: m.content })),
   ]
-  const maxTokens = voiceMode ? 60 : 2048
+  const maxTokens = voiceMode ? 800 : 2048  // v20.1: voice can tell full stories (~200 words)
   const temperature = voiceMode ? 0.3 : 0.65
 
   for (const provider of providers) {
@@ -443,7 +452,13 @@ export async function* streamMessage(
 
 const VOICE_SUFFIX = `
 
-מצב קול. תשובה קצרה וישירה, משפט אחד או שניים מקסימום. כמו SMS. לא רשימות. לא שאלות. לא סיכומים.`
+מצב קול — שיחה טלפונית.
+תשובה ישירה, טבעית, בשפה מדוברת.
+שאלה קצרה (מה השעה, איך מזג האוויר) → 1-3 משפטים.
+שאלה מעניינת / סיפור / הסבר / בדיחה → כמה שצריך, בנוח, אפילו 10-20 משפטים.
+מבקשים סיפור → ספרי סיפור שלם, עם התחלה, אמצע וסוף.
+לא רשימות. לא כותרות. לא סיכומים. לא שאלות חזרה.
+דברי כמו בשיחת טלפון אמיתית — ארוכה או קצרה, לפי מה שנשאל.`
 
 // Search-preview models don't support the temperature parameter
 const isSearchModel = (model: string) => model.includes('search')
@@ -456,7 +471,7 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
     ...FEW_SHOT,
     ...messages.map(m => ({ role: m.role, content: m.content })),
   ]
-  const maxTokens = voiceMode ? 80 : 2048
+  const maxTokens = voiceMode ? 800 : 2048  // v20.1: voice can tell full stories
   const temperature = voiceMode ? 0.4 : 0.65
 
   // Try all providers, then retry once with backoff if all were rate-limited
