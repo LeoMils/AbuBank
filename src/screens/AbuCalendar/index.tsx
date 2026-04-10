@@ -10,6 +10,9 @@ import {
   parseAppointmentText,
   formatHebrewDate,
   formatHebrewMonth,
+  getUpcomingBirthdays,
+  getMoonPhase,
+  getHebrewHoliday,
   APPT_COLORS,
   type Appointment,
 } from './service'
@@ -483,6 +486,23 @@ export function AbuCalendar() {
   // ─── Feature 2: Martita photo ────────────────────────────────────────────────
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
 
+  // ─── v17.3: Premium gimmicks ────────────────────────────────────────────────
+  const greeting = useMemo(() => {
+    const h = new Date().getHours()
+    if (h < 6)  return { text: 'לילה טוב, Martita 🌙', color: 'rgba(147,130,220,0.85)' }
+    if (h < 12) return { text: 'בוקר טוב, Martita ☀️', color: 'rgba(212,168,83,0.90)' }
+    if (h < 17) return { text: 'צהריים טובים, Martita 🌤️', color: 'rgba(20,184,166,0.90)' }
+    if (h < 21) return { text: 'ערב טוב, Martita 🌅', color: 'rgba(251,146,60,0.90)' }
+    return { text: 'לילה טוב, Martita 🌙', color: 'rgba(147,130,220,0.85)' }
+  }, [])
+
+  const upcomingBirthdays = useMemo(() => getUpcomingBirthdays(appointments, 30), [appointments])
+  const nextBirthday = upcomingBirthdays[0] ?? null
+
+  // Month slide animation
+  const [slideDir, setSlideDir] = useState<'none' | 'left' | 'right'>('none')
+  const [slideKey, setSlideKey] = useState(0)
+
   const reload = useCallback(() => setAppointments(loadAppointments()), [])
 
   // ─── Feature 1: Alert interval ───────────────────────────────────────────────
@@ -512,10 +532,12 @@ export function AbuCalendar() {
   }, [alertMinutes])
 
   function prevMonth() {
+    setSlideDir('right'); setSlideKey(k => k + 1)
     if (month === 1) { setYear(y => y - 1); setMonth(12) }
     else setMonth(m => m - 1)
   }
   function nextMonth() {
+    setSlideDir('left'); setSlideKey(k => k + 1)
     if (month === 12) { setYear(y => y + 1); setMonth(1) }
     else setMonth(m => m + 1)
   }
@@ -752,6 +774,33 @@ export function AbuCalendar() {
         position="top-left"
       />
 
+      {/* v17.3: Greeting + Birthday Countdown */}
+      <div style={{ textAlign: 'center', padding: '8px 16px 0', flexShrink: 0 }}>
+        <span style={{
+          fontSize: 15, fontWeight: 600, color: greeting.color,
+          fontFamily: "'Heebo',sans-serif",
+        }}>{greeting.text}</span>
+      </div>
+      {nextBirthday && (
+        <div style={{
+          margin: '4px 16px 0', padding: '7px 14px', borderRadius: 12,
+          background: 'linear-gradient(135deg, rgba(244,114,182,0.12) 0%, rgba(167,139,250,0.08) 100%)',
+          border: '1px solid rgba(244,114,182,0.22)',
+          display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
+          animation: 'fadeSlideUp 0.4s ease 0.15s both',
+        }}>
+          <span style={{ fontSize: 18 }}>🎂</span>
+          <span style={{
+            fontSize: 13, fontWeight: 600, color: '#F472B6',
+            fontFamily: "'Heebo',sans-serif",
+          }}>
+            {nextBirthday.daysUntil === 0
+              ? `!היום יום ההולדת של ${nextBirthday.title} 🎉`
+              : `${nextBirthday.daysUntil} ימים ליום ההולדת של ${nextBirthday.title}`}
+          </span>
+        </div>
+      )}
+
       {/* MONTH NAVIGATOR */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -798,9 +847,12 @@ export function AbuCalendar() {
         >›</button>
       </div>
 
-      {/* CALENDAR GRID */}
-      <div style={{
+      {/* CALENDAR GRID — with slide animation */}
+      <div key={slideKey} style={{
         margin: '0 12px', padding: '12px 8px',
+        animation: slideDir === 'left' ? 'slideFromLeft 0.22s ease both'
+                 : slideDir === 'right' ? 'slideFromRight 0.22s ease both'
+                 : 'none',
         background: 'rgba(255,250,240,0.02)',
         borderRadius: 16, border: '1px solid rgba(201,168,76,0.10)', flexShrink: 0,
       }}>
@@ -808,10 +860,11 @@ export function AbuCalendar() {
           {DAY_HEADERS.map((h, idx) => (
             <div key={h} style={{
               textAlign: 'center', fontSize: 12, fontWeight: 600,
-              color: idx === 6 ? 'rgba(201,168,76,0.75)' : 'rgba(201,168,76,0.50)',
+              color: idx === 6 ? 'rgba(201,168,76,0.85)' : 'rgba(201,168,76,0.50)',
               padding: '4px 0', fontFamily: "'Heebo',sans-serif",
-              letterSpacing: '1px', textTransform: 'uppercase',
-            }}>{h}</div>
+              letterSpacing: '1px',
+              borderBottom: idx === 6 ? '1.5px solid rgba(201,168,76,0.25)' : 'none',
+            }}>{idx === 6 ? `🕯️ ${h}` : h}</div>
           ))}
         </div>
 
@@ -820,59 +873,98 @@ export function AbuCalendar() {
             if (day === null) return <div key={`e${idx}`} style={{ minHeight: 48 }} />
             const ds = dateStr(year, month, day)
             const isToday = ds === today
-            const isSelected = ds === selectedDay
+            const isSelected = ds === selectedDay && !isToday
             const isPast = ds < today
             const dots = apptsByDate[ds] ?? []
             const isShabbat = idx % 7 === 6
+            const holiday = getHebrewHoliday(ds)
+            const moon = getMoonPhase(year, month, day)
             return (
               <button
                 key={ds}
                 type="button"
                 onClick={() => { setSelectedDay(ds); soundTap() }}
                 style={{
-                  minHeight: 48, borderRadius: 12,
+                  minHeight: 48, borderRadius: 14, position: 'relative',
                   border: isToday
-                    ? '1.5px solid rgba(201,168,76,0.55)'
+                    ? '1.5px solid rgba(201,168,76,0.60)'
                     : isSelected
-                    ? '1.5px solid rgba(201,168,76,0.45)'
+                    ? '1.5px solid rgba(20,184,166,0.50)'
                     : '1px solid transparent',
-                  background: isSelected && !isToday
-                    ? 'rgba(201,168,76,0.18)'
-                    : isShabbat ? 'rgba(201,168,76,0.025)' : 'transparent',
-                  opacity: isPast && !isToday ? 0.35 : 1,
+                  background: isToday
+                    ? 'linear-gradient(145deg, rgba(201,168,76,0.12) 0%, rgba(201,168,76,0.04) 100%)'
+                    : isSelected
+                    ? 'linear-gradient(145deg, rgba(20,184,166,0.15) 0%, rgba(20,184,166,0.05) 100%)'
+                    : dots.length > 0
+                    ? 'rgba(255,250,240,0.025)'
+                    : isShabbat ? 'rgba(201,168,76,0.02)' : 'transparent',
+                  opacity: isPast && !isToday ? 0.4 : 1,
                   cursor: 'pointer',
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  justifyContent: 'center', gap: 3, padding: 0,
-                  transition: 'background 0.15s, border-color 0.15s', position: 'relative',
+                  justifyContent: 'center', gap: 2, padding: '2px 0',
+                  transition: 'all 0.15s ease',
+                  boxShadow: isToday
+                    ? undefined  // handled by animation
+                    : isSelected
+                    ? '0 0 0 3px rgba(20,184,166,0.08)'
+                    : 'none',
                 }}
               >
+                {/* Moon phase — top-left corner */}
+                <span style={{
+                  position: 'absolute', top: 1, left: 2,
+                  fontSize: 7, lineHeight: 1, opacity: 0.40,
+                  pointerEvents: 'none',
+                }}>{moon}</span>
+
+                {/* Day number circle */}
                 <div style={{
                   width: 32, height: 32, borderRadius: '50%',
                   background: isToday
-                    ? 'linear-gradient(135deg, #D4A853 0%, #C9A84C 100%)'
-                    : isSelected ? 'rgba(201,168,76,0.18)' : 'transparent',
-                  boxShadow: isToday ? '0 2px 12px rgba(201,168,76,0.40)' : 'none',
-                  animation: isToday ? 'softPulseRing 3s ease-in-out infinite' : 'none',
+                    ? 'linear-gradient(135deg, #e8c76a 0%, #D4A853 30%, #C9A84C 60%, #e8c76a 100%)'
+                    : 'transparent',
+                  backgroundSize: isToday ? '200% 100%' : undefined,
+                  animation: isToday ? 'todayShimmer 3s ease infinite, todayHalo 3s ease-in-out infinite' : 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <span style={{
-                    fontSize: 15,
-                    fontWeight: isToday || isSelected ? 700 : 500,
-                    color: isToday ? '#000000'
-                      : isSelected ? GOLD
+                    fontSize: isToday ? 18 : 17,
+                    fontWeight: isToday ? 800 : isSelected ? 700 : 500,
+                    color: isToday ? '#0C0A08'
+                      : isSelected ? TEAL
                       : isShabbat ? 'rgba(201,168,76,0.80)'
-                      : 'rgba(245,240,232,0.82)',
+                      : 'rgba(245,240,232,0.85)',
                     fontFamily: "'DM Sans',sans-serif", lineHeight: 1,
+                    textShadow: isToday ? '0 1px 2px rgba(0,0,0,0.25)' : 'none',
                   }}>{day}</span>
                 </div>
-                {dots.length > 0 && (
-                  <div style={{ display: 'flex', gap: 2, justifyContent: 'center', height: 5 }}>
+
+                {/* Holiday marker */}
+                {holiday && (
+                  <span style={{
+                    fontSize: 7, fontWeight: 700, color: GOLD,
+                    fontFamily: "'Heebo',sans-serif",
+                    lineHeight: 1, marginTop: -2, opacity: 0.85,
+                  }}>✡</span>
+                )}
+
+                {/* Event color bars */}
+                {dots.length > 0 && !holiday && (
+                  <div style={{ display: 'flex', gap: 2, justifyContent: 'center', height: 4, marginTop: -1 }}>
                     {dots.slice(0, 3).map(a => (
                       <div key={a.id} style={{
-                        width: 4, height: 4, borderRadius: '50%',
-                        background: TEAL, boxShadow: '0 0 4px rgba(20,184,166,0.60)',
+                        width: dots.length === 1 ? 14 : dots.length === 2 ? 10 : 7,
+                        height: 3, borderRadius: 2,
+                        background: a.color,
+                        boxShadow: `0 0 4px ${a.color}55`,
                       }} />
                     ))}
+                    {dots.length > 3 && (
+                      <div style={{
+                        width: 4, height: 3, borderRadius: 2,
+                        background: 'rgba(245,240,232,0.30)',
+                      }} />
+                    )}
                   </div>
                 )}
               </button>
@@ -1136,6 +1228,26 @@ export function AbuCalendar() {
         @keyframes alertSlideIn {
           from { opacity: 0; transform: translateY(-12px); }
           to   { opacity: 1; transform: translateY(0);     }
+        }
+        @keyframes todayShimmer {
+          0%   { background-position: 200% center; }
+          100% { background-position: -200% center; }
+        }
+        @keyframes todayHalo {
+          0%, 100% { box-shadow: 0 0 0 3px rgba(201,168,76,0.25), 0 0 12px rgba(201,168,76,0.15), 0 0 0 6px rgba(201,168,76,0.08); }
+          50%      { box-shadow: 0 0 0 4px rgba(201,168,76,0.40), 0 0 20px rgba(201,168,76,0.30), 0 0 0 8px rgba(201,168,76,0.12); }
+        }
+        @keyframes slideFromLeft {
+          from { transform: translateX(-25px); opacity: 0; }
+          to   { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideFromRight {
+          from { transform: translateX(25px); opacity: 0; }
+          to   { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes confettiFall {
+          0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(870px) rotate(720deg); opacity: 0; }
         }
       `}</style>
     </div>
