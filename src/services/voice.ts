@@ -14,6 +14,7 @@ function getVoiceSpeed(): number {
 }
 
 let currentAudio: HTMLAudioElement | null = null
+let _currentAudioSource: AudioBufferSourceNode | null = null // v20.1: track for stopSpeaking
 
 // Shared AudioContext — created once, reused across all unlock calls.
 // iOS Safari: once an AudioContext is resumed inside a user gesture, it stays
@@ -151,7 +152,8 @@ async function playBlobViaAudioCtx(blob: Blob): Promise<boolean> {
       const src = _sharedAudioCtx!.createBufferSource()
       src.buffer = audioBuf
       src.connect(_sharedAudioCtx!.destination)
-      src.onended = () => resolve(true)
+      _currentAudioSource = src // v20.1: store ref so stopSpeaking can kill it
+      src.onended = () => { _currentAudioSource = null; resolve(true) }
       src.start(0)
     })
   } catch (e) {
@@ -543,14 +545,22 @@ export async function speak(text: string): Promise<void> {
 }
 
 export function stopSpeaking(): void {
+  // 1) HTMLAudioElement (used by playBlob fallback)
   if (currentAudio) {
     currentAudio.pause()
     currentAudio.currentTime = 0
     currentAudio = null
   }
+  // 2) Web Speech API
   if ('speechSynthesis' in window) speechSynthesis.cancel()
-  // Stop streaming TTS queue
+  // 3) AudioContext source node (used by Gemini TTS + OpenAI TTS in voice mode)
+  if (_currentAudioSource) {
+    try { _currentAudioSource.stop() } catch { /* already stopped */ }
+    _currentAudioSource = null
+  }
+  // 4) Streaming TTS queue
   if (_activeQueue) { _activeQueue.abort(); _activeQueue = null }
+  console.log('[TTS] stopSpeaking — all audio channels killed')
 }
 
 // ─── Streaming TTS — Audio Chunk Queue ───────────────────────
