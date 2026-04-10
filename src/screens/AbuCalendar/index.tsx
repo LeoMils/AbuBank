@@ -1299,7 +1299,7 @@ export function AbuCalendar() {
           color: isRecording ? 'rgba(252,165,165,0.90)' : 'rgba(201,168,76,0.85)',
           fontFamily: "'Heebo',sans-serif", letterSpacing: '0.5px', transition: 'color 0.2s',
         }}>
-          {isRecording ? '🔴 מקשיבה... לחצי לסיום' : 'Martita, לחצי ותגידי מה להכניס ליומן 💛'}
+          {isRecording ? '🔴 מקשיבה... לחצי לסיום' : '❤️ Martita, לחצי על לחצן המיקרופון ותגידי מה להכניס ליומן ❤️'}
         </span>
 
         <button
