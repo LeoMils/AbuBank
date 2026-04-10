@@ -640,8 +640,7 @@ export function AbuCalendar() {
       style={{
         height: '100%',
         width: '100%',
-        overflowY: 'auto',
-        overflowX: 'hidden',
+        overflow: 'hidden',
         background: BG,
         display: 'flex',
         flexDirection: 'column',
@@ -774,28 +773,18 @@ export function AbuCalendar() {
         position="top-left"
       />
 
-      {/* v17.3: Greeting + Birthday Countdown */}
-      <div style={{ textAlign: 'center', padding: '8px 16px 0', flexShrink: 0 }}>
-        <span style={{
-          fontSize: 15, fontWeight: 600, color: greeting.color,
-          fontFamily: "'Heebo',sans-serif",
-        }}>{greeting.text}</span>
-      </div>
+      {/* Birthday countdown — only shows when relevant, compact */}
       {nextBirthday && (
         <div style={{
-          margin: '4px 16px 0', padding: '7px 14px', borderRadius: 12,
-          background: 'linear-gradient(135deg, rgba(244,114,182,0.12) 0%, rgba(167,139,250,0.08) 100%)',
-          border: '1px solid rgba(244,114,182,0.22)',
-          display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
-          animation: 'fadeSlideUp 0.4s ease 0.15s both',
+          margin: '4px 14px 0', padding: '6px 12px', borderRadius: 10,
+          background: 'linear-gradient(135deg, rgba(244,114,182,0.10) 0%, rgba(167,139,250,0.06) 100%)',
+          border: '1px solid rgba(244,114,182,0.18)',
+          display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
         }}>
-          <span style={{ fontSize: 18 }}>🎂</span>
-          <span style={{
-            fontSize: 13, fontWeight: 600, color: '#F472B6',
-            fontFamily: "'Heebo',sans-serif",
-          }}>
+          <span style={{ fontSize: 15 }}>🎂</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#F472B6', fontFamily: "'Heebo',sans-serif" }}>
             {nextBirthday.daysUntil === 0
-              ? `!היום יום ההולדת של ${nextBirthday.title} 🎉`
+              ? `היום יום ההולדת של ${nextBirthday.title}! 🎉`
               : `${nextBirthday.daysUntil} ימים ליום ההולדת של ${nextBirthday.title}`}
           </span>
         </div>
@@ -804,7 +793,7 @@ export function AbuCalendar() {
       {/* MONTH NAVIGATOR */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '22px 16px 14px', flexShrink: 0,
+        padding: '10px 16px 6px', flexShrink: 0,
       }}>
         <button
           type="button" onClick={nextMonth} aria-label="חודש הבא"
@@ -1043,7 +1032,24 @@ export function AbuCalendar() {
           }}>{formatHebrewDate(selectedDay).split(',')[0]}</span>
         </div>
 
-        {selectedAppts.length === 0 ? (
+        {/* Holiday name banner when selected day is a holiday */}
+        {getHebrewHoliday(selectedDay) && (
+          <div style={{
+            padding: '6px 12px', borderRadius: 10, marginBottom: 8,
+            background: 'linear-gradient(135deg, rgba(201,168,76,0.14) 0%, rgba(212,168,83,0.06) 100%)',
+            border: '1px solid rgba(201,168,76,0.25)',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ fontSize: 16 }}>✡️</span>
+            <span style={{
+              fontSize: 15, fontWeight: 700, color: '#e8c76a',
+              fontFamily: "'Heebo',sans-serif",
+              textShadow: '0 0 8px rgba(201,168,76,0.30)',
+            }}>{getHebrewHoliday(selectedDay)}</span>
+          </div>
+        )}
+
+        {selectedAppts.length === 0 && !getHebrewHoliday(selectedDay) ? (
           <div style={{
             textAlign: 'center', padding: '20px 0',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
@@ -1069,8 +1075,8 @@ export function AbuCalendar() {
         )}
       </div>
 
-      {/* UPCOMING APPOINTMENTS */}
-      {upcomingAppts.length > 0 && (
+      {/* UPCOMING + ALERT removed — saved vertical space for no-scroll layout */}
+      {false && upcomingAppts.length > 0 && (
         <div style={{ padding: '20px 16px 0', flexShrink: 0 }}>
           <div style={{
             fontSize: 13, fontWeight: 700, color: 'rgba(201,168,76,0.60)',
@@ -1121,10 +1127,9 @@ export function AbuCalendar() {
         </div>
       )}
 
-      {/* ALERT SETTINGS ROW */}
+      {/* ALERT SETTINGS — hidden to save space (accessible in Settings) */}
       <div style={{
-        margin: '20px 16px 0',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        display: 'none', margin: '20px 16px 0',
         padding: '0 16px', height: 44, borderRadius: 12,
         background: 'rgba(255,250,240,0.02)', border: '1px solid rgba(201,168,76,0.12)',
         flexShrink: 0,
@@ -1155,17 +1160,17 @@ export function AbuCalendar() {
         </select>
       </div>
 
-      {/* HERO VOICE BUTTON */}
+      {/* HERO VOICE BUTTON — compact bottom bar */}
       <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        padding: '20px 0 calc(28px + env(safe-area-inset-bottom, 0px))',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        padding: '8px 0 calc(12px + env(safe-area-inset-bottom, 0px))',
         flexShrink: 0, marginTop: 'auto',
       }}>
         <button
           type="button"
           onClick={handleVoiceRecord}
           style={{
-            width: 80, height: 80, borderRadius: '50%',
+            width: 64, height: 64, borderRadius: '50%',
             background: isRecording
               ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
               : 'linear-gradient(145deg, #D4A853 0%, #C9A84C 45%, #B8912A 100%)',

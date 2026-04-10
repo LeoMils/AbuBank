@@ -8,6 +8,7 @@ export interface Appointment {
   emoji: string
   color: string
   notes?: string
+  location?: string      // v18: venue/address
   // Family Intelligence
   type?: 'regular' | 'birthday' | 'anniversary' | 'memory'
   personName?: string    // for birthdays: the person's name
@@ -125,12 +126,29 @@ export async function parseAppointmentText(text: string): Promise<{ title: strin
           messages: [
             {
               role: 'system',
-              content: `Parse Hebrew appointment text. Today is ${today}. Return ONLY valid JSON: {"title":"...","date":"YYYY-MM-DD","time":"HH:MM","emoji":"..."}`,
+              content: `You are an expert Hebrew appointment parser. Extract appointment details from spoken Hebrew text.
+Today is ${today} (${new Date().toLocaleDateString('he-IL', { weekday: 'long' })}).
+
+RULES:
+- Extract the EXACT time mentioned. "בשלוש" = 15:00. "בעשר בבוקר" = 10:00. "בשמונה בערב" = 20:00. "בשתיים וחצי" = 14:30.
+- Extract the EXACT date. "מחר" = tomorrow. "ביום שלישי" = next Tuesday. "ב-15 לחודש" = 15th of current month. "בעוד שבוע" = +7 days.
+- Extract person name if mentioned. "פגישה עם דר כהן" → personName: "דר כהן". "יום הולדת של מור" → personName: "מור".
+- Extract location if mentioned. "בקניון" → location: "קניון". "בבית של מור" → location: "בית של מור". "במרפאה" → location: "מרפאה".
+- Choose an appropriate emoji: 🏥 medical, ✂️ haircut, 🛒 shopping, 🎂 birthday, 🍽️ food, ✈️ travel, 👨‍👩‍👧 family, 📅 general.
+- If time not mentioned, default 09:00. If date not mentioned, default today.
+
+Return ONLY valid JSON:
+{"title":"...","date":"YYYY-MM-DD","time":"HH:MM","emoji":"...","location":"...or empty","personName":"...or empty"}
+
+Examples:
+"פגישה עם הרופא מחר בארבע אחר הצהריים" → {"title":"פגישה עם הרופא","date":"TOMORROW","time":"16:00","emoji":"🏥","location":"","personName":"הרופא"}
+"יום הולדת של מור ב-20 לחודש" → {"title":"יום הולדת של מור","date":"20TH","time":"09:00","emoji":"🎂","location":"","personName":"מור"}
+"ארוחת ערב במסעדה ביום שישי בשמונה" → {"title":"ארוחת ערב במסעדה","date":"FRIDAY","time":"20:00","emoji":"🍽️","location":"מסעדה","personName":""}`,
             },
             { role: 'user', content: text },
           ],
           temperature: 0,
-          max_tokens: 150,
+          max_tokens: 200,
         }),
       })
       if (res.ok) {
@@ -138,12 +156,19 @@ export async function parseAppointmentText(text: string): Promise<{ title: strin
         const content = data?.choices?.[0]?.message?.content ?? ''
         const match = content.match(/\{[\s\S]*?\}/)
         if (match) {
-          const parsed = JSON.parse(match[0]) as { title?: string; date?: string; time?: string; emoji?: string }
+          const parsed = JSON.parse(match[0]) as { title?: string; date?: string; time?: string; emoji?: string; location?: string; personName?: string }
           const title = parsed.title ?? text
           const date = parsed.date ?? today
           const time = parsed.time ?? '09:00'
           const emoji = parsed.emoji ?? detectEmoji(title)
-          return { title, date, time, emoji, ...detectFamilyType(text) }
+          const location = parsed.location || undefined
+          const personName = parsed.personName || undefined
+          const familyType = detectFamilyType(text)
+          return {
+            title, date, time, emoji, location,
+            personName,
+            ...familyType,
+          } as { title: string; date: string; time: string; emoji: string; location?: string; personName?: string } & Pick<Appointment, 'type' | 'isRecurring'>
         }
       }
     } catch {
