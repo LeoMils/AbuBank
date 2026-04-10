@@ -1,0 +1,31 @@
+# Canonical Name → Aliases Lookup
+# Purpose: Prevent duplication, support reliable retrieval
+# Format: canonical_name → [aliases]
+
+aliases:
+  Martita:    ["אבו", "Abu", "Abuela", "מרטיטה"]
+  Mor:        ["מור"]
+  Leo:        ["לאו"]
+  Raphi:      ["רפי"]
+  Ofir:       ["אופיר"]
+  Eylon:      ["אילון"]
+  Ilai:       ["עילאי"]
+  Adar:       ["אדר"]
+  Adi:        ["עדי"]
+  Noam:       ["נועם"]
+  Yarden:     ["ירדן"]
+  Gilad:      ["גלעד"]
+  Pepe:       ["פפי"]
+  Tutsi:      ["טוטסי", "טוצי"]
+  Mirta:      ["מירטה"]
+  Shoshana:   ["שושנה"]
+
+# Role-based lookups
+roles:
+  daughter:         ["Mor"]
+  son:              ["Leo"]
+  grandchildren:    ["Ofir", "Eylon", "Ilai", "Adar", "Adi", "Noam"]
+  great_grandchildren_parent: ["Ofir"]
+  deceased_spouse:  ["Pepe"]
+  close_friends:    ["Mirta", "Shoshana"]
+  pet:              ["Tutsi"]

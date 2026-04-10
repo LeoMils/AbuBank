@@ -1,0 +1,52 @@
+# Family Structure — Canonical Graph
+# Source: AbuAI system prompt (service.ts lines 38-116)
+# Last verified: 2026-04-10
+
+matriarch:
+  canonical_name: "Martita"
+  aliases: ["אבו", "Abu", "Abuela"]
+
+children:
+  - canonical_name: "Mor"
+    hebrew: "מור"
+    relationship: "daughter"
+    spouse: "Raphi (רפי)"
+    surname: "Duani"
+    children:
+      - canonical_name: "Ofir"
+        hebrew: "אופיר"
+        relationship: "grandson"
+        spouse: "Yarden (ירדן)"
+        notes: "has great-grandchildren (נינות)"
+      - canonical_name: "Eylon"
+        hebrew: "אילון"
+        relationship: "grandson"
+        spouse: "Gilad (גלעד)"
+      - canonical_name: "Ilai"
+        hebrew: "עילאי"
+        relationship: "grandson"
+        notes: "recently moved to new apartment"
+      - canonical_name: "Adar"
+        hebrew: "אדר"
+        relationship: "grandson"
+        notes: "the youngest of Mor's children"
+
+  - canonical_name: "Leo"
+    hebrew: "לאו"
+    relationship: "son"
+    surname: "Milstein"
+    children:
+      - canonical_name: "Adi"
+        hebrew: "עדי"
+        relationship: "granddaughter"
+      - canonical_name: "Noam"
+        hebrew: "נועם"
+        relationship: "grandson"
+        notes: "recently traveled to Buenos Aires"
+
+deceased:
+  - canonical_name: "Pepe"
+    hebrew: "פפי"
+    relationship: "husband"
+    memorial_date: "12-26"          # December 26
+    notes: "remembered with love, memorial date is emotionally significant"

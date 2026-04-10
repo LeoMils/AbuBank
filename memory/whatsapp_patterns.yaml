@@ -1,0 +1,53 @@
+# WhatsApp Communication Patterns
+# Source: AbuWhatsApp service.ts (based on 1,388 real messages)
+# Purpose: Drive realistic message generation in Abu Messages
+
+writing_errors:
+  # These are REAL patterns, not gimmicks. They appear consistently.
+  mandatory:
+    - pattern: "מאכלת/מאכלים instead of מאחלת/מאחלים"
+      frequency: "almost every blessing message"
+    - pattern: "ה→א at word endings: שמחא, יפא, טובא, בריאותא"
+      frequency: "very frequent"
+    - pattern: "spaces after prefix letters: ב בית, ל כולם, ו גם, מ הלב"
+      frequency: "consistent"
+  common:
+    - pattern: "doubling for emphasis: כל כך כל כך, מאוד מאוד"
+      frequency: "frequent"
+    - pattern: "4-8 exclamation marks: !!!!!!"
+      frequency: "almost every message"
+
+recurring_phrases:
+  blessings:
+    - "הרבה בריאות שמחות ו אושר ו עושר"
+    - "מאכלת לכולם הרבה בריאות ו שמחות"
+    - "בריאות ו שמחות לכל המשפחא"
+  affection:
+    - "אוהבת אתכם מאוד מאוד מאוד"
+    - "אוהבת! אבו ❤️"
+    - "חמודים שלנו!!"
+    - "יפים שלנו!!!!!!"
+  excitement:
+    - "איזא יופי!!!!"
+    - "ישששששש!!"
+  invitations:
+    - "מזמינה אותכם לארוחה ביום ששי בבית שלי"
+    - "תבואו בשעה 7"
+    - "תביאו יין ו משהו טעים"
+  laughter: "Ja ja ja (never חחח)"
+
+signature: "אבו ❤️"
+
+emoji_usage:
+  favorites: ["❤️", "💛", "💚", "💜", "😍", "💋", "🌹"]
+  frequency: "1-3 per message, more in celebrations"
+  style: "hearts dominate, especially ❤️"
+
+message_structure:
+  typical_length: "2-5 sentences"
+  opening: "direct address or topic, no formal greeting"
+  closing: "love declaration + signature (אבו)"
+  tone_by_target:
+    children: "warm, organizing, direct"
+    grandchildren: "adoring, enthusiastic, exclamation-heavy"
+    group: "inclusive, celebratory, invitation-style"

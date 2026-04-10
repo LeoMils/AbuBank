@@ -1,0 +1,98 @@
+# Birthdays & Recurring Important Dates
+# Purpose: Abu Calendar intelligence, proactive reminders
+# Confidence: confirmed = from system prompt | inferred = from context | unknown = not found
+# Reminder policy: days_before = when to show pre-birthday countdown
+
+birthdays:
+  - person: "Martita"
+    date: "04-01"               # April 1
+    confidence: confirmed
+    source: "AbuAI system prompt"
+    reminder:
+      days_before: [7, 3, 1, 0]
+      style: "warm, celebratory"
+    emotional_significance: high
+    notes: "The matriarch's birthday — entire family celebrates"
+
+  # Children — dates unknown, need to be collected
+  - person: "Mor"
+    date: null
+    confidence: unknown
+    source: "not yet collected"
+    reminder:
+      days_before: [7, 3, 1, 0]
+      style: "warm, loving"
+    notes: "Daughter. Birthday date needed."
+
+  - person: "Leo"
+    date: null
+    confidence: unknown
+    source: "not yet collected"
+    reminder:
+      days_before: [7, 3, 1, 0]
+      style: "warm, loving"
+    notes: "Son. Birthday date needed."
+
+  # Grandchildren — dates unknown
+  - person: "Ofir"
+    date: null
+    confidence: unknown
+
+  - person: "Eylon"
+    date: null
+    confidence: unknown
+
+  - person: "Ilai"
+    date: null
+    confidence: unknown
+
+  - person: "Adar"
+    date: null
+    confidence: unknown
+
+  - person: "Adi"
+    date: null
+    confidence: unknown
+
+  - person: "Noam"
+    date: null
+    confidence: unknown
+
+  # Spouses — dates unknown
+  - person: "Raphi"
+    date: null
+    confidence: unknown
+
+  - person: "Yarden"
+    date: null
+    confidence: unknown
+
+  - person: "Gilad"
+    date: null
+    confidence: unknown
+
+memorials:
+  - person: "Pepe"
+    date: "12-26"               # December 26
+    confidence: confirmed
+    source: "AbuAI system prompt"
+    type: "memorial"
+    reminder:
+      days_before: [3, 1, 0]
+      style: "gentle, respectful, loving"
+    emotional_significance: very_high
+    notes: "Deceased husband. Approach with warmth and respect, never clinical."
+
+recurring_events:
+  - name: "Friday dinner"
+    recurrence: "weekly"
+    day: "Friday"
+    significance: "Most important weekly family event"
+    notes: "Martita hosts. Family gathers. Central to her identity."
+
+# UPDATE PROTOCOL:
+# When a new birthday is learned (from conversation, user input, or WhatsApp):
+# 1. Add entry here with confirmed/inferred confidence
+# 2. Set appropriate reminder days_before
+# 3. Abu Calendar should pick up new entries automatically
+# 4. Never invent dates — leave null until confirmed

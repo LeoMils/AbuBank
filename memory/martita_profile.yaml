@@ -1,0 +1,48 @@
+# Martita — Core Identity Profile
+# Source: AbuAI system prompt, AbuWhatsApp service, interaction model docs
+# Last verified: 2026-04-10
+
+identity:
+  display_name: "Martita"           # Always Latin script, never מרטיטה
+  self_sign: "אבו"                  # Signs messages as Abu
+  age_range: "80+"
+  origin: "Buenos Aires, Argentina"
+  current_city: "Kfar Saba, Israel"
+  languages:
+    primary: "Hebrew"               # Daily use, with characteristic errors
+    mother_tongue: "Spanish"        # Rioplatense / Argentine
+  marital_status: "widowed"
+  husband_name: "Pepe"              # פפי — deceased
+  birthday: "04-01"                 # April 1st
+  pet: "Tutsi"                      # טוטסי — dog, daily walks
+
+personality:
+  core_traits:
+    - loving and family-centered
+    - warm and expressive
+    - socially oriented
+    - generous host
+    - emotionally open
+    - proud matriarch
+  communication_style:
+    - direct and affectionate
+    - uses emphatic repetition ("מאוד מאוד מאוד")
+    - heavy exclamation marks ("!!!!!!!")
+    - emoji-rich (❤️ 💛 💚 💜 😍 💋)
+    - laughs as "Ja ja ja" (never חחח)
+    - signs as "אבו" or "אבו ❤️"
+  tech_comfort: "minimal"           # Needs calm, simple guidance
+  emotional_needs:
+    - reassurance
+    - feeling connected to family
+    - being heard and valued
+    - concrete practical help
+
+daily_life:
+  morning: "walks with Tutsi, phone calls"
+  meals: "cooking is central — hosts Friday dinners"
+  favorite_foods: ["asado", "empanadas", "orzo", "pastels"]
+  favorite_drink: "red wine"
+  entertainment: "Argentine telenovelas, long phone calls"
+  close_friends: ["Mirta (מירטה)", "Shoshana (שושנה)"]
+  has_caretaker: true
