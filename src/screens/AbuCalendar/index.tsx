@@ -473,6 +473,7 @@ export function AbuCalendar() {
   const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string; time: string; emoji: string } | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [voiceStatus, setVoiceStatus] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
@@ -750,17 +751,41 @@ export function AbuCalendar() {
           } as React.CSSProperties}>Abu יומן</span>
         </div>
 
-        {/* Left side: Martita photo + InfoButton */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <img
-            src={martitaPhoto}
-            alt="Martita"
-            onError={handleMartitaImgError}
+        {/* Left side: Martita photo with hearts + 3-dot settings */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{ position: 'relative' }}>
+            <img
+              src={martitaPhoto}
+              alt="Martita"
+              onError={handleMartitaImgError}
+              style={{
+                width: 52, height: 52, borderRadius: '50%', objectFit: 'cover',
+                boxShadow: '0 0 0 2px rgba(201,168,76,0.50), 0 2px 14px rgba(0,0,0,0.45)',
+              }}
+            />
+            {/* Floating hearts — love decoration */}
+            <span style={{ position: 'absolute', top: -6, right: -4, fontSize: 10, animation: 'floatHeart 3s ease-in-out infinite', pointerEvents: 'none' }}>❤️</span>
+            <span style={{ position: 'absolute', bottom: -4, left: -6, fontSize: 8, animation: 'floatHeart 3.5s ease-in-out 0.8s infinite', pointerEvents: 'none' }}>💛</span>
+          </div>
+          {/* Three-dots settings button */}
+          <button
+            type="button"
+            onClick={() => setShowSettings(p => !p)}
+            aria-label="הגדרות יומן"
             style={{
-              width: 58, height: 58, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
-              boxShadow: '0 0 0 2px rgba(201,168,76,0.50), 0 2px 14px rgba(0,0,0,0.45)',
+              width: 40, height: 40, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', flexShrink: 0,
             }}
-          />
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="rgba(255,255,255,0.55)">
+              <circle cx="12" cy="5" r="2"/>
+              <circle cx="12" cy="12" r="2"/>
+              <circle cx="12" cy="19" r="2"/>
+            </svg>
+          </button>
         </div>
 
         {/* Bottom glow strip */}
@@ -771,12 +796,73 @@ export function AbuCalendar() {
         }} />
       </header>
 
-      <InfoButton
-        title="Abu יומן"
-        lines={['יומן אישי עם תזכורות. הוסיפי אירועים ביד או בקול.', 'התראות אוטומטיות לפני כל אירוע.']}
-        howTo={['לחצי על יום בלוח לראות אירועים', 'לחצי על מיקרופון לתיאור קולי של האירוע', 'לחצי הוספה ידנית להזנה ידנית', 'שנות זמן ההתראה בתחתית המסך']}
-        position="top-left"
-      />
+      {/* Settings dropdown — triggered by 3-dot button */}
+      {showSettings && (
+        <div
+          onClick={() => setShowSettings(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.50)' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            dir="rtl"
+            style={{
+              position: 'absolute', top: 78, left: 14, right: 14,
+              background: 'rgba(12,10,8,0.97)',
+              backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(201,168,76,0.22)',
+              borderRadius: 16, padding: '16px 18px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.50)',
+              animation: 'fadeSlideUp 0.2s ease both',
+            } as React.CSSProperties}
+          >
+            {/* Alert settings */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <span style={{ fontSize: 15, fontWeight: 600, color: 'rgba(245,240,232,0.80)', fontFamily: "'Heebo',sans-serif" }}>
+                🔔 התראה לפני אירוע
+              </span>
+              <select
+                value={alertMinutes}
+                onChange={e => { const v = parseInt(e.target.value, 10); setAlertMinutes(v); localStorage.setItem('abubank-alert-minutes', String(v)) }}
+                style={{
+                  background: 'rgba(201,168,76,0.10)', border: '1px solid rgba(201,168,76,0.25)',
+                  borderRadius: 10, color: GOLD, fontSize: 14, fontWeight: 600,
+                  fontFamily: "'DM Sans',sans-serif", padding: '6px 12px',
+                  cursor: 'pointer', outline: 'none', direction: 'rtl',
+                } as React.CSSProperties}
+              >
+                <option value={15}>15 דקות</option>
+                <option value={30}>30 דקות</option>
+                <option value={60}>60 דקות</option>
+                <option value={120}>120 דקות</option>
+              </select>
+            </div>
+
+            {/* Info section */}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: GOLD, marginBottom: 8, fontFamily: "'Heebo',sans-serif" }}>
+                ℹ️ איך להשתמש
+              </div>
+              <div style={{ fontSize: 13, color: 'rgba(245,240,232,0.60)', lineHeight: 1.8, fontFamily: "'Heebo',sans-serif" }}>
+                · לחצי על יום בלוח לראות אירועים{'\n'}
+                · לחצי על המיקרופון ותגידי מה להוסיף{'\n'}
+                · לחצי ＋ הוספה ידנית להזנה בכתב{'\n'}
+                · התראה מושמעת לפני כל אירוע
+              </div>
+            </div>
+
+            {/* Close button */}
+            <button
+              onClick={() => setShowSettings(false)}
+              style={{
+                marginTop: 14, width: '100%', padding: '10px 0', borderRadius: 12,
+                background: 'rgba(201,168,76,0.10)', border: '1px solid rgba(201,168,76,0.22)',
+                color: GOLD, fontSize: 15, fontWeight: 600, fontFamily: "'Heebo',sans-serif",
+                cursor: 'pointer',
+              }}
+            >סגור ✕</button>
+          </div>
+        </div>
+      )}
 
       {/* Birthday countdown — only shows when relevant, compact */}
       {nextBirthday && (
@@ -1213,7 +1299,7 @@ export function AbuCalendar() {
           color: isRecording ? 'rgba(252,165,165,0.90)' : 'rgba(201,168,76,0.85)',
           fontFamily: "'Heebo',sans-serif", letterSpacing: '0.5px', transition: 'color 0.2s',
         }}>
-          {isRecording ? 'מקשיבה... (לחצי לסיום)' : 'ספרי לי על האירוע'}
+          {isRecording ? '🔴 מקשיבה... לחצי לסיום' : 'Martita, לחצי ותגידי מה להכניס ליומן 💛'}
         </span>
 
         <button
@@ -1323,6 +1409,11 @@ export function AbuCalendar() {
         @keyframes confettiFall {
           0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
           100% { transform: translateY(870px) rotate(720deg); opacity: 0; }
+        }
+        @keyframes floatHeart {
+          0%   { transform: translateY(0) scale(1); opacity: 0.6; }
+          50%  { transform: translateY(-8px) scale(1.15); opacity: 0.9; }
+          100% { transform: translateY(0) scale(1); opacity: 0.6; }
         }
       `}</style>
     </div>

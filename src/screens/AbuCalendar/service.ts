@@ -127,23 +127,27 @@ export async function parseAppointmentText(text: string): Promise<{ title: strin
             {
               role: 'system',
               content: `You are an expert Hebrew appointment parser. Extract appointment details from spoken Hebrew text.
-Today is ${today} (${new Date().toLocaleDateString('he-IL', { weekday: 'long' })}).
+Today is ${today} (${new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}).
+Current month: ${new Date().getMonth() + 1}, current year: ${new Date().getFullYear()}.
+
+CRITICAL: The "date" field MUST be a real YYYY-MM-DD date. NEVER return words like "TOMORROW" or "FRIDAY". ALWAYS compute the actual calendar date.
 
 RULES:
-- Extract the EXACT time mentioned. "בשלוש" = 15:00. "בעשר בבוקר" = 10:00. "בשמונה בערב" = 20:00. "בשתיים וחצי" = 14:30.
-- Extract the EXACT date. "מחר" = tomorrow. "ביום שלישי" = next Tuesday. "ב-15 לחודש" = 15th of current month. "בעוד שבוע" = +7 days.
-- Extract person name if mentioned. "פגישה עם דר כהן" → personName: "דר כהן". "יום הולדת של מור" → personName: "מור".
-- Extract location if mentioned. "בקניון" → location: "קניון". "בבית של מור" → location: "בית של מור". "במרפאה" → location: "מרפאה".
-- Choose an appropriate emoji: 🏥 medical, ✂️ haircut, 🛒 shopping, 🎂 birthday, 🍽️ food, ✈️ travel, 👨‍👩‍👧 family, 📅 general.
-- If time not mentioned, default 09:00. If date not mentioned, default today.
+- TIME: "בשלוש" = 15:00. "בעשר בבוקר" = 10:00. "בשמונה בערב" = 20:00. "בשתיים וחצי" = 14:30. "בחמש" = 17:00.
+- DATE: ALWAYS return YYYY-MM-DD format. Compute the real date:
+  - "מחר" = ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+  - "ביום ראשון" = the NEXT Sunday from today. Calculate it.
+  - "ביום ראשון האחרון של החודש" = find the last Sunday of the current month.
+  - "ב-15 לחודש" = ${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-15
+  - "בעוד שבוע" = +7 days from today.
+  - "בשבוע הבא ביום שלישי" = next Tuesday.
+- PERSON: "פגישה עם דר כהן" → personName: "דר כהן". "יום הולדת של מור" → personName: "מור".
+- LOCATION: "בקניון" → location: "קניון". "במרפאה" → location: "מרפאה".
+- EMOJI: 🏥 medical, ✂️ haircut, 🛒 shopping, 🎂 birthday, 🍽️ food, ✈️ travel, 👨‍👩‍👧 family, 💼 work, 📅 general.
+- If time not mentioned, default 09:00. If date not mentioned, default ${today}.
 
 Return ONLY valid JSON:
-{"title":"...","date":"YYYY-MM-DD","time":"HH:MM","emoji":"...","location":"...or empty","personName":"...or empty"}
-
-Examples:
-"פגישה עם הרופא מחר בארבע אחר הצהריים" → {"title":"פגישה עם הרופא","date":"TOMORROW","time":"16:00","emoji":"🏥","location":"","personName":"הרופא"}
-"יום הולדת של מור ב-20 לחודש" → {"title":"יום הולדת של מור","date":"20TH","time":"09:00","emoji":"🎂","location":"","personName":"מור"}
-"ארוחת ערב במסעדה ביום שישי בשמונה" → {"title":"ארוחת ערב במסעדה","date":"FRIDAY","time":"20:00","emoji":"🍽️","location":"מסעדה","personName":""}`,
+{"title":"short Hebrew title","date":"YYYY-MM-DD","time":"HH:MM","emoji":"...","location":"","personName":""}`,
             },
             { role: 'user', content: text },
           ],
