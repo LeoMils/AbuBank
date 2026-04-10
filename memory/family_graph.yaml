@@ -17,15 +17,18 @@ children:
         hebrew: "אופיר"
         relationship: "grandson"
         spouse: "Yarden (ירדן)"
-        notes: "has great-grandchildren (נינות)"
+        children:
+          - { name: "Anabel", hebrew: "אנאבל", relationship: "great-granddaughter" }
+          - { name: "Ari", hebrew: "ארי", relationship: "great-granddaughter" }
+        notes: "Ofir and Yarden have two daughters — Anabel and Ari (Martita's great-granddaughters)"
       - canonical_name: "Eylon"
         hebrew: "אילון"
         relationship: "grandson"
         spouse: "Gilad (גלעד)"
       - canonical_name: "Ilai"
-        hebrew: "עילאי"
+        hebrew: "עילי"
         relationship: "grandson"
-        notes: "recently moved to new apartment"
+        notes: "recently moved to new apartment. Name spelled עילי."
       - canonical_name: "Adar"
         hebrew: "אדר"
         relationship: "grandson"

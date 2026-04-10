@@ -226,7 +226,7 @@ export const FAMILY_BIRTHDAYS: Appointment[] = [
   { id: 'bday-martita', title: 'יום הולדת Martita! 🎉👑',  date: `${CURRENT_YEAR}-04-01`, time: '09:00', emoji: '👑', color: '#FFE66D', type: 'birthday', personName: 'Martita', isRecurring: true },
   { id: 'bday-adi',     title: 'יום הולדת עדי 🎂',        date: `${CURRENT_YEAR}-04-05`, time: '09:00', emoji: '🎂', color: '#F472B6', type: 'birthday', personName: 'עדי', isRecurring: true },
   { id: 'bday-noam',    title: 'יום הולדת נועם 🎂',       date: `${CURRENT_YEAR}-04-05`, time: '09:00', emoji: '🎂', color: '#4ECDC4', type: 'birthday', personName: 'נועם', isRecurring: true },
-  { id: 'bday-ilai',    title: 'יום הולדת עילאי 🎂',      date: `${CURRENT_YEAR}-04-08`, time: '09:00', emoji: '🎂', color: '#60A5FA', type: 'birthday', personName: 'עילאי', isRecurring: true },
+  { id: 'bday-ilai',    title: 'יום הולדת עילי 🎂',       date: `${CURRENT_YEAR}-04-08`, time: '09:00', emoji: '🎂', color: '#60A5FA', type: 'birthday', personName: 'עילי', isRecurring: true },
   { id: 'bday-papi',    title: 'יום הולדת פפי 🕯️❤️',      date: `${CURRENT_YEAR}-04-19`, time: '09:00', emoji: '🕯️', color: '#C9A84C', type: 'birthday', personName: 'פפי', isRecurring: true },
   // July
   { id: 'bday-raphi',   title: 'יום הולדת רפי 🎂',        date: `${CURRENT_YEAR}-07-29`, time: '09:00', emoji: '🎂', color: '#FB923C', type: 'birthday', personName: 'רפי', isRecurring: true },
@@ -237,10 +237,10 @@ export const FAMILY_BIRTHDAYS: Appointment[] = [
   // September
   { id: 'bday-sharon',  title: 'יום הולדת שרון 🎂',       date: `${CURRENT_YEAR}-09-11`, time: '09:00', emoji: '🎂', color: '#A78BFA', type: 'birthday', personName: 'שרון', isRecurring: true },
   // October
-  { id: 'bday-anabel',  title: 'יום הולדת אנאבל 🎂',      date: `${CURRENT_YEAR}-10-01`, time: '09:00', emoji: '🎂', color: '#F472B6', type: 'birthday', personName: 'אנאבל', isRecurring: true },
+  { id: 'bday-anabel',  title: 'יום הולדת אנאבל 🎂👶',     date: `${CURRENT_YEAR}-10-01`, time: '09:00', emoji: '🎂', color: '#F472B6', type: 'birthday', personName: 'אנאבל', isRecurring: true, notes: 'נינה — בת של אופיר וירדן' },
   { id: 'bday-yarden',  title: 'יום הולדת ירדן 🎂',       date: `${CURRENT_YEAR}-10-12`, time: '09:00', emoji: '🎂', color: '#60A5FA', type: 'birthday', personName: 'ירדן', isRecurring: true },
   // November
-  { id: 'bday-ari',     title: 'יום הולדת ארי 🎂',        date: `${CURRENT_YEAR}-11-26`, time: '09:00', emoji: '🎂', color: '#FB923C', type: 'birthday', personName: 'ארי', isRecurring: true },
+  { id: 'bday-ari',     title: 'יום הולדת ארי 🎂👶',       date: `${CURRENT_YEAR}-11-26`, time: '09:00', emoji: '🎂', color: '#FB923C', type: 'birthday', personName: 'ארי', isRecurring: true, notes: 'נינה — בת של אופיר וירדן, אחות של אנאבל' },
 ]
 
 export const FAMILY_MEMORIALS: Appointment[] = [
