@@ -50,6 +50,8 @@ function dateStr(year: number, month: number, day: number): string {
 // ─── Appointment Card ─────────────────────────────────────────────────────────
 function ApptCard({ appt, onDelete }: { appt: Appointment; onDelete: () => void }) {
   const [hovered, setHovered] = useState(false)
+  const isBday = appt.type === 'birthday'
+  const isMemorial = appt.type === 'memory'
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -58,21 +60,29 @@ function ApptCard({ appt, onDelete }: { appt: Appointment; onDelete: () => void 
         display: 'flex',
         alignItems: 'center',
         gap: 14,
-        background: 'rgba(255,250,240,0.04)',
+        background: isBday
+          ? 'linear-gradient(135deg, rgba(244,114,182,0.10) 0%, rgba(255,230,109,0.06) 100%)'
+          : isMemorial
+          ? 'linear-gradient(135deg, rgba(201,168,76,0.10) 0%, rgba(201,168,76,0.03) 100%)'
+          : 'rgba(255,250,240,0.04)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
-        border: hovered
+        border: isBday
+          ? '1px solid rgba(244,114,182,0.25)'
+          : isMemorial
+          ? '1px solid rgba(201,168,76,0.25)'
+          : hovered
           ? '1px solid rgba(201,168,76,0.30)'
           : '1px solid rgba(255,255,255,0.07)',
         borderRadius: 14,
-        padding: '14px 16px 14px 0',
+        padding: '12px 14px 12px 0',
         position: 'relative',
-        marginBottom: 10,
+        marginBottom: 8,
         overflow: 'hidden',
         transition: 'border-color 0.2s, box-shadow 0.2s',
-        boxShadow: hovered
-          ? `0 4px 24px rgba(201,168,76,0.10), inset 0 1px 0 rgba(255,250,240,0.04)`
-          : 'inset 0 1px 0 rgba(255,250,240,0.04), 0 2px 16px rgba(0,0,0,0.25)',
+        boxShadow: isBday
+          ? '0 4px 20px rgba(244,114,182,0.12), inset 0 1px 0 rgba(255,250,240,0.06)'
+          : 'inset 0 1px 0 rgba(255,250,240,0.04), 0 2px 12px rgba(0,0,0,0.20)',
         animation: 'fadeSlideUp 0.35s ease both',
       } as React.CSSProperties}
     >
@@ -467,7 +477,7 @@ export function AbuCalendar() {
   const [year, setYear] = useState(todayDate.getFullYear())
   const [month, setMonth] = useState(todayDate.getMonth() + 1)
   const [selectedDay, setSelectedDay] = useState(today)
-  const [appointments, setAppointments] = useState<Appointment[]>(() => loadAppointmentsWithFamily())
+  const [appointments, setAppointments] = useState<Appointment[]>(() => loadAppointmentsWithFamily(todayDate.getFullYear()))
   const [showManual, setShowManual] = useState(false)
   const [toast, setToast] = useState(false)
   const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string; time: string; emoji: string } | null>(null)
@@ -504,10 +514,12 @@ export function AbuCalendar() {
   const [slideDir, setSlideDir] = useState<'none' | 'left' | 'right'>('none')
   const [slideKey, setSlideKey] = useState(0)
 
-  const reload = useCallback(() => setAppointments(loadAppointmentsWithFamily()), [])
+  const reload = useCallback(() => setAppointments(loadAppointmentsWithFamily(year)), [year])
 
   // ─── Feature 1: Alert interval ───────────────────────────────────────────────
   useEffect(() => { injectSharedKeyframes() }, [])
+  // Reload appointments when year changes (birthdays are year-specific)
+  useEffect(() => { setAppointments(loadAppointmentsWithFamily(year)) }, [year])
 
   useEffect(() => {
     const check = () => {
@@ -1084,33 +1096,60 @@ export function AbuCalendar() {
         </div>
       </div>
 
-      {/* 🎉 Birthday confetti overlay */}
+      {/* 🎆 Birthday fireworks overlay */}
       {(() => {
         const selDots = apptsByDate[selectedDay] ?? []
         const birthdayOnSelected = selDots.some(a => a.type === 'birthday')
         if (!birthdayOnSelected) return null
-        const confettiColors = ['#FF6B9D', '#FFE66D', '#4ECDC4', '#A78BFA', '#FB923C', '#F472B6', '#60A5FA', '#34D399', '#e8c76a', '#2DD4BF']
+        const fwColors = ['#FF6B9D', '#FFE66D', '#4ECDC4', '#A78BFA', '#FB923C', '#F472B6', '#60A5FA', '#e8c76a']
+        // Generate 3 firework bursts at different positions
+        const bursts = [
+          { cx: '25%', cy: '20%', delay: '0s' },
+          { cx: '70%', cy: '15%', delay: '0.4s' },
+          { cx: '50%', cy: '30%', delay: '0.8s' },
+        ]
         return (
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 40, overflow: 'hidden' }}>
-            {Array.from({ length: 18 }).map((_, i) => (
-              <div key={i} style={{
-                position: 'absolute',
-                left: `${5 + Math.random() * 90}%`,
-                top: -10,
-                width: 6 + Math.random() * 6,
-                height: 6 + Math.random() * 6,
-                borderRadius: Math.random() > 0.5 ? '50%' : '2px',
-                background: confettiColors[i % confettiColors.length],
-                opacity: 0.85,
-                animation: `confettiFall ${2 + Math.random() * 2}s ease ${Math.random() * 1.5}s both`,
-              }} />
+            {bursts.map((burst, bi) => (
+              <div key={bi} style={{ position: 'absolute', left: burst.cx, top: burst.cy }}>
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const angle = (i / 12) * 360
+                  const dist = 40 + Math.random() * 60
+                  const x = Math.cos(angle * Math.PI / 180) * dist
+                  const y = Math.sin(angle * Math.PI / 180) * dist
+                  const color = fwColors[(bi * 4 + i) % fwColors.length]!
+                  return (
+                    <div key={i} style={{
+                      position: 'absolute',
+                      width: 5, height: 5, borderRadius: '50%',
+                      background: color,
+                      '--fw-x': `${x}px`,
+                      '--fw-y': `${y}px`,
+                      '--fw-color': color,
+                      animation: `fireworkBurst 1.2s ease-out ${burst.delay} both, fireworkGlow 1.2s ease-out ${burst.delay} both`,
+                    } as React.CSSProperties} />
+                  )
+                })}
+                {/* Center flash */}
+                <div style={{
+                  position: 'absolute', width: 8, height: 8, borderRadius: '50%',
+                  background: '#FFE66D',
+                  boxShadow: '0 0 20px 8px rgba(255,230,109,0.6)',
+                  animation: `fireworkBurst 0.6s ease-out ${burst.delay} both`,
+                  '--fw-x': '0px', '--fw-y': '0px', '--fw-color': '#FFE66D',
+                } as React.CSSProperties} />
+              </div>
             ))}
+            {/* Emoji sparkles */}
+            <div style={{ position: 'absolute', top: '10%', left: '45%', fontSize: 24, animation: `fireworkBurst 1.5s ease-out 0.2s both`, '--fw-x': '0px', '--fw-y': '-20px', '--fw-color': 'transparent' } as React.CSSProperties}>🎆</div>
+            <div style={{ position: 'absolute', top: '25%', left: '15%', fontSize: 20, animation: `fireworkBurst 1.5s ease-out 0.6s both`, '--fw-x': '0px', '--fw-y': '-15px', '--fw-color': 'transparent' } as React.CSSProperties}>✨</div>
+            <div style={{ position: 'absolute', top: '20%', left: '75%', fontSize: 22, animation: `fireworkBurst 1.5s ease-out 1.0s both`, '--fw-x': '0px', '--fw-y': '-18px', '--fw-color': 'transparent' } as React.CSSProperties}>🎉</div>
           </div>
         )
       })()}
 
-      {/* SELECTED DAY APPOINTMENTS — flex to fill remaining space */}
-      <div style={{ padding: '8px 16px 0', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      {/* SELECTED DAY APPOINTMENTS — scrollable within remaining space */}
+      <div style={{ padding: '8px 16px 4px', flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14,
         }}>
@@ -1406,9 +1445,14 @@ export function AbuCalendar() {
           from { transform: translateX(25px); opacity: 0; }
           to   { transform: translateX(0); opacity: 1; }
         }
-        @keyframes confettiFall {
-          0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(870px) rotate(720deg); opacity: 0; }
+        @keyframes fireworkBurst {
+          0%   { transform: scale(0) translate(0,0); opacity: 1; }
+          30%  { opacity: 1; }
+          100% { transform: scale(1) translate(var(--fw-x), var(--fw-y)); opacity: 0; }
+        }
+        @keyframes fireworkGlow {
+          0%   { box-shadow: 0 0 4px 2px var(--fw-color); }
+          100% { box-shadow: 0 0 0px 0px var(--fw-color); }
         }
         @keyframes floatHeart {
           0%   { transform: translateY(0) scale(1); opacity: 0.6; }

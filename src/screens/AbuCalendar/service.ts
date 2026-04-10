@@ -248,14 +248,27 @@ export const FAMILY_MEMORIALS: Appointment[] = [
     notes: 'פפי נפטר ב-1 בינואר 2025. נולד ב-19 באפריל 1941.' },
 ]
 
-/** Load appointments + merge permanent family birthdays & memorials */
-export function loadAppointmentsWithFamily(): Appointment[] {
+/** Load appointments + merge permanent family birthdays & memorials for a specific year */
+export function loadAppointmentsWithFamily(viewYear?: number): Appointment[] {
+  const yr = viewYear ?? new Date().getFullYear()
   const userAppts = loadAppointments()
-  // Merge: family birthdays + memorials + user appointments
-  // Family IDs start with 'bday-' or 'memorial-' — never duplicated
-  const familyIds = new Set([...FAMILY_BIRTHDAYS, ...FAMILY_MEMORIALS].map(a => a.id))
+
+  // Generate family birthdays for the viewed year (recurring = every year)
+  const yearBirthdays = FAMILY_BIRTHDAYS.map(b => ({
+    ...b,
+    date: `${yr}-${b.date.slice(5)}`, // Replace year with viewed year
+    id: `${b.id}-${yr}`,
+  }))
+  const yearMemorials = FAMILY_MEMORIALS.map(m => ({
+    ...m,
+    date: `${yr}-${m.date.slice(5)}`,
+    id: `${m.id}-${yr}`,
+  }))
+
+  // Don't duplicate with user-created appointments
+  const familyIds = new Set([...yearBirthdays, ...yearMemorials].map(a => a.id))
   const filtered = userAppts.filter(a => !familyIds.has(a.id))
-  return [...FAMILY_BIRTHDAYS, ...FAMILY_MEMORIALS, ...filtered]
+  return [...yearBirthdays, ...yearMemorials, ...filtered]
 }
 
 // ─── Moon Phase (synodic month calculation) ─────────────────────────────────
