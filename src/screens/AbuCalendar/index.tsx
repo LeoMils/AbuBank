@@ -847,122 +847,153 @@ export function AbuCalendar() {
         >›</button>
       </div>
 
-      {/* CALENDAR GRID — with slide animation */}
+      {/* ═══════════ PREMIUM CALENDAR GRID ═══════════ */}
       <div key={slideKey} style={{
-        margin: '0 12px', padding: '12px 8px',
-        animation: slideDir === 'left' ? 'slideFromLeft 0.22s ease both'
-                 : slideDir === 'right' ? 'slideFromRight 0.22s ease both'
+        margin: '0 10px', padding: '10px 6px 8px',
+        animation: slideDir === 'left' ? 'slideFromLeft 0.25s ease both'
+                 : slideDir === 'right' ? 'slideFromRight 0.25s ease both'
                  : 'none',
-        background: 'rgba(255,250,240,0.02)',
-        borderRadius: 16, border: '1px solid rgba(201,168,76,0.10)', flexShrink: 0,
+        background: 'linear-gradient(180deg, rgba(255,250,240,0.035) 0%, rgba(201,168,76,0.015) 100%)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderRadius: 20,
+        border: '1px solid rgba(201,168,76,0.12)',
+        boxShadow: 'inset 0 1px 0 rgba(255,250,240,0.06), 0 4px 24px rgba(0,0,0,0.25)',
+        flexShrink: 0,
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 8 }}>
+        {/* Day headers */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6 }}>
           {DAY_HEADERS.map((h, idx) => (
             <div key={h} style={{
-              textAlign: 'center', fontSize: 12, fontWeight: 600,
-              color: idx === 6 ? 'rgba(201,168,76,0.85)' : 'rgba(201,168,76,0.50)',
-              padding: '4px 0', fontFamily: "'Heebo',sans-serif",
-              letterSpacing: '1px',
-              borderBottom: idx === 6 ? '1.5px solid rgba(201,168,76,0.25)' : 'none',
+              textAlign: 'center', fontSize: 11, fontWeight: 700,
+              color: idx === 6 ? 'rgba(201,168,76,0.90)' : idx === 5 ? 'rgba(201,168,76,0.60)' : 'rgba(245,240,232,0.45)',
+              padding: '5px 0', fontFamily: "'Heebo',sans-serif",
+              letterSpacing: '0.5px',
+              borderBottom: idx === 6 ? '1.5px solid rgba(201,168,76,0.30)' : idx === 5 ? '1px solid rgba(201,168,76,0.12)' : 'none',
             }}>{idx === 6 ? `🕯️ ${h}` : h}</div>
           ))}
         </div>
 
+        {/* Day cells grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
           {cells.map((day, idx) => {
-            if (day === null) return <div key={`e${idx}`} style={{ minHeight: 48 }} />
+            if (day === null) return <div key={`e${idx}`} style={{ minHeight: 54 }} />
             const ds = dateStr(year, month, day)
             const isToday = ds === today
             const isSelected = ds === selectedDay && !isToday
             const isPast = ds < today
             const dots = apptsByDate[ds] ?? []
             const isShabbat = idx % 7 === 6
+            const isFriday = idx % 7 === 5
             const holiday = getHebrewHoliday(ds)
             const moon = getMoonPhase(year, month, day)
+            const hasBirthday = dots.some(a => a.type === 'birthday')
+            const cellDelay = `${(idx % 7) * 0.02}s`
             return (
               <button
                 key={ds}
                 type="button"
                 onClick={() => { setSelectedDay(ds); soundTap() }}
+                aria-label={`${day} ${formatHebrewMonth(year, month)}${holiday ? `, ${holiday}` : ''}${dots.length ? `, ${dots.length} אירועים` : ''}`}
+                aria-current={isToday ? 'date' : undefined}
                 style={{
-                  minHeight: 48, borderRadius: 14, position: 'relative',
+                  minHeight: 54, borderRadius: 14, position: 'relative',
+                  animation: `fadeSlideUp 0.3s ease ${cellDelay} both`,
                   border: isToday
-                    ? '1.5px solid rgba(201,168,76,0.60)'
+                    ? '2px solid rgba(201,168,76,0.65)'
                     : isSelected
-                    ? '1.5px solid rgba(20,184,166,0.50)'
-                    : '1px solid transparent',
+                    ? '2px solid rgba(20,184,166,0.55)'
+                    : holiday
+                    ? '1px solid rgba(201,168,76,0.18)'
+                    : hasBirthday
+                    ? '1px solid rgba(244,114,182,0.25)'
+                    : '1px solid rgba(255,255,255,0.03)',
                   background: isToday
-                    ? 'linear-gradient(145deg, rgba(201,168,76,0.12) 0%, rgba(201,168,76,0.04) 100%)'
+                    ? 'linear-gradient(145deg, rgba(201,168,76,0.16) 0%, rgba(212,168,83,0.06) 100%)'
                     : isSelected
-                    ? 'linear-gradient(145deg, rgba(20,184,166,0.15) 0%, rgba(20,184,166,0.05) 100%)'
+                    ? 'linear-gradient(145deg, rgba(20,184,166,0.18) 0%, rgba(20,184,166,0.06) 100%)'
+                    : holiday
+                    ? 'linear-gradient(145deg, rgba(201,168,76,0.06) 0%, rgba(201,168,76,0.02) 100%)'
+                    : hasBirthday
+                    ? 'linear-gradient(145deg, rgba(244,114,182,0.08) 0%, rgba(167,139,250,0.03) 100%)'
                     : dots.length > 0
                     ? 'rgba(255,250,240,0.025)'
-                    : isShabbat ? 'rgba(201,168,76,0.02)' : 'transparent',
-                  opacity: isPast && !isToday ? 0.4 : 1,
+                    : isShabbat ? 'rgba(201,168,76,0.025)' : isFriday ? 'rgba(201,168,76,0.012)' : 'transparent',
+                  opacity: isPast && !isToday ? 0.45 : 1,
                   cursor: 'pointer',
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  justifyContent: 'center', gap: 2, padding: '2px 0',
-                  transition: 'all 0.15s ease',
+                  justifyContent: 'center', gap: 1, padding: '3px 0 2px',
+                  transition: 'all 0.18s ease',
                   boxShadow: isToday
-                    ? undefined  // handled by animation
+                    ? 'inset 0 1px 0 rgba(201,168,76,0.15), 0 2px 12px rgba(201,168,76,0.12)'
                     : isSelected
-                    ? '0 0 0 3px rgba(20,184,166,0.08)'
+                    ? 'inset 0 1px 0 rgba(20,184,166,0.10), 0 0 0 3px rgba(20,184,166,0.08)'
                     : 'none',
                 }}
               >
-                {/* Moon phase — top-left corner */}
+                {/* Moon phase — tiny corner */}
                 <span style={{
-                  position: 'absolute', top: 1, left: 2,
-                  fontSize: 7, lineHeight: 1, opacity: 0.40,
+                  position: 'absolute', top: 2, left: 3,
+                  fontSize: 8, lineHeight: 1, opacity: 0.35,
                   pointerEvents: 'none',
                 }}>{moon}</span>
 
-                {/* Day number circle */}
+                {/* Birthday sparkle */}
+                {hasBirthday && (
+                  <span style={{
+                    position: 'absolute', top: 1, right: 2,
+                    fontSize: 9, lineHeight: 1, pointerEvents: 'none',
+                    animation: 'confettiFall 2s ease infinite alternate',
+                  }}>🎂</span>
+                )}
+
+                {/* Day number — large, bold, alive */}
                 <div style={{
-                  width: 32, height: 32, borderRadius: '50%',
+                  width: isToday ? 36 : 34, height: isToday ? 36 : 34, borderRadius: '50%',
                   background: isToday
-                    ? 'linear-gradient(135deg, #e8c76a 0%, #D4A853 30%, #C9A84C 60%, #e8c76a 100%)'
+                    ? 'linear-gradient(135deg, #f0d878 0%, #e8c76a 20%, #D4A853 45%, #C9A84C 65%, #e8c76a 85%, #f0d878 100%)'
                     : 'transparent',
-                  backgroundSize: isToday ? '200% 100%' : undefined,
-                  animation: isToday ? 'todayShimmer 3s ease infinite, todayHalo 3s ease-in-out infinite' : 'none',
+                  backgroundSize: isToday ? '250% 100%' : undefined,
+                  animation: isToday ? 'todayShimmer 3s ease infinite, todayHalo 3.5s ease-in-out infinite' : 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <span style={{
-                    fontSize: isToday ? 18 : 17,
+                    fontSize: isToday ? 20 : 18,
                     fontWeight: isToday ? 800 : isSelected ? 700 : 500,
                     color: isToday ? '#0C0A08'
-                      : isSelected ? TEAL
-                      : isShabbat ? 'rgba(201,168,76,0.80)'
-                      : 'rgba(245,240,232,0.85)',
+                      : isSelected ? '#2DD4BF'
+                      : holiday ? GOLD
+                      : isShabbat ? 'rgba(201,168,76,0.85)'
+                      : isFriday ? 'rgba(245,240,232,0.70)'
+                      : 'rgba(245,240,232,0.88)',
                     fontFamily: "'DM Sans',sans-serif", lineHeight: 1,
-                    textShadow: isToday ? '0 1px 2px rgba(0,0,0,0.25)' : 'none',
+                    textShadow: isToday ? '0 1px 3px rgba(0,0,0,0.30)' : 'none',
                   }}>{day}</span>
                 </div>
 
-                {/* Holiday marker */}
+                {/* Holiday marker — golden star */}
                 {holiday && (
                   <span style={{
-                    fontSize: 7, fontWeight: 700, color: GOLD,
-                    fontFamily: "'Heebo',sans-serif",
-                    lineHeight: 1, marginTop: -2, opacity: 0.85,
+                    fontSize: 8, fontWeight: 700, color: '#e8c76a',
+                    lineHeight: 1, marginTop: -1,
+                    textShadow: '0 0 6px rgba(201,168,76,0.50)',
                   }}>✡</span>
                 )}
 
-                {/* Event color bars */}
+                {/* Colored event bars — alive with glow */}
                 {dots.length > 0 && !holiday && (
-                  <div style={{ display: 'flex', gap: 2, justifyContent: 'center', height: 4, marginTop: -1 }}>
+                  <div style={{ display: 'flex', gap: 2, justifyContent: 'center', height: 4, marginTop: 0 }}>
                     {dots.slice(0, 3).map(a => (
                       <div key={a.id} style={{
-                        width: dots.length === 1 ? 14 : dots.length === 2 ? 10 : 7,
-                        height: 3, borderRadius: 2,
-                        background: a.color,
-                        boxShadow: `0 0 4px ${a.color}55`,
+                        width: dots.length === 1 ? 16 : dots.length === 2 ? 11 : 8,
+                        height: 3.5, borderRadius: 2,
+                        background: `linear-gradient(90deg, ${a.color}, ${a.color}cc)`,
+                        boxShadow: `0 0 6px ${a.color}66, 0 1px 3px ${a.color}33`,
                       }} />
                     ))}
                     {dots.length > 3 && (
                       <div style={{
-                        width: 4, height: 3, borderRadius: 2,
-                        background: 'rgba(245,240,232,0.30)',
+                        width: 5, height: 3.5, borderRadius: 2,
+                        background: 'rgba(245,240,232,0.35)',
                       }} />
                     )}
                   </div>
@@ -973,8 +1004,33 @@ export function AbuCalendar() {
         </div>
       </div>
 
+      {/* 🎉 Birthday confetti overlay */}
+      {(() => {
+        const selDots = apptsByDate[selectedDay] ?? []
+        const birthdayOnSelected = selDots.some(a => a.type === 'birthday')
+        if (!birthdayOnSelected) return null
+        const confettiColors = ['#FF6B9D', '#FFE66D', '#4ECDC4', '#A78BFA', '#FB923C', '#F472B6', '#60A5FA', '#34D399', '#e8c76a', '#2DD4BF']
+        return (
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 40, overflow: 'hidden' }}>
+            {Array.from({ length: 18 }).map((_, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                left: `${5 + Math.random() * 90}%`,
+                top: -10,
+                width: 6 + Math.random() * 6,
+                height: 6 + Math.random() * 6,
+                borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+                background: confettiColors[i % confettiColors.length],
+                opacity: 0.85,
+                animation: `confettiFall ${2 + Math.random() * 2}s ease ${Math.random() * 1.5}s both`,
+              }} />
+            ))}
+          </div>
+        )
+      })()}
+
       {/* SELECTED DAY APPOINTMENTS */}
-      <div style={{ padding: '22px 16px 0', flexShrink: 0 }}>
+      <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14,
         }}>
@@ -989,10 +1045,19 @@ export function AbuCalendar() {
 
         {selectedAppts.length === 0 ? (
           <div style={{
-            textAlign: 'center', padding: '28px 0',
-            color: 'rgba(201,168,76,0.35)', fontSize: 15,
-            fontFamily: "'Heebo',sans-serif", fontStyle: 'italic',
-          }}>אין אירועים היום</div>
+            textAlign: 'center', padding: '20px 0',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+          }}>
+            <span style={{ fontSize: 28, opacity: 0.5 }}>📅</span>
+            <span style={{
+              color: 'rgba(201,168,76,0.50)', fontSize: 16,
+              fontFamily: "'Heebo',sans-serif", fontWeight: 500,
+            }}>יום פנוי ✨</span>
+            <span style={{
+              color: 'rgba(245,240,232,0.25)', fontSize: 13,
+              fontFamily: "'Heebo',sans-serif",
+            }}>לחצי למטה להוסיף אירוע</span>
+          </div>
         ) : (
           selectedAppts.map(a => (
             <ApptCard
