@@ -214,6 +214,50 @@ export function formatHebrewMonth(year: number, month: number): string {
   return `${monthName} ${year}`
 }
 
+// ─── Family Birthdays & Memorial (hardcoded from memory/birthdays_registry.yaml) ───
+
+const CURRENT_YEAR = new Date().getFullYear()
+
+export const FAMILY_BIRTHDAYS: Appointment[] = [
+  // February
+  { id: 'bday-ofir',    title: 'יום הולדת אופיר 🎂',      date: `${CURRENT_YEAR}-02-15`, time: '09:00', emoji: '🎂', color: '#FF6B9D', type: 'birthday', personName: 'אופיר', isRecurring: true },
+  { id: 'bday-adar',    title: 'יום הולדת אדר 🎂',        date: `${CURRENT_YEAR}-02-28`, time: '09:00', emoji: '🎂', color: '#A78BFA', type: 'birthday', personName: 'אדר', isRecurring: true },
+  // April
+  { id: 'bday-martita', title: 'יום הולדת Martita! 🎉👑',  date: `${CURRENT_YEAR}-04-01`, time: '09:00', emoji: '👑', color: '#FFE66D', type: 'birthday', personName: 'Martita', isRecurring: true },
+  { id: 'bday-adi',     title: 'יום הולדת עדי 🎂',        date: `${CURRENT_YEAR}-04-05`, time: '09:00', emoji: '🎂', color: '#F472B6', type: 'birthday', personName: 'עדי', isRecurring: true },
+  { id: 'bday-noam',    title: 'יום הולדת נועם 🎂',       date: `${CURRENT_YEAR}-04-05`, time: '09:00', emoji: '🎂', color: '#4ECDC4', type: 'birthday', personName: 'נועם', isRecurring: true },
+  { id: 'bday-ilai',    title: 'יום הולדת עילאי 🎂',      date: `${CURRENT_YEAR}-04-08`, time: '09:00', emoji: '🎂', color: '#60A5FA', type: 'birthday', personName: 'עילאי', isRecurring: true },
+  { id: 'bday-papi',    title: 'יום הולדת פפי 🕯️❤️',      date: `${CURRENT_YEAR}-04-19`, time: '09:00', emoji: '🕯️', color: '#C9A84C', type: 'birthday', personName: 'פפי', isRecurring: true },
+  // July
+  { id: 'bday-raphi',   title: 'יום הולדת רפי 🎂',        date: `${CURRENT_YEAR}-07-29`, time: '09:00', emoji: '🎂', color: '#FB923C', type: 'birthday', personName: 'רפי', isRecurring: true },
+  { id: 'bday-eylon',   title: 'יום הולדת אילון 🎂',      date: `${CURRENT_YEAR}-07-31`, time: '09:00', emoji: '🎂', color: '#34D399', type: 'birthday', personName: 'אילון', isRecurring: true },
+  // August
+  { id: 'bday-mor',     title: 'יום הולדת מור 🎂❤️',       date: `${CURRENT_YEAR}-08-10`, time: '09:00', emoji: '🎂', color: '#FF6B9D', type: 'birthday', personName: 'מור', isRecurring: true },
+  { id: 'bday-leo',     title: 'יום הולדת לאו 🎂❤️',       date: `${CURRENT_YEAR}-08-22`, time: '09:00', emoji: '🎂', color: '#4ECDC4', type: 'birthday', personName: 'לאו', isRecurring: true },
+  // September
+  { id: 'bday-sharon',  title: 'יום הולדת שרון 🎂',       date: `${CURRENT_YEAR}-09-11`, time: '09:00', emoji: '🎂', color: '#A78BFA', type: 'birthday', personName: 'שרון', isRecurring: true },
+  // October
+  { id: 'bday-anabel',  title: 'יום הולדת אנאבל 🎂',      date: `${CURRENT_YEAR}-10-01`, time: '09:00', emoji: '🎂', color: '#F472B6', type: 'birthday', personName: 'אנאבל', isRecurring: true },
+  { id: 'bday-yarden',  title: 'יום הולדת ירדן 🎂',       date: `${CURRENT_YEAR}-10-12`, time: '09:00', emoji: '🎂', color: '#60A5FA', type: 'birthday', personName: 'ירדן', isRecurring: true },
+  // November
+  { id: 'bday-ari',     title: 'יום הולדת ארי 🎂',        date: `${CURRENT_YEAR}-11-26`, time: '09:00', emoji: '🎂', color: '#FB923C', type: 'birthday', personName: 'ארי', isRecurring: true },
+]
+
+export const FAMILY_MEMORIALS: Appointment[] = [
+  { id: 'memorial-papi', title: 'יום הזיכרון של פפי 🕯️',  date: `${CURRENT_YEAR}-01-01`, time: '09:00', emoji: '🕯️', color: '#C9A84C', type: 'memory', personName: 'פפי', isRecurring: true,
+    notes: 'פפי נפטר ב-1 בינואר 2025. נולד ב-19 באפריל 1941.' },
+]
+
+/** Load appointments + merge permanent family birthdays & memorials */
+export function loadAppointmentsWithFamily(): Appointment[] {
+  const userAppts = loadAppointments()
+  // Merge: family birthdays + memorials + user appointments
+  // Family IDs start with 'bday-' or 'memorial-' — never duplicated
+  const familyIds = new Set([...FAMILY_BIRTHDAYS, ...FAMILY_MEMORIALS].map(a => a.id))
+  const filtered = userAppts.filter(a => !familyIds.has(a.id))
+  return [...FAMILY_BIRTHDAYS, ...FAMILY_MEMORIALS, ...filtered]
+}
+
 // ─── Moon Phase (synodic month calculation) ─────────────────────────────────
 
 export function getMoonPhase(year: number, month: number, day: number): string {

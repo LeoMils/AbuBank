@@ -102,8 +102,8 @@ birthdays:
   - person: "Sharon"
     hebrew: "שרון"
     date: "09-11"               # 11 בספטמבר
+    relationship: "Leo's ex-girlfriend, close with Martita"
     confidence: confirmed
-    notes: "New family member — relationship to be clarified"
     reminder: { days_before: [7, 3, 1, 0] }
 
   # ─── October ──────────────────────────────────

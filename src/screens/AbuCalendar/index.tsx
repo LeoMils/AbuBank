@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import {
-  loadAppointments,
+  loadAppointmentsWithFamily,
   addAppointment,
   deleteAppointment,
   detectEmoji,
@@ -467,7 +467,7 @@ export function AbuCalendar() {
   const [year, setYear] = useState(todayDate.getFullYear())
   const [month, setMonth] = useState(todayDate.getMonth() + 1)
   const [selectedDay, setSelectedDay] = useState(today)
-  const [appointments, setAppointments] = useState<Appointment[]>(() => loadAppointments())
+  const [appointments, setAppointments] = useState<Appointment[]>(() => loadAppointmentsWithFamily())
   const [showManual, setShowManual] = useState(false)
   const [toast, setToast] = useState(false)
   const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string; time: string; emoji: string } | null>(null)
@@ -504,7 +504,7 @@ export function AbuCalendar() {
   const [slideDir, setSlideDir] = useState<'none' | 'left' | 'right'>('none')
   const [slideKey, setSlideKey] = useState(0)
 
-  const reload = useCallback(() => setAppointments(loadAppointments()), [])
+  const reload = useCallback(() => setAppointments(loadAppointmentsWithFamily()), [])
 
   // ─── Feature 1: Alert interval ───────────────────────────────────────────────
   useEffect(() => { injectSharedKeyframes() }, [])
@@ -512,7 +512,7 @@ export function AbuCalendar() {
   useEffect(() => {
     const check = () => {
       const now = Date.now()
-      const allAppts = loadAppointments()
+      const allAppts = loadAppointmentsWithFamily()
       for (const appt of allAppts) {
         if (alertedIdsRef.current.has(appt.id)) continue
         const apptTime = new Date(`${appt.date}T${appt.time}:00`).getTime()
