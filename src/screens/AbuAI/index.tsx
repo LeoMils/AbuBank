@@ -425,8 +425,22 @@ export function AbuAI() {
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // v17: WakeLock prevents screen dimming during voice mode
+  const wakeLockRef = useRef<any>(null)
+  const acquireWakeLock = async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await (navigator as any).wakeLock.request('screen')
+      }
+    } catch { /* silent — not critical */ }
+  }
+  const releaseWakeLock = () => {
+    try { wakeLockRef.current?.release(); wakeLockRef.current = null } catch { /* silent */ }
+  }
+
   const enterVoiceMode = useCallback(() => {
     unlockIOSAudio()
+    acquireWakeLock() // Keep screen on during voice
     setVoiceMode(true)
     voiceModeRef.current = true
 
@@ -475,6 +489,7 @@ export function AbuAI() {
     setIsSpeaking(false)
     stopSpeaking()
     cleanupVoiceResources()
+    releaseWakeLock() // Allow screen to dim again
   }, [cleanupVoiceResources])
 
   const handleVoiceTap = () => {
