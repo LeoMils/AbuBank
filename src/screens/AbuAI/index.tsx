@@ -144,6 +144,10 @@ export function AbuAI() {
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
   const voiceSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // v24.2: Meeting/listen mode — free Web Speech API
+  const meetingTranscriptRef = useRef<string>('')
+  const meetingRecRef = useRef<SpeechRecognition | null>(null)
+
   const chatRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -778,6 +782,58 @@ ${fewShotText}`
     // v23: Auto-detect noise before starting (skip if user explicitly chose listen mode)
     const detectedMode = noiseMode === 'listen' ? 'listen' : await detectAmbientNoise()
 
+    // v24.2: Listen/meeting mode — FREE Web Speech API, no expensive Realtime API
+    if (detectedMode === 'listen') {
+      setVoicePhase('listening')
+      meetingTranscriptRef.current = ''
+      const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (!WSR) {
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'הדפדפן לא תומך בהאזנה לפגישות. נסי בכרום.', timestamp: Date.now() }])
+        setVoiceMode(false); voiceModeRef.current = false; return
+      }
+      const rec = new WSR() as SpeechRecognition
+      rec.continuous = true        // keep listening indefinitely
+      rec.interimResults = false    // only final results (less noise)
+      rec.lang = 'he-IL'
+      rec.maxAlternatives = 1
+
+      rec.onresult = (e: SpeechRecognitionEvent) => {
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const result = e.results[i]
+          if (result?.isFinal && result[0]?.transcript) {
+            const text = result[0].transcript.trim()
+            if (text.length > 1) {
+              meetingTranscriptRef.current += text + '\n'
+              setLastHeardText(text)
+              console.log(`[Meeting] Transcript: "${text}" (total: ${meetingTranscriptRef.current.length} chars)`)
+            }
+          }
+        }
+      }
+
+      rec.onerror = (e: SpeechRecognitionErrorEvent) => {
+        // 'no-speech' is normal in meetings — just restart
+        if (e.error === 'no-speech' || e.error === 'aborted') {
+          if (voiceModeRef.current && noiseMode === 'listen') {
+            try { rec.start() } catch { /* already running */ }
+          }
+          return
+        }
+        console.error('[Meeting] Speech error:', e.error)
+      }
+
+      rec.onend = () => {
+        // Auto-restart if still in meeting mode (Web Speech stops periodically)
+        if (voiceModeRef.current && noiseMode === 'listen') {
+          try { rec.start() } catch { /* already running */ }
+        }
+      }
+
+      meetingRecRef.current = rec
+      rec.start()
+      return
+    }
+
     // v21: Use OpenAI Realtime API (WebRTC) if available — true real-time conversation
     // Falls back to pipeline mode if Realtime fails after 2 retries
     if (useRealtime) {
@@ -834,6 +890,11 @@ ${fewShotText}`
   const exitVoiceMode = useCallback(() => {
     // v22.5: Clear safety timer
     if (voiceSafetyTimerRef.current) { clearTimeout(voiceSafetyTimerRef.current); voiceSafetyTimerRef.current = null }
+    // v24.2: Stop meeting transcription if active
+    if (meetingRecRef.current) {
+      try { meetingRecRef.current.stop() } catch { /* already stopped */ }
+      meetingRecRef.current = null
+    }
     // v20.2: Disconnect Realtime session if active
     if (realtimeRef.current) {
       realtimeRef.current.disconnect()
@@ -867,9 +928,34 @@ ${fewShotText}`
 
   // v20.2: Tap anywhere during speaking to interrupt (works for both old + Realtime)
   const handleOrbTap = () => {
-    // v23: Listen mode — tap to ask about what was discussed
-    if (realtimeRef.current?.isListenMode && voicePhase === 'listening') {
-      realtimeRef.current.askAboutMeeting('סכמי בקצרה מה נאמר בשיחה')
+    // v24.2: Listen/meeting mode — tap to ask about what was discussed (free LLM, not Realtime)
+    if (noiseMode === 'listen' && meetingTranscriptRef.current && voicePhase === 'listening') {
+      // Stop transcription temporarily
+      if (meetingRecRef.current) { try { meetingRecRef.current.stop() } catch {} }
+
+      const transcript = meetingTranscriptRef.current.trim()
+      if (transcript.length < 5) {
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'עוד לא שמעתי מספיק. המשיכי את הפגישה.', timestamp: Date.now() }])
+        if (meetingRecRef.current && voiceModeRef.current) { try { meetingRecRef.current.start() } catch {} }
+        return
+      }
+
+      setVoicePhase('processing')
+      // Use cheap text LLM (not Realtime API) to summarize
+      const question = `שמעתי את הפגישה הזו. סכמי בקצרה מה נאמר:\n\n${transcript}`
+      sendMessage(
+        [{ id: nextId(), role: 'user', content: question, timestamp: Date.now() }],
+        false,
+      ).then(summary => {
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: summary, timestamp: Date.now() }])
+        setVoicePhase('listening')
+        // Resume transcription
+        if (meetingRecRef.current && voiceModeRef.current) { try { meetingRecRef.current.start() } catch {} }
+      }).catch(() => {
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'לא הצלחתי לסכם. נסי שוב.', timestamp: Date.now() }])
+        setVoicePhase('listening')
+        if (meetingRecRef.current && voiceModeRef.current) { try { meetingRecRef.current.start() } catch {} }
+      })
       return
     }
 
@@ -1656,7 +1742,7 @@ ${fewShotText}`
                 🎤 מדברת... לחצי כשסיימת
               </div>
             )}
-            {voicePhase === 'listening' && realtimeRef.current?.isListenMode && (
+            {voicePhase === 'listening' && noiseMode === 'listen' && (
               <div style={{
                 marginTop: 16,
                 fontSize: 18,
@@ -1666,8 +1752,13 @@ ${fewShotText}`
                 textAlign: 'center',
               }}>
                 👂 מקשיבה לפגישה...
-                <div style={{ fontSize: 14, color: 'rgba(167,139,250,0.50)', marginTop: 6 }}>
-                  לחצי על העיגול כדי לשאול שאלה
+                {lastHeardText && (
+                  <div style={{ fontSize: 14, color: 'rgba(167,139,250,0.50)', marginTop: 4, direction: 'rtl' }}>
+                    &ldquo;{lastHeardText.slice(0, 50)}{lastHeardText.length > 50 ? '...' : ''}&rdquo;
+                  </div>
+                )}
+                <div style={{ fontSize: 16, color: 'rgba(167,139,250,0.55)', marginTop: 8 }}>
+                  לחצי כדי לשאול מה נאמר
                 </div>
               </div>
             )}
