@@ -140,6 +140,7 @@ export function AbuAI() {
   }, [])
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
+  const voiceSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const chatRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -739,7 +740,7 @@ ${fewShotText}`
 
       samples.sort((a, b) => a - b)
       const median = samples[Math.floor(samples.length / 2)] ?? 0
-      const detected = median > 15 ? 'noisy' : 'quiet' // >15 = TV or significant background noise
+      const detected = median > 12 ? 'noisy' : 'quiet' // v22.5: >12 = TV or any background noise (was 15, missed TV)
       console.log(`[AbuAI] Ambient noise: median=${median.toFixed(1)}, mode=${detected}`)
 
       // Auto-update the toggle if detection disagrees
@@ -776,6 +777,22 @@ ${fewShotText}`
             else if (state === 'error') setVoicePhase(null)
 
             if (state === 'listening') setIsSpeaking(false)
+
+            // v22.5: Safety timeout — auto-exit if stuck listening for 90s
+            if (voiceSafetyTimerRef.current) { clearTimeout(voiceSafetyTimerRef.current); voiceSafetyTimerRef.current = null }
+            if (state === 'listening') {
+              voiceSafetyTimerRef.current = setTimeout(() => {
+                console.log('[AbuAI] Safety timeout — stuck in listening for 90s, auto-exiting')
+                if (realtimeRef.current) {
+                  realtimeRef.current.disconnect()
+                  realtimeRef.current = null
+                }
+                setRealtimeState('idle')
+                voiceModeRef.current = false
+                setVoiceMode(false)
+                setVoicePhase(null)
+              }, 90_000) // 90 seconds
+            }
           },
           onUserTranscript: (text) => {
             setLastHeardText(text)
@@ -813,6 +830,8 @@ ${fewShotText}`
   }, [startPipelineVoiceMode, useRealtime, realtimeInstructions, noiseMode, detectAmbientNoise])
 
   const exitVoiceMode = useCallback(() => {
+    // v22.5: Clear safety timer
+    if (voiceSafetyTimerRef.current) { clearTimeout(voiceSafetyTimerRef.current); voiceSafetyTimerRef.current = null }
     // v20.2: Disconnect Realtime session if active
     if (realtimeRef.current) {
       realtimeRef.current.disconnect()
@@ -849,6 +868,9 @@ ${fewShotText}`
     const state = voiceStateRef.current
     if (state === 'RESPONDING' || voicePhase === 'speaking') {
       interruptAndListen()
+    } else if (voicePhase === 'listening') {
+      // v22.5: Tapping the orb during listening exits voice mode
+      exitVoiceMode()
     }
   }
 
@@ -1388,10 +1410,13 @@ ${fewShotText}`
       {voiceMode && (
         <div
           onClick={() => {
-            // v20.2: Tap ANYWHERE during speaking → interrupt
+            // v22.5: Tap overlay → interrupt if speaking, EXIT if listening/stuck
             if (voicePhase === 'speaking') {
               if (realtimeRef.current) realtimeRef.current.interrupt()
               else interruptAndListen()
+            } else if (voicePhase === 'listening' || voicePhase === 'processing') {
+              // v22.5: Stuck fix — tapping during listening/processing exits voice mode
+              exitVoiceMode()
             }
           }}
           style={{
@@ -1408,7 +1433,7 @@ ${fewShotText}`
             zIndex: 15,
             paddingBottom: 28,
             gap: 0,
-            cursor: voicePhase === 'speaking' ? 'pointer' : 'default',
+            cursor: 'pointer',
           }}>
 
           {/* Large gold ring — 192px — v20: tappable for interruption */}
@@ -1425,7 +1450,7 @@ ${fewShotText}`
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: voicePhase === 'speaking' ? 'pointer' : 'default',
+              cursor: 'pointer',
             }}
           >
             <div style={{
@@ -1564,15 +1589,25 @@ ${fewShotText}`
               </div>
             )}
 
-            {/* v20: Tap to interrupt hint */}
+            {/* v22.5: Tap hints — always visible in voice mode */}
             {voicePhase === 'speaking' && (
               <div style={{
                 marginTop: 16,
-                fontSize: 13,
-                color: 'rgba(245,240,232,0.30)',
+                fontSize: 16,
+                color: 'rgba(245,240,232,0.35)',
                 fontFamily: "'Heebo',sans-serif",
               }}>
                 לחצי בכל מקום כדי להפסיק
+              </div>
+            )}
+            {voicePhase === 'listening' && (
+              <div style={{
+                marginTop: 16,
+                fontSize: 16,
+                color: 'rgba(245,240,232,0.35)',
+                fontFamily: "'Heebo',sans-serif",
+              }}>
+                לחצי בכל מקום כדי לצאת
               </div>
             )}
           </div>
