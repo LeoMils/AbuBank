@@ -209,11 +209,13 @@ export class RealtimeVoiceSession {
 
       // Streaming text transcript of AI speech
       case 'response.audio_transcript.delta':
+        if (this._listenMode) break // v24: silent in meeting mode
         if (event.delta) this.cb.onAssistantDelta(event.delta)
         break
 
       // AI speech transcript complete
       case 'response.audio_transcript.done':
+        if (this._listenMode) break // v24: silent in meeting mode
         if (event.transcript) this.cb.onAssistantTranscript(event.transcript)
         break
 

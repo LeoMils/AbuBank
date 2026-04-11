@@ -791,21 +791,8 @@ ${fewShotText}`
 
             if (state === 'listening') setIsSpeaking(false)
 
-            // v23: Safety timeout — auto-exit if no conversation (skip in listen mode — meetings can be hours)
-            if (voiceSafetyTimerRef.current) { clearTimeout(voiceSafetyTimerRef.current); voiceSafetyTimerRef.current = null }
-            if (state === 'listening' && !realtimeRef.current?.isListenMode) {
-              voiceSafetyTimerRef.current = setTimeout(() => {
-                console.log('[AbuAI] Safety timeout — no conversation for 5 min, auto-exiting')
-                if (realtimeRef.current) {
-                  realtimeRef.current.disconnect()
-                  realtimeRef.current = null
-                }
-                setRealtimeState('idle')
-                voiceModeRef.current = false
-                setVoiceMode(false)
-                setVoicePhase(null)
-              }, 300_000) // 5 minutes — reasonable for natural conversation gaps
-            }
+            // v24: No auto-exit timeout. Martita exits when SHE wants to.
+            // Conversations can last minutes or hours — her choice.
           },
           onUserTranscript: (text) => {
             setLastHeardText(text)
