@@ -53,10 +53,10 @@ function renderScreen(currentScreen: Screen): JSX.Element | null {
     case Screen.Offline: return <Offline />
     case Screen.Error:   return <ErrorScreen />
     // T7.1: Lazy-loaded screens wrapped in Suspense
-    case Screen.Admin:   return <Suspense fallback={<ScreenLoader />}><Admin /></Suspense>
+    case Screen.Admin:   return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><Admin /></ErrorBoundary></Suspense>
     case Screen.AbuAI:       return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuAI /></ErrorBoundary></Suspense>
     case Screen.AbuWhatsApp: return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuWhatsApp /></ErrorBoundary></Suspense>
-    case Screen.Settings:    return <Suspense fallback={<ScreenLoader />}><Settings /></Suspense>
+    case Screen.Settings:    return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><Settings /></ErrorBoundary></Suspense>
     case Screen.AbuGames:    return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuGames /></ErrorBoundary></Suspense>
     case Screen.AbuWeather:  return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuWeather /></ErrorBoundary></Suspense>
     case Screen.AbuCalendar: return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuCalendar /></ErrorBoundary></Suspense>
@@ -122,7 +122,11 @@ export function App() {
     const handleOnline = () => setOnline(true)
     const handleOffline = () => setOnline(false)
 
-    const handleUnhandledRejection = () => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const msg = event.reason instanceof Error ? event.reason.message : String(event.reason ?? '')
+      console.error('[AbuBank] Unhandled rejection:', msg)
+      const { currentScreen, setError } = useAppStore.getState()
+      setError(currentScreen, 'משהו לא עבד. לחצי לחזור הביתה.')
       setScreen(Screen.Error)
     }
 
