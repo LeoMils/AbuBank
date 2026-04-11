@@ -86,6 +86,15 @@ export class RealtimeVoiceSession {
 
       if (!tokenRes.ok) {
         const errText = await tokenRes.text().catch(() => '')
+        // v24.3: Detect quota/billing errors — fall back to free pipeline immediately
+        if (tokenRes.status === 429 || errText.includes('quota') || errText.includes('billing') || errText.includes('exceeded')) {
+          console.error('[Realtime] OpenAI quota exceeded — falling back to free pipeline')
+          this.cb.onError('המכסה של OpenAI נגמרה. עוברת למצב חלופי.')
+          this.setState('error')
+          this.cleanup()
+          this.onFatalError?.() // immediately fall back to pipeline — don't retry
+          return
+        }
         throw new Error(`Session creation failed (${tokenRes.status}): ${errText.slice(0, 100)}`)
       }
 
