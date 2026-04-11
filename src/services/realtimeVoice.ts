@@ -96,12 +96,32 @@ export class RealtimeVoiceSession {
       // 2. Create WebRTC peer connection
       this.pc = new RTCPeerConnection()
 
+      // v24.3: 10-second connection timeout — if data channel doesn't open, fail fast
+      let connected = false
+      const connectionTimeout = setTimeout(() => {
+        if (!connected) {
+          console.error('[Realtime] Connection timeout — data channel never opened in 10s')
+          this.cb.onError('החיבור נכשל. נסי שוב.')
+          this.attemptReconnect()
+        }
+      }, 10_000)
+
       // 3. Audio output — play AI voice through speaker
       this.audioEl = document.createElement('audio')
       this.audioEl.autoplay = true
       this.pc.ontrack = (event) => {
         if (this.audioEl && event.streams[0]) {
           this.audioEl.srcObject = event.streams[0]
+        }
+      }
+
+      // v24.3: Monitor ICE connection — detect failures early
+      this.pc.oniceconnectionstatechange = () => {
+        const iceState = this.pc?.iceConnectionState
+        console.log(`[Realtime] ICE state: ${iceState}`)
+        if (iceState === 'failed' || iceState === 'disconnected') {
+          clearTimeout(connectionTimeout)
+          if (this._state !== 'idle') this.attemptReconnect()
         }
       }
 
@@ -114,11 +134,14 @@ export class RealtimeVoiceSession {
       // 5. Data channel for events
       this.dc = this.pc.createDataChannel('oai-events')
       this.dc.onopen = () => {
+        connected = true
+        clearTimeout(connectionTimeout)
         console.log('[Realtime] Data channel open')
-        this.retryCount = 0 // reset on successful connection
+        this.retryCount = 0
+
         this.setState('listening')
 
-        // Send greeting trigger (skip in listen mode — passive)
+        // Send greeting (skip in listen mode — passive)
         if (!this._listenMode) {
           this.sendEvent({
             type: 'response.create',
@@ -140,6 +163,7 @@ export class RealtimeVoiceSession {
 
       this.dc.onclose = () => {
         console.log('[Realtime] Data channel closed')
+        clearTimeout(connectionTimeout)
         if (this._state !== 'idle') {
           this.attemptReconnect()
         }
