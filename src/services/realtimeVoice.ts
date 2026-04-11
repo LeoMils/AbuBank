@@ -1,8 +1,8 @@
 // ─── OpenAI Realtime API — WebRTC Voice Client ─────────────────────
-// Sub-second latency, audio-to-audio, automatic VAD + barge-in.
-// Same technology as ChatGPT voice mode.
+// v24.2: Upgraded to gpt-realtime (GA) with marin voice
+// Better voice quality, 20% cheaper, follows delivery instructions
 
-const REALTIME_MODEL = 'gpt-4o-realtime-preview'
+const REALTIME_MODEL = 'gpt-realtime'
 
 export type RealtimeState = 'idle' | 'connecting' | 'listening' | 'speaking' | 'error'
 
@@ -71,7 +71,7 @@ export class RealtimeVoiceSession {
         },
         body: JSON.stringify({
           model: REALTIME_MODEL,
-          voice: 'coral',  // v21: warm, natural, good for Hebrew/Spanish
+          voice: 'marin',  // v24.2: newest, most natural voice — warm female, best for non-English
           instructions: this.instructions,
           input_audio_transcription: { model: 'whisper-1' },
           // v22.6: Quiet = server VAD (auto-detect speech), Noisy = no VAD (push-to-talk)

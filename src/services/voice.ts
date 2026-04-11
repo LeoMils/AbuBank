@@ -169,8 +169,8 @@ async function playBlobViaAudioCtx(blob: Blob): Promise<boolean> {
 function getTTSInstructions(text: string): string {
   const lang = detectLang(text)
   return lang === 'es'
-    ? 'Speak in Argentine Spanish with Rioplatense accent. Warm, friendly, conversational tone like a kind woman chatting with a friend. Natural pace, not rushed.'
-    : 'Speak Hebrew with a native Israeli accent. Warm, friendly, conversational tone like a kind woman chatting with a friend. Natural pace, not rushed.'
+    ? 'You are a warm Argentine woman. Speak in Rioplatense Spanish with natural Buenos Aires accent. Quiet, calm, intimate tone — like talking to a close friend on the phone. Not fast. Gentle pace with natural pauses between sentences. Never robotic or monotone.'
+    : 'You are a warm Israeli woman. Speak Hebrew with a natural native Israeli accent — not American, not formal. Quiet, calm, intimate tone — like talking to a close friend on the phone. Not fast. Gentle pace with natural pauses between sentences. Never robotic or monotone.'
 }
 
 async function speakOpenAI(text: string): Promise<boolean> {
