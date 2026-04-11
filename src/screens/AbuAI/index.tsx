@@ -121,11 +121,9 @@ export function AbuAI() {
   const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
   const useRealtime = !!import.meta.env.VITE_OPENAI_API_KEY // use Realtime if OpenAI key exists
 
-  // v23: Voice environment mode — quiet (auto), noisy (push-to-talk), listen (passive meeting)
+  // v25.2: Simplified — noise mode defaults to quiet, user can change manually
   type VoiceEnvMode = 'quiet' | 'noisy' | 'listen'
-  const [noiseMode, setNoiseMode] = useState<VoiceEnvMode>(() => {
-    return (localStorage.getItem('abu-noise-mode') as VoiceEnvMode) || 'quiet'
-  })
+  const [noiseMode, setNoiseMode] = useState<VoiceEnvMode>('quiet') // always start quiet
   const cycleNoiseMode = useCallback(() => {
     setNoiseMode(prev => {
       const order: VoiceEnvMode[] = ['quiet', 'noisy', 'listen']
@@ -779,66 +777,13 @@ ${fewShotText}`
     setVoiceMode(true)
     voiceModeRef.current = true
 
-    // v24.3: Use manual toggle only — auto-detect was grabbing mic and breaking Realtime connection
-    const detectedMode = noiseMode
+    // v25.2: SIMPLE DECISION — can we use Realtime or not?
+    const quotaFlag = localStorage.getItem('abu-openai-quota-failed')
+    const openaiAvailable = useRealtime && (!quotaFlag || (Date.now() - parseInt(quotaFlag, 10)) > 3_600_000)
 
-    // v24.2: Listen/meeting mode — FREE Web Speech API, no expensive Realtime API
-    if (detectedMode === 'listen') {
-      setVoicePhase('listening')
-      meetingTranscriptRef.current = ''
-      const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-      if (!WSR) {
-        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'הדפדפן לא תומך בהאזנה לפגישות. נסי בכרום.', timestamp: Date.now() }])
-        setVoiceMode(false); voiceModeRef.current = false; return
-      }
-      const rec = new WSR()
-      rec.continuous = true        // keep listening indefinitely
-      rec.interimResults = false    // only final results (less noise)
-      rec.lang = 'he-IL'
-      rec.maxAlternatives = 1
-
-      rec.onresult = (e: any) => {
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          const result = e.results[i]
-          if (result?.isFinal && result[0]?.transcript) {
-            const text = (result[0].transcript as string).trim()
-            if (text.length > 1) {
-              meetingTranscriptRef.current += text + '\n'
-              setLastHeardText(text)
-              console.log(`[Meeting] Transcript: "${text}" (total: ${meetingTranscriptRef.current.length} chars)`)
-            }
-          }
-        }
-      }
-
-      rec.onerror = (e: any) => {
-        // 'no-speech' is normal in meetings — just restart
-        if (e.error === 'no-speech' || e.error === 'aborted') {
-          if (voiceModeRef.current && noiseMode === 'listen') {
-            try { rec.start() } catch { /* already running */ }
-          }
-          return
-        }
-        console.error('[Meeting] Speech error:', e.error)
-      }
-
-      rec.onend = () => {
-        // Auto-restart if still in meeting mode (Web Speech stops periodically)
-        if (voiceModeRef.current && noiseMode === 'listen') {
-          try { rec.start() } catch { /* already running */ }
-        }
-      }
-
-      meetingRecRef.current = rec
-      rec.start()
-      return
-    }
-
-    // v25: Skip Realtime if OpenAI quota was recently exhausted — go straight to free pipeline
-    const quotaFailed = localStorage.getItem('abu-openai-quota-failed')
-    const quotaFailedRecently = quotaFailed && (Date.now() - parseInt(quotaFailed, 10)) < 3_600_000 // 1 hour
-    if (quotaFailedRecently) {
-      console.log('[AbuAI] OpenAI quota failed recently — skipping Realtime, using free pipeline')
+    // No OpenAI credits? Go straight to free pipeline. No complexity.
+    if (!openaiAvailable) {
+      console.log('[AbuAI] No OpenAI → free pipeline (Groq + Gemini)')
       startPipelineVoiceMode()
       return
     }
@@ -894,7 +839,7 @@ ${fewShotText}`
           setVoicePhase(null) // clear any stale phase before pipeline sets its own
           setTimeout(() => startPipelineVoiceMode(), 100) // small delay to let state settle
         },
-        detectedMode as 'quiet' | 'noisy', // listen mode returns early above, never reaches here
+        noiseMode as 'quiet' | 'noisy',
       )
       realtimeRef.current = session
       session.connect()
@@ -903,7 +848,7 @@ ${fewShotText}`
 
     // No OpenAI key — use pipeline directly
     startPipelineVoiceMode()
-  }, [startPipelineVoiceMode, useRealtime, realtimeInstructions, noiseMode])
+  }, [startPipelineVoiceMode, useRealtime, realtimeInstructions])
 
   const exitVoiceMode = useCallback(() => {
     // v22.5: Clear safety timer
