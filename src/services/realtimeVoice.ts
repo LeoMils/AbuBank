@@ -27,14 +27,16 @@ export class RealtimeVoiceSession {
   private onFatalError: (() => void) | null
   private vadThreshold: number
   private vadSilenceMs: number
-  private pushToTalk: boolean  // v22.6: noisy mode = push-to-talk (no server VAD)
+  private pushToTalk: boolean    // noisy mode = push-to-talk (no server VAD)
+  private _listenMode: boolean   // v23: passive listening — transcribe but don't respond
 
-  constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void, noiseMode: 'quiet' | 'noisy' = 'quiet') {
+  constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void, noiseMode: 'quiet' | 'noisy' | 'listen' = 'quiet') {
     this.cb = callbacks
     this.instructions = instructions
     this.onFatalError = onFatalError ?? null
-    // v22.6: Quiet = server VAD (automatic), Noisy = push-to-talk (manual)
+    // v23: Three modes
     this.pushToTalk = noiseMode === 'noisy'
+    this._listenMode = noiseMode === 'listen'
     this.vadThreshold = 0.75
     this.vadSilenceMs = 900
   }
@@ -116,14 +118,16 @@ export class RealtimeVoiceSession {
         this.retryCount = 0 // reset on successful connection
         this.setState('listening')
 
-        // Send greeting trigger
-        this.sendEvent({
-          type: 'response.create',
-          response: {
-            modalities: ['audio', 'text'],
-            instructions: 'ברכי את Martita בחום. ברכה קצרה לפי שעת היום. משפט אחד בלבד.',
-          },
-        })
+        // Send greeting trigger (skip in listen mode — passive)
+        if (!this._listenMode) {
+          this.sendEvent({
+            type: 'response.create',
+            response: {
+              modalities: ['audio', 'text'],
+              instructions: 'ברכי את Martita בחום. ברכה קצרה לפי שעת היום. משפט אחד בלבד.',
+            },
+          })
+        }
       }
 
       this.dc.onmessage = (event) => {
@@ -185,12 +189,21 @@ export class RealtimeVoiceSession {
         this.setState('listening')
         break
 
-      // VAD detected speech stop → AI will respond
+      // VAD detected speech stop → AI will respond (unless listen mode)
       case 'input_audio_buffer.speech_stopped':
+        break
+
+      // AI auto-created a response — cancel it in listen mode
+      case 'response.created':
+        if (this._listenMode) {
+          // v23: Listen mode — cancel AI response, just keep transcribing
+          this.sendEvent({ type: 'response.cancel' })
+        }
         break
 
       // AI started generating audio response
       case 'response.audio.delta':
+        if (this._listenMode) break // suppress in listen mode
         if (this._state !== 'speaking') this.setState('speaking')
         break
 
@@ -229,7 +242,7 @@ export class RealtimeVoiceSession {
         break
 
       default:
-        if (!['session.created', 'session.updated', 'response.created',
+        if (!['session.created', 'session.updated',
              'response.output_item.added', 'response.output_item.done',
              'response.content_part.added', 'response.content_part.done',
              'conversation.item.created', 'response.audio.done',
@@ -258,6 +271,23 @@ export class RealtimeVoiceSession {
 
   /** Is this session in push-to-talk mode? */
   get isPushToTalk(): boolean { return this.pushToTalk }
+
+  /** Is this session in listen/meeting mode? */
+  get isListenMode(): boolean { return this._listenMode }
+
+  /** Listen mode: user wants to ask about what was discussed */
+  askAboutMeeting(question: string): void {
+    if (!this._listenMode) return
+    // Temporarily disable listen mode so AI can respond
+    this._listenMode = false
+    this.sendEvent({
+      type: 'response.create',
+      response: {
+        modalities: ['audio', 'text'],
+        instructions: `המשתמשת שמעה שיחה/פגישה והיא שואלת על מה שנאמר. ענני על סמך מה ששמעת בשיחה. שאלתה: "${question}"`,
+      },
+    })
+  }
 
   /** Push-to-talk: signal that user started speaking */
   startTalking(): void {

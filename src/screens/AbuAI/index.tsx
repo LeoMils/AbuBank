@@ -121,23 +121,25 @@ export function AbuAI() {
   const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
   const useRealtime = !!import.meta.env.VITE_OPENAI_API_KEY // use Realtime if OpenAI key exists
 
-  // v22.2: Noise environment toggle — adjusts voice sensitivity
-  const [noiseMode, setNoiseMode] = useState<'quiet' | 'noisy'>(() => {
-    return (localStorage.getItem('abu-noise-mode') as 'quiet' | 'noisy') || 'quiet'
+  // v23: Voice environment mode — quiet (auto), noisy (push-to-talk), listen (passive meeting)
+  type VoiceEnvMode = 'quiet' | 'noisy' | 'listen'
+  const [noiseMode, setNoiseMode] = useState<VoiceEnvMode>(() => {
+    return (localStorage.getItem('abu-noise-mode') as VoiceEnvMode) || 'quiet'
   })
-  const toggleNoiseMode = useCallback(() => {
+  const cycleNoiseMode = useCallback(() => {
     setNoiseMode(prev => {
-      const next = prev === 'quiet' ? 'noisy' : 'quiet'
+      const order: VoiceEnvMode[] = ['quiet', 'noisy', 'listen']
+      const next = order[(order.indexOf(prev) + 1) % order.length]!
       localStorage.setItem('abu-noise-mode', next)
-      // If Realtime session is active, reconnect with new VAD settings
       if (realtimeRef.current) {
         realtimeRef.current.disconnect()
         realtimeRef.current = null
-        // Will reconnect on next enterVoiceMode cycle
       }
       return next
     })
   }, [])
+  // Keep toggleNoiseMode for backwards compat with existing calls
+  const toggleNoiseMode = cycleNoiseMode
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
   const voiceSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -654,6 +656,14 @@ export function AbuAI() {
 
     return `${SYSTEM_PROMPT}${VOICE_SUFFIX}
 
+═══ סגנון דיבור ═══
+דברי בקול חם, טבעי, אנושי — כמו אישה נעימה בשיחת טלפון עם חברה.
+לא רובוטית. לא מונוטונית. לא קוראת מטקסט.
+שני את הטון לפי התוכן — חום כשמנחמת, שמחה כשמספרת בדיחה, רצינית כשמסבירה.
+תני לשפה לזרום טבעי, עם הפסקות קצרות בין משפטים.
+בספרדית — מבטא ארגנטינאי (ריאופלטנסה), חם ונעים.
+בעברית — מבטא ישראלי טבעי, לא אמריקאי.
+
 ═══ דוגמאות לשיחה ═══
 ${fewShotText}`
   }, [])
@@ -722,7 +732,7 @@ ${fewShotText}`
       await new Promise<void>(resolve => {
         const start = Date.now()
         const measure = () => {
-          if (Date.now() - start > 400) { resolve(); return } // 400ms measurement
+          if (Date.now() - start > 800) { resolve(); return } // v23: 800ms measurement (was 400 — too short for TV)
           analyser.getByteTimeDomainData(buf)
           let sum = 0
           for (let i = 0; i < buf.length; i++) {
@@ -740,11 +750,11 @@ ${fewShotText}`
 
       samples.sort((a, b) => a - b)
       const median = samples[Math.floor(samples.length / 2)] ?? 0
-      // v22.6: Use 75th percentile (not median) — TV speech is intermittent,
-      // median can miss it during quiet moments between dialogue
-      const p75 = samples[Math.floor(samples.length * 0.75)] ?? 0
-      const detected = p75 > 8 ? 'noisy' : 'quiet' // >8 at 75th percentile = any background audio
-      console.log(`[AbuAI] Ambient noise: median=${median.toFixed(1)}, p75=${p75.toFixed(1)}, mode=${detected}`)
+      // v23: Use 90th percentile — catches even brief TV speech bursts
+      const p90 = samples[Math.floor(samples.length * 0.90)] ?? 0
+      // ANY audio above 5 at p90 = something is making noise (TV, radio, people)
+      const detected = p90 > 5 ? 'noisy' : 'quiet'
+      console.log(`[AbuAI] Ambient noise: median=${median.toFixed(1)}, p90=${p90.toFixed(1)}, mode=${detected}`)
 
       // Auto-update the toggle if detection disagrees
       if (detected !== noiseMode) {
@@ -763,8 +773,8 @@ ${fewShotText}`
     setVoiceMode(true)
     voiceModeRef.current = true
 
-    // v22.3: Auto-detect noise before starting — updates toggle automatically
-    const detectedMode = await detectAmbientNoise()
+    // v23: Auto-detect noise before starting (skip if user explicitly chose listen mode)
+    const detectedMode = noiseMode === 'listen' ? 'listen' : await detectAmbientNoise()
 
     // v21: Use OpenAI Realtime API (WebRTC) if available — true real-time conversation
     // Falls back to pipeline mode if Realtime fails after 2 retries
@@ -781,11 +791,11 @@ ${fewShotText}`
 
             if (state === 'listening') setIsSpeaking(false)
 
-            // v22.5: Safety timeout — auto-exit if stuck listening for 90s
+            // v23: Safety timeout — auto-exit if no conversation (skip in listen mode — meetings can be hours)
             if (voiceSafetyTimerRef.current) { clearTimeout(voiceSafetyTimerRef.current); voiceSafetyTimerRef.current = null }
-            if (state === 'listening') {
+            if (state === 'listening' && !realtimeRef.current?.isListenMode) {
               voiceSafetyTimerRef.current = setTimeout(() => {
-                console.log('[AbuAI] Safety timeout — stuck in listening for 90s, auto-exiting')
+                console.log('[AbuAI] Safety timeout — no conversation for 5 min, auto-exiting')
                 if (realtimeRef.current) {
                   realtimeRef.current.disconnect()
                   realtimeRef.current = null
@@ -794,7 +804,7 @@ ${fewShotText}`
                 voiceModeRef.current = false
                 setVoiceMode(false)
                 setVoicePhase(null)
-              }, 90_000) // 90 seconds
+              }, 300_000) // 5 minutes — reasonable for natural conversation gaps
             }
           },
           onUserTranscript: (text) => {
@@ -868,6 +878,12 @@ ${fewShotText}`
 
   // v20.2: Tap anywhere during speaking to interrupt (works for both old + Realtime)
   const handleOrbTap = () => {
+    // v23: Listen mode — tap to ask about what was discussed
+    if (realtimeRef.current?.isListenMode && voicePhase === 'listening') {
+      realtimeRef.current.askAboutMeeting('סכמי בקצרה מה נאמר בשיחה')
+      return
+    }
+
     // v22.6: Push-to-talk mode — tap to start/stop speaking
     if (realtimeRef.current?.isPushToTalk) {
       if (pttActive) {
@@ -1296,13 +1312,13 @@ ${fewShotText}`
                 transition: 'all 0.2s ease',
               }}
             >
-              <span style={{ fontSize: 18 }}>{noiseMode === 'noisy' ? '📺' : '🤫'}</span>
+              <span style={{ fontSize: 18 }}>{noiseMode === 'listen' ? '👂' : noiseMode === 'noisy' ? '📺' : '🤫'}</span>
               <span style={{
                 fontSize: 16, fontWeight: 600,
-                color: noiseMode === 'noisy' ? 'rgba(251,146,60,0.85)' : 'rgba(245,240,232,0.45)',
+                color: noiseMode === 'listen' ? 'rgba(167,139,250,0.80)' : noiseMode === 'noisy' ? 'rgba(251,146,60,0.85)' : 'rgba(245,240,232,0.45)',
                 fontFamily: "'Heebo',sans-serif",
               }}>
-                {noiseMode === 'noisy' ? 'מצב רועש — לחצי לדבר' : 'מצב שקט'}
+                {noiseMode === 'listen' ? 'מצב האזנה' : noiseMode === 'noisy' ? 'מצב רועש' : 'מצב שקט'}
               </span>
             </button>
           </div>
@@ -1651,7 +1667,22 @@ ${fewShotText}`
                 🎤 מדברת... לחצי כשסיימת
               </div>
             )}
-            {voicePhase === 'listening' && !realtimeRef.current?.isPushToTalk && (
+            {voicePhase === 'listening' && realtimeRef.current?.isListenMode && (
+              <div style={{
+                marginTop: 16,
+                fontSize: 18,
+                fontWeight: 600,
+                color: 'rgba(167,139,250,0.85)',
+                fontFamily: "'Heebo',sans-serif",
+                textAlign: 'center',
+              }}>
+                👂 מקשיבה לפגישה...
+                <div style={{ fontSize: 14, color: 'rgba(167,139,250,0.50)', marginTop: 6 }}>
+                  לחצי על העיגול כדי לשאול שאלה
+                </div>
+              </div>
+            )}
+            {voicePhase === 'listening' && !realtimeRef.current?.isPushToTalk && !realtimeRef.current?.isListenMode && (
               <div style={{
                 marginTop: 16,
                 fontSize: 16,
@@ -1685,13 +1716,13 @@ ${fewShotText}`
               transition: 'all 0.2s ease',
             }}
           >
-            <span style={{ fontSize: 22 }}>{noiseMode === 'noisy' ? '📺' : '🤫'}</span>
+            <span style={{ fontSize: 22 }}>{noiseMode === 'listen' ? '👂' : noiseMode === 'noisy' ? '📺' : '🤫'}</span>
             <span style={{
               fontSize: 16, fontWeight: 600,
-              color: noiseMode === 'noisy' ? 'rgba(251,146,60,0.90)' : 'rgba(20,184,166,0.75)',
+              color: noiseMode === 'listen' ? 'rgba(167,139,250,0.85)' : noiseMode === 'noisy' ? 'rgba(251,146,60,0.90)' : 'rgba(20,184,166,0.75)',
               fontFamily: "'Heebo',sans-serif",
             }}>
-              {noiseMode === 'noisy' ? 'מצב רועש — לחצי כדי לדבר' : 'מצב שקט — שיחה חופשית'}
+              {noiseMode === 'listen' ? 'מצב האזנה — מקליטה פגישה' : noiseMode === 'noisy' ? 'מצב רועש — לחצי לדבר' : 'מצב שקט — שיחה חופשית'}
             </span>
           </button>
 
