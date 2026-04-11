@@ -17,16 +17,20 @@ function getProviders(voiceMode = false): Array<{ url: string; model: string; ap
   const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
   const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
 
+  // v25: Skip OpenAI entirely if quota exhausted (saves timeout delays)
+  const qf = typeof localStorage !== 'undefined' ? localStorage.getItem('abu-openai-quota-failed') : null
+  const openaiAvailable = openaiKey && (!qf || (Date.now() - parseInt(qf, 10)) > 3_600_000)
+
   if (voiceMode) {
-    // Voice mode: SPEED — Groq llama is fastest (sub-second P50, no cold start), then OpenAI mini, then Gemini
-    if (groqKey)   providers.push({ url: GROQ_URL,   model: GROQ_MODEL,           apiKey: groqKey })
-    if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_VOICE,   apiKey: openaiKey })
-    if (geminiKey) providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,         apiKey: geminiKey })
+    // Voice mode: SPEED — Groq (free) first, then OpenAI (if available), then Gemini (free)
+    if (groqKey)         providers.push({ url: GROQ_URL,   model: GROQ_MODEL,           apiKey: groqKey })
+    if (openaiAvailable) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_VOICE,   apiKey: openaiKey! })
+    if (geminiKey)       providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,         apiKey: geminiKey })
   } else {
-    // Text mode: gpt-4o (reliable) → Gemini → Groq
-    if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_TEXT, apiKey: openaiKey })
-    if (geminiKey) providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,      apiKey: geminiKey })
-    if (groqKey)   providers.push({ url: GROQ_URL,   model: GROQ_MODEL,        apiKey: groqKey })
+    // Text mode: OpenAI (if available) → Gemini (free) → Groq (free)
+    if (openaiAvailable) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_TEXT, apiKey: openaiKey! })
+    if (geminiKey)       providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,      apiKey: geminiKey })
+    if (groqKey)         providers.push({ url: GROQ_URL,   model: GROQ_MODEL,        apiKey: groqKey })
   }
 
   if (providers.length === 0) throw new Error('מפתח API לא הוגדר. פנה לבן המשפחה שהתקין את האפליקציה.')

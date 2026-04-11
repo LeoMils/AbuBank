@@ -176,6 +176,9 @@ function getTTSInstructions(text: string): string {
 async function speakOpenAI(text: string): Promise<boolean> {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
   if (!apiKey) return false
+  // v25: Skip if OpenAI quota exhausted — don't waste 8s on timeout
+  const qf = localStorage.getItem('abu-openai-quota-failed')
+  if (qf && (Date.now() - parseInt(qf, 10)) < 3_600_000) return false
 
   const chunks = splitText(text, 400)
   for (const chunk of chunks) {
@@ -433,9 +436,11 @@ function speakWebAPI(text: string): Promise<void> {
 export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 1) OpenAI TTS (paid — best quality, skip if no credits)
+  // 1) OpenAI TTS (paid — skip entirely if quota exhausted)
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-  if (apiKey) {
+  const quotaOk = !localStorage.getItem('abu-openai-quota-failed') ||
+    (Date.now() - parseInt(localStorage.getItem('abu-openai-quota-failed') ?? '0', 10)) > 3_600_000
+  if (apiKey && quotaOk) {
     try {
       const controller = new AbortController()
       const t = setTimeout(() => controller.abort(), 6000)
@@ -666,9 +671,11 @@ export async function streamSpeakVoiceMode(
 
   const speakChunk = async (text: string): Promise<void> => {
     if (signal?.aborted) return
-    // v24.3: OpenAI (paid) → Gemini (FREE) → Web Speech (FREE)
+    // v25: OpenAI (paid, skip if quota exhausted) → Gemini (FREE) → Web Speech (FREE)
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-    if (apiKey) {
+    const sqf = localStorage.getItem('abu-openai-quota-failed')
+    const skipOpenAI = sqf && (Date.now() - parseInt(sqf, 10)) < 3_600_000
+    if (apiKey && !skipOpenAI) {
       try {
         const res = await fetch('https://api.openai.com/v1/audio/speech', {
           method: 'POST',
