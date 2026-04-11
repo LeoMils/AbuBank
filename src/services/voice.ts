@@ -429,12 +429,11 @@ function speakWebAPI(text: string): Promise<void> {
 // ─── Public API ────────────────────────────────────────────
 
 // speakVoiceMode — for LIVE CONVERSATION (AbuAI voice mode, pipeline fallback)
-// v21: Simplified to OpenAI TTS → Web Speech. No Gemini TTS (adds latency from PCM conversion).
-// iOS strategy: play through pre-unlocked AudioContext (resumed during user tap).
+// v24.3: OpenAI (paid, best quality) → Gemini (FREE) → Web Speech (FREE, last resort)
 export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 1) OpenAI TTS → AudioContext playback (fast model, works on iOS after mic)
+  // 1) OpenAI TTS (paid — best quality, skip if no credits)
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
   if (apiKey) {
     try {
@@ -452,16 +451,20 @@ export async function speakVoiceMode(text: string): Promise<void> {
         if (blob.size > 100) {
           const ok = await playBlobViaAudioCtx(blob)
           if (ok) return
-          console.log('[TTS-VM] AudioCtx failed, trying HTMLAudioElement fallback')
           if (await playBlob(blob)) return
         }
       }
+      // 429/402 = quota exceeded — fall through to free Gemini
+      console.log('[TTS-VM] OpenAI failed, trying free Gemini...')
     } catch (e) {
       console.log('[TTS-VM] OpenAI error:', e)
     }
   }
 
-  // 2) Web Speech API fallback (resume fix applied inside speakWebAPI)
+  // 2) Gemini TTS (FREE with existing key)
+  if (await speakGeminiViaAudioCtx(text)) { console.log('[TTS-VM] ✅ Gemini TTS worked'); return }
+
+  // 3) Web Speech API (FREE, last resort)
   await speakWebAPI(text)
 }
 
@@ -512,14 +515,17 @@ async function speakGeminiViaAudioCtx(text: string): Promise<boolean> {
 }
 
 // speak — for TEXT CHAT and other non-realtime uses
-// v21: Simplified to OpenAI nova → Web Speech (2 providers, fast failover)
+// v24.3: OpenAI (paid) → Gemini (FREE) → Web Speech (FREE)
 export async function speak(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 1) OpenAI TTS — nova voice — fast model, direct REST API
+  // 1) OpenAI TTS (paid, best quality)
   if (await speakOpenAI(text)) return
 
-  // 2) Last resort — browser built-in Web Speech
+  // 2) Gemini TTS (FREE)
+  if (await speakGemini(text)) return
+
+  // 3) Web Speech API (FREE, last resort)
   await speakWebAPI(text)
 }
 
@@ -660,7 +666,7 @@ export async function streamSpeakVoiceMode(
 
   const speakChunk = async (text: string): Promise<void> => {
     if (signal?.aborted) return
-    // Try OpenAI TTS first (fastest, best quality)
+    // v24.3: OpenAI (paid) → Gemini (FREE) → Web Speech (FREE)
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
     if (apiKey) {
       try {
@@ -676,7 +682,34 @@ export async function streamSpeakVoiceMode(
         }
       } catch { /* try fallback */ }
     }
-    // Fallback: Web Speech — don't block the queue, let it play independently
+    // Gemini TTS (FREE) — convert to blob and enqueue
+    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
+    if (geminiKey) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text }] }],
+              generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } },
+            }),
+          }
+        )
+        if (res.ok) {
+          const json = await res.json()
+          const audioData = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
+          if (audioData) {
+            const raw = Uint8Array.from(atob(audioData), c => c.charCodeAt(0))
+            const wavBlob = pcmToWav(raw, 24000)
+            queue.enqueue(wavBlob)
+            return
+          }
+        }
+      } catch { /* try fallback */ }
+    }
+    // Web Speech (FREE, last resort)
     speakWebAPI(text).catch(() => {})
   }
 
