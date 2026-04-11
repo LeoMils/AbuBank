@@ -323,13 +323,15 @@ async function tryProvider(
       signal: controller.signal,
     })
     if (!res.ok) {
-      if (res.status === 429) {
-        const ra = parseInt(res.headers.get('retry-after') ?? '', 10)
-        return { result: null, retryAfter: isNaN(ra) ? 8 : Math.min(ra, 65) }
+      // v25: Detect quota/billing errors — set flag so all OpenAI calls are skipped
+      const errBody = await res.text().catch(() => '')
+      if (res.status === 402 || res.status === 429 || errBody.includes('quota') || errBody.includes('exceeded') || errBody.includes('billing')) {
+        console.warn('[AbuAI] OpenAI quota exceeded — setting skip flag')
+        try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+        return { result: null, retryAfter: 0 } // skip to next provider silently
       }
       if (res.status === 401 || res.status >= 500) return { result: null, retryAfter: 0 }
-      const text = await res.text().catch(() => '')
-      throw new Error(`שגיאה מהשרת (${res.status}). ${text.slice(0, 100)}`)
+      return { result: null, retryAfter: 0 } // skip to next provider, don't throw
     }
     const data = await res.json()
     const content = data?.choices?.[0]?.message?.content

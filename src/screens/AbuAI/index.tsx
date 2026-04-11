@@ -825,7 +825,13 @@ ${fewShotText}`
           },
           onError: (error) => {
             console.error('[Realtime] Error:', error)
-            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: `שגיאה: ${error}`, timestamp: Date.now() }])
+            // v25: Show Hebrew error, never raw English
+            const isQuota = typeof error === 'string' && (error.includes('quota') || error.includes('exceeded') || error.includes('billing'))
+            const hebrewMsg = isQuota ? 'המכסה נגמרה. עוברת למצב חינמי.' : 'שגיאה בחיבור. נסי שוב.'
+            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: hebrewMsg, timestamp: Date.now() }])
+            if (isQuota) {
+              try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+            }
           },
         },
         realtimeInstructions,
