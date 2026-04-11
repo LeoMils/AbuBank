@@ -25,11 +25,16 @@ export class RealtimeVoiceSession {
   private retryCount = 0
   private maxRetries = 2
   private onFatalError: (() => void) | null
+  private vadThreshold: number
+  private vadSilenceMs: number
 
-  constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void) {
+  constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void, noiseMode: 'quiet' | 'noisy' = 'quiet') {
     this.cb = callbacks
     this.instructions = instructions
     this.onFatalError = onFatalError ?? null
+    // v22.2: Noise-aware VAD — noisy mode is much stricter
+    this.vadThreshold = noiseMode === 'noisy' ? 0.90 : 0.75
+    this.vadSilenceMs = noiseMode === 'noisy' ? 1200 : 900
   }
 
   get state(): RealtimeState { return this._state }
@@ -67,9 +72,9 @@ export class RealtimeVoiceSession {
           input_audio_transcription: { model: 'whisper-1' },
           turn_detection: {
             type: 'server_vad',
-            threshold: 0.75,           // v22.2: stricter — reject TV/background noise
-            prefix_padding_ms: 250,    // slightly less pre-buffer
-            silence_duration_ms: 900,  // need 900ms quiet to end turn (was 700)
+            threshold: this.vadThreshold,        // v22.2: noise-aware (quiet: 0.75, noisy: 0.90)
+            prefix_padding_ms: 250,
+            silence_duration_ms: this.vadSilenceMs, // quiet: 900ms, noisy: 1200ms
           },
         }),
       })

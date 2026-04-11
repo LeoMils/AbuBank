@@ -121,6 +121,24 @@ export function AbuAI() {
   const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
   const useRealtime = !!import.meta.env.VITE_OPENAI_API_KEY // use Realtime if OpenAI key exists
 
+  // v22.2: Noise environment toggle — adjusts voice sensitivity
+  const [noiseMode, setNoiseMode] = useState<'quiet' | 'noisy'>(() => {
+    return (localStorage.getItem('abu-noise-mode') as 'quiet' | 'noisy') || 'quiet'
+  })
+  const toggleNoiseMode = useCallback(() => {
+    setNoiseMode(prev => {
+      const next = prev === 'quiet' ? 'noisy' : 'quiet'
+      localStorage.setItem('abu-noise-mode', next)
+      // If Realtime session is active, reconnect with new VAD settings
+      if (realtimeRef.current) {
+        realtimeRef.current.disconnect()
+        realtimeRef.current = null
+        // Will reconnect on next enterVoiceMode cycle
+      }
+      return next
+    })
+  }, [])
+
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
 
   const chatRef = useRef<HTMLDivElement>(null)
@@ -567,7 +585,10 @@ export function AbuAI() {
         // v17.3: Silence detection — 2s balance between patience and responsiveness
         const detector = createSilenceDetector(stream, () => {
           if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-        }, { threshold: 25, silenceMs: 2500, maxMs: 15000, minActiveMs: 2000 })
+        }, noiseMode === 'noisy'
+          ? { threshold: 40, silenceMs: 3000, maxMs: 15000, minActiveMs: 2500 }  // TV/noise: very strict
+          : { threshold: 25, silenceMs: 2500, maxMs: 15000, minActiveMs: 2000 }  // quiet room
+        )
         silenceRef.current = detector
 
         // T1.3: Poll audio level for visual feedback (50ms intervals)
@@ -728,6 +749,7 @@ ${fewShotText}`
           setRealtimeState('idle')
           startPipelineVoiceMode()
         },
+        noiseMode, // v22.2: pass noise mode for VAD sensitivity
       )
       realtimeRef.current = session
       session.connect()
@@ -736,7 +758,7 @@ ${fewShotText}`
 
     // No OpenAI key — use pipeline directly
     startPipelineVoiceMode()
-  }, [startPipelineVoiceMode, useRealtime, realtimeInstructions])
+  }, [startPipelineVoiceMode, useRealtime, realtimeInstructions, noiseMode])
 
   const exitVoiceMode = useCallback(() => {
     // v20.2: Disconnect Realtime session if active
@@ -1153,6 +1175,37 @@ ${fewShotText}`
                 </div>
               </div>
             </div>
+
+            {/* v22.2: Noise environment toggle — visible before entering voice mode */}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); toggleNoiseMode() }}
+              style={{
+                marginTop: 12,
+                padding: '10px 20px',
+                borderRadius: 14,
+                background: noiseMode === 'noisy'
+                  ? 'rgba(251,146,60,0.10)'
+                  : 'rgba(255,255,255,0.03)',
+                border: noiseMode === 'noisy'
+                  ? '1px solid rgba(251,146,60,0.35)'
+                  : '1px solid rgba(255,255,255,0.08)',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                minHeight: 48,
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <span style={{ fontSize: 18 }}>{noiseMode === 'noisy' ? '📺' : '🤫'}</span>
+              <span style={{
+                fontSize: 16, fontWeight: 600,
+                color: noiseMode === 'noisy' ? 'rgba(251,146,60,0.85)' : 'rgba(245,240,232,0.45)',
+                fontFamily: "'Heebo',sans-serif",
+              }}>
+                {noiseMode === 'noisy' ? 'מצב רועש (טלוויזיה)' : 'מצב שקט'}
+              </span>
+            </button>
           </div>
         )}
 
@@ -1471,6 +1524,38 @@ ${fewShotText}`
               </div>
             )}
           </div>
+
+          {/* v22.2: Noise environment toggle */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); toggleNoiseMode() }}
+            aria-label={noiseMode === 'quiet' ? 'מצב שקט — לחצי אם יש רעש ברקע' : 'מצב רועש — לחצי אם שקט'}
+            style={{
+              marginTop: 24,
+              padding: '12px 24px',
+              borderRadius: 20,
+              background: noiseMode === 'noisy'
+                ? 'rgba(251,146,60,0.15)'
+                : 'rgba(20,184,166,0.08)',
+              border: noiseMode === 'noisy'
+                ? '1.5px solid rgba(251,146,60,0.45)'
+                : '1.5px solid rgba(20,184,166,0.25)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 10,
+              minHeight: 48,
+              WebkitTapHighlightColor: 'transparent',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <span style={{ fontSize: 22 }}>{noiseMode === 'noisy' ? '📺' : '🤫'}</span>
+            <span style={{
+              fontSize: 16, fontWeight: 600,
+              color: noiseMode === 'noisy' ? 'rgba(251,146,60,0.90)' : 'rgba(20,184,166,0.75)',
+              fontFamily: "'Heebo',sans-serif",
+            }}>
+              {noiseMode === 'noisy' ? 'רעש ברקע — פחות רגישות' : 'שקט — רגישות רגילה'}
+            </span>
+          </button>
 
           {/* Stop button — stopPropagation prevents overlay interrupt */}
           <button
