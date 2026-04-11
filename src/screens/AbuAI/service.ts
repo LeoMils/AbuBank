@@ -2,9 +2,8 @@ import type { ChatMessage } from './types'
 
 // Provider priority: OpenAI (paid, most reliable) > Gemini 2.0 Flash (free) > Groq Llama (free)
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
-const OPENAI_MODEL_TEXT    = 'gpt-4o-search-preview'  // text mode: live web search
-const OPENAI_MODEL_TEXT_FB = 'gpt-4o'                 // text mode fallback (no search)
-const OPENAI_MODEL_VOICE   = 'gpt-4o-mini'            // voice mode: speed + cost
+const OPENAI_MODEL_TEXT  = 'gpt-4o'          // text mode: reliable, high quality
+const OPENAI_MODEL_VOICE = 'gpt-4o-mini'     // voice mode (pipeline fallback): speed + cost
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
 const GEMINI_MODEL = 'gemini-2.0-flash'
@@ -24,18 +23,17 @@ function getProviders(voiceMode = false): Array<{ url: string; model: string; ap
     if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_VOICE,   apiKey: openaiKey })
     if (geminiKey) providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,         apiKey: geminiKey })
   } else {
-    // Text mode: search model first → regular gpt-4o fallback → free providers
-    if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_TEXT,    apiKey: openaiKey })
-    if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_TEXT_FB, apiKey: openaiKey })
-    if (geminiKey) providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,         apiKey: geminiKey })
-    if (groqKey)   providers.push({ url: GROQ_URL,   model: GROQ_MODEL,           apiKey: groqKey })
+    // Text mode: gpt-4o (reliable) → Gemini → Groq
+    if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_TEXT, apiKey: openaiKey })
+    if (geminiKey) providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,      apiKey: geminiKey })
+    if (groqKey)   providers.push({ url: GROQ_URL,   model: GROQ_MODEL,        apiKey: groqKey })
   }
 
   if (providers.length === 0) throw new Error('מפתח API לא הוגדר. פנה לבן המשפחה שהתקין את האפליקציה.')
   return providers
 }
 
-const SYSTEM_PROMPT =
+export const SYSTEM_PROMPT =
 `את MartitAI — עוזרת אישית חכמה, חדה, ומצחיקה של Martita.
 
 ═══ היכולות שלך ═══
@@ -115,7 +113,7 @@ Markdown — לא. רשימות רק אם עוזרות להבין.
 לא לבקש ולא לרשום סיסמאות, קודים, ת.ז., כרטיס אשראי.`
 
 // Few-shot — anchor the tone: adult, direct, warm, family-aware, NOT childish
-const FEW_SHOT: Array<{ role: 'user' | 'assistant'; content: string }> = [
+export const FEW_SHOT: Array<{ role: 'user' | 'assistant'; content: string }> = [
   {
     role: 'user',
     content: 'איך אני משלמת חשמל?',
@@ -374,15 +372,15 @@ export async function* streamMessage(
         model: provider.model,
         messages: chatMessages,
         max_tokens: maxTokens,
+        temperature,
         stream: true,
       }
-      if (!isSearchModel(provider.model)) body.temperature = temperature
 
       const controller = new AbortController()
       const combinedSignal = signal
         ? AbortSignal.any?.([signal, controller.signal]) ?? controller.signal
         : controller.signal
-      const timeout = setTimeout(() => controller.abort(), voiceMode ? 8000 : 15000)
+      const timeout = setTimeout(() => controller.abort(), voiceMode ? 6000 : 12000)
 
       try {
         const res = await fetch(provider.url, {
@@ -450,7 +448,7 @@ export async function* streamMessage(
   yield 'שגיאה בחיבור. נסי שוב.'
 }
 
-const VOICE_SUFFIX = `
+export const VOICE_SUFFIX = `
 
 מצב קול — שיחה טלפונית.
 תשובה ישירה, טבעית, בשפה מדוברת.
@@ -460,8 +458,6 @@ const VOICE_SUFFIX = `
 לא רשימות. לא כותרות. לא סיכומים. לא שאלות חזרה.
 דברי כמו בשיחת טלפון אמיתית — ארוכה או קצרה, לפי מה שנשאל.`
 
-// Search-preview models don't support the temperature parameter
-const isSearchModel = (model: string) => model.includes('search')
 
 export async function sendMessage(messages: ChatMessage[], voiceMode = false): Promise<string> {
   const providers = getProviders(voiceMode)
@@ -478,10 +474,7 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
   for (let attempt = 0; attempt < 2; attempt++) {
     let maxRetryAfter = 0
     for (const provider of providers) {
-      // Search-preview models reject the temperature param — omit it for those
-      const body = isSearchModel(provider.model)
-        ? { messages: baseMessages, max_tokens: maxTokens }
-        : { messages: baseMessages, temperature, max_tokens: maxTokens }
+      const body = { messages: baseMessages, temperature, max_tokens: maxTokens }
       const { result, retryAfter } = await tryProvider(provider, body)
       if (result) return result
       if (retryAfter > maxRetryAfter) maxRetryAfter = retryAfter

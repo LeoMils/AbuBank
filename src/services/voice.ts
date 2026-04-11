@@ -175,7 +175,7 @@ async function speakOpenAI(text: string): Promise<boolean> {
   for (const chunk of chunks) {
     try {
       const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 15000)
+      const t = setTimeout(() => controller.abort(), 8000)
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: {
@@ -421,26 +421,18 @@ function speakWebAPI(text: string): Promise<void> {
 
 // ─── Public API ────────────────────────────────────────────
 
-// speakVoiceMode — for LIVE CONVERSATION (AbuAI voice mode)
-// iOS strategy: play OpenAI TTS through the pre-unlocked AudioContext.
-// The shared AudioContext was resumed during the user's tap (unlockIOSAudio),
-// and AudioContext.createBufferSource().start() is NEVER blocked by iOS after
-// mic use — unlike HTMLAudioElement.play() or speechSynthesis which can silently
-// fail after a WebSpeechRecognition session ends.
-// Falls back to speechSynthesis (with resume fix) if no OpenAI key.
+// speakVoiceMode — for LIVE CONVERSATION (AbuAI voice mode, pipeline fallback)
+// v21: Simplified to OpenAI TTS → Web Speech. No Gemini TTS (adds latency from PCM conversion).
+// iOS strategy: play through pre-unlocked AudioContext (resumed during user tap).
 export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 1) Gemini TTS — native multilingual voice, best Hebrew accent
-  console.log('[TTS-VM] Trying Gemini TTS...')
-  if (await speakGeminiViaAudioCtx(text)) { console.log('[TTS-VM] ✅ Gemini worked'); return }
-
-  // 2) OpenAI TTS → AudioContext playback (fast model, works on iOS after mic)
+  // 1) OpenAI TTS → AudioContext playback (fast model, works on iOS after mic)
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
   if (apiKey) {
     try {
       const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 8000)
+      const t = setTimeout(() => controller.abort(), 6000)
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
@@ -462,7 +454,7 @@ export async function speakVoiceMode(text: string): Promise<void> {
     }
   }
 
-  // 3) Web Speech API fallback (resume fix applied inside speakWebAPI)
+  // 2) Web Speech API fallback (resume fix applied inside speakWebAPI)
   await speakWebAPI(text)
 }
 
@@ -513,34 +505,14 @@ async function speakGeminiViaAudioCtx(text: string): Promise<boolean> {
 }
 
 // speak — for TEXT CHAT and other non-realtime uses
-// OpenAI nova is primary (best quality), falls back to Web Speech.
+// v21: Simplified to OpenAI nova → Web Speech (2 providers, fast failover)
 export async function speak(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 0) Gemini TTS — native multilingual voice, best Hebrew accent
-  console.log('[TTS] Trying Gemini...')
-  if (await speakGemini(text)) { console.log('[TTS] ✅ Gemini worked'); return }
-  console.log('[TTS] ❌ Gemini failed')
-
   // 1) OpenAI TTS — nova voice — fast model, direct REST API
-  console.log('[TTS] Trying OpenAI nova...')
-  if (await speakOpenAI(text)) { console.log('[TTS] ✅ OpenAI nova worked'); return }
-  console.log('[TTS] ❌ OpenAI failed (no key or network error)')
+  if (await speakOpenAI(text)) return
 
-  // 2) Azure TTS — HilaNeural/ElenaNeural — dev proxy only, will skip in production
-  console.log('[TTS] Trying Azure TTS...')
-  if (await speakAzureTTS(text)) { console.log('[TTS] ✅ Azure TTS worked'); return }
-
-  // 3) Edge TTS — dev proxy only, will skip in production
-  console.log('[TTS] Trying Edge TTS...')
-  if (await speakEdgeTTS(text)) { console.log('[TTS] ✅ Edge TTS worked'); return }
-
-  // 4) Google Translate TTS — dev proxy only, will skip in production
-  console.log('[TTS] Trying Google TTS...')
-  if (await speakGoogleTTS(text)) { console.log('[TTS] ✅ Google TTS worked'); return }
-
-  // 5) Last resort — browser built-in Web Speech
-  console.log('[TTS] Falling back to Web Speech API')
+  // 2) Last resort — browser built-in Web Speech
   await speakWebAPI(text)
 }
 

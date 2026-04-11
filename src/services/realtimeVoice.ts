@@ -22,10 +22,14 @@ export class RealtimeVoiceSession {
   private cb: RealtimeCallbacks
   private instructions: string
   private _state: RealtimeState = 'idle'
+  private retryCount = 0
+  private maxRetries = 2
+  private onFatalError: (() => void) | null
 
-  constructor(callbacks: RealtimeCallbacks, instructions: string) {
+  constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void) {
     this.cb = callbacks
     this.instructions = instructions
+    this.onFatalError = onFatalError ?? null
   }
 
   get state(): RealtimeState { return this._state }
@@ -42,6 +46,7 @@ export class RealtimeVoiceSession {
     if (!apiKey) {
       this.cb.onError('מפתח OpenAI לא הוגדר.')
       this.setState('error')
+      this.onFatalError?.()
       return
     }
 
@@ -57,7 +62,7 @@ export class RealtimeVoiceSession {
         },
         body: JSON.stringify({
           model: REALTIME_MODEL,
-          voice: 'shimmer',
+          voice: 'coral',  // v21: warm, natural, good for Hebrew/Spanish
           instructions: this.instructions,
           input_audio_transcription: { model: 'whisper-1' },
           turn_detection: {
@@ -100,6 +105,7 @@ export class RealtimeVoiceSession {
       this.dc = this.pc.createDataChannel('oai-events')
       this.dc.onopen = () => {
         console.log('[Realtime] Data channel open')
+        this.retryCount = 0 // reset on successful connection
         this.setState('listening')
 
         // Send greeting trigger
@@ -122,7 +128,9 @@ export class RealtimeVoiceSession {
 
       this.dc.onclose = () => {
         console.log('[Realtime] Data channel closed')
-        if (this._state !== 'idle') this.setState('error')
+        if (this._state !== 'idle') {
+          this.attemptReconnect()
+        }
       }
 
       // 6. SDP exchange
@@ -152,8 +160,7 @@ export class RealtimeVoiceSession {
       const msg = err instanceof Error ? err.message : 'Connection failed'
       console.error('[Realtime] Connect error:', msg)
       this.cb.onError(msg)
-      this.setState('error')
-      this.cleanup()
+      this.attemptReconnect()
     }
   }
 
@@ -202,16 +209,18 @@ export class RealtimeVoiceSession {
       // Error
       case 'error':
         console.error('[Realtime] Server error:', event.error)
-        this.cb.onError(event.error?.message || 'שגיאה בשרת')
+        if (event.error?.code === 'session_expired' || event.error?.code === 'invalid_session') {
+          this.attemptReconnect()
+        } else {
+          this.cb.onError(event.error?.message || 'שגיאה בשרת')
+        }
         break
 
       // Rate limit
       case 'rate_limits.updated':
-        // Informational — ignore
         break
 
       default:
-        // Log unknown events for debugging
         if (!['session.created', 'session.updated', 'response.created',
              'response.output_item.added', 'response.output_item.done',
              'response.content_part.added', 'response.content_part.done',
@@ -221,6 +230,22 @@ export class RealtimeVoiceSession {
           console.log('[Realtime] Event:', event.type)
         }
     }
+  }
+
+  /** Attempt to reconnect with backoff, or trigger fatal fallback */
+  private async attemptReconnect(): Promise<void> {
+    if (this.retryCount >= this.maxRetries) {
+      console.log('[Realtime] Max retries reached — falling back to pipeline')
+      this.setState('error')
+      this.cleanup()
+      this.onFatalError?.()
+      return
+    }
+    this.retryCount++
+    console.log(`[Realtime] Reconnect attempt ${this.retryCount}/${this.maxRetries}`)
+    this.cleanup()
+    await new Promise(r => setTimeout(r, 1000 * this.retryCount)) // backoff: 1s, 2s
+    this.connect()
   }
 
   /** Cancel current AI response (barge-in via tap) */
