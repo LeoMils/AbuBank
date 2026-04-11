@@ -266,7 +266,7 @@ export function AbuAI() {
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true }
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
       })
       streamRef.current = stream
       const mimeType = getSupportedMimeType()
@@ -519,7 +519,7 @@ export function AbuAI() {
     ;(async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true }
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         })
         streamRef.current = stream
         const mimeType = getSupportedMimeType()
@@ -567,7 +567,7 @@ export function AbuAI() {
         // v17.3: Silence detection — 2s balance between patience and responsiveness
         const detector = createSilenceDetector(stream, () => {
           if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-        }, { threshold: 10, silenceMs: 2000, maxMs: 15000, minActiveMs: 1200 })
+        }, { threshold: 25, silenceMs: 2500, maxMs: 15000, minActiveMs: 2000 })
         silenceRef.current = detector
 
         // T1.3: Poll audio level for visual feedback (50ms intervals)

@@ -139,7 +139,7 @@ export function AbuWhatsApp() {
     try {
       // iOS Safari requires explicit audio constraints for microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true }
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
       })
       streamRef.current = stream
       const mimeType = getSupportedMimeType()
@@ -434,7 +434,7 @@ export function AbuWhatsApp() {
     ;(async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true }
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         })
         streamRef.current = stream
         const mimeType = getSupportedMimeType()

@@ -742,6 +742,12 @@ export function createSilenceDetector(
   let ctx: AudioContext | null = null
   let frame = 0
 
+  // v22.2: Noise floor gating — measure ambient level in first 500ms
+  // and raise effective threshold above it (TV, AC, street noise)
+  let noiseFloor = 0
+  let noiseSamples: number[] = []
+  const NOISE_CALIBRATION_MS = 500
+
   // ── HARD SAFETY TIMER ──────────────────────────────────────────────────────
   // This fires regardless of AudioContext state.  Guarantees onSilence is ALWAYS
   // called eventually even if AudioContext stays suspended forever on iOS Safari.
@@ -769,9 +775,26 @@ export function createSilenceDetector(
 
       const elapsed = Date.now() - startTime
 
+      // v22.2: Calibrate noise floor from first 500ms of ambient audio
+      if (elapsed < NOISE_CALIBRATION_MS) {
+        noiseSamples.push(level)
+        frame = requestAnimationFrame(tick)
+        return
+      } else if (noiseSamples.length > 0) {
+        // Calculate noise floor as median of samples + margin
+        noiseSamples.sort((a, b) => a - b)
+        const median = noiseSamples[Math.floor(noiseSamples.length / 2)] ?? 0
+        noiseFloor = median + 5 // 5-unit margin above ambient
+        noiseSamples = [] // clear — calibration done
+        console.log(`[SilenceDetector] Noise floor: ${noiseFloor.toFixed(1)}, effective threshold: ${Math.max(threshold, noiseFloor).toFixed(1)}`)
+      }
+
+      // Effective threshold = max(configured threshold, noise floor)
+      const effectiveThreshold = Math.max(threshold, noiseFloor)
+
       // Only evaluate silence AFTER minActiveMs (prevents premature stops)
       if (elapsed >= minActiveMs) {
-        if (level > threshold) {
+        if (level > effectiveThreshold) {
           hasSpeech = true
           silenceStart = 0
         } else if (hasSpeech) {

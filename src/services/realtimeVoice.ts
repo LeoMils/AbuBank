@@ -67,9 +67,9 @@ export class RealtimeVoiceSession {
           input_audio_transcription: { model: 'whisper-1' },
           turn_detection: {
             type: 'server_vad',
-            threshold: 0.5,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 700,
+            threshold: 0.75,           // v22.2: stricter — reject TV/background noise
+            prefix_padding_ms: 250,    // slightly less pre-buffer
+            silence_duration_ms: 900,  // need 900ms quiet to end turn (was 700)
           },
         }),
       })
