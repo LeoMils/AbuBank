@@ -133,7 +133,10 @@ Current month: ${new Date().getMonth() + 1}, current year: ${new Date().getFullY
 CRITICAL: The "date" field MUST be a real YYYY-MM-DD date. NEVER return words like "TOMORROW" or "FRIDAY". ALWAYS compute the actual calendar date.
 
 RULES:
-- TIME: "בשלוש" = 15:00. "בעשר בבוקר" = 10:00. "בשמונה בערב" = 20:00. "בשתיים וחצי" = 14:30. "בחמש" = 17:00.
+- TIME: All times without "בבוקר" default to PM for appointments.
+  "בשלוש" = 15:00. "בארבע" = 16:00. "בחמש" = 17:00. "בשש" = 18:00. "בשבע" = 19:00. "בשמונה" = 20:00.
+  "בעשר בבוקר" = 10:00. "בשמונה בערב" = 20:00. "בשתיים וחצי" = 14:30. "בתשע בבוקר" = 09:00.
+  "בצהריים" = 12:00. "אחרי הצהריים" = prefer 14:00-17:00 range.
 - DATE: ALWAYS return YYYY-MM-DD format. Compute the real date:
   - "מחר" = ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}
   - "ביום ראשון" = the NEXT Sunday from today. Calculate it.
@@ -162,8 +165,13 @@ Return ONLY valid JSON:
         if (match) {
           const parsed = JSON.parse(match[0]) as { title?: string; date?: string; time?: string; emoji?: string; location?: string; personName?: string }
           const title = parsed.title ?? text
-          const date = parsed.date ?? today
+          let date = parsed.date ?? today
           const time = parsed.time ?? '09:00'
+
+          // v22: Reject past dates — shift to today
+          const parsedDate = new Date(date)
+          const nowDate = new Date(today)
+          if (parsedDate < nowDate) date = today
           const emoji = parsed.emoji ?? detectEmoji(title)
           const location = parsed.location || undefined
           const personName = parsed.personName || undefined
@@ -271,22 +279,14 @@ export function loadAppointmentsWithFamily(viewYear?: number): Appointment[] {
   return [...yearBirthdays, ...yearMemorials, ...filtered]
 }
 
-// ─── Moon Phase (synodic month calculation) ─────────────────────────────────
-
-export function getMoonPhase(year: number, month: number, day: number): string {
-  const date = new Date(year, month - 1, day)
-  const known = new Date(2000, 0, 6) // known new moon
-  const diff = (date.getTime() - known.getTime()) / 86400000
-  const phase = ((diff % 29.53) + 29.53) % 29.53
-  if (phase < 1.85)  return '🌑'
-  if (phase < 5.53)  return '🌒'
-  if (phase < 9.22)  return '🌓'
-  if (phase < 12.91) return '🌔'
-  if (phase < 16.61) return '🌕'
-  if (phase < 20.30) return '🌖'
-  if (phase < 23.99) return '🌗'
-  if (phase < 27.68) return '🌘'
-  return '🌑'
+// v22: Short Hebrew date for selected day header
+export function formatShortHebrewDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  if (!y || !m || !d) return dateStr
+  const date = new Date(y, m - 1, d)
+  const dayName = HEBREW_DAYS[date.getDay()] ?? ''
+  const monthName = HEBREW_MONTHS[m - 1] ?? ''
+  return `${dayName}, ${d} ב${monthName}`
 }
 
 // ─── Hebrew Holidays (major, 2024-2027) ─────────────────────────────────────
