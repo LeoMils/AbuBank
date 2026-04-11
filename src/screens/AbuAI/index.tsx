@@ -834,8 +834,16 @@ ${fewShotText}`
       return
     }
 
-    // v21: Use OpenAI Realtime API (WebRTC) if available — true real-time conversation
-    // Falls back to pipeline mode if Realtime fails after 2 retries
+    // v25: Skip Realtime if OpenAI quota was recently exhausted — go straight to free pipeline
+    const quotaFailed = localStorage.getItem('abu-openai-quota-failed')
+    const quotaFailedRecently = quotaFailed && (Date.now() - parseInt(quotaFailed, 10)) < 3_600_000 // 1 hour
+    if (quotaFailedRecently) {
+      console.log('[AbuAI] OpenAI quota failed recently — skipping Realtime, using free pipeline')
+      startPipelineVoiceMode()
+      return
+    }
+
+    // Use OpenAI Realtime API (WebRTC) if available
     if (useRealtime) {
       setRealtimeTranscript('')
       const session = new RealtimeVoiceSession(
@@ -876,12 +884,15 @@ ${fewShotText}`
           },
         },
         realtimeInstructions,
-        // v21: onFatalError — Realtime died after retries, fall back to pipeline
+        // v25: onFatalError — Realtime died, remember + fall back to free pipeline
         () => {
-          console.log('[AbuAI] Realtime failed, falling back to pipeline voice mode')
+          console.log('[AbuAI] Realtime failed, saving quota flag, falling back to free pipeline')
+          localStorage.setItem('abu-openai-quota-failed', String(Date.now()))
           realtimeRef.current = null
           setRealtimeState('idle')
-          startPipelineVoiceMode()
+          setRealtimeTranscript('')
+          setVoicePhase(null) // clear any stale phase before pipeline sets its own
+          setTimeout(() => startPipelineVoiceMode(), 100) // small delay to let state settle
         },
         detectedMode as 'quiet' | 'noisy', // listen mode returns early above, never reaches here
       )
