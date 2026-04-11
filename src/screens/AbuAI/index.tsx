@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { sendMessage, streamMessage, transcribeAudio, getSupportedMimeType, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
-import { speakVoiceMode, streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
+import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
@@ -141,10 +141,6 @@ export function AbuAI() {
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
   const voiceSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // v24.2: Meeting/listen mode — free Web Speech API
-  const meetingTranscriptRef = useRef<string>('')
-  const meetingRecRef = useRef<any>(null) // SpeechRecognition (not in TS default lib)
 
   const chatRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -719,58 +715,6 @@ ${fewShotText}`
       })
   }, [startVoiceListening, transitionVoice])
 
-  // v22.3: Auto-detect ambient noise level before entering voice mode
-  const detectAmbientNoise = useCallback(async (): Promise<'quiet' | 'noisy'> => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-      })
-      const ctx = new AudioContext()
-      const source = ctx.createMediaStreamSource(stream)
-      const analyser = ctx.createAnalyser()
-      analyser.fftSize = 512
-      source.connect(analyser)
-      const buf = new Uint8Array(analyser.frequencyBinCount)
-      const samples: number[] = []
-
-      await new Promise<void>(resolve => {
-        const start = Date.now()
-        const measure = () => {
-          if (Date.now() - start > 800) { resolve(); return } // v23: 800ms measurement (was 400 — too short for TV)
-          analyser.getByteTimeDomainData(buf)
-          let sum = 0
-          for (let i = 0; i < buf.length; i++) {
-            const v = (buf[i]! - 128) / 128
-            sum += v * v
-          }
-          samples.push(Math.min(100, Math.sqrt(sum / buf.length) * 300))
-          requestAnimationFrame(measure)
-        }
-        requestAnimationFrame(measure)
-      })
-
-      stream.getTracks().forEach(t => t.stop())
-      ctx.close().catch(() => {})
-
-      samples.sort((a, b) => a - b)
-      const median = samples[Math.floor(samples.length / 2)] ?? 0
-      // v23: Use 90th percentile — catches even brief TV speech bursts
-      const p90 = samples[Math.floor(samples.length * 0.90)] ?? 0
-      // ANY audio above 5 at p90 = something is making noise (TV, radio, people)
-      const detected = p90 > 5 ? 'noisy' : 'quiet'
-      console.log(`[AbuAI] Ambient noise: median=${median.toFixed(1)}, p90=${p90.toFixed(1)}, mode=${detected}`)
-
-      // Auto-update the toggle if detection disagrees
-      if (detected !== noiseMode) {
-        setNoiseMode(detected)
-        localStorage.setItem('abu-noise-mode', detected)
-      }
-      return detected
-    } catch {
-      return (noiseMode === 'listen' ? 'quiet' : noiseMode) as 'quiet' | 'noisy' // can't measure — use current setting
-    }
-  }, [noiseMode])
-
   const enterVoiceMode = useCallback(() => {
     unlockIOSAudio()
     acquireWakeLock()
@@ -779,7 +723,7 @@ ${fewShotText}`
 
     // v25.2: SIMPLE DECISION — can we use Realtime or not?
     const quotaFlag = localStorage.getItem('abu-openai-quota-failed')
-    const openaiAvailable = useRealtime && (!quotaFlag || (Date.now() - parseInt(quotaFlag, 10)) > 3_600_000)
+    const openaiAvailable = useRealtime && (!quotaFlag || (Date.now() - parseInt(quotaFlag, 10)) > 300_000)
 
     // No OpenAI credits? Go straight to free pipeline. No complexity.
     if (!openaiAvailable) {
@@ -805,7 +749,7 @@ ${fewShotText}`
             // v24.3: Safety — if connection is stuck (no speaking event in 3 min), auto-exit
             // Normal conversation resets this timer every time AI speaks
             if (voiceSafetyTimerRef.current) { clearTimeout(voiceSafetyTimerRef.current); voiceSafetyTimerRef.current = null }
-            if (state === 'listening' && !meetingRecRef.current) {
+            if (state === 'listening') {
               voiceSafetyTimerRef.current = setTimeout(() => {
                 console.log('[AbuAI] Connection may be dead — no activity for 3 min')
                 exitVoiceMode()
@@ -859,12 +803,7 @@ ${fewShotText}`
   const exitVoiceMode = useCallback(() => {
     // v22.5: Clear safety timer
     if (voiceSafetyTimerRef.current) { clearTimeout(voiceSafetyTimerRef.current); voiceSafetyTimerRef.current = null }
-    // v24.2: Stop meeting transcription if active
-    if (meetingRecRef.current) {
-      try { meetingRecRef.current.stop() } catch { /* already stopped */ }
-      meetingRecRef.current = null
-    }
-    // v20.2: Disconnect Realtime session if active
+    // Disconnect Realtime session if active
     if (realtimeRef.current) {
       realtimeRef.current.disconnect()
       realtimeRef.current = null
@@ -895,40 +834,8 @@ ${fewShotText}`
   // v22.6: Push-to-talk state for noisy mode
   const [pttActive, setPttActive] = useState(false) // user is currently holding/speaking
 
-  // v20.2: Tap anywhere during speaking to interrupt (works for both old + Realtime)
   const handleOrbTap = () => {
-    // v24.2: Listen/meeting mode — tap to ask about what was discussed (free LLM, not Realtime)
-    if (noiseMode === 'listen' && meetingTranscriptRef.current && voicePhase === 'listening') {
-      // Stop transcription temporarily
-      if (meetingRecRef.current) { try { meetingRecRef.current.stop() } catch {} }
-
-      const transcript = meetingTranscriptRef.current.trim()
-      if (transcript.length < 5) {
-        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'עוד לא שמעתי מספיק. המשיכי את הפגישה.', timestamp: Date.now() }])
-        if (meetingRecRef.current && voiceModeRef.current) { try { meetingRecRef.current.start() } catch {} }
-        return
-      }
-
-      setVoicePhase('processing')
-      // Use cheap text LLM (not Realtime API) to summarize
-      const question = `שמעתי את הפגישה הזו. סכמי בקצרה מה נאמר:\n\n${transcript}`
-      sendMessage(
-        [{ id: nextId(), role: 'user', content: question, timestamp: Date.now() }],
-        false,
-      ).then(summary => {
-        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: summary, timestamp: Date.now() }])
-        setVoicePhase('listening')
-        // Resume transcription
-        if (meetingRecRef.current && voiceModeRef.current) { try { meetingRecRef.current.start() } catch {} }
-      }).catch(() => {
-        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'לא הצלחתי לסכם. נסי שוב.', timestamp: Date.now() }])
-        setVoicePhase('listening')
-        if (meetingRecRef.current && voiceModeRef.current) { try { meetingRecRef.current.start() } catch {} }
-      })
-      return
-    }
-
-    // v22.6: Push-to-talk mode — tap to start/stop speaking
+    // Push-to-talk mode — tap to start/stop speaking
     if (realtimeRef.current?.isPushToTalk) {
       if (pttActive) {
         // Stop talking → send audio to AI
@@ -1711,27 +1618,7 @@ ${fewShotText}`
                 🎤 מדברת... לחצי כשסיימת
               </div>
             )}
-            {voicePhase === 'listening' && noiseMode === 'listen' && (
-              <div style={{
-                marginTop: 16,
-                fontSize: 18,
-                fontWeight: 600,
-                color: 'rgba(167,139,250,0.85)',
-                fontFamily: "'Heebo',sans-serif",
-                textAlign: 'center',
-              }}>
-                👂 מקשיבה לפגישה...
-                {lastHeardText && (
-                  <div style={{ fontSize: 14, color: 'rgba(167,139,250,0.50)', marginTop: 4, direction: 'rtl' }}>
-                    &ldquo;{lastHeardText.slice(0, 50)}{lastHeardText.length > 50 ? '...' : ''}&rdquo;
-                  </div>
-                )}
-                <div style={{ fontSize: 16, color: 'rgba(167,139,250,0.55)', marginTop: 8 }}>
-                  לחצי כדי לשאול מה נאמר
-                </div>
-              </div>
-            )}
-            {voicePhase === 'listening' && !realtimeRef.current?.isPushToTalk && !realtimeRef.current?.isListenMode && (
+            {voicePhase === 'listening' && (
               <div style={{
                 marginTop: 16,
                 fontSize: 16,

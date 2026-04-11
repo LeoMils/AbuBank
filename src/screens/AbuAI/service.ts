@@ -19,7 +19,7 @@ function getProviders(voiceMode = false): Array<{ url: string; model: string; ap
 
   // v25: Skip OpenAI entirely if quota exhausted (saves timeout delays)
   const qf = typeof localStorage !== 'undefined' ? localStorage.getItem('abu-openai-quota-failed') : null
-  const openaiAvailable = openaiKey && (!qf || (Date.now() - parseInt(qf, 10)) > 3_600_000)
+  const openaiAvailable = openaiKey && (!qf || (Date.now() - parseInt(qf, 10)) > 300_000)
 
   if (voiceMode) {
     // Voice mode: SPEED — Groq (free) first, then OpenAI (if available), then Gemini (free)
