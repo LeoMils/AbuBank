@@ -773,14 +773,14 @@ ${fewShotText}`
     }
   }, [noiseMode])
 
-  const enterVoiceMode = useCallback(async () => {
+  const enterVoiceMode = useCallback(() => {
     unlockIOSAudio()
     acquireWakeLock()
     setVoiceMode(true)
     voiceModeRef.current = true
 
-    // v23: Auto-detect noise before starting (skip if user explicitly chose listen mode)
-    const detectedMode = noiseMode === 'listen' ? 'listen' : await detectAmbientNoise()
+    // v24.3: Use manual toggle only — auto-detect was grabbing mic and breaking Realtime connection
+    const detectedMode = noiseMode
 
     // v24.2: Listen/meeting mode — FREE Web Speech API, no expensive Realtime API
     if (detectedMode === 'listen') {
@@ -892,7 +892,7 @@ ${fewShotText}`
 
     // No OpenAI key — use pipeline directly
     startPipelineVoiceMode()
-  }, [startPipelineVoiceMode, useRealtime, realtimeInstructions, noiseMode, detectAmbientNoise])
+  }, [startPipelineVoiceMode, useRealtime, realtimeInstructions, noiseMode])
 
   const exitVoiceMode = useCallback(() => {
     // v22.5: Clear safety timer
