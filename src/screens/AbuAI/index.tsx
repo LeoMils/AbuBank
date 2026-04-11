@@ -740,8 +740,11 @@ ${fewShotText}`
 
       samples.sort((a, b) => a - b)
       const median = samples[Math.floor(samples.length / 2)] ?? 0
-      const detected = median > 12 ? 'noisy' : 'quiet' // v22.5: >12 = TV or any background noise (was 15, missed TV)
-      console.log(`[AbuAI] Ambient noise: median=${median.toFixed(1)}, mode=${detected}`)
+      // v22.6: Use 75th percentile (not median) — TV speech is intermittent,
+      // median can miss it during quiet moments between dialogue
+      const p75 = samples[Math.floor(samples.length * 0.75)] ?? 0
+      const detected = p75 > 8 ? 'noisy' : 'quiet' // >8 at 75th percentile = any background audio
+      console.log(`[AbuAI] Ambient noise: median=${median.toFixed(1)}, p75=${p75.toFixed(1)}, mode=${detected}`)
 
       // Auto-update the toggle if detection disagrees
       if (detected !== noiseMode) {
@@ -848,6 +851,7 @@ ${fewShotText}`
     setIsSpeaking(false)
     setLastHeardText('')
     setStreamingText('')
+    setPttActive(false)
     stopSpeaking()
     if (abortControllerRef.current) { abortControllerRef.current.abort(); abortControllerRef.current = null }
     cleanupVoiceResources()
@@ -859,8 +863,30 @@ ${fewShotText}`
     else enterVoiceMode()
   }
 
+  // v22.6: Push-to-talk state for noisy mode
+  const [pttActive, setPttActive] = useState(false) // user is currently holding/speaking
+
   // v20.2: Tap anywhere during speaking to interrupt (works for both old + Realtime)
   const handleOrbTap = () => {
+    // v22.6: Push-to-talk mode — tap to start/stop speaking
+    if (realtimeRef.current?.isPushToTalk) {
+      if (pttActive) {
+        // Stop talking → send audio to AI
+        realtimeRef.current.stopTalking()
+        setPttActive(false)
+        setVoicePhase('processing')
+      } else if (voicePhase === 'listening' || voicePhase === 'processing') {
+        // Start talking → clear buffer, listen
+        realtimeRef.current.startTalking()
+        setPttActive(true)
+        setVoicePhase('listening')
+      } else if (voicePhase === 'speaking') {
+        // Interrupt AI
+        realtimeRef.current.interrupt()
+      }
+      return
+    }
+
     if (realtimeRef.current && realtimeState === 'speaking') {
       realtimeRef.current.interrupt()
       return
@@ -869,7 +895,6 @@ ${fewShotText}`
     if (state === 'RESPONDING' || voicePhase === 'speaking') {
       interruptAndListen()
     } else if (voicePhase === 'listening') {
-      // v22.5: Tapping the orb during listening exits voice mode
       exitVoiceMode()
     }
   }
@@ -1277,7 +1302,7 @@ ${fewShotText}`
                 color: noiseMode === 'noisy' ? 'rgba(251,146,60,0.85)' : 'rgba(245,240,232,0.45)',
                 fontFamily: "'Heebo',sans-serif",
               }}>
-                {noiseMode === 'noisy' ? 'מצב רועש (טלוויזיה)' : 'מצב שקט'}
+                {noiseMode === 'noisy' ? 'מצב רועש — לחצי לדבר' : 'מצב שקט'}
               </span>
             </button>
           </div>
@@ -1410,12 +1435,16 @@ ${fewShotText}`
       {voiceMode && (
         <div
           onClick={() => {
+            // v22.6: Push-to-talk — delegate to orb handler
+            if (realtimeRef.current?.isPushToTalk) {
+              handleOrbTap()
+              return
+            }
             // v22.5: Tap overlay → interrupt if speaking, EXIT if listening/stuck
             if (voicePhase === 'speaking') {
               if (realtimeRef.current) realtimeRef.current.interrupt()
               else interruptAndListen()
             } else if (voicePhase === 'listening' || voicePhase === 'processing') {
-              // v22.5: Stuck fix — tapping during listening/processing exits voice mode
               exitVoiceMode()
             }
           }}
@@ -1589,7 +1618,7 @@ ${fewShotText}`
               </div>
             )}
 
-            {/* v22.5: Tap hints — always visible in voice mode */}
+            {/* v22.6: Context-aware tap hints */}
             {voicePhase === 'speaking' && (
               <div style={{
                 marginTop: 16,
@@ -1597,17 +1626,39 @@ ${fewShotText}`
                 color: 'rgba(245,240,232,0.35)',
                 fontFamily: "'Heebo',sans-serif",
               }}>
-                לחצי בכל מקום כדי להפסיק
+                לחצי כדי להפסיק
               </div>
             )}
-            {voicePhase === 'listening' && (
+            {voicePhase === 'listening' && realtimeRef.current?.isPushToTalk && !pttActive && (
+              <div style={{
+                marginTop: 16,
+                fontSize: 18,
+                fontWeight: 600,
+                color: 'rgba(251,146,60,0.80)',
+                fontFamily: "'Heebo',sans-serif",
+              }}>
+                📺 מצב רועש — לחצי כדי לדבר
+              </div>
+            )}
+            {voicePhase === 'listening' && realtimeRef.current?.isPushToTalk && pttActive && (
+              <div style={{
+                marginTop: 16,
+                fontSize: 18,
+                fontWeight: 600,
+                color: 'rgba(20,184,166,0.85)',
+                fontFamily: "'Heebo',sans-serif",
+              }}>
+                🎤 מדברת... לחצי כשסיימת
+              </div>
+            )}
+            {voicePhase === 'listening' && !realtimeRef.current?.isPushToTalk && (
               <div style={{
                 marginTop: 16,
                 fontSize: 16,
                 color: 'rgba(245,240,232,0.35)',
                 fontFamily: "'Heebo',sans-serif",
               }}>
-                לחצי בכל מקום כדי לצאת
+                לחצי כדי לצאת
               </div>
             )}
           </div>
@@ -1640,7 +1691,7 @@ ${fewShotText}`
               color: noiseMode === 'noisy' ? 'rgba(251,146,60,0.90)' : 'rgba(20,184,166,0.75)',
               fontFamily: "'Heebo',sans-serif",
             }}>
-              {noiseMode === 'noisy' ? 'רעש ברקע — פחות רגישות' : 'שקט — רגישות רגילה'}
+              {noiseMode === 'noisy' ? 'מצב רועש — לחצי כדי לדבר' : 'מצב שקט — שיחה חופשית'}
             </span>
           </button>
 

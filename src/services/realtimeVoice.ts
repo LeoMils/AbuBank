@@ -27,14 +27,16 @@ export class RealtimeVoiceSession {
   private onFatalError: (() => void) | null
   private vadThreshold: number
   private vadSilenceMs: number
+  private pushToTalk: boolean  // v22.6: noisy mode = push-to-talk (no server VAD)
 
   constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void, noiseMode: 'quiet' | 'noisy' = 'quiet') {
     this.cb = callbacks
     this.instructions = instructions
     this.onFatalError = onFatalError ?? null
-    // v22.2: Noise-aware VAD — noisy mode is much stricter
-    this.vadThreshold = noiseMode === 'noisy' ? 0.90 : 0.75
-    this.vadSilenceMs = noiseMode === 'noisy' ? 1200 : 900
+    // v22.6: Quiet = server VAD (automatic), Noisy = push-to-talk (manual)
+    this.pushToTalk = noiseMode === 'noisy'
+    this.vadThreshold = 0.75
+    this.vadSilenceMs = 900
   }
 
   get state(): RealtimeState { return this._state }
@@ -70,11 +72,12 @@ export class RealtimeVoiceSession {
           voice: 'coral',  // v21: warm, natural, good for Hebrew/Spanish
           instructions: this.instructions,
           input_audio_transcription: { model: 'whisper-1' },
-          turn_detection: {
+          // v22.6: Quiet = server VAD (auto-detect speech), Noisy = no VAD (push-to-talk)
+          turn_detection: this.pushToTalk ? null : {
             type: 'server_vad',
-            threshold: this.vadThreshold,        // v22.2: noise-aware (quiet: 0.75, noisy: 0.90)
+            threshold: this.vadThreshold,
             prefix_padding_ms: 250,
-            silence_duration_ms: this.vadSilenceMs, // quiet: 900ms, noisy: 1200ms
+            silence_duration_ms: this.vadSilenceMs,
           },
         }),
       })
@@ -251,6 +254,24 @@ export class RealtimeVoiceSession {
     this.cleanup()
     await new Promise(r => setTimeout(r, 1000 * this.retryCount)) // backoff: 1s, 2s
     this.connect()
+  }
+
+  /** Is this session in push-to-talk mode? */
+  get isPushToTalk(): boolean { return this.pushToTalk }
+
+  /** Push-to-talk: signal that user started speaking */
+  startTalking(): void {
+    if (!this.pushToTalk) return
+    // Clear any buffered audio from TV noise before user speaks
+    this.sendEvent({ type: 'input_audio_buffer.clear' })
+    this.setState('listening')
+  }
+
+  /** Push-to-talk: signal that user stopped speaking — commit audio + trigger response */
+  stopTalking(): void {
+    if (!this.pushToTalk) return
+    this.sendEvent({ type: 'input_audio_buffer.commit' })
+    this.sendEvent({ type: 'response.create' })
   }
 
   /** Cancel current AI response (barge-in via tap) */
