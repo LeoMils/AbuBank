@@ -163,9 +163,15 @@ async function playBlobViaAudioCtx(blob: Blob): Promise<boolean> {
 }
 
 // ─── 0. OpenAI TTS (primary — direct REST, works on iPhone) ──
-// "nova" voice: warm, clear, slightly husky female — the most natural-sounding
-// for Hebrew and Spanish. No proxy required. Works in Vercel production.
-// Speed 0.88: comfortable pace for Martita's ears without sounding slow.
+// v22.4: gpt-4o-mini-tts with coral voice + steerable accent instructions
+// Natural Israeli Hebrew and Argentine Spanish accents
+
+function getTTSInstructions(text: string): string {
+  const lang = detectLang(text)
+  return lang === 'es'
+    ? 'Speak in Argentine Spanish with Rioplatense accent. Warm, friendly, conversational tone like a kind woman chatting with a friend. Natural pace, not rushed.'
+    : 'Speak Hebrew with a native Israeli accent. Warm, friendly, conversational tone like a kind woman chatting with a friend. Natural pace, not rushed.'
+}
 
 async function speakOpenAI(text: string): Promise<boolean> {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
@@ -183,10 +189,11 @@ async function speakOpenAI(text: string): Promise<boolean> {
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'tts-1',            // fast model, lower latency
+          model: 'gpt-4o-mini-tts',  // v22.4: steerable, best quality
           input: chunk,
-          voice: 'nova',             // nova = warm, clear, natural
-          speed: getVoiceSpeed(),    // v20: from Settings
+          voice: 'coral',
+          instructions: getTTSInstructions(chunk),
+          speed: getVoiceSpeed(),
           response_format: 'mp3',
         }),
         signal: controller.signal,
@@ -436,7 +443,7 @@ export async function speakVoiceMode(text: string): Promise<void> {
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: getVoiceSpeed(), response_format: 'mp3' }),
+        body: JSON.stringify({ model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed(), response_format: 'mp3' }),
         signal: controller.signal,
       })
       clearTimeout(t)
@@ -660,7 +667,7 @@ export async function streamSpeakVoiceMode(
         const res = await fetch('https://api.openai.com/v1/audio/speech', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova', speed: getVoiceSpeed(), response_format: 'mp3' }),
+          body: JSON.stringify({ model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed(), response_format: 'mp3' }),
           signal: signal ?? null,
         })
         if (res.ok) {
