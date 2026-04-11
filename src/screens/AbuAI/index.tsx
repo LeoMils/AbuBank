@@ -146,7 +146,7 @@ export function AbuAI() {
 
   // v24.2: Meeting/listen mode — free Web Speech API
   const meetingTranscriptRef = useRef<string>('')
-  const meetingRecRef = useRef<SpeechRecognition | null>(null)
+  const meetingRecRef = useRef<any>(null) // SpeechRecognition (not in TS default lib)
 
   const chatRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -769,7 +769,7 @@ ${fewShotText}`
       }
       return detected
     } catch {
-      return noiseMode // can't measure — use current setting
+      return (noiseMode === 'listen' ? 'quiet' : noiseMode) as 'quiet' | 'noisy' // can't measure — use current setting
     }
   }, [noiseMode])
 
@@ -791,17 +791,17 @@ ${fewShotText}`
         setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'הדפדפן לא תומך בהאזנה לפגישות. נסי בכרום.', timestamp: Date.now() }])
         setVoiceMode(false); voiceModeRef.current = false; return
       }
-      const rec = new WSR() as SpeechRecognition
+      const rec = new WSR()
       rec.continuous = true        // keep listening indefinitely
       rec.interimResults = false    // only final results (less noise)
       rec.lang = 'he-IL'
       rec.maxAlternatives = 1
 
-      rec.onresult = (e: SpeechRecognitionEvent) => {
+      rec.onresult = (e: any) => {
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const result = e.results[i]
           if (result?.isFinal && result[0]?.transcript) {
-            const text = result[0].transcript.trim()
+            const text = (result[0].transcript as string).trim()
             if (text.length > 1) {
               meetingTranscriptRef.current += text + '\n'
               setLastHeardText(text)
@@ -811,7 +811,7 @@ ${fewShotText}`
         }
       }
 
-      rec.onerror = (e: SpeechRecognitionErrorEvent) => {
+      rec.onerror = (e: any) => {
         // 'no-speech' is normal in meetings — just restart
         if (e.error === 'no-speech' || e.error === 'aborted') {
           if (voiceModeRef.current && noiseMode === 'listen') {
@@ -876,7 +876,7 @@ ${fewShotText}`
           setRealtimeState('idle')
           startPipelineVoiceMode()
         },
-        detectedMode, // v22.3: auto-detected noise mode for VAD sensitivity
+        detectedMode as 'quiet' | 'noisy', // listen mode returns early above, never reaches here
       )
       realtimeRef.current = session
       session.connect()
