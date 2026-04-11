@@ -849,8 +849,15 @@ ${fewShotText}`
 
             if (state === 'listening') setIsSpeaking(false)
 
-            // v24: No auto-exit timeout. Martita exits when SHE wants to.
-            // Conversations can last minutes or hours — her choice.
+            // v24.3: Safety — if connection is stuck (no speaking event in 3 min), auto-exit
+            // Normal conversation resets this timer every time AI speaks
+            if (voiceSafetyTimerRef.current) { clearTimeout(voiceSafetyTimerRef.current); voiceSafetyTimerRef.current = null }
+            if (state === 'listening' && !meetingRecRef.current) {
+              voiceSafetyTimerRef.current = setTimeout(() => {
+                console.log('[AbuAI] Connection may be dead — no activity for 3 min')
+                exitVoiceMode()
+              }, 180_000) // 3 minutes — only for broken connections, not normal pauses
+            }
           },
           onUserTranscript: (text) => {
             setLastHeardText(text)

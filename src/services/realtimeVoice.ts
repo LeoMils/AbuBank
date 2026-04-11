@@ -1,8 +1,8 @@
 // ─── OpenAI Realtime API — WebRTC Voice Client ─────────────────────
-// v24.2: Upgraded to gpt-realtime (GA) with marin voice
-// Better voice quality, 20% cheaper, follows delivery instructions
+// v24.3: Reverted to gpt-4o-realtime-preview (gpt-realtime may not be available on all accounts)
+// Keep coral voice (marin may be gpt-realtime exclusive)
 
-const REALTIME_MODEL = 'gpt-realtime'
+const REALTIME_MODEL = 'gpt-4o-realtime-preview'
 
 export type RealtimeState = 'idle' | 'connecting' | 'listening' | 'speaking' | 'error'
 
@@ -71,7 +71,7 @@ export class RealtimeVoiceSession {
         },
         body: JSON.stringify({
           model: REALTIME_MODEL,
-          voice: 'marin',  // v24.2: newest, most natural voice — warm female, best for non-English
+          voice: 'coral',  // v24.3: coral is reliable across all accounts; marin needs gpt-realtime
           instructions: this.instructions,
           input_audio_transcription: { model: 'whisper-1' },
           // v22.6: Quiet = server VAD (auto-detect speech), Noisy = no VAD (push-to-talk)
