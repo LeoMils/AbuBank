@@ -704,11 +704,63 @@ ${fewShotText}`
       })
   }, [startVoiceListening, transitionVoice])
 
-  const enterVoiceMode = useCallback(() => {
+  // v22.3: Auto-detect ambient noise level before entering voice mode
+  const detectAmbientNoise = useCallback(async (): Promise<'quiet' | 'noisy'> => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      })
+      const ctx = new AudioContext()
+      const source = ctx.createMediaStreamSource(stream)
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 512
+      source.connect(analyser)
+      const buf = new Uint8Array(analyser.frequencyBinCount)
+      const samples: number[] = []
+
+      await new Promise<void>(resolve => {
+        const start = Date.now()
+        const measure = () => {
+          if (Date.now() - start > 400) { resolve(); return } // 400ms measurement
+          analyser.getByteTimeDomainData(buf)
+          let sum = 0
+          for (let i = 0; i < buf.length; i++) {
+            const v = (buf[i]! - 128) / 128
+            sum += v * v
+          }
+          samples.push(Math.min(100, Math.sqrt(sum / buf.length) * 300))
+          requestAnimationFrame(measure)
+        }
+        requestAnimationFrame(measure)
+      })
+
+      stream.getTracks().forEach(t => t.stop())
+      ctx.close().catch(() => {})
+
+      samples.sort((a, b) => a - b)
+      const median = samples[Math.floor(samples.length / 2)] ?? 0
+      const detected = median > 15 ? 'noisy' : 'quiet' // >15 = TV or significant background noise
+      console.log(`[AbuAI] Ambient noise: median=${median.toFixed(1)}, mode=${detected}`)
+
+      // Auto-update the toggle if detection disagrees
+      if (detected !== noiseMode) {
+        setNoiseMode(detected)
+        localStorage.setItem('abu-noise-mode', detected)
+      }
+      return detected
+    } catch {
+      return noiseMode // can't measure — use current setting
+    }
+  }, [noiseMode])
+
+  const enterVoiceMode = useCallback(async () => {
     unlockIOSAudio()
     acquireWakeLock()
     setVoiceMode(true)
     voiceModeRef.current = true
+
+    // v22.3: Auto-detect noise before starting — updates toggle automatically
+    const detectedMode = await detectAmbientNoise()
 
     // v21: Use OpenAI Realtime API (WebRTC) if available — true real-time conversation
     // Falls back to pipeline mode if Realtime fails after 2 retries
@@ -749,7 +801,7 @@ ${fewShotText}`
           setRealtimeState('idle')
           startPipelineVoiceMode()
         },
-        noiseMode, // v22.2: pass noise mode for VAD sensitivity
+        detectedMode, // v22.3: auto-detected noise mode for VAD sensitivity
       )
       realtimeRef.current = session
       session.connect()
@@ -758,7 +810,7 @@ ${fewShotText}`
 
     // No OpenAI key — use pipeline directly
     startPipelineVoiceMode()
-  }, [startPipelineVoiceMode, useRealtime, realtimeInstructions, noiseMode])
+  }, [startPipelineVoiceMode, useRealtime, realtimeInstructions, noiseMode, detectAmbientNoise])
 
   const exitVoiceMode = useCallback(() => {
     // v20.2: Disconnect Realtime session if active
