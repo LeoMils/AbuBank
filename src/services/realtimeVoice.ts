@@ -71,7 +71,7 @@ export class RealtimeVoiceSession {
         },
         body: JSON.stringify({
           model: REALTIME_MODEL,
-          voice: 'coral',  // v24.3: coral is reliable across all accounts; marin needs gpt-realtime
+          voice: 'shimmer',  // v26.1: shimmer is warmer and more natural for Hebrew/Spanish than coral
           instructions: this.instructions,
           input_audio_transcription: { model: 'whisper-1' },
           // v22.6: Quiet = server VAD (auto-detect speech), Noisy = no VAD (push-to-talk)
@@ -156,7 +156,7 @@ export class RealtimeVoiceSession {
             type: 'response.create',
             response: {
               modalities: ['audio', 'text'],
-              instructions: 'ברכי את Martita בחום. ברכה קצרה לפי שעת היום. משפט אחד בלבד.',
+              instructions: 'Greet Martita warmly in Hebrew based on the time of day. One short sentence only. Speak slowly, gently, like greeting a close friend. Example: "אחר הצהריים טובים, Martita!"',
             },
           })
         }
