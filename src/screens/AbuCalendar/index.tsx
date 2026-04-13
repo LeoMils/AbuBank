@@ -48,7 +48,7 @@ function dateStr(year: number, month: number, day: number): string {
 }
 
 // ─── Appointment Card ─────────────────────────────────────────────────────────
-function ApptCard({ appt, onDelete }: { appt: Appointment; onDelete: () => void }) {
+function ApptCard({ appt, onDelete, isPast }: { appt: Appointment; onDelete: () => void; isPast?: boolean }) {
   const [hovered, setHovered] = useState(false)
   const isBday = appt.type === 'birthday'
   const isMemorial = appt.type === 'memory'
@@ -60,7 +60,10 @@ function ApptCard({ appt, onDelete }: { appt: Appointment; onDelete: () => void 
         display: 'flex',
         alignItems: 'center',
         gap: 14,
-        background: isBday
+        opacity: isPast ? 0.50 : 1,
+        background: isPast
+          ? 'rgba(255,255,255,0.02)'
+          : isBday
           ? 'linear-gradient(135deg, rgba(244,114,182,0.10) 0%, rgba(255,230,109,0.06) 100%)'
           : isMemorial
           ? 'linear-gradient(135deg, rgba(201,168,76,0.10) 0%, rgba(201,168,76,0.03) 100%)'
@@ -86,11 +89,11 @@ function ApptCard({ appt, onDelete }: { appt: Appointment; onDelete: () => void 
         animation: 'fadeSlideUp 0.35s ease both',
       } as React.CSSProperties}
     >
-      {/* Left color stripe */}
+      {/* Left color stripe — dimmed for past events */}
       <div style={{
         width: 4,
         alignSelf: 'stretch',
-        background: appt.color,
+        background: isPast ? 'rgba(255,255,255,0.15)' : appt.color,
         borderRadius: '0 3px 3px 0',
         flexShrink: 0,
         marginLeft: 0,
@@ -1100,6 +1103,7 @@ export function AbuCalendar() {
               <ApptCard
                 key={a.id}
                 appt={a}
+                isPast={selectedDay < today}
                 onDelete={() => { soundTap(); deleteAppointment(a.id); reload() }}
               />
             ))}
