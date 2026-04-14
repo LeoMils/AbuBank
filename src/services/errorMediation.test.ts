@@ -66,11 +66,33 @@ describe('mediateError', () => {
     expect(result.secondaryAction).toBe('home')
   })
 
-  it('uses new warm copy (not old cold phrasing)', () => {
+  it('uses clear senior-friendly copy (v27.1)', () => {
+    // Quota: tells her plainly she should talk to Leo — no abstract metaphors
     const quotaResult = mediateError('quota exceeded', 429)
-    expect(quotaResult.message).toContain('נגמרו לי הכוחות')
+    expect(quotaResult.message).toContain('דברי עם לאו')
+    expect(quotaResult.message).not.toContain('נגמרו לי הכוחות') // old poetic phrasing removed
+    // Unknown: simple, direct
     const unknownResult = mediateError('random error')
-    expect(unknownResult.message).toContain('משהו קטן')
+    expect(unknownResult.message).toContain('לא עבד')
+  })
+
+  it('Leo button label matches WhatsApp action (not phone call)', () => {
+    const quotaResult = mediateError('quota exceeded', 429)
+    // Label must NOT say "call" — action is WhatsApp, not a phone call
+    expect(quotaResult.primaryLabel).not.toContain('להתקשר')
+    expect(quotaResult.primaryLabel).toContain('הודעה')
+    const authResult = mediateError('unauthorized', 401)
+    expect(authResult.primaryLabel).not.toContain('להתקשר')
+    expect(authResult.primaryLabel).toContain('הודעה')
+  })
+
+  it('error messages do not use technical jargon', () => {
+    // "עומס" was confusing tech-speak for rate-limit — now uses "תנועה" (traffic, familiar metaphor)
+    const rateLimitResult = mediateError('too many requests', 429)
+    expect(rateLimitResult.message).not.toContain('עומס')
+    // "ברקע" was metaphorical for auth — now direct
+    const authResult = mediateError('unauthorized', 401)
+    expect(authResult.message).not.toContain('ברקע')
   })
 
   it('provides dismiss for mic-denied (not retry)', () => {

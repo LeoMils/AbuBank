@@ -1214,36 +1214,7 @@ ${fewShotText}`
               </div>
             </div>
 
-            {/* v22.2: Noise environment toggle — visible before entering voice mode */}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); toggleNoiseMode() }}
-              style={{
-                marginTop: 12,
-                padding: '10px 20px',
-                borderRadius: 14,
-                background: noiseMode === 'noisy'
-                  ? 'rgba(251,146,60,0.10)'
-                  : 'rgba(255,255,255,0.03)',
-                border: noiseMode === 'noisy'
-                  ? '1px solid rgba(251,146,60,0.35)'
-                  : '1px solid rgba(255,255,255,0.08)',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                minHeight: 48,
-                WebkitTapHighlightColor: 'transparent',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <span style={{ fontSize: 18 }}>{noiseMode === 'listen' ? '👂' : noiseMode === 'noisy' ? '📺' : '🤫'}</span>
-              <span style={{
-                fontSize: 16, fontWeight: 600,
-                color: noiseMode === 'listen' ? 'rgba(167,139,250,0.80)' : noiseMode === 'noisy' ? 'rgba(251,146,60,0.85)' : 'rgba(245,240,232,0.45)',
-                fontFamily: "'Heebo',sans-serif",
-              }}>
-                {noiseMode === 'listen' ? 'מצב האזנה' : noiseMode === 'noisy' ? 'מצב רועש' : 'מצב שקט'}
-              </span>
-            </button>
+            {/* v27.1: Noise environment toggle hidden (state kept for v28 refactor) */}
           </div>
         )}
 
@@ -1619,37 +1590,7 @@ ${fewShotText}`
             )}
           </div>
 
-          {/* v22.2: Noise environment toggle */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); toggleNoiseMode() }}
-            aria-label={noiseMode === 'quiet' ? 'מצב שקט — לחצי אם יש רעש ברקע' : 'מצב רועש — לחצי אם שקט'}
-            style={{
-              marginTop: 24,
-              padding: '12px 24px',
-              borderRadius: 20,
-              background: noiseMode === 'noisy'
-                ? 'rgba(251,146,60,0.15)'
-                : 'rgba(20,184,166,0.08)',
-              border: noiseMode === 'noisy'
-                ? '1.5px solid rgba(251,146,60,0.45)'
-                : '1.5px solid rgba(20,184,166,0.25)',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 10,
-              minHeight: 48,
-              WebkitTapHighlightColor: 'transparent',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <span style={{ fontSize: 22 }}>{noiseMode === 'listen' ? '👂' : noiseMode === 'noisy' ? '📺' : '🤫'}</span>
-            <span style={{
-              fontSize: 16, fontWeight: 600,
-              color: noiseMode === 'listen' ? 'rgba(167,139,250,0.85)' : noiseMode === 'noisy' ? 'rgba(251,146,60,0.90)' : 'rgba(20,184,166,0.75)',
-              fontFamily: "'Heebo',sans-serif",
-            }}>
-              {noiseMode === 'listen' ? 'מצב האזנה — מקליטה פגישה' : noiseMode === 'noisy' ? 'מצב רועש — לחצי לדבר' : 'מצב שקט — שיחה חופשית'}
-            </span>
-          </button>
+          {/* v27.1: Noise toggle hidden — state defaults to 'quiet', behavior unchanged */}
 
           {/* Stop button — stopPropagation prevents overlay interrupt */}
           <button

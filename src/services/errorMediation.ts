@@ -25,6 +25,8 @@ export interface MediatedError {
 }
 
 // v27: Leo's contact is the WhatsApp family group (no phone number stored — privacy rule)
+// v27.1: Base URL used for label-accurate UI; WhatsApp group invite links do not support
+// prefilled message text (only wa.me/<phone>?text= does), so we simply open the group.
 export const LEO_CONTACT_URL = 'https://chat.whatsapp.com/JqqGpPKTCq3L0JnitU5y5f'
 
 function errorText(err: unknown): string {
@@ -69,8 +71,8 @@ export function mediateError(err: unknown, status?: number): MediatedError {
       return {
         category,
         emoji: '💛',
-        message: 'נגמרו לי הכוחות היום. ללאו יש את התשובה.',
-        primaryLabel: 'להתקשר ללאו',
+        message: 'היום לא אוכל לעזור יותר. דברי עם לאו.',
+        primaryLabel: 'לשלוח הודעה ללאו',
         primaryAction: 'whatsapp-leo',
         secondaryLabel: 'חזרה הביתה',
         secondaryAction: 'home',
@@ -80,8 +82,8 @@ export function mediateError(err: unknown, status?: number): MediatedError {
       return {
         category,
         emoji: '💛',
-        message: 'משהו ברקע דורש טיפול. לאו יעזור.',
-        primaryLabel: 'להתקשר ללאו',
+        message: 'יש בעיה שלאו צריך לסדר.',
+        primaryLabel: 'לשלוח הודעה ללאו',
         primaryAction: 'whatsapp-leo',
         secondaryLabel: 'חזרה הביתה',
         secondaryAction: 'home',
@@ -102,7 +104,7 @@ export function mediateError(err: unknown, status?: number): MediatedError {
       return {
         category,
         emoji: '⏳',
-        message: 'לקח רגע. בואי ננסה עוד פעם.',
+        message: 'זה לקח יותר מדי זמן. ננסה שוב.',
         primaryLabel: 'ננסה שוב',
         primaryAction: 'retry',
         secondaryLabel: 'חזרה הביתה',
@@ -140,7 +142,7 @@ export function mediateError(err: unknown, status?: number): MediatedError {
       return {
         category,
         emoji: '⏳',
-        message: 'היום יש עומס. רגע ונחזור.',
+        message: 'יש הרבה תנועה עכשיו. ננסה עוד רגע.',
         primaryLabel: 'ננסה שוב',
         primaryAction: 'retry',
         secondaryLabel: 'חזרה הביתה',
@@ -152,7 +154,7 @@ export function mediateError(err: unknown, status?: number): MediatedError {
       return {
         category: 'unknown',
         emoji: '💛',
-        message: 'משהו קטן לא הלך. ננסה שוב?',
+        message: 'משהו לא עבד. ננסה שוב?',
         primaryLabel: 'ננסה שוב',
         primaryAction: 'retry',
         secondaryLabel: 'חזרה הביתה',
