@@ -52,6 +52,10 @@ function ApptCard({ appt, onDelete, isPast }: { appt: Appointment; onDelete: () 
   const [hovered, setHovered] = useState(false)
   const isBday = appt.type === 'birthday'
   const isMemorial = appt.type === 'memory'
+  // v26.3: Past events use muted colors instead of opacity (opacity conflicts with fadeSlideUp animation)
+  const textColor = isPast ? 'rgba(245,240,232,0.40)' : CREAM
+  const timeColor = isPast ? 'rgba(255,255,255,0.35)' : GOLD
+  const notesColor = isPast ? 'rgba(245,240,232,0.25)' : 'rgba(245,240,232,0.55)'
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -60,7 +64,6 @@ function ApptCard({ appt, onDelete, isPast }: { appt: Appointment; onDelete: () 
         display: 'flex',
         alignItems: 'center',
         gap: 14,
-        opacity: isPast ? 0.50 : 1,
         background: isPast
           ? 'rgba(255,255,255,0.02)'
           : isBday
@@ -99,25 +102,27 @@ function ApptCard({ appt, onDelete, isPast }: { appt: Appointment; onDelete: () 
         marginLeft: 0,
         marginRight: 0,
       }} />
-      <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0 }}>{appt.emoji}</span>
+      <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0, filter: isPast ? 'grayscale(0.6)' : 'none' }}>{appt.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 16,
           fontWeight: 600,
-          color: CREAM,
+          color: textColor,
           fontFamily: "'DM Sans','Heebo',sans-serif",
           marginBottom: 3,
+          textDecoration: isPast ? 'line-through' : 'none',
+          textDecorationColor: 'rgba(245,240,232,0.25)',
         }}>{appt.title}</div>
         <div style={{
           fontSize: 16,
           fontWeight: 700,
-          color: GOLD,
+          color: timeColor,
           fontFamily: "'DM Sans',sans-serif",
         }}>{appt.time}</div>
         {appt.notes && (
           <div style={{
             fontSize: 16,
-            color: 'rgba(245,240,232,0.55)',
+            color: notesColor,
             fontFamily: "'Heebo',sans-serif",
             marginTop: 4,
           }}>{appt.notes}</div>
@@ -1099,14 +1104,19 @@ export function AbuCalendar() {
           </div>
         ) : (
           <>
-            {selectedAppts.slice(0, 2).map(a => (
-              <ApptCard
-                key={a.id}
-                appt={a}
-                isPast={selectedDay < today}
-                onDelete={() => { soundTap(); deleteAppointment(a.id); reload() }}
-              />
-            ))}
+            {selectedAppts.slice(0, 2).map(a => {
+              // v26.3: Compare actual appointment datetime to now (not just date)
+              const apptDateTime = new Date(`${a.date}T${a.time}:00`).getTime()
+              const isPast = !isNaN(apptDateTime) && apptDateTime < Date.now()
+              return (
+                <ApptCard
+                  key={a.id}
+                  appt={a}
+                  isPast={isPast}
+                  onDelete={() => { soundTap(); deleteAppointment(a.id); reload() }}
+                />
+              )
+            })}
             {selectedAppts.length > 2 && (
               <div style={{
                 textAlign: 'center', padding: '6px 0',
