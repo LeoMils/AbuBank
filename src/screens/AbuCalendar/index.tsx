@@ -48,14 +48,30 @@ function dateStr(year: number, month: number, day: number): string {
 }
 
 // ─── Appointment Card ─────────────────────────────────────────────────────────
-function ApptCard({ appt, onDelete, isPast }: { appt: Appointment; onDelete: () => void; isPast?: boolean }) {
+// v27.2: Time state — 4-way distinction for glanceable calendar
+export type ApptTimeState = 'past' | 'next-upcoming' | 'today-upcoming' | 'later'
+
+function ApptCard({ appt, onDelete, timeState = 'later' }: { appt: Appointment; onDelete: () => void; timeState?: ApptTimeState }) {
   const [hovered, setHovered] = useState(false)
   const isBday = appt.type === 'birthday'
   const isMemorial = appt.type === 'memory'
-  // v26.3: Past events use muted colors instead of opacity (opacity conflicts with fadeSlideUp animation)
+  const isPast = timeState === 'past'
+  const isNext = timeState === 'next-upcoming'
+  const isToday = timeState === 'today-upcoming'
+
+  // v27.2: Per-state colors — muted for past, gold emphasis for next, teal tint for today
   const textColor = isPast ? 'rgba(245,240,232,0.40)' : CREAM
-  const timeColor = isPast ? 'rgba(255,255,255,0.35)' : GOLD
+  const timeColor = isPast ? 'rgba(255,255,255,0.35)' : isNext ? BRIGHT_GOLD : GOLD
   const notesColor = isPast ? 'rgba(245,240,232,0.25)' : 'rgba(245,240,232,0.55)'
+  const stripeColor = isPast
+    ? 'rgba(255,255,255,0.15)'
+    : isNext
+    ? BRIGHT_GOLD
+    : isToday
+    ? TEAL
+    : appt.color
+  const stripeWidth = isNext ? 5 : 4
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -66,6 +82,10 @@ function ApptCard({ appt, onDelete, isPast }: { appt: Appointment; onDelete: () 
         gap: 14,
         background: isPast
           ? 'rgba(255,255,255,0.02)'
+          : isNext
+          ? 'linear-gradient(135deg, rgba(201,168,76,0.14) 0%, rgba(212,168,83,0.06) 100%)'
+          : isToday
+          ? 'linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(20,184,166,0.02) 100%)'
           : isBday
           ? 'linear-gradient(135deg, rgba(244,114,182,0.10) 0%, rgba(255,230,109,0.06) 100%)'
           : isMemorial
@@ -73,7 +93,11 @@ function ApptCard({ appt, onDelete, isPast }: { appt: Appointment; onDelete: () 
           : 'rgba(255,250,240,0.04)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
-        border: isBday
+        border: isNext
+          ? '1.5px solid rgba(201,168,76,0.45)'
+          : isToday
+          ? '1px solid rgba(20,184,166,0.30)'
+          : isBday
           ? '1px solid rgba(244,114,182,0.25)'
           : isMemorial
           ? '1px solid rgba(201,168,76,0.25)'
@@ -86,22 +110,43 @@ function ApptCard({ appt, onDelete, isPast }: { appt: Appointment; onDelete: () 
         marginBottom: 8,
         overflow: 'hidden',
         transition: 'border-color 0.2s, box-shadow 0.2s',
-        boxShadow: isBday
+        boxShadow: isNext
+          ? '0 4px 20px rgba(201,168,76,0.25), 0 0 32px rgba(201,168,76,0.10), inset 0 1px 0 rgba(255,250,240,0.08)'
+          : isToday
+          ? '0 2px 14px rgba(20,184,166,0.10), inset 0 1px 0 rgba(255,250,240,0.05)'
+          : isBday
           ? '0 4px 20px rgba(244,114,182,0.12), inset 0 1px 0 rgba(255,250,240,0.06)'
           : 'inset 0 1px 0 rgba(255,250,240,0.04), 0 2px 12px rgba(0,0,0,0.20)',
         animation: 'fadeSlideUp 0.35s ease both',
       } as React.CSSProperties}
     >
-      {/* Left color stripe — dimmed for past events */}
+      {/* Left color stripe — 5px for "next", 4px otherwise; color varies by time state */}
       <div style={{
-        width: 4,
+        width: stripeWidth,
         alignSelf: 'stretch',
-        background: isPast ? 'rgba(255,255,255,0.15)' : appt.color,
+        background: stripeColor,
         borderRadius: '0 3px 3px 0',
         flexShrink: 0,
         marginLeft: 0,
         marginRight: 0,
       }} />
+
+      {/* v27.2: "הבא" (next) badge — only on the single next-upcoming event */}
+      {isNext && (
+        <div style={{
+          position: 'absolute',
+          top: 8,
+          left: 10,
+          fontSize: 12,
+          fontWeight: 700,
+          color: 'rgba(0,0,0,0.80)',
+          background: `linear-gradient(135deg, ${BRIGHT_GOLD}, ${GOLD})`,
+          padding: '3px 10px',
+          borderRadius: 8,
+          letterSpacing: '0.5px',
+          fontFamily: "'Heebo',sans-serif",
+        }}>הבא</div>
+      )}
       <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0, filter: isPast ? 'grayscale(0.6)' : 'none' }}>{appt.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
@@ -507,6 +552,20 @@ export function AbuCalendar() {
 
   const upcomingBirthdays = useMemo(() => getUpcomingBirthdays(appointments, 30), [appointments])
   const nextBirthday = upcomingBirthdays[0] ?? null
+
+  // v27.2: Find the chronologically-next upcoming event across ALL appointments.
+  // This event gets the "next" visual treatment (gold glow + "הבא" badge).
+  const nextUpcomingId = useMemo<string | null>(() => {
+    const nowMs = Date.now()
+    let bestId: string | null = null
+    let bestTime = Infinity
+    for (const a of appointments) {
+      const t = new Date(`${a.date}T${a.time}:00`).getTime()
+      if (isNaN(t) || t <= nowMs) continue
+      if (t < bestTime) { bestTime = t; bestId = a.id }
+    }
+    return bestId
+  }, [appointments])
 
   // Month slide animation
   const [slideDir, setSlideDir] = useState<'none' | 'left' | 'right'>('none')
@@ -1105,14 +1164,26 @@ export function AbuCalendar() {
         ) : (
           <>
             {selectedAppts.slice(0, 2).map(a => {
-              // v26.3: Compare actual appointment datetime to now (not just date)
+              // v27.2: 4-way time state for glanceable calendar
               const apptDateTime = new Date(`${a.date}T${a.time}:00`).getTime()
-              const isPast = !isNaN(apptDateTime) && apptDateTime < Date.now()
+              const nowMs = Date.now()
+              let timeState: ApptTimeState = 'later'
+              if (!isNaN(apptDateTime)) {
+                if (apptDateTime < nowMs) {
+                  timeState = 'past'
+                } else if (a.id === nextUpcomingId) {
+                  timeState = 'next-upcoming'
+                } else if (a.date === today) {
+                  timeState = 'today-upcoming'
+                } else {
+                  timeState = 'later'
+                }
+              }
               return (
                 <ApptCard
                   key={a.id}
                   appt={a}
-                  isPast={isPast}
+                  timeState={timeState}
                   onDelete={() => { soundTap(); deleteAppointment(a.id); reload() }}
                 />
               )
