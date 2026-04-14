@@ -6,11 +6,13 @@ import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } f
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
-import { InfoButton } from '../../components/InfoButton'
 import { injectSharedKeyframes } from '../../design/animations'
 import { soundProcessing } from '../../services/sounds'
 import { RealtimeVoiceSession } from '../../services/realtimeVoice'
 import type { RealtimeState } from '../../services/realtimeVoice'
+import { mediateError } from '../../services/errorMediation'
+import type { MediatedError } from '../../services/errorMediation'
+import { ErrorCard } from '../../components/ErrorCard'
 
 // ─── Color tokens (green/teal — matches AbuWhatsApp) ────────────────────────
 const GOLD            = '#14b8a6'   // teal (was gold)
@@ -97,7 +99,6 @@ function getVoiceGreeting(): string {
 
 export function AbuAI() {
   const setScreen = useAppStore(s => s.setScreen)
-  const appVersion = useAppStore(s => s.appVersion)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -251,17 +252,30 @@ export function AbuAI() {
         const updated = [...prev]
         const idx = updated.findIndex(m => m.id === aiMsgId)
         if (idx !== -1) {
-          updated[idx] = { ...updated[idx]!, content: accumulated.trim() || 'שגיאה בחיבור. נסי שוב.' }
+          const finalContent = accumulated.trim()
+          if (finalContent) {
+            updated[idx] = { ...updated[idx]!, content: finalContent }
+          } else {
+            // Empty response — show mediated error
+            const mediated = mediateError('empty response')
+            updated[idx] = { ...updated[idx]!, content: mediated.message, error: mediated }
+          }
         }
         return updated
       })
     } catch (err: unknown) {
-      const errorText = err instanceof Error ? err.message : 'שגיאה לא צפויה. נסי שוב.'
+      // v27: Mediate error — always Hebrew, always with action buttons
+      const mediated: MediatedError = mediateError(err)
       setMessages(prev => {
         const updated = [...prev]
         const idx = updated.findIndex(m => m.id === aiMsgId)
         if (idx !== -1) {
-          updated[idx] = { ...updated[idx]!, content: accumulated ? accumulated + '\n\n' + errorText : errorText }
+          if (accumulated.trim()) {
+            // Keep partial response + append error card as separate message
+            updated[idx] = { ...updated[idx]!, content: accumulated.trim() }
+            return [...updated, { id: nextId(), role: 'assistant', content: mediated.message, timestamp: Date.now(), error: mediated }]
+          }
+          updated[idx] = { ...updated[idx]!, content: mediated.message, error: mediated }
         }
         return updated
       })
@@ -769,13 +783,12 @@ ${fewShotText}`
           },
           onError: (error) => {
             console.error('[Realtime] Error:', error)
-            // v25: Show Hebrew error, never raw English
-            const isQuota = typeof error === 'string' && (error.includes('quota') || error.includes('exceeded') || error.includes('billing'))
-            const hebrewMsg = isQuota ? 'המכסה נגמרה. עוברת למצב חינמי.' : 'שגיאה בחיבור. נסי שוב.'
-            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: hebrewMsg, timestamp: Date.now() }])
-            if (isQuota) {
+            // v27: Mediate error — always Hebrew, always with action buttons
+            const mediated = mediateError(error)
+            if (mediated.category === 'quota' || mediated.category === 'auth') {
               try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
             }
+            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediated.message, timestamp: Date.now(), error: mediated }])
           },
         },
         realtimeInstructions,
@@ -989,37 +1002,15 @@ ${fewShotText}`
 
           {/* CENTER: Single wordmark */}
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, direction: 'ltr' }}>
+            <div style={{ direction: 'ltr' }}>
               <span style={{
-                fontFamily: "'Cormorant Garamond',Georgia,serif",
-                fontSize: 34,
-                fontWeight: 600,
-                letterSpacing: '1px',
-                fontStyle: 'italic',
-                ...goldGradText,
-              }}>Martit</span>
-              <span style={{
-                fontFamily: "'DM Sans',sans-serif",
-                fontSize: 30,
+                fontFamily: "'Heebo','DM Sans',sans-serif",
+                fontSize: 22,
                 fontWeight: 700,
-                letterSpacing: '2px',
-                ...goldGradText,
-              }}>AI</span>
+                letterSpacing: '0.5px',
+                color: 'rgba(245,240,232,0.92)',
+              }}>Abu AI</span>
             </div>
-            {/* Sub-label */}
-            <div style={{
-              position: 'absolute',
-              bottom: -16,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              fontSize: 10,
-              letterSpacing: '2.5px',
-              fontWeight: 600,
-              color: 'rgba(20,184,166,0.50)',
-              fontFamily: "'DM Sans',sans-serif",
-              textTransform: 'uppercase',
-              whiteSpace: 'nowrap',
-            }}>ABU AI</div>
           </div>
 
           {/* RIGHT (RTL): Back button */}
@@ -1061,26 +1052,7 @@ ${fewShotText}`
 
         </div>
 
-        {/* Version badge */}
-        <div style={{
-          position: 'absolute',
-          bottom: 5,
-          left: 10,
-          fontSize: 12,
-          fontWeight: 700,
-          letterSpacing: '1px',
-          color: 'rgba(20,184,166,0.45)',
-          fontFamily: "'DM Sans',monospace",
-          userSelect: 'none',
-        }}>{appVersion ? `v${appVersion}` : ''}</div>
       </header>
-
-      <InfoButton
-        title="אבו AI — MartitAI"
-        lines={['אבו AI היא העוזרת האישית החכמה שלך — שואלת, מסבירה, מצחיקה.', 'יש לה גישה לאינטרנט בזמן אמת. אפשר לדבר עברית או ספרדית.']}
-        howTo={['כתבי שאלה בתיבת הטקסט ולחצי שלח', 'לחצי "שיחה קולית" לדבר ישירות', 'לחצי על "חזרה" לחזור לתפריט הראשי']}
-        position="top-left"
-      />
 
       {/* ─────────────────────── CHAT AREA ─────────────────────── */}
       <div
@@ -1281,6 +1253,23 @@ ${fewShotText}`
             const isLast = idx === messages.length - 1
             const isUser = msg.role === 'user'
             const ts = new Date(msg.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+
+            // v27: If message has mediated error, render ErrorCard instead of bubble
+            if (msg.error) {
+              return (
+                <div key={msg.id} style={{ marginBottom: 16, animation: isLast ? 'msgIn 0.3s ease both' : 'none' }}>
+                  <ErrorCard
+                    error={msg.error}
+                    onRetry={() => {
+                      // Remove this error and let user try again via voice/text
+                      setMessages(prev => prev.filter(m => m.id !== msg.id))
+                    }}
+                    onHome={() => { setScreen(Screen.Home) }}
+                    onDismiss={() => { setMessages(prev => prev.filter(m => m.id !== msg.id)) }}
+                  />
+                </div>
+              )
+            }
 
             return (
               <div
