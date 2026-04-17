@@ -3,6 +3,7 @@ import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import {
   loadAppointments,
+  saveAppointments,
   addAppointment,
   updateAppointment,
   deleteAppointment,
@@ -580,7 +581,8 @@ export function AbuCalendar() {
 
   function handleUndo() {
     if (!undoAppt) return
-    addAppointment(undoAppt)
+    const current = loadAppointments()
+    saveAppointments([...current, undoAppt])
     reload()
     setUndoAppt(null)
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
@@ -783,66 +785,68 @@ export function AbuCalendar() {
       </header>
 
       {/* MONTH NAVIGATOR */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '22px 16px 14px', flexShrink: 0, position: 'relative',
-      }}>
-        <button
-          type="button" onClick={nextMonth} aria-label="חודש הבא"
-          style={{
-            width: 52, height: 52, borderRadius: '50%',
-            background: 'rgba(255,250,240,0.04)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(201,168,76,0.22)',
-            color: 'rgba(201,168,76,0.75)', fontSize: 22, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            transition: 'background 0.15s, border-color 0.15s',
-          } as React.CSSProperties}
-        >‹</button>
+      <div style={{ flexShrink: 0 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '22px 16px 8px',
+        }}>
+          <button
+            type="button" onClick={nextMonth} aria-label="חודש הבא"
+            style={{
+              width: 52, height: 52, borderRadius: '50%',
+              background: 'rgba(255,250,240,0.04)',
+              backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(201,168,76,0.22)',
+              color: 'rgba(201,168,76,0.75)', fontSize: 22, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              transition: 'background 0.15s, border-color 0.15s',
+            } as React.CSSProperties}
+          >‹</button>
 
-        <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
-          <div style={{
-            fontFamily: "'Cormorant Garamond',Georgia,serif",
-            fontSize: 42, fontWeight: 600, fontStyle: 'italic', letterSpacing: '0.02em',
-            background: `linear-gradient(135deg, #e8d5a0 0%, ${BRIGHT_GOLD} 35%, #f0e0a0 65%, ${GOLD} 100%)`,
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-            lineHeight: 1.1,
-          } as React.CSSProperties}>{hebrewMonthLabel.split(' ')[0]}</div>
-          <div style={{
-            fontSize: 14, color: 'rgba(201,168,76,0.55)',
-            fontFamily: "'DM Sans',sans-serif", fontWeight: 500, marginTop: 2,
-          }}>{hebrewMonthLabel.split(' ')[1]}</div>
+          <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
+            <div style={{
+              fontFamily: "'Cormorant Garamond',Georgia,serif",
+              fontSize: 42, fontWeight: 600, fontStyle: 'italic', letterSpacing: '0.02em',
+              background: `linear-gradient(135deg, #e8d5a0 0%, ${BRIGHT_GOLD} 35%, #f0e0a0 65%, ${GOLD} 100%)`,
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              lineHeight: 1.1,
+            } as React.CSSProperties}>{hebrewMonthLabel.split(' ')[0]}</div>
+            <div style={{
+              fontSize: 14, color: 'rgba(201,168,76,0.55)',
+              fontFamily: "'DM Sans',sans-serif", fontWeight: 500, marginTop: 2,
+            }}>{hebrewMonthLabel.split(' ')[1]}</div>
+          </div>
+
+          <button
+            type="button" onClick={prevMonth} aria-label="חודש קודם"
+            style={{
+              width: 52, height: 52, borderRadius: '50%',
+              background: 'rgba(255,250,240,0.04)',
+              backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(201,168,76,0.22)',
+              color: 'rgba(201,168,76,0.75)', fontSize: 22, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              transition: 'background 0.15s, border-color 0.15s',
+            } as React.CSSProperties}
+          >›</button>
         </div>
 
         {(year !== todayDate.getFullYear() || month !== todayDate.getMonth() + 1) && (
-          <button
-            type="button"
-            onClick={jumpToToday}
-            aria-label="חזרה להיום"
-            style={{
-              position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-              bottom: -6,
-              padding: '4px 16px', borderRadius: 12,
-              background: 'rgba(201,168,76,0.10)', border: '1px solid rgba(201,168,76,0.30)',
-              color: 'rgba(201,168,76,0.85)', fontSize: 13, fontWeight: 600,
-              fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >היום</button>
+          <div style={{ textAlign: 'center', padding: '0 0 6px' }}>
+            <button
+              type="button"
+              onClick={jumpToToday}
+              aria-label="חזרה להיום"
+              style={{
+                padding: '6px 20px', borderRadius: 12,
+                background: 'rgba(201,168,76,0.10)', border: '1px solid rgba(201,168,76,0.30)',
+                color: 'rgba(201,168,76,0.85)', fontSize: 14, fontWeight: 600,
+                fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
+                minHeight: 36,
+              }}
+            >היום</button>
+          </div>
         )}
-
-        <button
-          type="button" onClick={prevMonth} aria-label="חודש קודם"
-          style={{
-            width: 52, height: 52, borderRadius: '50%',
-            background: 'rgba(255,250,240,0.04)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(201,168,76,0.22)',
-            color: 'rgba(201,168,76,0.75)', fontSize: 22, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            transition: 'background 0.15s, border-color 0.15s',
-          } as React.CSSProperties}
-        >›</button>
       </div>
 
       {/* CALENDAR GRID */}
