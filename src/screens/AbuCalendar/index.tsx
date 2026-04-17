@@ -4,6 +4,7 @@ import { Screen } from '../../state/types'
 import {
   loadAppointments,
   addAppointment,
+  updateAppointment,
   deleteAppointment,
   detectEmoji,
   playChime,
@@ -44,7 +45,7 @@ function dateStr(year: number, month: number, day: number): string {
 }
 
 // ─── Appointment Card ─────────────────────────────────────────────────────────
-function ApptCard({ appt, onDelete }: { appt: Appointment; onDelete: () => void }) {
+function ApptCard({ appt, onDelete, onEdit }: { appt: Appointment; onDelete: () => void; onEdit?: () => void }) {
   const [hovered, setHovered] = useState(false)
   return (
     <div
@@ -58,8 +59,8 @@ function ApptCard({ appt, onDelete }: { appt: Appointment; onDelete: () => void 
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         border: hovered
-          ? '1px solid rgba(201,168,76,0.30)'
-          : '1px solid rgba(255,255,255,0.07)',
+          ? '1px solid rgba(201,168,76,0.35)'
+          : '1px solid rgba(201,168,76,0.12)',
         borderRadius: 14,
         padding: '14px 16px 14px 0',
         position: 'relative',
@@ -82,6 +83,7 @@ function ApptCard({ appt, onDelete }: { appt: Appointment; onDelete: () => void 
         marginLeft: 0,
         marginRight: 0,
       }} />
+      <div onClick={onEdit} style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0, cursor: onEdit ? 'pointer' : 'default' }}>
       <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0 }}>{appt.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
@@ -105,6 +107,7 @@ function ApptCard({ appt, onDelete }: { appt: Appointment; onDelete: () => void 
             marginTop: 4,
           }}>{appt.notes}</div>
         )}
+      </div>
       </div>
       <button
         type="button"
@@ -135,14 +138,15 @@ interface ManualModalProps {
   onClose: () => void
   onSave: (appt: Omit<Appointment, 'id' | 'color'>) => void
   defaultDate: string
+  editing?: Appointment | null
 }
 
-function ManualModal({ onClose, onSave, defaultDate }: ManualModalProps) {
-  const [title, setTitle] = useState('')
-  const [date, setDate] = useState(defaultDate)
-  const [time, setTime] = useState('09:00')
-  const [colorIdx, setColorIdx] = useState(0)
-  const [notes, setNotes] = useState('')
+function ManualModal({ onClose, onSave, defaultDate, editing }: ManualModalProps) {
+  const [title, setTitle] = useState(editing?.title ?? '')
+  const [date, setDate] = useState(editing?.date ?? defaultDate)
+  const [time, setTime] = useState(editing?.time ?? '09:00')
+  const [colorIdx, setColorIdx] = useState(editing ? APPT_COLORS.indexOf(editing.color) : 0)
+  const [notes, setNotes] = useState(editing?.notes ?? '')
   const [titleFocused, setTitleFocused] = useState(false)
   const [dateFocused, setDateFocused] = useState(false)
   const [timeFocused, setTimeFocused] = useState(false)
@@ -465,7 +469,10 @@ export function AbuCalendar() {
   const [selectedDay, setSelectedDay] = useState(today)
   const [appointments, setAppointments] = useState<Appointment[]>(() => loadAppointments())
   const [showManual, setShowManual] = useState(false)
+  const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [toast, setToast] = useState(false)
+  const [undoAppt, setUndoAppt] = useState<Appointment | null>(null)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string; time: string; emoji: string } | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [voiceStatus, setVoiceStatus] = useState('')
@@ -544,12 +551,48 @@ export function AbuCalendar() {
   }
 
   function handleManualSave(appt: Omit<Appointment, 'id' | 'color'>) {
-    addAppointment(appt)
+    if (editingAppt) {
+      updateAppointment(editingAppt.id, appt)
+    } else {
+      addAppointment(appt)
+    }
     reload()
     setShowManual(false)
+    setEditingAppt(null)
     playChime()
     soundSuccess()
     showToast()
+  }
+
+  function handleDelete(id: string) {
+    const appt = appointments.find(a => a.id === id)
+    if (!appt) return
+    soundTap()
+    deleteAppointment(id)
+    reload()
+    setUndoAppt(appt)
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    undoTimerRef.current = setTimeout(() => {
+      setUndoAppt(null)
+      undoTimerRef.current = null
+    }, 4000)
+  }
+
+  function handleUndo() {
+    if (!undoAppt) return
+    addAppointment(undoAppt)
+    reload()
+    setUndoAppt(null)
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    undoTimerRef.current = null
+  }
+
+  function jumpToToday() {
+    const d = new Date()
+    setYear(d.getFullYear())
+    setMonth(d.getMonth() + 1)
+    setSelectedDay(getTodayStr())
+    soundTap()
   }
 
   async function handleVoiceRecord() {
@@ -604,6 +647,7 @@ export function AbuCalendar() {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop()
       }
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
     }
   }, [])
 
@@ -741,7 +785,7 @@ export function AbuCalendar() {
       {/* MONTH NAVIGATOR */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '22px 16px 14px', flexShrink: 0,
+        padding: '22px 16px 14px', flexShrink: 0, position: 'relative',
       }}>
         <button
           type="button" onClick={nextMonth} aria-label="חודש הבא"
@@ -770,6 +814,23 @@ export function AbuCalendar() {
           }}>{hebrewMonthLabel.split(' ')[1]}</div>
         </div>
 
+        {(year !== todayDate.getFullYear() || month !== todayDate.getMonth() + 1) && (
+          <button
+            type="button"
+            onClick={jumpToToday}
+            aria-label="חזרה להיום"
+            style={{
+              position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+              bottom: -6,
+              padding: '4px 16px', borderRadius: 12,
+              background: 'rgba(201,168,76,0.10)', border: '1px solid rgba(201,168,76,0.30)',
+              color: 'rgba(201,168,76,0.85)', fontSize: 13, fontWeight: 600,
+              fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >היום</button>
+        )}
+
         <button
           type="button" onClick={prevMonth} aria-label="חודש קודם"
           style={{
@@ -787,14 +848,14 @@ export function AbuCalendar() {
       {/* CALENDAR GRID */}
       <div style={{
         margin: '0 12px', padding: '12px 8px',
-        background: 'rgba(255,250,240,0.02)',
-        borderRadius: 16, border: '1px solid rgba(201,168,76,0.10)', flexShrink: 0,
+        background: 'rgba(255,250,240,0.04)',
+        borderRadius: 16, border: '1px solid rgba(201,168,76,0.14)', flexShrink: 0,
       }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 8 }}>
           {DAY_HEADERS.map((h, idx) => (
             <div key={h} style={{
-              textAlign: 'center', fontSize: 12, fontWeight: 600,
-              color: idx === 6 ? 'rgba(201,168,76,0.75)' : 'rgba(201,168,76,0.50)',
+              textAlign: 'center', fontSize: 14, fontWeight: 700,
+              color: idx === 6 ? 'rgba(201,168,76,0.80)' : 'rgba(201,168,76,0.70)',
               padding: '4px 0', fontFamily: "'Heebo',sans-serif",
               letterSpacing: '1px', textTransform: 'uppercase',
             }}>{h}</div>
@@ -803,7 +864,7 @@ export function AbuCalendar() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
           {cells.map((day, idx) => {
-            if (day === null) return <div key={`e${idx}`} style={{ minHeight: 48 }} />
+            if (day === null) return <div key={`e${idx}`} style={{ minHeight: 58 }} />
             const ds = dateStr(year, month, day)
             const isToday = ds === today
             const isSelected = ds === selectedDay
@@ -816,7 +877,7 @@ export function AbuCalendar() {
                 type="button"
                 onClick={() => { setSelectedDay(ds); soundTap() }}
                 style={{
-                  minHeight: 48, borderRadius: 12,
+                  minHeight: 58, borderRadius: 12,
                   border: isToday
                     ? '1.5px solid rgba(201,168,76,0.55)'
                     : isSelected
@@ -841,8 +902,8 @@ export function AbuCalendar() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <span style={{
-                    fontSize: 15,
-                    fontWeight: isToday || isSelected ? 700 : 500,
+                    fontSize: 18,
+                    fontWeight: isToday || isSelected ? 800 : 600,
                     color: isToday ? '#000000'
                       : isSelected ? GOLD
                       : isShabbat ? 'rgba(201,168,76,0.80)'
@@ -851,11 +912,11 @@ export function AbuCalendar() {
                   }}>{day}</span>
                 </div>
                 {dots.length > 0 && (
-                  <div style={{ display: 'flex', gap: 2, justifyContent: 'center', height: 5 }}>
+                  <div style={{ display: 'flex', gap: 3, justifyContent: 'center', height: 7 }}>
                     {dots.slice(0, 3).map(a => (
                       <div key={a.id} style={{
-                        width: 4, height: 4, borderRadius: '50%',
-                        background: TEAL, boxShadow: '0 0 4px rgba(20,184,166,0.60)',
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: 'rgba(201,168,76,0.80)', boxShadow: '0 0 5px rgba(201,168,76,0.55)',
                       }} />
                     ))}
                   </div>
@@ -891,7 +952,8 @@ export function AbuCalendar() {
             <ApptCard
               key={a.id}
               appt={a}
-              onDelete={() => { soundTap(); deleteAppointment(a.id); reload() }}
+              onEdit={() => { setEditingAppt(a); setShowManual(true); soundOpen() }}
+              onDelete={() => handleDelete(a.id)}
             />
           ))
         )}
@@ -911,7 +973,7 @@ export function AbuCalendar() {
               padding: '12px 14px 12px 0', borderRadius: 12,
               background: 'rgba(255,250,240,0.03)',
               backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden',
+              border: '1px solid rgba(201,168,76,0.10)', overflow: 'hidden',
               marginBottom: 8, position: 'relative',
               boxShadow: 'inset 0 1px 0 rgba(255,250,240,0.03)',
             } as React.CSSProperties}>
@@ -926,15 +988,15 @@ export function AbuCalendar() {
                   fontFamily: "'DM Sans','Heebo',sans-serif",
                 }}>{a.title}</div>
                 <div style={{
-                  fontSize: 12, color: TEAL, fontFamily: "'DM Sans',sans-serif",
-                  marginTop: 2, fontWeight: 500,
+                  fontSize: 12, color: 'rgba(201,168,76,0.70)', fontFamily: "'DM Sans',sans-serif",
+                  marginTop: 2, fontWeight: 600,
                 }}>
                   {formatHebrewDate(a.date).split(',')[0]} · {a.time}
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => { soundTap(); deleteAppointment(a.id); reload() }}
+                onClick={() => handleDelete(a.id)}
                 aria-label="מחקי פגישה"
                 style={{
                   width: 44, height: 44, borderRadius: '50%',
@@ -1038,11 +1100,11 @@ export function AbuCalendar() {
           type="button"
           onClick={() => { soundOpen(); setShowManual(true) }}
           style={{
-            marginTop: 4, padding: '8px 20px', borderRadius: 20,
-            background: 'transparent', border: '1px solid rgba(201,168,76,0.28)',
-            color: 'rgba(245,240,232,0.55)', fontSize: 13,
+            marginTop: 4, padding: '10px 28px', borderRadius: 22,
+            background: 'rgba(201,168,76,0.06)', border: '1.5px solid rgba(201,168,76,0.35)',
+            color: 'rgba(245,240,232,0.70)', fontSize: 15, fontWeight: 600,
             fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
-            minHeight: 44, minWidth: 120,
+            minHeight: 52, minWidth: 160,
             transition: 'border-color 0.15s, color 0.15s',
           }}
         >＋ הוספה ידנית</button>
@@ -1087,7 +1149,8 @@ export function AbuCalendar() {
       {showManual && (
         <ManualModal
           defaultDate={selectedDay}
-          onClose={() => setShowManual(false)}
+          editing={editingAppt}
+          onClose={() => { setShowManual(false); setEditingAppt(null) }}
           onSave={handleManualSave}
         />
       )}
@@ -1098,6 +1161,38 @@ export function AbuCalendar() {
           onConfirm={handleVoiceConfirm}
           onCancel={() => { setVoiceParsed(null); setVoiceStatus('') }}
         />
+      )}
+
+      {/* UNDO DELETE TOAST */}
+      {undoAppt && (
+        <div style={{
+          position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 50, maxWidth: 340, width: 'calc(100% - 32px)',
+          padding: '14px 18px', borderRadius: 14,
+          background: 'rgba(12,10,8,0.94)',
+          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(201,168,76,0.30)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          direction: 'rtl' as const,
+          animation: 'fadeSlideUp 0.25s ease both',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
+        } as React.CSSProperties}>
+          <span style={{
+            fontSize: 15, fontWeight: 600, fontFamily: "'Heebo',sans-serif",
+            color: CREAM, flex: 1,
+          }}>האירוע נמחק</span>
+          <button
+            type="button"
+            onClick={handleUndo}
+            style={{
+              padding: '6px 14px', borderRadius: 10,
+              border: '1px solid rgba(201,168,76,0.25)',
+              background: 'rgba(201,168,76,0.10)',
+              color: 'rgba(245,240,232,0.75)', fontSize: 14, fontWeight: 600,
+              fontFamily: "'Heebo',sans-serif", cursor: 'pointer', flexShrink: 0,
+            }}
+          >ביטול</button>
+        </div>
       )}
 
       {/* KEYFRAMES */}

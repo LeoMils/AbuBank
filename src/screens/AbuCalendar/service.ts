@@ -61,6 +61,11 @@ export function addAppointment(appt: Omit<Appointment, 'id' | 'color'>): Appoint
   return newAppt
 }
 
+export function updateAppointment(id: string, updates: Partial<Omit<Appointment, 'id'>>): void {
+  const appts = loadAppointments()
+  saveAppointments(appts.map(a => a.id === id ? { ...a, ...updates } : a))
+}
+
 export function deleteAppointment(id: string): void {
   const appts = loadAppointments()
   saveAppointments(appts.filter(a => a.id !== id))
