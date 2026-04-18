@@ -1,0 +1,57 @@
+# Family Structure — Canonical Graph
+# Source: AbuAI system prompt (service.ts lines 38-116)
+# Last verified: 2026-04-10
+
+matriarch:
+  canonical_name: "Martita"
+  aliases: ["אבו", "Abu", "Abuela"]
+
+children:
+  - canonical_name: "Mor"
+    hebrew: "מור"
+    relationship: "daughter"
+    spouse: "Raphi (רפי)"
+    surname: "Duani"
+    children:
+      - canonical_name: "Ofir"
+        hebrew: "אופיר"
+        relationship: "grandson"
+        spouse: "Yarden (ירדן)"
+        children:
+          - { name: "Anabel", hebrew: "אנאבל", relationship: "great-granddaughter" }
+          - { name: "Ari", hebrew: "ארי", relationship: "great-granddaughter" }
+        notes: "Ofir and Yarden have two daughters — Anabel and Ari (Martita's great-granddaughters)"
+      - canonical_name: "Eylon"
+        hebrew: "אילון"
+        relationship: "grandson"
+        spouse: "Gilad (גלעד)"
+      - canonical_name: "Ilai"
+        hebrew: "עילי"
+        relationship: "grandson"
+        notes: "recently moved to new apartment. Name spelled עילי."
+      - canonical_name: "Adar"
+        hebrew: "אדר"
+        relationship: "grandson"
+        notes: "the youngest of Mor's children"
+
+  - canonical_name: "Leo"
+    hebrew: "לאו"
+    relationship: "son"
+    surname: "Milstein"
+    children:
+      - canonical_name: "Adi"
+        hebrew: "עדי"
+        relationship: "granddaughter"
+      - canonical_name: "Noam"
+        hebrew: "נועם"
+        relationship: "grandson"
+        notes: "recently traveled to Buenos Aires"
+
+deceased:
+  - canonical_name: "Papi"
+    hebrew: "פפי"
+    aliases: ["Pepe", "Papi"]
+    relationship: "husband"
+    birthday: "04-19"               # April 19, born 1941
+    date_of_passing: "2025-01-01"   # January 1st, 2025
+    notes: "remembered with love. Memorial date Jan 1. Birthday Apr 19."

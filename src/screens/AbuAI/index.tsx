@@ -1,26 +1,48 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
-import { sendMessage, transcribeAudio, getSupportedMimeType } from './service'
-import { speakVoiceMode, stopSpeaking, unlockIOSAudio, isSpeaking as isTTSSpeaking, createSilenceDetector } from '../../services/voice'
+import { sendMessage, streamMessage, transcribeAudio, getSupportedMimeType, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
+import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
-import { InfoButton } from '../../components/InfoButton'
-import { GRADIENT_GOLD } from '../../design/gradients'
-import { BackButton } from '../../components/BackButton'
+import { injectSharedKeyframes } from '../../design/animations'
+import { soundProcessing } from '../../services/sounds'
+import { RealtimeVoiceSession } from '../../services/realtimeVoice'
+import type { RealtimeState } from '../../services/realtimeVoice'
+import { mediateError } from '../../services/errorMediation'
+import type { MediatedError } from '../../services/errorMediation'
+import { ErrorCard } from '../../components/ErrorCard'
 
-// ─── Color tokens ────────────────────────────────────────────────────────────
-const GOLD            = '#C9A84C'
-const BG              = '#0C0A08'
-const SURFACE         = 'rgba(255,250,240,0.06)'
-const TEXT            = '#F5F0E8'
-const TEXT_MUTED      = 'rgba(245,240,232,0.48)'
+// ─── Color tokens (green/teal — matches AbuWhatsApp) ────────────────────────
+const GOLD            = '#14b8a6'   // teal (was gold)
+const GOLD_BRIGHT     = '#2DD4BF'   // bright teal (was bright gold)
+const BG              = '#050A18'   // navy (matches AbuWhatsApp)
+const SURFACE         = 'rgba(20,184,166,0.06)'
+const BORDER          = 'rgba(20,184,166,0.14)'
+const TEXT            = '#F0FDF4'
+const TEXT_MUTED      = 'rgba(240,253,244,0.48)'
 
+// suppress unused lint
+void BORDER
+void GOLD_BRIGHT
 
 let msgCounter = 0
 function nextId(): string {
   return `m${++msgCounter}-${Date.now()}`
+}
+
+// ─── Voice State Machine ─────────────────────────────────────────────────────
+// Explicit states with instrumented transitions
+type VoiceState = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'RESPONDING' | 'INTERRUPTED' | 'RECOVERING' | 'ERROR'
+
+const VOICE_STATE_LOG: Array<{ from: VoiceState; to: VoiceState; ts: number; reason: string }> = []
+
+function logVoiceTransition(from: VoiceState, to: VoiceState, reason: string) {
+  const entry = { from, to, ts: Date.now(), reason }
+  VOICE_STATE_LOG.push(entry)
+  if (VOICE_STATE_LOG.length > 100) VOICE_STATE_LOG.shift()
+  console.log(`[VoiceState] ${from} → ${to} (${reason}) +${VOICE_STATE_LOG.length > 1 ? Date.now() - VOICE_STATE_LOG[VOICE_STATE_LOG.length - 2]!.ts : 0}ms`)
 }
 
 // ─── CSS keyframes injected once ─────────────────────────────────────────────
@@ -47,10 +69,6 @@ const KEYFRAMES = `
     50%     { transform: scaleY(1.0); }
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes orbPulse {
-    0%, 100% { transform: scale(1); }
-    50%      { transform: scale(1.02); }
-  }
 `
 
 // ─── Dynamic voice greeting ───────────────────────────────────────────────────
@@ -89,13 +107,41 @@ export function AbuAI() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [isSpeaking, setIsSpeaking] = useState(false)
 
-  // Voice conversation mode
+  // Voice conversation mode — explicit state machine (v20)
   const [voiceMode, setVoiceMode] = useState(false)
   const [voicePhase, setVoicePhase] = useState<'greeting' | 'listening' | 'processing' | 'speaking' | null>(null)
+  const [voiceState, setVoiceState] = useState<VoiceState>('IDLE')
   const [audioLevel, setAudioLevel] = useState(0)
   const [listenCountdown, setListenCountdown] = useState<number | null>(null)
+  const [lastHeardText, setLastHeardText] = useState('')  // v20: transcript feedback
+  const [streamingText, setStreamingText] = useState('')   // v20: streaming response text
+
+  // v20.2: OpenAI Realtime API (WebRTC) — true real-time conversation
+  const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
+  const [realtimeTranscript, setRealtimeTranscript] = useState('')
+  const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
+  const useRealtime = !!import.meta.env.VITE_OPENAI_API_KEY // use Realtime if OpenAI key exists
+
+  // v25.2: Simplified — noise mode defaults to quiet, user can change manually
+  type VoiceEnvMode = 'quiet' | 'noisy' | 'listen'
+  const [noiseMode, setNoiseMode] = useState<VoiceEnvMode>('quiet') // always start quiet
+  const cycleNoiseMode = useCallback(() => {
+    setNoiseMode(prev => {
+      const order: VoiceEnvMode[] = ['quiet', 'noisy', 'listen']
+      const next = order[(order.indexOf(prev) + 1) % order.length]!
+      localStorage.setItem('abu-noise-mode', next)
+      if (realtimeRef.current) {
+        realtimeRef.current.disconnect()
+        realtimeRef.current = null
+      }
+      return next
+    })
+  }, [])
+  // Keep toggleNoiseMode for backwards compat with existing calls
+  const toggleNoiseMode = cycleNoiseMode
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
+  const voiceSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const chatRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -105,12 +151,24 @@ export function AbuAI() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const messagesRef = useRef<ChatMessage[]>([])
   const voiceModeRef = useRef(false)
+  const voiceStateRef = useRef<VoiceState>('IDLE')
   const silenceRef = useRef<SilenceDetector | null>(null)
   const levelRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recognitionRef = useRef<any>(null)
+  const abortControllerRef = useRef<AbortController | null>(null) // v20: for interruption
+  const startVoiceListeningRef = useRef<() => void>(() => {}) // v20: stable ref for interrupt→listen
 
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
+
+  // Sync voice state ref
+  const transitionVoice = useCallback((to: VoiceState, reason: string) => {
+    const from = voiceStateRef.current
+    if (from === to) return
+    logVoiceTransition(from, to, reason)
+    voiceStateRef.current = to
+    setVoiceState(to)
+  }, [])
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
@@ -118,6 +176,7 @@ export function AbuAI() {
 
   // Inject keyframes
   useEffect(() => {
+    injectSharedKeyframes()
     if (!document.getElementById(KEYFRAMES_ID)) {
       const style = document.createElement('style')
       style.id = KEYFRAMES_ID
@@ -133,26 +192,26 @@ export function AbuAI() {
   useEffect(() => {
     if (!voiceMode) setTimeout(() => inputRef.current?.focus(), 300)
     return () => {
-      voiceModeRef.current = false
       if (timerRef.current) clearInterval(timerRef.current)
       if (levelRef.current) clearInterval(levelRef.current)
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
       silenceRef.current?.stop()
-      silenceRef.current = null
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.onresult = null
-          recognitionRef.current.onerror = null
-          recognitionRef.current.onend = null
-          recognitionRef.current.abort()
-        } catch {}
-        recognitionRef.current = null
-      }
       stopSpeaking()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Text chat ────────────────────────────────────────────────────────────
+
+  // v20.1: Streaming text chat — token-by-token with auto-scroll
+  const [isStreaming, setIsStreaming] = useState(false)
+  const streamingMsgIdRef = useRef<string | null>(null)
+
+  // Auto-scroll during streaming
+  useEffect(() => {
+    if (isStreaming && chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight
+    }
+  })
 
   const handleSend = async (text?: string) => {
     const msgText = (text ?? input).trim()
@@ -164,16 +223,66 @@ export function AbuAI() {
     setInput('')
     setLoading(true)
 
+    const aiMsgId = nextId()
+    streamingMsgIdRef.current = aiMsgId
+    let accumulated = ''
+
     try {
-      const response = await sendMessage(newMessages)
-      const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }
-      setMessages(prev => [...prev, aiMsg])
+      // Create placeholder AI message for streaming
+      const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: '▍', timestamp: Date.now() }
+      setMessages(prev => [...prev, placeholderMsg])
+      setLoading(false)
+      setIsStreaming(true)
+
+      for await (const token of streamMessage(newMessages, false)) {
+        accumulated += token
+        // Update the AI message with accumulated text + cursor
+        setMessages(prev => {
+          const updated = [...prev]
+          const idx = updated.findIndex(m => m.id === aiMsgId)
+          if (idx !== -1) {
+            updated[idx] = { ...updated[idx]!, content: accumulated + '▍' }
+          }
+          return updated
+        })
+      }
+
+      // Remove cursor, set final content
+      setMessages(prev => {
+        const updated = [...prev]
+        const idx = updated.findIndex(m => m.id === aiMsgId)
+        if (idx !== -1) {
+          const finalContent = accumulated.trim()
+          if (finalContent) {
+            updated[idx] = { ...updated[idx]!, content: finalContent }
+          } else {
+            // Empty response — show mediated error
+            const mediated = mediateError('empty response')
+            updated[idx] = { ...updated[idx]!, content: mediated.message, error: mediated }
+          }
+        }
+        return updated
+      })
     } catch (err: unknown) {
-      const errorText = err instanceof Error ? err.message : 'שגיאה לא צפויה. נסי שוב.'
-      const errMsg: ChatMessage = { id: nextId(), role: 'assistant', content: errorText, timestamp: Date.now() }
-      setMessages(prev => [...prev, errMsg])
+      // v27: Mediate error — always Hebrew, always with action buttons
+      const mediated: MediatedError = mediateError(err)
+      setMessages(prev => {
+        const updated = [...prev]
+        const idx = updated.findIndex(m => m.id === aiMsgId)
+        if (idx !== -1) {
+          if (accumulated.trim()) {
+            // Keep partial response + append error card as separate message
+            updated[idx] = { ...updated[idx]!, content: accumulated.trim() }
+            return [...updated, { id: nextId(), role: 'assistant', content: mediated.message, timestamp: Date.now(), error: mediated }]
+          }
+          updated[idx] = { ...updated[idx]!, content: mediated.message, error: mediated }
+        }
+        return updated
+      })
     } finally {
       setLoading(false)
+      setIsStreaming(false)
+      streamingMsgIdRef.current = null
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }
@@ -190,7 +299,7 @@ export function AbuAI() {
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false }
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
       })
       streamRef.current = stream
       const mimeType = getSupportedMimeType()
@@ -219,7 +328,7 @@ export function AbuAI() {
           const text = await transcribeAudio(blob)
           if (text.trim()) setInput(prev => prev ? `${prev} ${text}` : text)
         } catch {
-          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'לא הצלחתי לשמוע. נסי שוב.', timestamp: Date.now() }])
+          // silent
         } finally {
           setTranscribing(false)
           setTimeout(() => inputRef.current?.focus(), 100)
@@ -231,7 +340,7 @@ export function AbuAI() {
       setRecording(true)
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
     } catch {
-      setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'צריכה הרשאה למיקרופון. בדקי בהגדרות הדפדפן.', timestamp: Date.now() }])
+      // mic denied
     }
   }, [])
 
@@ -259,129 +368,171 @@ export function AbuAI() {
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
   }, [])
 
+  // v20: Interrupt handler — stops TTS/LLM and resumes listening immediately
+  const interruptAndListen = useCallback(() => {
+    if (!voiceModeRef.current) return
+    transitionVoice('INTERRUPTED', 'user-tap')
+
+    // Abort any in-flight LLM request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+
+    // Stop any TTS playback
+    stopSpeaking()
+    setIsSpeaking(false)
+    setStreamingText('')
+
+    // Cleanup any active mic/recognition from previous listen
+    cleanupVoiceResources()
+
+    // Small delay then resume listening via ref
+    transitionVoice('RECOVERING', 'post-interrupt')
+    setTimeout(() => {
+      if (voiceModeRef.current) {
+        startVoiceListeningRef.current()
+      }
+    }, 250)
+  }, [cleanupVoiceResources, transitionVoice])
+
   const startVoiceListening = useCallback(() => {
     if (!voiceModeRef.current) return
+    transitionVoice('LISTENING', 'start-listen')
     setVoicePhase('listening')
     setAudioLevel(0)
     setListenCountdown(null)
+    setStreamingText('')
 
     const handleText = async (text: string) => {
       if (!voiceModeRef.current) return
       const lower = text.trim()
-      if (/^(ביי|להתראות|תודה|עצור|עצרי|סטופ|מספיק|יאללה ביי|stop|bye|chau|basta|parar|adiós|hasta luego)$/i.test(lower)) {
+      if (/^(ביי|להתראות|תודה|עצור|עצרי|סטופ|stop|bye)$/i.test(lower)) {
         exitVoiceMode(); return
       }
+
+      setLastHeardText(text) // v20: Show what was heard
+
       const userMsg: ChatMessage = { id: nextId(), role: 'user', content: text, timestamp: Date.now() }
       const currentMsgs = [...messagesRef.current, userMsg]
       setMessages(currentMsgs)
+
+      // v20.1: PROVEN non-streaming voice path — fast LLM + full TTS (no cutoff)
       try {
+        transitionVoice('PROCESSING', 'got-text')
+        setVoicePhase('processing')
+        soundProcessing()
+
+        // Create abort controller for interruption
+        const ac = new AbortController()
+        abortControllerRef.current = ac
+
+        // Watchdog: force recovery if stuck >20s in processing
+        const watchdog = setTimeout(() => {
+          if (voiceModeRef.current && voiceStateRef.current === 'PROCESSING') {
+            transitionVoice('RECOVERING', 'watchdog-20s')
+            ac.abort()
+            startVoiceListening()
+          }
+        }, 20000)
+
+        // Get full LLM response (non-streaming — more reliable, Groq is fast enough)
         const response = await sendMessage(currentMsgs, true)
+        clearTimeout(watchdog)
+
+        if (ac.signal.aborted) return // interrupted during LLM call
+
         const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }
         setMessages(prev => [...prev, aiMsg])
         if (!voiceModeRef.current) return
+
+        // Speak the full response (Gemini→OpenAI→Web Speech — proven chain)
+        transitionVoice('RESPONDING', 'speak-start')
         setVoicePhase('speaking')
         setIsSpeaking(true)
+        setStreamingText(response)
+
         await speakVoiceMode(response)
+
         setIsSpeaking(false)
+        setStreamingText('')
+        abortControllerRef.current = null
+
         if (!voiceModeRef.current) return
-        await new Promise(r => setTimeout(r, 150))
+        // Minimal gap before resuming listen
+        await new Promise(r => setTimeout(r, 120))
         if (voiceModeRef.current) startVoiceListening()
       } catch (err) {
+        abortControllerRef.current = null
         setIsSpeaking(false)
+        setStreamingText('')
+        if ((err as DOMException)?.name === 'AbortError') return // interrupted
+        transitionVoice('ERROR', err instanceof Error ? err.message : 'unknown')
         const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
         setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
         if (voiceModeRef.current) {
           setVoicePhase('speaking'); setIsSpeaking(true)
           await speakVoiceMode(errText)
           setIsSpeaking(false)
-          await new Promise(r => setTimeout(r, 150))
-          if (voiceModeRef.current) startVoiceListening()
+          await new Promise(r => setTimeout(r, 120))
+          if (voiceModeRef.current) {
+            transitionVoice('RECOVERING', 'post-error')
+            startVoiceListening()
+          }
         }
       }
     }
 
-    // Stop any ongoing TTS before listening (prevents echo feedback loop)
-    if (isTTSSpeaking()) stopSpeaking()
-
-    // Primary: Web Speech Recognition
+    // v17.3: Web Speech API as PRIMARY (fastest turn detection), Whisper as FALLBACK
     const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (WSR) {
       const rec = new WSR() as any
-      rec.lang = 'he-IL'
-      rec.continuous = true
+      // v20: Respect language setting from Settings
+      const voiceLangSetting = localStorage.getItem('abu-voice-lang') || 'auto'
+      rec.lang = voiceLangSetting === 'es' ? 'es-AR' : 'he-IL'
+      rec.continuous = false
       rec.interimResults = true
       rec.maxAlternatives = 1
 
       let gotResult = false
-      let speechTimeout: ReturnType<typeof setTimeout> | null = null
-      let lastTranscript = ''
-
-      // Safety timeout — if WSR hangs with no events, restart after 15s
-      const wsrSafetyTimeout = setTimeout(() => {
-        if (!gotResult && voiceModeRef.current) {
-          try { rec.abort() } catch {}
-          recognitionRef.current = null
-          startVoiceListening()
-        }
-      }, 15000)
+      let finalTranscript = ''
 
       rec.onresult = (e: any) => {
-        // Collect the best final or interim transcript
-        let finalText = ''
-        let interimText = ''
-        for (let i = 0; i < e.results.length; i++) {
-          const r = e.results[i]
-          const t = (r[0]?.transcript ?? '').trim()
-          if (r.isFinal) finalText += (finalText ? ' ' : '') + t
-          else interimText += (interimText ? ' ' : '') + t
-        }
-        lastTranscript = finalText || interimText
-
-        // Reset the silence-after-speech timer each time we get speech
-        if (speechTimeout) clearTimeout(speechTimeout)
-        if (lastTranscript) {
-          speechTimeout = setTimeout(() => {
-            // Speech ended — stop recognition and process
+        let interim = ''
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const result = e.results[i]
+          if (result.isFinal) {
+            finalTranscript += result[0]?.transcript ?? ''
             gotResult = true
-            clearTimeout(wsrSafetyTimeout)
-            try { rec.stop() } catch {}
-            recognitionRef.current = null
-            if (lastTranscript.trim()) {
-              setVoicePhase('processing')
-              handleText(lastTranscript.trim())
-            } else {
-              if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 80)
-            }
-          }, 2200) // 2.2s of silence after last speech → commit (tolerates natural pauses)
+          } else {
+            interim += result[0]?.transcript ?? ''
+          }
+        }
+        if (interim) setAudioLevel(0.6)
+        if (gotResult && finalTranscript.trim()) {
+          recognitionRef.current = null
+          setVoicePhase('processing')
+          handleText(finalTranscript.trim())
+          finalTranscript = ''
         }
       }
 
       rec.onerror = (e: any) => {
-        clearTimeout(wsrSafetyTimeout)
-        if (speechTimeout) clearTimeout(speechTimeout)
         recognitionRef.current = null
         if (e.error === 'not-allowed') {
-          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'צריכה הרשאה למיקרופון. בדקי בהגדרות הדפדפן.', timestamp: Date.now() }])
           exitVoiceMode()
-        } else if (e.error === 'no-speech') {
-          // No speech detected — silently restart (don't show error to user)
-          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 80)
-        } else if (e.error === 'aborted') {
-          // Aborted (e.g., by us calling rec.abort()) — silent restart if still in voice mode
-          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 80)
-        } else if (e.error === 'network') {
-          // Network error — brief pause then retry
-          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 500)
         } else {
-          if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 150)
+          // Web Speech failed — fall through to Whisper below
+          if (voiceModeRef.current) startWhisperFallback()
         }
       }
 
       rec.onend = () => {
-        clearTimeout(wsrSafetyTimeout)
-        if (speechTimeout) clearTimeout(speechTimeout)
         recognitionRef.current = null
-        if (!gotResult && voiceModeRef.current) setTimeout(() => startVoiceListening(), 80)
+        if (!gotResult && voiceModeRef.current) {
+          // No result from Web Speech — restart immediately
+          setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 50)
+        }
       }
 
       try {
@@ -390,14 +541,18 @@ export function AbuAI() {
         return
       } catch {
         recognitionRef.current = null
+        // Fall through to Whisper
       }
     }
 
-    // Fallback: MediaRecorder + Whisper
+    // Whisper fallback (when Web Speech API not available or failed)
+    startWhisperFallback()
+
+    function startWhisperFallback() {
     ;(async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false }
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         })
         streamRef.current = stream
         const mimeType = getSupportedMimeType()
@@ -442,42 +597,103 @@ export function AbuAI() {
 
         recorder.start(100)
 
-        // Use the professional silence detector instead of a simple countdown
+        // v17.3: Silence detection — 2s balance between patience and responsiveness
         const detector = createSilenceDetector(stream, () => {
-          // Silence confirmed — stop recording and process
           if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-        })
+        }, noiseMode === 'noisy'
+          ? { threshold: 40, silenceMs: 3000, maxMs: 15000, minActiveMs: 2500 }  // TV/noise: very strict
+          : { threshold: 25, silenceMs: 2500, maxMs: 15000, minActiveMs: 2000 }  // quiet room
+        )
         silenceRef.current = detector
 
-        // Update audio level UI from the detector
+        // T1.3: Poll audio level for visual feedback (50ms intervals)
+        if (levelRef.current) clearInterval(levelRef.current)
         levelRef.current = setInterval(() => {
-          setAudioLevel(detector.getLevel())
-        }, 80)
+          const lvl = detector.getLevel()
+          setAudioLevel(Math.min(1, lvl / 60)) // normalize 0-60 → 0-1
+        }, 50)
+
+        // Visual countdown (max 30 seconds — elderly needs more time)
+        const LISTEN_SEC = 30
+        setListenCountdown(LISTEN_SEC)
+        let cdSec = LISTEN_SEC
+        const cdInterval = setInterval(() => {
+          cdSec--
+          if (cdSec > 0) {
+            setListenCountdown(cdSec)
+          } else {
+            clearInterval(cdInterval)
+            setListenCountdown(null)
+          }
+        }, 1000)
+        const origStop = detector.stop
+        detector.stop = () => { origStop(); clearInterval(cdInterval); setListenCountdown(null) }
       } catch (err) {
         console.error('[AbuAI] getUserMedia error:', err)
-        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'מיקרופון לא זמין. בדקי בהגדרות הדפדפן.', timestamp: Date.now() }])
         exitVoiceMode()
       }
     })()
+    } // end startWhisperFallback
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const enterVoiceMode = useCallback(() => {
-    unlockIOSAudio()
-    setVoiceMode(true)
-    voiceModeRef.current = true
+  // v20: Keep ref in sync for interruption→listen cycle
+  startVoiceListeningRef.current = startVoiceListening
 
+  // v17: WakeLock prevents screen dimming during voice mode
+  const wakeLockRef = useRef<any>(null)
+  const acquireWakeLock = async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await (navigator as any).wakeLock.request('screen')
+      }
+    } catch { /* silent — not critical */ }
+  }
+  const releaseWakeLock = () => {
+    try { wakeLockRef.current?.release(); wakeLockRef.current = null } catch { /* silent */ }
+  }
+
+  // v21: Full personality prompt for Realtime — same quality as text mode
+  const realtimeInstructions = useMemo(() => {
+    // Select 5 representative few-shot pairs formatted as plain text
+    const fewShotPairs = [
+      { q: 'איך אני משלמת חשמל?', a: 'לחצי על "חברת החשמל" — נכנסת ישר לאתר שלהם, שם רואים את החשבון ומשלמים.' },
+      { q: 'ספרי לי בדיחה', a: 'זקן נכנס לרופא ואומר: "דוקטור, כל מקום שאני נוגע — כואב!" הרופא בודק ואומר: "האצבע שלך שבורה."' },
+      { q: 'אני מרגישה קצת בודדה היום', a: 'ימים כאלה יש. אני כאן.\n\nתתקשרי למור או ללאו — גם עשר דקות של שיחה משנות.' },
+      { q: 'Cuéntame algo interesante', a: '¿Sabías que las abejas reconocen caras humanas? Las entrenan con fotos y las recuerdan horas después. Chiquitas pero brillantes.\n\nComo vos, Martita.' },
+      { q: 'תסבירי לי מה זה AI', a: 'תוכנה שאימנו אותה על מיליארדי משפטים — ספרים, אתרים, שיחות — עד שהיא מתחילה "להבין" דפוסים ולענות. זה אני. לא קסם, סתם הרבה מאוד חישובים.' },
+    ]
+    const fewShotText = fewShotPairs
+      .map(p => `שאלה: ${p.q}\nתשובה: ${p.a}`)
+      .join('\n\n')
+
+    return `${SYSTEM_PROMPT}${VOICE_SUFFIX}
+
+═══ VOICE DELIVERY — CRITICAL ═══
+Voice style: Speak slowly, warmly, gently. Like a kind woman on a relaxed phone call with her close friend.
+Pace: Slow and comfortable. Never rush. Pause naturally between sentences.
+Tone: Soft, warm, intimate. Not professional. Not formal. Not a news anchor. A real person.
+Emotion: Vary your tone — gentle when comforting, light when joking, thoughtful when explaining.
+Breathing: Take natural breaths between phrases. Let silence exist between thoughts.
+Hebrew: Native Israeli accent. Casual everyday Hebrew. Not literary. Not American-accented.
+Spanish: Argentine Rioplatense accent. Use "vos". Warm, like an abuela from Buenos Aires.
+NEVER: Sound robotic, monotone, rushed, overly cheerful, or like reading from a script.
+
+═══ דוגמאות לשיחה ═══
+${fewShotText}`
+  }, [])
+
+  // v21: Pipeline voice mode extracted so Realtime can fall back to it
+  const startPipelineVoiceMode = useCallback(() => {
     const todayKey = new Date().toISOString().split('T')[0]!
     const isFirstToday = localStorage.getItem('abuai-voice-date') !== todayKey
     if (isFirstToday) localStorage.setItem('abuai-voice-date', todayKey)
 
     let greeting = getVoiceGreeting()
-    if (Math.random() < 0.35) {
+    if (Math.random() < 0.20) {
       const reminders = [
         ' — ואם רוצה, אפשר גם בספרדית.',
         ' Acordate que podés hablarme en español.',
         ' — y también hablo español, si preferís.',
-        ' — en español o en hebreo, como quieras.',
-        ' — podemos hablar en español también, eh.',
       ]
       greeting += reminders[Math.floor(Math.random() * reminders.length)]!
     }
@@ -486,46 +702,181 @@ export function AbuAI() {
     setMessages(prev => [...prev, greetMsg])
 
     if (isFirstToday) {
-      setTimeout(() => {
-        const checkMsg: ChatMessage = { id: nextId(), role: 'assistant', content: 'רגע, בודקת מה מיוחד היום...', timestamp: Date.now() }
-        setMessages(prev => [...prev, checkMsg])
-        const dateStr = new Date().toLocaleDateString('he-IL', { month: 'long', day: 'numeric' })
-        sendMessage(
-          [{ id: 'date-q', role: 'user', content: `מה מיוחד בתאריך ${dateStr}? אירוע היסטורי, יום הולדת מפורסם, חג — 2-3 משפטים, עברית.`, timestamp: Date.now() }],
-          false
-        )
-          .then(dateFactResponse => {
-            const factMsg: ChatMessage = { id: nextId(), role: 'assistant', content: dateFactResponse, timestamp: Date.now() }
-            setMessages(prev => prev.map(m => m.id === checkMsg.id ? factMsg : m))
-            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 300)
-          })
-          .catch(() => {
-            // Remove the stale "checking..." message on error
-            setMessages(prev => prev.filter(m => m.id !== checkMsg.id))
-            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 150)
-          })
-      }, 400)
-    } else {
-      setTimeout(() => {
-        if (voiceModeRef.current) startVoiceListening()
-      }, 250)
+      const dateStr = new Date().toLocaleDateString('he-IL', { month: 'long', day: 'numeric' })
+      sendMessage(
+        [{ id: 'date-q', role: 'user', content: `מה מיוחד בתאריך ${dateStr}? אירוע היסטורי, יום הולדת מפורסם, חג — 2-3 משפטים, עברית.`, timestamp: Date.now() }],
+        false
+      )
+        .then(dateFactResponse => {
+          const factMsg: ChatMessage = { id: nextId(), role: 'assistant', content: dateFactResponse, timestamp: Date.now() }
+          setMessages(prev => [...prev, factMsg])
+        })
+        .catch(() => {})
     }
-  }, [startVoiceListening])
+    transitionVoice('RESPONDING', 'greeting')
+    setVoicePhase('greeting')
+    setIsSpeaking(true)
+    speakVoiceMode(greeting)
+      .then(() => {
+        setIsSpeaking(false)
+        if (voiceModeRef.current) {
+          setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 150)
+        }
+      })
+      .catch(() => {
+        setIsSpeaking(false)
+        if (voiceModeRef.current) startVoiceListening()
+      })
+  }, [startVoiceListening, transitionVoice])
+
+  const enterVoiceMode = useCallback(() => {
+    unlockIOSAudio()
+    acquireWakeLock()
+    setVoiceMode(true)
+    voiceModeRef.current = true
+
+    // v25.2: SIMPLE DECISION — can we use Realtime or not?
+    const quotaFlag = localStorage.getItem('abu-openai-quota-failed')
+    const openaiAvailable = useRealtime && (!quotaFlag || (Date.now() - parseInt(quotaFlag, 10)) > 300_000)
+
+    // No OpenAI credits? Go straight to free pipeline. No complexity.
+    if (!openaiAvailable) {
+      console.log('[AbuAI] No OpenAI → free pipeline (Groq + Gemini)')
+      startPipelineVoiceMode()
+      return
+    }
+
+    // Use OpenAI Realtime API (WebRTC) if available
+    if (useRealtime) {
+      setRealtimeTranscript('')
+      const session = new RealtimeVoiceSession(
+        {
+          onStateChange: (state) => {
+            setRealtimeState(state)
+            if (state === 'listening') setVoicePhase('listening')
+            else if (state === 'speaking') { setVoicePhase('speaking'); setIsSpeaking(true) }
+            else if (state === 'connecting') setVoicePhase('greeting')
+            else if (state === 'error') setVoicePhase(null)
+
+            if (state === 'listening') setIsSpeaking(false)
+
+            // v24.3: Safety — if connection is stuck (no speaking event in 3 min), auto-exit
+            // Normal conversation resets this timer every time AI speaks
+            if (voiceSafetyTimerRef.current) { clearTimeout(voiceSafetyTimerRef.current); voiceSafetyTimerRef.current = null }
+            if (state === 'listening') {
+              voiceSafetyTimerRef.current = setTimeout(() => {
+                console.log('[AbuAI] Connection may be dead — no activity for 3 min')
+                exitVoiceMode()
+              }, 180_000) // 3 minutes — only for broken connections, not normal pauses
+            }
+          },
+          onUserTranscript: (text) => {
+            setLastHeardText(text)
+            setMessages(prev => [...prev, { id: nextId(), role: 'user', content: text, timestamp: Date.now() }])
+          },
+          onAssistantTranscript: (text) => {
+            setRealtimeTranscript('')
+            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: text, timestamp: Date.now() }])
+          },
+          onAssistantDelta: (delta) => {
+            setRealtimeTranscript(prev => prev + delta)
+          },
+          onError: (error) => {
+            console.error('[Realtime] Error:', error)
+            // v27: Mediate error — always Hebrew, always with action buttons
+            const mediated = mediateError(error)
+            if (mediated.category === 'quota' || mediated.category === 'auth') {
+              try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+            }
+            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediated.message, timestamp: Date.now(), error: mediated }])
+          },
+        },
+        realtimeInstructions,
+        // v25: onFatalError — Realtime died, remember + fall back to free pipeline
+        () => {
+          console.log('[AbuAI] Realtime failed, saving quota flag, falling back to free pipeline')
+          localStorage.setItem('abu-openai-quota-failed', String(Date.now()))
+          realtimeRef.current = null
+          setRealtimeState('idle')
+          setRealtimeTranscript('')
+          setVoicePhase(null) // clear any stale phase before pipeline sets its own
+          setTimeout(() => startPipelineVoiceMode(), 100) // small delay to let state settle
+        },
+        noiseMode as 'quiet' | 'noisy',
+      )
+      realtimeRef.current = session
+      session.connect()
+      return
+    }
+
+    // No OpenAI key — use pipeline directly
+    startPipelineVoiceMode()
+  }, [startPipelineVoiceMode, useRealtime, realtimeInstructions])
 
   const exitVoiceMode = useCallback(() => {
+    // v22.5: Clear safety timer
+    if (voiceSafetyTimerRef.current) { clearTimeout(voiceSafetyTimerRef.current); voiceSafetyTimerRef.current = null }
+    // Disconnect Realtime session if active
+    if (realtimeRef.current) {
+      realtimeRef.current.disconnect()
+      realtimeRef.current = null
+      setRealtimeState('idle')
+      setRealtimeTranscript('')
+    }
+
+    transitionVoice('IDLE', 'exit-voice-mode')
     voiceModeRef.current = false
     setVoiceMode(false)
     setVoicePhase(null)
     setAudioLevel(0)
     setIsSpeaking(false)
+    setLastHeardText('')
+    setStreamingText('')
+    setPttActive(false)
     stopSpeaking()
+    if (abortControllerRef.current) { abortControllerRef.current.abort(); abortControllerRef.current = null }
     cleanupVoiceResources()
-    setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'שיחה הסתיימה.', timestamp: Date.now() }])
-  }, [cleanupVoiceResources])
+    releaseWakeLock()
+  }, [cleanupVoiceResources, transitionVoice])
 
   const handleVoiceTap = () => {
     if (voiceMode) exitVoiceMode()
     else enterVoiceMode()
+  }
+
+  // v22.6: Push-to-talk state for noisy mode
+  const [pttActive, setPttActive] = useState(false) // user is currently holding/speaking
+
+  const handleOrbTap = () => {
+    // Push-to-talk mode — tap to start/stop speaking
+    if (realtimeRef.current?.isPushToTalk) {
+      if (pttActive) {
+        // Stop talking → send audio to AI
+        realtimeRef.current.stopTalking()
+        setPttActive(false)
+        setVoicePhase('processing')
+      } else if (voicePhase === 'listening' || voicePhase === 'processing') {
+        // Start talking → clear buffer, listen
+        realtimeRef.current.startTalking()
+        setPttActive(true)
+        setVoicePhase('listening')
+      } else if (voicePhase === 'speaking') {
+        // Interrupt AI
+        realtimeRef.current.interrupt()
+      }
+      return
+    }
+
+    if (realtimeRef.current && realtimeState === 'speaking') {
+      realtimeRef.current.interrupt()
+      return
+    }
+    const state = voiceStateRef.current
+    if (state === 'RESPONDING' || voicePhase === 'speaking') {
+      interruptAndListen()
+    } else if (voicePhase === 'listening') {
+      exitVoiceMode()
+    }
   }
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
@@ -537,14 +888,15 @@ export function AbuAI() {
   // suppress unused warnings
   void audioLevel
   void listenCountdown
+  void voiceState
 
   // Shared gold gradient text style
   const goldGradText: React.CSSProperties = {
-    background: GRADIENT_GOLD,
+    background: 'linear-gradient(135deg, #A7F3D0 0%, #34D399 20%, #10B981 45%, #14B8A6 60%, #0D9488 80%, #5EEAD4 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
-    filter: 'drop-shadow(0 0 10px rgba(201,168,76,0.35))',
+    filter: 'drop-shadow(0 0 10px rgba(20,184,166,0.35))',
   }
 
   return (
@@ -563,27 +915,28 @@ export function AbuAI() {
         position: 'relative',
       }}
     >
-      {/* ── Ambient background — 3 layers combined ── */}
+      {/* ── Ambient background — 3 layers with live color shift ── */}
       <div aria-hidden="true" style={{
         position: 'absolute',
         inset: 0,
         pointerEvents: 'none',
         zIndex: 0,
         background: [
-          'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(201,168,76,0.10) 0%, transparent 60%)',
-          'radial-gradient(ellipse 60% 50% at 15% 95%, rgba(201,168,76,0.08) 0%, transparent 55%)',
-          'radial-gradient(ellipse 45% 35% at 88% 80%, rgba(201,168,76,0.05) 0%, transparent 50%)',
+          'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(20,184,166,0.10) 0%, transparent 60%)',
+          'radial-gradient(ellipse 60% 50% at 15% 95%, rgba(20,184,166,0.08) 0%, transparent 55%)',
+          'radial-gradient(ellipse 45% 35% at 88% 80%, rgba(139,92,246,0.05) 0%, transparent 50%)',
         ].join(', '),
+        animation: 'ambientColorShift 35s ease-in-out infinite',
       }} />
 
       {/* ─────────────────────── HEADER ─────────────────────── */}
       <header style={{
         flexShrink: 0,
         position: 'relative',
-        background: 'rgba(12,10,8,0.96)',
-        borderBottom: '1px solid rgba(201,168,76,0.28)',
+        background: 'rgba(5,10,24,0.96)',
+        borderBottom: '1px solid rgba(20,184,166,0.28)',
         backdropFilter: 'blur(16px)',
-        boxShadow: '0 1px 0 rgba(201,168,76,0.12)',
+        boxShadow: '0 1px 0 rgba(20,184,166,0.12)',
         zIndex: 20,
       }}>
         {/* Bottom glow line */}
@@ -593,7 +946,7 @@ export function AbuAI() {
           left: 0,
           right: 0,
           height: 1,
-          background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.45) 30%, rgba(201,168,76,0.70) 50%, rgba(201,168,76,0.45) 70%, transparent)',
+          background: 'linear-gradient(90deg, transparent, rgba(20,184,166,0.45) 30%, rgba(20,184,166,0.70) 50%, rgba(20,184,166,0.45) 70%, transparent)',
         }} />
 
         {/* Header content row — 72px */}
@@ -606,18 +959,34 @@ export function AbuAI() {
           padding: '0 14px',
         }}>
 
-          {/* LEFT (RTL): Martita portrait */}
+          {/* LEFT (RTL): Martita portrait — T2.2 Voice States */}
           <div style={{
             position: 'absolute',
             left: 14,
             top: '50%',
-            transform: 'translateY(-50%)',
+            transform: `translateY(-50%)${isSpeaking ? ` scale(${1 + audioLevel * 0.12})` : ''}`,
             width: 64,
             height: 64,
             borderRadius: '50%',
-            border: isSpeaking ? '2.5px solid rgba(201,168,76,0.80)' : '2px solid rgba(201,168,76,0.42)',
-            boxShadow: isSpeaking ? '0 0 0 2.5px rgba(201,168,76,0.75), 0 0 24px rgba(201,168,76,0.30)' : '0 0 0 2px rgba(201,168,76,0.42), 0 0 16px rgba(201,168,76,0.12)',
-            transition: 'box-shadow 0.4s ease',
+            border: voicePhase === 'listening'
+              ? `${2 + audioLevel * 4}px solid #7EB4B8`  // Teal, thickness pulses with audio
+              : voicePhase === 'processing'
+              ? '2.5px solid rgba(212,184,122,0.70)'      // Gold processing
+              : isSpeaking
+              ? '2.5px solid rgba(20,184,166,0.80)'       // Teal speaking
+              : voiceMode
+              ? '2px solid #D4B87A'                        // Gold idle pulse
+              : '2px solid rgba(20,184,166,0.42)',         // Default
+            boxShadow: voicePhase === 'listening'
+              ? `0 0 0 ${2 + audioLevel * 3}px rgba(126,180,184,0.40), 0 0 ${12 + audioLevel * 20}px rgba(126,180,184,0.30)`
+              : voicePhase === 'processing'
+              ? '0 0 0 2px rgba(212,184,122,0.40), 0 0 20px rgba(212,184,122,0.25)'
+              : isSpeaking
+              ? `0 0 0 ${2 + audioLevel * 3}px rgba(20,184,166,0.75), 0 0 24px rgba(20,184,166,0.30)`
+              : voiceMode
+              ? '0 0 0 2px rgba(212,184,122,0.30), 0 0 16px rgba(212,184,122,0.15)'
+              : '0 0 0 2px rgba(20,184,166,0.42), 0 0 16px rgba(20,184,166,0.12)',
+            transition: 'box-shadow 0.15s ease, transform 0.1s ease, border 0.15s ease',
             overflow: 'hidden',
             background: '#1a140a',
             flexShrink: 0,
@@ -633,40 +1002,56 @@ export function AbuAI() {
 
           {/* CENTER: Single wordmark */}
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, direction: 'ltr' }}>
+            <div style={{ direction: 'ltr' }}>
               <span style={{
-                fontFamily: "'Cormorant Garamond',Georgia,serif",
-                fontSize: 34,
-                fontWeight: 600,
-                letterSpacing: '1px',
-                fontStyle: 'italic',
-                ...goldGradText,
-              }}>Martit</span>
-              <span style={{
-                fontFamily: "'DM Sans',sans-serif",
-                fontSize: 30,
+                fontFamily: "'Heebo','DM Sans',sans-serif",
+                fontSize: 22,
                 fontWeight: 700,
-                letterSpacing: '2px',
-                ...goldGradText,
-              }}>AI</span>
+                letterSpacing: '0.5px',
+                color: 'rgba(245,240,232,0.92)',
+              }}>Abu AI</span>
             </div>
           </div>
 
           {/* RIGHT (RTL): Back button */}
-          <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
-            <BackButton onPress={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }} />
-          </div>
+          <button
+            type="button"
+            onClick={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }}
+            aria-label="חזרה לדף הבית"
+            style={{
+              position: 'absolute',
+              right: 10,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: 56,
+              height: 56,
+              minHeight: 44,
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
+              stroke="rgba(245,240,232,0.80)" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            <span style={{
+              fontSize: 12,
+              color: 'rgba(245,240,232,0.55)',
+              fontFamily: "'Heebo',sans-serif",
+              fontWeight: 500,
+              lineHeight: 1,
+            }}>חזרה</span>
+          </button>
 
-          <InfoButton
-            title="אבו AI — MartitAI"
-            lines={['אבו AI היא העוזרת האישית החכמה שלך — שואלת, מסבירה, מצחיקה.', 'יש לה גישה לאינטרנט בזמן אמת. אפשר לדבר עברית או ספרדית.']}
-            howTo={['כתבי שאלה בתיבת הטקסט ולחצי שלח', 'לחצי "שיחה קולית" לדבר ישירות', 'לחצי על "חזרה" לחזור לתפריט הראשי']}
-            positionStyle={{ left: 86, top: 6 }}
-          />
         </div>
 
-        {/* Version badge */}
-        <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
       </header>
 
       {/* ─────────────────────── CHAT AREA ─────────────────────── */}
@@ -712,13 +1097,13 @@ export function AbuAI() {
                 position: 'absolute',
                 width: '168%', height: '168%',
                 borderRadius: '50%',
-                border: '1px solid rgba(201,168,76,0.28)',
+                border: '1px solid rgba(20,184,166,0.28)',
               }} />
               {/* Static halo ring 2 */}
               <div aria-hidden="true" style={{
                 position: 'absolute',
                 borderRadius: '50%',
-                border: '1px solid rgba(201,168,76,0.15)',
+                border: '1px solid rgba(20,184,166,0.15)',
                 width: '210%', height: '210%',
               }} />
               {/* Orb body */}
@@ -726,10 +1111,9 @@ export function AbuAI() {
                 width: 120,
                 height: 120,
                 borderRadius: '50%',
-                background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.20) 0%, rgba(201,168,76,0.12) 38%, rgba(201,168,76,0.04) 62%, transparent 80%)',
-                border: '1.5px solid rgba(201,168,76,0.55)',
-                boxShadow: '0 0 0 1px rgba(201,168,76,0.18), 0 0 60px rgba(201,168,76,0.22), 0 0 120px rgba(201,168,76,0.10), inset 0 1px 0 rgba(255,250,240,0.10)',
-                animation: 'orbPulse 4s ease-in-out infinite',
+                background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.20) 0%, rgba(20,184,166,0.12) 38%, rgba(20,184,166,0.04) 62%, transparent 80%)',
+                border: '1.5px solid rgba(20,184,166,0.55)',
+                boxShadow: '0 0 0 1px rgba(20,184,166,0.18), 0 0 60px rgba(20,184,166,0.22), 0 0 120px rgba(20,184,166,0.10), inset 0 1px 0 rgba(255,250,240,0.10)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -761,8 +1145,8 @@ export function AbuAI() {
                 fontFamily: "'Cormorant Garamond',serif",
                 fontStyle: 'italic',
                 fontSize: 26,
-                color: '#D4A853',
-                WebkitTextFillColor: '#D4A853',
+                color: '#2DD4BF',
+                WebkitTextFillColor: '#2DD4BF',
               }}>Martita</span>
             </div>
 
@@ -789,8 +1173,8 @@ export function AbuAI() {
                 marginTop: 32,
                 padding: '20px 28px',
                 background: 'rgba(255,250,240,0.03)',
-                border: '1px solid rgba(201,168,76,0.22)',
-                borderRight: '4px solid rgba(201,168,76,0.65)',
+                border: '1px solid rgba(20,184,166,0.22)',
+                borderRight: '4px solid rgba(20,184,166,0.65)',
                 borderRadius: 16,
                 display: 'flex',
                 alignItems: 'center',
@@ -804,8 +1188,8 @@ export function AbuAI() {
                 width: 56,
                 height: 56,
                 borderRadius: '50%',
-                background: 'rgba(201,168,76,0.12)',
-                border: '1.5px solid rgba(201,168,76,0.40)',
+                background: 'rgba(20,184,166,0.12)',
+                border: '1.5px solid rgba(20,184,166,0.40)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -829,6 +1213,8 @@ export function AbuAI() {
                 </div>
               </div>
             </div>
+
+            {/* v27.1: Noise environment toggle hidden (state kept for v28 refactor) */}
           </div>
         )}
 
@@ -838,6 +1224,23 @@ export function AbuAI() {
             const isLast = idx === messages.length - 1
             const isUser = msg.role === 'user'
             const ts = new Date(msg.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+
+            // v27: If message has mediated error, render ErrorCard instead of bubble
+            if (msg.error) {
+              return (
+                <div key={msg.id} style={{ marginBottom: 16, animation: isLast ? 'msgIn 0.3s ease both' : 'none' }}>
+                  <ErrorCard
+                    error={msg.error}
+                    onRetry={() => {
+                      // Remove this error and let user try again via voice/text
+                      setMessages(prev => prev.filter(m => m.id !== msg.id))
+                    }}
+                    onHome={() => { setScreen(Screen.Home) }}
+                    onDismiss={() => { setMessages(prev => prev.filter(m => m.id !== msg.id)) }}
+                  />
+                </div>
+              )
+            }
 
             return (
               <div
@@ -852,12 +1255,12 @@ export function AbuAI() {
               >
                 {/* Sender label */}
                 <div style={{
-                  fontSize: 14,
+                  fontSize: 12,
                   fontFamily: "'DM Sans',sans-serif",
                   fontWeight: 600,
                   letterSpacing: '1px',
                   textTransform: 'uppercase',
-                  color: isUser ? 'rgba(245,240,232,0.75)' : 'rgba(201,168,76,0.75)',
+                  color: isUser ? 'rgba(245,240,232,0.42)' : 'rgba(20,184,166,0.55)',
                   marginBottom: 5,
                   direction: 'ltr',
                   paddingInline: 4,
@@ -871,14 +1274,14 @@ export function AbuAI() {
                   ...(isUser ? {
                     padding: '14px 18px',
                     borderRadius: '18px 4px 18px 18px',
-                    background: 'rgba(201,168,76,0.13)',
-                    border: '1px solid rgba(201,168,76,0.35)',
+                    background: 'rgba(20,184,166,0.13)',
+                    border: '1px solid rgba(20,184,166,0.35)',
                   } : {
                     padding: '14px 18px',
                     borderRadius: '4px 18px 18px 18px',
                     background: SURFACE,
-                    border: '1px solid rgba(201,168,76,0.20)',
-                    borderRight: '3px solid rgba(201,168,76,0.50)',
+                    border: '1px solid rgba(20,184,166,0.20)',
+                    borderRight: '3px solid rgba(20,184,166,0.50)',
                   }),
                 }}>
                   <div style={{
@@ -898,8 +1301,8 @@ export function AbuAI() {
                 {/* Timestamp */}
                 <div style={{
                   marginTop: 5,
-                  fontSize: 14,
-                  color: 'rgba(245,240,232,0.55)',
+                  fontSize: 12,
+                  color: 'rgba(245,240,232,0.30)',
                   textAlign: isUser ? 'right' : 'left',
                   fontFamily: "'DM Sans',sans-serif",
                   direction: 'ltr',
@@ -926,7 +1329,7 @@ export function AbuAI() {
                 fontWeight: 600,
                 letterSpacing: '1px',
                 textTransform: 'uppercase',
-                color: 'rgba(201,168,76,0.55)',
+                color: 'rgba(20,184,166,0.55)',
                 marginBottom: 5,
                 paddingInline: 4,
                 direction: 'ltr',
@@ -935,8 +1338,8 @@ export function AbuAI() {
                 padding: '14px 18px',
                 borderRadius: '4px 18px 18px 18px',
                 background: SURFACE,
-                border: '1px solid rgba(201,168,76,0.12)',
-                borderRight: '3px solid rgba(201,168,76,0.32)',
+                border: '1px solid rgba(20,184,166,0.12)',
+                borderRight: '3px solid rgba(20,184,166,0.32)',
               }}>
                 <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
                   {[0, 1, 2].map(i => (
@@ -944,7 +1347,7 @@ export function AbuAI() {
                       width: 11,
                       height: 11,
                       borderRadius: '50%',
-                      background: 'rgba(201,168,76,0.80)',
+                      background: 'rgba(20,184,166,0.80)',
                       animation: `dotPulse 1.8s ease-in-out ${i * 0.22}s infinite`,
                     }} />
                   ))}
@@ -957,43 +1360,67 @@ export function AbuAI() {
 
       {/* ─────────────────────── VOICE MODE FULLSCREEN OVERLAY ─────────────────────── */}
       {voiceMode && (
-        <div style={{
-          position: 'absolute',
-          top: 72,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: BG,
-          zIndex: 15,
-          paddingBottom: 28,
-          gap: 0,
-        }}>
-
-          {/* Large gold ring — 192px */}
-          <div style={{
-            position: 'relative',
-            width: 192,
-            height: 192,
+        <div
+          onClick={() => {
+            // v22.6: Push-to-talk — delegate to orb handler
+            if (realtimeRef.current?.isPushToTalk) {
+              handleOrbTap()
+              return
+            }
+            // v22.5: Tap overlay → interrupt if speaking, EXIT if listening/stuck
+            if (voicePhase === 'speaking') {
+              if (realtimeRef.current) realtimeRef.current.interrupt()
+              else interruptAndListen()
+            } else if (voicePhase === 'listening' || voicePhase === 'processing') {
+              exitVoiceMode()
+            }
+          }}
+          style={{
+            position: 'absolute',
+            top: 72,
+            left: 0,
+            right: 0,
+            bottom: 0,
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
+            background: BG,
+            zIndex: 15,
+            paddingBottom: 28,
+            gap: 0,
+            cursor: 'pointer',
           }}>
+
+          {/* Large gold ring — 192px — v20: tappable for interruption */}
+          <div
+            role={voicePhase === 'speaking' ? 'button' : undefined}
+            tabIndex={voicePhase === 'speaking' ? 0 : undefined}
+            onClick={handleOrbTap}
+            onKeyDown={e => e.key === 'Enter' && handleOrbTap()}
+            aria-label={voicePhase === 'speaking' ? 'הפסיקי דיבור' : undefined}
+            style={{
+              position: 'relative',
+              width: 192,
+              height: 192,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
             <div style={{
               position: 'absolute',
               inset: 0,
               borderRadius: '50%',
               ...(voicePhase === 'speaking' || voicePhase === 'greeting' ? {
-                border: '2px solid rgba(201,168,76,1.0)',
-                boxShadow: '0 0 0 1px rgba(201,168,76,0.50), 0 0 80px rgba(201,168,76,0.35), 0 0 150px rgba(201,168,76,0.15), inset 0 1px 0 rgba(255,250,240,0.15)',
-                background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.28) 0%, rgba(201,168,76,0.16) 38%, rgba(201,168,76,0.06) 65%, transparent 82%)',
+                border: '2px solid rgba(20,184,166,1.0)',
+                boxShadow: '0 0 0 1px rgba(20,184,166,0.50), 0 0 80px rgba(20,184,166,0.35), 0 0 150px rgba(20,184,166,0.15), inset 0 1px 0 rgba(255,250,240,0.15)',
+                background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.28) 0%, rgba(20,184,166,0.16) 38%, rgba(20,184,166,0.06) 65%, transparent 82%)',
               } : {
-                border: '1.5px solid rgba(201,168,76,0.55)',
-                boxShadow: '0 0 0 1px rgba(201,168,76,0.18), 0 0 40px rgba(201,168,76,0.16), 0 0 80px rgba(201,168,76,0.07), inset 0 1px 0 rgba(255,250,240,0.08)',
-                background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.18) 0%, rgba(201,168,76,0.10) 40%, rgba(201,168,76,0.04) 62%, transparent 80%)',
+                border: '1.5px solid rgba(20,184,166,0.55)',
+                boxShadow: '0 0 0 1px rgba(20,184,166,0.18), 0 0 40px rgba(20,184,166,0.16), 0 0 80px rgba(20,184,166,0.07), inset 0 1px 0 rgba(255,250,240,0.08)',
+                background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.18) 0%, rgba(20,184,166,0.10) 40%, rgba(20,184,166,0.04) 62%, transparent 80%)',
               }),
               transition: 'border-color 0.5s ease, box-shadow 0.5s ease, background 0.5s ease',
               display: 'flex',
@@ -1004,7 +1431,7 @@ export function AbuAI() {
               {voicePhase === 'listening' && (
                 <svg viewBox="0 0 24 24" width="64" height="64" fill="none"
                   stroke={GOLD} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"
-                  style={{ filter: 'drop-shadow(0 0 12px rgba(201,168,76,0.60))' }}>
+                  style={{ filter: 'drop-shadow(0 0 12px rgba(20,184,166,0.60))' }}>
                   <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                   <path d="M19 10v2a7 7 0 01-14 0v-2" />
                   <line x1="12" y1="19" x2="12" y2="23" />
@@ -1018,7 +1445,7 @@ export function AbuAI() {
                   width: 44,
                   height: 44,
                   borderRadius: '50%',
-                  border: '2.5px solid rgba(201,168,76,0.20)',
+                  border: '2.5px solid rgba(20,184,166,0.20)',
                   borderTop: `2.5px solid ${GOLD}`,
                   animation: 'spin 0.9s linear infinite',
                 }} />
@@ -1046,7 +1473,7 @@ export function AbuAI() {
                   width: 44,
                   height: 44,
                   borderRadius: '50%',
-                  border: '2.5px solid rgba(201,168,76,0.20)',
+                  border: '2.5px solid rgba(20,184,166,0.20)',
                   borderTop: `2.5px solid ${GOLD}`,
                   animation: 'spin 1.1s linear infinite',
                 }} />
@@ -1054,10 +1481,10 @@ export function AbuAI() {
             </div>
           </div>
 
-          {/* Phase text */}
-          <div style={{ marginTop: 32, textAlign: 'center', direction: 'rtl' }}>
+          {/* Phase text — v20: feminine Hebrew + transcript feedback */}
+          <div style={{ marginTop: 28, textAlign: 'center', direction: 'rtl', maxWidth: 320, padding: '0 20px' }}>
             <div style={{
-              fontSize: 38,
+              fontSize: 34,
               fontWeight: 300,
               letterSpacing: '0.5px',
               color: TEXT,
@@ -1066,7 +1493,7 @@ export function AbuAI() {
             }}>
               {voicePhase === 'listening' ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  מקשיב...
+                  מקשיבה...
                   <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
                     {[0, 1, 2].map(i => (
                       <span key={i} style={{
@@ -1074,31 +1501,109 @@ export function AbuAI() {
                         width: 7,
                         height: 7,
                         borderRadius: '50%',
-                        background: 'rgba(201,168,76,0.80)',
+                        background: 'rgba(20,184,166,0.80)',
                         animation: `dotPulse 1.4s ease-in-out ${i * 0.22}s infinite`,
                       }} />
                     ))}
                   </span>
                 </span>
-              ) : voicePhase === 'processing' ? 'חושב...'
-                : voicePhase === 'speaking' ? 'מדבר...'
+              ) : voicePhase === 'processing' ? 'חושבת...'
+                : voicePhase === 'speaking' ? 'מדברת...'
                 : voicePhase === 'greeting' ? 'שלום...'
-                : 'מתחבר...'}
+                : 'מתחברת...'}
             </div>
+
+            {/* v20: Show what was heard */}
+            {lastHeardText && voicePhase !== 'listening' && (
+              <div style={{
+                marginTop: 14,
+                fontSize: 15,
+                color: 'rgba(245,240,232,0.50)',
+                fontFamily: "'Heebo',sans-serif",
+                lineHeight: 1.6,
+                direction: 'rtl',
+              }}>
+                <span style={{ color: 'rgba(245,240,232,0.35)', fontSize: 12 }}>שמעתי: </span>
+                &ldquo;{lastHeardText}&rdquo;
+              </div>
+            )}
+
+            {/* v20.2: Show streaming response text (old mode or Realtime) */}
+            {(streamingText || realtimeTranscript) && voicePhase === 'speaking' && (
+              <div style={{
+                marginTop: 12,
+                fontSize: 16,
+                color: 'rgba(20,184,166,0.85)',
+                fontFamily: "'Heebo',sans-serif",
+                lineHeight: 1.7,
+                direction: 'rtl',
+                maxHeight: 120,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
+                {realtimeTranscript || streamingText}
+              </div>
+            )}
+
+            {/* v22.6: Context-aware tap hints */}
+            {voicePhase === 'speaking' && (
+              <div style={{
+                marginTop: 16,
+                fontSize: 16,
+                color: 'rgba(245,240,232,0.35)',
+                fontFamily: "'Heebo',sans-serif",
+              }}>
+                לחצי כדי להפסיק
+              </div>
+            )}
+            {voicePhase === 'listening' && realtimeRef.current?.isPushToTalk && !pttActive && (
+              <div style={{
+                marginTop: 16,
+                fontSize: 18,
+                fontWeight: 600,
+                color: 'rgba(251,146,60,0.80)',
+                fontFamily: "'Heebo',sans-serif",
+              }}>
+                📺 מצב רועש — לחצי כדי לדבר
+              </div>
+            )}
+            {voicePhase === 'listening' && realtimeRef.current?.isPushToTalk && pttActive && (
+              <div style={{
+                marginTop: 16,
+                fontSize: 18,
+                fontWeight: 600,
+                color: 'rgba(20,184,166,0.85)',
+                fontFamily: "'Heebo',sans-serif",
+              }}>
+                🎤 מדברת... לחצי כשסיימת
+              </div>
+            )}
+            {voicePhase === 'listening' && (
+              <div style={{
+                marginTop: 16,
+                fontSize: 16,
+                color: 'rgba(245,240,232,0.35)',
+                fontFamily: "'Heebo',sans-serif",
+              }}>
+                לחצי כדי לצאת
+              </div>
+            )}
           </div>
 
-          {/* Stop button */}
+          {/* v27.1: Noise toggle hidden — state defaults to 'quiet', behavior unchanged */}
+
+          {/* Stop button — stopPropagation prevents overlay interrupt */}
           <button
             type="button"
-            onClick={exitVoiceMode}
+            onClick={(e) => { e.stopPropagation(); exitVoiceMode() }}
             aria-label="סיים שיחה קולית"
             style={{
-              marginTop: 48,
+              marginTop: 36,
               width: 72,
               height: 72,
               borderRadius: '50%',
-              background: 'rgba(201,168,76,0.10)',
-              border: '1.5px solid rgba(201,168,76,0.40)',
+              background: 'rgba(20,184,166,0.10)',
+              border: '1.5px solid rgba(20,184,166,0.40)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -1127,9 +1632,9 @@ export function AbuAI() {
           zIndex: 10,
           padding: '10px 14px',
           paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
-          background: 'rgba(12,10,8,0.95)',
+          background: 'rgba(5,10,24,0.95)',
           backdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(201,168,76,0.16)',
+          borderTop: '1px solid rgba(20,184,166,0.16)',
         }}>
           {/* Recording indicator pill */}
           {recording && (
@@ -1176,10 +1681,10 @@ export function AbuAI() {
                 borderRadius: '50%',
                 background: recording
                   ? 'rgba(239,68,68,0.16)'
-                  : 'rgba(201,168,76,0.10)',
+                  : 'rgba(20,184,166,0.10)',
                 border: recording
                   ? '1.5px solid rgba(239,68,68,0.48)'
-                  : '1.5px solid rgba(201,168,76,0.50)',
+                  : '1.5px solid rgba(20,184,166,0.50)',
                 cursor: micDisabled ? 'default' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -1193,7 +1698,7 @@ export function AbuAI() {
               {transcribing ? (
                 <div style={{
                   width: 22, height: 22, borderRadius: '50%',
-                  border: '2.5px solid rgba(201,168,76,0.30)',
+                  border: '2.5px solid rgba(20,184,166,0.30)',
                   borderTop: `2.5px solid ${GOLD}`,
                   animation: 'spin 0.9s linear infinite',
                 }} />
@@ -1222,14 +1727,14 @@ export function AbuAI() {
               placeholder={recording ? 'מקשיבה...' : transcribing ? 'מתמללת...' : 'כתבי לי...'}
               rows={1}
               disabled={loading || recording}
-              onFocus={e => { e.currentTarget.style.border = '1px solid rgba(201,168,76,0.55)' }}
-              onBlur={e => { e.currentTarget.style.border = '1px solid rgba(201,168,76,0.30)' }}
+              onFocus={e => { e.currentTarget.style.border = '1px solid rgba(20,184,166,0.55)' }}
+              onBlur={e => { e.currentTarget.style.border = '1px solid rgba(20,184,166,0.30)' }}
               style={{
                 flex: 1,
                 resize: 'none',
                 padding: '14px 18px',
                 borderRadius: 14,
-                border: '1px solid rgba(201,168,76,0.30)',
+                border: '1px solid rgba(20,184,166,0.30)',
                 background: 'rgba(255,250,240,0.05)',
                 color: TEXT,
                 fontSize: 16,
@@ -1258,7 +1763,7 @@ export function AbuAI() {
                 borderRadius: '50%',
                 background: sendDisabled
                   ? 'rgba(255,255,255,0.07)'
-                  : 'linear-gradient(135deg, #C9A84C 0%, #B8912A 60%, #A07828 100%)',
+                  : 'linear-gradient(135deg, #14B8A6 0%, #0D9488 60%, #0F766E 100%)',
                 border: sendDisabled
                   ? '1px solid rgba(255,255,255,0.10)'
                   : 'none',
@@ -1267,7 +1772,7 @@ export function AbuAI() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
-                boxShadow: sendDisabled ? 'none' : '0 4px 16px rgba(201,168,76,0.35)',
+                boxShadow: sendDisabled ? 'none' : '0 4px 16px rgba(20,184,166,0.35)',
                 transition: 'background 0.18s ease, transform 0.10s ease',
                 WebkitTapHighlightColor: 'transparent',
               }}
@@ -1298,15 +1803,15 @@ export function AbuAI() {
                 gap: 8,
                 padding: '8px 22px',
                 borderRadius: 20,
-                background: 'rgba(201,168,76,0.06)',
-                border: '1px solid rgba(201,168,76,0.48)',
+                background: 'rgba(20,184,166,0.06)',
+                border: '1px solid rgba(20,184,166,0.48)',
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
                 transition: 'background 0.15s ease',
               }}
-              onPointerDown={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.14)' }}
-              onPointerUp={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.06)' }}
-              onPointerLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.06)' }}
+              onPointerDown={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.14)' }}
+              onPointerUp={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.06)' }}
+              onPointerLeave={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.06)' }}
             >
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
                 stroke={GOLD} strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -1318,7 +1823,7 @@ export function AbuAI() {
               <span style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: 'rgba(201,168,76,0.95)',
+                color: 'rgba(20,184,166,0.95)',
                 fontFamily: "'Heebo',sans-serif",
                 direction: 'rtl',
               }}>

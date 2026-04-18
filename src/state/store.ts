@@ -18,6 +18,7 @@ export const useAppStore = create<AppState & Actions>((set) => ({
   installDismissed:  false,
   isOnline:          navigator.onLine,  // NOT hardcoded
   appVersion:        import.meta.env.VITE_APP_VERSION ?? '',
+  lastError:         null,
 
   // Actions
   setScreen:            (screen) =>  set({ currentScreen: screen }),
@@ -33,4 +34,6 @@ export const useAppStore = create<AppState & Actions>((set) => ({
   setServices:          (services) => set({ services }),
   setInstallDismissed:  (v) =>       set({ installDismissed: v }),
   setOnline:            (v) =>       set({ isOnline: v }),
+  setError:             (screen, message) => set({ lastError: { screen, message, timestamp: Date.now() } }),
+  clearError:           () =>        set({ lastError: null }),
 }))

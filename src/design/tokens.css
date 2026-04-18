@@ -60,7 +60,7 @@
   --abu-font-weight-label:    600;
   --abu-line-height-label:    1.40;
 
-  --abu-font-size-caption:    12px;
+  --abu-font-size-caption:    14px;  /* T5.2: min 14px for elderly readability */
   --abu-font-weight-caption:  400;
   --abu-line-height-caption:  1.40;
 

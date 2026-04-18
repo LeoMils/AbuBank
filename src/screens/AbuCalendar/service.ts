@@ -8,6 +8,7 @@ export interface Appointment {
   emoji: string
   color: string
   notes?: string
+  location?: string      // v18: venue/address
   // Family Intelligence
   type?: 'regular' | 'birthday' | 'anniversary' | 'memory'
   personName?: string    // for birthdays: the person's name
@@ -130,12 +131,36 @@ export async function parseAppointmentText(text: string): Promise<{ title: strin
           messages: [
             {
               role: 'system',
-              content: `Parse Hebrew appointment text. Today is ${today}. Return ONLY valid JSON: {"title":"...","date":"YYYY-MM-DD","time":"HH:MM","emoji":"..."}`,
+              content: `You are an expert Hebrew appointment parser. Extract appointment details from spoken Hebrew text.
+Today is ${today} (${new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}).
+Current month: ${new Date().getMonth() + 1}, current year: ${new Date().getFullYear()}.
+
+CRITICAL: The "date" field MUST be a real YYYY-MM-DD date. NEVER return words like "TOMORROW" or "FRIDAY". ALWAYS compute the actual calendar date.
+
+RULES:
+- TIME: All times without "בבוקר" default to PM for appointments.
+  "בשלוש" = 15:00. "בארבע" = 16:00. "בחמש" = 17:00. "בשש" = 18:00. "בשבע" = 19:00. "בשמונה" = 20:00.
+  "בעשר בבוקר" = 10:00. "בשמונה בערב" = 20:00. "בשתיים וחצי" = 14:30. "בתשע בבוקר" = 09:00.
+  "בצהריים" = 12:00. "אחרי הצהריים" = prefer 14:00-17:00 range.
+- DATE: ALWAYS return YYYY-MM-DD format. Compute the real date:
+  - "מחר" = ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+  - "ביום ראשון" = the NEXT Sunday from today. Calculate it.
+  - "ביום ראשון האחרון של החודש" = find the last Sunday of the current month.
+  - "ב-15 לחודש" = ${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-15
+  - "בעוד שבוע" = +7 days from today.
+  - "בשבוע הבא ביום שלישי" = next Tuesday.
+- PERSON: "פגישה עם דר כהן" → personName: "דר כהן". "יום הולדת של מור" → personName: "מור".
+- LOCATION: "בקניון" → location: "קניון". "במרפאה" → location: "מרפאה".
+- EMOJI: 🏥 medical, ✂️ haircut, 🛒 shopping, 🎂 birthday, 🍽️ food, ✈️ travel, 👨‍👩‍👧 family, 💼 work, 📅 general.
+- If time not mentioned, default 09:00. If date not mentioned, default ${today}.
+
+Return ONLY valid JSON:
+{"title":"short Hebrew title","date":"YYYY-MM-DD","time":"HH:MM","emoji":"...","location":"","personName":""}`,
             },
             { role: 'user', content: text },
           ],
           temperature: 0,
-          max_tokens: 150,
+          max_tokens: 200,
         }),
       })
       if (res.ok) {
@@ -143,12 +168,24 @@ export async function parseAppointmentText(text: string): Promise<{ title: strin
         const content = data?.choices?.[0]?.message?.content ?? ''
         const match = content.match(/\{[\s\S]*?\}/)
         if (match) {
-          const parsed = JSON.parse(match[0]) as { title?: string; date?: string; time?: string; emoji?: string }
+          const parsed = JSON.parse(match[0]) as { title?: string; date?: string; time?: string; emoji?: string; location?: string; personName?: string }
           const title = parsed.title ?? text
-          const date = parsed.date ?? today
+          let date = parsed.date ?? today
           const time = parsed.time ?? '09:00'
+
+          // v22: Reject past dates — shift to today
+          const parsedDate = new Date(date)
+          const nowDate = new Date(today)
+          if (parsedDate < nowDate) date = today
           const emoji = parsed.emoji ?? detectEmoji(title)
-          return { title, date, time, emoji, ...detectFamilyType(text) }
+          const location = parsed.location || undefined
+          const personName = parsed.personName || undefined
+          const familyType = detectFamilyType(text)
+          return {
+            title, date, time, emoji, location,
+            personName,
+            ...familyType,
+          } as { title: string; date: string; time: string; emoji: string; location?: string; personName?: string } & Pick<Appointment, 'type' | 'isRecurring'>
         }
       }
     } catch {
@@ -188,6 +225,112 @@ export function formatHebrewDate(dateStr: string): string {
 export function formatHebrewMonth(year: number, month: number): string {
   const monthName = HEBREW_MONTHS[month - 1] ?? ''
   return `${monthName} ${year}`
+}
+
+// ─── Family Birthdays & Memorial (hardcoded from memory/birthdays_registry.yaml) ───
+
+const CURRENT_YEAR = new Date().getFullYear()
+
+export const FAMILY_BIRTHDAYS: Appointment[] = [
+  // February
+  { id: 'bday-ofir',    title: 'יום הולדת אופיר 🎂',      date: `${CURRENT_YEAR}-02-15`, time: '09:00', emoji: '🎂', color: '#FF6B9D', type: 'birthday', personName: 'אופיר', isRecurring: true },
+  { id: 'bday-adar',    title: 'יום הולדת אדר 🎂',        date: `${CURRENT_YEAR}-02-28`, time: '09:00', emoji: '🎂', color: '#A78BFA', type: 'birthday', personName: 'אדר', isRecurring: true },
+  // April
+  { id: 'bday-martita', title: 'יום הולדת Martita! 🎉👑',  date: `${CURRENT_YEAR}-04-01`, time: '09:00', emoji: '👑', color: '#FFE66D', type: 'birthday', personName: 'Martita', isRecurring: true },
+  { id: 'bday-adi',     title: 'יום הולדת עדי 🎂',        date: `${CURRENT_YEAR}-04-05`, time: '09:00', emoji: '🎂', color: '#F472B6', type: 'birthday', personName: 'עדי', isRecurring: true },
+  { id: 'bday-noam',    title: 'יום הולדת נועם 🎂',       date: `${CURRENT_YEAR}-04-05`, time: '09:00', emoji: '🎂', color: '#4ECDC4', type: 'birthday', personName: 'נועם', isRecurring: true },
+  { id: 'bday-ilai',    title: 'יום הולדת עילי 🎂',       date: `${CURRENT_YEAR}-04-08`, time: '09:00', emoji: '🎂', color: '#60A5FA', type: 'birthday', personName: 'עילי', isRecurring: true },
+  { id: 'bday-papi',    title: 'יום הולדת פפי 🕯️❤️',      date: `${CURRENT_YEAR}-04-19`, time: '09:00', emoji: '🕯️', color: '#C9A84C', type: 'birthday', personName: 'פפי', isRecurring: true },
+  // July
+  { id: 'bday-raphi',   title: 'יום הולדת רפי 🎂',        date: `${CURRENT_YEAR}-07-29`, time: '09:00', emoji: '🎂', color: '#FB923C', type: 'birthday', personName: 'רפי', isRecurring: true },
+  { id: 'bday-eylon',   title: 'יום הולדת אילון 🎂',      date: `${CURRENT_YEAR}-07-31`, time: '09:00', emoji: '🎂', color: '#34D399', type: 'birthday', personName: 'אילון', isRecurring: true },
+  // August
+  { id: 'bday-mor',     title: 'יום הולדת מור 🎂❤️',       date: `${CURRENT_YEAR}-08-10`, time: '09:00', emoji: '🎂', color: '#FF6B9D', type: 'birthday', personName: 'מור', isRecurring: true },
+  { id: 'bday-leo',     title: 'יום הולדת לאו 🎂❤️',       date: `${CURRENT_YEAR}-08-22`, time: '09:00', emoji: '🎂', color: '#4ECDC4', type: 'birthday', personName: 'לאו', isRecurring: true },
+  // September
+  { id: 'bday-sharon',  title: 'יום הולדת שרון 🎂',       date: `${CURRENT_YEAR}-09-11`, time: '09:00', emoji: '🎂', color: '#A78BFA', type: 'birthday', personName: 'שרון', isRecurring: true },
+  // October
+  { id: 'bday-anabel',  title: 'יום הולדת אנאבל 🎂👶',     date: `${CURRENT_YEAR}-10-01`, time: '09:00', emoji: '🎂', color: '#F472B6', type: 'birthday', personName: 'אנאבל', isRecurring: true, notes: 'נינה — בת של אופיר וירדן' },
+  { id: 'bday-yarden',  title: 'יום הולדת ירדן 🎂',       date: `${CURRENT_YEAR}-10-12`, time: '09:00', emoji: '🎂', color: '#60A5FA', type: 'birthday', personName: 'ירדן', isRecurring: true },
+  // November
+  { id: 'bday-ari',     title: 'יום הולדת ארי 🎂👶',       date: `${CURRENT_YEAR}-11-26`, time: '09:00', emoji: '🎂', color: '#FB923C', type: 'birthday', personName: 'ארי', isRecurring: true, notes: 'נינה — בת של אופיר וירדן, אחות של אנאבל' },
+]
+
+export const FAMILY_MEMORIALS: Appointment[] = [
+  { id: 'memorial-papi', title: 'יום הזיכרון של פפי 🕯️',  date: `${CURRENT_YEAR}-01-01`, time: '09:00', emoji: '🕯️', color: '#C9A84C', type: 'memory', personName: 'פפי', isRecurring: true,
+    notes: 'פפי נפטר ב-1 בינואר 2025. נולד ב-19 באפריל 1941.' },
+]
+
+/** Load appointments + merge permanent family birthdays & memorials for a specific year */
+export function loadAppointmentsWithFamily(viewYear?: number): Appointment[] {
+  const yr = viewYear ?? new Date().getFullYear()
+  const userAppts = loadAppointments()
+
+  // Generate family birthdays for the viewed year (recurring = every year)
+  const yearBirthdays = FAMILY_BIRTHDAYS.map(b => ({
+    ...b,
+    date: `${yr}-${b.date.slice(5)}`, // Replace year with viewed year
+    id: `${b.id}-${yr}`,
+  }))
+  const yearMemorials = FAMILY_MEMORIALS.map(m => ({
+    ...m,
+    date: `${yr}-${m.date.slice(5)}`,
+    id: `${m.id}-${yr}`,
+  }))
+
+  // Don't duplicate with user-created appointments
+  const familyIds = new Set([...yearBirthdays, ...yearMemorials].map(a => a.id))
+  const filtered = userAppts.filter(a => !familyIds.has(a.id))
+  return [...yearBirthdays, ...yearMemorials, ...filtered]
+}
+
+// v22: Short Hebrew date for selected day header
+export function formatShortHebrewDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  if (!y || !m || !d) return dateStr
+  const date = new Date(y, m - 1, d)
+  const dayName = HEBREW_DAYS[date.getDay()] ?? ''
+  const monthName = HEBREW_MONTHS[m - 1] ?? ''
+  return `${dayName}, ${d} ב${monthName}`
+}
+
+// ─── Hebrew Holidays (major, 2024-2027) ─────────────────────────────────────
+
+const HEBREW_HOLIDAYS: Record<string, string> = {
+  // 2025
+  '2025-10-03': 'ראש השנה', '2025-10-04': 'ראש השנה',
+  '2025-10-12': 'יום כיפור',
+  '2025-10-17': 'סוכות', '2025-10-24': 'שמחת תורה',
+  '2025-12-15': 'חנוכה', '2025-12-16': 'חנוכה', '2025-12-17': 'חנוכה',
+  '2025-12-18': 'חנוכה', '2025-12-19': 'חנוכה', '2025-12-20': 'חנוכה',
+  '2025-12-21': 'חנוכה', '2025-12-22': 'חנוכה',
+  '2025-03-14': 'פורים',
+  '2025-04-13': 'פסח', '2025-04-14': 'פסח', '2025-04-19': 'פסח', '2025-04-20': 'פסח',
+  '2025-06-02': 'שבועות', '2025-06-03': 'שבועות',
+  // 2026
+  '2026-09-22': 'ראש השנה', '2026-09-23': 'ראש השנה',
+  '2026-10-01': 'יום כיפור',
+  '2026-10-06': 'סוכות', '2026-10-13': 'שמחת תורה',
+  '2026-12-05': 'חנוכה', '2026-12-06': 'חנוכה', '2026-12-07': 'חנוכה',
+  '2026-12-08': 'חנוכה', '2026-12-09': 'חנוכה', '2026-12-10': 'חנוכה',
+  '2026-12-11': 'חנוכה', '2026-12-12': 'חנוכה',
+  '2026-03-03': 'פורים',
+  '2026-04-02': 'פסח', '2026-04-03': 'פסח', '2026-04-08': 'פסח', '2026-04-09': 'פסח',
+  '2026-05-22': 'שבועות', '2026-05-23': 'שבועות',
+  // 2027
+  '2027-09-11': 'ראש השנה', '2027-09-12': 'ראש השנה',
+  '2027-09-20': 'יום כיפור',
+  '2027-09-25': 'סוכות', '2027-10-02': 'שמחת תורה',
+  '2027-11-24': 'חנוכה', '2027-11-25': 'חנוכה', '2027-11-26': 'חנוכה',
+  '2027-11-27': 'חנוכה', '2027-11-28': 'חנוכה', '2027-11-29': 'חנוכה',
+  '2027-11-30': 'חנוכה', '2027-12-01': 'חנוכה',
+  '2027-02-22': 'פורים',
+  '2027-03-22': 'פסח', '2027-03-23': 'פסח', '2027-03-28': 'פסח', '2027-03-29': 'פסח',
+  '2027-05-12': 'שבועות', '2027-05-13': 'שבועות',
+}
+
+export function getHebrewHoliday(dateStr: string): string | null {
+  return HEBREW_HOLIDAYS[dateStr] ?? null
 }
 
 // ─── Family Intelligence ──────────────────────────────────────────────────────

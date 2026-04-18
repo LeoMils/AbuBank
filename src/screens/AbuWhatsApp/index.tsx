@@ -164,7 +164,7 @@ export function AbuWhatsApp() {
     try {
       // iOS Safari requires explicit audio constraints for microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true }
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
       })
       streamRef.current = stream
       const mimeType = getSupportedMimeType()
@@ -458,7 +458,7 @@ export function AbuWhatsApp() {
     ;(async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true }
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         })
         streamRef.current = stream
         const mimeType = getSupportedMimeType()
@@ -647,14 +647,15 @@ export function AbuWhatsApp() {
             <BackButton onPress={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }} />
           </div>
 
-          <InfoButton
-            title="Abu הודעות"
-            lines={['כתיבת הודעות WhatsApp בסגנון של מרטיטה — כולל שגיאות אמיתיות.', 'בחרי בדיחה, חידה, או טריק לתוכן מיידי.']}
-            howTo={['לחצי על בדיחה / חידה / טריק לתוכן מיידי', 'כתבי נושא בשדה ולחצי "כתבי לי" להודעה מותאמת אישית', 'לחצי "שלחי למשפחה" לשליחה קבוצת הווצאפ', 'לחצי על "תקשיבי" לשמיעת ההודעה']}
-            positionStyle={{ left: 86, top: 6 }}
-          />
         </div>
       </header>
+
+      <InfoButton
+        title="Abu הודעות"
+        lines={['כתיבת הודעות WhatsApp בסגנון של מרטיטה — כולל שגיאות אמיתיות.', 'בחרי בדיחה, חידה, או טריק לתוכן מיידי.']}
+        howTo={['לחצי על בדיחה / חידה / טריק לתוכן מיידי', 'כתבי נושא בשדה ולחצי "כתבי לי" להודעה מותאמת אישית', 'לחצי "שלחי למשפחה" לשליחה קבוצת הווצאפ', 'לחצי על "תקשיבי" לשמיעת ההודעה']}
+        position="top-left"
+      />
 
       {/* ══════════════════════════════════════════════════
           SCROLLABLE CONTENT

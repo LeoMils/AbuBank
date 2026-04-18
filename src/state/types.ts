@@ -46,6 +46,12 @@ export type Result<T, E = string> =
   | { ok: false; error: E }
 
 // Timer IDs are module-level in navigationService.ts — NOT here.
+export interface LastError {
+  screen: Screen       // which screen was active when error happened
+  message: string      // plain Hebrew error message
+  timestamp: number
+}
+
 export interface AppState {
   currentScreen:     Screen
   isNavigating:      boolean
@@ -60,6 +66,7 @@ export interface AppState {
   installDismissed:  boolean
   isOnline:          boolean
   appVersion:        string
+  lastError:         LastError | null  // v22.1: contextual error info
 }
 
 // appVersion: set ONCE at store creation via Vite define in initial state.
@@ -86,4 +93,6 @@ export interface Actions {
   setServices:           (services: ServiceConfig[]) => void
   setInstallDismissed:   (v: boolean) => void
   setOnline:             (v: boolean) => void
+  setError:              (screen: Screen, message: string) => void
+  clearError:            () => void
 }

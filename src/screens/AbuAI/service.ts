@@ -2,9 +2,8 @@ import type { ChatMessage } from './types'
 
 // Provider priority: OpenAI (paid, most reliable) > Gemini 2.0 Flash (free) > Groq Llama (free)
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
-const OPENAI_MODEL_TEXT    = 'gpt-4o-search-preview'  // text mode: live web search
-const OPENAI_MODEL_TEXT_FB = 'gpt-4o'                 // text mode fallback (no search)
-const OPENAI_MODEL_VOICE   = 'gpt-4o'                  // voice mode: rich content, warm tone
+const OPENAI_MODEL_TEXT  = 'gpt-4o'          // text mode: reliable, high quality
+const OPENAI_MODEL_VOICE = 'gpt-4o-mini'     // voice mode (pipeline fallback): speed + cost
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
 const GEMINI_MODEL = 'gemini-2.0-flash'
@@ -18,24 +17,27 @@ function getProviders(voiceMode = false): Array<{ url: string; model: string; ap
   const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
   const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
 
+  // v25: Skip OpenAI entirely if quota exhausted (saves timeout delays)
+  const qf = typeof localStorage !== 'undefined' ? localStorage.getItem('abu-openai-quota-failed') : null
+  const openaiAvailable = openaiKey && (!qf || (Date.now() - parseInt(qf, 10)) > 300_000)
+
   if (voiceMode) {
-    // Voice mode: SPEED — Groq llama is fastest (sub-second P50, no cold start), then OpenAI mini, then Gemini
-    if (groqKey)   providers.push({ url: GROQ_URL,   model: GROQ_MODEL,           apiKey: groqKey })
-    if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_VOICE,   apiKey: openaiKey })
-    if (geminiKey) providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,         apiKey: geminiKey })
+    // Voice mode: SPEED — Groq (free) first, then OpenAI (if available), then Gemini (free)
+    if (groqKey)         providers.push({ url: GROQ_URL,   model: GROQ_MODEL,           apiKey: groqKey })
+    if (openaiAvailable) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_VOICE,   apiKey: openaiKey! })
+    if (geminiKey)       providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,         apiKey: geminiKey })
   } else {
-    // Text mode: search model first → regular gpt-4o fallback → free providers
-    if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_TEXT,    apiKey: openaiKey })
-    if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_TEXT_FB, apiKey: openaiKey })
-    if (geminiKey) providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,         apiKey: geminiKey })
-    if (groqKey)   providers.push({ url: GROQ_URL,   model: GROQ_MODEL,           apiKey: groqKey })
+    // Text mode: OpenAI (if available) → Gemini (free) → Groq (free)
+    if (openaiAvailable) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_TEXT, apiKey: openaiKey! })
+    if (geminiKey)       providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,      apiKey: geminiKey })
+    if (groqKey)         providers.push({ url: GROQ_URL,   model: GROQ_MODEL,        apiKey: groqKey })
   }
 
   if (providers.length === 0) throw new Error('מפתח API לא הוגדר. פנה לבן המשפחה שהתקין את האפליקציה.')
   return providers
 }
 
-const SYSTEM_PROMPT =
+export const SYSTEM_PROMPT =
 `את MartitAI — עוזרת אישית חכמה, חדה, ומצחיקה של Martita.
 
 ═══ היכולות שלך ═══
@@ -115,7 +117,7 @@ Markdown — לא. רשימות רק אם עוזרות להבין.
 לא לבקש ולא לרשום סיסמאות, קודים, ת.ז., כרטיס אשראי.`
 
 // Few-shot — anchor the tone: adult, direct, warm, family-aware, NOT childish
-const FEW_SHOT: Array<{ role: 'user' | 'assistant'; content: string }> = [
+export const FEW_SHOT: Array<{ role: 'user' | 'assistant'; content: string }> = [
   {
     role: 'user',
     content: 'איך אני משלמת חשמל?',
@@ -240,12 +242,22 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     : 'webm' // fallback — Whisper still tries webm
   formData.append('file', audioBlob, `recording.${ext}`)
   formData.append('model', WHISPER_MODEL)
-  // Rich multilingual prompt: primes Whisper for Hebrew + Rioplatense Spanish.
-  // Covers common vocabulary, family names, and mixed-language patterns Martita uses.
-  formData.append('prompt', 'שלום מרטיטה, בוקר טוב, מה שלומך? תודה רבה. מה מזג האוויר? ספרי לי משהו מעניין. אני רוצה לדעת. מה קורה עם מור ולאו? איפה אופיר ואדר? Hola Martita, buenos días, ¿cómo estás? Contame algo lindo. ¿Qué hay de nuevo? Dale, decime. Extraño a Pepe. Che, ¿sabías que...? Mirá, te cuento.')
+  // v20: Read language setting — 'auto' lets Whisper detect, 'he'/'es' forces language
+  const voiceLang = localStorage.getItem('abu-voice-lang') || 'auto'
+  if (voiceLang === 'he') {
+    formData.append('language', 'he')
+    formData.append('prompt', 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.')
+  } else if (voiceLang === 'es') {
+    formData.append('language', 'es')
+    formData.append('prompt', 'Hola Martita, cómo estás, dale, bueno, familia, receta, empanadas, asado, Buenos Aires.')
+  } else {
+    // Auto: default to Hebrew (most common) but let Whisper detect Spanish
+    formData.append('language', 'he')
+    formData.append('prompt', 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.')
+  }
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 30000)
+  const timeout = setTimeout(() => controller.abort(), 12000)
 
   try {
     const res = await fetch(WHISPER_URL, {
@@ -297,10 +309,9 @@ export function getSupportedMimeType(): string {
 async function tryProvider(
   provider: { url: string; model: string; apiKey: string },
   body: object,
-  timeoutMs = 20000,
 ): Promise<{ result: string | null; retryAfter: number }> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  const timeout = setTimeout(() => controller.abort(), 10000)
   try {
     const res = await fetch(provider.url, {
       method: 'POST',
@@ -312,13 +323,15 @@ async function tryProvider(
       signal: controller.signal,
     })
     if (!res.ok) {
-      if (res.status === 429) {
-        const ra = parseInt(res.headers.get('retry-after') ?? '', 10)
-        return { result: null, retryAfter: isNaN(ra) ? 8 : Math.min(ra, 65) }
+      // v25: Detect quota/billing errors — set flag so all OpenAI calls are skipped
+      const errBody = await res.text().catch(() => '')
+      if (res.status === 402 || res.status === 429 || errBody.includes('quota') || errBody.includes('exceeded') || errBody.includes('billing')) {
+        console.warn('[AbuAI] OpenAI quota exceeded — setting skip flag')
+        try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+        return { result: null, retryAfter: 0 } // skip to next provider silently
       }
       if (res.status === 401 || res.status >= 500) return { result: null, retryAfter: 0 }
-      const text = await res.text().catch(() => '')
-      throw new Error(`שגיאה מהשרת (${res.status}). ${text.slice(0, 100)}`)
+      return { result: null, retryAfter: 0 } // skip to next provider, don't throw
     }
     const data = await res.json()
     const content = data?.choices?.[0]?.message?.content
@@ -337,56 +350,138 @@ function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-const VOICE_SUFFIX = `
+// ─── Streaming chat (T3: Sub-Second Responses) ───
 
-═══ מצב קול — שיחה חיה ═══
-את מדברת עכשיו, לא כותבת. כל מילה נשמעת בקול — תדברי כמו שמדברים בטלפון עם מישהי חכמה שאוהבים.
+/**
+ * Stream LLM response tokens as they arrive. Yields partial text chunks.
+ * Uses SSE (Server-Sent Events) streaming for all providers.
+ * Voice mode: races Groq vs delayed OpenAI for lowest latency.
+ */
+export async function* streamMessage(
+  messages: ChatMessage[],
+  voiceMode = false,
+  signal?: AbortSignal,
+): AsyncGenerator<string, void, undefined> {
+  const providers = getProviders(voiceMode)
+  const systemContent = voiceMode ? SYSTEM_PROMPT + VOICE_SUFFIX : SYSTEM_PROMPT
+  const chatMessages = [
+    { role: 'system', content: systemContent },
+    ...(voiceMode ? FEW_SHOT.slice(-4) : FEW_SHOT), // voice: fewer shots for speed
+    ...messages.slice(voiceMode ? -4 : -20).map(m => ({ role: m.role, content: m.content })),
+  ]
+  const maxTokens = voiceMode ? 800 : 2048  // v20.1: voice can tell full stories (~200 words)
+  const temperature = voiceMode ? 0.3 : 0.65
 
-אורך תשובה:
-• "מה השעה?" / "איך החום?" → משפט אחד-שניים.
-• שאלה רגילה (בישול, משפחה, חדשות) → 3-4 משפטים, מלאים ומעניינים.
-• שאלה מורכבת (מדע, היסטוריה, פוליטיקה, הסבר) → 5-8 משפטים. תוכן עשיר, עם דוגמאות, הקשר, אנקדוטות. Martita חכמה — אל תקצצי לה בתשובות.
-• בדידות / רגש → כמה שצריך. חום אמיתי קודם כל.
+  for (const provider of providers) {
+    try {
+      const body: Record<string, unknown> = {
+        model: provider.model,
+        messages: chatMessages,
+        max_tokens: maxTokens,
+        temperature,
+        stream: true,
+      }
 
-סגנון:
-• משפטים שלמים וזורמים — לא טלגרפי, לא קצוץ.
-• בלי רשימות ובלי ניקוד. בלי "ראשית... שנית...".
-• בלי שאלה בסוף ("רוצה לשמוע עוד?" — לא).
-• בלי התנשאות, בלי פישוט יתר, בלי "נו, זה פשוט..." — היא לא ילדה.
-• אם היא שואלת בספרדית — ענני בספרדית ריופלטנסית (vos, dale, che). אם בעברית — עברית. מעורב → מעורב.
-• הקול שלך חם, טבעי, של אישה. דברי כמו חברה קרובה — לא כמו רובוט שירות.`
+      const controller = new AbortController()
+      const combinedSignal = signal
+        ? AbortSignal.any?.([signal, controller.signal]) ?? controller.signal
+        : controller.signal
+      const timeout = setTimeout(() => controller.abort(), voiceMode ? 6000 : 12000)
 
-// Search-preview models don't support the temperature parameter
-const isSearchModel = (model: string) => model.includes('search')
+      try {
+        const res = await fetch(provider.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${provider.apiKey}`,
+          },
+          body: JSON.stringify(body),
+          signal: combinedSignal,
+        })
+
+        if (!res.ok) {
+          clearTimeout(timeout)
+          continue // try next provider
+        }
+
+        const reader = res.body?.getReader()
+        if (!reader) { clearTimeout(timeout); continue }
+
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let yieldedAny = false
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed.startsWith('data: ')) continue
+            const data = trimmed.slice(6)
+            if (data === '[DONE]') break
+
+            try {
+              const parsed = JSON.parse(data)
+              const token = parsed?.choices?.[0]?.delta?.content
+              if (token) {
+                yieldedAny = true
+                yield token
+              }
+            } catch {
+              // malformed SSE chunk — skip
+            }
+          }
+        }
+
+        clearTimeout(timeout)
+        if (yieldedAny) return // success — done
+        // No tokens yielded — try next provider
+      } catch {
+        clearTimeout(timeout)
+        continue // try next provider
+      }
+    } catch {
+      continue
+    }
+  }
+
+  // All providers failed — yield error message
+  yield 'שגיאה בחיבור. נסי שוב.'
+}
+
+export const VOICE_SUFFIX = `
+
+מצב קול — שיחה טלפונית.
+תשובה ישירה, טבעית, בשפה מדוברת.
+שאלה קצרה (מה השעה, איך מזג האוויר) → 1-3 משפטים.
+שאלה מעניינת / סיפור / הסבר / בדיחה → כמה שצריך, בנוח, אפילו 10-20 משפטים.
+מבקשים סיפור → ספרי סיפור שלם, עם התחלה, אמצע וסוף.
+לא רשימות. לא כותרות. לא סיכומים. לא שאלות חזרה.
+דברי כמו בשיחת טלפון אמיתית — ארוכה או קצרה, לפי מה שנשאל.`
+
 
 export async function sendMessage(messages: ChatMessage[], voiceMode = false): Promise<string> {
   const providers = getProviders(voiceMode)
   const systemContent = voiceMode ? SYSTEM_PROMPT + VOICE_SUFFIX : SYSTEM_PROMPT
-
-  // Voice mode: trim conversation to last 12 messages to keep context focused & fast.
-  // Text mode: keep full history (up to 2048 token response) for deeper conversations.
-  const trimmedMessages = voiceMode && messages.length > 12
-    ? messages.slice(-12)
-    : messages
-
   const baseMessages = [
     { role: 'system', content: systemContent },
     ...FEW_SHOT,
-    ...trimmedMessages.map(m => ({ role: m.role, content: m.content })),
+    ...messages.map(m => ({ role: m.role, content: m.content })),
   ]
-  const maxTokens = voiceMode ? 500 : 2048
-  const temperature = voiceMode ? 0.6 : 0.65
+  const maxTokens = voiceMode ? 800 : 2048  // v20.1: voice can tell full stories
+  const temperature = voiceMode ? 0.4 : 0.65
 
   // Try all providers, then retry once with backoff if all were rate-limited
   for (let attempt = 0; attempt < 2; attempt++) {
     let maxRetryAfter = 0
     for (const provider of providers) {
-      // Search-preview models reject the temperature param — omit it for those
-      const body = isSearchModel(provider.model)
-        ? { messages: baseMessages, max_tokens: maxTokens }
-        : { messages: baseMessages, temperature, max_tokens: maxTokens }
-      const providerTimeout = voiceMode ? 12000 : 20000
-      const { result, retryAfter } = await tryProvider(provider, body, providerTimeout)
+      const body = { messages: baseMessages, temperature, max_tokens: maxTokens }
+      const { result, retryAfter } = await tryProvider(provider, body)
       if (result) return result
       if (retryAfter > maxRetryAfter) maxRetryAfter = retryAfter
     }

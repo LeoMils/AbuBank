@@ -1,12 +1,20 @@
 // ─── Text-to-Speech ─────────────────────────────────────────
-// Priority: 1) OpenAI TTS (shimmer — warm woman, direct REST)
-//           2) Gemini TTS (Aoede — multilingual)
-//           3) Azure TTS (HilaNeural/ElenaNeural — dev proxy)
-//           4) Edge TTS (same voices, WebSocket fallback)
-//           5) Google Translate TTS  6) Web Speech API
+// Priority: 1) Azure TTS REST API (HilaNeural/ElenaNeural — needs VITE_AZURE_TTS_KEY)
+//           2) Edge TTS WebSocket (same voices, unofficial fallback)
+//           3) Gemini TTS (Aoede — human but not Israeli/Argentine)
+//           4) Google Translate TTS  5) Web Speech API
+
+// v20: Read user voice settings from Settings screen
+function getVoiceSpeed(): number {
+  try {
+    const saved = localStorage.getItem('abu-voice-speed')
+    if (saved) return parseFloat(saved)
+  } catch {}
+  return 0.88 // default
+}
 
 let currentAudio: HTMLAudioElement | null = null
-let currentAudioCtxSource: AudioBufferSourceNode | null = null
+let _currentAudioSource: AudioBufferSourceNode | null = null // v20.1: track for stopSpeaking
 
 // Shared AudioContext — created once, reused across all unlock calls.
 // iOS Safari: once an AudioContext is resumed inside a user gesture, it stays
@@ -46,15 +54,15 @@ export function unlockIOSAudio(): void {
 
 // ─── Language detection ────────────────────────────────────
 
-export function detectLang(text: string): 'he' | 'es' {
+function detectLang(text: string): 'he' | 'es' {
   // Count Hebrew Unicode characters
   const heChars = (text.match(/[\u0590-\u05FF]/g) ?? []).length
   // Count Spanish-indicator characters (accented Latin)
   const esChars = (text.match(/[áéíóúüñ¿¡]/gi) ?? []).length
   // If Hebrew chars dominate → Hebrew
   if (heChars > 2) return 'he'
-  // Rioplatense + general Spanish vocabulary (broad coverage)
-  const esWords = /\b(hola|gracias|buenos|buenas|cómo|qué|por|favor|sí|estoy|tengo|quiero|puedo|mamá|abuela|bien|mucho|todo|nada|casa|amor|vida|sabes|sabías|cuéntame|rico|claro|bueno|ja ja|querida|familia|che|dale|vos|sos|andá|mirá|decime|contame|bancame|tranqui|boludo|pibe|mina|laburar|re|piola|bárbaro|genial|lindo|hermoso|extraño|recuerdo|siempre|nunca|cuando|donde|porque|entonces|también|después|antes|ahora|todavía|ojalá|chau|basta|parar)\b/i
+  // Explicit Spanish words (Rioplatense-aware vocabulary)
+  const esWords = /\b(hola|gracias|buenos|buenas|cómo|qué|por|favor|sí|estoy|tengo|quiero|puedo|mamá|abuela|bien|mucho|todo|nada|casa|amor|vida|sabes|sabías|cuéntame|rico|claro|bueno|ja ja|querida|familia|che)\b/i
   if (esChars > 0 || esWords.test(text)) return 'es'
   // Mixed or unknown — default Hebrew (most messages will be Hebrew)
   return 'he'
@@ -142,10 +150,10 @@ async function playBlobViaAudioCtx(blob: Blob): Promise<boolean> {
     const audioBuf = await _sharedAudioCtx.decodeAudioData(arrayBuf)
     return new Promise<boolean>((resolve) => {
       const src = _sharedAudioCtx!.createBufferSource()
-      currentAudioCtxSource = src
       src.buffer = audioBuf
       src.connect(_sharedAudioCtx!.destination)
-      src.onended = () => { currentAudioCtxSource = null; resolve(true) }
+      _currentAudioSource = src // v20.1: store ref so stopSpeaking can kill it
+      src.onended = () => { _currentAudioSource = null; resolve(true) }
       src.start(0)
     })
   } catch (e) {
@@ -155,19 +163,28 @@ async function playBlobViaAudioCtx(blob: Blob): Promise<boolean> {
 }
 
 // ─── 0. OpenAI TTS (primary — direct REST, works on iPhone) ──
-// "nova" voice: warm, clear, slightly husky female — the most natural-sounding
-// for Hebrew and Spanish. No proxy required. Works in Vercel production.
-// Speed 0.88: comfortable pace for Martita's ears without sounding slow.
+// v22.4: gpt-4o-mini-tts with coral voice + steerable accent instructions
+// Natural Israeli Hebrew and Argentine Spanish accents
+
+function getTTSInstructions(text: string): string {
+  const lang = detectLang(text)
+  return lang === 'es'
+    ? 'You are a warm Argentine grandmother. Speak very slowly, gently, softly in Rioplatense Spanish. Buenos Aires accent. Intimate, like a phone call with a dear friend. Pause between sentences. Never rush. Never sound robotic or like reading. Sound human, real, kind.'
+    : 'You are a warm Israeli woman in her 40s. Speak very slowly, gently, softly in casual everyday Hebrew. Native Israeli accent — NOT American. Intimate, like a phone call with a dear friend. Pause between sentences. Never rush. Never sound robotic or like reading. Sound human, real, kind.'
+}
 
 async function speakOpenAI(text: string): Promise<boolean> {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
   if (!apiKey) return false
+  // v25: Skip if OpenAI quota exhausted — don't waste 8s on timeout
+  const qf = localStorage.getItem('abu-openai-quota-failed')
+  if (qf && (Date.now() - parseInt(qf, 10)) < 300_000) return false
 
   const chunks = splitText(text, 400)
   for (const chunk of chunks) {
     try {
       const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 15000)
+      const t = setTimeout(() => controller.abort(), 8000)
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: {
@@ -175,10 +192,11 @@ async function speakOpenAI(text: string): Promise<boolean> {
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'tts-1-hd',         // HD = higher quality, more natural sounding
+          model: 'gpt-4o-mini-tts',  // v22.4: steerable, best quality
           input: chunk,
-          voice: 'shimmer',          // shimmer = warm, expressive, very human-like
-          speed: 0.88,               // slightly slower → easier to follow for 80+ listener
+          voice: 'coral',
+          instructions: getTTSInstructions(chunk),
+          speed: getVoiceSpeed(),
           response_format: 'mp3',
         }),
         signal: controller.signal,
@@ -234,7 +252,6 @@ async function speakAzureTTS(text: string): Promise<boolean> {
 
 const GEMINI_TTS_MODELS = [
   'gemini-2.5-flash-preview-tts',
-  'gemini-2.0-flash-preview-tts',
 ]
 
 async function speakGemini(text: string): Promise<boolean> {
@@ -255,7 +272,7 @@ async function speakGemini(text: string): Promise<boolean> {
               responseModalities: ['AUDIO'],
               speechConfig: {
                 voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: 'Aoede' },
+                  prebuiltVoiceConfig: { voiceName: 'Kore' },  // T4.2: Kore better for Hebrew than Aoede
                 },
               },
             },
@@ -397,7 +414,7 @@ function speakWebAPI(text: string): Promise<void> {
 
     const u = new SpeechSynthesisUtterance(text)
     u.lang = lang === 'es' ? 'es-AR' : 'he-IL'
-    u.rate = lang === 'he' ? 0.82 : 0.88   // slightly slower for Hebrew (80-year-old listener)
+    u.rate = lang === 'he' ? 0.78 : 0.85   // T4.3: slower for 80-year-old listener
     u.pitch = 1.0                            // neutral pitch — no robot adjustment
     u.volume = 1.0
     if (bestVoice) u.voice = bestVoice
@@ -414,30 +431,23 @@ function speakWebAPI(text: string): Promise<void> {
 
 // ─── Public API ────────────────────────────────────────────
 
-// speakVoiceMode — for LIVE CONVERSATION (AbuAI voice mode)
-// iOS strategy: play OpenAI TTS through the pre-unlocked AudioContext.
-// The shared AudioContext was resumed during the user's tap (unlockIOSAudio),
-// and AudioContext.createBufferSource().start() is NEVER blocked by iOS after
-// mic use — unlike HTMLAudioElement.play() or speechSynthesis which can silently
-// fail after a WebSpeechRecognition session ends.
-// Falls back to speechSynthesis (with resume fix) if no OpenAI key.
+// speakVoiceMode — for LIVE CONVERSATION (AbuAI voice mode, pipeline fallback)
+// v24.3: OpenAI (paid, best quality) → Gemini (FREE) → Web Speech (FREE, last resort)
 export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // Language-aware speed: Hebrew slightly slower (denser info), Spanish natural pace
-  const lang = detectLang(text)
-  const speed = lang === 'he' ? 0.90 : 0.94
-
-  // 1) OpenAI TTS → AudioContext playback (best quality, works on iOS after mic)
+  // 1) OpenAI TTS (paid — skip entirely if quota exhausted)
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-  if (apiKey) {
+  const quotaOk = !localStorage.getItem('abu-openai-quota-failed') ||
+    (Date.now() - parseInt(localStorage.getItem('abu-openai-quota-failed') ?? '0', 10)) > 300_000
+  if (apiKey && quotaOk) {
     try {
       const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 12000)
+      const t = setTimeout(() => controller.abort(), 6000)
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'tts-1', input: text, voice: 'shimmer', speed, response_format: 'mp3' }),
+        body: JSON.stringify({ model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed(), response_format: 'mp3' }),
         signal: controller.signal,
       })
       clearTimeout(t)
@@ -446,76 +456,315 @@ export async function speakVoiceMode(text: string): Promise<void> {
         if (blob.size > 100) {
           const ok = await playBlobViaAudioCtx(blob)
           if (ok) return
-          console.log('[TTS] AudioCtx failed, trying HTMLAudioElement fallback')
           if (await playBlob(blob)) return
         }
       }
+      // 429/402 = quota exceeded — fall through to free Gemini
+      console.log('[TTS-VM] OpenAI failed, trying free Gemini...')
     } catch (e) {
-      console.log('[TTS] speakVoiceMode OpenAI error:', e)
+      console.log('[TTS-VM] OpenAI error:', e)
     }
   }
 
-  // 2) Web Speech API fallback (resume fix applied inside speakWebAPI)
+  // 2) Gemini TTS (FREE with existing key)
+  if (await speakGeminiViaAudioCtx(text)) { console.log('[TTS-VM] ✅ Gemini TTS worked'); return }
+
+  // 3) Web Speech API (FREE, last resort)
   await speakWebAPI(text)
+}
+
+// Gemini TTS via AudioContext for voice mode (bypasses iOS audio restrictions)
+async function speakGeminiViaAudioCtx(text: string): Promise<boolean> {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
+  if (!apiKey) return false
+
+  for (const model of GEMINI_TTS_MODELS) {
+    try {
+      const controller = new AbortController()
+      const t = setTimeout(() => controller.abort(), 10000)
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text }] }],
+            generationConfig: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: 'Kore' },  // T4.2: Kore better for Hebrew than Aoede
+                },
+              },
+            },
+          }),
+          signal: controller.signal,
+        }
+      )
+      clearTimeout(t)
+      if (!res.ok) continue
+      const json = await res.json()
+      const audioData = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
+      if (!audioData) continue
+
+      // Convert base64 L16 PCM to WAV blob
+      const raw = Uint8Array.from(atob(audioData), c => c.charCodeAt(0))
+      const wavBlob = pcmToWav(raw, 24000)
+      const ok = await playBlobViaAudioCtx(wavBlob)
+      if (ok) return true
+    } catch {
+      continue
+    }
+  }
+  return false
 }
 
 // speak — for TEXT CHAT and other non-realtime uses
-// OpenAI nova is primary (best quality), falls back to Web Speech.
+// v24.3: OpenAI (paid) → Gemini (FREE) → Web Speech (FREE)
 export async function speak(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 0) OpenAI TTS — nova voice — direct REST API, works on iPhone/Vercel (no proxy needed)
-  console.log('[TTS] Trying OpenAI nova...')
-  if (await speakOpenAI(text)) { console.log('[TTS] ✅ OpenAI nova worked'); return }
-  console.log('[TTS] ❌ OpenAI failed (no key or network error)')
+  // 1) OpenAI TTS (paid, best quality)
+  if (await speakOpenAI(text)) return
 
-  // 1) Gemini TTS — multilingual Aoede (direct API, works in production)
-  console.log('[TTS] Trying Gemini...')
-  if (await speakGemini(text)) { console.log('[TTS] ✅ Gemini worked'); return }
-  console.log('[TTS] ❌ Gemini failed')
+  // 2) Gemini TTS (FREE)
+  if (await speakGemini(text)) return
 
-  // 2) Azure TTS — HilaNeural/ElenaNeural — dev proxy only, will skip in production
-  console.log('[TTS] Trying Azure TTS...')
-  if (await speakAzureTTS(text)) { console.log('[TTS] ✅ Azure TTS worked'); return }
-
-  // 3) Edge TTS — dev proxy only, will skip in production
-  console.log('[TTS] Trying Edge TTS...')
-  if (await speakEdgeTTS(text)) { console.log('[TTS] ✅ Edge TTS worked'); return }
-
-  // 4) Google Translate TTS — dev proxy only, will skip in production
-  console.log('[TTS] Trying Google TTS...')
-  if (await speakGoogleTTS(text)) { console.log('[TTS] ✅ Google TTS worked'); return }
-
-  // 5) Last resort — browser built-in Web Speech
-  console.log('[TTS] Falling back to Web Speech API')
+  // 3) Web Speech API (FREE, last resort)
   await speakWebAPI(text)
 }
 
-export function isSpeaking(): boolean {
-  return !!(currentAudio || currentAudioCtxSource) ||
-    (typeof speechSynthesis !== 'undefined' && speechSynthesis.speaking)
-}
-
 export function stopSpeaking(): void {
-  if (currentAudioCtxSource) {
-    try { currentAudioCtxSource.stop() } catch {}
-    currentAudioCtxSource = null
-  }
+  // 1) HTMLAudioElement (used by playBlob fallback)
   if (currentAudio) {
     currentAudio.pause()
     currentAudio.currentTime = 0
     currentAudio = null
   }
+  // 2) Web Speech API
   if ('speechSynthesis' in window) speechSynthesis.cancel()
+  // 3) AudioContext source node (used by Gemini TTS + OpenAI TTS in voice mode)
+  if (_currentAudioSource) {
+    try { _currentAudioSource.stop() } catch { /* already stopped */ }
+    _currentAudioSource = null
+  }
+  // 4) Streaming TTS queue
+  if (_activeQueue) { _activeQueue.abort(); _activeQueue = null }
+  console.log('[TTS] stopSpeaking — all audio channels killed')
+}
+
+// ─── Streaming TTS — Audio Chunk Queue ───────────────────────
+// Plays audio chunks as they arrive with zero gap.
+// Used by streaming voice mode: LLM tokens → sentence chunks → TTS → gapless playback.
+
+let _activeQueue: AudioChunkQueue | null = null
+
+export class AudioChunkQueue {
+  private queue: Blob[] = []
+  private playing = false
+  private aborted = false
+  private ctx: AudioContext | null = null
+  private currentSource: AudioBufferSourceNode | null = null
+  private onDone: (() => void) | null = null
+
+  constructor(onDone?: () => void) {
+    this.onDone = onDone ?? null
+    this.ctx = _sharedAudioCtx
+    if (!this.ctx || this.ctx.state === 'closed') {
+      this.ctx = new AudioContext()
+    }
+    // Don't resume here — let enqueue() trigger it when first blob arrives (Bug #7 fix)
+  }
+
+  /** Enqueue an audio blob for playback */
+  enqueue(blob: Blob): void {
+    if (this.aborted) return
+    this.queue.push(blob)
+    if (!this.playing) {
+      // Resume AudioContext on first blob (Bug #7 fix — avoids init silence)
+      if (this.ctx?.state === 'suspended') this.ctx.resume().catch(() => {})
+      this.playNext()
+    }
+  }
+
+  /** Signal that no more chunks will arrive */
+  finish(): void {
+    if (this.aborted) return
+    if (!this.playing && this.queue.length === 0) {
+      this.onDone?.()
+    }
+    // Otherwise playNext() will call onDone when queue empties
+  }
+
+  /** Immediately stop all playback and clear queue */
+  abort(): void {
+    this.aborted = true
+    this.queue = []
+    if (this.currentSource) {
+      try { this.currentSource.stop() } catch { /* already stopped */ }
+      this.currentSource = null
+    }
+  }
+
+  /** Get current audio level for visual feedback (0-1) */
+  get isPlaying(): boolean { return this.playing && !this.aborted }
+
+  private async playNext(): Promise<void> {
+    if (this.aborted) return
+    const blob = this.queue.shift()
+    if (!blob) {
+      this.playing = false
+      this.onDone?.()
+      return
+    }
+
+    this.playing = true
+    try {
+      if (!this.ctx || this.ctx.state === 'closed') {
+        this.ctx = new AudioContext()
+      }
+      if (this.ctx.state === 'suspended') await this.ctx.resume().catch(() => {})
+
+      const arrayBuf = await blob.arrayBuffer()
+      const audioBuf = await this.ctx.decodeAudioData(arrayBuf)
+      if (this.aborted) return
+
+      const src = this.ctx.createBufferSource()
+      this.currentSource = src
+      src.buffer = audioBuf
+      src.connect(this.ctx.destination)
+      src.onended = () => {
+        this.currentSource = null
+        this.playNext()
+      }
+      src.start(0)
+    } catch (e) {
+      console.log('[AudioQueue] playback error:', e)
+      this.currentSource = null
+      this.playNext() // skip failed chunk, play next
+    }
+  }
+}
+
+/**
+ * Stream-speak: plays TTS audio for each sentence as LLM tokens arrive.
+ * Accumulates tokens until a sentence boundary, then sends to TTS and queues audio.
+ * First audio plays while remaining sentences still generating.
+ *
+ * v16.2: Fixed critical bugs — await TTS, proper abort, non-blocking fallback.
+ */
+export async function streamSpeakVoiceMode(
+  tokenStream: AsyncIterable<string>,
+  onPhaseChange?: (phase: 'speaking' | 'done') => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const queue = new AudioChunkQueue(() => {
+    _activeQueue = null
+    onPhaseChange?.('done')
+  })
+  _activeQueue = queue
+
+  let buffer = ''
+  let tokenCount = 0
+  // v17: Extended sentence boundaries + token-count fallback for Hebrew (rarely uses commas)
+  const sentenceEnd = /[.?!،,;:—–]\s/
+
+  const speakChunk = async (text: string): Promise<void> => {
+    if (signal?.aborted) return
+    // v25: OpenAI (paid, skip if quota exhausted) → Gemini (FREE) → Web Speech (FREE)
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
+    const sqf = localStorage.getItem('abu-openai-quota-failed')
+    const skipOpenAI = sqf && (Date.now() - parseInt(sqf, 10)) < 300_000
+    if (apiKey && !skipOpenAI) {
+      try {
+        const res = await fetch('https://api.openai.com/v1/audio/speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed(), response_format: 'mp3' }),
+          signal: signal ?? null,
+        })
+        if (res.ok) {
+          const blob = await res.blob()
+          if (blob.size > 100) { queue.enqueue(blob); return }
+        }
+      } catch { /* try fallback */ }
+    }
+    // Gemini TTS (FREE) — convert to blob and enqueue
+    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
+    if (geminiKey) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text }] }],
+              generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } },
+            }),
+          }
+        )
+        if (res.ok) {
+          const json = await res.json()
+          const audioData = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
+          if (audioData) {
+            const raw = Uint8Array.from(atob(audioData), c => c.charCodeAt(0))
+            const wavBlob = pcmToWav(raw, 24000)
+            queue.enqueue(wavBlob)
+            return
+          }
+        }
+      } catch { /* try fallback */ }
+    }
+    // Web Speech (FREE, last resort)
+    speakWebAPI(text).catch(() => {})
+  }
+
+  onPhaseChange?.('speaking')
+
+  // Collect TTS promises so we can await them all before finishing
+  const ttsPromises: Promise<void>[] = []
+
+  for await (const token of tokenStream) {
+    if (signal?.aborted) break
+    buffer += token
+    tokenCount++
+
+    // Check for sentence boundary OR token-count fallback (Hebrew has few commas)
+    const match = sentenceEnd.exec(buffer)
+    const tokenOverflow = tokenCount >= 12 && buffer.trim().length > 10
+
+    if (match || tokenOverflow) {
+      let sentence: string
+      if (match) {
+        const splitIdx = (match.index ?? 0) + match[0].length
+        sentence = buffer.substring(0, splitIdx).trim()
+        buffer = buffer.substring(splitIdx)
+      } else {
+        // Token overflow: flush entire buffer as one chunk
+        sentence = buffer.trim()
+        buffer = ''
+      }
+      tokenCount = 0
+      if (sentence.length > 2) {
+        ttsPromises.push(speakChunk(sentence))
+      }
+    }
+  }
+
+  // Flush remaining text
+  const remaining = buffer.trim()
+  if (remaining.length > 2 && !signal?.aborted) {
+    ttsPromises.push(speakChunk(remaining))
+  }
+
+  // Wait for all TTS requests to complete (blobs enqueued to audio queue)
+  await Promise.all(ttsPromises)
+
+  queue.finish()
 }
 
 // ─── Silence Detection (AudioContext + AnalyserNode) ────────
-// Professional voice activity detection:
-// 1. Ambient calibration — first 600ms measures room noise floor
-// 2. Frequency-weighted energy — band-pass 250Hz-3500Hz (human voice range)
-// 3. Speech frame debounce — requires 3+ consecutive frames to confirm speech
-// 4. Exponential moving average — smooths level for UI and prevents flicker
-// 5. Adaptive threshold — auto-adjusts above ambient noise floor
 
 export interface SilenceDetector {
   stop: () => void
@@ -527,109 +776,83 @@ export function createSilenceDetector(
   onSilence: () => void,
   options?: { threshold?: number; silenceMs?: number; maxMs?: number; minActiveMs?: number },
 ): SilenceDetector {
-  const baseThreshold = options?.threshold   ?? 18    // base threshold (adjusted by ambient calibration)
-  const silenceMs     = options?.silenceMs   ?? 3000  // ms quiet after speech → stop (tolerates natural pauses)
-  const maxMs         = options?.maxMs       ?? 30000 // absolute max recording time
-  const minActiveMs   = options?.minActiveMs ?? 2500  // never stop before this many ms
+  const threshold    = options?.threshold   ?? 10    // lower = more sensitive
+  const silenceMs    = options?.silenceMs   ?? 2000  // ms quiet after speech → stop
+  const maxMs        = options?.maxMs       ?? 20000 // absolute max recording time
+  const minActiveMs  = options?.minActiveMs ?? 1500  // never stop before this many ms
 
   let stopped = false
-  let smoothLevel = 0                // exponential moving average of level
+  let level = 0
   let hasSpeech = false
   let silenceStart = 0
   const startTime = Date.now()
   let ctx: AudioContext | null = null
   let frame = 0
 
-  // Ambient calibration state
-  let calibrating = true
-  const CALIBRATION_MS = 600         // how long to measure ambient noise
-  let ambientSamples: number[] = []
-  let effectiveThreshold = baseThreshold
-
-  // Speech debounce state — require N consecutive frames above threshold
-  const SPEECH_CONFIRM_FRAMES = 3
-  let consecutiveSpeechFrames = 0
+  // v22.2: Noise floor gating — measure ambient level in first 500ms
+  // and raise effective threshold above it (TV, AC, street noise)
+  let noiseFloor = 0
+  let noiseSamples: number[] = []
+  const NOISE_CALIBRATION_MS = 500
 
   // ── HARD SAFETY TIMER ──────────────────────────────────────────────────────
+  // This fires regardless of AudioContext state.  Guarantees onSilence is ALWAYS
+  // called eventually even if AudioContext stays suspended forever on iOS Safari.
   const hardTimer = setTimeout(() => {
     if (!stopped) { cleanup(); onSilence() }
-  }, maxMs + 2000)
+  }, maxMs + 1500)
 
   try {
     ctx = new AudioContext()
-    const source   = ctx.createMediaStreamSource(stream)
+    const source  = ctx.createMediaStreamSource(stream)
     const analyser = ctx.createAnalyser()
-    analyser.fftSize = 1024              // more frequency resolution for band-pass
-    analyser.smoothingTimeConstant = 0.3 // slight smoothing at analyser level
+    analyser.fftSize = 512
     source.connect(analyser)
-
-    const freqBins = analyser.frequencyBinCount
-    const freqBuf  = new Uint8Array(freqBins)
-    const sampleRate = ctx.sampleRate
-    const binHz = sampleRate / analyser.fftSize  // Hz per bin
-
-    // Pre-calculate which bins fall in human voice range (250Hz – 3500Hz)
-    const voiceLowBin  = Math.max(1, Math.floor(250 / binHz))
-    const voiceHighBin = Math.min(freqBins - 1, Math.ceil(3500 / binHz))
+    const buf = new Uint8Array(analyser.frequencyBinCount)
 
     const tick = () => {
       if (stopped) return
+      analyser.getByteTimeDomainData(buf)
+      let sum = 0
+      for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i]! - 128) / 128
+        sum += v * v
+      }
+      level = Math.min(100, Math.sqrt(sum / buf.length) * 300)
+
       const elapsed = Date.now() - startTime
 
-      // Use frequency-domain data for voice band energy
-      analyser.getByteFrequencyData(freqBuf)
-      let voiceEnergy = 0
-      let voiceBins = 0
-      for (let i = voiceLowBin; i <= voiceHighBin; i++) {
-        voiceEnergy += freqBuf[i]!
-        voiceBins++
-      }
-      const rawLevel = voiceBins > 0 ? (voiceEnergy / voiceBins) / 2.55 : 0  // normalize 0-100
-
-      // Exponential moving average (alpha=0.3 → responsive but smooth)
-      smoothLevel = smoothLevel * 0.7 + rawLevel * 0.3
-
-      // ── Phase 1: Ambient calibration (first 600ms) ──
-      if (calibrating) {
-        ambientSamples.push(rawLevel)
-        if (elapsed >= CALIBRATION_MS) {
-          calibrating = false
-          if (ambientSamples.length > 0) {
-            // Set threshold at ambient floor + base margin (never below baseThreshold)
-            const ambientAvg = ambientSamples.reduce((a, b) => a + b, 0) / ambientSamples.length
-            effectiveThreshold = Math.max(baseThreshold, ambientAvg + 12)
-          }
-        }
+      // v22.2: Calibrate noise floor from first 500ms of ambient audio
+      // Exclude frames that look like speech (above 30) to avoid inflating the floor
+      if (elapsed < NOISE_CALIBRATION_MS) {
+        if (level < 30) noiseSamples.push(level)
         frame = requestAnimationFrame(tick)
         return
+      } else if (noiseSamples.length > 0) {
+        // Calculate noise floor as median of samples + margin
+        noiseSamples.sort((a, b) => a - b)
+        const median = noiseSamples[Math.floor(noiseSamples.length / 2)] ?? 0
+        noiseFloor = median + 5 // 5-unit margin above ambient
+        noiseSamples = [] // clear — calibration done
+        console.log(`[SilenceDetector] Noise floor: ${noiseFloor.toFixed(1)}, effective threshold: ${Math.max(threshold, noiseFloor).toFixed(1)}`)
       }
 
-      // ── Phase 2: Voice activity detection ──
+      // Effective threshold = max(configured threshold, noise floor)
+      const effectiveThreshold = Math.max(threshold, noiseFloor)
+
+      // Only evaluate silence AFTER minActiveMs (prevents premature stops)
       if (elapsed >= minActiveMs) {
-        if (smoothLevel > effectiveThreshold) {
-          consecutiveSpeechFrames++
-          if (consecutiveSpeechFrames >= SPEECH_CONFIRM_FRAMES) {
-            hasSpeech = true
-          }
+        if (level > effectiveThreshold) {
+          hasSpeech = true
           silenceStart = 0
-        } else {
-          consecutiveSpeechFrames = 0
-          if (hasSpeech) {
-            if (!silenceStart) silenceStart = Date.now()
-            else if (Date.now() - silenceStart > silenceMs) {
-              cleanup(); onSilence(); return
-            }
+        } else if (hasSpeech) {
+          if (!silenceStart) silenceStart = Date.now()
+          else if (Date.now() - silenceStart > silenceMs) {
+            cleanup(); onSilence(); return
           }
         }
+        // Max time exceeded
         if (elapsed > maxMs) { cleanup(); onSilence(); return }
-      } else {
-        // Before minActiveMs: still track speech but don't evaluate silence
-        if (smoothLevel > effectiveThreshold) {
-          consecutiveSpeechFrames++
-          if (consecutiveSpeechFrames >= SPEECH_CONFIRM_FRAMES) hasSpeech = true
-        } else {
-          consecutiveSpeechFrames = 0
-        }
       }
 
       frame = requestAnimationFrame(tick)
@@ -638,8 +861,12 @@ export function createSilenceDetector(
     if (ctx.state === 'running') {
       frame = requestAnimationFrame(tick)
     } else {
+      // iOS Safari: ctx.resume() may never resolve outside a user gesture.
+      // We add a 1200 ms timeout so tick() starts even if the promise hangs.
       const resumeGuard = setTimeout(() => {
-        if (!stopped && frame === 0) frame = requestAnimationFrame(tick)
+        if (!stopped && frame === 0) {
+          frame = requestAnimationFrame(tick)
+        }
       }, 1200)
 
       ctx.resume().then(() => {
@@ -662,5 +889,5 @@ export function createSilenceDetector(
     ctx?.close().catch(() => {})
   }
 
-  return { stop: cleanup, getLevel: () => smoothLevel }
+  return { stop: cleanup, getLevel: () => level }
 }

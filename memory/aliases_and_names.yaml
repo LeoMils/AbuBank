@@ -1,0 +1,35 @@
+# Canonical Name → Aliases Lookup
+# Purpose: Prevent duplication, support reliable retrieval
+
+aliases:
+  Martita:    ["אבו", "Abu", "Abuela", "מרטיטה", "מרתה", "סבתא"]
+  Mor:        ["מור"]
+  Leo:        ["לאו"]
+  Raphi:      ["רפי"]
+  Ofir:       ["אופיר"]
+  Eylon:      ["אילון"]
+  Ilai:       ["עילי", "עילאי"]      # עילי is the correct spelling
+  Adar:       ["אדר"]
+  Adi:        ["עדי"]
+  Noam:       ["נועם"]
+  Yarden:     ["ירדן"]
+  Gilad:      ["גלעד"]
+  Papi:       ["פפי", "Pepe"]
+  Tutsi:      ["טוטסי", "טוצי"]
+  Mirta:      ["מירטה"]
+  Shoshana:   ["שושנה"]
+  Sharon:     ["שרון"]
+  Anabel:     ["אנאבל"]
+  Ari:        ["ארי"]
+
+# Role-based lookups
+roles:
+  daughter:         ["Mor"]
+  son:              ["Leo"]
+  grandchildren:    ["Ofir", "Eylon", "Ilai", "Adar", "Adi", "Noam"]
+  great_grandchildren_parent: ["Ofir"]
+  deceased_spouse:  ["Papi"]
+  close_friends:    ["Mirta", "Shoshana"]
+  pet:              ["Tutsi"]
+  great_granddaughters: ["Anabel", "Ari"]  # Ofir & Yarden's daughters
+  leo_ex_close_friend:  ["Sharon"]          # Leo's ex, close with Martita

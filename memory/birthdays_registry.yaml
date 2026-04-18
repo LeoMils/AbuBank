@@ -1,0 +1,157 @@
+# Birthdays & Important Dates Registry
+# Source: User direct input, 2026-04-10
+# All dates confirmed by family member (Leo)
+# Format: MM-DD
+
+birthdays:
+  # ─── January ──────────────────────────────────
+  # (Papi memorial — see memorials section)
+
+  # ─── February ─────────────────────────────────
+  - person: "Ofir"
+    hebrew: "אופיר"
+    date: "02-15"               # 15 בפברואר
+    relationship: "grandson (Mor's son)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  - person: "Adar"
+    hebrew: "אדר"
+    date: "02-28"               # 28 בפברואר
+    relationship: "grandson (Mor's youngest)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  # ─── March ────────────────────────────────────
+  # (none)
+
+  # ─── April ────────────────────────────────────
+  - person: "Martita"
+    hebrew: "מרתה"
+    date: "04-01"               # 1 באפריל
+    relationship: "self — the matriarch"
+    confidence: confirmed
+    reminder: { days_before: [14, 7, 3, 1, 0] }
+    emotional_significance: very_high
+    notes: "Entire family celebrates"
+
+  - person: "Adi"
+    hebrew: "עדי"
+    date: "04-05"               # 5 באפריל
+    relationship: "granddaughter (Leo's daughter)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  - person: "Noam"
+    hebrew: "נועם"
+    date: "04-05"               # 5 באפריל — same day as Adi!
+    relationship: "grandson (Leo's son)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+    notes: "Shares birthday with Adi"
+
+  - person: "Ilai"
+    hebrew: "עילאי"
+    aliases: ["עילי"]
+    date: "04-08"               # 8 באפריל
+    relationship: "grandson (Mor's son)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  - person: "Papi"
+    hebrew: "פפי"
+    date: "04-19"               # 19 באפריל
+    relationship: "deceased husband"
+    confidence: confirmed
+    reminder: { days_before: [3, 1, 0], style: "warm, remembering with love 🕯️" }
+    notes: "Born 1941. Passed Jan 1, 2025. Birthday remembered with love."
+
+  # ─── July ─────────────────────────────────────
+  - person: "Raphi"
+    hebrew: "רפי"
+    date: "07-29"               # 29 ביולי
+    relationship: "son-in-law (Mor's husband)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  - person: "Eylon"
+    hebrew: "אילון"
+    date: "07-31"               # 31 ביולי
+    relationship: "grandson (Mor's son)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  # ─── August ───────────────────────────────────
+  - person: "Mor"
+    hebrew: "מור"
+    date: "08-10"               # 10 באוגוסט
+    relationship: "daughter"
+    confidence: confirmed
+    reminder: { days_before: [14, 7, 3, 1, 0] }
+    emotional_significance: high
+
+  - person: "Leo"
+    hebrew: "לאו"
+    date: "08-22"               # 22 באוגוסט
+    relationship: "son"
+    confidence: confirmed
+    reminder: { days_before: [14, 7, 3, 1, 0] }
+    emotional_significance: high
+
+  # ─── September ────────────────────────────────
+  - person: "Sharon"
+    hebrew: "שרון"
+    date: "09-11"               # 11 בספטמבר
+    relationship: "Leo's ex-girlfriend, close with Martita"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  # ─── October ──────────────────────────────────
+  - person: "Anabel"
+    hebrew: "אנאבל"
+    date: "10-01"               # 1 באוקטובר
+    relationship: "great-granddaughter (Ofir & Yarden's daughter)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  - person: "Yarden"
+    hebrew: "ירדן"
+    date: "10-12"               # 12 באוקטובר
+    relationship: "granddaughter-in-law (Ofir's wife)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+
+  # ─── November ─────────────────────────────────
+  - person: "Ari"
+    hebrew: "ארי"
+    date: "11-26"               # 26 בנובמבר
+    relationship: "great-granddaughter (Ofir & Yarden's daughter)"
+    confidence: confirmed
+    reminder: { days_before: [7, 3, 1, 0] }
+    notes: "Sister of Anabel"
+
+memorials:
+  - person: "Papi"
+    hebrew: "פפי"
+    aliases: ["Pepe"]
+    relationship: "husband"
+    birthday: "04-19"
+    birth_year: 1941
+    date_of_passing: "2025-01-01"
+    memorial_date: "01-01"          # 1 בינואר — יום הזיכרון
+    memorial_emoji: "🕯️"
+    confidence: confirmed
+    source: "user direct input 2026-04-10"
+    reminder:
+      birthday: { days_before: [3, 1, 0], style: "warm, remembering with love" }
+      memorial: { days_before: [7, 3, 1, 0], style: "gentle, respectful, loving 🕯️" }
+    emotional_significance: very_high
+
+recurring_events:
+  - name: "Friday dinner"
+    recurrence: "weekly"
+    day: "Friday"
+    significance: "Most important weekly family event"
+
+# TOTAL: 15 birthdays + 1 memorial
+# 3 new names (Sharon, Anabel, Ari) — relationships need clarification from user

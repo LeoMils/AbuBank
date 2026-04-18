@@ -233,6 +233,10 @@ export function Settings() {
     setLocContacts(updated); saveLocContacts(updated)
   }
 
+  // Voice settings (v20: reactive state instead of raw localStorage reads)
+  const [voiceLang, setVoiceLang] = useState(() => localStorage.getItem('abu-voice-lang') || 'auto')
+  const [voiceSpeed, setVoiceSpeed] = useState(() => parseFloat(localStorage.getItem('abu-voice-speed') || '0.88'))
+
   // Location map
   const [locStatus, setLocStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
 
@@ -520,7 +524,68 @@ export function Settings() {
       ),
     },
 
-    // ── 5. About ──────────────────────────────────────────────
+    // ── 5. Voice / שיחה קולית ────────────────────────────────
+    {
+      id: 'voice',
+      icon: '🎤',
+      color: TEAL,
+      label: 'שיחה קולית',
+      desc: 'שפה, קול ומהירות דיבור',
+      content: (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Language */}
+          <div style={{ direction: 'rtl' }}>
+            <div style={sectionLabel}>שפת דיבור</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              {(['auto', 'he', 'es'] as const).map(lang => {
+                const isActive = voiceLang === lang
+                const label = lang === 'auto' ? 'אוטומטי' : lang === 'he' ? 'עברית' : 'ספרדית'
+                return (
+                  <button key={lang} onClick={() => { localStorage.setItem('abu-voice-lang', lang); setVoiceLang(lang) }}
+                    style={{
+                      flex: 1, padding: '10px 0', borderRadius: 10,
+                      background: isActive ? 'rgba(20,184,166,0.20)' : 'rgba(255,255,255,0.05)',
+                      border: isActive ? '1.5px solid rgba(20,184,166,0.50)' : '1px solid rgba(255,255,255,0.12)',
+                      color: isActive ? '#2DD4BF' : 'rgba(255,255,255,0.65)',
+                      fontSize: 14, fontWeight: isActive ? 700 : 400,
+                      fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
+                    }}>{label}</button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Speed */}
+          <div style={{ direction: 'rtl' }}>
+            <div style={sectionLabel}>מהירות דיבור</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              {([0.80, 0.88, 0.95] as const).map(speed => {
+                const isActive = Math.abs(voiceSpeed - speed) < 0.02
+                const label = speed === 0.80 ? 'איטי' : speed === 0.88 ? 'רגיל' : 'מהיר'
+                return (
+                  <button key={speed} onClick={() => { localStorage.setItem('abu-voice-speed', String(speed)); setVoiceSpeed(speed) }}
+                    style={{
+                      flex: 1, padding: '10px 0', borderRadius: 10,
+                      background: isActive ? 'rgba(20,184,166,0.20)' : 'rgba(255,255,255,0.05)',
+                      border: isActive ? '1.5px solid rgba(20,184,166,0.50)' : '1px solid rgba(255,255,255,0.12)',
+                      color: isActive ? '#2DD4BF' : 'rgba(255,255,255,0.65)',
+                      fontSize: 14, fontWeight: isActive ? 700 : 400,
+                      fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
+                    }}>{label}</button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Info text */}
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'right', direction: 'rtl', lineHeight: 1.5 }}>
+            💡 השפה מזוהה אוטומטית לפי מה שאת מדברת. אפשר לשנות ידנית.
+          </div>
+        </div>
+      ),
+    },
+
+    // ── 6. About ──────────────────────────────────────────────
     {
       id: 'about',
       icon: '⭐',

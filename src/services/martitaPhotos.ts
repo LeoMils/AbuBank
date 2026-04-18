@@ -29,7 +29,23 @@ const PHOTOS = [
   '/martita/Martita%2026.JPG',
 ]
 
+const FAMILY_PHOTOS = [
+  '/family/family1.jpg',
+  '/family/family2.jpg',
+  '/family/family3.jpg',
+]
+
 const FALLBACK = '/martita.jpg'
+
+/** Returns all Martita photos for gallery */
+export function getAllMartitaPhotos(): string[] {
+  return [...PHOTOS]
+}
+
+/** Returns all family photos for gallery */
+export function getAllFamilyPhotos(): string[] {
+  return [...FAMILY_PHOTOS]
+}
 
 /** Returns a random Martita photo path */
 export function getRandomMartitaPhoto(): string {
