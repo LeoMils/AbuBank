@@ -19,6 +19,7 @@ import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 import { InfoButton } from '../../components/InfoButton'
+import { BackButton } from '../../components/BackButton'
 
 const GOLD = '#C9A84C'
 const BRIGHT_GOLD = '#D4A853'
@@ -722,26 +723,8 @@ export function AbuCalendar() {
         borderBottom: '1px solid rgba(201,168,76,0.20)',
         boxShadow: 'inset 0 1px 0 rgba(255,250,240,0.04), 0 4px 20px rgba(0,0,0,0.40)',
       } as React.CSSProperties}>
-        {/* Back button — glass pill */}
-        <button
-          type="button"
-          onClick={() => setScreen(Screen.Home)}
-          aria-label="חזרה לדף הבית"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-            width: 56, height: 44,
-            background: 'rgba(255,250,240,0.04)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(201,168,76,0.18)',
-            borderRadius: 22,
-            color: 'rgba(245,240,232,0.70)',
-            fontSize: 14, fontWeight: 600, fontFamily: "'Heebo',sans-serif",
-            cursor: 'pointer', flexShrink: 0,
-          } as React.CSSProperties}
-        >
-          <span style={{ fontSize: 20, lineHeight: 1 }}>›</span>
-          <span style={{ fontSize: 13 }}>חזרה</span>
-        </button>
+        {/* Back button */}
+        <BackButton />
 
         {/* Center wordmark */}
         <div style={{
@@ -1222,6 +1205,7 @@ export function AbuCalendar() {
           to   { opacity: 1; transform: translateY(0);     }
         }
       `}</style>
+      <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
     </div>
   )
 }

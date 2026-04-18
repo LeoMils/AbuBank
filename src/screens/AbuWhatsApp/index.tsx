@@ -9,6 +9,7 @@ import { soundTap, soundSuccess, soundSend, soundCopy } from '../../services/sou
 import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
 import { GRADIENT_TEAL } from '../../design/gradients'
+import { BackButton } from '../../components/BackButton'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -645,30 +646,9 @@ export function AbuWhatsApp() {
           </div>
 
           {/* Back button — right */}
-          <button
-            type="button"
-            onClick={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }}
-            aria-label="חזרה לדף הבית"
-            style={{
-              position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 46, height: 46, borderRadius: 14,
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
-              cursor: 'pointer',
-              WebkitTapHighlightColor: 'transparent',
-              transition: 'background 0.1s',
-            }}
-            onPointerDown={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)' }}
-            onPointerUp={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
-            onPointerLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
-          >
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
-              stroke="rgba(255,255,255,0.60)" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
+          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
+            <BackButton onPress={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }} />
+          </div>
 
           <InfoButton
             title="Abu הודעות"
@@ -1423,6 +1403,7 @@ export function AbuWhatsApp() {
         @keyframes slideUpIn  { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
         @keyframes headerSlide{ from{opacity:0;transform:translateY(-10px);} to{opacity:1;transform:translateY(0);} }
       `}</style>
+      <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
     </div>
   )
 }

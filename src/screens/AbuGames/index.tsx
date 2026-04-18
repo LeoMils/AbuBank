@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
+import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap } from '../../services/sounds'
 import { InfoButton } from '../../components/InfoButton'
@@ -540,30 +541,9 @@ export function AbuGames() {
           </div>
 
           {/* Back button */}
-          <button
-            type="button"
-            onClick={() => setScreen(Screen.Home)}
-            aria-label="חזרה לדף הבית"
-            style={{
-              position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-              display: 'flex', alignItems: 'center', gap: 4,
-              padding: '7px 14px', borderRadius: 22,
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              cursor: 'pointer',
-              WebkitTapHighlightColor: 'transparent',
-              transition: 'background 0.1s',
-            }}
-            onPointerDown={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.10)' }}
-            onPointerUp={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-            onPointerLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-          >
-            <ChevronLeft />
-            <span style={{
-              fontSize: 13, color: 'rgba(255,255,255,0.55)',
-              fontFamily: "'Heebo',sans-serif",
-            }}>חזרה</span>
-          </button>
+          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
+            <BackButton />
+          </div>
 
           <InfoButton
             title="Abu Games"
@@ -629,6 +609,7 @@ export function AbuGames() {
           baseDelay={0.55}
         />
       </div>
+      <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
     </div>
   )
 }

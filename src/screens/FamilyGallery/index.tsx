@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
+import { BackButton } from '../../components/BackButton'
 import { FAMILY_GALLERY_ITEMS, handleFamilyImgError } from '../../services/familyPhotos'
 import type { FamilyMediaItem } from '../../services/familyPhotos'
 
@@ -95,7 +96,7 @@ function PhotoCard({ item, index, onInfo }: { item: FamilyMediaItem; index: numb
         onClick={(e) => { e.stopPropagation(); onInfo() }}
         style={{
           position: 'absolute', top: 8, left: 8,
-          width: 28, height: 28, borderRadius: '50%',
+          width: 48, height: 48, borderRadius: '50%',
           background: 'rgba(0,0,0,0.50)',
           border: '1.5px solid rgba(201,168,76,0.50)',
           color: GOLD,
@@ -330,29 +331,9 @@ export function FamilyGallery() {
           </h1>
 
           {/* Back button */}
-          <button
-            type="button"
-            aria-label="חזרה לדף הבית"
-            onClick={handleBack}
-            style={{
-              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-              display: 'flex', alignItems: 'center', gap: 4,
-              padding: '7px 14px 7px 10px',
-              borderRadius: 20,
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              color: 'rgba(255,255,255,0.75)',
-              fontSize: 14, fontWeight: 500,
-              fontFamily: "'Heebo',sans-serif",
-              cursor: 'pointer',
-              transition: 'background 0.15s ease',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            <span>חזרה</span>
-          </button>
+          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
+            <BackButton />
+          </div>
         </div>
       </header>
 
@@ -397,6 +378,7 @@ export function FamilyGallery() {
           onClose={() => setInfoIdx(null)}
         />
       )}
+      <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
     </div>
   )
 }

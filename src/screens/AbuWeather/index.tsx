@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
+import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import {
   fetchWeather,
@@ -594,17 +595,7 @@ export function AbuWeather() {
             padding: '16px 16px 8px',
             gap:8,
           }}>
-            <button onClick={() => setScreen(Screen.Home)} style={{
-              background:'rgba(0,0,0,0.25)',
-              border:'1px solid rgba(255,255,255,0.18)',
-              borderRadius:12, padding:'8px 14px',
-              color:'rgba(255,255,255,0.85)', fontSize:13,
-              fontFamily:"'Heebo',sans-serif", cursor:'pointer',
-              backdropFilter:'blur(8px)', whiteSpace:'nowrap',
-              flexShrink:0,
-            }}>
-              ← חזרה
-            </button>
+            <BackButton />
 
             {/* Martita portrait */}
             <div style={{
@@ -823,6 +814,7 @@ export function AbuWeather() {
 
         </div>
       </div>
+      <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
     </>
   )
 }

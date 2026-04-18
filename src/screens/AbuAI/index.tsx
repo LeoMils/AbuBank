@@ -8,6 +8,7 @@ import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
 import { GRADIENT_GOLD } from '../../design/gradients'
+import { BackButton } from '../../components/BackButton'
 
 // ─── Color tokens ────────────────────────────────────────────────────────────
 const GOLD            = '#C9A84C'
@@ -657,41 +658,9 @@ export function AbuAI() {
           </div>
 
           {/* RIGHT (RTL): Back button */}
-          <button
-            type="button"
-            onClick={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }}
-            aria-label="חזרה לדף הבית"
-            style={{
-              position: 'absolute',
-              right: 10,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: 56,
-              height: 56,
-              minHeight: 44,
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 2,
-              WebkitTapHighlightColor: 'transparent',
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-              stroke="rgba(245,240,232,0.80)" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-            <span style={{
-              fontSize: 12,
-              color: 'rgba(245,240,232,0.55)',
-              fontFamily: "'Heebo',sans-serif",
-              fontWeight: 500,
-              lineHeight: 1,
-            }}>חזרה</span>
-          </button>
+          <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
+            <BackButton onPress={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }} />
+          </div>
 
           <InfoButton
             title="אבו AI — MartitAI"

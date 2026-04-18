@@ -72,6 +72,7 @@ export function Home() {
   const [locPicker, setLocPicker] = useState(false);
   const [locCoords, setLocCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locToast,  setLocToast]  = useState(false);
+  const [locError,  setLocError]  = useState(false);
 
   const sendLocationTo = useCallback((phone: string, lat?: number, lng?: number) => {
     const link = lat && lng
@@ -89,7 +90,7 @@ export function Home() {
       if (!navigator.geolocation) { cb(); return }
       navigator.geolocation.getCurrentPosition(
         p => cb(p.coords.latitude, p.coords.longitude),
-        ()  => cb(),
+        ()  => { setLocError(true); setTimeout(() => setLocError(false), 4000); cb() },
         { timeout: 6000, maximumAge: 300000, enableHighAccuracy: false }
       )
     }
@@ -483,6 +484,24 @@ export function Home() {
         </div>
       )}
 
+      {/* ─── LOCATION ERROR TOAST ─── */}
+      {locError && (
+        <div style={{
+          position: 'absolute', bottom: 110, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 60, pointerEvents: 'none',
+          background: 'rgba(239,68,68,0.15)',
+          border: '1px solid rgba(239,68,68,0.40)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: 16, padding: '12px 22px',
+          color: 'rgba(255,255,255,0.95)', fontSize: 15, fontWeight: 600,
+          fontFamily: "'Heebo',sans-serif", direction: 'rtl',
+          whiteSpace: 'nowrap', textAlign: 'center',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
+        }}>
+          לא הצלחתי לקבל מיקום
+        </div>
+      )}
+
 
       {/* ─── ABU FAMILY FOOTER ─── */}
       <footer style={{
@@ -510,7 +529,7 @@ export function Home() {
             position: 'absolute', top: 4, right: 8,
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
             padding: '6px 8px', cursor: 'pointer', background: 'none', border: 'none',
-            minWidth: 44, minHeight: 52,
+            minWidth: 48, minHeight: 52,
           }}
         >
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
