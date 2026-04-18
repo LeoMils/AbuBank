@@ -24,11 +24,12 @@ interface InfoButtonProps {
   lines: string[]
   howTo: string[]
   position?: 'top-left' | 'top-right' | 'bottom-right'
+  positionStyle?: React.CSSProperties  // custom override for button placement
 }
 
 const TEAL = '#14b8a6'
 
-export function InfoButton({ title, lines, howTo, position = 'top-right' }: InfoButtonProps) {
+export function InfoButton({ title, lines, howTo, position = 'top-right', positionStyle }: InfoButtonProps) {
   const [open, setOpen] = useState(false)
   const [isReading, setIsReading] = useState(false)
 
@@ -45,8 +46,9 @@ export function InfoButton({ title, lines, howTo, position = 'top-right' }: Info
   // Inject pulse keyframe on mount
   useEffect(() => { injectInfoPulse() }, [])
 
-  // Position: avoid covering Martita photo — top-left maps to bottom-right (absolute)
-  const posStyle: React.CSSProperties = position === 'top-right'
+  const posStyle: React.CSSProperties = positionStyle
+    ? { position: 'absolute', zIndex: 30, ...positionStyle }
+    : position === 'top-right'
     ? { position: 'absolute', top: 14, right: 14, zIndex: 30 }
     : position === 'top-left'
     ? { position: 'absolute', bottom: 140, right: 16, zIndex: 30 }

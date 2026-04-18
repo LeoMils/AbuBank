@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
+import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 
 const TEAL = '#14b8a6'
@@ -316,7 +317,7 @@ export function Settings() {
           </button>
 
           {/* Tip */}
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', textAlign: 'right', direction: 'rtl', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'right', direction: 'rtl', lineHeight: 1.5 }}>
             💡 WhatsApp ייפתח עם ההודעה מוכנה — בחרי את קבוצת המשפחה ושלחי
           </div>
         </div>
@@ -362,7 +363,7 @@ export function Settings() {
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
                         <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.92)', fontFamily: "'Heebo',sans-serif" }}>{c.name}</div>
-                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: "'Heebo',sans-serif" }}>{c.relation} · {c.phone}</div>
+                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.58)', fontFamily: "'Heebo',sans-serif" }}>{c.relation} · {c.phone}</div>
                       </div>
                       {/* Actions */}
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -439,7 +440,7 @@ export function Settings() {
             }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.92)', fontFamily: "'Heebo',sans-serif" }}>{c.name}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', fontFamily: "'Heebo',sans-serif" }}>{c.phone}</div>
+                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.58)', fontFamily: "'Heebo',sans-serif" }}>{c.phone}</div>
               </div>
               <button onClick={() => deleteLocContact(c.id)} style={iconBtn('#ef4444')} title="הסירי">🗑️</button>
             </div>
@@ -475,7 +476,7 @@ export function Settings() {
           )}
 
           {locContacts.length > 0 && (
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', textAlign: 'right', direction: 'rtl', lineHeight: 1.6 }}>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'right', direction: 'rtl', lineHeight: 1.6 }}>
               💡 כשתלחצי על כפתור המיקום — WhatsApp ייפתח ישירות לאיש הקשר עם המיקום המדויק. רק לחצי שלח.
             </div>
           )}
@@ -577,7 +578,7 @@ export function Settings() {
           </div>
 
           {/* Info text */}
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', textAlign: 'right', direction: 'rtl', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'right', direction: 'rtl', lineHeight: 1.5 }}>
             💡 השפה מזוהה אוטומטית לפי מה שאת מדברת. אפשר לשנות ידנית.
           </div>
         </div>
@@ -622,17 +623,9 @@ export function Settings() {
         background: 'linear-gradient(180deg, rgba(14,22,44,1) 0%, rgba(5,10,24,1) 100%)',
         borderBottom: '1px solid rgba(201,168,76,0.18)',
       }}>
-        <button type="button" onClick={() => setScreen(Screen.Home)} aria-label="חזרה לדף הבית" style={{
-          position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: 40, height: 40, borderRadius: 10,
-          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-          cursor: 'pointer',
-        }}>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="rgba(255,255,255,0.60)" strokeWidth="2" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6"/>
-          </svg>
-        </button>
+        <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
+          <BackButton />
+        </div>
 
         <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, direction: 'ltr' }}>
           <span style={{
@@ -703,7 +696,7 @@ export function Settings() {
                   <div style={{ fontSize: 17, fontWeight: 600, color: 'rgba(255,255,255,0.94)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.3 }}>
                     {section.label}
                   </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.58)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
                     {section.desc}
                   </div>
                 </div>
@@ -724,6 +717,7 @@ export function Settings() {
           )
         })}
       </div>
+      <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
     </div>
   )
 }
@@ -752,7 +746,7 @@ function iconBtn(color: string): React.CSSProperties {
   const g = parseInt(h.substring(2,4),16)
   const b = parseInt(h.substring(4,6),16)
   return {
-    width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+    width: 48, height: 48, borderRadius: 12, flexShrink: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: `rgba(${r},${g},${b},0.12)`,
     border: `1px solid rgba(${r},${g},${b},0.22)`,
@@ -769,7 +763,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 const sectionLabel: React.CSSProperties = {
-  fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.38)',
+  fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.50)',
   letterSpacing: '0.8px', textAlign: 'right', direction: 'rtl',
   fontFamily: "'Heebo',sans-serif", textTransform: 'uppercase',
   padding: '2px 0',

@@ -223,8 +223,8 @@ function ManualModal({ onClose, onSave, defaultDate }: ManualModalProps) {
       date,
       time,
       emoji: detectEmoji(title.trim()),
+      notes: trimmedNotes || '',
     }
-    if (trimmedNotes) appt.notes = trimmedNotes
     onSave(appt)
   }
 
@@ -350,7 +350,7 @@ function ManualModal({ onClose, onSave, defaultDate }: ManualModalProps) {
 
         <div>
           <label style={{
-            fontSize: 12, fontWeight: 600, color: 'rgba(201,168,76,0.70)',
+            fontSize: 14, fontWeight: 600, color: 'rgba(201,168,76,0.82)',
             fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.05em',
             textTransform: 'uppercase', display: 'block', marginBottom: 10,
           }}>צבע</label>
@@ -1157,7 +1157,7 @@ export function AbuCalendar() {
               fontFamily: "'Heebo',sans-serif", fontWeight: 500,
             }}>יום פנוי ✨</span>
             <span style={{
-              color: 'rgba(245,240,232,0.30)', fontSize: 16,
+              color: 'rgba(245,240,232,0.50)', fontSize: 16,
               fontFamily: "'Heebo',sans-serif",
             }}>לחצי למטה להוסיף אירוע</span>
           </div>

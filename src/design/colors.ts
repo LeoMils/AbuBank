@@ -1,0 +1,25 @@
+export const GOLD = '#C9A84C'
+export const GOLD_BRIGHT = '#F0C060'
+export const TEAL = '#14b8a6'
+export const CREAM = '#F5F0E8'
+export const BG = '#0C0A08'
+export const BG_DEEP = '#050A18'
+
+export const TEXT_STRONG = 'rgba(245,240,232,0.95)'
+export const TEXT_MEDIUM = 'rgba(245,240,232,0.75)'
+export const TEXT_MUTED = 'rgba(245,240,232,0.55)'
+export const TEXT_FAINT = 'rgba(245,240,232,0.30)'
+
+export const GOLD_STRONG = 'rgba(201,168,76,0.95)'
+export const GOLD_MEDIUM = 'rgba(201,168,76,0.75)'
+export const GOLD_MUTED = 'rgba(201,168,76,0.55)'
+export const GOLD_FAINT = 'rgba(201,168,76,0.30)'
+export const GOLD_BORDER = 'rgba(201,168,76,0.18)'
+export const GOLD_BORDER_HOVER = 'rgba(201,168,76,0.35)'
+
+export const SURFACE = 'rgba(255,250,240,0.06)'
+export const SURFACE_HOVER = 'rgba(255,250,240,0.10)'
+
+export const SUCCESS = '#34D399'
+export const DANGER = '#EF4444'
+export const WARNING = '#FB923C'

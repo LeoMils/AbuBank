@@ -823,8 +823,9 @@ export function createSilenceDetector(
       const elapsed = Date.now() - startTime
 
       // v22.2: Calibrate noise floor from first 500ms of ambient audio
+      // Exclude frames that look like speech (above 30) to avoid inflating the floor
       if (elapsed < NOISE_CALIBRATION_MS) {
-        noiseSamples.push(level)
+        if (level < 30) noiseSamples.push(level)
         frame = requestAnimationFrame(tick)
         return
       } else if (noiseSamples.length > 0) {

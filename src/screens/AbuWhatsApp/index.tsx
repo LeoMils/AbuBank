@@ -2,12 +2,14 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { generateMessage, transcribeAudio, getSupportedMimeType } from './service'
-import { speak, speakVoiceMode, stopSpeaking, unlockIOSAudio } from '../../services/voice'
+import { speak, speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { getRandomFamilyPhoto, handleFamilyImgError } from '../../services/familyPhotos'
 import { soundTap, soundSuccess, soundSend, soundCopy } from '../../services/sounds'
 import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
+import { GRADIENT_TEAL } from '../../design/gradients'
+import { BackButton } from '../../components/BackButton'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -15,6 +17,19 @@ const WA_GREEN = '#25D366'
 
 const STYLES = ['מקורי', 'בדיחה', 'חידה', 'טריק'] as const
 type Style = typeof STYLES[number]
+
+const STYLE_CARD_BORDER: Record<Style, string> = {
+  'מקורי': 'rgba(20,184,166,0.40)',
+  'בדיחה': 'rgba(201,168,76,0.40)',
+  'חידה': 'rgba(167,139,250,0.40)',
+  'טריק': 'rgba(37,211,102,0.40)',
+}
+const STYLE_CARD_TOP: Record<Style, string> = {
+  'מקורי': '#14b8a6',
+  'בדיחה': '#C9A84C',
+  'חידה': '#A78BFA',
+  'טריק': '#25D366',
+}
 
 type Phase = 'idle' | 'recording' | 'transcribing' | 'generating' | 'result'
 
@@ -89,7 +104,6 @@ export function AbuWhatsApp() {
   const [voiceMode, setVoiceMode] = useState(false)
   const [voicePhase, setVoicePhase] = useState<'listening' | 'processing' | 'speaking' | null>(null)
   const [audioLevel, setAudioLevel] = useState(0)
-  const [listenCountdown, setListenCountdown] = useState<number | null>(null)
   const [copyToast, setCopyToast] = useState(false)
   const [isReading, setIsReading] = useState(false)
 
@@ -119,10 +133,21 @@ export function AbuWhatsApp() {
 
   useEffect(() => {
     return () => {
+      voiceModeRef.current = false
       if (timerRef.current) clearInterval(timerRef.current)
       if (levelRef.current) clearInterval(levelRef.current)
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
       silenceRef.current?.stop()
+      silenceRef.current = null
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.onresult = null
+          recognitionRef.current.onerror = null
+          recognitionRef.current.onend = null
+          recognitionRef.current.abort()
+        } catch {}
+        recognitionRef.current = null
+      }
       stopSpeaking()
     }
   }, [])
@@ -295,7 +320,6 @@ export function AbuWhatsApp() {
     }
     silenceRef.current?.stop()
     silenceRef.current = null
-    setListenCountdown(null)
     if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
@@ -320,7 +344,6 @@ export function AbuWhatsApp() {
     if (!voiceModeRef.current) return
     setVoicePhase('listening')
     setAudioLevel(0)
-    setListenCountdown(null)
 
     // ── Shared: process transcribed text → command logic → speak → listen ────
     const handleText = async (text: string) => {
@@ -378,7 +401,7 @@ export function AbuWhatsApp() {
         if (voiceModeRef.current) { await new Promise(r => setTimeout(r, 500)); if (voiceModeRef.current) startVoiceListening() }
       } else if (voiceModeRef.current) {
         setVoicePhase('speaking')
-        if (error) await speakVoiceMode(error)
+        await speakVoiceMode('סליחה, לא הצלחתי. נסי שוב.')
         await new Promise(r => setTimeout(r, 600))
         if (voiceModeRef.current) startVoiceListening()
       }
@@ -410,6 +433,7 @@ export function AbuWhatsApp() {
       rec.onerror = (e: any) => {
         recognitionRef.current = null
         if (e.error === 'not-allowed') {
+          setError('צריכה הרשאה למיקרופון. בדקי בהגדרות הדפדפן.')
           exitVoiceMode()
         } else {
           if (voiceModeRef.current) setTimeout(() => startVoiceListening(), 300)
@@ -484,24 +508,17 @@ export function AbuWhatsApp() {
 
         recorder.start(100)
 
-        let cdSec = 10
-        setListenCountdown(cdSec)
-        const cdInterval = setInterval(() => {
-          cdSec--
-          if (cdSec > 0) {
-            setListenCountdown(cdSec)
-          } else {
-            clearInterval(cdInterval)
-            setListenCountdown(null)
-            if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-          }
-        }, 1000)
-        silenceRef.current = {
-          stop: () => { clearInterval(cdInterval); setListenCountdown(null) },
-          getLevel: () => 0,
-        }
+        const detector = createSilenceDetector(stream, () => {
+          if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+        })
+        silenceRef.current = detector
+
+        levelRef.current = setInterval(() => {
+          setAudioLevel(detector.getLevel())
+        }, 80)
       } catch (err) {
         console.error('[AbuWhatsApp] getUserMedia error:', err)
+        setError('מיקרופון לא זמין. בדקי בהגדרות הדפדפן.')
         exitVoiceMode()
       }
     })()
@@ -607,7 +624,7 @@ export function AbuWhatsApp() {
             <span style={{
               fontFamily: "'Cormorant Garamond',Georgia,serif",
               fontSize: 31, fontWeight: 600, letterSpacing: '2px',
-              background: 'linear-gradient(135deg, #5EEAD4 0%, #2DD4BF 14%, #0D9488 28%, #5EEAD4 42%, #14B8A6 58%, #0F766E 74%, #5EEAD4 88%, #2DD4BF 100%)',
+              background: GRADIENT_TEAL,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -626,30 +643,9 @@ export function AbuWhatsApp() {
           </div>
 
           {/* Back button — right */}
-          <button
-            type="button"
-            onClick={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }}
-            aria-label="חזרה לדף הבית"
-            style={{
-              position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 46, height: 46, borderRadius: 14,
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
-              cursor: 'pointer',
-              WebkitTapHighlightColor: 'transparent',
-              transition: 'background 0.1s',
-            }}
-            onPointerDown={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)' }}
-            onPointerUp={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
-            onPointerLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
-          >
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
-              stroke="rgba(255,255,255,0.60)" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
+          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
+            <BackButton onPress={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }} />
+          </div>
 
         </div>
       </header>
@@ -948,8 +944,8 @@ export function AbuWhatsApp() {
               background: 'rgba(10,18,36,0.72)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
-              border: `1.5px solid rgba(201,168,76,0.35)`,
-              borderTop: `3px solid ${GOLD}`,
+              border: `1.5px solid ${STYLE_CARD_BORDER[activeStyle]}`,
+              borderTop: `3px solid ${STYLE_CARD_TOP[activeStyle]}`,
               boxShadow: [
                 '0 10px 40px rgba(0,0,0,0.38)',
                 'inset 0 1px 0 rgba(255,255,255,0.06)',
@@ -957,10 +953,10 @@ export function AbuWhatsApp() {
               ].join(', '),
               animation: 'slideUpIn 0.35s ease both',
             }}>
-              {/* Gold top border glow */}
+              {/* Top border glow */}
               <div aria-hidden="true" style={{
                 height: 1,
-                background: `linear-gradient(90deg, transparent, rgba(201,168,76,0.50), transparent)`,
+                background: `linear-gradient(90deg, transparent, ${STYLE_CARD_BORDER[activeStyle]}, transparent)`,
                 marginBottom: 18,
                 borderRadius: 1,
               }} />
@@ -1349,7 +1345,7 @@ export function AbuWhatsApp() {
             textAlign: 'center',
           }}>
             {voicePhase === 'listening'
-              ? (listenCountdown !== null ? `מקשיבה... ${listenCountdown}` : 'מקשיבה...')
+              ? 'מקשיבה...'
               : voicePhase === 'processing' ? 'מכינה הודעה...'
               : voicePhase === 'speaking' ? 'מקריאה...'
               : 'מתחברת...'}
@@ -1405,6 +1401,7 @@ export function AbuWhatsApp() {
         @keyframes slideUpIn  { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
         @keyframes headerSlide{ from{opacity:0;transform:translateY(-10px);} to{opacity:1;transform:translateY(0);} }
       `}</style>
+      <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
     </div>
   )
 }

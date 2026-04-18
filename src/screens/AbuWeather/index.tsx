@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
+import { BackButton } from '../../components/BackButton'
+import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import {
   fetchWeather,
   codeToMood,
@@ -419,6 +421,7 @@ function getTimeGreeting(): string {
 
 export function AbuWeather() {
   const setScreen = useAppStore(s => s.setScreen)
+  const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
 
   const [data,    setData]    = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -592,17 +595,25 @@ export function AbuWeather() {
             padding: '16px 16px 8px',
             gap:8,
           }}>
-            <button onClick={() => setScreen(Screen.Home)} style={{
-              background:'rgba(0,0,0,0.25)',
-              border:'1px solid rgba(255,255,255,0.18)',
-              borderRadius:12, padding:'8px 14px',
-              color:'rgba(255,255,255,0.85)', fontSize:13,
-              fontFamily:"'Heebo',sans-serif", cursor:'pointer',
-              backdropFilter:'blur(8px)', whiteSpace:'nowrap',
-              flexShrink:0,
+            <BackButton />
+
+            {/* Martita portrait */}
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,0.25)',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
+              overflow: 'hidden',
+              background: 'rgba(0,0,0,0.3)',
+              flexShrink: 0,
             }}>
-              ← חזרה
-            </button>
+              <img
+                src={martitaPhoto}
+                alt="Martita"
+                loading="eager"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
+                onError={handleMartitaImgError}
+              />
+            </div>
 
             {/* Day tabs */}
             <div style={{
@@ -803,6 +814,7 @@ export function AbuWeather() {
 
         </div>
       </div>
+      <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
     </>
   )
 }

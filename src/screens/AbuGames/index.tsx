@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
+import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap } from '../../services/sounds'
 import { InfoButton } from '../../components/InfoButton'
@@ -36,6 +37,17 @@ const GAMES: Game[] = [
   { id: 'mahjong-3d',      label: 'Dimensiones',  labelHe: 'תלת-מימד',       accent: '#8b5cf6', category: 'mahjong',   emoji: '🧊', url: 'https://www.arkadium.com/games/mahjongg-dimensions/' },
 ]
 
+/* ─── FEATURED GAME ─── */
+const WOW_GAME: Game = {
+  id: 'wow-solitaire',
+  label: 'WOW Solitaire',
+  labelHe: 'WOW סוליטר',
+  url: 'https://worldofsolitaire.com/',
+  accent: '#C9A84C',
+  category: 'solitaire',
+  emoji: '👑',
+}
+
 const SOLITAIRE_GAMES = GAMES.filter(g => g.category === 'solitaire')
 const MAHJONG_GAMES   = GAMES.filter(g => g.category === 'mahjong')
 
@@ -49,16 +61,6 @@ function handleTap(url: string): void {
   navTimer = setTimeout(() => { isNavigating = false }, 800)
   soundTap()
   window.location.href = url
-}
-
-/* ─── Back arrow ─── */
-function ChevronLeft() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-      stroke="rgba(255,255,255,0.65)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15 18l-6-6 6-6"/>
-    </svg>
-  )
 }
 
 /* ─── Game Card (160×200) ─── */
@@ -157,6 +159,129 @@ function GameCard({
         flexShrink: 0,
         borderRadius: '0 0 14px 14px',
       }} />
+    </div>
+  )
+}
+
+/* ─── Featured Game Card (full-width hero) ─── */
+function FeaturedGameCard({
+  game, pressKey, onPress, onRelease,
+}: {
+  game: Game
+  pressKey: string | null
+  onPress: (k: string) => void
+  onRelease: () => void
+}) {
+  const isP = pressKey === game.id
+
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'center',
+      animation: 'cardIn 0.45s cubic-bezier(0.34,1.20,0.64,1) 0s both',
+    }}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={game.labelHe}
+        onClick={() => handleTap(game.url)}
+        onPointerDown={() => onPress(game.id)}
+        onPointerUp={onRelease}
+        onPointerLeave={onRelease}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(game.url) } }}
+        style={{
+          width: '100%',
+          maxWidth: 336,
+          height: 220,
+          borderRadius: 20,
+          background: isP
+            ? 'linear-gradient(145deg, rgba(201,168,76,0.18) 0%, rgba(255,255,255,0.10) 100%)'
+            : 'linear-gradient(145deg, rgba(201,168,76,0.10) 0%, rgba(255,255,255,0.06) 100%)',
+          border: isP
+            ? '2px solid rgba(201,168,76,0.75)'
+            : '1.5px solid rgba(201,168,76,0.30)',
+          boxShadow: isP
+            ? '0 4px 24px rgba(201,168,76,0.28), inset 0 0 0 1px rgba(201,168,76,0.15)'
+            : '0 8px 32px rgba(0,0,0,0.50), 0 0 0 1px rgba(201,168,76,0.08), inset 0 1px 0 rgba(255,255,255,0.06)',
+          transform: isP ? 'scale(0.97)' : 'scale(1)',
+          transition: 'transform 0.12s ease-out, box-shadow 0.12s ease-out, border-color 0.12s, background 0.12s',
+          cursor: 'pointer',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
+          overflow: 'hidden',
+          position: 'relative',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        {/* Top glass shimmer */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: 80,
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%)',
+          borderRadius: '20px 20px 0 0',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Corner gold accents */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', top: 12, right: 16,
+          fontSize: 18, opacity: 0.15, userSelect: 'none',
+        }}>♠ ♥ ♦ ♣</div>
+        <div aria-hidden="true" style={{
+          position: 'absolute', bottom: 16, left: 16,
+          fontSize: 18, opacity: 0.15, userSelect: 'none',
+        }}>♣ ♦ ♥ ♠</div>
+
+        {/* Large emoji icon */}
+        <div style={{
+          fontSize: 72,
+          lineHeight: 1,
+          filter: isP ? 'brightness(1.15)' : 'drop-shadow(0 4px 12px rgba(201,168,76,0.3))',
+          transition: 'filter 0.12s',
+          userSelect: 'none',
+        }}>
+          {game.emoji}
+        </div>
+
+        {/* WOW title */}
+        <div style={{
+          fontSize: 28,
+          fontWeight: 800,
+          fontFamily: "'Heebo','DM Sans',sans-serif",
+          background: 'linear-gradient(135deg, #FDE68A 0%, #F59E0B 25%, #D97706 50%, #C9A84C 75%, #FDE68A 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          letterSpacing: '1.5px',
+          textAlign: 'center',
+          direction: 'rtl',
+          filter: 'drop-shadow(0 0 10px rgba(201,168,76,0.35))',
+        } as React.CSSProperties}>
+          {game.labelHe}
+        </div>
+
+        {/* Subtitle */}
+        <div style={{
+          fontSize: 14,
+          color: 'rgba(255,255,255,0.45)',
+          fontFamily: "'Heebo',sans-serif",
+          letterSpacing: '0.5px',
+          direction: 'rtl',
+        }}>
+          עולם הסוליטר
+        </div>
+
+        {/* Bottom gold accent bar */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          height: 6,
+          background: 'linear-gradient(90deg, transparent 0%, #C9A84C 30%, #FDE68A 50%, #C9A84C 70%, transparent 100%)',
+          opacity: isP ? 1 : 0.6,
+          transition: 'opacity 0.12s',
+          borderRadius: '0 0 18px 18px',
+        }} />
+      </div>
     </div>
   )
 }
@@ -409,31 +534,16 @@ export function AbuGames() {
           </div>
 
           {/* Back button */}
-          <button
-            type="button"
-            onClick={() => setScreen(Screen.Home)}
-            aria-label="חזרה לדף הבית"
-            style={{
-              position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-              display: 'flex', alignItems: 'center', gap: 4,
-              padding: '7px 14px', borderRadius: 22,
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              cursor: 'pointer',
-              WebkitTapHighlightColor: 'transparent',
-              transition: 'background 0.1s',
-            }}
-            onPointerDown={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.10)' }}
-            onPointerUp={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-            onPointerLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-          >
-            <ChevronLeft />
-            <span style={{
-              fontSize: 13, color: 'rgba(255,255,255,0.55)',
-              fontFamily: "'Heebo',sans-serif",
-            }}>חזרה</span>
-          </button>
+          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
+            <BackButton />
+          </div>
 
+          <InfoButton
+            title="Abu Games"
+            lines={['משחקי קלפים וסוליטר — 15 משחקים שונים.', "סוליטר, עכביש, מהג'ונג ועוד."]}
+            howTo={['לחצי על כרטיס המשחק הרצוי', 'המשחק נפתח בדפדפן', 'לחצי חזרה לחזור לתפריט']}
+            positionStyle={{ left: 80, top: 6 }}
+          />
         </div>
       </header>
 
@@ -616,6 +726,7 @@ export function AbuGames() {
           baseDelay={0.55}
         />
       </div>
+      <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
     </div>
   )
 }

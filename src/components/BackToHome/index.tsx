@@ -1,3 +1,5 @@
+// Deprecated: use BackButton from src/components/BackButton instead.
+// Kept only for Admin screen (v16 — remove in v17).
 import { House } from '@phosphor-icons/react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
