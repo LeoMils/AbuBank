@@ -251,7 +251,7 @@ function ManualModal({ onClose, onSave, defaultDate, editing }: ManualModalProps
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{
-              fontSize: 12, fontWeight: 600, color: 'rgba(201,168,76,0.70)',
+              fontSize: 14, fontWeight: 600, color: 'rgba(201,168,76,0.82)',
               fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.05em', textTransform: 'uppercase',
             }}>תאריך</label>
             <input
@@ -269,7 +269,7 @@ function ManualModal({ onClose, onSave, defaultDate, editing }: ManualModalProps
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{
-              fontSize: 12, fontWeight: 600, color: 'rgba(201,168,76,0.70)',
+              fontSize: 14, fontWeight: 600, color: 'rgba(201,168,76,0.82)',
               fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.05em', textTransform: 'uppercase',
             }}>שעה</label>
             <input
@@ -289,7 +289,7 @@ function ManualModal({ onClose, onSave, defaultDate, editing }: ManualModalProps
 
         <div>
           <label style={{
-            fontSize: 12, fontWeight: 600, color: 'rgba(201,168,76,0.70)',
+            fontSize: 14, fontWeight: 600, color: 'rgba(201,168,76,0.82)',
             fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.05em',
             textTransform: 'uppercase', display: 'block', marginBottom: 10,
           }}>צבע</label>
@@ -935,7 +935,7 @@ export function AbuCalendar() {
         {selectedAppts.length === 0 ? (
           <div style={{
             textAlign: 'center', padding: '28px 0',
-            color: 'rgba(201,168,76,0.35)', fontSize: 15,
+            color: 'rgba(201,168,76,0.58)', fontSize: 16,
             fontFamily: "'Heebo',sans-serif", fontStyle: 'italic',
           }}>אין אירועים היום</div>
         ) : (

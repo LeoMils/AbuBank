@@ -313,7 +313,7 @@ export function Settings() {
           </button>
 
           {/* Tip */}
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', textAlign: 'right', direction: 'rtl', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'right', direction: 'rtl', lineHeight: 1.5 }}>
             💡 WhatsApp ייפתח עם ההודעה מוכנה — בחרי את קבוצת המשפחה ושלחי
           </div>
         </div>
@@ -359,7 +359,7 @@ export function Settings() {
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
                         <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.92)', fontFamily: "'Heebo',sans-serif" }}>{c.name}</div>
-                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: "'Heebo',sans-serif" }}>{c.relation} · {c.phone}</div>
+                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.58)', fontFamily: "'Heebo',sans-serif" }}>{c.relation} · {c.phone}</div>
                       </div>
                       {/* Actions */}
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -436,7 +436,7 @@ export function Settings() {
             }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.92)', fontFamily: "'Heebo',sans-serif" }}>{c.name}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', fontFamily: "'Heebo',sans-serif" }}>{c.phone}</div>
+                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.58)', fontFamily: "'Heebo',sans-serif" }}>{c.phone}</div>
               </div>
               <button onClick={() => deleteLocContact(c.id)} style={iconBtn('#ef4444')} title="הסירי">🗑️</button>
             </div>
@@ -472,7 +472,7 @@ export function Settings() {
           )}
 
           {locContacts.length > 0 && (
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', textAlign: 'right', direction: 'rtl', lineHeight: 1.6 }}>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'right', direction: 'rtl', lineHeight: 1.6 }}>
               💡 כשתלחצי על כפתור המיקום — WhatsApp ייפתח ישירות לאיש הקשר עם המיקום המדויק. רק לחצי שלח.
             </div>
           )}
@@ -631,7 +631,7 @@ export function Settings() {
                   <div style={{ fontSize: 17, fontWeight: 600, color: 'rgba(255,255,255,0.94)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.3 }}>
                     {section.label}
                   </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.58)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
                     {section.desc}
                   </div>
                 </div>
@@ -698,7 +698,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 const sectionLabel: React.CSSProperties = {
-  fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.38)',
+  fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.50)',
   letterSpacing: '0.8px', textAlign: 'right', direction: 'rtl',
   fontFamily: "'Heebo',sans-serif", textTransform: 'uppercase',
   padding: '2px 0',
