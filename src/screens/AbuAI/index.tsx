@@ -12,16 +12,11 @@ import { BackButton } from '../../components/BackButton'
 
 // ─── Color tokens ────────────────────────────────────────────────────────────
 const GOLD            = '#C9A84C'
-const GOLD_BRIGHT     = '#F0C060'  // for highlights and active states
 const BG              = '#0C0A08'
 const SURFACE         = 'rgba(255,250,240,0.06)'
-const BORDER          = 'rgba(201,168,76,0.14)'
 const TEXT            = '#F5F0E8'
 const TEXT_MUTED      = 'rgba(245,240,232,0.48)'
 
-// suppress unused lint
-void BORDER
-void GOLD_BRIGHT
 
 let msgCounter = 0
 function nextId(): string {
@@ -671,17 +666,7 @@ export function AbuAI() {
         </div>
 
         {/* Version badge */}
-        <div style={{
-          position: 'absolute',
-          bottom: 5,
-          left: 10,
-          fontSize: 12,
-          fontWeight: 700,
-          letterSpacing: '1px',
-          color: 'rgba(201,168,76,0.45)',
-          fontFamily: "'DM Sans',monospace",
-          userSelect: 'none',
-        }}>v15.0</div>
+        <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
       </header>
 
       {/* ─────────────────────── CHAT AREA ─────────────────────── */}

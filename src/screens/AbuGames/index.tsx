@@ -62,16 +62,6 @@ function handleTap(url: string): void {
   window.location.href = url
 }
 
-/* ─── Back arrow ─── */
-function ChevronLeft() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-      stroke="rgba(255,255,255,0.65)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15 18l-6-6 6-6"/>
-    </svg>
-  )
-}
-
 /* ─── Game Card (160×200) ─── */
 function GameCard({
   game, pressKey, onPress, onRelease, delay, categoryAccent,

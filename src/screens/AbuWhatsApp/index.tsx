@@ -104,7 +104,6 @@ export function AbuWhatsApp() {
   const [voiceMode, setVoiceMode] = useState(false)
   const [voicePhase, setVoicePhase] = useState<'listening' | 'processing' | 'speaking' | null>(null)
   const [audioLevel, setAudioLevel] = useState(0)
-  const [listenCountdown, setListenCountdown] = useState<number | null>(null)
   const [copyToast, setCopyToast] = useState(false)
   const [isReading, setIsReading] = useState(false)
 
@@ -321,7 +320,6 @@ export function AbuWhatsApp() {
     }
     silenceRef.current?.stop()
     silenceRef.current = null
-    setListenCountdown(null)
     if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
@@ -346,7 +344,6 @@ export function AbuWhatsApp() {
     if (!voiceModeRef.current) return
     setVoicePhase('listening')
     setAudioLevel(0)
-    setListenCountdown(null)
 
     // ── Shared: process transcribed text → command logic → speak → listen ────
     const handleText = async (text: string) => {
@@ -1347,7 +1344,7 @@ export function AbuWhatsApp() {
             textAlign: 'center',
           }}>
             {voicePhase === 'listening'
-              ? (listenCountdown !== null ? `מקשיבה... ${listenCountdown}` : 'מקשיבה...')
+              ? 'מקשיבה...'
               : voicePhase === 'processing' ? 'מכינה הודעה...'
               : voicePhase === 'speaking' ? 'מקריאה...'
               : 'מתחברת...'}

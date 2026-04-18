@@ -34,7 +34,7 @@ function renderScreen(currentScreen: Screen): JSX.Element | null {
     case Screen.Admin:   return <Admin />
     case Screen.AbuAI:       return <ErrorBoundary><AbuAI /></ErrorBoundary>
     case Screen.AbuWhatsApp: return <ErrorBoundary><AbuWhatsApp /></ErrorBoundary>
-    case Screen.Settings:    return <Settings />
+    case Screen.Settings:    return <ErrorBoundary><Settings /></ErrorBoundary>
     case Screen.AbuGames:    return <ErrorBoundary><AbuGames /></ErrorBoundary>
     case Screen.AbuWeather:  return <ErrorBoundary><AbuWeather /></ErrorBoundary>
     case Screen.AbuCalendar: return <ErrorBoundary><AbuCalendar /></ErrorBoundary>

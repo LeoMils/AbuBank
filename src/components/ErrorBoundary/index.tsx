@@ -35,7 +35,7 @@ export class ErrorBoundary extends Component<Props, State> {
         >
           <div role="img" aria-label="אזהרה" style={{ fontSize: 48 }}>⚠️</div>
           <div style={{ fontSize: 18, fontWeight: 500 }}>משהו השתבש</div>
-          <div style={{ fontSize: 14, opacity: 0.6 }}>נסי לרענן את הדף</div>
+          <div style={{ fontSize: 15, opacity: 0.7 }}>לחצי על הכפתור לרענון</div>
           <button
             type="button"
             onClick={() => window.location.reload()}

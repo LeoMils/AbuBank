@@ -513,7 +513,7 @@ export function AbuCalendar() {
       }
     }
     check()
-    const interval = setInterval(check, 60_000)
+    const interval = setInterval(check, 30_000)
     return () => clearInterval(interval)
   }, [alertMinutes])
 
@@ -582,8 +582,12 @@ export function AbuCalendar() {
 
   function handleUndo() {
     if (!undoAppt) return
-    const current = loadAppointments()
-    saveAppointments([...current, undoAppt])
+    try {
+      const current = loadAppointments()
+      saveAppointments([...current, undoAppt])
+    } catch {
+      // localStorage quota — appointment lost, acceptable degradation
+    }
     reload()
     setUndoAppt(null)
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
