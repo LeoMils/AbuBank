@@ -7,6 +7,7 @@ import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/mar
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
+import { GRADIENT_GOLD } from '../../design/gradients'
 
 // ─── Color tokens ────────────────────────────────────────────────────────────
 const GOLD            = '#C9A84C'
@@ -50,6 +51,10 @@ const KEYFRAMES = `
     50%     { transform: scaleY(1.0); }
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes orbPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.02); }
+  }
 `
 
 // ─── Dynamic voice greeting ───────────────────────────────────────────────────
@@ -132,10 +137,21 @@ export function AbuAI() {
   useEffect(() => {
     if (!voiceMode) setTimeout(() => inputRef.current?.focus(), 300)
     return () => {
+      voiceModeRef.current = false
       if (timerRef.current) clearInterval(timerRef.current)
       if (levelRef.current) clearInterval(levelRef.current)
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
       silenceRef.current?.stop()
+      silenceRef.current = null
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.onresult = null
+          recognitionRef.current.onerror = null
+          recognitionRef.current.onend = null
+          recognitionRef.current.abort()
+        } catch {}
+        recognitionRef.current = null
+      }
       stopSpeaking()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -207,7 +223,7 @@ export function AbuAI() {
           const text = await transcribeAudio(blob)
           if (text.trim()) setInput(prev => prev ? `${prev} ${text}` : text)
         } catch {
-          // silent
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'לא הצלחתי לשמוע. נסי שוב.', timestamp: Date.now() }])
         } finally {
           setTranscribing(false)
           setTimeout(() => inputRef.current?.focus(), 100)
@@ -219,7 +235,7 @@ export function AbuAI() {
       setRecording(true)
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
     } catch {
-      // mic denied
+      setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'צריכה הרשאה למיקרופון. בדקי בהגדרות הדפדפן.', timestamp: Date.now() }])
     }
   }, [])
 
@@ -349,6 +365,7 @@ export function AbuAI() {
         if (speechTimeout) clearTimeout(speechTimeout)
         recognitionRef.current = null
         if (e.error === 'not-allowed') {
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'צריכה הרשאה למיקרופון. בדקי בהגדרות הדפדפן.', timestamp: Date.now() }])
           exitVoiceMode()
         } else if (e.error === 'no-speech') {
           // No speech detected — silently restart (don't show error to user)
@@ -442,6 +459,7 @@ export function AbuAI() {
         }, 80)
       } catch (err) {
         console.error('[AbuAI] getUserMedia error:', err)
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'מיקרופון לא זמין. בדקי בהגדרות הדפדפן.', timestamp: Date.now() }])
         exitVoiceMode()
       }
     })()
@@ -506,6 +524,7 @@ export function AbuAI() {
     setIsSpeaking(false)
     stopSpeaking()
     cleanupVoiceResources()
+    setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'שיחה הסתיימה.', timestamp: Date.now() }])
   }, [cleanupVoiceResources])
 
   const handleVoiceTap = () => {
@@ -525,7 +544,7 @@ export function AbuAI() {
 
   // Shared gold gradient text style
   const goldGradText: React.CSSProperties = {
-    background: 'linear-gradient(135deg, #FFF0C0 0%, #F0C060 20%, #D4A853 45%, #C9A84C 60%, #B8912A 80%, #E8C060 100%)',
+    background: GRADIENT_GOLD,
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
@@ -635,20 +654,6 @@ export function AbuAI() {
                 ...goldGradText,
               }}>AI</span>
             </div>
-            {/* Sub-label */}
-            <div style={{
-              position: 'absolute',
-              bottom: -16,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              fontSize: 10,
-              letterSpacing: '2.5px',
-              fontWeight: 600,
-              color: 'rgba(201,168,76,0.50)',
-              fontFamily: "'DM Sans',sans-serif",
-              textTransform: 'uppercase',
-              whiteSpace: 'nowrap',
-            }}>ABU AI</div>
           </div>
 
           {/* RIGHT (RTL): Back button */}
@@ -770,6 +775,7 @@ export function AbuAI() {
                 background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.20) 0%, rgba(201,168,76,0.12) 38%, rgba(201,168,76,0.04) 62%, transparent 80%)',
                 border: '1.5px solid rgba(201,168,76,0.55)',
                 boxShadow: '0 0 0 1px rgba(201,168,76,0.18), 0 0 60px rgba(201,168,76,0.22), 0 0 120px rgba(201,168,76,0.10), inset 0 1px 0 rgba(255,250,240,0.10)',
+                animation: 'orbPulse 4s ease-in-out infinite',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -892,12 +898,12 @@ export function AbuAI() {
               >
                 {/* Sender label */}
                 <div style={{
-                  fontSize: 12,
+                  fontSize: 14,
                   fontFamily: "'DM Sans',sans-serif",
                   fontWeight: 600,
                   letterSpacing: '1px',
                   textTransform: 'uppercase',
-                  color: isUser ? 'rgba(245,240,232,0.42)' : 'rgba(201,168,76,0.55)',
+                  color: isUser ? 'rgba(245,240,232,0.75)' : 'rgba(201,168,76,0.75)',
                   marginBottom: 5,
                   direction: 'ltr',
                   paddingInline: 4,
@@ -938,8 +944,8 @@ export function AbuAI() {
                 {/* Timestamp */}
                 <div style={{
                   marginTop: 5,
-                  fontSize: 12,
-                  color: 'rgba(245,240,232,0.30)',
+                  fontSize: 14,
+                  color: 'rgba(245,240,232,0.55)',
                   textAlign: isUser ? 'right' : 'left',
                   fontFamily: "'DM Sans',sans-serif",
                   direction: 'ltr',
