@@ -114,7 +114,7 @@ function detectFamilyType(text: string): Pick<Appointment, 'type' | 'isRecurring
   return {}
 }
 
-export async function parseAppointmentText(text: string): Promise<{ title: string; date: string; time: string; emoji: string } & Pick<Appointment, 'type' | 'isRecurring'>> {
+export async function parseAppointmentText(text: string): Promise<{ title: string; date: string | null; time: string | null; emoji: string } & Pick<Appointment, 'type' | 'isRecurring'>> {
   const today = new Date().toISOString().split('T')[0]!
   const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
 
@@ -136,26 +136,27 @@ Today is ${today} (${new Date().toLocaleDateString('he-IL', { weekday: 'long', d
 Current month: ${new Date().getMonth() + 1}, current year: ${new Date().getFullYear()}.
 
 CRITICAL: The "date" field MUST be a real YYYY-MM-DD date. NEVER return words like "TOMORROW" or "FRIDAY". ALWAYS compute the actual calendar date.
+CRITICAL: If the user did NOT explicitly mention a time, return "time": null.
+CRITICAL: If the user did NOT explicitly mention a date, return "date": null.
 
 RULES:
 - TIME: All times without "בבוקר" default to PM for appointments.
   "בשלוש" = 15:00. "בארבע" = 16:00. "בחמש" = 17:00. "בשש" = 18:00. "בשבע" = 19:00. "בשמונה" = 20:00.
   "בעשר בבוקר" = 10:00. "בשמונה בערב" = 20:00. "בשתיים וחצי" = 14:30. "בתשע בבוקר" = 09:00.
   "בצהריים" = 12:00. "אחרי הצהריים" = prefer 14:00-17:00 range.
-- DATE: ALWAYS return YYYY-MM-DD format. Compute the real date:
+  If no time is mentioned at all, return "time": null.
+- DATE: ALWAYS return YYYY-MM-DD format when a date IS mentioned. Compute the real date:
   - "מחר" = ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}
   - "ביום ראשון" = the NEXT Sunday from today. Calculate it.
-  - "ביום ראשון האחרון של החודש" = find the last Sunday of the current month.
   - "ב-15 לחודש" = ${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-15
   - "בעוד שבוע" = +7 days from today.
-  - "בשבוע הבא ביום שלישי" = next Tuesday.
-- PERSON: "פגישה עם דר כהן" → personName: "דר כהן". "יום הולדת של מור" → personName: "מור".
-- LOCATION: "בקניון" → location: "קניון". "במרפאה" → location: "מרפאה".
+  If no date is mentioned at all, return "date": null.
+- PERSON: "פגישה עם דר כהן" → personName: "דר כהן".
+- LOCATION: "בקניון" → location: "קניון".
 - EMOJI: 🏥 medical, ✂️ haircut, 🛒 shopping, 🎂 birthday, 🍽️ food, ✈️ travel, 👨‍👩‍👧 family, 💼 work, 📅 general.
-- If time not mentioned, default 09:00. If date not mentioned, default ${today}.
 
 Return ONLY valid JSON:
-{"title":"short Hebrew title","date":"YYYY-MM-DD","time":"HH:MM","emoji":"...","location":"","personName":""}`,
+{"title":"short Hebrew title","date":"YYYY-MM-DD or null","time":"HH:MM or null","emoji":"...","location":"","personName":""}`,
             },
             { role: 'user', content: text },
           ],
@@ -168,24 +169,13 @@ Return ONLY valid JSON:
         const content = data?.choices?.[0]?.message?.content ?? ''
         const match = content.match(/\{[\s\S]*?\}/)
         if (match) {
-          const parsed = JSON.parse(match[0]) as { title?: string; date?: string; time?: string; emoji?: string; location?: string; personName?: string }
+          const parsed = JSON.parse(match[0]) as { title?: string; date?: string | null; time?: string | null; emoji?: string; location?: string; personName?: string }
           const title = parsed.title ?? text
-          let date = parsed.date ?? today
-          const time = parsed.time ?? '09:00'
-
-          // v22: Reject past dates — shift to today
-          const parsedDate = new Date(date)
-          const nowDate = new Date(today)
-          if (parsedDate < nowDate) date = today
+          const date = (parsed.date && parsed.date !== 'null') ? parsed.date : null
+          const time = (parsed.time && parsed.time !== 'null') ? parsed.time : null
           const emoji = parsed.emoji ?? detectEmoji(title)
-          const location = parsed.location || undefined
-          const personName = parsed.personName || undefined
           const familyType = detectFamilyType(text)
-          return {
-            title, date, time, emoji, location,
-            personName,
-            ...familyType,
-          } as { title: string; date: string; time: string; emoji: string; location?: string; personName?: string } & Pick<Appointment, 'type' | 'isRecurring'>
+          return { title, date, time, emoji, ...familyType }
         }
       }
     } catch {
@@ -193,11 +183,10 @@ Return ONLY valid JSON:
     }
   }
 
-  // Graceful fallback: use the raw text as title
   return {
     title: text,
-    date: today,
-    time: '09:00',
+    date: null,
+    time: null,
     emoji: detectEmoji(text),
     ...detectFamilyType(text),
   }

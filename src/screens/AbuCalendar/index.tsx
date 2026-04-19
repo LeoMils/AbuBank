@@ -4,6 +4,7 @@ import { Screen } from '../../state/types'
 import {
   loadAppointmentsWithFamily,
   addAppointment,
+  updateAppointment,
   deleteAppointment,
   detectEmoji,
   playChime,
@@ -13,13 +14,11 @@ import {
   formatShortHebrewDate,
   getUpcomingBirthdays,
   getHebrewHoliday,
-  APPT_COLORS,
   type Appointment,
 } from './service'
 import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
-import { InfoButton } from '../../components/InfoButton'
 import { injectSharedKeyframes } from '../../design/animations'
 
 const GOLD = '#C9A84C'
@@ -48,151 +47,95 @@ function dateStr(year: number, month: number, day: number): string {
 }
 
 // ─── Appointment Card ─────────────────────────────────────────────────────────
-// v27.2: Time state — 4-way distinction for glanceable calendar
-export type ApptTimeState = 'past' | 'next-upcoming' | 'today-upcoming' | 'later'
+export type ApptTimeState = 'past' | 'now' | 'today' | 'upcoming'
 
-function ApptCard({ appt, onDelete, timeState = 'later' }: { appt: Appointment; onDelete: () => void; timeState?: ApptTimeState }) {
+const isFamily = (a: Appointment) => a.type === 'birthday' || a.type === 'memory'
+
+function ApptCard({ appt, onDelete, onEdit, timeState = 'upcoming' }: {
+  appt: Appointment
+  onDelete?: () => void
+  onEdit?: () => void
+  timeState?: ApptTimeState
+}) {
   const [hovered, setHovered] = useState(false)
-  const isBday = appt.type === 'birthday'
-  const isMemorial = appt.type === 'memory'
   const isPast = timeState === 'past'
-  const isNext = timeState === 'next-upcoming'
-  const isToday = timeState === 'today-upcoming'
+  const isNow = timeState === 'now'
+  const isToday = timeState === 'today'
+  const family = isFamily(appt)
+  const showDelete = !family
 
-  // v27.2: Per-state colors — muted for past, gold emphasis for next, teal tint for today
-  const textColor = isPast ? 'rgba(245,240,232,0.40)' : CREAM
-  const timeColor = isPast ? 'rgba(255,255,255,0.35)' : isNext ? BRIGHT_GOLD : GOLD
-  const notesColor = isPast ? 'rgba(245,240,232,0.25)' : 'rgba(245,240,232,0.55)'
-  const stripeColor = isPast
-    ? 'rgba(255,255,255,0.15)'
-    : isNext
-    ? BRIGHT_GOLD
-    : isToday
-    ? TEAL
-    : appt.color
-  const stripeWidth = isNext ? 5 : 4
+  const textColor = isPast ? 'rgba(245,240,232,0.50)' : isNow ? CREAM : isToday ? 'rgba(245,240,232,0.92)' : 'rgba(245,240,232,0.88)'
+  const timeColor = isPast ? 'rgba(201,168,76,0.30)' : isNow ? TEAL : GOLD
+  const timeWeight = isNow || isToday ? 700 : 400
+  const notesColor = isPast ? 'rgba(245,240,232,0.30)' : 'rgba(245,240,232,0.55)'
+  const stripeColor = isPast ? 'rgba(255,255,255,0.12)' : isNow ? TEAL : isToday ? GOLD : 'rgba(201,168,76,0.45)'
+  const stripeWidth = isNow ? 5 : isPast ? 3 : 4
+  const deleteOpacity = isPast ? 0.25 : 0.40
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={!family && onEdit ? onEdit : undefined}
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        background: isPast
-          ? 'rgba(255,255,255,0.02)'
-          : isNext
-          ? 'linear-gradient(135deg, rgba(201,168,76,0.14) 0%, rgba(212,168,83,0.06) 100%)'
-          : isToday
-          ? 'linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(20,184,166,0.02) 100%)'
-          : isBday
-          ? 'linear-gradient(135deg, rgba(244,114,182,0.10) 0%, rgba(255,230,109,0.06) 100%)'
-          : isMemorial
-          ? 'linear-gradient(135deg, rgba(201,168,76,0.10) 0%, rgba(201,168,76,0.03) 100%)'
+        display: 'flex', alignItems: 'center', gap: 14,
+        background: isPast ? 'rgba(255,255,255,0.02)'
+          : isNow ? 'rgba(20,184,166,0.10)'
+          : isToday ? 'rgba(201,168,76,0.06)'
           : 'rgba(255,250,240,0.04)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: isNext
-          ? '1.5px solid rgba(201,168,76,0.45)'
-          : isToday
-          ? '1px solid rgba(20,184,166,0.30)'
-          : isBday
-          ? '1px solid rgba(244,114,182,0.25)'
-          : isMemorial
-          ? '1px solid rgba(201,168,76,0.25)'
-          : hovered
-          ? '1px solid rgba(201,168,76,0.30)'
-          : '1px solid rgba(255,255,255,0.07)',
+        border: isNow ? '1.5px solid rgba(20,184,166,0.40)'
+          : isToday ? '1px solid rgba(201,168,76,0.20)'
+          : isPast ? '1px solid rgba(255,255,255,0.05)'
+          : hovered ? '1px solid rgba(201,168,76,0.25)' : '1px solid rgba(255,255,255,0.07)',
         borderRadius: 14,
-        padding: '12px 14px 12px 0',
-        position: 'relative',
-        marginBottom: 8,
-        overflow: 'hidden',
-        transition: 'border-color 0.2s, box-shadow 0.2s',
-        boxShadow: isNext
-          ? '0 4px 20px rgba(201,168,76,0.25), 0 0 32px rgba(201,168,76,0.10), inset 0 1px 0 rgba(255,250,240,0.08)'
-          : isToday
-          ? '0 2px 14px rgba(20,184,166,0.10), inset 0 1px 0 rgba(255,250,240,0.05)'
-          : isBday
-          ? '0 4px 20px rgba(244,114,182,0.12), inset 0 1px 0 rgba(255,250,240,0.06)'
-          : 'inset 0 1px 0 rgba(255,250,240,0.04), 0 2px 12px rgba(0,0,0,0.20)',
+        padding: '10px 12px 10px 0',
+        position: 'relative', marginBottom: 8, overflow: 'hidden',
+        transition: 'border-color 0.15s',
+        boxShadow: isNow ? '0 2px 12px rgba(20,184,166,0.15)' : 'none',
         animation: 'fadeSlideUp 0.35s ease both',
+        cursor: !family && onEdit ? 'pointer' : 'default',
       } as React.CSSProperties}
     >
-      {/* Left color stripe — 5px for "next", 4px otherwise; color varies by time state */}
       <div style={{
-        width: stripeWidth,
-        alignSelf: 'stretch',
-        background: stripeColor,
-        borderRadius: '0 3px 3px 0',
-        flexShrink: 0,
-        marginLeft: 0,
-        marginRight: 0,
+        width: stripeWidth, alignSelf: 'stretch', background: stripeColor,
+        borderRadius: '0 3px 3px 0', flexShrink: 0,
       }} />
 
-      {/* v27.2: "הבא" (next) badge — only on the single next-upcoming event */}
-      {isNext && (
+      {isNow && (
         <div style={{
-          position: 'absolute',
-          top: 8,
-          left: 10,
-          fontSize: 12,
-          fontWeight: 700,
-          color: 'rgba(0,0,0,0.80)',
-          background: `linear-gradient(135deg, ${BRIGHT_GOLD}, ${GOLD})`,
-          padding: '3px 10px',
-          borderRadius: 8,
-          letterSpacing: '0.5px',
+          position: 'absolute', top: 8, left: 10,
+          fontSize: 14, fontWeight: 700, color: 'white',
+          background: TEAL, padding: '2px 10px', borderRadius: 8,
           fontFamily: "'Heebo',sans-serif",
-        }}>הבא</div>
+        }}>עכשיו</div>
       )}
+
       <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0, filter: isPast ? 'grayscale(0.6)' : 'none' }}>{appt.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 16,
-          fontWeight: 600,
-          color: textColor,
-          fontFamily: "'DM Sans','Heebo',sans-serif",
-          marginBottom: 3,
+          fontSize: 16, fontWeight: 600, color: textColor,
+          fontFamily: "'DM Sans','Heebo',sans-serif", marginBottom: 3,
           textDecoration: isPast ? 'line-through' : 'none',
           textDecorationColor: 'rgba(245,240,232,0.25)',
         }}>{appt.title}</div>
         <div style={{
-          fontSize: 16,
-          fontWeight: 700,
-          color: timeColor,
+          fontSize: 16, fontWeight: timeWeight, color: timeColor,
           fontFamily: "'DM Sans',sans-serif",
         }}>{appt.time}</div>
         {appt.notes && (
-          <div style={{
-            fontSize: 16,
-            color: notesColor,
-            fontFamily: "'Heebo',sans-serif",
-            marginTop: 4,
-          }}>{appt.notes}</div>
+          <div style={{ fontSize: 16, color: notesColor, fontFamily: "'Heebo',sans-serif", marginTop: 4 }}>{appt.notes}</div>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onDelete}
-        aria-label="מחקי פגישה"
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: '50%',
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.10)',
-          color: 'rgba(255,255,255,0.40)',
-          fontSize: 18,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          transition: 'background 0.15s',
-        }}
-      >×</button>
+      {showDelete && onDelete && (
+        <button type="button" onClick={e => { e.stopPropagation(); onDelete() }} aria-label="מחקי אירוע"
+          style={{
+            width: 48, height: 48, borderRadius: '50%',
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)',
+            color: `rgba(255,255,255,${deleteOpacity})`, fontSize: 18, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}
+        >×</button>
+      )}
     </div>
   )
 }
@@ -202,18 +145,19 @@ interface ManualModalProps {
   onClose: () => void
   onSave: (appt: Omit<Appointment, 'id' | 'color'>) => void
   defaultDate: string
+  editing?: Appointment | null
 }
 
-function ManualModal({ onClose, onSave, defaultDate }: ManualModalProps) {
-  const [title, setTitle] = useState('')
-  const [date, setDate] = useState(defaultDate)
-  const [time, setTime] = useState('09:00')
-  const [colorIdx, setColorIdx] = useState(0)
-  const [notes, setNotes] = useState('')
+function ManualModal({ onClose, onSave, defaultDate, editing }: ManualModalProps) {
+  const [title, setTitle] = useState(editing?.title ?? '')
+  const [date, setDate] = useState(editing?.date ?? defaultDate)
+  const [time, setTime] = useState(editing?.time ?? '09:00')
+  const [notes, setNotes] = useState(editing?.notes ?? '')
   const [titleFocused, setTitleFocused] = useState(false)
   const [dateFocused, setDateFocused] = useState(false)
   const [timeFocused, setTimeFocused] = useState(false)
   const [notesFocused, setNotesFocused] = useState(false)
+  const modalTitle = editing ? 'עריכת אירוע' : 'אירוע חדש'
 
   function handleSave() {
     if (!title.trim()) return
@@ -290,7 +234,7 @@ function ManualModal({ onClose, onSave, defaultDate }: ManualModalProps) {
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
-          } as React.CSSProperties}>אירוע חדש</span>
+          } as React.CSSProperties}>{modalTitle}</span>
         </div>
 
         <input
@@ -348,38 +292,6 @@ function ManualModal({ onClose, onSave, defaultDate }: ManualModalProps) {
           </div>
         </div>
 
-        <div>
-          <label style={{
-            fontSize: 14, fontWeight: 600, color: 'rgba(201,168,76,0.82)',
-            fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.05em',
-            textTransform: 'uppercase', display: 'block', marginBottom: 10,
-          }}>צבע</label>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {APPT_COLORS.map((c, i) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setColorIdx(i)}
-                aria-label={`צבע ${i + 1}`}
-                style={{
-                  width: 44, height: 44, borderRadius: '50%', background: 'transparent',
-                  border: 'none', cursor: 'pointer', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0,
-                }}
-              >
-                <span style={{
-                  display: 'block', width: 28, height: 28, borderRadius: '50%', background: c,
-                  outline: colorIdx === i ? `3px solid ${GOLD}` : '3px solid transparent',
-                  outlineOffset: 3,
-                  boxShadow: colorIdx === i ? `0 0 14px ${c}88` : 'none',
-                  transition: 'outline 0.15s, box-shadow 0.15s, transform 0.15s',
-                  transform: colorIdx === i ? 'scale(1.15)' : 'scale(1)',
-                }} />
-              </button>
-            ))}
-          </div>
-        </div>
-
         <input
           type="text"
           placeholder="הערות (אופציונלי)..."
@@ -430,89 +342,99 @@ function ManualModal({ onClose, onSave, defaultDate }: ManualModalProps) {
   )
 }
 
-// ─── Voice confirmation card ───────────────────────────────────────────────────
+// ─── Voice confirmation card (editable) ───────────────────────────────────────
 interface VoiceCardProps {
-  parsed: { title: string; date: string; time: string; emoji: string }
-  onConfirm: () => void
+  parsed: { title: string; date: string | null; time: string | null; emoji: string }
+  existingAppts: Appointment[]
+  onConfirm: (final: { title: string; date: string; time: string; emoji: string }) => void
   onCancel: () => void
 }
 
-function VoiceCard({ parsed, onConfirm, onCancel }: VoiceCardProps) {
+function VoiceCard({ parsed, existingAppts, onConfirm, onCancel }: VoiceCardProps) {
+  const [title, setTitle] = useState(parsed.title)
+  const [date, setDate] = useState(parsed.date ?? '')
+  const [time, setTime] = useState(parsed.time ?? '')
+  const emoji = detectEmoji(title)
+  const today = getTodayStr()
+
+  const canSave = title.trim() && date && time
+  const isPastDate = date && date < today
+
+  const isDuplicate = canSave && existingAppts.some(a =>
+    a.title.trim().toLowerCase() === title.trim().toLowerCase() && a.date === date && a.time === time
+  )
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px', borderRadius: 12,
+    background: 'rgba(255,250,240,0.04)', border: '1px solid rgba(255,255,255,0.10)',
+    color: CREAM, fontSize: 16, fontFamily: "'Heebo',sans-serif",
+    outline: 'none', boxSizing: 'border-box', colorScheme: 'dark' as React.CSSProperties['colorScheme'],
+  }
+
   return (
-    <div
-      onClick={onCancel}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.84)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-      } as React.CSSProperties}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        dir="rtl"
-        style={{
-          width: '100%', maxWidth: 480,
-          background: 'linear-gradient(160deg, rgba(14,12,10,0.99) 0%, rgba(10,8,6,0.99) 100%)',
-          border: '1px solid rgba(201,168,76,0.32)',
-          borderBottom: 'none',
-          borderRadius: '24px 24px 0 0',
-          padding: 'calc(32px + env(safe-area-inset-bottom, 0px)) 20px 28px',
-          display: 'flex', flexDirection: 'column', gap: 18,
-          boxShadow: '0 -8px 40px rgba(201,168,76,0.12), 0 -2px 0 rgba(201,168,76,0.18)',
-          animation: 'sheetUp 0.32s cubic-bezier(0.34,1.3,0.64,1) both',
-        }}
-      >
-        <div style={{
-          fontSize: 18, fontWeight: 700, color: CREAM,
-          fontFamily: "'Heebo',sans-serif", textAlign: 'center',
-        }}>
-          <span style={{ marginInlineEnd: 8, fontSize: 20 }}>🎤</span>
-          שמעתי נכון?
+    <div onClick={onCancel} style={{
+      position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.84)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+    } as React.CSSProperties}>
+      <div onClick={e => e.stopPropagation()} dir="rtl" style={{
+        width: '100%', maxWidth: 480,
+        background: 'linear-gradient(160deg, rgba(14,12,10,0.99) 0%, rgba(10,8,6,0.99) 100%)',
+        border: '1px solid rgba(201,168,76,0.32)', borderBottom: 'none',
+        borderRadius: '24px 24px 0 0',
+        padding: 'calc(28px + env(safe-area-inset-bottom, 0px)) 20px 24px',
+        display: 'flex', flexDirection: 'column', gap: 14,
+        boxShadow: '0 -8px 40px rgba(201,168,76,0.12)',
+        animation: 'sheetUp 0.32s cubic-bezier(0.34,1.3,0.64,1) both',
+      }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif", textAlign: 'center' }}>
+          🎤 שמעתי נכון?
         </div>
 
-        <div style={{
-          background: 'rgba(255,250,240,0.04)',
-          backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(201,168,76,0.25)', borderRadius: 16,
-          padding: '18px 20px', display: 'flex', gap: 16, alignItems: 'center',
-          boxShadow: '0 0 24px rgba(201,168,76,0.07), inset 0 1px 0 rgba(255,250,240,0.04)',
-        } as React.CSSProperties}>
-          <span style={{ fontSize: 38, flexShrink: 0 }}>{parsed.emoji}</span>
-          <div>
-            <div style={{
-              fontSize: 19, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif",
-            }}>{parsed.title}</div>
-            <div style={{
-              fontSize: 16, color: TEAL, fontFamily: "'DM Sans',sans-serif",
-              marginTop: 5, fontWeight: 600,
-            }}>
-              {formatHebrewDate(parsed.date)} · {parsed.time}
-            </div>
-          </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <span style={{ fontSize: 38, flexShrink: 0 }}>{emoji}</span>
+          <input type="text" value={title} onChange={e => setTitle(e.target.value)}
+            style={{ ...inputStyle, fontSize: 19, fontWeight: 700 }} dir="rtl" />
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>
-          <button
-            type="button"
-            onClick={onCancel}
-            style={{
-              flex: 1, padding: '15px', borderRadius: 14,
-              border: '1px solid rgba(255,255,255,0.10)',
-              background: 'rgba(255,255,255,0.05)',
-              color: 'rgba(255,255,255,0.50)',
-              fontSize: 18, fontWeight: 600, fontFamily: "'Heebo',sans-serif",
-              cursor: 'pointer', minHeight: 56,
-            }}
-          >ביטול</button>
-          <button
-            type="button"
-            onClick={onConfirm}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 14, fontWeight: 600, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif" }}>תאריך</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              placeholder={!date ? 'תאריך לא זוהה' : undefined}
+              style={{ ...inputStyle, padding: '10px 10px', border: !date ? '1px solid rgba(251,146,60,0.40)' : '1px solid rgba(255,255,255,0.10)' }} />
+            {!date && <span style={{ fontSize: 14, color: 'rgba(251,146,60,0.85)', fontFamily: "'Heebo',sans-serif" }}>תאריך לא זוהה</span>}
+            {isPastDate && <span style={{ fontSize: 14, color: 'rgba(251,146,60,0.85)', fontFamily: "'Heebo',sans-serif" }}>⚠️ התאריך עבר</span>}
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 14, fontWeight: 600, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif" }}>שעה</label>
+            <input type="time" value={time} onChange={e => setTime(e.target.value)}
+              style={{ ...inputStyle, padding: '10px 10px', direction: 'ltr', border: !time ? '1px solid rgba(251,146,60,0.40)' : '1px solid rgba(255,255,255,0.10)' }} />
+            {!time && <span style={{ fontSize: 14, color: 'rgba(251,146,60,0.85)', fontFamily: "'Heebo',sans-serif" }}>זמן לא זוהה</span>}
+          </div>
+        </div>
+
+        {isDuplicate && (
+          <div style={{ fontSize: 14, color: 'rgba(201,168,76,0.50)', fontFamily: "'Heebo',sans-serif", textAlign: 'center' }}>
+            אירוע דומה כבר קיים
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button type="button" onClick={onCancel} style={{
+            flex: 1, padding: '15px', borderRadius: 14,
+            border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.05)',
+            color: 'rgba(255,255,255,0.50)', fontSize: 18, fontWeight: 600,
+            fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 56,
+          }}>ביטול</button>
+          <button type="button" disabled={!canSave}
+            onClick={() => canSave && onConfirm({ title: title.trim(), date, time, emoji })}
             style={{
               flex: 2, padding: '15px', borderRadius: 14, border: 'none',
-              background: `linear-gradient(135deg, ${BRIGHT_GOLD} 0%, #e8c76a 50%, ${GOLD} 100%)`,
-              color: 'rgba(0,0,0,0.85)',
+              background: canSave ? `linear-gradient(135deg, ${BRIGHT_GOLD} 0%, #e8c76a 50%, ${GOLD} 100%)` : 'rgba(255,255,255,0.06)',
+              color: canSave ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.20)',
               fontSize: 18, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
-              cursor: 'pointer', boxShadow: '0 4px 20px rgba(201,168,76,0.40)', minHeight: 56,
+              cursor: canSave ? 'pointer' : 'not-allowed', minHeight: 56,
             }}
           >כן, שמרי!</button>
         </div>
@@ -532,42 +454,39 @@ export function AbuCalendar() {
   const [selectedDay, setSelectedDay] = useState(today)
   const [appointments, setAppointments] = useState<Appointment[]>(() => loadAppointmentsWithFamily(todayDate.getFullYear()))
   const [showManual, setShowManual] = useState(false)
+  const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [toast, setToast] = useState(false)
-  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string; time: string; emoji: string } | null>(null)
+  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string } | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [voiceStatus, setVoiceStatus] = useState('')
   const [showSettings, setShowSettings] = useState(false)
+  const [undoAppt, setUndoAppt] = useState<Appointment | null>(null)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
-  // ─── Feature 1: Alert state ──────────────────────────────────────────────────
+  // ─── Alert state (persisted) ─────────────────────────────────────────────────
   const [alertMinutes, setAlertMinutes] = useState<number>(() => {
     return parseInt(localStorage.getItem('abubank-alert-minutes') ?? '60', 10)
   })
-  const [activeAlert, setActiveAlert] = useState<{ id: string; title: string; minutesLeft: number } | null>(null)
-  const alertedIdsRef = useRef<Set<string>>(new Set())
+  const [activeAlerts, setActiveAlerts] = useState<Array<{ id: string; title: string; minutesLeft: number }>>([])
+  const alertedIdsRef = useRef<Set<string>>((() => {
+    try {
+      const raw = localStorage.getItem('abubank-alerted-ids')
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set<string>()
+    } catch { return new Set<string>() }
+  })())
 
-  // ─── Feature 2: Martita photo ────────────────────────────────────────────────
+  function persistAlertedIds() {
+    try {
+      localStorage.setItem('abubank-alerted-ids', JSON.stringify([...alertedIdsRef.current]))
+    } catch { /* ignore */ }
+  }
+
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
-
-  const upcomingBirthdays = useMemo(() => getUpcomingBirthdays(appointments, 30), [appointments])
+  const upcomingBirthdays = useMemo(() => getUpcomingBirthdays(appointments, 14), [appointments])
   const nextBirthday = upcomingBirthdays[0] ?? null
 
-  // v27.2: Find the chronologically-next upcoming event across ALL appointments.
-  // This event gets the "next" visual treatment (gold glow + "הבא" badge).
-  const nextUpcomingId = useMemo<string | null>(() => {
-    const nowMs = Date.now()
-    let bestId: string | null = null
-    let bestTime = Infinity
-    for (const a of appointments) {
-      const t = new Date(`${a.date}T${a.time}:00`).getTime()
-      if (isNaN(t) || t <= nowMs) continue
-      if (t < bestTime) { bestTime = t; bestId = a.id }
-    }
-    return bestId
-  }, [appointments])
-
-  // Month slide animation
   const [slideDir, setSlideDir] = useState<'none' | 'left' | 'right'>('none')
   const [slideKey, setSlideKey] = useState(0)
 
@@ -582,6 +501,14 @@ export function AbuCalendar() {
     const check = () => {
       const now = Date.now()
       const allAppts = loadAppointmentsWithFamily()
+      const pending: Array<{ id: string; title: string; minutesLeft: number }> = []
+      // Expire alerts whose event time has passed
+      setActiveAlerts(prev => prev.filter(a => {
+        const appt = allAppts.find(x => x.id === a.id)
+        if (!appt) return false
+        const t = new Date(`${appt.date}T${appt.time}:00`).getTime()
+        return !isNaN(t) && t > now
+      }))
       for (const appt of allAppts) {
         if (alertedIdsRef.current.has(appt.id)) continue
         const apptTime = new Date(`${appt.date}T${appt.time}:00`).getTime()
@@ -589,15 +516,22 @@ export function AbuCalendar() {
         const diff = apptTime - now
         if (diff > 0 && diff <= alertMinutes * 60_000) {
           alertedIdsRef.current.add(appt.id)
-          const minutesLeft = Math.round(diff / 60_000)
-          setActiveAlert({ id: appt.id, title: appt.title, minutesLeft })
-          soundAlert()
-          break
+          persistAlertedIds()
+          pending.push({ id: appt.id, title: appt.title, minutesLeft: Math.round(diff / 60_000) })
         }
+      }
+      if (pending.length > 0) {
+        pending.sort((a, b) => a.minutesLeft - b.minutesLeft)
+        soundAlert()
+        setActiveAlerts(prev => {
+          const combined = [...prev, ...pending]
+          combined.sort((a, b) => a.minutesLeft - b.minutesLeft)
+          return combined.slice(0, 2)
+        })
       }
     }
     check()
-    const interval = setInterval(check, 60_000)
+    const interval = setInterval(check, 30_000)
     return () => clearInterval(interval)
   }, [alertMinutes])
 
@@ -634,12 +568,34 @@ export function AbuCalendar() {
   }
 
   function handleManualSave(appt: Omit<Appointment, 'id' | 'color'>) {
-    addAppointment(appt)
+    if (editingAppt) {
+      updateAppointment(editingAppt.id, appt)
+    } else {
+      addAppointment(appt)
+    }
     reload()
     setShowManual(false)
+    setEditingAppt(null)
     playChime()
     soundSuccess()
     showToast()
+  }
+
+  function handleDelete(appt: Appointment) {
+    soundTap()
+    deleteAppointment(appt.id)
+    reload()
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    setUndoAppt(appt)
+    undoTimerRef.current = setTimeout(() => { setUndoAppt(null); undoTimerRef.current = null }, 4000)
+  }
+
+  function handleUndo() {
+    if (!undoAppt) return
+    addAppointment({ title: undoAppt.title, date: undoAppt.date, time: undoAppt.time, emoji: undoAppt.emoji, notes: undoAppt.notes || '' })
+    reload()
+    setUndoAppt(null)
+    if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null }
   }
 
   async function handleVoiceRecord() {
@@ -657,9 +613,14 @@ export function AbuCalendar() {
       mr.onstop = async () => {
         stream.getTracks().forEach(t => t.stop())
         setIsRecording(false)
+        const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
+        if (blob.size < 1000) {
+          setVoiceStatus('ההקלטה קצרה מדי. נסי שוב.')
+          setTimeout(() => setVoiceStatus(''), 3000)
+          return
+        }
         setVoiceStatus('מעבדת...')
         try {
-          const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
           const transcribed = await transcribeAudio(blob)
           setVoiceStatus('מנתחת...')
           const parsed = await parseAppointmentText(transcribed)
@@ -683,9 +644,8 @@ export function AbuCalendar() {
     }
   }
 
-  function handleVoiceConfirm() {
-    if (!voiceParsed) return
-    addAppointment(voiceParsed)
+  function handleVoiceConfirm(final: { title: string; date: string; time: string; emoji: string }) {
+    addAppointment(final)
     reload()
     setVoiceParsed(null)
     setVoiceStatus('')
@@ -699,6 +659,7 @@ export function AbuCalendar() {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop()
       }
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
     }
   }, [])
 
@@ -729,41 +690,37 @@ export function AbuCalendar() {
         animation: 'ambientColorShift 30s ease-in-out infinite',
       }} />
 
-      {/* ALERT BANNER */}
-      {activeAlert && (
-        <div style={{
-          position: 'fixed', top: 72, left: 0, right: 0, zIndex: 100,
-          background: 'rgba(12,10,8,0.97)',
-          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '2px solid rgba(201,168,76,0.60)',
-          padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
-          animation: 'alertSlideIn 0.35s cubic-bezier(0.34,1.2,0.64,1) both',
-        } as React.CSSProperties}>
-          <span style={{ fontSize: 24, flexShrink: 0 }}>🔔</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <span style={{
-              fontSize: 18, fontWeight: 700, color: GOLD,
-              fontFamily: "'Heebo',sans-serif", direction: 'rtl',
-            }}>
-              תזכורת: {activeAlert.title}
-            </span>
-            <div style={{ fontSize: 16, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
-              בעוד {activeAlert.minutesLeft} דקות
+      {/* ALERT BANNERS — max 2 stacked */}
+      {activeAlerts.length > 0 && (
+        <div style={{ position: 'fixed', top: 72, left: 0, right: 0, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {activeAlerts.map(alert => (
+            <div key={alert.id} style={{
+              background: 'rgba(12,10,8,0.97)',
+              backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+              borderBottom: '2px solid rgba(201,168,76,0.60)',
+              padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
+              animation: 'alertSlideIn 0.35s cubic-bezier(0.34,1.2,0.64,1) both',
+            } as React.CSSProperties}>
+              <span style={{ fontSize: 24, flexShrink: 0 }}>🔔</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 18, fontWeight: 700, color: GOLD, fontFamily: "'Heebo',sans-serif" }}>
+                  תזכורת: {alert.title}
+                </span>
+                <div style={{ fontSize: 16, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
+                  בעוד {alert.minutesLeft} דקות
+                </div>
+              </div>
+              <button type="button" onClick={() => setActiveAlerts(prev => prev.filter(a => a.id !== alert.id))}
+                aria-label="סגרי התראה" style={{
+                  minWidth: 64, height: 48, borderRadius: 12,
+                  background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.35)',
+                  color: GOLD, fontSize: 16, fontWeight: 700, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  fontFamily: "'Heebo',sans-serif", padding: '0 14px',
+                }}
+              >הבנתי</button>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveAlert(null)}
-            aria-label="סגרי התראה"
-            style={{
-              minWidth: 64, height: 48, borderRadius: 12,
-              background: 'rgba(201,168,76,0.15)',
-              border: '1px solid rgba(201,168,76,0.35)',
-              color: GOLD, fontSize: 16, fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              fontFamily: "'Heebo',sans-serif", padding: '0 14px',
-            }}
-          >הבנתי</button>
+          ))}
         </div>
       )}
 
@@ -951,7 +908,7 @@ export function AbuCalendar() {
       {/* MONTH NAVIGATOR */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 16px 6px', flexShrink: 0,
+        padding: '10px 16px 6px', flexShrink: 0, position: 'relative',
       }}>
         <button
           type="button" onClick={nextMonth} aria-label="חודש הבא"
@@ -979,6 +936,20 @@ export function AbuCalendar() {
             fontFamily: "'DM Sans',sans-serif", fontWeight: 500, marginTop: 2,
           }}>{hebrewMonthLabel.split(' ')[1]}</div>
         </div>
+
+        {/* Jump to Today — only when viewing non-current month */}
+        {(year !== todayDate.getFullYear() || month !== todayDate.getMonth() + 1) && (
+          <button type="button" onClick={() => {
+            setYear(todayDate.getFullYear()); setMonth(todayDate.getMonth() + 1)
+            setSelectedDay(today); setSlideDir('none'); setSlideKey(k => k + 1)
+          }} style={{
+            position: 'absolute', left: '50%', bottom: -4, transform: 'translateX(-50%)',
+            padding: '4px 16px', borderRadius: 14, minHeight: 44, minWidth: 64,
+            background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.35)',
+            color: GOLD, fontSize: 14, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
+            cursor: 'pointer', zIndex: 5,
+          }}>היום</button>
+        )}
 
         <button
           type="button" onClick={prevMonth} aria-label="חודש קודם"
@@ -1082,7 +1053,7 @@ export function AbuCalendar() {
                     ? 'linear-gradient(135deg, #f0d878 0%, #e8c76a 20%, #D4A853 45%, #C9A84C 65%, #e8c76a 85%, #f0d878 100%)'
                     : 'transparent',
                   backgroundSize: isToday ? '250% 100%' : undefined,
-                  animation: isToday ? 'todayShimmer 3s ease infinite, todayHalo 3.5s ease-in-out infinite' : 'none',
+                  animation: isToday ? 'todayShimmer 3s ease infinite' : 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <span style={{
@@ -1115,169 +1086,126 @@ export function AbuCalendar() {
         </div>
       </div>
 
-      {/* SELECTED DAY APPOINTMENTS — v22: no scroll, max 2 visible */}
-      <div style={{ padding: '8px 16px 4px', flexShrink: 0, overflow: 'hidden' }}>
+      {/* SELECTED DAY APPOINTMENTS */}
+      <div style={{ padding: '8px 16px 4px', flexShrink: 0, maxHeight: 200, overflowY: 'auto', scrollbarWidth: 'thin' as React.CSSProperties['scrollbarWidth'] }}>
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10,
         }}>
-          <span style={{
-            fontSize: 16, fontWeight: 700, color: 'rgba(201,168,76,0.70)',
-            fontFamily: "'Heebo',sans-serif",
-          }}>אירועים</span>
-          <span style={{
-            fontSize: 16, color: 'rgba(245,240,232,0.50)', fontFamily: "'Heebo',sans-serif",
-          }}>{formatShortHebrewDate(selectedDay)}</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif" }}>אירועים</span>
+          <span style={{ fontSize: 16, color: 'rgba(245,240,232,0.50)', fontFamily: "'Heebo',sans-serif" }}>{formatShortHebrewDate(selectedDay)}</span>
         </div>
 
-        {/* Holiday name banner when selected day is a holiday */}
         {getHebrewHoliday(selectedDay) && (
           <div style={{
             padding: '6px 12px', borderRadius: 10, marginBottom: 8,
-            background: 'linear-gradient(135deg, rgba(201,168,76,0.14) 0%, rgba(212,168,83,0.06) 100%)',
-            border: '1px solid rgba(201,168,76,0.25)',
+            background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)',
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <span style={{ fontSize: 16 }}>✡️</span>
-            <span style={{
-              fontSize: 15, fontWeight: 700, color: '#e8c76a',
-              fontFamily: "'Heebo',sans-serif",
-              textShadow: '0 0 8px rgba(201,168,76,0.30)',
-            }}>{getHebrewHoliday(selectedDay)}</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: '#e8c76a', fontFamily: "'Heebo',sans-serif" }}>{getHebrewHoliday(selectedDay)}</span>
           </div>
         )}
 
         {selectedAppts.length === 0 && !getHebrewHoliday(selectedDay) ? (
-          <div style={{
-            textAlign: 'center', padding: '20px 0',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-          }}>
+          <div style={{ textAlign: 'center', padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 28, opacity: 0.5 }}>📅</span>
-            <span style={{
-              color: 'rgba(201,168,76,0.50)', fontSize: 16,
-              fontFamily: "'Heebo',sans-serif", fontWeight: 500,
-            }}>יום פנוי ✨</span>
-            <span style={{
-              color: 'rgba(245,240,232,0.50)', fontSize: 16,
-              fontFamily: "'Heebo',sans-serif",
-            }}>לחצי למטה להוסיף אירוע</span>
+            <span style={{ color: 'rgba(201,168,76,0.55)', fontSize: 16, fontFamily: "'Heebo',sans-serif", fontWeight: 500 }}>יום פנוי ✨</span>
+            <span style={{ color: 'rgba(245,240,232,0.50)', fontSize: 16, fontFamily: "'Heebo',sans-serif" }}>לחצי למטה להוסיף אירוע</span>
           </div>
         ) : (
-          <>
-            {selectedAppts.slice(0, 2).map(a => {
-              // v27.2: 4-way time state for glanceable calendar
-              const apptDateTime = new Date(`${a.date}T${a.time}:00`).getTime()
-              const nowMs = Date.now()
-              let timeState: ApptTimeState = 'later'
-              if (!isNaN(apptDateTime)) {
-                if (apptDateTime < nowMs) {
-                  timeState = 'past'
-                } else if (a.id === nextUpcomingId) {
-                  timeState = 'next-upcoming'
-                } else if (a.date === today) {
-                  timeState = 'today-upcoming'
-                } else {
-                  timeState = 'later'
-                }
-              }
-              return (
-                <ApptCard
-                  key={a.id}
-                  appt={a}
-                  timeState={timeState}
-                  onDelete={() => { soundTap(); deleteAppointment(a.id); reload() }}
-                />
-              )
-            })}
-            {selectedAppts.length > 2 && (
-              <div style={{
-                textAlign: 'center', padding: '6px 0',
-                fontSize: 16, fontWeight: 600, color: 'rgba(201,168,76,0.65)',
-                fontFamily: "'Heebo',sans-serif",
-              }}>+{selectedAppts.length - 2} אירועים נוספים</div>
-            )}
-          </>
+          selectedAppts.map(a => {
+            const apptDateTime = new Date(`${a.date}T${a.time}:00`).getTime()
+            const nowMs = Date.now()
+            let timeState: ApptTimeState = 'upcoming'
+            if (!isNaN(apptDateTime)) {
+              if (apptDateTime < nowMs) timeState = 'past'
+              else if (apptDateTime >= nowMs && apptDateTime <= nowMs + 10 * 60 * 1000) timeState = 'now'
+              else if (a.date === today) timeState = 'today'
+            }
+            return (
+              <ApptCard key={a.id} appt={a} timeState={timeState}
+                onDelete={() => handleDelete(a)}
+                onEdit={() => { setEditingAppt(a); setShowManual(true) }}
+              />
+            )
+          })
         )}
       </div>
 
-      {/* HERO VOICE BUTTON — compact bottom bar */}
+      {/* FOOTER — mic centered, manual-add subdued */}
       <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-        padding: '8px 0 calc(12px + env(safe-area-inset-bottom, 0px))',
-        flexShrink: 0, marginTop: 'auto',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
+        padding: '4px 16px calc(8px + env(safe-area-inset-bottom, 0px))',
+        flexShrink: 0, marginTop: 'auto', position: 'relative',
       }}>
-        <button
-          type="button"
-          onClick={handleVoiceRecord}
+        {/* Recording status — appears above footer */}
+        {(isRecording || (voiceStatus && !voiceParsed && !isRecording)) && (
+          <div style={{
+            position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)',
+            fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap',
+            color: isRecording ? 'rgba(252,165,165,0.90)' : 'rgba(201,168,76,0.85)',
+            fontFamily: "'Heebo',sans-serif",
+          }}>
+            {isRecording ? '🔴 מקשיבה...' : voiceStatus}
+          </div>
+        )}
+
+        <button type="button"
+          onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}
           style={{
-            width: 64, height: 64, borderRadius: '50%',
+            padding: '8px 16px', background: 'none', border: 'none',
+            color: 'rgba(245,240,232,0.40)', fontSize: 15, fontFamily: "'Heebo',sans-serif",
+            cursor: 'pointer', minHeight: 48,
+          }}
+        >＋ הוספה ידנית</button>
+
+        <button type="button" onClick={handleVoiceRecord}
+          onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
+          onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+          onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+          aria-label="הוספת אירוע בקול"
+          style={{
+            width: 56, height: 56, borderRadius: '50%',
             background: isRecording
               ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
               : 'linear-gradient(145deg, #D4A853 0%, #C9A84C 45%, #B8912A 100%)',
             border: 'none',
             boxShadow: isRecording
-              ? '0 0 0 8px rgba(239,68,68,0.12), 0 0 0 16px rgba(239,68,68,0.06), 0 8px 32px rgba(239,68,68,0.45), inset 0 1px 0 rgba(255,180,180,0.25)'
-              : '0 0 0 8px rgba(201,168,76,0.10), 0 0 0 16px rgba(201,168,76,0.05), 0 8px 32px rgba(201,168,76,0.40), inset 0 1px 0 rgba(255,240,180,0.35)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease',
+              ? '0 4px 16px rgba(239,68,68,0.35)'
+              : '0 4px 16px rgba(201,168,76,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            transition: 'transform 0.12s ease, background 0.2s ease',
             animation: isRecording ? 'recordPulse 1.2s ease-in-out infinite' : 'none',
           }}
-          onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
-          onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-          onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-          aria-label="הוספת אירוע בקול"
         >
           {isRecording ? (
-            <svg viewBox="0 0 24 24" width="32" height="32" fill="white">
-              <rect x="6" y="6" width="12" height="12" rx="2"/>
-            </svg>
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
           ) : (
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none"
-              stroke="white" strokeWidth="2" strokeLinecap="round">
-              <rect x="9" y="2" width="6" height="11" rx="3"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" y1="19" x2="12" y2="22"/>
-              <line x1="8" y1="22" x2="16" y2="22"/>
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+              <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
             </svg>
           )}
         </button>
-
-        <span style={{
-          fontSize: 16, fontWeight: 700,
-          color: isRecording ? 'rgba(252,165,165,0.90)' : 'rgba(201,168,76,0.85)',
-          fontFamily: "'Heebo',sans-serif", transition: 'color 0.2s',
-        }}>
-          {isRecording ? '🔴 מקשיבה... לחצי לסיום' : 'לחצי ודברי 🎤'}
-        </span>
-
-        <button
-          type="button"
-          onClick={() => { soundOpen(); setShowManual(true) }}
-          style={{
-            marginTop: 4, padding: '10px 24px', borderRadius: 20,
-            background: 'transparent', border: '1px solid rgba(201,168,76,0.28)',
-            color: 'rgba(245,240,232,0.60)', fontSize: 18,
-            fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
-            minHeight: 48, minWidth: 120,
-            transition: 'border-color 0.15s, color 0.15s',
-          }}
-        >＋ הוספה ידנית</button>
       </div>
 
-      {/* VOICE STATUS TOAST */}
-      {voiceStatus && !voiceParsed && !isRecording && (
+      {/* UNDO TOAST */}
+      {undoAppt && (
         <div style={{
           position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 50, pointerEvents: 'none',
-          background: 'rgba(12,10,8,0.94)',
+          zIndex: 50, background: 'rgba(12,10,8,0.94)',
           backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(201,168,76,0.30)', borderRadius: 18, padding: '12px 22px',
-          color: 'rgba(245,240,232,0.88)', fontSize: 15, fontWeight: 600,
-          fontFamily: "'Heebo',sans-serif", direction: 'rtl', whiteSpace: 'nowrap',
-          textAlign: 'center',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(201,168,76,0.12)',
+          border: '1px solid rgba(201,168,76,0.30)', borderRadius: 18, padding: '10px 18px',
+          display: 'flex', alignItems: 'center', gap: 12, direction: 'rtl',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
+          animation: 'fadeSlideUp 0.30s ease both',
         } as React.CSSProperties}>
-          {voiceStatus}
+          <span style={{ fontSize: 15, fontWeight: 600, color: CREAM, fontFamily: "'Heebo',sans-serif" }}>האירוע נמחק</span>
+          <button type="button" onClick={handleUndo} style={{
+            padding: '6px 14px', borderRadius: 10, background: 'rgba(201,168,76,0.20)',
+            border: '1px solid rgba(201,168,76,0.40)', color: GOLD, fontSize: 15, fontWeight: 700,
+            fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
+          }}>ביטול</button>
         </div>
       )}
 
@@ -1303,7 +1231,8 @@ export function AbuCalendar() {
       {showManual && (
         <ManualModal
           defaultDate={selectedDay}
-          onClose={() => setShowManual(false)}
+          editing={editingAppt}
+          onClose={() => { setShowManual(false); setEditingAppt(null) }}
           onSave={handleManualSave}
         />
       )}
@@ -1311,6 +1240,7 @@ export function AbuCalendar() {
       {voiceParsed && (
         <VoiceCard
           parsed={voiceParsed}
+          existingAppts={appointments}
           onConfirm={handleVoiceConfirm}
           onCancel={() => { setVoiceParsed(null); setVoiceStatus('') }}
         />
@@ -1341,10 +1271,6 @@ export function AbuCalendar() {
         @keyframes todayShimmer {
           0%   { background-position: 200% center; }
           100% { background-position: -200% center; }
-        }
-        @keyframes todayHalo {
-          0%, 100% { box-shadow: 0 0 0 3px rgba(201,168,76,0.25), 0 0 12px rgba(201,168,76,0.15), 0 0 0 6px rgba(201,168,76,0.08); }
-          50%      { box-shadow: 0 0 0 4px rgba(201,168,76,0.40), 0 0 20px rgba(201,168,76,0.30), 0 0 0 8px rgba(201,168,76,0.12); }
         }
         @keyframes slideFromLeft {
           from { transform: translateX(-25px); opacity: 0; }
