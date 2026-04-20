@@ -18,6 +18,7 @@ import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 import { injectSharedKeyframes } from '../../design/animations'
+import { InfoButton } from '../../components/InfoButton'
 import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
@@ -392,6 +393,27 @@ export function AbuCalendar() {
               <circle cx="12" cy="19" r="2"/>
             </svg>
           </button>
+          <InfoButton
+            title="מדריך היומן"
+            lines={[
+              '🟡 נקודה זהב = אירוע רגיל (תור, פגישה)',
+              '🩵 נקודה טורקיז = אירוע היום (עכשיו)',
+              '🩶 נקודה אפורה = אירוע שעבר',
+              '🩷 נקודה ורודה = יום הולדת משפחתי',
+              '⬜ מסגרת זהב = היום',
+              '⬜ מסגרת טורקיז = יום שנבחר',
+              '📅 תאים עמומים = ימים שעברו',
+              '🔔 התראה קולית לפני כל אירוע',
+            ]}
+            howTo={[
+              'לחצי על יום לראות את האירועים שלו',
+              'לחצי על המיקרופון ותגידי מה להוסיף',
+              'לחצי ＋ להוסיף אירוע בכתב',
+              'לחצי על אירוע כדי לערוך אותו',
+              'לחצי × כדי למחוק (4 שניות לביטול)',
+            ]}
+            positionStyle={{ top: 80, left: 14 }}
+          />
         </div>
 
         {/* Bottom glow strip */}
@@ -654,14 +676,22 @@ export function AbuCalendar() {
                   }}>{day}</span>
                 </div>
 
-                {/* v22: Single dot indicator — events or birthday */}
+                {/* Dot indicator — color-coded by type + past/future */}
                 {dots.length > 0 && (
                   <div style={{
                     width: 6, height: 6, borderRadius: '50%', marginTop: 1,
-                    background: hasBirthday ? '#F472B6' : dots[0]?.color ?? TEAL,
-                    boxShadow: hasBirthday
+                    background: isPast && !isToday
+                      ? 'rgba(245,240,232,0.25)'
+                      : hasBirthday ? '#F472B6'
+                      : isToday ? TEAL
+                      : dots[0]?.color ?? GOLD,
+                    boxShadow: isPast && !isToday
+                      ? 'none'
+                      : hasBirthday
                       ? '0 0 6px rgba(244,114,182,0.50)'
-                      : `0 0 4px ${dots[0]?.color ?? TEAL}66`,
+                      : isToday
+                      ? `0 0 6px rgba(20,184,166,0.50)`
+                      : `0 0 4px rgba(201,168,76,0.45)`,
                   }} />
                 )}
               </button>
