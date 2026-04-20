@@ -10,13 +10,11 @@ import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
 import { GRADIENT_TEAL } from '../../design/gradients'
 import { BackButton } from '../../components/BackButton'
+import { StyleSelector, STYLES, type Style } from './StyleSelector'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
 const WA_GREEN = '#25D366'
-
-const STYLES = ['מקורי', 'בדיחה', 'חידה', 'טריק'] as const
-type Style = typeof STYLES[number]
 
 const STYLE_CARD_BORDER: Record<Style, string> = {
   'מקורי': 'rgba(20,184,166,0.40)',
@@ -82,13 +80,6 @@ function detectVoiceCommand(text: string): { type: 'send' } | { type: 'retry' } 
   return { type: 'newIntent', intent: trimmed }
 }
 
-// Per-style accent colors for pill buttons (unselected state)
-const STYLE_ACCENT: Record<Style, string> = {
-  'מקורי': 'rgba(255,255,255,0.55)',
-  'בדיחה': 'rgba(251,191,36,0.70)',
-  'חידה': 'rgba(167,139,250,0.75)',
-  'טריק': 'rgba(52,211,153,0.75)',
-}
 
 export function AbuWhatsApp() {
   const setScreen = useAppStore(s => s.setScreen)
@@ -741,42 +732,10 @@ export function AbuWhatsApp() {
             </div>
 
             {/* ── Style selector — horizontal pill row ── */}
-            <div style={{
-              display: 'flex', gap: 8, flexWrap: 'wrap',
-              justifyContent: 'center',
-              width: '100%', maxWidth: 370,
-            }}>
-              {STYLES.map(style => (
-                <button
-                  key={style}
-                  type="button"
-                  onClick={() => {
-                    if (style === 'מקורי') { soundTap(); setActiveStyle(style) }
-                    else handleDirectGenerate(style)
-                  }}
-                  style={{
-                    height: 46,
-                    padding: '0 22px',
-                    borderRadius: 23,
-                    border: activeStyle === style
-                      ? '1.5px solid rgba(20,184,166,0.70)'
-                      : '1px solid rgba(255,255,255,0.13)',
-                    background: activeStyle === style
-                      ? `linear-gradient(135deg, #14b8a6 0%, #0d9488 60%, #0f766e 100%)`
-                      : 'rgba(255,255,255,0.04)',
-                    color: activeStyle === style ? 'white' : STYLE_ACCENT[style],
-                    fontSize: 16, fontWeight: activeStyle === style ? 700 : 500,
-                    fontFamily: "'Heebo',sans-serif",
-                    cursor: 'pointer',
-                    boxShadow: activeStyle === style
-                      ? '0 3px 16px rgba(20,184,166,0.30), 0 0 0 1px rgba(201,168,76,0.18), inset 0 1px 0 rgba(255,255,255,0.14)'
-                      : '0 1px 4px rgba(0,0,0,0.15)',
-                    transition: 'all 0.20s ease',
-                    whiteSpace: 'nowrap',
-                  }}
-                >{style}</button>
-              ))}
-            </div>
+            <StyleSelector activeStyle={activeStyle} onSelect={style => {
+              if (style === 'מקורי') { soundTap(); setActiveStyle(style) }
+              else handleDirectGenerate(style)
+            }} />
 
             {/* ── Intent textarea ── */}
             <div style={{ position: 'relative', width: '100%', maxWidth: 370 }}>
@@ -1114,37 +1073,7 @@ export function AbuWhatsApp() {
             )}
 
             {/* ── Style selector in result state ── */}
-            <div style={{
-              display: 'flex', gap: 8, flexWrap: 'wrap',
-              justifyContent: 'center',
-              width: '100%', maxWidth: 370,
-            }}>
-              {STYLES.map(style => (
-                <button
-                  key={style}
-                  type="button"
-                  onClick={() => handleStyleTap(style)}
-                  style={{
-                    height: 46, padding: '0 22px', borderRadius: 23,
-                    border: activeStyle === style
-                      ? '1.5px solid rgba(20,184,166,0.70)'
-                      : '1px solid rgba(255,255,255,0.13)',
-                    background: activeStyle === style
-                      ? `linear-gradient(135deg, #14b8a6 0%, #0d9488 60%, #0f766e 100%)`
-                      : 'rgba(255,255,255,0.04)',
-                    color: activeStyle === style ? 'white' : STYLE_ACCENT[style],
-                    fontSize: 16, fontWeight: activeStyle === style ? 700 : 500,
-                    fontFamily: "'Heebo',sans-serif",
-                    cursor: 'pointer',
-                    boxShadow: activeStyle === style
-                      ? '0 3px 16px rgba(20,184,166,0.30), 0 0 0 1px rgba(201,168,76,0.18), inset 0 1px 0 rgba(255,255,255,0.14)'
-                      : 'none',
-                    transition: 'all 0.20s ease',
-                    whiteSpace: 'nowrap',
-                  }}
-                >{style}</button>
-              ))}
-            </div>
+            <StyleSelector activeStyle={activeStyle} onSelect={handleStyleTap} />
 
             {/* Voice mode + new message */}
             <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>

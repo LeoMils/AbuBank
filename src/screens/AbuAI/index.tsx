@@ -16,16 +16,10 @@ import { ErrorCard } from '../../components/ErrorCard'
 
 // ─── Color tokens (green/teal — matches AbuWhatsApp) ────────────────────────
 const GOLD            = '#14b8a6'   // teal (was gold)
-const GOLD_BRIGHT     = '#2DD4BF'   // bright teal (was bright gold)
 const BG              = '#050A18'   // navy (matches AbuWhatsApp)
 const SURFACE         = 'rgba(20,184,166,0.06)'
-const BORDER          = 'rgba(20,184,166,0.14)'
 const TEXT            = '#F0FDF4'
 const TEXT_MUTED      = 'rgba(240,253,244,0.48)'
-
-// suppress unused lint
-void BORDER
-void GOLD_BRIGHT
 
 let msgCounter = 0
 function nextId(): string {
@@ -886,7 +880,6 @@ ${fewShotText}`
   const micDisabled = loading || transcribing
 
   // suppress unused warnings
-  void audioLevel
   void listenCountdown
   void voiceState
 
