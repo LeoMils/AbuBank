@@ -22,7 +22,7 @@ import { InfoButton } from '../../components/InfoButton'
 import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
-import { GOLD, BRIGHT_GOLD, TEAL, BG, CREAM, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
+import { GOLD, BRIGHT_GOLD, BG, CREAM, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
 
 
 
@@ -396,13 +396,13 @@ export function AbuCalendar() {
           <InfoButton
             title="מדריך היומן"
             lines={[
-              '🟡 נקודה זהב = אירוע רגיל (תור, פגישה)',
-              '🩵 נקודה טורקיז = אירוע היום (עכשיו)',
+              '🟡 נקודה זהב = אירוע (תור, פגישה)',
               '🩶 נקודה אפורה = אירוע שעבר',
               '🩷 נקודה ורודה = יום הולדת משפחתי',
-              '⬜ מסגרת זהב = היום',
-              '⬜ מסגרת טורקיז = יום שנבחר',
+              '⬜ מסגרת זהב חזקה = היום',
+              '⬜ מסגרת זהב עדינה = יום שנבחר',
               '📅 תאים עמומים = ימים שעברו',
+              '🩵 פס טורקיז = אירוע עכשיו (ברשימת האירועים)',
               '🔔 התראה קולית לפני כל אירוע',
             ]}
             howTo={[
@@ -623,20 +623,20 @@ export function AbuCalendar() {
                   border: isToday
                     ? '2px solid rgba(201,168,76,0.65)'
                     : isSelected
-                    ? '2px solid rgba(20,184,166,0.55)'
+                    ? '2px solid rgba(201,168,76,0.40)'
                     : holiday
                     ? '1px solid rgba(201,168,76,0.18)'
                     : hasBirthday
                     ? '1px solid rgba(244,114,182,0.25)'
                     : '1px solid rgba(255,255,255,0.03)',
                   background: isToday
-                    ? 'linear-gradient(145deg, rgba(201,168,76,0.16) 0%, rgba(212,168,83,0.06) 100%)'
+                    ? 'rgba(201,168,76,0.14)'
                     : isSelected
-                    ? 'linear-gradient(145deg, rgba(20,184,166,0.18) 0%, rgba(20,184,166,0.06) 100%)'
+                    ? 'rgba(201,168,76,0.08)'
                     : holiday
-                    ? 'linear-gradient(145deg, rgba(201,168,76,0.06) 0%, rgba(201,168,76,0.02) 100%)'
+                    ? 'rgba(201,168,76,0.05)'
                     : hasBirthday
-                    ? 'linear-gradient(145deg, rgba(244,114,182,0.08) 0%, rgba(167,139,250,0.03) 100%)'
+                    ? 'rgba(244,114,182,0.07)'
                     : dots.length > 0
                     ? 'rgba(255,250,240,0.025)'
                     : isShabbat ? 'rgba(201,168,76,0.025)' : isFriday ? 'rgba(201,168,76,0.012)' : 'transparent',
@@ -648,7 +648,7 @@ export function AbuCalendar() {
                   boxShadow: isToday
                     ? 'inset 0 1px 0 rgba(201,168,76,0.15), 0 2px 12px rgba(201,168,76,0.12)'
                     : isSelected
-                    ? 'inset 0 1px 0 rgba(20,184,166,0.10), 0 0 0 3px rgba(20,184,166,0.08)'
+                    ? 'inset 0 1px 0 rgba(201,168,76,0.08)'
                     : 'none',
                 }}
               >
@@ -666,7 +666,7 @@ export function AbuCalendar() {
                     fontSize: isToday ? 20 : 18,
                     fontWeight: isToday ? 800 : isSelected ? 700 : 500,
                     color: isToday ? '#0C0A08'
-                      : isSelected ? '#2DD4BF'
+                      : isSelected ? 'rgba(201,168,76,0.95)'
                       : holiday ? GOLD
                       : isShabbat ? 'rgba(201,168,76,0.85)'
                       : isFriday ? 'rgba(245,240,232,0.70)'
@@ -683,15 +683,12 @@ export function AbuCalendar() {
                     background: isPast && !isToday
                       ? 'rgba(245,240,232,0.25)'
                       : hasBirthday ? '#F472B6'
-                      : isToday ? TEAL
-                      : dots[0]?.color ?? GOLD,
+                      : GOLD,
                     boxShadow: isPast && !isToday
                       ? 'none'
                       : hasBirthday
                       ? '0 0 6px rgba(244,114,182,0.50)'
-                      : isToday
-                      ? `0 0 6px rgba(20,184,166,0.50)`
-                      : `0 0 4px rgba(201,168,76,0.45)`,
+                      : '0 0 4px rgba(201,168,76,0.45)',
                   }} />
                 )}
               </button>
