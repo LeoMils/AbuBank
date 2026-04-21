@@ -46,7 +46,6 @@ export function AbuCalendar() {
   const [voiceStatus, setVoiceStatus] = useState('')
   const [showSettings, setShowSettings] = useState(false)
   const [undoAppt, setUndoAppt] = useState<Appointment | null>(null)
-  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
@@ -167,9 +166,7 @@ export function AbuCalendar() {
     soundTap()
     deleteAppointment(appt.id)
     reload()
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
     setUndoAppt(appt)
-    undoTimerRef.current = setTimeout(() => { setUndoAppt(null); undoTimerRef.current = null }, 4000)
   }
 
   function handleUndo() {
@@ -177,7 +174,6 @@ export function AbuCalendar() {
     addAppointment({ title: undoAppt.title, date: undoAppt.date, time: undoAppt.time, emoji: undoAppt.emoji, notes: undoAppt.notes || '' })
     reload()
     setUndoAppt(null)
-    if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null }
   }
 
   async function handleVoiceRecord() {
@@ -242,7 +238,6 @@ export function AbuCalendar() {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop()
       }
-      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
     }
   }, [])
 
@@ -794,7 +789,7 @@ export function AbuCalendar() {
       <Toast
         message="האירוע נמחק"
         visible={!!undoAppt}
-        onDismiss={() => { setUndoAppt(null); if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null } }}
+        onDismiss={() => setUndoAppt(null)}
         variant="undo"
         onUndo={handleUndo}
         duration={4000}

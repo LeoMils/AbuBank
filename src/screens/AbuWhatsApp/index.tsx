@@ -88,6 +88,7 @@ export function AbuWhatsApp() {
   const [input, setInput] = useState('')
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
+  const [slowLoading, setSlowLoading] = useState(false)
   const [activeStyle, setActiveStyle] = useState<Style>('מקורי')
   const [recordingTime, setRecordingTime] = useState(0)
   const [lastIntent, setLastIntent] = useState('')
@@ -326,10 +327,11 @@ export function AbuWhatsApp() {
       return msg
     } catch (err) {
       const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
-      setError(errText)
       if (voiceModeRef.current) {
         setVoicePhase('speaking')
         await speakVoiceMode(errText)
+      } else {
+        setError(errText)
       }
       return null
     }
@@ -491,12 +493,13 @@ export function AbuWhatsApp() {
             handleText(text.trim())
           } catch (err) {
             const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
-            setError(errText)
             if (voiceModeRef.current) {
               setVoicePhase('speaking')
               await speakVoiceMode(errText)
               await new Promise(r => setTimeout(r, 600))
               if (voiceModeRef.current) startVoiceListening()
+            } else {
+              setError(errText)
             }
           }
         }
@@ -549,6 +552,12 @@ export function AbuWhatsApp() {
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
   const isLoading = phase === 'transcribing' || phase === 'generating'
+
+  useEffect(() => {
+    if (!isLoading) { setSlowLoading(false); return }
+    const timer = setTimeout(() => setSlowLoading(true), 8000)
+    return () => clearTimeout(timer)
+  }, [isLoading])
   const ringGlow = voicePhase === 'listening' ? Math.min(40, 15 + audioLevel * 0.5) : 20
   const ringBorderOpacity = voicePhase === 'listening' ? Math.min(0.7, 0.2 + audioLevel * 0.008) : 0.3
 
@@ -666,8 +675,8 @@ export function AbuWhatsApp() {
         position: 'relative',
       }}>
 
-        {/* ── Error banner ── */}
-        {error && (
+        {/* ── Error banner — hidden during voice mode (TTS handles it) ── */}
+        {error && !voiceMode && (
           <div style={{
             padding: '16px 22px', borderRadius: 18, width: '100%', maxWidth: 370,
             background: 'rgba(20,4,4,0.65)',
@@ -891,6 +900,15 @@ export function AbuWhatsApp() {
             }}>
               {phase === 'transcribing' ? 'מתמללת...' : 'מכינה את ההודעה...'}
             </span>
+            {slowLoading && (
+              <span style={{
+                fontFamily: "'Heebo',sans-serif",
+                fontSize: 16, color: 'rgba(255,255,255,0.35)',
+                animation: 'slideUpIn 0.3s ease both',
+              }}>
+                לוקח יותר זמן מהרגיל...
+              </span>
+            )}
           </div>
         )}
 
