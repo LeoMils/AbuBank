@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { generateMessage, transcribeAudio } from './service'
-import { startMicStream, createRecorder, assembleBlob } from '../../services/recording'
+import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speak, speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { getRandomFamilyPhoto, handleFamilyImgError } from '../../services/familyPhotos'
@@ -129,10 +129,7 @@ export function AbuWhatsApp() {
     return () => {
       voiceModeRef.current = false
       if (timerRef.current) clearInterval(timerRef.current)
-      if (levelRef.current) clearInterval(levelRef.current)
-      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
-      silenceRef.current?.stop()
-      silenceRef.current = null
+      cleanupIndividualRefs({ recorderRef, streamRef, silenceRef, levelRef })
       if (recognitionRef.current) {
         try {
           recognitionRef.current.onresult = null
@@ -167,7 +164,7 @@ export function AbuWhatsApp() {
       }
 
       recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop())
+        try { stream.getTracks().forEach(t => t.stop()) } catch {}
         streamRef.current = null
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
 
@@ -302,11 +299,7 @@ export function AbuWhatsApp() {
       try { recognitionRef.current.abort() } catch {}
       recognitionRef.current = null
     }
-    silenceRef.current?.stop()
-    silenceRef.current = null
-    if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
+    cleanupIndividualRefs({ recorderRef, streamRef, silenceRef, levelRef })
   }, [])
 
   const voiceGenerate = useCallback(async (intent: string, style: Style): Promise<string | null> => {
@@ -457,11 +450,10 @@ export function AbuWhatsApp() {
         }
 
         recorder.onstop = async () => {
-          stream.getTracks().forEach(t => t.stop())
+          try { stream.getTracks().forEach(t => t.stop()) } catch {}
           streamRef.current = null
           if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
-          silenceRef.current?.stop()
-          silenceRef.current = null
+          if (silenceRef.current) { try { silenceRef.current.stop() } catch {}; silenceRef.current = null }
           if (!voiceModeRef.current) return
 
           const blob = assembleBlob(chunksRef.current, recorder)

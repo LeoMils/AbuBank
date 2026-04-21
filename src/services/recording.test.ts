@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { getSupportedMimeType, createRecordingRefs, assembleBlob } from './recording'
+import { describe, it, expect, vi } from 'vitest'
+import { getSupportedMimeType, createRecordingRefs, assembleBlob, cleanupIndividualRefs } from './recording'
 
 describe('getSupportedMimeType', () => {
   it('returns a string', () => {
@@ -40,5 +40,47 @@ describe('assembleBlob', () => {
     const mockRecorder = { mimeType: 'audio/webm' } as MediaRecorder
     const blob = assembleBlob([], mockRecorder)
     expect(blob.size).toBe(0)
+  })
+})
+
+describe('cleanupIndividualRefs', () => {
+  it('clears all refs', () => {
+    const stopTrack = vi.fn()
+    const stopDetector = vi.fn()
+    const refs = {
+      recorderRef: { current: { state: 'recording', stop: vi.fn() } as any },
+      streamRef: { current: { getTracks: () => [{ stop: stopTrack }] } as any },
+      silenceRef: { current: { stop: stopDetector } },
+      levelRef: { current: setInterval(() => {}, 1000) },
+    }
+    cleanupIndividualRefs(refs)
+    expect(refs.streamRef.current).toBeNull()
+    expect(refs.silenceRef.current).toBeNull()
+    expect(refs.levelRef.current).toBeNull()
+    expect(refs.recorderRef.current).toBeNull()
+    expect(stopTrack).toHaveBeenCalled()
+    expect(stopDetector).toHaveBeenCalled()
+  })
+
+  it('is safe to call with all nulls', () => {
+    const refs = {
+      recorderRef: { current: null },
+      streamRef: { current: null },
+      silenceRef: { current: null },
+      levelRef: { current: null },
+    }
+    expect(() => cleanupIndividualRefs(refs)).not.toThrow()
+  })
+
+  it('is safe to call twice', () => {
+    const refs = {
+      recorderRef: { current: { state: 'inactive', stop: vi.fn() } as any },
+      streamRef: { current: { getTracks: () => [{ stop: vi.fn() }] } as any },
+      silenceRef: { current: { stop: vi.fn() } },
+      levelRef: { current: setInterval(() => {}, 1000) },
+    }
+    cleanupIndividualRefs(refs)
+    expect(() => cleanupIndividualRefs(refs)).not.toThrow()
+    expect(refs.streamRef.current).toBeNull()
   })
 })

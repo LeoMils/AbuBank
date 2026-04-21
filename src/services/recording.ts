@@ -49,7 +49,32 @@ export function cleanupStream(refs: RecordingRefs): void {
   if (refs.levelInterval) { clearInterval(refs.levelInterval); refs.levelInterval = null }
   refs.silenceDetector?.stop()
   refs.silenceDetector = null
-  if (refs.stream) { refs.stream.getTracks().forEach(t => t.stop()); refs.stream = null }
-  if (refs.recorder?.state === 'recording') refs.recorder.stop()
+  if (refs.stream) {
+    try { refs.stream.getTracks().forEach(t => t.stop()) } catch {}
+    refs.stream = null
+  }
+  if (refs.recorder?.state === 'recording') {
+    try { refs.recorder.stop() } catch {}
+  }
   refs.recorder = null
+}
+
+export interface IndividualRefs {
+  recorderRef: { current: MediaRecorder | null }
+  streamRef: { current: MediaStream | null }
+  silenceRef: { current: { stop: () => void } | null }
+  levelRef: { current: ReturnType<typeof setInterval> | null }
+}
+
+export function cleanupIndividualRefs(refs: IndividualRefs): void {
+  if (refs.levelRef.current) { clearInterval(refs.levelRef.current); refs.levelRef.current = null }
+  if (refs.silenceRef.current) { try { refs.silenceRef.current.stop() } catch {}; refs.silenceRef.current = null }
+  if (refs.streamRef.current) {
+    try { refs.streamRef.current.getTracks().forEach(t => t.stop()) } catch {}
+    refs.streamRef.current = null
+  }
+  if (refs.recorderRef.current?.state === 'recording') {
+    try { refs.recorderRef.current.stop() } catch {}
+  }
+  refs.recorderRef.current = null
 }
