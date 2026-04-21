@@ -1,0 +1,5 @@
+export const GOLD = '#14b8a6'
+export const BG = '#050A18'
+export const SURFACE = 'rgba(20,184,166,0.06)'
+export const TEXT = '#F0FDF4'
+export const TEXT_MUTED = 'rgba(240,253,244,0.48)'

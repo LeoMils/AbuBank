@@ -12,14 +12,8 @@ import { RealtimeVoiceSession } from '../../services/realtimeVoice'
 import type { RealtimeState } from '../../services/realtimeVoice'
 import { mediateError } from '../../services/errorMediation'
 import type { MediatedError } from '../../services/errorMediation'
-import { ErrorCard } from '../../components/ErrorCard'
-
-// ─── Color tokens (green/teal — matches AbuWhatsApp) ────────────────────────
-const GOLD            = '#14b8a6'   // teal (was gold)
-const BG              = '#050A18'   // navy (matches AbuWhatsApp)
-const SURFACE         = 'rgba(20,184,166,0.06)'
-const TEXT            = '#F0FDF4'
-const TEXT_MUTED      = 'rgba(240,253,244,0.48)'
+import { ChatBubble } from './ChatBubble'
+import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
 
 let msgCounter = 0
 function nextId(): string {
@@ -1213,99 +1207,16 @@ ${fewShotText}`
 
         {/* ──────── CHAT MESSAGES ──────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {messages.map((msg, idx) => {
-            const isLast = idx === messages.length - 1
-            const isUser = msg.role === 'user'
-            const ts = new Date(msg.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-
-            // v27: If message has mediated error, render ErrorCard instead of bubble
-            if (msg.error) {
-              return (
-                <div key={msg.id} style={{ marginBottom: 16, animation: isLast ? 'msgIn 0.3s ease both' : 'none' }}>
-                  <ErrorCard
-                    error={msg.error}
-                    onRetry={() => {
-                      // Remove this error and let user try again via voice/text
-                      setMessages(prev => prev.filter(m => m.id !== msg.id))
-                    }}
-                    onHome={() => { setScreen(Screen.Home) }}
-                    onDismiss={() => { setMessages(prev => prev.filter(m => m.id !== msg.id)) }}
-                  />
-                </div>
-              )
-            }
-
-            return (
-              <div
-                key={msg.id}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: isUser ? 'flex-start' : 'flex-end',
-                  marginBottom: 16,
-                  animation: isLast ? 'msgIn 0.3s ease both' : 'none',
-                }}
-              >
-                {/* Sender label */}
-                <div style={{
-                  fontSize: 12,
-                  fontFamily: "'DM Sans',sans-serif",
-                  fontWeight: 600,
-                  letterSpacing: '1px',
-                  textTransform: 'uppercase',
-                  color: isUser ? 'rgba(245,240,232,0.42)' : 'rgba(20,184,166,0.55)',
-                  marginBottom: 5,
-                  direction: 'ltr',
-                  paddingInline: 4,
-                }}>
-                  {isUser ? 'את' : 'אבו AI'}
-                </div>
-
-                {/* Bubble */}
-                <div style={{
-                  maxWidth: '82%',
-                  ...(isUser ? {
-                    padding: '14px 18px',
-                    borderRadius: '18px 4px 18px 18px',
-                    background: 'rgba(20,184,166,0.13)',
-                    border: '1px solid rgba(20,184,166,0.35)',
-                  } : {
-                    padding: '14px 18px',
-                    borderRadius: '4px 18px 18px 18px',
-                    background: SURFACE,
-                    border: '1px solid rgba(20,184,166,0.20)',
-                    borderRight: '3px solid rgba(20,184,166,0.50)',
-                  }),
-                }}>
-                  <div style={{
-                    fontSize: 16,
-                    lineHeight: isUser ? 1.85 : 1.9,
-                    color: TEXT,
-                    direction: 'rtl',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    fontFamily: "'Heebo',sans-serif",
-                    animation: 'msgIn 0.3s ease',
-                  }}>
-                    {msg.content}
-                  </div>
-                </div>
-
-                {/* Timestamp */}
-                <div style={{
-                  marginTop: 5,
-                  fontSize: 12,
-                  color: 'rgba(245,240,232,0.30)',
-                  textAlign: isUser ? 'right' : 'left',
-                  fontFamily: "'DM Sans',sans-serif",
-                  direction: 'ltr',
-                  paddingInline: 4,
-                }}>
-                  {ts}
-                </div>
-              </div>
-            )
-          })}
+          {messages.map((msg, idx) => (
+            <ChatBubble
+              key={msg.id}
+              msg={msg}
+              isLast={idx === messages.length - 1}
+              onRetry={() => setMessages(prev => prev.filter(m => m.id !== msg.id))}
+              onHome={() => setScreen(Screen.Home)}
+              onDismiss={() => setMessages(prev => prev.filter(m => m.id !== msg.id))}
+            />
+          ))}
 
           {/* Loading dots */}
           {loading && (
