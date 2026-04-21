@@ -296,8 +296,10 @@ export function AbuAI() {
       }
 
       recorder.onstop = async () => {
-        try { stream.getTracks().forEach(t => t.stop()) } catch {}
-        streamRef.current = null
+        if (streamRef.current === stream) {
+          try { stream.getTracks().forEach(t => t.stop()) } catch {}
+          streamRef.current = null
+        }
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
         setRecording(false)
 
@@ -539,8 +541,10 @@ export function AbuAI() {
         }
 
         recorder.onstop = async () => {
-          try { stream.getTracks().forEach(t => t.stop()) } catch {}
-          streamRef.current = null
+          if (streamRef.current === stream) {
+            try { stream.getTracks().forEach(t => t.stop()) } catch {}
+            streamRef.current = null
+          }
           if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
           if (silenceRef.current) { try { silenceRef.current.stop() } catch {}; silenceRef.current = null }
           if (!voiceModeRef.current) return

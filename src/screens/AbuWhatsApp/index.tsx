@@ -164,8 +164,10 @@ export function AbuWhatsApp() {
       }
 
       recorder.onstop = async () => {
-        try { stream.getTracks().forEach(t => t.stop()) } catch {}
-        streamRef.current = null
+        if (streamRef.current === stream) {
+          try { stream.getTracks().forEach(t => t.stop()) } catch {}
+          streamRef.current = null
+        }
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
 
         const blob = assembleBlob(chunksRef.current, recorder)
@@ -450,8 +452,10 @@ export function AbuWhatsApp() {
         }
 
         recorder.onstop = async () => {
-          try { stream.getTracks().forEach(t => t.stop()) } catch {}
-          streamRef.current = null
+          if (streamRef.current === stream) {
+            try { stream.getTracks().forEach(t => t.stop()) } catch {}
+            streamRef.current = null
+          }
           if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
           if (silenceRef.current) { try { silenceRef.current.stop() } catch {}; silenceRef.current = null }
           if (!voiceModeRef.current) return
