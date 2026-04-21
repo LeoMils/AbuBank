@@ -30,7 +30,7 @@ const STYLE_CARD_TOP: Record<Style, string> = {
   'טריק': '#25D366',
 }
 
-type Phase = 'idle' | 'recording' | 'transcribing' | 'generating' | 'result'
+type Phase = 'idle' | 'recording' | 'transcribing' | 'generating' | 'ready' | 'result'
 
 // Style detection from voice commands
 const STYLE_KEYWORDS: Record<string, Style> = {
@@ -196,7 +196,7 @@ export function AbuWhatsApp() {
           setPhase('generating')
           const msg = await generateMessage(text, activeStyle)
           setResult(msg)
-          setPhase('result')
+          setPhase('ready')
         } catch (err: unknown) {
           handleError(err instanceof Error ? err.message : 'שגיאה בתמלול. נסי שוב.')
         }
@@ -231,7 +231,7 @@ export function AbuWhatsApp() {
       const msg = await generateMessage(text, activeStyle)
       setResult(msg)
       soundSuccess()
-      setPhase('result')
+      setPhase('ready')
     } catch (err: unknown) {
       handleError(err instanceof Error ? err.message : 'שגיאה. נסי שוב.')
     }
@@ -247,7 +247,7 @@ export function AbuWhatsApp() {
       const msg = await generateMessage(lastIntent, style)
       setResult(msg)
       soundSuccess()
-      setPhase('result')
+      setPhase('ready')
     } catch (err: unknown) {
       handleError(err instanceof Error ? err.message : 'שגיאה. נסי שוב.')
     }
@@ -272,7 +272,7 @@ export function AbuWhatsApp() {
       resultRef.current = msg
       hasResultRef.current = true
       soundSuccess()
-      setPhase('result')
+      setPhase('ready')
     } catch (err: unknown) {
       handleError(err instanceof Error ? err.message : 'שגיאה. נסי שוב.')
     }
@@ -323,7 +323,7 @@ export function AbuWhatsApp() {
       setResult(msg)
       setLastIntent(intent)
       soundSuccess()
-      setPhase('result')
+      setPhase('ready')
       return msg
     } catch (err) {
       const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
@@ -558,6 +558,13 @@ export function AbuWhatsApp() {
     const timer = setTimeout(() => setSlowLoading(true), 8000)
     return () => clearTimeout(timer)
   }, [isLoading])
+
+  useEffect(() => {
+    if (phase !== 'ready') return
+    const timer = setTimeout(() => setPhase('result'), 300)
+    return () => clearTimeout(timer)
+  }, [phase])
+
   const ringGlow = voicePhase === 'listening' ? Math.min(40, 15 + audioLevel * 0.5) : 20
   const ringBorderOpacity = voicePhase === 'listening' ? Math.min(0.7, 0.2 + audioLevel * 0.008) : 0.3
 
@@ -909,6 +916,22 @@ export function AbuWhatsApp() {
                 לוקח יותר זמן מהרגיל...
               </span>
             )}
+          </div>
+        )}
+
+        {/* ── Ready flash — brief "done" before result ── */}
+        {phase === 'ready' && !voiceMode && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+            marginTop: 50,
+            animation: 'slideUpIn 0.2s ease both',
+          }}>
+            <span style={{ fontSize: 32 }}>✅</span>
+            <span style={{
+              fontFamily: "'Heebo',sans-serif",
+              fontSize: 18, fontWeight: 600,
+              color: 'rgba(52,211,153,0.85)',
+            }}>ההודעה מוכנה</span>
           </div>
         )}
 
