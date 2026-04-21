@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
-import { sendMessage, streamMessage, transcribeAudio, getSupportedMimeType, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
+import { sendMessage, streamMessage, transcribeAudio, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
+import { startMicStream, createRecorder, assembleBlob, cleanupStream, type RecordingRefs } from '../../services/recording'
 import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
@@ -286,14 +287,9 @@ export function AbuAI() {
 
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-      })
+      const stream = await startMicStream()
       streamRef.current = stream
-      const mimeType = getSupportedMimeType()
-      const recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream)
+      const recorder = createRecorder(stream)
       recorderRef.current = recorder
       chunksRef.current = []
 
@@ -307,8 +303,7 @@ export function AbuAI() {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
         setRecording(false)
 
-        const actualType = recorder.mimeType || mimeType || 'audio/mp4'
-        const blob = new Blob(chunksRef.current, { type: actualType })
+        const blob = assembleBlob(chunksRef.current, recorder)
         if (blob.size < 1000) return
 
         setTranscribing(true)
@@ -539,14 +534,9 @@ export function AbuAI() {
     function startWhisperFallback() {
     ;(async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-        })
+        const stream = await startMicStream()
         streamRef.current = stream
-        const mimeType = getSupportedMimeType()
-        const recorder = mimeType
-          ? new MediaRecorder(stream, { mimeType })
-          : new MediaRecorder(stream)
+        const recorder = createRecorder(stream)
         recorderRef.current = recorder
         chunksRef.current = []
 
@@ -562,8 +552,7 @@ export function AbuAI() {
           silenceRef.current = null
           if (!voiceModeRef.current) return
 
-          const actualType = recorder.mimeType || mimeType || 'audio/mp4'
-          const blob = new Blob(chunksRef.current, { type: actualType })
+          const blob = assembleBlob(chunksRef.current, recorder)
           if (blob.size < 300) {
             if (voiceModeRef.current) startVoiceListening()
             return

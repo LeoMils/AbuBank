@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
-import { generateMessage, transcribeAudio, getSupportedMimeType } from './service'
+import { generateMessage, transcribeAudio } from './service'
+import { startMicStream, createRecorder, assembleBlob } from '../../services/recording'
 import { speak, speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { getRandomFamilyPhoto, handleFamilyImgError } from '../../services/familyPhotos'
@@ -155,16 +156,9 @@ export function AbuWhatsApp() {
   const startRecording = async () => {
     setError('')
     try {
-      // iOS Safari requires explicit audio constraints for microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-      })
+      const stream = await startMicStream()
       streamRef.current = stream
-      const mimeType = getSupportedMimeType()
-      // Empty mimeType = let the browser choose (iOS-safe fallback)
-      const recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream)
+      const recorder = createRecorder(stream)
       recorderRef.current = recorder
       chunksRef.current = []
 
@@ -177,9 +171,7 @@ export function AbuWhatsApp() {
         streamRef.current = null
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
 
-        // Use the recorder's actual mimeType (iOS may differ from requested mimeType)
-        const actualType = recorder.mimeType || mimeType || 'audio/mp4'
-        const blob = new Blob(chunksRef.current, { type: actualType })
+        const blob = assembleBlob(chunksRef.current, recorder)
         if (blob.size < 1000) {
           handleError('ההקלטה קצרה מדי. נסי שוב.')
           return
@@ -454,14 +446,9 @@ export function AbuWhatsApp() {
     // ── Fallback: MediaRecorder + Whisper (non-WebKit / desktop Chrome) ───────
     ;(async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-        })
+        const stream = await startMicStream()
         streamRef.current = stream
-        const mimeType = getSupportedMimeType()
-        const recorder = mimeType
-          ? new MediaRecorder(stream, { mimeType })
-          : new MediaRecorder(stream)
+        const recorder = createRecorder(stream)
         recorderRef.current = recorder
         chunksRef.current = []
 
@@ -477,8 +464,7 @@ export function AbuWhatsApp() {
           silenceRef.current = null
           if (!voiceModeRef.current) return
 
-          const actualType = recorder.mimeType || mimeType || 'audio/mp4'
-          const blob = new Blob(chunksRef.current, { type: actualType })
+          const blob = assembleBlob(chunksRef.current, recorder)
           if (blob.size < 300) {
             if (voiceModeRef.current) startVoiceListening()
             return

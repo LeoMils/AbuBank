@@ -287,22 +287,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   }
 }
 
-export function getSupportedMimeType(): string {
-  // iOS Safari supports only audio/mp4 — test it first before webm variants
-  const types = [
-    'audio/mp4;codecs=mp4a.40.2', // iOS Safari (AAC in MP4)
-    'audio/mp4',                   // iOS Safari generic
-    'audio/webm;codecs=opus',      // Chrome / Android
-    'audio/webm',                  // Chrome / Android fallback
-    'audio/ogg;codecs=opus',       // Firefox
-  ]
-  for (const type of types) {
-    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
-      return type
-    }
-  }
-  return '' // Empty string = let the browser choose (iOS-safe)
-}
+export { getSupportedMimeType } from '../../services/recording'
 
 // ─── Chat ───
 

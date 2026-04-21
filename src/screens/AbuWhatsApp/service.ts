@@ -264,18 +264,4 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   }
 }
 
-export function getSupportedMimeType(): string {
-  const types = [
-    'audio/mp4;codecs=mp4a.40.2',
-    'audio/mp4',
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/ogg;codecs=opus',
-  ]
-  for (const type of types) {
-    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
-      return type
-    }
-  }
-  return ''
-}
+export { getSupportedMimeType } from '../../services/recording'
