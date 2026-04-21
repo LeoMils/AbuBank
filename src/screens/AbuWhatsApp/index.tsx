@@ -11,6 +11,7 @@ import { InfoButton } from '../../components/InfoButton'
 import { GRADIENT_TEAL } from '../../design/gradients'
 import { BackButton } from '../../components/BackButton'
 import { StyleSelector, STYLES, type Style } from './StyleSelector'
+import { Toast } from '../../components/Toast'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -286,7 +287,6 @@ export function AbuWhatsApp() {
     soundSend()
     try { await navigator.clipboard.writeText(result) } catch { /* ignore — message still visible */ }
     setCopyToast(true)
-    setTimeout(() => setCopyToast(false), 5000)
     // Small delay so the toast appears before WhatsApp takes focus
     setTimeout(() => {
       window.location.href = 'https://chat.whatsapp.com/JqqGpPKTCq3L0JnitU5y5f'
@@ -327,6 +327,10 @@ export function AbuWhatsApp() {
     } catch (err) {
       const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
       setError(errText)
+      if (voiceModeRef.current) {
+        setVoicePhase('speaking')
+        await speakVoiceMode(errText)
+      }
       return null
     }
   }, [])
@@ -663,7 +667,7 @@ export function AbuWhatsApp() {
       }}>
 
         {/* ── Error banner ── */}
-        {error && !voiceMode && (
+        {error && (
           <div style={{
             padding: '16px 22px', borderRadius: 18, width: '100%', maxWidth: 370,
             background: 'rgba(20,4,4,0.65)',
@@ -983,7 +987,6 @@ export function AbuWhatsApp() {
                   soundCopy()
                   try { await navigator.clipboard.writeText(result) } catch {}
                   setCopyToast(true)
-                  setTimeout(() => setCopyToast(false), 5000)
                 }}
                 style={{
                   flex: 1, height: 52, borderRadius: 18,
@@ -1049,28 +1052,13 @@ export function AbuWhatsApp() {
               </button>
             </div>
 
-            {/* Copy toast */}
-            {copyToast && (
-              <div style={{
-                width: '100%', maxWidth: 370,
-                padding: '14px 20px', borderRadius: 18,
-                background: 'rgba(37,211,102,0.11)',
-                border: '1.5px solid rgba(37,211,102,0.38)',
-                display: 'flex', alignItems: 'center', gap: 12,
-                direction: 'rtl',
-                animation: 'slideUpIn 0.25s ease both',
-              }}>
-                <span style={{ fontSize: 22, flexShrink: 0 }}>📋</span>
-                <div style={{ fontFamily: "'Heebo',sans-serif" }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#4ade80' }}>
-                    ההודעה הועתקה!
-                  </div>
-                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.60)', marginTop: 2, lineHeight: 1.45 }}>
-                    הדבקי בקבוצה (לחצי לחיצה ארוכה ← הדבק) ושלחי
-                  </div>
-                </div>
-              </div>
-            )}
+            <Toast
+              message="📋 ההודעה הועתקה — הדבקי בקבוצה ושלחי"
+              visible={copyToast}
+              onDismiss={() => setCopyToast(false)}
+              variant="success"
+              duration={4000}
+            />
 
             {/* ── Style selector in result state ── */}
             <StyleSelector activeStyle={activeStyle} onSelect={handleStyleTap} />

@@ -22,6 +22,7 @@ import { InfoButton } from '../../components/InfoButton'
 import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
+import { Toast } from '../../components/Toast'
 import { GOLD, BRIGHT_GOLD, BG, CREAM, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
 
 
@@ -146,10 +147,7 @@ export function AbuCalendar() {
 
   const selectedAppts = apptsByDate[selectedDay] ?? []
 
-  function showToast() {
-    setToast(true)
-    setTimeout(() => setToast(false), 3500)
-  }
+  function showToast() { setToast(true) }
 
   function handleManualSave(appt: Omit<Appointment, 'id' | 'color'>) {
     if (editingAppt) {
@@ -793,43 +791,21 @@ export function AbuCalendar() {
         </button>
       </div>
 
-      {/* UNDO TOAST */}
-      {undoAppt && (
-        <div style={{
-          position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 50, background: 'rgba(12,10,8,0.94)',
-          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(201,168,76,0.30)', borderRadius: 18, padding: '10px 18px',
-          display: 'flex', alignItems: 'center', gap: 12, direction: 'rtl',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
-          animation: 'fadeSlideUp 0.30s ease both',
-        } as React.CSSProperties}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: CREAM, fontFamily: "'Heebo',sans-serif" }}>האירוע נמחק</span>
-          <button type="button" onClick={handleUndo} style={{
-            padding: '6px 14px', borderRadius: 10, background: 'rgba(201,168,76,0.20)',
-            border: '1px solid rgba(201,168,76,0.40)', color: GOLD, fontSize: 15, fontWeight: 700,
-            fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
-          }}>ביטול</button>
-        </div>
-      )}
+      <Toast
+        message="האירוע נמחק"
+        visible={!!undoAppt}
+        onDismiss={() => { setUndoAppt(null); if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null } }}
+        variant="undo"
+        onUndo={handleUndo}
+        duration={4000}
+      />
 
-      {/* SAVE SUCCESS TOAST */}
-      {toast && (
-        <div style={{
-          position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 50, pointerEvents: 'none',
-          background: 'rgba(12,10,8,0.94)',
-          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(20,184,166,0.40)', borderRadius: 18, padding: '12px 22px',
-          color: CREAM, fontSize: 15, fontWeight: 600,
-          fontFamily: "'Heebo',sans-serif", direction: 'rtl', whiteSpace: 'nowrap',
-          textAlign: 'center',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.55), 0 0 16px rgba(20,184,166,0.15)',
-          animation: 'fadeSlideUp 0.30s ease both',
-        } as React.CSSProperties}>
-          האירוע נשמר
-        </div>
-      )}
+      <Toast
+        message="האירוע נשמר"
+        visible={toast}
+        onDismiss={() => setToast(false)}
+        variant="success"
+      />
 
       {/* MODALS */}
       {showManual && (
