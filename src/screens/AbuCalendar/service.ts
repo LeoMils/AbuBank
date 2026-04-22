@@ -114,7 +114,7 @@ function detectFamilyType(text: string): Pick<Appointment, 'type' | 'isRecurring
   return {}
 }
 
-export async function parseAppointmentText(text: string): Promise<{ title: string; date: string | null; time: string | null; emoji: string } & Pick<Appointment, 'type' | 'isRecurring'>> {
+export async function parseAppointmentText(text: string): Promise<{ title: string; date: string | null; time: string | null; emoji: string; confidence: number; personName: string | null } & Pick<Appointment, 'type' | 'isRecurring'>> {
   const today = new Date().toISOString().split('T')[0]!
   const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
 
@@ -156,7 +156,8 @@ RULES:
 - EMOJI: 🏥 medical, ✂️ haircut, 🛒 shopping, 🎂 birthday, 🍽️ food, ✈️ travel, 👨‍👩‍👧 family, 💼 work, 📅 general.
 
 Return ONLY valid JSON:
-{"title":"short Hebrew title","date":"YYYY-MM-DD or null","time":"HH:MM or null","emoji":"...","location":"","personName":""}`,
+{"title":"short Hebrew title","date":"YYYY-MM-DD or null","time":"HH:MM or null","emoji":"...","location":"","personName":"","confidence":0.0-1.0}
+confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very ambiguous.`,
             },
             { role: 'user', content: text },
           ],
@@ -169,13 +170,15 @@ Return ONLY valid JSON:
         const content = data?.choices?.[0]?.message?.content ?? ''
         const match = content.match(/\{[\s\S]*?\}/)
         if (match) {
-          const parsed = JSON.parse(match[0]) as { title?: string; date?: string | null; time?: string | null; emoji?: string; location?: string; personName?: string }
+          const parsed = JSON.parse(match[0]) as { title?: string; date?: string | null; time?: string | null; emoji?: string; location?: string; personName?: string; confidence?: number }
           const title = parsed.title ?? text
           const date = (parsed.date && parsed.date !== 'null') ? parsed.date : null
           const time = (parsed.time && parsed.time !== 'null') ? parsed.time : null
           const emoji = parsed.emoji ?? detectEmoji(title)
+          const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : (date && time ? 0.9 : date || time ? 0.6 : 0.3)
+          const personName = parsed.personName || null
           const familyType = detectFamilyType(text)
-          return { title, date, time, emoji, ...familyType }
+          return { title, date, time, emoji, confidence, personName, ...familyType }
         }
       }
     } catch {
@@ -188,6 +191,8 @@ Return ONLY valid JSON:
     date: null,
     time: null,
     emoji: detectEmoji(text),
+    confidence: 0.3,
+    personName: null,
     ...detectFamilyType(text),
   }
 }

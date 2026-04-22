@@ -23,6 +23,7 @@ import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
 import { Toast } from '../../components/Toast'
+import { AbuTime } from './AbuTime'
 import { GOLD, BRIGHT_GOLD, BG, CREAM, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
 
 
@@ -45,6 +46,7 @@ export function AbuCalendar() {
   const [isRecording, setIsRecording] = useState(false)
   const [voiceStatus, setVoiceStatus] = useState('')
   const [showSettings, setShowSettings] = useState(false)
+  const [abuTimeOpen, setAbuTimeOpen] = useState(false)
   const [undoAppt, setUndoAppt] = useState<Appointment | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -201,8 +203,20 @@ export function AbuCalendar() {
         setVoiceStatus('מעבדת...')
         try {
           const transcribed = await transcribeAudio(blob)
+          // Check if this is a schedule query ("מה קורה לי?")
+          const { isScheduleQuery: isQuery } = await import('./intentParser')
+          if (isQuery(transcribed)) {
+            setVoiceStatus('')
+            setAbuTimeOpen(true)
+            return
+          }
           setVoiceStatus('מנתחת...')
           const parsed = await parseAppointmentText(transcribed)
+          if (parsed.confidence < 0.5) {
+            setVoiceStatus('לא הבנתי בדיוק. נסי להגיד יום, שעה ומה האירוע.')
+            setTimeout(() => setVoiceStatus(''), 4000)
+            return
+          }
           setVoiceParsed(parsed)
         } catch {
           setVoiceStatus('לא הצלחתי להבין. נסי שוב לאט יותר')
@@ -503,6 +517,9 @@ export function AbuCalendar() {
           </span>
         </div>
       )}
+
+      {/* ABU TIME — "מה קורה לי?" */}
+      <AbuTime appointments={appointments} today={today} forceOpen={abuTimeOpen} onToggle={setAbuTimeOpen} />
 
       {/* MONTH NAVIGATOR */}
       <div style={{
