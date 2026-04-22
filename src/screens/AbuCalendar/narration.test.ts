@@ -66,12 +66,12 @@ describe('narrateDay', () => {
   const today = '2026-04-22'
 
   it('empty day', () => {
-    expect(narrateDay([], today, today)).toContain('חופשי')
+    expect(narrateDay([], today, today)).toContain('פנוי')
   })
 
-  it('single critical event says חשוב', () => {
+  it('single critical event says שימי לב', () => {
     const appts = [makeAppt('רופא שיניים', today, '10:00')]
-    expect(narrateDay(appts, today, today)).toContain('חשוב')
+    expect(narrateDay(appts, today, today)).toContain('שימי לב')
   })
 
   it('multiple events — critical first', () => {
@@ -96,14 +96,14 @@ describe('narrateDay', () => {
     const eveningNow = new Date('2026-04-22T20:00:00')
     const appts = [makeAppt('דבר בערב', today, '21:00')]
     const result = narrateDay(appts, today, today, eveningNow)
-    expect(result).toContain('נשאר')
+    expect(result).toContain('הערב')
   })
 
-  it('evening with all past says ערב טוב', () => {
+  it('evening with all past says ערב שקט', () => {
     const eveningNow = new Date('2026-04-22T22:00:00')
     const appts = [makeAppt('דבר שעבר', today, '09:00')]
     const result = narrateDay(appts, today, today, eveningNow)
-    expect(result).toContain('ערב טוב')
+    expect(result).toContain('ערב שקט')
   })
 })
 
@@ -154,41 +154,51 @@ describe('getPreEventHint', () => {
 })
 
 describe('getSuggestion — preparation intelligence', () => {
-  it('generic medical → ask doctor', () => {
-    expect(getSuggestion(makeAppt('רופא', '2026-04-22', '10:00'))).toContain('לשאול')
+  it('generic medical → ask doctor + has action button', () => {
+    const s = getSuggestion(makeAppt('רופא', '2026-04-22', '10:00'))
+    expect(s).not.toBeNull()
+    expect(s!.text).toContain('לשאול')
+    expect(s!.action).toBe('prepare_list')
+    expect(s!.actionLabel).toBeTruthy()
   })
 
-  it('blood test → bring ID + card', () => {
+  it('blood test → bring ID', () => {
     const s = getSuggestion(makeAppt('בדיקת דם', '2026-04-22', '08:00'))
-    expect(s).toContain('תעודת זהות')
+    expect(s!.text).toContain('תעודת זהות')
   })
 
   it('dentist → list of pain', () => {
-    expect(getSuggestion(makeAppt('רופא שיניים', '2026-04-22', '10:00'))).toContain('כואב')
+    expect(getSuggestion(makeAppt('רופא שיניים', '2026-04-22', '10:00'))!.text).toContain('כואב')
   })
 
-  it('birthday → greeting', () => {
-    expect(getSuggestion(makeAppt('יום הולדת של מור', '2026-04-22', '18:00'))).toContain('ברכה')
+  it('birthday → greeting (no action button)', () => {
+    const s = getSuggestion(makeAppt('יום הולדת של מור', '2026-04-22', '18:00'))
+    expect(s!.text).toContain('ברכה')
+    expect(s!.actionLabel).toBeNull()
   })
 
-  it('visit → notify arrival', () => {
-    expect(getSuggestion(makeAppt('ביקור אצל אופיר', '2026-04-22', '16:00'))).toContain('להודיע')
+  it('visit → notify with contact name', () => {
+    const s = getSuggestion(makeAppt('ביקור אצל אופיר', '2026-04-22', '16:00'))
+    expect(s!.action).toBe('notify_contact')
+    expect(s!.actionLabel).toBeTruthy()
   })
 
   it('dinner → buy something', () => {
-    expect(getSuggestion(makeAppt('ארוחת ערב עם משפחה', '2026-04-22', '19:00'))).toContain('לקנות')
+    expect(getSuggestion(makeAppt('ארוחת ערב עם משפחה', '2026-04-22', '19:00'))!.text).toContain('לקנות')
   })
 
   it('lawyer → documents', () => {
-    expect(getSuggestion(makeAppt('עורך דין', '2026-04-22', '10:00'))).toContain('מסמכים')
+    expect(getSuggestion(makeAppt('עורך דין', '2026-04-22', '10:00'))!.text).toContain('מסמכים')
   })
 
-  it('bank → ID', () => {
-    expect(getSuggestion(makeAppt('בנק', '2026-04-22', '10:00'))).toContain('תעודת זהות')
+  it('bank → ID (no action needed)', () => {
+    const s = getSuggestion(makeAppt('בנק', '2026-04-22', '10:00'))
+    expect(s!.text).toContain('תעודת זהות')
+    expect(s!.actionLabel).toBeNull()
   })
 
   it('insurance → papers', () => {
-    expect(getSuggestion(makeAppt('ביטוח', '2026-04-22', '10:00'))).toContain('ניירות')
+    expect(getSuggestion(makeAppt('ביטוח', '2026-04-22', '10:00'))!.text).toContain('ניירות')
   })
 
   it('optional → null', () => {
@@ -201,19 +211,24 @@ describe('getSuggestion — preparation intelligence', () => {
 })
 
 describe('getPostEventFollowUp', () => {
-  it('medical event 1 hour ago → ask what doctor said', () => {
+  it('medical event 1 hour ago → ask what doctor said + log action', () => {
     const appt = makeAppt('רופא', '2026-04-22', '09:00')
     const now = new Date('2026-04-22T10:00:00')
-    expect(getPostEventFollowUp(appt, now)).toContain('הרופא אמר')
+    const f = getPostEventFollowUp(appt, now)
+    expect(f).not.toBeNull()
+    expect(f!.text).toContain('רופא')
+    expect(f!.action).toBe('log_outcome')
+    expect(f!.actionLabel).toBeTruthy()
   })
 
-  it('administrative event 2 hours ago → ask if need follow-up', () => {
+  it('administrative event 2 hours ago → follow-up action', () => {
     const appt = makeAppt('עורך דין', '2026-04-22', '10:00')
     const now = new Date('2026-04-22T12:00:00')
-    expect(getPostEventFollowUp(appt, now)).toContain('המשך')
+    const f = getPostEventFollowUp(appt, now)
+    expect(f!.action).toBe('set_reminder')
   })
 
-  it('event more than 4 hours ago → null (too late)', () => {
+  it('event more than 4 hours ago → null', () => {
     const appt = makeAppt('רופא', '2026-04-22', '08:00')
     const now = new Date('2026-04-22T14:00:00')
     expect(getPostEventFollowUp(appt, now)).toBeNull()
@@ -225,7 +240,7 @@ describe('getPostEventFollowUp', () => {
     expect(getPostEventFollowUp(appt, now)).toBeNull()
   })
 
-  it('optional event → null (no follow-up needed)', () => {
+  it('optional event → null', () => {
     const appt = makeAppt('קניות', '2026-04-22', '09:00')
     const now = new Date('2026-04-22T10:00:00')
     expect(getPostEventFollowUp(appt, now)).toBeNull()

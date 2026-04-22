@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { type Appointment } from './service'
-import { narrateDay, narrateRange, classifyPriority, getPreEventHint, getSuggestion, getPostEventFollowUp, shouldSpeak, sortByPriority } from './narration'
+import { narrateDay, narrateRange, classifyPriority, getPreEventHint, getSuggestion, getPostEventFollowUp, shouldSpeak, sortByPriority, type SmartSuggestion } from './narration'
 import { GOLD, CREAM } from './constants'
 import { speak, stopSpeaking } from '../../services/voice'
+import { recordAction } from './abuTimeMemory'
 
 interface AbuTimeProps {
   appointments: Appointment[]
@@ -211,35 +212,13 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
           </div>
 
           {/* Single action — follow-up takes priority over suggestion, never both */}
-          {followUp ? (
-            <div style={{
-              marginTop: 12,
-              padding: '10px 14px',
-              borderRadius: 12,
-              background: 'rgba(20,184,166,0.06)',
-              border: '1px solid rgba(20,184,166,0.20)',
-              fontSize: 16,
-              color: 'rgba(45,212,191,0.90)',
-              fontWeight: 600,
-              fontFamily: "'Heebo',sans-serif",
-            }}>
-              📝 {followUp}
-            </div>
-          ) : suggestion ? (
-            <div style={{
-              marginTop: 12,
-              padding: '10px 14px',
-              borderRadius: 12,
-              background: 'rgba(201,168,76,0.06)',
-              border: '1px solid rgba(201,168,76,0.15)',
-              fontSize: 16,
-              color: GOLD,
-              fontWeight: 600,
-              fontFamily: "'Heebo',sans-serif",
-            }}>
-              💡 {suggestion}
-            </div>
-          ) : null}
+          {(followUp || suggestion) && (
+            <SuggestionCard
+              item={followUp ?? suggestion!}
+              variant={followUp ? 'followup' : 'suggestion'}
+              onAction={(action) => { recordAction(action) }}
+            />
+          )}
 
           {nextAppt && nextAppt.date !== today && (
             <div style={{
@@ -258,6 +237,65 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
             </div>
           )}
         </div>
+      )}
+    </div>
+  )
+}
+
+function SuggestionCard({ item, variant, onAction }: {
+  item: SmartSuggestion
+  variant: 'suggestion' | 'followup'
+  onAction: (action: string) => void
+}) {
+  const [tapped, setTapped] = useState(false)
+  const isTeal = variant === 'followup'
+
+  if (tapped) {
+    return (
+      <div style={{
+        marginTop: 12, padding: '12px 14px', borderRadius: 12,
+        background: 'rgba(52,211,153,0.08)',
+        border: '1px solid rgba(52,211,153,0.25)',
+        fontSize: 16, fontWeight: 600, color: 'rgba(52,211,153,0.85)',
+        fontFamily: "'Heebo',sans-serif", textAlign: 'center',
+        animation: 'fadeSlideUp 0.2s ease both',
+      }}>
+        ✓ נרשם
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      marginTop: 12, padding: '10px 14px', borderRadius: 12,
+      background: isTeal ? 'rgba(20,184,166,0.06)' : 'rgba(201,168,76,0.06)',
+      border: `1px solid ${isTeal ? 'rgba(20,184,166,0.20)' : 'rgba(201,168,76,0.15)'}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+      direction: 'rtl',
+    }}>
+      <span style={{
+        fontSize: 16, fontWeight: 600,
+        color: isTeal ? 'rgba(45,212,191,0.90)' : GOLD,
+        fontFamily: "'Heebo',sans-serif", flex: 1,
+      }}>
+        {isTeal ? '📝' : '💡'} {item.text}
+      </span>
+      {item.actionLabel && (
+        <button
+          type="button"
+          onClick={() => { onAction(item.action ?? 'tap'); setTapped(true) }}
+          style={{
+            padding: '8px 16px', borderRadius: 10,
+            background: isTeal ? 'rgba(20,184,166,0.12)' : 'rgba(201,168,76,0.12)',
+            border: `1px solid ${isTeal ? 'rgba(20,184,166,0.35)' : 'rgba(201,168,76,0.30)'}`,
+            color: isTeal ? 'rgba(45,212,191,0.95)' : GOLD,
+            fontSize: 15, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
+            cursor: 'pointer', flexShrink: 0, minHeight: 48,
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          {item.actionLabel}
+        </button>
       )}
     </div>
   )

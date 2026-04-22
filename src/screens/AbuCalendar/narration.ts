@@ -1,4 +1,5 @@
 import { type Appointment } from './service'
+import { getPersonalReminders, getNotifyContacts } from './abuTimeMemory'
 
 export type EventMeaning = 'medical' | 'social' | 'administrative' | 'optional'
 export type EventPriority = 'critical' | 'high' | 'normal' | 'low'
@@ -97,42 +98,60 @@ export function getPreEventHint(appt: Appointment, now: Date): string | null {
   return null
 }
 
-export function getSuggestion(appt: Appointment): string | null {
+export interface SmartSuggestion {
+  text: string
+  action: 'prepare_list' | 'notify_contact' | 'set_reminder' | 'log_outcome' | null
+  actionLabel: string | null
+}
+
+export function getSuggestion(appt: Appointment): SmartSuggestion | null {
   const meaning = classifyMeaning(appt)
   const t = (appt.title + ' ' + (appt.notes || '')).toLowerCase()
 
   if (meaning === 'medical') {
-    if (/דם|בדיקה|אולטרסאונד|רנטגן|ct|mri/.test(t)) return 'לא לשכוח תעודת זהות וכרטיס קופה.'
-    if (/רופא שיניים/.test(t)) return 'רוצה להכין רשימה של מה כואב?'
-    return 'רוצה להכין מה לשאול את הרופא?'
+    const reminders = getPersonalReminders(appt.title)
+    if (/דם|בדיקה|אולטרסאונד|רנטגן|ct|mri/.test(t)) {
+      const items = reminders.length > 0 ? reminders.slice(0, 2).join(' ו') : 'תעודת זהות וכרטיס קופה'
+      return { text: `לא לשכוח ${items}.`, action: 'prepare_list', actionLabel: 'הכיני רשימה' }
+    }
+    if (/רופא שיניים/.test(t)) return { text: 'כדאי לרשום מה כואב, ככה לא תשכחי כלום.', action: 'prepare_list', actionLabel: 'הכיני רשימה' }
+    return { text: 'רוצה להכין מה לשאול? ככה הביקור יהיה יותר יעיל.', action: 'prepare_list', actionLabel: 'הכיני רשימה' }
   }
 
   if (meaning === 'social') {
-    if (/יום הולדת|birthday/.test(t)) return 'רוצה להכין ברכה?'
-    if (/ביקור|מבקר|אצל|בא אלי/.test(t)) return 'רוצה להודיע שאת מגיעה?'
-    if (/ארוח|אוכל|ארוחת ערב|שישי/.test(t)) return 'צריכה לקנות משהו לארוחה?'
+    if (/יום הולדת|birthday/.test(t)) return { text: 'רוצה להכין ברכה יפה?', action: null, actionLabel: null }
+    if (/ביקור|מבקר|אצל|בא אלי/.test(t)) {
+      const contacts = getNotifyContacts()
+      const who = contacts.length > 0 ? contacts[0] : null
+      return {
+        text: who ? `רוצה להגיד ל${who} שאת מגיעה?` : 'רוצה להודיע שאת מגיעה?',
+        action: 'notify_contact',
+        actionLabel: who ? `הודיעי ל${who}` : 'הודיעי',
+      }
+    }
+    if (/ארוח|אוכל|ארוחת ערב|שישי/.test(t)) return { text: 'צריכה לקנות משהו? רגע לחשוב.', action: 'prepare_list', actionLabel: 'רשימת קניות' }
     return null
   }
 
   if (meaning === 'administrative') {
-    if (/עורך דין|lawyer/.test(t)) return 'כדאי להכין את המסמכים.'
-    if (/בנק|bank/.test(t)) return 'לא לשכוח תעודת זהות.'
-    if (/ביטוח/.test(t)) return 'לקחת את כל הניירות.'
-    return 'רוצה שאזכיר לך לפני?'
+    if (/עורך דין|lawyer/.test(t)) return { text: 'כדאי לאסוף את המסמכים מראש.', action: 'prepare_list', actionLabel: 'רשימת מסמכים' }
+    if (/בנק|bank/.test(t)) return { text: 'תעודת זהות — ככה לא תצטרכי לחזור.', action: null, actionLabel: null }
+    if (/ביטוח/.test(t)) return { text: 'לקחת את כל הניירות. יותר טוב יותר מדי מפחות מדי.', action: null, actionLabel: null }
+    return { text: 'רוצה שאזכיר לך שעה לפני?', action: 'set_reminder', actionLabel: 'הזכירי לי' }
   }
 
   return null
 }
 
-export function getPostEventFollowUp(appt: Appointment, now: Date): string | null {
+export function getPostEventFollowUp(appt: Appointment, now: Date): SmartSuggestion | null {
   const hours = hoursUntil(appt.date, appt.time, now)
   if (hours === null) return null
   if (hours > 0 || hours < -4) return null
 
   const meaning = classifyMeaning(appt)
 
-  if (meaning === 'medical') return 'איך היה? רוצה לרשום מה הרופא אמר?'
-  if (meaning === 'administrative') return 'הסתדר? צריכה לקבוע המשך?'
+  if (meaning === 'medical') return { text: 'איך היה אצל הרופא? אם תגידי לי, אני אזכור בשבילך.', action: 'log_outcome', actionLabel: 'ספרי לי' }
+  if (meaning === 'administrative') return { text: 'הסתדר? צריכה לקבוע פגישה נוספת?', action: 'set_reminder', actionLabel: 'קבעי המשך' }
   return null
 }
 
@@ -145,7 +164,7 @@ export function shouldSpeak(appts: Appointment[], dateStr: string, today: string
 export function narrateDay(appts: Appointment[], dateStr: string, today: string, now?: Date): string {
   if (appts.length === 0) {
     const rel = relativeDay(dateStr, today)
-    return rel === 'היום' ? 'אין לך כלום היום. יום חופשי!' : `אין לך כלום ${rel}.`
+    return rel === 'היום' ? 'היום פנוי לגמרי. תהני!' : `${rel} פנוי. אין שום דבר.`
   }
 
   const sorted = sortByPriority(appts)
@@ -160,10 +179,10 @@ export function narrateDay(appts: Appointment[], dateStr: string, today: string,
       return h === null || h > 0
     })
     if (remaining.length === 0) {
-      lines.push('סיימת את כל מה שהיה לך היום. ערב טוב!')
+      lines.push('סיימת הכל. ערב שקט ונעים!')
       return lines.join('\n')
     }
-    lines.push(`נשאר לך עוד ${remaining.length === 1 ? 'דבר אחד' : `${remaining.length} דברים`} הערב.`)
+    lines.push(remaining.length === 1 ? 'עוד דבר אחד הערב, ואז סיימת.' : `עוד ${remaining.length} דברים הערב.`)
     const a = remaining[0]!
     const timeStr = a.time ? ` ב-${formatTime12(a.time)}` : ''
     lines.push(`${a.title}${timeStr}.`)
@@ -172,7 +191,7 @@ export function narrateDay(appts: Appointment[], dateStr: string, today: string,
     const priority = classifyPriority(a)
     const timeStr = a.time ? ` ב-${formatTime12(a.time)}` : ''
     if (priority === 'critical') {
-      lines.push(`${rel} יש לך ${a.title}${timeStr}. חשוב!`)
+      lines.push(`שימי לב — ${rel} יש לך ${a.title}${timeStr}.`)
     } else {
       lines.push(`${rel} יש לך ${a.title}${timeStr}.`)
     }
