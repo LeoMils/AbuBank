@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { type Appointment } from './service'
-import { narrateDay, narrateRange, classifyPriority, getPreEventHint, getSuggestion, getPostEventFollowUp, shouldSpeak, sortByPriority, type SmartSuggestion } from './narration'
+import { narrateDay, narrateRange, classifyPriority, classifyMeaning, getPreEventHint, getSuggestion, getPostEventFollowUp, getProactiveNudge, shouldSpeak, sortByPriority, type SmartSuggestion } from './narration'
 import { GOLD, CREAM } from './constants'
 import { speak, stopSpeaking } from '../../services/voice'
 import { recordAction } from './abuTimeMemory'
@@ -66,6 +66,14 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
     }
     return null
   }, [sorted, now])
+
+  const tomorrowStr = useMemo(() => {
+    const d = new Date(today)
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().split('T')[0]!
+  }, [today])
+  const tomorrowAppts = useMemo(() => appointments.filter(a => a.date === tomorrowStr), [appointments, tomorrowStr])
+  const proactiveNudge = useMemo(() => getProactiveNudge(tomorrowAppts, now), [tomorrowAppts, now])
 
   const handleSpeak = useCallback(async () => {
     if (isSpeaking) { stopSpeaking(); setIsSpeaking(false); return }
@@ -136,7 +144,7 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
         }}>▾</span>
       </button>
 
-      {/* Pre-event hint shown even when collapsed */}
+      {/* Pre-event hint or proactive nudge — visible even when collapsed */}
       {!isOpen && preEventHint && (
         <div style={{
           padding: '0 18px 12px',
@@ -147,6 +155,18 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
           fontWeight: 600,
         }}>
           ⏰ {preEventHint}
+        </div>
+      )}
+      {!isOpen && !preEventHint && proactiveNudge && (
+        <div style={{
+          padding: '0 18px 12px',
+          direction: 'rtl',
+        }}>
+          <SuggestionCard
+            item={proactiveNudge}
+            variant="suggestion"
+            onAction={(action) => { recordAction(action, 'proactive') }}
+          />
         </div>
       )}
 
@@ -216,7 +236,7 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
             <SuggestionCard
               item={followUp ?? suggestion!}
               variant={followUp ? 'followup' : 'suggestion'}
-              onAction={(action) => { recordAction(action) }}
+              onAction={(action) => { recordAction(action, sorted[0] ? classifyMeaning(sorted[0]) : undefined) }}
             />
           )}
 

@@ -1,5 +1,5 @@
 import { type Appointment } from './service'
-import { getPersonalReminders, getNotifyContacts } from './abuTimeMemory'
+import { getPersonalReminders, getNotifyContacts, getPatternPrediction } from './abuTimeMemory'
 
 export type EventMeaning = 'medical' | 'social' | 'administrative' | 'optional'
 export type EventPriority = 'critical' | 'high' | 'normal' | 'low'
@@ -152,6 +152,40 @@ export function getPostEventFollowUp(appt: Appointment, now: Date): SmartSuggest
 
   if (meaning === 'medical') return { text: 'איך היה אצל הרופא? אם תגידי לי, אני אזכור בשבילך.', action: 'log_outcome', actionLabel: 'ספרי לי' }
   if (meaning === 'administrative') return { text: 'הסתדר? צריכה לקבוע פגישה נוספת?', action: 'set_reminder', actionLabel: 'קבעי המשך' }
+  return null
+}
+
+export function getProactiveNudge(tomorrowAppts: Appointment[], now: Date): SmartSuggestion | null {
+  if (now.getHours() < 18) return null
+
+  const important = tomorrowAppts.filter(a => {
+    const m = classifyMeaning(a)
+    return m === 'medical' || m === 'administrative'
+  })
+  if (important.length === 0) return null
+
+  const appt = sortByPriority(important)[0]!
+  const meaning = classifyMeaning(appt)
+
+  const prediction = getPatternPrediction(meaning)
+  if (prediction) {
+    return {
+      text: prediction,
+      action: 'prepare_list',
+      actionLabel: 'כן, בבקשה',
+    }
+  }
+
+  if (meaning === 'medical') {
+    const reminders = getPersonalReminders(appt.title)
+    const items = reminders.length > 0 ? reminders.slice(0, 2).join(' ו') : 'תעודת זהות וכרטיס קופה'
+    return {
+      text: `מחר יש לך ${appt.title}. ${items} — כדאי להכין מהערב.`,
+      action: 'prepare_list',
+      actionLabel: 'מוכן',
+    }
+  }
+
   return null
 }
 
