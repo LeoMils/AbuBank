@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { type Appointment } from './service'
-import { narrateDay, narrateRange, classifyPriority, classifyMeaning, getPreEventHint, getSuggestion, shouldSpeak, sortByPriority } from './narration'
+import { narrateDay, narrateRange, classifyPriority, getPreEventHint, getSuggestion, getPostEventFollowUp, shouldSpeak, sortByPriority } from './narration'
 import { GOLD, CREAM } from './constants'
 import { speak, stopSpeaking } from '../../services/voice'
 
@@ -57,6 +57,14 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
     }
     return null
   }, [sorted])
+
+  const followUp = useMemo(() => {
+    for (const a of sorted) {
+      const f = getPostEventFollowUp(a, now)
+      if (f) return f
+    }
+    return null
+  }, [sorted, now])
 
   const handleSpeak = useCallback(async () => {
     if (isSpeaking) { stopSpeaking(); setIsSpeaking(false); return }
@@ -202,8 +210,22 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
             {narration}
           </div>
 
-          {/* Single suggestion — never more than one */}
-          {suggestion && (
+          {/* Single action — follow-up takes priority over suggestion, never both */}
+          {followUp ? (
+            <div style={{
+              marginTop: 12,
+              padding: '10px 14px',
+              borderRadius: 12,
+              background: 'rgba(20,184,166,0.06)',
+              border: '1px solid rgba(20,184,166,0.20)',
+              fontSize: 16,
+              color: 'rgba(45,212,191,0.90)',
+              fontWeight: 600,
+              fontFamily: "'Heebo',sans-serif",
+            }}>
+              📝 {followUp}
+            </div>
+          ) : suggestion ? (
             <div style={{
               marginTop: 12,
               padding: '10px 14px',
@@ -217,7 +239,7 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
             }}>
               💡 {suggestion}
             </div>
-          )}
+          ) : null}
 
           {nextAppt && nextAppt.date !== today && (
             <div style={{

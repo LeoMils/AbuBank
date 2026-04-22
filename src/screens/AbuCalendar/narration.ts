@@ -7,7 +7,7 @@ type TimeOfDay = 'morning' | 'midday' | 'evening'
 export function classifyMeaning(appt: Appointment): EventMeaning {
   const t = (appt.title + ' ' + (appt.notes || '')).toLowerCase()
   if (/רופא|doctor|בדיקה|ניתוח|בית חולים|hospital|קופת חולים|אולטרסאונד|דם|רנטגן|ct|mri|תרופ|pill|medication|pharmacy|מרקחת/.test(t)) return 'medical'
-  if (/פגישה|meeting|יום הולדת|birthday|ארוח|אוכל|dinner|משפחה|family|חברה|חבר/.test(t)) return 'social'
+  if (/פגישה|meeting|יום הולדת|birthday|ארוח|אוכל|dinner|משפחה|family|חברה|חבר|ביקור|אצל/.test(t)) return 'social'
   if (/עורך דין|lawyer|חשבונאי|ביטוח|בנק|bank|תשלום|חשבון|דואר|ביטוח לאומי/.test(t)) return 'administrative'
   if (/תספורת|קניות|shopping|grocery|ניקיון/.test(t)) return 'optional'
   return 'optional'
@@ -99,9 +99,40 @@ export function getPreEventHint(appt: Appointment, now: Date): string | null {
 
 export function getSuggestion(appt: Appointment): string | null {
   const meaning = classifyMeaning(appt)
-  if (meaning === 'medical') return 'רוצה להכין מה לשאול?'
-  if (meaning === 'social' && /יום הולדת|birthday/.test(appt.title.toLowerCase())) return 'רוצה להכין ברכה?'
-  if (meaning === 'administrative') return 'רוצה שאזכיר לך לפני?'
+  const t = (appt.title + ' ' + (appt.notes || '')).toLowerCase()
+
+  if (meaning === 'medical') {
+    if (/דם|בדיקה|אולטרסאונד|רנטגן|ct|mri/.test(t)) return 'לא לשכוח תעודת זהות וכרטיס קופה.'
+    if (/רופא שיניים/.test(t)) return 'רוצה להכין רשימה של מה כואב?'
+    return 'רוצה להכין מה לשאול את הרופא?'
+  }
+
+  if (meaning === 'social') {
+    if (/יום הולדת|birthday/.test(t)) return 'רוצה להכין ברכה?'
+    if (/ביקור|מבקר|אצל|בא אלי/.test(t)) return 'רוצה להודיע שאת מגיעה?'
+    if (/ארוח|אוכל|ארוחת ערב|שישי/.test(t)) return 'צריכה לקנות משהו לארוחה?'
+    return null
+  }
+
+  if (meaning === 'administrative') {
+    if (/עורך דין|lawyer/.test(t)) return 'כדאי להכין את המסמכים.'
+    if (/בנק|bank/.test(t)) return 'לא לשכוח תעודת זהות.'
+    if (/ביטוח/.test(t)) return 'לקחת את כל הניירות.'
+    return 'רוצה שאזכיר לך לפני?'
+  }
+
+  return null
+}
+
+export function getPostEventFollowUp(appt: Appointment, now: Date): string | null {
+  const hours = hoursUntil(appt.date, appt.time, now)
+  if (hours === null) return null
+  if (hours > 0 || hours < -4) return null
+
+  const meaning = classifyMeaning(appt)
+
+  if (meaning === 'medical') return 'איך היה? רוצה לרשום מה הרופא אמר?'
+  if (meaning === 'administrative') return 'הסתדר? צריכה לקבוע המשך?'
   return null
 }
 
