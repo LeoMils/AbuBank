@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { type Appointment } from './service'
-import { narrateDay, narrateRange, classifyPriority } from './narration'
+import { narrateDay, narrateRange, classifyPriority, classifyMeaning, getPreEventHint, getSuggestion, shouldSpeak, sortByPriority } from './narration'
 import { GOLD, CREAM } from './constants'
 import { speak, stopSpeaking } from '../../services/voice'
 
@@ -18,32 +18,65 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
   useEffect(() => {
     if (forceOpen && !expanded) setExpanded(true)
   }, [forceOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const [scope, setScope] = useState<'today' | 'week'>('today')
   const [isSpeaking, setIsSpeaking] = useState(false)
 
+  const now = useMemo(() => new Date(), [])
+  const todayAppts = useMemo(() => appointments.filter(a => a.date === today), [appointments, today])
+  const sorted = useMemo(() => sortByPriority(todayAppts), [todayAppts])
+  const criticalToday = useMemo(() => todayAppts.filter(a => classifyPriority(a) === 'critical'), [todayAppts])
+
   const narration = scope === 'today'
-    ? narrateDay(appointments.filter(a => a.date === today), today, today)
+    ? narrateDay(todayAppts, today, today, now)
     : narrateRange(appointments, today, 7)
 
-  const todayAppts = appointments.filter(a => a.date === today)
-  const nextAppt = appointments
-    .filter(a => a.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0]
+  const shouldAutoSpeak = shouldSpeak(todayAppts, today, today)
+
+  const nextAppt = useMemo(() =>
+    appointments
+      .filter(a => a.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0],
+    [appointments, today]
+  )
+
+  const preEventHint = useMemo(() => {
+    if (sorted.length === 0) return null
+    for (const a of sorted) {
+      const hint = getPreEventHint(a, now)
+      if (hint) return hint
+    }
+    return null
+  }, [sorted, now])
+
+  const suggestion = useMemo(() => {
+    if (sorted.length === 0) return null
+    for (const a of sorted) {
+      const s = getSuggestion(a)
+      if (s) return s
+    }
+    return null
+  }, [sorted])
 
   const handleSpeak = useCallback(async () => {
     if (isSpeaking) { stopSpeaking(); setIsSpeaking(false); return }
+    if (!shouldAutoSpeak && scope === 'today') return
     setIsSpeaking(true)
     try { await speak(narration) } finally { setIsSpeaking(false) }
-  }, [narration, isSpeaking])
+  }, [narration, isSpeaking, shouldAutoSpeak, scope])
 
   const handleTap = useCallback(() => {
     const next = !isOpen
     setExpanded(next)
     onToggle?.(next)
-    if (next) handleSpeak()
-  }, [isOpen, handleSpeak, onToggle])
+    if (next && shouldAutoSpeak) handleSpeak()
+  }, [isOpen, handleSpeak, onToggle, shouldAutoSpeak])
 
-  const criticalToday = todayAppts.filter(a => classifyPriority(a) === 'critical')
+  const buttonLabel = todayAppts.length === 0
+    ? 'מה קורה לי?'
+    : criticalToday.length > 0
+    ? `${criticalToday[0]!.title} — היום`
+    : `מה קורה לי? (${todayAppts.length})`
 
   return (
     <div style={{
@@ -78,36 +111,35 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
             {criticalToday.length > 0 ? '⚠️' : todayAppts.length > 0 ? '📋' : '☀️'}
           </span>
           <span style={{
-            fontSize: 18,
+            fontSize: 17,
             fontWeight: 700,
             color: CREAM,
             fontFamily: "'Heebo',sans-serif",
           }}>
-            מה קורה לי?
+            {buttonLabel}
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {todayAppts.length > 0 && (
-            <span style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: GOLD,
-              fontFamily: "'DM Sans',sans-serif",
-              background: 'rgba(201,168,76,0.12)',
-              padding: '2px 10px',
-              borderRadius: 10,
-            }}>
-              {todayAppts.length}
-            </span>
-          )}
-          <span style={{
-            fontSize: 16,
-            color: 'rgba(245,240,232,0.40)',
-            transform: isOpen ? 'rotate(180deg)' : 'rotate(0)',
-            transition: 'transform 0.2s ease',
-          }}>▾</span>
-        </div>
+        <span style={{
+          fontSize: 16,
+          color: 'rgba(245,240,232,0.40)',
+          transform: isOpen ? 'rotate(180deg)' : 'rotate(0)',
+          transition: 'transform 0.2s ease',
+        }}>▾</span>
       </button>
+
+      {/* Pre-event hint shown even when collapsed */}
+      {!isOpen && preEventHint && (
+        <div style={{
+          padding: '0 18px 12px',
+          direction: 'rtl',
+          fontSize: 15,
+          color: 'rgba(239,68,68,0.80)',
+          fontFamily: "'Heebo',sans-serif",
+          fontWeight: 600,
+        }}>
+          ⏰ {preEventHint}
+        </div>
+      )}
 
       {isOpen && (
         <div style={{
@@ -170,18 +202,35 @@ export function AbuTime({ appointments, today, forceOpen, onToggle }: AbuTimePro
             {narration}
           </div>
 
-          {nextAppt && nextAppt.date !== today && (
+          {/* Single suggestion — never more than one */}
+          {suggestion && (
             <div style={{
               marginTop: 12,
               padding: '10px 14px',
               borderRadius: 12,
               background: 'rgba(201,168,76,0.06)',
               border: '1px solid rgba(201,168,76,0.15)',
-              fontSize: 15,
-              color: 'rgba(245,240,232,0.65)',
+              fontSize: 16,
+              color: GOLD,
+              fontWeight: 600,
               fontFamily: "'Heebo',sans-serif",
             }}>
-              <span style={{ color: GOLD, fontWeight: 600 }}>הדבר הבא: </span>
+              💡 {suggestion}
+            </div>
+          )}
+
+          {nextAppt && nextAppt.date !== today && (
+            <div style={{
+              marginTop: 8,
+              padding: '10px 14px',
+              borderRadius: 12,
+              background: 'rgba(255,250,240,0.025)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              fontSize: 15,
+              color: 'rgba(245,240,232,0.55)',
+              fontFamily: "'Heebo',sans-serif",
+            }}>
+              <span style={{ color: 'rgba(245,240,232,0.70)', fontWeight: 600 }}>הדבר הבא: </span>
               {nextAppt.title} — {nextAppt.date.split('-').reverse().join('/')}
               {nextAppt.time ? ` ב-${nextAppt.time}` : ''}
             </div>
