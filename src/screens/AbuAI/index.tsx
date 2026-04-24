@@ -658,9 +658,8 @@ export function AbuAI() {
     try { wakeLockRef.current?.release(); wakeLockRef.current = null } catch { /* silent */ }
   }
 
-  // v21: Full personality prompt for Realtime — same quality as text mode
-  // v30.1: Inject live calendar snapshot so Realtime has real data, not nothing
-  const realtimeInstructions = useMemo(() => {
+  // v30.2: Recompute on each voice session entry, not once at mount
+  const buildRealtimeInstructions = useCallback(() => {
     let calendarSnapshot = ''
     try {
       const todayResult = getTodayEvents()
@@ -816,7 +815,7 @@ ${fewShotText}`
             setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediated.message, timestamp: Date.now(), error: mediated }])
           },
         },
-        realtimeInstructions,
+        buildRealtimeInstructions(),
         // v25: onFatalError — Realtime died, remember + fall back to free pipeline
         () => {
           console.log('[AbuAI] Realtime failed, saving quota flag, falling back to free pipeline')
@@ -836,7 +835,7 @@ ${fewShotText}`
 
     // No OpenAI key — use pipeline directly
     startPipelineVoiceMode()
-  }, [startPipelineVoiceMode, useRealtime, realtimeInstructions])
+  }, [startPipelineVoiceMode, useRealtime, buildRealtimeInstructions])
 
   const exitVoiceMode = useCallback(() => {
     // v22.5: Clear safety timer

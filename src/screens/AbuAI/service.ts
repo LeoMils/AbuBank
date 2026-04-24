@@ -7,7 +7,7 @@ function toolsEnabled(): boolean {
   try { return localStorage.getItem('abubank-tools-disabled') !== 'true' } catch { return true }
 }
 
-const CALENDAR_PATTERNS = /מה יש לי|מה קורה|מתי (יש|ה)|השבוע|מחר|היום|ביומן|תור|פגישה|אירוע|רופא|רופאה|דוקטור|תזכיר|להזכיר|reminder|לקום מוקדם|יום עמוס|פנוי|שבוע הבא|חודש/i
+const CALENDAR_PATTERNS = /מה יש לי|מה קורה|מתי (יש|ה)|[הב]שבוע|מחר|היום|ביומן|תור|פגישה|אירוע|רופא|רופאה|דוקטור|תזכיר|להזכיר|reminder|לקום מוקדם|יום עמוס|פנוי|שבוע הבא|חודש|יש לי משהו|מה התוכנית/i
 const FAMILY_PATTERNS = /מי (זה|זו|זאת|הוא|היא)|מי ה|בן שלי|בת שלי|נכד|נכדה|משפחה|מור|לאו|אופיר|אילון|עילי|אדר|עדי|נועם|רפי|ירדן|פפי|Pepe|מירטה|שושנה|טוטסי|מספר.*טלפון|טלפון.*של|להתקשר/i
 
 export function isPersonalQuery(text: string): boolean {

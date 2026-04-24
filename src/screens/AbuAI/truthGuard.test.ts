@@ -14,6 +14,9 @@ describe('isPersonalQuery — expanded detection', () => {
     expect(isPersonalQuery('יש לי יום עמוס?')).toBe(true)
     expect(isPersonalQuery('אני פנוי השבוע?')).toBe(true)
     expect(isPersonalQuery('מה יש שבוע הבא')).toBe(true)
+    expect(isPersonalQuery('בואי נחשוב מה יש בשבוע')).toBe(true)
+    expect(isPersonalQuery('יש לי משהו השבוע?')).toBe(true)
+    expect(isPersonalQuery('מה התוכנית למחר')).toBe(true)
   })
 
   it('detects family questions', () => {
