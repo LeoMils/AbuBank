@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
-import { sendMessage, streamMessage, transcribeAudio, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
+import { sendMessage, streamMessage, transcribeAudio, isPersonalQuery, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
@@ -215,7 +215,36 @@ export function AbuAI() {
     let accumulated = ''
 
     try {
-      // Create placeholder AI message for streaming
+      // Personal queries (calendar/family) → sendMessage with tools (no streaming, but grounded)
+      if (isPersonalQuery(msgText)) {
+        const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: 'רגע, אני בודקת...', timestamp: Date.now() }
+        setMessages(prev => [...prev, placeholderMsg])
+
+        try {
+          const response = await sendMessage(newMessages, false)
+          accumulated = response
+          setMessages(prev => {
+            const updated = [...prev]
+            const idx = updated.findIndex(m => m.id === aiMsgId)
+            if (idx !== -1) updated[idx] = { ...updated[idx]!, content: response }
+            return updated
+          })
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
+          setMessages(prev => {
+            const updated = [...prev]
+            const idx = updated.findIndex(m => m.id === aiMsgId)
+            if (idx !== -1) updated[idx] = { ...updated[idx]!, content: errMsg }
+            return updated
+          })
+        } finally {
+          setLoading(false)
+        }
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // General questions → stream for responsiveness
       const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: '▍', timestamp: Date.now() }
       setMessages(prev => [...prev, placeholderMsg])
       setLoading(false)
@@ -223,7 +252,6 @@ export function AbuAI() {
 
       for await (const token of streamMessage(newMessages, false)) {
         accumulated += token
-        // Update the AI message with accumulated text + cursor
         setMessages(prev => {
           const updated = [...prev]
           const idx = updated.findIndex(m => m.id === aiMsgId)
@@ -641,6 +669,14 @@ export function AbuAI() {
       .join('\n\n')
 
     return `${SYSTEM_PROMPT}${VOICE_SUFFIX}
+
+═══ אזהרה קריטית — אין לך גישה ליומן במצב קולי ═══
+במצב הזה אין לך כלים לבדוק את היומן של Martita.
+אם שואלים "מה יש לי מחר?" או "מתי הרופא?" — תגידי:
+"אני לא יכולה לבדוק את היומן בשיחה קולית. תשאלי אותי בכתב, או תפתחי את היומן."
+לעולם אל תמציאי אירועים, תורים, או פגישות.
+לעולם אל תגידי "יש לך..." או "אני רואה ש..." על אירועים ביומן.
+אם לא בדקת — לא קיים.
 
 ═══ VOICE DELIVERY — CRITICAL ═══
 Voice style: Speak slowly, warmly, gently. Like a kind woman on a relaxed phone call with her close friend.

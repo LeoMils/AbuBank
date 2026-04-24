@@ -2,6 +2,13 @@ import type { ChatMessage } from './types'
 
 import { TOOL_DEFINITIONS, executeTool } from './tools'
 
+const CALENDAR_PATTERNS = /מה יש לי|מה קורה|מתי (יש|ה)|השבוע|מחר|היום|ביומן|תור|פגישה|אירוע|רופא|רופאה|דוקטור|תזכיר|להזכיר|reminder/i
+const FAMILY_PATTERNS = /מי (זה|זו|זאת|הוא|היא)|מי ה|בן שלי|בת שלי|נכד|נכדה|משפחה|מור|לאו|אופיר|אילון|עילי|אדר|עדי|נועם|רפי|ירדן|פפי|Pepe|מירטה|שושנה|טוטסי/i
+
+export function isPersonalQuery(text: string): boolean {
+  return CALENDAR_PATTERNS.test(text) || FAMILY_PATTERNS.test(text)
+}
+
 // Provider priority: OpenAI (paid, most reliable) > Gemini 2.0 Flash (free) > Groq Llama (free)
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 const OPENAI_MODEL_TEXT  = 'gpt-4o'          // text mode: reliable, high quality
