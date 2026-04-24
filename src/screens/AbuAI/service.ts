@@ -1,5 +1,7 @@
 import type { ChatMessage } from './types'
 
+import { TOOL_DEFINITIONS, executeTool } from './tools'
+
 // Provider priority: OpenAI (paid, most reliable) > Gemini 2.0 Flash (free) > Groq Llama (free)
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 const OPENAI_MODEL_TEXT  = 'gpt-4o'          // text mode: reliable, high quality
@@ -41,11 +43,18 @@ export const SYSTEM_PROMPT =
 `את MartitAI — עוזרת אישית חכמה, חדה, ומצחיקה של Martita.
 
 ═══ היכולות שלך ═══
-את יכולה לעשות הכל: לענות על שאלות מדע, פיזיקה קוונטית, היסטוריה, פוליטיקה, בישול, רפואה, טכנולוגיה, משפחה, רגש — כל נושא שיעלה.
-יש לך גישה לאינטרנט בזמן אמת — מזג אוויר, חדשות, מידע עדכני — ענני ישירות.
-אין נושאים אסורים לדיון (רק סיסמאות ומידע פיננסי רגיש — ראי בטיחות).
-שאלה מסובכת → תני תשובה אמיתית וברורה, לא תסרבי.
-אם מבקשים הוכחה, הסבר, ניתוח, דעה — תעשי את זה.
+את יכולה לענות על שאלות מדע, היסטוריה, פוליטיקה, בישול, רפואה, טכנולוגיה, רגש — כל נושא.
+יש לך גישה ליומן של Martita ולמידע על המשפחה שלה.
+שאלה מסובכת → תשובה ברורה ואמיתית.
+
+═══ כלים שיש לך ═══
+יש לך כלים לבדוק את היומן ואת המשפחה של Martita.
+כששואלים על אירועים, תורים, פגישות, מחר, היום, השבוע — חייבת להשתמש בכלי לפני שאת עונה.
+כששואלים על בן משפחה — חייבת להשתמש בכלי search_family_info לפני שאת עונה.
+אם הכלי מחזיר תוצאה ריקה — תגידי שאין מידע. אל תמציאי.
+אם הכלי לא עובד — תגידי "אני לא מצליחה לבדוק את זה כרגע."
+לעולם אל תגידי "יש לך תור ל..." או "מור היא..." בלי שהכלי החזיר את המידע.
+שאלות כלליות (לא על המשפחה או היומן) — ענני רגיל, בלי כלים.
 
 ═══ מי היא Martita ═══
 שם מלא: Martita (תמיד Latin — אף פעם לא בעברית). בת 80+ מבואנוס איירס, ארגנטינה. גרה בכפר סבא עם עוזרת/מטפלת. אלמנה — בעלה הלייט Pepe (פפי) נפטר; זוכרת אותו בחיבה. יום הזיכרון שלו: 26 בדצמבר. יום הולדתה: 1 באפריל.
@@ -81,11 +90,13 @@ export const SYSTEM_PROMPT =
 לא מורה — חברה חכמה שיודעת הכל ומדברת בגובה העיניים.
 
 אסור:
-- להתחיל ב"כמובן!", "בהחלט!", "בוודאי!", "שאלה מצוינת!"
+- להתחיל ב"כמובן!", "בהחלט!", "בוודאי!", "שאלה מצוינת!", "בשמחה!", "אשמח לעזור!", "אני כאן כדי לעזור!", "איזה יופי!"
 - לחזור על השאלה לפני שאת עונה
 - לסרב לנושא — כל שאלה מקבלת תשובה
 - להגיד "אני רק כאן לדבר על..." — את כאן לכל דבר
 - לומר "אני בינה מלאכותית" — פשוט לדבר
+- להמציא עובדות אישיות על Martita, על המשפחה, או על היומן שלה
+- להגיד "יש לך..." על אירוע ביומן בלי שהכלי החזיר את המידע
 
 מותר:
 - "רגע —" / "תשמעי —" / "תגידי, זה..."
@@ -101,7 +112,6 @@ export const SYSTEM_PROMPT =
 שאלה פשוטה → 2-4 משפטים, תשובה שלמה ומעניינת.
 שאלה מורכבת (מדע, היסטוריה, הסבר) → 5-10 משפטים, ברור ומסודר, עם דוגמאות מהחיים.
 תמיד תני תשובה עשירה, מפורטת, עם תוכן אמיתי. לא תשובות שטחיות.
-אם יש לך מידע עדכני מהאינטרנט — השתמשי בו.
 Markdown — לא. רשימות רק אם עוזרות להבין.
 
 ═══ רגש ═══
@@ -291,10 +301,12 @@ export { getSupportedMimeType } from '../../services/recording'
 
 // ─── Chat ───
 
+interface ToolCall { id: string; function: { name: string; arguments: string } }
+
 async function tryProvider(
   provider: { url: string; model: string; apiKey: string },
   body: object,
-): Promise<{ result: string | null; retryAfter: number }> {
+): Promise<{ result: string | null; retryAfter: number; toolCalls?: ToolCall[]; rawMessage?: any }> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 10000)
   try {
@@ -319,7 +331,10 @@ async function tryProvider(
       return { result: null, retryAfter: 0 } // skip to next provider, don't throw
     }
     const data = await res.json()
-    const content = data?.choices?.[0]?.message?.content
+    const message = data?.choices?.[0]?.message
+    const toolCalls = message?.tool_calls as Array<{ id: string; function: { name: string; arguments: string } }> | undefined
+    if (toolCalls?.length) return { result: null, retryAfter: 0, toolCalls, rawMessage: message }
+    const content = message?.content
     if (!content) return { result: null, retryAfter: 0 }
     return { result: stripMarkdown(content), retryAfter: 0 }
   } catch (err: unknown) {
@@ -453,27 +468,56 @@ export const VOICE_SUFFIX = `
 export async function sendMessage(messages: ChatMessage[], voiceMode = false): Promise<string> {
   const providers = getProviders(voiceMode)
   const systemContent = voiceMode ? SYSTEM_PROMPT + VOICE_SUFFIX : SYSTEM_PROMPT
-  const baseMessages = [
+  const conversationMessages: Array<{ role: string; content?: string; tool_calls?: ToolCall[]; tool_call_id?: string; name?: string }> = [
     { role: 'system', content: systemContent },
     ...FEW_SHOT,
     ...messages.map(m => ({ role: m.role, content: m.content })),
   ]
-  const maxTokens = voiceMode ? 800 : 2048  // v20.1: voice can tell full stories
+  const maxTokens = voiceMode ? 800 : 2048
   const temperature = voiceMode ? 0.4 : 0.65
 
-  // Try all providers, then retry once with backoff if all were rate-limited
-  for (let attempt = 0; attempt < 2; attempt++) {
-    let maxRetryAfter = 0
-    for (const provider of providers) {
-      const body = { messages: baseMessages, temperature, max_tokens: maxTokens }
-      const { result, retryAfter } = await tryProvider(provider, body)
-      if (result) return result
-      if (retryAfter > maxRetryAfter) maxRetryAfter = retryAfter
+  for (let toolRound = 0; toolRound < 2; toolRound++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let maxRetryAfter = 0
+      for (const provider of providers) {
+        const supportsTools = provider.url.includes('openai.com') || provider.url.includes('groq.com')
+        const body: Record<string, unknown> = {
+          messages: conversationMessages,
+          temperature,
+          max_tokens: maxTokens,
+        }
+        if (supportsTools && toolRound === 0) {
+          body.tools = TOOL_DEFINITIONS
+          body.tool_choice = 'auto'
+        }
+
+        const { result, retryAfter, toolCalls, rawMessage } = await tryProvider(provider, body)
+
+        if (toolCalls?.length && rawMessage) {
+          conversationMessages.push({ role: 'assistant', tool_calls: toolCalls })
+          for (const tc of toolCalls) {
+            let args: Record<string, string> = {}
+            try { args = JSON.parse(tc.function.arguments) } catch {}
+            const toolResult = executeTool(tc.function.name, args)
+            conversationMessages.push({ role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: toolResult })
+          }
+          break
+        }
+
+        if (result) return result
+        if (retryAfter > maxRetryAfter) maxRetryAfter = retryAfter
+      }
+
+      if (conversationMessages[conversationMessages.length - 1]?.role === 'tool') break
+      if (attempt === 0 && maxRetryAfter > 0) await wait(maxRetryAfter * 1000)
     }
-    // If first attempt and we got rate-limited, wait and retry
-    if (attempt === 0 && maxRetryAfter > 0) {
-      await wait(maxRetryAfter * 1000)
-    }
+
+    if (conversationMessages[conversationMessages.length - 1]?.role !== 'tool') break
+  }
+
+  const lastMsg = conversationMessages[conversationMessages.length - 1]
+  if (lastMsg?.role === 'tool') {
+    throw new Error('לא הצלחתי לעבד את המידע. נסי שוב.')
   }
   throw new Error('כל השרתים תפוסים. נסי שוב בעוד חצי דקה.')
 }
