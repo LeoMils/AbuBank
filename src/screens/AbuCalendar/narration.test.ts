@@ -64,14 +64,15 @@ describe('sortByPriority', () => {
 
 describe('narrateDay', () => {
   const today = '2026-04-22'
+  const morning = new Date('2026-04-22T08:00:00')
 
   it('empty day', () => {
-    expect(narrateDay([], today, today)).toContain('פנוי')
+    expect(narrateDay([], today, today, morning)).toContain('פנוי')
   })
 
   it('single critical event says שימי לב', () => {
     const appts = [makeAppt('רופא שיניים', today, '10:00')]
-    expect(narrateDay(appts, today, today)).toContain('שימי לב')
+    expect(narrateDay(appts, today, today, morning)).toContain('שימי לב')
   })
 
   it('multiple events — critical first', () => {
@@ -79,17 +80,17 @@ describe('narrateDay', () => {
       makeAppt('קניות', today, '09:00'),
       makeAppt('בדיקת דם', today, '14:00'),
     ]
-    const result = narrateDay(appts, today, today)
+    const result = narrateDay(appts, today, today, morning)
     expect(result.indexOf('בדיקת דם')).toBeLessThan(result.indexOf('קניות'))
   })
 
   it('tomorrow uses relative day', () => {
-    expect(narrateDay([makeAppt('תספורת', '2026-04-23', '11:00')], '2026-04-23', today)).toContain('מחר')
+    expect(narrateDay([makeAppt('תספורת', '2026-04-23', '11:00')], '2026-04-23', today, morning)).toContain('מחר')
   })
 
   it('caps at 3 items + remainder', () => {
     const appts = Array.from({ length: 5 }, (_, i) => makeAppt(`דבר ${i}`, today, `${9 + i}:00`))
-    expect(narrateDay(appts, today, today)).toContain('ועוד 2')
+    expect(narrateDay(appts, today, today, morning)).toContain('ועוד 2')
   })
 
   it('evening mode shows remaining', () => {
@@ -109,9 +110,10 @@ describe('narrateDay', () => {
 
 describe('narrateRange', () => {
   const today = '2026-04-22'
+  const morning = new Date('2026-04-22T08:00:00')
 
   it('empty range', () => {
-    expect(narrateRange([], today, 7)).toContain('אין לך כלום')
+    expect(narrateRange([], today, 7, morning)).toContain('אין לך כלום')
   })
 
   it('multi-day includes both', () => {
@@ -119,7 +121,7 @@ describe('narrateRange', () => {
       makeAppt('רופא', '2026-04-22', '10:00'),
       makeAppt('תספורת', '2026-04-24', '14:00'),
     ]
-    const result = narrateRange(appts, today, 7)
+    const result = narrateRange(appts, today, 7, morning)
     expect(result).toContain('רופא')
     expect(result).toContain('תספורת')
   })

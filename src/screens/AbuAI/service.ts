@@ -2,12 +2,27 @@ import type { ChatMessage } from './types'
 
 import { TOOL_DEFINITIONS, executeTool } from './tools'
 
-const CALENDAR_PATTERNS = /מה יש לי|מה קורה|מתי (יש|ה)|השבוע|מחר|היום|ביומן|תור|פגישה|אירוע|רופא|רופאה|דוקטור|תזכיר|להזכיר|reminder/i
-const FAMILY_PATTERNS = /מי (זה|זו|זאת|הוא|היא)|מי ה|בן שלי|בת שלי|נכד|נכדה|משפחה|מור|לאו|אופיר|אילון|עילי|אדר|עדי|נועם|רפי|ירדן|פפי|Pepe|מירטה|שושנה|טוטסי/i
+// Feature flag — disable tools without redeploy
+function toolsEnabled(): boolean {
+  try { return localStorage.getItem('abubank-tools-disabled') !== 'true' } catch { return true }
+}
+
+const CALENDAR_PATTERNS = /מה יש לי|מה קורה|מתי (יש|ה)|השבוע|מחר|היום|ביומן|תור|פגישה|אירוע|רופא|רופאה|דוקטור|תזכיר|להזכיר|reminder|לקום מוקדם|יום עמוס|פנוי|שבוע הבא|חודש/i
+const FAMILY_PATTERNS = /מי (זה|זו|זאת|הוא|היא)|מי ה|בן שלי|בת שלי|נכד|נכדה|משפחה|מור|לאו|אופיר|אילון|עילי|אדר|עדי|נועם|רפי|ירדן|פפי|Pepe|מירטה|שושנה|טוטסי|מספר.*טלפון|טלפון.*של|להתקשר/i
 
 export function isPersonalQuery(text: string): boolean {
   return CALENDAR_PATTERNS.test(text) || FAMILY_PATTERNS.test(text)
 }
+
+const CALENDAR_CLAIM_PATTERNS = /יש לך (תור|פגישה|אירוע|רופא|בדיקה)|אני רואה (ש|ביומן|שיש)|ביומן שלך|לפי היומן|התור שלך|הפגישה שלך ב/
+const INVENTED_EVENT_PATTERNS = /יש לך ב[־-]?\d{1,2}[.:]\d{2}|יש לך ביום [א-ת]/
+
+export function containsUngroundedClaim(response: string, hadToolCall: boolean): boolean {
+  if (hadToolCall) return false
+  return CALENDAR_CLAIM_PATTERNS.test(response) || INVENTED_EVENT_PATTERNS.test(response)
+}
+
+const SAFE_REFUSAL = 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
 
 // Provider priority: OpenAI (paid, most reliable) > Gemini 2.0 Flash (free) > Groq Llama (free)
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
@@ -483,11 +498,13 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
   const maxTokens = voiceMode ? 800 : 2048
   const temperature = voiceMode ? 0.4 : 0.65
 
+  let hadToolCall = false
+
   for (let toolRound = 0; toolRound < 2; toolRound++) {
     for (let attempt = 0; attempt < 2; attempt++) {
       let maxRetryAfter = 0
       for (const provider of providers) {
-        const supportsTools = provider.url.includes('openai.com') || provider.url.includes('groq.com')
+        const supportsTools = toolsEnabled() && (provider.url.includes('openai.com') || provider.url.includes('groq.com'))
         const body: Record<string, unknown> = {
           messages: conversationMessages,
           temperature,
@@ -501,6 +518,7 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
         const { result, retryAfter, toolCalls, rawMessage } = await tryProvider(provider, body)
 
         if (toolCalls?.length && rawMessage) {
+          hadToolCall = true
           conversationMessages.push({ role: 'assistant', tool_calls: toolCalls })
           for (const tc of toolCalls) {
             let args: Record<string, string> = {}
@@ -511,7 +529,10 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
           break
         }
 
-        if (result) return result
+        if (result) {
+          if (containsUngroundedClaim(result, hadToolCall)) return SAFE_REFUSAL
+          return result
+        }
         if (retryAfter > maxRetryAfter) maxRetryAfter = retryAfter
       }
 

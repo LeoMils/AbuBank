@@ -263,7 +263,7 @@ export function narrateDay(appts: Appointment[], dateStr: string, today: string,
   return lines.join('\n')
 }
 
-export function narrateRange(allAppts: Appointment[], today: string, days: number): string {
+export function narrateRange(allAppts: Appointment[], today: string, days: number, now?: Date): string {
   const todayDate = new Date(today)
   const lines: string[] = []
   let hasContent = false
@@ -275,7 +275,7 @@ export function narrateRange(allAppts: Appointment[], today: string, days: numbe
     const dayAppts = allAppts.filter(a => a.date === ds)
     if (dayAppts.length > 0) {
       hasContent = true
-      lines.push(narrateDay(dayAppts, ds, today))
+      lines.push(narrateDay(dayAppts, ds, today, now))
     }
   }
 

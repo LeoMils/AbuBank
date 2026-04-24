@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
-import { sendMessage, streamMessage, transcribeAudio, isPersonalQuery, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
+import { sendMessage, streamMessage, transcribeAudio, isPersonalQuery, containsUngroundedClaim, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
+import { getTodayEvents, getTomorrowEvents } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
@@ -262,12 +263,15 @@ export function AbuAI() {
         })
       }
 
-      // Remove cursor, set final content
+      // Remove cursor, set final content — with truth guard
       setMessages(prev => {
         const updated = [...prev]
         const idx = updated.findIndex(m => m.id === aiMsgId)
         if (idx !== -1) {
-          const finalContent = accumulated.trim()
+          let finalContent = accumulated.trim()
+          if (finalContent && containsUngroundedClaim(finalContent, false)) {
+            finalContent = 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
+          }
           if (finalContent) {
             updated[idx] = { ...updated[idx]!, content: finalContent }
           } else {
@@ -655,7 +659,17 @@ export function AbuAI() {
   }
 
   // v21: Full personality prompt for Realtime — same quality as text mode
+  // v30.1: Inject live calendar snapshot so Realtime has real data, not nothing
   const realtimeInstructions = useMemo(() => {
+    let calendarSnapshot = ''
+    try {
+      const todayResult = getTodayEvents()
+      const tmrwResult = getTomorrowEvents()
+      calendarSnapshot = `\n═══ מידע אמיתי מהיומן (נכון לרגע זה) ═══\nהיום: ${todayResult.summary}\nמחר: ${tmrwResult.summary}\nזה המידע היחיד שיש לך. אל תמציאי מעבר לזה.\n`
+    } catch {
+      calendarSnapshot = '\n═══ יומן ═══\nאין לי גישה ליומן כרגע. אל תמציאי אירועים.\n'
+    }
+
     // Select 5 representative few-shot pairs formatted as plain text
     const fewShotPairs = [
       { q: 'איך אני משלמת חשמל?', a: 'לחצי על "חברת החשמל" — נכנסת ישר לאתר שלהם, שם רואים את החשבון ומשלמים.' },
@@ -669,11 +683,12 @@ export function AbuAI() {
       .join('\n\n')
 
     return `${SYSTEM_PROMPT}${VOICE_SUFFIX}
-
-═══ אזהרה קריטית — אין לך גישה ליומן במצב קולי ═══
-במצב הזה אין לך כלים לבדוק את היומן של Martita.
-אם שואלים "מה יש לי מחר?" או "מתי הרופא?" — תגידי:
-"אני לא יכולה לבדוק את היומן בשיחה קולית. תשאלי אותי בכתב, או תפתחי את היומן."
+${calendarSnapshot}
+═══ כלל ברזל — יומן ═══
+יש לך מידע אמיתי מהיומן למעלה. תשתמשי רק בו.
+אם שואלים על יום שאין לך מידע עליו — תגידי:
+"אני יודעת רק על היום ומחר. לשאר הימים, תפתחי את היומן."
+לעולם אל תמציאי אירועים שלא מופיעים למעלה.
 לעולם אל תמציאי אירועים, תורים, או פגישות.
 לעולם אל תגידי "יש לך..." או "אני רואה ש..." על אירועים ביומן.
 אם לא בדקת — לא קיים.
