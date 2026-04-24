@@ -568,14 +568,18 @@ export function Home() {
         borderImage: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.40) 30%, rgba(201,168,76,0.55) 50%, rgba(201,168,76,0.40) 70%, transparent) 1',
       }}>
         {/* Settings moved to header three-dots */}
-        {/* Version indicator */}
+        {/* Version indicator — visible for identification/support */}
         <div style={{
-          position: 'absolute', top: 7, left: 10,
-          fontSize: 10, fontWeight: 700, letterSpacing: '0.8px',
-          color: 'rgba(201,168,76,0.30)',
+          position: 'absolute', top: 6, left: 10,
+          fontSize: 12, fontWeight: 700, letterSpacing: '0.6px',
+          color: 'rgba(201,168,76,0.65)',
           fontFamily: "'DM Sans',monospace",
           userSelect: 'none',
           pointerEvents: 'none',
+          background: 'rgba(201,168,76,0.08)',
+          padding: '2px 8px',
+          borderRadius: 6,
+          border: '1px solid rgba(201,168,76,0.18)',
         }}>{appVersion ? `v${appVersion}` : ''}</div>
         {/* 5 nav icons — with micro-animations */}
         {footerItems.map((item, idx) => {
