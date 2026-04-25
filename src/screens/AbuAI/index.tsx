@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
-import { sendMessage, streamMessage, transcribeAudio, isPersonalQuery, containsUngroundedClaim, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
+import { sendMessage, streamMessage, transcribeAudio, isPersonalQuery, containsUngroundedClaim, tryGroundedAnswer, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
 import { getTodayEvents, getTomorrowEvents } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
@@ -216,7 +216,16 @@ export function AbuAI() {
     let accumulated = ''
 
     try {
-      // Personal queries (calendar/family) → sendMessage with tools (no streaming, but grounded)
+      // Personal queries → try grounded answer first (no LLM), fall back to tools-based LLM
+      const groundedAnswer = tryGroundedAnswer(msgText)
+      if (groundedAnswer !== null) {
+        const groundedMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: groundedAnswer, timestamp: Date.now() }
+        setMessages(prev => [...prev, groundedMsg])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
       if (isPersonalQuery(msgText)) {
         const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: 'רגע, אני בודקת...', timestamp: Date.now() }
         setMessages(prev => [...prev, placeholderMsg])
@@ -447,8 +456,9 @@ export function AbuAI() {
           }
         }, 20000)
 
-        // Get full LLM response (non-streaming — more reliable, Groq is fast enough)
-        const response = await sendMessage(currentMsgs, true)
+        // Try grounded answer first (no LLM for personal queries)
+        const voiceGrounded = tryGroundedAnswer(text)
+        const response = voiceGrounded ?? await sendMessage(currentMsgs, true)
         clearTimeout(watchdog)
 
         if (ac.signal.aborted) return // interrupted during LLM call

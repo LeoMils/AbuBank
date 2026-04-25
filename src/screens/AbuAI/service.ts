@@ -1,7 +1,9 @@
 import type { ChatMessage } from './types'
 
-import { TOOL_DEFINITIONS, executeTool } from './tools'
+import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, searchFamily } from './tools'
 import { generateFamilyPromptSection } from '../../services/familyLoader'
+import { routePersonalQuery, type RouteResult } from './router'
+import { answerFromToolResult, type ToolResult } from './groundedResponse'
 
 // Feature flag — disable tools without redeploy
 function toolsEnabled(): boolean {
@@ -13,6 +15,42 @@ const FAMILY_PATTERNS = /מי (זה|זו|זאת|הוא|היא)|מי ה|בן של
 
 export function isPersonalQuery(text: string): boolean {
   return CALENDAR_PATTERNS.test(text) || FAMILY_PATTERNS.test(text)
+}
+
+export function tryGroundedAnswer(text: string): string | null {
+  const route = routePersonalQuery(text)
+  if (route.type === 'non_personal') return null
+
+  try {
+    let result: ToolResult
+    switch (route.type) {
+      case 'calendar_today': {
+        const r = getTodayEvents()
+        result = { ok: true, events: r.events, summary: r.summary }
+        break
+      }
+      case 'calendar_tomorrow': {
+        const r = getTomorrowEvents()
+        result = { ok: true, events: r.events, summary: r.summary }
+        break
+      }
+      case 'calendar_upcoming': {
+        const r = getUpcomingEvents()
+        result = { ok: true, events: r.events, summary: r.summary }
+        break
+      }
+      case 'family_lookup': {
+        const r = searchFamily(route.familyQuery ?? '')
+        result = { ok: true, found: r.found, members: r.members, answer: r.answer }
+        break
+      }
+      default:
+        return null
+    }
+    return answerFromToolResult(route.type, result)
+  } catch {
+    return 'אני לא מצליחה לבדוק כרגע.'
+  }
 }
 
 const CALENDAR_CLAIM_PATTERNS = /יש לך (תור|פגישה|אירוע|רופא|בדיקה)|אני רואה (ש|ביומן|שיש)|ביומן שלך|לפי היומן|התור שלך|הפגישה שלך ב/

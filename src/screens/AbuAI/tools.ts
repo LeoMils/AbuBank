@@ -103,6 +103,15 @@ export function getWeekEvents(): { events: Appointment[]; summary: string } {
   return { events, summary: lines.join('\n') }
 }
 
+export function getUpcomingEvents(limit = 5): { events: Appointment[]; summary: string } {
+  const all = loadAppointmentsWithFamily(new Date().getFullYear())
+  const today = todayStr()
+  const future = all.filter(a => a.date >= today).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+  const events = future.slice(0, limit)
+  if (events.length === 0) return { events, summary: 'אין אירועים קרובים.' }
+  return { events, summary: `אירועים קרובים:\n${formatEventList(events)}` }
+}
+
 export function findEventsByPerson(personName: string): { events: Appointment[]; summary: string } {
   const all = loadAppointmentsWithFamily(new Date().getFullYear())
   const today = todayStr()
