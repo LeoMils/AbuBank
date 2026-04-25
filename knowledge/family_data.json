@@ -31,8 +31,10 @@
         "aliases": ["מורי"],
         "relationship": "daughter",
         "relationship_hebrew": "הבת",
-        "spouse": "רפי",
+        "ex_spouse": "רפי",
+        "partner": "יעל",
         "location": "הוד השרון",
+        "location_notes": "וילה עם יעל",
         "birthday": "08-10",
         "children": ["אופיר", "איילון", "עילי", "אדר"]
       },
@@ -42,30 +44,29 @@
         "aliases": ["לאון", "ליאו"],
         "relationship": "son",
         "relationship_hebrew": "הבן",
-        "partner": "יעל",
         "birthday": "08-22",
         "children": ["עדי", "נועם"]
       }
     ],
-    "children_spouses": [
+    "children_related": [
       {
         "canonical_name": "Raphi",
         "hebrew_name": "רפי",
         "aliases": ["Rafi"],
-        "relationship": "son_in_law",
-        "relationship_hebrew": "חתן (בעל של מור)",
-        "spouse": "מור",
-        "location": "הוד השרון",
-        "birthday": "07-29"
+        "relationship": "ex_son_in_law",
+        "relationship_hebrew": "הגרוש של מור, אבא של הנכדים",
+        "birthday": "07-29",
+        "notes": "מור ורפי גרושים. רפי הוא אבא של אופיר, איילון, עילי, אדר."
       },
       {
         "canonical_name": "Yael",
         "hebrew_name": "יעל",
         "aliases": [],
-        "relationship": "son_partner",
-        "relationship_hebrew": "בת זוג של לאו",
-        "partner": "לאו",
-        "notes": "בת זוג של לאו."
+        "relationship": "daughter_partner",
+        "relationship_hebrew": "בת זוג של מור",
+        "partner": "מור",
+        "location": "הוד השרון",
+        "notes": "גרה עם מור בוילה בהוד השרון."
       }
     ],
     "grandchildren_mor": [
@@ -75,9 +76,10 @@
         "aliases": [],
         "relationship": "grandson",
         "relationship_hebrew": "נכד (בן של מור ורפי)",
-        "spouse": "ירדן",
+        "spouse": "גלעד",
         "birthday": "02-15",
-        "children": ["אנאבל", "ארי"]
+        "children": ["אנאבל", "ארי"],
+        "notes": "אופיר וגלעד הם ההורים של אנאבל וארי."
       },
       {
         "canonical_name": "Ayalon",
@@ -85,8 +87,8 @@
         "aliases": ["Eylon"],
         "relationship": "grandson",
         "relationship_hebrew": "נכד (בן של מור ורפי)",
-        "partner": "גלעד",
-        "birthday": "07-31"
+        "birthday": "07-31",
+        "notes": "עובר להוד השרון."
       },
       {
         "canonical_name": "Eili",
@@ -94,8 +96,10 @@
         "aliases": ["Ilai", "עילאי"],
         "relationship": "grandson",
         "relationship_hebrew": "נכד (בן של מור ורפי)",
+        "spouse": "ירדן",
         "birthday": "04-08",
-        "notes": "עבר לאחרונה לדירה חדשה."
+        "children": [],
+        "notes": "עילי וירדן גרים יחד. יש להם 3 כלבים ופנסיון לכלבים בבית. טונטו הוא אחד הכלבים."
       },
       {
         "canonical_name": "Adar",
@@ -103,7 +107,8 @@
         "aliases": [],
         "relationship": "grandson",
         "relationship_hebrew": "נכד (הצעיר של מור ורפי)",
-        "birthday": "02-28"
+        "birthday": "02-28",
+        "notes": "עובר להוד השרון."
       }
     ],
     "grandchildren_leo": [
@@ -114,7 +119,8 @@
         "relationship": "granddaughter",
         "relationship_hebrew": "נכדה (בת של לאו)",
         "location": "תל אביב",
-        "birthday": "04-05"
+        "birthday": "04-05",
+        "notes": "תאומה של נועם. בת דודה של אופיר, איילון, עילי, אדר."
       },
       {
         "canonical_name": "Noam",
@@ -124,7 +130,7 @@
         "relationship_hebrew": "נכד (בן של לאו)",
         "location": "הרצליה",
         "birthday": "04-05",
-        "notes": "נסע לאחרונה לבואנוס איירס."
+        "notes": "תאום של עדי. בן דוד של אופיר, איילון, עילי, אדר. נסע לאחרונה לבואנוס איירס."
       }
     ],
     "grandchildren_spouses": [
@@ -133,16 +139,18 @@
         "hebrew_name": "ירדן",
         "aliases": [],
         "relationship": "granddaughter_in_law",
-        "relationship_hebrew": "כלה (אשת אופיר)",
-        "spouse": "אופיר"
+        "relationship_hebrew": "כלה (אשת עילי)",
+        "spouse": "עילי",
+        "notes": "גרה עם עילי. יש להם 3 כלבים ופנסיון לכלבים."
       },
       {
         "canonical_name": "Gilad",
         "hebrew_name": "גלעד",
         "aliases": [],
         "relationship": "grandson_in_law",
-        "relationship_hebrew": "בן זוג של איילון",
-        "partner": "איילון"
+        "relationship_hebrew": "בן זוג של אופיר",
+        "spouse": "אופיר",
+        "notes": "גלעד ואופיר הם ההורים של אנאבל וארי."
       }
     ],
     "great_grandchildren": [
@@ -151,7 +159,7 @@
         "hebrew_name": "אנאבל",
         "aliases": [],
         "relationship": "great_granddaughter",
-        "relationship_hebrew": "נינה (בת של אופיר וירדן)",
+        "relationship_hebrew": "נינה (בת של אופיר וגלעד)",
         "birthday": "10-01"
       },
       {
@@ -159,18 +167,26 @@
         "hebrew_name": "ארי",
         "aliases": [],
         "relationship": "great_granddaughter",
-        "relationship_hebrew": "נינה (בת של אופיר וירדן)",
+        "relationship_hebrew": "נינה (בת של אופיר וגלעד)",
         "birthday": "11-26"
       }
     ],
-    "other_family": [
+    "pets": [
+      {
+        "canonical_name": "Tutsi",
+        "hebrew_name": "טוטסי",
+        "aliases": ["טוצי"],
+        "type": "dog",
+        "owner": "Martita",
+        "notes": "הכלב של מרטיטה. הולכת איתו לטיולים כל יום."
+      },
       {
         "canonical_name": "Tonto",
         "hebrew_name": "טונטו",
         "aliases": ["Tuntu"],
-        "relationship": "family_member",
-        "relationship_hebrew": "בן משפחה",
-        "notes": "פרטים נוספים טרם תועדו."
+        "type": "dog",
+        "owner": "Eili & Yarden",
+        "notes": "אחד מ-3 הכלבים של עילי וירדן."
       }
     ],
     "close_friends": [
@@ -192,13 +208,6 @@
         "relationship": "family_friend",
         "relationship_hebrew": "חברה קרובה של המשפחה"
       }
-    ],
-    "pet": {
-      "canonical_name": "Tutsi",
-      "hebrew_name": "טוטסי",
-      "aliases": ["טוצי"],
-      "type": "dog",
-      "notes": "הולכת איתו לטיולים כל יום."
-    }
+    ]
   }
 }

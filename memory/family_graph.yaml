@@ -1,57 +1,87 @@
 # Family Structure — Canonical Graph
-# Source: AbuAI system prompt (service.ts lines 38-116)
-# Last verified: 2026-04-10
+# Canonical source updated from knowledge/family_data.json on 2026-04-25.
+# Previous relationship errors corrected.
+# Source of truth: knowledge/family_data.json + knowledge/family_context.md
 
 matriarch:
   canonical_name: "Martita"
   aliases: ["אבו", "Abu", "Abuela"]
+  birthday: "04-01"
+  location: "כפר סבא"
 
 children:
   - canonical_name: "Mor"
     hebrew: "מור"
     relationship: "daughter"
-    spouse: "Raphi (רפי)"
+    ex_spouse: "Raphi (רפי)"       # divorced
+    partner: "Yael (יעל)"          # current partner
+    location: "הוד השרון"           # villa with יעל
     surname: "Duani"
     children:
       - canonical_name: "Ofir"
         hebrew: "אופיר"
         relationship: "grandson"
-        spouse: "Yarden (ירדן)"
+        spouse: "Gilad (גלעד)"
         children:
           - { name: "Anabel", hebrew: "אנאבל", relationship: "great-granddaughter" }
           - { name: "Ari", hebrew: "ארי", relationship: "great-granddaughter" }
-        notes: "Ofir and Yarden have two daughters — Anabel and Ari (Martita's great-granddaughters)"
-      - canonical_name: "Eylon"
-        hebrew: "אילון"
+        notes: "אופיר וגלעד הם ההורים של אנאבל וארי (הנינות של Martita)"
+      - canonical_name: "Ayalon"
+        hebrew: "איילון"
         relationship: "grandson"
-        spouse: "Gilad (גלעד)"
-      - canonical_name: "Ilai"
+        notes: "עובר להוד השרון"
+      - canonical_name: "Eili"
         hebrew: "עילי"
         relationship: "grandson"
-        notes: "recently moved to new apartment. Name spelled עילי."
+        spouse: "Yarden (ירדן)"
+        children: []                # no children
+        notes: "עילי וירדן גרים יחד. יש להם 3 כלבים ופנסיון לכלבים בבית. טונטו הוא אחד הכלבים."
       - canonical_name: "Adar"
         hebrew: "אדר"
         relationship: "grandson"
-        notes: "the youngest of Mor's children"
+        notes: "הצעיר של מור. עובר להוד השרון."
 
   - canonical_name: "Leo"
     hebrew: "לאו"
+    aliases: ["לאון"]
     relationship: "son"
     surname: "Milstein"
     children:
       - canonical_name: "Adi"
         hebrew: "עדי"
         relationship: "granddaughter"
+        location: "תל אביב"
+        notes: "תאומה של נועם"
       - canonical_name: "Noam"
         hebrew: "נועם"
         relationship: "grandson"
-        notes: "recently traveled to Buenos Aires"
+        location: "הרצליה"
+        notes: "תאום של עדי. נסע לאחרונה לבואנוס איירס."
+
+# Note on parents: מור ורפי הם ההורים הביולוגיים של אופיר, איילון, עילי, אדר.
+# מור ורפי גרושים. רפי הוא אב של הנכדים אבל לא בן זוג של מור.
+# עדי ונועם הם בני דודים של אופיר, איילון, עילי, אדר.
 
 deceased:
   - canonical_name: "Papi"
     hebrew: "פפי"
-    aliases: ["Pepe", "Papi"]
+    aliases: ["Pepe", "Papi", "פאפי"]
     relationship: "husband"
     birthday: "04-19"               # April 19, born 1941
     date_of_passing: "2025-01-01"   # January 1st, 2025
-    notes: "remembered with love. Memorial date Jan 1. Birthday Apr 19."
+    notes: "זוכרים אותו באהבה. יום הזיכרון 1 בינואר. יום הולדת 19 באפריל."
+
+pets:
+  - name: "Tutsi"
+    hebrew: "טוטסי"
+    owner: "Martita"
+    notes: "הכלב של מרטיטה. הולכת איתו לטיולים."
+  - name: "Tonto"
+    hebrew: "טונטו"
+    owner: "Eili & Yarden"
+    notes: "אחד מ-3 הכלבים של עילי וירדן."
+
+close_friends:
+  - { name: "Mirta", hebrew: "מירטה", relationship: "חברה קרובה" }
+  - { name: "Shoshana", hebrew: "שושנה", relationship: "חברה קרובה" }
+  - { name: "Sharon", hebrew: "שרון", relationship: "חברה קרובה של המשפחה" }

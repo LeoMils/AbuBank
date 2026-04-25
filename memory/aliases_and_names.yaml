@@ -1,21 +1,24 @@
 # Canonical Name → Aliases Lookup
 # Purpose: Prevent duplication, support reliable retrieval
+# Updated: 2026-04-25 — corrected relationships per knowledge/family_data.json
 
 aliases:
   Martita:    ["אבו", "Abu", "Abuela", "מרטיטה", "מרתה", "סבתא"]
-  Mor:        ["מור"]
-  Leo:        ["לאו"]
-  Raphi:      ["רפי"]
+  Mor:        ["מור", "מורי"]
+  Leo:        ["לאו", "לאון", "ליאו"]
+  Raphi:      ["רפי", "Rafi"]            # ex-husband of Mor (divorced)
+  Yael:       ["יעל"]                    # Mor's partner
   Ofir:       ["אופיר"]
-  Eylon:      ["אילון"]
-  Ilai:       ["עילי", "עילאי"]      # עילי is the correct spelling
+  Ayalon:     ["איילון", "Eylon"]
+  Eili:       ["עילי", "עילאי", "Ilai"]  # עילי is the correct spelling
   Adar:       ["אדר"]
   Adi:        ["עדי"]
   Noam:       ["נועם"]
-  Yarden:     ["ירדן"]
-  Gilad:      ["גלעד"]
-  Papi:       ["פפי", "Pepe"]
+  Yarden:     ["ירדן"]                   # wife of עילי (NOT Ofir)
+  Gilad:      ["גלעד"]                   # spouse of אופיר (NOT Ayalon)
+  Papi:       ["פפי", "Pepe", "פאפי"]
   Tutsi:      ["טוטסי", "טוצי"]
+  Tonto:      ["טונטו"]                  # one of עילי & ירדן's dogs
   Mirta:      ["מירטה"]
   Shoshana:   ["שושנה"]
   Sharon:     ["שרון"]
@@ -24,12 +27,15 @@ aliases:
 
 # Role-based lookups
 roles:
-  daughter:         ["Mor"]
-  son:              ["Leo"]
-  grandchildren:    ["Ofir", "Eylon", "Ilai", "Adar", "Adi", "Noam"]
-  great_grandchildren_parent: ["Ofir"]
-  deceased_spouse:  ["Papi"]
-  close_friends:    ["Mirta", "Shoshana"]
-  pet:              ["Tutsi"]
-  great_granddaughters: ["Anabel", "Ari"]  # Ofir & Yarden's daughters
-  leo_ex_close_friend:  ["Sharon"]          # Leo's ex, close with Martita
+  daughter:             ["Mor"]
+  son:                  ["Leo"]
+  grandchildren:        ["Ofir", "Ayalon", "Eili", "Adar", "Adi", "Noam"]
+  twins:                ["Adi", "Noam"]
+  great_grandchildren:  ["Anabel", "Ari"]         # Ofir & Gilad's daughters
+  deceased_spouse:      ["Papi"]
+  close_friends:        ["Mirta", "Shoshana"]
+  family_friend:        ["Sharon"]
+  mor_partner:          ["Yael"]                   # Mor's current partner
+  mor_ex_spouse:        ["Raphi"]                  # divorced
+  pets_martita:         ["Tutsi"]
+  pets_eili_yarden:     ["Tonto"]                  # 3 dogs total, Tonto named
