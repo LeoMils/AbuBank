@@ -72,6 +72,48 @@ describe('routePersonalQuery', () => {
     })
   })
 
+  describe('expanded family patterns', () => {
+    it('"מה עם עילי?" → family_lookup via known name', () => {
+      expect(routePersonalQuery('מה עם עילי?').type).toBe('family_lookup')
+    })
+
+    it('"ספרי לי על מור" → family_lookup via known name', () => {
+      expect(routePersonalQuery('ספרי לי על מור').type).toBe('family_lookup')
+    })
+
+    it('"תגידי לי על אופיר" → family_lookup via known name', () => {
+      expect(routePersonalQuery('תגידי לי על אופיר').type).toBe('family_lookup')
+    })
+
+    it('"מה הקשר עם גלעד?" → family_lookup', () => {
+      expect(routePersonalQuery('מה הקשר עם גלעד?').type).toBe('family_lookup')
+    })
+
+    it('"הנכדים שלי" → family_lookup', () => {
+      expect(routePersonalQuery('מי הנכדים שלי?').type).toBe('family_lookup')
+    })
+
+    it('"הבת שלי" → family_lookup', () => {
+      expect(routePersonalQuery('מי הבת שלי?').type).toBe('family_lookup')
+    })
+
+    it('"הילדים שלי" → family_lookup', () => {
+      expect(routePersonalQuery('מי הילדים שלי?').type).toBe('family_lookup')
+    })
+
+    it('"איך ירדן קשורה?" → family_lookup', () => {
+      expect(routePersonalQuery('איך ירדן קשורה?').type).toBe('family_lookup')
+    })
+
+    it('every known family Hebrew name routes to family_lookup', () => {
+      const names = ['מור', 'לאו', 'אופיר', 'איילון', 'עילי', 'אדר', 'עדי', 'נועם', 'ירדן', 'גלעד', 'יעל', 'פפי', 'טונטו', 'אנאבל', 'ארי']
+      for (const name of names) {
+        const r = routePersonalQuery(name)
+        expect(r.type).toBe('family_lookup')
+      }
+    })
+  })
+
   describe('non_personal', () => {
     it('"מה מזג האוויר?" → non_personal', () => {
       expect(routePersonalQuery('מה מזג האוויר?').type).toBe('non_personal')
@@ -83,6 +125,10 @@ describe('routePersonalQuery', () => {
 
     it('"מה זה בינה מלאכותית?" → non_personal', () => {
       expect(routePersonalQuery('מה זה בינה מלאכותית?').type).toBe('non_personal')
+    })
+
+    it('"מה השעה?" → non_personal', () => {
+      expect(routePersonalQuery('מה השעה?').type).toBe('non_personal')
     })
   })
 })

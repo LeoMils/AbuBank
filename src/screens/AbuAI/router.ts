@@ -11,7 +11,7 @@ export interface RouteResult {
 const CALENDAR_TODAY = /מה יש לי היום|מה יש היום|יש לי משהו היום|מה קבעתי היום|מה קורה היום|מה התוכנית היום/i
 const CALENDAR_TOMORROW = /מה יש מחר|מה יש לי מחר|יש לי משהו מחר|מה קבעתי מחר|מה קורה מחר|מה התוכנית מחר|צריך לקום מחר/i
 const CALENDAR_UPCOMING = /מה יש השבוע|מה יש לי השבוע|מה יש בשבוע|מה הפגישות הקרובות|מה התורים הקרובים|מה האירועים הקרובים|יש לי משהו השבוע|מה התוכנית/i
-const FAMILY_PATTERNS = /מי (זה|זאת|זו|הוא|היא)\s|מי ה(בן|בת|נכד|נכדה)|איך קוראים ל|מה הקשר של/i
+const FAMILY_PATTERNS = /מי (זה|זאת|זו|הוא|היא)\s|מי ה(בן|בת|נכד|נכדה)|איך קוראים ל|מה הקשר (של|עם)|איך .+ קשור|הנכד שלי|הנכדה שלי|הבן שלי|הבת שלי|הילדים שלי|הנכדים שלי/i
 
 export function routePersonalQuery(text: string): RouteResult {
   const t = text.trim()
@@ -37,7 +37,7 @@ function extractFamilyName(text: string): string | null {
   const patterns = [
     /מי (?:זה|זאת|זו|הוא|היא)\s+(.+)/i,
     /איך קוראים ל(.+)/i,
-    /מה הקשר של (.+)/i,
+    /מה הקשר (?:של|עם) (.+)/i,
   ]
   for (const p of patterns) {
     const match = text.match(p)
