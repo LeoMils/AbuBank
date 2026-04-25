@@ -1,42 +1,37 @@
-# Canonical Name → Aliases Lookup — DERIVED BACKUP (do not edit directly)
-# ⚠️ This file is NOT the source of truth. Runtime code does NOT read this file.
+# ⚠️ AUTO-GENERATED FILE — DO NOT EDIT MANUALLY
 # Source of truth: knowledge/family_data.json
-# Last synced: 2026-04-25
+# Regenerate with: npm run generate:memory
+# Generated: 2026-04-25
+
 
 aliases:
-  Martita:    ["אבו", "Abu", "Abuela", "מרטיטה", "מרתה", "סבתא"]
-  Mor:        ["מור", "מורי"]
-  Leo:        ["לאו", "לאון", "ליאו"]
-  Raphi:      ["רפי", "Rafi"]            # ex-husband of Mor (divorced)
-  Yael:       ["יעל"]                    # Mor's partner
-  Ofir:       ["אופיר"]
-  Ayalon:     ["איילון", "Eylon"]
-  Eili:       ["עילי", "עילאי", "Ilai"]  # עילי is the correct spelling
-  Adar:       ["אדר"]
-  Adi:        ["עדי"]
-  Noam:       ["נועם"]
-  Yarden:     ["ירדן"]                   # wife of עילי (NOT Ofir)
-  Gilad:      ["גלעד"]                   # spouse of אופיר (NOT Ayalon)
-  Papi:       ["פפי", "Pepe", "פאפי"]
-  Tutsi:      ["טוטסי", "טוצי"]
-  Tonto:      ["טונטו"]                  # one of עילי & ירדן's dogs
-  Mirta:      ["מירטה"]
-  Shoshana:   ["שושנה"]
-  Sharon:     ["שרון"]
-  Anabel:     ["אנאבל"]
-  Ari:        ["ארי"]
+  Martita     : ["מרטיטה","אבו","Abu","Abuela"]
+  Papi        : ["פפי","Pepe","פאפי"]
+  Mor         : ["מור","מורי"]
+  Leo         : ["לאו","לאון","ליאו"]
+  Raphi       : ["רפי","Rafi"]
+  Yael        : ["יעל"]
+  Ofir        : ["אופיר"]
+  Ayalon      : ["איילון","Eylon","אילון"]
+  Eili        : ["עילי","Ilai","עילאי"]
+  Adar        : ["אדר"]
+  Adi         : ["עדי"]
+  Noam        : ["נועם"]
+  Yarden      : ["ירדן"]
+  Gilad       : ["גלעד"]
+  Anabel      : ["אנאבל"]
+  Ari         : ["ארי"]
+  Tutsi       : ["טוטסי","טוצי"]
+  Tonto       : ["טונטו","Tuntu"]
+  Mirta       : ["מירטה"]
+  Shoshana    : ["שושנה"]
+  Sharon      : ["שרון"]
 
 # Role-based lookups
 roles:
-  daughter:             ["Mor"]
-  son:                  ["Leo"]
-  grandchildren:        ["Ofir", "Ayalon", "Eili", "Adar", "Adi", "Noam"]
-  twins:                ["Adi", "Noam"]
-  great_grandchildren:  ["Anabel", "Ari"]         # Ofir & Gilad's daughters
-  deceased_spouse:      ["Papi"]
-  close_friends:        ["Mirta", "Shoshana"]
-  family_friend:        ["Sharon"]
-  mor_partner:          ["Yael"]                   # Mor's current partner
-  mor_ex_spouse:        ["Raphi"]                  # divorced
-  pets_martita:         ["Tutsi"]
-  pets_eili_yarden:     ["Tonto"]                  # 3 dogs total, Tonto named
+  children:            ["Mor","Leo"]
+  grandchildren:       ["Ofir","Ayalon","Eili","Adar","Adi","Noam"]
+  great_grandchildren: ["Anabel","Ari"]
+  deceased_spouse:     ["Papi"]
+  pets:                ["Tutsi","Tonto"]
+  close_friends:       ["Mirta","Shoshana","Sharon"]

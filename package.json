@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "generate:memory": "npx tsx scripts/generate-memory-from-knowledge.ts",
+    "validate:family": "npx tsx scripts/validate-family-data.ts",
+    "prebuild": "npm run generate:memory && npm run validate:family",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",

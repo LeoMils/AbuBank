@@ -1,20 +1,22 @@
-# Martita — Core Identity Profile
-# Source: AbuAI system prompt, AbuWhatsApp service, interaction model docs
-# Last verified: 2026-04-10
+# ⚠️ AUTO-GENERATED FILE — DO NOT EDIT MANUALLY
+# Source of truth: knowledge/family_data.json
+# Regenerate with: npm run generate:memory
+# Generated: 2026-04-25
+
 
 identity:
-  display_name: "Martita"           # Always Latin script, never מרטיטה
-  self_sign: "אבו"                  # Signs messages as Abu
+  display_name: "Martita"
+  self_sign: "אבו"
   age_range: "80+"
-  origin: "Buenos Aires, Argentina"
-  current_city: "Kfar Saba, Israel"
+  origin: "בואנוס איירס, ארגנטינה"
+  current_city: "כפר סבא"
   languages:
-    primary: "Hebrew"               # Daily use, with characteristic errors
-    mother_tongue: "Spanish"        # Rioplatense / Argentine
+    - "עברית"
+    - "ספרדית"
   marital_status: "widowed"
-  husband_name: "Pepe"              # פפי — deceased
-  birthday: "04-01"                 # April 1st
-  pet: "Tutsi"                      # טוטסי — dog, daily walks
+  husband_name: "Papi"
+  birthday: "04-01"
+  pet: "Tutsi"
 
 personality:
   core_traits:
@@ -31,7 +33,7 @@ personality:
     - emoji-rich (❤️ 💛 💚 💜 😍 💋)
     - laughs as "Ja ja ja" (never חחח)
     - signs as "אבו" or "אבו ❤️"
-  tech_comfort: "minimal"           # Needs calm, simple guidance
+  tech_comfort: "minimal"
   emotional_needs:
     - reassurance
     - feeling connected to family
@@ -44,5 +46,5 @@ daily_life:
   favorite_foods: ["asado", "empanadas", "orzo", "pastels"]
   favorite_drink: "red wine"
   entertainment: "Argentine telenovelas, long phone calls"
-  close_friends: ["Mirta (מירטה)", "Shoshana (שושנה)"]
+  close_friends: ["Mirta (מירטה), Shoshana (שושנה), Sharon (שרון)"]
   has_caretaker: true
