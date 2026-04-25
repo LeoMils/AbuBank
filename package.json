@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prepare": "git config core.hooksPath .githooks",
     "generate:memory": "npx tsx scripts/generate-memory-from-knowledge.ts",
     "validate:family": "npx tsx scripts/validate-family-data.ts",
     "prebuild": "npm run generate:memory && npm run validate:family",
