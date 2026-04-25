@@ -39,8 +39,7 @@ function toFamilyMember(m: FamilyJsonMember): FamilyMember {
     relationship: m.relationship,
     relationshipHebrew: m.relationship_hebrew,
   }
-  const spouse = m.spouse ?? m.partner
-  if (spouse && !m.relationship_hebrew.includes(spouse)) result.spouse = spouse
+  if (m.spouse && !m.relationship_hebrew.includes(m.spouse)) result.spouse = m.spouse
   if (m.children) result.children = m.children
   if (m.notes) result.notes = m.notes
   if (m.birthday) result.birthday = m.birthday
