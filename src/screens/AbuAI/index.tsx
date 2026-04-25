@@ -110,7 +110,11 @@ export function AbuAI() {
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
   const [realtimeTranscript, setRealtimeTranscript] = useState('')
   const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
-  const useRealtime = !!import.meta.env.VITE_OPENAI_API_KEY // use Realtime if OpenAI key exists
+  // Realtime disabled: it bypasses runtime grounding (tryGroundedAnswer).
+  // Personal queries in Realtime go directly to OpenAI audio with no tool interception.
+  // Do not re-enable until personal-query interception is implemented for Realtime.
+  // To re-enable: set localStorage 'abubank-realtime-enabled' = 'true'
+  const useRealtime = false
 
   // v25.2: Simplified — noise mode defaults to quiet, user can change manually
   type VoiceEnvMode = 'quiet' | 'noisy' | 'listen'

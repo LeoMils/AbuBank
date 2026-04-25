@@ -70,4 +70,20 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
     expect(answer).not.toBeNull()
     expect(typeof answer).toBe('string')
   })
+
+  it('Realtime is disabled by default — useRealtime = false', async () => {
+    const source = await import('fs').then(fs =>
+      fs.readFileSync('/home/user/AbuBank/src/screens/AbuAI/index.tsx', 'utf-8')
+    )
+    expect(source).toContain('const useRealtime = false')
+    expect(source).not.toMatch(/const useRealtime = !![^f]/)
+  })
+
+  it('all voice paths reach tryGroundedAnswer', async () => {
+    const source = await import('fs').then(fs =>
+      fs.readFileSync('/home/user/AbuBank/src/screens/AbuAI/index.tsx', 'utf-8')
+    )
+    const voiceGroundedCount = (source.match(/tryGroundedAnswer/g) ?? []).length
+    expect(voiceGroundedCount).toBeGreaterThanOrEqual(2)
+  })
 })
