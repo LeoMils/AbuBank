@@ -1,0 +1,204 @@
+{
+  "family": {
+    "matriarch": {
+      "canonical_name": "Martita",
+      "hebrew_name": "מרטיטה",
+      "aliases": ["אבו", "Abu", "Abuela"],
+      "relationship": "matriarch",
+      "birthday": "04-01",
+      "location": "כפר סבא",
+      "origin": "בואנוס איירס, ארגנטינה",
+      "languages": ["עברית", "ספרדית"],
+      "pet": "טוטסי",
+      "notes": "חותמת הודעות כ-אבו. אוהבת לבשל, לארח, ארוחות שישי."
+    },
+    "deceased": {
+      "canonical_name": "Papi",
+      "hebrew_name": "פפי",
+      "aliases": ["Pepe", "פאפי"],
+      "relationship": "husband_deceased",
+      "relationship_hebrew": "הבעל ז\"ל",
+      "birthday": "04-19",
+      "birth_year": 1941,
+      "date_of_passing": "2025-01-01",
+      "memorial_date": "01-01",
+      "notes": "זוכרים אותו באהבה."
+    },
+    "children": [
+      {
+        "canonical_name": "Mor",
+        "hebrew_name": "מור",
+        "aliases": ["מורי"],
+        "relationship": "daughter",
+        "relationship_hebrew": "הבת",
+        "spouse": "רפי",
+        "location": "הוד השרון",
+        "birthday": "08-10",
+        "children": ["אופיר", "איילון", "עילי", "אדר"]
+      },
+      {
+        "canonical_name": "Leo",
+        "hebrew_name": "לאו",
+        "aliases": ["לאון", "ליאו"],
+        "relationship": "son",
+        "relationship_hebrew": "הבן",
+        "partner": "יעל",
+        "birthday": "08-22",
+        "children": ["עדי", "נועם"]
+      }
+    ],
+    "children_spouses": [
+      {
+        "canonical_name": "Raphi",
+        "hebrew_name": "רפי",
+        "aliases": ["Rafi"],
+        "relationship": "son_in_law",
+        "relationship_hebrew": "חתן (בעל של מור)",
+        "spouse": "מור",
+        "location": "הוד השרון",
+        "birthday": "07-29"
+      },
+      {
+        "canonical_name": "Yael",
+        "hebrew_name": "יעל",
+        "aliases": [],
+        "relationship": "son_partner",
+        "relationship_hebrew": "בת זוג של לאו",
+        "partner": "לאו",
+        "notes": "בת זוג של לאו."
+      }
+    ],
+    "grandchildren_mor": [
+      {
+        "canonical_name": "Ofir",
+        "hebrew_name": "אופיר",
+        "aliases": [],
+        "relationship": "grandson",
+        "relationship_hebrew": "נכד (בן של מור ורפי)",
+        "spouse": "ירדן",
+        "birthday": "02-15",
+        "children": ["אנאבל", "ארי"]
+      },
+      {
+        "canonical_name": "Ayalon",
+        "hebrew_name": "איילון",
+        "aliases": ["Eylon"],
+        "relationship": "grandson",
+        "relationship_hebrew": "נכד (בן של מור ורפי)",
+        "partner": "גלעד",
+        "birthday": "07-31"
+      },
+      {
+        "canonical_name": "Eili",
+        "hebrew_name": "עילי",
+        "aliases": ["Ilai", "עילאי"],
+        "relationship": "grandson",
+        "relationship_hebrew": "נכד (בן של מור ורפי)",
+        "birthday": "04-08",
+        "notes": "עבר לאחרונה לדירה חדשה."
+      },
+      {
+        "canonical_name": "Adar",
+        "hebrew_name": "אדר",
+        "aliases": [],
+        "relationship": "grandson",
+        "relationship_hebrew": "נכד (הצעיר של מור ורפי)",
+        "birthday": "02-28"
+      }
+    ],
+    "grandchildren_leo": [
+      {
+        "canonical_name": "Adi",
+        "hebrew_name": "עדי",
+        "aliases": [],
+        "relationship": "granddaughter",
+        "relationship_hebrew": "נכדה (בת של לאו)",
+        "location": "תל אביב",
+        "birthday": "04-05"
+      },
+      {
+        "canonical_name": "Noam",
+        "hebrew_name": "נועם",
+        "aliases": [],
+        "relationship": "grandson",
+        "relationship_hebrew": "נכד (בן של לאו)",
+        "location": "הרצליה",
+        "birthday": "04-05",
+        "notes": "נסע לאחרונה לבואנוס איירס."
+      }
+    ],
+    "grandchildren_spouses": [
+      {
+        "canonical_name": "Yarden",
+        "hebrew_name": "ירדן",
+        "aliases": [],
+        "relationship": "granddaughter_in_law",
+        "relationship_hebrew": "כלה (אשת אופיר)",
+        "spouse": "אופיר"
+      },
+      {
+        "canonical_name": "Gilad",
+        "hebrew_name": "גלעד",
+        "aliases": [],
+        "relationship": "grandson_in_law",
+        "relationship_hebrew": "בן זוג של איילון",
+        "partner": "איילון"
+      }
+    ],
+    "great_grandchildren": [
+      {
+        "canonical_name": "Anabel",
+        "hebrew_name": "אנאבל",
+        "aliases": [],
+        "relationship": "great_granddaughter",
+        "relationship_hebrew": "נינה (בת של אופיר וירדן)",
+        "birthday": "10-01"
+      },
+      {
+        "canonical_name": "Ari",
+        "hebrew_name": "ארי",
+        "aliases": [],
+        "relationship": "great_granddaughter",
+        "relationship_hebrew": "נינה (בת של אופיר וירדן)",
+        "birthday": "11-26"
+      }
+    ],
+    "other_family": [
+      {
+        "canonical_name": "Tonto",
+        "hebrew_name": "טונטו",
+        "aliases": ["Tuntu"],
+        "relationship": "family_member",
+        "relationship_hebrew": "בן משפחה",
+        "notes": "פרטים נוספים טרם תועדו."
+      }
+    ],
+    "close_friends": [
+      {
+        "canonical_name": "Mirta",
+        "hebrew_name": "מירטה",
+        "relationship": "close_friend",
+        "relationship_hebrew": "חברה קרובה"
+      },
+      {
+        "canonical_name": "Shoshana",
+        "hebrew_name": "שושנה",
+        "relationship": "close_friend",
+        "relationship_hebrew": "חברה קרובה"
+      },
+      {
+        "canonical_name": "Sharon",
+        "hebrew_name": "שרון",
+        "relationship": "family_friend",
+        "relationship_hebrew": "חברה קרובה של המשפחה"
+      }
+    ],
+    "pet": {
+      "canonical_name": "Tutsi",
+      "hebrew_name": "טוטסי",
+      "aliases": ["טוצי"],
+      "type": "dog",
+      "notes": "הולכת איתו לטיולים כל יום."
+    }
+  }
+}
