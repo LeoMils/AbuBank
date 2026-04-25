@@ -13,6 +13,8 @@ import { GRADIENT_TEAL } from '../../design/gradients'
 import { BackButton } from '../../components/BackButton'
 import { StyleSelector, STYLES, type Style } from './StyleSelector'
 import { Toast } from '../../components/Toast'
+import { PageShell } from '../../components/PageShell'
+import { LoadingState } from '../../components/LoadingState'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -551,17 +553,7 @@ export function AbuWhatsApp() {
   const ringBorderOpacity = voicePhase === 'listening' ? Math.min(0.7, 0.2 + audioLevel * 0.008) : 0.3
 
   return (
-    <div
-      dir="rtl"
-      style={{
-        height: '100%', width: '100%', maxWidth: 412, margin: '0 auto',
-        overflow: 'hidden',
-        background: '#050A18',
-        display: 'flex', flexDirection: 'column',
-        fontFamily: "'DM Sans','Heebo',sans-serif",
-        position: 'relative',
-      }}
-    >
+    <PageShell>
 
       {/* ══════════════════════════════════════════════════
           HEADER — "Abu הודעות", Martita photo, back button
@@ -862,41 +854,20 @@ export function AbuWhatsApp() {
             LOADING STATE
            ════════════════════════════════════ */}
         {isLoading && !voiceMode && (
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
-            marginTop: 50,
-            animation: 'slideUpIn 0.3s ease both',
-          }}>
-            <div style={{
-              padding: '24px 36px', borderRadius: 24,
-              background: 'linear-gradient(135deg, rgba(37,211,102,0.08), rgba(18,140,126,0.03))',
-              border: '1px solid rgba(37,211,102,0.16)',
-              boxShadow: '0 4px 18px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.04)',
-            }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                {[0, 1, 2].map(i => (
-                  <div key={i} style={{
-                    width: 14, height: 14, borderRadius: '50%',
-                    background: WA_GREEN, opacity: 0.55,
-                    animation: `waPulse 1.2s ease-in-out ${i * 0.22}s infinite`,
-                  }} />
-                ))}
-              </div>
-            </div>
-            <span style={{
-              fontFamily: "'Heebo',sans-serif",
-              fontSize: 18, color: 'rgba(255,255,255,0.48)',
-            }}>
-              {phase === 'transcribing' ? 'מתמללת...' : 'מכינה את ההודעה...'}
-            </span>
+          <div style={{ marginTop: 30 }}>
+            <LoadingState
+              message={phase === 'transcribing' ? 'מתמללת...' : 'מכינה את ההודעה...'}
+              color={WA_GREEN}
+            />
             {slowLoading && (
-              <span style={{
+              <div style={{
+                textAlign: 'center', fontSize: 16,
+                color: 'rgba(255,255,255,0.35)',
                 fontFamily: "'Heebo',sans-serif",
-                fontSize: 16, color: 'rgba(255,255,255,0.35)',
                 animation: 'slideUpIn 0.3s ease both',
               }}>
                 לוקח יותר זמן מהרגיל...
-              </span>
+              </div>
             )}
           </div>
         )}
@@ -1341,7 +1312,6 @@ export function AbuWhatsApp() {
         @keyframes slideUpIn  { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
         @keyframes headerSlide{ from{opacity:0;transform:translateY(-10px);} to{opacity:1;transform:translateY(0);} }
       `}</style>
-      <div style={{ position: 'fixed', bottom: 8, left: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: 'rgba(201,168,76,0.30)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', zIndex: 1 }}>v15.0</div>
-    </div>
+    </PageShell>
   )
 }
