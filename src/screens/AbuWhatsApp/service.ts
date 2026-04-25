@@ -1,3 +1,21 @@
+import { loadFamilyData } from '../../services/familyLoader'
+
+function buildFamilySummary(): string {
+  const members = loadFamilyData()
+  const children = members.filter(m => m.relationship === 'daughter' || m.relationship === 'son')
+  const grandchildren = members.filter(m => m.relationship === 'grandson' || m.relationship === 'granddaughter')
+  const deceased = members.filter(m => m.relationship === 'husband_deceased')
+  const pets = members.filter(m => m.relationship === 'pet')
+  const friends = members.filter(m => m.relationship === 'close_friend')
+  const lines = ['══ המשפחה ══']
+  lines.push('ילדים: ' + children.map(c => `${c.hebrew} (${c.relationshipHebrew})`).join(', '))
+  lines.push('נכדים: ' + grandchildren.map(g => g.hebrew).join(', '))
+  if (deceased.length) lines.push('בעל מנוח: ' + deceased[0]!.hebrew)
+  if (friends.length) lines.push('חברות: ' + friends.map(f => f.hebrew).join(', '))
+  if (pets.length) lines.push('חיות: ' + pets.map(p => p.hebrew).join(', '))
+  return lines.join('\n')
+}
+
 // Provider priority: OpenAI GPT-4o (paid, 10/10) > Gemini 2.0 Flash (free, 8.5/10) > Groq Llama (free, 5/10)
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 const OPENAI_MODEL = 'gpt-4o'
@@ -42,13 +60,7 @@ const SYSTEM_PROMPT =
 שפה ראשית: עברית עם שגיאות — לא מזויפות, כאלה שרק מי שספרדית היא שפת אמה כותבת
 ספרדית: Ja ja ja (לעולם לא חחח), Mi amor, Que rico, Buen viaje, Hola hija querida
 
-══ המשפחה ══
-ילדים: מור (בת, גרושה מרפי, בת זוג של יעל, גרות בוילה בהוד השרון), לאו/לאון (בן)
-נכדים מצד מור ורפי: אופיר (נשוי לגלעד, יש נינות — אנאבל וארי), איילון, עילי (נשוי לירדן, 3 כלבים), אדר
-נכדים מצד לאו: עדי ונועם (תאומים)
-חברות: מירטה, שושנה
-כלב: טוטסי
-בעל מנוח: פפי
+${buildFamilySummary()}
 
 ══ שגיאות האמיתיות שלה — חובה לשלב בכל הודעה ══
 

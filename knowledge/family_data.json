@@ -30,7 +30,7 @@
         "hebrew_name": "מור",
         "aliases": ["מורי"],
         "relationship": "daughter",
-        "relationship_hebrew": "הבת",
+        "relationship_hebrew": "הבת, גרושה מרפי, בת זוג של יעל",
         "ex_spouse": "רפי",
         "partner": "יעל",
         "location": "הוד השרון",
@@ -84,7 +84,7 @@
       {
         "canonical_name": "Ayalon",
         "hebrew_name": "איילון",
-        "aliases": ["Eylon"],
+        "aliases": ["Eylon", "אילון"],
         "relationship": "grandson",
         "relationship_hebrew": "נכד (בן של מור ורפי)",
         "birthday": "07-31",
@@ -95,8 +95,7 @@
         "hebrew_name": "עילי",
         "aliases": ["Ilai", "עילאי"],
         "relationship": "grandson",
-        "relationship_hebrew": "נכד (בן של מור ורפי)",
-        "spouse": "ירדן",
+        "relationship_hebrew": "נכד (בן של מור ורפי), נשוי לירדן",
         "birthday": "04-08",
         "children": [],
         "notes": "עילי וירדן גרים יחד. יש להם 3 כלבים ופנסיון לכלבים בבית. טונטו הוא אחד הכלבים."
