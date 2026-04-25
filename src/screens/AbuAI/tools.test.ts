@@ -22,7 +22,7 @@ describe('searchFamily', () => {
     const r = searchFamily('אופיר')
     expect(r.found).toBe(true)
     expect(r.answer).toContain('נכד')
-    expect(r.answer).toContain('ירדן')
+    expect(r.answer).toContain('גלעד')
   })
 
   it('finds Papi by alias', () => {

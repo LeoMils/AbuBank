@@ -110,7 +110,7 @@ birthdays:
   - person: "Anabel"
     hebrew: "אנאבל"
     date: "10-01"               # 1 באוקטובר
-    relationship: "great-granddaughter (Ofir & Yarden's daughter)"
+    relationship: "great-granddaughter (Ofir & Gilad's daughter)"
     confidence: confirmed
     reminder: { days_before: [7, 3, 1, 0] }
 
@@ -125,7 +125,7 @@ birthdays:
   - person: "Ari"
     hebrew: "ארי"
     date: "11-26"               # 26 בנובמבר
-    relationship: "great-granddaughter (Ofir & Yarden's daughter)"
+    relationship: "great-granddaughter (Ofir & Gilad's daughter)"
     confidence: confirmed
     reminder: { days_before: [7, 3, 1, 0] }
     notes: "Sister of Anabel"
