@@ -1,7 +1,8 @@
-# Family Structure — Canonical Graph
-# Canonical source updated from knowledge/family_data.json on 2026-04-25.
-# Previous relationship errors corrected.
-# Source of truth: knowledge/family_data.json + knowledge/family_context.md
+# Family Structure — DERIVED BACKUP (do not edit directly)
+# ⚠️ This file is NOT the source of truth. Runtime code does NOT read this file.
+# Source of truth: knowledge/family_data.json
+# Last synced: 2026-04-25
+# To update family data, edit knowledge/family_data.json and run validation.
 
 matriarch:
   canonical_name: "Martita"

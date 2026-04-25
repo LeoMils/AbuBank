@@ -1,6 +1,7 @@
-# Canonical Name → Aliases Lookup
-# Purpose: Prevent duplication, support reliable retrieval
-# Updated: 2026-04-25 — corrected relationships per knowledge/family_data.json
+# Canonical Name → Aliases Lookup — DERIVED BACKUP (do not edit directly)
+# ⚠️ This file is NOT the source of truth. Runtime code does NOT read this file.
+# Source of truth: knowledge/family_data.json
+# Last synced: 2026-04-25
 
 aliases:
   Martita:    ["אבו", "Abu", "Abuela", "מרטיטה", "מרתה", "סבתא"]

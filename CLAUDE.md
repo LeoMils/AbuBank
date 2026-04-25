@@ -29,14 +29,18 @@ Martita, 80+, non-technical, living in Kfar Saba. Speaks Hebrew (with characteri
 - Diagnosis before implementation for visual changes.
 - Do not overclaim verification.
 - Use the minimal process that produces the highest-quality result.
-- Consult `/memory/` files for Martita context — don't bloat this file with details.
-- Birthdays and family dates live in `memory/birthdays_registry.yaml` — never scatter ad hoc.
+- Family data source of truth: `knowledge/family_data.json` — all runtime code reads from here.
+- Consult `/memory/` files for Martita personality, tone, and patterns — but NOT for family relationships.
+- Birthdays and family dates live in `knowledge/family_data.json` — never scatter ad hoc.
 - Before modifying Martita's voice or tone, consult `memory/whatsapp_patterns.yaml` and `memory/message_examples.md`.
 
-## Key Memory Files
+## Key Data Files
+- `knowledge/family_data.json` — **SOURCE OF TRUTH** for family relationships, read by runtime
+- `knowledge/family_context.md` — human-readable family description (derived from JSON)
+- `knowledge/family_verification.md` — Hebrew Unicode verification table
 - `memory/martita_profile.yaml` — identity, personality, daily life
-- `memory/family_graph.yaml` — family tree with canonical names
-- `memory/aliases_and_names.yaml` — name → alias lookup
+- `memory/family_graph.yaml` — family tree (derived backup — source of truth is knowledge/family_data.json)
+- `memory/aliases_and_names.yaml` — name → alias lookup (derived backup)
 - `memory/birthdays_registry.yaml` — birthdays + memorial dates + reminder policy
 - `memory/whatsapp_patterns.yaml` — real writing patterns for message generation
 - `memory/message_examples.md` — curated style-teaching examples
