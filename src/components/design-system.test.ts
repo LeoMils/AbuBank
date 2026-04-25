@@ -65,3 +65,44 @@ describe('Senior-safe constraints', () => {
     expect(extractOpacity(TEXT_MUTED)).toBeGreaterThan(extractOpacity(TEXT_FAINT))
   })
 })
+
+describe('PageShell component contract', () => {
+  it('source exports PageShell function', async () => {
+    const src = await import('fs').then(fs =>
+      fs.readFileSync('/home/user/AbuBank/src/components/PageShell/index.tsx', 'utf-8')
+    )
+    expect(src).toContain('export function PageShell')
+  })
+
+  it('default mode uses overflow hidden', async () => {
+    const src = await import('fs').then(fs =>
+      fs.readFileSync('/home/user/AbuBank/src/components/PageShell/index.tsx', 'utf-8')
+    )
+    expect(src).toContain("scrollable = false")
+    expect(src).toContain("overflow: scrollable ? undefined : 'hidden'")
+  })
+
+  it('scrollable mode enables overflowY auto', async () => {
+    const src = await import('fs').then(fs =>
+      fs.readFileSync('/home/user/AbuBank/src/components/PageShell/index.tsx', 'utf-8')
+    )
+    expect(src).toContain("overflowY: scrollable ? 'auto'")
+    expect(src).toContain("overflowX: scrollable ? 'hidden'")
+  })
+
+  it('scrollable mode enables iOS touch scrolling', async () => {
+    const src = await import('fs').then(fs =>
+      fs.readFileSync('/home/user/AbuBank/src/components/PageShell/index.tsx', 'utf-8')
+    )
+    expect(src).toContain("WebkitOverflowScrolling: scrollable ? 'touch'")
+  })
+
+  it('preserves RTL dir and safe-area padding in both modes', async () => {
+    const src = await import('fs').then(fs =>
+      fs.readFileSync('/home/user/AbuBank/src/components/PageShell/index.tsx', 'utf-8')
+    )
+    expect(src).toContain("dir={dir}")
+    expect(src).toContain("paddingTop: 'env(safe-area-inset-top")
+    expect(src).toContain("paddingBottom: 'env(safe-area-inset-bottom")
+  })
+})
