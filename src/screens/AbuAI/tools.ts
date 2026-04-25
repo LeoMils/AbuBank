@@ -16,14 +16,14 @@ export interface FamilyMember {
 }
 
 const FAMILY: FamilyMember[] = [
-  { canonicalName: 'Mor', hebrew: 'מור', aliases: ['מור', 'מורי'], relationship: 'daughter', relationshipHebrew: 'הבת. גרושה מרפי, בת זוג של יעל.', children: ['אופיר', 'איילון', 'עילי', 'אדר'], notes: 'גרה עם יעל בוילה בהוד השרון.' },
+  { canonicalName: 'Mor', hebrew: 'מור', aliases: ['מור', 'מורי'], relationship: 'daughter', relationshipHebrew: 'הבת, גרושה מרפי, בת זוג של יעל', children: ['אופיר', 'איילון', 'עילי', 'אדר'], notes: 'גרה עם יעל בוילה בהוד השרון.' },
   { canonicalName: 'Leo', hebrew: 'לאו', aliases: ['לאו', 'לאון', 'ליאו'], relationship: 'son', relationshipHebrew: 'הבן', children: ['עדי', 'נועם'] },
   { canonicalName: 'Raphi', hebrew: 'רפי', aliases: ['רפי', 'Rafi'], relationship: 'ex-son-in-law', relationshipHebrew: 'הגרוש של מור, אבא של הנכדים' },
   { canonicalName: 'Yael', hebrew: 'יעל', aliases: ['יעל'], relationship: 'daughter-partner', relationshipHebrew: 'בת זוג של מור', notes: 'גרה עם מור בוילה בהוד השרון.' },
   { canonicalName: 'Ofir', hebrew: 'אופיר', aliases: ['אופיר'], relationship: 'grandson', relationshipHebrew: 'נכד (בן של מור ורפי)', spouse: 'גלעד', children: ['אנאבל', 'ארי'] },
   { canonicalName: 'Gilad', hebrew: 'גלעד', aliases: ['גלעד'], relationship: 'grandson-in-law', relationshipHebrew: 'בן זוג של אופיר', notes: 'גלעד ואופיר הם ההורים של אנאבל וארי.' },
   { canonicalName: 'Ayalon', hebrew: 'איילון', aliases: ['איילון', 'אילון', 'Eylon'], relationship: 'grandson', relationshipHebrew: 'נכד (בן של מור ורפי)', notes: 'עובר להוד השרון.' },
-  { canonicalName: 'Eili', hebrew: 'עילי', aliases: ['עילי', 'עילאי', 'Ilai'], relationship: 'grandson', relationshipHebrew: 'נכד (בן של מור ורפי)', spouse: 'ירדן', notes: 'נשוי לירדן. אין להם ילדים. יש להם 3 כלבים ופנסיון לכלבים בבית.' },
+  { canonicalName: 'Eili', hebrew: 'עילי', aliases: ['עילי', 'עילאי', 'Ilai'], relationship: 'grandson', relationshipHebrew: 'נכד (בן של מור ורפי), נשוי לירדן', notes: 'אין להם ילדים. יש להם 3 כלבים ופנסיון לכלבים בבית.' },
   { canonicalName: 'Yarden', hebrew: 'ירדן', aliases: ['ירדן'], relationship: 'granddaughter-in-law', relationshipHebrew: 'כלה (אשת עילי)', notes: 'גרה עם עילי. יש להם 3 כלבים ופנסיון לכלבים.' },
   { canonicalName: 'Adar', hebrew: 'אדר', aliases: ['אדר'], relationship: 'grandson', relationshipHebrew: 'נכד (הצעיר של מור ורפי)', notes: 'עובר להוד השרון.' },
   { canonicalName: 'Adi', hebrew: 'עדי', aliases: ['עדי'], relationship: 'granddaughter', relationshipHebrew: 'נכדה (בת של לאו)', notes: 'תאומה של נועם. גרה בתל אביב.' },
