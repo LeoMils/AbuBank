@@ -1,25 +1,8 @@
-# ⚠️ 100% GENERATED FILE — DO NOT EDIT
-# Source of truth: knowledge/family_data.json + knowledge/martita_personality.yaml
-# Regenerate with: npm run generate:memory
-# Generated: 2026-04-25
+# Martita — Personality, Communication & Daily Life
+# This is the SOURCE OF TRUTH for non-family personal data.
+# Family data lives in knowledge/family_data.json
+# Do NOT duplicate family relationships here.
 
-
-# Identity (from knowledge/family_data.json)
-identity:
-  display_name: "Martita"
-  self_sign: "אבו"
-  age_range: "80+"
-  origin: "בואנוס איירס, ארגנטינה"
-  current_city: "כפר סבא"
-  languages:
-    - "עברית"
-    - "ספרדית"
-  marital_status: "widowed"
-  husband_name: "Papi"
-  birthday: "04-01"
-  pet: "Tutsi"
-
-# Personality & daily life (from knowledge/martita_personality.yaml)
 personality:
   core_traits:
     - loving and family-centered

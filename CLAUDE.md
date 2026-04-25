@@ -37,11 +37,12 @@ Martita, 80+, non-technical, living in Kfar Saba. Speaks Hebrew (with characteri
 
 ## Key Data Files
 - `knowledge/family_data.json` — **SOURCE OF TRUTH** for family relationships, read by runtime
+- `knowledge/martita_personality.yaml` — **SOURCE OF TRUTH** for personality, communication style, daily life
 - `knowledge/family_context.md` — human-readable family description (derived from JSON)
 - `knowledge/family_verification.md` — Hebrew Unicode verification table
-- `memory/martita_profile.yaml` — **AUTO-GENERATED** from knowledge/family_data.json (personality section is static)
-- `memory/family_graph.yaml` — **AUTO-GENERATED** from knowledge/family_data.json
-- `memory/aliases_and_names.yaml` — **AUTO-GENERATED** from knowledge/family_data.json
+- `memory/martita_profile.yaml` — **100% GENERATED** from family_data.json + martita_personality.yaml
+- `memory/family_graph.yaml` — **100% GENERATED** from family_data.json
+- `memory/aliases_and_names.yaml` — **100% GENERATED** from family_data.json
 - `memory/birthdays_registry.yaml` — birthdays + memorial dates + reminder policy
 - `memory/whatsapp_patterns.yaml` — real writing patterns for message generation
 - `memory/message_examples.md` — curated style-teaching examples

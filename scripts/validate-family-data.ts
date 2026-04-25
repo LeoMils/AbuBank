@@ -61,8 +61,8 @@ check(anabel?.relationship_hebrew?.includes('אופיר וגלעד'), 'Anabel is
 console.log('\nMemory file contradiction checks:')
 check(!yaml.match(/^\s+spouse: "Raphi/m), 'YAML does not say Mor married to Raphi (ex_spouse is OK)')
 check(!yaml.includes('spouse: "Yarden (ירדן)"') || yaml.includes('Eili'), 'YAML Yarden only as Eili spouse')
-check(yaml.includes('AUTO-GENERATED') || yaml.includes('DERIVED BACKUP'), 'YAML has auto-generated or derived backup header')
-check(aliases.includes('AUTO-GENERATED') || aliases.includes('DERIVED BACKUP'), 'Aliases has auto-generated or derived backup header')
+check(yaml.includes('GENERATED') || yaml.includes('DERIVED BACKUP'), 'YAML has generated/derived header')
+check(aliases.includes('GENERATED') || aliases.includes('DERIVED BACKUP'), 'Aliases has generated/derived header')
 
 // 4. No forbidden patterns
 console.log('\nForbidden pattern checks:')

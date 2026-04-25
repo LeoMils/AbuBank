@@ -17,13 +17,14 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const root = resolve(dirname(__filename), '..')
 
-const HEADER = `# ⚠️ AUTO-GENERATED FILE — DO NOT EDIT MANUALLY
-# Source of truth: knowledge/family_data.json
+const HEADER = `# ⚠️ 100% GENERATED FILE — DO NOT EDIT
+# Source of truth: knowledge/family_data.json + knowledge/martita_personality.yaml
 # Regenerate with: npm run generate:memory
 # Generated: ${new Date().toISOString().split('T')[0]}
 `
 
 const json = JSON.parse(readFileSync(resolve(root, 'knowledge/family_data.json'), 'utf-8'))
+const personalityRaw = readFileSync(resolve(root, 'knowledge/martita_personality.yaml'), 'utf-8')
 const f = json.family
 
 // ─── Generate family_graph.yaml ───
@@ -157,10 +158,12 @@ function generateAliases(): string {
 function generateProfile(): string {
   const m = f.matriarch
   const d = f.deceased
-  const friends = (f.close_friends ?? []).map((fr: any) => `${fr.canonical_name} (${fr.hebrew_name})`).join(', ')
+  const pets = (f.pets ?? []).filter((p: any) => p.owner === 'Martita')
 
   const lines = [HEADER, '']
 
+  // Identity section — from family_data.json
+  lines.push('# Identity (from knowledge/family_data.json)')
   lines.push('identity:')
   lines.push(`  display_name: "${m.canonical_name}"`)
   lines.push(`  self_sign: "${m.aliases?.[0] ?? 'אבו'}"`)
@@ -174,43 +177,12 @@ function generateProfile(): string {
   lines.push(`  marital_status: "widowed"`)
   if (d) lines.push(`  husband_name: "${d.canonical_name}"`)
   lines.push(`  birthday: "${m.birthday}"`)
-
-  const pets = (f.pets ?? []).filter((p: any) => p.owner === 'Martita')
   if (pets.length) lines.push(`  pet: "${pets[0].canonical_name}"`)
   lines.push('')
 
-  // Personality section — NOT derived from JSON, preserved as canonical
-  lines.push(`personality:`)
-  lines.push(`  core_traits:`)
-  lines.push(`    - loving and family-centered`)
-  lines.push(`    - warm and expressive`)
-  lines.push(`    - socially oriented`)
-  lines.push(`    - generous host`)
-  lines.push(`    - emotionally open`)
-  lines.push(`    - proud matriarch`)
-  lines.push(`  communication_style:`)
-  lines.push(`    - direct and affectionate`)
-  lines.push(`    - uses emphatic repetition ("מאוד מאוד מאוד")`)
-  lines.push(`    - heavy exclamation marks ("!!!!!!!")`)
-  lines.push(`    - emoji-rich (❤️ 💛 💚 💜 😍 💋)`)
-  lines.push(`    - laughs as "Ja ja ja" (never חחח)`)
-  lines.push(`    - signs as "אבו" or "אבו ❤️"`)
-  lines.push(`  tech_comfort: "minimal"`)
-  lines.push(`  emotional_needs:`)
-  lines.push(`    - reassurance`)
-  lines.push(`    - feeling connected to family`)
-  lines.push(`    - being heard and valued`)
-  lines.push(`    - concrete practical help`)
-  lines.push('')
-
-  lines.push(`daily_life:`)
-  lines.push(`  morning: "walks with ${pets[0]?.canonical_name ?? 'Tutsi'}, phone calls"`)
-  lines.push(`  meals: "cooking is central — hosts Friday dinners"`)
-  lines.push(`  favorite_foods: ["asado", "empanadas", "orzo", "pastels"]`)
-  lines.push(`  favorite_drink: "red wine"`)
-  lines.push(`  entertainment: "Argentine telenovelas, long phone calls"`)
-  lines.push(`  close_friends: [${friends ? `"${friends}"` : ''}]`)
-  lines.push(`  has_caretaker: true`)
+  // Personality + daily_life — from martita_personality.yaml
+  lines.push('# Personality & daily life (from knowledge/martita_personality.yaml)')
+  lines.push(personalityRaw.split('\n').filter(l => !l.startsWith('#') || l.trim() === '').join('\n').trim())
 
   return lines.join('\n') + '\n'
 }
