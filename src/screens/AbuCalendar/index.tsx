@@ -24,6 +24,11 @@ import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
+import { PageShell } from '../../components/PageShell'
+import { ScreenHeader } from '../../components/ScreenHeader'
+import { SeniorButton } from '../../components/SeniorButton'
+import { EmptyState } from '../../components/EmptyState'
+import { BackButton } from '../../components/BackButton'
 import { GOLD, BRIGHT_GOLD, BG, CREAM, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
 
 
@@ -258,20 +263,7 @@ export function AbuCalendar() {
   const hebrewMonthLabel = formatHebrewMonth(year, month)
 
   return (
-    <div
-      dir="rtl"
-      style={{
-        height: '100%',
-        width: '100%',
-        overflow: 'hidden',
-        background: BG,
-        display: 'flex',
-        flexDirection: 'column',
-        fontFamily: "'Heebo',sans-serif",
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-      } as React.CSSProperties}
-    >
+    <PageShell>
       {/* Ambient glow — warm gold/teal */}
       <div aria-hidden="true" style={{
         position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
@@ -316,57 +308,10 @@ export function AbuCalendar() {
         </div>
       )}
 
-      {/* HEADER */}
-      <header style={{
-        height: 72,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 16px',
-        flexShrink: 0,
-        background: 'rgba(12,10,8,0.96)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 30,
-        borderBottom: '1px solid rgba(201,168,76,0.20)',
-        boxShadow: 'inset 0 1px 0 rgba(255,250,240,0.04), 0 4px 20px rgba(0,0,0,0.40)',
-      } as React.CSSProperties}>
-        {/* Back button — glass pill */}
-        <button
-          type="button"
-          onClick={() => setScreen(Screen.Home)}
-          aria-label="חזרה לדף הבית"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-            width: 60, height: 48,
-            background: 'rgba(255,250,240,0.04)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(201,168,76,0.18)',
-            borderRadius: 22,
-            color: 'rgba(245,240,232,0.70)',
-            fontSize: 14, fontWeight: 600, fontFamily: "'Heebo',sans-serif",
-            cursor: 'pointer', flexShrink: 0,
-          } as React.CSSProperties}
-        >
-          <span style={{ fontSize: 20, lineHeight: 1 }}>›</span>
-          <span style={{ fontSize: 16 }}>חזרה</span>
-        </button>
-
-        {/* Center wordmark */}
-        <div style={{
-          position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          pointerEvents: 'none',
-        }}>
-          <span style={{
-            fontFamily: "'DM Sans',sans-serif",
-            fontSize: 18, fontWeight: 700, letterSpacing: '1px',
-            background: `linear-gradient(135deg, #e8d5a0 0%, ${BRIGHT_GOLD} 35%, #f0e0a0 60%, ${GOLD} 100%)`,
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-          } as React.CSSProperties}>Abu יומן</span>
-        </div>
+      <ScreenHeader
+        title="Abu יומן"
+        left={<BackButton onPress={() => setScreen(Screen.Home)} />}
+        right={<>
 
         {/* Left side: Martita photo with hearts + 3-dot settings */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -422,14 +367,8 @@ export function AbuCalendar() {
             positionStyle={{ top: 80, left: 14 }}
           />
         </div>
-
-        {/* Bottom glow strip */}
-        <div style={{
-          position: 'absolute', bottom: -1, left: 0, right: 0, height: 1,
-          background: 'linear-gradient(90deg, transparent 0%, rgba(201,168,76,0.35) 30%, rgba(212,168,83,0.50) 50%, rgba(201,168,76,0.35) 70%, transparent 100%)',
-          pointerEvents: 'none',
-        }} />
-      </header>
+        </>}
+      />
 
       {/* Settings dropdown — triggered by 3-dot button */}
       {showSettings && (
@@ -728,11 +667,7 @@ export function AbuCalendar() {
         )}
 
         {selectedAppts.length === 0 && !getHebrewHoliday(selectedDay) ? (
-          <div style={{ textAlign: 'center', padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 28, opacity: 0.5 }}>📅</span>
-            <span style={{ color: 'rgba(201,168,76,0.55)', fontSize: 16, fontFamily: "'Heebo',sans-serif", fontWeight: 500 }}>יום פנוי ✨</span>
-            <span style={{ color: 'rgba(245,240,232,0.50)', fontSize: 16, fontFamily: "'Heebo',sans-serif" }}>לחצי למטה להוסיף אירוע</span>
-          </div>
+          <EmptyState icon="📅" message="יום פנוי ✨" detail="לחצי למטה להוסיף אירוע" />
         ) : (
           selectedAppts.map(a => {
             const timeState = getTimeState(a.date, a.time, today, Date.now())
@@ -764,14 +699,9 @@ export function AbuCalendar() {
           </div>
         )}
 
-        <button type="button"
-          onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}
-          style={{
-            padding: '8px 16px', background: 'none', border: 'none',
-            color: 'rgba(245,240,232,0.40)', fontSize: 15, fontFamily: "'Heebo',sans-serif",
-            cursor: 'pointer', minHeight: 48,
-          }}
-        >＋ הוספה ידנית</button>
+        <SeniorButton variant="ghost" onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}>
+          ＋ הוספה ידנית
+        </SeniorButton>
 
         <button type="button" onClick={handleVoiceRecord}
           onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
@@ -873,6 +803,6 @@ export function AbuCalendar() {
           to   { transform: translateX(0); opacity: 1; }
         }
       `}</style>
-    </div>
+    </PageShell>
   )
 }
