@@ -3,19 +3,19 @@ import { answerFromToolResult } from './groundedResponse'
 
 describe('answerFromToolResult', () => {
   it('tool error returns safe message', () => {
-    expect(answerFromToolResult('calendar_today', { ok: false })).toBe('אני לא מצליחה לבדוק כרגע.')
+    expect(answerFromToolResult('calendar_today', { ok: false })).toBe('אני לא מצליחה לבדוק את זה כרגע. נסי שוב.')
   })
 
-  it('empty today returns "אין לך כלום היום"', () => {
-    expect(answerFromToolResult('calendar_today', { ok: true, events: [], summary: '' })).toBe('אין לך כלום היום.')
+  it('empty today returns "לא מצאתי משהו ביומן להיום"', () => {
+    expect(answerFromToolResult('calendar_today', { ok: true, events: [], summary: '' })).toBe('לא מצאתי משהו ביומן להיום.')
   })
 
-  it('empty tomorrow returns "אין לך כלום מחר"', () => {
-    expect(answerFromToolResult('calendar_tomorrow', { ok: true, events: [], summary: '' })).toBe('אין לך כלום מחר.')
+  it('empty tomorrow returns "לא מצאתי משהו ביומן למחר"', () => {
+    expect(answerFromToolResult('calendar_tomorrow', { ok: true, events: [], summary: '' })).toBe('לא מצאתי משהו ביומן למחר.')
   })
 
-  it('empty upcoming returns "אין אירועים קרובים"', () => {
-    expect(answerFromToolResult('calendar_upcoming', { ok: true, events: [], summary: '' })).toBe('אין אירועים קרובים.')
+  it('empty upcoming returns "לא מצאתי אירועים קרובים ביומן"', () => {
+    expect(answerFromToolResult('calendar_upcoming', { ok: true, events: [], summary: '' })).toBe('לא מצאתי אירועים קרובים ביומן.')
   })
 
   it('calendar with events returns summary', () => {
@@ -29,7 +29,7 @@ describe('answerFromToolResult', () => {
   })
 
   it('family not found returns "לא מצאתי"', () => {
-    expect(answerFromToolResult('family_lookup', { ok: true, found: false, members: [], answer: '' })).toBe('לא מצאתי.')
+    expect(answerFromToolResult('family_lookup', { ok: true, found: false, members: [], answer: '' })).toBe('לא מצאתי מידע על זה.')
   })
 
   it('family found returns answer from data', () => {

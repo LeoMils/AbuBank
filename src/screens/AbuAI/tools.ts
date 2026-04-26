@@ -21,9 +21,9 @@ export function searchFamily(query: string): { found: boolean; members: FamilyMe
   )
   if (exact.length === 1) {
     const m = exact[0]!
-    let answer = `${m.hebrew} — ${m.relationshipHebrew}.`
+    let answer = `${m.hebrew} היא ${m.relationshipHebrew} שלך.`
     if (m.spouse) answer += ` נשוי/אה ל${m.spouse}.`
-    if (m.children?.length) answer += ` ילדים: ${m.children.join(', ')}.`
+    if (m.children?.length) answer += ` יש ${m.children.length === 1 ? 'ילד אחד' : `${m.children.length} ילדים`}: ${m.children.join(', ')}.`
     if (m.notes) answer += ` ${m.notes}`
     return { found: true, members: exact, answer }
   }
@@ -49,10 +49,10 @@ export function searchFamily(query: string): { found: boolean; members: FamilyMe
 
 export function searchFamilyLocation(query: string): { found: boolean; answer: string } {
   const r = searchFamily(query)
-  if (!r.found || r.members.length === 0) return { found: false, answer: 'לא מצאתי.' }
+  if (!r.found || r.members.length === 0) return { found: false, answer: 'לא מצאתי מידע על זה.' }
   const m = r.members[0]!
-  if (!m.location) return { found: true, answer: `אין לי מידע איפה ${m.hebrew} גר/ה.` }
-  let answer = `${m.hebrew} גר/ה ב${m.location}.`
+  if (!m.location) return { found: true, answer: `אין לי מידע איפה ${m.hebrew} גרה.` }
+  let answer = `${m.hebrew} גרה ב${m.location}.`
   if (m.locationNotes) answer += ` ${m.locationNotes}.`
   return { found: true, answer }
 }
@@ -68,27 +68,34 @@ function todayStr(): string { return new Date().toISOString().split('T')[0]! }
 function tomorrowStr(): string { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]! }
 function weekEndStr(): string { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().split('T')[0]! }
 
+function formatEventNatural(e: Appointment): string {
+  const time = e.time ? ` בשעה ${e.time}` : ''
+  return `${e.emoji} ${e.title}${time}`
+}
+
 function formatEventList(events: Appointment[]): string {
-  if (events.length === 0) return 'אין אירועים.'
+  if (events.length === 0) return ''
   const sorted = sortByPriority(events)
-  return sorted.map(e => {
-    const time = e.time ? ` ב-${e.time}` : ''
-    return `${e.emoji} ${e.title}${time}`
-  }).join('\n')
+  if (sorted.length === 1) return formatEventNatural(sorted[0]!)
+  return sorted.map(e => formatEventNatural(e)).join('\n')
 }
 
 export function getTodayEvents(): { events: Appointment[]; summary: string } {
   const all = loadAppointmentsWithFamily(new Date().getFullYear())
   const today = todayStr()
   const events = all.filter(a => a.date === today)
-  return { events, summary: events.length === 0 ? 'אין לך כלום היום.' : `היום:\n${formatEventList(events)}` }
+  if (events.length === 0) return { events, summary: 'לא מצאתי משהו ביומן להיום.' }
+  if (events.length === 1) return { events, summary: `היום יש לך ${formatEventNatural(events[0]!)}.` }
+  return { events, summary: `היום יש לך ${events.length} דברים:\n${formatEventList(events)}` }
 }
 
 export function getTomorrowEvents(): { events: Appointment[]; summary: string } {
   const all = loadAppointmentsWithFamily(new Date().getFullYear())
   const tmrw = tomorrowStr()
   const events = all.filter(a => a.date === tmrw)
-  return { events, summary: events.length === 0 ? 'אין לך כלום מחר.' : `מחר:\n${formatEventList(events)}` }
+  if (events.length === 0) return { events, summary: 'לא מצאתי משהו ביומן למחר.' }
+  if (events.length === 1) return { events, summary: `מחר יש לך ${formatEventNatural(events[0]!)}.` }
+  return { events, summary: `מחר יש לך ${events.length} דברים:\n${formatEventList(events)}` }
 }
 
 export function getWeekEvents(): { events: Appointment[]; summary: string } {
@@ -96,7 +103,7 @@ export function getWeekEvents(): { events: Appointment[]; summary: string } {
   const today = todayStr()
   const end = weekEndStr()
   const events = all.filter(a => a.date >= today && a.date <= end)
-  if (events.length === 0) return { events, summary: 'אין לך כלום ב-7 הימים הקרובים.' }
+  if (events.length === 0) return { events, summary: 'לא מצאתי משהו ביומן לשבוע הקרוב.' }
   const byDay = new Map<string, Appointment[]>()
   for (const e of events) {
     const day = byDay.get(e.date) ?? []
@@ -118,8 +125,8 @@ export function getUpcomingEvents(limit = 5): { events: Appointment[]; summary: 
   const today = todayStr()
   const future = all.filter(a => a.date >= today).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
   const events = future.slice(0, limit)
-  if (events.length === 0) return { events, summary: 'אין אירועים קרובים.' }
-  return { events, summary: `אירועים קרובים:\n${formatEventList(events)}` }
+  if (events.length === 0) return { events, summary: 'לא מצאתי אירועים קרובים ביומן.' }
+  return { events, summary: `הדברים הקרובים שלך:\n${formatEventList(events)}` }
 }
 
 export function findEventsByPerson(personName: string): { events: Appointment[]; summary: string } {
@@ -130,8 +137,8 @@ export function findEventsByPerson(personName: string): { events: Appointment[];
     a.date >= today &&
     ((a.personName?.toLowerCase().includes(q)) || a.title.toLowerCase().includes(q) || (a.notes?.toLowerCase().includes(q)))
   )
-  if (events.length === 0) return { events, summary: `לא מצאתי אירועים עם ${personName}.` }
-  return { events, summary: `אירועים עם ${personName}:\n${formatEventList(events)}` }
+  if (events.length === 0) return { events, summary: `לא מצאתי משהו ביומן עם ${personName}.` }
+  return { events, summary: `מה שיש לך עם ${personName}:\n${formatEventList(events)}` }
 }
 
 export function findNextEventByType(type: string): { event: Appointment | null; summary: string } {
@@ -140,7 +147,7 @@ export function findNextEventByType(type: string): { event: Appointment | null; 
   const future = all.filter(a => a.date >= today)
   const sorted = sortByPriority(future)
   const match = sorted.find(a => classifyMeaning(a) === type)
-  if (!match) return { event: null, summary: `לא מצאתי ${type === 'medical' ? 'תור רופא' : 'אירוע'} קרוב.` }
+  if (!match) return { event: null, summary: `לא מצאתי ${type === 'medical' ? 'תור לרופא' : 'אירוע'} קרוב ביומן.` }
   const time = match.time ? ` ב-${match.time}` : ''
   return { event: match, summary: `${match.emoji} ${match.title} — ${match.date.split('-').reverse().join('/')}${time}` }
 }

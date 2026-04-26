@@ -31,7 +31,7 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
     expect(isPersonalQuery('מה יש לי מחר?')).toBe(true)
     const result = getTomorrowEvents()
     expect(result.events).toHaveLength(0)
-    expect(result.summary).toContain('אין')
+    expect(result.summary).toContain('לא מצאתי')
   })
 
   // Item 3: "מה יש לי השבוע?"
@@ -101,7 +101,7 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
   it('#11 empty calendar returns empty-state message', () => {
     const result = getTodayEvents()
     // Only family birthdays if today matches, otherwise empty
-    expect(result.summary).toMatch(/אין|🎂/)
+    expect(result.summary).toMatch(/לא מצאתי|🎂/)
   })
 
   // Item 12: Pipeline voice uses same sendMessage path as text
@@ -171,8 +171,8 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
       expect(containsUngroundedClaim('אני רואה שיש לך רופא מחר ב-10', true)).toBe(false)
     })
 
-    it('allows "אין לך כלום מחר"', () => {
-      expect(containsUngroundedClaim('אין לך כלום מחר. יום חופשי!', false)).toBe(false)
+    it('allows "לא מצאתי משהו ביומן למחר"', () => {
+      expect(containsUngroundedClaim('לא מצאתי משהו ביומן למחר. יום חופשי!', false)).toBe(false)
     })
   })
 

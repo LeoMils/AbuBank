@@ -2,8 +2,8 @@ import type { RouteType } from './router'
 import type { Appointment } from '../AbuCalendar/service'
 import type { FamilyMember } from '../../services/familyLoader'
 
-const NOT_FOUND = 'לא מצאתי.'
-const TOOL_ERROR = 'אני לא מצליחה לבדוק כרגע.'
+const NOT_FOUND = 'לא מצאתי מידע על זה.'
+const TOOL_ERROR = 'אני לא מצליחה לבדוק את זה כרגע. נסי שוב.'
 
 export interface CalendarToolResult {
   ok: true
@@ -35,9 +35,9 @@ export function answerFromToolResult(route: RouteType, result: ToolResult): stri
 
   const r = result as CalendarToolResult
   if (r.events.length === 0) {
-    if (route === 'calendar_today') return 'אין לך כלום היום.'
-    if (route === 'calendar_tomorrow') return 'אין לך כלום מחר.'
-    return 'אין אירועים קרובים.'
+    if (route === 'calendar_today') return 'לא מצאתי משהו ביומן להיום.'
+    if (route === 'calendar_tomorrow') return 'לא מצאתי משהו ביומן למחר.'
+    return 'לא מצאתי אירועים קרובים ביומן.'
   }
 
   return r.summary

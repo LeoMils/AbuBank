@@ -85,18 +85,18 @@ describe('calendar tools', () => {
   it('getTodayEvents returns empty for no events', () => {
     const r = getTodayEvents()
     expect(r.events).toHaveLength(0)
-    expect(r.summary).toContain('אין')
+    expect(r.summary).toContain('לא מצאתי')
   })
 
   it('getTomorrowEvents returns empty for no events', () => {
     const r = getTomorrowEvents()
     expect(r.events).toHaveLength(0)
-    expect(r.summary).toContain('אין')
+    expect(r.summary).toContain('לא מצאתי')
   })
 
   it('getWeekEvents returns empty for no events', () => {
     const r = getWeekEvents()
-    expect(r.summary).toContain('אין')
+    expect(r.summary).toContain('לא מצאתי')
   })
 
   it('findEventsByPerson returns empty for unknown person', () => {
@@ -132,7 +132,7 @@ describe('executeTool', () => {
 
   it('executes get_today_events', () => {
     const r = executeTool('get_today_events', {})
-    expect(r).toContain('אין')
+    expect(r).toContain('לא מצאתי')
   })
 
   it('executes search_family_info', () => {

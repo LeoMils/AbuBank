@@ -23,10 +23,10 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
     expect(answer).toContain('רופא שיניים')
   })
 
-  it('empty today returns "אין לך כלום היום"', () => {
+  it('empty today returns "לא מצאתי משהו ביומן להיום"', () => {
     const answer = tryGroundedAnswer('מה יש לי היום?')
     expect(answer).not.toBeNull()
-    expect(answer).toContain('אין')
+    expect(answer).toContain('לא מצאתי')
   })
 
   it('"מה יש מחר?" returns grounded answer', () => {
