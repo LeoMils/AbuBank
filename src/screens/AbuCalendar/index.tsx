@@ -10,7 +10,6 @@ import {
   parseAppointmentText,
   formatHebrewMonth,
   formatShortHebrewDate,
-  getUpcomingBirthdays,
   getHebrewHoliday,
   type Appointment,
 } from './service'
@@ -50,7 +49,6 @@ export function AbuCalendar() {
   const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string } | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [voiceStatus, setVoiceStatus] = useState('')
-  const [showSettings, setShowSettings] = useState(false)
   const [abuTimeOpen, setAbuTimeOpen] = useState(false)
   const [undoAppt, setUndoAppt] = useState<Appointment | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -75,8 +73,6 @@ export function AbuCalendar() {
   }
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
-  const upcomingBirthdays = useMemo(() => getUpcomingBirthdays(appointments, 14), [appointments])
-  const nextBirthday = upcomingBirthdays[0] ?? null
 
   const [slideDir, setSlideDir] = useState<'none' | 'left' | 'right'>('none')
   const [slideKey, setSlideKey] = useState(0)
@@ -264,15 +260,6 @@ export function AbuCalendar() {
 
   return (
     <PageShell>
-      {/* Ambient glow — warm gold/teal */}
-      <div aria-hidden="true" style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
-        background: [
-          'radial-gradient(ellipse 50% 30% at 15% 10%, rgba(201,168,76,0.10) 0%, transparent 60%)',
-          'radial-gradient(ellipse 40% 35% at 85% 80%, rgba(20,184,166,0.07) 0%, transparent 60%)',
-        ].join(', '),
-        animation: 'ambientColorShift 30s ease-in-out infinite',
-      }} />
 
       {/* ALERT BANNERS — max 2 stacked */}
       {activeAlerts.length > 0 && (
@@ -283,7 +270,7 @@ export function AbuCalendar() {
               backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
               borderBottom: '2px solid rgba(201,168,76,0.60)',
               padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
-              animation: 'alertSlideIn 0.35s cubic-bezier(0.34,1.2,0.64,1) both',
+              animation: 'alertSlideIn 0.3s ease-out both',
             } as React.CSSProperties}>
               <span style={{ fontSize: 24, flexShrink: 0 }}>🔔</span>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -326,25 +313,6 @@ export function AbuCalendar() {
               }}
             />
           </div>
-          {/* Three-dots settings button */}
-          <button
-            type="button"
-            onClick={() => setShowSettings(p => !p)}
-            aria-label="הגדרות יומן"
-            style={{
-              width: 48, height: 48, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', flexShrink: 0,
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="rgba(255,255,255,0.55)">
-              <circle cx="12" cy="5" r="2"/>
-              <circle cx="12" cy="12" r="2"/>
-              <circle cx="12" cy="19" r="2"/>
-            </svg>
-          </button>
           <InfoButton
             title="מדריך היומן"
             lines={[
@@ -370,94 +338,30 @@ export function AbuCalendar() {
         </>}
       />
 
-      {/* Settings dropdown — triggered by 3-dot button */}
-      {showSettings && (
-        <div
-          onClick={() => setShowSettings(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.50)' }}
+      {/* Alert time selector — inline, minimal */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        padding: '4px 16px', flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 13, color: 'rgba(201,168,76,0.55)', fontFamily: "'Heebo',sans-serif" }}>🔔</span>
+        <select
+          value={alertMinutes}
+          onChange={e => { const v = parseInt(e.target.value, 10); setAlertMinutes(v); localStorage.setItem('abubank-alert-minutes', String(v)) }}
+          style={{
+            background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.18)',
+            borderRadius: 8, color: GOLD, fontSize: 13, fontWeight: 600,
+            fontFamily: "'DM Sans',sans-serif", padding: '4px 10px',
+            cursor: 'pointer', outline: 'none', direction: 'rtl',
+          } as React.CSSProperties}
         >
-          <div
-            onClick={e => e.stopPropagation()}
-            dir="rtl"
-            style={{
-              position: 'absolute', top: 78, left: 14, right: 14,
-              background: 'rgba(12,10,8,0.97)',
-              backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-              border: '1px solid rgba(201,168,76,0.22)',
-              borderRadius: 16, padding: '16px 18px',
-              boxShadow: '0 12px 40px rgba(0,0,0,0.50)',
-              animation: 'fadeSlideUp 0.2s ease both',
-            } as React.CSSProperties}
-          >
-            {/* Alert settings */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <span style={{ fontSize: 15, fontWeight: 600, color: 'rgba(245,240,232,0.80)', fontFamily: "'Heebo',sans-serif" }}>
-                🔔 התראה לפני אירוע
-              </span>
-              <select
-                value={alertMinutes}
-                onChange={e => { const v = parseInt(e.target.value, 10); setAlertMinutes(v); localStorage.setItem('abubank-alert-minutes', String(v)) }}
-                style={{
-                  background: 'rgba(201,168,76,0.10)', border: '1px solid rgba(201,168,76,0.25)',
-                  borderRadius: 10, color: GOLD, fontSize: 14, fontWeight: 600,
-                  fontFamily: "'DM Sans',sans-serif", padding: '6px 12px',
-                  cursor: 'pointer', outline: 'none', direction: 'rtl',
-                } as React.CSSProperties}
-              >
-                <option value={15}>15 דקות</option>
-                <option value={30}>30 דקות</option>
-                <option value={60}>60 דקות</option>
-                <option value={120}>120 דקות</option>
-              </select>
-            </div>
+          <option value={15}>15 דק׳</option>
+          <option value={30}>30 דק׳</option>
+          <option value={60}>60 דק׳</option>
+          <option value={120}>120 דק׳</option>
+        </select>
+      </div>
 
-            {/* Info section */}
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: GOLD, marginBottom: 8, fontFamily: "'Heebo',sans-serif" }}>
-                ℹ️ איך להשתמש
-              </div>
-              <div style={{ fontSize: 13, color: 'rgba(245,240,232,0.60)', lineHeight: 1.8, fontFamily: "'Heebo',sans-serif" }}>
-                · לחצי על יום בלוח לראות אירועים{'\n'}
-                · לחצי על המיקרופון ותגידי מה להוסיף{'\n'}
-                · לחצי ＋ הוספה ידנית להזנה בכתב{'\n'}
-                · התראה מושמעת לפני כל אירוע
-              </div>
-            </div>
-
-            {/* Close button */}
-            <button
-              onClick={() => setShowSettings(false)}
-              style={{
-                marginTop: 14, width: '100%', padding: '10px 0', borderRadius: 12,
-                background: 'rgba(201,168,76,0.10)', border: '1px solid rgba(201,168,76,0.22)',
-                color: GOLD, fontSize: 15, fontWeight: 600, fontFamily: "'Heebo',sans-serif",
-                cursor: 'pointer',
-              }}
-            >סגור ✕</button>
-          </div>
-        </div>
-      )}
-
-      {/* Birthday countdown — only shows when relevant, compact */}
-      {nextBirthday && (
-        <div style={{
-          margin: '4px 14px 0', padding: '6px 12px', borderRadius: 10,
-          background: 'linear-gradient(135deg, rgba(244,114,182,0.10) 0%, rgba(167,139,250,0.06) 100%)',
-          border: '1px solid rgba(244,114,182,0.18)',
-          display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-        }}>
-          <span style={{ fontSize: 18 }}>🎂</span>
-          <span style={{ fontSize: 16, fontWeight: 600, color: '#F472B6', fontFamily: "'Heebo',sans-serif" }}>
-            {nextBirthday.daysUntil === 0
-              ? `היום יום ההולדת של ${nextBirthday.personName || nextBirthday.title}! 🎉`
-              : nextBirthday.daysUntil === 1
-              ? `מחר יום ההולדת של ${nextBirthday.personName || nextBirthday.title}! 🎁`
-              : `עוד ${nextBirthday.daysUntil} ימים ליום ההולדת של ${nextBirthday.personName || nextBirthday.title}`}
-          </span>
-        </div>
-      )}
-
-      {/* ABU TIME — "מה קורה לי?" */}
+      {/* ABU TIME — "מה קורה לי?" (includes birthday info via "הדבר הבא") */}
       <AbuTime appointments={appointments} today={today} forceOpen={abuTimeOpen} onToggle={setAbuTimeOpen} />
 
       {/* MONTH NAVIGATOR */}
