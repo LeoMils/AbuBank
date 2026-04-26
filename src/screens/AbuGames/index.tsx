@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { BackButton } from '../../components/BackButton'
+import { PageShell } from '../../components/PageShell'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap } from '../../services/sounds'
 import { InfoButton } from '../../components/InfoButton'
@@ -414,20 +415,7 @@ export function AbuGames() {
   }, [])
 
   return (
-    <div
-      className="abu-games-scroll"
-      style={{
-        height: '100%',
-        width: '100%',
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        background: '#050A18',
-        fontFamily: "'Heebo','DM Sans',sans-serif",
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        position: 'relative',
-      }}
-    >
+    <PageShell scrollable className="abu-games-scroll">
 
       {/* ── Ambient background glow blobs — with live color shift ── */}
       <div aria-hidden="true" style={{
@@ -538,12 +526,6 @@ export function AbuGames() {
             <BackButton />
           </div>
 
-          <InfoButton
-            title="Abu Games"
-            lines={['משחקי קלפים וסוליטר — 15 משחקים שונים.', "סוליטר, עכביש, מהג'ונג ועוד."]}
-            howTo={['לחצי על כרטיס המשחק הרצוי', 'המשחק נפתח בדפדפן', 'לחצי חזרה לחזור לתפריט']}
-            positionStyle={{ left: 80, top: 6 }}
-          />
         </div>
       </header>
 
@@ -726,6 +708,6 @@ export function AbuGames() {
           baseDelay={0.55}
         />
       </div>
-    </div>
+    </PageShell>
   )
 }

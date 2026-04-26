@@ -5,12 +5,14 @@ interface PageShellProps {
   children: ReactNode
   dir?: 'rtl' | 'ltr'
   scrollable?: boolean
+  className?: string
 }
 
-export function PageShell({ children, dir = 'rtl', scrollable = false }: PageShellProps) {
+export function PageShell({ children, dir = 'rtl', scrollable = false, className }: PageShellProps) {
   return (
     <div
       dir={dir}
+      className={className}
       style={{
         height: '100%',
         display: 'flex',

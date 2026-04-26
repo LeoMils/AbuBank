@@ -105,4 +105,12 @@ describe('PageShell component contract', () => {
     expect(src).toContain("paddingTop: 'env(safe-area-inset-top")
     expect(src).toContain("paddingBottom: 'env(safe-area-inset-bottom")
   })
+
+  it('accepts className prop and passes it to div', async () => {
+    const src = await import('fs').then(fs =>
+      fs.readFileSync('/home/user/AbuBank/src/components/PageShell/index.tsx', 'utf-8')
+    )
+    expect(src).toContain('className?: string')
+    expect(src).toContain('className={className}')
+  })
 })
