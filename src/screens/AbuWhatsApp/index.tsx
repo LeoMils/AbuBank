@@ -946,82 +946,82 @@ export function AbuWhatsApp() {
               </button>
             </div>
 
-            {/* ── Action buttons row: copy | retry | send ── */}
-            <div style={{
-              display: 'flex', gap: 10,
-              width: '100%', maxWidth: 370,
-              justifyContent: 'stretch',
-            }}>
-              {/* Copy */}
-              <button
-                type="button"
-                onClick={async () => {
-                  soundCopy()
-                  try { await navigator.clipboard.writeText(result) } catch {}
-                  setCopyToast(true)
-                }}
-                style={{
-                  flex: 1, height: 52, borderRadius: 18,
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'rgba(255,255,255,0.72)',
-                  fontSize: 16, fontWeight: 600,
-                  fontFamily: "'Heebo',sans-serif",
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  transition: 'background 0.12s',
-                }}
-                onPointerDown={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.10)' }}
-                onPointerUp={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-                onPointerLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-              >
-                📋 העתקי
-              </button>
-
-              {/* Retry */}
-              <button
-                type="button"
-                onClick={handleRetry}
-                style={{
-                  flex: 1, height: 52, borderRadius: 18,
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'rgba(255,255,255,0.72)',
-                  fontSize: 16, fontWeight: 600,
-                  fontFamily: "'Heebo',sans-serif",
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  transition: 'background 0.12s',
-                }}
-                onPointerDown={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.10)' }}
-                onPointerUp={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-                onPointerLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-              >
-                🔄 שנה
-              </button>
-
-              {/* Send to family */}
+            {/* ── Action buttons: send dominant, copy + retry secondary ── */}
+            <div style={{ width: '100%', maxWidth: 370, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Primary: Send to family — full width */}
               <button
                 type="button"
                 onClick={handleSendToFamily}
                 style={{
-                  flex: 1.4, height: 52, borderRadius: 18,
+                  width: '100%', height: 56, borderRadius: 18,
                   border: '1.5px solid rgba(37,211,102,0.28)',
                   background: `linear-gradient(145deg, #2ee67a, ${WA_GREEN}, #128C7E)`,
                   color: 'white',
-                  fontSize: 16, fontWeight: 700,
+                  fontSize: 17, fontWeight: 700,
                   fontFamily: "'Heebo',sans-serif",
                   cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   boxShadow: '0 4px 16px rgba(37,211,102,0.28), inset 0 1px 0 rgba(255,255,255,0.14)',
-                  transition: 'transform 0.12s',
+                  transition: 'transform 0.1s ease-out',
+                  WebkitTapHighlightColor: 'transparent',
                 }}
-                onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.96)' }}
+                onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.97)' }}
                 onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
                 onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
               >
                 📱 שלחי למשפחה
               </button>
+
+              {/* Secondary: Copy + Retry — smaller row */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    soundCopy()
+                    try { await navigator.clipboard.writeText(result) } catch {}
+                    setCopyToast(true)
+                  }}
+                  style={{
+                    flex: 1, height: 44, borderRadius: 14,
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'rgba(255,255,255,0.04)',
+                    color: 'rgba(255,255,255,0.55)',
+                    fontSize: 14, fontWeight: 600,
+                    fontFamily: "'Heebo',sans-serif",
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                    transition: 'background 0.1s',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                  onPointerDown={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+                  onPointerUp={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                  onPointerLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                >
+                  📋 העתקי
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  style={{
+                    flex: 1, height: 44, borderRadius: 14,
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'rgba(255,255,255,0.04)',
+                    color: 'rgba(255,255,255,0.55)',
+                    fontSize: 14, fontWeight: 600,
+                    fontFamily: "'Heebo',sans-serif",
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                    transition: 'background 0.1s',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                  onPointerDown={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+                  onPointerUp={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                  onPointerLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                >
+                  🔄 שנה
+                </button>
+              </div>
             </div>
 
             <Toast
