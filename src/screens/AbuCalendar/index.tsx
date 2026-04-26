@@ -27,6 +27,7 @@ import { PageShell } from '../../components/PageShell'
 import { ScreenHeader } from '../../components/ScreenHeader'
 import { SeniorButton } from '../../components/SeniorButton'
 import { EmptyState } from '../../components/EmptyState'
+import { StatusPill } from '../../components/StatusPill'
 import { BackButton } from '../../components/BackButton'
 import { GOLD, BRIGHT_GOLD, BG, CREAM, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
 
@@ -585,56 +586,54 @@ export function AbuCalendar() {
         )}
       </div>
 
-      {/* FOOTER — mic centered, manual-add subdued */}
+      {/* FOOTER */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
-        padding: '4px 16px calc(8px + env(safe-area-inset-bottom, 0px))',
-        flexShrink: 0, marginTop: 'auto', position: 'relative',
+        flexShrink: 0, marginTop: 'auto',
+        padding: '6px 16px calc(10px + env(safe-area-inset-bottom, 0px))',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
       }}>
-        {/* Recording status — appears above footer */}
+        {/* Status pill — visible only when recording or processing */}
         {(isRecording || (voiceStatus && !voiceParsed && !isRecording)) && (
-          <div style={{
-            position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)',
-            fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap',
-            color: isRecording ? 'rgba(252,165,165,0.90)' : 'rgba(201,168,76,0.85)',
-            fontFamily: "'Heebo',sans-serif",
-          }}>
-            {isRecording ? '🔴 מקשיבה...' : voiceStatus}
-          </div>
+          isRecording
+            ? <StatusPill variant="red" icon="🔴" label="מקשיבה..." />
+            : <StatusPill variant="gold" label={voiceStatus} />
         )}
 
-        <SeniorButton variant="ghost" onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}>
-          ＋ הוספה ידנית
-        </SeniorButton>
+        {/* Action row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <SeniorButton variant="ghost" onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}>
+            ＋ הוספה ידנית
+          </SeniorButton>
 
-        <button type="button" onClick={handleVoiceRecord}
-          onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
-          onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-          onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-          aria-label="הוספת אירוע בקול"
-          style={{
-            width: 56, height: 56, borderRadius: '50%',
-            background: isRecording
-              ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
-              : 'linear-gradient(145deg, #D4A853 0%, #C9A84C 45%, #B8912A 100%)',
-            border: 'none',
-            boxShadow: isRecording
-              ? '0 4px 16px rgba(239,68,68,0.35)'
-              : '0 4px 16px rgba(201,168,76,0.25)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-            transition: 'transform 0.12s ease, background 0.2s ease',
-            animation: isRecording ? 'recordPulse 1.2s ease-in-out infinite' : 'none',
-          }}
-        >
-          {isRecording ? (
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
-          ) : (
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
-              <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
-            </svg>
-          )}
-        </button>
+          <button type="button" onClick={handleVoiceRecord}
+            onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
+            onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+            onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+            aria-label="הוספת אירוע בקול"
+            style={{
+              width: 56, height: 56, borderRadius: '50%',
+              background: isRecording
+                ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
+                : 'linear-gradient(145deg, #D4A853 0%, #C9A84C 45%, #B8912A 100%)',
+              border: 'none',
+              boxShadow: isRecording
+                ? '0 4px 16px rgba(239,68,68,0.35)'
+                : '0 4px 16px rgba(201,168,76,0.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              transition: 'transform 0.12s ease, background 0.2s ease',
+              animation: isRecording ? 'recordPulse 1.2s ease-in-out infinite' : 'none',
+            }}
+          >
+            {isRecording ? (
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
       <Toast
