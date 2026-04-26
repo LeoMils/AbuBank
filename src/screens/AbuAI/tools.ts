@@ -3,6 +3,7 @@ import {
   type Appointment,
 } from '../AbuCalendar/service'
 import { classifyMeaning, sortByPriority } from '../AbuCalendar/narration'
+import { shapeFamilyAnswer, shapeLocationAnswer, shapeCalendarAnswer, shapeNotFound } from './responseShaper'
 import { loadFamilyData, type FamilyMember } from '../../services/familyLoader'
 export type { FamilyMember }
 
@@ -20,12 +21,7 @@ export function searchFamily(query: string): { found: boolean; members: FamilyMe
     m.hebrew === q || m.canonicalName.toLowerCase() === q || m.aliases.some(a => a.toLowerCase() === q)
   )
   if (exact.length === 1) {
-    const m = exact[0]!
-    let answer = `${m.hebrew} היא ${m.relationshipHebrew} שלך.`
-    if (m.spouse) answer += ` נשוי/אה ל${m.spouse}.`
-    if (m.children?.length) answer += ` יש ${m.children.length === 1 ? 'ילד אחד' : `${m.children.length} ילדים`}: ${m.children.join(', ')}.`
-    if (m.notes) answer += ` ${m.notes}`
-    return { found: true, members: exact, answer }
+    return { found: true, members: exact, answer: shapeFamilyAnswer(exact[0]!) }
   }
   if (exact.length > 1) {
     return { found: true, members: exact, answer: `יש כמה אנשים עם השם הזה: ${exact.map(m => `${m.hebrew} (${m.relationshipHebrew})`).join(', ')}. את מתכוונת למי?` }
@@ -49,12 +45,10 @@ export function searchFamily(query: string): { found: boolean; members: FamilyMe
 
 export function searchFamilyLocation(query: string): { found: boolean; answer: string } {
   const r = searchFamily(query)
-  if (!r.found || r.members.length === 0) return { found: false, answer: 'לא מצאתי מידע על זה.' }
+  if (!r.found || r.members.length === 0) return { found: false, answer: shapeNotFound(query) }
   const m = r.members[0]!
   if (!m.location) return { found: true, answer: `אין לי מידע איפה ${m.hebrew} גרה.` }
-  let answer = `${m.hebrew} גרה ב${m.location}.`
-  if (m.locationNotes) answer += ` ${m.locationNotes}.`
-  return { found: true, answer }
+  return { found: true, answer: shapeLocationAnswer(m.hebrew, m.location, m.locationNotes) }
 }
 
 export function getFamilyContext(): string {
@@ -83,19 +77,15 @@ function formatEventList(events: Appointment[]): string {
 export function getTodayEvents(): { events: Appointment[]; summary: string } {
   const all = loadAppointmentsWithFamily(new Date().getFullYear())
   const today = todayStr()
-  const events = all.filter(a => a.date === today)
-  if (events.length === 0) return { events, summary: 'לא מצאתי משהו ביומן להיום.' }
-  if (events.length === 1) return { events, summary: `היום יש לך ${formatEventNatural(events[0]!)}.` }
-  return { events, summary: `היום יש לך ${events.length} דברים:\n${formatEventList(events)}` }
+  const events = sortByPriority(all.filter(a => a.date === today))
+  return { events, summary: shapeCalendarAnswer(events, 'today') }
 }
 
 export function getTomorrowEvents(): { events: Appointment[]; summary: string } {
   const all = loadAppointmentsWithFamily(new Date().getFullYear())
   const tmrw = tomorrowStr()
-  const events = all.filter(a => a.date === tmrw)
-  if (events.length === 0) return { events, summary: 'לא מצאתי משהו ביומן למחר.' }
-  if (events.length === 1) return { events, summary: `מחר יש לך ${formatEventNatural(events[0]!)}.` }
-  return { events, summary: `מחר יש לך ${events.length} דברים:\n${formatEventList(events)}` }
+  const events = sortByPriority(all.filter(a => a.date === tmrw))
+  return { events, summary: shapeCalendarAnswer(events, 'tomorrow') }
 }
 
 export function getWeekEvents(): { events: Appointment[]; summary: string } {
@@ -103,7 +93,7 @@ export function getWeekEvents(): { events: Appointment[]; summary: string } {
   const today = todayStr()
   const end = weekEndStr()
   const events = all.filter(a => a.date >= today && a.date <= end)
-  if (events.length === 0) return { events, summary: 'לא מצאתי משהו ביומן לשבוע הקרוב.' }
+  if (events.length === 0) return { events, summary: shapeCalendarAnswer([], 'week') }
   const byDay = new Map<string, Appointment[]>()
   for (const e of events) {
     const day = byDay.get(e.date) ?? []
@@ -125,8 +115,7 @@ export function getUpcomingEvents(limit = 5): { events: Appointment[]; summary: 
   const today = todayStr()
   const future = all.filter(a => a.date >= today).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
   const events = future.slice(0, limit)
-  if (events.length === 0) return { events, summary: 'לא מצאתי אירועים קרובים ביומן.' }
-  return { events, summary: `הדברים הקרובים שלך:\n${formatEventList(events)}` }
+  return { events, summary: shapeCalendarAnswer(events, 'upcoming') }
 }
 
 export function findEventsByPerson(personName: string): { events: Appointment[]; summary: string } {

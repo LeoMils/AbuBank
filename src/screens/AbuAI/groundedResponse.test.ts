@@ -6,16 +6,19 @@ describe('answerFromToolResult', () => {
     expect(answerFromToolResult('calendar_today', { ok: false })).toBe('אני לא מצליחה לבדוק את זה כרגע. נסי שוב.')
   })
 
-  it('empty today returns "לא מצאתי משהו ביומן להיום"', () => {
-    expect(answerFromToolResult('calendar_today', { ok: true, events: [], summary: '' })).toBe('לא מצאתי משהו ביומן להיום.')
+  it('empty calendar passes through shaped summary', () => {
+    const shaped = 'לא מצאתי משהו ביומן להיום.'
+    expect(answerFromToolResult('calendar_today', { ok: true, events: [], summary: shaped })).toBe(shaped)
   })
 
-  it('empty tomorrow returns "לא מצאתי משהו ביומן למחר"', () => {
-    expect(answerFromToolResult('calendar_tomorrow', { ok: true, events: [], summary: '' })).toBe('לא מצאתי משהו ביומן למחר.')
+  it('empty tomorrow passes through shaped summary', () => {
+    const shaped = 'לא מצאתי משהו ביומן למחר.'
+    expect(answerFromToolResult('calendar_tomorrow', { ok: true, events: [], summary: shaped })).toBe(shaped)
   })
 
-  it('empty upcoming returns "לא מצאתי אירועים קרובים ביומן"', () => {
-    expect(answerFromToolResult('calendar_upcoming', { ok: true, events: [], summary: '' })).toBe('לא מצאתי אירועים קרובים ביומן.')
+  it('empty upcoming passes through shaped summary', () => {
+    const shaped = 'לא מצאתי משהו ביומן קרוב.'
+    expect(answerFromToolResult('calendar_upcoming', { ok: true, events: [], summary: shaped })).toBe(shaped)
   })
 
   it('calendar with events returns summary', () => {
