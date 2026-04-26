@@ -581,6 +581,18 @@ export function Home() {
           borderRadius: 6,
           border: '1px solid rgba(201,168,76,0.18)',
         }}>{appVersion ? `v${appVersion}` : ''}</div>
+        {import.meta.env.DEV && (
+          <div style={{
+            position: 'absolute', top: 24, left: 10,
+            fontSize: 11, fontWeight: 700,
+            color: 'rgba(239,68,68,0.80)',
+            fontFamily: "'DM Sans',monospace",
+            background: 'rgba(239,68,68,0.10)',
+            padding: '2px 8px', borderRadius: 6,
+            border: '1px solid rgba(239,68,68,0.25)',
+            pointerEvents: 'none', zIndex: 999,
+          }}>DEV BUILD {appVersion} / 382e71f</div>
+        )}
         {/* 5 nav icons — with micro-animations */}
         {footerItems.map((item, idx) => {
           const iconAnims: Record<string, string> = {
