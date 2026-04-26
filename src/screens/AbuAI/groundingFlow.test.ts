@@ -71,6 +71,31 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
     expect(typeof answer).toBe('string')
   })
 
+  it('"איפה מור גרה?" returns location with הוד השרון', () => {
+    const answer = tryGroundedAnswer('איפה מור גרה?')
+    expect(answer).not.toBeNull()
+    expect(answer).toContain('הוד השרון')
+  })
+
+  it('"איפה גרה מור?" also returns location', () => {
+    const answer = tryGroundedAnswer('איפה גרה מור?')
+    expect(answer).not.toBeNull()
+    expect(answer).toContain('הוד השרון')
+  })
+
+  it('"מי זאת מור?" still returns relationship summary, not location', () => {
+    const answer = tryGroundedAnswer('מי זאת מור?')
+    expect(answer).not.toBeNull()
+    expect(answer).toContain('הבת')
+    expect(answer).toContain('גרושה')
+  })
+
+  it('location query for unknown person returns לא מצאתי', () => {
+    const answer = tryGroundedAnswer('איפה דניאל גר?')
+    expect(answer).not.toBeNull()
+    expect(answer).toContain('לא')
+  })
+
   it('Realtime is disabled by default — useRealtime = false', async () => {
     const source = await import('fs').then(fs =>
       fs.readFileSync('/home/user/AbuBank/src/screens/AbuAI/index.tsx', 'utf-8')

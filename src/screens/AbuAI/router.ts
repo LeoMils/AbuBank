@@ -1,6 +1,6 @@
 import { loadFamilyData } from '../../services/familyLoader'
 
-export type RouteType = 'family_lookup' | 'calendar_today' | 'calendar_tomorrow' | 'calendar_upcoming' | 'non_personal'
+export type RouteType = 'family_lookup' | 'family_location' | 'calendar_today' | 'calendar_tomorrow' | 'calendar_upcoming' | 'non_personal'
 
 export interface RouteResult {
   type: RouteType
@@ -11,6 +11,7 @@ export interface RouteResult {
 const CALENDAR_TODAY = /מה יש לי היום|מה יש היום|יש לי משהו היום|מה קבעתי היום|מה קורה היום|מה התוכנית היום/i
 const CALENDAR_TOMORROW = /מה יש מחר|מה יש לי מחר|יש לי משהו מחר|מה קבעתי מחר|מה קורה מחר|מה התוכנית מחר|צריך לקום מחר/i
 const CALENDAR_UPCOMING = /מה יש השבוע|מה יש לי השבוע|מה יש בשבוע|מה הפגישות הקרובות|מה התורים הקרובים|מה האירועים הקרובים|יש לי משהו השבוע|מה התוכנית/i
+const FAMILY_LOCATION = /איפה .+ גר|איפה גר/i
 const FAMILY_PATTERNS = /מי (זה|זאת|זו|הוא|היא)\s|מי ה(בן|בת|נכד|נכדה)|איך קוראים ל|מה הקשר (של|עם)|איך .+ קשור|הנכד שלי|הנכדה שלי|הבן שלי|הבת שלי|הילדים שלי|הנכדים שלי/i
 
 export function routePersonalQuery(text: string): RouteResult {
@@ -19,6 +20,11 @@ export function routePersonalQuery(text: string): RouteResult {
   if (CALENDAR_TODAY.test(t)) return { type: 'calendar_today', query: t }
   if (CALENDAR_TOMORROW.test(t)) return { type: 'calendar_tomorrow', query: t }
   if (CALENDAR_UPCOMING.test(t)) return { type: 'calendar_upcoming', query: t }
+
+  if (FAMILY_LOCATION.test(t)) {
+    const nameMatch = extractFamilyName(t) ?? matchKnownFamilyName(t)
+    return { type: 'family_location', query: t, familyQuery: nameMatch ?? t }
+  }
 
   if (FAMILY_PATTERNS.test(t)) {
     const nameMatch = extractFamilyName(t)
@@ -38,6 +44,8 @@ function extractFamilyName(text: string): string | null {
     /מי (?:זה|זאת|זו|הוא|היא)\s+(.+)/i,
     /איך קוראים ל(.+)/i,
     /מה הקשר (?:של|עם) (.+)/i,
+    /איפה (.+?) גר/i,
+    /איפה גר[הא]?\s+(.+)/i,
   ]
   for (const p of patterns) {
     const match = text.match(p)

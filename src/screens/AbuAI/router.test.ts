@@ -114,6 +114,23 @@ describe('routePersonalQuery', () => {
     })
   })
 
+  describe('family_location', () => {
+    it('"איפה מור גרה?" → family_location', () => {
+      const r = routePersonalQuery('איפה מור גרה?')
+      expect(r.type).toBe('family_location')
+      expect(r.familyQuery).toContain('מור')
+    })
+
+    it('"איפה גרה מור?" → family_location', () => {
+      const r = routePersonalQuery('איפה גרה מור?')
+      expect(r.type).toBe('family_location')
+    })
+
+    it('"איפה עדי גרה?" → family_location', () => {
+      expect(routePersonalQuery('איפה עדי גרה?').type).toBe('family_location')
+    })
+  })
+
   describe('non_personal', () => {
     it('"מה מזג האוויר?" → non_personal', () => {
       expect(routePersonalQuery('מה מזג האוויר?').type).toBe('non_personal')

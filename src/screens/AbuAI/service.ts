@@ -1,6 +1,6 @@
 import type { ChatMessage } from './types'
 
-import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, searchFamily } from './tools'
+import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, searchFamily, searchFamilyLocation } from './tools'
 import { generateFamilyPromptSection } from '../../services/familyLoader'
 import { routePersonalQuery, type RouteResult } from './router'
 import { answerFromToolResult, type ToolResult } from './groundedResponse'
@@ -43,6 +43,10 @@ export function tryGroundedAnswer(text: string): string | null {
         const r = searchFamily(route.familyQuery ?? '')
         result = { ok: true, found: r.found, members: r.members, answer: r.answer }
         break
+      }
+      case 'family_location': {
+        const r = searchFamilyLocation(route.familyQuery ?? '')
+        return r.answer
       }
       default:
         return null

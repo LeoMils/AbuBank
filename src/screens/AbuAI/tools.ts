@@ -47,6 +47,16 @@ export function searchFamily(query: string): { found: boolean; members: FamilyMe
   return { found: false, members: [], answer: `לא מכירה מישהו בשם ${query}. אולי שם אחר?` }
 }
 
+export function searchFamilyLocation(query: string): { found: boolean; answer: string } {
+  const r = searchFamily(query)
+  if (!r.found || r.members.length === 0) return { found: false, answer: 'לא מצאתי.' }
+  const m = r.members[0]!
+  if (!m.location) return { found: true, answer: `אין לי מידע איפה ${m.hebrew} גר/ה.` }
+  let answer = `${m.hebrew} גר/ה ב${m.location}.`
+  if (m.locationNotes) answer += ` ${m.locationNotes}.`
+  return { found: true, answer }
+}
+
 export function getFamilyContext(): string {
   const family = getFamilyMembers()
   const kids = family.filter(m => m.relationship === 'daughter' || m.relationship === 'son')

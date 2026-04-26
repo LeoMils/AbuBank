@@ -11,6 +11,7 @@ export interface FamilyMember {
   notes?: string
   birthday?: string
   location?: string
+  locationNotes?: string
 }
 
 interface FamilyJsonMember {
@@ -44,6 +45,7 @@ function toFamilyMember(m: FamilyJsonMember): FamilyMember {
   if (m.notes) result.notes = m.notes
   if (m.birthday) result.birthday = m.birthday
   if (m.location) result.location = m.location
+  if (m.location_notes) result.locationNotes = m.location_notes
   return result
 }
 
