@@ -15,6 +15,7 @@ import type { RealtimeState } from '../../services/realtimeVoice'
 import { mediateError } from '../../services/errorMediation'
 import type { MediatedError } from '../../services/errorMediation'
 import { ChatBubble } from './ChatBubble'
+import { BackButton } from '../../components/BackButton'
 import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
 
 let msgCounter = 0
@@ -924,9 +925,6 @@ ${fewShotText}`
   const micDisabled = loading || transcribing
 
   // suppress unused warnings
-  void listenCountdown
-  void voiceState
-
   // Shared gold gradient text style
   const goldGradText: React.CSSProperties = {
     background: 'linear-gradient(135deg, #A7F3D0 0%, #34D399 20%, #10B981 45%, #14B8A6 60%, #0D9488 80%, #5EEAD4 100%)',
@@ -952,20 +950,6 @@ ${fewShotText}`
         position: 'relative',
       }}
     >
-      {/* ── Ambient background — 3 layers with live color shift ── */}
-      <div aria-hidden="true" style={{
-        position: 'absolute',
-        inset: 0,
-        pointerEvents: 'none',
-        zIndex: 0,
-        background: [
-          'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(20,184,166,0.10) 0%, transparent 60%)',
-          'radial-gradient(ellipse 60% 50% at 15% 95%, rgba(20,184,166,0.08) 0%, transparent 55%)',
-          'radial-gradient(ellipse 45% 35% at 88% 80%, rgba(139,92,246,0.05) 0%, transparent 50%)',
-        ].join(', '),
-        animation: 'ambientColorShift 35s ease-in-out infinite',
-      }} />
-
       {/* ─────────────────────── HEADER ─────────────────────── */}
       <header style={{
         flexShrink: 0,
@@ -1051,41 +1035,9 @@ ${fewShotText}`
           </div>
 
           {/* RIGHT (RTL): Back button */}
-          <button
-            type="button"
-            onClick={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }}
-            aria-label="חזרה לדף הבית"
-            style={{
-              position: 'absolute',
-              right: 10,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: 56,
-              height: 56,
-              minHeight: 44,
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 2,
-              WebkitTapHighlightColor: 'transparent',
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-              stroke="rgba(245,240,232,0.80)" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-            <span style={{
-              fontSize: 12,
-              color: 'rgba(245,240,232,0.55)',
-              fontFamily: "'Heebo',sans-serif",
-              fontWeight: 500,
-              lineHeight: 1,
-            }}>חזרה</span>
-          </button>
+          <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
+            <BackButton onPress={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }} />
+          </div>
 
         </div>
 
