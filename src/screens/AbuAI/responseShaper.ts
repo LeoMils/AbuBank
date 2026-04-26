@@ -3,15 +3,24 @@ import type { Appointment } from '../AbuCalendar/service'
 
 export function shapeFamilyAnswer(m: FamilyMember): string {
   const parts: string[] = []
-
   const rel = m.relationshipHebrew
-  if (rel.includes('הבת') || rel.includes('הבן')) {
-    parts.push(`${m.hebrew} היא ${rel} שלך.`)
-  } else if (rel.includes('נכד') || rel.includes('נכדה')) {
-    parts.push(`${m.hebrew} — ${rel}.`)
-  } else if (rel.includes('בת זוג') || rel.includes('בן זוג')) {
-    parts.push(`${m.hebrew} — ${rel}.`)
-  } else if (rel.includes('ז"ל')) {
+
+  // Split compound relationship: "הבת, גרושה מרפי, בת זוג של יעל"
+  // into base role + detail clauses
+  const clauses = rel.split(',').map(s => s.trim())
+  const baseRole = clauses[0] ?? rel
+  const details = clauses.slice(1)
+
+  const isFemale = baseRole.includes('הבת') || baseRole.includes('נכדה') || baseRole.includes('בת זוג')
+  const pronoun = isFemale ? 'היא' : 'הוא'
+  const possessive = isFemale ? 'שלה' : 'שלו'
+
+  if (baseRole.includes('הבת') || baseRole.includes('הבן')) {
+    parts.push(`${m.hebrew} ${pronoun} ${baseRole} שלך.`)
+    if (details.length > 0) {
+      parts.push(`${pronoun} ${details.join(', ')}.`)
+    }
+  } else if (baseRole.includes('נכד') || baseRole.includes('נכדה')) {
     parts.push(`${m.hebrew} — ${rel}.`)
   } else {
     parts.push(`${m.hebrew} — ${rel}.`)
@@ -19,7 +28,10 @@ export function shapeFamilyAnswer(m: FamilyMember): string {
 
   if (m.spouse) parts.push(`בן/בת הזוג: ${m.spouse}.`)
   if (m.children?.length) {
-    parts.push(`${m.children.length === 1 ? 'ילד' : 'ילדים'}: ${m.children.join(', ')}.`)
+    const last = m.children[m.children.length - 1]
+    const rest = m.children.slice(0, -1)
+    const childList = rest.length > 0 ? `${rest.join(', ')} ו${last}` : last!
+    parts.push(`הילדים ${possessive} הם ${childList}.`)
   }
   if (m.notes) parts.push(m.notes)
 

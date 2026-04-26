@@ -9,11 +9,14 @@ const makeMember = (overrides: Partial<FamilyMember> = {}): FamilyMember => ({
 })
 
 describe('shapeFamilyAnswer', () => {
-  it('daughter uses "היא X שלך"', () => {
-    const answer = shapeFamilyAnswer(makeMember())
-    expect(answer).toContain('מור היא')
-    expect(answer).toContain('שלך')
-    expect(answer).not.toContain('—')
+  it('Mor: base role + details in separate sentences', () => {
+    const answer = shapeFamilyAnswer(makeMember({
+      children: ['אופיר', 'איילון', 'עילי', 'אדר'],
+    }))
+    expect(answer).toContain('מור היא הבת שלך.')
+    expect(answer).toContain('היא גרושה מרפי, בת זוג של יעל.')
+    expect(answer).toContain('הילדים שלה הם אופיר, איילון, עילי ואדר.')
+    expect(answer).not.toContain('הבת, גרושה מרפי, בת זוג של יעל שלך')
   })
 
   it('grandson uses dash format', () => {
@@ -21,9 +24,14 @@ describe('shapeFamilyAnswer', () => {
     expect(answer).toContain('מור —')
   })
 
-  it('includes children count naturally', () => {
+  it('children list uses ו before last name', () => {
     const answer = shapeFamilyAnswer(makeMember({ children: ['א', 'ב', 'ג'] }))
-    expect(answer).toContain('ילדים: א, ב, ג')
+    expect(answer).toContain('א, ב וג')
+  })
+
+  it('single child has no ו', () => {
+    const answer = shapeFamilyAnswer(makeMember({ children: ['נועם'] }))
+    expect(answer).toContain('הילדים שלה הם נועם')
   })
 
   it('includes notes', () => {
