@@ -565,17 +565,7 @@ export function AbuWhatsApp() {
         borderBottom: '1px solid rgba(37,211,102,0.14)',
         boxShadow: '0 4px 24px rgba(0,0,0,0.40), 0 1px 0 rgba(255,255,255,0.02)',
         zIndex: 20,
-        animation: 'headerSlide 0.38s ease both',
       }}>
-        {/* Soft WA-green ambient glow */}
-        <div aria-hidden="true" style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%,-50%)',
-          width: '70%', height: '280%',
-          background: 'radial-gradient(ellipse at center, rgba(37,211,102,0.09) 0%, transparent 65%)',
-          pointerEvents: 'none', filter: 'blur(12px)',
-        }} />
-
         <div style={{
           position: 'relative',
           height: 82,
@@ -613,7 +603,6 @@ export function AbuWhatsApp() {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              filter: 'drop-shadow(0 0 10px rgba(94,234,212,0.32)) drop-shadow(0 2px 3px rgba(0,0,0,0.55))',
             } as React.CSSProperties}>Abu</span>
             <span style={{
               fontFamily: "'DM Sans',sans-serif",
@@ -623,7 +612,6 @@ export function AbuWhatsApp() {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              filter: 'drop-shadow(0 0 10px rgba(37,211,102,0.32)) drop-shadow(0 2px 3px rgba(0,0,0,0.55))',
             } as React.CSSProperties}>הודעות</span>
           </div>
 
@@ -715,15 +703,6 @@ export function AbuWhatsApp() {
                 color: 'rgba(37,211,102,0.78)',
               }}>שיחה קולית</span>
             </button>
-
-            {/* Divider label */}
-            <div style={{
-              fontFamily: "'Heebo',sans-serif", fontSize: 17, fontWeight: 400,
-              color: 'rgba(255,255,255,0.40)',
-              textAlign: 'center',
-            }}>
-              ─ או הקלידי ─
-            </div>
 
             {/* ── Style selector — horizontal pill row ── */}
             <StyleSelector activeStyle={activeStyle} onSelect={style => {
@@ -1310,7 +1289,6 @@ export function AbuWhatsApp() {
                                 70%   {transform:scale(1.18);opacity:0.10;}
                                 100%  {transform:scale(1.30);opacity:0;   } }
         @keyframes slideUpIn  { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
-        @keyframes headerSlide{ from{opacity:0;transform:translateY(-10px);} to{opacity:1;transform:translateY(0);} }
       `}</style>
     </PageShell>
   )
