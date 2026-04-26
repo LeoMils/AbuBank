@@ -673,7 +673,7 @@ export function AbuWhatsApp() {
               type="button"
               onClick={enterVoiceMode}
               style={{
-                width: 108, height: 108, borderRadius: '50%',
+                width: 72, height: 72, borderRadius: '50%',
                 background: 'linear-gradient(145deg, rgba(37,211,102,0.16), rgba(18,140,126,0.07))',
                 border: '2.5px solid rgba(37,211,102,0.32)',
                 cursor: 'pointer',
@@ -691,14 +691,13 @@ export function AbuWhatsApp() {
               onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
               onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
             >
-              <svg viewBox="0 0 24 24" width="34" height="34" fill="none"
-                stroke={WA_GREEN} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"
-                style={{ filter: 'drop-shadow(0 2px 6px rgba(37,211,102,0.28))' }}>
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none"
+                stroke={WA_GREEN} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
                 <path d="M2 12h2" /><path d="M6 8v8" /><path d="M10 5v14" />
                 <path d="M14 8v8" /><path d="M18 10v4" /><path d="M22 12h-2" />
               </svg>
               <span style={{
-                fontSize: 13, fontWeight: 600,
+                fontSize: 11, fontWeight: 600,
                 fontFamily: "'Heebo',sans-serif",
                 color: 'rgba(37,211,102,0.78)',
               }}>שיחה קולית</span>
@@ -729,7 +728,7 @@ export function AbuWhatsApp() {
                   fontSize: 20, fontFamily: "'DM Sans','Heebo',sans-serif",
                   direction: 'rtl', lineHeight: 1.65,
                   outline: 'none',
-                  minHeight: 110,
+                  minHeight: 88,
                   boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.02)',
                   transition: 'border-color 0.18s',
                   boxSizing: 'border-box',
