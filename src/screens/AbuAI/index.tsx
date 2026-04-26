@@ -16,6 +16,7 @@ import { mediateError } from '../../services/errorMediation'
 import type { MediatedError } from '../../services/errorMediation'
 import { ChatBubble } from './ChatBubble'
 import { BackButton } from '../../components/BackButton'
+import { ScreenHeader } from '../../components/ScreenHeader'
 import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
 
 let msgCounter = 0
@@ -950,54 +951,23 @@ ${fewShotText}`
         position: 'relative',
       }}
     >
-      {/* ─────────────────────── HEADER ─────────────────────── */}
-      <header style={{
-        flexShrink: 0,
-        position: 'relative',
-        background: 'rgba(5,10,24,0.96)',
-        borderBottom: '1px solid rgba(20,184,166,0.28)',
-        backdropFilter: 'blur(16px)',
-        boxShadow: '0 1px 0 rgba(20,184,166,0.12)',
-        zIndex: 20,
-      }}>
-        {/* Bottom glow line */}
-        <div aria-hidden="true" style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 1,
-          background: 'linear-gradient(90deg, transparent, rgba(20,184,166,0.45) 30%, rgba(20,184,166,0.70) 50%, rgba(20,184,166,0.45) 70%, transparent)',
-        }} />
-
-        {/* Header content row — 72px */}
-        <div style={{
-          position: 'relative',
-          height: 72,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '0 14px',
-        }}>
-
-          {/* LEFT (RTL): Martita portrait — T2.2 Voice States */}
+      <ScreenHeader
+        title="Abu AI"
+        left={<BackButton onPress={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }} />}
+        right={
           <div style={{
-            position: 'absolute',
-            left: 14,
-            top: '50%',
-            transform: `translateY(-50%)${isSpeaking ? ` scale(${1 + audioLevel * 0.12})` : ''}`,
             width: 64,
             height: 64,
             borderRadius: '50%',
             border: voicePhase === 'listening'
-              ? `${2 + audioLevel * 4}px solid #7EB4B8`  // Teal, thickness pulses with audio
+              ? `${2 + audioLevel * 4}px solid #7EB4B8`
               : voicePhase === 'processing'
-              ? '2.5px solid rgba(212,184,122,0.70)'      // Gold processing
+              ? '2.5px solid rgba(212,184,122,0.70)'
               : isSpeaking
-              ? '2.5px solid rgba(20,184,166,0.80)'       // Teal speaking
+              ? '2.5px solid rgba(20,184,166,0.80)'
               : voiceMode
-              ? '2px solid #D4B87A'                        // Gold idle pulse
-              : '2px solid rgba(20,184,166,0.42)',         // Default
+              ? '2px solid #D4B87A'
+              : '2px solid rgba(20,184,166,0.42)',
             boxShadow: voicePhase === 'listening'
               ? `0 0 0 ${2 + audioLevel * 3}px rgba(126,180,184,0.40), 0 0 ${12 + audioLevel * 20}px rgba(126,180,184,0.30)`
               : voicePhase === 'processing'
@@ -1008,6 +978,7 @@ ${fewShotText}`
               ? '0 0 0 2px rgba(212,184,122,0.30), 0 0 16px rgba(212,184,122,0.15)'
               : '0 0 0 2px rgba(20,184,166,0.42), 0 0 16px rgba(20,184,166,0.12)',
             transition: 'box-shadow 0.15s ease, transform 0.1s ease, border 0.15s ease',
+            transform: isSpeaking ? `scale(${1 + audioLevel * 0.12})` : undefined,
             overflow: 'hidden',
             background: '#1a140a',
             flexShrink: 0,
@@ -1020,28 +991,8 @@ ${fewShotText}`
               onError={handleMartitaImgError}
             />
           </div>
-
-          {/* CENTER: Single wordmark */}
-          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ direction: 'ltr' }}>
-              <span style={{
-                fontFamily: "'Heebo','DM Sans',sans-serif",
-                fontSize: 22,
-                fontWeight: 700,
-                letterSpacing: '0.5px',
-                color: 'rgba(245,240,232,0.92)',
-              }}>Abu AI</span>
-            </div>
-          </div>
-
-          {/* RIGHT (RTL): Back button */}
-          <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
-            <BackButton onPress={() => { if (voiceMode) exitVoiceMode(); setScreen(Screen.Home) }} />
-          </div>
-
-        </div>
-
-      </header>
+        }
+      />
 
       {/* ─────────────────────── CHAT AREA ─────────────────────── */}
       <div
