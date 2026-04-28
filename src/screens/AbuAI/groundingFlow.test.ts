@@ -1,3 +1,4 @@
+import path from 'path'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { tryGroundedAnswer } from './service'
 
@@ -98,7 +99,7 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
 
   it('Realtime is disabled by default — useRealtime = false', async () => {
     const source = await import('fs').then(fs =>
-      fs.readFileSync('/home/user/AbuBank/src/screens/AbuAI/index.tsx', 'utf-8')
+      fs.readFileSync(path.join(process.cwd(), 'src/screens/AbuAI/index.tsx'), 'utf-8')
     )
     expect(source).toContain('const useRealtime = false')
     expect(source).not.toMatch(/const useRealtime = !![^f]/)
@@ -106,7 +107,7 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
 
   it('all voice paths reach tryGroundedAnswer', async () => {
     const source = await import('fs').then(fs =>
-      fs.readFileSync('/home/user/AbuBank/src/screens/AbuAI/index.tsx', 'utf-8')
+      fs.readFileSync(path.join(process.cwd(), 'src/screens/AbuAI/index.tsx'), 'utf-8')
     )
     const voiceGroundedCount = (source.match(/tryGroundedAnswer/g) ?? []).length
     expect(voiceGroundedCount).toBeGreaterThanOrEqual(2)

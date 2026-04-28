@@ -1,3 +1,4 @@
+import path from 'path'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { isPersonalQuery, containsUngroundedClaim } from './service'
 import { getTodayEvents, getTomorrowEvents, getWeekEvents, findNextEventByType, searchFamily, executeTool } from './tools'
@@ -137,7 +138,7 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
 
     // Read the actual source to verify these phrases exist in the template
     const indexSource = await import('fs').then(fs =>
-      fs.readFileSync('/home/user/AbuBank/src/screens/AbuAI/index.tsx', 'utf-8')
+      fs.readFileSync(path.join(process.cwd(), 'src/screens/AbuAI/index.tsx'), 'utf-8')
     )
     for (const phrase of requiredPhrases) {
       expect(indexSource).toContain(phrase)
