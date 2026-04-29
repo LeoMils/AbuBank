@@ -260,7 +260,7 @@ export function AbuCalendar() {
   const hebrewMonthLabel = formatHebrewMonth(year, month)
 
   return (
-    <PageShell>
+    <PageShell scrollable>
 
       {/* ALERT BANNERS — max 2 stacked */}
       {activeAlerts.length > 0 && (
@@ -586,12 +586,16 @@ export function AbuCalendar() {
         )}
       </div>
 
-      {/* FOOTER */}
+      {/* FOOTER — always visible */}
       <div style={{
-        flexShrink: 0, marginTop: 'auto',
-        padding: '6px 16px calc(10px + env(safe-area-inset-bottom, 0px))',
+        position: 'sticky', bottom: 0,
+        flexShrink: 0,
+        padding: '8px 16px calc(10px + env(safe-area-inset-bottom, 0px))',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-      }}>
+        background: 'linear-gradient(to top, rgba(5,10,24,0.97) 60%, rgba(5,10,24,0) 100%)',
+        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+        zIndex: 20,
+      } as React.CSSProperties}>
         {/* Status pill — visible only when recording or processing */}
         {(isRecording || (voiceStatus && !voiceParsed && !isRecording)) && (
           isRecording
