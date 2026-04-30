@@ -21,6 +21,7 @@ import { InfoButton } from '../../components/InfoButton'
 import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
+import { shapeCreateConfirm } from '../AbuAI/responseShaper'
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
 import { PageShell } from '../../components/PageShell'
@@ -672,6 +673,11 @@ export function AbuCalendar() {
           existingAppts={appointments}
           onConfirm={handleVoiceConfirm}
           onCancel={() => { setVoiceParsed(null); setVoiceStatus('') }}
+          confirmationText={shapeCreateConfirm({
+            title: voiceParsed.title,
+            date: voiceParsed.date,
+            time: voiceParsed.time,
+          })}
         />
       )}
 

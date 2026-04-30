@@ -1,15 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { type Appointment, detectEmoji } from './service'
 import { GOLD, BRIGHT_GOLD, CREAM, getTodayStr, isDuplicate } from './constants'
+import { speak, stopSpeaking } from '../../services/voice'
 
 interface VoiceCardProps {
   parsed: { title: string; date: string | null; time: string | null; emoji: string }
   existingAppts: Appointment[]
   onConfirm: (final: { title: string; date: string; time: string; emoji: string }) => void
   onCancel: () => void
+  confirmationText?: string
 }
 
-export function VoiceCard({ parsed, existingAppts, onConfirm, onCancel }: VoiceCardProps) {
+export function VoiceCard({ parsed, existingAppts, onConfirm, onCancel, confirmationText }: VoiceCardProps) {
   const [title, setTitle] = useState(parsed.title)
   const [date, setDate] = useState(parsed.date ?? '')
   const [time, setTime] = useState(parsed.time ?? '')
@@ -20,6 +22,12 @@ export function VoiceCard({ parsed, existingAppts, onConfirm, onCancel }: VoiceC
   const isPastDate = date && date < today
 
   const hasDuplicate = canSave && isDuplicate(title, date, time, existingAppts)
+
+  useEffect(() => {
+    if (!confirmationText) return
+    speak(confirmationText).catch(() => {})
+    return () => { stopSpeaking() }
+  }, [confirmationText])
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 14px', borderRadius: 12,
@@ -47,6 +55,16 @@ export function VoiceCard({ parsed, existingAppts, onConfirm, onCancel }: VoiceC
         <div style={{ fontSize: 18, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif", textAlign: 'center' }}>
           🎤 שמעתי נכון?
         </div>
+
+        {confirmationText && (
+          <div data-testid="voice-confirmation-text" style={{
+            fontSize: 18, lineHeight: 1.55, color: CREAM,
+            fontFamily: "'Heebo',sans-serif", textAlign: 'center',
+            whiteSpace: 'pre-line', padding: '4px 6px',
+          }}>
+            {confirmationText}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <span style={{ fontSize: 38, flexShrink: 0 }}>{emoji}</span>

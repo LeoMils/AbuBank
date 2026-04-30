@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { shapeFamilyAnswer, shapeLocationAnswer, shapeCalendarAnswer, shapeNotFound, shapeToolError } from './responseShaper'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { shapeFamilyAnswer, shapeLocationAnswer, shapeCalendarAnswer, shapeNotFound, shapeToolError, shapeCreateConfirm } from './responseShaper'
 import type { FamilyMember } from '../../services/familyLoader'
 
 const makeMember = (overrides: Partial<FamilyMember> = {}): FamilyMember => ({
@@ -123,5 +125,53 @@ describe('shapeToolError', () => {
     const msg = shapeToolError()
     expect(msg).toContain('לא מצליחה')
     expect(msg).toContain('נסי שוב')
+  })
+})
+
+describe('shapeCreateConfirm', () => {
+  it('does not start with the formal "אני קובעת לך" phrasing', () => {
+    const out = shapeCreateConfirm({ title: 'רופא', date: '2026-05-01', time: '10:00' })
+    expect(out.startsWith('אני קובעת')).toBe(false)
+  })
+
+  it('renders header line + event line + לקבוע? question', () => {
+    const out = shapeCreateConfirm({ title: 'רופא', date: '2026-05-01', time: '10:00' })
+    const lines = out.split('\n')
+    expect(lines[0]).toMatch(/—$/)
+    expect(out).toContain('יש לך רופא.')
+    expect(out.trim().endsWith('לקבוע?')).toBe(true)
+  })
+
+  it('uses Hebrew hour words for round hours', () => {
+    expect(shapeCreateConfirm({ title: 'רופא', date: '2026-05-01', time: '10:00' })).toContain('בעשר')
+    expect(shapeCreateConfirm({ title: 'אצל אופיר', date: '2026-05-06', time: '17:00' })).toContain('בחמש')
+  })
+
+  it('handles quarter / half / 45 minutes', () => {
+    expect(shapeCreateConfirm({ title: 'רופא', date: '2026-05-01', time: '09:15' })).toContain('בתשע ורבע')
+    expect(shapeCreateConfirm({ title: 'רופא', date: '2026-05-01', time: '16:30' })).toContain('בארבע וחצי')
+    expect(shapeCreateConfirm({ title: 'רופא', date: '2026-05-01', time: '19:45' })).toContain('ברבע לשמונה')
+  })
+
+  it('uses "את" for אצל/עם titles, "יש לך" otherwise', () => {
+    expect(shapeCreateConfirm({ title: 'אצל אופיר', date: '2026-05-06', time: '17:00' })).toContain('את אצל אופיר.')
+    expect(shapeCreateConfirm({ title: 'עם דליה', date: '2026-05-06', time: '17:00' })).toContain('את עם דליה.')
+    expect(shapeCreateConfirm({ title: 'רופא', date: '2026-05-01', time: '10:00' })).toContain('יש לך רופא.')
+  })
+})
+
+describe('shapeCreateConfirm wiring', () => {
+  it('is imported by the calendar screen', () => {
+    const src = readFileSync(resolve(__dirname, '../AbuCalendar/index.tsx'), 'utf8')
+    expect(src).toMatch(/import\s*\{\s*shapeCreateConfirm\s*\}\s*from\s*['"]\.\.\/AbuAI\/responseShaper['"]/)
+    expect(src).toContain('shapeCreateConfirm({')
+  })
+
+  it('is rendered/spoken via VoiceCard confirmationText prop', () => {
+    const calendarSrc = readFileSync(resolve(__dirname, '../AbuCalendar/index.tsx'), 'utf8')
+    expect(calendarSrc).toMatch(/confirmationText=\{shapeCreateConfirm\(/)
+    const voiceCardSrc = readFileSync(resolve(__dirname, '../AbuCalendar/VoiceCard.tsx'), 'utf8')
+    expect(voiceCardSrc).toContain('confirmationText')
+    expect(voiceCardSrc).toContain('speak(confirmationText)')
   })
 })
