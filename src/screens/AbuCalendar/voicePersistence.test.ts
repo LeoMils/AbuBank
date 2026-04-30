@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { addAppointment, loadAppointments, type Appointment } from './service'
 import { parseCorrection, applyCorrection, type DraftLike } from './correctionParser'
+import { ApptCard } from './ApptCard'
 
 const TODAY = '2026-04-30'
 
@@ -100,16 +103,80 @@ describe('Voice flow — end-to-end persistence', () => {
   })
 })
 
-describe('ApptCard — render path for location', () => {
+describe('ApptCard — real React render via renderToStaticMarkup', () => {
+  function makeAppt(overrides: Partial<Appointment> = {}): Appointment {
+    return {
+      id: 'appt-test',
+      title: 'תור אצל התופרת',
+      date: '2026-05-01',
+      time: '14:34',
+      emoji: '🧵',
+      color: '#C9A84C',
+      ...overrides,
+    }
+  }
+
+  it('renders appt.location text inside the rendered HTML when present', () => {
+    const html = renderToStaticMarkup(createElement(ApptCard, {
+      appt: makeAppt({ location: 'רחוב קוק 14, הרצליה' }),
+    }))
+    expect(html).toContain('רחוב קוק 14, הרצליה')
+    expect(html).toContain('📍')
+    expect(html).toContain('data-testid="appt-location"')
+  })
+
+  it('does not render the location row when appt.location is absent', () => {
+    const html = renderToStaticMarkup(createElement(ApptCard, { appt: makeAppt() }))
+    expect(html).not.toContain('data-testid="appt-location"')
+    expect(html).not.toContain('📍')
+  })
+
+  it('renders appt.notes inside the rendered HTML when present', () => {
+    const html = renderToStaticMarkup(createElement(ApptCard, {
+      appt: makeAppt({ notes: 'חור במכנסיים' }),
+    }))
+    expect(html).toContain('חור במכנסיים')
+  })
+
+  it('renders both location and notes together, in order (location above notes)', () => {
+    const html = renderToStaticMarkup(createElement(ApptCard, {
+      appt: makeAppt({ location: 'רחוב קוק 14, הרצליה', notes: 'חור במכנסיים' }),
+    }))
+    const locIdx = html.indexOf('רחוב קוק 14, הרצליה')
+    const noteIdx = html.indexOf('חור במכנסיים')
+    expect(locIdx).toBeGreaterThan(-1)
+    expect(noteIdx).toBeGreaterThan(-1)
+    expect(locIdx).toBeLessThan(noteIdx)
+  })
+
+  it('sanitises a stored 📅 to 📌 in the rendered HTML (no JUL 17 glyph)', () => {
+    const html = renderToStaticMarkup(createElement(ApptCard, {
+      appt: makeAppt({ emoji: '📅' }),
+    }))
+    expect(html).not.toContain('📅')
+    expect(html).toContain('📌')
+    expect(html).not.toMatch(/JUL/i)
+  })
+
+  it('does not introduce a bare 📅 even when emoji is empty / undefined', () => {
+    const html = renderToStaticMarkup(createElement(ApptCard, {
+      appt: makeAppt({ emoji: '' as unknown as string }),
+    }))
+    expect(html).not.toContain('📅')
+    expect(html).not.toMatch(/JUL/i)
+  })
+})
+
+describe('ApptCard — static-source proof (kept as defense-in-depth)', () => {
   const SOURCE = readFileSync(resolve(__dirname, './ApptCard.tsx'), 'utf8')
 
-  it('renders appt.location when present (closes the silent-drop gap)', () => {
+  it('source binds appt.location and the test-id', () => {
     expect(SOURCE).toContain('appt.location')
     expect(SOURCE).toContain('data-testid="appt-location"')
     expect(SOURCE).toContain('{appt.location}')
   })
 
-  it('still sanitises 📅 → 📌 at render time', () => {
+  it('source keeps the 📅 → 📌 sanitiser', () => {
     expect(SOURCE).toContain("appt.emoji === '📅' ? '📌' : appt.emoji")
   })
 })
