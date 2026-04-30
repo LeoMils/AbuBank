@@ -3,8 +3,10 @@ import {
   UPDATE_ACKS,
   CANCEL_RESPONSE,
   UNRELATED_RESPONSE,
+  CLARIFY_FALLBACK,
   pickUpdateAck,
   shapeCorrectionUpdate,
+  pickClarifyQuestion,
 } from './conversationLayer'
 
 describe('UPDATE_ACKS pool', () => {
@@ -69,6 +71,32 @@ describe('CANCEL_RESPONSE', () => {
   it('is short, warm, and not robotic', () => {
     expect(CANCEL_RESPONSE).toBe('אוקיי, לא שומרת.')
     expect(CANCEL_RESPONSE.split('\n')).toHaveLength(1)
+  })
+})
+
+describe('pickClarifyQuestion', () => {
+  it('falls back to "מה לא נכון? הזמן? המקום?" when nothing is filled', () => {
+    expect(pickClarifyQuestion({})).toBe('מה לא נכון? הזמן? המקום?')
+    expect(CLARIFY_FALLBACK).toBe('מה לא נכון? הזמן? המקום?')
+  })
+
+  it('mentions the two filled slots when available', () => {
+    const q = pickClarifyQuestion({ time: '14:34', location: 'הרצליה', title: 'תור' })
+    expect(q.startsWith('מה לא נכון? ')).toBe(true)
+    expect(q).toContain('הזמן')
+    expect(q).toContain('המקום')
+  })
+
+  it('uses "המה" / "היום" labels for title and date', () => {
+    const q = pickClarifyQuestion({ title: 'רופא', date: '2026-05-01' })
+    expect(q).toContain('המה')
+    expect(q).toContain('היום')
+  })
+
+  it('one short line, ends with "?"', () => {
+    const q = pickClarifyQuestion({ time: '14:00' })
+    expect(q.split('\n')).toHaveLength(1)
+    expect(q.trim().endsWith('?')).toBe(true)
   })
 })
 

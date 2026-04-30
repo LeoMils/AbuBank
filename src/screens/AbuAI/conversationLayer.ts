@@ -10,6 +10,21 @@ export const CANCEL_RESPONSE = 'אוקיי, לא שומרת.'
 
 export const UNRELATED_RESPONSE = 'לא בטוחה שהבנתי —\nאפשר להגיד לי שוב?'
 
+export const CLARIFY_FALLBACK = 'מה לא נכון? הזמן? המקום?'
+
+export function pickClarifyQuestion(draft: { title?: string; date?: string | null; time?: string | null; location?: string | null }): string {
+  const slots: string[] = []
+  if (draft.time) slots.push('הזמן')
+  if (draft.location) slots.push('המקום')
+  if (draft.title) slots.push('המה')
+  if (draft.date) slots.push('היום')
+  if (slots.length >= 2) {
+    const [a, b] = slots
+    return `מה לא נכון? ${a}? ${b}?`
+  }
+  return CLARIFY_FALLBACK
+}
+
 export function pickUpdateAck(opts: { avoid?: string | null; rand?: () => number } = {}): string {
   const rand = opts.rand ?? Math.random
   const pool = opts.avoid

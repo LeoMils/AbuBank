@@ -202,6 +202,18 @@ function extractTime(text: string): TimeExtract {
     }
   }
 
+  // Hour-only: "בשעה 3", "ב-3", "ב-15" — must NOT be a date marker like "ב-15 לחודש".
+  const hourOnly = text.match(/(?:בשעה\s+(\d{1,2})|ב-(\d{1,2}))(?!\s*לחודש)(?=\s|$|[.,!?])/)
+  if (hourOnly) {
+    const raw = hourOnly[1] ?? hourOnly[2]
+    const h = parseInt(raw!, 10)
+    if (h >= 0 && h < 24) {
+      const { hour, ambiguous } = applyPeriod(h, text)
+      const time = `${String(hour).padStart(2, '0')}:00`
+      return { time, ambiguous, consumed: [hourOnly[0]] }
+    }
+  }
+
   const hourPat = Object.keys(HEBREW_HOUR_WORDS).sort((a, b) => b.length - a.length).join('|')
   const wordRe = new RegExp(`(?:בשעה\\s+)?ב(${hourPat})${NA}([\\s\\u0590-\\u05FF]*)`)
   const wm = text.match(wordRe)
@@ -323,8 +335,23 @@ function buildTitle(text: string, allConsumed: string[]): string {
   return working.trim()
 }
 
+export function cleanTranscript(text: string): string {
+  let s = text.trim()
+  // Strip stutters: repeated consecutive Hebrew word ("מחר מחר" → "מחר")
+  s = s.replace(/(?<![֐-׿])([֐-׿]{2,})(?:\s+\1)+(?![֐-׿])/g, '$1')
+  // Repeated phrase up to 4 words ("בשעה 10:32 בשעה 10:32" → "בשעה 10:32")
+  s = s.replace(/((?:\S+\s+){1,3}\S+)\s+\1/g, '$1')
+  // Normalize "ב - 3" / "ב -3" → "ב-3" so the hour-only matcher catches it
+  s = s.replace(/ב\s*-\s*(\d)/g, 'ב-$1')
+  // Normalize "10 :32" / "10: 32" → "10:32"
+  s = s.replace(/(\d)\s*:\s*(\d)/g, '$1:$2')
+  // Collapse double commas / periods / whitespace
+  s = s.replace(/[,]{2,}/g, ',').replace(/[.]{2,}/g, '.').replace(/\s+/g, ' ').trim()
+  return s
+}
+
 export function parseLocally(text: string, todayISO: string): LocalDraft {
-  const cleaned = text.trim()
+  const cleaned = cleanTranscript(text)
   const dateRes = extractDate(cleaned, todayISO)
   const timeRes = extractTime(cleaned)
   const locRes = extractLocation(cleaned)

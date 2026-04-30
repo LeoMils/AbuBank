@@ -23,7 +23,7 @@ import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
 import { shapeCreateConfirm } from '../AbuAI/responseShaper'
 import { parseCorrection, applyCorrection } from './correctionParser'
-import { pickUpdateAck, CANCEL_RESPONSE, UNRELATED_RESPONSE } from '../AbuAI/conversationLayer'
+import { pickUpdateAck, CANCEL_RESPONSE, UNRELATED_RESPONSE, pickClarifyQuestion } from '../AbuAI/conversationLayer'
 import { speak } from '../../services/voice'
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
@@ -278,6 +278,18 @@ export function AbuCalendar() {
               return
             }
             if (result.kind === 'confirm') {
+              return
+            }
+            if (result.kind === 'clarify') {
+              const q = pickClarifyQuestion({
+                title: voiceParsed.title,
+                date: voiceParsed.date,
+                time: voiceParsed.time,
+                location: voiceParsed.location ?? null,
+              })
+              speak(q).catch(() => {})
+              setVoiceStatus(q)
+              setTimeout(() => setVoiceStatus(''), 4500)
               return
             }
             if (result.kind === 'unrelated') {

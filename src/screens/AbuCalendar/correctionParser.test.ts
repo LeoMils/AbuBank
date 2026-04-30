@@ -89,6 +89,51 @@ describe('parseCorrection — kind classification', () => {
   })
 })
 
+describe('parseCorrection — vague rejection asks for clarification (does not cancel)', () => {
+  it('"זה לא נכון" with no field → clarify', () => {
+    const r = parseCorrection('זה לא נכון', baseDraft, TODAY)
+    expect(r.kind).toBe('clarify')
+    expect(r.updates).toEqual({})
+  })
+
+  it('"לא נכון" alone → clarify', () => {
+    const r = parseCorrection('לא נכון', baseDraft, TODAY)
+    expect(r.kind).toBe('clarify')
+  })
+
+  it('"לא ככה" → clarify (not cancel, not unrelated)', () => {
+    const r = parseCorrection('לא ככה', baseDraft, TODAY)
+    expect(r.kind).toBe('clarify')
+  })
+
+  it('"זה לא נכון, זה בשלוש" still updates time (specific correction wins)', () => {
+    const r = parseCorrection('זה לא נכון, זה בשלוש', baseDraft, TODAY)
+    expect(r.kind).toBe('update')
+    expect(r.updates.time).toBe('15:00')
+  })
+})
+
+describe('parseCorrection — "זה לא A, זה B" pair pattern', () => {
+  it('"זה לא ב-2:14, זה ב-3" → time = 15:00 (PM inherited from PM draft)', () => {
+    const r = parseCorrection('זה לא ב-2:14, זה ב-3', baseDraft, TODAY)
+    expect(r.kind).toBe('update')
+    expect(r.updates.time).toBe('15:00')
+  })
+
+  it('"זה אצל אופיר בכפר סבא" → updates title and location together', () => {
+    const r = parseCorrection('זה אצל אופיר בכפר סבא', baseDraft, TODAY)
+    expect(r.kind).toBe('update')
+    expect(r.updates.title).toBe('אצל אופיר')
+    expect(r.updates.location).toBe('כפר סבא')
+  })
+
+  it('"לא ב-10, ב-12" replaces hour (numeric, no minutes)', () => {
+    const r = parseCorrection('לא ב-10, ב-12', { ...baseDraft, time: '10:00' }, TODAY)
+    expect(r.kind).toBe('update')
+    expect(r.updates.time).toBe('12:00')
+  })
+})
+
 describe('applyCorrection', () => {
   it('merges updates without resetting other fields', () => {
     const merged = applyCorrection(baseDraft, { time: '15:00' })

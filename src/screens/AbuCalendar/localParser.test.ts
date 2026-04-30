@@ -1,7 +1,49 @@
 import { describe, it, expect } from 'vitest'
-import { parseLocally } from './localParser'
+import { parseLocally, cleanTranscript } from './localParser'
 
 const TODAY = '2026-04-30' // Thursday
+
+describe('cleanTranscript', () => {
+  it('strips a stuttered repeated Hebrew word', () => {
+    expect(cleanTranscript('מחר מחר בעשר')).toBe('מחר בעשר')
+  })
+
+  it('strips a repeated multi-word phrase', () => {
+    expect(cleanTranscript('בשעה 10:32 בשעה 10:32 רופא')).toBe('בשעה 10:32 רופא')
+  })
+
+  it('normalizes "ב - 3" → "ב-3"', () => {
+    expect(cleanTranscript('זה ב - 3')).toBe('זה ב-3')
+  })
+
+  it('normalizes "10 :32" → "10:32"', () => {
+    expect(cleanTranscript('בשעה 10 :32')).toBe('בשעה 10:32')
+  })
+
+  it('collapses doubled commas / periods / whitespace', () => {
+    expect(cleanTranscript('רופא,, מחר.. בעשר')).toBe('רופא, מחר. בעשר')
+    expect(cleanTranscript('רופא     מחר')).toBe('רופא מחר')
+  })
+})
+
+describe('parseLocally — hour-only forms ("ב-3", "בשעה 3")', () => {
+  it('"ב-3" → 03:00 ambiguous (no period cue)', () => {
+    const r = parseLocally('היום ב-3 רופא', TODAY)
+    expect(r.time).toBe('03:00')
+    expect(r.ambiguousTime).toBe(true)
+  })
+
+  it('"ב-3 בצהריים" → 15:00 not ambiguous', () => {
+    const r = parseLocally('היום ב-3 בצהריים רופא', TODAY)
+    expect(r.time).toBe('15:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"בשעה 12" → 12:00 not ambiguous', () => {
+    const r = parseLocally('היום בשעה 12 רופא', TODAY)
+    expect(r.time).toBe('12:00')
+  })
+})
 
 describe('parseLocally — time', () => {
   it('preserves exact minutes from numeric "2:34"', () => {
