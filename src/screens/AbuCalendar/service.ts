@@ -115,7 +115,7 @@ function detectFamilyType(text: string): Pick<Appointment, 'type' | 'isRecurring
   return {}
 }
 
-export async function parseAppointmentText(text: string): Promise<{ title: string; date: string | null; time: string | null; emoji: string; confidence: number; personName: string | null; location: string | null; notes: string | null; ambiguousTime: boolean } & Pick<Appointment, 'type' | 'isRecurring'>> {
+export async function parseAppointmentText(text: string): Promise<{ title: string; date: string | null; time: string | null; emoji: string; confidence: number; personName: string | null; location: string | null; notes: string | null; ambiguousTime: boolean; source: 'local' | 'llm' | 'fallback' } & Pick<Appointment, 'type' | 'isRecurring'>> {
   const today = new Date().toISOString().split('T')[0]!
   const { parseLocally } = await import('./localParser')
   const local = parseLocally(text, today)
@@ -186,7 +186,7 @@ confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very 
           const confidence = Math.max(local.confidence, llmConfidence)
           const personName = parsed.personName || null
           const familyType = detectFamilyType(text)
-          return { title, date, time, emoji, confidence, personName, location, notes, ambiguousTime: local.ambiguousTime, ...familyType }
+          return { title, date, time, emoji, confidence, personName, location, notes, ambiguousTime: local.ambiguousTime, source: 'llm', ...familyType }
         }
       }
     } catch {
@@ -204,6 +204,7 @@ confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very 
     location: local.location,
     notes: local.notes,
     ambiguousTime: local.ambiguousTime,
+    source: groqKey ? 'fallback' : 'local',
     ...detectFamilyType(text),
   }
 }

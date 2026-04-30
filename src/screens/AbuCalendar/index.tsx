@@ -51,8 +51,10 @@ export function AbuCalendar() {
   const [showManual, setShowManual] = useState(false)
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [toast, setToast] = useState(false)
-  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; confidence?: number } | null>(null)
+  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; confidence?: number; source?: 'local' | 'llm' | 'fallback' | null } | null>(null)
   const [rawTranscript, setRawTranscript] = useState<string>('')
+  const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing' | 'parsing' | 'parsed' | 'error'>('idle')
+  const [voiceError, setVoiceError] = useState<string | null>(null)
   const [ambiguousDraft, setAmbiguousDraft] = useState<{ title: string; date: string | null; time: string; emoji: string; location: string | null; notes: string | null } | null>(null)
   const [isCorrecting, setIsCorrecting] = useState(false)
   const [correctionAck, setCorrectionAck] = useState<string | null>(null)
@@ -190,12 +192,42 @@ export function AbuCalendar() {
     setUndoAppt(null)
   }
 
+  async function handleReparse(transcript: string) {
+    if (!transcript.trim()) {
+      setVoiceError('אין טקסט לנתח.')
+      setVoiceState('error')
+      return
+    }
+    setVoiceError(null)
+    setVoiceState('parsing')
+    try {
+      const parsed = await parseAppointmentText(transcript)
+      setRawTranscript(transcript)
+      if (parsed.ambiguousTime && parsed.time) {
+        setAmbiguousDraft({
+          title: parsed.title, date: parsed.date, time: parsed.time,
+          emoji: parsed.emoji, location: parsed.location, notes: parsed.notes,
+        })
+        setVoiceParsed(null)
+        setVoiceState('idle')
+        return
+      }
+      setVoiceParsed(parsed)
+      setVoiceState('parsed')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setVoiceError(`שגיאת ניתוח: ${msg}`)
+      setVoiceState('error')
+    }
+  }
+
   async function handleVoiceRecord() {
     if (isRecording) {
       mediaRecorderRef.current?.stop()
       return
     }
     if (voiceStatus) return
+    setVoiceError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mimeType = getSupportedMimeType()
@@ -206,16 +238,25 @@ export function AbuCalendar() {
       mr.onstop = async () => {
         stream.getTracks().forEach(t => t.stop())
         setIsRecording(false)
+        setVoiceState('transcribing')
         const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
         if (blob.size < 1000) {
-          setVoiceStatus('ההקלטה קצרה מדי. נסי שוב.')
-          setTimeout(() => setVoiceStatus(''), 3000)
+          setVoiceError('ההקלטה קצרה מדי. נסי שוב.')
+          setVoiceState('error')
+          setVoiceStatus('')
           return
         }
         setVoiceStatus('מעבדת...')
         try {
           const transcribed = await transcribeAudio(blob)
+          if (!transcribed || !transcribed.trim()) {
+            setVoiceError('לא שמעתי כלום')
+            setVoiceState('error')
+            setVoiceStatus('')
+            return
+          }
           if (!correctingRef.current) setRawTranscript(transcribed)
+          setVoiceState('parsing')
 
           if (correctingRef.current && voiceParsed) {
             const todayISO = getTodayStr()
@@ -291,24 +332,31 @@ export function AbuCalendar() {
             return
           }
           setVoiceParsed(parsed)
-        } catch {
+          setVoiceState('parsed')
+        } catch (e) {
           correctingRef.current = false
           setIsCorrecting(false)
-          setVoiceStatus('לא הצלחתי להבין. נסי שוב לאט יותר')
-          setTimeout(() => setVoiceStatus(''), 3000)
+          const msg = e instanceof Error ? e.message : 'לא הצלחתי להבין. נסי שוב לאט יותר'
+          setVoiceError(msg)
+          setVoiceState('error')
+          setVoiceStatus('')
         }
       }
       mr.start()
       setIsRecording(true)
+      setVoiceState('recording')
       setVoiceStatus('מקשיבה... (לחצי שוב לסיום)')
     } catch (err) {
       const msg = err instanceof DOMException && err.name === 'NotAllowedError'
         ? 'צריך לאשר גישה למיקרופון'
         : err instanceof DOMException && err.name === 'NotFoundError'
         ? 'לא נמצא מיקרופון'
+        : err instanceof Error
+        ? `מיקרופון לא זמין: ${err.message}`
         : 'מיקרופון לא זמין — נסי ב-HTTPS'
-      setVoiceStatus(msg)
-      setTimeout(() => setVoiceStatus(''), 4000)
+      setVoiceError(msg)
+      setVoiceState('error')
+      setVoiceStatus('')
     }
   }
 
@@ -317,6 +365,8 @@ export function AbuCalendar() {
     reload()
     setVoiceParsed(null)
     setVoiceStatus('')
+    setVoiceError(null)
+    setVoiceState('idle')
     setCorrectionAck(null)
     lastAckRef.current = null
     playChime()
@@ -785,6 +835,8 @@ export function AbuCalendar() {
               speak(CANCEL_RESPONSE).catch(() => {})
               setVoiceParsed(null)
               setVoiceStatus('')
+              setVoiceError(null)
+              setVoiceState('idle')
               correctingRef.current = false
               setIsCorrecting(false)
               setCorrectionAck(null)
@@ -794,6 +846,9 @@ export function AbuCalendar() {
             onCorrection={startCorrection}
             isCorrecting={isCorrecting || isRecording}
             rawTranscript={rawTranscript}
+            voiceState={voiceState}
+            voiceError={voiceError}
+            onReparse={handleReparse}
           />
         )
       })()}
