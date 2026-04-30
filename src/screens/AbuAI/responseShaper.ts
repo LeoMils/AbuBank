@@ -116,13 +116,24 @@ function eventPhrase(title: string): string {
   return `יש לך ${t}`
 }
 
-export function shapeCreateConfirm(input: { title: string; date: string | null; time: string | null }): string {
+export function shapeCreateConfirm(input: {
+  title: string
+  date: string | null
+  time: string | null
+  location?: string | null
+  notes?: string | null
+}): string {
   const dateWord = input.date ? dateToHebrew(input.date) : ''
   const timeWord = input.time ? timeToHebrew(input.time) : ''
   const when = [dateWord, timeWord].filter(Boolean).join(' ')
   const event = eventPhrase(input.title)
   const header = when ? `${when} —` : ''
-  return `${header}\n${event}.\n\nלקבוע?`.trim()
+  const lines: string[] = []
+  if (header) lines.push(header)
+  lines.push(`${event}.`)
+  if (input.location) lines.push(`ב${input.location}.`)
+  if (input.notes) lines.push(`רשמתי גם: ${input.notes}.`)
+  return `${lines.join('\n')}\n\nלקבוע?`.trim()
 }
 
 export function shapeNotFound(context?: string): string {

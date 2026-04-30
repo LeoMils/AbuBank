@@ -28,6 +28,11 @@ describe('detectEmoji', () => {
   it('returns calendar emoji for generic text', () => {
     expect(detectEmoji('פגישה בשלוש')).toBe('📅')
   })
+
+  it('returns thread emoji for seamstress / clothes-repair text', () => {
+    expect(detectEmoji('תור אצל התופרת')).toBe('🧵')
+    expect(detectEmoji('חור במכנסיים')).toBe('🧵')
+  })
 })
 
 describe('formatHebrewDate', () => {

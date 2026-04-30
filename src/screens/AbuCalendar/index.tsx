@@ -48,7 +48,8 @@ export function AbuCalendar() {
   const [showManual, setShowManual] = useState(false)
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [toast, setToast] = useState(false)
-  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string } | null>(null)
+  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null } | null>(null)
+  const [ambiguousDraft, setAmbiguousDraft] = useState<{ title: string; date: string | null; time: string; emoji: string; location: string | null; notes: string | null } | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [voiceStatus, setVoiceStatus] = useState('')
   const [abuTimeOpen, setAbuTimeOpen] = useState(false)
@@ -220,6 +221,18 @@ export function AbuCalendar() {
             setTimeout(() => setVoiceStatus(''), 4000)
             return
           }
+          if (parsed.ambiguousTime && parsed.time) {
+            setVoiceStatus('')
+            setAmbiguousDraft({
+              title: parsed.title,
+              date: parsed.date,
+              time: parsed.time,
+              emoji: parsed.emoji,
+              location: parsed.location,
+              notes: parsed.notes,
+            })
+            return
+          }
           setVoiceParsed(parsed)
         } catch {
           setVoiceStatus('לא הצלחתי להבין. נסי שוב לאט יותר')
@@ -240,7 +253,7 @@ export function AbuCalendar() {
     }
   }
 
-  function handleVoiceConfirm(final: { title: string; date: string; time: string; emoji: string }) {
+  function handleVoiceConfirm(final: { title: string; date: string; time: string; emoji: string; location?: string; notes?: string }) {
     addAppointment(final)
     reload()
     setVoiceParsed(null)
@@ -248,6 +261,25 @@ export function AbuCalendar() {
     playChime()
     soundSuccess()
     showToast()
+  }
+
+  function resolveAmbiguity(period: 'pm' | 'am') {
+    if (!ambiguousDraft) return
+    const [hStr, mStr] = ambiguousDraft.time.split(':')
+    let h = parseInt(hStr ?? '0', 10)
+    const m = parseInt(mStr ?? '0', 10)
+    if (period === 'pm' && h >= 1 && h <= 11) h += 12
+    if (period === 'am' && h === 12) h = 0
+    const finalTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+    setVoiceParsed({
+      title: ambiguousDraft.title,
+      date: ambiguousDraft.date,
+      time: finalTime,
+      emoji: ambiguousDraft.emoji,
+      location: ambiguousDraft.location,
+      notes: ambiguousDraft.notes,
+    })
+    setAmbiguousDraft(null)
   }
 
   useEffect(() => {
@@ -677,9 +709,52 @@ export function AbuCalendar() {
             title: voiceParsed.title,
             date: voiceParsed.date,
             time: voiceParsed.time,
+            location: voiceParsed.location ?? null,
+            notes: voiceParsed.notes ?? null,
           })}
         />
       )}
+
+      {ambiguousDraft && (() => {
+        const [hStr] = ambiguousDraft.time.split(':')
+        const h = parseInt(hStr ?? '0', 10)
+        const HOUR_WORDS_HE = ['שתים עשרה','אחת','שתיים','שלוש','ארבע','חמש','שש','שבע','שמונה','תשע','עשר','אחת עשרה']
+        const hourWord = HOUR_WORDS_HE[h % 12] ?? String(h)
+        return (
+          <div onClick={() => setAmbiguousDraft(null)} style={{
+            position: 'fixed', inset: 0, zIndex: 220, background: 'rgba(0,0,0,0.84)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+          } as React.CSSProperties}>
+            <div onClick={e => e.stopPropagation()} dir="rtl" style={{
+              width: '100%', maxWidth: 480,
+              background: 'linear-gradient(160deg, rgba(14,12,10,0.99) 0%, rgba(10,8,6,0.99) 100%)',
+              border: '1px solid rgba(201,168,76,0.32)', borderBottom: 'none',
+              borderRadius: '24px 24px 0 0',
+              padding: 'calc(28px + env(safe-area-inset-bottom, 0px)) 20px 24px',
+              display: 'flex', flexDirection: 'column', gap: 14,
+            }}>
+              <div data-testid="ambiguity-question" style={{ fontSize: 20, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif", textAlign: 'center', lineHeight: 1.5 }}>
+                זה {hourWord} בצהריים או {hourWord} בלילה?
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button type="button" onClick={() => resolveAmbiguity('am')} style={{
+                  flex: 1, padding: '15px', borderRadius: 14,
+                  border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.05)',
+                  color: CREAM, fontSize: 18, fontWeight: 700,
+                  fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 56,
+                }}>בלילה</button>
+                <button type="button" onClick={() => resolveAmbiguity('pm')} style={{
+                  flex: 1, padding: '15px', borderRadius: 14, border: 'none',
+                  background: `linear-gradient(135deg, ${BRIGHT_GOLD} 0%, #e8c76a 50%, ${GOLD} 100%)`,
+                  color: 'rgba(0,0,0,0.85)', fontSize: 18, fontWeight: 700,
+                  fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 56,
+                }}>בצהריים</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* KEYFRAMES */}
       <style>{`

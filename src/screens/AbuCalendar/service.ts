@@ -74,6 +74,7 @@ export function deleteAppointment(id: string): void {
 
 export function detectEmoji(title: string): string {
   const t = title.toLowerCase()
+  if (/תופרת|תפירה|מכנסיים|חולצ|בגד|חוט|תיקון בגדים/.test(t)) return '🧵'
   if (/רופא|doctor|clinic|קופת חולים|בית חולים|hospital|כירורג|surgeon/.test(t)) return '🏥'
   if (/תספורת|מספרה|שיער|hair|coiffure/.test(t)) return '✂️'
   if (/תרופה|תרופות|pill|pills|meds|medication|pharmacy|בית מרקחת/.test(t)) return '💊'
@@ -114,8 +115,10 @@ function detectFamilyType(text: string): Pick<Appointment, 'type' | 'isRecurring
   return {}
 }
 
-export async function parseAppointmentText(text: string): Promise<{ title: string; date: string | null; time: string | null; emoji: string; confidence: number; personName: string | null } & Pick<Appointment, 'type' | 'isRecurring'>> {
+export async function parseAppointmentText(text: string): Promise<{ title: string; date: string | null; time: string | null; emoji: string; confidence: number; personName: string | null; location: string | null; notes: string | null; ambiguousTime: boolean } & Pick<Appointment, 'type' | 'isRecurring'>> {
   const today = new Date().toISOString().split('T')[0]!
+  const { parseLocally } = await import('./localParser')
+  const local = parseLocally(text, today)
   const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
 
   if (groqKey) {
@@ -171,14 +174,19 @@ confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very 
         const match = content.match(/\{[\s\S]*?\}/)
         if (match) {
           const parsed = JSON.parse(match[0]) as { title?: string; date?: string | null; time?: string | null; emoji?: string; location?: string; personName?: string; confidence?: number }
-          const title = parsed.title ?? text
-          const date = (parsed.date && parsed.date !== 'null') ? parsed.date : null
-          const time = (parsed.time && parsed.time !== 'null') ? parsed.time : null
-          const emoji = parsed.emoji ?? detectEmoji(title)
-          const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : (date && time ? 0.9 : date || time ? 0.6 : 0.3)
+          // Local extractions (time/location/notes/ambiguity) take precedence over the LLM,
+          // which is prone to silently changing exact numerics like "2:34" → "8:00".
+          const title = local.title || parsed.title || text
+          const date = local.date ?? ((parsed.date && parsed.date !== 'null') ? parsed.date : null)
+          const time = local.time ?? ((parsed.time && parsed.time !== 'null') ? parsed.time : null)
+          const location = local.location ?? (parsed.location || null)
+          const notes = local.notes
+          const emoji = (local.location || local.notes ? detectEmoji(`${title} ${notes ?? ''}`) : (parsed.emoji ?? detectEmoji(title)))
+          const llmConfidence = typeof parsed.confidence === 'number' ? parsed.confidence : (date && time ? 0.9 : date || time ? 0.6 : 0.3)
+          const confidence = Math.max(local.confidence, llmConfidence)
           const personName = parsed.personName || null
           const familyType = detectFamilyType(text)
-          return { title, date, time, emoji, confidence, personName, ...familyType }
+          return { title, date, time, emoji, confidence, personName, location, notes, ambiguousTime: local.ambiguousTime, ...familyType }
         }
       }
     } catch {
@@ -187,12 +195,15 @@ confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very 
   }
 
   return {
-    title: text,
-    date: null,
-    time: null,
-    emoji: detectEmoji(text),
-    confidence: 0.3,
+    title: local.title || text,
+    date: local.date,
+    time: local.time,
+    emoji: local.emoji,
+    confidence: local.confidence,
     personName: null,
+    location: local.location,
+    notes: local.notes,
+    ambiguousTime: local.ambiguousTime,
     ...detectFamilyType(text),
   }
 }

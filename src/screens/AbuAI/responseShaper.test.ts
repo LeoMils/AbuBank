@@ -160,6 +160,33 @@ describe('shapeCreateConfirm', () => {
   })
 })
 
+describe('shapeCreateConfirm with location and notes', () => {
+  it('includes location line and notes line in the right order', () => {
+    const out = shapeCreateConfirm({
+      title: 'תור אצל התופרת',
+      date: '2026-05-01',
+      time: '14:34',
+      location: 'רחוב קוק 14, הרצליה',
+      notes: 'חור במכנסיים',
+    })
+    expect(out).toContain('תור אצל התופרת')
+    expect(out).toContain('ברחוב קוק 14, הרצליה.')
+    expect(out).toContain('רשמתי גם: חור במכנסיים.')
+    expect(out.trim().endsWith('לקבוע?')).toBe(true)
+    const titleIdx = out.indexOf('תור אצל התופרת')
+    const locIdx = out.indexOf('ברחוב קוק 14')
+    const notesIdx = out.indexOf('רשמתי גם')
+    expect(titleIdx).toBeLessThan(locIdx)
+    expect(locIdx).toBeLessThan(notesIdx)
+  })
+
+  it('omits location and notes when not provided', () => {
+    const out = shapeCreateConfirm({ title: 'רופא', date: '2026-05-01', time: '10:00' })
+    expect(out).not.toContain('רשמתי גם')
+    expect(out).not.toContain('ברחוב')
+  })
+})
+
 describe('shapeCreateConfirm wiring', () => {
   it('is imported by the calendar screen', () => {
     const src = readFileSync(resolve(__dirname, '../AbuCalendar/index.tsx'), 'utf8')

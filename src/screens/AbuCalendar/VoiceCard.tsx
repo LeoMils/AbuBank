@@ -4,9 +4,9 @@ import { GOLD, BRIGHT_GOLD, CREAM, getTodayStr, isDuplicate } from './constants'
 import { speak, stopSpeaking } from '../../services/voice'
 
 interface VoiceCardProps {
-  parsed: { title: string; date: string | null; time: string | null; emoji: string }
+  parsed: { title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null }
   existingAppts: Appointment[]
-  onConfirm: (final: { title: string; date: string; time: string; emoji: string }) => void
+  onConfirm: (final: { title: string; date: string; time: string; emoji: string; location?: string; notes?: string }) => void
   onCancel: () => void
   confirmationText?: string
 }
@@ -15,7 +15,9 @@ export function VoiceCard({ parsed, existingAppts, onConfirm, onCancel, confirma
   const [title, setTitle] = useState(parsed.title)
   const [date, setDate] = useState(parsed.date ?? '')
   const [time, setTime] = useState(parsed.time ?? '')
-  const emoji = detectEmoji(title)
+  const location = parsed.location ?? null
+  const notes = parsed.notes ?? null
+  const emoji = parsed.emoji || detectEmoji(`${title} ${notes ?? ''}`)
   const today = getTodayStr()
 
   const canSave = title.trim() && date && time
@@ -89,6 +91,21 @@ export function VoiceCard({ parsed, existingAppts, onConfirm, onCancel, confirma
           </div>
         </div>
 
+        {(location || notes) && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '4px 2px' }}>
+            {location && (
+              <div data-testid="voice-location" style={{ fontSize: 16, color: 'rgba(255,250,240,0.78)', fontFamily: "'Heebo',sans-serif" }}>
+                📍 {location}
+              </div>
+            )}
+            {notes && (
+              <div data-testid="voice-notes" style={{ fontSize: 16, color: 'rgba(255,250,240,0.78)', fontFamily: "'Heebo',sans-serif" }}>
+                📝 {notes}
+              </div>
+            )}
+          </div>
+        )}
+
         {hasDuplicate && (
           <div style={{ fontSize: 14, color: 'rgba(201,168,76,0.50)', fontFamily: "'Heebo',sans-serif", textAlign: 'center' }}>
             אירוע דומה כבר קיים
@@ -103,7 +120,11 @@ export function VoiceCard({ parsed, existingAppts, onConfirm, onCancel, confirma
             fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 56,
           }}>ביטול</button>
           <button type="button" disabled={!canSave}
-            onClick={() => canSave && onConfirm({ title: title.trim(), date, time, emoji })}
+            onClick={() => canSave && onConfirm({
+              title: title.trim(), date, time, emoji,
+              ...(location ? { location } : {}),
+              ...(notes ? { notes } : {}),
+            })}
             style={{
               flex: 2, padding: '15px', borderRadius: 14, border: 'none',
               background: canSave ? `linear-gradient(135deg, ${BRIGHT_GOLD} 0%, #e8c76a 50%, ${GOLD} 100%)` : 'rgba(255,255,255,0.06)',
