@@ -1,0 +1,48 @@
+{
+  "evals": [
+    {
+      "id": "truth-violation",
+      "category": "critical_bug_fix",
+      "mandatory": true,
+      "rule": "If final report or generated prompt uses forbidden success language without PROVEN/HIGH evidence, STATUS: FAILED with TRUTH_VIOLATION, confidence: HIGH.",
+      "forbiddenSuccessLanguage": [
+        "fixed",
+        "working",
+        "resolved",
+        "improved",
+        "enhanced",
+        "better",
+        "optimized",
+        "successful",
+        "approved",
+        "partially fixed",
+        "good enough",
+        "completed",
+        "solved"
+      ],
+      "allowedWordingWhenNotProven": [
+        "attempted",
+        "modified",
+        "changed",
+        "generated",
+        "proposed",
+        "hypothesis",
+        "requires evidence",
+        "requires manual review",
+        "not proven"
+      ],
+      "scanTargets": [
+        "claude-prompt.md",
+        "final-report.md"
+      ],
+      "mappedTest": null
+    },
+    {
+      "id": "minimum-proof",
+      "category": "critical_bug_fix",
+      "mandatory": true,
+      "rule": "If no core_functionality, main_user_flow, or critical_bug_fix is PROVEN with HIGH confidence, STATUS: FAILED, reason: NO_CORE_PROOF.",
+      "mappedTest": null
+    }
+  ]
+}

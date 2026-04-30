@@ -1,0 +1,19 @@
+{
+  "evals": [
+    {
+      "id": "regression-guard",
+      "category": "critical_bug_fix",
+      "mandatory": true,
+      "rule": "Before approving any change: no unrelated feature behavior changed; no forbidden path was touched; no unrelated flow was modified.",
+      "expected": {
+        "noForbiddenPathTouched": true,
+        "noUnrelatedPathTouched": true,
+        "noUnrelatedBehaviorChange": true
+      },
+      "onForbiddenPath": { "status": "FAILED", "reason": "FORBIDDEN_PATH_TOUCHED" },
+      "onUnrelatedPath": { "status": "MANUAL_REVIEW", "risk": "RISK_UNRELATED_CHANGE" },
+      "onUnrelatedBehaviorChange": { "status": "FAILED", "reason": "REGRESSION_DETECTED" },
+      "mappedTest": null
+    }
+  ]
+}

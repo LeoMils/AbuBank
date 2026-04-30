@@ -1,0 +1,88 @@
+{
+  "evals": [
+    {
+      "id": "calendar-tailor-kook-234",
+      "category": "core_functionality",
+      "mandatory": true,
+      "input": "מחר בשעה 2:34 יש לי תור אצל התופרת ברחוב קוק 14 בהרצליה, יש לי חור במכנסיים",
+      "expected": {
+        "title": "תור אצל התופרת",
+        "time": "14:34",
+        "location": "רחוב קוק 14, הרצליה",
+        "notesIncludes": "חור במכנסיים",
+        "emoji": "🧵"
+      },
+      "mustNot": [
+        "change time to 8:00",
+        "drop location",
+        "drop note",
+        "show fake calendar icon/date",
+        "sound robotic"
+      ],
+      "mappedTest": "src/screens/AbuCalendar/localParser.test.ts"
+    },
+    {
+      "id": "calendar-tailor-kook-1032",
+      "category": "core_functionality",
+      "mandatory": true,
+      "input": "יש לי תור אצל התופרת מחר בשעה 10:32 ברחוב קוק 14 בהרצליה, יש לי חור במכנסיים",
+      "expected": {
+        "title": "תור אצל התופרת",
+        "time": "10:32",
+        "location": "רחוב קוק 14, הרצליה",
+        "notesIncludes": "חור במכנסיים",
+        "emoji": "🧵",
+        "titleNotEqualRawTranscript": true
+      },
+      "mappedTest": "src/screens/AbuCalendar/localParser.test.ts"
+    },
+    {
+      "id": "calendar-grinitzky-floor-3",
+      "category": "core_functionality",
+      "mandatory": true,
+      "input": "ביום ראשון ב-17.34 אני צריך להיות לישר לרמת גן לרחוב גריניצקי 3 קומה 3 לפגוש את דודה של מנקה שלי שהיא רוצה לעשות מסיבת הפתעה ואני עוזרת לה",
+      "expected": {
+        "date": "2026-05-03",
+        "time": "17:34",
+        "titleStartsWith": "לפגוש את דודה",
+        "location": "רחוב גריניצקי 3, קומה 3, רמת גן",
+        "notesIncludes": "מסיבת הפתעה"
+      },
+      "mappedTest": "src/screens/AbuCalendar/localParser.test.ts"
+    },
+    {
+      "id": "calendar-voice-confirm-saves",
+      "category": "main_user_flow",
+      "mandatory": true,
+      "scenario": "After parsing succeeds and the confirmation is spoken, the user says \"כן\" and the appointment is saved.",
+      "expected": {
+        "kind": "confirm",
+        "save": true,
+        "noImplicitSave": true
+      },
+      "mappedTest": "src/screens/AbuCalendar/voiceConfirm.test.ts"
+    },
+    {
+      "id": "calendar-voice-cancel-no-save",
+      "category": "main_user_flow",
+      "mandatory": true,
+      "scenario": "User says \"לא\" alone. Card closes. No appointment is saved.",
+      "expected": {
+        "kind": "cancel",
+        "save": false
+      },
+      "mappedTest": "src/screens/AbuCalendar/voiceConfirm.test.ts"
+    },
+    {
+      "id": "calendar-voice-correction-then-yes-saves-corrected",
+      "category": "main_user_flow",
+      "mandatory": true,
+      "scenario": "User says \"לא, השעה חמש\" → time updates to 17:00 (PM inherited). User then says \"כן\". Saved appointment must contain the corrected time, not the original.",
+      "expected": {
+        "afterCorrectionTime": "17:00",
+        "saveUsesCorrectedDraft": true
+      },
+      "mappedTest": "src/screens/AbuCalendar/voiceConfirm.test.ts"
+    }
+  ]
+}

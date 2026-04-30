@@ -1,0 +1,18 @@
+{
+  "evals": [
+    {
+      "id": "drift-detector",
+      "category": "critical_bug_fix",
+      "mandatory": true,
+      "rule": "If behavior differs from known working flow or no-touch area, STATUS: FAILED with DRIFT_DETECTED. If suspected but not proven, STATUS: MANUAL_REVIEW with POSSIBLE_DRIFT. Without a baseline: UNKNOWN_BASELINE — do not pretend the check ran.",
+      "knownBaselineRequired": false,
+      "examples": [
+        "calendar icon/date changed unexpectedly",
+        "voice flow stopped speaking",
+        "WOW/game behavior changed while working on AbuAI",
+        "helper function exists but is not reachable from actual user flow"
+      ],
+      "mappedTest": null
+    }
+  ]
+}
