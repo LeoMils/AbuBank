@@ -23,6 +23,8 @@ import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
 import { shapeCreateConfirm } from '../AbuAI/responseShaper'
 import { parseCorrection, applyCorrection } from './correctionParser'
+import { pickUpdateAck, CANCEL_RESPONSE, UNRELATED_RESPONSE } from '../AbuAI/conversationLayer'
+import { speak } from '../../services/voice'
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
 import { PageShell } from '../../components/PageShell'
@@ -52,7 +54,9 @@ export function AbuCalendar() {
   const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null } | null>(null)
   const [ambiguousDraft, setAmbiguousDraft] = useState<{ title: string; date: string | null; time: string; emoji: string; location: string | null; notes: string | null } | null>(null)
   const [isCorrecting, setIsCorrecting] = useState(false)
+  const [correctionAck, setCorrectionAck] = useState<string | null>(null)
   const correctingRef = useRef(false)
+  const lastAckRef = useRef<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [voiceStatus, setVoiceStatus] = useState('')
   const [abuTimeOpen, setAbuTimeOpen] = useState(false)
@@ -225,6 +229,8 @@ export function AbuCalendar() {
             setIsCorrecting(false)
             setVoiceStatus('')
             if (result.kind === 'cancel') {
+              speak(CANCEL_RESPONSE).catch(() => {})
+              setCorrectionAck(null)
               setVoiceParsed(null)
               return
             }
@@ -232,10 +238,14 @@ export function AbuCalendar() {
               return
             }
             if (result.kind === 'unrelated') {
-              setVoiceStatus('לא הבנתי את התיקון. נסי שוב.')
-              setTimeout(() => setVoiceStatus(''), 3000)
+              speak(UNRELATED_RESPONSE).catch(() => {})
+              setVoiceStatus(UNRELATED_RESPONSE)
+              setTimeout(() => setVoiceStatus(''), 3500)
               return
             }
+            const ack = pickUpdateAck({ avoid: lastAckRef.current })
+            lastAckRef.current = ack
+            setCorrectionAck(ack)
             const merged = applyCorrection({
               title: voiceParsed.title,
               date: voiceParsed.date,
@@ -305,6 +315,8 @@ export function AbuCalendar() {
     reload()
     setVoiceParsed(null)
     setVoiceStatus('')
+    setCorrectionAck(null)
+    lastAckRef.current = null
     playChime()
     soundSuccess()
     showToast()
@@ -753,23 +765,35 @@ export function AbuCalendar() {
         />
       )}
 
-      {voiceParsed && (
-        <VoiceCard
-          parsed={voiceParsed}
-          existingAppts={appointments}
-          onConfirm={handleVoiceConfirm}
-          onCancel={() => { setVoiceParsed(null); setVoiceStatus(''); correctingRef.current = false; setIsCorrecting(false) }}
-          confirmationText={shapeCreateConfirm({
-            title: voiceParsed.title,
-            date: voiceParsed.date,
-            time: voiceParsed.time,
-            location: voiceParsed.location ?? null,
-            notes: voiceParsed.notes ?? null,
-          })}
-          onCorrection={startCorrection}
-          isCorrecting={isCorrecting || isRecording}
-        />
-      )}
+      {voiceParsed && (() => {
+        const baseConfirm = shapeCreateConfirm({
+          title: voiceParsed.title,
+          date: voiceParsed.date,
+          time: voiceParsed.time,
+          location: voiceParsed.location ?? null,
+          notes: voiceParsed.notes ?? null,
+        })
+        const fullText = correctionAck ? `${correctionAck}\n${baseConfirm}` : baseConfirm
+        return (
+          <VoiceCard
+            parsed={voiceParsed}
+            existingAppts={appointments}
+            onConfirm={handleVoiceConfirm}
+            onCancel={() => {
+              speak(CANCEL_RESPONSE).catch(() => {})
+              setVoiceParsed(null)
+              setVoiceStatus('')
+              correctingRef.current = false
+              setIsCorrecting(false)
+              setCorrectionAck(null)
+              lastAckRef.current = null
+            }}
+            confirmationText={fullText}
+            onCorrection={startCorrection}
+            isCorrecting={isCorrecting || isRecording}
+          />
+        )
+      })()}
 
       {ambiguousDraft && (() => {
         const [hStr] = ambiguousDraft.time.split(':')

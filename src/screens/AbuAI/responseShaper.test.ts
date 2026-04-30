@@ -202,7 +202,8 @@ describe('shapeCreateConfirm wiring', () => {
 
   it('is rendered/spoken via VoiceCard confirmationText prop', () => {
     const calendarSrc = readFileSync(resolve(__dirname, '../AbuCalendar/index.tsx'), 'utf8')
-    expect(calendarSrc).toMatch(/confirmationText=\{shapeCreateConfirm\(/)
+    expect(calendarSrc).toMatch(/shapeCreateConfirm\(\{/)
+    expect(calendarSrc).toMatch(/confirmationText=\{[a-zA-Z_]+\}/)
     const voiceCardSrc = readFileSync(resolve(__dirname, '../AbuCalendar/VoiceCard.tsx'), 'utf8')
     expect(voiceCardSrc).toContain('confirmationText')
     expect(voiceCardSrc).toContain('speak(confirmationText)')
