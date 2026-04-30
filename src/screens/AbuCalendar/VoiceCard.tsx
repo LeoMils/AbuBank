@@ -9,9 +9,11 @@ interface VoiceCardProps {
   onConfirm: (final: { title: string; date: string; time: string; emoji: string; location?: string; notes?: string }) => void
   onCancel: () => void
   confirmationText?: string
+  onCorrection?: () => void
+  isCorrecting?: boolean
 }
 
-export function VoiceCard({ parsed, existingAppts, onConfirm, onCancel, confirmationText }: VoiceCardProps) {
+export function VoiceCard({ parsed, existingAppts, onConfirm, onCancel, confirmationText, onCorrection, isCorrecting }: VoiceCardProps) {
   const [title, setTitle] = useState(parsed.title)
   const [date, setDate] = useState(parsed.date ?? '')
   const [time, setTime] = useState(parsed.time ?? '')
@@ -24,6 +26,10 @@ export function VoiceCard({ parsed, existingAppts, onConfirm, onCancel, confirma
   const isPastDate = date && date < today
 
   const hasDuplicate = canSave && isDuplicate(title, date, time, existingAppts)
+
+  useEffect(() => { setTitle(parsed.title) }, [parsed.title])
+  useEffect(() => { setDate(parsed.date ?? '') }, [parsed.date])
+  useEffect(() => { setTime(parsed.time ?? '') }, [parsed.time])
 
   useEffect(() => {
     if (!confirmationText) return
@@ -110,6 +116,20 @@ export function VoiceCard({ parsed, existingAppts, onConfirm, onCancel, confirma
           <div style={{ fontSize: 14, color: 'rgba(201,168,76,0.50)', fontFamily: "'Heebo',sans-serif", textAlign: 'center' }}>
             אירוע דומה כבר קיים
           </div>
+        )}
+
+        {onCorrection && (
+          <button type="button" onClick={onCorrection} data-testid="voice-correction-mic" style={{
+            padding: '12px 14px', borderRadius: 14,
+            border: '1px solid rgba(201,168,76,0.32)',
+            background: isCorrecting ? 'rgba(239,68,68,0.18)' : 'rgba(201,168,76,0.10)',
+            color: isCorrecting ? '#fca5a5' : CREAM, fontSize: 16, fontWeight: 600,
+            fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 48,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            <span style={{ fontSize: 20 }}>🎤</span>
+            {isCorrecting ? 'מקשיבה לתיקון…' : 'תקני בדיבור'}
+          </button>
         )}
 
         <div style={{ display: 'flex', gap: 12 }}>

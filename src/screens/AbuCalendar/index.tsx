@@ -22,6 +22,7 @@ import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
 import { shapeCreateConfirm } from '../AbuAI/responseShaper'
+import { parseCorrection, applyCorrection } from './correctionParser'
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
 import { PageShell } from '../../components/PageShell'
@@ -50,6 +51,8 @@ export function AbuCalendar() {
   const [toast, setToast] = useState(false)
   const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null } | null>(null)
   const [ambiguousDraft, setAmbiguousDraft] = useState<{ title: string; date: string | null; time: string; emoji: string; location: string | null; notes: string | null } | null>(null)
+  const [isCorrecting, setIsCorrecting] = useState(false)
+  const correctingRef = useRef(false)
   const [isRecording, setIsRecording] = useState(false)
   const [voiceStatus, setVoiceStatus] = useState('')
   const [abuTimeOpen, setAbuTimeOpen] = useState(false)
@@ -207,6 +210,48 @@ export function AbuCalendar() {
         setVoiceStatus('מעבדת...')
         try {
           const transcribed = await transcribeAudio(blob)
+
+          if (correctingRef.current && voiceParsed) {
+            const todayISO = getTodayStr()
+            const result = parseCorrection(transcribed, {
+              title: voiceParsed.title,
+              date: voiceParsed.date,
+              time: voiceParsed.time,
+              emoji: voiceParsed.emoji,
+              location: voiceParsed.location ?? null,
+              notes: voiceParsed.notes ?? null,
+            }, todayISO)
+            correctingRef.current = false
+            setIsCorrecting(false)
+            setVoiceStatus('')
+            if (result.kind === 'cancel') {
+              setVoiceParsed(null)
+              return
+            }
+            if (result.kind === 'confirm') {
+              return
+            }
+            if (result.kind === 'unrelated') {
+              setVoiceStatus('לא הבנתי את התיקון. נסי שוב.')
+              setTimeout(() => setVoiceStatus(''), 3000)
+              return
+            }
+            const merged = applyCorrection({
+              title: voiceParsed.title,
+              date: voiceParsed.date,
+              time: voiceParsed.time,
+              emoji: voiceParsed.emoji,
+              location: voiceParsed.location ?? null,
+              notes: voiceParsed.notes ?? null,
+            }, result.updates)
+            setVoiceParsed({
+              ...merged,
+              location: merged.location ?? null,
+              notes: merged.notes ?? null,
+            })
+            return
+          }
+
           // Check if this is a schedule query ("מה קורה לי?")
           const { isScheduleQuery: isQuery } = await import('./intentParser')
           if (isQuery(transcribed)) {
@@ -235,6 +280,8 @@ export function AbuCalendar() {
           }
           setVoiceParsed(parsed)
         } catch {
+          correctingRef.current = false
+          setIsCorrecting(false)
           setVoiceStatus('לא הצלחתי להבין. נסי שוב לאט יותר')
           setTimeout(() => setVoiceStatus(''), 3000)
         }
@@ -261,6 +308,13 @@ export function AbuCalendar() {
     playChime()
     soundSuccess()
     showToast()
+  }
+
+  function startCorrection() {
+    if (isRecording) return
+    correctingRef.current = true
+    setIsCorrecting(true)
+    void handleVoiceRecord()
   }
 
   function resolveAmbiguity(period: 'pm' | 'am') {
@@ -704,7 +758,7 @@ export function AbuCalendar() {
           parsed={voiceParsed}
           existingAppts={appointments}
           onConfirm={handleVoiceConfirm}
-          onCancel={() => { setVoiceParsed(null); setVoiceStatus('') }}
+          onCancel={() => { setVoiceParsed(null); setVoiceStatus(''); correctingRef.current = false; setIsCorrecting(false) }}
           confirmationText={shapeCreateConfirm({
             title: voiceParsed.title,
             date: voiceParsed.date,
@@ -712,6 +766,8 @@ export function AbuCalendar() {
             location: voiceParsed.location ?? null,
             notes: voiceParsed.notes ?? null,
           })}
+          onCorrection={startCorrection}
+          isCorrecting={isCorrecting || isRecording}
         />
       )}
 
