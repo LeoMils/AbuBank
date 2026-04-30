@@ -191,7 +191,9 @@ function parseHebrewMinuteWords(after: string): { minutes: number; consumed: str
 }
 
 function extractTime(text: string): TimeExtract {
-  const numMatch = text.match(/(?:בשעה\s+)?(\d{1,2}):(\d{2})/)
+  // Accept "HH:MM", "HH.MM", and optional "ב-" / "בשעה" prefix.
+  // ASR commonly returns 17.34 instead of 17:34.
+  const numMatch = text.match(/(?:בשעה\s+|ב-)?(\d{1,2})[:.](\d{2})(?!\d)/)
   if (numMatch) {
     const h = parseInt(numMatch[1]!, 10)
     const m = parseInt(numMatch[2]!, 10)
@@ -199,6 +201,19 @@ function extractTime(text: string): TimeExtract {
       const { hour, ambiguous } = applyPeriod(h, text)
       const time = `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`
       return { time, ambiguous, consumed: [numMatch[0]] }
+    }
+  }
+
+  // Space-separated minutes only when explicitly preceded by "בשעה",
+  // e.g. "בשעה 17 34" — keeps random number pairs from being misread.
+  const spaceMatch = text.match(/בשעה\s+(\d{1,2})\s+(\d{2})(?!\d)/)
+  if (spaceMatch) {
+    const h = parseInt(spaceMatch[1]!, 10)
+    const m = parseInt(spaceMatch[2]!, 10)
+    if (h >= 0 && h < 24 && m >= 0 && m < 60) {
+      const { hour, ambiguous } = applyPeriod(h, text)
+      const time = `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      return { time, ambiguous, consumed: [spaceMatch[0]] }
     }
   }
 
@@ -249,9 +264,12 @@ function extractLocation(text: string): LocationExtract {
   const consumed: string[] = []
   let street: string | null = null
   let city: string | null = null
+  let floor: string | null = null
 
+  // Street: "ברחוב X NN" / "לרחוב X NN" / "אלרחוב X NN" / "בכתובת X NN"
+  // Lookahead lets us stop at "קומה N" (floor follows the street) or another preposition.
   const streetRe = new RegExp(
-    `${NB}ב(רחוב|כתובת)\\s+([\\u0590-\\u05FF][\\u0590-\\u05FF"'\\s־-]*?)(?:\\s+(\\d{1,4}))?(?=\\s+ב[\\u0590-\\u05FF]|\\s*[,.]|$)`,
+    `${NB}(?:ב|ל|אל)(רחוב|כתובת)\\s+([\\u0590-\\u05FF][\\u0590-\\u05FF"'\\s־-]*?)(?:\\s+(\\d{1,4}))?(?=\\s+(?:ב|ל|אל)?[\\u0590-\\u05FF]|\\s+קומה|\\s*[,.]|$)`,
   )
   const sm = text.match(streetRe)
   if (sm) {
@@ -261,19 +279,30 @@ function extractLocation(text: string): LocationExtract {
     consumed.push(sm[0]!)
   }
 
+  // Floor: "קומה N"
+  const floorRe = /קומה\s+(\d{1,3})/
+  const fm = text.match(floorRe)
+  if (fm) {
+    floor = fm[1]!
+    consumed.push(fm[0])
+  }
+
   const sortedCities = [...KNOWN_CITIES].sort((a, b) => b.length - a.length)
   for (const c of sortedCities) {
-    const re = new RegExp(`${NB}ב${escapeRe(c)}${NA}`)
-    if (re.test(text)) {
+    const re = new RegExp(`${NB}(?:ב|ל|אל)${escapeRe(c)}${NA}`)
+    const cm = text.match(re)
+    if (cm) {
       city = c
-      consumed.push(`ב${c}`)
+      consumed.push(cm[0])
       break
     }
   }
 
-  if (street && city) return { location: `${street}, ${city}`, consumed }
-  if (street) return { location: street, consumed }
-  if (city) return { location: city, consumed }
+  const parts: string[] = []
+  if (street) parts.push(street)
+  if (floor) parts.push(`קומה ${floor}`)
+  if (city) parts.push(city)
+  if (parts.length > 0) return { location: parts.join(', '), consumed }
   return { location: null, consumed: [] }
 }
 
@@ -292,6 +321,13 @@ function extractNotes(text: string, alreadyConsumed: string[]): NotesExtract {
       const note = m[1].trim().replace(/[.!?]+$/, '')
       if (note) return { notes: note, consumed: [m[0]] }
     }
+  }
+
+  // Relative clause "ש<pronoun> ..." — common Hebrew way to add context about a person.
+  const relMatch = working.match(/(?:^|[\s,])ש(היא|הוא|הם|הן|אני|אנחנו|זה|זאת)\s+(.+?)\s*[.!?]?\s*$/)
+  if (relMatch && relMatch[1] && relMatch[2]) {
+    const note = `${relMatch[1]} ${relMatch[2]}`.trim()
+    if (note.length >= 3) return { notes: note, consumed: [`ש${relMatch[1]} ${relMatch[2]}`] }
   }
 
   const positions: number[] = []
@@ -321,7 +357,11 @@ function extractNotes(text: string, alreadyConsumed: string[]): NotesExtract {
 }
 
 const TITLE_LEAD_STRIPS = [
-  /^יש לי\s+/, /^אני צריכה\s+/, /^אני צריך\s+/,
+  /^יש לי\s+/,
+  /^אני\s+(?:צריך|צריכה)\s+/,
+  /^להיות\s+/,
+  /^ל?ישר\s+/,
+  /^בישר\s+/,
   /^תקבעי לי\s+/, /^תקבעי\s+/, /^קבעי\s+/,
   /^תזכירי לי\s+/, /^תזכרי\s+/,
 ]
@@ -331,7 +371,13 @@ function buildTitle(text: string, allConsumed: string[]): string {
   const sorted = [...allConsumed].filter(Boolean).sort((a, b) => b.length - a.length)
   for (const c of sorted) working = working.split(c).join(' ')
   working = working.replace(/[,.]+/g, ' ').replace(/\s+/g, ' ').trim()
-  for (const re of TITLE_LEAD_STRIPS) working = working.replace(re, '')
+  // Strip leading filler words; loop because patterns may stack
+  // ("אני צריך" → "להיות" → "ישר" → "לפגוש את …").
+  let prev: string
+  do {
+    prev = working
+    for (const re of TITLE_LEAD_STRIPS) working = working.replace(re, '')
+  } while (working !== prev && working.length > 0)
   return working.trim()
 }
 

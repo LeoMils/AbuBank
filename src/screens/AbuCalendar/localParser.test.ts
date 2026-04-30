@@ -179,6 +179,42 @@ describe('parseLocally — full noisy bug sentence', () => {
   })
 })
 
+describe('parseLocally — runtime regression: "ביום ראשון ב-17.34 …" full sentence', () => {
+  const sentence = 'ביום ראשון ב-17.34 אני צריך להיות לישר לרמת גן לרחוב גריניצקי 3 קומה 3 לפגוש את דודה של מנקה שלי שהיא רוצה לעשות מסיבת הפתעה ואני עוזרת לה'
+  const r = parseLocally(sentence, '2026-04-30')
+
+  it('preserves exact minutes from "17.34" (period instead of colon)', () => {
+    expect(r.time).toBe('17:34')
+  })
+
+  it('does not round to 17:00 when minutes are present', () => {
+    expect(r.time).not.toBe('17:00')
+  })
+
+  it('date is the next Sunday (2026-05-03)', () => {
+    expect(r.date).toBe('2026-05-03')
+  })
+
+  it('builds location as "street, floor, city"', () => {
+    expect(r.location).toBe('רחוב גריניצקי 3, קומה 3, רמת גן')
+  })
+
+  it('extracts the action verb as the title (לפגוש את …) and strips "אני צריך להיות לישר"', () => {
+    expect(r.title.startsWith('לפגוש את דודה')).toBe(true)
+    expect(r.title).not.toContain('אני צריך')
+    expect(r.title).not.toContain('להיות')
+    expect(r.title).not.toContain('לישר')
+    expect(r.title).not.toContain('ביום ראשון')
+    expect(r.title).not.toContain('17')
+    expect(r.title).not.toContain('רמת גן')
+    expect(r.title).not.toContain('קומה')
+  })
+
+  it('extracts the relative clause as notes', () => {
+    expect(r.notes).toBe('היא רוצה לעשות מסיבת הפתעה ואני עוזרת לה')
+  })
+})
+
 describe('parseLocally — runtime regression sentence (10:32 word order)', () => {
   const sentence = 'יש לי תור אצל התופרת מחר בשעה 10:32 ברחוב קוק 14 בהרצליה, יש לי חור במכנסיים'
 

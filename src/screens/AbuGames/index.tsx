@@ -18,7 +18,7 @@ interface Game {
   labelHe: string
   url: string
   accent: string
-  category: 'solitaire' | 'mahjong'
+  category: 'solitaire' | 'mahjong' | 'word'
   emoji: string
 }
 
@@ -39,14 +39,15 @@ const GAMES: Game[] = [
   { id: 'mahjong-3d',      label: 'Dimensiones',  labelHe: 'תלת-מימד',       accent: '#8b5cf6', category: 'mahjong',   emoji: '🧊', url: 'https://www.arkadium.com/games/mahjongg-dimensions/' },
 ]
 
+// WOW = Words of Wonders — the word-building game (letters → words → levels).
 const WOW_GAME: Game = {
-  id: 'wow-solitaire',
-  label: 'WOW Solitaire',
-  labelHe: 'WOW סוליטר',
-  url: 'https://worldofsolitaire.com/',
+  id: 'wow',
+  label: 'Words of Wonders',
+  labelHe: 'מילים של פלא',
+  url: 'https://www.crazygames.com/game/words-of-wonders',
   accent: '#C9A84C',
-  category: 'solitaire',
-  emoji: '👑',
+  category: 'word',
+  emoji: '🔤',
 }
 
 const SOLITAIRE_GAMES = GAMES.filter(g => g.category === 'solitaire')
@@ -284,7 +285,7 @@ export function AbuGames() {
 
       <InfoButton
         title="Abu Games"
-        lines={['Words of Wonders — המשחק הראשי!', 'משחקי קלפים וסוליטר — 14 משחקים נוספים.', "סוליטר, עכביש, מהג'ונג ועוד."]}
+        lines={['Words of Wonders — המשחק הראשי!', 'בונים מילים מאותיות ומתקדמים בשלבים.', "ובנוסף: סוליטר, עכביש, מהג'ונג ועוד."]}
         howTo={['לחצי על WOW לשחק במשחק המילים', 'או בחרי משחק קלפים מהרשימה', 'המשחק נפתח בדפדפן', 'לחצי חזרה לחזור לתפריט']}
         position="top-left"
       />
