@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "check": "tsc --noEmit && vitest run"
+    "check": "tsc --noEmit && vitest run",
+    "workbench": "node scripts/ai-workbench.js"
   },
   "dependencies": {
     "@google/stitch-sdk": "^0.0.3",
