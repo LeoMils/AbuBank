@@ -73,6 +73,11 @@ export function ApptCard({ appt, onDelete, onEdit, timeState = 'upcoming' }: {
           fontSize: 16, fontWeight: timeWeight, color: timeColor,
           fontFamily: "'DM Sans',sans-serif",
         }}>{appt.time}</div>
+        {appt.location && (
+          <div data-testid="appt-location" style={{ fontSize: 15, color: notesColor, fontFamily: "'Heebo',sans-serif", marginTop: 4 }}>
+            📍 {appt.location}
+          </div>
+        )}
         {appt.notes && (
           <div style={{ fontSize: 16, color: notesColor, fontFamily: "'Heebo',sans-serif", marginTop: 4 }}>{appt.notes}</div>
         )}
