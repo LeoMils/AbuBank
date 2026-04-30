@@ -73,6 +73,58 @@ export function shapeCalendarAnswer(events: Appointment[], scope: 'today' | 'tom
   return answer.trim()
 }
 
+const HOUR_WORDS: Record<number, string> = {
+  1: 'אחת', 2: 'שתיים', 3: 'שלוש', 4: 'ארבע', 5: 'חמש', 6: 'שש',
+  7: 'שבע', 8: 'שמונה', 9: 'תשע', 10: 'עשר', 11: 'אחת עשרה', 12: 'שתים עשרה',
+}
+
+const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
+function hourWord(h: number): string {
+  const h12 = ((h + 11) % 12) + 1
+  return HOUR_WORDS[h12] ?? String(h12)
+}
+
+function timeToHebrew(time: string): string {
+  const [hStr, mStr] = time.split(':')
+  const h = Number(hStr)
+  const m = Number(mStr)
+  if (Number.isNaN(h) || Number.isNaN(m)) return ''
+  const hw = hourWord(h)
+  if (m === 0) return `ב${hw}`
+  if (m === 15) return `ב${hw} ורבע`
+  if (m === 30) return `ב${hw} וחצי`
+  if (m === 45) return `ברבע ל${hourWord(h + 1)}`
+  return `ב${hw} ו-${String(m).padStart(2, '0')}`
+}
+
+function dateToHebrew(dateStr: string): string {
+  const d = new Date(dateStr)
+  if (Number.isNaN(d.getTime())) return ''
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const diff = Math.round((target.getTime() - today.getTime()) / 86400000)
+  if (diff === 0) return 'היום'
+  if (diff === 1) return 'מחר'
+  return `ביום ${DAY_NAMES[d.getDay()] ?? ''}`
+}
+
+function eventPhrase(title: string): string {
+  const t = title.trim()
+  if (/^(אצל|עם|ב[א-ת])/.test(t)) return `את ${t}`
+  return `יש לך ${t}`
+}
+
+export function shapeCreateConfirm(input: { title: string; date: string | null; time: string | null }): string {
+  const dateWord = input.date ? dateToHebrew(input.date) : ''
+  const timeWord = input.time ? timeToHebrew(input.time) : ''
+  const when = [dateWord, timeWord].filter(Boolean).join(' ')
+  const event = eventPhrase(input.title)
+  const header = when ? `${when} —` : ''
+  return `${header}\n${event}.\n\nלקבוע?`.trim()
+}
+
 export function shapeNotFound(context?: string): string {
   if (context) return `לא מצאתי מידע על ${context}.`
   return 'לא מצאתי מידע על זה.'
