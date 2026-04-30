@@ -153,6 +153,12 @@ describe('shapeCreateConfirm', () => {
     expect(shapeCreateConfirm({ title: 'רופא', date: '2026-05-01', time: '19:45' })).toContain('ברבע לשמונה')
   })
 
+  it('renders arbitrary minutes as Hebrew words (not "ו-34")', () => {
+    const out = shapeCreateConfirm({ title: 'תור אצל התופרת', date: '2026-05-01', time: '14:34' })
+    expect(out).toContain('בשתיים שלושים וארבע')
+    expect(out).not.toContain('ו-34')
+  })
+
   it('uses "את" for אצל/עם titles, "יש לך" otherwise', () => {
     expect(shapeCreateConfirm({ title: 'אצל אופיר', date: '2026-05-06', time: '17:00' })).toContain('את אצל אופיר.')
     expect(shapeCreateConfirm({ title: 'עם דליה', date: '2026-05-06', time: '17:00' })).toContain('את עם דליה.')

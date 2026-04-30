@@ -85,6 +85,24 @@ function hourWord(h: number): string {
   return HOUR_WORDS[h12] ?? String(h12)
 }
 
+const UNIT_WORDS: Record<number, string> = {
+  1: 'אחת', 2: 'שתיים', 3: 'שלוש', 4: 'ארבע', 5: 'חמש',
+  6: 'שש', 7: 'שבע', 8: 'שמונה', 9: 'תשע',
+}
+
+const TENS_WORDS: Record<number, string> = {
+  10: 'עשר', 20: 'עשרים', 30: 'שלושים', 40: 'ארבעים', 50: 'חמישים',
+}
+
+function minutesToHebrew(m: number): string {
+  if (m < 10) return UNIT_WORDS[m] ?? String(m)
+  if (m === 10) return 'עשר'
+  if (m % 10 === 0) return TENS_WORDS[m] ?? String(m)
+  const tens = Math.floor(m / 10) * 10
+  const units = m % 10
+  return `${TENS_WORDS[tens] ?? tens} ו${UNIT_WORDS[units] ?? units}`
+}
+
 function timeToHebrew(time: string): string {
   const [hStr, mStr] = time.split(':')
   const h = Number(hStr)
@@ -95,7 +113,7 @@ function timeToHebrew(time: string): string {
   if (m === 15) return `ב${hw} ורבע`
   if (m === 30) return `ב${hw} וחצי`
   if (m === 45) return `ברבע ל${hourWord(h + 1)}`
-  return `ב${hw} ו-${String(m).padStart(2, '0')}`
+  return `ב${hw} ${minutesToHebrew(m)}`
 }
 
 function dateToHebrew(dateStr: string): string {
