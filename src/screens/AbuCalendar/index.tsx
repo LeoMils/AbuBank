@@ -51,7 +51,8 @@ export function AbuCalendar() {
   const [showManual, setShowManual] = useState(false)
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [toast, setToast] = useState(false)
-  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null } | null>(null)
+  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; confidence?: number } | null>(null)
+  const [rawTranscript, setRawTranscript] = useState<string>('')
   const [ambiguousDraft, setAmbiguousDraft] = useState<{ title: string; date: string | null; time: string; emoji: string; location: string | null; notes: string | null } | null>(null)
   const [isCorrecting, setIsCorrecting] = useState(false)
   const [correctionAck, setCorrectionAck] = useState<string | null>(null)
@@ -214,6 +215,7 @@ export function AbuCalendar() {
         setVoiceStatus('מעבדת...')
         try {
           const transcribed = await transcribeAudio(blob)
+          if (!correctingRef.current) setRawTranscript(transcribed)
 
           if (correctingRef.current && voiceParsed) {
             const todayISO = getTodayStr()
@@ -791,6 +793,7 @@ export function AbuCalendar() {
             confirmationText={fullText}
             onCorrection={startCorrection}
             isCorrecting={isCorrecting || isRecording}
+            rawTranscript={rawTranscript}
           />
         )
       })()}

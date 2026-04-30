@@ -150,7 +150,7 @@ export function shapeCreateConfirm(input: {
   if (header) lines.push(header)
   lines.push(`${event}.`)
   if (input.location) lines.push(`ב${input.location}.`)
-  if (input.notes) lines.push(`רשמתי גם: ${input.notes}.`)
+  if (input.notes) lines.push(`הערה: ${input.notes}.`)
   return `${lines.join('\n')}\n\nלקבוע?`.trim()
 }
 

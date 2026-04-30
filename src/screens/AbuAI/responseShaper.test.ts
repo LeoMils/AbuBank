@@ -177,19 +177,34 @@ describe('shapeCreateConfirm with location and notes', () => {
     })
     expect(out).toContain('תור אצל התופרת')
     expect(out).toContain('ברחוב קוק 14, הרצליה.')
-    expect(out).toContain('רשמתי גם: חור במכנסיים.')
+    expect(out).toContain('הערה: חור במכנסיים.')
     expect(out.trim().endsWith('לקבוע?')).toBe(true)
     const titleIdx = out.indexOf('תור אצל התופרת')
     const locIdx = out.indexOf('ברחוב קוק 14')
-    const notesIdx = out.indexOf('רשמתי גם')
+    const notesIdx = out.indexOf('הערה')
     expect(titleIdx).toBeLessThan(locIdx)
     expect(locIdx).toBeLessThan(notesIdx)
   })
 
   it('omits location and notes when not provided', () => {
     const out = shapeCreateConfirm({ title: 'רופא', date: '2026-05-01', time: '10:00' })
-    expect(out).not.toContain('רשמתי גם')
+    expect(out).not.toContain('הערה')
     expect(out).not.toContain('ברחוב')
+  })
+
+  it('matches the runtime-spec confirmation for 10:32 + תופרת + קוק 14', () => {
+    const out = shapeCreateConfirm({
+      title: 'תור אצל התופרת',
+      date: '2026-05-01',
+      time: '10:32',
+      location: 'רחוב קוק 14, הרצליה',
+      notes: 'חור במכנסיים',
+    })
+    expect(out).toContain('בעשר שלושים ושתיים')
+    expect(out).toContain('תור אצל התופרת.')
+    expect(out).toContain('ברחוב קוק 14, הרצליה.')
+    expect(out).toContain('הערה: חור במכנסיים.')
+    expect(out).not.toContain('רשמתי גם')
   })
 })
 

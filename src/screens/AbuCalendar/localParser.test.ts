@@ -137,6 +137,50 @@ describe('parseLocally — full noisy bug sentence', () => {
   })
 })
 
+describe('parseLocally — runtime regression sentence (10:32 word order)', () => {
+  const sentence = 'יש לי תור אצל התופרת מחר בשעה 10:32 ברחוב קוק 14 בהרצליה, יש לי חור במכנסיים'
+
+  it('does not put the whole sentence into the title', () => {
+    const r = parseLocally(sentence, TODAY)
+    expect(r.title).not.toBe(sentence)
+    expect(r.title).not.toContain('ברחוב')
+    expect(r.title).not.toContain('מחר')
+    expect(r.title).not.toContain('10:32')
+    expect(r.title).not.toContain('יש לי')
+  })
+
+  it('extracts title exactly "תור אצל התופרת"', () => {
+    const r = parseLocally(sentence, TODAY)
+    expect(r.title).toBe('תור אצל התופרת')
+  })
+
+  it('preserves numeric time 10:32 unrounded', () => {
+    const r = parseLocally(sentence, TODAY)
+    expect(r.time).toBe('10:32')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('date is tomorrow', () => {
+    const r = parseLocally(sentence, TODAY)
+    expect(r.date).toBe('2026-05-01')
+  })
+
+  it('extracts location "רחוב קוק 14, הרצליה"', () => {
+    const r = parseLocally(sentence, TODAY)
+    expect(r.location).toBe('רחוב קוק 14, הרצליה')
+  })
+
+  it('extracts notes "חור במכנסיים"', () => {
+    const r = parseLocally(sentence, TODAY)
+    expect(r.notes).toBe('חור במכנסיים')
+  })
+
+  it('emoji is 🧵', () => {
+    const r = parseLocally(sentence, TODAY)
+    expect(r.emoji).toBe('🧵')
+  })
+})
+
 describe('parseLocally — date', () => {
   it('"מחר" → tomorrow', () => {
     const r = parseLocally('מחר בעשר רופא', TODAY)
