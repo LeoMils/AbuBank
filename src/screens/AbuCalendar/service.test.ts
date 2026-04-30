@@ -25,8 +25,8 @@ describe('detectEmoji', () => {
     expect(detectEmoji('יום הולדת של מור')).toBe('🎂')
   })
 
-  it('returns calendar emoji for generic text', () => {
-    expect(detectEmoji('פגישה בשלוש')).toBe('📅')
+  it('returns pin emoji for generic text (not calendar 📅 — Apple renders that as JUL 17)', () => {
+    expect(detectEmoji('פגישה בשלוש')).toBe('📌')
   })
 
   it('returns thread emoji for seamstress / clothes-repair text', () => {

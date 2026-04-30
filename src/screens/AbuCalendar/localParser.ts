@@ -244,6 +244,18 @@ function extractTime(text: string): TimeExtract {
     }
   }
 
+  // "השעה חמש" / "השעה <hour-word>" — accept hour word without requiring minutes.
+  const labelRe = new RegExp(`השעה\\s+(${hourPat})${NA}`)
+  const lm = text.match(labelRe)
+  if (lm) {
+    const h = HEBREW_HOUR_WORDS[lm[1]!]
+    if (typeof h === 'number') {
+      const { hour, ambiguous } = applyPeriod(h, text)
+      const time = `${String(hour).padStart(2, '0')}:00`
+      return { time, ambiguous, consumed: [lm[0]] }
+    }
+  }
+
   const bareRe = new RegExp(`${NB}(${hourPat})${NA}([\\s\\u0590-\\u05FF]*)`)
   const bm = text.match(bareRe)
   if (bm) {

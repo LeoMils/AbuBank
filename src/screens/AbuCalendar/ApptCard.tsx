@@ -61,7 +61,7 @@ export function ApptCard({ appt, onDelete, onEdit, timeState = 'upcoming' }: {
         }}>עכשיו</div>
       )}
 
-      <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0, filter: isPast ? 'grayscale(0.6)' : 'none' }}>{appt.emoji}</span>
+      <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0, filter: isPast ? 'grayscale(0.6)' : 'none' }}>{appt.emoji === '📅' ? '📌' : appt.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 16, fontWeight: 600, color: textColor,

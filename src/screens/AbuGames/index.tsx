@@ -42,8 +42,8 @@ const GAMES: Game[] = [
 // WOW = Words of Wonders — the word-building game (letters → words → levels).
 const WOW_GAME: Game = {
   id: 'wow',
-  label: 'Words of Wonders',
-  labelHe: 'מילים של פלא',
+  label: 'Abu WOW',
+  labelHe: 'אבו וואו',
   url: 'https://www.crazygames.com/game/words-of-wonders',
   accent: '#C9A84C',
   category: 'word',

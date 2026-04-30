@@ -14,10 +14,11 @@ describe('AbuGames WOW — solitaire regression fix', () => {
     expect(SOURCE).not.toMatch(/labelHe:\s*'WOW סוליטר'/)
   })
 
-  it('WOW points to Words of Wonders (the word-building game)', () => {
+  it('WOW points to Words of Wonders (the word-building game) and is shown as "אבו וואו"', () => {
     expect(SOURCE).toContain('words-of-wonders')
-    expect(SOURCE).toContain("label: 'Words of Wonders'")
-    expect(SOURCE).toContain("labelHe: 'מילים של פלא'")
+    expect(SOURCE).toContain("labelHe: 'אבו וואו'")
+    expect(SOURCE).not.toContain("labelHe: 'מילים של פלא'")
+    expect(SOURCE).not.toContain("labelHe: 'WOW סוליטר'")
   })
 
   it('WOW is in the word category, not solitaire/mahjong', () => {

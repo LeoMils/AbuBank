@@ -83,7 +83,7 @@ export function detectEmoji(title: string): string {
   if (/אוכל|מסעדה|food|dinner|lunch|breakfast|ארוחה/.test(t)) return '🍽️'
   if (/טיסה|נסיעה|travel|trip|flight|airplane|חופשה|vacation/.test(t)) return '✈️'
   if (/משפחה|family|ילדים|נכדים|בן|בת|אחות|אח/.test(t)) return '👨‍👩‍👧'
-  return '📅'
+  return '📌'
 }
 
 export function playChime(): void {

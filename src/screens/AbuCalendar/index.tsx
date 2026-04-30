@@ -278,6 +278,16 @@ export function AbuCalendar() {
               return
             }
             if (result.kind === 'confirm') {
+              if (voiceParsed.title && voiceParsed.date && voiceParsed.time) {
+                handleVoiceConfirm({
+                  title: voiceParsed.title,
+                  date: voiceParsed.date,
+                  time: voiceParsed.time,
+                  emoji: voiceParsed.emoji,
+                  ...(voiceParsed.location ? { location: voiceParsed.location } : {}),
+                  ...(voiceParsed.notes ? { notes: voiceParsed.notes } : {}),
+                })
+              }
               return
             }
             if (result.kind === 'clarify') {
@@ -485,7 +495,7 @@ export function AbuCalendar() {
               '🩷 נקודה ורודה = יום הולדת משפחתי',
               '⬜ מסגרת זהב חזקה = היום',
               '⬜ מסגרת זהב עדינה = יום שנבחר',
-              '📅 תאים עמומים = ימים שעברו',
+              '◾ תאים עמומים = ימים שעברו',
               '🩵 פס טורקיז = אירוע עכשיו (ברשימת האירועים)',
               '🔔 התראה קולית לפני כל אירוע',
             ]}
@@ -735,7 +745,7 @@ export function AbuCalendar() {
         )}
 
         {selectedAppts.length === 0 && !getHebrewHoliday(selectedDay) ? (
-          <EmptyState icon="📅" message="יום פנוי ✨" detail="לחצי למטה להוסיף אירוע" />
+          <EmptyState icon="✨" message="יום פנוי" detail="לחצי למטה להוסיף אירוע" />
         ) : (
           selectedAppts.map(a => {
             const timeState = getTimeState(a.date, a.time, today, Date.now())
@@ -861,6 +871,13 @@ export function AbuCalendar() {
             voiceState={voiceState}
             voiceError={voiceError}
             onReparse={handleReparse}
+            onSpokenDone={() => {
+              // Auto-listen for spoken confirmation only when the card has just
+              // been (re)spoken AND we're not already recording or in error.
+              if (!isRecording && !correctingRef.current && voiceState !== 'error') {
+                startCorrection()
+              }
+            }}
           />
         )
       })()}

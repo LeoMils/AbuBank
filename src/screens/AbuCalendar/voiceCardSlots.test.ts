@@ -118,7 +118,7 @@ describe('VoiceCard — error surfaces', () => {
 
   it('renders ttsError block when speak() fails', () => {
     expect(SOURCE).toContain('data-testid="tts-error"')
-    expect(SOURCE).toMatch(/speak\(confirmationText\)\.catch/)
+    expect(SOURCE).toMatch(/speak\(confirmationText\)[\s\S]*\.catch/)
   })
 
   it('parent surfaces "לא שמעתי כלום" when transcription is empty', () => {

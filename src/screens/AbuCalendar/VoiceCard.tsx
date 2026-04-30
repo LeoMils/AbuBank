@@ -55,6 +55,7 @@ interface VoiceCardProps {
   voiceState?: VoiceState
   voiceError?: string | null
   onReparse?: (transcript: string) => void
+  onSpokenDone?: () => void
 }
 
 const FIELD_LABEL: React.CSSProperties = {
@@ -78,6 +79,7 @@ export function VoiceCard({
   parsed, existingAppts, onConfirm, onCancel, confirmationText,
   onCorrection, isCorrecting, rawTranscript,
   voiceState = 'parsed', voiceError = null, onReparse,
+  onSpokenDone,
 }: VoiceCardProps) {
   const today = getTodayStr()
   const [transcriptDraft, setTranscriptDraft] = useState(rawTranscript ?? '')
@@ -101,12 +103,16 @@ export function VoiceCard({
     if (confirmationText === lastSpokenRef.current) return
     lastSpokenRef.current = confirmationText
     setTtsError(null)
-    speak(confirmationText).catch((e: unknown) => {
-      const msg = e instanceof Error ? e.message : String(e)
-      setTtsError(`קול לא זמין: ${msg}`)
-    })
-    return () => { stopSpeaking() }
-  }, [confirmationText])
+    let cancelled = false
+    speak(confirmationText)
+      .then(() => { if (!cancelled) onSpokenDone?.() })
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e)
+        setTtsError(`קול לא זמין: ${msg}`)
+        // TTS failed — do NOT auto-listen; the user uses the visible button.
+      })
+    return () => { cancelled = true; stopSpeaking() }
+  }, [confirmationText, onSpokenDone])
 
   const emoji = parsed.emoji && parsed.emoji !== '📅'
     ? parsed.emoji
