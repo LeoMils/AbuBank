@@ -7,18 +7,24 @@
       "input": "מחר בשעה 2:34 יש לי תור אצל התופרת ברחוב קוק 14 בהרצליה, יש לי חור במכנסיים",
       "expected": {
         "title": "תור אצל התופרת",
-        "time": "14:34",
+        "time": "02:34",
+        "ambiguousTime": true,
+        "requiresClarification": true,
+        "clarificationContains": "בצהריים",
         "location": "רחוב קוק 14, הרצליה",
         "notesIncludes": "חור במכנסיים",
         "emoji": "🧵"
       },
       "mustNot": [
-        "change time to 8:00",
+        "assume 14:34 without clarification",
+        "save the appointment before clarification is answered",
+        "round time to 8:00",
         "drop location",
         "drop note",
         "show fake calendar icon/date",
         "sound robotic"
       ],
+      "rule": "When a 1–6 hour is spoken with no morning/afternoon/evening cue, the parser must preserve the raw time as 02:34 with ambiguousTime: true and the flow must ask for clarification ('זה שתיים שלושים וארבע בצהריים או בלילה?') BEFORE saving. PM is only assumed after the user explicitly answers בצהריים/אחרי הצהריים.",
       "mappedTest": "src/screens/AbuCalendar/localParser.test.ts"
     },
     {
