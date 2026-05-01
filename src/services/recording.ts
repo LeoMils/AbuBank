@@ -45,20 +45,6 @@ export function assembleBlob(chunks: Blob[], recorder: MediaRecorder): Blob {
   return new Blob(chunks, { type: actualType })
 }
 
-export function cleanupStream(refs: RecordingRefs): void {
-  if (refs.levelInterval) { clearInterval(refs.levelInterval); refs.levelInterval = null }
-  refs.silenceDetector?.stop()
-  refs.silenceDetector = null
-  if (refs.stream) {
-    try { refs.stream.getTracks().forEach(t => t.stop()) } catch {}
-    refs.stream = null
-  }
-  if (refs.recorder?.state === 'recording') {
-    try { refs.recorder.stop() } catch {}
-  }
-  refs.recorder = null
-}
-
 export interface IndividualRefs {
   recorderRef: { current: MediaRecorder | null }
   streamRef: { current: MediaStream | null }
