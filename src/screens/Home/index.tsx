@@ -555,22 +555,24 @@ export function Home() {
       <footer style={{
         position: 'relative',
         display: 'flex', justifyContent: 'space-evenly', alignItems: 'flex-start',
-        paddingTop: 10, paddingLeft: 4, paddingRight: 4,
-        paddingBottom: 'calc(8px + env(safe-area-inset-bottom,0px))',
+        paddingTop: 14, paddingLeft: 4, paddingRight: 4,
+        paddingBottom: 'calc(12px + env(safe-area-inset-bottom,0px))',
         flexShrink: 0,
-        borderTop: '1px solid transparent',
-        backgroundImage: [
-          'linear-gradient(180deg, rgba(7,13,30,0.98), rgba(3,5,18,1.0))',
-          'linear-gradient(90deg, transparent 0%, rgba(201,168,76,0.28) 25%, rgba(201,168,76,0.42) 50%, rgba(201,168,76,0.28) 75%, transparent 100%)',
-        ].join(', '),
-        backgroundOrigin: 'padding-box, border-box',
-        backgroundClip: 'padding-box, border-box',
-        borderImage: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.40) 30%, rgba(201,168,76,0.55) 50%, rgba(201,168,76,0.40) 70%, transparent) 1',
+        background: 'rgba(7,13,30,0.85)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderTop: '1px solid rgba(201,168,76,0.25)',
       }}>
+        {/* Subtle gold glow line at the top */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+          background: 'linear-gradient(90deg, transparent 5%, rgba(201,168,76,0.35) 30%, rgba(201,168,76,0.50) 50%, rgba(201,168,76,0.35) 70%, transparent 95%)',
+          pointerEvents: 'none',
+        }} />
         {/* Settings moved to header three-dots */}
         {/* Version indicator — visible for identification/support */}
         <div style={{
-          position: 'absolute', top: 6, left: 10,
+          position: 'absolute', top: 8, left: 10,
           fontSize: 12, fontWeight: 700, letterSpacing: '0.6px',
           color: 'rgba(201,168,76,0.65)',
           fontFamily: "'DM Sans',monospace",
@@ -616,7 +618,7 @@ export function Home() {
               aria-label={item.hebrewLabel}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                padding: '4px 2px', minWidth: 52, minHeight: 56,
+                padding: '4px 2px', minWidth: 60, minHeight: 64,
                 cursor: 'pointer', background: 'none', border: 'none',
               }}
               onPointerDown={(e) => {
@@ -632,7 +634,7 @@ export function Home() {
                 if (svg) svg.style.transform = ''
               }}
             >
-              <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"
+              <svg viewBox="0 0 24 24" width="38" height="38" aria-hidden="true"
                 style={{
                   filter: `drop-shadow(0 3px 8px rgba(0,0,0,0.45)) drop-shadow(0 0 12px rgba(${item.rgb},0.35))`,
                   animation: iconAnims[item.id] ?? 'none',
@@ -645,19 +647,19 @@ export function Home() {
                 {item.svgContent}
               </svg>
               <span style={{
-                fontSize: 14, fontWeight: 700,
+                fontSize: 15, fontWeight: 700,
                 fontFamily: "'Heebo',sans-serif",
                 lineHeight: 1.2, textAlign: 'center', whiteSpace: 'nowrap',
-                color: item.labelColor, opacity: 0.95,
+                color: item.labelColor,
                 textShadow: `0 1px 3px rgba(0,0,0,0.5), 0 0 8px rgba(${item.rgb},0.20)`,
               }}>
                 {item.hebrewLabel}
               </span>
               {/* Accent bar */}
               <div style={{
-                width: 20, height: 3, borderRadius: 2,
+                width: 24, height: 3, borderRadius: 2,
                 background: `linear-gradient(90deg, transparent, ${item.gradStart}, transparent)`,
-                opacity: 0.30, marginTop: 2,
+                opacity: 0.45, marginTop: 2,
               }} />
             </button>
           )

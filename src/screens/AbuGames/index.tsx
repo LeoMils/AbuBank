@@ -86,13 +86,14 @@ function GameCard({ game, pressKey, onPress, onRelease, delay }: {
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(game.url) } }}
       style={{
         width: '100%',
-        minHeight: 88,
+        minHeight: 82,
         borderRadius: 16,
         position: 'relative',
         overflow: 'hidden',
         padding: '16px 14px 16px 16px',
         direction: 'rtl',
         ...GLASS_SURFACE,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.20)',
         border: isP ? `1px solid ${GOLD_BORDER_HOVER}` : GLASS_SURFACE.border,
         borderRight: `4px solid ${game.accent}`,
         transform: isP ? 'scale(0.97)' : 'scale(1)',
@@ -103,12 +104,12 @@ function GameCard({ game, pressKey, onPress, onRelease, delay }: {
       } as React.CSSProperties}
     >
       <span style={{
-        position: 'absolute', top: 14, left: 14,
-        fontSize: 22, opacity: 0.55, lineHeight: 1, userSelect: 'none',
+        position: 'absolute', top: 12, left: 12,
+        fontSize: 24, opacity: 0.55, lineHeight: 1, userSelect: 'none',
       }}>{game.emoji}</span>
 
       <div style={{
-        fontSize: 17, fontWeight: 700, color: TEXT_STRONG,
+        fontSize: 18, fontWeight: 700, color: TEXT_STRONG,
         fontFamily: "'Heebo',sans-serif", lineHeight: 1.3,
       }}>{game.labelHe}</div>
 
@@ -142,9 +143,10 @@ function FeaturedGameCard({ game, pressKey, onPress, onRelease }: {
       style={{
         width: '100%',
         maxWidth: 370,
-        height: 180,
+        height: 170,
         margin: '0 auto 24px',
         borderRadius: 20,
+        overflow: 'hidden',
         background: 'rgba(255,250,240,0.08)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
@@ -165,7 +167,12 @@ function FeaturedGameCard({ game, pressKey, onPress, onRelease }: {
         animation: 'fadeSlideUp 0.3s ease-out both',
       } as React.CSSProperties}
     >
-      <span style={{ fontSize: 36, lineHeight: 1 }}>{game.emoji}</span>
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, borderRadius: 20,
+        background: 'radial-gradient(ellipse at 50% 20%, rgba(201,168,76,0.08) 0%, transparent 60%)',
+        pointerEvents: 'none',
+      }} />
+      <span style={{ fontSize: 40, lineHeight: 1 }}>{game.emoji}</span>
       <span style={{
         fontSize: 20, fontWeight: 700, color: TEXT_STRONG,
         fontFamily: "'Heebo',sans-serif", direction: 'rtl',
@@ -174,6 +181,10 @@ function FeaturedGameCard({ game, pressKey, onPress, onRelease }: {
         fontSize: 14, color: TEXT_FAINT,
         fontFamily: "'Heebo',sans-serif",
       }}>עולם הסוליטר</span>
+      <span style={{
+        fontSize: 13, color: TEXT_FAINT,
+        fontFamily: "'Heebo',sans-serif", marginTop: 2,
+      }}>300+ משחקים</span>
     </div>
   )
 }
@@ -195,19 +206,19 @@ function CategorySection({ emoji, titleHe, games, pressKey, onPress, onRelease, 
         marginBottom: 16, direction: 'rtl',
       }}>
         <div style={{
-          flex: 1, height: 1.5,
+          flex: 1, height: 1,
           background: `linear-gradient(270deg, rgba(201,168,76,0.55), transparent)`,
           borderRadius: 1,
         }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 18 }}>{emoji}</span>
+          <span style={{ fontSize: 20 }}>{emoji}</span>
           <span style={{
-            fontSize: 16, fontWeight: 700, color: 'rgba(201,168,76,0.75)',
-            fontFamily: "'Heebo',sans-serif",
+            fontSize: 17, fontWeight: 700, color: 'rgba(201,168,76,0.75)',
+            fontFamily: "'Heebo',sans-serif", letterSpacing: '0.3px',
           }}>{titleHe}</span>
         </div>
         <div style={{
-          flex: 1, height: 1.5,
+          flex: 1, height: 1,
           background: `linear-gradient(90deg, rgba(201,168,76,0.55), transparent)`,
           borderRadius: 1,
         }} />
@@ -294,6 +305,7 @@ export function AbuGames() {
         padding: '24px 16px',
         display: 'flex', flexDirection: 'column',
         paddingBottom: 'calc(40px + env(safe-area-inset-bottom, 0px))',
+        background: 'radial-gradient(ellipse at 50% 5%, rgba(201,168,76,0.03) 0%, transparent 45%)',
       }}>
         <FeaturedGameCard
           game={WOW_GAME}

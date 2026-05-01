@@ -373,10 +373,11 @@ export function AbuCalendar() {
         <button
           type="button" onClick={nextMonth} aria-label="חודש הבא"
           style={{
-            width: 52, height: 52, borderRadius: '50%',
+            width: 56, height: 56, borderRadius: '50%',
             background: 'rgba(255,250,240,0.04)',
             backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid rgba(201,168,76,0.22)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.20)',
             color: 'rgba(201,168,76,0.75)', fontSize: 22, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             transition: 'background 0.15s, border-color 0.15s',
@@ -386,7 +387,7 @@ export function AbuCalendar() {
         <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
           <div style={{
             fontFamily: "'Cormorant Garamond',Georgia,serif",
-            fontSize: 28, fontWeight: 600, fontStyle: 'italic', letterSpacing: '0.02em',
+            fontSize: 30, fontWeight: 600, fontStyle: 'italic', letterSpacing: '0.02em',
             background: `linear-gradient(135deg, #e8d5a0 0%, ${BRIGHT_GOLD} 35%, #f0e0a0 65%, ${GOLD} 100%)`,
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
             lineHeight: 1.1,
@@ -414,10 +415,11 @@ export function AbuCalendar() {
         <button
           type="button" onClick={prevMonth} aria-label="חודש קודם"
           style={{
-            width: 52, height: 52, borderRadius: '50%',
+            width: 56, height: 56, borderRadius: '50%',
             background: 'rgba(255,250,240,0.04)',
             backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid rgba(201,168,76,0.22)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.20)',
             color: 'rgba(201,168,76,0.75)', fontSize: 22, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             transition: 'background 0.15s, border-color 0.15s',
@@ -435,7 +437,8 @@ export function AbuCalendar() {
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderRadius: 20,
         border: '1px solid rgba(201,168,76,0.12)',
-        boxShadow: 'inset 0 1px 0 rgba(255,250,240,0.06), 0 4px 24px rgba(0,0,0,0.25)',
+        boxShadow: 'inset 0 1px 0 rgba(255,250,240,0.06), 0 4px 24px rgba(0,0,0,0.25), 0 0 40px rgba(201,168,76,0.03)',
+        overflow: 'hidden',
         flexShrink: 0,
       }}>
         {/* Day headers */}
@@ -504,11 +507,12 @@ export function AbuCalendar() {
                     : isSelected
                     ? 'inset 0 1px 0 rgba(201,168,76,0.08)'
                     : 'none',
+                  WebkitTapHighlightColor: 'transparent',
                 }}
               >
                 {/* Day number */}
                 <div style={{
-                  width: isToday ? 36 : 34, height: isToday ? 36 : 34, borderRadius: '50%',
+                  width: isToday ? 38 : 34, height: isToday ? 38 : 34, borderRadius: '50%',
                   background: isToday
                     ? 'linear-gradient(135deg, #f0d878 0%, #e8c76a 20%, #D4A853 45%, #C9A84C 65%, #e8c76a 85%, #f0d878 100%)'
                     : 'transparent',
@@ -517,7 +521,7 @@ export function AbuCalendar() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <span style={{
-                    fontSize: isToday ? 20 : 18,
+                    fontSize: isToday ? 21 : 19,
                     fontWeight: isToday ? 800 : isSelected ? 700 : 500,
                     color: isToday ? '#0C0A08'
                       : isSelected ? 'rgba(201,168,76,0.95)'
@@ -554,9 +558,9 @@ export function AbuCalendar() {
       {/* SELECTED DAY APPOINTMENTS */}
       <div style={{ padding: '8px 16px 4px', flexShrink: 0, maxHeight: 200, overflowY: 'auto', scrollbarWidth: 'thin' as React.CSSProperties['scrollbarWidth'] }}>
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
         }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif" }}>אירועים</span>
+          <span style={{ fontSize: 17, fontWeight: 700, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif" }}>אירועים</span>
           <span style={{ fontSize: 16, color: 'rgba(245,240,232,0.50)', fontFamily: "'Heebo',sans-serif" }}>{formatShortHebrewDate(selectedDay)}</span>
         </div>
 
@@ -590,7 +594,7 @@ export function AbuCalendar() {
       <div style={{
         position: 'sticky', bottom: 0,
         flexShrink: 0,
-        padding: '8px 16px calc(10px + env(safe-area-inset-bottom, 0px))',
+        padding: '12px 16px calc(10px + env(safe-area-inset-bottom, 0px))',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
         background: 'linear-gradient(to top, rgba(5,10,24,0.97) 60%, rgba(5,10,24,0) 100%)',
         backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
@@ -615,7 +619,7 @@ export function AbuCalendar() {
             onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
             aria-label="הוספת אירוע בקול"
             style={{
-              width: 56, height: 56, borderRadius: '50%',
+              width: 60, height: 60, borderRadius: '50%',
               background: isRecording
                 ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
                 : 'linear-gradient(145deg, #D4A853 0%, #C9A84C 45%, #B8912A 100%)',
@@ -631,7 +635,7 @@ export function AbuCalendar() {
             {isRecording ? (
               <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
             ) : (
-              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+              <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
                 <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                 <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
               </svg>

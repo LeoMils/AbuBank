@@ -9,7 +9,7 @@ import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/mar
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
 import { injectSharedKeyframes } from '../../design/animations'
-import { soundProcessing } from '../../services/sounds'
+import { soundProcessing, soundSuccess } from '../../services/sounds'
 import { RealtimeVoiceSession } from '../../services/realtimeVoice'
 import type { RealtimeState } from '../../services/realtimeVoice'
 import { mediateError } from '../../services/errorMediation'
@@ -18,6 +18,9 @@ import { ChatBubble } from './ChatBubble'
 import { BackButton } from '../../components/BackButton'
 import { ScreenHeader } from '../../components/ScreenHeader'
 import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
+import { type CalendarCreateState, IDLE_STATE, isCreateIntent, startCreate, updateCreate, isConfirm, isCancel } from './calendarCreate'
+import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateClarify } from './responseShaper'
+import { addAppointment } from '../AbuCalendar/service'
 
 let msgCounter = 0
 function nextId(): string {
@@ -61,6 +64,10 @@ const KEYFRAMES = `
     50%     { transform: scaleY(1.0); }
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes subtleBreath {
+    0%,100% { filter: brightness(1) saturate(1); }
+    50%     { filter: brightness(1.06) saturate(1.08); }
+  }
 `
 
 // ─── Dynamic voice greeting ───────────────────────────────────────────────────
@@ -107,6 +114,9 @@ export function AbuAI() {
   const [listenCountdown, setListenCountdown] = useState<number | null>(null)
   const [lastHeardText, setLastHeardText] = useState('')  // v20: transcript feedback
   const [streamingText, setStreamingText] = useState('')   // v20: streaming response text
+
+  // Calendar create conversation state machine
+  const [createState, setCreateState] = useState<CalendarCreateState>(IDLE_STATE)
 
   // v20.2: OpenAI Realtime API (WebRTC) — true real-time conversation
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
@@ -222,6 +232,56 @@ export function AbuAI() {
     let accumulated = ''
 
     try {
+      // ─── Calendar Create State Machine ────────────────────────────────────
+      if (createState.phase !== 'idle') {
+        // We're mid-conversation — handle confirm/cancel/update
+        if (isCancel(msgText)) {
+          setCreateState(IDLE_STATE)
+          const cancelMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: shapeCreateCancelled(), timestamp: Date.now() }
+          setMessages(prev => [...prev, cancelMsg])
+          setLoading(false)
+          streamingMsgIdRef.current = null
+          return
+        }
+        if (createState.phase === 'confirming' && isConfirm(msgText)) {
+          const d = createState.draft
+          addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji })
+          soundSuccess()
+          setCreateState(IDLE_STATE)
+          const savedMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: shapeCreateSaved(), timestamp: Date.now() }
+          setMessages(prev => [...prev, savedMsg])
+          setLoading(false)
+          streamingMsgIdRef.current = null
+          return
+        }
+        // Try to fill missing fields
+        const next = updateCreate(createState, msgText)
+        setCreateState(next)
+        const response = next.phase === 'confirming'
+          ? shapeCreateConfirm(next.draft)
+          : shapeCreateClarify(next.missing)
+        const followupMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: response, timestamp: Date.now() }
+        setMessages(prev => [...prev, followupMsg])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // Check for new create intent
+      if (isCreateIntent(msgText)) {
+        const next = startCreate(msgText)
+        setCreateState(next)
+        const response = next.phase === 'confirming'
+          ? shapeCreateConfirm(next.draft)
+          : shapeCreateClarify(next.missing)
+        const createMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: response, timestamp: Date.now() }
+        setMessages(prev => [...prev, createMsg])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── Existing grounded answer path ────────────────────────────────────
       // Personal queries → try grounded answer first (no LLM), fall back to tools-based LLM
       const groundedAnswer = tryGroundedAnswer(msgText)
       if (groundedAnswer !== null) {
@@ -1051,7 +1111,7 @@ ${fewShotText}`
                 width: 120,
                 height: 120,
                 borderRadius: '50%',
-                background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.20) 0%, rgba(20,184,166,0.12) 38%, rgba(20,184,166,0.04) 62%, transparent 80%)',
+                background: 'radial-gradient(circle at 30% 28%, rgba(255,240,180,0.25) 0%, rgba(20,184,166,0.12) 38%, rgba(20,184,166,0.04) 62%, transparent 80%)',
                 border: '1.5px solid rgba(20,184,166,0.55)',
                 boxShadow: '0 0 0 1px rgba(20,184,166,0.18), 0 0 60px rgba(20,184,166,0.22), 0 0 120px rgba(20,184,166,0.10), inset 0 1px 0 rgba(255,250,240,0.10)',
                 display: 'flex',
@@ -1059,13 +1119,18 @@ ${fewShotText}`
                 justifyContent: 'center',
                 position: 'relative',
                 zIndex: 1,
+                animation: 'subtleBreath 4s ease-in-out infinite',
               }}>
                 <span style={{
                   fontFamily: "'Cormorant Garamond',Georgia,serif",
                   fontSize: 58,
                   fontWeight: 600,
                   fontStyle: 'italic',
-                  ...goldGradText,
+                  background: 'linear-gradient(135deg, #5EEAD4 0%, #2DD4BF 30%, #C9A84C 70%, #F0C060 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  filter: 'drop-shadow(0 0 10px rgba(20,184,166,0.35))',
                 }}>M</span>
               </div>
             </div>
@@ -1114,13 +1179,15 @@ ${fewShotText}`
                 padding: '20px 28px',
                 background: 'rgba(255,250,240,0.03)',
                 border: '1px solid rgba(20,184,166,0.22)',
-                borderRight: '4px solid rgba(20,184,166,0.65)',
+                borderRight: '3px solid rgba(20,184,166,0.55)',
                 borderRadius: 16,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 16,
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
+                boxShadow: '0 4px 24px rgba(20,184,166,0.08), inset 0 1px 0 rgba(255,250,240,0.04)',
+                transition: 'transform 0.12s ease, box-shadow 0.15s ease',
               }}
             >
               {/* Mic icon circle */}
@@ -1234,7 +1301,7 @@ ${fewShotText}`
           }}
           style={{
             position: 'absolute',
-            top: 72,
+            top: 76,
             left: 0,
             right: 0,
             bottom: 0,
@@ -1489,9 +1556,10 @@ ${fewShotText}`
           zIndex: 10,
           padding: '10px 14px',
           paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
-          background: 'rgba(5,10,24,0.95)',
+          background: 'rgba(7,13,30,0.92)',
           backdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(20,184,166,0.16)',
+          borderTop: '1px solid rgba(201,168,76,0.12)',
+          boxShadow: '0 -4px 24px rgba(0,0,0,0.15)',
         }}>
           {/* Recording indicator pill */}
           {recording && (
@@ -1658,10 +1726,10 @@ ${fewShotText}`
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                padding: '8px 22px',
+                padding: '10px 24px',
                 borderRadius: 20,
                 background: 'rgba(20,184,166,0.06)',
-                border: '1px solid rgba(20,184,166,0.48)',
+                border: '1px solid rgba(20,184,166,0.40)',
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
                 transition: 'background 0.15s ease',

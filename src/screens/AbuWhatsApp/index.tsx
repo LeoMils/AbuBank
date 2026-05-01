@@ -562,13 +562,14 @@ export function AbuWhatsApp() {
         flexShrink: 0,
         position: 'relative',
         background: 'linear-gradient(180deg, rgba(5,12,18,1) 0%, rgba(4,14,10,1) 60%, rgba(5,10,24,1) 100%)',
-        borderBottom: '1px solid rgba(37,211,102,0.14)',
+        borderBottom: '1px solid rgba(37,211,102,0.18)',
+        overflow: 'hidden',
         boxShadow: '0 4px 24px rgba(0,0,0,0.40), 0 1px 0 rgba(255,255,255,0.02)',
         zIndex: 20,
       }}>
         <div style={{
           position: 'relative',
-          height: 82,
+          height: 86,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: '0 16px',
         }}>
@@ -576,7 +577,7 @@ export function AbuWhatsApp() {
           {/* Family portrait — left */}
           <div style={{
             position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
-            width: 62, height: 62, borderRadius: '50%',
+            width: 66, height: 66, borderRadius: '50%',
             border: '2px solid rgba(37,211,102,0.55)',
             boxShadow: '0 0 0 3px rgba(37,211,102,0.07), 0 0 20px rgba(37,211,102,0.18), 0 4px 12px rgba(0,0,0,0.45)',
             overflow: 'hidden',
@@ -673,7 +674,7 @@ export function AbuWhatsApp() {
               type="button"
               onClick={enterVoiceMode}
               style={{
-                width: 72, height: 72, borderRadius: '50%',
+                width: 76, height: 76, borderRadius: '50%',
                 background: 'linear-gradient(145deg, rgba(37,211,102,0.16), rgba(18,140,126,0.07))',
                 border: '2.5px solid rgba(37,211,102,0.32)',
                 cursor: 'pointer',
@@ -691,15 +692,16 @@ export function AbuWhatsApp() {
               onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
               onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
             >
-              <svg viewBox="0 0 24 24" width="26" height="26" fill="none"
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none"
                 stroke={WA_GREEN} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
                 <path d="M2 12h2" /><path d="M6 8v8" /><path d="M10 5v14" />
                 <path d="M14 8v8" /><path d="M18 10v4" /><path d="M22 12h-2" />
               </svg>
               <span style={{
-                fontSize: 11, fontWeight: 600,
+                fontSize: 12, fontWeight: 600,
                 fontFamily: "'Heebo',sans-serif",
                 color: 'rgba(37,211,102,0.78)',
+                letterSpacing: '0.3px',
               }}>שיחה קולית</span>
             </button>
 
@@ -710,7 +712,7 @@ export function AbuWhatsApp() {
             }} />
 
             {/* ── Intent textarea ── */}
-            <div style={{ position: 'relative', width: '100%', maxWidth: 370 }}>
+            <div style={{ position: 'relative', width: '100%', maxWidth: 370, boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
               <textarea
                 ref={inputRef}
                 value={input}
@@ -721,11 +723,11 @@ export function AbuWhatsApp() {
                 style={{
                   width: '100%', resize: 'none',
                   padding: '18px 20px 18px 60px',
-                  borderRadius: 20,
+                  borderRadius: 22,
                   border: '1.5px solid rgba(37,211,102,0.18)',
                   background: 'linear-gradient(135deg, rgba(12,22,40,1), rgba(8,16,28,1))',
                   color: 'rgba(255,255,255,0.88)',
-                  fontSize: 20, fontFamily: "'DM Sans','Heebo',sans-serif",
+                  fontSize: 19, fontFamily: "'DM Sans','Heebo',sans-serif",
                   direction: 'rtl', lineHeight: 1.65,
                   outline: 'none',
                   minHeight: 88,
@@ -800,8 +802,8 @@ export function AbuWhatsApp() {
               disabled={!input.trim() && (phase as Phase) !== 'recording'}
               style={{
                 width: '100%', maxWidth: 370,
-                height: 58,
-                borderRadius: 29,
+                height: 60,
+                borderRadius: 30,
                 border: !input.trim()
                   ? '1px solid rgba(20,184,166,0.09)'
                   : '1.5px solid rgba(20,184,166,0.45)',
@@ -809,7 +811,7 @@ export function AbuWhatsApp() {
                   ? 'rgba(20,184,166,0.07)'
                   : `linear-gradient(135deg, #14b8a6 0%, #0d9488 35%, #C9A84C 75%, #B8912A 100%)`,
                 color: !input.trim() ? 'rgba(255,255,255,0.25)' : 'white',
-                fontSize: 18, fontWeight: 700,
+                fontSize: 19, fontWeight: 700,
                 fontFamily: "'Heebo',sans-serif",
                 cursor: !input.trim() ? 'default' : 'pointer',
                 boxShadow: !input.trim()
@@ -874,7 +876,7 @@ export function AbuWhatsApp() {
             {/* ── Result card — glass morphism with gold-tinted border ── */}
             <div style={{
               width: '100%', maxWidth: 370,
-              padding: '22px 24px 18px',
+              padding: '24px 26px 20px',
               borderRadius: 20,
               background: 'rgba(10,18,36,0.72)',
               backdropFilter: 'blur(20px)',
@@ -897,7 +899,7 @@ export function AbuWhatsApp() {
               }} />
 
               <div style={{
-                fontSize: 17, lineHeight: 1.85,
+                fontSize: 18, lineHeight: 1.9,
                 color: 'rgba(255,255,255,0.92)',
                 direction: 'rtl', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                 fontFamily: "'Heebo',sans-serif",
@@ -953,11 +955,11 @@ export function AbuWhatsApp() {
                 type="button"
                 onClick={handleSendToFamily}
                 style={{
-                  width: '100%', height: 56, borderRadius: 18,
+                  width: '100%', height: 60, borderRadius: 20,
                   border: '1.5px solid rgba(37,211,102,0.28)',
                   background: `linear-gradient(145deg, #2ee67a, ${WA_GREEN}, #128C7E)`,
                   color: 'white',
-                  fontSize: 17, fontWeight: 700,
+                  fontSize: 18, fontWeight: 700,
                   fontFamily: "'Heebo',sans-serif",
                   cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -1083,7 +1085,7 @@ export function AbuWhatsApp() {
       {voiceMode && (
         <div style={{
           position: 'absolute',
-          top: 82, left: 0, right: 0, bottom: 0,
+          top: 86, left: 0, right: 0, bottom: 0,
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
           background: 'rgba(5,10,24,0.94)',

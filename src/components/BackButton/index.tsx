@@ -32,8 +32,8 @@ export function BackButton({ onPress }: BackButtonProps) {
         alignItems: 'center',
         gap: 6,
         padding: '8px 14px',
-        minHeight: 44,
-        minWidth: 48,
+        minHeight: 48,
+        minWidth: 52,
         borderRadius: 22,
         background: 'rgba(255,250,240,0.04)',
         backdropFilter: 'blur(12px)',
@@ -51,7 +51,7 @@ export function BackButton({ onPress }: BackButtonProps) {
         <path d="M5 2l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <span style={{
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: 600,
         fontFamily: "'Heebo', sans-serif",
         lineHeight: 1,

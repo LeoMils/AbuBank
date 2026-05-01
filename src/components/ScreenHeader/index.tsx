@@ -11,16 +11,17 @@ interface ScreenHeaderProps {
 export function ScreenHeader({ title, left, right, glowColor = 'rgba(201,168,76,0.35)' }: ScreenHeaderProps) {
   return (
     <header style={{
-      height: 72,
+      height: 76,
       flexShrink: 0,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: '0 16px',
-      background: 'rgba(12,10,8,0.96)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
+      padding: '0 18px',
+      background: 'rgba(10,8,6,0.94)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
       borderBottom: `1px solid ${GOLD_BORDER}`,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
       position: 'relative',
       zIndex: 20,
     }}>
@@ -35,7 +36,7 @@ export function ScreenHeader({ title, left, right, glowColor = 'rgba(201,168,76,
         }}>
           <span style={{
             fontFamily: "'DM Sans', sans-serif",
-            fontSize: 18, fontWeight: 700, letterSpacing: '1px',
+            fontSize: 19, fontWeight: 700, letterSpacing: '1.2px',
             background: 'linear-gradient(135deg, #e8d5a0 0%, #D4A853 35%, #f0e0a0 60%, #C9A84C 100%)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
           } as React.CSSProperties}>{title}</span>
