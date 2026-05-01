@@ -59,10 +59,16 @@ export function tryGroundedAnswer(text: string): string | null {
 
 const CALENDAR_CLAIM_PATTERNS = /יש לך (תור|פגישה|אירוע|רופא|בדיקה)|אני רואה (ש|ביומן|שיש)|ביומן שלך|לפי היומן|התור שלך|הפגישה שלך ב/
 const INVENTED_EVENT_PATTERNS = /יש לך ב[־-]?\d{1,2}[.:]\d{2}|יש לך ביום [א-ת]/
+// Past-tense first-person success verbs that imply a tool ran. The "לא "
+// lookbehind keeps the honest negations "לא בדקתי" / "לא מצאתי" unflagged.
+// Hebrew lookarounds are used because \b only matches ASCII word boundaries.
+const PAST_TENSE_CLAIM_PATTERNS = /(?<!לא\s)(?<![֐-׿])(בדקתי|חיפשתי|מצאתי|אימתתי|אישרתי)(?![֐-׿])/
 
 export function containsUngroundedClaim(response: string, hadToolCall: boolean): boolean {
   if (hadToolCall) return false
-  return CALENDAR_CLAIM_PATTERNS.test(response) || INVENTED_EVENT_PATTERNS.test(response)
+  return CALENDAR_CLAIM_PATTERNS.test(response)
+    || INVENTED_EVENT_PATTERNS.test(response)
+    || PAST_TENSE_CLAIM_PATTERNS.test(response)
 }
 
 const SAFE_REFUSAL = 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'

@@ -188,16 +188,46 @@ describe('AbuAI no-hallucination — truthGuard runtime claim detection', () => 
   })
 })
 
-describe('AbuAI no-hallucination — known gap (NOT_PROVEN)', () => {
-  // The current containsUngroundedClaim only inspects calendar phrases. It does
-  // NOT block past-tense success-claim verbs like "בדקתי" / "חיפשתי" if the
-  // model emits them without a tool call. This test documents the gap; product
-  // behavior is not changed.
-  it('containsUngroundedClaim DOES NOT yet block past-tense "בדקתי" without tool call (gap)', () => {
-    const flagged = containsUngroundedClaim('בדקתי ולא מצאתי כלום', false)
-    // Not asserting `true` (would be a behavior demand). Asserting the actual
-    // current state so a future tightening is visible as a delta.
-    expect(flagged).toBe(false)
+describe('AbuAI no-hallucination — past-tense success claims (tightened)', () => {
+  it('flags "בדקתי …" without a tool call', () => {
+    expect(containsUngroundedClaim('בדקתי ביומן שלך', false)).toBe(true)
+    expect(containsUngroundedClaim('בדקתי ולא מצאתי כלום', false)).toBe(true)
+  })
+
+  it('flags "חיפשתי …" without a tool call', () => {
+    expect(containsUngroundedClaim('חיפשתי במשפחה ומצאתי את עילי', false)).toBe(true)
+  })
+
+  it('flags "מצאתי …" without a tool call (positive claim)', () => {
+    expect(containsUngroundedClaim('מצאתי לך תור ב-10:00', false)).toBe(true)
+    expect(containsUngroundedClaim('מצאתי שיש לך פגישה מחר', false)).toBe(true)
+  })
+
+  it('does NOT flag the negation "לא מצאתי" (honest)', () => {
+    expect(containsUngroundedClaim('לא מצאתי משהו ביומן להיום.', false)).toBe(false)
+    expect(containsUngroundedClaim('לא מצאתי מידע על דניאל.', false)).toBe(false)
+  })
+
+  it('does NOT flag "אני לא מצליחה לבדוק" (honest)', () => {
+    expect(containsUngroundedClaim('אני לא מצליחה לבדוק את זה כרגע. נסי שוב.', false)).toBe(false)
+  })
+
+  it('does NOT flag "לא בדקתי" (honest)', () => {
+    expect(containsUngroundedClaim('לא בדקתי עדיין', false)).toBe(false)
+  })
+
+  it('the same past-tense claim WITH a tool call is allowed', () => {
+    expect(containsUngroundedClaim('בדקתי ביומן שלך ומצאתי תור', true)).toBe(false)
+    expect(containsUngroundedClaim('חיפשתי במשפחה ומצאתי את עילי', true)).toBe(false)
+  })
+})
+
+describe('AbuAI no-hallucination — gap closed', () => {
+  // Earlier the truth guard ignored past-tense verbs like "בדקתי" without a
+  // tool call. The pattern set has been tightened so the same input is now
+  // flagged. The honest negation "לא בדקתי" / "לא מצאתי" stays unflagged.
+  it('previously-unflagged "בדקתי ולא מצאתי כלום" is now flagged when no tool call', () => {
+    expect(containsUngroundedClaim('בדקתי ולא מצאתי כלום', false)).toBe(true)
   })
 })
 
