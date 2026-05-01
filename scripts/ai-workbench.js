@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { spawnSync } from 'child_process'
 
-const WORKBENCH_VERSION = '0.3.0-static-analysis'
+const WORKBENCH_VERSION = '0.3.1-intent-annotations'
 
 const FORBIDDEN_SUCCESS_LANGUAGE = [
   'fixed',
@@ -503,18 +503,79 @@ function staticExtractExports(file, src) {
     const line = lines[i]
     const prev = i > 0 ? lines[i - 1] : ''
     const testOnlyMarker = /(?:\/\/|\/\*|\*)\s*@?test-only\b/i.test(prev) || /(?:\/\/|\/\*|\*)\s*@?test-only\b/i.test(line)
+    const annotation = staticExtractKeepAnnotation(lines, i)
 
     let m = line.match(/^\s*export\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/)
-    if (m) { exports.push({ name: m[1], kind: 'function', file, line: i + 1, testOnly: testOnlyMarker }); continue }
+    if (m) { exports.push({ name: m[1], kind: 'function', file, line: i + 1, testOnly: testOnlyMarker, annotation }); continue }
 
     m = line.match(/^\s*export\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*[=:]/)
-    if (m) { exports.push({ name: m[1], kind: 'const', file, line: i + 1, testOnly: testOnlyMarker }); continue }
+    if (m) { exports.push({ name: m[1], kind: 'const', file, line: i + 1, testOnly: testOnlyMarker, annotation }); continue }
 
     m = line.match(/^\s*export\s+class\s+([A-Za-z_$][\w$]*)/)
-    if (m) { exports.push({ name: m[1], kind: 'class', file, line: i + 1, testOnly: testOnlyMarker }); continue }
+    if (m) { exports.push({ name: m[1], kind: 'class', file, line: i + 1, testOnly: testOnlyMarker, annotation }); continue }
     // export type/interface/enum and export {...} from / export default are deliberately skipped.
   }
   return exports
+}
+
+const STATIC_KEEP_ALLOWED_KINDS = ['FUTURE_API', 'KEEP', 'TEST_ONLY', 'DYNAMIC_USAGE']
+
+// Parse a `@workbench-keep` annotation block. The annotation must sit
+// immediately above the export (no blank line gap) or on the export line.
+// Within the contiguous comment block the marker line itself, plus
+// reason/owner/reviewAfter fields, can appear in any order.
+// Returns null if no marker found, or a metadata object with status:
+// VALID | INVALID | EXPIRED.
+function staticExtractKeepAnnotation(lines, exportIdx) {
+  const exportLine = lines[exportIdx] || ''
+  const blockLines = []
+  if (/@workbench-keep\b/.test(exportLine)) blockLines.push(exportLine)
+  // Walk upward collecting the contiguous comment block immediately above.
+  for (let j = exportIdx - 1; j >= 0; j--) {
+    const t = lines[j].trim()
+    if (t === '') break
+    const isComment = t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.endsWith('*/')
+    if (!isComment) break
+    blockLines.unshift(lines[j])
+  }
+  if (blockLines.length === 0) return null
+  const blockText = blockLines.join('\n')
+  if (!/@workbench-keep\b/.test(blockText)) return null
+
+  const stripped = blockLines.map((l) => l
+    .replace(/^\s*\/\/+\s?/, '')
+    .replace(/^\s*\/\*+\s?/, '')
+    .replace(/\s*\*+\/\s*$/, '')
+    .replace(/^\s*\*+\s?/, '')
+  ).join('\n')
+
+  const parsed = { kind: null, reason: null, owner: null, reviewAfter: null }
+  const kindMatch = stripped.match(/@workbench-keep\s+([A-Z_][A-Z_0-9]*)/)
+  if (kindMatch) parsed.kind = kindMatch[1]
+  const reasonMatch = stripped.match(/(?:^|\n)\s*reason\s*:\s*(.+?)(?:\n|$)/i)
+  if (reasonMatch && reasonMatch[1].trim()) parsed.reason = reasonMatch[1].trim()
+  const ownerMatch = stripped.match(/(?:^|\n)\s*owner\s*:\s*(.+?)(?:\n|$)/i)
+  if (ownerMatch && ownerMatch[1].trim()) parsed.owner = ownerMatch[1].trim()
+  const reviewMatch = stripped.match(/(?:^|\n)\s*reviewAfter\s*:\s*([^\s\n]+)/i)
+  if (reviewMatch) parsed.reviewAfter = reviewMatch[1].trim()
+
+  const errors = []
+  if (!parsed.kind) errors.push('MISSING_KIND')
+  else if (!STATIC_KEEP_ALLOWED_KINDS.includes(parsed.kind)) errors.push('INVALID_KIND')
+  if (!parsed.reason) errors.push('MISSING_REASON')
+  if (!parsed.owner) errors.push('MISSING_OWNER')
+  if (!parsed.reviewAfter) errors.push('MISSING_REVIEW_AFTER')
+  else if (!/^\d{4}-\d{2}-\d{2}$/.test(parsed.reviewAfter)) errors.push('INVALID_REVIEW_AFTER_FORMAT')
+
+  let status = 'VALID'
+  if (errors.length > 0) {
+    status = 'INVALID'
+  } else {
+    const today = new Date().toISOString().slice(0, 10)
+    if (parsed.reviewAfter < today) status = 'EXPIRED'
+  }
+
+  return { ...parsed, status, errors }
 }
 
 function staticStripComments(src) {
@@ -587,9 +648,36 @@ function staticCountInternalUsages(symbol, file, fileCache) {
 }
 
 function staticClassifyExport(exp, usages, internalCount) {
+  const ann = exp.annotation || null
+
+  // Annotation handling first — invalid/expired must not pass.
+  if (ann) {
+    if (ann.status === 'INVALID') {
+      return { classification: 'INVALID_KEEP_ANNOTATION', confidence: 'HIGH' }
+    }
+    if (ann.status === 'EXPIRED') {
+      return { classification: 'MANUAL_REVIEW_EXPIRED_KEEP', confidence: 'MEDIUM' }
+    }
+    // status === 'VALID' falls through; real usage still wins for non-TEST_ONLY,
+    // but TEST_ONLY without test usage is surfaced as TEST_ONLY_EXPLICIT
+    // (medium) so it cannot silently mask missing evidence.
+    if (ann.kind === 'TEST_ONLY') {
+      if (usages.test.length > 0) return { classification: 'PROVEN_USED_IN_TEST', confidence: 'HIGH' }
+      return { classification: 'TEST_ONLY_EXPLICIT', confidence: 'MEDIUM' }
+    }
+  }
+
   if (exp.testOnly) return { classification: 'TEST_ONLY_EXPLICIT', confidence: 'HIGH' }
   if (usages.userFlow.length > 0) return { classification: 'PROVEN_USED_IN_USER_FLOW', confidence: 'HIGH' }
   if (usages.test.length > 0) return { classification: 'PROVEN_USED_IN_TEST', confidence: 'HIGH' }
+
+  // Annotation only fills in for symbols that would otherwise be unreachable.
+  if (ann && ann.status === 'VALID') {
+    if (ann.kind === 'FUTURE_API') return { classification: 'INTENTIONAL_KEEP_FUTURE_API', confidence: 'MEDIUM' }
+    if (ann.kind === 'KEEP') return { classification: 'INTENTIONAL_KEEP', confidence: 'MEDIUM' }
+    if (ann.kind === 'DYNAMIC_USAGE') return { classification: 'DYNAMIC_USAGE_DECLARED', confidence: 'MEDIUM' }
+  }
+
   if (usages.reExport.length > 0) return { classification: 'MANUAL_REVIEW_DYNAMIC_USAGE', confidence: 'MEDIUM' }
   if (usages.typeOnly.length > 0) return { classification: 'MANUAL_REVIEW_DYNAMIC_USAGE', confidence: 'MEDIUM' }
   if (internalCount > 0) return { classification: 'USED_IN_DEFINING_FILE_ONLY', confidence: 'HIGH' }
@@ -617,12 +705,23 @@ function runStaticAnalysis(packCfg) {
       const usages = staticFindUsages(exp.name, exp.file, projectFiles, fileCache)
       const internalCount = staticCountInternalUsages(exp.name, exp.file, fileCache)
       const cls = staticClassifyExport(exp, usages, internalCount)
+      const ann = exp.annotation || null
       const recommendation = cls.classification === 'USED_IN_DEFINING_FILE_ONLY'
         ? 'Live at runtime via intra-file calls. Exported API surface may be unnecessary; consider de-exporting if not needed by external code or tests.'
         : cls.classification === 'NOT_PROVEN_NO_USAGE'
         ? 'No reference outside the defining file. Likely dead code; review for removal.'
         : cls.classification === 'MANUAL_REVIEW_DYNAMIC_USAGE'
         ? 'Only seen via barrel re-export or type-only import. Manual review required.'
+        : cls.classification === 'INVALID_KEEP_ANNOTATION'
+        ? `@workbench-keep annotation is malformed: ${(ann && ann.errors || []).join(', ')}. Fix the annotation or remove the symbol.`
+        : cls.classification === 'MANUAL_REVIEW_EXPIRED_KEEP'
+        ? `@workbench-keep reviewAfter (${ann ? ann.reviewAfter : '?'}) is in the past. Re-confirm intent or remove the symbol.`
+        : cls.classification === 'INTENTIONAL_KEEP_FUTURE_API'
+        ? 'Marked as future API by an explicit @workbench-keep FUTURE_API annotation. Surface for human review; does not count as user-flow proof.'
+        : cls.classification === 'INTENTIONAL_KEEP'
+        ? 'Marked as intentionally kept by an explicit @workbench-keep KEEP annotation. Surface for human review; does not count as user-flow proof.'
+        : cls.classification === 'DYNAMIC_USAGE_DECLARED'
+        ? 'Marked as dynamically used by an explicit @workbench-keep DYNAMIC_USAGE annotation. Surface for human review; does not count as user-flow proof.'
         : null
       symbols.push({
         name: exp.name,
@@ -641,6 +740,12 @@ function runStaticAnalysis(packCfg) {
         },
         classification: cls.classification,
         confidence: cls.confidence,
+        annotationKind: ann ? ann.kind : null,
+        annotationReason: ann ? ann.reason : null,
+        annotationOwner: ann ? ann.owner : null,
+        annotationReviewAfter: ann ? ann.reviewAfter : null,
+        annotationStatus: ann ? ann.status : null,
+        annotationErrors: ann ? ann.errors : null,
         recommendation,
       })
     }
@@ -652,9 +757,14 @@ function runStaticAnalysis(packCfg) {
     TEST_ONLY_EXPLICIT: 0,
     USED_IN_DEFINING_FILE_ONLY: 0,
     MANUAL_REVIEW_DYNAMIC_USAGE: 0,
+    INTENTIONAL_KEEP_FUTURE_API: 0,
+    INTENTIONAL_KEEP: 0,
+    DYNAMIC_USAGE_DECLARED: 0,
+    MANUAL_REVIEW_EXPIRED_KEEP: 0,
+    INVALID_KEEP_ANNOTATION: 0,
     NOT_PROVEN_NO_USAGE: 0,
   }
-  for (const s of symbols) counts[s.classification]++
+  for (const s of symbols) counts[s.classification] = (counts[s.classification] || 0) + 1
 
   return {
     workbenchVersion: WORKBENCH_VERSION,
@@ -672,17 +782,31 @@ function applyStaticAnalysisToEvals(evalResults, sa) {
   const dead = sa.symbols.filter((s) => s.classification === 'NOT_PROVEN_NO_USAGE')
   const internal = sa.symbols.filter((s) => s.classification === 'USED_IN_DEFINING_FILE_ONLY')
   const dynamic = sa.symbols.filter((s) => s.classification === 'MANUAL_REVIEW_DYNAMIC_USAGE')
+  const invalidKeep = sa.symbols.filter((s) => s.classification === 'INVALID_KEEP_ANNOTATION')
+  const expiredKeep = sa.symbols.filter((s) => s.classification === 'MANUAL_REVIEW_EXPIRED_KEEP')
+  const intentionalKeep = sa.symbols.filter((s) =>
+    s.classification === 'INTENTIONAL_KEEP_FUTURE_API' ||
+    s.classification === 'INTENTIONAL_KEEP' ||
+    s.classification === 'DYNAMIC_USAGE_DECLARED'
+  )
   const fmt = (s) => `${s.name} @ ${s.definingFile.replace(/\\/g, '/')}:${s.line}`
 
   for (const e of evalResults) {
     if (e.id === 'integration-dead-code') {
-      e.command = 'workbench static-analysis (regex reachability)'
+      e.command = 'workbench static-analysis (regex reachability + intent annotations)'
       e.exitCode = null
-      if (dead.length === 0) {
+      if (invalidKeep.length > 0) {
+        e.status = 'FAILED'
+        e.confidence = 'HIGH'
+        e.reason = 'INVALID_KEEP_ANNOTATION'
+        e.evidenceSummary = `Found ${invalidKeep.length} malformed @workbench-keep annotation(s): ` +
+          invalidKeep.slice(0, 10).map((s) => `${fmt(s)} [${(s.annotationErrors || []).join(',')}]`).join(', ')
+      } else if (dead.length === 0) {
         e.status = 'PROVEN'
         e.confidence = 'HIGH'
         e.reason = 'NO_DEAD_CODE_DETECTED'
-        e.evidenceSummary = `Static analysis scanned ${sa.scannedDefiningFiles.length} defining files in pack-allowed paths and found 0 NOT_PROVEN_NO_USAGE exports across ${sa.exportedSymbols} symbols. ${internal.length} internal-only and ${dynamic.length} dynamic-usage exports surfaced for manual review but are not dead.`
+        e.evidenceSummary = `Static analysis scanned ${sa.scannedDefiningFiles.length} defining files and found 0 NOT_PROVEN_NO_USAGE exports across ${sa.exportedSymbols} symbols. ` +
+          `${internal.length} internal-only, ${dynamic.length} dynamic-usage, ${intentionalKeep.length} intentional-keep, ${expiredKeep.length} expired-keep — surfaced for review but not counted as dead.`
       } else {
         e.status = 'FAILED'
         e.confidence = 'HIGH'
@@ -690,9 +814,15 @@ function applyStaticAnalysisToEvals(evalResults, sa) {
         e.evidenceSummary = `Found ${dead.length} unused export(s): ` + dead.slice(0, 15).map(fmt).join(', ') + (dead.length > 15 ? `, …(+${dead.length - 15} more)` : '')
       }
     } else if (e.id === 'real-call-site-validation') {
-      e.command = 'workbench static-analysis (regex reachability)'
+      e.command = 'workbench static-analysis (regex reachability + intent annotations)'
       e.exitCode = null
-      if (dead.length === 0 && dynamic.length === 0 && internal.length === 0) {
+      if (invalidKeep.length > 0) {
+        e.status = 'FAILED'
+        e.confidence = 'HIGH'
+        e.reason = 'INVALID_KEEP_ANNOTATION'
+        e.evidenceSummary = `Found ${invalidKeep.length} malformed @workbench-keep annotation(s): ` +
+          invalidKeep.slice(0, 10).map((s) => `${fmt(s)} [${(s.annotationErrors || []).join(',')}]`).join(', ')
+      } else if (dead.length === 0 && dynamic.length === 0 && internal.length === 0 && intentionalKeep.length === 0 && expiredKeep.length === 0) {
         e.status = 'PROVEN'
         e.confidence = 'HIGH'
         e.reason = 'ALL_EXPORTS_REACHABLE'
@@ -704,16 +834,33 @@ function applyStaticAnalysisToEvals(evalResults, sa) {
         e.evidenceSummary = `Found ${dead.length} unreachable export(s): ` + dead.slice(0, 10).map(fmt).join(', ')
       } else {
         // No truly unreachable exports, but some live only via barrel/type-only
-        // imports OR only inside their defining file. Surface as
-        // MANUAL_REVIEW; the API surface is reviewable but no runtime gap.
+        // imports, only inside their defining file, or only via an explicit
+        // @workbench-keep annotation. Surface as MANUAL_REVIEW.
         e.status = 'MANUAL_REVIEW'
         e.confidence = 'MEDIUM'
-        e.reason = internal.length > 0 ? 'EXPORT_API_REVIEW' : 'DYNAMIC_USAGE_DETECTED'
-        const internalSample = internal.slice(0, 6).map(fmt).join(', ')
-        const dynamicSample = dynamic.slice(0, 6).map(fmt).join(', ')
+        let reason
+        if (intentionalKeep.length > 0 || expiredKeep.length > 0) reason = 'INTENTIONAL_KEEP_PRESENT'
+        else if (internal.length > 0) reason = 'EXPORT_API_REVIEW'
+        else reason = 'DYNAMIC_USAGE_DETECTED'
+        e.reason = reason
         const parts = []
-        if (internal.length > 0) parts.push(`${internal.length} internal-only export(s) — alive at runtime, exported API may be unnecessary: ${internalSample}${internal.length > 6 ? ` …(+${internal.length - 6} more)` : ''}`)
-        if (dynamic.length > 0) parts.push(`${dynamic.length} dynamic-usage export(s) — only via barrel/type-only: ${dynamicSample}${dynamic.length > 6 ? ` …(+${dynamic.length - 6} more)` : ''}`)
+        if (intentionalKeep.length > 0) {
+          parts.push(`${intentionalKeep.length} intentional-keep export(s) — surviving via @workbench-keep annotation only: ` +
+            intentionalKeep.slice(0, 6).map((s) => `${fmt(s)} [${s.annotationKind}]`).join(', ') +
+            (intentionalKeep.length > 6 ? ` …(+${intentionalKeep.length - 6} more)` : ''))
+        }
+        if (expiredKeep.length > 0) {
+          parts.push(`${expiredKeep.length} expired @workbench-keep annotation(s): ` +
+            expiredKeep.slice(0, 6).map((s) => `${fmt(s)} [reviewAfter=${s.annotationReviewAfter}]`).join(', '))
+        }
+        if (internal.length > 0) {
+          parts.push(`${internal.length} internal-only export(s): ` +
+            internal.slice(0, 6).map(fmt).join(', ') + (internal.length > 6 ? ` …(+${internal.length - 6} more)` : ''))
+        }
+        if (dynamic.length > 0) {
+          parts.push(`${dynamic.length} dynamic-usage export(s) — only via barrel/type-only: ` +
+            dynamic.slice(0, 6).map(fmt).join(', ') + (dynamic.length > 6 ? ` …(+${dynamic.length - 6} more)` : ''))
+        }
         e.evidenceSummary = parts.join(' | ')
       }
     }
@@ -722,6 +869,141 @@ function applyStaticAnalysisToEvals(evalResults, sa) {
 
 function writeJSON(filePath, obj) {
   fs.writeFileSync(filePath, JSON.stringify(obj, null, 2))
+}
+
+// v0.3.1 self-test: validates the @workbench-keep annotation parser and
+// classifier against in-memory fixture strings. Does not touch product code.
+// Writes annotation-self-test.json into the run directory.
+function runAnnotationSelfTest() {
+  const futureISO = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const pastISO = '2020-01-01'
+
+  const cases = [
+    {
+      id: 'valid-future-api',
+      fixture: [
+        '/**',
+        ' * @workbench-keep FUTURE_API',
+        ' * reason: planned API for the upcoming reminder surface',
+        ' * owner: leo',
+        ` * reviewAfter: ${futureISO}`,
+        ' */',
+        'export function plannedHelper() {}',
+      ],
+      expectStatus: 'VALID',
+      expectKind: 'FUTURE_API',
+      expectClassificationNoUsage: 'INTENTIONAL_KEEP_FUTURE_API',
+    },
+    {
+      id: 'malformed-missing-reason',
+      fixture: [
+        '/**',
+        ' * @workbench-keep FUTURE_API',
+        ' * owner: leo',
+        ` * reviewAfter: ${futureISO}`,
+        ' */',
+        'export function noReasonHelper() {}',
+      ],
+      expectStatus: 'INVALID',
+      expectErrorIncludes: 'MISSING_REASON',
+      expectClassificationNoUsage: 'INVALID_KEEP_ANNOTATION',
+    },
+    {
+      id: 'invalid-kind-frozen',
+      fixture: [
+        '/**',
+        ' * @workbench-keep FROZEN',
+        ' * reason: trying an unknown kind',
+        ' * owner: leo',
+        ` * reviewAfter: ${futureISO}`,
+        ' */',
+        'export function frozenHelper() {}',
+      ],
+      expectStatus: 'INVALID',
+      expectErrorIncludes: 'INVALID_KIND',
+      expectClassificationNoUsage: 'INVALID_KEEP_ANNOTATION',
+    },
+    {
+      id: 'expired-review-after',
+      fixture: [
+        '/**',
+        ' * @workbench-keep KEEP',
+        ' * reason: kept for legacy compatibility',
+        ' * owner: leo',
+        ` * reviewAfter: ${pastISO}`,
+        ' */',
+        'export function expiredHelper() {}',
+      ],
+      expectStatus: 'EXPIRED',
+      expectClassificationNoUsage: 'MANUAL_REVIEW_EXPIRED_KEEP',
+    },
+    {
+      id: 'annotation-does-not-imply-user-flow-proof',
+      fixture: [
+        '/**',
+        ' * @workbench-keep FUTURE_API',
+        ' * reason: not yet wired to UI',
+        ' * owner: leo',
+        ` * reviewAfter: ${futureISO}`,
+        ' */',
+        'export function unwiredHelper() {}',
+      ],
+      // No external usages; classifier must NOT return PROVEN_USED_IN_USER_FLOW.
+      expectStatus: 'VALID',
+      expectKind: 'FUTURE_API',
+      expectClassificationNoUsage: 'INTENTIONAL_KEEP_FUTURE_API',
+      assertNotUserFlowProof: true,
+    },
+  ]
+
+  const results = []
+  for (const c of cases) {
+    const lines = c.fixture
+    // The export line is the last fixture line.
+    const exportIdx = lines.length - 1
+    const ann = staticExtractKeepAnnotation(lines, exportIdx)
+    const exp = {
+      name: 'fixture',
+      kind: 'function',
+      file: '<self-test>',
+      line: exportIdx + 1,
+      testOnly: false,
+      annotation: ann,
+    }
+    const usages = { userFlow: [], test: [], reExport: [], typeOnly: [] }
+    const cls = staticClassifyExport(exp, usages, 0)
+
+    const checks = []
+    let passed = true
+    const expect = (label, ok) => { checks.push({ label, ok }); if (!ok) passed = false }
+
+    expect('annotation parsed', ann !== null)
+    if (ann) expect(`status=${c.expectStatus}`, ann.status === c.expectStatus)
+    if (c.expectKind) expect(`kind=${c.expectKind}`, ann && ann.kind === c.expectKind)
+    if (c.expectErrorIncludes) expect(`errors include ${c.expectErrorIncludes}`,
+      ann && Array.isArray(ann.errors) && ann.errors.includes(c.expectErrorIncludes))
+    expect(`classification=${c.expectClassificationNoUsage}`, cls.classification === c.expectClassificationNoUsage)
+    if (c.assertNotUserFlowProof) {
+      expect('classification != PROVEN_USED_IN_USER_FLOW', cls.classification !== 'PROVEN_USED_IN_USER_FLOW')
+    }
+
+    results.push({
+      id: c.id,
+      passed,
+      annotation: ann,
+      classification: cls.classification,
+      checks,
+    })
+  }
+
+  const allPassed = results.every((r) => r.passed)
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    allPassed,
+    totalCases: results.length,
+    passedCases: results.filter((r) => r.passed).length,
+    results,
+  }
 }
 
 function main() {
@@ -834,6 +1116,8 @@ REQUIRED OUTPUT:
   const staticAnalysis = runStaticAnalysis(packCfgForSA)
   applyStaticAnalysisToEvals(evalResults, staticAnalysis)
   writeJSON(path.join(runDir, 'static-analysis.json'), staticAnalysis)
+  const annotationSelfTest = runAnnotationSelfTest()
+  writeJSON(path.join(runDir, 'annotation-self-test.json'), annotationSelfTest)
   writeJSON(path.join(runDir, 'eval-results.json'), evalResults)
   writeJSON(path.join(runDir, 'mapped-test-runs.json'), mappedTestRuns.map((r) => ({
     path: r.path, ok: r.ok, code: r.code,
@@ -985,8 +1269,18 @@ REQUIRED OUTPUT:
       status: regression.status,
       issues: regression.issues || [],
     },
+    annotationSelfTest: {
+      allPassed: annotationSelfTest.allPassed,
+      totalCases: annotationSelfTest.totalCases,
+      passedCases: annotationSelfTest.passedCases,
+      failedCaseIds: annotationSelfTest.results.filter((r) => !r.passed).map((r) => r.id),
+      confidence: 'HIGH',
+      failureReason: annotationSelfTest.allPassed ? null : 'ANNOTATION_SELF_TEST_FAILED',
+    },
     autoApproval: false,
-    finalStatus: anyFailed
+    finalStatus: !annotationSelfTest.allPassed
+      ? 'FAILED'
+      : anyFailed
       ? 'FAILED'
       : truthFlagged.length > 0
       ? 'FAILED'
@@ -997,7 +1291,9 @@ REQUIRED OUTPUT:
       : minimumProof.status === 'PROVEN'
       ? 'PROVEN'
       : 'NOT_PROVEN',
-    finalReason: anyFailed
+    finalReason: !annotationSelfTest.allPassed
+      ? 'ANNOTATION_SELF_TEST_FAILED'
+      : anyFailed
       ? 'VALIDATION_FAILED'
       : truthFlagged.length > 0
       ? 'TRUTH_VIOLATION'
@@ -1008,6 +1304,7 @@ REQUIRED OUTPUT:
       : minimumProof.status === 'PROVEN'
       ? 'CORE_PROOF_OBSERVED'
       : 'NO_CORE_PROOF',
+    finalConfidence: !annotationSelfTest.allPassed ? 'HIGH' : null,
     note: 'v0.2 runs validation, the forbidden-language scan, the git-aware regression classifier, the safety-constraint scan, and now executes mapped vitest files for each eval. Evals whose mapped file passed are PROVEN/HIGH; failed mapped files are FAILED/HIGH; evals without mappedTest stay NOT_PROVEN/LOW.',
   }
   writeJSON(path.join(runDir, 'evidence-check.json'), evidence)
@@ -1085,6 +1382,10 @@ ${safetyLine}
 
 ## 11. Minimum proof status
 - ${minimumProof.status} — ${minimumProof.reason}
+
+## 11b. Annotation self-test status
+- ${annotationSelfTest.allPassed ? 'PASSED' : 'FAILED — ANNOTATION_SELF_TEST_FAILED (HIGH confidence)'} (${annotationSelfTest.passedCases}/${annotationSelfTest.totalCases} cases)${annotationSelfTest.allPassed ? '' : `\n- failing cases: ${annotationSelfTest.results.filter((r) => !r.passed).map((r) => r.id).join(', ')}\n- annotation parser self-test gates the run; finalStatus is FAILED until parser fixtures pass.`}
+- artifact: ${path.join(runDir, 'annotation-self-test.json')}
 
 ## 12. Ready for Claude Code execution
 ${readyForClaudeLine}
