@@ -342,6 +342,12 @@ export function getHebrewHoliday(dateStr: string): string | null {
 // ─── Family Intelligence ──────────────────────────────────────────────────────
 
 // Returns appointments that match today's month/day (for recurring events)
+/**
+ * @workbench-keep FUTURE_API
+ * reason: planned Family Intelligence helper for birthday and anniversary reminders in AbuCalendar
+ * owner: leo
+ * reviewAfter: 2026-08-01
+ */
 export function getBirthdayToday(appointments: Appointment[]): Appointment[] {
   const today = new Date()
   const mm = String(today.getMonth() + 1).padStart(2, '0')
@@ -354,6 +360,12 @@ export function getBirthdayToday(appointments: Appointment[]): Appointment[] {
 }
 
 // Returns upcoming birthdays/anniversaries in next N days
+/**
+ * @workbench-keep FUTURE_API
+ * reason: planned daysUntil projection for upcoming birthday reminders in AbuCalendar
+ * owner: leo
+ * reviewAfter: 2026-08-01
+ */
 export function getUpcomingBirthdays(
   appointments: Appointment[],
   days = 30,
