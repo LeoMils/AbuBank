@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { shapeFamilyAnswer, shapeLocationAnswer, shapeCalendarAnswer, shapeNotFound, shapeToolError, timeInWords, shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateClarify } from './responseShaper'
+import { shapeFamilyAnswer, shapeLocationAnswer, shapeCalendarAnswer, shapeNotFound, shapeToolError, timeInWords, shapeCreateConfirm, shapeCreateConfirmReadback, shapeCreateSaved, shapeCreateCancelled, shapeCreateClarify } from './responseShaper'
 import type { FamilyMember } from '../../services/familyLoader'
 
 const makeMember = (overrides: Partial<FamilyMember> = {}): FamilyMember => ({
@@ -225,6 +225,159 @@ describe('shapeCreateConfirm', () => {
 
   it('never contains מצאתי/שמרתי/draft', () => {
     const msg = shapeCreateConfirm({ title: 'רופא', date: '2026-05-01', time: '10:00', emoji: '🏥' })
+    expect(msg).not.toContain('מצאתי')
+    expect(msg).not.toContain('שמרתי')
+    expect(msg).not.toContain('draft')
+  })
+
+  it('default shapeCreateConfirm output is unchanged for the baseline fixture', () => {
+    // Pin the existing wording so the readback variant cannot accidentally
+    // alter it via shared helpers.
+    const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+    const msg = shapeCreateConfirm({ title: 'תור לרופא', date: tmrw, time: '10:00', emoji: '🏥' })
+    expect(msg).toContain('אני קובעת לך תור לרופא')
+    expect(msg).toContain('מחר')
+    expect(msg).toContain('בעשר בבוקר')
+    expect(msg.trim().endsWith('זה נכון?')).toBe(true)
+    expect(msg).not.toContain('הבנתי')
+    expect(msg).not.toContain('לקבוע?')
+  })
+})
+
+// ─── Calendar Create Read-back ──────────────────────────────────────────────
+
+describe('shapeCreateConfirmReadback', () => {
+  const tmrw = () => new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+
+  it('happy path — all fields → ends with לקבוע? and includes every clause', () => {
+    const msg = shapeCreateConfirmReadback({
+      title: 'תור אצל התופרת',
+      personName: null,
+      date: tmrw(),
+      time: '17:00',
+      location: 'רחוב קוק 14, הרצליה',
+      notes: 'חור במכנסיים',
+    })
+    expect(msg).toContain('הבנתי')
+    expect(msg).toContain('תור אצל התופרת')
+    expect(msg).toContain('מחר')
+    expect(msg).toContain('בחמש')
+    expect(msg).toContain('רחוב קוק 14, הרצליה')
+    expect(msg).toContain('הסיבה: חור במכנסיים')
+    expect(msg.trim().endsWith('לקבוע?')).toBe(true)
+    expect(msg).not.toContain('undefined')
+    expect(msg).not.toContain('null')
+  })
+
+  it('uses personName when title is missing', () => {
+    const msg = shapeCreateConfirmReadback({
+      title: null,
+      personName: 'דר כהן',
+      date: tmrw(),
+      time: '09:00',
+      location: null,
+      notes: null,
+    })
+    expect(msg).toContain('פגישה עם דר כהן')
+    expect(msg.trim().endsWith('לקבוע?')).toBe(true)
+  })
+
+  it('missing time → asks "לא שמעתי שעה — באיזו שעה?" and does NOT say "לקבוע?"', () => {
+    const msg = shapeCreateConfirmReadback({
+      title: 'תור אצל הרופא',
+      date: tmrw(),
+      time: null,
+      location: null,
+      notes: null,
+    })
+    expect(msg).toContain('לא שמעתי שעה')
+    expect(msg).toContain('באיזו שעה?')
+    expect(msg).not.toContain('לקבוע?')
+    expect(msg).not.toContain('undefined')
+    expect(msg).not.toContain('null')
+  })
+
+  it('missing date → asks "לא שמעתי תאריך — מתי?" and does NOT say "לקבוע?"', () => {
+    const msg = shapeCreateConfirmReadback({
+      title: 'תור אצל הרופא',
+      date: null,
+      time: '09:00',
+      location: null,
+      notes: null,
+    })
+    expect(msg).toContain('לא שמעתי תאריך')
+    expect(msg).toContain('מתי?')
+    expect(msg).not.toContain('לקבוע?')
+    expect(msg).not.toContain('undefined')
+    expect(msg).not.toContain('null')
+  })
+
+  it('missing location → omits location clause, still ends with "לקבוע?"', () => {
+    const msg = shapeCreateConfirmReadback({
+      title: 'ארוחה עם מור',
+      date: tmrw(),
+      time: '14:00',
+      location: null,
+      notes: 'יום הולדת',
+    })
+    expect(msg).toContain('ארוחה עם מור')
+    expect(msg).toContain('הסיבה: יום הולדת')
+    expect(msg.trim().endsWith('לקבוע?')).toBe(true)
+    expect(msg).not.toContain('ב\n')
+    expect(msg).not.toContain('undefined')
+  })
+
+  it('missing notes → omits "הסיבה" clause, still ends with "לקבוע?"', () => {
+    const msg = shapeCreateConfirmReadback({
+      title: 'תור אצל הרופא',
+      date: tmrw(),
+      time: '09:00',
+      location: 'מכבי',
+      notes: null,
+    })
+    expect(msg).not.toContain('הסיבה')
+    expect(msg).toContain('מכבי')
+    expect(msg.trim().endsWith('לקבוע?')).toBe(true)
+  })
+
+  it('ambiguousTime: true → returns clarification, NOT a "לקבוע?" final', () => {
+    const msg = shapeCreateConfirmReadback({
+      title: 'תור אצל התופרת',
+      date: tmrw(),
+      time: '02:34',
+      location: null,
+      notes: null,
+      ambiguousTime: true,
+    })
+    expect(msg).toContain('02:34')
+    expect(msg).toContain('בצהריים או בלילה')
+    expect(msg).not.toContain('לקבוע?')
+    expect(msg).not.toContain('בלילה.')   // does not auto-assume night
+  })
+
+  it('exact-minute preservation: 10:32 / 02:34 / 17:34 are not rounded', () => {
+    for (const t of ['10:32', '02:34', '17:34']) {
+      const msg = shapeCreateConfirmReadback({
+        title: 'אירוע',
+        date: tmrw(),
+        time: t,
+        location: null,
+        notes: null,
+      })
+      expect(msg).toContain(t)
+      expect(msg).not.toContain('10:00')
+      // pin: should not contain rounded forms when raw minute is non-zero
+    }
+  })
+
+  it('never contains מצאתי/שמרתי/draft', () => {
+    const msg = shapeCreateConfirmReadback({
+      title: 'רופא',
+      date: tmrw(),
+      time: '10:00',
+      location: null,
+      notes: null,
+    })
     expect(msg).not.toContain('מצאתי')
     expect(msg).not.toContain('שמרתי')
     expect(msg).not.toContain('draft')

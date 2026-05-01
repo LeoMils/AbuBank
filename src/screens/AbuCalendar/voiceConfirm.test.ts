@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { parseCorrection } from './correctionParser'
+import { shapeCreateConfirmReadback } from '../AbuAI/responseShaper'
 
 const VOICE_CARD = readFileSync(resolve(__dirname, './VoiceCard.tsx'), 'utf8')
 const INDEX = readFileSync(resolve(__dirname, './index.tsx'), 'utf8')
@@ -68,6 +69,32 @@ describe('Voice confirmation — wiring', () => {
   it('when the correction parser returns confirm, parent saves the appointment', () => {
     expect(INDEX).toMatch(/result\.kind === 'confirm'/)
     expect(INDEX).toMatch(/handleVoiceConfirm\(\{[\s\S]*?title: voiceParsed\.title/)
+  })
+})
+
+describe('Voice confirmation — read-back template wired', () => {
+  it('AbuCalendar uses shapeCreateConfirmReadback for the voice confirmation', () => {
+    expect(INDEX).toContain('shapeCreateConfirmReadback')
+    expect(INDEX).toMatch(/shapeCreateConfirmReadback\(\{[\s\S]*?personName: voiceParsed\.personName/)
+  })
+
+  it('happy-path read-back produced by shaper is a Hebrew sentence ending with "לקבוע?"', () => {
+    const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+    const msg = shapeCreateConfirmReadback({
+      title: 'תור אצל התופרת',
+      personName: null,
+      date: tmrw,
+      time: '10:32',
+      location: 'רחוב קוק 14, הרצליה',
+      notes: 'חור במכנסיים',
+    })
+    expect(msg).toContain('הבנתי')
+    expect(msg).toContain('תור אצל התופרת')
+    expect(msg).toContain('מחר')
+    expect(msg).toContain('10:32')
+    expect(msg).toContain('רחוב קוק 14, הרצליה')
+    expect(msg).toContain('חור במכנסיים')
+    expect(msg.trim().endsWith('לקבוע?')).toBe(true)
   })
 })
 

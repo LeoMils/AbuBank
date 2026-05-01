@@ -156,6 +156,48 @@ export function shapeCreateConfirm(draft: CreateDraft): string {
   return lines.join('\n')
 }
 
+// Read-back variant: spoken before voice confirmation. Reads back what / date /
+// time / location / reason explicitly, asks "לקבוע?". Missing date/time produce
+// a targeted clarification ask (not a normal final confirmation). ambiguousTime
+// short-circuits to the AM/PM clarification wording so the read-back never
+// silently auto-PMs.
+export interface ReadbackDraft {
+  title: string | null
+  personName?: string | null
+  date: string | null
+  time: string | null
+  location?: string | null
+  notes?: string | null
+  ambiguousTime?: boolean
+}
+
+export function shapeCreateConfirmReadback(draft: ReadbackDraft): string {
+  if (draft.ambiguousTime && draft.time) {
+    return `לפני שנקבע — ${draft.time} בצהריים או בלילה?`
+  }
+
+  const subject = draft.title
+    ? humanTitle(draft.title)
+    : draft.personName
+      ? `פגישה עם ${draft.personName}`
+      : 'משהו'
+
+  if (!draft.date) {
+    return `הבנתי. לקבוע ${subject}. לא שמעתי תאריך — מתי?`
+  }
+  if (!draft.time) {
+    return `הבנתי. לקבוע ${subject} ${dateLabel(draft.date)}. לא שמעתי שעה — באיזו שעה?`
+  }
+
+  let head = `הבנתי. לקבוע ${subject} ${dateLabel(draft.date)} ${timeInWords(draft.time)}`
+  if (draft.location) head += ` ב${draft.location}`
+  head += '.'
+  const parts: string[] = [head]
+  if (draft.notes) parts.push(`הסיבה: ${draft.notes}.`)
+  parts.push('לקבוע?')
+  return parts.join(' ')
+}
+
 export function shapeCreateSaved(): string {
   return 'נרשם ביומן.'
 }

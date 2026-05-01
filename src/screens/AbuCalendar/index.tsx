@@ -21,7 +21,7 @@ import { InfoButton } from '../../components/InfoButton'
 import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
-import { shapeCreateConfirm } from '../AbuAI/responseShaper'
+import { shapeCreateConfirmReadback } from '../AbuAI/responseShaper'
 import { parseCorrection, applyCorrection } from './correctionParser'
 import { pickUpdateAck, CANCEL_RESPONSE, UNRELATED_RESPONSE, pickClarifyQuestion } from '../AbuAI/conversationLayer'
 import { speak } from '../../services/voice'
@@ -51,7 +51,7 @@ export function AbuCalendar() {
   const [showManual, setShowManual] = useState(false)
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [toast, setToast] = useState(false)
-  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; confidence?: number; source?: 'local' | 'llm' | 'fallback' | null } | null>(null)
+  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; personName?: string | null; ambiguousTime?: boolean; confidence?: number; source?: 'local' | 'llm' | 'fallback' | null } | null>(null)
   const [rawTranscript, setRawTranscript] = useState<string>('')
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing' | 'parsing' | 'parsed' | 'error'>('idle')
   const [voiceError, setVoiceError] = useState<string | null>(null)
@@ -844,12 +844,14 @@ export function AbuCalendar() {
       )}
 
       {voiceParsed && (() => {
-        const baseConfirm = shapeCreateConfirm({
+        const baseConfirm = shapeCreateConfirmReadback({
           title: voiceParsed.title,
+          personName: voiceParsed.personName ?? null,
           date: voiceParsed.date,
           time: voiceParsed.time,
           location: voiceParsed.location ?? null,
           notes: voiceParsed.notes ?? null,
+          ambiguousTime: voiceParsed.ambiguousTime ?? false,
         })
         const fullText = correctionAck ? `${correctionAck}\n${baseConfirm}` : baseConfirm
         return (
