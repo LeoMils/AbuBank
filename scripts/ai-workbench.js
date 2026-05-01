@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { spawnSync } from 'child_process'
 
-const WORKBENCH_VERSION = '0.1.3-safety-scan-tightened'
+const WORKBENCH_VERSION = '0.2.0-mapped-test-execution'
 
 const FORBIDDEN_SUCCESS_LANGUAGE = [
   'fixed',
@@ -342,11 +342,116 @@ function summariseEvalResults(evalsUsed) {
         mappedTest: ev.mappedTest || null,
         status: 'NOT_PROVEN',
         confidence: 'LOW',
-        reason: 'Workbench v0.1.1 does not execute app-level evals; mappedTest is informational only.',
+        reason: 'NO_MAPPED_TEST',
+        command: null,
+        exitCode: null,
+        evidenceSummary: 'No mappedTest declared; eval is informational only.',
       })
     }
   }
   return results
+}
+
+// v0.2: execute the vitest file each mapped eval points at. Group evals by
+// mappedTest so each unique file runs once. A passing mapped file flips its
+// evals to PROVEN/HIGH; failure → FAILED/HIGH; missing file → FAILED/HIGH.
+// One mapped file proves only the evals that explicitly reference it.
+function executeMappedTests(evalResults) {
+  const byPath = new Map()
+  for (const e of evalResults) {
+    if (!e.mappedTest) continue
+    if (!byPath.has(e.mappedTest)) byPath.set(e.mappedTest, [])
+    byPath.get(e.mappedTest).push(e)
+  }
+  const runs = []
+  for (const [testPath, evals] of byPath) {
+    const command = `npx vitest run ${testPath}`
+    if (!fs.existsSync(testPath)) {
+      for (const e of evals) {
+        e.status = 'FAILED'
+        e.confidence = 'HIGH'
+        e.reason = 'MAPPED_TEST_FILE_MISSING'
+        e.command = command
+        e.exitCode = null
+        e.evidenceSummary = `mappedTest path does not exist on disk: ${testPath}`
+      }
+      runs.push({
+        path: testPath, ok: false, code: null,
+        reason: 'MAPPED_TEST_FILE_MISSING',
+        command, evalIds: evals.map((e) => e.id),
+      })
+      continue
+    }
+    const r = spawnSync('npx', ['vitest', 'run', testPath, '--reporter=default'], {
+      encoding: 'utf8',
+      cwd: process.cwd(),
+      env: { ...process.env, CI: '1' },
+      maxBuffer: 50 * 1024 * 1024,
+    })
+    const ok = r.status === 0 && !r.error
+    const reason = ok ? 'MAPPED_TEST_PASSED' : 'MAPPED_TEST_FAILED'
+    const tail = (r.stdout || '').split('\n').slice(-12).join('\n')
+    for (const e of evals) {
+      e.status = ok ? 'PROVEN' : 'FAILED'
+      e.confidence = 'HIGH'
+      e.reason = reason
+      e.command = command
+      e.exitCode = r.status
+      e.evidenceSummary = ok
+        ? `Mapped vitest file passed (exit 0): ${testPath}. tail:\n${tail}`
+        : `Mapped vitest file failed (exit ${r.status}${r.error ? `, error: ${r.error}` : ''}): ${testPath}. tail:\n${tail}`
+    }
+    runs.push({
+      path: testPath, ok, code: r.status,
+      reason,
+      command,
+      evalIds: evals.map((e) => e.id),
+      stdout: r.stdout || '',
+      stderr: r.stderr || '',
+      error: r.error ? String(r.error) : null,
+    })
+  }
+  return runs
+}
+
+function countEvals(evalResults) {
+  const c = { proven: 0, notProven: 0, manualReview: 0, failed: 0 }
+  for (const e of evalResults) {
+    if (e.status === 'PROVEN') c.proven++
+    else if (e.status === 'FAILED') c.failed++
+    else if (e.status === 'MANUAL_REVIEW') c.manualReview++
+    else c.notProven++
+  }
+  return c
+}
+
+const CORE_PROOF_CATEGORIES = ['core_functionality', 'main_user_flow', 'critical_bug_fix']
+
+function computeMinimumProof(evalResults) {
+  const proven = evalResults.filter(
+    (e) => e.mandatory
+      && e.status === 'PROVEN'
+      && e.confidence === 'HIGH'
+      && CORE_PROOF_CATEGORIES.includes(e.category),
+  )
+  if (proven.length > 0) {
+    return {
+      status: 'PROVEN',
+      reason: 'CORE_PROOF_OBSERVED',
+      confidence: 'HIGH',
+      provenCount: proven.length,
+      provenIds: proven.map((e) => e.id),
+      note: 'At least one mandatory core_functionality / main_user_flow / critical_bug_fix eval is PROVEN with HIGH confidence via mapped vitest execution.',
+    }
+  }
+  return {
+    status: 'FAILED',
+    reason: 'NO_CORE_PROOF',
+    confidence: 'LOW',
+    provenCount: 0,
+    provenIds: [],
+    note: 'No mandatory core_functionality / main_user_flow / critical_bug_fix eval is PROVEN with HIGH confidence in this run.',
+  }
 }
 
 function writeJSON(filePath, obj) {
@@ -453,9 +558,17 @@ REQUIRED OUTPUT:
   const buildResult = validation.find((r) => r.name === 'build')
   const buildSideEffectPossible = !!(buildResult && buildResult.ok)
 
-  // Eval results (no app-level execution in v0.1.1)
+  // Eval results: v0.2 actually executes mapped vitest files.
   const evalResults = summariseEvalResults(evalsUsed)
+  const mappedTestRuns = executeMappedTests(evalResults)
   writeJSON(path.join(runDir, 'eval-results.json'), evalResults)
+  writeJSON(path.join(runDir, 'mapped-test-runs.json'), mappedTestRuns.map((r) => ({
+    path: r.path, ok: r.ok, code: r.code,
+    stdoutTail: (r.stdout || '').split('\n').slice(-15).join('\n'),
+    stderrTail: (r.stderr || '').split('\n').slice(-15).join('\n'),
+    error: r.error || null,
+  })))
+  const evalCounts = countEvals(evalResults)
 
   // Truth violation scan (claude-prompt + final-report-to-be-written)
   // We scan claude-prompt.md now, and final-report.md after writing it (re-scan).
@@ -470,13 +583,10 @@ REQUIRED OUTPUT:
     matches: truthFlagged,
   }
 
-  // Minimum proof: in v0.1.1 we never PROVE app-level evals → fails by default.
-  const minimumProof = {
-    status: 'FAILED',
-    reason: 'NO_CORE_PROOF',
-    confidence: 'LOW',
-    note: 'No core_functionality / main_user_flow / critical_bug_fix is PROVEN with HIGH confidence in this run.',
-  }
+  // Minimum proof: derived from mapped-test execution. Passes when at least
+  // one mandatory core_functionality / main_user_flow / critical_bug_fix
+  // eval is now PROVEN with HIGH confidence.
+  const minimumProof = computeMinimumProof(evalResults)
 
   // Regression check — minimal git-aware classifier of working-tree changes.
   let regression
@@ -529,7 +639,7 @@ REQUIRED OUTPUT:
       issues,
       changed: changed.length,
       buckets,
-      note: 'v0.1.2 minimal git-aware regression classifier. No diff content analysis.',
+      note: 'v0.2 minimal git-aware regression classifier. No diff content analysis.',
     }
   }
   writeJSON(path.join(runDir, 'regression-check.json'), regression)
@@ -542,14 +652,14 @@ REQUIRED OUTPUT:
     confidence: 'LOW',
     reason: 'UNKNOWN_BASELINE',
     checked: false,
-    note: 'Drift was NOT checked. v0.1.2 has no known-working baseline to compare against.',
+    note: 'Drift was NOT checked. v0.2 has no recorded baseline to compare against.',
   })
 
   writeJSON(path.join(runDir, 'source-conflicts.json'), {
     status: 'NOT_PROVEN',
     confidence: 'LOW',
     conflicts: [],
-    note: 'Evidence-tagged context loaded; deterministic conflict resolution not implemented in v0.1.2.',
+    note: 'Evidence-tagged context loaded; deterministic conflict resolution not implemented in v0.2.',
   })
 
   // Pre-final safety check: confirm the constraints from the task were
@@ -573,10 +683,18 @@ REQUIRED OUTPUT:
     },
     eval: {
       total: evalResults.length,
-      proven: 0,
-      notProven: evalResults.length,
-      manualReview: 0,
-      failed: 0,
+      proven: evalCounts.proven,
+      notProven: evalCounts.notProven,
+      manualReview: evalCounts.manualReview,
+      failed: evalCounts.failed,
+    },
+    mappedTestSummary: {
+      uniqueMappedTestsRun: mappedTestRuns.length,
+      passed: mappedTestRuns.filter((r) => r.ok).length,
+      failedOrMissing: mappedTestRuns.filter((r) => !r.ok).length,
+      reasons: mappedTestRuns.map((r) => ({
+        path: r.path, ok: r.ok, exitCode: r.code, reason: r.reason, evalIds: r.evalIds,
+      })),
     },
     minimumProof,
     truthViolationPreFinal: {
@@ -599,17 +717,25 @@ REQUIRED OUTPUT:
       ? 'FAILED'
       : truthFlagged.length > 0
       ? 'FAILED'
-      : (regression.status === 'FAILED'
-        ? 'FAILED'
-        : 'NOT_PROVEN'),
+      : regression.status === 'FAILED'
+      ? 'FAILED'
+      : evalCounts.failed > 0
+      ? 'FAILED'
+      : minimumProof.status === 'PROVEN'
+      ? 'PROVEN'
+      : 'NOT_PROVEN',
     finalReason: anyFailed
       ? 'VALIDATION_FAILED'
       : truthFlagged.length > 0
       ? 'TRUTH_VIOLATION'
-      : (regression.status === 'FAILED'
-        ? 'FORBIDDEN_PATH_TOUCHED'
-        : 'NO_CORE_PROOF'),
-    note: 'v0.1.2 runs validation, forbidden-language scan, git-aware regression classifier, and safety-constraint scan. App-level evals are not executed; HIGH-confidence proof of core behavior requires a future runner upgrade or a mapped test runner.',
+      : regression.status === 'FAILED'
+      ? 'FORBIDDEN_PATH_TOUCHED'
+      : evalCounts.failed > 0
+      ? 'EVAL_FAILED'
+      : minimumProof.status === 'PROVEN'
+      ? 'CORE_PROOF_OBSERVED'
+      : 'NO_CORE_PROOF',
+    note: 'v0.2 runs validation, the forbidden-language scan, the git-aware regression classifier, the safety-constraint scan, and now executes mapped vitest files for each eval. Evals whose mapped file passed are PROVEN/HIGH; failed mapped files are FAILED/HIGH; evals without mappedTest stay NOT_PROVEN/LOW.',
   }
   writeJSON(path.join(runDir, 'evidence-check.json'), evidence)
 
@@ -655,11 +781,12 @@ ${buildSideEffectPossible ? '\nNote: \`npm run build\` may have produced generat
 
 ## 4. Eval results
 - total: ${evalResults.length}
-- PROVEN: 0
-- NOT_PROVEN: ${evalResults.length}
-- MANUAL_REVIEW: 0
-- FAILED: 0
-v0.1.x does not execute app-level evals; results are NOT_PROVEN with LOW confidence by default.
+- PROVEN: ${evalCounts.proven}
+- NOT_PROVEN: ${evalCounts.notProven}
+- MANUAL_REVIEW: ${evalCounts.manualReview}
+- FAILED: ${evalCounts.failed}
+v0.2 executes mapped vitest files. Evals with a passing mappedTest are PROVEN/HIGH; failed mappedTest → FAILED/HIGH; no mappedTest → NOT_PROVEN/LOW.
+Mapped test runs recorded in mapped-test-runs.json.
 
 ## 5. Evidence status
 - finalStatus: ${args.overallStatus}
@@ -675,10 +802,10 @@ v0.1.x does not execute app-level evals; results are NOT_PROVEN with LOW confide
 - buckets: allowed=${(regression.buckets?.allowedPaths?.length) ?? 0}, forbidden=${(regression.buckets?.forbiddenPaths?.length) ?? 0}, secrets=${(regression.buckets?.forbiddenSecrets?.length) ?? 0}, unrelated=${(regression.buckets?.unrelatedPaths?.length) ?? 0}, generated=${(regression.buckets?.generatedFiles?.length) ?? 0}, package=${(regression.buckets?.packageFiles?.length) ?? 0}, workbench-infra=${(regression.buckets?.workbenchInfra?.length) ?? 0}
 
 ## 8. Drift status
-- NOT_PROVEN — UNKNOWN_BASELINE. Drift was NOT checked. v0.1.x has no recorded baseline to compare against.
+- NOT_PROVEN — UNKNOWN_BASELINE. Drift was NOT checked. v0.2 has no recorded baseline to compare against.
 
 ## 9. Source conflict status
-- NOT_PROVEN — context evidence-tagged but deterministic conflict resolution not implemented in v0.1.x.
+- NOT_PROVEN — context evidence-tagged but deterministic conflict resolution not implemented in v0.2.
 
 ## 10. Safety status
 ${safetyLine}
