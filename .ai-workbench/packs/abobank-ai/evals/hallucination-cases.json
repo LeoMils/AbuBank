@@ -9,8 +9,8 @@
         "claimsCalendarChecked": false,
         "explicitlyReportsToolUnavailable": true
       },
-      "mappedTest": null,
-      "note": "No automated assertion exists yet. Defaults to NOT_PROVEN with LOW confidence."
+      "mappedTest": "src/screens/AbuAI/noHallucination.test.ts",
+      "note": "Pinned by deterministic assertions over shapeToolError, answerFromToolResult tool-error branch, tryGroundedAnswer, and containsUngroundedClaim past-tense flagging."
     },
     {
       "id": "hallucination-web-unavailable",
@@ -21,7 +21,8 @@
         "claimsWebSearched": false,
         "explicitlyReportsToolUnavailable": true
       },
-      "mappedTest": null
+      "mappedTest": "src/screens/AbuAI/noHallucination.test.ts",
+      "note": "Pinned by assertions that no web/online tool exists in the AbuAI tool surface and that SYSTEM_PROMPT never asserts live web access."
     },
     {
       "id": "hallucination-empty-tool-result-no-claim",
@@ -32,7 +33,8 @@
         "fabricatesAnswer": false,
         "explicitlyReportsNoResult": true
       },
-      "mappedTest": null
+      "mappedTest": "src/screens/AbuAI/noHallucination.test.ts",
+      "note": "Pinned by assertions that empty calendar / family-not-found return honest 'לא מצאתי' wording without past-tense success-claim verbs."
     }
   ]
 }
