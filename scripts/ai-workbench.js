@@ -568,12 +568,31 @@ function staticFindUsages(symbol, definingFile, projectFiles, fileCache) {
   return usages
 }
 
-function staticClassifyExport(exp, usages) {
+function staticCountInternalUsages(symbol, file, fileCache) {
+  let src = fileCache.get(file)
+  if (src === undefined) {
+    try { src = fs.readFileSync(file, 'utf8') } catch { src = '' }
+    fileCache.set(file, src)
+  }
+  // Strip comments + intra-file type-only imports / re-exports so we count
+  // only real intra-file references.
+  const cleaned = staticStripComments(src)
+    .replace(/import\s+type\s*\{[^}]*\}\s*from\s*[^;\n]+/g, ' ')
+    .replace(/export\s*\{[^}]*\}\s*from\s*[^;\n]+/g, ' ')
+  const re = new RegExp(`(?<![A-Za-z0-9_$])${staticEscapeRe(symbol)}(?![A-Za-z0-9_$])`, 'g')
+  let count = 0
+  while (re.exec(cleaned) !== null) count++
+  // Subtract one for the declaration itself.
+  return Math.max(0, count - 1)
+}
+
+function staticClassifyExport(exp, usages, internalCount) {
   if (exp.testOnly) return { classification: 'TEST_ONLY_EXPLICIT', confidence: 'HIGH' }
   if (usages.userFlow.length > 0) return { classification: 'PROVEN_USED_IN_USER_FLOW', confidence: 'HIGH' }
   if (usages.test.length > 0) return { classification: 'PROVEN_USED_IN_TEST', confidence: 'HIGH' }
   if (usages.reExport.length > 0) return { classification: 'MANUAL_REVIEW_DYNAMIC_USAGE', confidence: 'MEDIUM' }
   if (usages.typeOnly.length > 0) return { classification: 'MANUAL_REVIEW_DYNAMIC_USAGE', confidence: 'MEDIUM' }
+  if (internalCount > 0) return { classification: 'USED_IN_DEFINING_FILE_ONLY', confidence: 'HIGH' }
   return { classification: 'NOT_PROVEN_NO_USAGE', confidence: 'HIGH' }
 }
 
@@ -596,13 +615,24 @@ function runStaticAnalysis(packCfg) {
     const exps = staticExtractExports(f, src)
     for (const exp of exps) {
       const usages = staticFindUsages(exp.name, exp.file, projectFiles, fileCache)
-      const cls = staticClassifyExport(exp, usages)
+      const internalCount = staticCountInternalUsages(exp.name, exp.file, fileCache)
+      const cls = staticClassifyExport(exp, usages, internalCount)
+      const recommendation = cls.classification === 'USED_IN_DEFINING_FILE_ONLY'
+        ? 'Live at runtime via intra-file calls. Exported API surface may be unnecessary; consider de-exporting if not needed by external code or tests.'
+        : cls.classification === 'NOT_PROVEN_NO_USAGE'
+        ? 'No reference outside the defining file. Likely dead code; review for removal.'
+        : cls.classification === 'MANUAL_REVIEW_DYNAMIC_USAGE'
+        ? 'Only seen via barrel re-export or type-only import. Manual review required.'
+        : null
       symbols.push({
         name: exp.name,
         kind: exp.kind,
         definingFile: exp.file,
         line: exp.line,
         testOnly: exp.testOnly,
+        definingFileInternalUsages: internalCount,
+        externalUsages: usages.userFlow,
+        testUsages: usages.test,
         usageFiles: {
           userFlow: usages.userFlow,
           test: usages.test,
@@ -611,6 +641,7 @@ function runStaticAnalysis(packCfg) {
         },
         classification: cls.classification,
         confidence: cls.confidence,
+        recommendation,
       })
     }
   }
@@ -619,6 +650,7 @@ function runStaticAnalysis(packCfg) {
     PROVEN_USED_IN_USER_FLOW: 0,
     PROVEN_USED_IN_TEST: 0,
     TEST_ONLY_EXPLICIT: 0,
+    USED_IN_DEFINING_FILE_ONLY: 0,
     MANUAL_REVIEW_DYNAMIC_USAGE: 0,
     NOT_PROVEN_NO_USAGE: 0,
   }
@@ -632,12 +664,13 @@ function runStaticAnalysis(packCfg) {
     exportedSymbols: symbols.length,
     counts,
     symbols,
-    note: 'Conservative regex-based reachability scan. Type-only imports and barrel re-exports do not count as runtime user-flow usage. If unsure, MANUAL_REVIEW_DYNAMIC_USAGE; never falsely PROVEN.',
+    note: 'Conservative regex-based reachability scan. Internal-only exports (USED_IN_DEFINING_FILE_ONLY) are alive at runtime but the export keyword may be unnecessary. Type-only imports and barrel re-exports trigger MANUAL_REVIEW_DYNAMIC_USAGE. NOT_PROVEN_NO_USAGE means no reference anywhere outside the defining file and not even an intra-file usage.',
   }
 }
 
 function applyStaticAnalysisToEvals(evalResults, sa) {
   const dead = sa.symbols.filter((s) => s.classification === 'NOT_PROVEN_NO_USAGE')
+  const internal = sa.symbols.filter((s) => s.classification === 'USED_IN_DEFINING_FILE_ONLY')
   const dynamic = sa.symbols.filter((s) => s.classification === 'MANUAL_REVIEW_DYNAMIC_USAGE')
   const fmt = (s) => `${s.name} @ ${s.definingFile.replace(/\\/g, '/')}:${s.line}`
 
@@ -649,7 +682,7 @@ function applyStaticAnalysisToEvals(evalResults, sa) {
         e.status = 'PROVEN'
         e.confidence = 'HIGH'
         e.reason = 'NO_DEAD_CODE_DETECTED'
-        e.evidenceSummary = `Static analysis scanned ${sa.scannedDefiningFiles.length} defining files in pack-allowed paths and found 0 NOT_PROVEN_NO_USAGE exports across ${sa.exportedSymbols} symbols. ${dynamic.length} require manual review.`
+        e.evidenceSummary = `Static analysis scanned ${sa.scannedDefiningFiles.length} defining files in pack-allowed paths and found 0 NOT_PROVEN_NO_USAGE exports across ${sa.exportedSymbols} symbols. ${internal.length} internal-only and ${dynamic.length} dynamic-usage exports surfaced for manual review but are not dead.`
       } else {
         e.status = 'FAILED'
         e.confidence = 'HIGH'
@@ -659,21 +692,29 @@ function applyStaticAnalysisToEvals(evalResults, sa) {
     } else if (e.id === 'real-call-site-validation') {
       e.command = 'workbench static-analysis (regex reachability)'
       e.exitCode = null
-      if (dead.length === 0 && dynamic.length === 0) {
+      if (dead.length === 0 && dynamic.length === 0 && internal.length === 0) {
         e.status = 'PROVEN'
         e.confidence = 'HIGH'
         e.reason = 'ALL_EXPORTS_REACHABLE'
-        e.evidenceSummary = `All ${sa.exportedSymbols} exported symbols in pack-allowed paths have user-flow or test usage (or are explicitly test-only).`
+        e.evidenceSummary = `All ${sa.exportedSymbols} exported symbols in pack-allowed paths have external user-flow or test usage (or are explicitly test-only).`
       } else if (dead.length > 0) {
         e.status = 'FAILED'
         e.confidence = 'HIGH'
         e.reason = 'UNREACHABLE_EXPORTS'
         e.evidenceSummary = `Found ${dead.length} unreachable export(s): ` + dead.slice(0, 10).map(fmt).join(', ')
       } else {
+        // No truly unreachable exports, but some live only via barrel/type-only
+        // imports OR only inside their defining file. Surface as
+        // MANUAL_REVIEW; the API surface is reviewable but no runtime gap.
         e.status = 'MANUAL_REVIEW'
         e.confidence = 'MEDIUM'
-        e.reason = 'DYNAMIC_USAGE_DETECTED'
-        e.evidenceSummary = `Found ${dynamic.length} export(s) only reachable via barrel re-export or type-only imports: ` + dynamic.slice(0, 10).map(fmt).join(', ')
+        e.reason = internal.length > 0 ? 'EXPORT_API_REVIEW' : 'DYNAMIC_USAGE_DETECTED'
+        const internalSample = internal.slice(0, 6).map(fmt).join(', ')
+        const dynamicSample = dynamic.slice(0, 6).map(fmt).join(', ')
+        const parts = []
+        if (internal.length > 0) parts.push(`${internal.length} internal-only export(s) — alive at runtime, exported API may be unnecessary: ${internalSample}${internal.length > 6 ? ` …(+${internal.length - 6} more)` : ''}`)
+        if (dynamic.length > 0) parts.push(`${dynamic.length} dynamic-usage export(s) — only via barrel/type-only: ${dynamicSample}${dynamic.length > 6 ? ` …(+${dynamic.length - 6} more)` : ''}`)
+        e.evidenceSummary = parts.join(' | ')
       }
     }
   }
