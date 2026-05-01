@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { spawnSync } from 'child_process'
 
-const WORKBENCH_VERSION = '0.2.0-mapped-test-execution'
+const WORKBENCH_VERSION = '0.3.0-static-analysis'
 
 const FORBIDDEN_SUCCESS_LANGUAGE = [
   'fixed',
@@ -454,6 +454,231 @@ function computeMinimumProof(evalResults) {
   }
 }
 
+// v0.3 static analysis ---------------------------------------------------
+// Conservative, regex-based reachability check. No AST, no dependency.
+// "Defining files" = source files inside the pack's allowedPaths (excluding
+// tests). Every project file under src/ is a candidate "usage" file.
+//
+// A symbol's classification:
+//   PROVEN_USED_IN_USER_FLOW  — referenced in a non-test source file outside
+//                               its defining file
+//   PROVEN_USED_IN_TEST       — referenced only in test files
+//   TEST_ONLY_EXPLICIT        — preceding line carries `// test-only` /
+//                               `@test-only` marker
+//   MANUAL_REVIEW_DYNAMIC_USAGE — only seen in barrel re-exports / type-only
+//                                imports → cannot be proven reachable
+//   NOT_PROVEN_NO_USAGE       — no reference outside the defining file
+const STATIC_PROJECT_ROOTS = ['src']
+const STATIC_FILE_EXTS = ['.ts', '.tsx', '.js', '.jsx']
+const STATIC_IGNORE_DIRS = new Set(['node_modules', 'dist', '.ai-runs', '.git', '.vite', 'coverage'])
+
+function staticWalkFiles(dir) {
+  const out = []
+  if (!fs.existsSync(dir)) return out
+  const entries = fs.readdirSync(dir, { withFileTypes: true })
+  for (const ent of entries) {
+    const full = path.join(dir, ent.name)
+    if (ent.isDirectory()) {
+      if (STATIC_IGNORE_DIRS.has(ent.name)) continue
+      out.push(...staticWalkFiles(full))
+    } else if (ent.isFile() && STATIC_FILE_EXTS.some((e) => ent.name.endsWith(e))) {
+      out.push(full)
+    }
+  }
+  return out
+}
+
+function staticIsTestFile(file) {
+  return /\.test\.(ts|tsx|js|jsx)$/.test(file)
+}
+
+function staticIsWithinPackAllowed(file, allowedRoots) {
+  return allowedRoots.some((r) => file === r || file.startsWith(r + '/') || file.startsWith(r + path.sep))
+}
+
+function staticExtractExports(file, src) {
+  const lines = src.split('\n')
+  const exports = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const prev = i > 0 ? lines[i - 1] : ''
+    const testOnlyMarker = /(?:\/\/|\/\*|\*)\s*@?test-only\b/i.test(prev) || /(?:\/\/|\/\*|\*)\s*@?test-only\b/i.test(line)
+
+    let m = line.match(/^\s*export\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/)
+    if (m) { exports.push({ name: m[1], kind: 'function', file, line: i + 1, testOnly: testOnlyMarker }); continue }
+
+    m = line.match(/^\s*export\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*[=:]/)
+    if (m) { exports.push({ name: m[1], kind: 'const', file, line: i + 1, testOnly: testOnlyMarker }); continue }
+
+    m = line.match(/^\s*export\s+class\s+([A-Za-z_$][\w$]*)/)
+    if (m) { exports.push({ name: m[1], kind: 'class', file, line: i + 1, testOnly: testOnlyMarker }); continue }
+    // export type/interface/enum and export {...} from / export default are deliberately skipped.
+  }
+  return exports
+}
+
+function staticStripComments(src) {
+  return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^.*\/\/.*$/gm, (line) => line.split('//')[0])
+}
+
+function staticEscapeRe(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function staticFindUsages(symbol, definingFile, projectFiles, fileCache) {
+  const usages = { userFlow: [], test: [], reExport: [], typeOnly: [] }
+  const wordRe = new RegExp(`(?<![A-Za-z0-9_$])${staticEscapeRe(symbol)}(?![A-Za-z0-9_$])`)
+  const typeImportRe = new RegExp(
+    `import\\s+type\\s*\\{[^}]*(?<![A-Za-z0-9_$])${staticEscapeRe(symbol)}(?![A-Za-z0-9_$])[^}]*\\}`,
+  )
+  const reExportRe = new RegExp(
+    `export\\s*\\{[^}]*(?<![A-Za-z0-9_$])${staticEscapeRe(symbol)}(?![A-Za-z0-9_$])[^}]*\\}\\s*from`,
+  )
+  for (const file of projectFiles) {
+    if (file === definingFile) continue
+    let src = fileCache.get(file)
+    if (src === undefined) {
+      try { src = fs.readFileSync(file, 'utf8') } catch { src = '' }
+      fileCache.set(file, src)
+    }
+    if (!wordRe.test(src)) continue
+    const stripped = staticStripComments(src)
+    if (!wordRe.test(stripped)) continue
+
+    const isTypeOnly = typeImportRe.test(stripped)
+    const isReExport = reExportRe.test(stripped)
+
+    // Count an import-only-as-type or only a barrel re-export specially.
+    // If the same file also has a real, non-type, non-re-export reference,
+    // that wins.
+    const cleanedForRealUse = stripped
+      .replace(/import\s+type\s*\{[^}]*\}\s*from\s*[^;\n]+/g, ' ')
+      .replace(/export\s*\{[^}]*\}\s*from\s*[^;\n]+/g, ' ')
+    const hasRealUsage = wordRe.test(cleanedForRealUse)
+
+    if (hasRealUsage) {
+      if (staticIsTestFile(file)) usages.test.push(file)
+      else usages.userFlow.push(file)
+    } else if (isReExport) {
+      usages.reExport.push(file)
+    } else if (isTypeOnly) {
+      usages.typeOnly.push(file)
+    }
+  }
+  return usages
+}
+
+function staticClassifyExport(exp, usages) {
+  if (exp.testOnly) return { classification: 'TEST_ONLY_EXPLICIT', confidence: 'HIGH' }
+  if (usages.userFlow.length > 0) return { classification: 'PROVEN_USED_IN_USER_FLOW', confidence: 'HIGH' }
+  if (usages.test.length > 0) return { classification: 'PROVEN_USED_IN_TEST', confidence: 'HIGH' }
+  if (usages.reExport.length > 0) return { classification: 'MANUAL_REVIEW_DYNAMIC_USAGE', confidence: 'MEDIUM' }
+  if (usages.typeOnly.length > 0) return { classification: 'MANUAL_REVIEW_DYNAMIC_USAGE', confidence: 'MEDIUM' }
+  return { classification: 'NOT_PROVEN_NO_USAGE', confidence: 'HIGH' }
+}
+
+function runStaticAnalysis(packCfg) {
+  const allowed = packCfg && packCfg.allowedPaths ? packCfg.allowedPaths : []
+  const projectFiles = []
+  for (const root of STATIC_PROJECT_ROOTS) projectFiles.push(...staticWalkFiles(root))
+  const definingFiles = projectFiles.filter(
+    (f) => staticIsWithinPackAllowed(f, allowed) && !staticIsTestFile(f),
+  )
+
+  const fileCache = new Map()
+  const symbols = []
+  for (const f of definingFiles) {
+    let src = fileCache.get(f)
+    if (src === undefined) {
+      try { src = fs.readFileSync(f, 'utf8') } catch { src = '' }
+      fileCache.set(f, src)
+    }
+    const exps = staticExtractExports(f, src)
+    for (const exp of exps) {
+      const usages = staticFindUsages(exp.name, exp.file, projectFiles, fileCache)
+      const cls = staticClassifyExport(exp, usages)
+      symbols.push({
+        name: exp.name,
+        kind: exp.kind,
+        definingFile: exp.file,
+        line: exp.line,
+        testOnly: exp.testOnly,
+        usageFiles: {
+          userFlow: usages.userFlow,
+          test: usages.test,
+          reExportOnly: usages.reExport,
+          typeOnly: usages.typeOnly,
+        },
+        classification: cls.classification,
+        confidence: cls.confidence,
+      })
+    }
+  }
+
+  const counts = {
+    PROVEN_USED_IN_USER_FLOW: 0,
+    PROVEN_USED_IN_TEST: 0,
+    TEST_ONLY_EXPLICIT: 0,
+    MANUAL_REVIEW_DYNAMIC_USAGE: 0,
+    NOT_PROVEN_NO_USAGE: 0,
+  }
+  for (const s of symbols) counts[s.classification]++
+
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    packAllowedPaths: allowed,
+    scannedDefiningFiles: definingFiles.map((f) => f.replace(/\\/g, '/')),
+    scannedProjectFileCount: projectFiles.length,
+    exportedSymbols: symbols.length,
+    counts,
+    symbols,
+    note: 'Conservative regex-based reachability scan. Type-only imports and barrel re-exports do not count as runtime user-flow usage. If unsure, MANUAL_REVIEW_DYNAMIC_USAGE; never falsely PROVEN.',
+  }
+}
+
+function applyStaticAnalysisToEvals(evalResults, sa) {
+  const dead = sa.symbols.filter((s) => s.classification === 'NOT_PROVEN_NO_USAGE')
+  const dynamic = sa.symbols.filter((s) => s.classification === 'MANUAL_REVIEW_DYNAMIC_USAGE')
+  const fmt = (s) => `${s.name} @ ${s.definingFile.replace(/\\/g, '/')}:${s.line}`
+
+  for (const e of evalResults) {
+    if (e.id === 'integration-dead-code') {
+      e.command = 'workbench static-analysis (regex reachability)'
+      e.exitCode = null
+      if (dead.length === 0) {
+        e.status = 'PROVEN'
+        e.confidence = 'HIGH'
+        e.reason = 'NO_DEAD_CODE_DETECTED'
+        e.evidenceSummary = `Static analysis scanned ${sa.scannedDefiningFiles.length} defining files in pack-allowed paths and found 0 NOT_PROVEN_NO_USAGE exports across ${sa.exportedSymbols} symbols. ${dynamic.length} require manual review.`
+      } else {
+        e.status = 'FAILED'
+        e.confidence = 'HIGH'
+        e.reason = 'DEAD_CODE_DETECTED'
+        e.evidenceSummary = `Found ${dead.length} unused export(s): ` + dead.slice(0, 15).map(fmt).join(', ') + (dead.length > 15 ? `, …(+${dead.length - 15} more)` : '')
+      }
+    } else if (e.id === 'real-call-site-validation') {
+      e.command = 'workbench static-analysis (regex reachability)'
+      e.exitCode = null
+      if (dead.length === 0 && dynamic.length === 0) {
+        e.status = 'PROVEN'
+        e.confidence = 'HIGH'
+        e.reason = 'ALL_EXPORTS_REACHABLE'
+        e.evidenceSummary = `All ${sa.exportedSymbols} exported symbols in pack-allowed paths have user-flow or test usage (or are explicitly test-only).`
+      } else if (dead.length > 0) {
+        e.status = 'FAILED'
+        e.confidence = 'HIGH'
+        e.reason = 'UNREACHABLE_EXPORTS'
+        e.evidenceSummary = `Found ${dead.length} unreachable export(s): ` + dead.slice(0, 10).map(fmt).join(', ')
+      } else {
+        e.status = 'MANUAL_REVIEW'
+        e.confidence = 'MEDIUM'
+        e.reason = 'DYNAMIC_USAGE_DETECTED'
+        e.evidenceSummary = `Found ${dynamic.length} export(s) only reachable via barrel re-export or type-only imports: ` + dynamic.slice(0, 10).map(fmt).join(', ')
+      }
+    }
+  }
+}
+
 function writeJSON(filePath, obj) {
   fs.writeFileSync(filePath, JSON.stringify(obj, null, 2))
 }
@@ -558,9 +783,16 @@ REQUIRED OUTPUT:
   const buildResult = validation.find((r) => r.name === 'build')
   const buildSideEffectPossible = !!(buildResult && buildResult.ok)
 
-  // Eval results: v0.2 actually executes mapped vitest files.
+  // Eval results: v0.2 executes mapped vitest files; v0.3 then runs static
+  // analysis to flip integration-dead-code and real-call-site-validation
+  // away from the silent NOT_PROVEN/LOW default. Only those two evals are
+  // touched by the static-analysis runner.
   const evalResults = summariseEvalResults(evalsUsed)
   const mappedTestRuns = executeMappedTests(evalResults)
+  const packCfgForSA = (config.packs && config.packs[pack]) || null
+  const staticAnalysis = runStaticAnalysis(packCfgForSA)
+  applyStaticAnalysisToEvals(evalResults, staticAnalysis)
+  writeJSON(path.join(runDir, 'static-analysis.json'), staticAnalysis)
   writeJSON(path.join(runDir, 'eval-results.json'), evalResults)
   writeJSON(path.join(runDir, 'mapped-test-runs.json'), mappedTestRuns.map((r) => ({
     path: r.path, ok: r.ok, code: r.code,
