@@ -1367,7 +1367,7 @@ ${diffSummary.changedFiles.length === 0 ? '(clean tree)' : diffSummary.changedFi
 ${validationLines || '(no validation scripts available)'}
 
 ## Eval summary
-- total: ${evalCounts.total}
+- total: ${(evalCounts.proven || 0) + (evalCounts.notProven || 0) + (evalCounts.manualReview || 0) + (evalCounts.failed || 0)}
 - PROVEN: ${evalCounts.proven}
 - NOT_PROVEN: ${evalCounts.notProven}
 - MANUAL_REVIEW: ${evalCounts.manualReview}
@@ -1638,6 +1638,22 @@ function runV04SelfTest({ projectRoot }) {
   })
   expect('review-prompt and next-action share finalStatus', new RegExp(`finalStatus: ${fixtureStatus}`).test(reviewSync))
   expect('review-prompt and next-action share finalReason', new RegExp(`finalReason: ${fixtureReason}`).test(reviewSync))
+
+  // Test 11: review-prompt eval summary contains no "undefined" or "NaN".
+  const reviewWithEvals = buildReviewPrompt({
+    task: 'eval-total', pack: 'abobank-ai', runDir: '/tmp/run',
+    finalStatus: 'FAILED', finalReason: 'EVAL_FAILED',
+    diffSummary: cleanDiff, validationSummary: [],
+    evalCounts: { proven: 11, notProven: 4, manualReview: 0, failed: 2 },
+    staticAnalysis: { exportedSymbols: 0, counts: {} },
+    regression: { status: 'PROVEN', issues: [], changed: 0 },
+    safetyStatus: 'NOT_PROVEN', truthFlagged: [],
+    repoMismatch: { status: 'OK' }, decisionRequired: { decisions: [] }, nextAction: naSync,
+  })
+  const evalSection = (reviewWithEvals.match(/## Eval summary[\s\S]*?\n## /) || [''])[0]
+  expect('review-prompt eval summary has no "undefined"', !/undefined/.test(evalSection))
+  expect('review-prompt eval summary has no "NaN"', !/NaN/.test(evalSection))
+  expect('review-prompt eval summary total equals 17', /total: 17\b/.test(evalSection))
 
   const allPassed = checks.every((c) => c.ok)
   return {
