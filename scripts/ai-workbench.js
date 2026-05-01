@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { spawnSync } from 'child_process'
 
-const WORKBENCH_VERSION = '0.3.1-intent-annotations'
+const WORKBENCH_VERSION = '0.4.0-review-repair-loop'
 
 const FORBIDDEN_SUCCESS_LANGUAGE = [
   'fixed',
@@ -1006,6 +1006,650 @@ function runAnnotationSelfTest() {
   }
 }
 
+// ─── v0.4 review/repair loop ──────────────────────────────────────────────
+// All v0.4 helpers are pure functions of their inputs. They are exercised by
+// the self-test in runV04SelfTest() with synthetic fixtures, and again from
+// main() with real run data.
+
+const REPO_MISMATCH_MARKERS = ['zero2026', 'Dictator', 'ActionDock', 'FactionRail', 'ZeroGameScreen']
+
+function detectRepoMismatch({ task, projectRoot }) {
+  const matched = []
+  for (const m of REPO_MISMATCH_MARKERS) {
+    const re = new RegExp(`(?<![A-Za-z0-9_])${m}(?![A-Za-z0-9_])`, 'i')
+    if (re.test(task)) matched.push(m)
+  }
+  // Path-mention extraction: simple "src/<word>/..." references in task.
+  const pathMentions = []
+  const pathRe = /(?:^|\s|`)(src\/[A-Za-z0-9_\-\/.]+\.(?:ts|tsx|js|jsx|css|json|md))/g
+  let match
+  while ((match = pathRe.exec(task)) !== null) pathMentions.push(match[1])
+  const missingPathMentions = pathMentions.filter((p) => {
+    try { return !fs.existsSync(path.join(projectRoot, p)) } catch { return true }
+  })
+
+  // Repo identity hints.
+  const hasAbuAI = (() => { try { return fs.existsSync(path.join(projectRoot, 'src/screens/AbuAI')) } catch { return false } })()
+  const hasAbuCalendar = (() => { try { return fs.existsSync(path.join(projectRoot, 'src/screens/AbuCalendar')) } catch { return false } })()
+  const isAbuBank = hasAbuAI || hasAbuCalendar
+
+  if (matched.length > 0 && isAbuBank) {
+    return {
+      status: 'STOP_REPO_MISMATCH',
+      confidence: 'HIGH',
+      recommendedAction: 'NO_EDIT',
+      matchedMarkers: matched,
+      missingPathMentions,
+      repoIdentity: 'AbuBank',
+      reason: `Task references unrelated project markers (${matched.join(', ')}); current repo is AbuBank. Refusing to edit.`,
+    }
+  }
+  return {
+    status: 'OK',
+    confidence: missingPathMentions.length > 0 ? 'MEDIUM' : 'HIGH',
+    recommendedAction: 'PROCEED',
+    matchedMarkers: matched,
+    missingPathMentions,
+    repoIdentity: isAbuBank ? 'AbuBank' : 'unknown',
+    reason: matched.length > 0
+      ? `Markers found (${matched.join(', ')}) but repo identity unclear; no STOP triggered.`
+      : (missingPathMentions.length > 0
+        ? `Some referenced paths do not exist: ${missingPathMentions.slice(0, 3).join(', ')}. Proceed with caution.`
+        : 'No mismatch detected.'),
+  }
+}
+
+function buildDiffSummary({ regression, gitStatusRaw }) {
+  const parsed = regression && regression.parsed ? regression.parsed : []
+  const buckets = (regression && regression.buckets) || {}
+  const changedFiles = parsed.map((p) => p.path)
+  const addedFiles = parsed.filter((p) => /^\?\?|^A/.test(p.code || '')).map((p) => p.path)
+  const deletedFiles = parsed.filter((p) => /D/.test(p.code || '')).map((p) => p.path)
+  const modifiedFiles = parsed.filter((p) => /M/.test(p.code || '')).map((p) => p.path)
+  const isPackage = (f) => /^package(-lock)?\.json$/.test(f)
+  const isEnv = (f) => /^\.env(\..+)?$/.test(f)
+  const isDocs = (f) => /^docs\//.test(f) || /^README/i.test(f) || /\.md$/.test(f)
+  const isTest = (f) => /\.(test|spec)\.[a-z]+$/.test(f) || /^tests?\//.test(f)
+  const summaryByPath = parsed.map((p) => ({ path: p.path, code: p.code }))
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    gitStatusShort: gitStatusRaw || '',
+    changedFiles,
+    addedFiles,
+    deletedFiles,
+    modifiedFiles,
+    generatedFiles: buckets.generatedFiles || [],
+    productFiles: buckets.allowedPaths || [],
+    workbenchFiles: buckets.workbenchInfra || [],
+    forbiddenFiles: buckets.forbiddenPaths || [],
+    packageFiles: changedFiles.filter(isPackage),
+    envFiles: changedFiles.filter(isEnv),
+    docsFiles: changedFiles.filter(isDocs),
+    testFiles: changedFiles.filter(isTest),
+    summaryByPath,
+    lineStats: null,
+  }
+}
+
+function buildDecisionRequired({ staticAnalysis, repoMismatch }) {
+  const decisions = []
+  if (repoMismatch && repoMismatch.status === 'STOP_REPO_MISMATCH') {
+    decisions.push({
+      id: 'repo-mismatch',
+      type: 'REPO_MISMATCH',
+      status: 'OPEN',
+      summary: repoMismatch.reason,
+      options: ['NO_EDIT — confirm wrong repo', 'PROCEED — explicitly authorize despite markers'],
+      recommendation: 'NO_EDIT',
+      risk: 'Editing this repo on a task aimed at another project would corrupt unrelated code.',
+      owner: 'leo',
+      reviewAfter: null,
+      blocksAutoApproval: true,
+    })
+  }
+  if (staticAnalysis && Array.isArray(staticAnalysis.symbols)) {
+    const dead = staticAnalysis.symbols.filter((s) => s.classification === 'NOT_PROVEN_NO_USAGE')
+    const stitch = dead.filter((s) => /\/stitch\.ts$/.test(s.definingFile))
+    if (stitch.length > 0) {
+      decisions.push({
+        id: 'stitch-module',
+        type: 'CLEANUP',
+        status: 'OPEN',
+        summary: `${stitch.length} unused export(s) in src/services/stitch.ts: ${stitch.map((s) => s.name).join(', ')}. The Stitch surface includes a Vite dev-proxy plugin and an npm dep (@google/stitch-sdk).`,
+        options: [
+          'DELETE_MODULE — remove src/services/stitch.ts + stitchProxyPlugin in vite.config.ts + @google/stitch-sdk dep + discovery doc line (HUMAN_APPROVAL_REQUIRED)',
+          'FUTURE_API_ANNOTATE — add @workbench-keep FUTURE_API to all three exports with reason naming the SDK + proxy entanglement',
+          'MANUAL_REVIEW — leave flagged until human roadmap input',
+        ],
+        recommendation: 'MANUAL_REVIEW',
+        risk: 'Annotating only client-side exports masks the live server scaffolding from future audits; deleting requires touching package.json/lock + vite.config.ts (out of pack scope).',
+        owner: 'leo',
+        reviewAfter: null,
+        blocksAutoApproval: true,
+      })
+    }
+    const voiceCues = dead.filter((s) => /\/sounds\.ts$/.test(s.definingFile) && /^sound(VoiceStart|VoiceEnd|SpeakStart)$/.test(s.name))
+    if (voiceCues.length > 0) {
+      decisions.push({
+        id: 'sound-voice-cues',
+        type: 'CLEANUP',
+        status: 'OPEN',
+        summary: `${voiceCues.length} unused voice-cue export(s) in src/services/sounds.ts: ${voiceCues.map((s) => s.name).join(', ')}. AbuAI voice path does not currently call these.`,
+        options: [
+          'FUTURE_API — annotate all three together if voice UX is planned to gain audible cues',
+          'DELETE — remove if voice UX is redesigned without audible cues',
+          'MANUAL_REVIEW — leave flagged until human roadmap input',
+        ],
+        recommendation: 'MANUAL_REVIEW',
+        risk: 'Annotation without a real plan masks dead code; deletion without checking loses cue primitives.',
+        owner: 'leo',
+        reviewAfter: null,
+        blocksAutoApproval: true,
+      })
+    }
+    const otherSounds = dead.filter((s) => /\/sounds\.ts$/.test(s.definingFile) && !/^sound(VoiceStart|VoiceEnd|SpeakStart)$/.test(s.name))
+    for (const s of otherSounds) {
+      decisions.push({
+        id: `sound-${s.name}`,
+        type: 'CLEANUP',
+        status: 'OPEN',
+        summary: `Unused export ${s.name} at ${s.definingFile}:${s.line}.`,
+        options: ['FUTURE_API_ANNOTATE', 'DELETE', 'MANUAL_REVIEW'],
+        recommendation: 'MANUAL_REVIEW',
+        risk: 'Decision depends on whether matching UX is planned.',
+        owner: 'leo',
+        reviewAfter: null,
+        blocksAutoApproval: true,
+      })
+    }
+    const stream = dead.find((s) => s.name === 'streamSpeakVoiceMode')
+    if (stream) {
+      decisions.push({
+        id: 'streamSpeakVoiceMode',
+        type: 'ARCHITECTURE',
+        status: 'OPEN',
+        summary: `Unused 50+ line streaming TTS entry point at ${stream.definingFile}:${stream.line}. Live voice path uses realtimeVoice/non-streaming TTS.`,
+        options: [
+          'FUTURE_API_ANNOTATE — if streaming TTS is on the roadmap',
+          'DELETE — if superseded by realtimeVoice',
+          'MANUAL_REVIEW — until human roadmap input',
+        ],
+        recommendation: 'MANUAL_REVIEW',
+        risk: 'Premature delete loses non-trivial implementation; premature annotate masks dead code.',
+        owner: 'leo',
+        reviewAfter: null,
+        blocksAutoApproval: true,
+      })
+    }
+  }
+  return { workbenchVersion: WORKBENCH_VERSION, decisions }
+}
+
+function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMismatch, evalCounts, anyFailed, annotationSelfTest, v04SelfTest, branchName }) {
+  const blockers = []
+  const filesToAdd = []
+  let recommendedAction = 'NO_ACTION'
+  let confidence = 'LOW'
+  let reason = ''
+  let allowedGitActions = []
+  // Forbidden actions are constant across recommendations: never main, never
+  // merge, never force-push, never stage memory/* or .ai-runs/*.
+  let forbiddenGitActions = [
+    'git push origin main',
+    'git push --force',
+    'git push origin master',
+    'git merge',
+    'git reset --hard',
+    'git add memory/*',
+    'git add .ai-runs/*',
+  ]
+  let requiresHumanApproval = true
+  let commitMessage = null
+  const whatLeoShouldNotSend = []
+
+  const branch = branchName || '<feature-branch>'
+  // Files outside (workbench + generated) — anything else is suspicious.
+  const knownInfraOrGenerated = new Set([...(diffSummary.workbenchFiles || []), ...(diffSummary.generatedFiles || [])])
+  const unexpectedDirty = (diffSummary.changedFiles || []).filter((f) => !knownInfraOrGenerated.has(f) && !/^\.ai-runs\//.test(f))
+  const hasRunsInDiff = (diffSummary.changedFiles || []).some((f) => /^\.ai-runs\//.test(f))
+  const allChangedAreWorkbenchInfraOrGenerated = diffSummary.changedFiles.length > 0 &&
+    unexpectedDirty.length === 0 &&
+    !hasRunsInDiff &&
+    diffSummary.workbenchFiles.length > 0
+  const selfTestsGreen = (!annotationSelfTest || annotationSelfTest.allPassed !== false) &&
+    (!v04SelfTest || v04SelfTest.allPassed !== false)
+
+  if (repoMismatch && repoMismatch.status === 'STOP_REPO_MISMATCH') {
+    recommendedAction = 'STOP_REPO_MISMATCH'
+    confidence = 'HIGH'
+    reason = repoMismatch.reason
+    blockers.push('REPO_MISMATCH')
+    whatLeoShouldNotSend.push('any commit/push/merge instruction in this repo for this task')
+  } else if (diffSummary.forbiddenFiles.length > 0) {
+    recommendedAction = 'REVERT'
+    confidence = 'HIGH'
+    reason = `Forbidden path(s) touched: ${diffSummary.forbiddenFiles.join(', ')}.`
+    blockers.push('FORBIDDEN_PATH_TOUCHED')
+  } else if (diffSummary.envFiles.length > 0) {
+    recommendedAction = 'MANUAL_REVIEW'
+    confidence = 'HIGH'
+    reason = `.env file(s) modified: ${diffSummary.envFiles.join(', ')}. Secrets/configuration require human approval.`
+    blockers.push('ENV_FILE_TOUCHED')
+  } else if (diffSummary.packageFiles.length > 0) {
+    recommendedAction = 'MANUAL_REVIEW'
+    confidence = 'HIGH'
+    reason = `package.json/package-lock.json modified: ${diffSummary.packageFiles.join(', ')}. HUMAN_APPROVAL_REQUIRED.`
+    blockers.push('PACKAGE_FILE_TOUCHED')
+    requiresHumanApproval = true
+  } else if (diffSummary.changedFiles.length === 0) {
+    recommendedAction = 'NO_ACTION'
+    confidence = 'HIGH'
+    reason = 'Working tree is clean; nothing to commit.'
+  } else if (anyFailed) {
+    recommendedAction = 'REQUEST_REPAIR'
+    confidence = 'HIGH'
+    reason = 'Validation failed (typecheck/test/build). See repair-prompt.md.'
+    blockers.push('VALIDATION_FAILED')
+  } else if (!selfTestsGreen) {
+    recommendedAction = 'REQUEST_REPAIR'
+    confidence = 'HIGH'
+    reason = 'Workbench self-test (annotation or v0.4) failed. See repair-prompt.md.'
+    blockers.push('SELF_TEST_FAILED')
+  } else if (hasRunsInDiff) {
+    recommendedAction = 'MANUAL_REVIEW'
+    confidence = 'HIGH'
+    reason = '.ai-runs/* present in working tree; revert before commit.'
+    blockers.push('AI_RUNS_FILES_PRESENT')
+  } else if (diffSummary.productFiles.length > 0) {
+    // Product files changed in allowed paths, validation green. Even if the
+    // run's finalStatus is FAILED for a known static-analysis backlog, it is
+    // safe to recommend committing the actual changed files only.
+    recommendedAction = 'COMMIT_FEATURE_BRANCH'
+    confidence = finalStatus === 'PROVEN' ? 'HIGH' : 'MEDIUM'
+    reason = finalStatus === 'PROVEN'
+      ? 'Validation green, regression clean, evidence PROVEN.'
+      : 'Validation green and regression clean; finalStatus may still be FAILED for an unrelated static-analysis backlog. Commit only the listed allowed-path files.'
+    allowedGitActions = [
+      'git add ' + diffSummary.productFiles.map((f) => `"${f}"`).join(' '),
+      'git commit',
+      `git push origin ${branch}`,
+    ]
+    filesToAdd.push(...diffSummary.productFiles)
+    requiresHumanApproval = true
+    if (diffSummary.generatedFiles.length > 0) whatLeoShouldNotSend.push(`do not include ${diffSummary.generatedFiles.join(', ')} (auto-generated)`)
+  } else if (allChangedAreWorkbenchInfraOrGenerated) {
+    // Workbench-infrastructure-only real diff (e.g. scripts/ai-workbench.js).
+    // memory/* may also appear in generatedFiles because npm run build
+    // regenerated them during this run; those must NOT be committed.
+    // Validation, both self-tests, and repo-mismatch are green at this point.
+    recommendedAction = 'COMMIT_FEATURE_BRANCH'
+    confidence = 'HIGH'
+    reason = 'Workbench infrastructure change validated; product unresolved backlog remains and is not solved by this commit.'
+    allowedGitActions = [
+      'git add ' + diffSummary.workbenchFiles.map((f) => `"${f}"`).join(' '),
+      'git commit',
+      `git push origin ${branch}`,
+    ]
+    filesToAdd.push(...diffSummary.workbenchFiles)
+    requiresHumanApproval = true
+    if (diffSummary.generatedFiles.length > 0) {
+      whatLeoShouldNotSend.push(`do not include ${diffSummary.generatedFiles.join(', ')} (auto-regenerated by prebuild; revert with git checkout before commit)`)
+    }
+  } else {
+    recommendedAction = 'MANUAL_REVIEW'
+    confidence = 'LOW'
+    reason = `finalStatus=${finalStatus} / finalReason=${finalReason}; no clear automated action.`
+  }
+
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    recommendedAction,
+    confidence,
+    reason,
+    allowedGitActions,
+    forbiddenGitActions,
+    filesToAdd,
+    commitMessage,
+    requiresHumanApproval,
+    blockers,
+    copyPasteReduction: {
+      whatLeoShouldSendNext: recommendedAction === 'STOP_REPO_MISMATCH'
+        ? 'Re-route the task to the correct repository.'
+        : recommendedAction === 'COMMIT_FEATURE_BRANCH'
+          ? `Authorize: git add ${filesToAdd.join(' ')}; git commit; git push origin <feature-branch>. Do NOT include memory/* or .ai-runs/*.`
+          : recommendedAction === 'REQUEST_REPAIR'
+            ? 'Paste repair-prompt.md into Claude Code. Do NOT commit until validation passes.'
+            : recommendedAction === 'NO_ACTION'
+              ? 'Working tree is clean. No further action required for this run.'
+              : 'Review evidence-check.json and decide manually.',
+      whatLeoShouldNotSend,
+    },
+  }
+}
+
+function buildReviewPrompt({ task, pack, runDir, finalStatus, finalReason, diffSummary, validationSummary, evalCounts, staticAnalysis, regression, safetyStatus, truthFlagged, repoMismatch, decisionRequired, nextAction }) {
+  const recommendedDecision = (() => {
+    if (repoMismatch && repoMismatch.status === 'STOP_REPO_MISMATCH') return 'STOP_REPO_MISMATCH'
+    if (nextAction.recommendedAction === 'COMMIT_FEATURE_BRANCH') return 'APPROVE_COMMIT'
+    if (nextAction.recommendedAction === 'REQUEST_REPAIR') return 'REQUEST_REPAIR'
+    if (nextAction.recommendedAction === 'REVERT') return 'REVERT'
+    return 'MANUAL_REVIEW'
+  })()
+  const validationLines = validationSummary.map((v) => `- npm run ${v.name} — ${v.status}${v.code !== null && v.code !== undefined ? ` (exit ${v.code})` : ''}`).join('\n')
+  const saCounts = (staticAnalysis && staticAnalysis.counts) || {}
+  return `# Workbench v${WORKBENCH_VERSION} — Reviewer Packet
+
+## Task
+${task}
+
+## Pack
+${pack}
+
+## Run folder
+${runDir}
+
+## finalStatus / finalReason
+- finalStatus: ${finalStatus}
+- finalReason: ${finalReason}
+
+## Changed files
+${diffSummary.changedFiles.length === 0 ? '(clean tree)' : diffSummary.changedFiles.map((f) => '- ' + f).join('\n')}
+
+### Bucketing
+- product (allowed paths): ${diffSummary.productFiles.length} → ${diffSummary.productFiles.join(', ') || '(none)'}
+- workbench infra: ${diffSummary.workbenchFiles.length} → ${diffSummary.workbenchFiles.join(', ') || '(none)'}
+- generated (auto, do not commit): ${diffSummary.generatedFiles.length} → ${diffSummary.generatedFiles.join(', ') || '(none)'}
+- forbidden: ${diffSummary.forbiddenFiles.length} → ${diffSummary.forbiddenFiles.join(', ') || '(none)'}
+- package files: ${diffSummary.packageFiles.length} → ${diffSummary.packageFiles.join(', ') || '(none)'}
+- env/secrets: ${diffSummary.envFiles.length} → ${diffSummary.envFiles.join(', ') || '(none)'}
+
+## Validation
+${validationLines || '(no validation scripts available)'}
+
+## Eval summary
+- total: ${evalCounts.total}
+- PROVEN: ${evalCounts.proven}
+- NOT_PROVEN: ${evalCounts.notProven}
+- MANUAL_REVIEW: ${evalCounts.manualReview}
+- FAILED: ${evalCounts.failed}
+
+## Static analysis
+- exportedSymbols: ${staticAnalysis ? staticAnalysis.exportedSymbols : '?'}
+- counts: ${JSON.stringify(saCounts)}
+
+## Regression
+- status: ${regression.status}${regression.issues && regression.issues.length ? ' — ' + regression.issues.join(', ') : ''}
+- changed files: ${regression.changed ?? 'n/a'}
+
+## Safety
+- ${safetyStatus}
+
+## Truth violations
+- pre-final matchCount: ${truthFlagged.length}
+
+## Generated files that must not be committed
+${diffSummary.generatedFiles.length === 0 ? '(none)' : diffSummary.generatedFiles.map((f) => '- ' + f).join('\n')}
+
+## Unresolved decisions
+${decisionRequired.decisions.length === 0 ? '(none)' : decisionRequired.decisions.map((d) => `- [${d.type}] ${d.id} — ${d.summary} (recommendation: ${d.recommendation})`).join('\n')}
+
+## Recommended reviewer decision
+${recommendedDecision}
+
+## Question for reviewer
+"Should this be committed, repaired, reverted, or escalated?"
+`
+}
+
+function buildRepairPrompt({ task, pack, finalStatus, finalReason, diffSummary, validationSummary, anyFailed, repoMismatch, packCfg }) {
+  if (repoMismatch && repoMismatch.status === 'STOP_REPO_MISMATCH') {
+    return `# Workbench v${WORKBENCH_VERSION} — Repair Prompt
+
+## Status
+MANUAL_REVIEW_REQUIRED — REPO_MISMATCH
+
+## Reason
+${repoMismatch.reason}
+
+## Action
+Do not edit this repo for this task. Re-route the task to the correct repository.
+
+## Forbidden
+- do not commit
+- do not push
+- do not merge
+- do not edit any file in this repo for this task
+`
+  }
+  const failedScripts = validationSummary.filter((v) => v.status === 'FAILED')
+  const allowed = (packCfg && packCfg.allowedPaths) || []
+  const forbidden = (packCfg && packCfg.forbiddenPaths) || []
+
+  if (!anyFailed && finalStatus === 'PROVEN') {
+    return `# Workbench v${WORKBENCH_VERSION} — Repair Prompt
+
+## Status
+NO_REPAIR_NEEDED
+
+## Reason
+finalStatus is PROVEN; validation passed cleanly.
+
+## Forbidden
+- do not commit
+- do not push
+- do not merge
+(without explicit user authorization)
+`
+  }
+  if (!anyFailed && diffSummary.changedFiles.length === 0) {
+    return `# Workbench v${WORKBENCH_VERSION} — Repair Prompt
+
+## Status
+MANUAL_REVIEW_REQUIRED
+
+## Reason
+finalStatus=${finalStatus} / finalReason=${finalReason}. Working tree is clean and no validation failed in this run; the failure is from a backlog of static-analysis findings, not a repairable diff.
+
+## Forbidden
+- do not commit
+- do not push
+- do not merge
+`
+  }
+  const smallest = (() => {
+    if (failedScripts.length > 0) return `npm run ${failedScripts[0].name} failed (exit ${failedScripts[0].code}). See validation.txt.`
+    if (finalReason === 'EVAL_FAILED') return 'One or more evals reported FAILED. See eval-results.json for which eval and reason.'
+    if (finalReason === 'TRUTH_VIOLATION') return 'Forbidden success language detected in claude-prompt or final-report.'
+    if (finalReason === 'FORBIDDEN_PATH_TOUCHED') return `Forbidden path(s) modified: ${diffSummary.forbiddenFiles.join(', ') || '(see regression-check.json)'}.`
+    if (finalReason === 'ANNOTATION_SELF_TEST_FAILED') return 'Workbench annotation parser self-test failed; fix scripts/ai-workbench.js.'
+    if (finalReason === 'V0_4_SELF_TEST_FAILED') return 'Workbench v0.4 self-test failed; fix scripts/ai-workbench.js.'
+    return `finalReason=${finalReason}.`
+  })()
+  const likelyCause = (() => {
+    if (failedScripts.length > 0) return `npm run ${failedScripts[0].name} returned exit ${failedScripts[0].code}; the most recent product change likely broke compilation, tests, or build.`
+    if (finalReason === 'EVAL_FAILED') return 'A mapped eval test reported FAILED, or the static-analysis evals integration-dead-code / real-call-site-validation flagged unused exports.'
+    if (finalReason === 'TRUTH_VIOLATION') return 'Forbidden success language ("fixed", "working", "resolved", etc.) appeared in claude-prompt.md or final-report.md without PROVEN/HIGH evidence.'
+    if (finalReason === 'FORBIDDEN_PATH_TOUCHED') return 'A forbidden path (out-of-pack screen, .env*, package.json, memory/*, etc.) was modified.'
+    if (finalReason === 'ANNOTATION_SELF_TEST_FAILED') return 'The @workbench-keep annotation parser self-test fixtures failed.'
+    if (finalReason === 'V0_4_SELF_TEST_FAILED') return 'One of the v0.4 review/repair-loop self-test fixtures failed.'
+    if (finalReason === 'SAFETY_VIOLATION') return 'A safety constraint requested by the task (e.g. do-not-commit) was contradicted by an action claim in the final report.'
+    if (finalReason === 'STOP_REPO_MISMATCH') return 'Task references unrelated project markers; current repo is not the right target.'
+    return `finalReason=${finalReason}; cause not auto-classified.`
+  })()
+  return `# Workbench v${WORKBENCH_VERSION} — Repair Prompt
+
+## Smallest failing issue
+${smallest}
+
+## Likely cause
+${likelyCause}
+
+## Allowed files
+${allowed.length === 0 ? '(unrestricted within scripts/ai-workbench.js)' : allowed.map((p) => '- ' + p).join('\n')}
+
+## Forbidden files
+${forbidden.length === 0 ? '(none beyond pack defaults)' : forbidden.map((p) => '- ' + p).join('\n')}
+
+## Validation commands
+- npm run typecheck
+- npm test
+- npm run build
+
+## Expected result
+- exit 0 for typecheck, test, and build
+- npm test: all suites pass
+- npm run build: PWA bundle produced; do NOT commit memory/* regenerated by prebuild
+
+## Forbidden
+- do not commit
+- do not push
+- do not merge
+(without explicit user authorization)
+`
+}
+
+function runV04SelfTest({ projectRoot }) {
+  const checks = []
+  const expect = (label, ok) => { checks.push({ label, ok }); return ok }
+
+  // Test 1: next-action JSON shape on a synthetic clean tree.
+  const cleanDiff = { changedFiles: [], productFiles: [], workbenchFiles: [], generatedFiles: [], forbiddenFiles: [], packageFiles: [], envFiles: [], docsFiles: [], testFiles: [], summaryByPath: [], addedFiles: [], deletedFiles: [], modifiedFiles: [], gitStatusShort: '' }
+  const naClean = buildNextAction({ task: 'noop', finalStatus: 'NOT_PROVEN', finalReason: 'NO_CORE_PROOF', diffSummary: cleanDiff, repoMismatch: { status: 'OK' }, evalCounts: { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 }, anyFailed: false })
+  const requiredNAFields = ['recommendedAction', 'confidence', 'reason', 'allowedGitActions', 'forbiddenGitActions', 'filesToAdd', 'commitMessage', 'requiresHumanApproval', 'blockers', 'copyPasteReduction']
+  expect('next-action has required fields', requiredNAFields.every((k) => Object.prototype.hasOwnProperty.call(naClean, k)))
+  expect('next-action clean-tree is NO_ACTION', naClean.recommendedAction === 'NO_ACTION')
+
+  // Test 2: decision-required JSON shape on a synthetic dead-symbol set.
+  const drFixture = buildDecisionRequired({
+    staticAnalysis: { symbols: [
+      { name: 'generateScreen', classification: 'NOT_PROVEN_NO_USAGE', definingFile: 'src/services/stitch.ts', line: 42 },
+      { name: 'editScreen', classification: 'NOT_PROVEN_NO_USAGE', definingFile: 'src/services/stitch.ts', line: 52 },
+      { name: 'stitchAvailable', classification: 'NOT_PROVEN_NO_USAGE', definingFile: 'src/services/stitch.ts', line: 61 },
+      { name: 'soundVoiceStart', classification: 'NOT_PROVEN_NO_USAGE', definingFile: 'src/services/sounds.ts', line: 113 },
+      { name: 'streamSpeakVoiceMode', classification: 'NOT_PROVEN_NO_USAGE', definingFile: 'src/services/voice.ts', line: 656 },
+    ] },
+    repoMismatch: { status: 'OK' },
+  })
+  const requiredDRDecisionFields = ['id', 'type', 'status', 'summary', 'options', 'recommendation', 'risk', 'owner', 'reviewAfter', 'blocksAutoApproval']
+  expect('decision-required has decisions array', Array.isArray(drFixture.decisions))
+  expect('decision-required first decision has required fields', drFixture.decisions.length > 0 && requiredDRDecisionFields.every((k) => Object.prototype.hasOwnProperty.call(drFixture.decisions[0], k)))
+  expect('decision-required surfaces stitch module', drFixture.decisions.some((d) => d.id === 'stitch-module'))
+  expect('decision-required surfaces streamSpeakVoiceMode', drFixture.decisions.some((d) => d.id === 'streamSpeakVoiceMode'))
+
+  // Test 3: diff-summary clean tree.
+  const ds = buildDiffSummary({ regression: { parsed: [], buckets: {} }, gitStatusRaw: '' })
+  expect('diff-summary clean changedFiles is empty', Array.isArray(ds.changedFiles) && ds.changedFiles.length === 0)
+
+  // Test 4: repo-mismatch detects fake task in AbuBank repo.
+  const fakeTask = 'Holistic transformation of src/zero2026/ZeroGameScreen.tsx via ActionDock and FactionRail.'
+  const mmFake = detectRepoMismatch({ task: fakeTask, projectRoot })
+  expect('repo-mismatch fake task is STOP_REPO_MISMATCH', mmFake.status === 'STOP_REPO_MISMATCH')
+  expect('repo-mismatch fake task confidence HIGH', mmFake.confidence === 'HIGH')
+
+  // Test 5: repo-mismatch returns OK on a normal AbuBank task.
+  const normalTask = 'AbuCalendar voice flow improvement and AbuAI grounding tightening.'
+  const mmOk = detectRepoMismatch({ task: normalTask, projectRoot })
+  expect('repo-mismatch normal task is OK', mmOk.status === 'OK')
+
+  // Test 6: review-prompt content includes required keywords.
+  const reviewMd = buildReviewPrompt({
+    task: 'demo', pack: 'abobank-ai', runDir: '/tmp/run', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED',
+    diffSummary: cleanDiff, validationSummary: [{ name: 'test', status: 'OK', code: 0 }],
+    evalCounts: { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 },
+    staticAnalysis: { exportedSymbols: 0, counts: {} },
+    regression: { status: 'PROVEN', issues: [], changed: 0 },
+    safetyStatus: 'NOT_APPLICABLE', truthFlagged: [],
+    repoMismatch: { status: 'OK' }, decisionRequired: { decisions: [] }, nextAction: naClean,
+  })
+  expect('review-prompt contains finalStatus', /finalStatus/.test(reviewMd))
+  expect('review-prompt contains changed files', /Changed files/i.test(reviewMd))
+  expect('review-prompt contains validation', /Validation/i.test(reviewMd))
+  expect('review-prompt contains recommended reviewer decision', /Recommended reviewer decision/i.test(reviewMd))
+
+  // Test 7: repair-prompt content includes required forbidden lines.
+  const repairMd = buildRepairPrompt({
+    task: 'demo', pack: 'abobank-ai', finalStatus: 'FAILED', finalReason: 'EVAL_FAILED',
+    diffSummary: { ...cleanDiff, changedFiles: ['src/services/sounds.ts'], productFiles: ['src/services/sounds.ts'] },
+    validationSummary: [{ name: 'test', status: 'OK', code: 0 }],
+    anyFailed: false, repoMismatch: { status: 'OK' }, packCfg: { allowedPaths: ['src/services'], forbiddenPaths: [] },
+  })
+  expect('repair-prompt contains do not commit', /do not commit/i.test(repairMd))
+  expect('repair-prompt contains do not push', /do not push/i.test(repairMd))
+  expect('repair-prompt contains do not merge', /do not merge/i.test(repairMd))
+
+  // Test 8: workbench-infra-only diff with green validation produces COMMIT_FEATURE_BRANCH.
+  const wbInfraDiff = {
+    changedFiles: ['scripts/ai-workbench.js'],
+    productFiles: [],
+    workbenchFiles: ['scripts/ai-workbench.js'],
+    generatedFiles: [],
+    forbiddenFiles: [],
+    packageFiles: [],
+    envFiles: [],
+    docsFiles: [],
+    testFiles: [],
+    summaryByPath: [{ path: 'scripts/ai-workbench.js', code: ' M' }],
+    addedFiles: [],
+    deletedFiles: [],
+    modifiedFiles: ['scripts/ai-workbench.js'],
+    gitStatusShort: ' M scripts/ai-workbench.js\n',
+  }
+  const naInfra = buildNextAction({
+    task: 'infra commit',
+    finalStatus: 'FAILED',
+    finalReason: 'EVAL_FAILED',
+    diffSummary: wbInfraDiff,
+    repoMismatch: { status: 'OK' },
+    evalCounts: { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 },
+    anyFailed: false,
+    annotationSelfTest: { allPassed: true },
+    v04SelfTest: { allPassed: true },
+    branchName: 'claude/rewrite-hebrew-speech-qfnxi',
+  })
+  expect('workbench-infra-only diff recommends COMMIT_FEATURE_BRANCH', naInfra.recommendedAction === 'COMMIT_FEATURE_BRANCH')
+  expect('workbench-infra-only filesToAdd contains scripts/ai-workbench.js', naInfra.filesToAdd.includes('scripts/ai-workbench.js'))
+  expect('workbench-infra-only allowedGitActions includes feature-branch push', naInfra.allowedGitActions.some((s) => /git push origin claude\/rewrite-hebrew-speech-qfnxi/.test(s)))
+
+  // Test 9: forbiddenGitActions never permit push to main, merge, .ai-runs, memory.
+  const allForbidden = naInfra.forbiddenGitActions.join(' | ')
+  expect('forbiddenGitActions blocks push to main', /git push origin main/.test(allForbidden))
+  expect('forbiddenGitActions blocks merge', /git merge/.test(allForbidden))
+  expect('forbiddenGitActions blocks adding .ai-runs', /\.ai-runs/.test(allForbidden))
+  expect('forbiddenGitActions blocks adding memory', /memory/.test(allForbidden))
+
+  // Test 10: review-prompt and next-action use the same finalStatus/finalReason as the fixture.
+  const fixtureStatus = 'FAILED'
+  const fixtureReason = 'EVAL_FAILED'
+  const naSync = buildNextAction({
+    task: 'sync', finalStatus: fixtureStatus, finalReason: fixtureReason,
+    diffSummary: cleanDiff, repoMismatch: { status: 'OK' },
+    evalCounts: { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 },
+    anyFailed: false, annotationSelfTest: { allPassed: true }, v04SelfTest: { allPassed: true }, branchName: 'feat/x',
+  })
+  const reviewSync = buildReviewPrompt({
+    task: 'sync', pack: 'abobank-ai', runDir: '/tmp/run',
+    finalStatus: fixtureStatus, finalReason: fixtureReason,
+    diffSummary: cleanDiff, validationSummary: [],
+    evalCounts: { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 },
+    staticAnalysis: { exportedSymbols: 0, counts: {} },
+    regression: { status: 'PROVEN', issues: [], changed: 0 },
+    safetyStatus: 'NOT_PROVEN', truthFlagged: [],
+    repoMismatch: { status: 'OK' }, decisionRequired: { decisions: [] }, nextAction: naSync,
+  })
+  expect('review-prompt and next-action share finalStatus', new RegExp(`finalStatus: ${fixtureStatus}`).test(reviewSync))
+  expect('review-prompt and next-action share finalReason', new RegExp(`finalReason: ${fixtureReason}`).test(reviewSync))
+
+  const allPassed = checks.every((c) => c.ok)
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    allPassed,
+    totalCases: checks.length,
+    passedCases: checks.filter((c) => c.ok).length,
+    failedCaseLabels: checks.filter((c) => !c.ok).map((c) => c.label),
+    checks,
+  }
+}
+
 function main() {
   const args = process.argv.slice(2)
   const packIndex = args.indexOf('--pack')
@@ -1196,10 +1840,15 @@ REQUIRED OUTPUT:
       issues,
       changed: changed.length,
       buckets,
+      parsed: changed,
+      gitStatusRaw: gs.stdout,
       note: 'v0.2 minimal git-aware regression classifier. No diff content analysis.',
     }
   }
-  writeJSON(path.join(runDir, 'regression-check.json'), regression)
+  // The on-disk regression-check.json keeps the v0.2 shape (no parsed/raw
+  // fields) for backwards compatibility with prior runs.
+  const { parsed: _regParsed, gitStatusRaw: _regGitRaw, ...regressionForDisk } = regression
+  writeJSON(path.join(runDir, 'regression-check.json'), regressionForDisk)
 
   // Drift — honest: no baseline implementation yet, so we explicitly say
   // drift was NOT checked rather than implying a check ran and produced
@@ -1228,6 +1877,16 @@ REQUIRED OUTPUT:
     (p) => promptText.toLowerCase().includes(p),
   )
   const preFinalSafetyViolations = scanSafetyViolationsInResultSections(claudePromptPath)
+
+  // v0.4 — repo-mismatch guard, self-test, review/repair/next-action/diff/decision artifacts.
+  const repoMismatch = detectRepoMismatch({ task, projectRoot: process.cwd() })
+  writeJSON(path.join(runDir, 'repo-mismatch.json'), repoMismatch)
+  const v04SelfTest = runV04SelfTest({ projectRoot: process.cwd() })
+  writeJSON(path.join(runDir, 'v04-self-test.json'), v04SelfTest)
+  const diffSummary = buildDiffSummary({ regression, gitStatusRaw: regression.gitStatusRaw })
+  writeJSON(path.join(runDir, 'diff-summary.json'), diffSummary)
+  const decisionRequired = buildDecisionRequired({ staticAnalysis, repoMismatch })
+  writeJSON(path.join(runDir, 'decision-required.json'), decisionRequired)
 
   // Evidence check
   const evidence = {
@@ -1277,8 +1936,27 @@ REQUIRED OUTPUT:
       confidence: 'HIGH',
       failureReason: annotationSelfTest.allPassed ? null : 'ANNOTATION_SELF_TEST_FAILED',
     },
+    v04SelfTest: {
+      allPassed: v04SelfTest.allPassed,
+      totalCases: v04SelfTest.totalCases,
+      passedCases: v04SelfTest.passedCases,
+      failedCaseLabels: v04SelfTest.failedCaseLabels,
+      confidence: 'HIGH',
+      failureReason: v04SelfTest.allPassed ? null : 'V0_4_SELF_TEST_FAILED',
+    },
+    repoMismatch: {
+      status: repoMismatch.status,
+      confidence: repoMismatch.confidence,
+      reason: repoMismatch.reason,
+      matchedMarkers: repoMismatch.matchedMarkers,
+      missingPathMentions: repoMismatch.missingPathMentions,
+    },
     autoApproval: false,
-    finalStatus: !annotationSelfTest.allPassed
+    finalStatus: repoMismatch.status === 'STOP_REPO_MISMATCH'
+      ? 'FAILED'
+      : !v04SelfTest.allPassed
+      ? 'FAILED'
+      : !annotationSelfTest.allPassed
       ? 'FAILED'
       : anyFailed
       ? 'FAILED'
@@ -1291,7 +1969,11 @@ REQUIRED OUTPUT:
       : minimumProof.status === 'PROVEN'
       ? 'PROVEN'
       : 'NOT_PROVEN',
-    finalReason: !annotationSelfTest.allPassed
+    finalReason: repoMismatch.status === 'STOP_REPO_MISMATCH'
+      ? 'STOP_REPO_MISMATCH'
+      : !v04SelfTest.allPassed
+      ? 'V0_4_SELF_TEST_FAILED'
+      : !annotationSelfTest.allPassed
       ? 'ANNOTATION_SELF_TEST_FAILED'
       : anyFailed
       ? 'VALIDATION_FAILED'
@@ -1304,7 +1986,7 @@ REQUIRED OUTPUT:
       : minimumProof.status === 'PROVEN'
       ? 'CORE_PROOF_OBSERVED'
       : 'NO_CORE_PROOF',
-    finalConfidence: !annotationSelfTest.allPassed ? 'HIGH' : null,
+    finalConfidence: (repoMismatch.status === 'STOP_REPO_MISMATCH' || !v04SelfTest.allPassed || !annotationSelfTest.allPassed) ? 'HIGH' : null,
     note: 'v0.2 runs validation, the forbidden-language scan, the git-aware regression classifier, the safety-constraint scan, and now executes mapped vitest files for each eval. Evals whose mapped file passed are PROVEN/HIGH; failed mapped files are FAILED/HIGH; evals without mappedTest stay NOT_PROVEN/LOW.',
   }
   writeJSON(path.join(runDir, 'evidence-check.json'), evidence)
@@ -1386,6 +2068,23 @@ ${safetyLine}
 ## 11b. Annotation self-test status
 - ${annotationSelfTest.allPassed ? 'PASSED' : 'FAILED — ANNOTATION_SELF_TEST_FAILED (HIGH confidence)'} (${annotationSelfTest.passedCases}/${annotationSelfTest.totalCases} cases)${annotationSelfTest.allPassed ? '' : `\n- failing cases: ${annotationSelfTest.results.filter((r) => !r.passed).map((r) => r.id).join(', ')}\n- annotation parser self-test gates the run; finalStatus is FAILED until parser fixtures pass.`}
 - artifact: ${path.join(runDir, 'annotation-self-test.json')}
+
+## 11c. v0.4 self-test status
+- ${v04SelfTest.allPassed ? 'PASSED' : 'FAILED — V0_4_SELF_TEST_FAILED (HIGH confidence)'} (${v04SelfTest.passedCases}/${v04SelfTest.totalCases} cases)${v04SelfTest.allPassed ? '' : `\n- failing cases: ${v04SelfTest.failedCaseLabels.join(', ')}\n- v0.4 review/repair/next-action self-test gates the run; finalStatus is FAILED until fixtures pass.`}
+- artifact: ${path.join(runDir, 'v04-self-test.json')}
+
+## 11d. Repo-mismatch guard
+- status: ${repoMismatch.status}
+- confidence: ${repoMismatch.confidence}
+- reason: ${repoMismatch.reason}${repoMismatch.matchedMarkers && repoMismatch.matchedMarkers.length ? `\n- matched markers: ${repoMismatch.matchedMarkers.join(', ')}` : ''}${repoMismatch.missingPathMentions && repoMismatch.missingPathMentions.length ? `\n- missing path mentions: ${repoMismatch.missingPathMentions.slice(0, 5).join(', ')}` : ''}
+
+## 11e. v0.4 artifacts
+- review-prompt.md: ${path.join(runDir, 'review-prompt.md')}
+- repair-prompt.md: ${path.join(runDir, 'repair-prompt.md')}
+- next-action.json: ${path.join(runDir, 'next-action.json')} (recommendedAction: ${args.nextActionRecommendation || 'pending post-final scan'})
+- decision-required.json: ${path.join(runDir, 'decision-required.json')} (${decisionRequired.decisions.length} open)
+- diff-summary.json: ${path.join(runDir, 'diff-summary.json')} (${diffSummary.changedFiles.length} changed)
+- repo-mismatch.json: ${path.join(runDir, 'repo-mismatch.json')}
 
 ## 12. Ready for Claude Code execution
 ${readyForClaudeLine}
@@ -1512,6 +2211,49 @@ Artifacts:
     })
   }
 
+  // v0.4 — compute and write review/repair/next-action AFTER all post-final
+  // scans so they use the same canonical finalStatus/finalReason as
+  // evidence-check.json.
+  const canonicalFinalStatus = updatedFinalStatus
+  const canonicalFinalReason = updatedFinalReason
+  const packCfgForV04 = (config.packs && config.packs[pack]) || null
+  let branchName = null
+  try {
+    const br = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' })
+    if (br.status === 0) branchName = (br.stdout || '').trim() || null
+  } catch { branchName = null }
+  const nextAction = buildNextAction({
+    task,
+    finalStatus: canonicalFinalStatus,
+    finalReason: canonicalFinalReason,
+    diffSummary,
+    repoMismatch,
+    evalCounts,
+    anyFailed,
+    annotationSelfTest,
+    v04SelfTest,
+    branchName,
+  })
+  writeJSON(path.join(runDir, 'next-action.json'), nextAction)
+  const reviewPromptText = buildReviewPrompt({
+    task, pack, runDir,
+    finalStatus: canonicalFinalStatus,
+    finalReason: canonicalFinalReason,
+    diffSummary, validationSummary, evalCounts,
+    staticAnalysis, regression,
+    safetyStatus,
+    truthFlagged,
+    repoMismatch, decisionRequired, nextAction,
+  })
+  fs.writeFileSync(path.join(runDir, 'review-prompt.md'), reviewPromptText)
+  const repairPromptText = buildRepairPrompt({
+    task, pack,
+    finalStatus: canonicalFinalStatus,
+    finalReason: canonicalFinalReason,
+    diffSummary, validationSummary, anyFailed, repoMismatch, packCfg: packCfgForV04,
+  })
+  fs.writeFileSync(path.join(runDir, 'repair-prompt.md'), repairPromptText)
+
   // Second pass: rewrite final-report.md so it reflects the post-scan
   // verdict (safety status, truth status, ready-for-Claude). The truth
   // scanner is re-run on the rewritten report so its match list stays
@@ -1533,6 +2275,7 @@ Artifacts:
     safetyConfidence,
     humanReviewRequired: safetyStatus === 'FAILED',
     readyForClaude: finalReadyForClaude,
+    nextActionRecommendation: nextAction.recommendedAction,
   }))
 
   // Re-scan the rewritten final report so truth-violations.json is exact.
