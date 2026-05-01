@@ -61,7 +61,7 @@ export function ApptCard({ appt, onDelete, onEdit, timeState = 'upcoming' }: {
         }}>עכשיו</div>
       )}
 
-      <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0, filter: isPast ? 'grayscale(0.6)' : 'none' }}>{appt.emoji}</span>
+      <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0, filter: isPast ? 'grayscale(0.6)' : 'none' }}>{appt.emoji === '📅' ? '📌' : appt.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 16, fontWeight: 600, color: textColor,
@@ -73,6 +73,11 @@ export function ApptCard({ appt, onDelete, onEdit, timeState = 'upcoming' }: {
           fontSize: 16, fontWeight: timeWeight, color: timeColor,
           fontFamily: "'DM Sans',sans-serif",
         }}>{appt.time}</div>
+        {appt.location && (
+          <div data-testid="appt-location" style={{ fontSize: 15, color: notesColor, fontFamily: "'Heebo',sans-serif", marginTop: 4 }}>
+            📍 {appt.location}
+          </div>
+        )}
         {appt.notes && (
           <div style={{ fontSize: 16, color: notesColor, fontFamily: "'Heebo',sans-serif", marginTop: 4 }}>{appt.notes}</div>
         )}

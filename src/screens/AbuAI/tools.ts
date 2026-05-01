@@ -1,5 +1,8 @@
 import {
   loadAppointmentsWithFamily,
+  FAMILY_BIRTHDAYS,
+  FAMILY_MEMORIALS,
+  formatHebrewDate,
   type Appointment,
 } from '../AbuCalendar/service'
 import { classifyMeaning, sortByPriority } from '../AbuCalendar/narration'
@@ -141,7 +144,82 @@ export function findNextEventByType(type: string): { event: Appointment | null; 
   return { event: match, summary: `${match.emoji} ${match.title} — ${match.date.split('-').reverse().join('/')}${time}` }
 }
 
-export type ToolName = 'get_today_events' | 'get_tomorrow_events' | 'get_week_events' | 'find_events_by_person' | 'find_next_event_by_type' | 'search_family_info' | 'get_family_context'
+// ─── New tools: exact date, month, past, birthday, memorial ───
+
+export function getEventsByDate(dateStr: string): { events: Appointment[]; summary: string } {
+  const year = parseInt(dateStr.slice(0, 4), 10)
+  const all = loadAppointmentsWithFamily(year)
+  const events = sortByPriority(all.filter(a => a.date === dateStr))
+  if (events.length === 0) {
+    const label = formatHebrewDate(dateStr)
+    return { events, summary: `לא מצאתי כלום ביומן ב${label}.` }
+  }
+  const label = formatHebrewDate(dateStr)
+  if (events.length === 1) {
+    const e = events[0]!
+    const time = e.time ? ` בשעה ${e.time}` : ''
+    return { events, summary: `ב${label} — ${e.title}${time}.` }
+  }
+  const lines = events.map(e => formatEventNatural(e))
+  return { events, summary: `ב${label}:\n${lines.join('\n')}` }
+}
+
+export function getEventsByMonth(month: number): { events: Appointment[]; summary: string } {
+  const year = new Date().getFullYear()
+  const all = loadAppointmentsWithFamily(year)
+  const mm = String(month).padStart(2, '0')
+  const events = all.filter(a => a.date.slice(5, 7) === mm).sort((a, b) => a.date.localeCompare(b.date))
+  if (events.length === 0) {
+    const MONTHS = ['', 'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+    return { events, summary: `לא מצאתי כלום ביומן ב${MONTHS[month] ?? ''}.` }
+  }
+  const lines = events.map(e => {
+    const day = parseInt(e.date.slice(8, 10), 10)
+    const time = e.time ? ` בשעה ${e.time}` : ''
+    return `${e.emoji} ${day} — ${e.title}${time}`
+  })
+  return { events, summary: lines.join('\n') }
+}
+
+export function getBirthdayFor(name: string): { found: boolean; summary: string } {
+  const q = name.trim().toLowerCase()
+  const match = FAMILY_BIRTHDAYS.find(b =>
+    b.personName?.toLowerCase() === q ||
+    b.title.toLowerCase().includes(q)
+  )
+  if (!match) {
+    // Also check family data for birthday field
+    const family = getFamilyMembers()
+    const member = family.find(m =>
+      m.hebrew === name || m.canonicalName.toLowerCase() === q || m.aliases.some(a => a.toLowerCase() === q)
+    )
+    if (member?.birthday) {
+      return { found: true, summary: `יום ההולדת של ${member.hebrew} — ${member.birthday}.` }
+    }
+    return { found: false, summary: `אין לי את תאריך יום ההולדת של ${name}.` }
+  }
+  const day = parseInt(match.date.slice(8, 10), 10)
+  const monthIdx = parseInt(match.date.slice(5, 7), 10) - 1
+  const MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+  const monthName = MONTHS[monthIdx] ?? ''
+  return { found: true, summary: `יום ההולדת של ${match.personName ?? name} — ${day} ב${monthName}.` }
+}
+
+export function getMemorialFor(name: string): { found: boolean; summary: string } {
+  const q = name.trim().toLowerCase()
+  const match = FAMILY_MEMORIALS.find(m =>
+    m.personName?.toLowerCase() === q ||
+    m.title.toLowerCase().includes(q)
+  )
+  if (!match) return { found: false, summary: `אין לי מידע על יום הזיכרון של ${name}.` }
+  const day = parseInt(match.date.slice(8, 10), 10)
+  const monthIdx = parseInt(match.date.slice(5, 7), 10) - 1
+  const MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+  const monthName = MONTHS[monthIdx] ?? ''
+  return { found: true, summary: `יום הזיכרון של ${match.personName ?? name} — ${day} ב${monthName}. 🕯️` }
+}
+
+export type ToolName = 'get_today_events' | 'get_tomorrow_events' | 'get_week_events' | 'find_events_by_person' | 'find_next_event_by_type' | 'search_family_info' | 'get_family_context' | 'get_events_by_date' | 'get_birthday_for' | 'get_memorial_for'
 
 export const TOOL_DEFINITIONS = [
   {
@@ -200,6 +278,30 @@ export const TOOL_DEFINITIONS = [
       parameters: { type: 'object', properties: {}, required: [] },
     },
   },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_events_by_date',
+      description: 'Get all calendar events for a specific date (past or future). Date must be YYYY-MM-DD.',
+      parameters: { type: 'object', properties: { date: { type: 'string', description: 'Date in YYYY-MM-DD format' } }, required: ['date'] },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_birthday_for',
+      description: 'Look up when a family member birthday is',
+      parameters: { type: 'object', properties: { name: { type: 'string', description: 'Person name in Hebrew' } }, required: ['name'] },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_memorial_for',
+      description: 'Look up when a family member memorial day is',
+      parameters: { type: 'object', properties: { name: { type: 'string', description: 'Person name in Hebrew' } }, required: ['name'] },
+    },
+  },
 ]
 
 export function executeTool(name: string, args: Record<string, string>): string {
@@ -212,6 +314,9 @@ export function executeTool(name: string, args: Record<string, string>): string 
       case 'find_next_event_by_type': return findNextEventByType(args.type ?? '').summary
       case 'search_family_info': return searchFamily(args.query ?? '').answer
       case 'get_family_context': return getFamilyContext()
+      case 'get_events_by_date': return getEventsByDate(args.date ?? '').summary
+      case 'get_birthday_for': return getBirthdayFor(args.name ?? '').summary
+      case 'get_memorial_for': return getMemorialFor(args.name ?? '').summary
       default: return 'כלי לא מוכר.'
     }
   } catch {

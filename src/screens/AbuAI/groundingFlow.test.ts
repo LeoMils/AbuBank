@@ -24,7 +24,7 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
     expect(answer).toContain('רופא שיניים')
   })
 
-  it('empty today returns "לא מצאתי משהו ביומן להיום"', () => {
+  it('empty today returns warm empty message', () => {
     const answer = tryGroundedAnswer('מה יש לי היום?')
     expect(answer).not.toBeNull()
     expect(answer).toContain('לא מצאתי')
@@ -41,10 +41,10 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
     expect(answer).toContain('הבת')
   })
 
-  it('unknown family name returns "לא מצאתי"', () => {
+  it('unknown family name returns not-found message', () => {
     const answer = tryGroundedAnswer('מי זה דניאל?')
     expect(answer).not.toBeNull()
-    expect(answer).toContain('לא')
+    expect(answer).toContain('לא מצאתי')
   })
 
   it('"מה מזג האוויר?" returns null (non_personal, goes to LLM)', () => {
@@ -91,10 +91,10 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
     expect(answer).toContain('גרושה')
   })
 
-  it('location query for unknown person returns לא מצאתי', () => {
+  it('location query for unknown person returns not-found', () => {
     const answer = tryGroundedAnswer('איפה דניאל גר?')
     expect(answer).not.toBeNull()
-    expect(answer).toContain('לא')
+    expect(answer).toContain('לא מצאתי')
   })
 
   it('Realtime is disabled by default — useRealtime = false', async () => {

@@ -21,6 +21,10 @@ import { InfoButton } from '../../components/InfoButton'
 import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
+import { shapeCreateConfirm } from '../AbuAI/responseShaper'
+import { parseCorrection, applyCorrection } from './correctionParser'
+import { pickUpdateAck, CANCEL_RESPONSE, UNRELATED_RESPONSE, pickClarifyQuestion } from '../AbuAI/conversationLayer'
+import { speak } from '../../services/voice'
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
 import { PageShell } from '../../components/PageShell'
@@ -47,7 +51,15 @@ export function AbuCalendar() {
   const [showManual, setShowManual] = useState(false)
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [toast, setToast] = useState(false)
-  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string } | null>(null)
+  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; confidence?: number; source?: 'local' | 'llm' | 'fallback' | null } | null>(null)
+  const [rawTranscript, setRawTranscript] = useState<string>('')
+  const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing' | 'parsing' | 'parsed' | 'error'>('idle')
+  const [voiceError, setVoiceError] = useState<string | null>(null)
+  const [ambiguousDraft, setAmbiguousDraft] = useState<{ title: string; date: string | null; time: string; emoji: string; location: string | null; notes: string | null } | null>(null)
+  const [isCorrecting, setIsCorrecting] = useState(false)
+  const [correctionAck, setCorrectionAck] = useState<string | null>(null)
+  const correctingRef = useRef(false)
+  const lastAckRef = useRef<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [voiceStatus, setVoiceStatus] = useState('')
   const [abuTimeOpen, setAbuTimeOpen] = useState(false)
@@ -180,12 +192,42 @@ export function AbuCalendar() {
     setUndoAppt(null)
   }
 
+  async function handleReparse(transcript: string) {
+    if (!transcript.trim()) {
+      setVoiceError('אין טקסט לנתח.')
+      setVoiceState('error')
+      return
+    }
+    setVoiceError(null)
+    setVoiceState('parsing')
+    try {
+      const parsed = await parseAppointmentText(transcript)
+      setRawTranscript(transcript)
+      if (parsed.ambiguousTime && parsed.time) {
+        setAmbiguousDraft({
+          title: parsed.title, date: parsed.date, time: parsed.time,
+          emoji: parsed.emoji, location: parsed.location, notes: parsed.notes,
+        })
+        setVoiceParsed(null)
+        setVoiceState('idle')
+        return
+      }
+      setVoiceParsed(parsed)
+      setVoiceState('parsed')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setVoiceError(`שגיאת ניתוח: ${msg}`)
+      setVoiceState('error')
+    }
+  }
+
   async function handleVoiceRecord() {
     if (isRecording) {
       mediaRecorderRef.current?.stop()
       return
     }
     if (voiceStatus) return
+    setVoiceError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mimeType = getSupportedMimeType()
@@ -196,15 +238,95 @@ export function AbuCalendar() {
       mr.onstop = async () => {
         stream.getTracks().forEach(t => t.stop())
         setIsRecording(false)
+        setVoiceState('transcribing')
         const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
         if (blob.size < 1000) {
-          setVoiceStatus('ההקלטה קצרה מדי. נסי שוב.')
-          setTimeout(() => setVoiceStatus(''), 3000)
+          setVoiceError('ההקלטה קצרה מדי. נסי שוב.')
+          setVoiceState('error')
+          setVoiceStatus('')
           return
         }
         setVoiceStatus('מעבדת...')
         try {
           const transcribed = await transcribeAudio(blob)
+          if (!transcribed || !transcribed.trim()) {
+            setVoiceError('לא שמעתי כלום')
+            setVoiceState('error')
+            setVoiceStatus('')
+            return
+          }
+          if (!correctingRef.current) setRawTranscript(transcribed)
+          setVoiceState('parsing')
+
+          if (correctingRef.current && voiceParsed) {
+            const todayISO = getTodayStr()
+            const result = parseCorrection(transcribed, {
+              title: voiceParsed.title,
+              date: voiceParsed.date,
+              time: voiceParsed.time,
+              emoji: voiceParsed.emoji,
+              location: voiceParsed.location ?? null,
+              notes: voiceParsed.notes ?? null,
+            }, todayISO)
+            correctingRef.current = false
+            setIsCorrecting(false)
+            setVoiceStatus('')
+            if (result.kind === 'cancel') {
+              speak(CANCEL_RESPONSE).catch(() => {})
+              setCorrectionAck(null)
+              setVoiceParsed(null)
+              return
+            }
+            if (result.kind === 'confirm') {
+              if (voiceParsed.title && voiceParsed.date && voiceParsed.time) {
+                handleVoiceConfirm({
+                  title: voiceParsed.title,
+                  date: voiceParsed.date,
+                  time: voiceParsed.time,
+                  emoji: voiceParsed.emoji,
+                  ...(voiceParsed.location ? { location: voiceParsed.location } : {}),
+                  ...(voiceParsed.notes ? { notes: voiceParsed.notes } : {}),
+                })
+              }
+              return
+            }
+            if (result.kind === 'clarify') {
+              const q = pickClarifyQuestion({
+                title: voiceParsed.title,
+                date: voiceParsed.date,
+                time: voiceParsed.time,
+                location: voiceParsed.location ?? null,
+              })
+              speak(q).catch(() => {})
+              setVoiceStatus(q)
+              setTimeout(() => setVoiceStatus(''), 4500)
+              return
+            }
+            if (result.kind === 'unrelated') {
+              speak(UNRELATED_RESPONSE).catch(() => {})
+              setVoiceStatus(UNRELATED_RESPONSE)
+              setTimeout(() => setVoiceStatus(''), 3500)
+              return
+            }
+            const ack = pickUpdateAck({ avoid: lastAckRef.current })
+            lastAckRef.current = ack
+            setCorrectionAck(ack)
+            const merged = applyCorrection({
+              title: voiceParsed.title,
+              date: voiceParsed.date,
+              time: voiceParsed.time,
+              emoji: voiceParsed.emoji,
+              location: voiceParsed.location ?? null,
+              notes: voiceParsed.notes ?? null,
+            }, result.updates)
+            setVoiceParsed({
+              ...merged,
+              location: merged.location ?? null,
+              notes: merged.notes ?? null,
+            })
+            return
+          }
+
           // Check if this is a schedule query ("מה קורה לי?")
           const { isScheduleQuery: isQuery } = await import('./intentParser')
           if (isQuery(transcribed)) {
@@ -219,34 +341,85 @@ export function AbuCalendar() {
             setTimeout(() => setVoiceStatus(''), 4000)
             return
           }
+          if (parsed.ambiguousTime && parsed.time) {
+            setVoiceStatus('')
+            setAmbiguousDraft({
+              title: parsed.title,
+              date: parsed.date,
+              time: parsed.time,
+              emoji: parsed.emoji,
+              location: parsed.location,
+              notes: parsed.notes,
+            })
+            return
+          }
           setVoiceParsed(parsed)
-        } catch {
-          setVoiceStatus('לא הצלחתי להבין. נסי שוב לאט יותר')
-          setTimeout(() => setVoiceStatus(''), 3000)
+          setVoiceState('parsed')
+        } catch (e) {
+          correctingRef.current = false
+          setIsCorrecting(false)
+          const msg = e instanceof Error ? e.message : 'לא הצלחתי להבין. נסי שוב לאט יותר'
+          setVoiceError(msg)
+          setVoiceState('error')
+          setVoiceStatus('')
         }
       }
       mr.start()
       setIsRecording(true)
+      setVoiceState('recording')
       setVoiceStatus('מקשיבה... (לחצי שוב לסיום)')
     } catch (err) {
       const msg = err instanceof DOMException && err.name === 'NotAllowedError'
         ? 'צריך לאשר גישה למיקרופון'
         : err instanceof DOMException && err.name === 'NotFoundError'
         ? 'לא נמצא מיקרופון'
+        : err instanceof Error
+        ? `מיקרופון לא זמין: ${err.message}`
         : 'מיקרופון לא זמין — נסי ב-HTTPS'
-      setVoiceStatus(msg)
-      setTimeout(() => setVoiceStatus(''), 4000)
+      setVoiceError(msg)
+      setVoiceState('error')
+      setVoiceStatus('')
     }
   }
 
-  function handleVoiceConfirm(final: { title: string; date: string; time: string; emoji: string }) {
+  function handleVoiceConfirm(final: { title: string; date: string; time: string; emoji: string; location?: string; notes?: string }) {
     addAppointment(final)
     reload()
     setVoiceParsed(null)
     setVoiceStatus('')
+    setVoiceError(null)
+    setVoiceState('idle')
+    setCorrectionAck(null)
+    lastAckRef.current = null
     playChime()
     soundSuccess()
     showToast()
+  }
+
+  function startCorrection() {
+    if (isRecording) return
+    correctingRef.current = true
+    setIsCorrecting(true)
+    void handleVoiceRecord()
+  }
+
+  function resolveAmbiguity(period: 'pm' | 'am') {
+    if (!ambiguousDraft) return
+    const [hStr, mStr] = ambiguousDraft.time.split(':')
+    let h = parseInt(hStr ?? '0', 10)
+    const m = parseInt(mStr ?? '0', 10)
+    if (period === 'pm' && h >= 1 && h <= 11) h += 12
+    if (period === 'am' && h === 12) h = 0
+    const finalTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+    setVoiceParsed({
+      title: ambiguousDraft.title,
+      date: ambiguousDraft.date,
+      time: finalTime,
+      emoji: ambiguousDraft.emoji,
+      location: ambiguousDraft.location,
+      notes: ambiguousDraft.notes,
+    })
+    setAmbiguousDraft(null)
   }
 
   useEffect(() => {
@@ -322,7 +495,7 @@ export function AbuCalendar() {
               '🩷 נקודה ורודה = יום הולדת משפחתי',
               '⬜ מסגרת זהב חזקה = היום',
               '⬜ מסגרת זהב עדינה = יום שנבחר',
-              '📅 תאים עמומים = ימים שעברו',
+              '◾ תאים עמומים = ימים שעברו',
               '🩵 פס טורקיז = אירוע עכשיו (ברשימת האירועים)',
               '🔔 התראה קולית לפני כל אירוע',
             ]}
@@ -576,7 +749,7 @@ export function AbuCalendar() {
         )}
 
         {selectedAppts.length === 0 && !getHebrewHoliday(selectedDay) ? (
-          <EmptyState icon="📅" message="יום פנוי ✨" detail="לחצי למטה להוסיף אירוע" />
+          <EmptyState icon="✨" message="יום פנוי" detail="לחצי למטה להוסיף אירוע" />
         ) : (
           selectedAppts.map(a => {
             const timeState = getTimeState(a.date, a.time, today, Date.now())
@@ -670,14 +843,89 @@ export function AbuCalendar() {
         />
       )}
 
-      {voiceParsed && (
-        <VoiceCard
-          parsed={voiceParsed}
-          existingAppts={appointments}
-          onConfirm={handleVoiceConfirm}
-          onCancel={() => { setVoiceParsed(null); setVoiceStatus('') }}
-        />
-      )}
+      {voiceParsed && (() => {
+        const baseConfirm = shapeCreateConfirm({
+          title: voiceParsed.title,
+          date: voiceParsed.date,
+          time: voiceParsed.time,
+          location: voiceParsed.location ?? null,
+          notes: voiceParsed.notes ?? null,
+        })
+        const fullText = correctionAck ? `${correctionAck}\n${baseConfirm}` : baseConfirm
+        return (
+          <VoiceCard
+            parsed={voiceParsed}
+            existingAppts={appointments}
+            onConfirm={handleVoiceConfirm}
+            onCancel={() => {
+              speak(CANCEL_RESPONSE).catch(() => {})
+              setVoiceParsed(null)
+              setVoiceStatus('')
+              setVoiceError(null)
+              setVoiceState('idle')
+              correctingRef.current = false
+              setIsCorrecting(false)
+              setCorrectionAck(null)
+              lastAckRef.current = null
+            }}
+            confirmationText={fullText}
+            onCorrection={startCorrection}
+            isCorrecting={isCorrecting || isRecording}
+            rawTranscript={rawTranscript}
+            voiceState={voiceState}
+            voiceError={voiceError}
+            onReparse={handleReparse}
+            onSpokenDone={() => {
+              // Auto-listen for spoken confirmation only when the card has just
+              // been (re)spoken AND we're not already recording or in error.
+              if (!isRecording && !correctingRef.current && voiceState !== 'error') {
+                startCorrection()
+              }
+            }}
+          />
+        )
+      })()}
+
+      {ambiguousDraft && (() => {
+        const [hStr] = ambiguousDraft.time.split(':')
+        const h = parseInt(hStr ?? '0', 10)
+        const HOUR_WORDS_HE = ['שתים עשרה','אחת','שתיים','שלוש','ארבע','חמש','שש','שבע','שמונה','תשע','עשר','אחת עשרה']
+        const hourWord = HOUR_WORDS_HE[h % 12] ?? String(h)
+        return (
+          <div onClick={() => setAmbiguousDraft(null)} style={{
+            position: 'fixed', inset: 0, zIndex: 220, background: 'rgba(0,0,0,0.84)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+          } as React.CSSProperties}>
+            <div onClick={e => e.stopPropagation()} dir="rtl" style={{
+              width: '100%', maxWidth: 480,
+              background: 'linear-gradient(160deg, rgba(14,12,10,0.99) 0%, rgba(10,8,6,0.99) 100%)',
+              border: '1px solid rgba(201,168,76,0.32)', borderBottom: 'none',
+              borderRadius: '24px 24px 0 0',
+              padding: 'calc(28px + env(safe-area-inset-bottom, 0px)) 20px 24px',
+              display: 'flex', flexDirection: 'column', gap: 14,
+            }}>
+              <div data-testid="ambiguity-question" style={{ fontSize: 20, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif", textAlign: 'center', lineHeight: 1.5 }}>
+                זה {hourWord} בצהריים או {hourWord} בלילה?
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button type="button" onClick={() => resolveAmbiguity('am')} style={{
+                  flex: 1, padding: '15px', borderRadius: 14,
+                  border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.05)',
+                  color: CREAM, fontSize: 18, fontWeight: 700,
+                  fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 56,
+                }}>בלילה</button>
+                <button type="button" onClick={() => resolveAmbiguity('pm')} style={{
+                  flex: 1, padding: '15px', borderRadius: 14, border: 'none',
+                  background: `linear-gradient(135deg, ${BRIGHT_GOLD} 0%, #e8c76a 50%, ${GOLD} 100%)`,
+                  color: 'rgba(0,0,0,0.85)', fontSize: 18, fontWeight: 700,
+                  fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 56,
+                }}>בצהריים</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* KEYFRAMES */}
       <style>{`

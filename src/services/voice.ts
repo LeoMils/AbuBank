@@ -10,7 +10,7 @@ function getVoiceSpeed(): number {
     const saved = localStorage.getItem('abu-voice-speed')
     if (saved) return parseFloat(saved)
   } catch {}
-  return 0.88 // default
+  return 0.95 // default — slightly faster for natural pacing
 }
 
 let currentAudio: HTMLAudioElement | null = null
@@ -169,8 +169,8 @@ async function playBlobViaAudioCtx(blob: Blob): Promise<boolean> {
 function getTTSInstructions(text: string): string {
   const lang = detectLang(text)
   return lang === 'es'
-    ? 'You are a warm Argentine grandmother. Speak very slowly, gently, softly in Rioplatense Spanish. Buenos Aires accent. Intimate, like a phone call with a dear friend. Pause between sentences. Never rush. Never sound robotic or like reading. Sound human, real, kind.'
-    : 'You are a warm Israeli woman in her 40s. Speak very slowly, gently, softly in casual everyday Hebrew. Native Israeli accent — NOT American. Intimate, like a phone call with a dear friend. Pause between sentences. Never rush. Never sound robotic or like reading. Sound human, real, kind.'
+    ? 'You are a warm Argentine woman. Speak naturally and gently in Rioplatense Spanish. Buenos Aires accent. Intimate, like a relaxed phone call with a close friend. Brief natural pauses between sentences. Never robotic, never reading aloud. Sound human, real, kind.'
+    : 'You are a warm Israeli woman in her 40s. Speak naturally and gently in casual everyday Hebrew. Native Israeli accent — NOT American. Intimate, like a relaxed phone call with a close friend. Brief natural pauses between sentences. Never robotic, never reading aloud. Sound human, real, kind.'
 }
 
 async function speakOpenAI(text: string): Promise<boolean> {
@@ -414,7 +414,7 @@ function speakWebAPI(text: string): Promise<void> {
 
     const u = new SpeechSynthesisUtterance(text)
     u.lang = lang === 'es' ? 'es-AR' : 'he-IL'
-    u.rate = lang === 'he' ? 0.78 : 0.85   // T4.3: slower for 80-year-old listener
+    u.rate = lang === 'he' ? 0.88 : 0.90   // natural pace — clear but not robotic
     u.pitch = 1.0                            // neutral pitch — no robot adjustment
     u.volume = 1.0
     if (bestVoice) u.voice = bestVoice

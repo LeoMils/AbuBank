@@ -1,19 +1,55 @@
 import type { FamilyMember } from '../../services/familyLoader'
 import type { Appointment } from '../AbuCalendar/service'
 
+// ─── Hebrew number words ────────────────────────────────────────────────────
+
+const HOUR_WORDS: Record<number, string> = {
+  1: 'אחת', 2: 'שתיים', 3: 'שלוש', 4: 'ארבע', 5: 'חמש',
+  6: 'שש', 7: 'שבע', 8: 'שמונה', 9: 'תשע', 10: 'עשר',
+  11: 'אחת עשרה', 12: 'שתים עשרה',
+}
+
+const COUNT_WORDS: Record<number, string> = {
+  2: 'שני', 3: 'שלושה', 4: 'ארבעה',
+}
+
+// ─── Time in spoken Hebrew words ────────────────────────────────────────────
+
+export function timeInWords(time: string): string {
+  const [h, min] = time.split(':').map(Number)
+  if (h === undefined) return `בשעה ${time}`
+  const half = min === 30 ? ' וחצי' : ''
+
+  // Odd minutes (not :00 or :30) — use digits
+  if (min !== 0 && min !== 30) return `בשעה ${time}`
+
+  if (h === 0) return 'בחצות'
+  if (h === 12) return `בצהריים${half}`
+
+  // Convert 24h → spoken hour + period
+  const displayH = h > 12 ? h - 12 : h
+  const word = HOUR_WORDS[displayH] ?? `${displayH}`
+
+  if (h < 5) return `ב${word}${half} בלילה`
+  if (h < 12) return `ב${word}${half} בבוקר`
+  if (h < 17) return `ב${word}${half} אחר הצהריים`
+  if (h < 21) return `ב${word}${half} בערב`
+  return `ב${word}${half} בלילה`
+}
+
+// ─── Family ─────────────────────────────────────────────────────────────────
+
 export function shapeFamilyAnswer(m: FamilyMember): string {
   const parts: string[] = []
   const rel = m.relationshipHebrew
 
-  // Split compound relationship: "הבת, גרושה מרפי, בת זוג של יעל"
-  // into base role + detail clauses
   const clauses = rel.split(',').map(s => s.trim())
   const baseRole = clauses[0] ?? rel
   const details = clauses.slice(1)
 
   const isFemale = baseRole.includes('הבת') || baseRole.includes('נכדה') || baseRole.includes('בת זוג')
-  const pronoun = isFemale ? 'היא' : 'הוא'
   const possessive = isFemale ? 'שלה' : 'שלו'
+  const pronoun = isFemale ? 'היא' : 'הוא'
 
   if (baseRole.includes('הבת') || baseRole.includes('הבן')) {
     parts.push(`${m.hebrew} ${pronoun} ${baseRole} שלך.`)
@@ -26,52 +62,117 @@ export function shapeFamilyAnswer(m: FamilyMember): string {
     parts.push(`${m.hebrew} — ${rel}.`)
   }
 
-  if (m.spouse) parts.push(`בן/בת הזוג: ${m.spouse}.`)
+  if (m.spouse) {
+    const spouseRole = isFemale ? 'בן הזוג' : 'בת הזוג'
+    parts.push(`${spouseRole} ${possessive} — ${m.spouse}.`)
+  }
   if (m.children?.length) {
     const last = m.children[m.children.length - 1]
     const rest = m.children.slice(0, -1)
     const childList = rest.length > 0 ? `${rest.join(', ')} ו${last}` : last!
-    parts.push(`הילדים ${possessive} הם ${childList}.`)
+    parts.push(`הילדים ${possessive} — ${childList}.`)
   }
   if (m.notes) parts.push(m.notes)
 
-  return parts.join(' ')
+  return parts.join('\n')
 }
+
+// ─── Location ───────────────────────────────────────────────────────────────
 
 export function shapeLocationAnswer(name: string, location: string, notes?: string): string {
-  let answer = `${name} גרה ב${location}.`
-  if (notes) answer += ` ${notes}.`
-  return answer
+  if (notes) return `${name} גרה ב${location}, ${notes}.`
+  return `${name} גרה ב${location}.`
 }
 
-export function shapeCalendarAnswer(events: Appointment[], scope: 'today' | 'tomorrow' | 'week' | 'upcoming'): string {
-  if (events.length === 0) {
-    const scopeLabel = scope === 'today' ? 'להיום'
-      : scope === 'tomorrow' ? 'למחר'
-      : scope === 'week' ? 'לשבוע הקרוב'
-      : 'קרוב'
-    return `לא מצאתי משהו ביומן ${scopeLabel}.`
-  }
+// ─── Calendar Read ──────────────────────────────────────────────────────────
 
-  const scopePrefix = scope === 'today' ? 'היום'
+export function shapeCalendarAnswer(events: Appointment[], scope: 'today' | 'tomorrow' | 'week' | 'upcoming'): string {
+  const scopeWord = scope === 'today' ? 'היום'
     : scope === 'tomorrow' ? 'מחר'
     : ''
 
-  if (events.length === 1) {
-    const e = events[0]!
-    const time = e.time ? ` בשעה ${e.time}` : ''
-    return `${scopePrefix} יש לך ${e.title}${time}.`
+  // Empty
+  if (events.length === 0) {
+    if (scope === 'week') return 'לא מצאתי משהו ביומן לשבוע הזה.'
+    return `לא מצאתי משהו ביומן ל${scopeWord === 'היום' ? 'היום' : scopeWord === 'מחר' ? 'מחר' : 'תקופה הזו'}.`
   }
 
+  // Single event
+  if (events.length === 1) {
+    const e = events[0]!
+    const time = e.time ? `\n${timeInWords(e.time)}.` : ''
+    if (e.type === 'birthday') {
+      return `${scopeWord} ${e.title}.`
+    }
+    return `${scopeWord} יש לך ${e.title}.${time}`
+  }
+
+  // Multiple events — time — title format
+  const countWord = COUNT_WORDS[events.length] ?? `${events.length}`
   const lines = events.slice(0, 4).map(e => {
-    const time = e.time ? ` בשעה ${e.time}` : ''
-    return `${e.emoji} ${e.title}${time}`
+    const time = e.time ? `${timeInWords(e.time)} — ` : ''
+    return `${time}${e.title}.`
   })
 
-  let answer = `${scopePrefix} יש לך ${events.length} דברים:\n${lines.join('\n')}`
+  let answer = `${scopeWord} יש לך ${countWord} דברים:\n${lines.join('\n')}`
   if (events.length > 4) answer += `\nועוד ${events.length - 4}.`
   return answer.trim()
 }
+
+// ─── Calendar Create ────────────────────────────────────────────────────────
+
+import type { CreateDraft } from './calendarCreate'
+
+function dateLabel(date: string): string {
+  const today = new Date().toISOString().split('T')[0]!
+  const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+  if (date === today) return 'היום'
+  if (date === tmrw) return 'מחר'
+  const d = new Date(date)
+  const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+  const dayName = days[d.getDay()] ?? ''
+  const day = d.getDate()
+  const months = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+  const monthName = months[d.getMonth()] ?? ''
+  return `ביום ${dayName}, ${day} ב${monthName}`
+}
+
+function humanTitle(title: string): string {
+  if (/^אצל\s/.test(title)) return `להיות ${title}`
+  if (/תור\s/.test(title)) return title
+  if (/פגישה\s/.test(title)) return title
+  if (/ארוחה|ארוחת/.test(title)) return title
+  return title
+}
+
+export function shapeCreateConfirm(draft: CreateDraft): string {
+  const what = draft.title ? humanTitle(draft.title) : 'משהו'
+  const when = draft.date ? ` ${dateLabel(draft.date)}` : ''
+  const time = draft.time ? ` ${timeInWords(draft.time)}` : ''
+  const lines: string[] = [`אני קובעת לך ${what}${when}${time}.`]
+  if (draft.location) lines.push(`ב${draft.location}.`)
+  if (draft.notes) lines.push(`הערה: ${draft.notes}.`)
+  lines.push('זה נכון?')
+  return lines.join('\n')
+}
+
+export function shapeCreateSaved(): string {
+  return 'נרשם ביומן.'
+}
+
+export function shapeCreateCancelled(): string {
+  return 'עזבתי, לא רשמתי.'
+}
+
+export function shapeCreateClarify(missing: Array<'title' | 'date' | 'time'>): string {
+  const first = missing[0]
+  if (first === 'title') return 'מה לרשום?'
+  if (first === 'date') return 'באיזה יום?'
+  if (first === 'time') return 'באיזו שעה?'
+  return 'מה לרשום?'
+}
+
+// ─── Fallbacks ──────────────────────────────────────────────────────────────
 
 export function shapeNotFound(context?: string): string {
   if (context) return `לא מצאתי מידע על ${context}.`

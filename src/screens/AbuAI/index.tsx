@@ -245,7 +245,7 @@ export function AbuAI() {
         }
         if (createState.phase === 'confirming' && isConfirm(msgText)) {
           const d = createState.draft
-          addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji })
+          addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
           soundSuccess()
           setCreateState(IDLE_STATE)
           const savedMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: shapeCreateSaved(), timestamp: Date.now() }

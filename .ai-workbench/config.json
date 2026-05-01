@@ -1,0 +1,70 @@
+{
+  "version": "0.1-truth-enforced",
+  "maxRounds": 1,
+  "autoRunClaude": false,
+  "autoPush": false,
+  "autoMerge": false,
+  "requireHumanApprovalForPackageChanges": true,
+  "requireHumanApprovalForDeletes": true,
+  "defaultValidationOrder": ["typecheck", "lint", "test", "build"],
+  "maxChangedFiles": 10,
+  "maxDiffLines": 500,
+  "statusValues": ["PROVEN", "NOT_PROVEN", "MANUAL_REVIEW", "FAILED"],
+  "confidenceValues": ["HIGH", "MEDIUM", "LOW"],
+  "truthContract": {
+    "forbidSuccessLanguageWithoutProof": true,
+    "truthViolationIsFailure": true,
+    "preferNotProvenOverMisleadingResult": true,
+    "manualReviewIsNotApproval": true,
+    "skippedValidationIsNotPass": true,
+    "noSilentSuccess": true,
+    "minimumProofRequired": true
+  },
+  "sourcePriority": [
+    "VERIFIED_FROM_TEST",
+    "VERIFIED_FROM_CODE",
+    "RUNTIME_ARTIFACT",
+    "PROVIDED_BY_LEO",
+    "UNKNOWN"
+  ],
+  "minimumProofRequirement": {
+    "enabled": true,
+    "requiresAtLeastOneHighConfidenceProofFor": [
+      "core_functionality",
+      "main_user_flow",
+      "critical_bug_fix"
+    ],
+    "failureReason": "NO_CORE_PROOF"
+  },
+  "driftDetector": {
+    "enabled": true,
+    "knownWorkingBaselineRequired": false,
+    "flagUnrelatedPathChanges": true,
+    "flagUnexpectedGeneratedChanges": true,
+    "flagNoTouchPathChanges": true
+  },
+  "packs": {
+    "abobank-ai": {
+      "allowedPaths": [
+        "src/screens/AbuAI",
+        "src/screens/AbuCalendar",
+        "src/services",
+        "src/hooks",
+        "src/lib",
+        "src/utils",
+        "src/tests",
+        "tests"
+      ],
+      "forbiddenPaths": [
+        "src/screens/AbuGames",
+        "src/screens/AbuWhatsApp",
+        "src/screens/AbuDashboard",
+        ".env",
+        ".env.local",
+        ".env.production"
+      ],
+      "maxChangedFiles": 10,
+      "maxDiffLines": 500
+    }
+  }
+}

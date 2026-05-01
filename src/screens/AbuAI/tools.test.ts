@@ -152,8 +152,8 @@ describe('executeTool', () => {
 })
 
 describe('TOOL_DEFINITIONS', () => {
-  it('has 7 tools defined', () => {
-    expect(TOOL_DEFINITIONS).toHaveLength(7)
+  it('has 10 tools defined', () => {
+    expect(TOOL_DEFINITIONS).toHaveLength(10)
   })
 
   it('all tools have name and description', () => {

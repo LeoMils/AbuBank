@@ -1,0 +1,25 @@
+{
+  "evals": [
+    {
+      "id": "integration-dead-code",
+      "category": "critical_bug_fix",
+      "mandatory": true,
+      "rule": "Any new formatter/parser/shaper/helper must have a real reachable call site OR an explicit test-only reason. If neither exists, STATUS: FAILED, reason: DEAD_CODE.",
+      "expected": {
+        "everyNewExportHasReachableCallSiteOrTestOnly": true
+      },
+      "mappedTest": null,
+      "verifierHint": "grep for the new export's name across src/; require at least one import from a user-flow file or a test file."
+    },
+    {
+      "id": "real-call-site-validation",
+      "category": "critical_bug_fix",
+      "mandatory": true,
+      "rule": "A call site is valid only if reachable from a real user flow OR covered by test execution. A symbol imported but never reached at runtime/test is not enough.",
+      "expected": {
+        "everyExportReachableFromUserFlowOrTest": true
+      },
+      "mappedTest": null
+    }
+  ]
+}

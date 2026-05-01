@@ -1,6 +1,6 @@
 import type { ChatMessage } from './types'
 
-import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, searchFamily, searchFamilyLocation } from './tools'
+import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, getEventsByDate, getEventsByMonth, getBirthdayFor, getMemorialFor, searchFamily, searchFamilyLocation } from './tools'
 import { generateFamilyPromptSection } from '../../services/familyLoader'
 import { routePersonalQuery, type RouteResult } from './router'
 import { answerFromToolResult, type ToolResult } from './groundedResponse'
@@ -39,6 +39,26 @@ export function tryGroundedAnswer(text: string): string | null {
         result = { ok: true, events: r.events, summary: r.summary }
         break
       }
+      case 'calendar_exact_date': {
+        if (!route.dateStr) return null
+        const r = getEventsByDate(route.dateStr)
+        result = { ok: true, events: r.events, summary: r.summary }
+        break
+      }
+      case 'calendar_month': {
+        if (!route.month) return null
+        const r = getEventsByMonth(route.month)
+        result = { ok: true, events: r.events, summary: r.summary }
+        break
+      }
+      case 'birthday_lookup': {
+        const r = getBirthdayFor(route.familyQuery ?? '')
+        return r.summary
+      }
+      case 'memorial_lookup': {
+        const r = getMemorialFor(route.familyQuery ?? '')
+        return r.summary
+      }
       case 'family_lookup': {
         const r = searchFamily(route.familyQuery ?? '')
         result = { ok: true, found: r.found, members: r.members, answer: r.answer }
@@ -59,10 +79,16 @@ export function tryGroundedAnswer(text: string): string | null {
 
 const CALENDAR_CLAIM_PATTERNS = /יש לך (תור|פגישה|אירוע|רופא|בדיקה)|אני רואה (ש|ביומן|שיש)|ביומן שלך|לפי היומן|התור שלך|הפגישה שלך ב/
 const INVENTED_EVENT_PATTERNS = /יש לך ב[־-]?\d{1,2}[.:]\d{2}|יש לך ביום [א-ת]/
+// Past-tense first-person success verbs that imply a tool ran. The "לא "
+// lookbehind keeps the honest negations "לא בדקתי" / "לא מצאתי" unflagged.
+// Hebrew lookarounds are used because \b only matches ASCII word boundaries.
+const PAST_TENSE_CLAIM_PATTERNS = /(?<!לא\s)(?<![֐-׿])(בדקתי|חיפשתי|מצאתי|אימתתי|אישרתי)(?![֐-׿])/
 
 export function containsUngroundedClaim(response: string, hadToolCall: boolean): boolean {
   if (hadToolCall) return false
-  return CALENDAR_CLAIM_PATTERNS.test(response) || INVENTED_EVENT_PATTERNS.test(response)
+  return CALENDAR_CLAIM_PATTERNS.test(response)
+    || INVENTED_EVENT_PATTERNS.test(response)
+    || PAST_TENSE_CLAIM_PATTERNS.test(response)
 }
 
 const SAFE_REFUSAL = 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'

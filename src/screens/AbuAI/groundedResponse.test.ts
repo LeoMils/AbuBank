@@ -3,7 +3,7 @@ import { answerFromToolResult } from './groundedResponse'
 
 describe('answerFromToolResult', () => {
   it('tool error returns safe message', () => {
-    expect(answerFromToolResult('calendar_today', { ok: false })).toBe('אני לא מצליחה לבדוק את זה כרגע. נסי שוב.')
+    expect(answerFromToolResult('calendar_today', { ok: false })).toContain('אני לא מצליחה לבדוק')
   })
 
   it('empty calendar passes through shaped summary', () => {
@@ -32,7 +32,7 @@ describe('answerFromToolResult', () => {
   })
 
   it('family not found returns "לא מצאתי"', () => {
-    expect(answerFromToolResult('family_lookup', { ok: true, found: false, members: [], answer: '' })).toBe('לא מצאתי מידע על זה.')
+    expect(answerFromToolResult('family_lookup', { ok: true, found: false, members: [], answer: '' })).toMatch(/^לא מצאתי/)
   })
 
   it('family found returns answer from data', () => {

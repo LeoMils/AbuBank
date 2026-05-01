@@ -40,7 +40,17 @@
       "Bash(git commit:*)",
       "Bash(git branch:*)",
       "Bash(git remote:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(npx vitest:*)",
+      "Bash(node -e \":*)",
+      "Bash(npx tsx -e \":*)",
+      "Bash(npx tsx:*)",
+      "Bash(find /c/Users/Lmilstein/ClaudeCode/abu-bank/src -type f -name *token* -o -name *theme* -o -name *style*)",
+      "Bash(npm test:*)",
+      "Bash(grep '\"\"version\"\"' package.json)",
+      "Bash(npx netlify:*)",
+      "Bash(netlify deploy:*)"
     ]
   }
 }

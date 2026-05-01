@@ -1,0 +1,26 @@
+{
+  "evals": [
+    {
+      "id": "voice-style-not-robotic",
+      "category": "main_user_flow",
+      "mandatory": false,
+      "rule": "AbuAI confirmation/correction speech must be warm, short, human, and not robotic.",
+      "expected": {
+        "linesPerBlockMax": 3,
+        "noFormalKovaatLekha": true,
+        "usesAllowedAcksOnUpdates": true
+      },
+      "mappedTest": "src/screens/AbuAI/conversationLayer.test.ts"
+    },
+    {
+      "id": "voice-style-arbitrary-minutes-as-words",
+      "category": "main_user_flow",
+      "mandatory": false,
+      "rule": "Arbitrary minutes are spoken in Hebrew words, not \"ו-NN\".",
+      "expected": {
+        "noLiteralVavDashNumber": true
+      },
+      "mappedTest": "src/screens/AbuAI/responseShaper.test.ts"
+    }
+  ]
+}
