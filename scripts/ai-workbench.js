@@ -1185,6 +1185,15 @@ function buildDecisionRequired({ staticAnalysis, repoMismatch }) {
   return { workbenchVersion: WORKBENCH_VERSION, decisions }
 }
 
+const PROTECTED_BRANCHES = ['main', 'master']
+function isProtectedBranch(b) {
+  if (!b) return false
+  return PROTECTED_BRANCHES.includes(String(b).toLowerCase())
+}
+function suggestFeatureBranchName({ infraOnly }) {
+  return infraOnly ? 'chore/workbench-infra-update' : 'feat/workbench-suggested-change'
+}
+
 function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMismatch, evalCounts, anyFailed, annotationSelfTest, v04SelfTest, branchName }) {
   const blockers = []
   const filesToAdd = []
@@ -1263,18 +1272,33 @@ function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMism
   } else if (diffSummary.productFiles.length > 0) {
     // Product files changed in allowed paths, validation green. Even if the
     // run's finalStatus is FAILED for a known static-analysis backlog, it is
-    // safe to recommend committing the actual changed files only.
-    recommendedAction = 'COMMIT_FEATURE_BRANCH'
-    confidence = finalStatus === 'PROVEN' ? 'HIGH' : 'MEDIUM'
-    reason = finalStatus === 'PROVEN'
-      ? 'Validation green, regression clean, evidence PROVEN.'
-      : 'Validation green and regression clean; finalStatus may still be FAILED for an unrelated static-analysis backlog. Commit only the listed allowed-path files.'
-    allowedGitActions = [
-      'git add ' + diffSummary.productFiles.map((f) => `"${f}"`).join(' '),
-      'git commit',
-      `git push origin ${branch}`,
-    ]
+    // safe to recommend committing the actual changed files only — but never
+    // directly to a protected branch.
     filesToAdd.push(...diffSummary.productFiles)
+    if (isProtectedBranch(branchName)) {
+      const suggested = suggestFeatureBranchName({ infraOnly: false })
+      recommendedAction = 'CREATE_FEATURE_BRANCH'
+      confidence = 'HIGH'
+      reason = `Current branch is "${branchName}". Direct commit/push to ${branchName} is forbidden. Create a feature branch and push there.`
+      allowedGitActions = [
+        `git checkout -b ${suggested}`,
+        'git add ' + diffSummary.productFiles.map((f) => `"${f}"`).join(' '),
+        'git commit',
+        `git push origin ${suggested}`,
+      ]
+      blockers.push('PROTECTED_BRANCH')
+    } else {
+      recommendedAction = 'COMMIT_FEATURE_BRANCH'
+      confidence = finalStatus === 'PROVEN' ? 'HIGH' : 'MEDIUM'
+      reason = finalStatus === 'PROVEN'
+        ? 'Validation green, regression clean, evidence PROVEN.'
+        : 'Validation green and regression clean; finalStatus may still be FAILED for an unrelated static-analysis backlog. Commit only the listed allowed-path files.'
+      allowedGitActions = [
+        'git add ' + diffSummary.productFiles.map((f) => `"${f}"`).join(' '),
+        'git commit',
+        `git push origin ${branch}`,
+      ]
+    }
     requiresHumanApproval = true
     if (diffSummary.generatedFiles.length > 0) whatLeoShouldNotSend.push(`do not include ${diffSummary.generatedFiles.join(', ')} (auto-generated)`)
   } else if (allChangedAreWorkbenchInfraOrGenerated) {
@@ -1282,15 +1306,29 @@ function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMism
     // memory/* may also appear in generatedFiles because npm run build
     // regenerated them during this run; those must NOT be committed.
     // Validation, both self-tests, and repo-mismatch are green at this point.
-    recommendedAction = 'COMMIT_FEATURE_BRANCH'
-    confidence = 'HIGH'
-    reason = 'Workbench infrastructure change validated; product unresolved backlog remains and is not solved by this commit.'
-    allowedGitActions = [
-      'git add ' + diffSummary.workbenchFiles.map((f) => `"${f}"`).join(' '),
-      'git commit',
-      `git push origin ${branch}`,
-    ]
     filesToAdd.push(...diffSummary.workbenchFiles)
+    if (isProtectedBranch(branchName)) {
+      const suggested = suggestFeatureBranchName({ infraOnly: true })
+      recommendedAction = 'CREATE_FEATURE_BRANCH'
+      confidence = 'HIGH'
+      reason = `Current branch is "${branchName}". Direct commit/push to ${branchName} is forbidden. Create a feature branch and push there.`
+      allowedGitActions = [
+        `git checkout -b ${suggested}`,
+        'git add ' + diffSummary.workbenchFiles.map((f) => `"${f}"`).join(' '),
+        'git commit',
+        `git push origin ${suggested}`,
+      ]
+      blockers.push('PROTECTED_BRANCH')
+    } else {
+      recommendedAction = 'COMMIT_FEATURE_BRANCH'
+      confidence = 'HIGH'
+      reason = 'Workbench infrastructure change validated; product unresolved backlog remains and is not solved by this commit.'
+      allowedGitActions = [
+        'git add ' + diffSummary.workbenchFiles.map((f) => `"${f}"`).join(' '),
+        'git commit',
+        `git push origin ${branch}`,
+      ]
+    }
     requiresHumanApproval = true
     if (diffSummary.generatedFiles.length > 0) {
       whatLeoShouldNotSend.push(`do not include ${diffSummary.generatedFiles.join(', ')} (auto-regenerated by prebuild; revert with git checkout before commit)`)
@@ -1315,26 +1353,36 @@ function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMism
     copyPasteReduction: {
       whatLeoShouldSendNext: recommendedAction === 'STOP_REPO_MISMATCH'
         ? 'Re-route the task to the correct repository.'
-        : recommendedAction === 'COMMIT_FEATURE_BRANCH'
-          ? `Authorize: git add ${filesToAdd.join(' ')}; git commit; git push origin <feature-branch>. Do NOT include memory/* or .ai-runs/*.`
-          : recommendedAction === 'REQUEST_REPAIR'
-            ? 'Paste repair-prompt.md into Claude Code. Do NOT commit until validation passes.'
-            : recommendedAction === 'NO_ACTION'
-              ? 'Working tree is clean. No further action required for this run.'
-              : 'Review evidence-check.json and decide manually.',
+        : recommendedAction === 'CREATE_FEATURE_BRANCH'
+          ? (() => {
+              const suggested = (allowedGitActions.find((a) => a.startsWith('git checkout -b ')) || '').replace('git checkout -b ', '')
+              return `Current branch is "${branchName}" (protected). Authorize: git checkout -b ${suggested}; git add ${filesToAdd.join(' ')}; git commit; git push origin ${suggested}. Do NOT push to main/master.`
+            })()
+          : recommendedAction === 'COMMIT_FEATURE_BRANCH'
+            ? `Authorize: git add ${filesToAdd.join(' ')}; git commit; git push origin ${branchName || '<feature-branch>'}. Do NOT include memory/* or .ai-runs/*.`
+            : recommendedAction === 'REQUEST_REPAIR'
+              ? 'Paste repair-prompt.md into Claude Code. Do NOT commit until validation passes.'
+              : recommendedAction === 'NO_ACTION'
+                ? 'Working tree is clean. No further action required for this run.'
+                : 'Review evidence-check.json and decide manually.',
       whatLeoShouldNotSend,
     },
   }
 }
 
-function buildReviewPrompt({ task, pack, runDir, finalStatus, finalReason, diffSummary, validationSummary, evalCounts, staticAnalysis, regression, safetyStatus, truthFlagged, repoMismatch, decisionRequired, nextAction }) {
+function buildReviewPrompt({ task, pack, runDir, finalStatus, finalReason, diffSummary, validationSummary, evalCounts, staticAnalysis, regression, safetyStatus, truthFlagged, repoMismatch, decisionRequired, nextAction, branchName }) {
   const recommendedDecision = (() => {
     if (repoMismatch && repoMismatch.status === 'STOP_REPO_MISMATCH') return 'STOP_REPO_MISMATCH'
     if (nextAction.recommendedAction === 'COMMIT_FEATURE_BRANCH') return 'APPROVE_COMMIT'
+    if (nextAction.recommendedAction === 'CREATE_FEATURE_BRANCH') return 'CREATE_FEATURE_BRANCH'
     if (nextAction.recommendedAction === 'REQUEST_REPAIR') return 'REQUEST_REPAIR'
     if (nextAction.recommendedAction === 'REVERT') return 'REVERT'
     return 'MANUAL_REVIEW'
   })()
+  const onProtected = isProtectedBranch(branchName)
+  const branchSafetyLine = onProtected
+    ? `current branch is "${branchName}" (PROTECTED). Direct commit/push to main/master is forbidden. ${nextAction.recommendedAction === 'CREATE_FEATURE_BRANCH' ? 'A feature branch must be created before commit.' : 'No commit will be recommended directly to this branch.'}`
+    : `current branch is "${branchName || 'unknown'}"; not a protected branch.`
   const validationLines = validationSummary.map((v) => `- npm run ${v.name} — ${v.status}${v.code !== null && v.code !== undefined ? ` (exit ${v.code})` : ''}`).join('\n')
   const saCounts = (staticAnalysis && staticAnalysis.counts) || {}
   return `# Workbench v${WORKBENCH_VERSION} — Reviewer Packet
@@ -1347,6 +1395,9 @@ ${pack}
 
 ## Run folder
 ${runDir}
+
+## Branch safety
+- ${branchSafetyLine}
 
 ## finalStatus / finalReason
 - finalStatus: ${finalStatus}
@@ -1401,7 +1452,10 @@ ${recommendedDecision}
 `
 }
 
-function buildRepairPrompt({ task, pack, finalStatus, finalReason, diffSummary, validationSummary, anyFailed, repoMismatch, packCfg }) {
+function buildRepairPrompt({ task, pack, finalStatus, finalReason, diffSummary, validationSummary, anyFailed, repoMismatch, packCfg, branchName }) {
+  const branchLine = isProtectedBranch(branchName)
+    ? `\n## Branch safety\n- current branch is "${branchName}" (PROTECTED). do not commit to main. create a feature branch first if any change is approved.\n`
+    : ''
   if (repoMismatch && repoMismatch.status === 'STOP_REPO_MISMATCH') {
     return `# Workbench v${WORKBENCH_VERSION} — Repair Prompt
 
@@ -1412,12 +1466,13 @@ MANUAL_REVIEW_REQUIRED — REPO_MISMATCH
 ${repoMismatch.reason}
 
 ## Action
-Do not edit this repo for this task. Re-route the task to the correct repository.
+Do not edit this repo for this task. Re-route the task to the correct repository.${branchLine}
 
 ## Forbidden
 - do not commit
 - do not push
 - do not merge
+- do not commit to main
 - do not edit any file in this repo for this task
 `
   }
@@ -1432,12 +1487,13 @@ Do not edit this repo for this task. Re-route the task to the correct repository
 NO_REPAIR_NEEDED
 
 ## Reason
-finalStatus is PROVEN; validation passed cleanly.
+finalStatus is PROVEN; validation passed cleanly.${branchLine}
 
 ## Forbidden
 - do not commit
 - do not push
 - do not merge
+- do not commit to main
 (without explicit user authorization)
 `
   }
@@ -1448,12 +1504,13 @@ finalStatus is PROVEN; validation passed cleanly.
 MANUAL_REVIEW_REQUIRED
 
 ## Reason
-finalStatus=${finalStatus} / finalReason=${finalReason}. Working tree is clean and no validation failed in this run; the failure is from a backlog of static-analysis findings, not a repairable diff.
+finalStatus=${finalStatus} / finalReason=${finalReason}. Working tree is clean and no validation failed in this run; the failure is from a backlog of static-analysis findings, not a repairable diff.${branchLine}
 
 ## Forbidden
 - do not commit
 - do not push
 - do not merge
+- do not commit to main
 `
   }
   const smallest = (() => {
@@ -1498,12 +1555,13 @@ ${forbidden.length === 0 ? '(none beyond pack defaults)' : forbidden.map((p) => 
 ## Expected result
 - exit 0 for typecheck, test, and build
 - npm test: all suites pass
-- npm run build: PWA bundle produced; do NOT commit memory/* regenerated by prebuild
+- npm run build: PWA bundle produced; do NOT commit memory/* regenerated by prebuild${branchLine}
 
 ## Forbidden
 - do not commit
 - do not push
 - do not merge
+- do not commit to main
 (without explicit user authorization)
 `
 }
@@ -1638,6 +1696,104 @@ function runV04SelfTest({ projectRoot }) {
   })
   expect('review-prompt and next-action share finalStatus', new RegExp(`finalStatus: ${fixtureStatus}`).test(reviewSync))
   expect('review-prompt and next-action share finalReason', new RegExp(`finalReason: ${fixtureReason}`).test(reviewSync))
+
+  // Test 11–18: branch safety. Workbench must never recommend pushing
+  // product or workbench changes directly to main/master.
+  const productDiffOnMain = {
+    changedFiles: ['src/screens/AbuCalendar/index.tsx'],
+    productFiles: ['src/screens/AbuCalendar/index.tsx'],
+    workbenchFiles: [],
+    generatedFiles: [],
+    forbiddenFiles: [], packageFiles: [], envFiles: [], docsFiles: [], testFiles: [],
+    summaryByPath: [{ path: 'src/screens/AbuCalendar/index.tsx', code: ' M' }],
+    addedFiles: [], deletedFiles: [], modifiedFiles: ['src/screens/AbuCalendar/index.tsx'],
+    gitStatusShort: ' M src/screens/AbuCalendar/index.tsx\n',
+  }
+  const naProdMain = buildNextAction({
+    task: 'product change on main', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED',
+    diffSummary: productDiffOnMain, repoMismatch: { status: 'OK' },
+    evalCounts: { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 },
+    anyFailed: false, annotationSelfTest: { allPassed: true }, v04SelfTest: { allPassed: true }, branchName: 'main',
+  })
+  expect('product file on main recommends CREATE_FEATURE_BRANCH', naProdMain.recommendedAction === 'CREATE_FEATURE_BRANCH')
+  expect('product on main allowedGitActions has no "git push origin main"', !naProdMain.allowedGitActions.some((a) => /git push origin main\b/.test(a)))
+  expect('product on main allowedGitActions has no "git push origin master"', !naProdMain.allowedGitActions.some((a) => /git push origin master\b/.test(a)))
+  expect('product on main allowedGitActions starts with git checkout -b', naProdMain.allowedGitActions.some((a) => /^git checkout -b feat\//.test(a)))
+  expect('product on main blockers includes PROTECTED_BRANCH', naProdMain.blockers.includes('PROTECTED_BRANCH'))
+
+  const naProdMaster = buildNextAction({
+    task: 'product change on master', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED',
+    diffSummary: productDiffOnMain, repoMismatch: { status: 'OK' },
+    evalCounts: { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 },
+    anyFailed: false, annotationSelfTest: { allPassed: true }, v04SelfTest: { allPassed: true }, branchName: 'master',
+  })
+  expect('product file on master also recommends CREATE_FEATURE_BRANCH', naProdMaster.recommendedAction === 'CREATE_FEATURE_BRANCH')
+
+  const wbInfraOnMain = {
+    changedFiles: ['scripts/ai-workbench.js'],
+    productFiles: [],
+    workbenchFiles: ['scripts/ai-workbench.js'],
+    generatedFiles: [],
+    forbiddenFiles: [], packageFiles: [], envFiles: [], docsFiles: [], testFiles: [],
+    summaryByPath: [{ path: 'scripts/ai-workbench.js', code: ' M' }],
+    addedFiles: [], deletedFiles: [], modifiedFiles: ['scripts/ai-workbench.js'],
+    gitStatusShort: ' M scripts/ai-workbench.js\n',
+  }
+  const naInfraMain = buildNextAction({
+    task: 'infra change on main', finalStatus: 'FAILED', finalReason: 'EVAL_FAILED',
+    diffSummary: wbInfraOnMain, repoMismatch: { status: 'OK' },
+    evalCounts: { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 },
+    anyFailed: false, annotationSelfTest: { allPassed: true }, v04SelfTest: { allPassed: true }, branchName: 'main',
+  })
+  expect('workbench-infra on main recommends CREATE_FEATURE_BRANCH', naInfraMain.recommendedAction === 'CREATE_FEATURE_BRANCH')
+  expect('workbench-infra on main suggests chore/workbench-infra-update', naInfraMain.allowedGitActions.some((a) => /git checkout -b chore\/workbench-infra-update/.test(a)))
+  expect('infra on main allowedGitActions has no "git push origin main"', !naInfraMain.allowedGitActions.some((a) => /git push origin main\b/.test(a)))
+
+  // Product file on a feature branch — original COMMIT_FEATURE_BRANCH path still works.
+  const naProdFeat = buildNextAction({
+    task: 'product change on feature', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED',
+    diffSummary: productDiffOnMain, repoMismatch: { status: 'OK' },
+    evalCounts: { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 },
+    anyFailed: false, annotationSelfTest: { allPassed: true }, v04SelfTest: { allPassed: true }, branchName: 'feat/abucalendar-voice-readback',
+  })
+  expect('product on feature branch recommends COMMIT_FEATURE_BRANCH', naProdFeat.recommendedAction === 'COMMIT_FEATURE_BRANCH')
+  expect('product on feature branch pushes to that feature branch', naProdFeat.allowedGitActions.some((a) => /git push origin feat\/abucalendar-voice-readback/.test(a)))
+  expect('product on feature branch never says push origin main', !naProdFeat.allowedGitActions.some((a) => /git push origin main\b/.test(a)))
+
+  // Clean tree on main — must NOT recommend branch creation; NO_ACTION.
+  const naCleanMain = buildNextAction({
+    task: 'noop on main', finalStatus: 'NOT_PROVEN', finalReason: 'NO_CORE_PROOF',
+    diffSummary: cleanDiff, repoMismatch: { status: 'OK' },
+    evalCounts: { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 },
+    anyFailed: false, annotationSelfTest: { allPassed: true }, v04SelfTest: { allPassed: true }, branchName: 'main',
+  })
+  expect('clean tree on main is NO_ACTION (no branch creation)', naCleanMain.recommendedAction === 'NO_ACTION')
+
+  // Review-prompt on main must include current branch + branch-safety language.
+  const reviewOnMain = buildReviewPrompt({
+    task: 'demo on main', pack: 'abobank-ai', runDir: '/tmp/run',
+    finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED',
+    diffSummary: productDiffOnMain, validationSummary: [],
+    evalCounts: { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 },
+    staticAnalysis: { exportedSymbols: 0, counts: {} },
+    regression: { status: 'PROVEN', issues: [], changed: 0 },
+    safetyStatus: 'NOT_PROVEN', truthFlagged: [],
+    repoMismatch: { status: 'OK' }, decisionRequired: { decisions: [] }, nextAction: naProdMain,
+    branchName: 'main',
+  })
+  expect('review-prompt includes Branch safety section', /## Branch safety/.test(reviewOnMain))
+  expect('review-prompt names current branch', /current branch is "main"/i.test(reviewOnMain))
+  expect('review-prompt mentions PROTECTED', /PROTECTED/.test(reviewOnMain))
+
+  // Repair-prompt on main must include "do not commit to main".
+  const repairOnMain = buildRepairPrompt({
+    task: 'demo on main', pack: 'abobank-ai',
+    finalStatus: 'FAILED', finalReason: 'EVAL_FAILED',
+    diffSummary: productDiffOnMain, validationSummary: [{ name: 'test', status: 'OK', code: 0 }],
+    anyFailed: false, repoMismatch: { status: 'OK' }, packCfg: { allowedPaths: ['src'], forbiddenPaths: [] },
+    branchName: 'main',
+  })
+  expect('repair-prompt includes "do not commit to main"', /do not commit to main/i.test(repairOnMain))
 
   // Test 11: review-prompt eval summary contains no "undefined" or "NaN".
   const reviewWithEvals = buildReviewPrompt({
@@ -2260,6 +2416,7 @@ Artifacts:
     safetyStatus,
     truthFlagged,
     repoMismatch, decisionRequired, nextAction,
+    branchName,
   })
   fs.writeFileSync(path.join(runDir, 'review-prompt.md'), reviewPromptText)
   const repairPromptText = buildRepairPrompt({
@@ -2267,6 +2424,7 @@ Artifacts:
     finalStatus: canonicalFinalStatus,
     finalReason: canonicalFinalReason,
     diffSummary, validationSummary, anyFailed, repoMismatch, packCfg: packCfgForV04,
+    branchName,
   })
   fs.writeFileSync(path.join(runDir, 'repair-prompt.md'), repairPromptText)
 
