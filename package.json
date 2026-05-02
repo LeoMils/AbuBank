@@ -17,7 +17,6 @@
     "workbench": "node scripts/ai-workbench.js"
   },
   "dependencies": {
-    "@google/stitch-sdk": "^0.0.3",
     "@phosphor-icons/react": "^2.1.7",
     "@types/ws": "^8.18.1",
     "edge-tts": "^1.0.1",

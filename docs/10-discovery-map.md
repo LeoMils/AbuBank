@@ -44,7 +44,6 @@
 | `src/services/familyPhotos.ts` | 98 | Service | 7 family photos, gallery items |
 | `src/services/martitaPhotos.ts` | 48 | Service | 25 Martita portrait pool |
 | `src/services/adminService.ts` | 86 | Service | PIN hash (SHA-256), lockout |
-| `src/services/stitch.ts` | 63 | Service | Google Stitch SDK integration |
 | `src/design/tokens.ts` | 113 | Design | CSS custom property mirrors (DEAD CODE) |
 | `src/state/store.ts` | 37 | State | Zustand store |
 | `src/state/types.ts` | 90 | State | Screen enum, interfaces |
