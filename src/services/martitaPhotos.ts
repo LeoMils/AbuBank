@@ -37,16 +37,6 @@ const FAMILY_PHOTOS = [
 
 const FALLBACK = '/martita.jpg'
 
-/** Returns all Martita photos for gallery */
-export function getAllMartitaPhotos(): string[] {
-  return [...PHOTOS]
-}
-
-/** Returns all family photos for gallery */
-export function getAllFamilyPhotos(): string[] {
-  return [...FAMILY_PHOTOS]
-}
-
 /** Returns a random Martita photo path */
 export function getRandomMartitaPhoto(): string {
   return PHOTOS[Math.floor(Math.random() * PHOTOS.length)] ?? FALLBACK

@@ -46,6 +46,12 @@ export function getNotifyContacts(): string[] {
   return loadMemory().notifyContacts
 }
 
+/**
+ * @workbench-keep FUTURE_API
+ * reason: planned write-side mutation for AbuCalendar reminder customisation; pairs with getPersonalReminders and getNotifyContacts
+ * owner: leo
+ * reviewAfter: 2026-08-01
+ */
 export function addDoctorReminder(item: string): void {
   const mem = loadMemory()
   if (!mem.doctorReminders.includes(item)) {

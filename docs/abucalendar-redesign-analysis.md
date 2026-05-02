@@ -55,9 +55,6 @@ The bar is useful (shows next birthday) but sits between header and month naviga
 **P13. Holiday coverage hardcoded and expires after 2027.**
 Hebrew holidays are a static `Record<string, string>` — no algorithmic calculation. Will silently stop working.
 
-**P14. `getBirthdayToday()` exported but never called.**
-Dead code in service.ts.
-
 **P15. Event dots on calendar cells are 6px — barely visible for 80+ eyes.**
 Small, single-color dots with no semantic differentiation.
 
