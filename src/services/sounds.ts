@@ -100,15 +100,6 @@ export function soundAlert(): void {
   } catch { /* silent */ }
 }
 
-/** Something went wrong — soft low tone, not alarming */
-export function soundError(): void {
-  try {
-    const c = getCtx()
-    if (!c) return
-    playTone(200, 150, 0.08, 0, c)
-  } catch { /* silent */ }
-}
-
 /** Voice mode activated — light ascending shimmer */
 export function soundVoiceStart(): void {
   try {
