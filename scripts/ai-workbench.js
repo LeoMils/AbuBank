@@ -2482,6 +2482,7 @@ ${topRisks.length === 0 ? '(none — proceed at recommended action)' : topRisks.
 - Do not paste full Claude dump unless requested.
 - Paste this leo-handoff.md first.
 - If ChatGPT asks for details, paste the referenced artifact.
+- If claude-next-prompt status is READY_TO_COMMIT, Leo still must explicitly authorize before Claude Code commits/pushes. Otherwise, Claude Code must not commit/push.
 `
 }
 
@@ -2529,7 +2530,15 @@ ${filesToAdd.map((f) => '- ' + f).join('\n')}
 ## allowedGitActions
 ${allowedActions.map((a) => '- ' + a).join('\n')}
 
-${FORBIDDEN}
+## Authorization rules
+- EXECUTE GIT ACTIONS ONLY IF LEO EXPLICITLY AUTHORIZES THIS EXACT PROMPT.
+- COMMIT/PUSH IS ALLOWED ONLY TO THE CURRENT FEATURE BRANCH.
+- DO NOT PUSH TO MAIN.
+- DO NOT PUSH TO MASTER.
+- DO NOT MERGE.
+- DO NOT FORCE PUSH.
+- DO NOT ADD memory/*.
+- DO NOT ADD .ai-runs/*.
 
 Wait for the user to explicitly authorize commit + push before doing anything. Never push to main.
 `
@@ -2723,6 +2732,78 @@ function runV06SelfTest({ projectRoot }) {
   expect('leo-handoff has no "NaN"', !/NaN/.test(handoff))
   expect('claude-next-prompt has no "undefined"', !/undefined/.test(cnpProven))
   expect('claude-next-prompt has no "NaN"', !/NaN/.test(cnpProven))
+
+  // v0.6 fix — READY_TO_COMMIT must not contain unconditional "DO NOT COMMIT"/"DO NOT PUSH",
+  // must use explicit-authorization wording, must keep main-push safety.
+  const cnpReady = buildClaudeNextPrompt({
+    task: 'demo',
+    loopState: { ...baseLoopState, currentState: 'PROVEN', stopReason: null },
+    nextAction: {
+      ...baseNextAction,
+      recommendedAction: 'COMMIT_FEATURE_BRANCH',
+      filesToAdd: ['scripts/ai-workbench.js'],
+      allowedGitActions: ['git add "scripts/ai-workbench.js"', 'git commit', 'git push origin feat/x'],
+    },
+    candidatePromptText: '',
+    branchName: 'feat/x',
+  })
+  expect('READY_TO_COMMIT prompt contains "READY_TO_COMMIT"', /READY_TO_COMMIT/.test(cnpReady))
+  expect('READY_TO_COMMIT prompt does not contain unconditional "DO NOT COMMIT."', !/^DO NOT COMMIT\.\s*$/m.test(cnpReady))
+  expect('READY_TO_COMMIT prompt does not contain unconditional "DO NOT PUSH."', !/^DO NOT PUSH\.\s*$/m.test(cnpReady))
+  expect('READY_TO_COMMIT prompt contains "DO NOT PUSH TO MAIN."', /DO NOT PUSH TO MAIN\./.test(cnpReady))
+  expect('READY_TO_COMMIT prompt contains "DO NOT MERGE."', /DO NOT MERGE\./.test(cnpReady))
+  expect('READY_TO_COMMIT prompt contains "DO NOT FORCE PUSH."', /DO NOT FORCE PUSH\./.test(cnpReady))
+  expect('READY_TO_COMMIT prompt requires explicit Leo authorization', /EXECUTE GIT ACTIONS ONLY IF LEO EXPLICITLY AUTHORIZES/.test(cnpReady))
+  expect('READY_TO_COMMIT prompt allows push only to current feature branch', /COMMIT\/PUSH IS ALLOWED ONLY TO THE CURRENT FEATURE BRANCH/.test(cnpReady))
+  expect('READY_TO_COMMIT prompt never contains "git push origin main"', !/git push origin main\b/.test(cnpReady))
+  expect('READY_TO_COMMIT prompt never contains "git push origin master"', !/git push origin master\b/.test(cnpReady))
+  expect('READY_TO_COMMIT prompt forbids memory/*', /DO NOT ADD memory\/\*/.test(cnpReady))
+  expect('READY_TO_COMMIT prompt forbids \\.ai-runs/*', /DO NOT ADD \.ai-runs\/\*/.test(cnpReady))
+  expect('READY_TO_COMMIT prompt contains "DO NOT PUSH TO MASTER."', /DO NOT PUSH TO MASTER\./.test(cnpReady))
+  expect('READY_TO_COMMIT prompt never contains "git push --force"', !/git push --force\b/.test(cnpReady))
+  expect('READY_TO_COMMIT prompt never contains "git add memory"', !/git add memory\b/.test(cnpReady))
+  expect('READY_TO_COMMIT prompt never contains "git add .ai-runs"', !/git add \.ai-runs\b/.test(cnpReady))
+
+  // MANUAL_REVIEW + NO_ACTION_REQUIRED + REQUEST_REPAIR all keep the original 4 protective lines.
+  for (const [label, prompt] of [
+    ['MANUAL_REVIEW', cnpManual],
+    ['NO_ACTION_REQUIRED (PROVEN clean)', cnpProven],
+    ['REQUEST_REPAIR', cnpRepair],
+  ]) {
+    expect(`${label} prompt still contains "DO NOT COMMIT."`, /DO NOT COMMIT\./.test(prompt))
+    expect(`${label} prompt still contains "DO NOT PUSH."`, /DO NOT PUSH\./.test(prompt))
+    expect(`${label} prompt still contains "DO NOT MERGE."`, /DO NOT MERGE\./.test(prompt))
+    expect(`${label} prompt still contains "DO NOT PUSH TO MAIN."`, /DO NOT PUSH TO MAIN\./.test(prompt))
+  }
+
+  // leo-handoff explains the explicit-authorization rule.
+  const handoffReady = buildLeoHandoff({
+    task: 'demo', runFolder: '/tmp/r',
+    finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED',
+    annotationSelfTest: { allPassed: true, passedCases: 5, totalCases: 5 },
+    v04SelfTest: { allPassed: true, passedCases: 46, totalCases: 46 },
+    v05SelfTest: { allPassed: true, passedCases: 96, totalCases: 96 },
+    v06SelfTest: null,
+    validationSummary: baseValidation, staticAnalysis: baseStaticAnalysis,
+    decisionRequired: baseDecisionRequired,
+    loopState: { ...baseLoopState, currentState: 'PROVEN' },
+    nextAction: { ...baseNextAction, recommendedAction: 'COMMIT_FEATURE_BRANCH', filesToAdd: ['scripts/ai-workbench.js'] },
+    diffSummary: { ...baseDiffSummary, changedFiles: ['scripts/ai-workbench.js'], workbenchFiles: ['scripts/ai-workbench.js'] },
+    branchName: 'feat/x',
+  })
+  expect('leo-handoff explains explicit-authorization rule for READY_TO_COMMIT', /Leo still must explicitly authorize before Claude Code commits\/pushes/.test(handoffReady))
+
+  // handoff-summary safety must remain false on a READY_TO_COMMIT case.
+  const summaryReady = buildHandoffSummary({
+    task: 'demo', runFolder: '/tmp/r', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED',
+    loopState: { ...baseLoopState, currentState: 'PROVEN' },
+    nextAction: { ...baseNextAction, recommendedAction: 'COMMIT_FEATURE_BRANCH', filesToAdd: ['scripts/ai-workbench.js'], allowedGitActions: ['git add "scripts/ai-workbench.js"', 'git commit', 'git push origin feat/x'] },
+    staticAnalysis: baseStaticAnalysis, decisionRequired: baseDecisionRequired,
+    diffSummary: { ...baseDiffSummary, changedFiles: ['scripts/ai-workbench.js'], workbenchFiles: ['scripts/ai-workbench.js'] },
+  })
+  expect('READY_TO_COMMIT handoff-summary.safety.containsMainPush is false', summaryReady.safety.containsMainPush === false)
+  expect('READY_TO_COMMIT handoff-summary.safety.containsMemoryAdd is false', summaryReady.safety.containsMemoryAdd === false)
+  expect('READY_TO_COMMIT handoff-summary.safety.containsAiRunsAdd is false', summaryReady.safety.containsAiRunsAdd === false)
 
   const allPassed = checks.every((c) => c.ok)
   return {
