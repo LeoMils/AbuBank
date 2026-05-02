@@ -100,28 +100,6 @@ export function soundAlert(): void {
   } catch { /* silent */ }
 }
 
-/** Voice mode activated — light ascending shimmer */
-export function soundVoiceStart(): void {
-  try {
-    const c = getCtx()
-    if (!c) return
-    playTone(440, 60, 0.08, 0.000, c)   // A4
-    playTone(660, 60, 0.08, 0.070, c)   // E5
-    playTone(880, 60, 0.08, 0.140, c)   // A5
-  } catch { /* silent */ }
-}
-
-/** Voice mode ended — descending shimmer */
-export function soundVoiceEnd(): void {
-  try {
-    const c = getCtx()
-    if (!c) return
-    playTone(880, 60, 0.08, 0.000, c)   // A5
-    playTone(660, 60, 0.08, 0.070, c)   // E5
-    playTone(440, 60, 0.08, 0.140, c)   // A4
-  } catch { /* silent */ }
-}
-
 /** Text copied — quick double-tap pulse */
 export function soundCopy(): void {
   try {
@@ -145,16 +123,6 @@ export function soundProcessing(): void {
     playTone(330, 30, 0.03, 0.000, c)
     playTone(330, 30, 0.03, 0.300, c)
     playTone(330, 30, 0.03, 0.600, c)
-  } catch { /* silent */ }
-}
-
-/** T2.3: AI starts speaking — brief warm ding */
-export function soundSpeakStart(): void {
-  try {
-    const c = getCtx()
-    if (!c) return
-    playTone(660, 50, 0.06, 0, c)   // E5
-    playTone(880, 50, 0.06, 0.06, c) // A5
   } catch { /* silent */ }
 }
 
