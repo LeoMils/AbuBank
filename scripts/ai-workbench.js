@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { spawnSync } from 'child_process'
 
-const WORKBENCH_VERSION = '0.4.0-review-repair-loop'
+const WORKBENCH_VERSION = '0.5.0-repair-orchestrator'
 
 const FORBIDDEN_SUCCESS_LANGUAGE = [
   'fixed',
@@ -1190,11 +1190,12 @@ function isProtectedBranch(b) {
   if (!b) return false
   return PROTECTED_BRANCHES.includes(String(b).toLowerCase())
 }
+function isDetachedHead(b) { return String(b || '').trim() === 'HEAD' }
 function suggestFeatureBranchName({ infraOnly }) {
   return infraOnly ? 'chore/workbench-infra-update' : 'feat/workbench-suggested-change'
 }
 
-function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMismatch, evalCounts, anyFailed, annotationSelfTest, v04SelfTest, branchName }) {
+function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMismatch, evalCounts, anyFailed, annotationSelfTest, v04SelfTest, v05SelfTest, branchName }) {
   const blockers = []
   const filesToAdd = []
   let recommendedAction = 'NO_ACTION'
@@ -1226,7 +1227,10 @@ function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMism
     !hasRunsInDiff &&
     diffSummary.workbenchFiles.length > 0
   const selfTestsGreen = (!annotationSelfTest || annotationSelfTest.allPassed !== false) &&
-    (!v04SelfTest || v04SelfTest.allPassed !== false)
+    (!v04SelfTest || v04SelfTest.allPassed !== false) &&
+    (!v05SelfTest || v05SelfTest.allPassed !== false)
+  const detached = isDetachedHead(branchName)
+  const isMixedDiff = (diffSummary.productFiles || []).length > 0 && (diffSummary.workbenchFiles || []).length > 0
 
   if (repoMismatch && repoMismatch.status === 'STOP_REPO_MISMATCH') {
     recommendedAction = 'STOP_REPO_MISMATCH'
@@ -1254,6 +1258,16 @@ function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMism
     recommendedAction = 'NO_ACTION'
     confidence = 'HIGH'
     reason = 'Working tree is clean; nothing to commit.'
+  } else if (detached) {
+    recommendedAction = 'MANUAL_REVIEW'
+    confidence = 'HIGH'
+    reason = 'Detached HEAD with changed files. Check out a named branch before any commit.'
+    blockers.push('DETACHED_HEAD')
+  } else if (isMixedDiff) {
+    recommendedAction = 'MANUAL_REVIEW'
+    confidence = 'HIGH'
+    reason = 'Mixed product + workbench-infra diff. Split into separate branches: product on feat/*, workbench infra on chore/*.'
+    blockers.push('MIXED_PRODUCT_AND_WORKBENCH_DIFF')
   } else if (anyFailed) {
     recommendedAction = 'REQUEST_REPAIR'
     confidence = 'HIGH'
@@ -1822,6 +1836,434 @@ function runV04SelfTest({ projectRoot }) {
   }
 }
 
+// ─── v0.5 repair / orchestrator loop ──────────────────────────────────────
+
+const V05_HARD_STOP_CONDITIONS = [
+  'REPO_MISMATCH',
+  'TRUTH_VIOLATION',
+  'SAFETY_VIOLATION',
+  'V0_4_SELF_TEST_FAILED',
+  'V0_5_SELF_TEST_FAILED',
+  'ANNOTATION_SELF_TEST_FAILED',
+  'ENV_FILES_TOUCHED',
+  'PACKAGE_FILES_TOUCHED',
+  'FORBIDDEN_PATH_TOUCHED',
+  'PROTECTED_BRANCH_DIRTY',
+  'AI_RUNS_FILES_PRESENT',
+  'MEMORY_FILES_IN_FILES_TO_ADD',
+  'AI_RUNS_FILES_IN_FILES_TO_ADD',
+  'DETACHED_HEAD',
+  'MIXED_PRODUCT_AND_WORKBENCH_DIFF',
+]
+const V05_SOFT_STOP_CONDITIONS = [
+  'EVAL_FAILED',
+  'STATIC_ANALYSIS_BACKLOG',
+  'NO_CORE_PROOF',
+]
+
+function buildStopPolicy({ repoMismatch, truthFlagged, safetyStatus, anyFailed, evalCounts, annotationSelfTest, v04SelfTest, v05SelfTest, diffSummary, branchName, attemptNumber, nextAction }) {
+  const activeStops = []
+  if (repoMismatch && repoMismatch.status === 'STOP_REPO_MISMATCH') activeStops.push('REPO_MISMATCH')
+  if (Array.isArray(truthFlagged) && truthFlagged.length > 0) activeStops.push('TRUTH_VIOLATION')
+  if (safetyStatus === 'FAILED') activeStops.push('SAFETY_VIOLATION')
+  if (annotationSelfTest && annotationSelfTest.allPassed === false) activeStops.push('ANNOTATION_SELF_TEST_FAILED')
+  if (v04SelfTest && v04SelfTest.allPassed === false) activeStops.push('V0_4_SELF_TEST_FAILED')
+  if (v05SelfTest && v05SelfTest.allPassed === false) activeStops.push('V0_5_SELF_TEST_FAILED')
+  if ((diffSummary.envFiles || []).length > 0) activeStops.push('ENV_FILES_TOUCHED')
+  if ((diffSummary.packageFiles || []).length > 0) activeStops.push('PACKAGE_FILES_TOUCHED')
+  if ((diffSummary.forbiddenFiles || []).length > 0) activeStops.push('FORBIDDEN_PATH_TOUCHED')
+  if (isDetachedHead(branchName) && (diffSummary.changedFiles || []).length > 0) activeStops.push('DETACHED_HEAD')
+  if (isProtectedBranch(branchName) && (diffSummary.changedFiles || []).length > 0 && nextAction.recommendedAction !== 'CREATE_FEATURE_BRANCH') activeStops.push('PROTECTED_BRANCH_DIRTY')
+  if ((diffSummary.changedFiles || []).some((f) => /^\.ai-runs\//.test(f))) activeStops.push('AI_RUNS_FILES_PRESENT')
+  if ((nextAction.filesToAdd || []).some((f) => /^memory\//.test(f))) activeStops.push('MEMORY_FILES_IN_FILES_TO_ADD')
+  if ((nextAction.filesToAdd || []).some((f) => /^\.ai-runs\//.test(f))) activeStops.push('AI_RUNS_FILES_IN_FILES_TO_ADD')
+  if ((diffSummary.productFiles || []).length > 0 && (diffSummary.workbenchFiles || []).length > 0) activeStops.push('MIXED_PRODUCT_AND_WORKBENCH_DIFF')
+
+  const attempt = attemptNumber || 1
+  const maxAttempts = 3
+  const canAutoRepair = activeStops.length === 0 && !!anyFailed && attempt < maxAttempts
+  const requiresHumanApproval = activeStops.length > 0 || attempt >= maxAttempts
+  const reason = activeStops.length > 0
+    ? `Active hard stops: ${activeStops.join(', ')}.`
+    : (anyFailed ? 'Validation failed but no hard stop active; auto-repair eligible.' : 'No active hard stops.')
+
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    maxAttempts,
+    hardStops: V05_HARD_STOP_CONDITIONS,
+    softStops: V05_SOFT_STOP_CONDITIONS,
+    activeStops,
+    canAutoRepair,
+    requiresHumanApproval,
+    reason,
+  }
+}
+
+function buildLoopState({ task, pack, runFolder, finalStatus, finalReason, repoMismatch, truthFlagged, safetyStatus, anyFailed, evalCounts, annotationSelfTest, v04SelfTest, v05SelfTest, diffSummary, branchName, nextAction, attemptNumber, maxAttempts, packCfg }) {
+  let currentState = 'MANUAL_REVIEW'
+  let stopReason = null
+  const attempt = attemptNumber || 1
+  const cap = maxAttempts || 3
+
+  if (repoMismatch && repoMismatch.status === 'STOP_REPO_MISMATCH') {
+    currentState = 'REPO_MISMATCH_STOP'; stopReason = 'STOP_REPO_MISMATCH'
+  } else if (Array.isArray(truthFlagged) && truthFlagged.length > 0) {
+    currentState = 'SAFETY_STOP'; stopReason = 'TRUTH_VIOLATION'
+  } else if (safetyStatus === 'FAILED') {
+    currentState = 'SAFETY_STOP'; stopReason = 'SAFETY_VIOLATION'
+  } else if (annotationSelfTest && annotationSelfTest.allPassed === false) {
+    currentState = 'SAFETY_STOP'; stopReason = 'ANNOTATION_SELF_TEST_FAILED'
+  } else if (v04SelfTest && v04SelfTest.allPassed === false) {
+    currentState = 'SAFETY_STOP'; stopReason = 'V0_4_SELF_TEST_FAILED'
+  } else if (v05SelfTest && v05SelfTest.allPassed === false) {
+    currentState = 'SAFETY_STOP'; stopReason = 'V0_5_SELF_TEST_FAILED'
+  } else if (attempt >= cap) {
+    currentState = 'MAX_ATTEMPTS_STOP'; stopReason = 'MAX_ATTEMPTS_REACHED'
+  } else if ((diffSummary.envFiles || []).length > 0) {
+    currentState = 'SAFETY_STOP'; stopReason = 'ENV_FILES_TOUCHED'
+  } else if ((diffSummary.forbiddenFiles || []).length > 0) {
+    currentState = 'SAFETY_STOP'; stopReason = 'FORBIDDEN_PATH_TOUCHED'
+  } else if ((diffSummary.packageFiles || []).length > 0) {
+    currentState = 'HUMAN_APPROVAL_REQUIRED'; stopReason = 'PACKAGE_FILES_TOUCHED'
+  } else if (isDetachedHead(branchName) && (diffSummary.changedFiles || []).length > 0) {
+    currentState = 'HUMAN_APPROVAL_REQUIRED'; stopReason = 'DETACHED_HEAD'
+  } else if (isProtectedBranch(branchName) && (diffSummary.changedFiles || []).length > 0 && nextAction.recommendedAction !== 'CREATE_FEATURE_BRANCH') {
+    currentState = 'HUMAN_APPROVAL_REQUIRED'; stopReason = 'PROTECTED_BRANCH_DIRTY'
+  } else if ((diffSummary.productFiles || []).length > 0 && (diffSummary.workbenchFiles || []).length > 0) {
+    currentState = 'MANUAL_REVIEW'; stopReason = 'MIXED_PRODUCT_AND_WORKBENCH_DIFF'
+  } else if (anyFailed) {
+    currentState = 'REQUEST_REPAIR'
+  } else if (finalStatus === 'PROVEN') {
+    currentState = 'PROVEN'
+  } else if ((diffSummary.changedFiles || []).length > 0) {
+    currentState = 'EDIT_NO_COMMIT'
+  } else if (/\b(plan only|do not change code|do not change product code|plan next|audit only)\b/i.test(task || '')) {
+    currentState = 'PLAN_ONLY'
+  } else if (finalStatus === 'NOT_PROVEN' && (diffSummary.changedFiles || []).length === 0) {
+    currentState = 'READY_TO_EXECUTE'
+  } else {
+    currentState = 'MANUAL_REVIEW'
+    if (!stopReason && finalReason === 'EVAL_FAILED' && (diffSummary.changedFiles || []).length === 0) {
+      stopReason = 'STATIC_ANALYSIS_BACKLOG'
+    }
+  }
+
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    task: task || '',
+    pack: pack || '',
+    runFolder,
+    currentState,
+    previousState: null,
+    finalStatus,
+    finalReason: finalReason || null,
+    attemptNumber: attempt,
+    maxAttempts: cap,
+    recommendedAction: nextAction.recommendedAction,
+    requiresLeoApproval: nextAction.requiresHumanApproval !== false,
+    changedFiles: diffSummary.changedFiles || [],
+    allowedFiles: (packCfg && packCfg.allowedPaths) || [],
+    forbiddenFiles: (packCfg && packCfg.forbiddenPaths) || [],
+    stopReason,
+    nextPromptPath: null,
+  }
+}
+
+function buildRepairAttempts({ task, runFolder, finalStatus, finalReason, anyFailed, validationSummary, regression, diffSummary, attemptNumber, maxAttempts, stopPolicy }) {
+  const find = (name) => (validationSummary || []).find((v) => v.name === name)
+  const tests = find('test')
+  const tc = find('typecheck')
+  const bld = find('build')
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    taskId: (task || '').slice(0, 80),
+    currentRun: runFolder,
+    attemptNumber: attemptNumber || 1,
+    maxAttempts: maxAttempts || 3,
+    attempts: [{
+      attempt: attemptNumber || 1,
+      runFolder,
+      finalStatus,
+      finalReason: finalReason || null,
+      changedFiles: diffSummary.changedFiles || [],
+      validationPassed: !anyFailed,
+      testsPassed: tests ? tests.status === 'OK' : null,
+      typecheckPassed: tc ? tc.status === 'OK' : null,
+      buildPassed: bld ? bld.status === 'OK' : null,
+      regressionStatus: regression ? regression.status : null,
+      progressSignal: 'UNKNOWN',
+    }],
+    stop: !!(stopPolicy && stopPolicy.activeStops && stopPolicy.activeStops.length > 0),
+    stopReason: stopPolicy && stopPolicy.activeStops && stopPolicy.activeStops.length > 0
+      ? stopPolicy.activeStops[0]
+      : ((attemptNumber || 1) >= (maxAttempts || 3) ? 'MAX_ATTEMPTS_REACHED' : null),
+  }
+}
+
+function buildCandidateNextPrompt({ loopState, task, pack, packCfg, repairPromptText }) {
+  const safeStates = ['REQUEST_REPAIR', 'EDIT_NO_COMMIT', 'PROVEN', 'READY_TO_EXECUTE']
+  const FORBIDDEN_GIT_LINES = `DO NOT COMMIT.
+DO NOT PUSH.
+DO NOT MERGE.
+DO NOT PUSH TO MAIN.`
+  if (!safeStates.includes(loopState.currentState)) {
+    const why = (() => {
+      switch (loopState.currentState) {
+        case 'REPO_MISMATCH_STOP': return 'Repo mismatch detected. Editing this repo for the current task is forbidden.'
+        case 'SAFETY_STOP': return 'Safety/truth/self-test violation flipped the run to FAILED. Repair is not auto-derivable; human review required.'
+        case 'MAX_ATTEMPTS_STOP': return 'Maximum repair attempts reached. Escalate to a human.'
+        case 'HUMAN_APPROVAL_REQUIRED': return 'Package/env file change OR protected-branch diff requires explicit human authorization.'
+        case 'MANUAL_REVIEW': return loopState.stopReason ? `Stop reason: ${loopState.stopReason}. No safe automatic next step.` : 'No clear automated next step.'
+        case 'PLAN_ONLY': return 'Task is plan-only; no code change requested. Author the implementation plan manually before automating.'
+        default: return 'currentState requires human review.'
+      }
+    })()
+    return `# Workbench v${WORKBENCH_VERSION} — Candidate Next Prompt
+
+## Status
+MANUAL_REVIEW_REQUIRED
+
+## currentState
+${loopState.currentState}${loopState.stopReason ? ` (${loopState.stopReason})` : ''}
+
+## Why no auto-repair prompt
+${why}
+
+${FORBIDDEN_GIT_LINES}
+`
+  }
+  const allowed = (packCfg && packCfg.allowedPaths) || []
+  const forbidden = (packCfg && packCfg.forbiddenPaths) || []
+  return `# Workbench v${WORKBENCH_VERSION} — Candidate Next Prompt
+
+## Task continuation
+${task}
+
+## Current state
+${loopState.currentState}${loopState.stopReason ? ` (${loopState.stopReason})` : ''}
+
+## Hard scope
+${FORBIDDEN_GIT_LINES}
+DO NOT modify product code outside the listed allowed files.
+DO NOT add memory/* or .ai-runs/*.
+DO NOT modify package.json or package-lock.json.
+DO NOT modify .env or secrets.
+
+## Allowed files
+${allowed.length === 0 ? '(unrestricted within the pack)' : allowed.map((p) => '- ' + p).join('\n')}
+
+## Forbidden files
+${forbidden.length === 0 ? '(none beyond pack defaults)' : forbidden.map((p) => '- ' + p).join('\n')}
+
+## Validation commands
+- npm run typecheck
+- npm test
+- npm run build
+
+## Expected result
+- exit 0 for typecheck, test, and build
+- npm test: all suites pass
+- npm run build: PWA bundle produced; do NOT commit memory/* regenerated by prebuild
+
+## Repair guidance
+${repairPromptText || '(see repair-prompt.md for the smallest failing issue and likely cause)'}
+`
+}
+
+function buildOrchestratorSummary({ task, runFolder, loopState, nextAction, diffSummary, decisionRequired, branchName, stopPolicy }) {
+  const blockers = []
+  if (loopState.stopReason) blockers.push(loopState.stopReason)
+  for (const b of (nextAction.blockers || [])) if (!blockers.includes(b)) blockers.push(b)
+  for (const s of (stopPolicy.activeStops || [])) if (!blockers.includes(s)) blockers.push(s)
+  const repairSafe = ['REQUEST_REPAIR', 'EDIT_NO_COMMIT', 'PROVEN', 'READY_TO_EXECUTE'].includes(loopState.currentState)
+  const nextArtifact = repairSafe ? 'candidate-next-prompt.md' : 'review-prompt.md'
+  const sendNext = (nextAction.copyPasteReduction && nextAction.copyPasteReduction.whatLeoShouldSendNext) || '(none)'
+  const dontSend = (nextAction.copyPasteReduction && nextAction.copyPasteReduction.whatLeoShouldNotSend) || []
+  return `# Workbench v${WORKBENCH_VERSION} — Orchestrator Summary
+
+## Task
+${task}
+
+## Run folder
+${runFolder}
+
+## Current state
+${loopState.currentState}${loopState.stopReason ? ` — ${loopState.stopReason}` : ''}
+
+## Final
+- finalStatus: ${loopState.finalStatus}
+- finalReason: ${loopState.finalReason || '(none)'}
+- attempt: ${loopState.attemptNumber}/${loopState.maxAttempts}
+- branch: ${branchName || 'unknown'}
+
+## Recommended action
+${nextAction.recommendedAction} (confidence: ${nextAction.confidence})
+${nextAction.reason}
+
+## Repair safety
+- repair safe to attempt automatically: ${repairSafe ? 'yes' : 'no'}
+- canAutoRepair: ${stopPolicy.canAutoRepair}
+- requiresHumanApproval: ${stopPolicy.requiresHumanApproval}
+
+## What Leo should send next
+${sendNext}
+
+## What Leo should NOT send
+${dontSend.length === 0 ? '(none)' : dontSend.map((s) => '- ' + s).join('\n')}
+
+## Blockers
+${blockers.length === 0 ? '(none)' : blockers.map((b) => '- ' + b).join('\n')}
+
+## Open decisions
+${(decisionRequired.decisions || []).length === 0 ? '(none)' : decisionRequired.decisions.map((d) => `- [${d.type}] ${d.id} — ${d.recommendation}`).join('\n')}
+
+## Next artifact to inspect
+${nextArtifact}
+`
+}
+
+function runV05SelfTest({ projectRoot }) {
+  const checks = []
+  const expect = (label, ok) => { checks.push({ label, ok }); return ok }
+
+  const cleanDiff = { changedFiles: [], productFiles: [], workbenchFiles: [], generatedFiles: [], forbiddenFiles: [], packageFiles: [], envFiles: [], docsFiles: [], testFiles: [], summaryByPath: [], addedFiles: [], deletedFiles: [], modifiedFiles: [], gitStatusShort: '' }
+  const productDiff = { ...cleanDiff, changedFiles: ['src/screens/AbuCalendar/index.tsx'], productFiles: ['src/screens/AbuCalendar/index.tsx'], modifiedFiles: ['src/screens/AbuCalendar/index.tsx'] }
+  const wbDiff = { ...cleanDiff, changedFiles: ['scripts/ai-workbench.js'], workbenchFiles: ['scripts/ai-workbench.js'], modifiedFiles: ['scripts/ai-workbench.js'] }
+  const mixedDiff = { ...cleanDiff, changedFiles: ['src/screens/AbuCalendar/index.tsx', 'scripts/ai-workbench.js'], productFiles: ['src/screens/AbuCalendar/index.tsx'], workbenchFiles: ['scripts/ai-workbench.js'], modifiedFiles: ['src/screens/AbuCalendar/index.tsx', 'scripts/ai-workbench.js'] }
+  const envDiff = { ...cleanDiff, changedFiles: ['.env'], envFiles: ['.env'], modifiedFiles: ['.env'] }
+  const pkgDiff = { ...cleanDiff, changedFiles: ['package.json'], packageFiles: ['package.json'], modifiedFiles: ['package.json'] }
+  const aiRunsDiff = { ...cleanDiff, changedFiles: ['.ai-runs/x/foo.json'], modifiedFiles: ['.ai-runs/x/foo.json'] }
+  const evalCounts = { total: 0, proven: 0, notProven: 0, manualReview: 0, failed: 0 }
+  const okSelfTest = { allPassed: true }
+  const passNextAction = { recommendedAction: 'COMMIT_FEATURE_BRANCH', requiresHumanApproval: true, blockers: [], filesToAdd: [], copyPasteReduction: { whatLeoShouldSendNext: 'demo', whatLeoShouldNotSend: [] } }
+
+  // Test 1–3: builders return valid required fields.
+  const ls = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED', repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: false, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: cleanDiff, branchName: 'feat/x', nextAction: passNextAction, attemptNumber: 1, maxAttempts: 3, packCfg: { allowedPaths: ['src'], forbiddenPaths: [] } })
+  for (const k of ['workbenchVersion', 'task', 'pack', 'runFolder', 'currentState', 'previousState', 'finalStatus', 'finalReason', 'attemptNumber', 'maxAttempts', 'recommendedAction', 'requiresLeoApproval', 'changedFiles', 'allowedFiles', 'forbiddenFiles', 'stopReason', 'nextPromptPath']) {
+    expect(`loop-state has field ${k}`, Object.prototype.hasOwnProperty.call(ls, k))
+  }
+  const ra = buildRepairAttempts({ task: 'demo', runFolder: '/tmp/r', finalStatus: 'FAILED', finalReason: 'EVAL_FAILED', anyFailed: false, validationSummary: [{ name: 'test', status: 'OK', code: 0 }], regression: { status: 'PROVEN' }, diffSummary: cleanDiff, attemptNumber: 1, maxAttempts: 3, stopPolicy: { activeStops: [] } })
+  for (const k of ['taskId', 'currentRun', 'attemptNumber', 'maxAttempts', 'attempts', 'stop', 'stopReason']) {
+    expect(`repair-attempts has field ${k}`, Object.prototype.hasOwnProperty.call(ra, k))
+  }
+  expect('repair-attempts.attempts is non-empty array', Array.isArray(ra.attempts) && ra.attempts.length === 1)
+  const sp = buildStopPolicy({ repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: false, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: cleanDiff, branchName: 'feat/x', attemptNumber: 1, nextAction: passNextAction })
+  for (const k of ['maxAttempts', 'hardStops', 'softStops', 'activeStops', 'canAutoRepair', 'requiresHumanApproval', 'reason']) {
+    expect(`stop-policy has field ${k}`, Object.prototype.hasOwnProperty.call(sp, k))
+  }
+
+  // Test 4–7: candidate-next-prompt forbidden lines.
+  const cnpSafe = buildCandidateNextPrompt({ loopState: { currentState: 'REQUEST_REPAIR', stopReason: null, finalStatus: 'FAILED', finalReason: 'VALIDATION_FAILED' }, task: 'demo', pack: 'abobank-ai', packCfg: { allowedPaths: ['src'], forbiddenPaths: [] }, repairPromptText: 'test' })
+  expect('candidate-next-prompt includes "DO NOT COMMIT"', /DO NOT COMMIT\./.test(cnpSafe))
+  expect('candidate-next-prompt includes "DO NOT PUSH"', /DO NOT PUSH\./.test(cnpSafe))
+  expect('candidate-next-prompt includes "DO NOT MERGE"', /DO NOT MERGE\./.test(cnpSafe))
+  expect('candidate-next-prompt includes "DO NOT PUSH TO MAIN"', /DO NOT PUSH TO MAIN\./.test(cnpSafe))
+
+  // Test 8: repo mismatch → REPO_MISMATCH_STOP.
+  const lsRepoMismatch = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'FAILED', finalReason: 'STOP_REPO_MISMATCH', repoMismatch: { status: 'STOP_REPO_MISMATCH' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: false, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: cleanDiff, branchName: 'feat/x', nextAction: passNextAction, attemptNumber: 1, maxAttempts: 3, packCfg: {} })
+  expect('repo mismatch → REPO_MISMATCH_STOP', lsRepoMismatch.currentState === 'REPO_MISMATCH_STOP')
+
+  // Test 9: truth violation → SAFETY_STOP.
+  const lsTruth = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'FAILED', finalReason: 'TRUTH_VIOLATION', repoMismatch: { status: 'OK' }, truthFlagged: [{ pattern: 'fixed' }], safetyStatus: 'NOT_PROVEN', anyFailed: false, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: cleanDiff, branchName: 'feat/x', nextAction: passNextAction, attemptNumber: 1, maxAttempts: 3, packCfg: {} })
+  expect('truth violation → SAFETY_STOP', lsTruth.currentState === 'SAFETY_STOP' && lsTruth.stopReason === 'TRUTH_VIOLATION')
+
+  // Test 10: safety violation → SAFETY_STOP.
+  const lsSafety = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'FAILED', finalReason: 'SAFETY_VIOLATION', repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'FAILED', anyFailed: false, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: cleanDiff, branchName: 'feat/x', nextAction: passNextAction, attemptNumber: 1, maxAttempts: 3, packCfg: {} })
+  expect('safety violation → SAFETY_STOP', lsSafety.currentState === 'SAFETY_STOP' && lsSafety.stopReason === 'SAFETY_VIOLATION')
+
+  // Test 11: package files → HUMAN_APPROVAL_REQUIRED.
+  const lsPkg = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'NOT_PROVEN', finalReason: null, repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: false, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: pkgDiff, branchName: 'feat/x', nextAction: { ...passNextAction, recommendedAction: 'MANUAL_REVIEW' }, attemptNumber: 1, maxAttempts: 3, packCfg: {} })
+  expect('package files → HUMAN_APPROVAL_REQUIRED', lsPkg.currentState === 'HUMAN_APPROVAL_REQUIRED' && lsPkg.stopReason === 'PACKAGE_FILES_TOUCHED')
+
+  // Test 12: env files → SAFETY_STOP.
+  const lsEnv = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'NOT_PROVEN', finalReason: null, repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: false, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: envDiff, branchName: 'feat/x', nextAction: { ...passNextAction, recommendedAction: 'MANUAL_REVIEW' }, attemptNumber: 1, maxAttempts: 3, packCfg: {} })
+  expect('env files → SAFETY_STOP', lsEnv.currentState === 'SAFETY_STOP' && lsEnv.stopReason === 'ENV_FILES_TOUCHED')
+
+  // Test 13–14: filesToAdd never includes memory/* or .ai-runs/*.
+  // (Verify by constructing nextActions that the existing buildNextAction would never emit these — checked via static buckets.)
+  // Reuse the actual buildNextAction with diff containing memory/* in generatedFiles bucket only.
+  const memDiff = { ...cleanDiff, changedFiles: ['memory/family_graph.yaml', 'scripts/ai-workbench.js'], generatedFiles: ['memory/family_graph.yaml'], workbenchFiles: ['scripts/ai-workbench.js'], modifiedFiles: ['memory/family_graph.yaml', 'scripts/ai-workbench.js'] }
+  const naMem = buildNextAction({ task: 'wb infra', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED', diffSummary: memDiff, repoMismatch: { status: 'OK' }, evalCounts, anyFailed: false, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, branchName: 'feat/x' })
+  expect('memory files never in filesToAdd', !(naMem.filesToAdd || []).some((f) => /^memory\//.test(f)))
+  expect('.ai-runs files never in filesToAdd', !(naMem.filesToAdd || []).some((f) => /^\.ai-runs\//.test(f)))
+
+  // Test 15–16: dirty main with product change → no direct main push; CREATE_FEATURE_BRANCH available.
+  const naMainDirty = buildNextAction({ task: 'demo', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED', diffSummary: productDiff, repoMismatch: { status: 'OK' }, evalCounts, anyFailed: false, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, branchName: 'main' })
+  expect('dirty main: no "git push origin main" in allowedGitActions', !(naMainDirty.allowedGitActions || []).some((a) => /git push origin main\b/.test(a)))
+  expect('dirty main: CREATE_FEATURE_BRANCH available', naMainDirty.recommendedAction === 'CREATE_FEATURE_BRANCH')
+
+  // Test 17: finalStatus PROVEN → loop-state PROVEN (clean tree).
+  const lsProven = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED', repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: false, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: cleanDiff, branchName: 'feat/x', nextAction: passNextAction, attemptNumber: 1, maxAttempts: 3, packCfg: {} })
+  expect('finalStatus PROVEN → PROVEN', lsProven.currentState === 'PROVEN')
+
+  // Test 18: failed validation produces REQUEST_REPAIR (when allowed files only).
+  const lsRepair = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'FAILED', finalReason: 'VALIDATION_FAILED', repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: true, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: productDiff, branchName: 'feat/x', nextAction: passNextAction, attemptNumber: 1, maxAttempts: 3, packCfg: {} })
+  expect('failed validation → REQUEST_REPAIR', lsRepair.currentState === 'REQUEST_REPAIR')
+
+  // Test 19: no safe repair → MANUAL_REVIEW.
+  const lsManual = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'FAILED', finalReason: 'EVAL_FAILED', repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: false, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: cleanDiff, branchName: 'feat/x', nextAction: { ...passNextAction, recommendedAction: 'MANUAL_REVIEW' }, attemptNumber: 1, maxAttempts: 3, packCfg: {} })
+  expect('no safe repair → MANUAL_REVIEW', lsManual.currentState === 'MANUAL_REVIEW')
+
+  // Test 20: maxAttempts reached → MAX_ATTEMPTS_STOP.
+  const lsMax = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'FAILED', finalReason: 'VALIDATION_FAILED', repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: true, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: productDiff, branchName: 'feat/x', nextAction: passNextAction, attemptNumber: 3, maxAttempts: 3, packCfg: {} })
+  expect('maxAttempts reached → MAX_ATTEMPTS_STOP', lsMax.currentState === 'MAX_ATTEMPTS_STOP')
+
+  // Test 21: mixed product + workbench-infra diff → MANUAL_REVIEW.
+  const lsMixed = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED', repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: false, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: mixedDiff, branchName: 'feat/x', nextAction: { ...passNextAction, recommendedAction: 'MANUAL_REVIEW' }, attemptNumber: 1, maxAttempts: 3, packCfg: {} })
+  expect('mixed product+infra diff → MANUAL_REVIEW', lsMixed.currentState === 'MANUAL_REVIEW' && lsMixed.stopReason === 'MIXED_PRODUCT_AND_WORKBENCH_DIFF')
+
+  // Test 22: detached HEAD with changed files → HUMAN_APPROVAL_REQUIRED.
+  const lsDet = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED', repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: false, evalCounts, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: productDiff, branchName: 'HEAD', nextAction: { ...passNextAction, recommendedAction: 'MANUAL_REVIEW' }, attemptNumber: 1, maxAttempts: 3, packCfg: {} })
+  expect('detached HEAD → HUMAN_APPROVAL_REQUIRED', lsDet.currentState === 'HUMAN_APPROVAL_REQUIRED' && lsDet.stopReason === 'DETACHED_HEAD')
+
+  // Test 23: unresolved static-analysis backlog (FAILED + EVAL_FAILED on clean tree) does not become PROVEN.
+  const lsBacklog = buildLoopState({ task: 'demo', pack: 'abobank-ai', runFolder: '/tmp/r', finalStatus: 'FAILED', finalReason: 'EVAL_FAILED', repoMismatch: { status: 'OK' }, truthFlagged: [], safetyStatus: 'NOT_PROVEN', anyFailed: false, evalCounts: { ...evalCounts, failed: 2 }, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, diffSummary: cleanDiff, branchName: 'feat/x', nextAction: { ...passNextAction, recommendedAction: 'MANUAL_REVIEW' }, attemptNumber: 1, maxAttempts: 3, packCfg: {} })
+  expect('static-analysis backlog does not become PROVEN', lsBacklog.currentState !== 'PROVEN')
+
+  // Test 24–25: orchestrator-summary content.
+  const orchMd = buildOrchestratorSummary({ task: 'demo', runFolder: '/tmp/r', loopState: lsRepair, nextAction: passNextAction, diffSummary: productDiff, decisionRequired: { decisions: [] }, branchName: 'feat/x', stopPolicy: { activeStops: [], canAutoRepair: true, requiresHumanApproval: false } })
+  expect('orchestrator-summary includes "Current state"', /## Current state/.test(orchMd))
+  expect('orchestrator-summary includes "What Leo should send next"', /## What Leo should send next/.test(orchMd))
+
+  // Test 26–27: candidate-next-prompt respects allowed/forbidden files.
+  const cnpScope = buildCandidateNextPrompt({ loopState: { currentState: 'REQUEST_REPAIR', stopReason: null, finalStatus: 'FAILED', finalReason: 'VALIDATION_FAILED' }, task: 'demo', pack: 'abobank-ai', packCfg: { allowedPaths: ['src/screens/AbuAI'], forbiddenPaths: ['src/screens/AbuGames'] }, repairPromptText: '' })
+  expect('candidate-next-prompt lists allowed paths', /src\/screens\/AbuAI/.test(cnpScope))
+  expect('candidate-next-prompt lists forbidden paths', /src\/screens\/AbuGames/.test(cnpScope))
+
+  // Test 28: next-action.json remains valid (required fields).
+  const naProd = buildNextAction({ task: 'demo', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED', diffSummary: productDiff, repoMismatch: { status: 'OK' }, evalCounts, anyFailed: false, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, branchName: 'feat/x' })
+  for (const k of ['recommendedAction', 'confidence', 'reason', 'allowedGitActions', 'forbiddenGitActions', 'filesToAdd', 'commitMessage', 'requiresHumanApproval', 'blockers', 'copyPasteReduction']) {
+    expect(`next-action still has field ${k}`, Object.prototype.hasOwnProperty.call(naProd, k))
+  }
+
+  // Test 29: v0.4 self-tests still pass (re-run inline).
+  const v04 = runV04SelfTest({ projectRoot })
+  expect('v0.4 self-tests still pass', v04.allPassed === true)
+
+  // Test 30: branch-safety self-tests are part of v0.4 (already covered) — assert one explicit case to surface in v0.5 output.
+  const naMaster = buildNextAction({ task: 'demo', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED', diffSummary: productDiff, repoMismatch: { status: 'OK' }, evalCounts, anyFailed: false, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, branchName: 'master' })
+  expect('branch-safety: master also routes to CREATE_FEATURE_BRANCH', naMaster.recommendedAction === 'CREATE_FEATURE_BRANCH')
+
+  // Extra: .ai-runs files in working tree are surfaced in next-action.
+  const naRuns = buildNextAction({ task: 'demo', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED', diffSummary: aiRunsDiff, repoMismatch: { status: 'OK' }, evalCounts, anyFailed: false, annotationSelfTest: okSelfTest, v04SelfTest: okSelfTest, v05SelfTest: okSelfTest, branchName: 'feat/x' })
+  expect('.ai-runs in tree → MANUAL_REVIEW (not COMMIT_FEATURE_BRANCH)', naRuns.recommendedAction === 'MANUAL_REVIEW')
+
+  // Extra: candidate-next-prompt for SAFETY_STOP says MANUAL_REVIEW_REQUIRED.
+  const cnpStop = buildCandidateNextPrompt({ loopState: { currentState: 'SAFETY_STOP', stopReason: 'TRUTH_VIOLATION', finalStatus: 'FAILED', finalReason: 'TRUTH_VIOLATION' }, task: 'demo', pack: 'abobank-ai', packCfg: {}, repairPromptText: '' })
+  expect('candidate-next-prompt SAFETY_STOP → MANUAL_REVIEW_REQUIRED', /MANUAL_REVIEW_REQUIRED/.test(cnpStop))
+  expect('candidate-next-prompt SAFETY_STOP still has "DO NOT COMMIT"', /DO NOT COMMIT\./.test(cnpStop))
+
+  const allPassed = checks.every((c) => c.ok)
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    allPassed,
+    totalCases: checks.length,
+    passedCases: checks.filter((c) => c.ok).length,
+    failedCaseLabels: checks.filter((c) => !c.ok).map((c) => c.label),
+    checks,
+  }
+}
+
 function main() {
   const args = process.argv.slice(2)
   const packIndex = args.indexOf('--pack')
@@ -2055,6 +2497,8 @@ REQUIRED OUTPUT:
   writeJSON(path.join(runDir, 'repo-mismatch.json'), repoMismatch)
   const v04SelfTest = runV04SelfTest({ projectRoot: process.cwd() })
   writeJSON(path.join(runDir, 'v04-self-test.json'), v04SelfTest)
+  const v05SelfTest = runV05SelfTest({ projectRoot: process.cwd() })
+  writeJSON(path.join(runDir, 'v05-self-test.json'), v05SelfTest)
   const diffSummary = buildDiffSummary({ regression, gitStatusRaw: regression.gitStatusRaw })
   writeJSON(path.join(runDir, 'diff-summary.json'), diffSummary)
   const decisionRequired = buildDecisionRequired({ staticAnalysis, repoMismatch })
@@ -2116,6 +2560,14 @@ REQUIRED OUTPUT:
       confidence: 'HIGH',
       failureReason: v04SelfTest.allPassed ? null : 'V0_4_SELF_TEST_FAILED',
     },
+    v05SelfTest: {
+      allPassed: v05SelfTest.allPassed,
+      totalCases: v05SelfTest.totalCases,
+      passedCases: v05SelfTest.passedCases,
+      failedCaseLabels: v05SelfTest.failedCaseLabels,
+      confidence: 'HIGH',
+      failureReason: v05SelfTest.allPassed ? null : 'V0_5_SELF_TEST_FAILED',
+    },
     repoMismatch: {
       status: repoMismatch.status,
       confidence: repoMismatch.confidence,
@@ -2125,6 +2577,8 @@ REQUIRED OUTPUT:
     },
     autoApproval: false,
     finalStatus: repoMismatch.status === 'STOP_REPO_MISMATCH'
+      ? 'FAILED'
+      : !v05SelfTest.allPassed
       ? 'FAILED'
       : !v04SelfTest.allPassed
       ? 'FAILED'
@@ -2143,6 +2597,8 @@ REQUIRED OUTPUT:
       : 'NOT_PROVEN',
     finalReason: repoMismatch.status === 'STOP_REPO_MISMATCH'
       ? 'STOP_REPO_MISMATCH'
+      : !v05SelfTest.allPassed
+      ? 'V0_5_SELF_TEST_FAILED'
       : !v04SelfTest.allPassed
       ? 'V0_4_SELF_TEST_FAILED'
       : !annotationSelfTest.allPassed
@@ -2158,7 +2614,7 @@ REQUIRED OUTPUT:
       : minimumProof.status === 'PROVEN'
       ? 'CORE_PROOF_OBSERVED'
       : 'NO_CORE_PROOF',
-    finalConfidence: (repoMismatch.status === 'STOP_REPO_MISMATCH' || !v04SelfTest.allPassed || !annotationSelfTest.allPassed) ? 'HIGH' : null,
+    finalConfidence: (repoMismatch.status === 'STOP_REPO_MISMATCH' || !v05SelfTest.allPassed || !v04SelfTest.allPassed || !annotationSelfTest.allPassed) ? 'HIGH' : null,
     note: 'v0.2 runs validation, the forbidden-language scan, the git-aware regression classifier, the safety-constraint scan, and now executes mapped vitest files for each eval. Evals whose mapped file passed are PROVEN/HIGH; failed mapped files are FAILED/HIGH; evals without mappedTest stay NOT_PROVEN/LOW.',
   }
   writeJSON(path.join(runDir, 'evidence-check.json'), evidence)
@@ -2257,6 +2713,17 @@ ${safetyLine}
 - decision-required.json: ${path.join(runDir, 'decision-required.json')} (${decisionRequired.decisions.length} open)
 - diff-summary.json: ${path.join(runDir, 'diff-summary.json')} (${diffSummary.changedFiles.length} changed)
 - repo-mismatch.json: ${path.join(runDir, 'repo-mismatch.json')}
+
+## 11f. v0.5 self-test status
+- ${v05SelfTest.allPassed ? 'PASSED' : 'FAILED — V0_5_SELF_TEST_FAILED (HIGH confidence)'} (${v05SelfTest.passedCases}/${v05SelfTest.totalCases} cases)${v05SelfTest.allPassed ? '' : `\n- failing cases: ${v05SelfTest.failedCaseLabels.join(', ')}\n- v0.5 repair/orchestrator self-test gates the run; finalStatus is FAILED until fixtures pass.`}
+- artifact: ${path.join(runDir, 'v05-self-test.json')}
+
+## 11g. v0.5 artifacts
+- loop-state.json: ${path.join(runDir, 'loop-state.json')}
+- repair-attempts.json: ${path.join(runDir, 'repair-attempts.json')}
+- stop-policy.json: ${path.join(runDir, 'stop-policy.json')}
+- candidate-next-prompt.md: ${path.join(runDir, 'candidate-next-prompt.md')}
+- orchestrator-summary.md: ${path.join(runDir, 'orchestrator-summary.md')}
 
 ## 12. Ready for Claude Code execution
 ${readyForClaudeLine}
@@ -2404,6 +2871,7 @@ Artifacts:
     anyFailed,
     annotationSelfTest,
     v04SelfTest,
+    v05SelfTest,
     branchName,
   })
   writeJSON(path.join(runDir, 'next-action.json'), nextAction)
@@ -2427,6 +2895,40 @@ Artifacts:
     branchName,
   })
   fs.writeFileSync(path.join(runDir, 'repair-prompt.md'), repairPromptText)
+
+  // v0.5 — repair / orchestrator artifacts. Computed AFTER post-final scans so
+  // they share the same canonical finalStatus/finalReason as evidence-check.json.
+  const stopPolicy = buildStopPolicy({
+    repoMismatch, truthFlagged, safetyStatus, anyFailed, evalCounts,
+    annotationSelfTest, v04SelfTest, v05SelfTest, diffSummary, branchName,
+    attemptNumber: 1, nextAction,
+  })
+  writeJSON(path.join(runDir, 'stop-policy.json'), stopPolicy)
+  const loopState = buildLoopState({
+    task, pack, runFolder: runDir,
+    finalStatus: canonicalFinalStatus, finalReason: canonicalFinalReason,
+    repoMismatch, truthFlagged, safetyStatus, anyFailed, evalCounts,
+    annotationSelfTest, v04SelfTest, v05SelfTest, diffSummary, branchName,
+    nextAction, attemptNumber: 1, maxAttempts: 3, packCfg: packCfgForV04,
+  })
+  loopState.nextPromptPath = path.join(runDir, 'candidate-next-prompt.md')
+  writeJSON(path.join(runDir, 'loop-state.json'), loopState)
+  const repairAttempts = buildRepairAttempts({
+    task, runFolder: runDir,
+    finalStatus: canonicalFinalStatus, finalReason: canonicalFinalReason,
+    anyFailed, validationSummary, regression, diffSummary,
+    attemptNumber: 1, maxAttempts: 3, stopPolicy,
+  })
+  writeJSON(path.join(runDir, 'repair-attempts.json'), repairAttempts)
+  const candidateNextPromptText = buildCandidateNextPrompt({
+    loopState, task, pack, packCfg: packCfgForV04, repairPromptText,
+  })
+  fs.writeFileSync(path.join(runDir, 'candidate-next-prompt.md'), candidateNextPromptText)
+  const orchestratorSummaryText = buildOrchestratorSummary({
+    task, runFolder: runDir, loopState, nextAction, diffSummary,
+    decisionRequired, branchName, stopPolicy,
+  })
+  fs.writeFileSync(path.join(runDir, 'orchestrator-summary.md'), orchestratorSummaryText)
 
   // Second pass: rewrite final-report.md so it reflects the post-scan
   // verdict (safety status, truth status, ready-for-Claude). The truth
