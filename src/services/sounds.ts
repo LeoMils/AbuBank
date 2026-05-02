@@ -38,14 +38,6 @@ function playTone(
 
 // ─── Exports ──────────────────────────────────────────────────────────────
 
-/** Call this inside a user tap to unlock iOS audio for sounds.
- *  Already handled by unlockIOSAudio() in voice.ts for voice features.
- *  This one is specifically for the sounds system. */
-export function unlockSounds(): void {
-  const c = getCtx()
-  if (c && c.state === 'suspended') c.resume().catch(() => {})
-}
-
 /** Subtle button tap — soft keyboard click feel + haptic */
 export function soundTap(): void {
   haptic()
