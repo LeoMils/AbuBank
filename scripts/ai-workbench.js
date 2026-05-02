@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { spawnSync } from 'child_process'
 
-const WORKBENCH_VERSION = '0.5.1-generated-files-stop-policy'
+const WORKBENCH_VERSION = '0.6.0-leo-handoff'
 
 const FORBIDDEN_SUCCESS_LANGUAGE = [
   'fixed',
@@ -2392,6 +2392,349 @@ function runV05SelfTest({ projectRoot }) {
   }
 }
 
+// ─── v0.6 Leo handoff packet ──────────────────────────────────────────────
+
+function buildLeoHandoff({ task, runFolder, finalStatus, finalReason, annotationSelfTest, v04SelfTest, v05SelfTest, v06SelfTest, validationSummary, staticAnalysis, decisionRequired, loopState, nextAction, diffSummary, branchName }) {
+  const v04Line = v04SelfTest ? `${v04SelfTest.allPassed ? 'PASSED' : 'FAILED'} (${v04SelfTest.passedCases}/${v04SelfTest.totalCases})` : '(unknown)'
+  const v05Line = v05SelfTest ? `${v05SelfTest.allPassed ? 'PASSED' : 'FAILED'} (${v05SelfTest.passedCases}/${v05SelfTest.totalCases})` : '(unknown)'
+  const v06Line = v06SelfTest ? `${v06SelfTest.allPassed ? 'PASSED' : 'FAILED'} (${v06SelfTest.passedCases}/${v06SelfTest.totalCases})` : '(not yet run)'
+  const validationLines = (validationSummary || []).length === 0
+    ? '(no validation scripts available)'
+    : (validationSummary || []).map((v) => `- npm run ${v.name} — ${v.status}${v.code !== null && v.code !== undefined ? ` (exit ${v.code})` : ''}`).join('\n')
+  const rawDead = staticAnalysis && staticAnalysis.counts ? (staticAnalysis.counts.NOT_PROVEN_NO_USAGE ?? 0) : 0
+  const decisionsCount = decisionRequired && decisionRequired.decisions ? decisionRequired.decisions.length : 0
+  const changedFiles = (diffSummary && diffSummary.changedFiles) || []
+  const filesToAdd = (nextAction && nextAction.filesToAdd) || []
+  const blockers = []
+  if (loopState && loopState.stopReason) blockers.push(loopState.stopReason)
+  for (const b of (nextAction && nextAction.blockers) || []) if (!blockers.includes(b)) blockers.push(b)
+  const topRisks = []
+  if (rawDead > 0) topRisks.push(`${rawDead} unused export(s) flagged by static analysis`)
+  if (decisionsCount > 0) topRisks.push(`${decisionsCount} open decision(s) in decision-required.json`)
+  if (loopState && loopState.stopReason) topRisks.push(`stop reason: ${loopState.stopReason}`)
+  return `# Workbench v${WORKBENCH_VERSION} — Leo Handoff Packet
+
+> Paste this file into ChatGPT first. Do not paste full Claude Code output unless ChatGPT asks for it.
+
+## Task
+${task}
+
+## Run folder
+${runFolder}
+
+## Branch
+${branchName || 'unknown'}
+
+## Final
+- finalStatus: ${finalStatus}
+- finalReason: ${finalReason || '(none)'}
+
+## Self-tests
+- annotation: ${annotationSelfTest ? `${annotationSelfTest.allPassed ? 'PASSED' : 'FAILED'} (${annotationSelfTest.passedCases}/${annotationSelfTest.totalCases})` : '(unknown)'}
+- v0.4: ${v04Line}
+- v0.5: ${v05Line}
+- v0.6: ${v06Line}
+
+## Validation
+${validationLines}
+
+## Static analysis snapshot
+- raw NOT_PROVEN_NO_USAGE: ${rawDead}
+- decision-required count: ${decisionsCount}
+
+## Loop state
+- currentState: ${loopState ? loopState.currentState : '(unknown)'}
+- recommendedAction: ${nextAction ? nextAction.recommendedAction : '(unknown)'}
+- stopReason: ${(loopState && loopState.stopReason) || '(none)'}
+
+## Changed files (${changedFiles.length})
+${changedFiles.length === 0 ? '(clean tree)' : changedFiles.map((f) => '- ' + f).join('\n')}
+
+## filesToAdd (next-action recommendation)
+${filesToAdd.length === 0 ? '(none)' : filesToAdd.map((f) => '- ' + f).join('\n')}
+
+## Blockers
+${blockers.length === 0 ? '(none)' : blockers.map((b) => '- ' + b).join('\n')}
+
+## Top risks
+${topRisks.length === 0 ? '(none — proceed at recommended action)' : topRisks.map((r) => '- ' + r).join('\n')}
+
+## Artifact paths
+- review-prompt.md: ${path.join(runFolder, 'review-prompt.md')}
+- next-action.json: ${path.join(runFolder, 'next-action.json')}
+- candidate-next-prompt.md: ${path.join(runFolder, 'candidate-next-prompt.md')}
+- orchestrator-summary.md: ${path.join(runFolder, 'orchestrator-summary.md')}
+- loop-state.json: ${path.join(runFolder, 'loop-state.json')}
+
+## What Leo should paste to ChatGPT
+- This leo-handoff.md (only).
+- If ChatGPT asks for more detail, paste the specific referenced artifact (e.g. review-prompt.md, candidate-next-prompt.md, orchestrator-summary.md).
+
+## What Leo should NOT paste unless asked
+- The full final-report.md.
+- Full validation.txt logs.
+- Full static-analysis.json or evidence-check.json.
+- Any memory/* file.
+- Any .ai-runs/* folder content.
+- Full Claude Code transcripts or reasoning dumps.
+
+## Reminder
+- Do not paste full Claude dump unless requested.
+- Paste this leo-handoff.md first.
+- If ChatGPT asks for details, paste the referenced artifact.
+`
+}
+
+function buildClaudeNextPrompt({ task, loopState, nextAction, candidatePromptText, branchName }) {
+  const FORBIDDEN = `DO NOT COMMIT.
+DO NOT PUSH.
+DO NOT MERGE.
+DO NOT PUSH TO MAIN.`
+  const state = loopState ? loopState.currentState : 'UNKNOWN'
+  const stopReason = loopState ? loopState.stopReason : null
+  const filesToAdd = (nextAction && nextAction.filesToAdd) || []
+  const allowedActions = (nextAction && nextAction.allowedGitActions) || []
+  if (state === 'PROVEN' && filesToAdd.length === 0) {
+    return `# Workbench v${WORKBENCH_VERSION} — Claude Code Next Prompt
+
+## Status
+NO_ACTION_REQUIRED
+
+## Reason
+finalStatus is PROVEN and the working tree has no real diff. Workbench validation, self-tests, regression, and static-analysis backlog are all clean. No repair or follow-up edit is required from Claude Code.
+
+## Branch
+${branchName || 'unknown'}
+
+${FORBIDDEN}
+
+If the user asks for the next product change, wait for an explicit task — do not invent work.
+`
+  }
+  if (state === 'PROVEN' && filesToAdd.length > 0) {
+    return `# Workbench v${WORKBENCH_VERSION} — Claude Code Next Prompt
+
+## Status
+READY_TO_COMMIT
+
+## Reason
+finalStatus is PROVEN and the working tree carries an actionable diff. Validation, self-tests, regression, and static-analysis are clean. The user may authorize commit + push to the current feature branch.
+
+## Branch
+${branchName || 'unknown'}
+
+## filesToAdd
+${filesToAdd.map((f) => '- ' + f).join('\n')}
+
+## allowedGitActions
+${allowedActions.map((a) => '- ' + a).join('\n')}
+
+${FORBIDDEN}
+
+Wait for the user to explicitly authorize commit + push before doing anything. Never push to main.
+`
+  }
+  if (state === 'REPO_MISMATCH_STOP' || state === 'SAFETY_STOP' || state === 'MAX_ATTEMPTS_STOP' || state === 'HUMAN_APPROVAL_REQUIRED' || state === 'MANUAL_REVIEW') {
+    const why = (() => {
+      if (state === 'REPO_MISMATCH_STOP') return 'Repo mismatch detected. Editing this repo for the current task is forbidden.'
+      if (state === 'SAFETY_STOP') return `Safety/truth/self-test violation flipped the run to FAILED${stopReason ? ' (' + stopReason + ')' : ''}.`
+      if (state === 'MAX_ATTEMPTS_STOP') return 'Maximum repair attempts reached. Escalate to a human.'
+      if (state === 'HUMAN_APPROVAL_REQUIRED') return `Human approval required${stopReason ? ' (' + stopReason + ')' : ''}.`
+      return `Manual review required${stopReason ? ' (' + stopReason + ')' : ''}.`
+    })()
+    const decisions = []
+    if (stopReason === 'PACKAGE_FILES_TOUCHED') decisions.push('Whether to authorize the package.json/lock change (HUMAN_APPROVAL_REQUIRED).')
+    if (stopReason === 'PROTECTED_BRANCH_DIRTY') decisions.push('Whether to create a feature branch and re-run.')
+    if (stopReason === 'GENERATED_FILES_PRESENT') decisions.push('Whether to revert the auto-regenerated memory/* before any commit.')
+    if (stopReason === 'MIXED_PRODUCT_AND_WORKBENCH_DIFF') decisions.push('Whether to split the diff into separate product (feat/*) and workbench-infra (chore/*) branches.')
+    if (stopReason === 'DETACHED_HEAD') decisions.push('Whether to check out a named branch before committing.')
+    if (decisions.length === 0) decisions.push('Read review-prompt.md and orchestrator-summary.md, then decide.')
+    return `# Workbench v${WORKBENCH_VERSION} — Claude Code Next Prompt
+
+## Status
+MANUAL_REVIEW_REQUIRED
+
+## currentState
+${state}${stopReason ? ` (${stopReason})` : ''}
+
+## Reason
+${why}
+
+## What the user must decide
+${decisions.map((d) => '- ' + d).join('\n')}
+
+## Branch
+${branchName || 'unknown'}
+
+${FORBIDDEN}
+
+Do not modify any file until the user has answered the decision above.
+`
+  }
+  // REQUEST_REPAIR / REPAIR_READY / EDIT_NO_COMMIT / READY_TO_EXECUTE
+  const safeRepair = state === 'REQUEST_REPAIR' || state === 'REPAIR_READY'
+  const candidatePathHint = path.join(loopState && loopState.runFolder || '<run>', 'candidate-next-prompt.md')
+  const repairBody = candidatePromptText ? candidatePromptText.split('\n').slice(0, 80).join('\n') : `(see ${candidatePathHint})`
+  return `# Workbench v${WORKBENCH_VERSION} — Claude Code Next Prompt
+
+## Status
+${safeRepair ? 'REPAIR_READY' : 'CONTINUE'}
+
+## currentState
+${state}${stopReason ? ` (${stopReason})` : ''}
+
+## Branch
+${branchName || 'unknown'}
+
+## Embedded candidate next prompt
+The full repair prompt is in: ${candidatePathHint}
+
+${repairBody}
+
+${FORBIDDEN}
+`
+}
+
+function buildHandoffSummary({ task, runFolder, finalStatus, finalReason, loopState, nextAction, staticAnalysis, decisionRequired, diffSummary }) {
+  const filesToAdd = (nextAction && nextAction.filesToAdd) || []
+  const allowedActions = (nextAction && nextAction.allowedGitActions) || []
+  const containsMainPush = allowedActions.some((a) => /git push origin (main|master)\b/.test(a))
+  const containsMemoryAdd = filesToAdd.some((f) => /^memory\//.test(f))
+  const containsAiRunsAdd = filesToAdd.some((f) => /^\.ai-runs\//.test(f))
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    task: task || '',
+    runFolder,
+    finalStatus,
+    finalReason: finalReason || null,
+    currentState: loopState ? loopState.currentState : 'UNKNOWN',
+    recommendedAction: nextAction ? nextAction.recommendedAction : 'UNKNOWN',
+    requiresLeoApproval: !!(nextAction && nextAction.requiresHumanApproval),
+    stopReason: (loopState && loopState.stopReason) || null,
+    rawNotProvenNoUsage: staticAnalysis && staticAnalysis.counts ? (staticAnalysis.counts.NOT_PROVEN_NO_USAGE ?? null) : null,
+    decisionRequiredCount: decisionRequired && decisionRequired.decisions ? decisionRequired.decisions.length : null,
+    changedFilesCount: ((diffSummary && diffSummary.changedFiles) || []).length,
+    filesToAdd,
+    primaryHandoff: 'leo-handoff.md',
+    nextPrompt: 'claude-next-prompt.md',
+    shouldPasteToChatGPT: ['leo-handoff.md'],
+    shouldNotPasteUnlessAsked: [
+      'final-report.md',
+      'validation.txt',
+      'static-analysis.json',
+      'evidence-check.json',
+      'memory/*',
+      '.ai-runs/*',
+      'full Claude Code transcripts',
+    ],
+    safety: {
+      containsMainPush,
+      containsMemoryAdd,
+      containsAiRunsAdd,
+    },
+  }
+}
+
+function runV06SelfTest({ projectRoot }) {
+  const checks = []
+  const expect = (label, ok) => { checks.push({ label, ok }); return ok }
+
+  const baseLoopState = {
+    currentState: 'PROVEN', stopReason: null, finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED',
+    runFolder: '/tmp/r', attemptNumber: 1, maxAttempts: 3, recommendedAction: 'NO_ACTION', changedFiles: [],
+  }
+  const baseNextAction = { recommendedAction: 'NO_ACTION', confidence: 'HIGH', reason: 'clean', filesToAdd: [], allowedGitActions: [], forbiddenGitActions: [], blockers: [], requiresHumanApproval: true, copyPasteReduction: { whatLeoShouldSendNext: 'demo', whatLeoShouldNotSend: [] } }
+  const baseValidation = [{ name: 'test', status: 'OK', code: 0 }, { name: 'typecheck', status: 'OK', code: 0 }, { name: 'build', status: 'OK', code: 0 }]
+  const baseStaticAnalysis = { exportedSymbols: 100, counts: { PROVEN_USED_IN_USER_FLOW: 90, PROVEN_USED_IN_TEST: 10, NOT_PROVEN_NO_USAGE: 0 } }
+  const baseDecisionRequired = { decisions: [] }
+  const baseDiffSummary = { changedFiles: [], productFiles: [], workbenchFiles: [], generatedFiles: [], forbiddenFiles: [], packageFiles: [], envFiles: [], docsFiles: [], testFiles: [], summaryByPath: [], addedFiles: [], deletedFiles: [], modifiedFiles: [], gitStatusShort: '' }
+
+  // Tests 1–7: leo-handoff content.
+  const handoff = buildLeoHandoff({
+    task: 'demo task', runFolder: '/tmp/r',
+    finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED',
+    annotationSelfTest: { allPassed: true, passedCases: 5, totalCases: 5 },
+    v04SelfTest: { allPassed: true, passedCases: 46, totalCases: 46 },
+    v05SelfTest: { allPassed: true, passedCases: 96, totalCases: 96 },
+    v06SelfTest: null,
+    validationSummary: baseValidation,
+    staticAnalysis: baseStaticAnalysis,
+    decisionRequired: baseDecisionRequired,
+    loopState: baseLoopState,
+    nextAction: baseNextAction,
+    diffSummary: baseDiffSummary,
+    branchName: 'main',
+  })
+  expect('leo-handoff contains finalStatus', /finalStatus: PROVEN/.test(handoff))
+  expect('leo-handoff contains finalReason', /finalReason: CORE_PROOF_OBSERVED/.test(handoff))
+  expect('leo-handoff contains run folder', /Run folder\n\/tmp\/r/.test(handoff))
+  expect('leo-handoff contains recommendedAction', /recommendedAction: NO_ACTION/.test(handoff))
+  expect('leo-handoff contains "What Leo should paste to ChatGPT"', /What Leo should paste to ChatGPT/.test(handoff))
+  expect('leo-handoff tells Leo not to paste full dumps unless asked', /Do not paste full Claude dump unless requested/i.test(handoff))
+  expect('leo-handoff includes artifact paths', /review-prompt\.md.*candidate-next-prompt\.md/s.test(handoff))
+
+  // Tests 8–12: claude-next-prompt safety lines and main-push exclusion.
+  const cnpProven = buildClaudeNextPrompt({ task: 'demo', loopState: baseLoopState, nextAction: baseNextAction, candidatePromptText: '', branchName: 'main' })
+  expect('claude-next-prompt contains DO NOT COMMIT', /DO NOT COMMIT\./.test(cnpProven))
+  expect('claude-next-prompt contains DO NOT PUSH', /DO NOT PUSH\./.test(cnpProven))
+  expect('claude-next-prompt contains DO NOT MERGE', /DO NOT MERGE\./.test(cnpProven))
+  expect('claude-next-prompt contains DO NOT PUSH TO MAIN', /DO NOT PUSH TO MAIN\./.test(cnpProven))
+  expect('claude-next-prompt never contains "git push origin main" as allowed action', !/^[^#]*git push origin main\b/m.test(cnpProven.replace(/DO NOT PUSH TO MAIN\.?/g, '')))
+
+  // Tests 13–17: handoff-summary.json shape + safety flags.
+  const summary = buildHandoffSummary({
+    task: 'demo', runFolder: '/tmp/r', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED',
+    loopState: baseLoopState, nextAction: baseNextAction,
+    staticAnalysis: baseStaticAnalysis, decisionRequired: baseDecisionRequired, diffSummary: baseDiffSummary,
+  })
+  let parsed = true
+  try { JSON.parse(JSON.stringify(summary)) } catch { parsed = false }
+  expect('handoff-summary.json parses', parsed === true)
+  for (const k of ['workbenchVersion', 'task', 'runFolder', 'finalStatus', 'finalReason', 'currentState', 'recommendedAction', 'requiresLeoApproval', 'stopReason', 'rawNotProvenNoUsage', 'decisionRequiredCount', 'changedFilesCount', 'filesToAdd', 'primaryHandoff', 'nextPrompt', 'shouldPasteToChatGPT', 'shouldNotPasteUnlessAsked', 'safety']) {
+    expect(`handoff-summary has key ${k}`, Object.prototype.hasOwnProperty.call(summary, k))
+  }
+  expect('handoff-summary safety.containsMainPush is false', summary.safety.containsMainPush === false)
+  expect('handoff-summary safety.containsMemoryAdd is false', summary.safety.containsMemoryAdd === false)
+  expect('handoff-summary safety.containsAiRunsAdd is false', summary.safety.containsAiRunsAdd === false)
+
+  // Test 18: PROVEN state produces NO_ACTION_REQUIRED.
+  expect('PROVEN state → NO_ACTION_REQUIRED in claude-next-prompt', /NO_ACTION_REQUIRED/.test(cnpProven))
+
+  // Test 19: MANUAL_REVIEW state produces MANUAL_REVIEW_REQUIRED.
+  const cnpManual = buildClaudeNextPrompt({ task: 'demo', loopState: { ...baseLoopState, currentState: 'MANUAL_REVIEW', stopReason: 'GENERATED_FILES_PRESENT' }, nextAction: { ...baseNextAction, recommendedAction: 'MANUAL_REVIEW' }, candidatePromptText: '', branchName: 'feat/x' })
+  expect('MANUAL_REVIEW state → MANUAL_REVIEW_REQUIRED in claude-next-prompt', /MANUAL_REVIEW_REQUIRED/.test(cnpManual))
+
+  // Test 20: REQUEST_REPAIR state references candidate-next-prompt.
+  const cnpRepair = buildClaudeNextPrompt({ task: 'demo', loopState: { ...baseLoopState, currentState: 'REQUEST_REPAIR', stopReason: null, runFolder: '/tmp/r' }, nextAction: { ...baseNextAction, recommendedAction: 'REQUEST_REPAIR' }, candidatePromptText: '', branchName: 'feat/x' })
+  expect('REQUEST_REPAIR state references candidate-next-prompt', /candidate-next-prompt\.md/.test(cnpRepair))
+
+  // Tests 21–22: re-run v0.4 and v0.5 self-tests inline.
+  const v04 = runV04SelfTest({ projectRoot })
+  expect('v0.4 self-tests still pass', v04.allPassed === true)
+  const v05 = runV05SelfTest({ projectRoot })
+  expect('v0.5 self-tests still pass', v05.allPassed === true)
+
+  // Test 23: existing artifacts builders still callable (smoke test by calling buildReviewPrompt + buildRepairPrompt).
+  const reviewSmoke = buildReviewPrompt({ task: 'demo', pack: 'abobank-ai', runDir: '/tmp/r', finalStatus: 'PROVEN', finalReason: 'CORE_PROOF_OBSERVED', diffSummary: baseDiffSummary, validationSummary: baseValidation, evalCounts: { proven: 0, notProven: 0, manualReview: 0, failed: 0 }, staticAnalysis: baseStaticAnalysis, regression: { status: 'PROVEN', issues: [], changed: 0 }, safetyStatus: 'NOT_PROVEN', truthFlagged: [], repoMismatch: { status: 'OK' }, decisionRequired: baseDecisionRequired, nextAction: baseNextAction, branchName: 'main' })
+  expect('existing buildReviewPrompt still produces output', typeof reviewSmoke === 'string' && reviewSmoke.length > 100)
+
+  // Tests 24–25: no undefined / NaN in leo-handoff or claude-next-prompt.
+  expect('leo-handoff has no "undefined"', !/undefined/.test(handoff))
+  expect('leo-handoff has no "NaN"', !/NaN/.test(handoff))
+  expect('claude-next-prompt has no "undefined"', !/undefined/.test(cnpProven))
+  expect('claude-next-prompt has no "NaN"', !/NaN/.test(cnpProven))
+
+  const allPassed = checks.every((c) => c.ok)
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    allPassed,
+    totalCases: checks.length,
+    passedCases: checks.filter((c) => c.ok).length,
+    failedCaseLabels: checks.filter((c) => !c.ok).map((c) => c.label),
+    checks,
+  }
+}
+
 function main() {
   const args = process.argv.slice(2)
   const packIndex = args.indexOf('--pack')
@@ -2627,6 +2970,8 @@ REQUIRED OUTPUT:
   writeJSON(path.join(runDir, 'v04-self-test.json'), v04SelfTest)
   const v05SelfTest = runV05SelfTest({ projectRoot: process.cwd() })
   writeJSON(path.join(runDir, 'v05-self-test.json'), v05SelfTest)
+  const v06SelfTest = runV06SelfTest({ projectRoot: process.cwd() })
+  writeJSON(path.join(runDir, 'v06-self-test.json'), v06SelfTest)
   const diffSummary = buildDiffSummary({ regression, gitStatusRaw: regression.gitStatusRaw })
   writeJSON(path.join(runDir, 'diff-summary.json'), diffSummary)
   const decisionRequired = buildDecisionRequired({ staticAnalysis, repoMismatch })
@@ -2696,6 +3041,14 @@ REQUIRED OUTPUT:
       confidence: 'HIGH',
       failureReason: v05SelfTest.allPassed ? null : 'V0_5_SELF_TEST_FAILED',
     },
+    v06SelfTest: {
+      allPassed: v06SelfTest.allPassed,
+      totalCases: v06SelfTest.totalCases,
+      passedCases: v06SelfTest.passedCases,
+      failedCaseLabels: v06SelfTest.failedCaseLabels,
+      confidence: 'HIGH',
+      failureReason: v06SelfTest.allPassed ? null : 'V0_6_SELF_TEST_FAILED',
+    },
     repoMismatch: {
       status: repoMismatch.status,
       confidence: repoMismatch.confidence,
@@ -2705,6 +3058,8 @@ REQUIRED OUTPUT:
     },
     autoApproval: false,
     finalStatus: repoMismatch.status === 'STOP_REPO_MISMATCH'
+      ? 'FAILED'
+      : !v06SelfTest.allPassed
       ? 'FAILED'
       : !v05SelfTest.allPassed
       ? 'FAILED'
@@ -2725,6 +3080,8 @@ REQUIRED OUTPUT:
       : 'NOT_PROVEN',
     finalReason: repoMismatch.status === 'STOP_REPO_MISMATCH'
       ? 'STOP_REPO_MISMATCH'
+      : !v06SelfTest.allPassed
+      ? 'V0_6_SELF_TEST_FAILED'
       : !v05SelfTest.allPassed
       ? 'V0_5_SELF_TEST_FAILED'
       : !v04SelfTest.allPassed
@@ -2742,7 +3099,7 @@ REQUIRED OUTPUT:
       : minimumProof.status === 'PROVEN'
       ? 'CORE_PROOF_OBSERVED'
       : 'NO_CORE_PROOF',
-    finalConfidence: (repoMismatch.status === 'STOP_REPO_MISMATCH' || !v05SelfTest.allPassed || !v04SelfTest.allPassed || !annotationSelfTest.allPassed) ? 'HIGH' : null,
+    finalConfidence: (repoMismatch.status === 'STOP_REPO_MISMATCH' || !v06SelfTest.allPassed || !v05SelfTest.allPassed || !v04SelfTest.allPassed || !annotationSelfTest.allPassed) ? 'HIGH' : null,
     note: 'v0.2 runs validation, the forbidden-language scan, the git-aware regression classifier, the safety-constraint scan, and now executes mapped vitest files for each eval. Evals whose mapped file passed are PROVEN/HIGH; failed mapped files are FAILED/HIGH; evals without mappedTest stay NOT_PROVEN/LOW.',
   }
   writeJSON(path.join(runDir, 'evidence-check.json'), evidence)
@@ -2852,6 +3209,15 @@ ${safetyLine}
 - stop-policy.json: ${path.join(runDir, 'stop-policy.json')}
 - candidate-next-prompt.md: ${path.join(runDir, 'candidate-next-prompt.md')}
 - orchestrator-summary.md: ${path.join(runDir, 'orchestrator-summary.md')}
+
+## 11h. v0.6 self-test status
+- ${v06SelfTest.allPassed ? 'PASSED' : 'FAILED — V0_6_SELF_TEST_FAILED (HIGH confidence)'} (${v06SelfTest.passedCases}/${v06SelfTest.totalCases} cases)${v06SelfTest.allPassed ? '' : `\n- failing cases: ${v06SelfTest.failedCaseLabels.join(', ')}\n- v0.6 Leo-handoff self-test gates the run; finalStatus is FAILED until fixtures pass.`}
+- artifact: ${path.join(runDir, 'v06-self-test.json')}
+
+## 11i. v0.6 artifacts (Leo handoff packet)
+- leo-handoff.md: ${path.join(runDir, 'leo-handoff.md')} ← paste this to ChatGPT
+- claude-next-prompt.md: ${path.join(runDir, 'claude-next-prompt.md')} ← paste this to Claude Code if approved
+- handoff-summary.json: ${path.join(runDir, 'handoff-summary.json')}
 
 ## 12. Ready for Claude Code execution
 ${readyForClaudeLine}
@@ -3057,6 +3423,28 @@ Artifacts:
     decisionRequired, branchName, stopPolicy,
   })
   fs.writeFileSync(path.join(runDir, 'orchestrator-summary.md'), orchestratorSummaryText)
+
+  // v0.6 — Leo handoff packet (one file Leo pastes into ChatGPT) + Claude
+  // next-prompt + handoff-summary.json. Computed AFTER all post-final scans
+  // and v0.4/v0.5 artifacts so they share the canonical finalStatus/finalReason.
+  const leoHandoffText = buildLeoHandoff({
+    task, runFolder: runDir,
+    finalStatus: canonicalFinalStatus, finalReason: canonicalFinalReason,
+    annotationSelfTest, v04SelfTest, v05SelfTest, v06SelfTest,
+    validationSummary, staticAnalysis, decisionRequired, loopState, nextAction,
+    diffSummary, branchName,
+  })
+  fs.writeFileSync(path.join(runDir, 'leo-handoff.md'), leoHandoffText)
+  const claudeNextPromptText = buildClaudeNextPrompt({
+    task, loopState, nextAction, candidatePromptText: candidateNextPromptText, branchName,
+  })
+  fs.writeFileSync(path.join(runDir, 'claude-next-prompt.md'), claudeNextPromptText)
+  const handoffSummary = buildHandoffSummary({
+    task, runFolder: runDir,
+    finalStatus: canonicalFinalStatus, finalReason: canonicalFinalReason,
+    loopState, nextAction, staticAnalysis, decisionRequired, diffSummary,
+  })
+  writeJSON(path.join(runDir, 'handoff-summary.json'), handoffSummary)
 
   // Second pass: rewrite final-report.md so it reflects the post-scan
   // verdict (safety status, truth status, ready-for-Claude). The truth
