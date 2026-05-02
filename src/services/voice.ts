@@ -559,6 +559,12 @@ export function stopSpeaking(): void {
 
 let _activeQueue: AudioChunkQueue | null = null
 
+/**
+ * @workbench-keep FUTURE_API
+ * reason: low-latency per-sentence streaming TTS path for future AbuAI FreeSpeech voice UX; currently superseded by speakVoiceMode and RealtimeVoiceSession
+ * owner: leo
+ * reviewAfter: 2026-08-01
+ */
 export class AudioChunkQueue {
   private queue: Blob[] = []
   private playing = false
@@ -646,6 +652,12 @@ export class AudioChunkQueue {
   }
 }
 
+/**
+ * @workbench-keep FUTURE_API
+ * reason: low-latency per-sentence streaming TTS path for future AbuAI FreeSpeech voice UX; currently superseded by speakVoiceMode and RealtimeVoiceSession
+ * owner: leo
+ * reviewAfter: 2026-08-01
+ */
 /**
  * Stream-speak: plays TTS audio for each sentence as LLM tokens arrive.
  * Accumulates tokens until a sentence boundary, then sends to TTS and queues audio.
