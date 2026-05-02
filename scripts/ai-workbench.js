@@ -144,7 +144,12 @@ function classifyChangedFile(filePath, pack) {
   const isMemory = filePath.startsWith('memory/')
   const isGenerated = filePath.startsWith('dist/') || filePath.startsWith('.ai-runs/') || isMemory
   const isWorkbenchInfra = filePath.startsWith('.ai-workbench/') || filePath === 'scripts/ai-workbench.js' || filePath.startsWith('.claude/')
-  let bucket = 'unrelated'
+  // Default bucket is 'unrelatedPaths' to match the bucket dictionary in main()
+  // (the regression classifier crashes if classifyChangedFile returns a bucket
+  // name not present in that dict). Files that don't match any other category
+  // — e.g. vite.config.ts, docs/* — surface in unrelatedPaths so reviewers
+  // can see them without losing data.
+  let bucket = 'unrelatedPaths'
   if (isPackage) bucket = 'packageFiles'
   else if (isEnv) bucket = 'forbiddenSecrets'
   else if (isForbidden) bucket = 'forbiddenPaths'
@@ -2337,6 +2342,44 @@ function runV05SelfTest({ projectRoot }) {
   // next-action for generated-only does not recommend commit.
   expect('next-action (generated-only): recommendedAction is not COMMIT_FEATURE_BRANCH', naMemOnly.recommendedAction !== 'COMMIT_FEATURE_BRANCH')
   expect('next-action (generated-only): recommendedAction is not CREATE_FEATURE_BRANCH', naMemOnly.recommendedAction !== 'CREATE_FEATURE_BRANCH')
+
+  // v0.5.1 — classifyChangedFile must not return bucket names that are absent
+  // from the bucket dictionary in main(). The dict declares: allowedPaths,
+  // forbiddenPaths, forbiddenSecrets, unrelatedPaths, generatedFiles,
+  // packageFiles, workbenchInfra. Any other return value would crash
+  // `buckets[c.bucket].push(f.path)`.
+  const validBuckets = new Set(['allowedPaths', 'forbiddenPaths', 'forbiddenSecrets', 'unrelatedPaths', 'generatedFiles', 'packageFiles', 'workbenchInfra'])
+  const fakePackForClassify = { allowedPaths: ['src/screens/AbuAI', 'src/screens/AbuCalendar', 'src/services'], forbiddenPaths: ['src/screens/AbuGames'] }
+  const cVite = classifyChangedFile('vite.config.ts', fakePackForClassify)
+  expect('classifyChangedFile(vite.config.ts) returns a bucket present in main() dict', validBuckets.has(cVite.bucket))
+  expect('classifyChangedFile(vite.config.ts) is unrelatedPaths (not "unrelated")', cVite.bucket === 'unrelatedPaths')
+  const cDocs = classifyChangedFile('docs/10-discovery-map.md', fakePackForClassify)
+  expect('classifyChangedFile(docs/10-discovery-map.md) returns a bucket present in main() dict', validBuckets.has(cDocs.bucket))
+  expect('classifyChangedFile(docs/...) is unrelatedPaths', cDocs.bucket === 'unrelatedPaths')
+
+  // Synthetic bucket aggregation must not crash on a mix of allowed + unrelated.
+  const synthDictKeys = ['allowedPaths', 'forbiddenPaths', 'forbiddenSecrets', 'unrelatedPaths', 'generatedFiles', 'packageFiles', 'workbenchInfra']
+  const synthBuckets = Object.fromEntries(synthDictKeys.map((k) => [k, []]))
+  const synthChanged = [
+    { path: 'src/services/sounds.ts' },
+    { path: 'vite.config.ts' },
+    { path: 'docs/10-discovery-map.md' },
+    { path: 'package.json' },
+    { path: 'memory/family_graph.yaml' },
+  ]
+  let synthCrashed = false
+  try {
+    for (const f of synthChanged) {
+      const c = classifyChangedFile(f.path, fakePackForClassify)
+      synthBuckets[c.bucket].push(f.path)
+    }
+  } catch { synthCrashed = true }
+  expect('synthetic bucket aggregation does not crash on unrelated paths', synthCrashed === false)
+  expect('synthetic aggregation places vite.config.ts in unrelatedPaths', synthBuckets.unrelatedPaths.includes('vite.config.ts'))
+  expect('synthetic aggregation places docs/* in unrelatedPaths', synthBuckets.unrelatedPaths.includes('docs/10-discovery-map.md'))
+  expect('synthetic aggregation places src/services/sounds.ts in allowedPaths', synthBuckets.allowedPaths.includes('src/services/sounds.ts'))
+  expect('synthetic aggregation places package.json in packageFiles', synthBuckets.packageFiles.includes('package.json'))
+  expect('synthetic aggregation places memory/* in generatedFiles', synthBuckets.generatedFiles.includes('memory/family_graph.yaml'))
 
   const allPassed = checks.every((c) => c.ok)
   return {
