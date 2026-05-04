@@ -15,6 +15,9 @@ import { StyleSelector, STYLES, type Style } from './StyleSelector'
 import { Toast } from '../../components/Toast'
 import { PageShell } from '../../components/PageShell'
 import { LoadingState } from '../../components/LoadingState'
+import { FamilyQuickFaces } from './familyQuickFaces'
+
+type WhatsAppTab = 'family' | 'actions'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -87,6 +90,7 @@ function detectVoiceCommand(text: string): { type: 'send' } | { type: 'retry' } 
 
 export function AbuWhatsApp() {
   const setScreen = useAppStore(s => s.setScreen)
+  const [tab, setTab] = useState<WhatsAppTab>('family')
   const [phase, setPhase] = useState<Phase>('idle')
   const [input, setInput] = useState('')
   const [result, setResult] = useState('')
@@ -637,7 +641,7 @@ export function AbuWhatsApp() {
       <div style={{
         flex: 1, overflowY: 'auto', overflowX: 'hidden',
         padding: '20px 16px',
-        paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+        paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         gap: 18,
         WebkitOverflowScrolling: 'touch',
@@ -645,6 +649,15 @@ export function AbuWhatsApp() {
         position: 'relative',
       }}>
 
+        {tab === 'family' && !voiceMode && (
+          <FamilyQuickFaces
+            onOpenWhatsApp={(url) => { window.location.href = url }}
+            onOpenTel={(url) => { window.location.href = url }}
+          />
+        )}
+
+        {tab === 'actions' && (
+          <>
         {/* ── Error banner — hidden during voice mode (TTS handles it) ── */}
         {error && !voiceMode && (
           <div style={{
@@ -1077,7 +1090,46 @@ export function AbuWhatsApp() {
             </div>
           </>
         )}
+          </>
+        )}
       </div>
+
+      {/* ══════════════════════════════════════════════════
+          BOTTOM TAB BAR — משפחה / פעולות segmented control
+         ══════════════════════════════════════════════════ */}
+      {!voiceMode && (
+        <div
+          data-testid="abuwhatsapp-tab-bar"
+          style={{
+            position: 'absolute',
+            left: 12, right: 12,
+            bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+            display: 'flex', gap: 8,
+            padding: 6,
+            borderRadius: 22,
+            background: 'rgba(8,16,28,0.78)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+            border: '1px solid rgba(37,211,102,0.18)',
+            boxShadow: '0 6px 24px rgba(0,0,0,0.45)',
+            zIndex: 10,
+            direction: 'rtl',
+          }}
+        >
+          <TabButton
+            label="משפחה"
+            testId="tab-family"
+            active={tab === 'family'}
+            onClick={() => { soundTap(); setTab('family') }}
+          />
+          <TabButton
+            label="פעולות"
+            testId="tab-actions"
+            active={tab === 'actions'}
+            onClick={() => { soundTap(); setTab('actions') }}
+          />
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════
           VOICE MODE OVERLAY — full screen teal ripple orb
@@ -1292,5 +1344,36 @@ export function AbuWhatsApp() {
         @keyframes slideUpIn  { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
       `}</style>
     </PageShell>
+  )
+}
+
+function TabButton({
+  label, testId, active, onClick,
+}: { label: string; testId: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      onClick={onClick}
+      aria-pressed={active}
+      style={{
+        flex: 1,
+        height: 52,
+        borderRadius: 16,
+        border: active ? '1.5px solid rgba(37,211,102,0.50)' : '1px solid rgba(255,255,255,0.06)',
+        background: active
+          ? 'linear-gradient(145deg, rgba(37,211,102,0.20), rgba(20,184,166,0.10))'
+          : 'transparent',
+        color: active ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.55)',
+        fontSize: 17, fontWeight: 700,
+        fontFamily: "'Heebo',sans-serif",
+        cursor: 'pointer',
+        letterSpacing: '0.3px',
+        boxShadow: active ? 'inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 14px rgba(37,211,102,0.18)' : 'none',
+        transition: 'background 0.16s, color 0.16s, border-color 0.16s',
+      }}
+    >
+      {label}
+    </button>
   )
 }
