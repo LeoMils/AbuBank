@@ -152,14 +152,34 @@ describe('FAMILY_QUICK_FACES scaffold', () => {
     expect(group.whatsappUrl).toBe('https://chat.whatsapp.com/JqqGpPKTCq3L0JnitU5y5f')
   })
 
-  it('every person entry has an empty phoneE164 and is disabled (no fake phones committed)', () => {
+  it('every enabled person has a valid E.164 phone; every disabled person has an empty phone', () => {
     const people = FAMILY_QUICK_FACES.filter(f => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]
     expect(people.length).toBeGreaterThan(0)
     for (const p of people) {
-      expect(p.phoneE164).toBe('')
-      expect(p.enabled).toBe(false)
-      expect(p.whatsappE164 ?? '').toBe('')
-      expect(p.photoFile ?? '').toBe('')
+      if (p.enabled) {
+        expect(isValidPhoneE164(p.phoneE164)).toBe(true)
+        if (p.whatsappE164 !== undefined && p.whatsappE164.length > 0) {
+          expect(isValidPhoneE164(p.whatsappE164)).toBe(true)
+        }
+      } else {
+        expect(p.phoneE164).toBe('')
+        expect(p.whatsappE164 ?? '').toBe('')
+      }
+    }
+  })
+
+  it('no person entry references a known-fake test number', () => {
+    const FAKE = ['+972501234567', '+972501111111', '+972502222222', '+1234567890']
+    const people = FAMILY_QUICK_FACES.filter(f => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]
+    for (const p of people) {
+      expect(FAKE).not.toContain(p.phoneE164)
+      if (p.whatsappE164) expect(FAKE).not.toContain(p.whatsappE164)
+    }
+  })
+
+  it('photoFile is empty for every entry until real assets are added', () => {
+    for (const f of FAMILY_QUICK_FACES) {
+      expect(f.photoFile ?? '').toBe('')
     }
   })
 
@@ -176,23 +196,46 @@ describe('FAMILY_QUICK_FACES scaffold', () => {
     expect(ari?.enabled).toBe(false)
   })
 
-  it('default visible set contains only the family group', () => {
-    const visible = getVisibleFaces()
-    expect(visible.length).toBe(1)
-    expect(visible[0]?.type).toBe('group')
+  it('Yael remains disabled until a real phone is provided', () => {
+    const yael = FAMILY_QUICK_FACES.find(f => f.type === 'person' && f.id === 'yael') as
+      | Extract<FamilyQuickFace, { type: 'person' }>
+      | undefined
+    expect(yael).toBeDefined()
+    if (yael?.enabled) {
+      expect(isValidPhoneE164(yael.phoneE164)).toBe(true)
+    } else {
+      expect(yael?.phoneE164).toBe('')
+    }
   })
 
-  it('visible filter would include a person if Leo enables one with a real phone', () => {
-    const augmented: FamilyQuickFace[] = [
-      ...FAMILY_QUICK_FACES.filter(f => f.id !== 'mor'),
-      {
-        type: 'person', id: 'mor', displayName: 'מור',
-        relationshipHebrew: 'הבת',
-        phoneE164: '+972501234567', enabled: true,
-      },
-    ]
-    const visible = getVisibleFaces(augmented)
-    const mor = visible.find(f => f.type === 'person' && f.id === 'mor')
-    expect(mor).toBeDefined()
+  it('default visible set contains the family group plus every enabled person and excludes disabled ids', () => {
+    const visible = getVisibleFaces()
+    const visibleIds = new Set(visible.map(f => f.id))
+    expect(visibleIds.has('family-group')).toBe(true)
+    expect(visibleIds.has('anabel')).toBe(false)
+    expect(visibleIds.has('ari')).toBe(false)
+
+    const enabledPeople = (FAMILY_QUICK_FACES.filter(
+      f => f.type === 'person',
+    ) as Extract<FamilyQuickFace, { type: 'person' }>[]).filter(p => p.enabled)
+    for (const p of enabledPeople) {
+      expect(visibleIds.has(p.id)).toBe(true)
+    }
+    expect(visible.length).toBe(1 + enabledPeople.length)
+  })
+
+  it('visible filter hides a person whose enabled flag is flipped off, even with a valid phone', () => {
+    const visibleEnabledIds = new Set(getVisibleFaces().map(f => f.id))
+    const aMember = (FAMILY_QUICK_FACES.find(
+      f => f.type === 'person' && f.id === 'mor',
+    ) as Extract<FamilyQuickFace, { type: 'person' }> | undefined)
+    expect(aMember).toBeDefined()
+    expect(visibleEnabledIds.has('mor')).toBe(aMember?.enabled === true)
+
+    const flipped: FamilyQuickFace[] = FAMILY_QUICK_FACES.map(f =>
+      f.type === 'person' && f.id === 'mor' ? { ...f, enabled: false } : f,
+    )
+    const visibleAfter = getVisibleFaces(flipped)
+    expect(visibleAfter.find(f => f.id === 'mor')).toBeUndefined()
   })
 })
