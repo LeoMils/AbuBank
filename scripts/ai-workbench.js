@@ -1200,7 +1200,7 @@ function suggestFeatureBranchName({ infraOnly }) {
   return infraOnly ? 'chore/workbench-infra-update' : 'feat/workbench-suggested-change'
 }
 
-function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMismatch, evalCounts, anyFailed, annotationSelfTest, v04SelfTest, v05SelfTest, branchName }) {
+function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMismatch, evalCounts, anyFailed, annotationSelfTest, v04SelfTest, v05SelfTest, branchName, piiCheck, piiSelfTest }) {
   const blockers = []
   const filesToAdd = []
   let recommendedAction = 'NO_ACTION'
@@ -1243,6 +1243,18 @@ function buildNextAction({ task, finalStatus, finalReason, diffSummary, repoMism
     reason = repoMismatch.reason
     blockers.push('REPO_MISMATCH')
     whatLeoShouldNotSend.push('any commit/push/merge instruction in this repo for this task')
+  } else if (piiCheck && piiCheck.status === 'FAILED') {
+    recommendedAction = 'REVERT'
+    confidence = 'HIGH'
+    const flagged = (piiCheck.findingsByFile || []).map((x) => x.file)
+    reason = `PII detected in product source on a public repo: ${flagged.join(', ') || '(see pii-check.json)'}. Personal phone numbers / personal WhatsApp DM targets must not be committed to a public repo.`
+    blockers.push('PII_PUBLIC_REPO_BLOCK')
+    whatLeoShouldNotSend.push(`do not commit ${flagged.join(', ')} (PII on public repo) — store contacts in localStorage / backend instead`)
+  } else if (piiSelfTest && piiSelfTest.allPassed === false) {
+    recommendedAction = 'REQUEST_REPAIR'
+    confidence = 'HIGH'
+    reason = 'PII self-test failed; fix scripts/ai-workbench.js. See pii-self-test.json.'
+    blockers.push('PII_SELF_TEST_FAILED')
   } else if (diffSummary.forbiddenFiles.length > 0) {
     recommendedAction = 'REVERT'
     confidence = 'HIGH'
@@ -2394,10 +2406,14 @@ function runV05SelfTest({ projectRoot }) {
 
 // ─── v0.6 Leo handoff packet ──────────────────────────────────────────────
 
-function buildLeoHandoff({ task, runFolder, finalStatus, finalReason, annotationSelfTest, v04SelfTest, v05SelfTest, v06SelfTest, validationSummary, staticAnalysis, decisionRequired, loopState, nextAction, diffSummary, branchName }) {
+function buildLeoHandoff({ task, runFolder, finalStatus, finalReason, annotationSelfTest, v04SelfTest, v05SelfTest, v06SelfTest, piiSelfTest, piiCheck, validationSummary, staticAnalysis, decisionRequired, loopState, nextAction, diffSummary, branchName }) {
   const v04Line = v04SelfTest ? `${v04SelfTest.allPassed ? 'PASSED' : 'FAILED'} (${v04SelfTest.passedCases}/${v04SelfTest.totalCases})` : '(unknown)'
   const v05Line = v05SelfTest ? `${v05SelfTest.allPassed ? 'PASSED' : 'FAILED'} (${v05SelfTest.passedCases}/${v05SelfTest.totalCases})` : '(unknown)'
   const v06Line = v06SelfTest ? `${v06SelfTest.allPassed ? 'PASSED' : 'FAILED'} (${v06SelfTest.passedCases}/${v06SelfTest.totalCases})` : '(not yet run)'
+  const piiSelfLine = piiSelfTest ? `${piiSelfTest.allPassed ? 'PASSED' : 'FAILED'} (${piiSelfTest.passedCases}/${piiSelfTest.totalCases})` : '(not yet run)'
+  const piiCheckLine = piiCheck
+    ? `${piiCheck.status} — ${piiCheck.reason} (public=${piiCheck.isPublic}; flagged ${piiCheck.findingsByFile ? piiCheck.findingsByFile.length : 0} file(s))`
+    : '(not yet run)'
   const validationLines = (validationSummary || []).length === 0
     ? '(no validation scripts available)'
     : (validationSummary || []).map((v) => `- npm run ${v.name} — ${v.status}${v.code !== null && v.code !== undefined ? ` (exit ${v.code})` : ''}`).join('\n')
@@ -2434,6 +2450,10 @@ ${branchName || 'unknown'}
 - v0.4: ${v04Line}
 - v0.5: ${v05Line}
 - v0.6: ${v06Line}
+- pii-self-test: ${piiSelfLine}
+
+## PII guard (public-repo)
+- ${piiCheckLine}
 
 ## Validation
 ${validationLines}
@@ -2641,6 +2661,248 @@ function buildHandoffSummary({ task, runFolder, finalStatus, finalReason, loopSt
       containsMemoryAdd,
       containsAiRunsAdd,
     },
+  }
+}
+
+// ===== Public-repo PII guard (v0.7) =====
+//
+// Goal: prevent committing/pushing personal phone numbers or personal
+// WhatsApp DM targets to a public GitHub repo. Defaults to assuming the
+// repo is PUBLIC (fails closed). Override only via env var
+// WORKBENCH_REPO_VISIBILITY=private (e.g. when the repo is provably
+// private). Group invite URLs (chat.whatsapp.com/<token>) are NOT PII —
+// they are stripped from content before scanning so digits inside the
+// invite token never trigger false positives.
+//
+// Detected:
+//   - +972 followed by 8-9 mobile digits (allowing space/dash/paren
+//     separators)
+//   - Local 05X formats: 050-059 followed by 7 digits (with optional
+//     separators)
+//   - wa.me/<digits> personal DM target
+//   - api.whatsapp.com/send?phone=<digits> personal DM target
+//
+// NOT detected (and so NOT blocked):
+//   - chat.whatsapp.com/<token> group-invite URLs
+//   - Masked placeholders: +972XXXXXXXXX, 05X-XXX-XXXX, +972 ## ### ####
+
+const PII_PRODUCT_EXTENSIONS = new Set([
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+  '.json', '.html', '.css', '.svg',
+  '.yaml', '.yml',
+])
+
+function isPiiScannablePath(p) {
+  if (!p) return false
+  // Skip workbench/meta paths (their content is tooling, not product code).
+  if (p === 'scripts/ai-workbench.js') return false
+  if (/^scripts\//.test(p)) return false
+  if (/^\.ai-protocols\//.test(p)) return false
+  if (/^\.ai-runs\//.test(p)) return false
+  if (/^\.githooks\//.test(p)) return false
+  if (/^\.claude\//.test(p)) return false
+  // Skip test/spec files (intentional placeholder phones live there).
+  if (/\.test\.(ts|tsx|js|jsx|mjs|cjs)$/.test(p)) return false
+  if (/\.spec\.(ts|tsx|js|jsx|mjs|cjs)$/.test(p)) return false
+  if (/(^|\/)__tests__\//.test(p)) return false
+  // Skip docs.
+  if (/\.md$/i.test(p)) return false
+  // memory/* and knowledge/* have their own protections (regression
+  // classifier flags them as generated/forbidden); PII guard targets
+  // product-source files reachable from the bundle.
+  if (/^memory\//.test(p)) return false
+  if (/^knowledge\//.test(p)) return false
+  const ext = path.extname(p).toLowerCase()
+  return PII_PRODUCT_EXTENSIONS.has(ext)
+}
+
+function maskNumberDigits(s) {
+  const digits = String(s || '').replace(/\D/g, '')
+  if (digits.length === 0) return '****'
+  if (digits.length <= 3) return '*'.repeat(digits.length)
+  return digits.slice(0, 3) + '*'.repeat(digits.length - 3)
+}
+
+function scanContentForPii(rawContent) {
+  const content = String(rawContent || '')
+  // Strip group-invite URLs first so digits inside invite tokens never
+  // trigger false positives.
+  const stripped = content.replace(/chat\.whatsapp\.com\/[A-Za-z0-9_\-]+/gi, '<group-invite>')
+  const findings = []
+
+  const reWaMe = /wa\.me\/(\+?[0-9][0-9\-\s()]{6,18}[0-9])/gi
+  let m
+  while ((m = reWaMe.exec(stripped)) !== null) {
+    findings.push({ type: 'wa-me-personal', maskedSample: 'wa.me/' + maskNumberDigits(m[1]) })
+  }
+
+  const reWaApi = /api\.whatsapp\.com\/send\?phone=(\+?[0-9][0-9\-\s()]{6,18}[0-9])/gi
+  while ((m = reWaApi.exec(stripped)) !== null) {
+    findings.push({ type: 'wa-api-personal', maskedSample: 'api.whatsapp.com/send?phone=' + maskNumberDigits(m[1]) })
+  }
+
+  const reE164 = /\+972[\s\-()]*(?:\d[\s\-()]*){8,9}\d/g
+  while ((m = reE164.exec(stripped)) !== null) {
+    const digits = m[0].replace(/\D/g, '')
+    if (digits.length >= 11 && digits.length <= 13 && digits.startsWith('972')) {
+      findings.push({ type: 'phone-e164', maskedSample: '+' + maskNumberDigits(digits) })
+    }
+  }
+
+  const re05x = /(?<![0-9+])(05[0-9])[\s\-]?\d{3}[\s\-]?\d{4}(?![0-9])/g
+  while ((m = re05x.exec(stripped)) !== null) {
+    findings.push({ type: 'phone-05x', maskedSample: m[1] + '*******' })
+  }
+
+  return findings
+}
+
+function detectRepoPublicStatus() {
+  const env = String(process.env.WORKBENCH_REPO_VISIBILITY || '').trim().toLowerCase()
+  if (env === 'private') return { isPublic: false, source: 'env-WORKBENCH_REPO_VISIBILITY' }
+  if (env === 'public') return { isPublic: true, source: 'env-WORKBENCH_REPO_VISIBILITY' }
+  // Fail closed: assume public unless explicitly overridden.
+  return { isPublic: true, source: 'default-assume-public' }
+}
+
+function runPiiPublicRepoScan({ projectRoot, changedFiles }) {
+  const { isPublic, source } = detectRepoPublicStatus()
+  if (!isPublic) {
+    return {
+      workbenchVersion: WORKBENCH_VERSION,
+      status: 'NOT_APPLICABLE',
+      reason: 'REPO_PRIVATE',
+      isPublic: false,
+      repoVisibilitySource: source,
+      filesScanned: [],
+      findingsByFile: [],
+      totalFindings: 0,
+    }
+  }
+  const filesScanned = []
+  const findingsByFile = []
+  for (const f of (changedFiles || [])) {
+    if (!isPiiScannablePath(f)) continue
+    const abs = path.isAbsolute(f) ? f : path.join(projectRoot, f)
+    let content = ''
+    try { content = fs.readFileSync(abs, 'utf8') } catch { continue }
+    filesScanned.push(f)
+    const fileFindings = scanContentForPii(content)
+    if (fileFindings.length > 0) findingsByFile.push({ file: f, findings: fileFindings })
+  }
+  const total = findingsByFile.reduce((a, x) => a + x.findings.length, 0)
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    status: total > 0 ? 'FAILED' : 'PROVEN',
+    reason: total > 0 ? 'PII_PUBLIC_REPO_BLOCK' : 'NO_PII_DETECTED',
+    isPublic: true,
+    repoVisibilitySource: source,
+    filesScanned,
+    findingsByFile,
+    totalFindings: total,
+  }
+}
+
+function runPiiSelfTest({ projectRoot }) {
+  const checks = []
+  const expect = (label, ok) => { checks.push({ label, ok }); return ok }
+
+  // 1. blocks +972 phone literal in source content
+  const f1 = scanContentForPii(`export const phone = '+972501234567'`)
+  expect('blocks +972 phone in src content', f1.some((x) => x.type === 'phone-e164'))
+
+  // 2. blocks 05x formatted Israeli phone (dashed + compact)
+  const f2a = scanContentForPii(`Call 050-123-4567 today`)
+  expect('blocks 05x dashed local phone', f2a.some((x) => x.type === 'phone-05x'))
+  const f2b = scanContentForPii(`Call 0501234567 today`)
+  expect('blocks 05x compact local phone', f2b.some((x) => x.type === 'phone-05x'))
+  const f2c = scanContentForPii(`Call 052 471 7646 today`)
+  expect('blocks 05x space-separated local phone', f2c.some((x) => x.type === 'phone-05x'))
+
+  // 3. blocks wa.me personal phone target
+  const f3 = scanContentForPii(`https://wa.me/972501234567`)
+  expect('blocks wa.me personal target', f3.some((x) => x.type === 'wa-me-personal'))
+
+  // 4. blocks api.whatsapp.com/send?phone= personal target
+  const f4 = scanContentForPii(`https://api.whatsapp.com/send?phone=972501234567`)
+  expect('blocks api.whatsapp.com/send?phone personal target', f4.some((x) => x.type === 'wa-api-personal'))
+
+  // 5. does NOT block chat.whatsapp.com group invite URL (even if it carries digits)
+  const f5 = scanContentForPii(`https://chat.whatsapp.com/JqqGpPKTCq3L0JnitU5y5f`)
+  expect('does not block chat.whatsapp.com group invite', f5.length === 0)
+  const f5b = scanContentForPii(`https://chat.whatsapp.com/abc972501234567def`)
+  expect('does not block chat.whatsapp.com invite even when token contains digits', f5b.length === 0)
+
+  // 6. does NOT block masked / placeholder examples
+  const f6a = scanContentForPii(`+972XXXXXXXXX`)
+  expect('does not block masked +972 example', f6a.length === 0)
+  const f6b = scanContentForPii(`05X-XXX-XXXX`)
+  expect('does not block masked 05X example', f6b.length === 0)
+  const f6c = scanContentForPii(`+972 ## ### ####`)
+  expect('does not block masked +972 ## example', f6c.length === 0)
+
+  // 7. masking — emitted sample never contains the full set of digits in cleartext
+  const f7 = scanContentForPii(`+972501234567`)
+  if (f7.length > 0) {
+    expect('PII finding is masked, not full digits', !f7.some((x) => x.maskedSample.includes('972501234567')))
+  } else {
+    expect('PII finding produced for plain +972 number', false)
+  }
+  const f7b = scanContentForPii(`https://wa.me/972501234567`)
+  expect('wa.me masked sample does not echo full number', f7b.length > 0 && !f7b.some((x) => x.maskedSample.includes('972501234567')))
+
+  // 8. file-path gating — workbench/test/protocol/.env/memory/.ai-runs are skipped
+  expect('isPiiScannablePath skips scripts/ai-workbench.js', isPiiScannablePath('scripts/ai-workbench.js') === false)
+  expect('isPiiScannablePath skips .ai-runs file', isPiiScannablePath('.ai-runs/2026-01-01/run.json') === false)
+  expect('isPiiScannablePath skips memory yaml', isPiiScannablePath('memory/family_graph.yaml') === false)
+  expect('isPiiScannablePath skips test file', isPiiScannablePath('src/screens/Foo/foo.test.ts') === false)
+  expect('isPiiScannablePath skips spec file', isPiiScannablePath('src/screens/Foo/foo.spec.tsx') === false)
+  expect('isPiiScannablePath skips .md docs', isPiiScannablePath('docs/note.md') === false)
+  expect('isPiiScannablePath skips .ai-protocols/', isPiiScannablePath('.ai-protocols/01-repo-guard.md') === false)
+  expect('isPiiScannablePath includes product .tsx', isPiiScannablePath('src/screens/Foo/foo.tsx') === true)
+  expect('isPiiScannablePath includes product .ts', isPiiScannablePath('src/screens/Foo/foo.ts') === true)
+
+  // 9. live scan respects repo visibility env override (private → not applicable)
+  const prevEnv = process.env.WORKBENCH_REPO_VISIBILITY
+  try {
+    process.env.WORKBENCH_REPO_VISIBILITY = 'private'
+    const skip = runPiiPublicRepoScan({ projectRoot: '/nonexistent', changedFiles: ['src/x.ts'] })
+    expect('private repo override → status NOT_APPLICABLE', skip.status === 'NOT_APPLICABLE' && skip.isPublic === false)
+
+    process.env.WORKBENCH_REPO_VISIBILITY = 'public'
+    const pub = runPiiPublicRepoScan({ projectRoot, changedFiles: [] })
+    expect('public repo + no changed files → status PROVEN', pub.status === 'PROVEN' && pub.totalFindings === 0)
+  } finally {
+    if (prevEnv === undefined) delete process.env.WORKBENCH_REPO_VISIBILITY
+    else process.env.WORKBENCH_REPO_VISIBILITY = prevEnv
+  }
+
+  // 10. existing forbidden-path / generated-path protections unchanged
+  const clsPkg = classifyChangedFile('package.json', null)
+  expect('classifyChangedFile still flags package.json as packageFiles', clsPkg.bucket === 'packageFiles')
+  const clsLock = classifyChangedFile('package-lock.json', null)
+  expect('classifyChangedFile still flags package-lock.json as packageFiles', clsLock.bucket === 'packageFiles')
+  const clsEnv = classifyChangedFile('.env', null)
+  expect('classifyChangedFile still flags .env as forbiddenSecrets', clsEnv.bucket === 'forbiddenSecrets')
+  const clsEnvLocal = classifyChangedFile('.env.local', null)
+  expect('classifyChangedFile still flags .env.local as forbiddenSecrets', clsEnvLocal.bucket === 'forbiddenSecrets')
+  const clsMem = classifyChangedFile('memory/family_graph.yaml', null)
+  expect('classifyChangedFile still flags memory/* as generatedFiles', clsMem.bucket === 'generatedFiles')
+  const clsRuns = classifyChangedFile('.ai-runs/abc/run.json', null)
+  expect('classifyChangedFile still flags .ai-runs/* as generatedFiles', clsRuns.bucket === 'generatedFiles')
+
+  // 11. memory/* and .ai-runs/* never appear in PII filesScanned (gate skips them)
+  expect('PII gate skips memory/* even on public repo', isPiiScannablePath('memory/family_graph.yaml') === false)
+  expect('PII gate skips .ai-runs/* even on public repo', isPiiScannablePath('.ai-runs/run.json') === false)
+
+  const allPassed = checks.every((c) => c.ok)
+  return {
+    workbenchVersion: WORKBENCH_VERSION,
+    allPassed,
+    totalCases: checks.length,
+    passedCases: checks.filter((c) => c.ok).length,
+    failedCaseLabels: checks.filter((c) => !c.ok).map((c) => c.label),
+    checks,
   }
 }
 
@@ -3053,8 +3315,12 @@ REQUIRED OUTPUT:
   writeJSON(path.join(runDir, 'v05-self-test.json'), v05SelfTest)
   const v06SelfTest = runV06SelfTest({ projectRoot: process.cwd() })
   writeJSON(path.join(runDir, 'v06-self-test.json'), v06SelfTest)
+  const piiSelfTest = runPiiSelfTest({ projectRoot: process.cwd() })
+  writeJSON(path.join(runDir, 'pii-self-test.json'), piiSelfTest)
   const diffSummary = buildDiffSummary({ regression, gitStatusRaw: regression.gitStatusRaw })
   writeJSON(path.join(runDir, 'diff-summary.json'), diffSummary)
+  const piiCheck = runPiiPublicRepoScan({ projectRoot: process.cwd(), changedFiles: diffSummary.changedFiles })
+  writeJSON(path.join(runDir, 'pii-check.json'), piiCheck)
   const decisionRequired = buildDecisionRequired({ staticAnalysis, repoMismatch })
   writeJSON(path.join(runDir, 'decision-required.json'), decisionRequired)
 
@@ -3130,6 +3396,25 @@ REQUIRED OUTPUT:
       confidence: 'HIGH',
       failureReason: v06SelfTest.allPassed ? null : 'V0_6_SELF_TEST_FAILED',
     },
+    piiSelfTest: {
+      allPassed: piiSelfTest.allPassed,
+      totalCases: piiSelfTest.totalCases,
+      passedCases: piiSelfTest.passedCases,
+      failedCaseLabels: piiSelfTest.failedCaseLabels,
+      confidence: 'HIGH',
+      failureReason: piiSelfTest.allPassed ? null : 'PII_SELF_TEST_FAILED',
+    },
+    piiCheck: {
+      status: piiCheck.status,
+      reason: piiCheck.reason,
+      isPublic: piiCheck.isPublic,
+      repoVisibilitySource: piiCheck.repoVisibilitySource,
+      filesScannedCount: piiCheck.filesScanned.length,
+      flaggedFileCount: piiCheck.findingsByFile.length,
+      totalFindings: piiCheck.totalFindings,
+      flaggedFiles: piiCheck.findingsByFile.map((x) => x.file),
+      confidence: 'HIGH',
+    },
     repoMismatch: {
       status: repoMismatch.status,
       confidence: repoMismatch.confidence,
@@ -3147,6 +3432,10 @@ REQUIRED OUTPUT:
       : !v04SelfTest.allPassed
       ? 'FAILED'
       : !annotationSelfTest.allPassed
+      ? 'FAILED'
+      : !piiSelfTest.allPassed
+      ? 'FAILED'
+      : piiCheck.status === 'FAILED'
       ? 'FAILED'
       : anyFailed
       ? 'FAILED'
@@ -3169,6 +3458,10 @@ REQUIRED OUTPUT:
       ? 'V0_4_SELF_TEST_FAILED'
       : !annotationSelfTest.allPassed
       ? 'ANNOTATION_SELF_TEST_FAILED'
+      : !piiSelfTest.allPassed
+      ? 'PII_SELF_TEST_FAILED'
+      : piiCheck.status === 'FAILED'
+      ? 'PII_PUBLIC_REPO_BLOCK'
       : anyFailed
       ? 'VALIDATION_FAILED'
       : truthFlagged.length > 0
@@ -3180,7 +3473,7 @@ REQUIRED OUTPUT:
       : minimumProof.status === 'PROVEN'
       ? 'CORE_PROOF_OBSERVED'
       : 'NO_CORE_PROOF',
-    finalConfidence: (repoMismatch.status === 'STOP_REPO_MISMATCH' || !v06SelfTest.allPassed || !v05SelfTest.allPassed || !v04SelfTest.allPassed || !annotationSelfTest.allPassed) ? 'HIGH' : null,
+    finalConfidence: (repoMismatch.status === 'STOP_REPO_MISMATCH' || !v06SelfTest.allPassed || !v05SelfTest.allPassed || !v04SelfTest.allPassed || !annotationSelfTest.allPassed || !piiSelfTest.allPassed || piiCheck.status === 'FAILED') ? 'HIGH' : null,
     note: 'v0.2 runs validation, the forbidden-language scan, the git-aware regression classifier, the safety-constraint scan, and now executes mapped vitest files for each eval. Evals whose mapped file passed are PROVEN/HIGH; failed mapped files are FAILED/HIGH; evals without mappedTest stay NOT_PROVEN/LOW.',
   }
   writeJSON(path.join(runDir, 'evidence-check.json'), evidence)
@@ -3448,6 +3741,8 @@ Artifacts:
     v04SelfTest,
     v05SelfTest,
     branchName,
+    piiCheck,
+    piiSelfTest,
   })
   writeJSON(path.join(runDir, 'next-action.json'), nextAction)
   const reviewPromptText = buildReviewPrompt({
@@ -3512,6 +3807,7 @@ Artifacts:
     task, runFolder: runDir,
     finalStatus: canonicalFinalStatus, finalReason: canonicalFinalReason,
     annotationSelfTest, v04SelfTest, v05SelfTest, v06SelfTest,
+    piiSelfTest, piiCheck,
     validationSummary, staticAnalysis, decisionRequired, loopState, nextAction,
     diffSummary, branchName,
   })
