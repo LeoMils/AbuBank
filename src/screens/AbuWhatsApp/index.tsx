@@ -16,6 +16,15 @@ import { Toast } from '../../components/Toast'
 import { PageShell } from '../../components/PageShell'
 import { LoadingState } from '../../components/LoadingState'
 import { FamilyQuickFaces } from './familyQuickFaces'
+import { FamilyContactsSetup } from './FamilyContactsSetup'
+
+function isOperatorQueryParam(): boolean {
+  try {
+    if (typeof window === 'undefined' || !window.location) return false
+    const params = new URLSearchParams(window.location.search || '')
+    return params.get('operator') === '1'
+  } catch { return false }
+}
 
 type WhatsAppTab = 'family' | 'actions'
 
@@ -99,6 +108,10 @@ export function AbuWhatsApp() {
   const [activeStyle, setActiveStyle] = useState<Style>('מקורי')
   const [recordingTime, setRecordingTime] = useState(0)
   const [lastIntent, setLastIntent] = useState('')
+
+  // Operator-only setup for local family contacts. Hidden from normal use:
+  // toggled by `?operator=1` query param or a long-press on the family title.
+  const [operatorMode, setOperatorMode] = useState<boolean>(isOperatorQueryParam)
 
   // Voice conversation mode
   const [voiceMode, setVoiceMode] = useState(false)
@@ -649,11 +662,16 @@ export function AbuWhatsApp() {
         position: 'relative',
       }}>
 
-        {tab === 'family' && !voiceMode && (
+        {tab === 'family' && !voiceMode && !operatorMode && (
           <FamilyQuickFaces
             onOpenWhatsApp={(url) => { window.location.href = url }}
             onOpenTel={(url) => { window.location.href = url }}
+            onOperatorSetup={() => setOperatorMode(true)}
           />
+        )}
+
+        {tab === 'family' && !voiceMode && operatorMode && (
+          <FamilyContactsSetup onClose={() => setOperatorMode(false)} />
         )}
 
         {tab === 'actions' && (

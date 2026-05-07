@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from 'react'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
+import { getLocalContacts, type LocalFamilyContact } from './familyContactsStorage'
 
 const WA_GREEN = '#25D366'
 const TEAL = '#14b8a6'
@@ -32,6 +34,42 @@ export function getVisibleFaces(faces: ReadonlyArray<FamilyQuickFace> = FAMILY_Q
   })
 }
 
+/**
+ * Merge static scaffold (names + relationships + group URL, no real numbers)
+ * with localStorage-only per-person overrides (phone/whatsapp/photo/enabled).
+ *
+ * - Group entry is preserved from scaffold.
+ * - Person entries with a matching local override take phone/whatsapp/photo/
+ *   enabled from local; identity (id, displayName, relationshipHebrew) is
+ *   always sourced from scaffold so the bundle never carries personal data.
+ * - Scaffold persons without an override remain disabled with empty phone
+ *   and are filtered out by getVisibleFaces.
+ */
+export function mergeFacesWithLocal(
+  scaffold: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES,
+  local: ReadonlyArray<LocalFamilyContact> = [],
+): FamilyQuickFace[] {
+  const byId = new Map<string, LocalFamilyContact>()
+  for (const c of local) byId.set(c.id, c)
+  return scaffold.map((f) => {
+    if (f.type !== 'person') return { ...f }
+    const override = byId.get(f.id)
+    if (!override) return { ...f }
+    const merged: Extract<FamilyQuickFace, { type: 'person' }> = {
+      type: 'person',
+      id: f.id,
+      displayName: f.displayName,
+      phoneE164: override.phoneE164 || '',
+      enabled: override.enabled === true,
+    }
+    if (f.relationshipHebrew !== undefined) merged.relationshipHebrew = f.relationshipHebrew
+    if (override.whatsappE164 && override.whatsappE164.length > 0) merged.whatsappE164 = override.whatsappE164
+    if (override.photoDataUrl && override.photoDataUrl.length > 0) merged.photoFile = override.photoDataUrl
+    else if (override.photoFile && override.photoFile.length > 0) merged.photoFile = override.photoFile
+    return merged
+  })
+}
+
 export function computeInitials(displayName: string): string {
   const trimmed = (displayName || '').trim()
   if (!trimmed) return '?'
@@ -42,12 +80,30 @@ export function computeInitials(displayName: string): string {
 interface FamilyQuickFacesProps {
   onOpenWhatsApp: (url: string) => void
   onOpenTel: (url: string) => void
+  onOperatorSetup?: () => void
+  localContacts?: ReadonlyArray<LocalFamilyContact>
 }
 
-export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel }: FamilyQuickFacesProps) {
-  const visible = getVisibleFaces()
+export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, localContacts }: FamilyQuickFacesProps) {
+  const [contacts, setContacts] = useState<ReadonlyArray<LocalFamilyContact>>(localContacts ?? [])
+  useEffect(() => {
+    if (localContacts !== undefined) { setContacts(localContacts); return }
+    setContacts(getLocalContacts())
+  }, [localContacts])
+
+  const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, contacts)
+  const visible = getVisibleFaces(merged)
   const group = visible.find(f => f.type === 'group') as Extract<FamilyQuickFace, { type: 'group' }> | undefined
   const people = visible.filter(f => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]
+
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handlePressStart = () => {
+    if (!onOperatorSetup) return
+    longPressTimer.current = setTimeout(() => { onOperatorSetup() }, 1500)
+  }
+  const handlePressEnd = () => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
+  }
 
   return (
     <div
@@ -59,12 +115,20 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel }: FamilyQuickFaces
         direction: 'rtl',
       }}
     >
-      <h2 style={{
+      <h2
+        data-testid="family-title"
+        onPointerDown={handlePressStart}
+        onPointerUp={handlePressEnd}
+        onPointerLeave={handlePressEnd}
+        onPointerCancel={handlePressEnd}
+        style={{
         margin: 0,
         fontFamily: "'Heebo',sans-serif",
         fontSize: 24, fontWeight: 600,
         color: 'rgba(255,255,255,0.92)',
         letterSpacing: '0.4px',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
       }}>
         המשפחה שלי
       </h2>

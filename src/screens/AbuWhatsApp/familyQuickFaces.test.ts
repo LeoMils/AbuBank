@@ -6,8 +6,14 @@ import {
   buildTelUrl,
   getVisibleFaces,
   computeInitials,
+  mergeFacesWithLocal,
 } from './familyQuickFaces'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
+import type { LocalFamilyContact } from './familyContactsStorage'
+
+// Single synthetic placeholder reused by every merge test in this file.
+// Real numbers must never appear in source.
+const TEST_FAKE_PHONE = '+972501234567'
 
 describe('sanitizePhoneE164', () => {
   it('strips all non-digit characters', () => {
@@ -188,11 +194,94 @@ describe('FAMILY_QUICK_FACES scaffold', () => {
       {
         type: 'person', id: 'mor', displayName: 'מור',
         relationshipHebrew: 'הבת',
-        phoneE164: '+972501234567', enabled: true,
+        phoneE164: TEST_FAKE_PHONE, enabled: true,
       },
     ]
     const visible = getVisibleFaces(augmented)
     const mor = visible.find(f => f.type === 'person' && f.id === 'mor')
     expect(mor).toBeDefined()
+  })
+})
+
+describe('source scaffold contains no real phone numbers', () => {
+  it('every person scaffold entry has empty phoneE164 and is disabled', () => {
+    const people = FAMILY_QUICK_FACES.filter(f => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]
+    for (const p of people) {
+      expect(p.phoneE164).toBe('')
+      expect(p.whatsappE164 ?? '').toBe('')
+      expect(p.enabled).toBe(false)
+    }
+  })
+})
+
+describe('mergeFacesWithLocal', () => {
+  it('returns the scaffold untouched when no local overrides exist', () => {
+    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [])
+    expect(merged.length).toBe(FAMILY_QUICK_FACES.length)
+    const visible = getVisibleFaces(merged)
+    expect(visible.length).toBe(1)
+    expect(visible[0]?.type).toBe('group')
+  })
+
+  it('localStorage data can enable a person with a valid local phone', () => {
+    const local: LocalFamilyContact[] = [{ id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE }]
+    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, local)
+    const visible = getVisibleFaces(merged)
+    const mor = visible.find(f => f.type === 'person' && f.id === 'mor')
+    expect(mor).toBeDefined()
+    expect((mor as Extract<FamilyQuickFace, { type: 'person' }>).enabled).toBe(true)
+  })
+
+  it('invalid local phone keeps the person hidden', () => {
+    const local: LocalFamilyContact[] = [{ id: 'mor', enabled: true, phoneE164: '12345' }]
+    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, local)
+    const visible = getVisibleFaces(merged)
+    expect(visible.find(f => f.type === 'person' && f.id === 'mor')).toBeUndefined()
+  })
+
+  it('local override with enabled=false leaves the person hidden even with a valid phone', () => {
+    const local: LocalFamilyContact[] = [{ id: 'mor', enabled: false, phoneE164: TEST_FAKE_PHONE }]
+    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, local)
+    const visible = getVisibleFaces(merged)
+    expect(visible.find(f => f.type === 'person' && f.id === 'mor')).toBeUndefined()
+  })
+
+  it('Anabel and Ari remain hidden unless valid local data exists', () => {
+    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [])
+    const visible = getVisibleFaces(merged)
+    expect(visible.find(f => f.id === 'anabel')).toBeUndefined()
+    expect(visible.find(f => f.id === 'ari')).toBeUndefined()
+  })
+
+  it('group bubble survives even when no local contacts exist', () => {
+    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [])
+    const visible = getVisibleFaces(merged)
+    expect(visible.some(f => f.type === 'group' && f.id === 'family-group')).toBe(true)
+  })
+
+  it('WhatsApp URL builds only from local data (scaffold has no number)', () => {
+    const local: LocalFamilyContact[] = [{ id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE }]
+    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, local)
+    const mor = merged.find(f => f.type === 'person' && f.id === 'mor') as Extract<FamilyQuickFace, { type: 'person' }>
+    const url = buildWhatsAppPersonUrl(mor)
+    expect(url.startsWith('https://wa.me/')).toBe(true)
+    expect(/^https:\/\/wa\.me\/\d{8,15}$/.test(url)).toBe(true)
+  })
+
+  it('phone (tel:) URL builds only from local data', () => {
+    const local: LocalFamilyContact[] = [{ id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE }]
+    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, local)
+    const mor = merged.find(f => f.type === 'person' && f.id === 'mor') as Extract<FamilyQuickFace, { type: 'person' }>
+    const tel = buildTelUrl(mor)
+    expect(/^tel:\+\d{8,15}$/.test(tel)).toBe(true)
+  })
+
+  it('identity (displayName, relationshipHebrew) is sourced from scaffold, not from local override', () => {
+    // Malicious-override scenario: cast through unknown to inject extra fields.
+    const malicious: unknown = { id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE, displayName: 'OVERRIDE', relationshipHebrew: 'NOT_HEBET' }
+    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [malicious as LocalFamilyContact])
+    const mor = merged.find(f => f.type === 'person' && f.id === 'mor') as Extract<FamilyQuickFace, { type: 'person' }>
+    expect(mor.displayName).toBe('מור')
+    expect(mor.relationshipHebrew).toBe('הבת')
   })
 })
