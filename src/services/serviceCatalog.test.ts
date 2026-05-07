@@ -1,7 +1,11 @@
+import fs from 'fs'
+import path from 'path'
 import { describe, it, expect } from 'vitest'
 import { LAUNCHER_SERVICES, type LauncherService } from './serviceCatalog'
 import { SERVICES as HOME_SERVICES } from '../screens/Home/data'
 import { IMMUTABLE_DEFAULTS } from '../state/defaults'
+
+const PROJECT_ROOT = path.resolve(__dirname, '../..')
 
 describe('serviceCatalog (single source of truth)', () => {
   it('contains exactly 9 services', () => {
@@ -83,5 +87,48 @@ describe('catalog ↔ Home / IMMUTABLE_DEFAULTS consistency', () => {
     for (const s of LAUNCHER_SERVICES) {
       expect(legacy.has(s.id)).toBe(false)
     }
+  })
+
+  it('no service has missing or empty label / url / logo', () => {
+    for (const s of LAUNCHER_SERVICES) {
+      expect(s.label.trim().length).toBeGreaterThan(0)
+      expect(s.url.trim().length).toBeGreaterThan(0)
+      expect(s.logo.trim().length).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('catalog logo paths exist on disk', () => {
+  for (const s of LAUNCHER_SERVICES) {
+    it(`${s.id}: logo file exists under public/`, () => {
+      // logo paths are absolute web paths like '/logos/foo.png'.
+      const fsPath = path.join(PROJECT_ROOT, 'public', s.logo.replace(/^\/+/, ''))
+      expect(fs.existsSync(fsPath)).toBe(true)
+    })
+  }
+})
+
+describe('launcher contract — no services[8] / "more" coupling', () => {
+  // Static-source guard: these checks fail loudly if any future patch
+  // re-introduces the index-8 special case the catalog contract forbids.
+  function readSrc(rel: string): string {
+    return fs.readFileSync(path.join(PROJECT_ROOT, rel), 'utf8')
+  }
+
+  it('App.tsx does not index services[8]', () => {
+    const src = readSrc('src/App.tsx')
+    expect(src.includes('services[8]')).toBe(false)
+  })
+
+  it('App.tsx does not import or render MoreModal as a launcher path', () => {
+    const src = readSrc('src/App.tsx')
+    expect(/from\s+['"][^'"]*MoreModal[^'"]*['"]/.test(src)).toBe(false)
+    expect(src.includes('<MoreModal')).toBe(false)
+  })
+
+  it('Home/index.tsx renders SERVICES via .map (no overflow/more split)', () => {
+    const src = readSrc('src/screens/Home/index.tsx')
+    expect(/SERVICES\.map\s*\(/.test(src)).toBe(true)
+    expect(src.includes('services[8]')).toBe(false)
   })
 })

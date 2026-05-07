@@ -1,22 +1,29 @@
 /*
  * AbuBank — single source of truth for the 9 launcher services.
  *
- * Both `src/screens/Home/data.ts` (runtime 3×3 launcher) and
- * `src/state/defaults.ts` (IndexedDB bootstrap defaults) derive from this
- * module. Do not duplicate this list anywhere else.
+ * CONTRACT
+ * --------
+ * 1. This file is the ONLY canonical source for the launcher services.
+ *    `src/screens/Home/data.ts` and `src/state/defaults.ts` derive from this
+ *    module. Do not duplicate the list anywhere else (no Settings/Admin/
+ *    storage shadow copy).
  *
- * Canonical-id rule:
- * - Ids match the shape persisted in `abu-bank-db.services` (e.g. `postalbank`,
- *   `water-ks`, `arnona-ks`, `hot-mobile`). Existing local user data therefore
- *   round-trips with no migration.
+ * 2. Ids must remain compatible with the IndexedDB persisted shape
+ *    (`abu-bank-db.services`, keyed by id). Existing local user data therefore
+ *    round-trips with no migration. Examples of canonical ids:
+ *    `postalbank`, `water-ks`, `arnona-ks`, `hot-mobile`.
  *
- * Canonical-order rule:
- * - Render order matches the visible Home launcher (top-left → bottom-right).
+ * 3. Visible order is launcher order (top-left → bottom-right of the 3×3
+ *    grid). The visible order is the canonical order; do not reorder for
+ *    storage or any other reason.
  *
- * Canonical-URL rule:
- * - URLs are the ones the launcher actually navigates to today. They are
- *   external service entry points; AbuBank does NOT autofill, store, or
- *   transmit any third-party credentials.
+ * 4. Every entry in `LAUNCHER_SERVICES` is a normal launcher tile — there is
+ *    NO "more" / overflow / 9th-special slot. The 9th service is exactly as
+ *    important as the 1st. Do not add `services[8]`-style index logic.
+ *
+ * 5. URLs are external entry points only. AbuBank does NOT autofill, store,
+ *    transmit, or remember any third-party credentials, passwords, or login
+ *    tokens. Adding any such field here is forbidden.
  */
 
 export type LauncherServiceId =
