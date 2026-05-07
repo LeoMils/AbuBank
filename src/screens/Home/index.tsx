@@ -48,8 +48,8 @@ function ServiceLogo({ svc }: { svc: Service }) {
       loading="eager"
       decoding="async"
       style={{
-        width: svc.id === 'partner' ? '72%' : svc.id === 'mizrahi' ? '88%' : svc.id === 'iec' ? '80%' : svc.id === 'water' ? '90%' : svc.id === 'arnona' ? '78%' : '84%',
-        height: svc.id === 'partner' ? '72%' : svc.id === 'mizrahi' ? '88%' : svc.id === 'iec' ? '80%' : svc.id === 'water' ? '90%' : svc.id === 'arnona' ? '78%' : '84%',
+        width: svc.id === 'partner' ? '72%' : svc.id === 'mizrahi' ? '88%' : svc.id === 'iec' ? '80%' : svc.id === 'water-ks' ? '90%' : svc.id === 'arnona-ks' ? '78%' : '84%',
+        height: svc.id === 'partner' ? '72%' : svc.id === 'mizrahi' ? '88%' : svc.id === 'iec' ? '80%' : svc.id === 'water-ks' ? '90%' : svc.id === 'arnona-ks' ? '78%' : '84%',
         objectFit: 'contain',
         marginTop: svc.id === 'mizrahi' ? '4%' : undefined,
         position: 'relative', zIndex: 1,
@@ -378,15 +378,15 @@ export function Home() {
                   position: 'relative', overflow: 'hidden',
                   background: (() => {
                     const g: Record<string, string> = {
-                      mizrahi: 'radial-gradient(circle at 38% 32%, rgba(255,220,180,0.95) 0%, #f97316 42%, #92380a 72%, #1e0800 100%)',
-                      postal:  'radial-gradient(circle at 38% 32%, rgba(180,210,255,0.95) 0%, #3b82f6 42%, #1240a0 72%, #040f2a 100%)',
-                      max:     'radial-gradient(circle at 38% 32%, rgba(220,180,255,0.95) 0%, #a855f7 42%, #5b1fa8 72%, #110520 100%)',
-                      water:   'radial-gradient(circle at 38% 32%, rgba(180,248,255,0.95) 0%, #06b6d4 42%, #036b7e 72%, #001519 100%)',
-                      iec:     'radial-gradient(circle at 38% 32%, rgba(255,248,160,0.95) 0%, #eab308 42%, #8a6200 72%, #1a1000 100%)',
-                      arnona:  'radial-gradient(circle at 38% 32%, rgba(180,255,200,0.95) 0%, #22c55e 42%, #0d6b30 72%, #011508 100%)',
-                      hot:     'radial-gradient(circle at 38% 32%, rgba(255,180,180,0.95) 0%, #ef4444 42%, #8a0f0f 72%, #1a0000 100%)',
-                      partner: 'radial-gradient(circle at 38% 32%, rgba(210,185,255,0.95) 0%, #8b5cf6 42%, #4a1fa0 72%, #0c0420 100%)',
-                      yes:     'radial-gradient(circle at 38% 32%, rgba(175,225,255,0.95) 0%, #0ea5e9 42%, #065d88 72%, #010e1a 100%)',
+                      'mizrahi':    'radial-gradient(circle at 38% 32%, rgba(255,220,180,0.95) 0%, #f97316 42%, #92380a 72%, #1e0800 100%)',
+                      'postalbank': 'radial-gradient(circle at 38% 32%, rgba(180,210,255,0.95) 0%, #3b82f6 42%, #1240a0 72%, #040f2a 100%)',
+                      'max':        'radial-gradient(circle at 38% 32%, rgba(220,180,255,0.95) 0%, #a855f7 42%, #5b1fa8 72%, #110520 100%)',
+                      'water-ks':   'radial-gradient(circle at 38% 32%, rgba(180,248,255,0.95) 0%, #06b6d4 42%, #036b7e 72%, #001519 100%)',
+                      'iec':        'radial-gradient(circle at 38% 32%, rgba(255,248,160,0.95) 0%, #eab308 42%, #8a6200 72%, #1a1000 100%)',
+                      'arnona-ks':  'radial-gradient(circle at 38% 32%, rgba(180,255,200,0.95) 0%, #22c55e 42%, #0d6b30 72%, #011508 100%)',
+                      'hot-mobile': 'radial-gradient(circle at 38% 32%, rgba(255,180,180,0.95) 0%, #ef4444 42%, #8a0f0f 72%, #1a0000 100%)',
+                      'partner':    'radial-gradient(circle at 38% 32%, rgba(210,185,255,0.95) 0%, #8b5cf6 42%, #4a1fa0 72%, #0c0420 100%)',
+                      'yes':        'radial-gradient(circle at 38% 32%, rgba(175,225,255,0.95) 0%, #0ea5e9 42%, #065d88 72%, #010e1a 100%)',
                     };
                     return g[svc.id] ?? `radial-gradient(circle at 38% 32%, rgba(255,255,255,0.90) 0%, ${svc.color} 42%, #111 100%)`;
                   })(),

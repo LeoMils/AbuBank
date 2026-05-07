@@ -1,25 +1,13 @@
-// AbuBank — Home screen data (no JSX)
+// AbuBank — Home screen data.
+//
+// SERVICES derives from src/services/serviceCatalog.ts (single source of truth).
+// Greetings + daily-message helpers stay here because they are launcher-specific.
 
-export interface Service {
-  id: string;
-  label: string;
-  url: string;
-  color: string;
-  logo: string;
-  bgColor: string;
-}
+import { LAUNCHER_SERVICES, type LauncherService } from '../../services/serviceCatalog'
 
-export const SERVICES: Service[] = [
-  {id:'mizrahi', label:'מזרחי טפחות',  url:'https://www.mizrahi-tefahot.co.il/login/',  color:'#f97316', logo:'/logos/mizrahi.png',    bgColor:'#fff'},
-  {id:'postal',  label:'דואר ישראל',   url:'https://www.postalfinance.co.il/',           color:'#3b82f6', logo:'/logos/postalbank.png', bgColor:'#fff'},
-  {id:'max',     label:'MAX',           url:'https://www.max.co.il/login',               color:'#a855f7', logo:'/logos/max.png',        bgColor:'#1a2f6b'},
-  {id:'water',   label:'מפעל המים',    url:'https://www.city4u.co.il/water/kfar-saba',  color:'#06b6d4', logo:'/logos/WATER.jpg',      bgColor:'#fff'},
-  {id:'iec',     label:'חברת החשמל',  url:'https://enes.iec.co.il/LoginBZ1.aspx',      color:'#eab308', logo:'/logos/iec.png',        bgColor:'#fff'},
-  {id:'arnona',  label:'ארנונה כ"ס',  url:'https://www.city4u.co.il/arnona/kfar-saba', color:'#22c55e', logo:'/logos/arnona.png',     bgColor:'#fff'},
-  {id:'hot',     label:'HOT mobile',   url:'https://www.hotmobile.co.il',               color:'#ef4444', logo:'/logos/hot.png',        bgColor:'#1a1a2e'},
-  {id:'partner', label:'פרטנר',        url:'https://www.partner.co.il/n/login/',        color:'#8b5cf6', logo:'/logos/partner.png',    bgColor:'#0A4A45'},
-  {id:'yes',     label:'yes',          url:'https://www.yes.co.il/personal-account/',   color:'#0ea5e9', logo:'/logos/yes.png',        bgColor:'#1a1a2e'},
-];
+export type Service = LauncherService
+
+export const SERVICES: ReadonlyArray<Service> = LAUNCHER_SERVICES
 
 export const MSGS = [
   'כל החשבונות בהישג יד 💛', 'הכל מסודר ומוכן בשבילך',
