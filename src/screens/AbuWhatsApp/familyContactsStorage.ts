@@ -75,6 +75,39 @@ export function clearLocalContacts(storage: StorageLike | null = defaultStorage(
   try { storage.removeItem(LOCAL_FAMILY_CONTACTS_STORAGE_KEY) } catch { /* private mode */ }
 }
 
+/**
+ * Per-contact save: validates shape and (when enabled) E.164, then writes
+ * the contact into the existing list keyed by id (replacing if it already
+ * exists). Returns ok/errors so the operator UI can render Hebrew feedback.
+ */
+export interface SaveResult {
+  ok: boolean
+  errors: string[]
+}
+
+export function upsertLocalContact(contact: LocalFamilyContact, storage: StorageLike | null = defaultStorage()): SaveResult {
+  const errors: string[] = []
+  if (!isLocalFamilyContactShape(contact)) errors.push('invalid contact shape')
+  if (contact.enabled && !isValidPhoneE164(contact.phoneE164)) errors.push('phoneE164 fails E.164 validation')
+  if (contact.whatsappE164 !== undefined && contact.whatsappE164.length > 0 && !isValidPhoneE164(contact.whatsappE164)) {
+    errors.push('whatsappE164 fails E.164 validation')
+  }
+  if (errors.length > 0) return { ok: false, errors }
+  const current = getLocalContacts(storage)
+  const next = [...current.filter((c) => c.id !== contact.id), contact]
+  setLocalContacts(next, storage)
+  return { ok: true, errors: [] }
+}
+
+/**
+ * Per-contact remove: strips the entry from the array. No-op if id missing.
+ */
+export function removeLocalContact(id: string, storage: StorageLike | null = defaultStorage()): void {
+  const current = getLocalContacts(storage)
+  const next = current.filter((c) => c.id !== id)
+  setLocalContacts(next, storage)
+}
+
 export function importContactsJSON(jsonText: string): ImportResult {
   const errors: string[] = []
   let parsed: unknown

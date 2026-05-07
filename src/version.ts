@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.3.0-abuwhatsapp-local',
-  buildLabel: 'AbuWhatsApp Local Contacts',
+  version:    '0.3.1-abuwhatsapp-bubbles',
+  buildLabel: 'AbuWhatsApp Family Bubble Grid',
   buildDate:  '2026-05-07',
   branchHint: 'feat/abuwhatsapp-local-family-contacts',
 } as const

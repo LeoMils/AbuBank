@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
 import { getLocalContacts, type LocalFamilyContact } from './familyContactsStorage'
+import { APP_VERSION } from '../../version'
 
 const WA_GREEN = '#25D366'
 const TEAL = '#14b8a6'
+const GOLD = '#C9A84C'
+
+// ─── Phone & URL helpers (unchanged contracts; existing tests pin them) ────
 
 export function sanitizePhoneE164(raw: string): string {
   if (typeof raw !== 'string') return ''
@@ -26,6 +30,15 @@ export function buildTelUrl(face: Extract<FamilyQuickFace, { type: 'person' }>):
   return `tel:+${sanitizePhoneE164(face.phoneE164)}`
 }
 
+// ─── Visibility & merge ─────────────────────────────────────────────────────
+
+/**
+ * Filter to only entries that should appear in the unified bubble grid.
+ * Group: needs an enabled flag and a non-empty whatsappUrl.
+ * Person: needs an enabled flag and a valid E.164 phone (so WhatsApp/tel
+ * links work). Persons without a phone are intentionally NOT shown — the
+ * operator must configure a phone first.
+ */
 export function getVisibleFaces(faces: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES): FamilyQuickFace[] {
   return faces.filter(f => {
     if (!f.enabled) return false
@@ -37,13 +50,6 @@ export function getVisibleFaces(faces: ReadonlyArray<FamilyQuickFace> = FAMILY_Q
 /**
  * Merge static scaffold (names + relationships + group URL, no real numbers)
  * with localStorage-only per-person overrides (phone/whatsapp/photo/enabled).
- *
- * - Group entry is preserved from scaffold.
- * - Person entries with a matching local override take phone/whatsapp/photo/
- *   enabled from local; identity (id, displayName, relationshipHebrew) is
- *   always sourced from scaffold so the bundle never carries personal data.
- * - Scaffold persons without an override remain disabled with empty phone
- *   and are filtered out by getVisibleFaces.
  */
 export function mergeFacesWithLocal(
   scaffold: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES,
@@ -77,11 +83,29 @@ export function computeInitials(displayName: string): string {
   return first || '?'
 }
 
+// ─── Unified bubble grid ───────────────────────────────────────────────────
+//
+// Same component renders both group and person tiles. Same circle size,
+// same label style, same spacing, same gradient. The only difference is
+// the photo/initials content and the tap action.
+
+const BUBBLE_SIZE = 96     // px — single canonical size for every tile
+const BUBBLE_LABEL_FONT = 16
+
 interface FamilyQuickFacesProps {
+  /** Tap a target with a chosen action. type='url' → open URL same-tab. */
   onOpenWhatsApp: (url: string) => void
   onOpenTel: (url: string) => void
+  /** Operator-only setup hand-off (long-press the screen title). */
   onOperatorSetup?: () => void
+  /** Test/Storybook hook. Defaults to localStorage at mount. */
   localContacts?: ReadonlyArray<LocalFamilyContact>
+}
+
+type ActionKind = 'whatsapp' | 'call'
+
+interface ActionSheetState {
+  face: Extract<FamilyQuickFace, { type: 'person' }>
 }
 
 export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, localContacts }: FamilyQuickFacesProps) {
@@ -93,8 +117,29 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
 
   const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, contacts)
   const visible = getVisibleFaces(merged)
-  const group = visible.find(f => f.type === 'group') as Extract<FamilyQuickFace, { type: 'group' }> | undefined
-  const people = visible.filter(f => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]
+
+  // Persons with no valid phone yet — kept for the friendly "המספר עדיין לא הוגדר"
+  // path so Martita sees a tile and gets a soft message instead of nothing.
+  // We render tiles for *every scaffold person*, valid or not. Group always
+  // first if enabled.
+  const allPersons = merged.filter((f) => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]
+  const group = merged.find((f) => f.type === 'group' && f.enabled) as Extract<FamilyQuickFace, { type: 'group' }> | undefined
+
+  // The visible-set rule above is preserved for tests, but the grid below
+  // also surfaces persons without a phone so they get the friendly message.
+  // Anabel/Ari and other scaffold-only entries with no override remain hidden
+  // until a local override exists — that gates by .enabled, not by phone.
+  const personsForGrid = allPersons.filter((p) => {
+    // Hide pure scaffold (no override at all) so the grid stays clean.
+    return contacts.some((c) => c.id === p.id)
+  })
+
+  const [actionSheet, setActionSheet] = useState<ActionSheetState | null>(null)
+  const [toast, setToast] = useState<string>('')
+  const showToast = (msg: string) => {
+    setToast(msg)
+    window.setTimeout(() => setToast((cur) => (cur === msg ? '' : cur)), 2400)
+  }
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handlePressStart = () => {
@@ -105,63 +150,116 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
   }
 
+  function handleTapGroup() {
+    if (!group || !group.whatsappUrl) {
+      showToast('קבוצת המשפחה עדיין לא הוגדרה')
+      return
+    }
+    onOpenWhatsApp(group.whatsappUrl)
+  }
+
+  function handleTapPerson(face: Extract<FamilyQuickFace, { type: 'person' }>) {
+    if (!isValidPhoneE164(face.phoneE164)) {
+      showToast('המספר עדיין לא הוגדר')
+      return
+    }
+    setActionSheet({ face })
+  }
+
+  function handleActionChoice(kind: ActionKind) {
+    if (!actionSheet) return
+    const face = actionSheet.face
+    setActionSheet(null)
+    if (kind === 'whatsapp') onOpenWhatsApp(buildWhatsAppPersonUrl(face))
+    else if (kind === 'call') onOpenTel(buildTelUrl(face))
+  }
+
   return (
     <div
       data-testid="family-quick-faces"
       style={{
-        width: '100%', maxWidth: 420,
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 22,
+        width: '100%', maxWidth: 460,
+        display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+        gap: 16,
         direction: 'rtl',
       }}
     >
-      <h2
-        data-testid="family-title"
+      <header
+        data-testid="abuwhatsapp-header"
         onPointerDown={handlePressStart}
         onPointerUp={handlePressEnd}
         onPointerLeave={handlePressEnd}
         onPointerCancel={handlePressEnd}
-        style={{
-        margin: 0,
-        fontFamily: "'Heebo',sans-serif",
-        fontSize: 24, fontWeight: 600,
-        color: 'rgba(255,255,255,0.92)',
-        letterSpacing: '0.4px',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-      }}>
-        המשפחה שלי
-      </h2>
-
-      {group && (
-        <FamilyGroupHeroBubble
-          face={group}
-          onOpenWhatsApp={onOpenWhatsApp}
-        />
-      )}
-
-      {people.length > 0 && (
-        <div
-          data-testid="family-people-grid"
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, userSelect: 'none' }}
+      >
+        <h2
+          data-testid="abuwhatsapp-title"
           style={{
-            width: '100%',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: 16,
+            margin: 0,
+            fontFamily: "'Heebo',sans-serif",
+            fontSize: 26, fontWeight: 700,
+            color: 'rgba(255,255,255,0.94)',
+            letterSpacing: '0.4px',
           }}
         >
-          {people.map(p => (
-            <PersonBubbleCard
-              key={p.id}
-              face={p}
-              onOpenWhatsApp={onOpenWhatsApp}
-              onOpenTel={onOpenTel}
-            />
-          ))}
+          אבו וואטסאפ
+        </h2>
+        <div style={{
+          fontFamily: "'Heebo',sans-serif",
+          fontSize: 15,
+          color: 'rgba(255,255,255,0.55)',
+        }}>
+          למי לשלוח הודעה?
         </div>
-      )}
+        <div
+          data-testid="abuwhatsapp-build-version"
+          style={{
+            fontFamily: "'DM Sans',monospace",
+            fontSize: 11,
+            color: `rgba(${hexToRgb(GOLD)},0.55)`,
+            direction: 'ltr',
+            marginTop: 2,
+          }}
+        >
+          v{APP_VERSION.version}
+        </div>
+      </header>
 
-      {people.length === 0 && (
+      <div
+        data-testid="family-bubble-grid"
+        style={{
+          width: '100%',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: 18,
+          padding: '8px 4px',
+        }}
+      >
+        {group && (
+          <BubbleTile
+            key="family-group"
+            id="family-group"
+            kind="group"
+            label={group.label}
+            photoFile={group.photoFile}
+            initials={computeInitials(group.label)}
+            onTap={handleTapGroup}
+          />
+        )}
+        {personsForGrid.map((p) => (
+          <BubbleTile
+            key={p.id}
+            id={p.id}
+            kind="person"
+            label={p.displayName}
+            photoFile={p.photoFile}
+            initials={computeInitials(p.displayName)}
+            onTap={() => handleTapPerson(p)}
+          />
+        ))}
+      </div>
+
+      {!group && personsForGrid.length === 0 && (
         <div
           data-testid="family-empty-hint"
           style={{
@@ -169,178 +267,96 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
             fontSize: 15, lineHeight: 1.7,
             color: 'rgba(255,255,255,0.45)',
             textAlign: 'center',
-            maxWidth: 320,
-            padding: '8px 12px',
+            maxWidth: 320, margin: '0 auto', padding: '8px 12px',
           }}
         >
-          לחצי על הבועה הגדולה לפתיחת קבוצת המשפחה
+          אין עדיין אנשי קשר משפחתיים מוגדרים
+        </div>
+      )}
+
+      {actionSheet && (
+        <ActionSheet
+          face={actionSheet.face}
+          onChoose={handleActionChoice}
+          onCancel={() => setActionSheet(null)}
+        />
+      )}
+
+      {toast && (
+        <div
+          data-testid="family-toast"
+          role="status"
+          aria-live="polite"
+          style={{
+            position: 'fixed',
+            bottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
+            left: '50%', transform: 'translateX(-50%)',
+            padding: '12px 22px', borderRadius: 18,
+            background: 'rgba(8,16,28,0.92)',
+            border: `1px solid ${TEAL}55`,
+            color: 'rgba(255,255,255,0.92)',
+            fontFamily: "'Heebo',sans-serif",
+            fontSize: 15,
+            boxShadow: '0 10px 28px rgba(0,0,0,0.42)',
+            zIndex: 30, direction: 'rtl',
+          }}
+        >
+          {toast}
         </div>
       )}
     </div>
   )
 }
 
-function FamilyGroupHeroBubble({
-  face,
-  onOpenWhatsApp,
-}: {
-  face: Extract<FamilyQuickFace, { type: 'group' }>
-  onOpenWhatsApp: (url: string) => void
-}) {
-  return (
-    <div
-      data-testid="family-group-hero"
-      style={{
-        width: '100%',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 14,
-        padding: '22px 18px 20px',
-        borderRadius: 26,
-        background: 'linear-gradient(160deg, rgba(37,211,102,0.08), rgba(20,184,166,0.05) 60%, rgba(201,168,76,0.04))',
-        border: '1.5px solid rgba(37,211,102,0.32)',
-        boxShadow: [
-          '0 10px 40px rgba(0,0,0,0.32)',
-          '0 0 30px rgba(37,211,102,0.10)',
-          'inset 0 1px 0 rgba(255,255,255,0.06)',
-        ].join(', '),
-      }}
-    >
-      <BubbleAvatar
-        photoFile={face.photoFile}
-        initials={computeInitials(face.label)}
-        size={132}
-        accent={WA_GREEN}
-        accentSoft="rgba(37,211,102,0.55)"
-      />
-      <div style={{
-        fontFamily: "'Heebo',sans-serif",
-        fontSize: 22, fontWeight: 600,
-        color: 'rgba(255,255,255,0.92)',
-      }}>
-        {face.label}
-      </div>
-      <button
-        type="button"
-        data-testid="family-group-whatsapp-button"
-        onClick={() => onOpenWhatsApp(face.whatsappUrl)}
-        aria-label="WhatsApp לקבוצה"
-        style={{
-          width: '100%', maxWidth: 320,
-          height: 60, borderRadius: 22,
-          border: '1.5px solid rgba(37,211,102,0.35)',
-          background: `linear-gradient(145deg, #2ee67a, ${WA_GREEN}, #128C7E)`,
-          color: 'white',
-          fontSize: 18, fontWeight: 700,
-          fontFamily: "'Heebo',sans-serif",
-          cursor: 'pointer',
-          boxShadow: '0 4px 16px rgba(37,211,102,0.28), inset 0 1px 0 rgba(255,255,255,0.14)',
-          letterSpacing: '0.3px',
-        }}
-      >
-        WhatsApp לקבוצה
-      </button>
-    </div>
-  )
+interface BubbleTileProps {
+  id: string
+  kind: 'group' | 'person'
+  label: string
+  photoFile?: string | undefined
+  initials: string
+  onTap: () => void
 }
 
-function PersonBubbleCard({
-  face,
-  onOpenWhatsApp,
-  onOpenTel,
-}: {
-  face: Extract<FamilyQuickFace, { type: 'person' }>
-  onOpenWhatsApp: (url: string) => void
-  onOpenTel: (url: string) => void
-}) {
+export function BubbleTile({ id, kind, label, photoFile, initials, onTap }: BubbleTileProps) {
   return (
-    <div
-      data-testid={`family-person-${face.id}`}
+    <button
+      type="button"
+      data-testid={kind === 'group' ? `bubble-group-${id}` : `bubble-person-${id}`}
+      data-bubble-kind={kind}
+      onClick={onTap}
+      aria-label={label}
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 10,
-        padding: '16px 12px 14px',
-        borderRadius: 22,
-        background: 'linear-gradient(160deg, rgba(20,184,166,0.07), rgba(8,16,28,0.55))',
-        border: '1px solid rgba(20,184,166,0.20)',
-        boxShadow: '0 6px 22px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.04)',
+        gap: 8,
+        padding: '6px 4px',
+        background: 'transparent',
+        cursor: 'pointer',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
       <BubbleAvatar
-        photoFile={face.photoFile}
-        initials={computeInitials(face.displayName)}
-        size={88}
-        accent={TEAL}
-        accentSoft="rgba(20,184,166,0.55)"
+        photoFile={photoFile}
+        initials={initials}
+        size={BUBBLE_SIZE}
+        accent={kind === 'group' ? WA_GREEN : TEAL}
+        accentSoft={kind === 'group' ? 'rgba(37,211,102,0.55)' : 'rgba(20,184,166,0.55)'}
       />
       <div style={{
         fontFamily: "'Heebo',sans-serif",
-        fontSize: 18, fontWeight: 600,
+        fontSize: BUBBLE_LABEL_FONT, fontWeight: 600,
         color: 'rgba(255,255,255,0.92)',
-        textAlign: 'center',
+        textAlign: 'center', lineHeight: 1.25,
+        maxWidth: BUBBLE_SIZE + 12,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
-        {face.displayName}
+        {label}
       </div>
-      {face.relationshipHebrew && (
-        <div style={{
-          fontFamily: "'Heebo',sans-serif",
-          fontSize: 13, fontWeight: 400,
-          color: 'rgba(255,255,255,0.50)',
-          textAlign: 'center',
-          minHeight: 16,
-        }}>
-          {face.relationshipHebrew}
-        </div>
-      )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', marginTop: 2 }}>
-        <button
-          type="button"
-          data-testid={`person-whatsapp-${face.id}`}
-          onClick={() => onOpenWhatsApp(buildWhatsAppPersonUrl(face))}
-          aria-label={`WhatsApp ל${face.displayName}`}
-          style={{
-            width: '100%', height: 48, borderRadius: 16,
-            border: '1.5px solid rgba(37,211,102,0.32)',
-            background: `linear-gradient(145deg, ${WA_GREEN}, #128C7E)`,
-            color: 'white',
-            fontSize: 15, fontWeight: 700,
-            fontFamily: "'Heebo',sans-serif",
-            cursor: 'pointer',
-            boxShadow: '0 3px 12px rgba(37,211,102,0.22)',
-            letterSpacing: '0.2px',
-          }}
-        >
-          WhatsApp
-        </button>
-        <button
-          type="button"
-          data-testid={`person-tel-${face.id}`}
-          onClick={() => onOpenTel(buildTelUrl(face))}
-          aria-label={`שיחה ל${face.displayName}`}
-          style={{
-            width: '100%', height: 48, borderRadius: 16,
-            border: '1.5px solid rgba(20,184,166,0.40)',
-            background: 'rgba(20,184,166,0.10)',
-            color: TEAL,
-            fontSize: 15, fontWeight: 700,
-            fontFamily: "'Heebo',sans-serif",
-            cursor: 'pointer',
-            boxShadow: '0 3px 12px rgba(20,184,166,0.18)',
-            letterSpacing: '0.2px',
-          }}
-        >
-          שיחה
-        </button>
-      </div>
-    </div>
+    </button>
   )
 }
 
 function BubbleAvatar({
-  photoFile,
-  initials,
-  size,
-  accent,
-  accentSoft,
+  photoFile, initials, size, accent, accentSoft,
 }: {
   photoFile: string | undefined
   initials: string
@@ -356,7 +372,7 @@ function BubbleAvatar({
       background: photoFile
         ? 'linear-gradient(145deg, #0b2220, #050A18)'
         : `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(20,184,166,0.18) 45%, rgba(8,16,28,0.95) 100%)`,
-      boxShadow: `0 0 0 3px rgba(0,0,0,0.25), 0 0 24px ${accentSoft}, 0 6px 18px rgba(0,0,0,0.45)`,
+      boxShadow: `0 0 0 3px rgba(0,0,0,0.25), 0 0 22px ${accentSoft}, 0 6px 16px rgba(0,0,0,0.40)`,
       overflow: 'hidden',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexShrink: 0,
@@ -367,10 +383,7 @@ function BubbleAvatar({
           alt=""
           loading="lazy"
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          onError={(e) => {
-            // Hide broken image so the gradient + initials fallback shows through.
-            (e.currentTarget as HTMLImageElement).style.display = 'none'
-          }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
         />
       ) : (
         <span style={{
@@ -378,12 +391,101 @@ function BubbleAvatar({
           fontSize, fontWeight: 600,
           color: accent,
           textShadow: `0 2px 12px ${accentSoft}`,
-          lineHeight: 1,
-          userSelect: 'none',
-        }}>
-          {initials}
-        </span>
+          lineHeight: 1, userSelect: 'none',
+        }}>{initials}</span>
       )}
     </div>
   )
+}
+
+function ActionSheet({
+  face, onChoose, onCancel,
+}: {
+  face: Extract<FamilyQuickFace, { type: 'person' }>
+  onChoose: (k: ActionKind) => void
+  onCancel: () => void
+}) {
+  return (
+    <div
+      data-testid="family-action-sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`פעולות עבור ${face.displayName}`}
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(5,10,24,0.72)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        zIndex: 40, direction: 'rtl',
+      }}
+    >
+      <div
+        style={{
+          width: '100%', maxWidth: 460,
+          padding: '18px 18px calc(22px + env(safe-area-inset-bottom, 0px))',
+          background: 'rgba(8,16,28,0.96)',
+          borderTop: `1.5px solid ${TEAL}66`,
+          borderRadius: '20px 20px 0 0',
+          display: 'flex', flexDirection: 'column', gap: 10,
+          fontFamily: "'Heebo',sans-serif",
+        }}
+      >
+        <div style={{
+          fontSize: 18, fontWeight: 700,
+          color: 'rgba(255,255,255,0.92)', textAlign: 'center',
+          marginBottom: 4,
+        }}>
+          {face.displayName}
+        </div>
+        <button
+          type="button"
+          data-testid={`action-whatsapp-${face.id}`}
+          onClick={() => onChoose('whatsapp')}
+          style={{
+            width: '100%', height: 56, borderRadius: 16,
+            border: `1.5px solid ${WA_GREEN}55`,
+            background: `linear-gradient(145deg, ${WA_GREEN}, #128C7E)`,
+            color: 'white',
+            fontFamily: "'Heebo',sans-serif",
+            fontSize: 17, fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >WhatsApp</button>
+        <button
+          type="button"
+          data-testid={`action-call-${face.id}`}
+          onClick={() => onChoose('call')}
+          style={{
+            width: '100%', height: 56, borderRadius: 16,
+            border: `1.5px solid ${TEAL}55`,
+            background: 'rgba(20,184,166,0.10)',
+            color: TEAL,
+            fontFamily: "'Heebo',sans-serif",
+            fontSize: 17, fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >שיחה</button>
+        <button
+          type="button"
+          data-testid={`action-cancel-${face.id}`}
+          onClick={onCancel}
+          style={{
+            width: '100%', height: 48, borderRadius: 14,
+            border: '1px solid rgba(255,255,255,0.10)',
+            background: 'transparent',
+            color: 'rgba(255,255,255,0.62)',
+            fontFamily: "'Heebo',sans-serif",
+            fontSize: 15, fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >ביטול</button>
+      </div>
+    </div>
+  )
+}
+
+function hexToRgb(hex: string): string {
+  const m = hex.replace('#', '').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i)
+  if (!m) return '255,255,255'
+  return `${parseInt(m[1] as string, 16)},${parseInt(m[2] as string, 16)},${parseInt(m[3] as string, 16)}`
 }

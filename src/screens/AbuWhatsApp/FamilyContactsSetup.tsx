@@ -1,13 +1,28 @@
-import { useMemo, useState } from 'react'
+/*
+ * AbuWhatsApp operator setup — per-contact form.
+ *
+ * Operator-only screen: each scaffold person gets a row with a phone input,
+ * enabled toggle, save button, and clear button. JSON import/export is kept
+ * available but collapsed under "מתקדם" so it never blocks normal operator
+ * work. Phone numbers stay in localStorage only — they are never written to
+ * source, memory/*, knowledge/*, or any AbuAI prompt.
+ */
+
+import { useEffect, useMemo, useState } from 'react'
+import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
 import {
   clearLocalContacts,
   exportContactsJSON,
   getLocalContacts,
   importContactsJSON,
   maskPhonePreview,
+  removeLocalContact,
   setLocalContacts,
+  upsertLocalContact,
   type LocalFamilyContact,
 } from './familyContactsStorage'
+import { computeInitials, isValidPhoneE164 } from './familyQuickFaces'
+import { APP_VERSION } from '../../version'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -17,56 +32,101 @@ interface FamilyContactsSetupProps {
   onClose: () => void
 }
 
-type Banner =
-  | { kind: 'idle' }
-  | { kind: 'success'; message: string }
-  | { kind: 'error'; messages: string[] }
+interface RowDraft {
+  phoneE164: string
+  enabled: boolean
+  feedback: { kind: 'idle' } | { kind: 'saved' } | { kind: 'cleared' } | { kind: 'error'; message: string }
+}
+
+const PERSON_SCAFFOLD: ReadonlyArray<Extract<FamilyQuickFace, { type: 'person' }>> =
+  FAMILY_QUICK_FACES.filter((f) => f.type === 'person') as ReadonlyArray<Extract<FamilyQuickFace, { type: 'person' }>>
+
+function blankDraft(): RowDraft {
+  return { phoneE164: '', enabled: false, feedback: { kind: 'idle' } }
+}
+
+function initialDrafts(stored: LocalFamilyContact[]): Record<string, RowDraft> {
+  const out: Record<string, RowDraft> = {}
+  for (const p of PERSON_SCAFFOLD) {
+    const s = stored.find((c) => c.id === p.id)
+    out[p.id] = s
+      ? { phoneE164: s.phoneE164, enabled: s.enabled, feedback: { kind: 'idle' } }
+      : blankDraft()
+  }
+  return out
+}
 
 export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
   const [stored, setStored] = useState<LocalFamilyContact[]>(() => getLocalContacts())
-  const [draft, setDraft] = useState<string>('')
-  const [banner, setBanner] = useState<Banner>({ kind: 'idle' })
-  const [confirmClear, setConfirmClear] = useState(false)
+  const [drafts, setDrafts] = useState<Record<string, RowDraft>>(() => initialDrafts(stored))
+  const [confirmClearAll, setConfirmClearAll] = useState(false)
 
-  const previews = useMemo(
-    () => stored.map((c) => ({
-      id: c.id,
-      enabled: c.enabled,
-      phonePreview: maskPhonePreview(c.phoneE164),
-      hasWhatsapp: !!(c.whatsappE164 && c.whatsappE164.length > 0),
-      hasPhoto: !!(c.photoDataUrl || c.photoFile),
-    })),
-    [stored],
-  )
+  useEffect(() => {
+    setDrafts(initialDrafts(stored))
+  }, [stored])
 
-  function handleImport() {
-    const result = importContactsJSON(draft)
-    if (!result.ok) { setBanner({ kind: 'error', messages: result.errors }); return }
-    setLocalContacts(result.contacts)
-    setStored(result.contacts)
-    setDraft('')
-    setBanner({ kind: 'success', message: `נשמרו ${result.contacts.length} אנשי קשר מקומיים` })
+  const storedById = useMemo(() => {
+    const m = new Map<string, LocalFamilyContact>()
+    for (const c of stored) m.set(c.id, c)
+    return m
+  }, [stored])
+
+  function patchDraft(id: string, patch: Partial<RowDraft>) {
+    setDrafts((prev) => ({
+      ...prev,
+      [id]: { ...(prev[id] ?? blankDraft()), ...patch, feedback: patch.feedback ?? { kind: 'idle' } },
+    }))
   }
 
-  function handleClear() {
+  function handleSaveOne(person: Extract<FamilyQuickFace, { type: 'person' }>) {
+    const draft = drafts[person.id] ?? blankDraft()
+    const trimmed = draft.phoneE164.trim()
+    if (draft.enabled && !isValidPhoneE164(trimmed)) {
+      patchDraft(person.id, { feedback: { kind: 'error', message: 'מספר לא תקין. דוגמה: +972XXXXXXXXX' } })
+      return
+    }
+    const contact: LocalFamilyContact = {
+      id: person.id,
+      enabled: draft.enabled,
+      phoneE164: trimmed,
+    }
+    const result = upsertLocalContact(contact)
+    if (!result.ok) {
+      patchDraft(person.id, { feedback: { kind: 'error', message: result.errors.join(' · ') || 'שמירה נכשלה' } })
+      return
+    }
+    setStored(getLocalContacts())
+    patchDraft(person.id, { feedback: { kind: 'saved' } })
+  }
+
+  function handleClearOne(person: Extract<FamilyQuickFace, { type: 'person' }>) {
+    removeLocalContact(person.id)
+    setStored(getLocalContacts())
+    setDrafts((prev) => ({
+      ...prev,
+      [person.id]: { phoneE164: '', enabled: false, feedback: { kind: 'cleared' } },
+    }))
+  }
+
+  function handleAdvancedImport(jsonText: string): { ok: boolean; messages: string[] } {
+    const r = importContactsJSON(jsonText)
+    if (!r.ok) return { ok: false, messages: r.errors }
+    setLocalContacts(r.contacts)
+    setStored(getLocalContacts())
+    return { ok: true, messages: [`נשמרו ${r.contacts.length} אנשי קשר`] }
+  }
+
+  function handleClearAll() {
     clearLocalContacts()
     setStored([])
-    setDraft('')
-    setConfirmClear(false)
-    setBanner({ kind: 'success', message: 'אנשי הקשר המקומיים נוקו' })
-  }
-
-  function handleExport() {
-    const json = exportContactsJSON(stored)
-    setDraft(json)
-    setBanner({ kind: 'success', message: 'יוצא לחלון. אל תשתפי בלוגים.' })
+    setConfirmClearAll(false)
   }
 
   return (
     <div
       data-testid="family-contacts-setup"
       style={{
-        width: '100%', maxWidth: 460,
+        width: '100%', maxWidth: 480,
         display: 'flex', flexDirection: 'column', gap: 14,
         direction: 'rtl',
         color: 'rgba(255,255,255,0.92)',
@@ -74,7 +134,7 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
       }}
     >
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>הגדרת אנשי קשר מקומיים</h2>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>הגדרת אנשי קשר</h2>
         <button
           type="button"
           data-testid="setup-close"
@@ -91,182 +151,291 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
         >סגרי</button>
       </header>
 
+      <div
+        data-testid="setup-build-version"
+        style={{
+          fontSize: 11, color: 'rgba(255,255,255,0.45)',
+          fontFamily: "'DM Sans',monospace", direction: 'ltr',
+        }}
+      >
+        v{APP_VERSION.version} · {APP_VERSION.buildLabel}
+      </div>
+
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'rgba(255,255,255,0.55)' }}>
         מצב מפעיל בלבד. הנתונים נשמרים רק במכשיר הזה — לא נשלחים לשרת ולא נכנסים לקוד.
       </p>
 
-      <section
-        data-testid="setup-current-list"
-        style={{
-          padding: 14, borderRadius: 16,
-          background: 'rgba(8,16,28,0.65)',
-          border: '1px solid rgba(20,184,166,0.20)',
-        }}
-      >
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>אנשי קשר מקומיים כעת ({stored.length})</div>
-        {stored.length === 0 ? (
-          <div data-testid="setup-empty" style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>
-            אין נתונים מקומיים. הדביקי JSON תקין כדי להוסיף.
-          </div>
-        ) : (
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {previews.map((p) => (
-              <li
-                key={p.id}
-                data-testid={`setup-row-${p.id}`}
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {PERSON_SCAFFOLD.map((person) => {
+          const draft = drafts[person.id] ?? blankDraft()
+          const saved = storedById.get(person.id)
+          return (
+            <li
+              key={person.id}
+              data-testid={`setup-row-${person.id}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '52px 1fr',
+                columnGap: 12, rowGap: 6,
+                padding: '12px 14px',
+                borderRadius: 16,
+                background: 'rgba(8,16,28,0.65)',
+                border: '1px solid rgba(20,184,166,0.18)',
+              }}
+            >
+              <div
+                aria-hidden
                 style={{
-                  display: 'flex', justifyContent: 'space-between', gap: 10,
-                  fontSize: 14, padding: '6px 8px', borderRadius: 10,
-                  background: 'rgba(255,255,255,0.03)',
+                  gridRow: '1 / span 4',
+                  width: 52, height: 52, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: `2px solid ${TEAL}55`,
+                  background: `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(20,184,166,0.18) 45%, rgba(8,16,28,0.95) 100%)`,
+                  fontFamily: "'Cormorant Garamond',Georgia,serif",
+                  fontSize: 22, fontWeight: 600,
+                  color: TEAL, lineHeight: 1, userSelect: 'none',
                 }}
               >
-                <span>
-                  <span style={{ fontWeight: 600 }}>{p.id}</span>
-                  {p.enabled ? '' : ' · כבוי'}
-                  {p.hasWhatsapp ? ' · WA' : ''}
-                  {p.hasPhoto ? ' · 📷' : ''}
-                </span>
-                <span data-testid={`setup-mask-${p.id}`} style={{ color: 'rgba(255,255,255,0.55)' }}>
-                  {p.phonePreview}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                {computeInitials(person.displayName)}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ fontSize: 17, fontWeight: 600 }}>{person.displayName}</span>
+                {person.relationshipHebrew && (
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{person.relationshipHebrew}</span>
+                )}
+              </div>
+              <input
+                type="tel"
+                inputMode="tel"
+                data-testid={`setup-phone-${person.id}`}
+                value={draft.phoneE164}
+                onChange={(e) => patchDraft(person.id, { phoneE164: e.target.value })}
+                placeholder="+972XXXXXXXXX"
+                spellCheck={false}
+                autoComplete="off"
+                style={{
+                  width: '100%', minHeight: 44, padding: '6px 12px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(20,184,166,0.30)',
+                  background: 'rgba(5,12,20,0.80)',
+                  color: 'rgba(255,255,255,0.92)',
+                  fontFamily: "ui-monospace, 'SFMono-Regular', Menlo, Monaco, monospace",
+                  fontSize: 15, lineHeight: 1.4,
+                  direction: 'ltr', textAlign: 'left',
+                }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'rgba(255,255,255,0.65)' }}>
+                  <input
+                    type="checkbox"
+                    data-testid={`setup-enabled-${person.id}`}
+                    checked={draft.enabled}
+                    onChange={(e) => patchDraft(person.id, { enabled: e.target.checked })}
+                  />
+                  פעיל
+                </label>
+                {saved && (
+                  <span data-testid={`setup-mask-${person.id}`} style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', fontFamily: "'DM Sans',monospace", direction: 'ltr' }}>
+                    {maskPhonePreview(saved.phoneE164)}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  data-testid={`setup-save-${person.id}`}
+                  onClick={() => handleSaveOne(person)}
+                  style={{
+                    minHeight: 44, padding: '0 16px', borderRadius: 12,
+                    border: `1.5px solid ${TEAL}66`,
+                    background: `linear-gradient(145deg, ${TEAL}, #0d9488)`,
+                    color: 'white',
+                    fontFamily: "'Heebo',sans-serif",
+                    fontSize: 15, fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >שמרי</button>
+                <button
+                  type="button"
+                  data-testid={`setup-clear-${person.id}`}
+                  onClick={() => handleClearOne(person)}
+                  disabled={!saved}
+                  style={{
+                    minHeight: 44, padding: '0 14px', borderRadius: 12,
+                    border: `1px solid ${RED}55`,
+                    background: saved ? 'rgba(239,68,68,0.10)' : 'rgba(239,68,68,0.04)',
+                    color: saved ? RED : 'rgba(239,68,68,0.40)',
+                    fontFamily: "'Heebo',sans-serif",
+                    fontSize: 14, fontWeight: 600,
+                    cursor: saved ? 'pointer' : 'default',
+                  }}
+                >נקי</button>
+                {draft.feedback.kind === 'saved' && (
+                  <span data-testid={`setup-feedback-${person.id}`} style={{ fontSize: 13, color: TEAL, alignSelf: 'center' }}>נשמר ✓</span>
+                )}
+                {draft.feedback.kind === 'cleared' && (
+                  <span data-testid={`setup-feedback-${person.id}`} style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', alignSelf: 'center' }}>נוקה</span>
+                )}
+                {draft.feedback.kind === 'error' && (
+                  <span data-testid={`setup-feedback-${person.id}`} style={{ fontSize: 13, color: RED, alignSelf: 'center' }}>{draft.feedback.message}</span>
+                )}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
 
-      {banner.kind === 'success' && (
-        <div
-          data-testid="setup-banner-success"
-          style={{
-            padding: '10px 14px', borderRadius: 14,
-            background: 'rgba(20,184,166,0.10)',
-            border: `1px solid ${TEAL}55`,
-            fontSize: 14,
-          }}
-        >✅ {banner.message}</div>
-      )}
+      <details
+        data-testid="setup-advanced"
+        style={{
+          marginTop: 4,
+          padding: '8px 12px',
+          borderRadius: 12,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
+        <summary style={{ cursor: 'pointer', fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>מתקדם</summary>
+        <AdvancedJsonPanel
+          stored={stored}
+          onImport={handleAdvancedImport}
+          onClearAll={handleClearAll}
+          confirmClearAll={confirmClearAll}
+          setConfirmClearAll={setConfirmClearAll}
+        />
+      </details>
+    </div>
+  )
+}
 
-      {banner.kind === 'error' && (
+function AdvancedJsonPanel({
+  stored, onImport, onClearAll, confirmClearAll, setConfirmClearAll,
+}: {
+  stored: LocalFamilyContact[]
+  onImport: (jsonText: string) => { ok: boolean; messages: string[] }
+  onClearAll: () => void
+  confirmClearAll: boolean
+  setConfirmClearAll: (v: boolean) => void
+}) {
+  const [draft, setDraft] = useState<string>('')
+  const [banner, setBanner] = useState<{ ok: boolean; messages: string[] } | null>(null)
+
+  function handleExport() {
+    setDraft(exportContactsJSON(stored))
+    setBanner({ ok: true, messages: ['יוצא לחלון. אל תשתפי בלוגים.'] })
+  }
+  function handleImport() {
+    const r = onImport(draft)
+    setBanner(r)
+    if (r.ok) setDraft('')
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+      {banner && (
         <div
-          data-testid="setup-banner-error"
+          data-testid={banner.ok ? 'setup-adv-banner-ok' : 'setup-adv-banner-err'}
           style={{
-            padding: '10px 14px', borderRadius: 14,
-            background: 'rgba(239,68,68,0.10)',
-            border: `1px solid ${RED}66`,
-            fontSize: 14, lineHeight: 1.6,
+            fontSize: 13, lineHeight: 1.55, padding: '8px 10px', borderRadius: 10,
+            background: banner.ok ? 'rgba(20,184,166,0.10)' : 'rgba(239,68,68,0.10)',
+            border: `1px solid ${banner.ok ? `${TEAL}55` : `${RED}55`}`,
+            color: 'rgba(255,255,255,0.85)',
           }}
         >
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>⚠️ הייבוא נכשל</div>
-          <ul style={{ margin: 0, paddingInlineStart: 18 }}>
-            {banner.messages.map((m, i) => <li key={i}>{m}</li>)}
-          </ul>
+          {banner.messages.map((m, i) => <div key={i}>{m}</div>)}
         </div>
       )}
-
-      <label htmlFor="setup-json" style={{ fontSize: 14, fontWeight: 600 }}>הדביקי JSON של אנשי קשר</label>
       <textarea
-        id="setup-json"
-        data-testid="setup-json-input"
+        data-testid="setup-adv-json"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
+        rows={8}
         spellCheck={false}
-        rows={10}
         placeholder={'[ { "id": "mor", "enabled": true, "phoneE164": "+972XXXXXXXXX" } ]'}
         style={{
-          width: '100%', minHeight: 180,
-          padding: '12px 14px',
-          borderRadius: 14,
+          width: '100%', minHeight: 140,
+          padding: '10px 12px', borderRadius: 12,
           border: '1px solid rgba(20,184,166,0.30)',
           background: 'rgba(5,12,20,0.80)',
           color: 'rgba(255,255,255,0.92)',
-          fontFamily: "ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, monospace",
-          fontSize: 13, lineHeight: 1.55,
-          direction: 'ltr', textAlign: 'left',
-          resize: 'vertical',
+          fontFamily: "ui-monospace, 'SFMono-Regular', Menlo, Monaco, monospace",
+          fontSize: 12, lineHeight: 1.55,
+          direction: 'ltr', textAlign: 'left', resize: 'vertical',
         }}
       />
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         <button
           type="button"
-          data-testid="setup-import"
+          data-testid="setup-adv-import"
           onClick={handleImport}
           disabled={draft.trim().length === 0}
           style={{
-            minHeight: 48, padding: '0 18px', borderRadius: 14,
-            border: `1.5px solid ${TEAL}66`,
-            background: draft.trim().length === 0 ? 'rgba(20,184,166,0.06)' : `linear-gradient(145deg, ${TEAL}, #0d9488)`,
-            color: draft.trim().length === 0 ? 'rgba(255,255,255,0.35)' : 'white',
-            fontFamily: "'Heebo',sans-serif",
-            fontSize: 16, fontWeight: 600,
+            minHeight: 40, padding: '0 14px', borderRadius: 10,
+            border: `1px solid ${TEAL}55`,
+            background: draft.trim().length === 0 ? 'rgba(20,184,166,0.06)' : 'rgba(20,184,166,0.16)',
+            color: draft.trim().length === 0 ? 'rgba(255,255,255,0.30)' : TEAL,
+            fontFamily: "'Heebo',sans-serif", fontSize: 13, fontWeight: 600,
             cursor: draft.trim().length === 0 ? 'default' : 'pointer',
           }}
-        >ייבאי ושמרי</button>
-
+        >ייבוא JSON</button>
         <button
           type="button"
-          data-testid="setup-export"
+          data-testid="setup-adv-export"
           onClick={handleExport}
           disabled={stored.length === 0}
           style={{
-            minHeight: 48, padding: '0 16px', borderRadius: 14,
+            minHeight: 40, padding: '0 14px', borderRadius: 10,
             border: `1px solid ${GOLD}55`,
             background: stored.length === 0 ? 'rgba(201,168,76,0.05)' : 'rgba(201,168,76,0.10)',
-            color: stored.length === 0 ? 'rgba(255,255,255,0.35)' : GOLD,
-            fontFamily: "'Heebo',sans-serif",
-            fontSize: 15, fontWeight: 600,
+            color: stored.length === 0 ? 'rgba(255,255,255,0.30)' : GOLD,
+            fontFamily: "'Heebo',sans-serif", fontSize: 13, fontWeight: 600,
             cursor: stored.length === 0 ? 'default' : 'pointer',
           }}
-        >ייצאי לחלון</button>
-
-        {!confirmClear ? (
+        >ייצוא JSON</button>
+        {!confirmClearAll ? (
           <button
             type="button"
-            data-testid="setup-clear"
-            onClick={() => setConfirmClear(true)}
+            data-testid="setup-adv-clear-all"
+            onClick={() => setConfirmClearAll(true)}
             disabled={stored.length === 0}
             style={{
-              minHeight: 48, padding: '0 16px', borderRadius: 14,
+              minHeight: 40, padding: '0 14px', borderRadius: 10,
               border: `1px solid ${RED}55`,
               background: stored.length === 0 ? 'rgba(239,68,68,0.05)' : 'rgba(239,68,68,0.10)',
-              color: stored.length === 0 ? 'rgba(255,255,255,0.35)' : RED,
-              fontFamily: "'Heebo',sans-serif",
-              fontSize: 15, fontWeight: 600,
+              color: stored.length === 0 ? 'rgba(255,255,255,0.30)' : RED,
+              fontFamily: "'Heebo',sans-serif", fontSize: 13, fontWeight: 600,
               cursor: stored.length === 0 ? 'default' : 'pointer',
             }}
           >נקי הכל</button>
         ) : (
-          <div style={{ display: 'flex', gap: 6 }}>
+          <>
             <button
               type="button"
-              data-testid="setup-clear-confirm"
-              onClick={handleClear}
+              data-testid="setup-adv-clear-all-confirm"
+              onClick={onClearAll}
               style={{
-                minHeight: 48, padding: '0 14px', borderRadius: 14,
+                minHeight: 40, padding: '0 12px', borderRadius: 10,
                 border: `1.5px solid ${RED}88`,
                 background: `${RED}26`,
                 color: 'white',
-                fontFamily: "'Heebo',sans-serif",
-                fontSize: 15, fontWeight: 700,
+                fontFamily: "'Heebo',sans-serif", fontSize: 13, fontWeight: 700,
                 cursor: 'pointer',
               }}
             >בטוחה? נקי</button>
             <button
               type="button"
-              data-testid="setup-clear-cancel"
-              onClick={() => setConfirmClear(false)}
+              data-testid="setup-adv-clear-all-cancel"
+              onClick={() => setConfirmClearAll(false)}
               style={{
-                minHeight: 48, padding: '0 14px', borderRadius: 14,
+                minHeight: 40, padding: '0 12px', borderRadius: 10,
                 border: '1px solid rgba(255,255,255,0.15)',
                 background: 'rgba(255,255,255,0.04)',
                 color: 'rgba(255,255,255,0.65)',
-                fontFamily: "'Heebo',sans-serif",
-                fontSize: 15, fontWeight: 500,
+                fontFamily: "'Heebo',sans-serif", fontSize: 13,
                 cursor: 'pointer',
               }}
             >בטלי</button>
-          </div>
+          </>
         )}
       </div>
     </div>

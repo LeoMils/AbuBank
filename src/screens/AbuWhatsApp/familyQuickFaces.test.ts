@@ -285,3 +285,97 @@ describe('mergeFacesWithLocal', () => {
     expect(mor.relationshipHebrew).toBe('הבת')
   })
 })
+
+// ─── Source-level guards for the unified bubble grid (v0.3.1) ──────────────
+//
+// The Vitest config runs in node env (no jsdom), so DOM rendering tests are
+// not available here. These tests assert the contract via static-source
+// inspection so future patches can't silently break the visual rules.
+
+describe('AbuWhatsApp unified bubble grid (source contract)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fs = require('fs') as typeof import('fs')
+  const path = require('path') as typeof import('path')
+  const PROJECT_ROOT = path.resolve(__dirname, '../../..')
+
+  function readSrc(rel: string): string {
+    return fs.readFileSync(path.join(PROJECT_ROOT, rel), 'utf8')
+  }
+
+  it('header title "אבו וואטסאפ" appears in familyQuickFaces.tsx', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    expect(src.includes('אבו וואטסאפ')).toBe(true)
+  })
+
+  it('subtitle "למי לשלוח הודעה?" appears in familyQuickFaces.tsx', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    expect(src.includes('למי לשלוח הודעה?')).toBe(true)
+  })
+
+  it('build version v0.3.1-abuwhatsapp-bubbles is rendered on the AbuWhatsApp screen', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    expect(src.includes('abuwhatsapp-build-version')).toBe(true)
+    expect(src.includes("APP_VERSION.version")).toBe(true)
+    const verSrc = readSrc('src/version.ts')
+    expect(verSrc.includes("'0.3.1-abuwhatsapp-bubbles'")).toBe(true)
+  })
+
+  it('group and person targets render via the same BubbleTile component', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    // The single tile component must be defined exactly once and used for both kinds.
+    const defs = src.match(/export function BubbleTile\b/g) ?? []
+    expect(defs.length).toBe(1)
+    expect(/<BubbleTile[^>]*kind=["']group["']/.test(src)).toBe(true)
+    expect(/<BubbleTile[^>]*kind=["']person["']/.test(src)).toBe(true)
+    // No legacy hero component should remain.
+    expect(src.includes('FamilyGroupHeroBubble')).toBe(false)
+    expect(src.includes('PersonBubbleCard')).toBe(false)
+  })
+
+  it('group target is WhatsApp-only — there is no call/tel action wired for the group', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    // Slice from the function declaration to the next blank line — covers the
+    // full handleTapGroup body without depending on brace counting.
+    const startIdx = src.indexOf('function handleTapGroup')
+    expect(startIdx).toBeGreaterThan(-1)
+    const endIdx = src.indexOf('\n\n', startIdx)
+    const handler = src.slice(startIdx, endIdx === -1 ? src.length : endIdx)
+    expect(handler.includes('onOpenWhatsApp')).toBe(true)
+    expect(handler.includes('onOpenTel')).toBe(false)
+  })
+
+  it('person target with phone offers WhatsApp + call (action sheet)', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    expect(src.includes('action-whatsapp-')).toBe(true)
+    expect(src.includes('action-call-')).toBe(true)
+    expect(src.includes('action-cancel-')).toBe(true)
+  })
+
+  it('person target without a valid phone shows the friendly Hebrew "המספר עדיין לא הוגדר"', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    expect(src.includes('המספר עדיין לא הוגדר')).toBe(true)
+  })
+
+  it('group target without a configured URL shows the friendly Hebrew "קבוצת המשפחה עדיין לא הוגדרה"', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    expect(src.includes('קבוצת המשפחה עדיין לא הוגדרה')).toBe(true)
+  })
+
+  it('Martita-facing bubble grid does NOT render JSON UI (no JSON inputs in familyQuickFaces.tsx)', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    // No textarea in the Martita bubble grid; JSON belongs to the operator setup file only.
+    expect(/<textarea\b/i.test(src)).toBe(false)
+    expect(src.toLowerCase().includes('json')).toBe(false)
+  })
+
+  it('source/scaffold contains no real phone numbers (only the placeholder in the comment)', () => {
+    const scaffold = readSrc('src/screens/AbuWhatsApp/familyContacts.private.ts')
+    // No bare phoneE164 string with real digits — every person row has phoneE164: ''.
+    const phoneFields = scaffold.match(/phoneE164:\s*'([^']*)'/g) ?? []
+    for (const m of phoneFields) {
+      // The header doc-comment uses the example +972501234567; assert it is
+      // ONLY in the comment block, never as a real assignment.
+      expect(m.endsWith("''")).toBe(true)
+    }
+  })
+})
