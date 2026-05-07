@@ -3,6 +3,7 @@ import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
+import { APP_VERSION } from '../../version'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -602,6 +603,19 @@ export function Settings() {
           </div>
           <div style={{ fontSize: 12, color: `rgba(${hexToRgb(GOLD)},0.55)`, marginTop: 2 }}>
             v{appVersion || '1.0.0'} · {new Date().getFullYear()}
+          </div>
+          <div
+            data-testid="settings-build-identity"
+            style={{
+              fontSize: 11, lineHeight: 1.55, marginTop: 6,
+              color: 'rgba(255,255,255,0.40)',
+              direction: 'ltr', fontFamily: "'DM Sans',monospace",
+              wordBreak: 'break-all',
+            }}
+          >
+            {APP_VERSION.buildLabel} · build {APP_VERSION.version}
+            <br />
+            {APP_VERSION.branchHint} · {APP_VERSION.buildDate}
           </div>
         </div>
       ),
