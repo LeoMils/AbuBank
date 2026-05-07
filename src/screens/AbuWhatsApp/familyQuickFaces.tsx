@@ -33,11 +33,9 @@ export function buildTelUrl(face: Extract<FamilyQuickFace, { type: 'person' }>):
 // ─── Visibility & merge ─────────────────────────────────────────────────────
 
 /**
- * Filter to only entries that should appear in the unified bubble grid.
- * Group: needs an enabled flag and a non-empty whatsappUrl.
- * Person: needs an enabled flag and a valid E.164 phone (so WhatsApp/tel
- * links work). Persons without a phone are intentionally NOT shown — the
- * operator must configure a phone first.
+ * v0.3.0 visibility filter — kept for the storage / merge unit tests that
+ * still use this shape. New rendering uses the visible-by-default path
+ * (`getDisplayablePersons` + `isPersonActionable`) below.
  */
 export function getVisibleFaces(faces: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES): FamilyQuickFace[] {
   return faces.filter(f => {
@@ -45,6 +43,41 @@ export function getVisibleFaces(faces: ReadonlyArray<FamilyQuickFace> = FAMILY_Q
     if (f.type === 'group') return typeof f.whatsappUrl === 'string' && f.whatsappUrl.length > 0
     return isValidPhoneE164(f.phoneE164)
   })
+}
+
+/**
+ * Returns every scaffold person — visible by default in the family grid.
+ * Local override (if any) is merged for phone/photo/enabled so the tile can
+ * render the correct photo and the tap handler can decide what to do, but
+ * MISSING PHONE IS NOT A REASON TO HIDE A FAMILY MEMBER. Per Leo's product
+ * direction: family members appear on screen first; configuration follows.
+ */
+export function getDisplayablePersons(
+  scaffold: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES,
+  local: ReadonlyArray<LocalFamilyContact> = [],
+): Extract<FamilyQuickFace, { type: 'person' }>[] {
+  const merged = mergeFacesWithLocal(scaffold, local)
+  return merged.filter((f) => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]
+}
+
+/**
+ * A person tile is "actionable" (action sheet appears) only when the local
+ * override marks them enabled AND the phone passes E.164 validation. Disabled
+ * or missing/invalid phone → still rendered, but tap shows the friendly
+ * Hebrew message "המספר עדיין לא הוגדר" instead.
+ */
+export function isPersonActionable(face: Extract<FamilyQuickFace, { type: 'person' }>): boolean {
+  if (face.enabled !== true) return false
+  return isValidPhoneE164(face.phoneE164)
+}
+
+/**
+ * Group is "actionable" when it has a non-empty whatsappUrl. The group is
+ * always rendered (matches the visual rule "no hero / no special area"),
+ * but a tap on a group with no URL shows "קבוצת המשפחה עדיין לא הוגדרה".
+ */
+export function isGroupActionable(face: Extract<FamilyQuickFace, { type: 'group' }>): boolean {
+  return typeof face.whatsappUrl === 'string' && face.whatsappUrl.length > 0
 }
 
 /**
@@ -92,6 +125,11 @@ export function computeInitials(displayName: string): string {
 const BUBBLE_SIZE = 96     // px — single canonical size for every tile
 const BUBBLE_LABEL_FONT = 16
 
+// Deterministic family-group photo. Sourced from the existing committed
+// public/family/* asset set used by FamilyGallery; no per-person photo
+// mapping exists today so individual person bubbles fall back to initials.
+const FAMILY_GROUP_PHOTO = '/family/FAmilly%206.JPG'
+
 interface FamilyQuickFacesProps {
   /** Tap a target with a chosen action. type='url' → open URL same-tab. */
   onOpenWhatsApp: (url: string) => void
@@ -116,23 +154,9 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
   }, [localContacts])
 
   const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, contacts)
-  const visible = getVisibleFaces(merged)
-
-  // Persons with no valid phone yet — kept for the friendly "המספר עדיין לא הוגדר"
-  // path so Martita sees a tile and gets a soft message instead of nothing.
-  // We render tiles for *every scaffold person*, valid or not. Group always
-  // first if enabled.
-  const allPersons = merged.filter((f) => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]
-  const group = merged.find((f) => f.type === 'group' && f.enabled) as Extract<FamilyQuickFace, { type: 'group' }> | undefined
-
-  // The visible-set rule above is preserved for tests, but the grid below
-  // also surfaces persons without a phone so they get the friendly message.
-  // Anabel/Ari and other scaffold-only entries with no override remain hidden
-  // until a local override exists — that gates by .enabled, not by phone.
-  const personsForGrid = allPersons.filter((p) => {
-    // Hide pure scaffold (no override at all) so the grid stays clean.
-    return contacts.some((c) => c.id === p.id)
-  })
+  const group = merged.find((f) => f.type === 'group') as Extract<FamilyQuickFace, { type: 'group' }> | undefined
+  // Visible-by-default: every scaffold person renders, even without phone.
+  const personsForGrid = getDisplayablePersons(FAMILY_QUICK_FACES, contacts)
 
   const [actionSheet, setActionSheet] = useState<ActionSheetState | null>(null)
   const [toast, setToast] = useState<string>('')
@@ -151,7 +175,7 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
   }
 
   function handleTapGroup() {
-    if (!group || !group.whatsappUrl) {
+    if (!group || !isGroupActionable(group)) {
       showToast('קבוצת המשפחה עדיין לא הוגדרה')
       return
     }
@@ -159,7 +183,7 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
   }
 
   function handleTapPerson(face: Extract<FamilyQuickFace, { type: 'person' }>) {
-    if (!isValidPhoneE164(face.phoneE164)) {
+    if (!isPersonActionable(face)) {
       showToast('המספר עדיין לא הוגדר')
       return
     }
@@ -241,7 +265,7 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
             id="family-group"
             kind="group"
             label={group.label}
-            photoFile={group.photoFile}
+            photoFile={group.photoFile ?? FAMILY_GROUP_PHOTO}
             initials={computeInitials(group.label)}
             onTap={handleTapGroup}
           />
@@ -258,21 +282,6 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
           />
         ))}
       </div>
-
-      {!group && personsForGrid.length === 0 && (
-        <div
-          data-testid="family-empty-hint"
-          style={{
-            fontFamily: "'Heebo',sans-serif",
-            fontSize: 15, lineHeight: 1.7,
-            color: 'rgba(255,255,255,0.45)',
-            textAlign: 'center',
-            maxWidth: 320, margin: '0 auto', padding: '8px 12px',
-          }}
-        >
-          אין עדיין אנשי קשר משפחתיים מוגדרים
-        </div>
-      )}
 
       {actionSheet && (
         <ActionSheet

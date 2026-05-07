@@ -225,14 +225,17 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
                 }}
               />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'rgba(255,255,255,0.65)' }}>
+                <label
+                  title="הבועה תמיד מוצגת לאישה. סימון כאן רק מאפשר את לחיצת ה-WhatsApp / שיחה."
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'rgba(255,255,255,0.65)' }}
+                >
                   <input
                     type="checkbox"
                     data-testid={`setup-enabled-${person.id}`}
                     checked={draft.enabled}
                     onChange={(e) => patchDraft(person.id, { enabled: e.target.checked })}
                   />
-                  פעיל
+                  מספר פעיל
                 </label>
                 {saved && (
                   <span data-testid={`setup-mask-${person.id}`} style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', fontFamily: "'DM Sans',monospace", direction: 'ltr' }}>

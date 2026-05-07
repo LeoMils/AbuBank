@@ -7,6 +7,9 @@ import {
   getVisibleFaces,
   computeInitials,
   mergeFacesWithLocal,
+  getDisplayablePersons,
+  isPersonActionable,
+  isGroupActionable,
 } from './familyQuickFaces'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
 import type { LocalFamilyContact } from './familyContactsStorage'
@@ -286,6 +289,75 @@ describe('mergeFacesWithLocal', () => {
   })
 })
 
+// ─── v0.3.2 — visible-by-default family grid ──────────────────────────────
+
+describe('getDisplayablePersons (visible-by-default scaffold persons)', () => {
+  it('returns every scaffold person even with empty localStorage', () => {
+    const persons = getDisplayablePersons(FAMILY_QUICK_FACES, [])
+    const scaffoldPersons = FAMILY_QUICK_FACES.filter((f) => f.type === 'person')
+    expect(persons.length).toBe(scaffoldPersons.length)
+    expect(persons.length).toBeGreaterThan(0)
+  })
+
+  it('includes Anabel and Ari (scaffold persons) even without override', () => {
+    const persons = getDisplayablePersons(FAMILY_QUICK_FACES, [])
+    expect(persons.some((p) => p.id === 'anabel')).toBe(true)
+    expect(persons.some((p) => p.id === 'ari')).toBe(true)
+  })
+
+  it('preserves scaffold render order regardless of local overrides', () => {
+    const scaffoldOrder = (FAMILY_QUICK_FACES.filter((f) => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]).map((p) => p.id)
+    const persons = getDisplayablePersons(FAMILY_QUICK_FACES, [
+      { id: 'leo', enabled: true, phoneE164: TEST_FAKE_PHONE },
+      { id: 'mor', enabled: false, phoneE164: '' },
+    ])
+    expect(persons.map((p) => p.id)).toEqual(scaffoldOrder)
+  })
+
+  it('overlays phone/photo/enabled from local override but never identity', () => {
+    const persons = getDisplayablePersons(FAMILY_QUICK_FACES, [
+      { id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE, photoFile: '/family/FAmilly%201.JPG' },
+    ])
+    const mor = persons.find((p) => p.id === 'mor')!
+    expect(mor.displayName).toBe('מור')
+    expect(mor.relationshipHebrew).toBe('הבת')
+    expect(mor.phoneE164).toBe(TEST_FAKE_PHONE)
+    expect(mor.enabled).toBe(true)
+    expect(mor.photoFile).toBe('/family/FAmilly%201.JPG')
+  })
+})
+
+describe('isPersonActionable (tap-gating, not visibility)', () => {
+  function person(over: Partial<Extract<FamilyQuickFace, { type: 'person' }>>): Extract<FamilyQuickFace, { type: 'person' }> {
+    return { type: 'person', id: 'x', displayName: 'X', phoneE164: '', enabled: false, ...over }
+  }
+
+  it('is true for enabled person with valid E.164 phone', () => {
+    expect(isPersonActionable(person({ enabled: true, phoneE164: TEST_FAKE_PHONE }))).toBe(true)
+  })
+
+  it('is false for enabled person with empty phone', () => {
+    expect(isPersonActionable(person({ enabled: true, phoneE164: '' }))).toBe(false)
+  })
+
+  it('is false for enabled person with malformed phone', () => {
+    expect(isPersonActionable(person({ enabled: true, phoneE164: '12345' }))).toBe(false)
+  })
+
+  it('is false for disabled person even with a valid phone', () => {
+    expect(isPersonActionable(person({ enabled: false, phoneE164: TEST_FAKE_PHONE }))).toBe(false)
+  })
+})
+
+describe('isGroupActionable', () => {
+  it('is true when whatsappUrl is non-empty', () => {
+    expect(isGroupActionable({ type: 'group', id: 'family-group', label: 'המשפחה', whatsappUrl: 'https://chat.whatsapp.com/ABC', enabled: true })).toBe(true)
+  })
+  it('is false when whatsappUrl is empty', () => {
+    expect(isGroupActionable({ type: 'group', id: 'family-group', label: 'המשפחה', whatsappUrl: '', enabled: true })).toBe(false)
+  })
+})
+
 // ─── Source-level guards for the unified bubble grid (v0.3.1) ──────────────
 //
 // The Vitest config runs in node env (no jsdom), so DOM rendering tests are
@@ -312,12 +384,31 @@ describe('AbuWhatsApp unified bubble grid (source contract)', () => {
     expect(src.includes('למי לשלוח הודעה?')).toBe(true)
   })
 
-  it('build version v0.3.1-abuwhatsapp-bubbles is rendered on the AbuWhatsApp screen', () => {
+  it('build version v0.3.2-abuwhatsapp-family-grid is rendered on the AbuWhatsApp screen', () => {
     const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
     expect(src.includes('abuwhatsapp-build-version')).toBe(true)
     expect(src.includes("APP_VERSION.version")).toBe(true)
     const verSrc = readSrc('src/version.ts')
-    expect(verSrc.includes("'0.3.1-abuwhatsapp-bubbles'")).toBe(true)
+    expect(verSrc.includes("'0.3.2-abuwhatsapp-family-grid'")).toBe(true)
+  })
+
+  it('grid uses getDisplayablePersons (visible-by-default), not contacts.some filtering', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    expect(src.includes('getDisplayablePersons(FAMILY_QUICK_FACES, contacts)')).toBe(true)
+    // The previous "hide unless localStorage override exists" filter must be gone.
+    expect(src.includes('contacts.some((c) => c.id === p.id)')).toBe(false)
+  })
+
+  it('tap-gating is by isPersonActionable / isGroupActionable, not raw enabled/phone checks in the handler', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    expect(src.includes('isPersonActionable(face)')).toBe(true)
+    expect(src.includes('isGroupActionable(group)')).toBe(true)
+  })
+
+  it('family group bubble has a deterministic photo fallback', () => {
+    const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
+    expect(src.includes('FAMILY_GROUP_PHOTO')).toBe(true)
+    expect(src.includes('/family/FAmilly%206.JPG')).toBe(true)
   })
 
   it('group and person targets render via the same BubbleTile component', () => {
