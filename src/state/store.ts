@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { Screen } from './types'
 import type { AppState, Actions } from './types'
 import { IMMUTABLE_DEFAULTS } from './defaults'
+import { APP_VERSION } from '../version'
 
 export const useAppStore = create<AppState & Actions>((set) => ({
   // State
@@ -17,7 +18,11 @@ export const useAppStore = create<AppState & Actions>((set) => ({
   services:          [...IMMUTABLE_DEFAULTS],  // mutable spread copy
   installDismissed:  false,
   isOnline:          navigator.onLine,  // NOT hardcoded
-  appVersion:        import.meta.env.VITE_APP_VERSION ?? '',
+  // Single visible-version source. The npm package.json semver remains
+  // accessible as `import.meta.env.VITE_APP_VERSION`, but every UI surface
+  // (Home pill, BottomBar, Admin, Settings) reads from APP_VERSION so QA
+  // can confirm "I'm seeing build X" at a glance.
+  appVersion:        APP_VERSION.version,
   lastError:         null,
 
   // Actions

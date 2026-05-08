@@ -16,6 +16,7 @@ export const APP_VERSION = {
   buildLabel: 'AbuWhatsApp Family Grid',
   buildDate:  '2026-05-07',
   branchHint: 'feat/abuwhatsapp-local-family-contacts',
+  commitHint: 'f07aa18',
 } as const
 
 export type AppVersion = typeof APP_VERSION
