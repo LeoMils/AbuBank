@@ -122,8 +122,12 @@ export function computeInitials(displayName: string): string {
 // same label style, same spacing, same gradient. The only difference is
 // the photo/initials content and the tap action.
 
-const BUBBLE_SIZE = 96     // px — single canonical size for every tile
-const BUBBLE_LABEL_FONT = 16
+// Visual rules — match AbuBank Home launcher's bubble system.
+// Home uses 68×68 circles with a small label below; we use 80 here so
+// people-photos read clearly while staying recognisably "AbuBank-bubble".
+const BUBBLE_SIZE = 80     // px — single canonical size for every tile
+const BUBBLE_LABEL_FONT = 14
+const GRID_GAP = 12        // px — calmer vertical rhythm on iPhone
 
 // Deterministic family-group photo. Sourced from the existing committed
 // public/family/* asset set used by FamilyGallery; no per-person photo
@@ -204,7 +208,7 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
       style={{
         width: '100%', maxWidth: 460,
         display: 'flex', flexDirection: 'column', alignItems: 'stretch',
-        gap: 16,
+        gap: 10,
         direction: 'rtl',
       }}
     >
@@ -214,24 +218,24 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
         onPointerUp={handlePressEnd}
         onPointerLeave={handlePressEnd}
         onPointerCancel={handlePressEnd}
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, userSelect: 'none' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, userSelect: 'none' }}
       >
         <h2
           data-testid="abuwhatsapp-title"
           style={{
             margin: 0,
             fontFamily: "'Heebo',sans-serif",
-            fontSize: 26, fontWeight: 700,
+            fontSize: 22, fontWeight: 700,
             color: 'rgba(255,255,255,0.94)',
-            letterSpacing: '0.4px',
+            letterSpacing: '0.3px',
           }}
         >
           אבו וואטסאפ
         </h2>
         <div style={{
           fontFamily: "'Heebo',sans-serif",
-          fontSize: 15,
-          color: 'rgba(255,255,255,0.55)',
+          fontSize: 13,
+          color: 'rgba(255,255,255,0.50)',
         }}>
           למי לשלוח הודעה?
         </div>
@@ -239,10 +243,10 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
           data-testid="abuwhatsapp-build-version"
           style={{
             fontFamily: "'DM Sans',monospace",
-            fontSize: 11,
-            color: `rgba(${hexToRgb(GOLD)},0.55)`,
+            fontSize: 9,
+            color: `rgba(${hexToRgb(GOLD)},0.45)`,
             direction: 'ltr',
-            marginTop: 2,
+            marginTop: 1, letterSpacing: '0.3px',
           }}
         >
           v{APP_VERSION.version}
@@ -255,8 +259,9 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
           width: '100%',
           display: 'grid',
           gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-          gap: 18,
-          padding: '8px 4px',
+          rowGap: GRID_GAP, columnGap: GRID_GAP,
+          padding: '4px 2px',
+          justifyItems: 'center',
         }}
       >
         {group && (
@@ -335,12 +340,15 @@ export function BubbleTile({ id, kind, label, photoFile, initials, onTap }: Bubb
       onClick={onTap}
       aria-label={label}
       style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 8,
-        padding: '6px 4px',
+        display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+        gap: 6,
+        padding: 0,
+        margin: 0,
         background: 'transparent',
         cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
+        // Don't let the grid cell stretch the button — keeps avatar centred.
+        width: 'auto', minWidth: BUBBLE_SIZE,
       }}
     >
       <BubbleAvatar
@@ -354,7 +362,7 @@ export function BubbleTile({ id, kind, label, photoFile, initials, onTap }: Bubb
         fontFamily: "'Heebo',sans-serif",
         fontSize: BUBBLE_LABEL_FONT, fontWeight: 600,
         color: 'rgba(255,255,255,0.92)',
-        textAlign: 'center', lineHeight: 1.25,
+        textAlign: 'center', lineHeight: 1.2,
         maxWidth: BUBBLE_SIZE + 12,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
@@ -374,24 +382,35 @@ function BubbleAvatar({
   accentSoft: string
 }) {
   const fontSize = Math.round(size * 0.42)
+  // Forced circle: explicit width=height, aspect-ratio:1/1, fixed flex
+  // basis. Defends against parent flex/grid stretching the avatar into
+  // an oval on narrow phone viewports.
   return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%',
-      border: `2.5px solid ${accentSoft}`,
-      background: photoFile
-        ? 'linear-gradient(145deg, #0b2220, #050A18)'
-        : `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(20,184,166,0.18) 45%, rgba(8,16,28,0.95) 100%)`,
-      boxShadow: `0 0 0 3px rgba(0,0,0,0.25), 0 0 22px ${accentSoft}, 0 6px 16px rgba(0,0,0,0.40)`,
-      overflow: 'hidden',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0,
-    }}>
+    <div
+      data-bubble-avatar
+      style={{
+        width: size, height: size,
+        minWidth: size, minHeight: size,
+        maxWidth: size, maxHeight: size,
+        aspectRatio: '1 / 1',
+        flex: '0 0 auto',
+        boxSizing: 'border-box',
+        borderRadius: '50%',
+        border: `2px solid ${accentSoft}`,
+        background: photoFile
+          ? 'linear-gradient(145deg, #0b2220, #050A18)'
+          : `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(20,184,166,0.18) 45%, rgba(8,16,28,0.95) 100%)`,
+        boxShadow: `0 0 0 2px rgba(0,0,0,0.20), 0 0 16px ${accentSoft}, 0 4px 10px rgba(0,0,0,0.32)`,
+        overflow: 'hidden',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
       {photoFile ? (
         <img
           src={photoFile}
           alt=""
           loading="lazy"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: '50%' }}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
         />
       ) : (
@@ -399,7 +418,7 @@ function BubbleAvatar({
           fontFamily: "'Cormorant Garamond',Georgia,serif",
           fontSize, fontWeight: 600,
           color: accent,
-          textShadow: `0 2px 12px ${accentSoft}`,
+          textShadow: `0 2px 10px ${accentSoft}`,
           lineHeight: 1, userSelect: 'none',
         }}>{initials}</span>
       )}
