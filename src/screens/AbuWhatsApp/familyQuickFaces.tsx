@@ -276,17 +276,26 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
             onTap={handleTapGroup}
           />
         )}
-        {personsForGrid.map((p) => (
-          <BubbleTile
-            key={p.id}
-            id={p.id}
-            kind="person"
-            label={p.displayName}
-            photoFile={p.photoFile}
-            initials={computeInitials(p.displayName)}
-            onTap={() => handleTapPerson(p)}
-          />
-        ))}
+        {personsForGrid.map((p) => {
+          const actionable = isPersonActionable(p)
+          return (
+            <BubbleTile
+              key={p.id}
+              id={p.id}
+              kind="person"
+              label={p.displayName}
+              photoFile={p.photoFile}
+              initials={computeInitials(p.displayName)}
+              onTap={() => handleTapPerson(p)}
+              {...(actionable ? {
+                actions: {
+                  onWhatsApp: () => onOpenWhatsApp(buildWhatsAppPersonUrl(p)),
+                  onCall:     () => onOpenTel(buildTelUrl(p)),
+                },
+              } : {})}
+            />
+          )
+        })}
       </div>
 
       {actionSheet && (
@@ -330,46 +339,156 @@ interface BubbleTileProps {
   photoFile?: string | undefined
   initials: string
   onTap: () => void
+  /**
+   * Optional direct-action chips rendered beneath the name. Provide BOTH
+   * handlers when both actions apply (actionable persons). Group tiles never
+   * receive chips — taps on the group bubble go straight to WhatsApp via
+   * `onTap` per the family-group-WhatsApp-only rule.
+   */
+  actions?: { onWhatsApp: () => void; onCall: () => void }
 }
 
-export function BubbleTile({ id, kind, label, photoFile, initials, onTap }: BubbleTileProps) {
+export function BubbleTile({ id, kind, label, photoFile, initials, onTap, actions }: BubbleTileProps) {
+  // Outer div keeps each tile as a single grid cell. The photo+name region is
+  // its own <button> so tapping the photo or the label opens the action sheet
+  // (or fires onTap for the group). Chips are sibling <button>s below the
+  // name; they are NOT nested inside the main button (HTML wouldn't allow
+  // it), so chip taps stay scoped to themselves and never fire onTap.
   return (
-    <button
-      type="button"
+    <div
       data-testid={kind === 'group' ? `bubble-group-${id}` : `bubble-person-${id}`}
       data-bubble-kind={kind}
-      onClick={onTap}
-      aria-label={label}
       style={{
         display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
-        gap: 6,
-        padding: 0,
-        margin: 0,
+        gap: 8,
         background: 'transparent',
-        cursor: 'pointer',
-        WebkitTapHighlightColor: 'transparent',
-        // Don't let the grid cell stretch the button — keeps avatar centred.
         width: 'auto', minWidth: BUBBLE_SIZE,
       }}
     >
-      <BubbleAvatar
-        photoFile={photoFile}
-        initials={initials}
-        size={BUBBLE_SIZE}
-        accent={kind === 'group' ? WA_GREEN : TEAL}
-        accentSoft={kind === 'group' ? 'rgba(37,211,102,0.55)' : 'rgba(20,184,166,0.55)'}
-      />
-      <div style={{
+      <button
+        type="button"
+        data-testid={kind === 'group' ? `bubble-group-tap-${id}` : `bubble-person-tap-${id}`}
+        onClick={onTap}
+        aria-label={label}
+        style={{
+          display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+          gap: 6,
+          padding: 0,
+          margin: 0,
+          background: 'transparent',
+          cursor: 'pointer',
+          WebkitTapHighlightColor: 'transparent',
+          width: 'auto',
+        }}
+      >
+        <BubbleAvatar
+          photoFile={photoFile}
+          initials={initials}
+          size={BUBBLE_SIZE}
+          accent={kind === 'group' ? WA_GREEN : TEAL}
+          accentSoft={kind === 'group' ? 'rgba(37,211,102,0.55)' : 'rgba(20,184,166,0.55)'}
+        />
+        <div style={{
+          fontFamily: "'Heebo',sans-serif",
+          fontSize: BUBBLE_LABEL_FONT, fontWeight: 600,
+          color: 'rgba(255,255,255,0.92)',
+          textAlign: 'center', lineHeight: 1.2,
+          maxWidth: BUBBLE_SIZE + 12,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {label}
+        </div>
+      </button>
+
+      {actions && (
+        <div
+          data-testid={`bubble-actions-${id}`}
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+            gap: 6,
+            width: BUBBLE_SIZE + 16,
+            direction: 'rtl',
+          }}
+        >
+          <ActionChip
+            kind="whatsapp"
+            label="וואטסאפ"
+            ariaLabel={`וואטסאפ ל${label}`}
+            testId={`chip-whatsapp-${id}`}
+            onClick={(e) => { e.stopPropagation(); actions.onWhatsApp() }}
+          />
+          <ActionChip
+            kind="call"
+            label="שיחה"
+            ariaLabel={`שיחה אל ${label}`}
+            testId={`chip-call-${id}`}
+            onClick={(e) => { e.stopPropagation(); actions.onCall() }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ActionChip({
+  kind, label, ariaLabel, testId, onClick,
+}: {
+  kind: 'whatsapp' | 'call'
+  label: string
+  ariaLabel: string
+  testId: string
+  onClick: (e: React.MouseEvent) => void
+}) {
+  const accent = kind === 'whatsapp' ? WA_GREEN : TEAL
+  const bg = kind === 'whatsapp'
+    ? `linear-gradient(145deg, ${WA_GREEN}, #128C7E)`
+    : 'rgba(20,184,166,0.12)'
+  const color = kind === 'whatsapp' ? 'white' : TEAL
+  const border = kind === 'whatsapp' ? `1.5px solid ${WA_GREEN}66` : `1.5px solid ${TEAL}66`
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      data-chip-kind={kind}
+      onClick={onClick}
+      aria-label={ariaLabel}
+      style={{
+        minHeight: 44, padding: '0 12px',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        gap: 6,
+        borderRadius: 14,
+        border,
+        background: bg,
+        color,
         fontFamily: "'Heebo',sans-serif",
-        fontSize: BUBBLE_LABEL_FONT, fontWeight: 600,
-        color: 'rgba(255,255,255,0.92)',
-        textAlign: 'center', lineHeight: 1.2,
-        maxWidth: BUBBLE_SIZE + 12,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        {label}
-      </div>
+        fontSize: 14, fontWeight: 700,
+        cursor: 'pointer',
+        boxShadow: kind === 'whatsapp'
+          ? '0 3px 10px rgba(37,211,102,0.22)'
+          : '0 3px 10px rgba(20,184,166,0.18)',
+        WebkitTapHighlightColor: 'transparent',
+        letterSpacing: '0.2px',
+      }}
+    >
+      <ActionChipIcon kind={kind} color={color} accent={accent} />
+      <span>{label}</span>
     </button>
+  )
+}
+
+function ActionChipIcon({ kind, color, accent }: { kind: 'whatsapp' | 'call'; color: string; accent: string }) {
+  if (kind === 'whatsapp') {
+    return (
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.3-4.4A9 9 0 1 1 21 12z" />
+        <path d="M8.5 9.5c0 4 3 7 7 7" />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.86 19.86 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8 10a16 16 0 0 0 6 6l1.36-1.36a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
   )
 }
 
