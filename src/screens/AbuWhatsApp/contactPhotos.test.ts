@@ -6,16 +6,18 @@ import {
   KNOWN_CONTACT_PHOTOS,
   type FamilyQuickFace,
 } from './familyContacts.private'
+import { isPersonActionable } from './familyQuickFaces'
 
 const PROJECT_ROOT = path.resolve(__dirname, '../../..')
 
 const EXPECTED_IDS = [
   'mor', 'leo', 'yael', 'raphi', 'ofir', 'ayalon',
   'eili', 'adar', 'adi', 'noam', 'yarden', 'gilad',
+  'ari', 'anabel',
 ] as const
 
 describe('KNOWN_CONTACT_PHOTOS mapping', () => {
-  it('contains exactly the 12 expected ids', () => {
+  it('contains exactly the 14 expected ids', () => {
     expect(Object.keys(KNOWN_CONTACT_PHOTOS).sort())
       .toEqual([...EXPECTED_IDS].sort())
   })
@@ -33,11 +35,13 @@ describe('KNOWN_CONTACT_PHOTOS mapping', () => {
     }
   })
 
-  it('every photo path is lowercase and has a .jpeg or .png extension', () => {
+  it('every photo path matches the expected filename shape (case-insensitive .jpeg|.jpg|.png)', () => {
+    // Filenames preserve the case of the committed image asset (e.g.
+    // ARI.JPEG, Anabel.JPEG). We never edit committed image files, so the
+    // path test just asserts the URL shape and extension family.
+    const re = /^\/family-contacts\/[A-Za-z0-9._-]+\.(jpeg|jpg|png)$/i
     for (const [id, p] of Object.entries(KNOWN_CONTACT_PHOTOS)) {
-      const file = p.split('/').pop() as string
-      expect(file).toBe(file.toLowerCase())
-      expect(/\.(jpeg|png)$/.test(file), `${id}: ${file}`).toBe(true)
+      expect(re.test(p), `${id}: ${p}`).toBe(true)
     }
   })
 })
@@ -68,13 +72,11 @@ describe('FAMILY_QUICK_FACES scaffold uses KNOWN_CONTACT_PHOTOS', () => {
     })
   }
 
-  it('Anabel and Ari intentionally have NO photoFile (initials fallback)', () => {
+  it('Ari and Anabel now have photoFile (mapped, not initials fallback)', () => {
     const anabel = person('anabel')
     const ari = person('ari')
-    expect(anabel).toBeDefined()
-    expect(ari).toBeDefined()
-    expect(anabel?.photoFile ?? '').toBe('')
-    expect(ari?.photoFile ?? '').toBe('')
+    expect(anabel?.photoFile).toBe('/family-contacts/Anabel.JPEG')
+    expect(ari?.photoFile).toBe('/family-contacts/ARI.JPEG')
   })
 
   it('scaffold still has empty phoneE164 for every person (no real phones)', () => {
@@ -82,6 +84,22 @@ describe('FAMILY_QUICK_FACES scaffold uses KNOWN_CONTACT_PHOTOS', () => {
     for (const p of persons) {
       expect(p.phoneE164, `${p.id} must have empty phoneE164`).toBe('')
     }
+  })
+
+  it('Ari and Anabel are present and visible in the scaffold (not hidden)', () => {
+    const anabel = person('anabel')
+    const ari = person('ari')
+    expect(anabel).toBeDefined()
+    expect(ari).toBeDefined()
+    // visible-by-default rule: presence of the person row in the scaffold
+    // is what surfaces them in the bubble grid; tap-gating is separate.
+  })
+
+  it('Ari and Anabel are NOT actionable in the scaffold (no phone → missing-phone toast on tap)', () => {
+    const anabel = person('anabel')!
+    const ari = person('ari')!
+    expect(isPersonActionable(anabel)).toBe(false)
+    expect(isPersonActionable(ari)).toBe(false)
   })
 
   it('family-group entry remains unchanged (no photoFile override)', () => {
@@ -101,9 +119,11 @@ describe('BubbleAvatar render path (source contract)', () => {
     expect(facesSrc.includes('src={photoFile}')).toBe(true)
   })
 
-  it('img uses object-fit cover + object-position center for centred crops', () => {
-    expect(facesSrc.includes("objectFit: 'cover'")).toBe(true)
+  it('img uses object-fit contain + object-position center for non-cropping centred display', () => {
+    expect(facesSrc.includes("objectFit: 'contain'")).toBe(true)
     expect(facesSrc.includes("objectPosition: 'center'")).toBe(true)
+    // Sanity: no stray cover anywhere in the BubbleAvatar img style now.
+    expect(/<img[\s\S]{0,400}objectFit: 'cover'/.test(facesSrc)).toBe(false)
   })
 
   it('initials fallback span still present for missing photoFile', () => {
@@ -113,5 +133,18 @@ describe('BubbleAvatar render path (source contract)', () => {
 
   it('mergeFacesWithLocal preserves scaffold photoFile when override has none', () => {
     expect(/else if \(f\.photoFile && f\.photoFile\.length > 0\) merged\.photoFile = f\.photoFile/.test(facesSrc)).toBe(true)
+  })
+
+  it('group target is WhatsApp-only — no tel/call action wired (regression guard)', () => {
+    const startIdx = facesSrc.indexOf('function handleTapGroup')
+    expect(startIdx).toBeGreaterThan(-1)
+    const endIdx = facesSrc.indexOf('\n\n', startIdx)
+    const handler = facesSrc.slice(startIdx, endIdx === -1 ? facesSrc.length : endIdx)
+    expect(handler.includes('onOpenWhatsApp')).toBe(true)
+    expect(handler.includes('onOpenTel')).toBe(false)
+  })
+
+  it('missing-phone toast text is preserved verbatim', () => {
+    expect(facesSrc.includes('המספר עדיין לא הוגדר')).toBe(true)
   })
 })
