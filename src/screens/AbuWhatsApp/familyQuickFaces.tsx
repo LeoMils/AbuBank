@@ -413,7 +413,7 @@ export function BubbleTile({ id, kind, label, photoFile, initials, onTap, action
           <ActionChip
             kind="whatsapp"
             label="וואטסאפ"
-            ariaLabel={`וואטסאפ ל${label}`}
+            ariaLabel={`שליחת וואטסאפ אל ${label}`}
             testId={`chip-whatsapp-${id}`}
             onClick={(e) => { e.stopPropagation(); actions.onWhatsApp() }}
           />

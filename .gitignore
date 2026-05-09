@@ -9,3 +9,9 @@ dist/
 .vercel
 
 .ai-runs/
+
+# AbuWhatsApp local-only private contact data.
+# Real phone numbers must never be committed; if an operator drops a JSON
+# backup into the repo by accident, these patterns block it from staging.
+private/
+*.local.json

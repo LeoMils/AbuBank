@@ -1,0 +1,23 @@
+[
+  {
+    "id": "mor",
+    "enabled": true,
+    "phoneE164": "+972XXXXXXXXX"
+  },
+  {
+    "id": "leo",
+    "enabled": true,
+    "phoneE164": "+972XXXXXXXXX",
+    "whatsappE164": "+972XXXXXXXXX"
+  },
+  {
+    "id": "ari",
+    "enabled": false,
+    "phoneE164": ""
+  },
+  {
+    "id": "anabel",
+    "enabled": false,
+    "phoneE164": ""
+  }
+]

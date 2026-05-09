@@ -32,7 +32,7 @@ describe('BubbleTile direct-action chips (source contract)', () => {
   })
 
   it('chips have aria-label in Hebrew (per-person)', () => {
-    expect(facesSrc.includes('ariaLabel={`וואטסאפ ל${label}`}')).toBe(true)
+    expect(facesSrc.includes('ariaLabel={`שליחת וואטסאפ אל ${label}`}')).toBe(true)
     expect(facesSrc.includes('ariaLabel={`שיחה אל ${label}`}')).toBe(true)
   })
 
@@ -177,9 +177,10 @@ describe('Privacy and storage rules unchanged', () => {
 // ─── Operator setup helper copy + JSON-collapsed ─────────────────────────
 
 describe('Operator setup screen contract', () => {
-  it('helper paragraph mentions the WhatsApp/call enablement message', () => {
-    expect(setupSrc.includes('כדי להפעיל וואטסאפ ושיחה לאדם זה, הגדירו מספר טלפון במכשיר הזה.')).toBe(true)
-    expect(setupSrc.includes('המספר נשמר רק במכשיר הזה ולא נכנס לקוד.')).toBe(true)
+  it('helper paragraph contains the privacy + activation lines verbatim', () => {
+    expect(setupSrc.includes('המספרים נשמרים רק במכשיר הזה.')).toBe(true)
+    expect(setupSrc.includes('הם לא נכנסים לקוד ולא נשלחים לשרת.')).toBe(true)
+    expect(setupSrc.includes('אחרי שמירת מספר, יופיעו כפתורי וואטסאפ ושיחה.')).toBe(true)
   })
 
   it('JSON import/export remains collapsed under <details>"מתקדם"', () => {
