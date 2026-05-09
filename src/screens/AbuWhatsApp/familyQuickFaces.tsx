@@ -110,6 +110,24 @@ export function mergeFacesWithLocal(
   })
 }
 
+/**
+ * Toast text shown when a person is tapped but has no valid phone yet.
+ *
+ * Default copy is the generic Hebrew line "המספר עדיין לא הוגדר", but Ari and
+ * Anabel are still little — they don't have their own phones yet. For them
+ * we show a gentle, family-friendly two-line message instead. Once an
+ * operator saves a phone for either of them, this helper is no longer
+ * consulted (the tile becomes actionable and tapping opens the action sheet
+ * or fires the chips directly).
+ */
+export const GENERIC_MISSING_PHONE_TOAST = 'המספר עדיין לא הוגדר'
+export const ARI_ANABEL_NO_PHONE_TOAST = 'הן עדיין קטנות 👧✨\nעדיין אין להן טלפון משלהן'
+
+export function getMissingPhoneMessage(contactId: string): string {
+  if (contactId === 'ari' || contactId === 'anabel') return ARI_ANABEL_NO_PHONE_TOAST
+  return GENERIC_MISSING_PHONE_TOAST
+}
+
 export function computeInitials(displayName: string): string {
   const trimmed = (displayName || '').trim()
   if (!trimmed) return '?'
@@ -189,7 +207,7 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
 
   function handleTapPerson(face: Extract<FamilyQuickFace, { type: 'person' }>) {
     if (!isPersonActionable(face)) {
-      showToast('המספר עדיין לא הוגדר')
+      showToast(getMissingPhoneMessage(face.id))
       return
     }
     setActionSheet({ face })
@@ -321,6 +339,9 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
             color: 'rgba(255,255,255,0.92)',
             fontFamily: "'Heebo',sans-serif",
             fontSize: 15,
+            lineHeight: 1.45,
+            whiteSpace: 'pre-line',
+            textAlign: 'center',
             boxShadow: '0 10px 28px rgba(0,0,0,0.42)',
             zIndex: 30, direction: 'rtl',
           }}

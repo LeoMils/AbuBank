@@ -142,8 +142,15 @@ fixtures (`+972501234567`) are explicitly allow-listed in the test.
 
 Ari and Anabel ship in the public scaffold with photos and empty phones. They
 appear in the grid at all times, but no action chips render until the operator
-saves a real phone number for them via the setup screen. Tapping their bubble
-without a phone shows the toast "המספר עדיין לא הוגדר".
+saves a real phone number for them via the setup screen.
+
+Tapping their bubble without a phone shows a gentle, family-friendly two-line
+message (they are still little and don't have their own phone yet) — not the
+generic "המספר עדיין לא הוגדר" line that every other contact gets. The
+behaviour is centralised in `getMissingPhoneMessage(contactId)` in
+`familyQuickFaces.tsx`, which returns the cute copy only for ids `ari` and
+`anabel`. Once an operator saves a phone for either of them, the helper is
+no longer consulted: the bubble becomes actionable like any other contact.
 
 This matches the product rule: **family members appear on screen first;
 configuration follows.**
