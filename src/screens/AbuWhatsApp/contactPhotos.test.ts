@@ -101,8 +101,8 @@ describe('BubbleAvatar render path (source contract)', () => {
     expect(facesSrc.includes('src={photoFile}')).toBe(true)
   })
 
-  it('img uses object-fit cover + object-position center for centred crops', () => {
-    expect(facesSrc.includes("objectFit: 'cover'")).toBe(true)
+  it('img uses object-fit contain + object-position center for non-cropping centred display', () => {
+    expect(facesSrc.includes("objectFit: 'contain'")).toBe(true)
     expect(facesSrc.includes("objectPosition: 'center'")).toBe(true)
   })
 
