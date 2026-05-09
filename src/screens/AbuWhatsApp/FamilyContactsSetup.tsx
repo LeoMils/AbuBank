@@ -162,7 +162,9 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
       </div>
 
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'rgba(255,255,255,0.55)' }}>
-        מצב מפעיל בלבד. הנתונים נשמרים רק במכשיר הזה — לא נשלחים לשרת ולא נכנסים לקוד.
+        כדי להפעיל וואטסאפ ושיחה לאדם זה, הגדירו מספר טלפון במכשיר הזה.
+        <br />
+        המספר נשמר רק במכשיר הזה ולא נכנס לקוד.
       </p>
 
       <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
