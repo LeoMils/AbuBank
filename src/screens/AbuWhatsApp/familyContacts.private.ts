@@ -44,13 +44,16 @@ const FAMILY_GROUP_WHATSAPP_URL = 'https://chat.whatsapp.com/JqqGpPKTCq3L0JnitU5
 
 /**
  * Stable id → public-asset photo path. Keys MUST match scaffold person ids
- * below. Anabel and Ari intentionally omitted — initials fallback applies.
+ * below.
  *
  * These are public demo/contact avatar assets. Do not place sensitive photos
  * here unless public preview exposure is acceptable.
  *
  * `as const` keeps each value as a literal string (defeats
  * noUncheckedIndexedAccess at the scaffold use sites below).
+ *
+ * Note: filenames preserve their committed case (e.g. ARI.JPEG, Anabel.JPEG)
+ * because we never edit committed image files.
  */
 export const KNOWN_CONTACT_PHOTOS = {
   mor:    '/family-contacts/mor.jpeg',
@@ -65,6 +68,8 @@ export const KNOWN_CONTACT_PHOTOS = {
   noam:   '/family-contacts/noam.jpeg',
   yarden: '/family-contacts/yarden.jpeg',
   gilad:  '/family-contacts/gilad.jpeg',
+  ari:    '/family-contacts/ARI.JPEG',
+  anabel: '/family-contacts/Anabel.JPEG',
 } as const
 
 export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
@@ -189,6 +194,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'אנאבל',
     relationshipHebrew: 'נינה',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.anabel,
     enabled: false,
   },
   {
@@ -197,6 +203,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'ארי',
     relationshipHebrew: 'נין',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.ari,
     enabled: false,
   },
 ]
