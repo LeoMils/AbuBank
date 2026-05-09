@@ -162,13 +162,14 @@ describe('FAMILY_QUICK_FACES scaffold', () => {
   })
 
   it('every person entry has an empty phoneE164 and is disabled (no fake phones committed)', () => {
+    // Photos may be set for known contacts (scaffold ships public avatars
+    // under public/family-contacts); phones must always be empty in source.
     const people = FAMILY_QUICK_FACES.filter(f => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]
     expect(people.length).toBeGreaterThan(0)
     for (const p of people) {
       expect(p.phoneE164).toBe('')
       expect(p.enabled).toBe(false)
       expect(p.whatsappE164 ?? '').toBe('')
-      expect(p.photoFile ?? '').toBe('')
     }
   })
 
