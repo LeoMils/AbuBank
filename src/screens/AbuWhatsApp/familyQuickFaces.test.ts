@@ -511,11 +511,15 @@ describe('AbuWhatsApp bubble visual contract (v0.3.2 polish)', () => {
   it('label sits below the avatar (BubbleAvatar precedes the rendered label text inside BubbleTile)', () => {
     const tileStart = facesSrc.indexOf('export function BubbleTile')
     expect(tileStart).toBeGreaterThan(-1)
-    const tileBody = facesSrc.slice(tileStart, tileStart + 2400)
+    // Look across the entire BubbleTile body (now wraps in an outer div +
+    // inner button + optional chip row).
+    const tileEnd = facesSrc.indexOf('\nfunction ActionChip', tileStart)
+    const tileBody = facesSrc.slice(tileStart, tileEnd === -1 ? tileStart + 4000 : tileEnd)
     const avatarIdx = tileBody.indexOf('<BubbleAvatar')
-    // The rendered text is inside its own <div>{label}</div>, distinct from
-    // aria-label={label} on the button.
-    const renderedLabelIdx = tileBody.indexOf('>\n        {label}')
+    // The rendered label text is inside its own <div>{label}</div>, distinct
+    // from aria-label={label} on the inner tap button. Match the rendered
+    // text occurrence ignoring exact indentation.
+    const renderedLabelIdx = tileBody.search(/>\s*\{label\}\s*</)
     expect(avatarIdx).toBeGreaterThan(-1)
     expect(renderedLabelIdx).toBeGreaterThan(avatarIdx)
   })

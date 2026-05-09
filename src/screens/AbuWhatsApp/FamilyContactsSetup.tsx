@@ -161,8 +161,15 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
         v{APP_VERSION.version} · {APP_VERSION.buildLabel}
       </div>
 
-      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'rgba(255,255,255,0.55)' }}>
-        מצב מפעיל בלבד. הנתונים נשמרים רק במכשיר הזה — לא נשלחים לשרת ולא נכנסים לקוד.
+      <p
+        data-testid="setup-helper-copy"
+        style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'rgba(255,255,255,0.55)' }}
+      >
+        המספרים נשמרים רק במכשיר הזה.
+        <br />
+        הם לא נכנסים לקוד ולא נשלחים לשרת.
+        <br />
+        אחרי שמירת מספר, יופיעו כפתורי וואטסאפ ושיחה.
       </p>
 
       <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
