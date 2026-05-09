@@ -470,3 +470,82 @@ describe('AbuWhatsApp unified bubble grid (source contract)', () => {
     }
   })
 })
+
+// ─── v0.3.2 visual polish — circular geometry + no Martita tabs ────────────
+
+describe('AbuWhatsApp bubble visual contract (v0.3.2 polish)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fs = require('fs') as typeof import('fs')
+  const path = require('path') as typeof import('path')
+  const PROJECT_ROOT = path.resolve(__dirname, '../../..')
+  const facesSrc = fs.readFileSync(path.join(PROJECT_ROOT, 'src/screens/AbuWhatsApp/familyQuickFaces.tsx'), 'utf8')
+  const indexSrc = fs.readFileSync(path.join(PROJECT_ROOT, 'src/screens/AbuWhatsApp/index.tsx'), 'utf8')
+
+  it('BubbleAvatar enforces circular geometry: width === height === size, aspect-ratio 1/1, borderRadius 50%', () => {
+    // Slice the BubbleAvatar function body.
+    const startIdx = facesSrc.indexOf('function BubbleAvatar(')
+    expect(startIdx).toBeGreaterThan(-1)
+    const body = facesSrc.slice(startIdx, startIdx + 1800)
+    expect(body.includes('width: size, height: size')).toBe(true)
+    expect(body.includes('minWidth: size, minHeight: size')).toBe(true)
+    expect(body.includes('maxWidth: size, maxHeight: size')).toBe(true)
+    expect(body.includes("aspectRatio: '1 / 1'")).toBe(true)
+    expect(body.includes("borderRadius: '50%'")).toBe(true)
+    expect(body.includes("flex: '0 0 auto'")).toBe(true)
+  })
+
+  it('canonical bubble size matches AbuBank Home bubble system (≤ 96, ≥ 64)', () => {
+    const m = facesSrc.match(/const\s+BUBBLE_SIZE\s*=\s*(\d+)/)
+    expect(m).not.toBeNull()
+    const px = Number((m as RegExpMatchArray)[1])
+    expect(px).toBeGreaterThanOrEqual(64)
+    expect(px).toBeLessThanOrEqual(96)
+  })
+
+  it('grid uses 3 columns with a single canonical gap (rowGap === columnGap)', () => {
+    expect(facesSrc.includes('repeat(3, minmax(0, 1fr))')).toBe(true)
+    expect(facesSrc.includes('rowGap: GRID_GAP, columnGap: GRID_GAP')).toBe(true)
+  })
+
+  it('label sits below the avatar (BubbleAvatar precedes the rendered label text inside BubbleTile)', () => {
+    const tileStart = facesSrc.indexOf('export function BubbleTile')
+    expect(tileStart).toBeGreaterThan(-1)
+    const tileBody = facesSrc.slice(tileStart, tileStart + 2400)
+    const avatarIdx = tileBody.indexOf('<BubbleAvatar')
+    // The rendered text is inside its own <div>{label}</div>, distinct from
+    // aria-label={label} on the button.
+    const renderedLabelIdx = tileBody.indexOf('>\n        {label}')
+    expect(avatarIdx).toBeGreaterThan(-1)
+    expect(renderedLabelIdx).toBeGreaterThan(avatarIdx)
+  })
+
+  it('AbuWhatsApp default Martita view does NOT render the משפחה / פעולות tab bar', () => {
+    // The tab bar JSX must be gated by `operatorMode` so Martita's default
+    // surface is just the family bubble grid. The TabButton labels still
+    // exist in source (kept for operator parity) but are not in the
+    // Martita-facing render path.
+    expect(/!voiceMode\s*&&\s*operatorMode\s*&&[\s\S]{0,40}data-testid="abuwhatsapp-tab-bar"/.test(indexSrc)).toBe(true)
+    // The unconditional `{!voiceMode && (` wrapper for the tab bar must be gone.
+    expect(/\{!voiceMode\s*&&\s*\(\s*\n\s*<div\s+data-testid="abuwhatsapp-tab-bar"/.test(indexSrc)).toBe(false)
+  })
+
+  it('build version label still renders on the AbuWhatsApp screen', () => {
+    expect(facesSrc.includes('abuwhatsapp-build-version')).toBe(true)
+    expect(facesSrc.includes('APP_VERSION.version')).toBe(true)
+  })
+
+  it('group + person still share the same BubbleTile component', () => {
+    const defs = facesSrc.match(/export function BubbleTile\b/g) ?? []
+    expect(defs.length).toBe(1)
+    expect(/<BubbleTile[^>]*kind=["']group["']/.test(facesSrc)).toBe(true)
+    expect(/<BubbleTile[^>]*kind=["']person["']/.test(facesSrc)).toBe(true)
+  })
+
+  it('missing-phone toast and action sheet behaviour are preserved', () => {
+    expect(facesSrc.includes('המספר עדיין לא הוגדר')).toBe(true)
+    expect(facesSrc.includes('קבוצת המשפחה עדיין לא הוגדרה')).toBe(true)
+    expect(facesSrc.includes('action-whatsapp-')).toBe(true)
+    expect(facesSrc.includes('action-call-')).toBe(true)
+    expect(facesSrc.includes('action-cancel-')).toBe(true)
+  })
+})
