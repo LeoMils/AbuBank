@@ -105,6 +105,7 @@ export function mergeFacesWithLocal(
     if (override.whatsappE164 && override.whatsappE164.length > 0) merged.whatsappE164 = override.whatsappE164
     if (override.photoDataUrl && override.photoDataUrl.length > 0) merged.photoFile = override.photoDataUrl
     else if (override.photoFile && override.photoFile.length > 0) merged.photoFile = override.photoFile
+    else if (f.photoFile && f.photoFile.length > 0) merged.photoFile = f.photoFile
     return merged
   })
 }
@@ -410,7 +411,7 @@ function BubbleAvatar({
           src={photoFile}
           alt=""
           loading="lazy"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: '50%' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block', borderRadius: '50%' }}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
         />
       ) : (

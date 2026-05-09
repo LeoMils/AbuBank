@@ -14,6 +14,10 @@
  *
  * The UI silently skips any entry where `enabled !== true` or `phoneE164` fails
  * the basic validator in familyQuickFaces.tsx.
+ *
+ * Avatar photos:
+ * These are public demo/contact avatar assets. Do not place sensitive photos
+ * here unless public preview exposure is acceptable.
  */
 
 export type FamilyQuickFace =
@@ -38,6 +42,31 @@ export type FamilyQuickFace =
 
 const FAMILY_GROUP_WHATSAPP_URL = 'https://chat.whatsapp.com/JqqGpPKTCq3L0JnitU5y5f'
 
+/**
+ * Stable id → public-asset photo path. Keys MUST match scaffold person ids
+ * below. Anabel and Ari intentionally omitted — initials fallback applies.
+ *
+ * These are public demo/contact avatar assets. Do not place sensitive photos
+ * here unless public preview exposure is acceptable.
+ *
+ * `as const` keeps each value as a literal string (defeats
+ * noUncheckedIndexedAccess at the scaffold use sites below).
+ */
+export const KNOWN_CONTACT_PHOTOS = {
+  mor:    '/family-contacts/mor.jpeg',
+  leo:    '/family-contacts/leo.png',
+  yael:   '/family-contacts/yael.jpeg',
+  raphi:  '/family-contacts/raphi.png',
+  ofir:   '/family-contacts/ophir.png',
+  ayalon: '/family-contacts/eylon.jpeg',
+  eili:   '/family-contacts/ilai.jpeg',
+  adar:   '/family-contacts/adar.jpeg',
+  adi:    '/family-contacts/adi.jpeg',
+  noam:   '/family-contacts/noam.jpeg',
+  yarden: '/family-contacts/yarden.jpeg',
+  gilad:  '/family-contacts/gilad.jpeg',
+} as const
+
 export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
   {
     type: 'group',
@@ -52,6 +81,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'מור',
     relationshipHebrew: 'הבת',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.mor,
     enabled: false,
   },
   {
@@ -60,6 +90,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'לאו',
     relationshipHebrew: 'הבן',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.leo,
     enabled: false,
   },
   {
@@ -68,6 +99,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'יעל',
     relationshipHebrew: 'בת זוג של מור',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.yael,
     enabled: false,
   },
   {
@@ -76,6 +108,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'רפי',
     relationshipHebrew: 'אבא של הנכדים',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.raphi,
     enabled: false,
   },
   {
@@ -84,6 +117,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'אופיר',
     relationshipHebrew: 'נכד',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.ofir,
     enabled: false,
   },
   {
@@ -92,6 +126,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'איילון',
     relationshipHebrew: 'נכד',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.ayalon,
     enabled: false,
   },
   {
@@ -100,6 +135,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'עילי',
     relationshipHebrew: 'נכד',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.eili,
     enabled: false,
   },
   {
@@ -108,6 +144,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'אדר',
     relationshipHebrew: 'נכד',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.adar,
     enabled: false,
   },
   {
@@ -116,6 +153,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'עדי',
     relationshipHebrew: 'נכדה',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.adi,
     enabled: false,
   },
   {
@@ -124,6 +162,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'נועם',
     relationshipHebrew: 'נכד',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.noam,
     enabled: false,
   },
   {
@@ -132,6 +171,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'ירדן',
     relationshipHebrew: 'אשת עילי',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.yarden,
     enabled: false,
   },
   {
@@ -140,6 +180,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'גלעד',
     relationshipHebrew: 'בן זוג של אופיר',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.gilad,
     enabled: false,
   },
   {
