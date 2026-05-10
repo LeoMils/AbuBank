@@ -161,6 +161,39 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
         v{APP_VERSION.version} · {APP_VERSION.buildLabel}
       </div>
 
+      {(() => {
+        // Local diagnostic line: counts the contacts that this device would
+        // actually surface as actionable (enabled AND phoneE164 OR
+        // whatsappE164 passes the E.164 validator). Helps Leo confirm on
+        // the real phone whether localStorage holds the expected data.
+        const activeCount = stored.filter((c) => {
+          if (!c.enabled) return false
+          if (isValidPhoneE164(c.phoneE164)) return true
+          if (c.whatsappE164 && isValidPhoneE164(c.whatsappE164)) return true
+          return false
+        }).length
+        const msg = activeCount > 0
+          ? `נשמרו ${activeCount} אנשי קשר פעילים במכשיר הזה`
+          : 'לא נשמרו עדיין אנשי קשר במכשיר הזה'
+        return (
+          <div
+            data-testid="setup-active-count"
+            data-active-count={activeCount}
+            style={{
+              fontSize: 13, lineHeight: 1.55,
+              padding: '8px 10px',
+              borderRadius: 10,
+              background: activeCount > 0 ? 'rgba(20,184,166,0.10)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${activeCount > 0 ? 'rgba(20,184,166,0.40)' : 'rgba(255,255,255,0.08)'}`,
+              color: activeCount > 0 ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.62)',
+              fontFamily: "'Heebo',sans-serif",
+            }}
+          >
+            {msg}
+          </div>
+        )
+      })()}
+
       <p
         data-testid="setup-helper-copy"
         style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'rgba(255,255,255,0.55)' }}

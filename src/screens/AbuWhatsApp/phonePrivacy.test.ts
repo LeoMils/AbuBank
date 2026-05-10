@@ -54,6 +54,10 @@ const PINNED_SYNTHETIC = new Set<string>([
   '+972501234567',
   '+972501111111',
   '+972502222222',
+  // seededStorageRepro.test.ts uses three obvious +972500000001/2/3 stubs.
+  '+972500000001',
+  '+972500000002',
+  '+972500000003',
 ])
 
 /**
