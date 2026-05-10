@@ -119,11 +119,15 @@ describe('BubbleAvatar render path (source contract)', () => {
     expect(facesSrc.includes('src={photoFile}')).toBe(true)
   })
 
-  it('img uses object-fit contain + object-position center for non-cropping centred display', () => {
-    expect(facesSrc.includes("objectFit: 'contain'")).toBe(true)
-    expect(facesSrc.includes("objectPosition: 'center'")).toBe(true)
-    // Sanity: no stray cover anywhere in the BubbleAvatar img style now.
-    expect(/<img[\s\S]{0,400}objectFit: 'cover'/.test(facesSrc)).toBe(false)
+  it('img defaults to non-cropping object-fit:contain + object-position:center', () => {
+    // BubbleAvatar resolves a default of `contain` / `center` when the
+    // contact does not opt into a per-image override. The image element
+    // applies `objectFit: resolvedFit` / `objectPosition: resolvedPosition`,
+    // and the resolution code defaults to those literals.
+    expect(facesSrc.includes("photoFit ?? 'contain'")).toBe(true)
+    expect(facesSrc.includes("photoObjectPosition ?? 'center'")).toBe(true)
+    expect(facesSrc.includes('objectFit: resolvedFit')).toBe(true)
+    expect(facesSrc.includes('objectPosition: resolvedPosition')).toBe(true)
   })
 
   it('initials fallback span still present for missing photoFile', () => {
@@ -132,7 +136,9 @@ describe('BubbleAvatar render path (source contract)', () => {
   })
 
   it('mergeFacesWithLocal preserves scaffold photoFile when override has none', () => {
-    expect(/else if \(f\.photoFile && f\.photoFile\.length > 0\) merged\.photoFile = f\.photoFile/.test(facesSrc)).toBe(true)
+    // The scaffold-fallback branch is now wrapped in a photoSource tracker
+    // so per-contact crop metadata can be kept alongside the photo path.
+    expect(/else if \(f\.photoFile && f\.photoFile\.length > 0\) \{[\s\S]{0,200}merged\.photoFile = f\.photoFile/.test(facesSrc)).toBe(true)
   })
 
   it('group target is WhatsApp-only — no tel/call action wired (regression guard)', () => {

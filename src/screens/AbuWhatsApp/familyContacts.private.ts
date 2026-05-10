@@ -20,12 +20,23 @@
  * here unless public preview exposure is acceptable.
  */
 
+/**
+ * Per-photo display crop metadata (optional). Defaults to `contain` /
+ * `center` so the bubble never crops a face — but a contact whose photo
+ * has letterbox bands or unusual aspect ratio (e.g. Adar's 883×2048 tall
+ * portrait) can opt into `cover` with a per-image object-position so the
+ * face fills the whole circle without leaving black empty bands.
+ */
+export type PhotoFit = 'contain' | 'cover'
+
 export type FamilyQuickFace =
   | {
       type: 'group'
       id: 'family-group'
       label: 'המשפחה'
       photoFile?: string
+      photoFit?: PhotoFit
+      photoObjectPosition?: string
       whatsappUrl: string
       enabled: boolean
     }
@@ -37,6 +48,8 @@ export type FamilyQuickFace =
       phoneE164: string
       whatsappE164?: string
       photoFile?: string
+      photoFit?: PhotoFit
+      photoObjectPosition?: string
       enabled: boolean
     }
 
@@ -150,6 +163,12 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     relationshipHebrew: 'נכד',
     phoneE164: '',
     photoFile: KNOWN_CONTACT_PHOTOS.adar,
+    // Adar's source photo is a 883×2048 tall portrait (screenshot). With
+    // the default object-fit:contain it leaves black bands inside the
+    // 80 px circle. Force cover + a centred crop biased toward the upper
+    // third so his face stays visible after the zoom.
+    photoFit: 'cover',
+    photoObjectPosition: 'center 28%',
     enabled: false,
   },
   {
