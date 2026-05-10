@@ -42,7 +42,12 @@ describe('BubbleTile direct-action chips (source contract)', () => {
   })
 
   it('chip touch target is at least 44 px tall (senior-first)', () => {
-    expect(facesSrc.includes('minHeight: 44')).toBe(true)
+    // Action chips parameterise minHeight (48 default, 56 for the family-group
+    // primary pill). The expression may be ternary; capture every numeric
+    // literal that follows "minHeight:" on the same line and assert ≥ 44.
+    const heights = [...facesSrc.matchAll(/minHeight:[^,\n]*?(\d{2,3})/g)]
+      .map((m) => parseInt(m[1] as string, 10))
+    expect(heights.some((v) => v >= 44)).toBe(true)
   })
 
   it('WhatsApp chip uses WA_GREEN; call chip uses TEAL', () => {
@@ -56,8 +61,12 @@ describe('BubbleTile direct-action chips (source contract)', () => {
 describe('FamilyQuickFaces wires chips only to actionable persons', () => {
   it('actionable person mapping passes actions {onWhatsApp,onCall}', () => {
     expect(facesSrc.includes('const actionable = isPersonActionable(p)')).toBe(true)
-    expect(facesSrc.includes('onWhatsApp: () => onOpenWhatsApp(buildWhatsAppPersonUrl(p))')).toBe(true)
-    expect(facesSrc.includes('onCall:     () => onOpenTel(buildTelUrl(p))')).toBe(true)
+    // Either inline mapping or a fire helper — both end up calling the
+    // sanitized URL builders.
+    expect(facesSrc.includes('buildWhatsAppPersonUrl(p)')).toBe(true)
+    expect(facesSrc.includes('buildTelUrl(p)')).toBe(true)
+    expect(/onWhatsApp:\s*\(\)\s*=>/.test(facesSrc)).toBe(true)
+    expect(/onCall:\s*\(\)\s*=>/.test(facesSrc)).toBe(true)
   })
 
   it('non-actionable persons get NO actions prop (chips do not render)', () => {
@@ -76,13 +85,17 @@ describe('FamilyQuickFaces wires chips only to actionable persons', () => {
     expect((m as RegExpMatchArray)[0].includes('actions=')).toBe(false)
   })
 
-  it('group tap handler still calls onOpenWhatsApp only — never onOpenTel', () => {
-    const startIdx = facesSrc.indexOf('function handleTapGroup')
-    expect(startIdx).toBeGreaterThan(-1)
-    const endIdx = facesSrc.indexOf('\n\n', startIdx)
-    const handler = facesSrc.slice(startIdx, endIdx === -1 ? facesSrc.length : endIdx)
-    expect(handler.includes('onOpenWhatsApp')).toBe(true)
-    expect(handler.includes('onOpenTel')).toBe(false)
+  it('group is WhatsApp-only — never wires a tel/call action', () => {
+    // groupAction TS type allows ONLY onWhatsApp. Assert no source site adds
+    // onCall to it, and that the group's fire helper calls onOpenWhatsApp,
+    // never onOpenTel.
+    expect(facesSrc.includes('groupAction')).toBe(true)
+    expect(/groupAction:[\s\S]{0,200}onCall/.test(facesSrc)).toBe(false)
+    const fireMatch = facesSrc.match(/function fireGroupWhatsApp\([^)]*\)\s*\{([\s\S]*?)\n {2}\}/)
+    expect(fireMatch).not.toBeNull()
+    const fireBody = (fireMatch as RegExpMatchArray)[1] ?? ''
+    expect(fireBody.includes('onOpenWhatsApp')).toBe(true)
+    expect(fireBody.includes('onOpenTel')).toBe(false)
   })
 })
 

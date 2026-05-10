@@ -61,10 +61,10 @@ export function getDisplayablePersons(
 }
 
 /**
- * A person tile is "actionable" (action sheet appears) only when the local
- * override marks them enabled AND the phone passes E.164 validation. Disabled
- * or missing/invalid phone → still rendered, but tap shows the friendly
- * Hebrew message "המספר עדיין לא הוגדר" instead.
+ * A person tile is "actionable" (flip card opens to action side) only when
+ * the local override marks them enabled AND the phone passes E.164
+ * validation. Disabled or missing/invalid phone → still rendered, but tap
+ * shows a friendly Hebrew toast instead of flipping.
  */
 export function isPersonActionable(face: Extract<FamilyQuickFace, { type: 'person' }>): boolean {
   if (face.enabled !== true) return false
@@ -117,8 +117,8 @@ export function mergeFacesWithLocal(
  * Anabel are still little — they don't have their own phones yet. For them
  * we show a gentle, family-friendly two-line message instead. Once an
  * operator saves a phone for either of them, this helper is no longer
- * consulted (the tile becomes actionable and tapping opens the action sheet
- * or fires the chips directly).
+ * consulted (the tile becomes actionable and tapping flips the card to the
+ * action side).
  */
 export const GENERIC_MISSING_PHONE_TOAST = 'המספר עדיין לא הוגדר'
 export const ARI_ANABEL_NO_PHONE_TOAST = 'הן עדיין קטנות 👧✨\nעדיין אין להן טלפון משלהן'
@@ -135,18 +135,24 @@ export function computeInitials(displayName: string): string {
   return first || '?'
 }
 
-// ─── Unified bubble grid ───────────────────────────────────────────────────
+// ─── Unified bubble grid with 180° flip-card interaction ───────────────────
 //
-// Same component renders both group and person tiles. Same circle size,
-// same label style, same spacing, same gradient. The only difference is
-// the photo/initials content and the tap action.
+// Default state: every tile is a small circle showing photo + name. Tapping
+// an actionable tile flips it 180° to a back face that holds either two
+// stacked pill buttons (person: WhatsApp + Call) or one (group: WhatsApp).
+// Only one card may be flipped at a time. Tapping the back-face background
+// (anywhere not on a button) flips the card back; tapping the page
+// background (the grid wrapper) closes the active card; tapping any other
+// tile closes the current and opens the new one.
 
 // Visual rules — match AbuBank Home launcher's bubble system.
-// Home uses 68×68 circles with a small label below; we use 80 here so
-// people-photos read clearly while staying recognisably "AbuBank-bubble".
-const BUBBLE_SIZE = 80     // px — single canonical size for every tile
+const BUBBLE_SIZE = 80           // px — the circle on the front face
 const BUBBLE_LABEL_FONT = 14
-const GRID_GAP = 12        // px — calmer vertical rhythm on iPhone
+const GRID_GAP = 12              // px — calmer vertical rhythm on iPhone
+const FLIPPED_CARD_W = 132       // px — back-face footprint (lifts above grid)
+const FLIPPED_CARD_H = 132       // px — back-face footprint
+const FLIP_DURATION_MS = 320     // 260–380ms band, picked for "satisfying flip"
+const FLIP_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
 // Deterministic family-group photo. Sourced from the existing committed
 // public/family/* asset set used by FamilyGallery; no per-person photo
@@ -163,10 +169,22 @@ interface FamilyQuickFacesProps {
   localContacts?: ReadonlyArray<LocalFamilyContact>
 }
 
-type ActionKind = 'whatsapp' | 'call'
-
-interface ActionSheetState {
-  face: Extract<FamilyQuickFace, { type: 'person' }>
+/**
+ * Hook that subscribes to the (prefers-reduced-motion: reduce) media query
+ * and re-renders if the user toggles it. Returns false on SSR / when
+ * matchMedia isn't available.
+ */
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState<boolean>(false)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReduced(mql.matches)
+    update()
+    mql.addEventListener?.('change', update)
+    return () => mql.removeEventListener?.('change', update)
+  }, [])
+  return reduced
 }
 
 export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, localContacts }: FamilyQuickFacesProps) {
@@ -181,8 +199,12 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
   // Visible-by-default: every scaffold person renders, even without phone.
   const personsForGrid = getDisplayablePersons(FAMILY_QUICK_FACES, contacts)
 
-  const [actionSheet, setActionSheet] = useState<ActionSheetState | null>(null)
+  // Single source of truth for which card is flipped to its action side.
+  // Family group uses id 'family-group'; persons use their stable id.
+  const [activeFlippedId, setActiveFlippedId] = useState<string | null>(null)
   const [toast, setToast] = useState<string>('')
+  const reducedMotion = usePrefersReducedMotion()
+
   const showToast = (msg: string) => {
     setToast(msg)
     window.setTimeout(() => setToast((cur) => (cur === msg ? '' : cur)), 2400)
@@ -197,12 +219,16 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
   }
 
+  function closeFlip() {
+    setActiveFlippedId(null)
+  }
+
   function handleTapGroup() {
     if (!group || !isGroupActionable(group)) {
       showToast('קבוצת המשפחה עדיין לא הוגדרה')
       return
     }
-    onOpenWhatsApp(group.whatsappUrl)
+    setActiveFlippedId((prev) => (prev === 'family-group' ? null : 'family-group'))
   }
 
   function handleTapPerson(face: Extract<FamilyQuickFace, { type: 'person' }>) {
@@ -210,20 +236,35 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
       showToast(getMissingPhoneMessage(face.id))
       return
     }
-    setActionSheet({ face })
+    // Toggle this card; opening a new card auto-closes any other.
+    setActiveFlippedId((prev) => (prev === face.id ? null : face.id))
   }
 
-  function handleActionChoice(kind: ActionKind) {
-    if (!actionSheet) return
-    const face = actionSheet.face
-    setActionSheet(null)
-    if (kind === 'whatsapp') onOpenWhatsApp(buildWhatsAppPersonUrl(face))
-    else if (kind === 'call') onOpenTel(buildTelUrl(face))
+  function fireGroupWhatsApp() {
+    if (!group) return
+    onOpenWhatsApp(group.whatsappUrl)
+    setActiveFlippedId(null)
+  }
+  function firePersonWhatsApp(p: Extract<FamilyQuickFace, { type: 'person' }>) {
+    onOpenWhatsApp(buildWhatsAppPersonUrl(p))
+    setActiveFlippedId(null)
+  }
+  function firePersonCall(p: Extract<FamilyQuickFace, { type: 'person' }>) {
+    onOpenTel(buildTelUrl(p))
+    setActiveFlippedId(null)
+  }
+
+  // Tapping outside any card (the grid wrapper background) closes the open
+  // card. Tile clicks call setActiveFlippedId directly so we only act when
+  // the click target is the wrapper itself.
+  function handleBackdropClick(e: React.MouseEvent) {
+    if (e.target === e.currentTarget) closeFlip()
   }
 
   return (
     <div
       data-testid="family-quick-faces"
+      onClick={handleBackdropClick}
       style={{
         width: '100%', maxWidth: 460,
         display: 'flex', flexDirection: 'column', alignItems: 'stretch',
@@ -274,6 +315,7 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
 
       <div
         data-testid="family-bubble-grid"
+        onClick={handleBackdropClick}
         style={{
           width: '100%',
           display: 'grid',
@@ -291,7 +333,15 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
             label={group.label}
             photoFile={group.photoFile ?? FAMILY_GROUP_PHOTO}
             initials={computeInitials(group.label)}
+            flipped={activeFlippedId === 'family-group'}
+            reducedMotion={reducedMotion}
             onTap={handleTapGroup}
+            onFlipBack={closeFlip}
+            {...(isGroupActionable(group) ? {
+              groupAction: {
+                onWhatsApp: () => fireGroupWhatsApp(),
+              },
+            } : {})}
           />
         )}
         {personsForGrid.map((p) => {
@@ -304,25 +354,20 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
               label={p.displayName}
               photoFile={p.photoFile}
               initials={computeInitials(p.displayName)}
+              flipped={activeFlippedId === p.id}
+              reducedMotion={reducedMotion}
               onTap={() => handleTapPerson(p)}
+              onFlipBack={closeFlip}
               {...(actionable ? {
                 actions: {
-                  onWhatsApp: () => onOpenWhatsApp(buildWhatsAppPersonUrl(p)),
-                  onCall:     () => onOpenTel(buildTelUrl(p)),
+                  onWhatsApp: () => firePersonWhatsApp(p),
+                  onCall:     () => firePersonCall(p),
                 },
               } : {})}
             />
           )
         })}
       </div>
-
-      {actionSheet && (
-        <ActionSheet
-          face={actionSheet.face}
-          onChoose={handleActionChoice}
-          onCancel={() => setActionSheet(null)}
-        />
-      )}
 
       {toast && (
         <div
@@ -360,112 +405,222 @@ interface BubbleTileProps {
   photoFile?: string | undefined
   initials: string
   onTap: () => void
+  /** True when this tile is the currently flipped/active card. */
+  flipped: boolean
+  /** Called when the back-face background is tapped (not an action button). */
+  onFlipBack: () => void
+  /** Drives reduced-motion fallback (no rotateY, opacity-only swap). */
+  reducedMotion: boolean
   /**
-   * Optional direct-action chips rendered beneath the name. Provide BOTH
-   * handlers when both actions apply (actionable persons). Group tiles never
-   * receive chips — taps on the group bubble go straight to WhatsApp via
-   * `onTap` per the family-group-WhatsApp-only rule.
+   * Person back-face actions. Provide BOTH handlers when the person is
+   * actionable; non-actionable persons (no phone, or Ari/Anabel) receive
+   * NO `actions` and NO back face is rendered.
    */
   actions?: { onWhatsApp: () => void; onCall: () => void }
+  /**
+   * Group back-face action. Group is WhatsApp-only — never tel/call. Persons
+   * never receive `groupAction`.
+   */
+  groupAction?: { onWhatsApp: () => void }
 }
 
-export function BubbleTile({ id, kind, label, photoFile, initials, onTap, actions }: BubbleTileProps) {
-  // Outer div keeps each tile as a single grid cell. The photo+name region is
-  // its own <button> so tapping the photo or the label opens the action sheet
-  // (or fires onTap for the group). Chips are sibling <button>s below the
-  // name; they are NOT nested inside the main button (HTML wouldn't allow
-  // it), so chip taps stay scoped to themselves and never fire onTap.
+export function BubbleTile({
+  id, kind, label, photoFile, initials,
+  onTap, flipped, onFlipBack, reducedMotion,
+  actions, groupAction,
+}: BubbleTileProps) {
+  const hasBack = Boolean(actions || groupAction)
+
+  // Cell footprint stays constant so the grid layout never shifts. The
+  // flip-stage is absolutely positioned inside the cell and grows outward
+  // (and elevates via z-index) when this tile is the active flipped one.
+  const cellW = BUBBLE_SIZE
+  const cellH = BUBBLE_SIZE + 22 // reserve label baseline
+
+  const stageW = flipped ? FLIPPED_CARD_W : cellW
+  const stageH = flipped ? FLIPPED_CARD_H : cellH
+  // Center the grown stage on the cell's centre.
+  const stageOffsetX = flipped ? -(FLIPPED_CARD_W - cellW) / 2 : 0
+  const stageOffsetY = flipped ? -(FLIPPED_CARD_H - cellH) / 2 : 0
+
+  // For reduced motion, skip the rotateY transform; toggle face visibility
+  // via opacity/pointerEvents instead.
+  const innerTransform = !reducedMotion && flipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
+  const transitionAll = reducedMotion ? 'none' : `all ${FLIP_DURATION_MS}ms ${FLIP_EASING}`
+  const transitionTransform = reducedMotion ? 'none' : `transform ${FLIP_DURATION_MS}ms ${FLIP_EASING}`
+
   return (
     <div
       data-testid={kind === 'group' ? `bubble-group-${id}` : `bubble-person-${id}`}
       data-bubble-kind={kind}
+      data-flipped={flipped ? 'true' : 'false'}
       style={{
-        display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
-        gap: 8,
-        background: 'transparent',
-        width: 'auto', minWidth: BUBBLE_SIZE,
+        position: 'relative',
+        width: cellW,
+        height: cellH,
+        // Reserve a small margin so the grown stage's shadow/glow doesn't
+        // visually clip into neighbours.
+        overflow: 'visible',
       }}
     >
-      <button
-        type="button"
-        data-testid={kind === 'group' ? `bubble-group-tap-${id}` : `bubble-person-tap-${id}`}
-        onClick={onTap}
-        aria-label={label}
+      <div
+        data-testid={`bubble-flip-stage-${id}`}
         style={{
-          display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
-          gap: 6,
-          padding: 0,
-          margin: 0,
-          background: 'transparent',
-          cursor: 'pointer',
-          WebkitTapHighlightColor: 'transparent',
-          width: 'auto',
+          position: 'absolute',
+          top: stageOffsetY,
+          left: stageOffsetX,
+          width: stageW,
+          height: stageH,
+          perspective: 1000,
+          zIndex: flipped ? 10 : 1,
+          transition: transitionAll,
         }}
       >
-        <BubbleAvatar
-          photoFile={photoFile}
-          initials={initials}
-          size={BUBBLE_SIZE}
-          accent={kind === 'group' ? WA_GREEN : TEAL}
-          accentSoft={kind === 'group' ? 'rgba(37,211,102,0.55)' : 'rgba(20,184,166,0.55)'}
-        />
-        <div style={{
-          fontFamily: "'Heebo',sans-serif",
-          fontSize: BUBBLE_LABEL_FONT, fontWeight: 600,
-          color: 'rgba(255,255,255,0.92)',
-          textAlign: 'center', lineHeight: 1.2,
-          maxWidth: BUBBLE_SIZE + 12,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {label}
-        </div>
-      </button>
-
-      {actions && (
         <div
-          data-testid={`bubble-actions-${id}`}
+          data-testid={`bubble-flip-inner-${id}`}
           style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'stretch',
-            gap: 6,
-            width: BUBBLE_SIZE + 16,
-            direction: 'rtl',
+            width: '100%',
+            height: '100%',
+            position: 'relative',
+            transformStyle: 'preserve-3d',
+            transition: transitionTransform,
+            transform: innerTransform,
           }}
         >
-          <ActionChip
-            kind="whatsapp"
-            label="וואטסאפ"
-            ariaLabel={`שליחת וואטסאפ אל ${label}`}
-            testId={`chip-whatsapp-${id}`}
-            onClick={(e) => { e.stopPropagation(); actions.onWhatsApp() }}
-          />
-          <ActionChip
-            kind="call"
-            label="שיחה"
-            ariaLabel={`שיחה אל ${label}`}
-            testId={`chip-call-${id}`}
-            onClick={(e) => { e.stopPropagation(); actions.onCall() }}
-          />
+          {/* FRONT FACE — photo + name, the only thing visible by default */}
+          <button
+            type="button"
+            data-testid={kind === 'group' ? `bubble-group-tap-${id}` : `bubble-person-tap-${id}`}
+            data-face="front"
+            onClick={(e) => { e.stopPropagation(); onTap() }}
+            aria-label={label}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              // Reduced-motion path: hide the front face when flipped via
+              // opacity, since rotateY isn't applied.
+              opacity: reducedMotion && flipped ? 0 : 1,
+              pointerEvents: reducedMotion && flipped ? 'none' : 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              gap: 6,
+              padding: 0, margin: 0,
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <BubbleAvatar
+              photoFile={photoFile}
+              initials={initials}
+              size={BUBBLE_SIZE}
+              accent={kind === 'group' ? WA_GREEN : TEAL}
+              accentSoft={kind === 'group' ? 'rgba(37,211,102,0.55)' : 'rgba(20,184,166,0.55)'}
+            />
+            <div style={{
+              fontFamily: "'Heebo',sans-serif",
+              fontSize: BUBBLE_LABEL_FONT, fontWeight: 600,
+              color: 'rgba(255,255,255,0.92)',
+              textAlign: 'center', lineHeight: 1.2,
+              maxWidth: BUBBLE_SIZE + 12,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {label}
+            </div>
+          </button>
+
+          {/* BACK FACE — present only for actionable tiles. Tapping the */}
+          {/* background (anywhere not a button) flips the card back. */}
+          {hasBack && (
+            <div
+              data-testid={`bubble-back-${id}`}
+              data-face="back"
+              role="group"
+              aria-label={`פעולות עבור ${label}`}
+              onClick={(e) => { e.stopPropagation(); onFlipBack() }}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                transform: 'rotateY(180deg)',
+                // Reduced-motion path: show back via opacity when flipped.
+                opacity: reducedMotion ? (flipped ? 1 : 0) : 1,
+                pointerEvents: reducedMotion && !flipped ? 'none' : 'auto',
+                borderRadius: 24,
+                background: 'linear-gradient(160deg, rgba(8,16,28,0.96), rgba(5,10,24,0.98))',
+                border: `1.5px solid ${TEAL}40`,
+                boxShadow: `0 14px 32px rgba(0,0,0,0.50), 0 0 28px ${TEAL}24`,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                justifyContent: 'center',
+                padding: '14px 12px',
+                gap: 10,
+                cursor: 'pointer',
+                direction: 'rtl',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              {actions && (
+                <>
+                  <ActionChip
+                    kind="whatsapp"
+                    label="וואטסאפ"
+                    ariaLabel={`שליחת וואטסאפ אל ${label}`}
+                    testId={`chip-whatsapp-${id}`}
+                    onClick={(e) => { e.stopPropagation(); actions.onWhatsApp() }}
+                  />
+                  <ActionChip
+                    kind="call"
+                    label="שיחה"
+                    ariaLabel={`שיחה אל ${label}`}
+                    testId={`chip-call-${id}`}
+                    onClick={(e) => { e.stopPropagation(); actions.onCall() }}
+                  />
+                </>
+              )}
+              {groupAction && (
+                <ActionChip
+                  kind="whatsapp"
+                  label="וואטסאפ"
+                  ariaLabel={`שליחת וואטסאפ ל${label}`}
+                  testId={`chip-whatsapp-${id}`}
+                  onClick={(e) => { e.stopPropagation(); groupAction.onWhatsApp() }}
+                  emphasis="primary"
+                />
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
 
 function ActionChip({
-  kind, label, ariaLabel, testId, onClick,
+  kind, label, ariaLabel, testId, onClick, emphasis = 'normal',
 }: {
   kind: 'whatsapp' | 'call'
   label: string
   ariaLabel: string
   testId: string
   onClick: (e: React.MouseEvent) => void
+  emphasis?: 'normal' | 'primary'
 }) {
   const accent = kind === 'whatsapp' ? WA_GREEN : TEAL
   const bg = kind === 'whatsapp'
     ? `linear-gradient(145deg, ${WA_GREEN}, #128C7E)`
-    : 'rgba(20,184,166,0.12)'
+    : 'rgba(20,184,166,0.16)'
   const color = kind === 'whatsapp' ? 'white' : TEAL
   const border = kind === 'whatsapp' ? `1.5px solid ${WA_GREEN}66` : `1.5px solid ${TEAL}66`
+  // emphasis "primary" is used for the family-group single WhatsApp pill —
+  // we can give it a touch more height so it visually anchors the card.
   return (
     <button
       type="button"
@@ -474,19 +629,20 @@ function ActionChip({
       onClick={onClick}
       aria-label={ariaLabel}
       style={{
-        minHeight: 44, padding: '0 12px',
+        minHeight: emphasis === 'primary' ? 56 : 48,
+        padding: '0 14px',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        gap: 6,
+        gap: 8,
         borderRadius: 14,
         border,
         background: bg,
         color,
         fontFamily: "'Heebo',sans-serif",
-        fontSize: 14, fontWeight: 700,
+        fontSize: 15, fontWeight: 700,
         cursor: 'pointer',
         boxShadow: kind === 'whatsapp'
-          ? '0 3px 10px rgba(37,211,102,0.22)'
-          : '0 3px 10px rgba(20,184,166,0.18)',
+          ? '0 4px 12px rgba(37,211,102,0.26)'
+          : '0 4px 12px rgba(20,184,166,0.20)',
         WebkitTapHighlightColor: 'transparent',
         letterSpacing: '0.2px',
       }}
@@ -500,14 +656,14 @@ function ActionChip({
 function ActionChipIcon({ kind, color, accent }: { kind: 'whatsapp' | 'call'; color: string; accent: string }) {
   if (kind === 'whatsapp') {
     return (
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.3-4.4A9 9 0 1 1 21 12z" />
         <path d="M8.5 9.5c0 4 3 7 7 7" />
       </svg>
     )
   }
   return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.86 19.86 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8 10a16 16 0 0 0 6 6l1.36-1.36a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
     </svg>
   )
@@ -563,92 +719,6 @@ function BubbleAvatar({
           lineHeight: 1, userSelect: 'none',
         }}>{initials}</span>
       )}
-    </div>
-  )
-}
-
-function ActionSheet({
-  face, onChoose, onCancel,
-}: {
-  face: Extract<FamilyQuickFace, { type: 'person' }>
-  onChoose: (k: ActionKind) => void
-  onCancel: () => void
-}) {
-  return (
-    <div
-      data-testid="family-action-sheet"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`פעולות עבור ${face.displayName}`}
-      onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'rgba(5,10,24,0.72)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        zIndex: 40, direction: 'rtl',
-      }}
-    >
-      <div
-        style={{
-          width: '100%', maxWidth: 460,
-          padding: '18px 18px calc(22px + env(safe-area-inset-bottom, 0px))',
-          background: 'rgba(8,16,28,0.96)',
-          borderTop: `1.5px solid ${TEAL}66`,
-          borderRadius: '20px 20px 0 0',
-          display: 'flex', flexDirection: 'column', gap: 10,
-          fontFamily: "'Heebo',sans-serif",
-        }}
-      >
-        <div style={{
-          fontSize: 18, fontWeight: 700,
-          color: 'rgba(255,255,255,0.92)', textAlign: 'center',
-          marginBottom: 4,
-        }}>
-          {face.displayName}
-        </div>
-        <button
-          type="button"
-          data-testid={`action-whatsapp-${face.id}`}
-          onClick={() => onChoose('whatsapp')}
-          style={{
-            width: '100%', height: 56, borderRadius: 16,
-            border: `1.5px solid ${WA_GREEN}55`,
-            background: `linear-gradient(145deg, ${WA_GREEN}, #128C7E)`,
-            color: 'white',
-            fontFamily: "'Heebo',sans-serif",
-            fontSize: 17, fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >WhatsApp</button>
-        <button
-          type="button"
-          data-testid={`action-call-${face.id}`}
-          onClick={() => onChoose('call')}
-          style={{
-            width: '100%', height: 56, borderRadius: 16,
-            border: `1.5px solid ${TEAL}55`,
-            background: 'rgba(20,184,166,0.10)',
-            color: TEAL,
-            fontFamily: "'Heebo',sans-serif",
-            fontSize: 17, fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >שיחה</button>
-        <button
-          type="button"
-          data-testid={`action-cancel-${face.id}`}
-          onClick={onCancel}
-          style={{
-            width: '100%', height: 48, borderRadius: 14,
-            border: '1px solid rgba(255,255,255,0.10)',
-            background: 'transparent',
-            color: 'rgba(255,255,255,0.62)',
-            fontFamily: "'Heebo',sans-serif",
-            fontSize: 15, fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >ביטול</button>
-      </div>
     </div>
   )
 }

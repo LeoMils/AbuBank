@@ -136,12 +136,14 @@ describe('BubbleAvatar render path (source contract)', () => {
   })
 
   it('group target is WhatsApp-only — no tel/call action wired (regression guard)', () => {
-    const startIdx = facesSrc.indexOf('function handleTapGroup')
-    expect(startIdx).toBeGreaterThan(-1)
-    const endIdx = facesSrc.indexOf('\n\n', startIdx)
-    const handler = facesSrc.slice(startIdx, endIdx === -1 ? facesSrc.length : endIdx)
-    expect(handler.includes('onOpenWhatsApp')).toBe(true)
-    expect(handler.includes('onOpenTel')).toBe(false)
+    // Flip-card model: the group renders with groupAction (WhatsApp-only by
+    // type). The fire helper must call onOpenWhatsApp, never onOpenTel.
+    expect(/groupAction:[\s\S]{0,200}onCall/.test(facesSrc)).toBe(false)
+    const fireMatch = facesSrc.match(/function fireGroupWhatsApp\([^)]*\)\s*\{([\s\S]*?)\n {2}\}/)
+    expect(fireMatch).not.toBeNull()
+    const fireBody = (fireMatch as RegExpMatchArray)[1] ?? ''
+    expect(fireBody.includes('onOpenWhatsApp')).toBe(true)
+    expect(fireBody.includes('onOpenTel')).toBe(false)
   })
 
   it('missing-phone toast text is preserved verbatim', () => {

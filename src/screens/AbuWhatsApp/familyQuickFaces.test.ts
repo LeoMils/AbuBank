@@ -426,21 +426,24 @@ describe('AbuWhatsApp unified bubble grid (source contract)', () => {
 
   it('group target is WhatsApp-only — there is no call/tel action wired for the group', () => {
     const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
-    // Slice from the function declaration to the next blank line — covers the
-    // full handleTapGroup body without depending on brace counting.
-    const startIdx = src.indexOf('function handleTapGroup')
-    expect(startIdx).toBeGreaterThan(-1)
-    const endIdx = src.indexOf('\n\n', startIdx)
-    const handler = src.slice(startIdx, endIdx === -1 ? src.length : endIdx)
-    expect(handler.includes('onOpenWhatsApp')).toBe(true)
-    expect(handler.includes('onOpenTel')).toBe(false)
+    // Flip-card model: groupAction's TS type allows only onWhatsApp; the fire
+    // helper must call onOpenWhatsApp not onOpenTel.
+    expect(/groupAction:[\s\S]{0,200}onCall/.test(src)).toBe(false)
+    const fireMatch = src.match(/function fireGroupWhatsApp\([^)]*\)\s*\{([\s\S]*?)\n {2}\}/)
+    expect(fireMatch).not.toBeNull()
+    const fireBody = (fireMatch as RegExpMatchArray)[1] ?? ''
+    expect(fireBody.includes('onOpenWhatsApp')).toBe(true)
+    expect(fireBody.includes('onOpenTel')).toBe(false)
   })
 
-  it('person target with phone offers WhatsApp + call (action sheet)', () => {
+  it('person target with phone exposes both WhatsApp and call action chips', () => {
     const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
-    expect(src.includes('action-whatsapp-')).toBe(true)
-    expect(src.includes('action-call-')).toBe(true)
-    expect(src.includes('action-cancel-')).toBe(true)
+    // Flip-card back face uses the chip-* testid family for both actions.
+    expect(src.includes('chip-whatsapp-')).toBe(true)
+    expect(src.includes('chip-call-')).toBe(true)
+    // Action-sheet modal is gone in favour of the back face; assert the
+    // back-face wrapper testid is rendered instead.
+    expect(src.includes('bubble-back-')).toBe(true)
   })
 
   it('person target without a valid phone shows the friendly Hebrew "המספר עדיין לא הוגדר"', () => {
@@ -546,11 +549,13 @@ describe('AbuWhatsApp bubble visual contract (v0.3.2 polish)', () => {
     expect(/<BubbleTile[^>]*kind=["']person["']/.test(facesSrc)).toBe(true)
   })
 
-  it('missing-phone toast and action sheet behaviour are preserved', () => {
+  it('missing-phone toast and flip-card action UI are preserved', () => {
     expect(facesSrc.includes('המספר עדיין לא הוגדר')).toBe(true)
     expect(facesSrc.includes('קבוצת המשפחה עדיין לא הוגדרה')).toBe(true)
-    expect(facesSrc.includes('action-whatsapp-')).toBe(true)
-    expect(facesSrc.includes('action-call-')).toBe(true)
-    expect(facesSrc.includes('action-cancel-')).toBe(true)
+    // v0.4 flip-card replaces the bottom-sheet ActionSheet with a 180° back
+    // face. Action chips carry the chip-* testid family.
+    expect(facesSrc.includes('chip-whatsapp-')).toBe(true)
+    expect(facesSrc.includes('chip-call-')).toBe(true)
+    expect(facesSrc.includes('bubble-back-')).toBe(true)
   })
 })
