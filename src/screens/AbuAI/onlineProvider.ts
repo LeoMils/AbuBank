@@ -1,0 +1,227 @@
+/*
+ * AbuAI online-provider client (B2)
+ *
+ * Talks to the server-side endpoint /api/abuai-online so the OpenAI key
+ * stays on the server. Wraps fetch with a short client timeout, maps
+ * structured error codes to user-facing copy, and exposes a simple
+ * `checkOnlineProviderHealth()` for the operator diagnostics surface.
+ *
+ * No secrets are read or logged here.
+ */
+
+import { shouldBlockOnlineForPersonal, isOnlineCurrentInfoQuery } from './onlineIntent'
+
+export type OnlineLang = 'he' | 'es' | 'en' | 'mixed'
+
+export type OnlineErrorCode =
+  | 'OPENAI_API_KEY_MISSING'
+  | 'ONLINE_PROVIDER_FAILED'
+  | 'ONLINE_QUERY_BLOCKED_PERSONAL'
+  | 'ONLINE_TIMEOUT'
+  | 'BAD_REQUEST'
+  | 'CLIENT_NETWORK_ERROR'
+
+export interface OnlineSource {
+  title?: string
+  url?: string
+}
+
+export interface OnlineSuccessResult {
+  ok: true
+  answer: string
+  sources?: OnlineSource[]
+  userMessage: string
+}
+export interface OnlineFailureResult {
+  ok: false
+  errorCode: OnlineErrorCode
+  userMessage: string
+}
+export type OnlineResult = OnlineSuccessResult | OnlineFailureResult
+
+export interface AnswerOnlineOptions {
+  lang?: OnlineLang
+  kind?: string
+  locationHint?: string
+  /** Test/storybook hook — bypass real fetch. */
+  fetchImpl?: typeof fetch
+  /** Test override — control timeout in ms. */
+  timeoutMs?: number
+}
+
+const DEFAULT_TIMEOUT_MS = 14_000
+const ENDPOINT = '/api/abuai-online'
+
+function userMessageFor(code: OnlineErrorCode, lang: OnlineLang = 'he'): string {
+  const ES: Record<OnlineErrorCode, string> = {
+    OPENAI_API_KEY_MISSING: 'No puedo comprobar información online ahora porque la conexión de AI no está configurada.',
+    ONLINE_PROVIDER_FAILED: 'No puedo comprobar información online ahora. Probá de nuevo en un momento.',
+    ONLINE_QUERY_BLOCKED_PERSONAL: 'Para preguntas sobre tu familia o tu calendario, mejor usar la información local — no busco eso online.',
+    ONLINE_TIMEOUT: 'La búsqueda online tardó demasiado. Probá de nuevo.',
+    BAD_REQUEST: 'No entendí la consulta. Probá con otra pregunta.',
+    CLIENT_NETWORK_ERROR: 'No tengo conexión ahora. Probá cuando vuelva el internet.',
+  }
+  const HE: Record<OnlineErrorCode, string> = {
+    OPENAI_API_KEY_MISSING: 'אני לא יכולה לבדוק מידע אונליין כרגע כי חיבור ה-AI לא מוגדר.',
+    ONLINE_PROVIDER_FAILED: 'אני לא מצליחה לבדוק מידע אונליין כרגע. נסי שוב בעוד רגע.',
+    ONLINE_QUERY_BLOCKED_PERSONAL: 'לשאלות על המשפחה או היומן אני משתמשת במידע המקומי — לא מחפשת את זה אונליין.',
+    ONLINE_TIMEOUT: 'החיפוש האונליין לקח יותר מדי זמן. נסי שוב.',
+    BAD_REQUEST: 'לא הבנתי את השאלה. נסי לנסח אחרת.',
+    CLIENT_NETWORK_ERROR: 'אין לי חיבור עכשיו. נסי כשהאינטרנט יחזור.',
+  }
+  const EN: Record<OnlineErrorCode, string> = {
+    OPENAI_API_KEY_MISSING: 'I cannot check online information right now because the AI connection is not configured.',
+    ONLINE_PROVIDER_FAILED: 'I cannot check online information right now. Please try again in a moment.',
+    ONLINE_QUERY_BLOCKED_PERSONAL: 'For family or calendar questions I use local information — I do not search the web for those.',
+    ONLINE_TIMEOUT: 'The online lookup took too long. Please try again.',
+    BAD_REQUEST: 'I did not understand the question. Try rephrasing.',
+    CLIENT_NETWORK_ERROR: 'No connection right now. Please try again when the internet is back.',
+  }
+  if (lang === 'es') return ES[code]
+  if (lang === 'en') return EN[code]
+  return HE[code]
+}
+
+/**
+ * Calls the server endpoint with the user's query. Always returns a
+ * typed OnlineResult — never throws to the caller.
+ */
+export async function answerOnlineCurrentInfo(
+  query: string,
+  options: AnswerOnlineOptions = {},
+): Promise<OnlineResult> {
+  const lang: OnlineLang = options.lang ?? 'he'
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const f = options.fetchImpl ?? (typeof fetch !== 'undefined' ? fetch : null)
+  if (!f) {
+    return {
+      ok: false,
+      errorCode: 'CLIENT_NETWORK_ERROR',
+      userMessage: userMessageFor('CLIENT_NETWORK_ERROR', lang),
+    }
+  }
+
+  // Client-side personal guard. Belt-and-suspenders — the server also
+  // refuses, but we never make the network call for personal queries.
+  if (shouldBlockOnlineForPersonal(query)) {
+    return {
+      ok: false,
+      errorCode: 'ONLINE_QUERY_BLOCKED_PERSONAL',
+      userMessage: userMessageFor('ONLINE_QUERY_BLOCKED_PERSONAL', lang),
+    }
+  }
+  if (!query.trim() || query.length > 600) {
+    return {
+      ok: false,
+      errorCode: 'BAD_REQUEST',
+      userMessage: userMessageFor('BAD_REQUEST', lang),
+    }
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  let resp: Response
+  try {
+    resp = await f(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query,
+        lang,
+        ...(options.kind ? { kind: options.kind } : {}),
+        ...(options.locationHint ? { locationHint: options.locationHint } : {}),
+      }),
+      signal: controller.signal,
+    })
+  } catch (err) {
+    clearTimeout(timer)
+    const isAbort = (err as { name?: string } | null)?.name === 'AbortError'
+    const code: OnlineErrorCode = isAbort ? 'ONLINE_TIMEOUT' : 'CLIENT_NETWORK_ERROR'
+    return { ok: false, errorCode: code, userMessage: userMessageFor(code, lang) }
+  }
+  clearTimeout(timer)
+
+  let data: unknown
+  try { data = await resp.json() } catch {
+    return {
+      ok: false,
+      errorCode: 'ONLINE_PROVIDER_FAILED',
+      userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang),
+    }
+  }
+
+  // Server responses are already shaped as { ok: true, answer, sources? }
+  // or { ok: false, errorCode, userMessage }.
+  if (data && typeof data === 'object' && (data as Record<string, unknown>).ok === true) {
+    const body = data as { ok: true; answer?: unknown; sources?: unknown }
+    if (typeof body.answer === 'string' && body.answer.trim().length > 0) {
+      const sources = Array.isArray(body.sources) ? body.sources as OnlineSource[] : undefined
+      const success: OnlineSuccessResult = {
+        ok: true,
+        answer: body.answer.trim(),
+        userMessage: body.answer.trim(),
+        ...(sources && sources.length > 0 ? { sources } : {}),
+      }
+      return success
+    }
+  }
+  if (data && typeof data === 'object' && (data as Record<string, unknown>).ok === false) {
+    const body = data as { errorCode?: unknown; userMessage?: unknown }
+    const code = (typeof body.errorCode === 'string'
+      ? body.errorCode
+      : 'ONLINE_PROVIDER_FAILED') as OnlineErrorCode
+    return {
+      ok: false,
+      errorCode: code,
+      userMessage: typeof body.userMessage === 'string' && body.userMessage.length > 0
+        ? body.userMessage
+        : userMessageFor(code, lang),
+    }
+  }
+
+  return {
+    ok: false,
+    errorCode: 'ONLINE_PROVIDER_FAILED',
+    userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang),
+  }
+}
+
+// ─── Health ────────────────────────────────────────────────────────────────
+
+export type OnlineProviderMode = 'server' | 'client' | 'fallback'
+
+export interface OnlineProviderHealth {
+  /** Whether the live-info endpoint URL is configured (path exists by
+   *  convention; the actual upstream key only the server can check). */
+  endpointConfigured: boolean
+  /** Provider name. Today the only online provider is OpenAI. */
+  provider: 'openai'
+  /** Where the API call originates. Always 'server' in B2. */
+  mode: OnlineProviderMode
+  /** Last failure code observed by `answerOnlineCurrentInfo`. */
+  lastErrorCode: OnlineErrorCode | null
+}
+
+let _lastErrorCode: OnlineErrorCode | null = null
+
+/** Records the last error code so the operator diag can show it. */
+export function _recordOnlineError(code: OnlineErrorCode | null): void {
+  _lastErrorCode = code
+}
+
+/**
+ * Returns a synchronous health snapshot for the operator diagnostics
+ * surface. Does NOT call the network; only reflects local state and
+ * whether the endpoint URL is configured. Never returns secrets.
+ */
+export function checkOnlineProviderHealth(): OnlineProviderHealth {
+  return {
+    endpointConfigured: ENDPOINT.length > 0,
+    provider: 'openai',
+    mode: 'server',
+    lastErrorCode: _lastErrorCode,
+  }
+}
+
+// Re-export the helper for runtime callers.
+export { isOnlineCurrentInfoQuery }
