@@ -189,9 +189,30 @@ function usePrefersReducedMotion(): boolean {
 
 export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, localContacts }: FamilyQuickFacesProps) {
   const [contacts, setContacts] = useState<ReadonlyArray<LocalFamilyContact>>(localContacts ?? [])
+
+  // Re-read localStorage on mount AND whenever the page becomes visible / a
+  // 'storage' event fires (covers cross-tab + subtle remount races where the
+  // operator save commits after the Faces screen has already rendered an
+  // empty grid). Test-injected `localContacts` short-circuits all of this.
   useEffect(() => {
     if (localContacts !== undefined) { setContacts(localContacts); return }
-    setContacts(getLocalContacts())
+    const refresh = () => setContacts(getLocalContacts())
+    refresh()
+    if (typeof window === 'undefined') return
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || e.key === 'abubank.familyContacts.v1') refresh()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [localContacts])
 
   const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, contacts)
@@ -298,6 +319,17 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
           color: 'rgba(255,255,255,0.50)',
         }}>
           למי לשלוח הודעה?
+        </div>
+        <div
+          data-testid="abuwhatsapp-grid-hint"
+          style={{
+            fontFamily: "'Heebo',sans-serif",
+            fontSize: 11,
+            color: 'rgba(255,255,255,0.36)',
+            marginTop: 1, letterSpacing: '0.2px',
+          }}
+        >
+          לחיצה על תמונה פותחת פעולות
         </div>
         <div
           data-testid="abuwhatsapp-build-version"
