@@ -4,6 +4,7 @@ import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUp
 import { generateFamilyPromptSection } from '../../services/familyLoader'
 import { routePersonalQuery, type RouteResult } from './router'
 import { answerFromToolResult, type ToolResult } from './groundedResponse'
+import { sendServerChat, streamServerChat } from './serverChatProvider'
 
 // Feature flag — disable tools without redeploy
 function toolsEnabled(): boolean {
@@ -105,8 +106,14 @@ export function containsUngroundedClaim(response: string, hadToolCall: boolean):
 
 const SAFE_REFUSAL = 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
 
-// Provider priority: OpenAI (paid, most reliable) > Gemini 2.0 Flash (free) > Groq Llama (free)
-const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
+// Provider priority (B2.1):
+//   1. OpenAI via SERVER PROXY (/api/abuai-chat) — OPENAI_API_KEY lives
+//      on the server only, NEVER in the client bundle.
+//   2. Gemini 2.0 Flash (free, client-side legacy fallback)
+//   3. Groq Llama (free, client-side legacy fallback)
+// The OpenAI client-side key is no longer read in this file. The
+// browser bundle never sees an OpenAI secret.
+const OPENAI_PROXY_URL = '/api/abuai-chat'
 const OPENAI_MODEL_TEXT  = 'gpt-4o'          // text mode: reliable, high quality
 const OPENAI_MODEL_VOICE = 'gpt-4o-mini'     // voice mode (pipeline fallback): speed + cost
 
@@ -116,29 +123,48 @@ const GEMINI_MODEL = 'gemini-2.0-flash'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
-function getProviders(voiceMode = false): Array<{ url: string; model: string; apiKey: string }> {
-  const providers: Array<{ url: string; model: string; apiKey: string }> = []
-  const openaiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
+interface Provider {
+  /** Provider kind drives the fetch shape: server-proxy uses
+   *  POST /api/abuai-chat with a `body` envelope; client-direct
+   *  posts to the upstream URL with an Authorization header. */
+  kind: 'openai-server' | 'gemini-client' | 'groq-client'
+  url: string
+  model: string
+  /** Only set for client-direct providers (Gemini / Groq). */
+  apiKey?: string
+}
+
+function getProviders(voiceMode = false): Provider[] {
+  const providers: Provider[] = []
   const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
   const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
 
-  // v25: Skip OpenAI entirely if quota exhausted (saves timeout delays)
+  // v25: Skip OpenAI entirely if quota exhausted (saves timeout delays).
+  // The flag is set by the runtime when the SERVER endpoint reports
+  // OPENAI_API_KEY_MISSING / quota errors via _recordServerChatError.
   const qf = typeof localStorage !== 'undefined' ? localStorage.getItem('abu-openai-quota-failed') : null
-  const openaiAvailable = openaiKey && (!qf || (Date.now() - parseInt(qf, 10)) > 300_000)
+  const openaiAvailable = !qf || (Date.now() - parseInt(qf, 10)) > 300_000
 
   if (voiceMode) {
-    // Voice mode: SPEED — Groq (free) first, then OpenAI (if available), then Gemini (free)
-    if (groqKey)         providers.push({ url: GROQ_URL,   model: GROQ_MODEL,           apiKey: groqKey })
-    if (openaiAvailable) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_VOICE,   apiKey: openaiKey! })
-    if (geminiKey)       providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,         apiKey: geminiKey })
+    // Voice mode: SPEED — Groq (free) first, then OpenAI server-proxy, then Gemini.
+    if (groqKey)         providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
+    if (openaiAvailable) providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_VOICE })
+    if (geminiKey)       providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
   } else {
-    // Text mode: OpenAI (if available) → Gemini (free) → Groq (free)
-    if (openaiAvailable) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL_TEXT, apiKey: openaiKey! })
-    if (geminiKey)       providers.push({ url: GEMINI_URL, model: GEMINI_MODEL,      apiKey: geminiKey })
-    if (groqKey)         providers.push({ url: GROQ_URL,   model: GROQ_MODEL,        apiKey: groqKey })
+    // Text mode: OpenAI server-proxy → Gemini (free, client) → Groq (free, client)
+    if (openaiAvailable) providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_TEXT })
+    if (geminiKey)       providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
+    if (groqKey)         providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
   }
 
-  if (providers.length === 0) throw new Error('מפתח API לא הוגדר. פנה לבן המשפחה שהתקין את האפליקציה.')
+  // The server proxy is always added when OpenAI is not in cooldown, so
+  // this list is empty only in the rare combination of a stale cooldown
+  // flag plus no Gemini/Groq client keys. The user-facing copy now
+  // points to the SERVER configuration — never to a client-side
+  // the legacy client-side OpenAI key (which we no longer use at all).
+  if (providers.length === 0) {
+    throw new Error('אני לא יכולה לענות כרגע כי חיבור ה-AI בשרת לא מוגדר. הגדירו OPENAI_API_KEY ב-Vercel.')
+  }
   return providers
 }
 
@@ -415,9 +441,31 @@ export { getSupportedMimeType } from '../../services/recording'
 interface ToolCall { id: string; function: { name: string; arguments: string } }
 
 async function tryProvider(
-  provider: { url: string; model: string; apiKey: string },
+  provider: Provider,
   body: object,
 ): Promise<{ result: string | null; retryAfter: number; toolCalls?: ToolCall[]; rawMessage?: any }> {
+  // B2.1: OpenAI provider goes through the server proxy. The browser
+  // never sees the OpenAI key; missing-key / quota errors return null
+  // (caller falls through to Gemini / Groq).
+  if (provider.kind === 'openai-server') {
+    const r = await sendServerChat({ model: provider.model, ...body })
+    if (!r.ok) {
+      // Tag a quota-skip cool-down only when the server reports the
+      // dedicated key-missing code; transient failures keep trying.
+      if (r.errorCode === 'OPENAI_API_KEY_MISSING') {
+        try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+      }
+      return { result: null, retryAfter: 0 }
+    }
+    const data = r.openai as { choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }> } | null
+    const message = data?.choices?.[0]?.message
+    const toolCalls = message?.tool_calls
+    if (toolCalls?.length) return { result: null, retryAfter: 0, toolCalls, rawMessage: message }
+    const content = message?.content
+    if (!content) return { result: null, retryAfter: 0 }
+    return { result: stripMarkdown(content), retryAfter: 0 }
+  }
+
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 10000)
   try {
@@ -425,7 +473,7 @@ async function tryProvider(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${provider.apiKey}`,
+        'Authorization': `Bearer ${provider.apiKey ?? ''}`,
       },
       body: JSON.stringify({ model: provider.model, ...body }),
       signal: controller.signal,
@@ -493,6 +541,20 @@ export async function* streamMessage(
         stream: true,
       }
 
+      // B2.1: OpenAI now goes through the server proxy. The browser
+      // never sees the OpenAI key. On any failure (missing server key,
+      // timeout, network) the generator yields nothing — we fall
+      // through to the next provider just like before.
+      if (provider.kind === 'openai-server') {
+        let yieldedAny = false
+        for await (const token of streamServerChat(body, { signal: signal ?? null as unknown as AbortSignal, timeoutMs: voiceMode ? 6000 : 12000 })) {
+          yieldedAny = true
+          yield token
+        }
+        if (yieldedAny) return // success — done
+        continue // server proxy failed (e.g. OPENAI_API_KEY_MISSING) → next provider
+      }
+
       const controller = new AbortController()
       const combinedSignal = signal
         ? AbortSignal.any?.([signal, controller.signal]) ?? controller.signal
@@ -504,7 +566,7 @@ export async function* streamMessage(
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${provider.apiKey}`,
+            'Authorization': `Bearer ${provider.apiKey ?? ''}`,
           },
           body: JSON.stringify(body),
           signal: combinedSignal,
@@ -593,7 +655,7 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
     for (let attempt = 0; attempt < 2; attempt++) {
       let maxRetryAfter = 0
       for (const provider of providers) {
-        const supportsTools = toolsEnabled() && (provider.url.includes('openai.com') || provider.url.includes('groq.com'))
+        const supportsTools = toolsEnabled() && (provider.kind === 'openai-server' || provider.kind === 'groq-client')
         const body: Record<string, unknown> = {
           messages: conversationMessages,
           temperature,
