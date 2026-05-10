@@ -87,12 +87,17 @@ describe('AbuAI constants', () => {
 })
 
 describe('FEW_SHOT content quality', () => {
-  it('loneliness response is empathetic, not dismissive', () => {
+  it('loneliness response is empathetic, not counsellor-canned, not directive', () => {
     const lonelyQ = FEW_SHOT.findIndex(m => m.content.includes('בודדה'))
     expect(lonelyQ).toBeGreaterThan(-1)
     const response = FEW_SHOT[lonelyQ + 1]
     expect(response?.content).not.toContain('טיפ')
-    expect(response?.content).toContain('כאן')
+    // B1 patch: the old "אני כאן" canned counsellor opener and the
+    // directive "תתקשרי למור או ללאו" are gone. The new shape acknowledges
+    // and offers a choice — companionship or a gentle reminder.
+    expect(response?.content).not.toContain('ימים כאלה יש. אני כאן')
+    expect(response?.content).not.toContain('תתקשרי למור או ללאו')
+    expect(response?.content).toMatch(/קורה|איתך|בא לך|רוצה/)
   })
 
   it('no patronizing phrases in any response', () => {
