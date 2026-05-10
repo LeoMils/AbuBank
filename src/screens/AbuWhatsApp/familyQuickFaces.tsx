@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
 import { getLocalContacts, type LocalFamilyContact } from './familyContactsStorage'
-import { APP_VERSION } from '../../version'
 
 const WA_GREEN = '#25D366'
 const TEAL = '#14b8a6'
-const GOLD = '#C9A84C'
 // Call wedge — rich, warm red, NOT alarming. Tasteful gradient pair.
 const CALL_RED = '#D83A3A'
 const CALL_RED_DEEP = '#A81F1F'
@@ -114,6 +112,70 @@ export function mergeFacesWithLocal(
     else if (f.photoFile && f.photoFile.length > 0) merged.photoFile = f.photoFile
     return merged
   })
+}
+
+/**
+ * Public family photo gallery item — derived from the same scaffold +
+ * localStorage data that drives the bubble grid. New contacts (or new
+ * photo overrides) appear automatically: there is no separate hand-rolled
+ * gallery list. Phone numbers / enabled / privacy fields are NEVER part of
+ * this shape.
+ */
+export interface FamilyGalleryPhoto {
+  id: string
+  label: string
+  photoUrl: string
+}
+
+/**
+ * Build the family-photo album from the displayable family faces.
+ *
+ * Order: family group first (when a photo exists), then every scaffold
+ * person in canonical scaffold order. Entries with no photoUrl are
+ * skipped so the gallery never renders broken tiles.
+ *
+ * `extras` lets callers add extra photos that aren't part of the contact
+ * scaffold (e.g. the Abu / Martita header portrait). Extras are
+ * de-duplicated by photoUrl and sorted to the front so the tap target
+ * the user just pressed feels visually anchored at the top of the album.
+ */
+export function getFamilyGalleryPhotos(
+  scaffold: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES,
+  local: ReadonlyArray<LocalFamilyContact> = [],
+  extras: ReadonlyArray<FamilyGalleryPhoto> = [],
+): FamilyGalleryPhoto[] {
+  const merged = mergeFacesWithLocal(scaffold, local)
+  const items: FamilyGalleryPhoto[] = []
+  // Family group first (when a photo exists). Falls back to the public
+  // /family/FAmilly%206.JPG asset only when used by the runtime renderer;
+  // if the scaffold itself doesn't carry a photoFile, omit from the album.
+  for (const f of merged) {
+    if (f.type !== 'group') continue
+    if (f.photoFile && f.photoFile.length > 0) {
+      items.push({ id: f.id, label: f.label, photoUrl: f.photoFile })
+    }
+  }
+  // Every scaffold person with a non-empty photoFile (after merge with
+  // localStorage overrides — operator-set photos appear automatically).
+  for (const f of merged) {
+    if (f.type !== 'person') continue
+    if (typeof f.photoFile !== 'string' || f.photoFile.length === 0) continue
+    items.push({ id: f.id, label: f.displayName, photoUrl: f.photoFile })
+  }
+  // De-dup by photoUrl: extras win and float to the top.
+  const out: FamilyGalleryPhoto[] = []
+  const seen = new Set<string>()
+  for (const e of extras) {
+    if (!e.photoUrl || seen.has(e.photoUrl)) continue
+    seen.add(e.photoUrl)
+    out.push(e)
+  }
+  for (const item of items) {
+    if (seen.has(item.photoUrl)) continue
+    seen.add(item.photoUrl)
+    out.push(item)
+  }
+  return out
 }
 
 /**
@@ -313,43 +375,24 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
           data-testid="abuwhatsapp-title"
           style={{
             margin: 0,
-            fontFamily: "'Heebo',sans-serif",
-            fontSize: 22, fontWeight: 700,
+            fontFamily: "'Cormorant Garamond',Georgia,serif",
+            fontSize: 26, fontWeight: 600,
             color: 'rgba(255,255,255,0.94)',
-            letterSpacing: '0.3px',
+            letterSpacing: '1px',
+            direction: 'ltr',
           }}
         >
-          אבו וואטסאפ
+          Abu WhatsApp
         </h2>
-        <div style={{
-          fontFamily: "'Heebo',sans-serif",
-          fontSize: 13,
-          color: 'rgba(255,255,255,0.50)',
-        }}>
-          למי לשלוח הודעה?
-        </div>
         <div
-          data-testid="abuwhatsapp-grid-hint"
+          data-testid="abuwhatsapp-subtitle"
           style={{
             fontFamily: "'Heebo',sans-serif",
-            fontSize: 11,
-            color: 'rgba(255,255,255,0.36)',
-            marginTop: 1, letterSpacing: '0.2px',
+            fontSize: 13,
+            color: 'rgba(255,255,255,0.50)',
           }}
         >
-          לחיצה על תמונה פותחת פעולות
-        </div>
-        <div
-          data-testid="abuwhatsapp-build-version"
-          style={{
-            fontFamily: "'DM Sans',monospace",
-            fontSize: 9,
-            color: `rgba(${hexToRgb(GOLD)},0.45)`,
-            direction: 'ltr',
-            marginTop: 1, letterSpacing: '0.3px',
-          }}
-        >
-          v{APP_VERSION.version}
+          למי לשלוח הודעה?
         </div>
       </header>
 
@@ -938,8 +981,3 @@ function BubbleAvatar({
   )
 }
 
-function hexToRgb(hex: string): string {
-  const m = hex.replace('#', '').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i)
-  if (!m) return '255,255,255'
-  return `${parseInt(m[1] as string, 16)},${parseInt(m[2] as string, 16)},${parseInt(m[3] as string, 16)}`
-}
