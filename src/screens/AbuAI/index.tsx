@@ -3,6 +3,8 @@ import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { sendMessage, streamMessage, transcribeAudio, isPersonalQuery, containsUngroundedClaim, tryGroundedAnswer, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
 import { getProactiveSeed } from './proactive'
+import { isOnlineCurrentInfoQuery, shouldBlockOnlineForPersonal } from './onlineIntent'
+import { answerOnlineCurrentInfo, _recordOnlineError } from './onlineProvider'
 import { getTodayEvents, getTomorrowEvents } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
@@ -314,6 +316,50 @@ export function AbuAI() {
         return
       }
 
+      // ─── B2 patch: online current-info layer ─────────────────────────────
+      // Live questions (cinema / weather / news / "this week" / "open now")
+      // need a real web lookup. The server endpoint /api/abuai-online holds
+      // the OPENAI_API_KEY (server-side) and uses the OpenAI Responses API
+      // with the built-in web_search tool. Personal/family/calendar queries
+      // are blocked client-side AND server-side as defense in depth.
+      if (isOnlineCurrentInfoQuery(msgText) && !shouldBlockOnlineForPersonal(msgText)) {
+        const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: 'רגע, בודקת אונליין...', timestamp: Date.now() }
+        setMessages(prev => [...prev, placeholderMsg])
+        const online = await answerOnlineCurrentInfo(msgText)
+        if (online.ok) {
+          _recordOnlineError(null)
+          // Render the answer + sources (if any) appended on a new line so
+          // Martita sees where the info came from, but the speech-friendly
+          // text stays in the answer body.
+          let body = online.answer
+          if (online.sources && online.sources.length > 0) {
+            const list = online.sources
+              .slice(0, 3)
+              .map((s) => s.title ? `• ${s.title}${s.url ? ` (${s.url})` : ''}` : (s.url ? `• ${s.url}` : ''))
+              .filter((s) => s.length > 0)
+              .join('\n')
+            if (list) body = `${online.answer}\n\nמקורות:\n${list}`
+          }
+          setMessages(prev => {
+            const updated = [...prev]
+            const idx = updated.findIndex(m => m.id === aiMsgId)
+            if (idx !== -1) updated[idx] = { ...updated[idx]!, content: body }
+            return updated
+          })
+        } else {
+          _recordOnlineError(online.errorCode)
+          setMessages(prev => {
+            const updated = [...prev]
+            const idx = updated.findIndex(m => m.id === aiMsgId)
+            if (idx !== -1) updated[idx] = { ...updated[idx]!, content: online.userMessage }
+            return updated
+          })
+        }
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
       if (isPersonalQuery(msgText)) {
         const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: 'רגע, אני בודקת...', timestamp: Date.now() }
         setMessages(prev => [...prev, placeholderMsg])
@@ -560,6 +606,17 @@ export function AbuAI() {
           if (voiceProactive) {
             lastProactiveSeedIdRef.current = voiceProactive.id
             response = voiceProactive.text
+          } else if (isOnlineCurrentInfoQuery(text) && !shouldBlockOnlineForPersonal(text)) {
+            // B2: online current-info via server endpoint. Voice mode
+            // speaks the answer concisely; sources are not read aloud.
+            const online = await answerOnlineCurrentInfo(text)
+            if (online.ok) {
+              _recordOnlineError(null)
+              response = online.answer
+            } else {
+              _recordOnlineError(online.errorCode)
+              response = online.userMessage
+            }
           } else {
             response = await sendMessage(currentMsgs, true)
           }

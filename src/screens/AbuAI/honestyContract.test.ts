@@ -6,19 +6,23 @@ import { describe, it, expect } from 'vitest'
 import { SYSTEM_PROMPT, containsUngroundedClaim } from './service'
 
 describe('SYSTEM_PROMPT — live-info honesty (HE / ES / EN)', () => {
-  it('contains the Hebrew honesty clause', () => {
-    expect(SYSTEM_PROMPT.includes('אין לי כרגע גישה למידע חי')).toBe(true)
+  // B2: the offline-only honesty clause was replaced with a tool-aware
+  // one. AbuAI now HAS an online tool — so the prompt tells the LLM to
+  // use the tool when it returned data, fall back honestly when it did
+  // not, and never invent live facts.
+  it('Hebrew clause says use the online tool and never invent live info', () => {
+    expect(SYSTEM_PROMPT.includes('כלי חיפוש אונליין')).toBe(true)
     expect(SYSTEM_PROMPT.includes('אל תמציאי')).toBe(true)
   })
-  it('contains the Spanish honesty clause', () => {
-    expect(SYSTEM_PROMPT.includes('No tengo acceso en vivo ahora mismo')).toBe(true)
-    expect(SYSTEM_PROMPT.includes('no invento')).toBe(true)
+  it('Spanish clause mentions the online tool and forbids invention', () => {
+    expect(SYSTEM_PROMPT.includes('herramienta online')).toBe(true)
+    expect(SYSTEM_PROMPT.toLowerCase().includes('nunca inventes')).toBe(true)
   })
-  it('contains the English honesty clause', () => {
-    expect(SYSTEM_PROMPT.includes('I do not have live internet access right now')).toBe(true)
-    expect(SYSTEM_PROMPT.includes('Do not invent live information')).toBe(true)
+  it('English clause mentions the online tool and forbids invention', () => {
+    expect(SYSTEM_PROMPT.includes('online tool')).toBe(true)
+    expect(SYSTEM_PROMPT.includes('Never invent current information')).toBe(true)
   })
-  it('the live-info section sits BEFORE the safety section so it is not stripped on truncation', () => {
+  it('live-info section sits BEFORE the safety section so it is not stripped on truncation', () => {
     const liveIdx = SYSTEM_PROMPT.indexOf('מידע חי / live info')
     const safetyIdx = SYSTEM_PROMPT.indexOf('═══ בטיחות ═══')
     expect(liveIdx).toBeGreaterThan(-1)
