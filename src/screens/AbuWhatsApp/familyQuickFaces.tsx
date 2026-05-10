@@ -107,9 +107,25 @@ export function mergeFacesWithLocal(
     }
     if (f.relationshipHebrew !== undefined) merged.relationshipHebrew = f.relationshipHebrew
     if (override.whatsappE164 && override.whatsappE164.length > 0) merged.whatsappE164 = override.whatsappE164
-    if (override.photoDataUrl && override.photoDataUrl.length > 0) merged.photoFile = override.photoDataUrl
-    else if (override.photoFile && override.photoFile.length > 0) merged.photoFile = override.photoFile
-    else if (f.photoFile && f.photoFile.length > 0) merged.photoFile = f.photoFile
+    let photoSource: 'override-data' | 'override-file' | 'scaffold' | null = null
+    if (override.photoDataUrl && override.photoDataUrl.length > 0) {
+      merged.photoFile = override.photoDataUrl
+      photoSource = 'override-data'
+    } else if (override.photoFile && override.photoFile.length > 0) {
+      merged.photoFile = override.photoFile
+      photoSource = 'override-file'
+    } else if (f.photoFile && f.photoFile.length > 0) {
+      merged.photoFile = f.photoFile
+      photoSource = 'scaffold'
+    }
+    // Preserve per-contact crop metadata from the scaffold ONLY when the
+    // scaffold's own photo is the one we ended up rendering. Operator-
+    // supplied photos (override-data / override-file) get the default
+    // contain/center treatment because we don't know their aspect ratio.
+    if (photoSource === 'scaffold') {
+      if (f.photoFit !== undefined) merged.photoFit = f.photoFit
+      if (f.photoObjectPosition !== undefined) merged.photoObjectPosition = f.photoObjectPosition
+    }
     return merged
   })
 }
@@ -415,6 +431,8 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
             kind="group"
             label={group.label}
             photoFile={group.photoFile ?? FAMILY_GROUP_PHOTO}
+            photoFit={group.photoFit}
+            photoObjectPosition={group.photoObjectPosition}
             initials={computeInitials(group.label)}
             flipped={activeFlippedId === 'family-group'}
             reducedMotion={reducedMotion}
@@ -436,6 +454,8 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
               kind="person"
               label={p.displayName}
               photoFile={p.photoFile}
+              photoFit={p.photoFit}
+              photoObjectPosition={p.photoObjectPosition}
               initials={computeInitials(p.displayName)}
               flipped={activeFlippedId === p.id}
               reducedMotion={reducedMotion}
@@ -486,6 +506,9 @@ interface BubbleTileProps {
   kind: 'group' | 'person'
   label: string
   photoFile?: string | undefined
+  /** Optional per-contact crop override forwarded to BubbleAvatar. */
+  photoFit?: 'contain' | 'cover' | undefined
+  photoObjectPosition?: string | undefined
   initials: string
   onTap: () => void
   /** True when this tile is the currently flipped/active card. */
@@ -508,7 +531,7 @@ interface BubbleTileProps {
 }
 
 export function BubbleTile({
-  id, kind, label, photoFile, initials,
+  id, kind, label, photoFile, photoFit, photoObjectPosition, initials,
   onTap, flipped, onFlipBack, reducedMotion,
   actions, groupAction,
 }: BubbleTileProps) {
@@ -600,6 +623,8 @@ export function BubbleTile({
           >
             <BubbleAvatar
               photoFile={photoFile}
+              photoFit={photoFit}
+              photoObjectPosition={photoObjectPosition}
               initials={initials}
               size={BUBBLE_SIZE}
               accent={kind === 'group' ? WA_GREEN : TEAL}
@@ -928,15 +953,21 @@ function HubHeartIcon({ size }: { size: number }) {
 }
 
 function BubbleAvatar({
-  photoFile, initials, size, accent, accentSoft,
+  photoFile, photoFit, photoObjectPosition, initials, size, accent, accentSoft,
 }: {
   photoFile: string | undefined
+  photoFit?: 'contain' | 'cover' | undefined
+  photoObjectPosition?: string | undefined
   initials: string
   size: number
   accent: string
   accentSoft: string
 }) {
   const fontSize = Math.round(size * 0.42)
+  // Default to non-cropping `contain` so faces stay intact. Per-contact
+  // `photoFit: 'cover'` is opt-in (e.g. Adar's tall portrait).
+  const resolvedFit: 'contain' | 'cover' = photoFit ?? 'contain'
+  const resolvedPosition: string = photoObjectPosition ?? 'center'
   // Forced circle: explicit width=height, aspect-ratio:1/1, fixed flex
   // basis. Defends against parent flex/grid stretching the avatar into
   // an oval on narrow phone viewports.
@@ -965,7 +996,7 @@ function BubbleAvatar({
           src={photoFile}
           alt=""
           loading="lazy"
-          style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', display: 'block', borderRadius: '50%' }}
+          style={{ width: '100%', height: '100%', objectFit: resolvedFit, objectPosition: resolvedPosition, display: 'block', borderRadius: '50%' }}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
         />
       ) : (

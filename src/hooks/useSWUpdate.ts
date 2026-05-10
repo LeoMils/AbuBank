@@ -8,13 +8,21 @@ export function useSWUpdate(): { updateReady: boolean; applyUpdate: () => void }
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
 
-    // ── Auto-reload on controllerchange ──────────────────────────────────────
-    // When skipWaiting:true + clientsClaim:true, the new SW takes over
-    // immediately (no waiting state). The browser fires controllerchange when
-    // the new SW becomes the active controller for this page.
-    // Reloading here picks up the new JS/CSS bundle immediately.
+    // ── First-install guard ────────────────────────────────────────────────
+    // When skipWaiting+clientsClaim are enabled, the brand-new SW takes
+    // control of an uncontrolled page (no previous controller) and that
+    // ALSO fires `controllerchange`. iOS Safari often defers SW activation
+    // until the first user interaction (e.g. tapping AbuWhatsApp), so the
+    // page reloads mid-navigation and the user sees their tap "bounce"
+    // back to Home. We must auto-reload only on REAL updates — i.e. when
+    // the page already had a controller at hook mount and a NEW controller
+    // takes over later.
+    const hadControllerAtMount = !!navigator.serviceWorker.controller
+
+    // ── Auto-reload on controllerchange (real updates only) ───────────────
     let reloading = false
     const handleControllerChange = () => {
+      if (!hadControllerAtMount) return // first-install: skip reload
       if (reloading) return
       reloading = true
       window.location.reload()
