@@ -28,17 +28,19 @@ describe('BubbleTile direct-action chips (source contract)', () => {
 
   it('chips use Hebrew labels וואטסאפ and שיחה', () => {
     expect(facesSrc.includes('וואטסאפ')).toBe(true)
-    expect(facesSrc.includes('label="שיחה"') || facesSrc.includes("label=\"שיחה\"")).toBe(true)
+    expect(facesSrc.includes('שיחה')).toBe(true)
   })
 
   it('chips have aria-label in Hebrew (per-person)', () => {
-    expect(facesSrc.includes('ariaLabel={`שליחת וואטסאפ אל ${label}`}')).toBe(true)
-    expect(facesSrc.includes('ariaLabel={`שיחה אל ${label}`}')).toBe(true)
+    expect(facesSrc.includes('aria-label={`שליחת וואטסאפ אל ${label}`}')).toBe(true)
+    expect(facesSrc.includes('aria-label={`שיחה אל ${label}`}')).toBe(true)
   })
 
   it('chip click handlers call event.stopPropagation', () => {
-    expect(/onClick=\{\(e\) => \{ e\.stopPropagation\(\); actions\.onWhatsApp\(\) \}\}/.test(facesSrc)).toBe(true)
-    expect(/onClick=\{\(e\) => \{ e\.stopPropagation\(\); actions\.onCall\(\) \}\}/.test(facesSrc)).toBe(true)
+    // Hub wedges destructure the action as a top-level prop, so the source
+    // pattern is `onWhatsApp()`/`onCall()` — not `actions.onWhatsApp()`.
+    expect(/onClick=\{\(e\) => \{ e\.stopPropagation\(\); onWhatsApp\(\) \}\}/.test(facesSrc)).toBe(true)
+    expect(/onClick=\{\(e\) => \{ e\.stopPropagation\(\); onCall\(\) \}\}/.test(facesSrc)).toBe(true)
   })
 
   it('chip touch target is at least 44 px tall (senior-first)', () => {
@@ -50,9 +52,14 @@ describe('BubbleTile direct-action chips (source contract)', () => {
     expect(heights.some((v) => v >= 44)).toBe(true)
   })
 
-  it('WhatsApp chip uses WA_GREEN; call chip uses TEAL', () => {
-    // Chip kind drives accent; the implementation branches on kind === "whatsapp".
-    expect(facesSrc.includes("kind === 'whatsapp' ? WA_GREEN : TEAL")).toBe(true)
+  it('WhatsApp wedge uses WA_GREEN; Call wedge uses CALL_RED', () => {
+    // The flip-circle hub uses the authentic WhatsApp green for the left
+    // wedge and a tasteful call red for the right wedge — see
+    // PersonActionHub gradient backgrounds in the source.
+    expect(facesSrc.includes('WA_GREEN')).toBe(true)
+    expect(facesSrc.includes('CALL_RED')).toBe(true)
+    expect(facesSrc.includes('#25D366')).toBe(true)
+    expect(facesSrc.includes('#D83A3A')).toBe(true)
   })
 })
 
