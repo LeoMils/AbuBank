@@ -216,11 +216,38 @@ export function shapeCreateClarify(missing: Array<'title' | 'date' | 'time'>): s
 
 // ─── Fallbacks ──────────────────────────────────────────────────────────────
 
-export function shapeNotFound(context?: string): string {
-  if (context) return `לא מצאתי מידע על ${context}.`
-  return 'לא מצאתי מידע על זה.'
+// B1 patch: language hint. Defaults to 'he' so every existing call site
+// keeps the Hebrew behaviour exactly as before. Future call sites can pass
+// 'es' / 'en' / 'mixed' once a language detector is wired through tools.
+export type ShaperLang = 'he' | 'es' | 'en' | 'mixed'
+
+export function shapeNotFound(context?: string, lang: ShaperLang = 'he'): string {
+  switch (lang) {
+    case 'es':
+      // Per spec: short, adult, no diagnostic.
+      return context ? `No lo encontré (${context}).` : 'No lo encontré.'
+    case 'en':
+      return context ? `I could not find anything about ${context}.` : 'I could not find anything about that.'
+    case 'mixed':
+      // Mixed → prefer Hebrew (Martita's local language for app-state
+      // negatives). The mother-tongue Spanish wins ONLY on explicit ES.
+      return context ? `לא מצאתי מידע על ${context}.` : 'לא מצאתי מידע על זה.'
+    case 'he':
+    default:
+      return context ? `לא מצאתי מידע על ${context}.` : 'לא מצאתי מידע על זה.'
+  }
 }
 
-export function shapeToolError(): string {
-  return 'אני לא מצליחה לבדוק את זה כרגע. נסי שוב.'
+export function shapeToolError(lang: ShaperLang = 'he'): string {
+  switch (lang) {
+    case 'es':
+      return 'No puedo comprobarlo ahora. Probá de nuevo en un rato.'
+    case 'en':
+      return 'I cannot check that right now. Please try again in a moment.'
+    case 'mixed':
+      return 'אני לא מצליחה לבדוק את זה כרגע. נסי שוב.'
+    case 'he':
+    default:
+      return 'אני לא מצליחה לבדוק את זה כרגע. נסי שוב.'
+  }
 }

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { sendMessage, streamMessage, transcribeAudio, isPersonalQuery, containsUngroundedClaim, tryGroundedAnswer, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
+import { getProactiveSeed } from './proactive'
 import { getTodayEvents, getTomorrowEvents } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
@@ -163,6 +164,9 @@ export function AbuAI() {
   const recognitionRef = useRef<any>(null)
   const abortControllerRef = useRef<AbortController | null>(null) // v20: for interruption
   const startVoiceListeningRef = useRef<() => void>(() => {}) // v20: stable ref for interrupt→listen
+  // B1 patch: track the last proactive seed id so repeated boredom / loneliness
+  // queries deterministically rotate to a different seed.
+  const lastProactiveSeedIdRef = useRef<string | null>(null)
 
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
@@ -287,6 +291,24 @@ export function AbuAI() {
       if (groundedAnswer !== null) {
         const groundedMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: groundedAnswer, timestamp: Date.now() }
         setMessages(prev => [...prev, groundedMsg])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── B1 patch: proactive layer ────────────────────────────────────────
+      // After grounding fails, check if the input is one of the warmth
+      // intents (boredom / loneliness / no_topic / ideas). The proactive
+      // helper is purely deterministic — no LLM, no API. Rotates via
+      // `lastProactiveSeedIdRef` so a repeated "Estoy aburrida" never
+      // returns the same seed twice in a row.
+      const proactiveSeed = getProactiveSeed(msgText, {
+        previousSeedId: lastProactiveSeedIdRef.current,
+      })
+      if (proactiveSeed) {
+        lastProactiveSeedIdRef.current = proactiveSeed.id
+        const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: proactiveSeed.text, timestamp: Date.now() }
+        setMessages(prev => [...prev, proactiveMsg])
         setLoading(false)
         streamingMsgIdRef.current = null
         return
@@ -523,8 +545,25 @@ export function AbuAI() {
         }, 20000)
 
         // Try grounded answer first (no LLM for personal queries)
+        // B1 voice ordering: grounded → proactive → LLM. Grounded ALWAYS
+        // wins; the proactive layer never answers calendar / family /
+        // personal questions because getProactiveSeed only fires on the
+        // four warmth intents (boredom / no_topic / loneliness / ideas).
         const voiceGrounded = tryGroundedAnswer(text)
-        const response = voiceGrounded ?? await sendMessage(currentMsgs, true)
+        let response: string
+        if (voiceGrounded !== null) {
+          response = voiceGrounded
+        } else {
+          const voiceProactive = getProactiveSeed(text, {
+            previousSeedId: lastProactiveSeedIdRef.current,
+          })
+          if (voiceProactive) {
+            lastProactiveSeedIdRef.current = voiceProactive.id
+            response = voiceProactive.text
+          } else {
+            response = await sendMessage(currentMsgs, true)
+          }
+        }
         clearTimeout(watchdog)
 
         if (ac.signal.aborted) return // interrupted during LLM call

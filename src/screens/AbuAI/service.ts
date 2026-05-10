@@ -10,11 +10,15 @@ function toolsEnabled(): boolean {
   try { return localStorage.getItem('abubank-tools-disabled') !== 'true' } catch { return true }
 }
 
-const CALENDAR_PATTERNS = /מה יש לי|מה קורה|מתי (יש|ה)|[הב]שבוע|מחר|היום|ביומן|תור|פגישה|אירוע|רופא|רופאה|דוקטור|תזכיר|להזכיר|reminder|לקום מוקדם|יום עמוס|פנוי|שבוע הבא|חודש|יש לי משהו|מה התוכנית/i
-const FAMILY_PATTERNS = /מי (זה|זו|זאת|הוא|היא)|מי ה|בן שלי|בת שלי|נכד|נכדה|משפחה|מור|לאו|לאון|אופיר|איילון|עילי|אדר|עדי|נועם|רפי|ירדן|גלעד|יעל|פפי|Pepe|מירטה|שושנה|טוטסי|טונטו|מספר.*טלפון|טלפון.*של|להתקשר/i
-
+// Single source of truth: routePersonalQuery is the classifier. Anything
+// other than 'non_personal' is, by definition, a personal query — so the
+// previous Hebrew-only CALENDAR_PATTERNS / FAMILY_PATTERNS regexes are
+// gone. This unifies Spanish + English + mixed-language coverage with the
+// router's open-topic guard, so "Recomendame un podcast" /
+// "Tell me about Italy" stay non-personal and stream through the open LLM
+// path while "¿Qué tengo hoy?" / "Háblame de Leo" reach grounded tools.
 export function isPersonalQuery(text: string): boolean {
-  return CALENDAR_PATTERNS.test(text) || FAMILY_PATTERNS.test(text)
+  return routePersonalQuery(text).type !== 'non_personal'
 }
 
 export function tryGroundedAnswer(text: string): string | null {
@@ -84,11 +88,19 @@ const INVENTED_EVENT_PATTERNS = /יש לך ב[־-]?\d{1,2}[.:]\d{2}|יש לך ב
 // Hebrew lookarounds are used because \b only matches ASCII word boundaries.
 const PAST_TENSE_CLAIM_PATTERNS = /(?<!לא\s)(?<![֐-׿])(בדקתי|חיפשתי|מצאתי|אימתתי|אישרתי)(?![֐-׿])/
 
+// B1 patch: Spanish + English calendar-claim patterns. Triggered only
+// when no tool actually ran, so an honest tool result with the same
+// Hebrew/Spanish/English copy stays unflagged.
+const SPANISH_CLAIM_PATTERNS = /(tienes|ten[eé]s)\s+(cita|turno|m[eé]dico|doctor|dentista|reuni[oó]n|consulta)|hoy\s+tienes\s+(cita|turno|m[eé]dico|reuni[oó]n)|ma[nñ]ana\s+tienes\s+(cita|turno|m[eé]dico|reuni[oó]n)|en\s+tu\s+calendario|seg[uú]n\s+tu\s+calendario/i
+const ENGLISH_CLAIM_PATTERNS = /\byou\s+have\s+(an?\s+)?(appointment|doctor|meeting|reservation)\b|\b(today|tomorrow)\s+you\s+have\b|\bin\s+your\s+calendar\b|\baccording\s+to\s+your\s+calendar\b/i
+
 export function containsUngroundedClaim(response: string, hadToolCall: boolean): boolean {
   if (hadToolCall) return false
   return CALENDAR_CLAIM_PATTERNS.test(response)
     || INVENTED_EVENT_PATTERNS.test(response)
     || PAST_TENSE_CLAIM_PATTERNS.test(response)
+    || SPANISH_CLAIM_PATTERNS.test(response)
+    || ENGLISH_CLAIM_PATTERNS.test(response)
 }
 
 const SAFE_REFUSAL = 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
@@ -197,6 +209,11 @@ Markdown — לא. רשימות רק אם עוזרות להבין.
 שמחה → להיות איתה בשמחה.
 געגוע לPepe → חום ועדינות.
 
+═══ מידע חי / live info / información en vivo ═══
+אין לי כרגע גישה למידע חי כמו מזג אוויר, חדשות, סרטים חדשים או זמינות בזמן אמת. אם שואלים על מידע חי, אל תמציאי. תגידי שאינך יכולה לבדוק כרגע, ואז תציעי עזרה כללית.
+No tengo acceso en vivo ahora mismo a clima, noticias, películas nuevas o disponibilidad actual. Si me preguntan por información en vivo, no invento: digo que no puedo comprobarlo ahora y ofrezco ayuda general.
+I do not have live internet access right now for weather, news, new movies, or current availability. Do not invent live information.
+
 ═══ AbuBank ═══
 מזרחי טפחות / בנק הדואר / MAX / חשמל / מים / ארנונה / HOT / פרטנר / yes.
 שואלת על שירות → "לחצי על [שם הכפתור]" — ישיר, ספציפי.
@@ -228,7 +245,7 @@ export const FEW_SHOT: Array<{ role: 'user' | 'assistant'; content: string }> = 
   },
   {
     role: 'assistant',
-    content: 'ימים כאלה יש. אני כאן.\n\nתתקשרי למור או ללאו — גם עשר דקות של שיחה משנות.',
+    content: 'תקשיבי, זה קורה. אני איתך רגע אם בא לך.\n\nרוצה שנדבר על משהו, או שאני אזכיר לך עם מי לא דיברת מזמן?',
   },
   {
     role: 'user',
@@ -245,6 +262,22 @@ export const FEW_SHOT: Array<{ role: 'user' | 'assistant'; content: string }> = 
   {
     role: 'assistant',
     content: '¿Sabías que las abejas reconocen caras humanas? Las entrenan con fotos y las recuerdan horas después. Chiquitas pero brillantes.\n\nComo vos, Martita.',
+  },
+  {
+    role: 'user',
+    content: 'Estoy aburrida',
+  },
+  {
+    role: 'assistant',
+    content: 'Mirá, podemos hacer algo lindo. Te tiro tres caminos: una historia corta, una receta para esta semana, o pensar a quién te gustaría llamar un rato. ¿Cuál te tienta?',
+  },
+  {
+    role: 'user',
+    content: '¿Qué películas nuevas hay esta semana?',
+  },
+  {
+    role: 'assistant',
+    content: 'Eso no lo puedo comprobar ahora — no tengo acceso en vivo a la cartelera. Si querés, te recomiendo una película clásica que te puede gustar, o hablamos de qué tipo de historia tenés ganas de ver.',
   },
   {
     role: 'user',

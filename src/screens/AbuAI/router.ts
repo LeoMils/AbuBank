@@ -18,14 +18,22 @@ export interface RouteResult {
   month?: number
 }
 
+// ─── Hebrew patterns (preserved + extended) ─────────────────────────────────
 const CALENDAR_TODAY = /מה יש לי היום|מה יש היום|יש לי משהו היום|מה קבעתי היום|מה קורה היום|מה התוכנית היום/i
-const CALENDAR_TOMORROW = /מה יש מחר|מה יש לי מחר|יש לי משהו מחר|מה קבעתי מחר|מה קורה מחר|מה התוכנית מחר|צריך לקום מחר/i
-const CALENDAR_UPCOMING = /מה יש השבוע|מה יש לי השבוע|מה יש בשבוע|מה הפגישות הקרובות|מה התורים הקרובים|מה האירועים הקרובים|יש לי משהו השבוע|מה התוכנית/i
+const CALENDAR_TOMORROW = /מה יש (לי )?מחר|יש לי משהו מחר|מה קבעתי מחר|מה קורה (לי )?מחר|מה התוכנית מחר|צריך לקום (מוקדם )?מחר/i
+const CALENDAR_UPCOMING = /מה יש (לי )?השבוע|מה יש בשבוע|מה יש שבוע הבא|שבוע הבא\??$|מה הפגישות הקרובות|מה התורים הקרובים|מה האירועים הקרובים|יש לי משהו .{0,16}השבוע|מה התוכנית/i
 const FAMILY_LOCATION = /איפה .+ גר|איפה גר/i
 const FAMILY_PATTERNS = /מי (זה|זאת|זו|הוא|היא)\s|מי ה(בן|בת|נכד|נכדה)|איך קוראים ל|מה הקשר (של|עם)|איך .+ קשור|הנכד שלי|הנכדה שלי|הבן שלי|הבת שלי|הילדים שלי|הנכדים שלי/i
 
 const BIRTHDAY_LOOKUP = /מתי (יום ה?הולדת|היום הולדת|ה?יומולדת) (של |שלי |של ה?)?(.+)/i
 const MEMORIAL_LOOKUP = /מתי (יום ה?זיכרון|ה?אזכרה) (של |שלי |של ה?)?(.+)/i
+
+// Hebrew loose calendar — broader phrasing the original isPersonalQuery
+// captured before the unification. Examples:
+//   "מה קורה השבוע?" / "מתי יש לי רופא?" / "מתי התור הבא שלי?"
+//   "מתי הרופא הבא שלי?" / "יש אירוע ביומן?" / "תזכירי לי מחר"
+//   "יש לי פגישה מחר" / "יש לי יום עמוס?" / "אני פנוי השבוע?"
+const CALENDAR_HEBREW_LOOSE = /מה קורה ה?שבוע|מתי (יש לי )?(הרופא|רופא|רופאה|דוקטור|דוקטורה|דנטיסט|תור|פגישה|אירוע)|מתי התור.{0,8}שלי|יש (אירוע|תור|פגישה).{0,12}ביומן|יש לי (פגישה|אירוע|תור) (מחר|היום|השבוע)|תזכירי לי|תזכרי לי|יש לי יום עמוס|יום עמוס|אני פנוי השבוע|פנוי השבוע|פנוי מחר|פנויה השבוע/i
 
 // Past calendar: "מה היה לי אתמול", "מה היה באחד באפריל", "מה היה בפסח"
 const CALENDAR_PAST = /מה היה|מה קרה|מה עשיתי|מה עשית/i
@@ -33,6 +41,33 @@ const CALENDAR_PAST = /מה היה|מה קרה|מה עשיתי|מה עשית/i
 const CALENDAR_DATE = /מה יש ב[־-]?\d|מה יש ב[אבגדהוזחטיכלמנסעפצקרשת]/i
 // Month: "למי יש יום הולדת באפריל", "מה יש באפריל"
 const BIRTHDAY_MONTH = /למי (יש )?יום הולדת ב/i
+
+// ─── Spanish patterns (B1 patch) ────────────────────────────────────────────
+// Calendar — today / tomorrow / this-week / medical appointment.
+// Accent-tolerant: accept "qué" or "que", "mañana" or "manana", "médico" or "medico".
+const SPANISH_CAL_TODAY = /(?:^|[^a-záéíóúñ])(?:qu[eé])\s+(?:tengo|ten[eé]s)\s+(?:para\s+)?hoy(?:[^a-záéíóúñ]|$)|calendario\s+(?:de\s+)?hoy|agenda\s+(?:de\s+)?hoy/i
+const SPANISH_CAL_TOMORROW = /(?:^|[^a-záéíóúñ])(?:qu[eé])\s+(?:tengo|ten[eé]s)\s+(?:para\s+)?ma[nñ]ana(?:[^a-záéíóúñ]|$)|calendario\s+(?:de\s+)?ma[nñ]ana|agenda\s+(?:de\s+)?ma[nñ]ana/i
+const SPANISH_CAL_UPCOMING = /(?:^|[^a-záéíóúñ])(?:qu[eé])\s+(?:tengo|ten[eé]s)\s+(?:esta\s+semana|en\s+la\s+semana|pr[oó]xim)|calendario\s+esta\s+semana|agenda\s+de\s+la\s+semana/i
+const SPANISH_CAL_MEDICAL = /(?:^|[^a-záéíóúñ])cu[aá]ndo\s+tengo\s+(?:m[eé]dico|doctor|dentista|cita|turno)/i
+
+// Family — Háblame de X / Cuéntame de X / Quién es X / Contame de X.
+const SPANISH_FAMILY_Q = /(?:^|[^a-záéíóúñ])(?:h[aá]blame|cu[eé]ntame|c[oó]ntame|contame|cuentame)\s+(?:de|sobre)\s+([^?¿!.]+)/i
+const SPANISH_WHO_IS = /(?:^|[^a-záéíóúñ])(?:qui[eé]n)\s+es\s+([^?¿!.]+)/i
+
+// ─── English patterns (B1 patch) ────────────────────────────────────────────
+const ENGLISH_CAL_TODAY = /\bwhat(?:'?s| is| do i have)\s+(?:on\s+)?today\b|\b(?:my\s+)?(?:calendar|agenda)\s+today\b|\btoday'?s\s+(?:calendar|agenda|appointments?|schedule)\b/i
+const ENGLISH_CAL_TOMORROW = /\bwhat(?:'?s| is| do i have)\s+(?:on\s+)?tomorrow\b|\b(?:my\s+)?(?:calendar|agenda)\s+tomorrow\b|\btomorrow(?:'?s)?\s+(?:calendar|agenda|appointments?|schedule)\b/i
+const ENGLISH_CAL_UPCOMING = /\bwhat(?:'?s)?\s+(?:this\s+week|coming\s+up|next)\b|\bappointments?\s+this\s+week\b|\bupcoming\s+(?:appointments?|events?)\b/i
+
+const ENGLISH_FAMILY_Q = /\btell\s+me\s+about\s+([^?!.]+)/i
+const ENGLISH_WHO_IS = /\bwho(?:'?s| is)\s+([^?!.]+)/i
+
+// ─── Open-topic guard (B1 patch) ────────────────────────────────────────────
+// Matches phrases that reliably mean "general culture/recommendation/story",
+// NOT a personal/family/calendar question. Used as a final guard before the
+// loose `matchKnownFamilyName` fallback so that "Recomendame un podcast"
+// stays open even though "podcast" is short.
+const OPEN_TOPIC = /\b(recomendame|recom[ie]ndame|recommend|recomienda|recomi[eé]ndale|recomi[eé]ndaselo|story|historia|cuento|pel[ií]cula|movie|film|podcast|libro|book|m[uú]sica|music|cultura|cultur(?:al|a)|pol[ií]tica|politics|ciencia|science|hist[oó]ricamente|history|argentina|italia|italy|spain|estados unidos|jap[oó]n|jap[oó]nes[ae]|jap[oó]n)\b/i
 
 export function routePersonalQuery(text: string): RouteResult {
   const t = text.trim()
@@ -45,6 +80,23 @@ export function routePersonalQuery(text: string): RouteResult {
   if (CALENDAR_TODAY.test(t)) return { type: 'calendar_today', query: t }
   if (CALENDAR_TOMORROW.test(t)) return { type: 'calendar_tomorrow', query: t }
   if (CALENDAR_UPCOMING.test(t)) return { type: 'calendar_upcoming', query: t }
+
+  // Spanish calendar
+  if (SPANISH_CAL_TODAY.test(t)) return { type: 'calendar_today', query: t }
+  if (SPANISH_CAL_TOMORROW.test(t)) return { type: 'calendar_tomorrow', query: t }
+  if (SPANISH_CAL_UPCOMING.test(t)) return { type: 'calendar_upcoming', query: t }
+  // Spanish "cuándo tengo médico" → upcoming (closest unknown-date scope).
+  if (SPANISH_CAL_MEDICAL.test(t)) return { type: 'calendar_upcoming', query: t }
+
+  // English calendar
+  if (ENGLISH_CAL_TODAY.test(t)) return { type: 'calendar_today', query: t }
+  if (ENGLISH_CAL_TOMORROW.test(t)) return { type: 'calendar_tomorrow', query: t }
+  if (ENGLISH_CAL_UPCOMING.test(t)) return { type: 'calendar_upcoming', query: t }
+
+  // Hebrew loose calendar — catches medical / appointment / "what's happening
+  // this week" phrasings the legacy classifier covered. Routed to upcoming
+  // since the date is unspecified.
+  if (CALENDAR_HEBREW_LOOSE.test(t)) return { type: 'calendar_upcoming', query: t }
 
   // Birthday lookup: "מתי יום ההולדת של פפי"
   const bdayMatch = t.match(BIRTHDAY_LOOKUP)
@@ -95,7 +147,33 @@ export function routePersonalQuery(text: string): RouteResult {
     return { type: 'family_lookup', query: t, familyQuery: nameMatch ?? t }
   }
 
-  // Known family name mentioned
+  // Spanish/English explicit family questions: "Háblame de Leo",
+  // "Cuéntame de Mor", "¿Quién es Adar?", "Tell me about Leo",
+  // "Who is Mor". These extract a candidate name; if the name resolves
+  // to a known family alias we route to family_lookup, otherwise we
+  // FALL THROUGH so "Tell me about Italy" / "Contame sobre Argentina"
+  // remain non_personal even though they share the same opener.
+  const spanishFamilyMatch = t.match(SPANISH_FAMILY_Q) ?? t.match(SPANISH_WHO_IS)
+  if (spanishFamilyMatch?.[1]) {
+    const candidate = spanishFamilyMatch[1].trim().replace(/[?¿!.]+$/, '')
+    const resolved = resolveKnownFamilyName(candidate)
+    if (resolved) return { type: 'family_lookup', query: t, familyQuery: resolved }
+  }
+  const englishFamilyMatch = t.match(ENGLISH_FAMILY_Q) ?? t.match(ENGLISH_WHO_IS)
+  if (englishFamilyMatch?.[1]) {
+    const candidate = englishFamilyMatch[1].trim().replace(/[?!.]+$/, '')
+    const resolved = resolveKnownFamilyName(candidate)
+    if (resolved) return { type: 'family_lookup', query: t, familyQuery: resolved }
+  }
+
+  // Open-topic guard. Catches "Recomendame un podcast", "Tell me about
+  // Italy", "Contame sobre Argentina" — these are general culture and
+  // must NOT be routed through the loose known-family-name fallback,
+  // which previously caught any sentence containing a token similar
+  // to a known alias.
+  if (OPEN_TOPIC.test(t)) return { type: 'non_personal', query: t }
+
+  // Known family name mentioned (final loose match — word boundaries only).
   const knownName = matchKnownFamilyName(t)
   if (knownName) {
     return { type: 'family_lookup', query: t, familyQuery: knownName }
@@ -119,13 +197,61 @@ function extractFamilyName(text: string): string | null {
   return null
 }
 
+// Letter detector for word-boundary checks. Matches Hebrew + Latin letters
+// (any Unicode letter) so "leo" inside "Leon" / "Tolstoy" / Hebrew text is
+// rejected, but "leo" surrounded by spaces / punctuation / start / end
+// matches.
+const LETTER_RE = /\p{L}/u
+function isWordBoundaryHit(haystack: string, needle: string): boolean {
+  if (!needle) return false
+  const h = haystack.toLowerCase()
+  const n = needle.toLowerCase()
+  let idx = 0
+  while ((idx = h.indexOf(n, idx)) !== -1) {
+    const before = idx === 0 ? '' : h[idx - 1] ?? ''
+    const after = idx + n.length >= h.length ? '' : h[idx + n.length] ?? ''
+    if (!LETTER_RE.test(before) && !LETTER_RE.test(after)) return true
+    idx += n.length
+  }
+  return false
+}
+
 function matchKnownFamilyName(text: string): string | null {
   const members = loadFamilyData()
-  const lower = text.toLowerCase()
   for (const m of members) {
-    if (m.hebrew && lower.includes(m.hebrew)) return m.hebrew
+    if (m.hebrew && isWordBoundaryHit(text, m.hebrew)) return m.hebrew
+    if (m.canonicalName && isWordBoundaryHit(text, m.canonicalName)) return m.canonicalName
     for (const alias of m.aliases) {
-      if (lower.includes(alias.toLowerCase())) return alias
+      if (isWordBoundaryHit(text, alias)) return alias
+    }
+  }
+  return null
+}
+
+/**
+ * Looks up an extracted name candidate (e.g. "Leo" from "Háblame de Leo")
+ * against the family data. Returns the canonical alias on hit, or null.
+ * Used by the Spanish/English family-question patterns so "Tell me about
+ * Italy" falls through (Italy is not in family data) while "Tell me about
+ * Leo" routes to family_lookup.
+ */
+export function resolveKnownFamilyName(candidate: string): string | null {
+  const c = candidate.trim().toLowerCase()
+  if (!c) return null
+  const members = loadFamilyData()
+  for (const m of members) {
+    if (m.hebrew && c === m.hebrew.toLowerCase()) return m.hebrew
+    if (m.canonicalName && c === m.canonicalName.toLowerCase()) return m.canonicalName
+    for (const alias of m.aliases) {
+      if (c === alias.toLowerCase()) return alias
+    }
+    // Tolerant: candidate may include a stray article ("el Leo") or trailing
+    // copy ("Leo, mi hijo"). Try first-token equality.
+    const firstToken = c.split(/[\s,]+/)[0] ?? ''
+    if (firstToken && m.hebrew && firstToken === m.hebrew.toLowerCase()) return m.hebrew
+    if (firstToken && m.canonicalName && firstToken === m.canonicalName.toLowerCase()) return m.canonicalName
+    for (const alias of m.aliases) {
+      if (firstToken && firstToken === alias.toLowerCase()) return alias
     }
   }
   return null
