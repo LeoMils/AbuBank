@@ -6,6 +6,12 @@ import { APP_VERSION } from '../../version'
 const WA_GREEN = '#25D366'
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
+// Call wedge — rich, warm red, NOT alarming. Tasteful gradient pair.
+const CALL_RED = '#D83A3A'
+const CALL_RED_DEEP = '#A81F1F'
+// Center identity circle — soft cream that reads as warm, premium, neutral.
+const CENTER_CREAM = '#F5EBD2'
+const CENTER_INK = '#0c1f33'
 
 // ─── Phone & URL helpers (unchanged contracts; existing tests pin them) ────
 
@@ -149,8 +155,10 @@ export function computeInitials(displayName: string): string {
 const BUBBLE_SIZE = 80           // px — the circle on the front face
 const BUBBLE_LABEL_FONT = 14
 const GRID_GAP = 12              // px — calmer vertical rhythm on iPhone
-const FLIPPED_CARD_W = 132       // px — back-face footprint (lifts above grid)
-const FLIPPED_CARD_H = 132       // px — back-face footprint
+const FLIPPED_CARD_W = 144       // px — back-face footprint (lifts above grid)
+const FLIPPED_CARD_H = 144       // px — back-face footprint
+const HUB_CENTER_SIZE = 64       // px — center identity circle on the back face
+const HUB_WEDGE_GAP = 4          // px — visible split between the two halves
 const FLIP_DURATION_MS = 320     // 260–380ms band, picked for "satisfying flip"
 const FLIP_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)'
 
@@ -566,8 +574,12 @@ export function BubbleTile({
             </div>
           </button>
 
-          {/* BACK FACE — present only for actionable tiles. Tapping the */}
-          {/* background (anywhere not a button) flips the card back. */}
+          {/* BACK FACE — circular action hub. Person hubs split into a */}
+          {/* WhatsApp-green left wedge + a Call-red right wedge with a */}
+          {/* center identity circle. Group hubs are a single full-circle */}
+          {/* WhatsApp action with a small "המשפחה" badge. Tapping a wedge */}
+          {/* fires the action (and stops propagation) so the back-face */}
+          {/* background's onFlipBack does NOT fire first. */}
           {hasBack && (
             <div
               data-testid={`bubble-back-${id}`}
@@ -584,47 +596,31 @@ export function BubbleTile({
                 // Reduced-motion path: show back via opacity when flipped.
                 opacity: reducedMotion ? (flipped ? 1 : 0) : 1,
                 pointerEvents: reducedMotion && !flipped ? 'none' : 'auto',
-                borderRadius: 24,
-                background: 'linear-gradient(160deg, rgba(8,16,28,0.96), rgba(5,10,24,0.98))',
-                border: `1.5px solid ${TEAL}40`,
-                boxShadow: `0 14px 32px rgba(0,0,0,0.50), 0 0 28px ${TEAL}24`,
+                borderRadius: '50%',
+                background: 'transparent',
                 display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
+                alignItems: 'center',
                 justifyContent: 'center',
-                padding: '14px 12px',
-                gap: 10,
                 cursor: 'pointer',
                 direction: 'rtl',
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
               {actions && (
-                <>
-                  <ActionChip
-                    kind="whatsapp"
-                    label="וואטסאפ"
-                    ariaLabel={`שליחת וואטסאפ אל ${label}`}
-                    testId={`chip-whatsapp-${id}`}
-                    onClick={(e) => { e.stopPropagation(); actions.onWhatsApp() }}
-                  />
-                  <ActionChip
-                    kind="call"
-                    label="שיחה"
-                    ariaLabel={`שיחה אל ${label}`}
-                    testId={`chip-call-${id}`}
-                    onClick={(e) => { e.stopPropagation(); actions.onCall() }}
-                  />
-                </>
+                <PersonActionHub
+                  id={id}
+                  label={label}
+                  onWhatsApp={actions.onWhatsApp}
+                  onCall={actions.onCall}
+                  onCenter={onFlipBack}
+                />
               )}
               {groupAction && (
-                <ActionChip
-                  kind="whatsapp"
-                  label="וואטסאפ"
-                  ariaLabel={`שליחת וואטסאפ ל${label}`}
-                  testId={`chip-whatsapp-${id}`}
-                  onClick={(e) => { e.stopPropagation(); groupAction.onWhatsApp() }}
-                  emphasis="primary"
+                <GroupActionHub
+                  id={id}
+                  label={label}
+                  onWhatsApp={groupAction.onWhatsApp}
+                  onCenter={onFlipBack}
                 />
               )}
             </div>
@@ -635,68 +631,255 @@ export function BubbleTile({
   )
 }
 
-function ActionChip({
-  kind, label, ariaLabel, testId, onClick, emphasis = 'normal',
+// ─── Circular action hub — back face for actionable persons ────────────────
+//
+// Visual model: a 144 px disc split into two semi-circular wedges with a
+// small visual gap between them, and a soft-cream centre identity circle
+// floating on top. Tapping a wedge fires its action; tapping the centre
+// (or the back-face background outside the disc) flips the card back.
+
+function PersonActionHub({
+  id, label, onWhatsApp, onCall, onCenter,
 }: {
-  kind: 'whatsapp' | 'call'
+  id: string
   label: string
-  ariaLabel: string
-  testId: string
-  onClick: (e: React.MouseEvent) => void
-  emphasis?: 'normal' | 'primary'
+  onWhatsApp: () => void
+  onCall: () => void
+  onCenter: () => void
 }) {
-  const accent = kind === 'whatsapp' ? WA_GREEN : TEAL
-  const bg = kind === 'whatsapp'
-    ? `linear-gradient(145deg, ${WA_GREEN}, #128C7E)`
-    : 'rgba(20,184,166,0.16)'
-  const color = kind === 'whatsapp' ? 'white' : TEAL
-  const border = kind === 'whatsapp' ? `1.5px solid ${WA_GREEN}66` : `1.5px solid ${TEAL}66`
-  // emphasis "primary" is used for the family-group single WhatsApp pill —
-  // we can give it a touch more height so it visually anchors the card.
+  const half = (FLIPPED_CARD_W - HUB_WEDGE_GAP) / 2
   return (
-    <button
-      type="button"
-      data-testid={testId}
-      data-chip-kind={kind}
-      onClick={onClick}
-      aria-label={ariaLabel}
+    <div
+      data-testid={`bubble-hub-person-${id}`}
+      data-hub-kind="person"
       style={{
-        minHeight: emphasis === 'primary' ? 56 : 48,
-        padding: '0 14px',
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        gap: 8,
-        borderRadius: 14,
-        border,
-        background: bg,
-        color,
-        fontFamily: "'Heebo',sans-serif",
-        fontSize: 15, fontWeight: 700,
-        cursor: 'pointer',
-        boxShadow: kind === 'whatsapp'
-          ? '0 4px 12px rgba(37,211,102,0.26)'
-          : '0 4px 12px rgba(20,184,166,0.20)',
-        WebkitTapHighlightColor: 'transparent',
-        letterSpacing: '0.2px',
+        position: 'relative',
+        width: FLIPPED_CARD_W,
+        height: FLIPPED_CARD_H,
+        borderRadius: '50%',
+        boxShadow: '0 16px 36px rgba(0,0,0,0.55), 0 0 22px rgba(37,211,102,0.18)',
+        direction: 'rtl',
+        background: 'transparent',
       }}
     >
-      <ActionChipIcon kind={kind} color={color} accent={accent} />
-      <span>{label}</span>
-    </button>
+      {/* Left wedge — WhatsApp green (visually-left of the disc) */}
+      <button
+        type="button"
+        data-testid={`chip-whatsapp-${id}`}
+        data-chip-kind="whatsapp"
+        data-hub-wedge="whatsapp"
+        onClick={(e) => { e.stopPropagation(); onWhatsApp() }}
+        aria-label={`שליחת וואטסאפ אל ${label}`}
+        style={{
+          position: 'absolute',
+          left: 0, top: 0,
+          width: half, height: FLIPPED_CARD_H,
+          borderTopLeftRadius: FLIPPED_CARD_H,
+          borderBottomLeftRadius: FLIPPED_CARD_H,
+          borderTopRightRadius: 0,
+          borderBottomRightRadius: 0,
+          border: 'none',
+          background: `linear-gradient(135deg, ${WA_GREEN} 0%, #1FB755 60%, #128C7E 100%)`,
+          color: 'white',
+          cursor: 'pointer',
+          minHeight: 44,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 4,
+          paddingRight: 18,
+          fontFamily: "'Heebo',sans-serif",
+          fontSize: 13, fontWeight: 700,
+          letterSpacing: '0.2px',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        <HubWhatsAppIcon size={26} />
+        <span>וואטסאפ</span>
+      </button>
+
+      {/* Right wedge — rich Call red (visually-right of the disc) */}
+      <button
+        type="button"
+        data-testid={`chip-call-${id}`}
+        data-chip-kind="call"
+        data-hub-wedge="call"
+        onClick={(e) => { e.stopPropagation(); onCall() }}
+        aria-label={`שיחה אל ${label}`}
+        style={{
+          position: 'absolute',
+          right: 0, top: 0,
+          width: half, height: FLIPPED_CARD_H,
+          borderTopRightRadius: FLIPPED_CARD_H,
+          borderBottomRightRadius: FLIPPED_CARD_H,
+          borderTopLeftRadius: 0,
+          borderBottomLeftRadius: 0,
+          border: 'none',
+          background: `linear-gradient(135deg, ${CALL_RED} 0%, #C92A2A 60%, ${CALL_RED_DEEP} 100%)`,
+          color: 'white',
+          cursor: 'pointer',
+          minHeight: 44,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 4,
+          paddingLeft: 18,
+          fontFamily: "'Heebo',sans-serif",
+          fontSize: 13, fontWeight: 700,
+          letterSpacing: '0.2px',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        <HubCallIcon size={26} />
+        <span>שיחה</span>
+      </button>
+
+      {/* Center identity — name + small heart. Tapping flips the card back. */}
+      <button
+        type="button"
+        data-testid={`bubble-hub-center-${id}`}
+        data-hub-center={id}
+        onClick={(e) => { e.stopPropagation(); onCenter() }}
+        aria-label={`סגירת פעולות עבור ${label}`}
+        style={{
+          position: 'absolute',
+          top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: HUB_CENTER_SIZE, height: HUB_CENTER_SIZE,
+          borderRadius: '50%',
+          border: '2px solid rgba(20,184,166,0.45)',
+          background: `radial-gradient(circle at 32% 28%, #FFFFFF 0%, ${CENTER_CREAM} 60%, #E2D6B6 100%)`,
+          color: CENTER_INK,
+          cursor: 'pointer',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 2,
+          padding: '4px 6px',
+          fontFamily: "'Heebo',sans-serif",
+          fontSize: 13, fontWeight: 700,
+          lineHeight: 1.05,
+          letterSpacing: '0.1px',
+          boxShadow: '0 6px 16px rgba(0,0,0,0.45), 0 0 0 4px rgba(8,16,28,0.55)',
+          zIndex: 5,
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        <span style={{
+          maxWidth: HUB_CENTER_SIZE - 14,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{label}</span>
+        <HubHeartIcon size={9} />
+      </button>
+    </div>
   )
 }
 
-function ActionChipIcon({ kind, color, accent }: { kind: 'whatsapp' | 'call'; color: string; accent: string }) {
-  if (kind === 'whatsapp') {
-    return (
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.3-4.4A9 9 0 1 1 21 12z" />
-        <path d="M8.5 9.5c0 4 3 7 7 7" />
-      </svg>
-    )
-  }
+function GroupActionHub({
+  id, label, onWhatsApp, onCenter,
+}: {
+  id: string
+  label: string
+  onWhatsApp: () => void
+  onCenter: () => void
+}) {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <div
+      data-testid={`bubble-hub-group-${id}`}
+      data-hub-kind="group"
+      style={{
+        position: 'relative',
+        width: FLIPPED_CARD_W,
+        height: FLIPPED_CARD_H,
+        borderRadius: '50%',
+        boxShadow: '0 16px 36px rgba(0,0,0,0.55), 0 0 28px rgba(37,211,102,0.30)',
+        direction: 'rtl',
+      }}
+    >
+      {/* Single full-circle WhatsApp action — the entire ring is the */}
+      {/* WhatsApp tap target. No call wedge ever appears for the group. */}
+      <button
+        type="button"
+        data-testid={`chip-whatsapp-${id}`}
+        data-chip-kind="whatsapp"
+        data-hub-wedge="whatsapp"
+        onClick={(e) => { e.stopPropagation(); onWhatsApp() }}
+        aria-label={`שליחת וואטסאפ ל${label}`}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%', height: '100%',
+          borderRadius: '50%',
+          border: 'none',
+          background: `radial-gradient(circle at 32% 28%, #34E07A 0%, ${WA_GREEN} 50%, #128C7E 100%)`,
+          color: 'white',
+          cursor: 'pointer',
+          minHeight: 44,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 4,
+          fontFamily: "'Heebo',sans-serif",
+          fontSize: 14, fontWeight: 700,
+          letterSpacing: '0.2px',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.20)',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        <HubWhatsAppIcon size={32} />
+        <span>וואטסאפ</span>
+      </button>
+
+      {/* Identity badge — small dark "המשפחה" pill at the top. Tapping it */}
+      {/* flips the card back so the user can see the family photo again. */}
+      <button
+        type="button"
+        data-testid={`bubble-hub-center-${id}`}
+        data-hub-center={id}
+        onClick={(e) => { e.stopPropagation(); onCenter() }}
+        aria-label={`סגירת פעולות ${label}`}
+        style={{
+          position: 'absolute',
+          top: 8, left: '50%',
+          transform: 'translateX(-50%)',
+          padding: '4px 12px',
+          borderRadius: 12,
+          border: '1px solid rgba(255,255,255,0.55)',
+          background: 'rgba(8,16,28,0.78)',
+          color: 'rgba(255,255,255,0.96)',
+          fontFamily: "'Heebo',sans-serif",
+          fontSize: 11, fontWeight: 700,
+          letterSpacing: '0.2px',
+          cursor: 'pointer',
+          zIndex: 5,
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        {label}
+      </button>
+    </div>
+  )
+}
+
+function HubWhatsAppIcon({ size }: { size: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.3-4.4A9 9 0 1 1 21 12z" />
+      <path d="M8.5 9.5c0 4 3 7 7 7" />
+    </svg>
+  )
+}
+
+function HubCallIcon({ size }: { size: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="white" stroke="white" strokeWidth="0.5" strokeLinejoin="round" aria-hidden="true">
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.86 19.86 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8 10a16 16 0 0 0 6 6l1.36-1.36a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  )
+}
+
+function HubHeartIcon({ size }: { size: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="#C92A2A" stroke="#C92A2A" strokeWidth="1" aria-hidden="true">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
     </svg>
   )
 }

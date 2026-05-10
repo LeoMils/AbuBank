@@ -516,8 +516,11 @@ describe('AbuWhatsApp bubble visual contract (v0.3.2 polish)', () => {
     expect(tileStart).toBeGreaterThan(-1)
     // Look across the entire BubbleTile body (now wraps in an outer div +
     // inner button + optional chip row).
-    const tileEnd = facesSrc.indexOf('\nfunction ActionChip', tileStart)
-    const tileBody = facesSrc.slice(tileStart, tileEnd === -1 ? tileStart + 4000 : tileEnd)
+    // BubbleTile body ends at the next top-level function declaration. With
+    // the flip-circle hub the next top-level fn is PersonActionHub.
+    let tileEnd = facesSrc.indexOf('\nfunction PersonActionHub', tileStart)
+    if (tileEnd === -1) tileEnd = facesSrc.indexOf('\nfunction ', tileStart + 50)
+    const tileBody = facesSrc.slice(tileStart, tileEnd === -1 ? tileStart + 6000 : tileEnd)
     const avatarIdx = tileBody.indexOf('<BubbleAvatar')
     // The rendered label text is inside its own <div>{label}</div>, distinct
     // from aria-label={label} on the inner tap button. Match the rendered

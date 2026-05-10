@@ -87,11 +87,14 @@ describe('flip-back behaviour — back face background closes', () => {
   })
 
   it('action-chip onClick handlers stopPropagation BEFORE firing the action', () => {
-    // Both person actions and group action must stopPropagation so the
-    // back-face background close handler does not fire before the URL opens.
-    expect(/onClick=\{\(e\) => \{ e\.stopPropagation\(\); actions\.onWhatsApp\(\) \}\}/.test(facesSrc)).toBe(true)
-    expect(/onClick=\{\(e\) => \{ e\.stopPropagation\(\); actions\.onCall\(\) \}\}/.test(facesSrc)).toBe(true)
-    expect(/onClick=\{\(e\) => \{ e\.stopPropagation\(\); groupAction\.onWhatsApp\(\) \}\}/.test(facesSrc)).toBe(true)
+    // Hub wedges destructure their action handlers as top-level props, so
+    // the source pattern is `onWhatsApp()` / `onCall()` (not `actions.…`).
+    // The center identity wedge is also a button; its onClick fires
+    // onCenter (which closes the flip), and the back-face background
+    // wrapper still fires onFlipBack with stopPropagation.
+    expect(/onClick=\{\(e\) => \{ e\.stopPropagation\(\); onWhatsApp\(\) \}\}/.test(facesSrc)).toBe(true)
+    expect(/onClick=\{\(e\) => \{ e\.stopPropagation\(\); onCall\(\) \}\}/.test(facesSrc)).toBe(true)
+    expect(/onClick=\{\(e\) => \{ e\.stopPropagation\(\); onCenter\(\) \}\}/.test(facesSrc)).toBe(true)
   })
 
   it('closeFlip nulls activeFlippedId', () => {
