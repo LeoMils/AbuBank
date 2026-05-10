@@ -89,10 +89,15 @@ describe('visible UI surfaces show the new build version', () => {
     expect(settingsSrc.includes('APP_VERSION.version')).toBe(true)
   })
 
-  it('AbuWhatsApp screen renders the build version pill', () => {
+  it('AbuWhatsApp Martita-facing screen no longer surfaces the build version (clean header)', () => {
+    // v0.4.x — the Martita header is now Title + Subtitle only. The build
+    // version pill moved to operator-only surfaces.
     const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
-    expect(src.includes('abuwhatsapp-build-version')).toBe(true)
-    expect(src.includes('APP_VERSION.version')).toBe(true)
+    expect(src.includes('abuwhatsapp-build-version')).toBe(false)
+    // Operator setup still shows the build version (gated by ?operator=1).
+    const setupSrc = readSrc('src/screens/AbuWhatsApp/FamilyContactsSetup.tsx')
+    expect(setupSrc.includes('setup-build-version')).toBe(true)
+    expect(setupSrc.includes('APP_VERSION.version')).toBe(true)
   })
 
   it('main.tsx logs APP_VERSION on startup', () => {

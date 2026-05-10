@@ -375,9 +375,10 @@ describe('AbuWhatsApp unified bubble grid (source contract)', () => {
     return fs.readFileSync(path.join(PROJECT_ROOT, rel), 'utf8')
   }
 
-  it('header title "אבו וואטסאפ" appears in familyQuickFaces.tsx', () => {
+  it('header title is the English wordmark "Abu WhatsApp" — Hebrew "אבו וואטסאפ" is gone', () => {
     const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
-    expect(src.includes('אבו וואטסאפ')).toBe(true)
+    expect(src.includes('Abu WhatsApp')).toBe(true)
+    expect(src.includes('אבו וואטסאפ')).toBe(false)
   })
 
   it('subtitle "למי לשלוח הודעה?" appears in familyQuickFaces.tsx', () => {
@@ -385,12 +386,10 @@ describe('AbuWhatsApp unified bubble grid (source contract)', () => {
     expect(src.includes('למי לשלוח הודעה?')).toBe(true)
   })
 
-  it('build version v0.3.2-abuwhatsapp-family-grid is rendered on the AbuWhatsApp screen', () => {
+  it('build version pill is removed from the Martita header (lives only in operator setup)', () => {
     const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
-    expect(src.includes('abuwhatsapp-build-version')).toBe(true)
-    expect(src.includes("APP_VERSION.version")).toBe(true)
-    const verSrc = readSrc('src/version.ts')
-    expect(verSrc.includes("'0.3.2-abuwhatsapp-family-grid'")).toBe(true)
+    expect(src.includes('abuwhatsapp-build-version')).toBe(false)
+    expect(src.includes('APP_VERSION')).toBe(false)
   })
 
   it('grid uses getDisplayablePersons (visible-by-default), not contacts.some filtering', () => {
@@ -540,9 +539,9 @@ describe('AbuWhatsApp bubble visual contract (v0.3.2 polish)', () => {
     expect(/\{!voiceMode\s*&&\s*\(\s*\n\s*<div\s+data-testid="abuwhatsapp-tab-bar"/.test(indexSrc)).toBe(false)
   })
 
-  it('build version label still renders on the AbuWhatsApp screen', () => {
-    expect(facesSrc.includes('abuwhatsapp-build-version')).toBe(true)
-    expect(facesSrc.includes('APP_VERSION.version')).toBe(true)
+  it('build version label is REMOVED from the Martita header (clean header)', () => {
+    expect(facesSrc.includes('abuwhatsapp-build-version')).toBe(false)
+    expect(facesSrc.includes('APP_VERSION')).toBe(false)
   })
 
   it('group + person still share the same BubbleTile component', () => {

@@ -45,17 +45,24 @@ describe('Operator setup — active-count diagnostic line', () => {
   })
 })
 
-describe('Grid hint under the AbuWhatsApp subtitle', () => {
-  it('hint text "לחיצה על תמונה פותחת פעולות" is rendered with a stable testid', () => {
-    expect(facesSrc.includes('לחיצה על תמונה פותחת פעולות')).toBe(true)
-    expect(facesSrc.includes('data-testid="abuwhatsapp-grid-hint"')).toBe(true)
+describe('Header is clean — no extra copy under the subtitle', () => {
+  it('grid hint copy "לחיצה על תמונה פותחת פעולות" is removed from the Martita header', () => {
+    // The hint string and its testid are gone; the header is title + subtitle only.
+    expect(facesSrc.includes('לחיצה על תמונה פותחת פעולות')).toBe(false)
+    expect(facesSrc.includes('data-testid="abuwhatsapp-grid-hint"')).toBe(false)
   })
 
-  it('hint sits AFTER the subtitle "למי לשלוח הודעה?" in source', () => {
+  it('build version line is removed from the Martita header (testid + APP_VERSION usage gone)', () => {
+    expect(facesSrc.includes('abuwhatsapp-build-version')).toBe(false)
+    expect(facesSrc.includes('APP_VERSION')).toBe(false)
+  })
+
+  it('subtitle "למי לשלוח הודעה?" still renders right under the title', () => {
+    expect(facesSrc.includes('למי לשלוח הודעה?')).toBe(true)
+    const titleIdx = facesSrc.indexOf('Abu WhatsApp')
     const subtitleIdx = facesSrc.indexOf('למי לשלוח הודעה?')
-    const hintIdx = facesSrc.indexOf('לחיצה על תמונה פותחת פעולות')
-    expect(subtitleIdx).toBeGreaterThan(-1)
-    expect(hintIdx).toBeGreaterThan(subtitleIdx)
+    expect(titleIdx).toBeGreaterThan(-1)
+    expect(subtitleIdx).toBeGreaterThan(titleIdx)
   })
 })
 
