@@ -57,6 +57,38 @@ const PM_HINTS = /(אחר.{0,4}הצהריים|אחה"צ|בצהריים|צהרי�
 const NIGHT_HINTS = /(בלילה|לפנות בוקר)/
 const MORNING_HINTS = /(בבוקר|לפני הצהריים)/
 
+// ─── Spanish / English period hints (P0 — deterministic, no Groq) ──────
+const PM_HINTS_ES = /(de\s+la\s+tarde|de\s+la\s+noche|por\s+la\s+tarde|por\s+la\s+noche)/i
+const MORNING_HINTS_ES = /(de\s+la\s+ma[ñn]ana|por\s+la\s+ma[ñn]ana)/i
+// `\b` does NOT match between a digit and a letter (digits are word chars
+// too), so "4pm" would slip past `\bpm\b`. Use letter-only lookaround so
+// "4pm" / "4 pm" / "4:00pm" all detect PM; "champ" / "amplifier" do not.
+const PM_HINTS_EN_INLINE = /(?<![a-zA-Z])(pm|p\.m\.?)(?![a-zA-Z])|in\s+the\s+afternoon|in\s+the\s+evening|at\s+night/i
+const MORNING_HINTS_EN_INLINE = /(?<![a-zA-Z])(am|a\.m\.?)(?![a-zA-Z])|in\s+the\s+morning/i
+
+// Spanish hour words → number.
+const SPANISH_HOUR_WORDS: Record<string, number> = {
+  'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5, 'seis': 6,
+  'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10, 'once': 11, 'doce': 12,
+}
+// English hour words → number.
+const ENGLISH_HOUR_WORDS: Record<string, number> = {
+  'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6,
+  'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10, 'eleven': 11, 'twelve': 12,
+}
+// Spanish day-of-week names (lowercase, accent-tolerant).
+const SPANISH_DAY_WORDS: Array<[RegExp, number]> = [
+  [/\bdomingo\b/i, 0], [/\blunes\b/i, 1], [/\bmartes\b/i, 2],
+  [/\bmi[eé]rcoles\b/i, 3], [/\bjueves\b/i, 4], [/\bviernes\b/i, 5],
+  [/\bs[aá]bado\b/i, 6],
+]
+const ENGLISH_DAY_WORDS: Array<[RegExp, number]> = [
+  [/\bsunday\b/i, 0], [/\bmonday\b/i, 1], [/\btuesday\b/i, 2],
+  [/\bwednesday\b/i, 3], [/\bthursday\b/i, 4], [/\bfriday\b/i, 5],
+  [/\bsaturday\b/i, 6],
+]
+
+
 // Hebrew letters are not part of \w in JS regex, so \b breaks. Use explicit Hebrew lookarounds.
 const NB = '(?<![\\u0590-\\u05FF])' // not preceded by a Hebrew letter
 const NA = '(?![\\u0590-\\u05FF])'  // not followed by a Hebrew letter
@@ -131,20 +163,51 @@ function extractDate(text: string, todayISO: string): DateExtract {
     }
   }
 
+  // ─── Spanish / English deterministic dates (P0) ─────────────────────────
+  //
+  // tomorrow / mañana → today + 1
+  // today    / hoy    → today
+  // next Sunday / el domingo / domingo que viene → next occurrence
+  if (/\b(tomorrow|ma[ñn]ana)\b/i.test(text)) {
+    const t = new Date(today); t.setDate(t.getDate() + 1)
+    const m = text.match(/\b(tomorrow|ma[ñn]ana)\b/i)
+    consumed.push(m?.[0] ?? 'tomorrow')
+    return { date: toISO(t), consumed }
+  }
+  if (/\b(today|hoy)\b/i.test(text)) {
+    const m = text.match(/\b(today|hoy)\b/i)
+    consumed.push(m?.[0] ?? 'today')
+    return { date: todayISO, consumed }
+  }
+  for (const [re, idx] of [...SPANISH_DAY_WORDS, ...ENGLISH_DAY_WORDS]) {
+    const m = text.match(re)
+    if (m) {
+      const cur = today.getDay()
+      let diff = (idx - cur + 7) % 7
+      if (diff === 0) diff = 7
+      const t = new Date(today); t.setDate(t.getDate() + diff)
+      consumed.push(m[0])
+      return { date: toISO(t), consumed }
+    }
+  }
+
   return { date: null, consumed: [] }
 }
 
 interface TimeExtract { time: string | null; ambiguous: boolean; consumed: string[] }
 
 function applyPeriod(hour: number, text: string): { hour: number; ambiguous: boolean } {
-  if (PM_HINTS.test(text)) {
+  // PM: Hebrew "אחר הצהריים / בערב", Spanish "de la tarde / de la noche",
+  // English "pm / in the afternoon / in the evening".
+  if (PM_HINTS.test(text) || PM_HINTS_ES.test(text) || PM_HINTS_EN_INLINE.test(text)) {
     if (hour >= 1 && hour <= 11) return { hour: hour + 12, ambiguous: false }
     return { hour, ambiguous: false }
   }
   if (NIGHT_HINTS.test(text)) {
     return { hour, ambiguous: false }
   }
-  if (MORNING_HINTS.test(text)) {
+  // AM: Hebrew "בבוקר", Spanish "de la mañana", English "am / in the morning".
+  if (MORNING_HINTS.test(text) || MORNING_HINTS_ES.test(text) || MORNING_HINTS_EN_INLINE.test(text)) {
     return { hour: hour >= 12 ? hour - 12 : hour, ambiguous: false }
   }
   if (hour >= 1 && hour <= 6) return { hour, ambiguous: true }
@@ -265,6 +328,78 @@ function extractTime(text: string): TimeExtract {
       const { hour, ambiguous } = applyPeriod(h, text)
       const time = `${String(hour).padStart(2, '0')}:${String(minResult.minutes).padStart(2, '0')}`
       return { time, ambiguous, consumed: [`${bm[1]} ${minResult.consumed}`] }
+    }
+  }
+
+  // ─── Spanish / English deterministic time (P0) ────────────────────────
+  //
+  //  "at 4pm" / "at 4:30pm" / "at 16:00" — explicit period wins.
+  //  "a las cuatro" / "a las diez" — Spanish word-hour.
+  //  "at four" / "at ten am" — English word-hour.
+  //
+  //  Period policy mirrors the Hebrew applyPeriod():
+  //    - explicit pm / "de la tarde" / "in the afternoon" → +12 for 1–11
+  //    - explicit am / "de la mañana" / "in the morning"  → −12 for 12
+  //    - hours 1–6 with no period hint → ambiguous=true (UI asks AM/PM)
+  //    - other hours stay as-is (no ambiguity)
+
+  function applyPeriodI18n(hour: number, src: string): { hour: number; ambiguous: boolean } {
+    if (PM_HINTS_EN_INLINE.test(src) || PM_HINTS_ES.test(src)) {
+      if (hour >= 1 && hour <= 11) return { hour: hour + 12, ambiguous: false }
+      return { hour, ambiguous: false }
+    }
+    if (MORNING_HINTS_EN_INLINE.test(src) || MORNING_HINTS_ES.test(src)) {
+      return { hour: hour === 12 ? 0 : hour, ambiguous: false }
+    }
+    if (hour >= 1 && hour <= 6) return { hour, ambiguous: true }
+    return { hour, ambiguous: false }
+  }
+
+  // "at HH:MM" (English) / "a las HH:MM" (Spanish) — explicit numeric.
+  const numI18n = text.match(/\b(?:at|a\s+las)\s+(\d{1,2})\s*[:.]\s*(\d{2})(?:\s*(am|pm|p\.m\.?|a\.m\.?))?\b/i)
+  if (numI18n) {
+    const h = parseInt(numI18n[1]!, 10)
+    const m = parseInt(numI18n[2]!, 10)
+    if (h >= 0 && h < 24 && m >= 0 && m < 60) {
+      const { hour, ambiguous } = applyPeriodI18n(h, numI18n[0])
+      const time = `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      return { time, ambiguous, consumed: [numI18n[0]] }
+    }
+  }
+
+  // "at 4" / "at 4pm" / "at four" / "a las 4" / "a las cuatro".
+  // Numeric form.
+  const numericI18n = text.match(/\b(?:at|a\s+las)\s+(\d{1,2})(?:\s*(am|pm|p\.m\.?|a\.m\.?))?\b/i)
+  if (numericI18n) {
+    const h = parseInt(numericI18n[1]!, 10)
+    if (h >= 0 && h < 24) {
+      const { hour, ambiguous } = applyPeriodI18n(h, numericI18n[0])
+      const time = `${String(hour).padStart(2, '0')}:00`
+      return { time, ambiguous, consumed: [numericI18n[0]] }
+    }
+  }
+
+  // Spanish word-hour: "a las cuatro" / "a las diez de la mañana".
+  const esHourKeys = Object.keys(SPANISH_HOUR_WORDS).join('|')
+  const esWord = text.match(new RegExp(`\\ba\\s+las\\s+(${esHourKeys})(\\s+de\\s+la\\s+(?:tarde|noche|ma[ñn]ana))?\\b`, 'i'))
+  if (esWord) {
+    const h = SPANISH_HOUR_WORDS[esWord[1]!.toLowerCase()]
+    if (typeof h === 'number') {
+      const { hour, ambiguous } = applyPeriodI18n(h, esWord[0])
+      const time = `${String(hour).padStart(2, '0')}:00`
+      return { time, ambiguous, consumed: [esWord[0]] }
+    }
+  }
+
+  // English word-hour: "at four pm" / "at ten in the morning".
+  const enHourKeys = Object.keys(ENGLISH_HOUR_WORDS).join('|')
+  const enWord = text.match(new RegExp(`\\bat\\s+(${enHourKeys})(\\s+(?:am|pm|p\\.m\\.?|a\\.m\\.?|in\\s+the\\s+(?:morning|afternoon|evening)))?\\b`, 'i'))
+  if (enWord) {
+    const h = ENGLISH_HOUR_WORDS[enWord[1]!.toLowerCase()]
+    if (typeof h === 'number') {
+      const { hour, ambiguous } = applyPeriodI18n(h, enWord[0])
+      const time = `${String(hour).padStart(2, '0')}:00`
+      return { time, ambiguous, consumed: [enWord[0]] }
     }
   }
 

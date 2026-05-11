@@ -8,7 +8,7 @@ interface ToastProps {
   duration?: number
   undoLabel?: string
   onUndo?: () => void
-  variant?: 'info' | 'success' | 'undo'
+  variant?: 'info' | 'success' | 'undo' | 'error'
 }
 
 export function Toast({ message, visible, onDismiss, duration = 3000, undoLabel, onUndo, variant = 'info' }: ToastProps) {
@@ -26,7 +26,11 @@ export function Toast({ message, visible, onDismiss, duration = 3000, undoLabel,
 
   if (!visible && !show) return null
 
-  const borderColor = variant === 'success' ? `rgba(52,211,153,0.35)` : GOLD_BORDER
+  const borderColor = variant === 'success'
+    ? `rgba(52,211,153,0.35)`
+    : variant === 'error'
+    ? `rgba(251,113,133,0.45)`
+    : GOLD_BORDER
 
   return (
     <div style={{
@@ -56,7 +60,7 @@ export function Toast({ message, visible, onDismiss, duration = 3000, undoLabel,
         fontSize: 15,
         fontWeight: 600,
         fontFamily: "'Heebo', sans-serif",
-        color: variant === 'success' ? SUCCESS : TEXT_STRONG,
+        color: variant === 'success' ? SUCCESS : variant === 'error' ? '#fca5a5' : TEXT_STRONG,
         flex: 1,
       }}>{message}</span>
       {variant === 'undo' && onUndo && (
