@@ -4,6 +4,7 @@ import { Screen } from '../../state/types'
 import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { APP_VERSION } from '../../version'
+import { DiagnosticPanel } from '../../components/DiagnosticPanel'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -616,6 +617,14 @@ export function Settings() {
             {APP_VERSION.buildLabel} · build {APP_VERSION.version}
             <br />
             {APP_VERSION.branchHint} · {APP_VERSION.buildDate}
+          </div>
+          <div style={{
+            width: '100%', marginTop: 18, padding: 14, borderRadius: 14,
+            background: 'rgba(255,250,240,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            textAlign: 'right',
+          }}>
+            <DiagnosticPanel />
           </div>
         </div>
       ),
