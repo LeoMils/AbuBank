@@ -116,10 +116,10 @@ describe('AbuAI does NOT call the online endpoint for family / calendar queries'
   })
 })
 
-describe('build version is bumped to AbuCalendar P0', () => {
-  it('APP_VERSION is the AbuCalendar P0 marker', () => {
+describe('build version is bumped to AbuCalendar P0.1', () => {
+  it('APP_VERSION is the AbuCalendar P0.1 voice-E2E marker', () => {
     const verSrc = fs.readFileSync(path.resolve(__dirname, '../../version.ts'), 'utf8')
-    expect(verSrc.includes("'0.4.4-abucalendar-p0-create-reliability'")).toBe(true)
-    expect(verSrc.includes('AbuCalendar P0 — Create Reliability + Speech-to-Calendar')).toBe(true)
+    expect(verSrc.includes("'0.4.5-abucalendar-voice-e2e-recovery'")).toBe(true)
+    expect(verSrc.includes('AbuCalendar P0.1 — Voice Recording End-to-End Recovery')).toBe(true)
   })
 })
