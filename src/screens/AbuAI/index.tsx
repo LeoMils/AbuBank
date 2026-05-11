@@ -5,6 +5,9 @@ import { sendMessage, streamMessage, transcribeAudio, isPersonalQuery, containsU
 import { getProactiveSeed } from './proactive'
 import { isOnlineCurrentInfoQuery, shouldBlockOnlineForPersonal } from './onlineIntent'
 import { answerOnlineCurrentInfo, _recordOnlineError } from './onlineProvider'
+import { chooseContentWorld } from './contentWorldEngine'
+import { compileHumanAnswer } from './answerCompiler'
+import { makeOpenEvidence } from './evidencePacket'
 import { getTodayEvents, getTomorrowEvents } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
@@ -316,6 +319,33 @@ export function AbuAI() {
         return
       }
 
+      // ─── B2.3 patch: content world for vague open prompts ────────────────
+      // "Hola", "no sé", "שלום", "hi" — short greetings AbuAI should answer
+      // with a calm 2–3 option opening instead of paying for a full LLM
+      // call. We ONLY enter this branch when:
+      //   • the input is non-personal (grounded path already missed)
+      //   • the proactive layer did not match (estoy aburrida etc.)
+      //   • the input is NOT a live-info query (films now / weather / news)
+      //   • the content world picks `open_chat` AND ships gentle options
+      //     (named content cues like film / cooking / podcast fall
+      //     through to the open LLM stream so the model can be rich).
+      if (!isOnlineCurrentInfoQuery(msgText) || shouldBlockOnlineForPersonal(msgText)) {
+        const world = chooseContentWorld(msgText)
+        if (world.contentMode === 'open_chat' && world.suggestedOpening && world.gentleOptions.length > 0) {
+          const compiled = compileHumanAnswer(
+            msgText,
+            makeOpenEvidence('content_world_engine'),
+            { lang: world.language, allowFollowUp: true },
+            world,
+          )
+          const contentMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: compiled.text, timestamp: Date.now() }
+          setMessages(prev => [...prev, contentMsg])
+          setLoading(false)
+          streamingMsgIdRef.current = null
+          return
+        }
+      }
+
       // ─── B2 patch: online current-info layer ─────────────────────────────
       // Live questions (cinema / weather / news / "this week" / "open now")
       // need a real web lookup. The server endpoint /api/abuai-online holds
@@ -325,7 +355,7 @@ export function AbuAI() {
       if (isOnlineCurrentInfoQuery(msgText) && !shouldBlockOnlineForPersonal(msgText)) {
         const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: 'רגע, בודקת אונליין...', timestamp: Date.now() }
         setMessages(prev => [...prev, placeholderMsg])
-        const online = await answerOnlineCurrentInfo(msgText)
+        const online = await answerOnlineCurrentInfo(msgText, { locationHint: 'Kfar Saba area, Israel' })
         if (online.ok) {
           _recordOnlineError(null)
           // Render the answer + sources (if any) appended on a new line so
@@ -603,13 +633,34 @@ export function AbuAI() {
           const voiceProactive = getProactiveSeed(text, {
             previousSeedId: lastProactiveSeedIdRef.current,
           })
+          // B2.3 voice: same content-world short-circuit as the text
+          // path. Vague open prompts (hola / no sé) get a deterministic
+          // opening spoken instead of a full LLM call. Voice mode skips
+          // the bullet-list follow-up — speech sounds unnatural reading
+          // "•". allowFollowUp = false ensures only the opening renders.
+          const voiceWorld = (!isOnlineCurrentInfoQuery(text) || shouldBlockOnlineForPersonal(text))
+            ? chooseContentWorld(text)
+            : null
+          const voiceWorldFires =
+            voiceWorld !== null
+            && voiceWorld.contentMode === 'open_chat'
+            && voiceWorld.suggestedOpening !== ''
+            && voiceWorld.gentleOptions.length > 0
           if (voiceProactive) {
             lastProactiveSeedIdRef.current = voiceProactive.id
             response = voiceProactive.text
+          } else if (voiceWorldFires) {
+            const compiled = compileHumanAnswer(
+              text,
+              makeOpenEvidence('content_world_engine'),
+              { lang: voiceWorld!.language, allowFollowUp: false },
+              voiceWorld!,
+            )
+            response = compiled.text
           } else if (isOnlineCurrentInfoQuery(text) && !shouldBlockOnlineForPersonal(text)) {
             // B2: online current-info via server endpoint. Voice mode
             // speaks the answer concisely; sources are not read aloud.
-            const online = await answerOnlineCurrentInfo(text)
+            const online = await answerOnlineCurrentInfo(text, { locationHint: 'Kfar Saba area, Israel' })
             if (online.ok) {
               _recordOnlineError(null)
               response = online.answer

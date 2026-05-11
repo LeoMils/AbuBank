@@ -8,6 +8,7 @@ export type RouteType =
   | 'calendar_exact_date' | 'calendar_month'
   | 'calendar_create'
   | 'birthday_lookup' | 'memorial_lookup'
+  | 'contact_action'
   | 'non_personal'
 
 export interface RouteResult {
@@ -16,6 +17,8 @@ export interface RouteResult {
   familyQuery?: string
   dateStr?: string
   month?: number
+  /** When type === 'contact_action', the requested action verb. */
+  contactAction?: 'call' | 'whatsapp' | 'message'
 }
 
 // ─── Hebrew patterns (preserved + extended) ─────────────────────────────────
@@ -61,6 +64,34 @@ const ENGLISH_CAL_UPCOMING = /\bwhat(?:'?s)?\s+(?:this\s+week|coming\s+up|next)\
 
 const ENGLISH_FAMILY_Q = /\btell\s+me\s+about\s+([^?!.]+)/i
 const ENGLISH_WHO_IS = /\bwho(?:'?s| is)\s+([^?!.]+)/i
+
+// ─── Contact-action precedence (B2.3 joint-opt patch) ──────────────────────
+//
+// "תתקשרי ללאו" / "llamá a Leo" / "call Leo" / "מתי תתקשרי" must route to a
+// contact_action BEFORE the loose `matchKnownFamilyName` family fallback,
+// so AbuAI redirects the user to AbuWhatsApp instead of describing the
+// relative as if Martita had asked "who is Leo?".
+//
+// Hebrew patterns intentionally omit `\b` (Hebrew letters are not "word"
+// characters in JS regex). Spanish/English use the standard `\b`.
+const CONTACT_ACTION_CALL_HE = /תתקשרי?\s+ל|להתקשר\s+ל/
+const CONTACT_ACTION_WHATSAPP_HE = /שלחי?\s+(?:הודעה|וואטסאפ|whatsapp)|וואטסאפ\s+ל|לשלוח\s+וואטסאפ\s+ל/i
+const CONTACT_ACTION_MESSAGE_HE = /שלחי?\s+הודעה\s+ל/
+
+const CONTACT_ACTION_CALL_ES = /\bllam[aá](?:la|le|lo)?\s+a\b|\bllamar\s+a\b|\bllam[aá]\s+a\b/i
+const CONTACT_ACTION_WHATSAPP_ES = /\bmand[aá](?:le|la|lo)?\s+(?:un\s+)?whatsapp\b|\bman[dd]a\s+whatsapp\s+a\b|\benv[ií]a(?:le)?\s+whatsapp\b/i
+const CONTACT_ACTION_MESSAGE_ES = /\bmand[aá](?:le|la|lo)?\s+(?:un\s+)?mensaje\b|\benv[ií]a(?:le)?\s+un\s+mensaje\b/i
+
+const CONTACT_ACTION_CALL_EN = /\bcall\s+(?:my\s+)?\w+/i
+const CONTACT_ACTION_WHATSAPP_EN = /\bwhatsapp\s+\w+|\bsend\s+(?:a\s+)?whatsapp\s+to\b/i
+const CONTACT_ACTION_MESSAGE_EN = /\btext\s+\w+|\bsend\s+(?:a\s+)?message\s+to\b/i
+
+function detectContactAction(t: string): 'call' | 'whatsapp' | 'message' | null {
+  if (CONTACT_ACTION_WHATSAPP_HE.test(t) || CONTACT_ACTION_WHATSAPP_ES.test(t) || CONTACT_ACTION_WHATSAPP_EN.test(t)) return 'whatsapp'
+  if (CONTACT_ACTION_CALL_HE.test(t) || CONTACT_ACTION_CALL_ES.test(t) || CONTACT_ACTION_CALL_EN.test(t)) return 'call'
+  if (CONTACT_ACTION_MESSAGE_HE.test(t) || CONTACT_ACTION_MESSAGE_ES.test(t) || CONTACT_ACTION_MESSAGE_EN.test(t)) return 'message'
+  return null
+}
 
 // ─── Open-topic guard (B1 patch) ────────────────────────────────────────────
 // Matches phrases that reliably mean "general culture/recommendation/story",
@@ -172,6 +203,18 @@ export function routePersonalQuery(text: string): RouteResult {
   // which previously caught any sentence containing a token similar
   // to a known alias.
   if (OPEN_TOPIC.test(t)) return { type: 'non_personal', query: t }
+
+  // Contact-action precedence (B2.3): "תתקשרי ללאו" / "llamá a Leo" /
+  // "call Leo" / "mandale WhatsApp a Mor" beat the family-lookup
+  // fallback. The runtime answers with an AbuWhatsApp redirect instead
+  // of describing the relative.
+  const contactAction = detectContactAction(t)
+  if (contactAction) {
+    const known = matchKnownFamilyName(t)
+    const result: RouteResult = { type: 'contact_action', query: t, contactAction }
+    if (known) result.familyQuery = known
+    return result
+  }
 
   // Known family name mentioned (final loose match — word boundaries only).
   const knownName = matchKnownFamilyName(t)

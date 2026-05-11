@@ -47,7 +47,9 @@ describe('text path — order grounded → proactive → online → personal/ope
   })
 
   it('online step calls answerOnlineCurrentInfo and records the last error code', () => {
-    expect(block.includes('await answerOnlineCurrentInfo(msgText)')).toBe(true)
+    // B2.3 joint-opt: the call now passes a static locationHint so
+    // the online endpoint can resolve Kfar Saba-relative cues.
+    expect(/await answerOnlineCurrentInfo\(msgText(?:,\s*\{[^)]*locationHint[^)]*\})?\)/.test(block)).toBe(true)
     expect(block.includes('_recordOnlineError(null)')).toBe(true)
     expect(block.includes('_recordOnlineError(online.errorCode)')).toBe(true)
   })
@@ -80,7 +82,9 @@ describe('voice path — order grounded → proactive → online → LLM', () =>
   })
 
   it('voice online step uses await answerOnlineCurrentInfo and records last error', () => {
-    expect(block.includes('await answerOnlineCurrentInfo(text)')).toBe(true)
+    // B2.3 joint-opt: the call now passes a static locationHint so
+    // the online endpoint can resolve Kfar Saba-relative cues.
+    expect(/await answerOnlineCurrentInfo\(text(?:,\s*\{[^)]*locationHint[^)]*\})?\)/.test(block)).toBe(true)
     expect(block.includes('_recordOnlineError(null)')).toBe(true)
     expect(block.includes('_recordOnlineError(online.errorCode)')).toBe(true)
   })
