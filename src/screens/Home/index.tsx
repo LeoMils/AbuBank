@@ -587,6 +587,30 @@ export function Home() {
             border: '1px solid rgba(201,168,76,0.18)',
           }}
         >QA: v{appVersion}</div>
+        {/* P0.3 — visible diagnostic pill, always present on Home. Tap
+            opens the platform diagnostic overlay (version, /api/health,
+            voice, calendar, force-refresh). Discoverable without
+            navigating deep into Settings. */}
+        <button
+          type="button"
+          data-testid="home-diagnostic-pill"
+          aria-label="אבחון מערכת"
+          onClick={() => {
+            const w = window as unknown as { __abubankOpenDiag?: () => void }
+            if (typeof w.__abubankOpenDiag === 'function') w.__abubankOpenDiag()
+          }}
+          style={{
+            position: 'absolute', top: 8, left: 100,
+            fontSize: 12, fontWeight: 700,
+            color: '#FFE9B3', fontFamily: "'Heebo','DM Sans',sans-serif",
+            background: 'rgba(201,168,76,0.18)',
+            padding: '3px 10px',
+            borderRadius: 8,
+            border: '1px solid rgba(201,168,76,0.45)',
+            cursor: 'pointer',
+            zIndex: 5,
+          }}
+        >אבחון</button>
         {import.meta.env.DEV && (
           <div
             data-testid="home-qa-dev-build"

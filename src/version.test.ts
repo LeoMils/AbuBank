@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.4.6-platform-health-recovery')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank P0 — Platform/API Health Recovery')
+    expect(APP_VERSION.version).toBe('0.4.7-diagnostics-visible')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank P0.3 — Diagnostics Always Visible')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

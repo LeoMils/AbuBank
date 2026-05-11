@@ -4,7 +4,6 @@ import { Screen } from '../../state/types'
 import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { APP_VERSION } from '../../version'
-import { DiagnosticPanel } from '../../components/DiagnosticPanel'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -618,14 +617,26 @@ export function Settings() {
             <br />
             {APP_VERSION.branchHint} · {APP_VERSION.buildDate}
           </div>
-          <div style={{
-            width: '100%', marginTop: 18, padding: 14, borderRadius: 14,
-            background: 'rgba(255,250,240,0.03)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            textAlign: 'right',
-          }}>
-            <DiagnosticPanel />
-          </div>
+          {/* P0.3 — the diagnostic panel moved to a top-level button +
+              full-screen overlay (impossible to miss). Tap "אבחון מערכת"
+              at the top of Settings, the pill on Home, or visit
+              ?diagnostics=1 to open it. */}
+          <button
+            type="button"
+            data-testid="about-diagnostic-button"
+            onClick={() => {
+              const w = window as unknown as { __abubankOpenDiag?: () => void }
+              if (typeof w.__abubankOpenDiag === 'function') w.__abubankOpenDiag()
+            }}
+            style={{
+              marginTop: 12, padding: '10px 16px', borderRadius: 12,
+              border: '1px solid rgba(201,168,76,0.45)',
+              background: 'rgba(201,168,76,0.10)',
+              color: '#FFE9B3', fontSize: 14, fontWeight: 700,
+              fontFamily: "'Heebo','DM Sans',sans-serif",
+              cursor: 'pointer',
+            }}
+          >אבחון מערכת</button>
         </div>
       ),
     },
@@ -679,6 +690,39 @@ export function Settings() {
           />
         </div>
       </header>
+
+      {/* ─── P0.3 — DIAGNOSTIC ENTRY POINT (always at top, big & visible) ─── */}
+      <div style={{ padding: '14px 14px 0' }}>
+        <button
+          type="button"
+          data-testid="settings-diagnostic-button"
+          onClick={() => {
+            const w = window as unknown as { __abubankOpenDiag?: () => void }
+            if (typeof w.__abubankOpenDiag === 'function') w.__abubankOpenDiag()
+          }}
+          style={{
+            width: '100%',
+            minHeight: 64,
+            padding: '14px 16px',
+            borderRadius: 16,
+            border: '1px solid rgba(201,168,76,0.45)',
+            background: 'linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.04))',
+            color: '#FFE9B3',
+            fontSize: 16, fontWeight: 800,
+            fontFamily: "'Heebo','DM Sans',sans-serif",
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            cursor: 'pointer',
+            direction: 'rtl',
+            boxShadow: '0 4px 20px rgba(201,168,76,0.12)',
+          }}
+        >
+          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+            <span style={{ fontSize: 17, fontWeight: 800 }}>אבחון מערכת</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,233,179,0.75)' }}>בדיקת API, גרסה, קול וקלנדר</span>
+          </span>
+          <span style={{ fontSize: 22, lineHeight: 1, color: 'rgba(201,168,76,0.85)' }}>›</span>
+        </button>
+      </div>
 
       {/* ─── SECTIONS ─── */}
       <div style={{ padding: '14px 14px 40px', display: 'flex', flexDirection: 'column', gap: 10 }}>
