@@ -116,10 +116,10 @@ describe('AbuAI does NOT call the online endpoint for family / calendar queries'
   })
 })
 
-describe('build version is bumped to Platform P0', () => {
-  it('APP_VERSION is the Platform P0 marker', () => {
+describe('build version is bumped to Platform P0.3', () => {
+  it('APP_VERSION is the Platform P0.3 diagnostics-visible marker', () => {
     const verSrc = fs.readFileSync(path.resolve(__dirname, '../../version.ts'), 'utf8')
-    expect(verSrc.includes("'0.4.6-platform-health-recovery'")).toBe(true)
-    expect(verSrc.includes('AbuBank P0 — Platform/API Health Recovery')).toBe(true)
+    expect(verSrc.includes("'0.4.7-diagnostics-visible'")).toBe(true)
+    expect(verSrc.includes('AbuBank P0.3 — Diagnostics Always Visible')).toBe(true)
   })
 })
