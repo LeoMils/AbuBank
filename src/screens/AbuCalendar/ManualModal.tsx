@@ -11,23 +11,41 @@ interface ManualModalProps {
 
 export function ManualModal({ onClose, onSave, defaultDate, editing }: ManualModalProps) {
   const [title, setTitle] = useState(editing?.title ?? '')
+  // P0 patch — date prefills to defaultDate (the day Martita tapped on
+  // the calendar; that's user-initiated, not a hidden default). Time
+  // starts EMPTY for new events so the modal never silently saves at
+  // a hidden 09:00. Editing an existing event still preloads its time.
   const [date, setDate] = useState(editing?.date ?? defaultDate)
-  const [time, setTime] = useState(editing?.time ?? '09:00')
+  const [time, setTime] = useState(editing?.time ?? '')
   const [notes, setNotes] = useState(editing?.notes ?? '')
   const [titleFocused, setTitleFocused] = useState(false)
   const [dateFocused, setDateFocused] = useState(false)
   const [timeFocused, setTimeFocused] = useState(false)
   const [notesFocused, setNotesFocused] = useState(false)
+  // P0 — surface the missing field so Martita can fix it instead of
+  // staring at a disabled Save button with no explanation.
+  const [missingHint, setMissingHint] = useState<string>('')
   const modalTitle = editing ? 'עריכת אירוע' : 'אירוע חדש'
 
+  // Required-field gate for the Save button (P0). No hidden defaults —
+  // title, date, and time all must be present and valid.
+  const trimmedTitle = title.trim()
+  const isDateValid = /^\d{4}-\d{2}-\d{2}$/.test(date)
+  const isTimeValid = /^\d{2}:\d{2}$/.test(time)
+  const canSave = Boolean(trimmedTitle && isDateValid && isTimeValid)
+
   function handleSave() {
-    if (!title.trim()) return
+    // P0 — if Save fires while disabled, fall through to the visible
+    // hint instead of silently saving a partial event.
+    if (!trimmedTitle) { setMissingHint('חסר לי פרט כדי לשמור את הפגישה.'); return }
+    if (!isDateValid) { setMissingHint('חסר לי פרט כדי לשמור את הפגישה.'); return }
+    if (!isTimeValid) { setMissingHint('חסר לי פרט כדי לשמור את הפגישה.'); return }
     const trimmedNotes = notes.trim()
     const appt: Omit<Appointment, 'id' | 'color'> = {
-      title: title.trim(),
+      title: trimmedTitle,
       date,
       time,
-      emoji: detectEmoji(title.trim()),
+      emoji: detectEmoji(trimmedTitle),
       notes: trimmedNotes || '',
     }
     onSave(appt)
@@ -183,21 +201,33 @@ export function ManualModal({ onClose, onSave, defaultDate, editing }: ManualMod
           <button
             type="button"
             onClick={handleSave}
-            disabled={!title.trim()}
+            disabled={!canSave}
+            data-testid="manual-save"
             style={{
               flex: 2, padding: '15px', borderRadius: 14, border: 'none',
-              background: title.trim()
+              background: canSave
                 ? `linear-gradient(135deg, ${BRIGHT_GOLD} 0%, #e8c76a 50%, ${GOLD} 100%)`
                 : 'rgba(255,255,255,0.06)',
-              color: title.trim() ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.20)',
+              color: canSave ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.20)',
               fontSize: 17, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
-              cursor: title.trim() ? 'pointer' : 'not-allowed',
+              cursor: canSave ? 'pointer' : 'not-allowed',
               transition: 'background 0.2s, color 0.2s',
-              boxShadow: title.trim() ? '0 4px 20px rgba(201,168,76,0.40)' : 'none',
+              boxShadow: canSave ? '0 4px 20px rgba(201,168,76,0.40)' : 'none',
               minHeight: 56,
             }}
           >שמירה</button>
         </div>
+        {(missingHint || !canSave) && (
+          <div data-testid="manual-missing-hint" style={{
+            marginTop: -4,
+            fontSize: 14,
+            color: 'rgba(251,146,60,0.85)',
+            fontFamily: "'Heebo',sans-serif",
+            textAlign: 'center',
+          }}>
+            {!trimmedTitle ? 'חסר שם לאירוע.' : !isDateValid ? 'חסר תאריך.' : !isTimeValid ? 'חסרה שעה.' : missingHint}
+          </div>
+        )}
       </div>
     </div>
   )
