@@ -110,19 +110,33 @@ function detectContactAction(t: string): 'call' | 'whatsapp' | 'message' | null 
 const REL_BETWEEN_HE_QESHER = /מה\s+ה?קשר\s+בין\s+(\S+?)\s+ל[־-]?(\S+?)[\s?!.,]*$/
 const REL_BETWEEN_HE_HOW = /איך\s+(\S+?)\s+קשור[הת]?\s+ל[־-]?(\S+?)[\s?!.,]*$/
 const REL_BETWEEN_HE_VER = /מה\s+(\S+?)\s+קשור[הת]?\s+ל[־-]?(\S+?)[\s?!.,]*$/
+// B2.5: looser HE patterns Martita actually uses.
+//   "מה X בשביל Y" / "מה X של Y" / "מי X של Y" / "מי X בשביל Y"
+const REL_BETWEEN_HE_BISHVIL = /מה\s+(\S+?)\s+בשביל\s+(\S+?)[\s?!.,]*$/
+const REL_BETWEEN_HE_MI = /מי\s+(\S+?)\s+של\s+(\S+?)[\s?!.,]*$/
+const REL_BETWEEN_HE_MI_BISHVIL = /מי\s+(\S+?)\s+בשביל\s+(\S+?)[\s?!.,]*$/
 
 const REL_BETWEEN_ES_QUE_REL = /\bqu[eé]\s+relaci[oó]n\s+tienen\s+([^\s?¿!.]+)\s+y\s+([^\s?¿!.]+)/i
 const REL_BETWEEN_ES_QUE_VER = /\bqu[eé]\s+tiene\s+que\s+ver\s+([^\s?¿!.]+)\s+con\s+([^\s?¿!.]+)/i
 const REL_BETWEEN_ES_COMO_REL = /\bc[oó]mo\s+se\s+relaciona\s+([^\s?¿!.]+)\s+con\s+([^\s?¿!.]+)/i
+// B2.5: ES "qué es X de Y" / "quién es X para Y" / "quién es X de Y".
+const REL_BETWEEN_ES_QUE_ES_DE = /\bqu[eé]\s+es\s+([^\s?¿!.]+)\s+de\s+([^\s?¿!.]+)/i
+const REL_BETWEEN_ES_QUIEN_ES_PARA = /\bqui[eé]n\s+es\s+([^\s?¿!.]+)\s+(?:para|de)\s+([^\s?¿!.]+)/i
 
 const REL_BETWEEN_EN_HOW_REL = /\bhow\s+is\s+([^\s?!.]+)\s+related\s+to\s+([^\s?!.]+)/i
 const REL_BETWEEN_EN_CONNECTION = /\bwhat(?:'?s| is)\s+the\s+connection\s+between\s+([^\s?!.]+)\s+and\s+([^\s?!.]+)/i
+// B2.5: EN "what is X to Y" / "who is X to Y".
+const REL_BETWEEN_EN_WHAT_TO = /\bwhat\s+is\s+([^\s?!.]+)\s+to\s+([^\s?!.]+)/i
+const REL_BETWEEN_EN_WHO_TO = /\bwho\s+is\s+([^\s?!.]+)\s+to\s+([^\s?!.]+)/i
 
 function detectRelationBetween(t: string): { a: string; b: string } | null {
   const tries: Array<RegExp> = [
     REL_BETWEEN_HE_QESHER, REL_BETWEEN_HE_HOW, REL_BETWEEN_HE_VER,
+    REL_BETWEEN_HE_BISHVIL, REL_BETWEEN_HE_MI, REL_BETWEEN_HE_MI_BISHVIL,
     REL_BETWEEN_ES_QUE_REL, REL_BETWEEN_ES_QUE_VER, REL_BETWEEN_ES_COMO_REL,
+    REL_BETWEEN_ES_QUE_ES_DE, REL_BETWEEN_ES_QUIEN_ES_PARA,
     REL_BETWEEN_EN_HOW_REL, REL_BETWEEN_EN_CONNECTION,
+    REL_BETWEEN_EN_WHAT_TO, REL_BETWEEN_EN_WHO_TO,
   ]
   for (const re of tries) {
     const m = t.match(re)
