@@ -12,11 +12,11 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.4.0-abuai-b2-online-tools',
-  buildLabel: 'AbuAI B2 — Online Tools + Health Gate',
-  buildDate:  '2026-05-10',
+  version:    '0.4.1-abuai-b2-3-content-companion',
+  buildLabel: 'AbuAI B2.3 — Human Content Companion Runtime',
+  buildDate:  '2026-05-11',
   branchHint: 'feat/abuwhatsapp-local-family-contacts',
-  commitHint: 'pending',
+  commitHint: 'd7bf781',
 } as const
 
 export type AppVersion = typeof APP_VERSION
