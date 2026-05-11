@@ -22,6 +22,44 @@ export function isPersonalQuery(text: string): boolean {
   return routePersonalQuery(text).type !== 'non_personal'
 }
 
+/**
+ * Build a deterministic HE/ES/EN redirect when the user asked AbuAI to
+ * call / WhatsApp / message someone. AbuAI does NOT hold phone numbers
+ * (those live in AbuWhatsApp's local-only storage), and must NEVER
+ * invent one. The redirect points the user to AbuWhatsApp where the
+ * tap-photo flow handles the actual action.
+ */
+function shapeContactActionRedirect(route: RouteResult): string {
+  const action = route.contactAction ?? 'call'
+  const lowered = (route.query ?? '').toLowerCase()
+  const hasHebrew = /[֐-׿]/.test(route.query ?? '')
+  const isSpanish = /\b(llam[aá]|mand[aá]|env[ií]a|whatsapp|mensaje)\b/i.test(lowered)
+  const personName = route.familyQuery ?? ''
+  const HE = () => {
+    const verb = action === 'whatsapp' ? 'לשלוח וואטסאפ'
+      : action === 'message' ? 'לשלוח הודעה' : 'להתקשר'
+    const who = personName ? `ל-${personName}` : ''
+    return `כדי ${verb} ${who} — פתחי את אבו וואטסאפ ולחצי על התמונה שלו.`
+  }
+  const ES = () => {
+    const verb = action === 'whatsapp' ? 'mandarle un WhatsApp'
+      : action === 'message' ? 'mandarle un mensaje' : 'llamarlo'
+    const who = personName ? ` a ${personName}` : ''
+    return `Para ${verb}${who}, abrí Abu WhatsApp y tocá su foto.`
+  }
+  const EN = () => {
+    const verb = action === 'whatsapp' ? 'send a WhatsApp'
+      : action === 'message' ? 'send a message' : 'call'
+    const who = personName ? ` to ${personName}` : ''
+    return `To ${verb}${who}, open Abu WhatsApp and tap their photo.`
+  }
+  if (hasHebrew) return HE()
+  if (isSpanish) return ES()
+  // Spanish/Hebrew share the largest user base; the English fallback
+  // covers explicit English phrasing ("call Leo").
+  return EN()
+}
+
 export function tryGroundedAnswer(text: string): string | null {
   const route = routePersonalQuery(text)
   if (route.type === 'non_personal') return null
@@ -72,6 +110,12 @@ export function tryGroundedAnswer(text: string): string | null {
       case 'family_location': {
         const r = searchFamilyLocation(route.familyQuery ?? '')
         return r.answer
+      }
+      case 'contact_action': {
+        // B2.3: contact-action requests redirect the user to AbuWhatsApp
+        // (the only surface that holds phone/WhatsApp data). AbuAI
+        // never invents a phone number or initiates the call itself.
+        return shapeContactActionRedirect(route)
       }
       default:
         return null

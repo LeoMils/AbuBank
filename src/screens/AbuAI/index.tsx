@@ -355,7 +355,7 @@ export function AbuAI() {
       if (isOnlineCurrentInfoQuery(msgText) && !shouldBlockOnlineForPersonal(msgText)) {
         const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: 'רגע, בודקת אונליין...', timestamp: Date.now() }
         setMessages(prev => [...prev, placeholderMsg])
-        const online = await answerOnlineCurrentInfo(msgText)
+        const online = await answerOnlineCurrentInfo(msgText, { locationHint: 'Kfar Saba area, Israel' })
         if (online.ok) {
           _recordOnlineError(null)
           // Render the answer + sources (if any) appended on a new line so
@@ -660,7 +660,7 @@ export function AbuAI() {
           } else if (isOnlineCurrentInfoQuery(text) && !shouldBlockOnlineForPersonal(text)) {
             // B2: online current-info via server endpoint. Voice mode
             // speaks the answer concisely; sources are not read aloud.
-            const online = await answerOnlineCurrentInfo(text)
+            const online = await answerOnlineCurrentInfo(text, { locationHint: 'Kfar Saba area, Israel' })
             if (online.ok) {
               _recordOnlineError(null)
               response = online.answer

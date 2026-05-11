@@ -40,7 +40,9 @@ describe('B2.3 — content world is wired into the AbuAI text path', () => {
     const groundedIdx = block.indexOf('tryGroundedAnswer(msgText)')
     const proactiveIdx = block.indexOf('getProactiveSeed(msgText')
     const worldIdx = block.indexOf('chooseContentWorld(msgText)')
-    const onlineIdx = block.indexOf('answerOnlineCurrentInfo(msgText)')
+    // B2.3 joint-opt: the online call now takes a locationHint option;
+    // match the call by its function-name prefix.
+    const onlineIdx = block.indexOf('answerOnlineCurrentInfo(msgText')
     expect(groundedIdx).toBeGreaterThan(-1)
     expect(proactiveIdx).toBeGreaterThan(groundedIdx)
     expect(worldIdx).toBeGreaterThan(proactiveIdx)
@@ -65,7 +67,8 @@ describe('B2.3 — content world is wired into the AbuAI voice path', () => {
 
     const proactiveIdx = block.indexOf('getProactiveSeed(text')
     const worldIdx = block.indexOf('chooseContentWorld(text)')
-    const onlineIdx = block.indexOf('answerOnlineCurrentInfo(text)')
+    // B2.3 joint-opt: the online call now takes a locationHint option.
+    const onlineIdx = block.indexOf('answerOnlineCurrentInfo(text')
     expect(proactiveIdx).toBeGreaterThan(-1)
     expect(worldIdx).toBeGreaterThan(proactiveIdx)
     expect(onlineIdx).toBeGreaterThan(worldIdx)

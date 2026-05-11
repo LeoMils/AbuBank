@@ -235,10 +235,14 @@ const SEEDS: Record<ContentMode, Record<ContentLanguage | 'default', { opening: 
   },
   memories: {
     default: { opening: '', options: [] },
-    he: { opening: 'תספרי לי משהו מבואנוס איירס, או שאני אספר לך משהו קצר ויפה?', options: ['בואנוס איירס', 'הילדות', 'משהו על פפי בעדינות'] },
-    es: { opening: '¿Me contás algo de Buenos Aires, o te cuento algo cortito y lindo?', options: ['Buenos Aires', 'La infancia', 'Algo de Pepi con cariño'] },
-    en: { opening: 'Tell me a Buenos Aires memory, or I can share something short and gentle.', options: ['Buenos Aires', 'Childhood', 'A gentle Pepi memory'] },
-    mixed: { opening: 'מי בא לך — Buenos Aires או הילדות?', options: ['Buenos Aires', 'הילדות', 'Pepi בעדינות'] },
+    // B2.3 audit: the memories options are invitations FOR Martita to
+    // share — AbuAI never claims to hold a private memory of Pepi or her
+    // childhood. The opener leads with "tell me", the options are framed
+    // as topics SHE can pick to talk about.
+    he: { opening: 'תספרי לי משהו, אם בא לך — או שאני אקרא לך משהו קצר ויפה?', options: ['לספר על בואנוס איירס', 'לדבר על הילדות שלך', 'לדבר על פפי, אם בא לך'] },
+    es: { opening: 'Si querés, contame algo vos — o te leo algo cortito y lindo.', options: ['Contarme de Buenos Aires', 'Hablar de tu infancia', 'Hablar de Pepi, si querés'] },
+    en: { opening: 'If you like, tell me something — or I can read you something short and gentle.', options: ['Tell me about Buenos Aires', 'Talk about your childhood', 'Talk about Pepi, if you like'] },
+    mixed: { opening: 'אם בא לך, contame algo vos — או שאני אקרא לך משהו קצר.', options: ['Contarme de Buenos Aires', 'הילדות שלך', 'Pepi, אם בא לך'] },
   },
   local_activity: {
     default: { opening: '', options: [] },
