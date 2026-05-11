@@ -11,7 +11,11 @@ import {
   formatHebrewMonth,
   formatShortHebrewDate,
   getHebrewHoliday,
+  createAppointmentSafe,
+  formatCreatedConfirmation,
+  formatCreateFailure,
   type Appointment,
+  type CreateFailureCode,
 } from './service'
 import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
@@ -51,6 +55,10 @@ export function AbuCalendar() {
   const [showManual, setShowManual] = useState(false)
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [toast, setToast] = useState(false)
+  // P0 — structured toast message so the user sees title/date/time
+  // (or the honest failure copy) instead of a generic "saved" string.
+  const [toastMessage, setToastMessage] = useState<string>('האירוע נשמר')
+  const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success')
   const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; personName?: string | null; ambiguousTime?: boolean; confidence?: number; source?: 'local' | 'llm' | 'fallback' | null } | null>(null)
   const [rawTranscript, setRawTranscript] = useState<string>('')
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing' | 'parsing' | 'parsed' | 'error'>('idle')
@@ -164,18 +172,60 @@ export function AbuCalendar() {
 
   function showToast() { setToast(true) }
 
+  // P0 — show a specific success message (title + date + time) or an
+  // honest failure message. Variant flips colour from gold → red.
+  function showSuccessToast(message: string) {
+    setToastMessage(message)
+    setToastVariant('success')
+    setToast(true)
+  }
+  function showFailureToast(message: string) {
+    setToastMessage(message)
+    setToastVariant('error')
+    setToast(true)
+  }
+
+  // P0 — language detection for confirmation/failure copy. Defaults to
+  // Hebrew (Martita's primary). Spanish/English detection is intentionally
+  // narrow: only fires when the input clearly looks ES/EN.
+  function detectConfirmationLang(text: string): 'he' | 'es' | 'en' {
+    const t = text.trim()
+    if (!t) return 'he'
+    if (/[֐-׿]/.test(t)) return 'he'
+    if (/[áéíóúñ¿¡]/i.test(t) || /\b(reuni[oó]n|m[eé]dico|ma[ñn]ana|hoy|a las)\b/i.test(t)) return 'es'
+    if (/\b(meeting|tomorrow|today|at \d)\b/i.test(t)) return 'en'
+    return 'he'
+  }
+
   function handleManualSave(appt: Omit<Appointment, 'id' | 'color'>) {
     if (editingAppt) {
+      // Editing path is unchanged: we already have a valid event id.
       updateAppointment(editingAppt.id, appt)
-    } else {
-      addAppointment(appt)
+      reload()
+      setShowManual(false)
+      setEditingAppt(null)
+      playChime()
+      soundSuccess()
+      showToast()
+      return
+    }
+    // P0 — single safe-create path. Validates, persists, round-trips.
+    const result = createAppointmentSafe(appt)
+    if (!result.ok) {
+      const lang = detectConfirmationLang(appt.title)
+      showFailureToast(formatCreateFailure(result.code, lang))
+      return
     }
     reload()
     setShowManual(false)
     setEditingAppt(null)
     playChime()
     soundSuccess()
-    showToast()
+    const lang = detectConfirmationLang(appt.title)
+    showSuccessToast(formatCreatedConfirmation(
+      { title: result.appointment.title, date: result.appointment.date, time: result.appointment.time },
+      lang,
+    ))
   }
 
   function handleDelete(appt: Appointment) {
@@ -383,7 +433,14 @@ export function AbuCalendar() {
   }
 
   function handleVoiceConfirm(final: { title: string; date: string; time: string; emoji: string; location?: string; notes?: string }) {
-    addAppointment(final)
+    // P0 — same safe-create path as manual save. Voice cannot bypass
+    // validation or the round-trip read-back.
+    const result = createAppointmentSafe(final)
+    if (!result.ok) {
+      const lang = detectConfirmationLang(final.title)
+      showFailureToast(formatCreateFailure(result.code, lang))
+      return
+    }
     reload()
     setVoiceParsed(null)
     setVoiceStatus('')
@@ -393,7 +450,11 @@ export function AbuCalendar() {
     lastAckRef.current = null
     playChime()
     soundSuccess()
-    showToast()
+    const lang = detectConfirmationLang(final.title)
+    showSuccessToast(formatCreatedConfirmation(
+      { title: result.appointment.title, date: result.appointment.date, time: result.appointment.time },
+      lang,
+    ))
   }
 
   function startCorrection() {
@@ -827,10 +888,10 @@ export function AbuCalendar() {
       />
 
       <Toast
-        message="האירוע נשמר"
+        message={toastMessage}
         visible={toast}
         onDismiss={() => setToast(false)}
-        variant="success"
+        variant={toastVariant}
       />
 
       {/* MODALS */}

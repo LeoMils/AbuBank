@@ -62,6 +62,110 @@ export function addAppointment(appt: Omit<Appointment, 'id' | 'color'>): Appoint
   return newAppt
 }
 
+// ─── P0 — createAppointmentSafe ───────────────────────────────────────────
+//
+// Single safe creation path used by ManualModal AND the voice-confirm flow.
+// Validates required fields, attempts persistence, and ROUND-TRIPS through
+// storage to confirm the event is actually there. Returns a structured
+// result so the UI can show the correct success / failure / clarification
+// message — never a false "saved" toast.
+
+export type CreateFailureCode =
+  | 'missing_title' | 'missing_date' | 'missing_time'
+  | 'invalid_date' | 'invalid_time'
+  | 'storage_failed'
+
+export type CreateResult =
+  | { ok: true; appointment: Appointment }
+  | { ok: false; code: CreateFailureCode }
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const TIME_RE = /^\d{2}:\d{2}$/
+
+export function createAppointmentSafe(input: Omit<Appointment, 'id' | 'color'>): CreateResult {
+  // 1) Required-field validation — no silent acceptance.
+  if (!input.title || !input.title.trim()) return { ok: false, code: 'missing_title' }
+  if (!input.date || !input.date.trim()) return { ok: false, code: 'missing_date' }
+  if (!input.time || !input.time.trim()) return { ok: false, code: 'missing_time' }
+
+  // 2) Format validation.
+  if (!DATE_RE.test(input.date)) return { ok: false, code: 'invalid_date' }
+  if (!TIME_RE.test(input.time)) return { ok: false, code: 'invalid_time' }
+  // Cross-check: date must be parseable.
+  const [y, m, d] = input.date.split('-').map(Number)
+  if (!y || !m || !d || m < 1 || m > 12 || d < 1 || d > 31) return { ok: false, code: 'invalid_date' }
+  const [hh, mm] = input.time.split(':').map(Number)
+  if (hh === undefined || mm === undefined || hh < 0 || hh > 23 || mm < 0 || mm > 59) {
+    return { ok: false, code: 'invalid_time' }
+  }
+
+  // 3) Attempt persistence. addAppointment + saveAppointments together
+  //    will swallow storage errors (private-mode / quota), so we catch
+  //    throws from setItem AND we read back to verify presence.
+  let created: Appointment
+  try {
+    created = addAppointment(input)
+  } catch {
+    return { ok: false, code: 'storage_failed' }
+  }
+
+  // 4) Round-trip verification — defends against silent no-op storage.
+  const persisted = loadAppointments().find((a) => a.id === created.id)
+  if (!persisted) return { ok: false, code: 'storage_failed' }
+
+  return { ok: true, appointment: created }
+}
+
+// ─── P0 — user-facing copy helpers (HE/ES/EN) ─────────────────────────────
+
+export type ConfirmationLang = 'he' | 'es' | 'en'
+
+export function formatCreatedConfirmation(
+  appt: { title: string; date: string; time: string },
+  lang: ConfirmationLang,
+): string {
+  if (lang === 'es') return `Listo, lo agendé: ${appt.title}, ${appt.date}, a las ${appt.time}.`
+  if (lang === 'en') return `Done, I added: ${appt.title}, ${appt.date}, at ${appt.time}.`
+  return `קבעתי: ${appt.title}, ${appt.date}, בשעה ${appt.time}.`
+}
+
+export function formatCreateFailure(code: CreateFailureCode, lang: ConfirmationLang): string {
+  if (code === 'storage_failed') {
+    if (lang === 'es') return 'No pude guardarlo ahora. ¿Probamos otra vez?'
+    if (lang === 'en') return "I couldn't save it right now. Want to try again?"
+    return 'לא הצלחתי לשמור את הפגישה כרגע. ננסה שוב?'
+  }
+  if (code === 'missing_title' || code === 'missing_date' || code === 'missing_time' ||
+      code === 'invalid_date' || code === 'invalid_time') {
+    if (lang === 'es') return 'Me falta un dato. ¿Me lo decís otra vez?'
+    if (lang === 'en') return "I'm missing something. Can you say that again?"
+    return 'חסר לי פרט. תוכלי לחזור על זה?'
+  }
+  // exhaustive
+  const _exhaust: never = code
+  void _exhaust
+  return ''
+}
+
+export function formatMissingFieldQuestion(
+  field: 'title' | 'date' | 'time',
+  lang: ConfirmationLang,
+): string {
+  if (lang === 'es') {
+    if (field === 'time') return '¿A qué hora querés que la agende?'
+    if (field === 'date') return '¿Para qué día?'
+    return '¿Qué nombre le ponemos a la cita?'
+  }
+  if (lang === 'en') {
+    if (field === 'time') return 'What time should I set?'
+    if (field === 'date') return 'What day?'
+    return 'What should I call this meeting?'
+  }
+  if (field === 'time') return 'באיזו שעה לקבוע את הפגישה?'
+  if (field === 'date') return 'מתי לקבוע את הפגישה?'
+  return 'מה השם של הפגישה?'
+}
+
 export function updateAppointment(id: string, updates: Partial<Omit<Appointment, 'id'>>): void {
   const appts = loadAppointments()
   saveAppointments(appts.map(a => a.id === id ? { ...a, ...updates } : a))
