@@ -1,0 +1,146 @@
+/*
+ * AbuCalendar P0.1 — voice-transcript → action decision.
+ *
+ * The previous voice flow required the user to find a "Save" button in
+ * VoiceCard even for a complete, unambiguous "תקבעי פגישה עם לאו מחר
+ * בעשר בבוקר". This module turns a final transcript into one of six
+ * explicit actions; the UI is responsible for rendering each one
+ * visibly. No silent dismissal, no hidden confirm.
+ *
+ * Truth Contract preserved:
+ *  • auto_created → createAppointmentSafe was called AND succeeded.
+ *  • failed_to_save → createAppointmentSafe rejected (storage failure).
+ *  • Other paths → no event is written.
+ */
+
+import { parseLocally, type LocalDraft } from './localParser'
+import { createAppointmentSafe, type Appointment } from './service'
+
+// ─── Create-verb detector ─────────────────────────────────────────────────
+//
+// We only auto-create when the speaker used an explicit imperative
+// CREATE verb. A passive utterance like "פגישה עם לאו מחר בעשר" still
+// goes through the visible confirmation card so we never create from
+// a chance overheard statement.
+
+// Hebrew imperatives + infinitives that mean "add/schedule/remind/put".
+const HE_CREATE_VERBS = [
+  'תוסיפי', 'תוסיף', 'תוסיפו',
+  'תקבעי', 'תקבע',
+  'תרשמי', 'תרשום',
+  'תזכירי', 'תזכיר',
+  'תכניסי', 'תכניס',
+  'תעדכני',
+  'להוסיף', 'לקבוע', 'לרשום', 'לזכור',
+]
+
+// Spanish (Rioplatense + general) — voseo and tuteo forms.
+const ES_CREATE_VERBS = [
+  'agregá', 'agrega', 'agregame', 'agregar',
+  'agendá', 'agenda', 'agendar',
+  'poneme', 'pone', 'poner',
+  'anotá', 'anota', 'anotame',
+  'añade', 'añadir',
+  'record[aá]me',  // "recordame" / "recórdame"
+  'programá', 'programa',
+]
+
+// English — imperatives.
+const EN_CREATE_VERBS = [
+  'add', 'schedule', 'create', 'put', 'set',
+  'remind me to',
+  'book',
+]
+
+function buildVerbRegex(list: string[], flags = 'i'): RegExp {
+  return new RegExp(`(?:^|[\\s,.;])(?:${list.join('|')})(?=[\\s,.;]|$)`, flags)
+}
+
+const HE_CREATE_RE = new RegExp(`(?:^|\\s)(?:${HE_CREATE_VERBS.join('|')})(?=\\s|$|[.,!?])`, '')
+const ES_CREATE_RE = buildVerbRegex(ES_CREATE_VERBS, 'i')
+const EN_CREATE_RE = buildVerbRegex(EN_CREATE_VERBS, 'i')
+
+export function containsCreateVerb(text: string): boolean {
+  if (!text) return false
+  return HE_CREATE_RE.test(text) || ES_CREATE_RE.test(text) || EN_CREATE_RE.test(text)
+}
+
+// ─── Transcript → action ─────────────────────────────────────────────────
+
+export type ProcessAction =
+  | { action: 'auto_created'; appointment: Appointment }
+  | { action: 'show_confirm_card'; draft: LocalDraft }
+  | { action: 'needs_am_pm'; draft: LocalDraft }
+  | { action: 'needs_clarification'; missing: Array<'title' | 'date' | 'time'>; question: string; draft: LocalDraft }
+  | { action: 'failed_to_save'; draft: LocalDraft; reason: string }
+  | { action: 'failed_to_understand'; transcript: string }
+
+function clarifyQuestion(missing: Array<'title' | 'date' | 'time'>, text: string): string {
+  const t = (text || '').trim()
+  const isHebrew = /[֐-׿]/.test(t)
+  const isSpanish = /[áéíóúñ¿¡]|\b(agregá|agenda|mañana|hoy|m[eé]dico)\b/i.test(t)
+  if (missing.includes('time')) {
+    if (isSpanish) return '¿A qué hora querés que la agende?'
+    if (isHebrew || (!isSpanish && /[א-ת]/.test(t))) return 'באיזו שעה לקבוע את הפגישה?'
+    if (!isHebrew && !isSpanish) return 'What time should I set?'
+    return 'באיזו שעה לקבוע את הפגישה?'
+  }
+  if (missing.includes('date')) {
+    if (isSpanish) return '¿Para qué día?'
+    if (isHebrew) return 'מתי לקבוע את הפגישה?'
+    return 'What day?'
+  }
+  if (missing.includes('title')) {
+    if (isSpanish) return '¿Qué nombre le ponemos a la cita?'
+    if (isHebrew) return 'מה השם של הפגישה?'
+    return 'What should I call this meeting?'
+  }
+  return ''
+}
+
+function isPlausibleTranscript(text: string): boolean {
+  const t = text.trim()
+  if (t.length < 3) return false
+  // Reject tokens that look like a stutter / um / hum with no content.
+  if (/^(emm+|um+|hum+|ehh+|ah+)\b/i.test(t)) return false
+  return true
+}
+
+export function processVoiceTranscript(transcript: string, todayISO: string): ProcessAction {
+  if (!isPlausibleTranscript(transcript)) {
+    return { action: 'failed_to_understand', transcript }
+  }
+
+  const draft = parseLocally(transcript, todayISO)
+
+  // 1) Ambiguous time → ALWAYS show resolver, never auto-create.
+  if (draft.time && draft.ambiguousTime) {
+    return { action: 'needs_am_pm', draft }
+  }
+
+  // 2) Missing required fields → explicit clarification.
+  const missing: Array<'title' | 'date' | 'time'> = []
+  if (!draft.title || draft.title.trim().length < 2) missing.push('title')
+  if (!draft.date) missing.push('date')
+  if (!draft.time) missing.push('time')
+  if (missing.length > 0) {
+    return { action: 'needs_clarification', missing, question: clarifyQuestion(missing, transcript), draft }
+  }
+
+  // 3) Complete + create-verb → auto-create through the safe path.
+  if (containsCreateVerb(transcript)) {
+    const result = createAppointmentSafe({
+      title: draft.title,
+      date: draft.date!,
+      time: draft.time!,
+      emoji: draft.emoji,
+      ...(draft.location ? { location: draft.location } : {}),
+      ...(draft.notes ? { notes: draft.notes } : {}),
+    })
+    if (result.ok) return { action: 'auto_created', appointment: result.appointment }
+    return { action: 'failed_to_save', draft, reason: result.code }
+  }
+
+  // 4) Complete but no explicit create-verb → visible confirmation card.
+  return { action: 'show_confirm_card', draft }
+}
