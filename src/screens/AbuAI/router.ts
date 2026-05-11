@@ -127,10 +127,13 @@ function detectRelationBetween(t: string): { a: string; b: string } | null {
   for (const re of tries) {
     const m = t.match(re)
     if (m && m[1] && m[2]) {
-      // Strip leading "ל"/"ל-" Hebrew preposition glued to the name and any
-      // trailing punctuation. e.g. "ללאו" → "לאו", "Leo?" → "Leo".
-      const cleanA = m[1].replace(/^ל[־-]?/u, '').replace(/[?¿!.,]+$/u, '')
-      const cleanB = m[2].replace(/^ל[־-]?/u, '').replace(/[?¿!.,]+$/u, '')
+      // The HE regexes already match the preposition slot `ל[־-]?` BEFORE
+      // the second-name capture group, so the captured name already
+      // excludes the preposition. We only strip trailing punctuation
+      // here — never a leading ל, because real names like "לאו"
+      // legitimately start with ל.
+      const cleanA = m[1].replace(/[?¿!.,]+$/u, '')
+      const cleanB = m[2].replace(/[?¿!.,]+$/u, '')
       if (cleanA && cleanB) return { a: cleanA, b: cleanB }
     }
   }

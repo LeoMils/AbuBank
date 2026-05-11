@@ -66,15 +66,72 @@ describe('B2.4 — relationship answers do not equal a single-person profile dum
     expect(ans).not.toBe(leoProfile)
   })
 
-  it('"מה הקשר בין רפי ללאו?" answer contains relation wording (קשר / דרך / גיס)', () => {
+  it('"מה הקשר בין רפי ללאו?" — Hebrew semantic kinship answer (B2.4.1)', () => {
     const ans = tryGroundedAnswer('מה הקשר בין רפי ללאו?') ?? ''
-    expect(/קשר|דרך|גיס|אחות|אח|חתן/.test(ans)).toBe(true)
+    // MUST contain the explicit kinship label + the reasoning trail.
+    expect(ans).toContain('גיסים לשעבר')
+    expect(ans).toContain('רפי')
+    expect(ans).toContain('לאו')
+    expect(ans).toContain('מור')
+    expect(/נשוי|היה נשוי/.test(ans)).toBe(true)
+    expect(ans).toContain('אחות')
+    // MUST NOT use the generic graph-database wording.
+    expect(/קשור[הת]?/.test(ans)).toBe(false)
+    expect(ans.includes('ל-לאו')).toBe(false)
+    expect(ans.includes('Raphi')).toBe(false)
   })
 
-  it('Spanish "¿Qué relación tienen Rafi y Leo?" answer contains relation wording', () => {
+  it('"איך רפי קשור ללאו?" — same Hebrew semantic kinship answer', () => {
+    const ans = tryGroundedAnswer('איך רפי קשור ללאו?') ?? ''
+    expect(ans).toContain('גיסים לשעבר')
+    expect(ans).toContain('מור')
+    expect(/נשוי|היה נשוי/.test(ans)).toBe(true)
+    expect(ans).toContain('אחות')
+  })
+
+  it('Spanish "¿Qué relación tienen Rafi y Leo?" — semantic kinship answer (B2.4.1)', () => {
     const ans = tryGroundedAnswer('¿Qué relación tienen Rafi y Leo?') ?? ''
-    // Expect "a través de" / "por medio de" / "cuñado" / "ex" / "hermano" or similar.
-    expect(/(a trav[eé]s|por medio|cu[nñ]ado|hermano|ex|relaci[oó]n)/i.test(ans)).toBe(true)
+    expect(/cu[nñ]ados|ex\s+cu[nñ]ados|fueron\s+cu[nñ]ados/i.test(ans)).toBe(true)
+    expect(ans).toContain('Rafi')
+    expect(ans).toContain('Leo')
+    expect(ans).toContain('Mor')
+    expect(/casado|estuvo\s+casado/i.test(ans)).toBe(true)
+    expect(/hermana/i.test(ans)).toBe(true)
+    expect(/conectad[oa]/i.test(ans)).toBe(false)
+    expect(ans.includes('Raphi')).toBe(false)
+  })
+
+  it('Spanish "¿Qué tiene que ver Rafi con Leo?" — same semantic kinship answer', () => {
+    const ans = tryGroundedAnswer('¿Qué tiene que ver Rafi con Leo?') ?? ''
+    expect(/cu[nñ]ados/i.test(ans)).toBe(true)
+    expect(/casado|estuvo\s+casado/i.test(ans)).toBe(true)
+    expect(/hermana/i.test(ans)).toBe(true)
+  })
+
+  it('English "how is Rafi related to Leo?" — semantic kinship answer (B2.4.1)', () => {
+    const ans = tryGroundedAnswer('how is Rafi related to Leo?') ?? ''
+    expect(/(former\s+)?brothers-in-law/i.test(ans)).toBe(true)
+    expect(ans).toContain('Rafi')
+    expect(ans).toContain('Leo')
+    expect(ans).toContain('Mor')
+    expect(/married/i.test(ans)).toBe(true)
+    expect(/sister/i.test(ans)).toBe(true)
+    expect(/connected to/i.test(ans)).toBe(false)
+    expect(ans.includes('Raphi')).toBe(false)
+  })
+
+  it('Hebrew "מה הקשר בין מור לרפי?" — direct ex-spouse kinship', () => {
+    const ans = tryGroundedAnswer('מה הקשר בין מור לרפי?') ?? ''
+    // Mor and Rafi: direct ex-spouse relationship. Semantic, no
+    // generic "connected through" wording.
+    expect(/גרושים|לשעבר|נשואים/.test(ans)).toBe(true)
+    expect(/קשור[הת]?/.test(ans)).toBe(false)
+  })
+
+  it('Hebrew "מה הקשר בין מור ללאו?" — siblings (direct)', () => {
+    const ans = tryGroundedAnswer('מה הקשר בין מור ללאו?') ?? ''
+    expect(/אחי?ם|אחים|אחות ושל/.test(ans) || ans.includes('אח') || ans.includes('אחות')).toBe(true)
+    expect(/קשור[הת]?/.test(ans)).toBe(false)
   })
 
   it('relationship with an unknown second name → honest "no direct relation" wording, never a fabricated answer', () => {
