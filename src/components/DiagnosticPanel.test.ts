@@ -134,15 +134,20 @@ describe('P0.3 — Settings top-level diagnostic entry point', () => {
   })
 })
 
-// ─── 5) Home has a visible diagnostic pill ───────────────────────────────
+// ─── 5) Home no longer carries a diagnostic pill (P0.4 visual recovery) ──
 
-describe('P0.3 — Home diagnostic pill', () => {
-  it('Home renders a tappable "אבחון" pill near the QA version marker', () => {
-    expect(HOME.includes('data-testid="home-diagnostic-pill"')).toBe(true)
-    // The pill text is "אבחון" — short, fits in a Hebrew header.
-    expect(HOME.includes('>אבחון</button>')).toBe(true)
-    // It must call window.__abubankOpenDiag().
-    expect(HOME.includes('__abubankOpenDiag')).toBe(true)
+describe('P0.4 — Home does NOT carry a diagnostic pill (visual safety)', () => {
+  it('Home has no home-diagnostic-pill (removed; lived in family-footer flex)', () => {
+    expect(HOME.includes('data-testid="home-diagnostic-pill"')).toBe(false)
+  })
+
+  it('Home does not call window.__abubankOpenDiag from any element', () => {
+    expect(HOME.includes('__abubankOpenDiag')).toBe(false)
+  })
+
+  it('Home preserves the QA version pill (unchanged from pre-PR31 baseline)', () => {
+    expect(HOME.includes('data-testid="home-qa-version"')).toBe(true)
+    expect(HOME.includes("position: 'absolute', top: 8, left: 10")).toBe(true)
   })
 })
 

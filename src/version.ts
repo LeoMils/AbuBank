@@ -12,11 +12,11 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.4.7-diagnostics-visible',
-  buildLabel: 'AbuBank P0.3 — Diagnostics Always Visible',
+  version:    '0.4.8-visual-recovery',
+  buildLabel: 'AbuBank P0.4 — Visual Emergency Recovery',
   buildDate:  '2026-05-11',
   branchHint: 'feat/abuwhatsapp-local-family-contacts',
-  commitHint: 'c54ef45',
+  commitHint: 'ed3dc45',
 } as const
 
 export type AppVersion = typeof APP_VERSION
