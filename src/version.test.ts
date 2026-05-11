@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.4.1-abuai-b2-3-content-companion')
-    expect(APP_VERSION.buildLabel).toBe('AbuAI B2.3 — Human Content Companion Runtime')
+    expect(APP_VERSION.version).toBe('0.4.2-abuai-b2-4-real-user-recovery')
+    expect(APP_VERSION.buildLabel).toBe('AbuAI B2.4 — Real-User QA Recovery (relation + voice-safe)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
