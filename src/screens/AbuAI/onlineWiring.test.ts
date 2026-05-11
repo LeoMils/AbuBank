@@ -116,10 +116,10 @@ describe('AbuAI does NOT call the online endpoint for family / calendar queries'
   })
 })
 
-describe('build version is bumped to B2.3', () => {
-  it('APP_VERSION is the B2.3 content-companion marker', () => {
+describe('build version is bumped to B2.4', () => {
+  it('APP_VERSION is the B2.4 real-user-recovery marker', () => {
     const verSrc = fs.readFileSync(path.resolve(__dirname, '../../version.ts'), 'utf8')
-    expect(verSrc.includes("'0.4.1-abuai-b2-3-content-companion'")).toBe(true)
-    expect(verSrc.includes('AbuAI B2.3 — Human Content Companion Runtime')).toBe(true)
+    expect(verSrc.includes("'0.4.2-abuai-b2-4-real-user-recovery'")).toBe(true)
+    expect(verSrc.includes('AbuAI B2.4 — Real-User QA Recovery (relation + voice-safe)')).toBe(true)
   })
 })

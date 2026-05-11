@@ -3,7 +3,7 @@ import { parseHebrewDate, parseHebrewMonth } from './dateParser'
 import { isCreateIntent } from './calendarCreate'
 
 export type RouteType =
-  | 'family_lookup' | 'family_location'
+  | 'family_lookup' | 'family_location' | 'family_relationship_between'
   | 'calendar_today' | 'calendar_tomorrow' | 'calendar_upcoming'
   | 'calendar_exact_date' | 'calendar_month'
   | 'calendar_create'
@@ -15,6 +15,8 @@ export interface RouteResult {
   type: RouteType
   query: string
   familyQuery?: string
+  /** Second person name when type === 'family_relationship_between'. */
+  familyQueryB?: string
   dateStr?: string
   month?: number
   /** When type === 'contact_action', the requested action verb. */
@@ -93,6 +95,51 @@ function detectContactAction(t: string): 'call' | 'whatsapp' | 'message' | null 
   return null
 }
 
+// ─── Relationship-between (B2.4 patch) ─────────────────────────────────────
+//
+// Two-name relationship questions: "מה הקשר בין X ל-Y" / "איך X קשור ל-Y" /
+// "qué relación tienen X y Y" / "qué tiene que ver X con Y" / "how is X
+// related to Y" / "what is the connection between X and Y".
+//
+// Capture group order is "first name" then "second name". Hebrew patterns
+// deliberately do not use `\b` (Hebrew letters aren't word-class). Spanish
+// and English do use `\b` for the surrounding cue words.
+//
+// Names captured here are passed to findNode() in familyGraph.ts which is
+// alias-aware, so "Rafi" → "Raphi", "לאו" → "Leo", etc.
+const REL_BETWEEN_HE_QESHER = /מה\s+ה?קשר\s+בין\s+(\S+?)\s+ל[־-]?(\S+?)[\s?!.,]*$/
+const REL_BETWEEN_HE_HOW = /איך\s+(\S+?)\s+קשור[הת]?\s+ל[־-]?(\S+?)[\s?!.,]*$/
+const REL_BETWEEN_HE_VER = /מה\s+(\S+?)\s+קשור[הת]?\s+ל[־-]?(\S+?)[\s?!.,]*$/
+
+const REL_BETWEEN_ES_QUE_REL = /\bqu[eé]\s+relaci[oó]n\s+tienen\s+([^\s?¿!.]+)\s+y\s+([^\s?¿!.]+)/i
+const REL_BETWEEN_ES_QUE_VER = /\bqu[eé]\s+tiene\s+que\s+ver\s+([^\s?¿!.]+)\s+con\s+([^\s?¿!.]+)/i
+const REL_BETWEEN_ES_COMO_REL = /\bc[oó]mo\s+se\s+relaciona\s+([^\s?¿!.]+)\s+con\s+([^\s?¿!.]+)/i
+
+const REL_BETWEEN_EN_HOW_REL = /\bhow\s+is\s+([^\s?!.]+)\s+related\s+to\s+([^\s?!.]+)/i
+const REL_BETWEEN_EN_CONNECTION = /\bwhat(?:'?s| is)\s+the\s+connection\s+between\s+([^\s?!.]+)\s+and\s+([^\s?!.]+)/i
+
+function detectRelationBetween(t: string): { a: string; b: string } | null {
+  const tries: Array<RegExp> = [
+    REL_BETWEEN_HE_QESHER, REL_BETWEEN_HE_HOW, REL_BETWEEN_HE_VER,
+    REL_BETWEEN_ES_QUE_REL, REL_BETWEEN_ES_QUE_VER, REL_BETWEEN_ES_COMO_REL,
+    REL_BETWEEN_EN_HOW_REL, REL_BETWEEN_EN_CONNECTION,
+  ]
+  for (const re of tries) {
+    const m = t.match(re)
+    if (m && m[1] && m[2]) {
+      // The HE regexes already match the preposition slot `ל[־-]?` BEFORE
+      // the second-name capture group, so the captured name already
+      // excludes the preposition. We only strip trailing punctuation
+      // here — never a leading ל, because real names like "לאו"
+      // legitimately start with ל.
+      const cleanA = m[1].replace(/[?¿!.,]+$/u, '')
+      const cleanB = m[2].replace(/[?¿!.,]+$/u, '')
+      if (cleanA && cleanB) return { a: cleanA, b: cleanB }
+    }
+  }
+  return null
+}
+
 // ─── Open-topic guard (B1 patch) ────────────────────────────────────────────
 // Matches phrases that reliably mean "general culture/recommendation/story",
 // NOT a personal/family/calendar question. Used as a final guard before the
@@ -164,6 +211,21 @@ export function routePersonalQuery(text: string): RouteResult {
     if (dateStr) return { type: 'calendar_exact_date', query: t, dateStr }
     const month = parseHebrewMonth(t)
     if (month) return { type: 'calendar_month', query: t, month }
+  }
+
+  // Relationship-between (B2.4): "מה הקשר בין רפי ללאו" /
+  // "qué relación tienen Rafi y Leo" / "how is Rafi related to Leo".
+  // Must run BEFORE FAMILY_PATTERNS (which catches single-subject
+  // "איך X קשור" and would drop the second name) and BEFORE the loose
+  // matchKnownFamilyName fallback (which would dump just one profile).
+  const relBetween = detectRelationBetween(t)
+  if (relBetween) {
+    return {
+      type: 'family_relationship_between',
+      query: t,
+      familyQuery: relBetween.a,
+      familyQueryB: relBetween.b,
+    }
   }
 
   // Family location

@@ -5,6 +5,7 @@ import { generateFamilyPromptSection } from '../../services/familyLoader'
 import { routePersonalQuery, type RouteResult } from './router'
 import { answerFromToolResult, type ToolResult } from './groundedResponse'
 import { sendServerChat, streamServerChat } from './serverChatProvider'
+import { describeRelation, type Lang } from './familyGraph'
 
 // Feature flag — disable tools without redeploy
 function toolsEnabled(): boolean {
@@ -58,6 +59,30 @@ function shapeContactActionRedirect(route: RouteResult): string {
   // Spanish/Hebrew share the largest user base; the English fallback
   // covers explicit English phrasing ("call Leo").
   return EN()
+}
+
+/**
+ * B2.4 — concise relation answer ("how are A and B related").
+ *
+ * If the graph resolver returns a phrase, we use it verbatim — that's
+ * the truth-anchored single sentence. If it returns null, we surface an
+ * honest "no direct relation found" message in the same language as the
+ * input, never a fabricated bridge.
+ */
+function shapeRelationshipBetween(route: RouteResult): string {
+  const q = route.query ?? ''
+  const lang: Lang = /[֐-׿]/.test(q)
+    ? 'he'
+    : /\b(qu[eé]|c[oó]mo|relaci[oó]n|tiene|ver)\b/i.test(q)
+      ? 'es'
+      : 'en'
+  const a = route.familyQuery ?? ''
+  const b = route.familyQueryB ?? ''
+  const desc = describeRelation(a, b, lang)
+  if (desc) return desc
+  if (lang === 'es') return `No encontré una relación directa entre ${a} y ${b}.`
+  if (lang === 'en') return `I did not find a direct relation between ${a} and ${b}.`
+  return `לא מצאתי קשר ישיר בין ${a} ל${b}.`
 }
 
 export function tryGroundedAnswer(text: string): string | null {
@@ -116,6 +141,13 @@ export function tryGroundedAnswer(text: string): string | null {
         // (the only surface that holds phone/WhatsApp data). AbuAI
         // never invents a phone number or initiates the call itself.
         return shapeContactActionRedirect(route)
+      }
+      case 'family_relationship_between': {
+        // B2.4: "what is the relation between A and B" / "how is A
+        // related to B". Pure graph lookup over family_data.json. If
+        // no representable path is found, we surface an honest
+        // "no direct relation found" message — never invent.
+        return shapeRelationshipBetween(route)
       }
       default:
         return null
@@ -266,7 +298,8 @@ ${generateFamilyPromptSection()}
 
 ═══ שפה ═══
 עברית → עברית. ספרדית → ספרדית. מעורב → מעורב.
-פנייה: "את" (נקבה). בלי ז'רגון. שפה חיה.
+פנייה: "את" (נקבה) — לעולם לא "אתה". פעלי ציווי בנקבה: "תגידי", "לחצי", "תרשמי". המשתמשת תמיד היא Martita, אישה.
+ספרדית → voseo ארגנטינאי וחם, ללא "tú", ללא לשון מטפלת.
 
 ═══ אורך ותוכן ═══
 שאלה פשוטה → 2-4 משפטים, תשובה שלמה ומעניינת.

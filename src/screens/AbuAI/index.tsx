@@ -8,6 +8,7 @@ import { answerOnlineCurrentInfo, _recordOnlineError } from './onlineProvider'
 import { chooseContentWorld } from './contentWorldEngine'
 import { compileHumanAnswer } from './answerCompiler'
 import { makeOpenEvidence } from './evidencePacket'
+import { shapeVoiceSafe } from './voiceShaper'
 import { getTodayEvents, getTomorrowEvents } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
@@ -680,13 +681,18 @@ export function AbuAI() {
         setMessages(prev => [...prev, aiMsg])
         if (!voiceModeRef.current) return
 
-        // Speak the full response (Gemini→OpenAI→Web Speech — proven chain)
+        // Speak the full response (Gemini→OpenAI→Web Speech — proven chain).
+        // B2.4: voice-safe shaping strips bullets, URLs, and multi-line
+        // profile dumps, then caps at ≤ 2 sentences so the spoken answer
+        // feels human instead of like a recited list. The visible chat
+        // message above keeps the rich `response` unchanged.
         transitionVoice('RESPONDING', 'speak-start')
         setVoicePhase('speaking')
         setIsSpeaking(true)
         setStreamingText(response)
 
-        await speakVoiceMode(response)
+        const spokenText = shapeVoiceSafe(response)
+        await speakVoiceMode(spokenText)
 
         setIsSpeaking(false)
         setStreamingText('')
