@@ -18,6 +18,7 @@ import {
   type CreateFailureCode,
 } from './service'
 import { processVoiceTranscript } from './voiceAutoCreate'
+import { userFacingError } from '../../services/platformHealth'
 import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
@@ -476,8 +477,23 @@ export function AbuCalendar() {
         } catch (e) {
           correctingRef.current = false
           setIsCorrecting(false)
-          const msg = e instanceof Error ? e.message : 'לא הצלחתי להבין. נסי שוב לאט יותר'
-          setVoiceError(msg)
+          // P0.5 — translate known transcription failures into the
+          // honest user-facing copy from platformHealth.userFacingError,
+          // so the user always sees WHY the recording didn't work.
+          const raw = e instanceof Error ? e.message : ''
+          let friendly: string
+          if (raw.includes('מפתח API לתמלול לא הוגדר')) {
+            friendly = userFacingError('voice_transcribe_key_missing', 'he')
+          } else if (raw.includes('מפתח API לא תקין')
+                  || raw.includes('יותר מדי בקשות')
+                  || /transcrib/i.test(raw)) {
+            friendly = userFacingError('voice_transcribe_failed', 'he')
+          } else if (raw) {
+            friendly = raw
+          } else {
+            friendly = 'לא הצלחתי להבין. נסי שוב לאט יותר'
+          }
+          setVoiceError(friendly)
           setVoiceState('error')
           setVoiceStatus('')
         }
