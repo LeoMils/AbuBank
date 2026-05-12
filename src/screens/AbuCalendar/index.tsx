@@ -19,6 +19,15 @@ import {
 } from './service'
 import { processVoiceTranscript } from './voiceAutoCreate'
 import { userFacingError } from '../../services/platformHealth'
+import { APP_VERSION } from '../../version'
+import {
+  createInitialTrace,
+  pushStep,
+  stageLabel,
+  type VoiceStage,
+  type VoiceTrace,
+} from './voiceTrace'
+import { VoiceTraceCard } from './VoiceTraceCard'
 import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
@@ -76,6 +85,42 @@ export function AbuCalendar() {
   const [undoAppt, setUndoAppt] = useState<Appointment | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+
+  // P0.6 — visible voice trace. Renders inside AbuCalendar's voice
+  // action area no matter where the pipeline fails, so the user always
+  // sees WHY a recording didn't create a meeting.
+  const [voiceTrace, setVoiceTrace] = useState<VoiceTrace>(() => createInitialTrace(APP_VERSION.version))
+  const [voiceTraceCopied, setVoiceTraceCopied] = useState(false)
+  const voiceTraceRef = useRef<VoiceTrace>(voiceTrace)
+  voiceTraceRef.current = voiceTrace
+  function updateTrace(patch: Partial<VoiceTrace>, step?: string) {
+    const next: VoiceTrace = { ...voiceTraceRef.current, ...patch }
+    const withStep = step ? pushStep(next, step) : next
+    voiceTraceRef.current = withStep
+    setVoiceTrace(withStep)
+  }
+  function setStage(stage: VoiceStage, customMessage?: string, step?: string) {
+    updateTrace({
+      finalVoiceStage: stage,
+      visibleMessage: customMessage ?? stageLabel(stage),
+    }, step ?? `stage:${stage}`)
+  }
+  function setVoiceFailure(message: string, step: string) {
+    updateTrace({
+      finalVoiceStage: 'error',
+      error: message,
+      visibleMessage: message,
+    }, step)
+    setVoiceError(message)
+    setVoiceState('error')
+    setVoiceStatus('')
+  }
+  function dismissVoiceTrace() {
+    const fresh = createInitialTrace(APP_VERSION.version)
+    voiceTraceRef.current = fresh
+    setVoiceTrace(fresh)
+    setVoiceTraceCopied(false)
+  }
 
   // ─── Alert state (persisted) ─────────────────────────────────────────────────
   const [alertMinutes, setAlertMinutes] = useState<number>(() => {
@@ -277,37 +322,95 @@ export function AbuCalendar() {
   }
 
   async function handleVoiceRecord() {
+    // P0.6 — STOP path. The user tapped the red button. Make the
+    // "stopping" state visible IMMEDIATELY so no tap ever feels silent.
     if (isRecording) {
-      mediaRecorderRef.current?.stop()
+      updateTrace({
+        stopPressedAt: new Date().toISOString(),
+        recorderStateBeforeStop: mediaRecorderRef.current?.state ?? null,
+      }, 'stop_pressed')
+      setStage('stopping')
+      const rec = mediaRecorderRef.current
+      if (!rec) {
+        setVoiceFailure('לא מצאתי הקלטה פעילה. נסי שוב.', 'recorder_missing')
+        setIsRecording(false)
+        return
+      }
+      if (rec.state !== 'recording') {
+        updateTrace({ recorderStateAfterStop: rec.state }, `recorder_state_not_recording:${rec.state}`)
+        setVoiceFailure('ההקלטה כבר נעצרה. נסי שוב.', 'recorder_not_recording')
+        setIsRecording(false)
+        return
+      }
+      try {
+        rec.stop()
+        updateTrace({ recorderStateAfterStop: rec.state }, 'recorder_stop_called')
+      } catch (err) {
+        const m = err instanceof Error ? err.message : String(err)
+        setVoiceFailure('ההקלטה נכשלה. נסי שוב.', `recorder_stop_threw:${m}`)
+        setIsRecording(false)
+      }
       return
     }
     if (voiceStatus) return
+    // Fresh trace for a new recording session.
+    const fresh = createInitialTrace(APP_VERSION.version)
+    voiceTraceRef.current = fresh
+    setVoiceTrace(fresh)
+    setVoiceTraceCopied(false)
     setVoiceError(null)
+    // P0.6 — MediaRecorder availability guard.
+    if (typeof MediaRecorder === 'undefined') {
+      setVoiceFailure('הקלטה קולית לא נתמכת בדפדפן הזה.', 'media_recorder_unsupported')
+      return
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mimeType = getSupportedMimeType()
+      updateTrace({ mimeType: mimeType || '(default)', startedAt: new Date().toISOString() }, `recording_started mime:${mimeType || 'default'}`)
       const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       mediaRecorderRef.current = mr
       chunksRef.current = []
       mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       mr.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop())
-        setIsRecording(false)
-        setVoiceState('transcribing')
-        const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
-        if (blob.size < 1000) {
-          setVoiceError('ההקלטה קצרה מדי. נסי שוב.')
-          setVoiceState('error')
-          setVoiceStatus('')
-          return
-        }
-        setVoiceStatus('מעבדת...')
         try {
-          const transcribed = await transcribeAudio(blob)
+          updateTrace({ onstopFired: true }, 'onstop_fired')
+          stream.getTracks().forEach(t => t.stop())
+          setIsRecording(false)
+          setStage('processing')
+          setVoiceState('transcribing')
+          const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
+          updateTrace({ chunksCount: chunksRef.current.length, blobSize: blob.size }, `blob_created chunks:${chunksRef.current.length} size:${blob.size}`)
+          if (chunksRef.current.length === 0 || blob.size === 0) {
+            setVoiceFailure('לא נקלט שמע בהקלטה. נסי שוב קרוב יותר למיקרופון.', 'no_audio_captured')
+            return
+          }
+          if (blob.size < 1000) {
+            setVoiceFailure('ההקלטה קצרה מדי. נסי שוב.', `blob_too_small:${blob.size}`)
+            return
+          }
+          setVoiceStatus('מעבדת...')
+        try {
+          // P0.6 — visible "transcribing" stage + watchdog. Without
+          // the watchdog, a hung Whisper call would leave the user
+          // staring at "מעבדת..." forever with no escape hatch.
+          setStage('transcribing')
+          updateTrace({ transcribeStarted: new Date().toISOString() }, 'transcribe_started')
+          const WATCHDOG_MS = 20_000
+          let watchdog: ReturnType<typeof setTimeout> | null = null
+          const transcribed = await Promise.race<string>([
+            transcribeAudio(blob),
+            new Promise<string>((_, reject) => {
+              watchdog = setTimeout(() => reject(new Error('transcribe_timeout')), WATCHDOG_MS)
+            }),
+          ]).finally(() => { if (watchdog) clearTimeout(watchdog) })
+          updateTrace({
+            transcribeFinished: new Date().toISOString(),
+            transcript: transcribed,
+            transcriptLength: typeof transcribed === 'string' ? transcribed.length : null,
+          }, 'transcript_received')
           if (!transcribed || !transcribed.trim()) {
-            setVoiceError('לא שמעתי כלום')
-            setVoiceState('error')
-            setVoiceStatus('')
+            setVoiceFailure('לא הצלחתי להבין את ההקלטה. ננסה שוב?', 'transcript_empty')
             return
           }
           if (!correctingRef.current) setRawTranscript(transcribed)
@@ -395,11 +498,14 @@ export function AbuCalendar() {
           // silently drops. Auto-creation is gated on a real create-verb
           // ("תקבעי / תוסיפי / agregá / agendá / add / schedule") AND a
           // complete, unambiguous intent — same safety as the typed path.
+          setStage('parsing')
           const todayISO = getTodayStr()
           const decision = processVoiceTranscript(transcribed, todayISO)
+          updateTrace({ parseDecision: decision.action }, `parse_decision:${decision.action}`)
           setVoiceStatus('')
           switch (decision.action) {
             case 'auto_created': {
+              setStage('creating', undefined, 'create_started')
               reload()
               // Jump the calendar view to the new event's date so the
               // user can immediately see it.
@@ -412,14 +518,19 @@ export function AbuCalendar() {
               playChime()
               soundSuccess()
               const lang = detectConfirmationLang(decision.appointment.title)
-              showSuccessToast(formatCreatedConfirmation({
+              const successMsg = formatCreatedConfirmation({
                 title: decision.appointment.title,
                 date: decision.appointment.date,
                 time: decision.appointment.time,
-              }, lang))
+              }, lang)
+              showSuccessToast(successMsg)
+              updateTrace({ createResult: `ok:${decision.appointment.id}` }, 'create_finished')
+              setStage('success', successMsg)
               return
             }
             case 'needs_am_pm': {
+              updateTrace({}, 'needs_am_pm')
+              setStage('idle', 'מחכה לאישור בוקר או צהריים.', 'awaiting_am_pm')
               setAmbiguousDraft({
                 title: decision.draft.title,
                 date: decision.draft.date,
@@ -434,6 +545,7 @@ export function AbuCalendar() {
               // Show the VoiceCard with whatever was parsed AND a visible
               // clarification question. The user can fix the missing
               // field inline; no silent timeout-dismiss.
+              updateTrace({}, `needs_clarification:${decision.missing.join('|')}`)
               setVoiceParsed({
                 title: decision.draft.title,
                 date: decision.draft.date,
@@ -445,11 +557,13 @@ export function AbuCalendar() {
               })
               setVoiceState('parsed')
               setVoiceStatus(decision.question)
+              setStage('idle', decision.question, 'showing_clarification_question')
               return
             }
             case 'show_confirm_card': {
               // Passive utterance — complete but no explicit create-verb.
               // Show the VoiceCard so the user explicitly confirms.
+              updateTrace({}, 'show_confirm_card')
               setVoiceParsed({
                 title: decision.draft.title,
                 date: decision.draft.date,
@@ -460,48 +574,63 @@ export function AbuCalendar() {
                 confidence: decision.draft.confidence,
               })
               setVoiceState('parsed')
+              setStage('idle', 'מחכה לאישור שלך לפני שמירה.', 'awaiting_confirm_tap')
               return
             }
             case 'failed_to_save': {
               const lang = detectConfirmationLang(decision.draft.title)
-              showFailureToast(formatCreateFailure('storage_failed', lang))
-              setVoiceState('idle')
+              const failMsg = formatCreateFailure('storage_failed', lang)
+              showFailureToast(failMsg)
+              setVoiceFailure(failMsg, `create_failed:${decision.reason}`)
               return
             }
             case 'failed_to_understand': {
-              setVoiceError('לא הצלחתי להבין את ההקלטה. ננסה שוב?')
-              setVoiceState('error')
+              setVoiceFailure('לא הצלחתי להבין את ההקלטה. ננסה שוב?', 'failed_to_understand')
               return
             }
           }
         } catch (e) {
           correctingRef.current = false
           setIsCorrecting(false)
-          // P0.5 — translate known transcription failures into the
+          // P0.5/6 — translate known transcription failures into the
           // honest user-facing copy from platformHealth.userFacingError,
           // so the user always sees WHY the recording didn't work.
           const raw = e instanceof Error ? e.message : ''
           let friendly: string
-          if (raw.includes('מפתח API לתמלול לא הוגדר')) {
+          let step: string
+          if (raw === 'transcribe_timeout' || raw.includes('transcribe_timeout')) {
+            friendly = 'התמלול לוקח יותר מדי זמן. נסי שוב.'
+            step = 'transcribe_timeout'
+          } else if (raw.includes('מפתח API לתמלול לא הוגדר')) {
             friendly = userFacingError('voice_transcribe_key_missing', 'he')
+            step = 'transcribe_key_missing'
           } else if (raw.includes('מפתח API לא תקין')
                   || raw.includes('יותר מדי בקשות')
                   || /transcrib/i.test(raw)) {
             friendly = userFacingError('voice_transcribe_failed', 'he')
+            step = `transcribe_failed:${raw.slice(0, 40)}`
           } else if (raw) {
             friendly = raw
+            step = `caught_error:${raw.slice(0, 40)}`
           } else {
             friendly = 'לא הצלחתי להבין. נסי שוב לאט יותר'
+            step = 'caught_unknown_error'
           }
-          setVoiceError(friendly)
-          setVoiceState('error')
-          setVoiceStatus('')
+          setVoiceFailure(friendly, step)
+        }
+        } catch (outerErr) {
+          // Defense in depth: if anything inside onstop throws (e.g. a
+          // bug in trace push), still surface a visible failure rather
+          // than fall through to a silent UI.
+          const m = outerErr instanceof Error ? outerErr.message : String(outerErr)
+          setVoiceFailure('משהו השתבש בעיבוד ההקלטה. נסי שוב.', `onstop_threw:${m.slice(0, 50)}`)
         }
       }
       mr.start()
       setIsRecording(true)
       setVoiceState('recording')
       setVoiceStatus('מקשיבה... (לחצי שוב לסיום)')
+      setStage('recording')
     } catch (err) {
       const msg = err instanceof DOMException && err.name === 'NotAllowedError'
         ? 'צריך לאשר גישה למיקרופון'
@@ -510,9 +639,7 @@ export function AbuCalendar() {
         : err instanceof Error
         ? `מיקרופון לא זמין: ${err.message}`
         : 'מיקרופון לא זמין — נסי ב-HTTPS'
-      setVoiceError(msg)
-      setVoiceState('error')
-      setVoiceStatus('')
+      setVoiceFailure(msg, `getusermedia_failed:${err instanceof Error ? err.name : 'unknown'}`)
     }
   }
 
@@ -927,6 +1054,18 @@ export function AbuCalendar() {
             ? <StatusPill variant="red" icon="🔴" label="מקשיבה..." />
             : <StatusPill variant="gold" label={voiceStatus} />
         )}
+
+        {/* P0.6 — visible voice trace card. Renders whenever the
+            pipeline has something to say (recording / processing /
+            transcribing / parsing / creating / success / error). Never
+            silent — the user always sees the current stage AND every
+            failure message, with a copy-diagnostic button. */}
+        <VoiceTraceCard
+          trace={voiceTrace}
+          onDismiss={dismissVoiceTrace}
+          onCopied={() => { setVoiceTraceCopied(true); setTimeout(() => setVoiceTraceCopied(false), 2200) }}
+          copied={voiceTraceCopied}
+        />
 
         {/* Action row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

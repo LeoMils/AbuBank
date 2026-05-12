@@ -35,9 +35,12 @@ describe('P0.5 — voice-error catch handler translates known failures', () => {
     expect(SRC.includes("יותר מדי בקשות")).toBe(true)
   })
 
-  it('never silently drops a transcription error (always setVoiceError + setVoiceState error)', () => {
-    // The catch block sets BOTH voiceError AND voiceState to surface the failure.
-    expect(/setVoiceError\(friendly\)[\s\S]{0,80}setVoiceState\('error'\)/.test(SRC)).toBe(true)
+  it('never silently drops a transcription error (always setVoiceFailure → trace + state + error)', () => {
+    // P0.6 — the catch block now routes every failure through
+    // setVoiceFailure(message, step), which writes BOTH the voice
+    // trace and the legacy voiceError/voiceState pair. Verify the
+    // catch handler calls setVoiceFailure.
+    expect(SRC.includes('setVoiceFailure(friendly, step)')).toBe(true)
   })
 })
 

@@ -121,8 +121,12 @@ describe('VoiceCard — error surfaces', () => {
     expect(SOURCE).toMatch(/speak\(confirmationText\)[\s\S]*\.catch/)
   })
 
-  it('parent surfaces "לא שמעתי כלום" when transcription is empty', () => {
-    expect(INDEX_SOURCE).toContain('לא שמעתי כלום')
+  it('parent surfaces a senior-friendly empty-transcript error (P0.6: "לא הצלחתי להבין את ההקלטה")', () => {
+    // P0.6 — the empty-transcript message was upgraded from the
+    // terse "לא שמעתי כלום" to the friendlier
+    // "לא הצלחתי להבין את ההקלטה. ננסה שוב?" so the user knows
+    // exactly what to try next.
+    expect(INDEX_SOURCE).toContain('לא הצלחתי להבין את ההקלטה. ננסה שוב?')
   })
 
   it('parent surfaces the exact error message from getUserMedia failures', () => {
