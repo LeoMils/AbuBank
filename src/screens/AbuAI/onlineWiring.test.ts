@@ -116,10 +116,10 @@ describe('AbuAI does NOT call the online endpoint for family / calendar queries'
   })
 })
 
-describe('build version is bumped to Platform P0.4', () => {
-  it('APP_VERSION is the Platform P0.4 visual-recovery marker', () => {
+describe('build version is bumped to AbuCalendar P0.5', () => {
+  it('APP_VERSION is the AbuCalendar P0.5 voice-E2E marker', () => {
     const verSrc = fs.readFileSync(path.resolve(__dirname, '../../version.ts'), 'utf8')
-    expect(verSrc.includes("'0.4.8-visual-recovery'")).toBe(true)
-    expect(verSrc.includes('AbuBank P0.4 — Visual Emergency Recovery')).toBe(true)
+    expect(verSrc.includes("'0.4.9-abucalendar-voice-e2e'")).toBe(true)
+    expect(verSrc.includes('AbuCalendar P0.5 — Voice E2E After Visual Recovery')).toBe(true)
   })
 })

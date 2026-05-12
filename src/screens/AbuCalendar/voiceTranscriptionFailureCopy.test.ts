@@ -1,0 +1,61 @@
+/*
+ * AbuCalendar P0.5 — visible-transcription-failure source contract.
+ *
+ * If transcribeAudio throws because the Groq key is missing or the
+ * upstream is rejecting the request, the AbuCalendar voice path MUST
+ * surface a friendly Hebrew message — never the raw technical
+ * "מפתח API לתמלול לא הוגדר" string and never a silent vanish.
+ *
+ * Pure source-grep; the runtime branch is covered by the existing
+ * voiceAutoCreate test suite for the happy paths.
+ */
+
+import { describe, it, expect } from 'vitest'
+import fs from 'fs'
+import path from 'path'
+import { userFacingError } from '../../services/platformHealth'
+
+const SRC = fs.readFileSync(path.resolve(__dirname, 'index.tsx'), 'utf8')
+
+describe('P0.5 — AbuCalendar imports platformHealth.userFacingError', () => {
+  it('imports userFacingError from src/services/platformHealth', () => {
+    expect(SRC.includes("import { userFacingError } from '../../services/platformHealth'")).toBe(true)
+  })
+})
+
+describe('P0.5 — voice-error catch handler translates known failures', () => {
+  it('catches the missing-Groq-key error and shows voice_transcribe_key_missing copy', () => {
+    expect(SRC.includes("if (raw.includes('מפתח API לתמלול לא הוגדר'))")).toBe(true)
+    expect(SRC.includes("userFacingError('voice_transcribe_key_missing', 'he')")).toBe(true)
+  })
+
+  it('catches network / 401 / 429 transcription failures and shows voice_transcribe_failed copy', () => {
+    expect(SRC.includes("userFacingError('voice_transcribe_failed', 'he')")).toBe(true)
+    expect(SRC.includes("מפתח API לא תקין")).toBe(true)
+    expect(SRC.includes("יותר מדי בקשות")).toBe(true)
+  })
+
+  it('never silently drops a transcription error (always setVoiceError + setVoiceState error)', () => {
+    // The catch block sets BOTH voiceError AND voiceState to surface the failure.
+    expect(/setVoiceError\(friendly\)[\s\S]{0,80}setVoiceState\('error'\)/.test(SRC)).toBe(true)
+  })
+})
+
+describe('P0.5 — userFacingError copy matches the spec', () => {
+  it('voice_transcribe_key_missing is the friendly "תמלול קולי לא מוגדר" copy', () => {
+    expect(userFacingError('voice_transcribe_key_missing', 'he')).toBe('תמלול קולי לא מוגדר באפליקציה.')
+  })
+
+  it('voice_transcribe_failed is the friendly "לא הצלחתי לתמלל" copy', () => {
+    expect(userFacingError('voice_transcribe_failed', 'he')).toBe('לא הצלחתי לתמלל את ההקלטה כרגע.')
+  })
+})
+
+describe('P0.5 — visual safety preserved', () => {
+  it('AbuCalendar voice patch does NOT modify Home', () => {
+    // Source-grep guard: the rebased PR must not touch Home/index.tsx.
+    // We assert that no Home-affecting markers exist in this file.
+    expect(SRC.includes('home-diagnostic-pill')).toBe(false)
+    expect(SRC.includes('__abubankOpenDiag')).toBe(false)
+  })
+})

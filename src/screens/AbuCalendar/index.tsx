@@ -17,6 +17,8 @@ import {
   type Appointment,
   type CreateFailureCode,
 } from './service'
+import { processVoiceTranscript } from './voiceAutoCreate'
+import { userFacingError } from '../../services/platformHealth'
 import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
@@ -217,6 +219,9 @@ export function AbuCalendar() {
       return
     }
     reload()
+    // P0.1 visibility fix — jump the calendar view to the new event's
+    // date so the user can see what was created.
+    setSelectedDay(result.appointment.date)
     setShowManual(false)
     setEditingAppt(null)
     playChime()
@@ -385,31 +390,110 @@ export function AbuCalendar() {
             return
           }
           setVoiceStatus('מנתחת...')
-          const parsed = await parseAppointmentText(transcribed)
-          if (parsed.confidence < 0.5) {
-            setVoiceStatus('לא הבנתי בדיוק. נסי להגיד יום, שעה ומה האירוע.')
-            setTimeout(() => setVoiceStatus(''), 4000)
-            return
+          // P0.1 — Route the final transcript through processVoiceTranscript.
+          // This returns one of six explicit actions so the UI never
+          // silently drops. Auto-creation is gated on a real create-verb
+          // ("תקבעי / תוסיפי / agregá / agendá / add / schedule") AND a
+          // complete, unambiguous intent — same safety as the typed path.
+          const todayISO = getTodayStr()
+          const decision = processVoiceTranscript(transcribed, todayISO)
+          setVoiceStatus('')
+          switch (decision.action) {
+            case 'auto_created': {
+              reload()
+              // Jump the calendar view to the new event's date so the
+              // user can immediately see it.
+              setSelectedDay(decision.appointment.date)
+              setVoiceParsed(null)
+              setVoiceError(null)
+              setVoiceState('idle')
+              setCorrectionAck(null)
+              lastAckRef.current = null
+              playChime()
+              soundSuccess()
+              const lang = detectConfirmationLang(decision.appointment.title)
+              showSuccessToast(formatCreatedConfirmation({
+                title: decision.appointment.title,
+                date: decision.appointment.date,
+                time: decision.appointment.time,
+              }, lang))
+              return
+            }
+            case 'needs_am_pm': {
+              setAmbiguousDraft({
+                title: decision.draft.title,
+                date: decision.draft.date,
+                time: decision.draft.time!,
+                emoji: decision.draft.emoji,
+                location: decision.draft.location,
+                notes: decision.draft.notes,
+              })
+              return
+            }
+            case 'needs_clarification': {
+              // Show the VoiceCard with whatever was parsed AND a visible
+              // clarification question. The user can fix the missing
+              // field inline; no silent timeout-dismiss.
+              setVoiceParsed({
+                title: decision.draft.title,
+                date: decision.draft.date,
+                time: decision.draft.time,
+                emoji: decision.draft.emoji,
+                location: decision.draft.location ?? null,
+                notes: decision.draft.notes ?? null,
+                confidence: decision.draft.confidence,
+              })
+              setVoiceState('parsed')
+              setVoiceStatus(decision.question)
+              return
+            }
+            case 'show_confirm_card': {
+              // Passive utterance — complete but no explicit create-verb.
+              // Show the VoiceCard so the user explicitly confirms.
+              setVoiceParsed({
+                title: decision.draft.title,
+                date: decision.draft.date,
+                time: decision.draft.time,
+                emoji: decision.draft.emoji,
+                location: decision.draft.location ?? null,
+                notes: decision.draft.notes ?? null,
+                confidence: decision.draft.confidence,
+              })
+              setVoiceState('parsed')
+              return
+            }
+            case 'failed_to_save': {
+              const lang = detectConfirmationLang(decision.draft.title)
+              showFailureToast(formatCreateFailure('storage_failed', lang))
+              setVoiceState('idle')
+              return
+            }
+            case 'failed_to_understand': {
+              setVoiceError('לא הצלחתי להבין את ההקלטה. ננסה שוב?')
+              setVoiceState('error')
+              return
+            }
           }
-          if (parsed.ambiguousTime && parsed.time) {
-            setVoiceStatus('')
-            setAmbiguousDraft({
-              title: parsed.title,
-              date: parsed.date,
-              time: parsed.time,
-              emoji: parsed.emoji,
-              location: parsed.location,
-              notes: parsed.notes,
-            })
-            return
-          }
-          setVoiceParsed(parsed)
-          setVoiceState('parsed')
         } catch (e) {
           correctingRef.current = false
           setIsCorrecting(false)
-          const msg = e instanceof Error ? e.message : 'לא הצלחתי להבין. נסי שוב לאט יותר'
-          setVoiceError(msg)
+          // P0.5 — translate known transcription failures into the
+          // honest user-facing copy from platformHealth.userFacingError,
+          // so the user always sees WHY the recording didn't work.
+          const raw = e instanceof Error ? e.message : ''
+          let friendly: string
+          if (raw.includes('מפתח API לתמלול לא הוגדר')) {
+            friendly = userFacingError('voice_transcribe_key_missing', 'he')
+          } else if (raw.includes('מפתח API לא תקין')
+                  || raw.includes('יותר מדי בקשות')
+                  || /transcrib/i.test(raw)) {
+            friendly = userFacingError('voice_transcribe_failed', 'he')
+          } else if (raw) {
+            friendly = raw
+          } else {
+            friendly = 'לא הצלחתי להבין. נסי שוב לאט יותר'
+          }
+          setVoiceError(friendly)
           setVoiceState('error')
           setVoiceStatus('')
         }
@@ -442,6 +526,9 @@ export function AbuCalendar() {
       return
     }
     reload()
+    // P0.1 visibility fix — jump the calendar view to the new event's
+    // date so the user can see what was created.
+    setSelectedDay(result.appointment.date)
     setVoiceParsed(null)
     setVoiceStatus('')
     setVoiceError(null)

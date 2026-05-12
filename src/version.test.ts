@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.4.8-visual-recovery')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank P0.4 — Visual Emergency Recovery')
+    expect(APP_VERSION.version).toBe('0.4.9-abucalendar-voice-e2e')
+    expect(APP_VERSION.buildLabel).toBe('AbuCalendar P0.5 — Voice E2E After Visual Recovery')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
