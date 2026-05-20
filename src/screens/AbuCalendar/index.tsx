@@ -28,7 +28,9 @@ import {
   type VoiceTrace,
 } from './voiceTrace'
 import { VoiceTraceCard } from './VoiceTraceCard'
-import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
+import { transcribeCalendarAudio } from './calendarTranscribe'
+import { normalizeCalendarTranscript } from './calendarTranscriptCorrection'
+import { getSupportedMimeType } from '../AbuAI/service'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 import { injectSharedKeyframes } from '../../design/animations'
@@ -391,24 +393,40 @@ export function AbuCalendar() {
           }
           setVoiceStatus('מעבדת...')
         try {
-          // P0.6 — visible "transcribing" stage + watchdog. Without
-          // the watchdog, a hung Whisper call would leave the user
-          // staring at "מעבדת..." forever with no escape hatch.
+          // P0.6 — visible "transcribing" stage + watchdog. P0.7 —
+          // quality-first Hebrew Whisper (large-v3 + verbose_json +
+          // domain prompt) with fallback to turbo, and a deterministic
+          // domain-correction pass before the parser.
           setStage('transcribing')
           updateTrace({ transcribeStarted: new Date().toISOString() }, 'transcribe_started')
           const WATCHDOG_MS = 20_000
           let watchdog: ReturnType<typeof setTimeout> | null = null
-          const transcribed = await Promise.race<string>([
-            transcribeAudio(blob),
-            new Promise<string>((_, reject) => {
+          const asr = await Promise.race<Awaited<ReturnType<typeof transcribeCalendarAudio>>>([
+            transcribeCalendarAudio(blob, { languageHint: 'he' }),
+            new Promise<Awaited<ReturnType<typeof transcribeCalendarAudio>>>((_, reject) => {
               watchdog = setTimeout(() => reject(new Error('transcribe_timeout')), WATCHDOG_MS)
             }),
           ]).finally(() => { if (watchdog) clearTimeout(watchdog) })
+          const rawTranscript = asr.text
+          // P0.7 — deterministic domain correction for known family
+          // names + Israeli places. Conservative: only replace tokens
+          // that appear in the curated rule set.
+          const norm = normalizeCalendarTranscript(rawTranscript)
+          const transcribed = norm.corrected
           updateTrace({
             transcribeFinished: new Date().toISOString(),
             transcript: transcribed,
-            transcriptLength: typeof transcribed === 'string' ? transcribed.length : null,
-          }, 'transcript_received')
+            transcriptLength: transcribed.length,
+            rawTranscript: norm.rawText,
+            correctedTranscript: transcribed,
+            asrModel: asr.model,
+            asrFallbackUsed: asr.asrFallbackUsed,
+            languageHint: asr.languageHint,
+            avgLogprob: asr.avgLogprob ?? null,
+            noSpeechProb: asr.noSpeechProb ?? null,
+            compressionRatio: asr.compressionRatio ?? null,
+            correctionsApplied: norm.correctionsApplied,
+          }, `transcript_received model:${asr.model} corrections:${norm.correctionsApplied.length}`)
           if (!transcribed || !transcribed.trim()) {
             setVoiceFailure('לא הצלחתי להבין את ההקלטה. ננסה שוב?', 'transcript_empty')
             return

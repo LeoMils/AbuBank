@@ -42,6 +42,16 @@ export interface VoiceTrace {
   transcribeFinished: string | null
   transcript: string | null
   transcriptLength: number | null
+  // P0.7 — ASR quality metadata + raw/corrected split.
+  rawTranscript: string | null
+  correctedTranscript: string | null
+  asrModel: string | null
+  asrFallbackUsed: boolean
+  languageHint: string | null
+  avgLogprob: number | null
+  noSpeechProb: number | null
+  compressionRatio: number | null
+  correctionsApplied: Array<{ from: string; to: string; reason: string }>
   parseDecision: string | null
   createResult: string | null
   error: string | null
@@ -68,6 +78,15 @@ export function createInitialTrace(version: string): VoiceTrace {
     transcribeFinished: null,
     transcript: null,
     transcriptLength: null,
+    rawTranscript: null,
+    correctedTranscript: null,
+    asrModel: null,
+    asrFallbackUsed: false,
+    languageHint: null,
+    avgLogprob: null,
+    noSpeechProb: null,
+    compressionRatio: null,
+    correctionsApplied: [],
     parseDecision: null,
     createResult: null,
     error: null,
