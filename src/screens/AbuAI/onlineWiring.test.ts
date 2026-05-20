@@ -116,10 +116,10 @@ describe('AbuAI does NOT call the online endpoint for family / calendar queries'
   })
 })
 
-describe('build version is bumped to AbuCalendar P0.6', () => {
-  it('APP_VERSION is the AbuCalendar P0.6 record-stop-trace marker', () => {
+describe('build version is bumped to AbuCalendar P0.7', () => {
+  it('APP_VERSION is the AbuCalendar P0.7 ASR-quality marker', () => {
     const verSrc = fs.readFileSync(path.resolve(__dirname, '../../version.ts'), 'utf8')
-    expect(verSrc.includes("'0.4.10-abucalendar-record-stop-trace'")).toBe(true)
-    expect(verSrc.includes('AbuCalendar P0.6 — Record/Stop Silent Failure Trace')).toBe(true)
+    expect(verSrc.includes("'0.4.11-abucalendar-asr-quality'")).toBe(true)
+    expect(verSrc.includes('AbuCalendar P0.7 — Hebrew ASR Quality Recovery')).toBe(true)
   })
 })

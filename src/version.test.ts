@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.4.10-abucalendar-record-stop-trace')
-    expect(APP_VERSION.buildLabel).toBe('AbuCalendar P0.6 — Record/Stop Silent Failure Trace')
+    expect(APP_VERSION.version).toBe('0.4.11-abucalendar-asr-quality')
+    expect(APP_VERSION.buildLabel).toBe('AbuCalendar P0.7 — Hebrew ASR Quality Recovery')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

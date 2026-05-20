@@ -104,11 +104,26 @@ export function VoiceTraceCard({ trace, onDismiss, onCopied, copied }: VoiceTrac
         }}>הבנתי: {trace.transcript}</div>
       )}
 
+      {/* P0.7 — show the raw transcript only as a small diagnostic
+          subtitle when at least one domain correction was applied, so
+          the operator can see what changed. */}
+      {trace.rawTranscript && trace.correctionsApplied && trace.correctionsApplied.length > 0
+          && trace.rawTranscript !== trace.correctedTranscript && (
+        <div data-testid="voice-trace-raw-transcript" style={{
+          fontSize: 11, lineHeight: 1.5,
+          color: 'rgba(255,255,255,0.45)',
+        }}>לפני תיקון: {trace.rawTranscript}</div>
+      )}
+
       <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', direction: 'ltr', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         <span data-testid="voice-trace-stage">stage: {trace.finalVoiceStage}</span>
         {trace.blobSize !== null && <span>blob: {trace.blobSize}B</span>}
         {trace.chunksCount !== null && <span>chunks: {trace.chunksCount}</span>}
         {trace.mimeType && <span>mime: {trace.mimeType}</span>}
+        {trace.asrModel && <span>asr: {trace.asrModel}{trace.asrFallbackUsed ? ' (fallback)' : ''}</span>}
+        {trace.correctionsApplied && trace.correctionsApplied.length > 0 && (
+          <span>fixes: {trace.correctionsApplied.length}</span>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>

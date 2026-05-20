@@ -81,7 +81,10 @@ describe('P0.6 — transcribe stage has a visible status + 20s watchdog', () => 
   it('Promise.race with a 20-second watchdog reject', () => {
     expect(INDEX.includes('WATCHDOG_MS = 20_000')).toBe(true)
     expect(INDEX.includes("reject(new Error('transcribe_timeout'))")).toBe(true)
-    expect(/Promise\.race<string>\(/.test(INDEX)).toBe(true)
+    // P0.7: Promise.race now resolves to a structured ASR result, not
+    // a bare string. Source-grep the call site to confirm Promise.race
+    // is still wired with the watchdog reject.
+    expect(INDEX.includes('await Promise.race<')).toBe(true)
   })
 
   it('watchdog timeout shows "התמלול לוקח יותר מדי זמן. נסי שוב."', () => {
@@ -96,7 +99,8 @@ describe('P0.6 — transcribe stage has a visible status + 20s watchdog', () => 
 
   it('transcribe_finished + transcript_received trace step', () => {
     expect(INDEX.includes("transcribeFinished: new Date().toISOString()")).toBe(true)
-    expect(INDEX.includes("'transcript_received'")).toBe(true)
+    // P0.7: the trace step now includes the ASR model + correction count.
+    expect(/`transcript_received model:/.test(INDEX)).toBe(true)
   })
 })
 
