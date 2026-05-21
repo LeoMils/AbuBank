@@ -20,6 +20,7 @@ import { soundProcessing, soundSuccess } from '../../services/sounds'
 import { RealtimeVoiceSession } from '../../services/realtimeVoice'
 import type { RealtimeState } from '../../services/realtimeVoice'
 import { mediateError } from '../../services/errorMediation'
+import { mediateVoiceCaptureError } from '../../services/errorMediation'
 import type { MediatedError } from '../../services/errorMediation'
 import { ChatBubble } from './ChatBubble'
 import { BackButton } from '../../components/BackButton'
@@ -528,8 +529,8 @@ export function AbuAI() {
       setRecordingTime(0)
       setRecording(true)
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
-    } catch {
-      // mic denied
+    } catch (err) {
+      setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediateVoiceCaptureError(err, 'permission_or_device'), timestamp: Date.now() }])
     }
   }, [])
 
@@ -824,8 +825,7 @@ export function AbuAI() {
             }
             handleText(text.trim())
           } catch (err) {
-            const errText = err instanceof Error ? err.message : 'שגיאה בתמלול.'
-            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
+            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediateVoiceCaptureError(err, 'transcription'), timestamp: Date.now() }])
             if (voiceModeRef.current) startVoiceListening()
           }
         }
@@ -864,6 +864,7 @@ export function AbuAI() {
         const origStop = detector.stop
         detector.stop = () => { origStop(); clearInterval(cdInterval); setListenCountdown(null) }
       } catch (err) {
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediateVoiceCaptureError(err, 'permission_or_device'), timestamp: Date.now() }])
         console.error('[AbuAI] getUserMedia error:', err)
         exitVoiceMode()
       }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { classifyError, mediateError, LEO_CONTACT_URL } from './errorMediation'
+import { classifyError, mediateError, mediateVoiceCaptureError, LEO_CONTACT_URL } from './errorMediation'
 
 describe('classifyError', () => {
   it('classifies 402 as quota', () => {
@@ -121,5 +121,33 @@ describe('mediateError', () => {
 describe('LEO_CONTACT_URL', () => {
   it('is a valid HTTPS WhatsApp URL', () => {
     expect(LEO_CONTACT_URL).toMatch(/^https:\/\/chat\.whatsapp\.com\//)
+  })
+})
+
+describe('mediateVoiceCaptureError', () => {
+  it('maps NotAllowedError to senior-friendly permission copy', () => {
+    const err = new DOMException('', 'NotAllowedError')
+    const msg = mediateVoiceCaptureError(err)
+    expect(msg).toContain('המיקרופון חסום')
+    expect(msg).not.toMatch(/NotAllowedError|DOMException|stack/i)
+  })
+
+  it('maps NotFoundError to no-microphone copy', () => {
+    const err = new DOMException('', 'NotFoundError')
+    const msg = mediateVoiceCaptureError(err)
+    expect(msg).toContain('לא מצאתי מיקרופון')
+    expect(msg).not.toMatch(/NotFoundError|DOMException|stack/i)
+  })
+
+  it('maps unknown recording start failures to retry copy', () => {
+    const msg = mediateVoiceCaptureError(new Error('boom'), 'recording_start')
+    expect(msg).toBe('לא הצלחתי להתחיל הקלטה. ננסה שוב.')
+    expect(msg).not.toMatch(/boom|Error|stack/i)
+  })
+
+  it('maps transcription failures to clear retry copy', () => {
+    const msg = mediateVoiceCaptureError(new Error('transcribe failed'), 'transcription')
+    expect(msg).toBe('לא הצלחתי להבין את ההקלטה. ננסה שוב.')
+    expect(msg).not.toMatch(/transcribe|Error|stack/i)
   })
 })

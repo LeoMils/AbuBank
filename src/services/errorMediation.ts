@@ -163,6 +163,29 @@ export function mediateError(err: unknown, status?: number): MediatedError {
   }
 }
 
+/**
+ * Senior-friendly microphone/recording/transcription messages for voice UX.
+ * This helper returns short Hebrew copy and never leaks technical error names.
+ */
+export function mediateVoiceCaptureError(
+  err: unknown,
+  phase: 'permission_or_device' | 'recording_start' | 'transcription' = 'permission_or_device',
+): string {
+  if (phase === 'transcription') {
+    return 'לא הצלחתי להבין את ההקלטה. ננסה שוב.'
+  }
+  if (phase === 'recording_start') {
+    return 'לא הצלחתי להתחיל הקלטה. ננסה שוב.'
+  }
+  if (err instanceof DOMException && err.name === 'NotAllowedError') {
+    return 'המיקרופון חסום. צריך לאפשר שימוש במיקרופון כדי שאוכל לשמוע אותך.'
+  }
+  if (err instanceof DOMException && err.name === 'NotFoundError') {
+    return 'לא מצאתי מיקרופון במכשיר.'
+  }
+  return 'לא הצלחתי להתחיל הקלטה. ננסה שוב.'
+}
+
 /** Execute a mediated error action */
 export interface ErrorActionContext {
   onRetry?: (() => void) | undefined
