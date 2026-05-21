@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.4.11-abucalendar-asr-quality')
-    expect(APP_VERSION.buildLabel).toBe('AbuCalendar P0.7 — Hebrew ASR Quality Recovery')
+    expect(APP_VERSION.version).toBe('0.4.12-abucalendar-semantic-intent')
+    expect(APP_VERSION.buildLabel).toBe('AbuCalendar P0.8 — Semantic Calendar Intent')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

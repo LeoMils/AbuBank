@@ -518,8 +518,8 @@ export function AbuCalendar() {
           // complete, unambiguous intent — same safety as the typed path.
           setStage('parsing')
           const todayISO = getTodayStr()
-          const decision = processVoiceTranscript(transcribed, todayISO)
-          updateTrace({ parseDecision: decision.action }, `parse_decision:${decision.action}`)
+          const decision = processVoiceTranscript(transcribed, todayISO, { rawTranscript: norm.rawText, asr: { avgLogprob: asr.avgLogprob ?? null, noSpeechProb: asr.noSpeechProb ?? null, compressionRatio: asr.compressionRatio ?? null } })
+          updateTrace({ parseDecision: decision.action, ...(('semantic' in decision && decision.semantic) ? { semanticIntent: decision.semantic.intent, semanticSource: decision.semantic.semanticSource, extractionConfidence: decision.semantic.extractionConfidence, extractedTitle: decision.semantic.extractedTitle, extractedDate: decision.semantic.extractedDate, extractedStartTime: decision.semantic.extractedStartTime, extractedEndTime: decision.semantic.extractedEndTime, extractedLocation: decision.semantic.extractedLocation, extractedPeople: decision.semantic.extractedPeople, extractedNotes: decision.semantic.extractedNotes, missingFields: decision.semantic.missingFields, clarificationQuestion: decision.semantic.clarificationQuestion, llmFallbackUsed: decision.semantic.llmFallbackUsed, validationResult: decision.semantic.validationResult, semanticRawInput: decision.semantic.semanticRawInput, semanticCorrectedInput: decision.semantic.semanticCorrectedInput } : {}) }, `parse_decision:${decision.action}`)
           setVoiceStatus('')
           switch (decision.action) {
             case 'auto_created': {
@@ -600,6 +600,14 @@ export function AbuCalendar() {
               const failMsg = formatCreateFailure('storage_failed', lang)
               showFailureToast(failMsg)
               setVoiceFailure(failMsg, `create_failed:${decision.reason}`)
+              return
+            }
+            case 'not_calendar': {
+              setVoiceFailure('לא זיהיתי משהו לקבוע ביומן.', 'not_calendar')
+              return
+            }
+            case 'low_confidence': {
+              setVoiceFailure('לא שמעתי מספיק ברור. תוכלי להגיד שוב?', 'low_confidence')
               return
             }
             case 'failed_to_understand': {

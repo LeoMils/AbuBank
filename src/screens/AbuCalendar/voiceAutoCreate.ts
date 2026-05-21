@@ -14,6 +14,7 @@
  */
 
 import { parseLocally, type LocalDraft } from './localParser'
+import { extractCalendarIntentLocally, type CalendarIntentDraft } from './semanticIntent'
 import { createAppointmentSafe, type Appointment } from './service'
 
 // ─── Create-verb detector ─────────────────────────────────────────────────
@@ -68,12 +69,15 @@ export function containsCreateVerb(text: string): boolean {
 // ─── Transcript → action ─────────────────────────────────────────────────
 
 export type ProcessAction =
+  | { action: 'not_calendar'; message: string; semantic: CalendarIntentDraft }
+  | { action: 'low_confidence'; message: string; semantic: CalendarIntentDraft }
+
   | { action: 'auto_created'; appointment: Appointment }
   | { action: 'show_confirm_card'; draft: LocalDraft }
   | { action: 'needs_am_pm'; draft: LocalDraft }
   | { action: 'needs_clarification'; missing: Array<'title' | 'date' | 'time'>; question: string; draft: LocalDraft }
   | { action: 'failed_to_save'; draft: LocalDraft; reason: string }
-  | { action: 'failed_to_understand'; transcript: string }
+  | { action: 'failed_to_understand'; transcript: string; semantic?: CalendarIntentDraft }
 
 function clarifyQuestion(missing: Array<'title' | 'date' | 'time'>, text: string): string {
   const t = (text || '').trim()
@@ -106,41 +110,52 @@ function isPlausibleTranscript(text: string): boolean {
   return true
 }
 
-export function processVoiceTranscript(transcript: string, todayISO: string): ProcessAction {
+export function processVoiceTranscript(transcript: string, todayISO: string, opts?: { rawTranscript?: string | null; asr?: { avgLogprob?: number | null; noSpeechProb?: number | null; compressionRatio?: number | null } }): ProcessAction {
   if (!isPlausibleTranscript(transcript)) {
     return { action: 'failed_to_understand', transcript }
   }
 
+  const semantic = extractCalendarIntentLocally({ ...(opts?.rawTranscript !== undefined ? { rawTranscript: opts.rawTranscript } : {}), correctedTranscript: transcript, todayISO, ...(opts?.asr ? { asr: opts.asr } : {}) })
   const draft = parseLocally(transcript, todayISO)
+  const effectiveDraft: LocalDraft = {
+    ...draft,
+    title: semantic.extractedTitle ?? draft.title,
+    date: semantic.extractedDate ?? draft.date,
+    time: semantic.extractedStartTime ?? draft.time,
+    location: semantic.extractedLocation ?? draft.location ?? null,
+    notes: semantic.extractedNotes ?? draft.notes ?? null,
+  }
+  if (semantic.validationResult === 'not_calendar') return { action: 'not_calendar', message: 'לא זיהיתי משהו לקבוע ביומן.', semantic }
+  if (semantic.validationResult === 'low_confidence') return { action: 'low_confidence', message: 'לא שמעתי מספיק ברור. תוכלי להגיד שוב?', semantic }
 
   // 1) Ambiguous time → ALWAYS show resolver, never auto-create.
-  if (draft.time && draft.ambiguousTime) {
-    return { action: 'needs_am_pm', draft }
+  if (effectiveDraft.time && effectiveDraft.ambiguousTime) {
+    return { action: 'needs_am_pm', draft: effectiveDraft }
   }
 
   // 2) Missing required fields → explicit clarification.
   const missing: Array<'title' | 'date' | 'time'> = []
-  if (!draft.title || draft.title.trim().length < 2) missing.push('title')
-  if (!draft.date) missing.push('date')
-  if (!draft.time) missing.push('time')
+  if (!effectiveDraft.title || effectiveDraft.title.trim().length < 2) missing.push('title')
+  if (!effectiveDraft.date) missing.push('date')
+  if (!effectiveDraft.time) missing.push('time')
   if (missing.length > 0) {
-    return { action: 'needs_clarification', missing, question: clarifyQuestion(missing, transcript), draft }
+    return { action: 'needs_clarification', missing, question: semantic.clarificationQuestion ?? clarifyQuestion(missing, transcript), draft: effectiveDraft }
   }
 
   // 3) Complete + create-verb → auto-create through the safe path.
-  if (containsCreateVerb(transcript)) {
+  if (semantic.canAutoCreate) {
     const result = createAppointmentSafe({
-      title: draft.title,
-      date: draft.date!,
-      time: draft.time!,
-      emoji: draft.emoji,
-      ...(draft.location ? { location: draft.location } : {}),
-      ...(draft.notes ? { notes: draft.notes } : {}),
+      title: effectiveDraft.title,
+      date: effectiveDraft.date!,
+      time: effectiveDraft.time!,
+      emoji: effectiveDraft.emoji,
+      ...(effectiveDraft.location ? { location: effectiveDraft.location } : {}),
+      ...(effectiveDraft.notes ? { notes: effectiveDraft.notes } : {}),
     })
     if (result.ok) return { action: 'auto_created', appointment: result.appointment }
-    return { action: 'failed_to_save', draft, reason: result.code }
+    return { action: 'failed_to_save', draft: effectiveDraft, reason: result.code }
   }
 
   // 4) Complete but no explicit create-verb → visible confirmation card.
-  return { action: 'show_confirm_card', draft }
+  return { action: 'show_confirm_card', draft: effectiveDraft }
 }

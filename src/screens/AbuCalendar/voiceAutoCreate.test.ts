@@ -150,6 +150,27 @@ describe('P0.1 — processVoiceTranscript end-to-end', () => {
     expect(r.action).toBe('failed_to_understand')
   })
 
+
+  it('Conversational-only sentence → not_calendar and no create', () => {
+    const r = processVoiceTranscript('אופיר סיפרה לי על סרט יפה', TODAY)
+    expect(r.action).toBe('not_calendar')
+    expect(loadAppointments().length).toBe(0)
+  })
+
+  it('Low ASR confidence → low_confidence and no create', () => {
+    const r = processVoiceTranscript('תקבעי פגישה עם לאו מחר בעשר בבוקר', TODAY, { asr: { avgLogprob: -1.8, noSpeechProb: 0.82 } })
+    expect(r.action).toBe('low_confidence')
+    expect(loadAppointments().length).toBe(0)
+  })
+
+  it('Strong scheduling narrative without create verb can still auto-create when complete and high confidence', () => {
+    const r = processVoiceTranscript('אני צריך לשמור על הילדים אצל אופיר מחר בין שבע לעשר', TODAY)
+    expect(r.action).toBe('auto_created')
+    if (r.action !== 'auto_created') return
+    expect(r.appointment.time).toBe('19:00')
+    expect(r.appointment.date).toBe(TOMORROW)
+  })
+
   it('Storage failure during auto-create → failed_to_save (honest)', () => {
     vi.stubGlobal('localStorage', {
       getItem: (k: string) => storage[k] ?? null,
@@ -178,6 +199,8 @@ describe('P0.1 — index.tsx wiring contract', () => {
     expect(SRC.includes("case 'show_confirm_card'")).toBe(true)
     expect(SRC.includes("case 'failed_to_save'")).toBe(true)
     expect(SRC.includes("case 'failed_to_understand'")).toBe(true)
+    expect(SRC.includes("case 'not_calendar'")).toBe(true)
+    expect(SRC.includes("case 'low_confidence'")).toBe(true)
   })
 
   it('after auto_created or successful handleVoiceConfirm, selectedDay jumps to the appointment date (visibility fix)', () => {
