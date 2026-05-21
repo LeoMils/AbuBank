@@ -9,7 +9,12 @@ import { soundTap } from '../../services/sounds'
 import { InfoButton } from '../../components/InfoButton'
 import { injectSharedKeyframes } from '../../design/animations'
 import { GLASS_SURFACE, GLASS_ELEVATED } from '../../design/glass'
-import { GOLD_BORDER, GOLD_BORDER_HOVER, TEXT_STRONG, TEXT_FAINT } from '../../design/colors'
+import {
+  GOLD, GOLD_BORDER, GOLD_BORDER_HOVER,
+  TEXT_STRONG, TEXT_MEDIUM, TEXT_MUTED, TEXT_FAINT,
+  GOLD_MEDIUM, GOLD_MUTED,
+} from '../../design/colors'
+import { FONT_BODY, FONT_LABEL } from '../../design/typography'
 
 /* ─── GAMES DATA ─── */
 interface Game {
@@ -65,6 +70,13 @@ function handleTap(url: string): void {
   window.location.href = url
 }
 
+/* ─── Category color themes ─── */
+const CATEGORY_THEMES = {
+  solitaire: { glow: 'rgba(34,197,94,0.06)', accent: '#22c55e', label: '🃏' },
+  mahjong:   { glow: 'rgba(239,68,68,0.06)', accent: '#ef4444', label: '🀄' },
+  word:      { glow: 'rgba(201,168,76,0.08)', accent: GOLD, label: '🔤' },
+} as const
+
 /* ─── Game Card ─── */
 function GameCard({ game, pressKey, onPress, onRelease, delay }: {
   game: Game
@@ -74,6 +86,7 @@ function GameCard({ game, pressKey, onPress, onRelease, delay }: {
   delay: number
 }) {
   const isP = pressKey === game.id
+  const theme = CATEGORY_THEMES[game.category]
 
   return (
     <div
@@ -87,37 +100,69 @@ function GameCard({ game, pressKey, onPress, onRelease, delay }: {
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(game.url) } }}
       style={{
         width: '100%',
-        minHeight: 82,
-        borderRadius: 16,
+        minHeight: 96,
+        borderRadius: 18,
         position: 'relative',
         overflow: 'hidden',
-        padding: '16px 14px 16px 16px',
+        padding: '18px 16px 18px 18px',
         direction: 'rtl',
         ...GLASS_SURFACE,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.20)',
-        border: isP ? `1px solid ${GOLD_BORDER_HOVER}` : GLASS_SURFACE.border,
+        background: isP
+          ? 'rgba(255,250,240,0.07)'
+          : `radial-gradient(ellipse at 80% 50%, ${theme.glow}, rgba(255,250,240,0.04) 70%)`,
+        boxShadow: isP
+          ? `0 4px 20px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,250,240,0.05)`
+          : '0 2px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,250,240,0.03)',
+        border: isP ? `1.5px solid ${GOLD_BORDER_HOVER}` : GLASS_SURFACE.border,
         borderRight: `4px solid ${game.accent}`,
         transform: isP ? 'scale(0.97)' : 'scale(1)',
-        transition: 'transform 0.08s ease-out, border-color 0.08s, background 0.08s',
+        transition: 'transform 0.08s ease-out, border-color 0.08s, background 0.12s ease-out, box-shadow 0.12s ease-out',
         cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
         animation: `fadeSlideUp 0.3s ease-out ${delay}s both`,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
       } as React.CSSProperties}
     >
-      <span style={{
-        position: 'absolute', top: 12, left: 12,
-        fontSize: 24, opacity: 0.55, lineHeight: 1, userSelect: 'none',
-      }}>{game.emoji}</span>
-
+      {/* Emoji orb */}
       <div style={{
-        fontSize: 18, fontWeight: 700, color: TEXT_STRONG,
-        fontFamily: "'Heebo',sans-serif", lineHeight: 1.3,
-      }}>{game.labelHe}</div>
+        width: 52, height: 52, borderRadius: 14,
+        background: `radial-gradient(circle, ${game.accent}18, ${game.accent}08)`,
+        border: `1px solid ${game.accent}22`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <span style={{
+          fontSize: 28, lineHeight: 1, userSelect: 'none',
+        }}>{game.emoji}</span>
+      </div>
 
+      {/* Text content */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 20, fontWeight: 700, color: TEXT_STRONG,
+          fontFamily: FONT_BODY, lineHeight: 1.3,
+        }}>{game.labelHe}</div>
+        <div style={{
+          fontSize: 13, fontWeight: 500, color: TEXT_MUTED,
+          fontFamily: FONT_LABEL, marginTop: 3,
+        }}>{game.label}</div>
+      </div>
+
+      {/* Play arrow */}
       <div style={{
-        fontSize: 13, fontWeight: 500, color: TEXT_FAINT,
-        fontFamily: "'DM Sans',sans-serif", marginTop: 4,
-      }}>{game.label}</div>
+        width: 32, height: 32, borderRadius: 10,
+        background: `${game.accent}15`,
+        border: `1px solid ${game.accent}20`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <span style={{
+          fontSize: 14, color: game.accent, opacity: 0.7,
+          transform: 'scaleX(-1)', display: 'block',
+        }}>▶</span>
+      </div>
     </div>
   )
 }
@@ -144,56 +189,95 @@ function FeaturedGameCard({ game, pressKey, onPress, onRelease }: {
       style={{
         width: '100%',
         maxWidth: 370,
-        height: 170,
-        margin: '0 auto 24px',
-        borderRadius: 20,
+        margin: '0 auto 28px',
+        borderRadius: 22,
         overflow: 'hidden',
-        background: 'rgba(255,250,240,0.08)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        position: 'relative',
+        ...GLASS_ELEVATED,
+        background: 'linear-gradient(160deg, rgba(201,168,76,0.10) 0%, rgba(255,250,240,0.06) 40%, rgba(201,168,76,0.05) 100%)',
         boxShadow: isP
-          ? `0 4px 24px rgba(201,168,76,0.20), inset 0 1px 0 rgba(255,250,240,0.06)`
-          : '0 8px 32px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,250,240,0.06)',
-        border: isP ? `1.5px solid ${GOLD_BORDER_HOVER}` : `1px solid rgba(201,168,76,0.22)`,
-        borderTop: '3px solid #C9A84C',
+          ? `0 4px 24px rgba(201,168,76,0.22), inset 0 1px 0 rgba(255,250,240,0.06)`
+          : '0 8px 36px rgba(0,0,0,0.40), 0 0 40px rgba(201,168,76,0.04), inset 0 1px 0 rgba(255,250,240,0.06)',
+        border: isP ? `1.5px solid ${GOLD_BORDER_HOVER}` : `1px solid rgba(201,168,76,0.24)`,
+        borderTop: `3px solid ${GOLD}`,
         transform: isP ? 'scale(0.97)' : 'scale(1)',
-        transition: 'transform 0.08s ease-out, border-color 0.08s',
+        transition: 'transform 0.08s ease-out, border-color 0.08s, box-shadow 0.12s',
         cursor: 'pointer',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
         WebkitTapHighlightColor: 'transparent',
         animation: 'fadeSlideUp 0.3s ease-out both',
+        padding: '28px 24px 24px',
+        direction: 'rtl',
       } as React.CSSProperties}
     >
+      {/* Warm radial glow behind content */}
       <div aria-hidden style={{
-        position: 'absolute', inset: 0, borderRadius: 20,
-        background: 'radial-gradient(ellipse at 50% 20%, rgba(201,168,76,0.08) 0%, transparent 60%)',
+        position: 'absolute', inset: 0, borderRadius: 22,
+        background: 'radial-gradient(ellipse at 50% 15%, rgba(201,168,76,0.10) 0%, transparent 55%)',
         pointerEvents: 'none',
       }} />
-      <span style={{ fontSize: 40, lineHeight: 1 }}>{game.emoji}</span>
-      <span style={{
-        fontSize: 20, fontWeight: 700, color: TEXT_STRONG,
-        fontFamily: "'Heebo',sans-serif", direction: 'rtl',
-      }}>{game.labelHe}</span>
-      <span style={{
-        fontSize: 14, color: TEXT_FAINT,
-        fontFamily: "'Heebo',sans-serif",
-      }}>עולם הסוליטר</span>
-      <span style={{
-        fontSize: 13, color: TEXT_FAINT,
-        fontFamily: "'Heebo',sans-serif", marginTop: 2,
-      }}>300+ משחקים</span>
+
+      {/* Content row */}
+      <div style={{
+        position: 'relative', zIndex: 1,
+        display: 'flex', alignItems: 'center', gap: 20,
+      }}>
+        {/* Large emoji sphere */}
+        <div style={{
+          width: 80, height: 80, borderRadius: 22,
+          background: 'radial-gradient(circle at 40% 35%, rgba(201,168,76,0.18), rgba(201,168,76,0.06) 70%)',
+          border: '1px solid rgba(201,168,76,0.20)',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,250,240,0.06)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 44, lineHeight: 1 }}>{game.emoji}</span>
+        </div>
+
+        {/* Text block */}
+        <div style={{ flex: 1 }}>
+          <div style={{
+            fontSize: 24, fontWeight: 700, color: TEXT_STRONG,
+            fontFamily: FONT_BODY, lineHeight: 1.2, marginBottom: 4,
+          }}>{game.labelHe}</div>
+          <div style={{
+            fontSize: 15, fontWeight: 500, color: GOLD_MEDIUM,
+            fontFamily: FONT_BODY, lineHeight: 1.4,
+          }}>משחק המילים של Martita</div>
+          <div style={{
+            fontSize: 13, color: TEXT_MUTED,
+            fontFamily: FONT_BODY, marginTop: 6,
+          }}>בונים מילים ← מתקדמים בשלבים</div>
+        </div>
+      </div>
+
+      {/* Play button row */}
+      <div style={{
+        position: 'relative', zIndex: 1,
+        marginTop: 20,
+        background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.08))',
+        border: '1px solid rgba(201,168,76,0.22)',
+        borderRadius: 14,
+        padding: '14px 0',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+      }}>
+        <span style={{
+          fontSize: 18, fontWeight: 700, color: GOLD_MEDIUM,
+          fontFamily: FONT_BODY,
+        }}>שחקי עכשיו</span>
+        <span style={{
+          fontSize: 14, color: GOLD_MUTED,
+          transform: 'scaleX(-1)', display: 'inline-block',
+        }}>▶</span>
+      </div>
     </div>
   )
 }
 
 /* ─── Category Section ─── */
-function CategorySection({ emoji, titleHe, games, pressKey, onPress, onRelease, baseDelay }: {
+function CategorySection({ emoji, titleHe, subtitle, games, pressKey, onPress, onRelease, baseDelay }: {
   emoji: string
   titleHe: string
+  subtitle: string
   games: Game[]
   pressKey: string | null
   onPress: (k: string) => void
@@ -201,34 +285,48 @@ function CategorySection({ emoji, titleHe, games, pressKey, onPress, onRelease, 
   baseDelay: number
 }) {
   return (
-    <div style={{ marginBottom: 32 }}>
+    <div style={{ marginBottom: 36 }}>
+      {/* Category header */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        marginBottom: 16, direction: 'rtl',
+        display: 'flex', alignItems: 'center', gap: 14,
+        marginBottom: 20, direction: 'rtl',
       }}>
         <div style={{
           flex: 1, height: 1,
-          background: `linear-gradient(270deg, rgba(201,168,76,0.55), transparent)`,
+          background: `linear-gradient(270deg, rgba(201,168,76,0.45), transparent)`,
           borderRadius: 1,
         }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 20 }}>{emoji}</span>
-          <span style={{
-            fontSize: 17, fontWeight: 700, color: 'rgba(201,168,76,0.75)',
-            fontFamily: "'Heebo',sans-serif", letterSpacing: '0.3px',
-          }}>{titleHe}</span>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '6px 16px',
+          background: 'rgba(255,250,240,0.03)',
+          borderRadius: 20,
+          border: '1px solid rgba(201,168,76,0.10)',
+        }}>
+          <span style={{ fontSize: 22, lineHeight: 1 }}>{emoji}</span>
+          <div>
+            <span style={{
+              fontSize: 18, fontWeight: 700, color: GOLD_MEDIUM,
+              fontFamily: FONT_BODY, letterSpacing: '0.3px',
+            }}>{titleHe}</span>
+            <span style={{
+              fontSize: 12, color: TEXT_FAINT,
+              fontFamily: FONT_BODY, marginRight: 8,
+            }}> · {subtitle}</span>
+          </div>
         </div>
         <div style={{
           flex: 1, height: 1,
-          background: `linear-gradient(90deg, rgba(201,168,76,0.55), transparent)`,
+          background: `linear-gradient(90deg, rgba(201,168,76,0.45), transparent)`,
           borderRadius: 1,
         }} />
       </div>
 
+      {/* Game grid */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: '16px 12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
       }}>
         {games.map((game, idx) => (
           <GameCard
@@ -240,6 +338,32 @@ function CategorySection({ emoji, titleHe, games, pressKey, onPress, onRelease, 
             delay={baseDelay + idx * 0.04}
           />
         ))}
+      </div>
+    </div>
+  )
+}
+
+/* ─── Greeting Banner ─── */
+function GameHero() {
+  return (
+    <div style={{
+      textAlign: 'center',
+      direction: 'rtl',
+      padding: '8px 0 20px',
+      animation: 'fadeSlideUp 0.3s ease-out both',
+    }}>
+      <div style={{
+        fontSize: 26, fontWeight: 700, color: TEXT_STRONG,
+        fontFamily: FONT_BODY, lineHeight: 1.3,
+        textShadow: '0 2px 8px rgba(0,0,0,0.35)',
+      }}>
+        בואי נשחק! 🎮
+      </div>
+      <div style={{
+        fontSize: 15, color: TEXT_MUTED,
+        fontFamily: FONT_BODY, marginTop: 4,
+      }}>
+        המשחקים האהובים של Martita
       </div>
     </div>
   )
@@ -303,11 +427,13 @@ export function AbuGames() {
 
       <div style={{
         position: 'relative', zIndex: 2,
-        padding: '24px 16px',
+        padding: '16px 16px',
         display: 'flex', flexDirection: 'column',
         paddingBottom: 'calc(40px + env(safe-area-inset-bottom, 0px))',
-        background: 'radial-gradient(ellipse at 50% 5%, rgba(201,168,76,0.03) 0%, transparent 45%)',
+        background: 'radial-gradient(ellipse at 50% 3%, rgba(201,168,76,0.04) 0%, transparent 40%)',
       }}>
+        <GameHero />
+
         <FeaturedGameCard
           game={WOW_GAME}
           pressKey={pressed}
@@ -318,6 +444,7 @@ export function AbuGames() {
         <CategorySection
           emoji="🃏"
           titleHe="סוליטר"
+          subtitle={`${SOLITAIRE_GAMES.length} משחקים`}
           games={SOLITAIRE_GAMES}
           pressKey={pressed}
           onPress={setPressed}
@@ -328,6 +455,7 @@ export function AbuGames() {
         <CategorySection
           emoji="🀄"
           titleHe="מהג'ונג"
+          subtitle={`${MAHJONG_GAMES.length} משחקים`}
           games={MAHJONG_GAMES}
           pressKey={pressed}
           onPress={setPressed}
