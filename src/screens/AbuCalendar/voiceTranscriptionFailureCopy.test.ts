@@ -21,6 +21,9 @@ describe('P0.5 — AbuCalendar imports platformHealth.userFacingError', () => {
   it('imports userFacingError from src/services/platformHealth', () => {
     expect(SRC.includes("import { userFacingError } from '../../services/platformHealth'")).toBe(true)
   })
+  it('imports shared mediateVoiceCaptureError from errorMediation', () => {
+    expect(SRC.includes("import { mediateVoiceCaptureError } from '../../services/errorMediation'")).toBe(true)
+  })
 })
 
 describe('P0.5 — voice-error catch handler translates known failures', () => {
@@ -30,7 +33,7 @@ describe('P0.5 — voice-error catch handler translates known failures', () => {
   })
 
   it('catches network / 401 / 429 transcription failures and shows voice_transcribe_failed copy', () => {
-    expect(SRC.includes("userFacingError('voice_transcribe_failed', 'he')")).toBe(true)
+    expect(SRC.includes("mediateVoiceCaptureError(e, 'transcription')")).toBe(true)
     expect(SRC.includes("מפתח API לא תקין")).toBe(true)
     expect(SRC.includes("יותר מדי בקשות")).toBe(true)
   })
@@ -41,6 +44,11 @@ describe('P0.5 — voice-error catch handler translates known failures', () => {
     // trace and the legacy voiceError/voiceState pair. Verify the
     // catch handler calls setVoiceFailure.
     expect(SRC.includes('setVoiceFailure(friendly, step)')).toBe(true)
+  })
+
+  it('transcription failures use shared senior-friendly mediation and do not expose raw errors', () => {
+    expect(SRC.includes("mediateVoiceCaptureError(e, 'transcription')")).toBe(true)
+    expect(SRC.includes('friendly = raw')).toBe(false)
   })
 })
 

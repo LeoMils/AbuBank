@@ -19,6 +19,7 @@ import {
 } from './service'
 import { processVoiceTranscript } from './voiceAutoCreate'
 import { userFacingError } from '../../services/platformHealth'
+import { mediateVoiceCaptureError } from '../../services/errorMediation'
 import { APP_VERSION } from '../../version'
 import {
   createInitialTrace,
@@ -638,13 +639,13 @@ export function AbuCalendar() {
           } else if (raw.includes('מפתח API לא תקין')
                   || raw.includes('יותר מדי בקשות')
                   || /transcrib/i.test(raw)) {
-            friendly = userFacingError('voice_transcribe_failed', 'he')
+            friendly = mediateVoiceCaptureError(e, 'transcription')
             step = `transcribe_failed:${raw.slice(0, 40)}`
           } else if (raw) {
-            friendly = raw
+            friendly = mediateVoiceCaptureError(e, 'transcription')
             step = `caught_error:${raw.slice(0, 40)}`
           } else {
-            friendly = 'לא הצלחתי להבין. נסי שוב לאט יותר'
+            friendly = mediateVoiceCaptureError(e, 'transcription')
             step = 'caught_unknown_error'
           }
           setVoiceFailure(friendly, step)
@@ -663,13 +664,7 @@ export function AbuCalendar() {
       setVoiceStatus('מקשיבה... (לחצי שוב לסיום)')
       setStage('recording')
     } catch (err) {
-      const msg = err instanceof DOMException && err.name === 'NotAllowedError'
-        ? 'צריך לאשר גישה למיקרופון'
-        : err instanceof DOMException && err.name === 'NotFoundError'
-        ? 'לא נמצא מיקרופון'
-        : err instanceof Error
-        ? `מיקרופון לא זמין: ${err.message}`
-        : 'מיקרופון לא זמין — נסי ב-HTTPS'
+      const msg = mediateVoiceCaptureError(err, 'permission_or_device')
       setVoiceFailure(msg, `getusermedia_failed:${err instanceof Error ? err.name : 'unknown'}`)
     }
   }
