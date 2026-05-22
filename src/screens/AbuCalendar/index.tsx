@@ -42,6 +42,7 @@ import { VoiceCard } from './VoiceCard'
 import { shapeCreateConfirmReadback } from '../AbuAI/responseShaper'
 import { parseCorrection, applyCorrection } from './correctionParser'
 import { shouldShowConfirmationReadback } from './voiceReadbackGuard'
+import { shouldBlockVoiceRecord } from './voiceRecordGuard'
 import { pickUpdateAck, CANCEL_RESPONSE, UNRELATED_RESPONSE, pickClarifyQuestion } from '../AbuAI/conversationLayer'
 import { speak } from '../../services/voice'
 import { Toast } from '../../components/Toast'
@@ -356,7 +357,7 @@ export function AbuCalendar() {
       }
       return
     }
-    if (voiceStatus && !opts?.bypassGuard) return
+    if (shouldBlockVoiceRecord(voiceStatus, opts)) return
     // Fresh trace for a new recording session.
     const fresh = createInitialTrace(APP_VERSION.version)
     voiceTraceRef.current = fresh

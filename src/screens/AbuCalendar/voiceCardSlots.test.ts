@@ -129,8 +129,8 @@ describe('VoiceCard — retry bypass guard', () => {
     expect(INDEX_SOURCE).toMatch(/async function handleVoiceRecord\(opts\?/)
   })
 
-  it('voiceStatus guard respects bypassGuard', () => {
-    expect(INDEX_SOURCE).toContain('if (voiceStatus && !opts?.bypassGuard) return')
+  it('voiceStatus guard uses shouldBlockVoiceRecord', () => {
+    expect(INDEX_SOURCE).toContain('shouldBlockVoiceRecord(voiceStatus, opts)')
   })
 
   it('handleVoiceRetry passes bypassGuard: true', () => {
