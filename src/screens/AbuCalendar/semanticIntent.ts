@@ -27,8 +27,8 @@ export type CalendarIntentDraft = {
   canAutoCreate: boolean
 }
 
-const CREATE_RE = /(תקבעי|תקבע|תוסיפי|תוסיף|תרשמי|תרשום|להוסיף|לקבוע|תכניסי|תכניס|תזכירי|תזכיר|agreg[áa]|agendar|agenda|add|schedule|create|book)/i
-const STRONG_SCHED_RE = /(רוצה שאני אשמור|אשמור על הילדים|לשמור על הילדים|אני צריך לשמור על הילדים|לקחת את הילדים|לאסוף את הילדים|לקחת את הילדים מאופיר|remind me to|m[eé]dico|meeting with)/i
+const CREATE_RE = /(תקבעי|תקבע|תוסיפי|תוסיף|תרשמי|תרשום|להוסיף|לקבוע|תכניסי|תכניס|תזכירי|תזכיר|שימי|שים|agreg[áa]|agendar|agenda|add|schedule|create|book)/i
+const STRONG_SCHED_RE = /(רוצה שאני אשמור|אשמור על הילדים|לשמור על הילדים|אני צריך לשמור על הילדים|לקחת את הילדים|לאסוף את הילדים|לקחת את הילדים מאופיר|יש לי פגישה|יש לי תור|remind me to|m[eé]dico|meeting with)/i
 const CONVERSATION_ONLY_RE = /(סיפרה לי על סרט יפה|גלעד יצא למילואים|אופיר התקשרה אליי|מחר יש סרט יפה)/
 
 function plusDays(iso: string, n: number): string {
@@ -77,14 +77,53 @@ function resolveLocation(text: string, fallbackLocation: string | null): string 
 }
 
 function resolveTitle(text: string, fallbackTitle: string): string | null {
+  // Specific compound patterns (most specific first)
   if (/(לשמור על הילדים|אשמור על הילדים)/.test(text) && /אופיר/.test(text)) return 'לשמור על הילדים אצל אופיר'
-  if (/תור לרופא/.test(text)) return 'תור לרופא'
   if (/לקחת את הילדים מאופיר/.test(text)) return 'לקחת את הילדים מאופיר'
-  if (/פגישה עם אופיר/.test(text)) return 'פגישה עם אופיר'
-  if (/בין שבע לעשר/.test(text) && !/(לשמור|פגישה|תור|לקחת|לאסוף)/.test(text)) return null
-  if (/מחר אצל אופיר/.test(text)) return null
-  if (fallbackTitle?.trim() && /(פגישה|תור|לשמור|לקחת|לאסוף|meeting|doctor|m[eé]dico)/i.test(fallbackTitle)) return fallbackTitle.trim()
+
+  // Guard: time-range only with no event content
+  if (/בין שבע לעשר/.test(text) && !/(לשמור|פגישה|תור|לקחת|לאסוף|ארוחת)/.test(text)) return null
+  // Guard: location-only with no event type
+  if (/מחר אצל אופיר/.test(text) && !/(לשמור|פגישה|תור|לקחת|לאסוף|ארוחת)/.test(text)) return null
+
+  // Generic pattern extraction (ordered by specificity)
+
+  // "ארוחת ערב/צהריים/בוקר עם <name>"
+  const mealMatch = text.match(/ארוחת\s+(ערב|צהריים|בוקר)(?:\s+עם\s+([\u0590-\u05FF]+))?/)
+  if (mealMatch) return mealMatch[2] ? `ארוחת ${mealMatch[1]} עם ${mealMatch[2]}` : `ארוחת ${mealMatch[1]}`
+
+  // "לקחת/לאסוף את הילדים מ<name>"
+  const pickupMatch = text.match(/(לקחת|לאסוף)\s+את\s+הילדים(?:\s+מ([\u0590-\u05FF]+))?/)
+  if (pickupMatch) return pickupMatch[2] ? `${pickupMatch[1]} את הילדים מ${pickupMatch[2]}` : `${pickupMatch[1]} את הילדים`
+
+  // "לשמור על הילדים" (without specific person)
+  if (/(לשמור על הילדים|אשמור על הילדים)/.test(text)) return 'לשמור על הילדים'
+
+  // "פגישה עם <name>"
+  const meetingMatch = text.match(/פגישה\s+עם\s+([\u0590-\u05FF]+)/)
+  if (meetingMatch) return `פגישה עם ${meetingMatch[1]}`
+
+  // "תור ל<specialty>"
+  const aptMatch = text.match(/תור\s+ל([\u0590-\u05FF]+)/)
+  if (aptMatch) return `תור ל${aptMatch[1]}`
+
+  // "לקחת תרופה/תרופות"
+  if (/לקחת\s+תרופ(?:ה|ות)/.test(text)) return 'לקחת תרופה'
+
+  // Fallback: accept localParser title if it contains calendar-related keywords
+  if (fallbackTitle?.trim() && /(פגישה|תור|לשמור|לקחת|לאסוף|ארוח[הת]|תרופ[הות]|רופא|meeting|doctor|m[eé]dico)/i.test(fallbackTitle)) return fallbackTitle.trim()
   return null
+}
+
+function extractPeople(text: string): string[] {
+  const people: string[] = []
+  const withMatch = text.match(/עם\s+([\u0590-\u05FF]+)/)
+  if (withMatch) {
+    const name = withMatch[1]!
+    if (!/^(הילדים|הרופא|המשפחה|הבית|העבודה)$/.test(name)) people.push(name)
+  }
+  if (/אופיר/.test(text) && !people.includes('אופיר')) people.push('אופיר')
+  return people
 }
 
 export function extractCalendarIntentLocally(input: {
@@ -104,7 +143,7 @@ export function extractCalendarIntentLocally(input: {
   const extractedTitle = resolveTitle(text, fallback.title)
   const extractedDate = resolveDate(text, input.todayISO, fallback.date)
   const extractedLocation = resolveLocation(text, fallback.location ?? null)
-  const extractedPeople = /אופיר/.test(text) ? ['אופיר'] : []
+  const extractedPeople = extractPeople(text)
   const extractedNotes = /התקשרה אליי/.test(text) && /מילואים/.test(text) && /סרט/.test(text)
     ? 'אופיר התקשרה. גלעדי יצא למילואים והיא הולכת לסרט.'
     : null

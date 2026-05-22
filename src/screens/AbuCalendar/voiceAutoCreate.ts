@@ -33,6 +33,7 @@ const HE_CREATE_VERBS = [
   'תכניסי', 'תכניס',
   'תעדכני',
   'להוסיף', 'לקבוע', 'לרשום', 'לזכור',
+  'שימי', 'שים', 'לשים',
 ]
 
 // Spanish (Rioplatense + general) — voseo and tuteo forms.
