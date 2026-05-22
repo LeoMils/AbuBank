@@ -1,12 +1,16 @@
 /**
  * Decides whether the voice confirmation readback text should be shown.
  *
- * Readback is suppressed when:
- * - voiceState is 'error' (the pipeline failed)
- * - the parsed draft has no meaningful content (empty title + no date + no time)
+ * Readback requires ALL of:
+ * - voiceState is not 'error'
+ * - parsed exists
+ * - title is non-empty after trim
+ * - date exists
+ * - time exists
  *
- * This prevents misleading confirmation-style copy from appearing next to
- * a failure message (e.g. "הבנתי. לקבוע משהו..." alongside "לא הצלחתי להבין").
+ * Incomplete drafts (title-only, date-only, etc.) must NOT trigger readback
+ * because shapeCreateConfirmReadback would produce misleading confirmation
+ * copy for partial data.
  */
 export function shouldShowConfirmationReadback(
   voiceState: string,
@@ -14,5 +18,5 @@ export function shouldShowConfirmationReadback(
 ): boolean {
   if (!parsed) return false
   if (voiceState === 'error') return false
-  return Boolean(parsed.title?.trim() || parsed.date || parsed.time)
+  return Boolean(parsed.title?.trim() && parsed.date && parsed.time)
 }

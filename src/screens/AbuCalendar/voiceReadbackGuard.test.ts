@@ -5,49 +5,63 @@ import { resolve } from 'node:path'
 
 const INDEX = readFileSync(resolve(__dirname, './index.tsx'), 'utf8')
 
-describe('shouldShowConfirmationReadback — pure logic', () => {
-  it('returns false when voiceState is error (failed_to_understand path)', () => {
-    expect(shouldShowConfirmationReadback('error', { title: '', date: null, time: null })).toBe(false)
+describe('shouldShowConfirmationReadback — incomplete drafts must return false', () => {
+  it('title-only => false', () => {
+    expect(shouldShowConfirmationReadback('parsed', { title: 'פגישה עם הרופא', date: null, time: null })).toBe(false)
   })
 
-  it('returns false when voiceState is error even with partial content', () => {
-    expect(shouldShowConfirmationReadback('error', { title: 'פגישה', date: null, time: null })).toBe(false)
+  it('date-only => false', () => {
+    expect(shouldShowConfirmationReadback('parsed', { title: '', date: '2026-05-22', time: null })).toBe(false)
   })
 
-  it('returns false when voiceState is error even with complete content', () => {
-    expect(shouldShowConfirmationReadback('error', { title: 'פגישה', date: '2026-05-22', time: '14:00' })).toBe(false)
+  it('time-only => false', () => {
+    expect(shouldShowConfirmationReadback('parsed', { title: '', date: null, time: '14:00' })).toBe(false)
   })
 
-  it('returns false when parsed is null', () => {
-    expect(shouldShowConfirmationReadback('parsed', null)).toBe(false)
+  it('title+date only => false', () => {
+    expect(shouldShowConfirmationReadback('parsed', { title: 'רופא', date: '2026-05-22', time: null })).toBe(false)
   })
 
-  it('returns false when draft is empty (no title, no date, no time) even in parsed state', () => {
-    expect(shouldShowConfirmationReadback('parsed', { title: '', date: null, time: null })).toBe(false)
+  it('title+time only => false', () => {
+    expect(shouldShowConfirmationReadback('parsed', { title: 'רופא', date: null, time: '14:00' })).toBe(false)
   })
 
-  it('returns false when title is only whitespace', () => {
-    expect(shouldShowConfirmationReadback('parsed', { title: '   ', date: null, time: null })).toBe(false)
+  it('date+time only => false', () => {
+    expect(shouldShowConfirmationReadback('parsed', { title: '', date: '2026-05-22', time: '14:00' })).toBe(false)
   })
+})
 
-  it('returns true when parsed state has title', () => {
-    expect(shouldShowConfirmationReadback('parsed', { title: 'פגישה עם הרופא', date: null, time: null })).toBe(true)
-  })
-
-  it('returns true when parsed state has date', () => {
-    expect(shouldShowConfirmationReadback('parsed', { title: '', date: '2026-05-22', time: null })).toBe(true)
-  })
-
-  it('returns true when parsed state has time', () => {
-    expect(shouldShowConfirmationReadback('parsed', { title: '', date: null, time: '14:00' })).toBe(true)
-  })
-
-  it('returns true for complete draft in parsed state', () => {
+describe('shouldShowConfirmationReadback — complete draft', () => {
+  it('title+date+time => true', () => {
     expect(shouldShowConfirmationReadback('parsed', { title: 'רופא שיניים', date: '2026-05-22', time: '10:00' })).toBe(true)
   })
 
-  it('returns true during recording state with content (correction flow)', () => {
+  it('complete draft during recording state (correction flow) => true', () => {
     expect(shouldShowConfirmationReadback('recording', { title: 'פגישה', date: '2026-05-22', time: '14:00' })).toBe(true)
+  })
+})
+
+describe('shouldShowConfirmationReadback — error state always false', () => {
+  it('voiceState error + complete draft => false', () => {
+    expect(shouldShowConfirmationReadback('error', { title: 'פגישה', date: '2026-05-22', time: '14:00' })).toBe(false)
+  })
+
+  it('voiceState error + empty draft => false', () => {
+    expect(shouldShowConfirmationReadback('error', { title: '', date: null, time: null })).toBe(false)
+  })
+})
+
+describe('shouldShowConfirmationReadback — edge cases', () => {
+  it('parsed is null => false', () => {
+    expect(shouldShowConfirmationReadback('parsed', null)).toBe(false)
+  })
+
+  it('empty draft in parsed state => false', () => {
+    expect(shouldShowConfirmationReadback('parsed', { title: '', date: null, time: null })).toBe(false)
+  })
+
+  it('whitespace-only title => false', () => {
+    expect(shouldShowConfirmationReadback('parsed', { title: '   ', date: '2026-05-22', time: '10:00' })).toBe(false)
   })
 })
 
@@ -61,7 +75,6 @@ describe('Readback guard wiring in index.tsx', () => {
   })
 
   it('shapeCreateConfirmReadback is only called inside the guard (not unconditionally)', () => {
-    // The readback function should appear AFTER the guard check, inside the ternary
     const guardIdx = INDEX.indexOf('shouldShowConfirmationReadback(voiceState, voiceParsed)')
     const readbackIdx = INDEX.indexOf('shapeCreateConfirmReadback({', guardIdx)
     expect(guardIdx).toBeGreaterThan(-1)
