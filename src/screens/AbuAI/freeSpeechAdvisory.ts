@@ -30,12 +30,12 @@ export interface FreeSpeechAdvisoryResult {
  *   • calendar/create → handoff message (no event creation)
  *   • whatsapp/*      → handoff message (no send, no draft)
  *   • navigation/*    → informational message
- *   • unclear/*       → Hebrew clarification question
  *
- * Pass-through domains (return null):
+ * Pass-through domains (return null — AbuAI handles normally):
  *   • calendar/query  → AbuAI already reads calendar safely
  *   • abuai/*         → personal/family grounded path
  *   • general/*       → greetings, open conversation
+ *   • unclear/*       → AbuAI's existing stream/grounded paths handle short input
  */
 export function adviseFreeSpeech(text: string): FreeSpeechAdvisoryResult {
   const route = routeFreeSpeech(text)
@@ -69,13 +69,7 @@ export function adviseFreeSpeech(text: string): FreeSpeechAdvisoryResult {
         route,
       }
 
-    case 'unclear':
-      return {
-        response: 'לא הבנתי. מה רצית לעשות?',
-        route,
-      }
-
-    // abuai, general → fall through to existing path
+    // unclear, abuai, general → fall through to existing AbuAI paths
     default:
       return { response: null, route }
   }
