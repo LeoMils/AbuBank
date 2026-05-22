@@ -111,8 +111,10 @@ describe('P0.6 — known transcription failures translate through userFacingErro
     expect(INDEX.includes("userFacingError('voice_transcribe_key_missing', 'he')")).toBe(true)
   })
 
-  it('401 / 429 / network errors → "לא הצלחתי לתמלל את ההקלטה כרגע."', () => {
-    expect(INDEX.includes("userFacingError('voice_transcribe_failed', 'he')")).toBe(true)
+  it('401 / 429 / network errors → mediateVoiceCaptureError for transcription', () => {
+    // PR #37 moved error copy into mediateVoiceCaptureError; index now
+    // delegates instead of calling userFacingError('voice_transcribe_failed').
+    expect(INDEX.includes("mediateVoiceCaptureError(e, 'transcription')")).toBe(true)
   })
 
   it('every catch branch ends with setVoiceFailure(...) — no silent rethrow', () => {
@@ -157,7 +159,7 @@ describe('P0.6 — every processVoiceTranscript branch traces its outcome', () =
   })
 
   it('failed_to_understand uses setVoiceFailure', () => {
-    expect(INDEX.includes("setVoiceFailure('לא הצלחתי להבין את ההקלטה. ננסה שוב?', 'failed_to_understand')")).toBe(true)
+    expect(INDEX.includes("setVoiceFailure(failMsg, 'failed_to_understand')")).toBe(true)
   })
 })
 
