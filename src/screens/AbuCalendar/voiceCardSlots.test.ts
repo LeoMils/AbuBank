@@ -129,10 +129,10 @@ describe('VoiceCard — error surfaces', () => {
     expect(INDEX_SOURCE).toContain('לא הצלחתי להבין את ההקלטה. ננסה שוב?')
   })
 
-  it('parent surfaces the exact error message from getUserMedia failures', () => {
-    expect(INDEX_SOURCE).toMatch(/err\.message/)
-    expect(INDEX_SOURCE).toContain("'NotAllowedError'")
-    expect(INDEX_SOURCE).toContain("'NotFoundError'")
+  it('parent surfaces getUserMedia failures via mediateVoiceCaptureError', () => {
+    // PR #37 moved DOMException handling into errorMediation.ts;
+    // index now delegates to mediateVoiceCaptureError for device errors.
+    expect(INDEX_SOURCE).toContain("mediateVoiceCaptureError(err, 'permission_or_device')")
   })
 })
 
