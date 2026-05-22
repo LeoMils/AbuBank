@@ -1,24 +1,22 @@
 import { describe, it, expect } from 'vitest'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
 
-// ─── Behavior: calendar create → intercepted, no side effects ────────────────
+// ─── Behavior: calendar create → passed through to AbuAI create state machine ─
+// Calendar create intents now fall through to calendarCreate.ts which parses
+// title/date/time and runs the multi-turn confirmation dialog inline.
 
-describe('advisory behavior — calendar create handoff', () => {
+describe('advisory behavior — calendar create passthrough', () => {
   it.each([
     'שימי לי תור לרופא מחר בעשר',
     'תקבעי לי פגישה ביום שלישי',
     'תוסיפי אירוע ביומן',
     'add a doctor appointment tomorrow at 10',
     'agregá turno con el médico',
-  ])('"%s" → intercepted, returns Hebrew handoff, no appointment/draft on result', (text) => {
+  ])('"%s" → null (AbuAI create state machine handles)', (text) => {
     const r = adviseFreeSpeech(text)
-    expect(r.response).not.toBeNull()
-    expect(r.response).toContain('יומן')
+    expect(r.response).toBeNull()
     expect(r.route.domain).toBe('calendar')
     expect(r.route.action).toBe('create')
-    // Pure function — no write artifacts on the result object
-    expect(r).not.toHaveProperty('appointment')
-    expect(r).not.toHaveProperty('draft')
   })
 })
 
@@ -170,10 +168,11 @@ describe('advisory safety invariants', () => {
     }
   })
 
-  it('advisory only intercepts calendar/create, whatsapp, and navigation — nothing else', () => {
+  it('advisory only intercepts whatsapp and navigation — calendar passes through', () => {
     // Exhaustive domain check: these must all pass through
     const passThrough = [
       { text: 'מה יש לי היום', expectedDomain: 'calendar' },    // query
+      { text: 'תקבעי פגישה מחר', expectedDomain: 'calendar' },  // create (now passes through)
       { text: 'מי זה אופיר', expectedDomain: 'abuai' },
       { text: 'שלום', expectedDomain: 'general' },
       { text: 'mmm ok', expectedDomain: 'unclear' },
@@ -186,7 +185,6 @@ describe('advisory safety invariants', () => {
 
     // These must be intercepted
     const intercepted = [
-      { text: 'תקבעי פגישה מחר', expectedDomain: 'calendar' },  // create
       { text: 'שלחי הודעה ללאו', expectedDomain: 'whatsapp' },
       { text: 'פתחי משחקים', expectedDomain: 'navigation' },
     ]

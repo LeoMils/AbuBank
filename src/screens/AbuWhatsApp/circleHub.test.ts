@@ -57,7 +57,7 @@ describe('Circular Action Hub — colour contract', () => {
   })
 
   it('PersonActionHub left wedge uses a WA_GREEN gradient; right wedge uses a CALL_RED gradient', () => {
-    const fnMatch = facesSrc.match(/function PersonActionHub\([\s\S]*?\n\}\n/)
+    const fnMatch = facesSrc.match(/function PersonActionHub\([\s\S]*?\r?\n\}\r?\n/)
     expect(fnMatch).not.toBeNull()
     const body = (fnMatch as RegExpMatchArray)[0]
     expect(body.includes('linear-gradient(135deg, ${WA_GREEN}')).toBe(true)
@@ -79,7 +79,7 @@ describe('Circular Action Hub — wedge geometry & accessibility', () => {
   })
 
   it('Wedges are senior-friendly — minHeight 44, large icons (≥ 24 px), Hebrew labels', () => {
-    const fnMatch = facesSrc.match(/function PersonActionHub\([\s\S]*?\n\}\n/)
+    const fnMatch = facesSrc.match(/function PersonActionHub\([\s\S]*?\r?\n\}\r?\n/)
     expect(fnMatch).not.toBeNull()
     const body = (fnMatch as RegExpMatchArray)[0]
     expect(body.includes('minHeight: 44')).toBe(true)
@@ -101,7 +101,7 @@ describe('Circular Action Hub — wedge geometry & accessibility', () => {
   })
 
   it('Center identity has a name + a small heart icon', () => {
-    const fnMatch = facesSrc.match(/function PersonActionHub\([\s\S]*?\n\}\n/)
+    const fnMatch = facesSrc.match(/function PersonActionHub\([\s\S]*?\r?\n\}\r?\n/)
     expect(fnMatch).not.toBeNull()
     const body = (fnMatch as RegExpMatchArray)[0]
     expect(body.includes('<HubHeartIcon')).toBe(true)
@@ -131,7 +131,7 @@ describe('Circular Action Hub — event handling and flip-back contract', () => 
 
 describe('Circular Action Hub — group-only constraint', () => {
   it('GroupActionHub renders ONE chip-whatsapp- testid and ZERO chip-call-', () => {
-    const m = facesSrc.match(/function GroupActionHub\([\s\S]*?\n\}\n/)
+    const m = facesSrc.match(/function GroupActionHub\([\s\S]*?\r?\n\}\r?\n/)
     expect(m).not.toBeNull()
     const body = (m as RegExpMatchArray)[0]
     expect(body.includes('chip-whatsapp-')).toBe(true)
@@ -140,7 +140,7 @@ describe('Circular Action Hub — group-only constraint', () => {
   })
 
   it('GroupActionHub uses a green radial gradient (WA_GREEN), no red anywhere', () => {
-    const m = facesSrc.match(/function GroupActionHub\([\s\S]*?\n\}\n/)
+    const m = facesSrc.match(/function GroupActionHub\([\s\S]*?\r?\n\}\r?\n/)
     const body = (m as RegExpMatchArray)[0]
     expect(body.includes('WA_GREEN')).toBe(true)
     expect(body.includes('CALL_RED')).toBe(false)
