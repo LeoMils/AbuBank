@@ -116,10 +116,10 @@ describe('AbuAI does NOT call the online endpoint for family / calendar queries'
   })
 })
 
-describe('build version is bumped to AbuCalendar P0.7', () => {
-  it('APP_VERSION is the AbuCalendar P0.7 ASR-quality marker', () => {
+describe('build version is bumped to AbuCalendar P0.8', () => {
+  it('APP_VERSION is the AbuCalendar P0.8 semantic-intent marker', () => {
     const verSrc = fs.readFileSync(path.resolve(__dirname, '../../version.ts'), 'utf8')
-    expect(verSrc.includes("'0.4.11-abucalendar-asr-quality'")).toBe(true)
-    expect(verSrc.includes('AbuCalendar P0.7 — Hebrew ASR Quality Recovery')).toBe(true)
+    expect(verSrc.includes("'0.4.12-abucalendar-semantic-intent'")).toBe(true)
+    expect(verSrc.includes('AbuCalendar P0.8 — Semantic Calendar Intent')).toBe(true)
   })
 })
