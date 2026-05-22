@@ -9,16 +9,18 @@ describe('chooseContentWorld — vague prompts offer content worlds', () => {
     expect(r.suggestedOpening.length).toBeGreaterThan(0)
     expect(r.needsRealtime).toBe(false)
   })
-  it('"hola" → open_chat with gentle options', () => {
+  it('"hola" → open_chat, falls through to LLM (no passive seed)', () => {
     const r = chooseContentWorld('hola')
     expect(r.contentMode).toBe('open_chat')
     expect(r.language).toBe('es')
-    expect(r.gentleOptions.length).toBeGreaterThanOrEqual(2)
+    expect(r.suggestedOpening).toBe('')
+    expect(r.gentleOptions.length).toBe(0)
   })
-  it('"no sé" → open_chat with content options (Spanish)', () => {
+  it('"no sé" → open_chat, falls through to LLM (no passive seed)', () => {
     const r = chooseContentWorld('No sé')
     expect(r.contentMode).toBe('open_chat')
-    expect(r.gentleOptions.length).toBeGreaterThanOrEqual(2)
+    expect(r.suggestedOpening).toBe('')
+    expect(r.gentleOptions.length).toBe(0)
   })
   it('Hebrew "שלום" → open_chat with gentle options', () => {
     const r = chooseContentWorld('שלום')

@@ -116,7 +116,7 @@ const CUES: ReadonlyArray<{
 ]
 
 // Vague openers route to open_chat with gentle content options.
-const VAGUE_HE = /^הי[!?\s]*$|^שלום[!?\s]*$|לא יודעת/
+const VAGUE_HE = /^הי[!?\s]*$|^שלום[!?\s]*$|^מה נשמע[!?\s]*$|^מה קורה[!?\s]*$|^מה שלומך[!?\s]*$|לא יודעת/
 const VAGUE_ES = /^hola[!?\s.]*$|^buen[oa]s?(?:\s+(?:d[ií]as|tardes|noches))?[!?\s.]*$|\bno\s+s[eé]\b/i
 const VAGUE_EN = /^(?:hi|hello|hey)[!?\s.]*$|\bi\s+don'?t\s+know\b/i
 
@@ -354,30 +354,35 @@ export function chooseContentWorld(input: string, _context?: ContentWorldContext
     }
   }
 
-  // Vague greeting / "no sé" → open_chat with content options.
+  // Vague greeting / "no sé" → fall through to LLM for a dynamic warm
+  // response. Previously this returned a deterministic seed, but that
+  // produced the same passive "אני כאן בשקט..." for every greeting.
+  // The LLM streaming path (next in the runtime chain) generates varied,
+  // warm responses using the system prompt + family context.
   if (VAGUE_HE.test(t) || VAGUE_ES.test(t) || VAGUE_EN.test(t)) {
-    const seed = pickSeed('open_chat', language)
     return {
       contentMode: 'open_chat',
       needsRealtime: false,
       needsSources: false,
-      suggestedOpening: seed.opening,
-      gentleOptions: seed.options,
+      suggestedOpening: '',
+      gentleOptions: [],
       language,
-      reason: 'vague prompt → open_chat with content options',
+      reason: 'vague prompt → open_chat (falls through to LLM for warm response)',
     }
   }
 
-  // Default: open conversation. Leave needsRealtime false (caller decides
-  // if any subsequent cue requires it).
-  const seed = pickSeed('open_chat', language)
+  // Default: open conversation — no deterministic seed. Falls through to
+  // the streaming LLM path in the runtime so the model can give a rich,
+  // varied answer. Previously this returned the open_chat seed for every
+  // unrecognized input, causing the passive "אני כאן בשקט..." response
+  // to fire for calendar, family, online, and general queries alike.
   return {
     contentMode: 'open_chat',
     needsRealtime: false,
     needsSources: false,
-    suggestedOpening: seed.opening,
-    gentleOptions: seed.options,
+    suggestedOpening: '',
+    gentleOptions: [],
     language,
-    reason: 'default → open_chat',
+    reason: 'default → open_chat (no deterministic seed — falls through to LLM)',
   }
 }

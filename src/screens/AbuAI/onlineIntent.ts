@@ -28,7 +28,7 @@ export type OnlineQueryKind =
 // regex) — these patterns rely on substring matching with explicit
 // disambiguating phrasing.
 const ONLINE_HE_MOVIES = /איזה סרטים יש (עכשיו|היום|השבוע)|סרטים חדשים|סרטים בקולנוע|בקולנוע (עכשיו|היום)|מה מקרינים/
-const ONLINE_HE_WEATHER = /מזג ה?אוויר (עכשיו|היום|מחר|השבוע)|מה מזג האוויר|איך מזג האוויר|חם בחוץ|קר בחוץ/
+const ONLINE_HE_WEATHER = /מזג ה?אוויר(?:\s+(?:עכשיו|היום|מחר|השבוע))?|מה מזג האוויר|איך מזג האוויר|חם בחוץ|קר בחוץ/
 const ONLINE_HE_NEWS = /חדשות (היום|עכשיו|אחרונות)|מה ב?חדשות|מה קורה בעולם/
 const ONLINE_HE_OPEN_NOW = /מה פתוח עכשיו|פתוח עכשיו|מה פתוח (היום|בשעה)/
 const ONLINE_HE_LATEST = /מה ה?חדש|מה האחרון|מה התחזית/
