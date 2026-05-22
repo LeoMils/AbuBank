@@ -12,11 +12,11 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.4.11-abucalendar-asr-quality',
-  buildLabel: 'AbuCalendar P0.7 — Hebrew ASR Quality Recovery',
+  version:    '0.4.12-abucalendar-semantic-intent',
+  buildLabel: 'AbuCalendar P0.8 — Semantic Calendar Intent',
   buildDate:  '2026-05-20',
   branchHint: 'feat/abuwhatsapp-local-family-contacts',
-  commitHint: '7f44a12',
+  commitHint: 'local',
 } as const
 
 export type AppVersion = typeof APP_VERSION

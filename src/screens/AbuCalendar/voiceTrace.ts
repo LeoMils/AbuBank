@@ -52,6 +52,23 @@ export interface VoiceTrace {
   noSpeechProb: number | null
   compressionRatio: number | null
   correctionsApplied: Array<{ from: string; to: string; reason: string }>
+
+  semanticIntent: string | null
+  semanticSource: string | null
+  extractionConfidence: number | null
+  extractedTitle: string | null
+  extractedDate: string | null
+  extractedStartTime: string | null
+  extractedEndTime: string | null
+  extractedLocation: string | null
+  extractedPeople: string[]
+  extractedNotes: string | null
+  missingFields: Array<'title' | 'date' | 'time'>
+  clarificationQuestion: string | null
+  llmFallbackUsed: boolean
+  validationResult: string | null
+  semanticRawInput: string | null
+  semanticCorrectedInput: string | null
   parseDecision: string | null
   createResult: string | null
   error: string | null
@@ -87,6 +104,22 @@ export function createInitialTrace(version: string): VoiceTrace {
     noSpeechProb: null,
     compressionRatio: null,
     correctionsApplied: [],
+    semanticIntent: null,
+    semanticSource: null,
+    extractionConfidence: null,
+    extractedTitle: null,
+    extractedDate: null,
+    extractedStartTime: null,
+    extractedEndTime: null,
+    extractedLocation: null,
+    extractedPeople: [],
+    extractedNotes: null,
+    missingFields: [],
+    clarificationQuestion: null,
+    llmFallbackUsed: false,
+    validationResult: null,
+    semanticRawInput: null,
+    semanticCorrectedInput: null,
     parseDecision: null,
     createResult: null,
     error: null,
