@@ -107,11 +107,14 @@ describe('B2.3 — runtime classification still routes correctly (Truth Contract
     expect(isOnlineCurrentInfoQuery('Contame algo interesante')).toBe(false)
   })
 
-  it('"hola" / "no sé" / "שלום" → open_chat content world with gentle options', () => {
+  it('"hola" / "no sé" / "שלום" → open_chat but falls through to LLM (no deterministic seed)', () => {
     for (const t of ['hola', 'no sé', 'שלום', 'hi']) {
       const w = chooseContentWorld(t)
       expect(w.contentMode, t).toBe('open_chat')
-      expect(w.gentleOptions.length).toBeGreaterThanOrEqual(2)
+      // Vague greetings now fall through to the LLM for dynamic warm responses
+      // instead of returning the same passive "אני כאן בשקט..." seed.
+      expect(w.suggestedOpening).toBe('')
+      expect(w.gentleOptions.length).toBe(0)
     }
   })
 
