@@ -29,6 +29,7 @@ import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
 import { type CalendarCreateState, IDLE_STATE, isCreateIntent, startCreate, updateCreate, isConfirm, isCancel } from './calendarCreate'
 import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateClarify } from './responseShaper'
 import { addAppointment } from '../AbuCalendar/service'
+import { adviseFreeSpeech } from './freeSpeechAdvisory'
 
 let msgCounter = 0
 function nextId(): string {
@@ -273,6 +274,19 @@ export function AbuAI() {
           : shapeCreateClarify(next.missing)
         const followupMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: response, timestamp: Date.now() }
         setMessages(prev => [...prev, followupMsg])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── Free Speech first-pass advisory (P04) ──────────────────────────
+      // Runs routeFreeSpeech() as a safe classifier. Intercepts cross-domain
+      // intents (calendar create, WhatsApp, navigation, unclear) with
+      // no-side-effect responses. Falls through for AbuAI-native domains.
+      const advisory = adviseFreeSpeech(msgText)
+      if (advisory.response !== null) {
+        const advisoryMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: advisory.response, timestamp: Date.now() }
+        setMessages(prev => [...prev, advisoryMsg])
         setLoading(false)
         streamingMsgIdRef.current = null
         return
