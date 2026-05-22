@@ -53,6 +53,12 @@ describe('P0.1 — containsCreateVerb detector (HE/ES/EN)', () => {
     expect(containsCreateVerb('בואי לקבוע פגישה')).toBe(true)
   })
 
+  it('Hebrew: "שימי" / "שים" / "לשים" (put in calendar) → true', () => {
+    expect(containsCreateVerb('שימי לי ביומן פגישה מחר')).toBe(true)
+    expect(containsCreateVerb('שים לי ביומן רופא מחר')).toBe(true)
+    expect(containsCreateVerb('אני רוצה לשים ביומן פגישה')).toBe(true)
+  })
+
   it('Spanish: "agregá" / "agendá" / "poneme" / "anotá" / "añade" → true', () => {
     expect(containsCreateVerb('Agregá médico mañana a las diez')).toBe(true)
     expect(containsCreateVerb('Agendá una reunión con Leo')).toBe(true)
