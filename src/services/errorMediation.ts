@@ -56,6 +56,7 @@ export function classifyError(err: unknown, status?: number): ErrorCategory {
   // Text-based (for raw fetch errors)
   if (text.includes('quota') || text.includes('billing') || text.includes('insufficient')) return 'quota'
   if (text.includes('unauthorized') || text.includes('invalid_api_key')) return 'auth'
+  if (text.includes('too many') || text.includes('rate limit') || text.includes('rate_limit')) return 'rate-limit'
   if (text.includes('timeout') || text.includes('timed out')) return 'timeout'
   if (text.includes('network') || text.includes('failed to fetch')) return 'network'
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'network'
@@ -172,6 +173,12 @@ export function mediateVoiceCaptureError(
   phase: 'permission_or_device' | 'recording_start' | 'transcription' = 'permission_or_device',
 ): string {
   if (phase === 'transcription') {
+    const cat = classifyError(err)
+    if (cat === 'auth') return 'יש בעיה בהגדרות השירות. דברי עם לאו.'
+    if (cat === 'quota') return 'השירות לא זמין כרגע. דברי עם לאו.'
+    if (cat === 'rate-limit') return 'השירות עמוס כרגע. ננסה שוב בעוד רגע.'
+    if (cat === 'network') return 'אין חיבור לאינטרנט. ננסה שוב כשיהיה חיבור.'
+    if (cat === 'timeout') return 'התמלול לוקח יותר מדי זמן. ננסה שוב.'
     return 'לא הצלחתי להבין את ההקלטה. ננסה שוב.'
   }
   if (phase === 'recording_start') {

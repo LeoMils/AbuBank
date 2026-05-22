@@ -42,6 +42,7 @@ import { VoiceCard } from './VoiceCard'
 import { shapeCreateConfirmReadback } from '../AbuAI/responseShaper'
 import { parseCorrection, applyCorrection } from './correctionParser'
 import { shouldShowConfirmationReadback } from './voiceReadbackGuard'
+import { shouldBlockVoiceRecord } from './voiceRecordGuard'
 import { pickUpdateAck, CANCEL_RESPONSE, UNRELATED_RESPONSE, pickClarifyQuestion } from '../AbuAI/conversationLayer'
 import { speak } from '../../services/voice'
 import { Toast } from '../../components/Toast'
@@ -325,7 +326,7 @@ export function AbuCalendar() {
     }
   }
 
-  async function handleVoiceRecord() {
+  async function handleVoiceRecord(opts?: { bypassGuard?: boolean }) {
     // P0.6 — STOP path. The user tapped the red button. Make the
     // "stopping" state visible IMMEDIATELY so no tap ever feels silent.
     if (isRecording) {
@@ -356,7 +357,7 @@ export function AbuCalendar() {
       }
       return
     }
-    if (voiceStatus) return
+    if (shouldBlockVoiceRecord(voiceStatus, opts)) return
     // Fresh trace for a new recording session.
     const fresh = createInitialTrace(APP_VERSION.version)
     voiceTraceRef.current = fresh
@@ -713,7 +714,7 @@ export function AbuCalendar() {
     lastAckRef.current = null
     correctingRef.current = false
     setIsCorrecting(false)
-    void handleVoiceRecord()
+    void handleVoiceRecord({ bypassGuard: true })
   }
 
   function resolveAmbiguity(period: 'pm' | 'am') {
@@ -1111,7 +1112,7 @@ export function AbuCalendar() {
             ＋ הוספה ידנית
           </SeniorButton>
 
-          <button type="button" onClick={handleVoiceRecord}
+          <button type="button" onClick={() => handleVoiceRecord()}
             onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
             onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
             onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}

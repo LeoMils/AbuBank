@@ -111,6 +111,33 @@ describe('VoiceCard — correction mic wiring', () => {
   })
 })
 
+describe('VoiceCard — failed_to_save header is not speech-not-understood', () => {
+  it('header says "הבנתי, אבל לא הצלחתי לשמור" when voiceError mentions save', () => {
+    // VoiceCard uses voiceError content to differentiate save-failure from speech failure
+    expect(SOURCE).toContain('לשמור')
+    expect(SOURCE).toContain('הבנתי, אבל לא הצלחתי לשמור')
+  })
+
+  it('header still says "לא הצלחתי להבין" for non-save errors', () => {
+    expect(SOURCE).toContain("'לא הצלחתי להבין'")
+  })
+})
+
+describe('VoiceCard — retry bypass guard', () => {
+  it('handleVoiceRecord accepts bypassGuard option', () => {
+    expect(INDEX_SOURCE).toContain('bypassGuard')
+    expect(INDEX_SOURCE).toMatch(/async function handleVoiceRecord\(opts\?/)
+  })
+
+  it('voiceStatus guard uses shouldBlockVoiceRecord', () => {
+    expect(INDEX_SOURCE).toContain('shouldBlockVoiceRecord(voiceStatus, opts)')
+  })
+
+  it('handleVoiceRetry passes bypassGuard: true', () => {
+    expect(INDEX_SOURCE).toContain('handleVoiceRecord({ bypassGuard: true })')
+  })
+})
+
 describe('VoiceCard — error surfaces', () => {
   it('renders voiceError block', () => {
     expect(SOURCE).toContain('data-testid="voice-error"')
