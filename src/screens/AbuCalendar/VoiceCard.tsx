@@ -147,7 +147,9 @@ export function VoiceCard({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div data-testid="voice-card-header" style={{ fontSize: 18, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif" }}>
-            {voiceState === 'error' ? 'לא הצלחתי להבין' : 'הבנתי ממך ש...'}
+            {voiceState === 'error'
+              ? (voiceError?.includes('לשמור') ? 'הבנתי, אבל לא הצלחתי לשמור' : 'לא הצלחתי להבין')
+              : 'הבנתי ממך ש...'}
           </div>
           <div data-testid="voice-state-badge" style={{
             fontSize: 13, fontWeight: 700, color: STATE_COLOR[voiceState],

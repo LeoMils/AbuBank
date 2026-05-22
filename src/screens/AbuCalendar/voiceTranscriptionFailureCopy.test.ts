@@ -62,6 +62,17 @@ describe('P0.5 — userFacingError copy matches the spec', () => {
   })
 })
 
+describe('P0.5 — transcription service errors differentiated from speech-not-understood', () => {
+  it('mediateVoiceCaptureError uses classifyError for transcription phase', () => {
+    // The function now classifies the error before choosing copy
+    const mediationSrc = fs.readFileSync(path.resolve(__dirname, '../../services/errorMediation.ts'), 'utf8')
+    expect(mediationSrc).toContain("const cat = classifyError(err)")
+    expect(mediationSrc).toContain("cat === 'auth'")
+    expect(mediationSrc).toContain("cat === 'network'")
+    expect(mediationSrc).toContain("cat === 'rate-limit'")
+  })
+})
+
 describe('P0.5 — visual safety preserved', () => {
   it('AbuCalendar voice patch does NOT modify Home', () => {
     // Source-grep guard: the rebased PR must not touch Home/index.tsx.
