@@ -600,10 +600,22 @@ export function AbuCalendar() {
               const failMsg = formatCreateFailure('storage_failed', lang)
               showFailureToast(failMsg)
               setVoiceFailure(failMsg, `create_failed:${decision.reason}`)
+              setVoiceParsed({
+                title: decision.draft.title,
+                date: decision.draft.date,
+                time: decision.draft.time,
+                emoji: decision.draft.emoji,
+                location: decision.draft.location ?? null,
+                notes: decision.draft.notes ?? null,
+              })
               return
             }
             case 'failed_to_understand': {
-              setVoiceFailure('לא הצלחתי להבין את ההקלטה. ננסה שוב?', 'failed_to_understand')
+              const failMsg = 'לא הצלחתי להבין את ההקלטה. ננסה שוב?'
+              setVoiceFailure(failMsg, 'failed_to_understand')
+              setVoiceParsed({
+                title: '', date: null, time: null, emoji: '📌',
+              })
               return
             }
           }
@@ -693,6 +705,18 @@ export function AbuCalendar() {
     if (isRecording) return
     correctingRef.current = true
     setIsCorrecting(true)
+    void handleVoiceRecord()
+  }
+
+  function handleVoiceRetry() {
+    setVoiceParsed(null)
+    setVoiceError(null)
+    setVoiceState('idle')
+    setVoiceStatus('')
+    setCorrectionAck(null)
+    lastAckRef.current = null
+    correctingRef.current = false
+    setIsCorrecting(false)
     void handleVoiceRecord()
   }
 
@@ -1164,6 +1188,7 @@ export function AbuCalendar() {
             parsed={voiceParsed}
             existingAppts={appointments}
             onConfirm={handleVoiceConfirm}
+            onRetry={handleVoiceRetry}
             onCancel={() => {
               speak(CANCEL_RESPONSE).catch(() => {})
               setVoiceParsed(null)

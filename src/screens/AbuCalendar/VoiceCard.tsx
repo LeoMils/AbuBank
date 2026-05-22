@@ -48,6 +48,7 @@ interface VoiceCardProps {
   existingAppts: Appointment[]
   onConfirm: (final: { title: string; date: string; time: string; emoji: string; location?: string; notes?: string }) => void
   onCancel: () => void
+  onRetry?: () => void
   confirmationText?: string
   onCorrection?: () => void
   isCorrecting?: boolean
@@ -76,7 +77,7 @@ const FIELD_INPUT_MISSING: React.CSSProperties = {
 }
 
 export function VoiceCard({
-  parsed, existingAppts, onConfirm, onCancel, confirmationText,
+  parsed, existingAppts, onConfirm, onCancel, onRetry, confirmationText,
   onCorrection, isCorrecting, rawTranscript,
   voiceState = 'parsed', voiceError = null, onReparse,
   onSpokenDone,
@@ -145,8 +146,8 @@ export function VoiceCard({
         maxHeight: '92vh', overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif" }}>
-            שמעתי נכון?
+          <div data-testid="voice-card-header" style={{ fontSize: 18, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif" }}>
+            {voiceState === 'error' ? 'לא הצלחתי להבין' : 'הבנתי ממך ש...'}
           </div>
           <div data-testid="voice-state-badge" style={{
             fontSize: 13, fontWeight: 700, color: STATE_COLOR[voiceState],
@@ -315,14 +316,22 @@ export function VoiceCard({
           </button>
         )}
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button type="button" onClick={onCancel} style={{
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button type="button" data-testid="voice-cancel-btn" onClick={onCancel} style={{
             flex: 1, padding: '14px', borderRadius: 14,
             border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.05)',
             color: 'rgba(255,255,255,0.55)', fontSize: 17, fontWeight: 600,
             fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 52,
           }}>ביטול</button>
-          <button type="button" disabled={!canSave}
+          {onRetry && (
+            <button type="button" data-testid="voice-retry-btn" onClick={onRetry} style={{
+              flex: 1, padding: '14px', borderRadius: 14,
+              border: '1px solid rgba(201,168,76,0.32)', background: 'rgba(201,168,76,0.08)',
+              color: CREAM, fontSize: 17, fontWeight: 600,
+              fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 52,
+            }}>נסי שוב</button>
+          )}
+          <button type="button" data-testid="voice-save-btn" disabled={!canSave}
             onClick={() => canSave && onConfirm({
               title: trimmedTitle, date, time, emoji,
               ...(location.trim() ? { location: location.trim() } : {}),
@@ -335,7 +344,7 @@ export function VoiceCard({
               fontSize: 17, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
               cursor: canSave ? 'pointer' : 'not-allowed', minHeight: 52,
             }}
-          >כן, שמרי!</button>
+          >שמירה</button>
         </div>
       </div>
     </div>

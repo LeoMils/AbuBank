@@ -157,7 +157,7 @@ describe('P0.6 — every processVoiceTranscript branch traces its outcome', () =
   })
 
   it('failed_to_understand uses setVoiceFailure', () => {
-    expect(INDEX.includes("setVoiceFailure('לא הצלחתי להבין את ההקלטה. ננסה שוב?', 'failed_to_understand')")).toBe(true)
+    expect(INDEX.includes("setVoiceFailure(failMsg, 'failed_to_understand')")).toBe(true)
   })
 })
 
