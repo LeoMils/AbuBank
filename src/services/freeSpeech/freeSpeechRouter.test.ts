@@ -436,3 +436,37 @@ describe('freeSpeechRouter — calendar context fallback', () => {
     expect(r.confidence).toBe('medium')
   })
 })
+
+// ─── P43 regression: Hebrew "מה יש ב..." overmatch ─────────────────────────
+
+describe('freeSpeechRouter — P43 Hebrew calendar query overmatch fix', () => {
+  // Negative tests: "מה יש ב..." with non-calendar targets must NOT route to calendar
+  it.each([
+    'מה יש במקרר',
+    'מה יש בטלוויזיה',
+    'מה יש בחדשות',
+    'מה יש בבית',
+    'מה יש בסלון',
+    'מה יש במטבח',
+    'מה יש בעיר',
+    'מה יש בקופסה',
+    'מה יש במסעדה הזאת',
+    'מה יש בבנק',
+  ])('"%s" must NOT route to calendar', (text) => {
+    const r = routeFreeSpeech(text)
+    expect(r.domain).not.toBe('calendar')
+  })
+
+  // Positive tests: valid calendar queries must still work
+  it.each([
+    'מה יש לי היום',
+    'מה יש לי מחר',
+    'מה יש לי ביומן',
+    'מה יש ביומן היום',
+    'איזה פגישות יש לי השבוע',
+    'מתי התור לרופא',
+    'מה יש בשבוע הבא ביומן',
+  ])('"%s" must route to calendar/query/read_only', (text) => {
+    expectRoute(text, { domain: 'calendar', action: 'query', safety: 'read_only' })
+  })
+})

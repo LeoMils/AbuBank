@@ -40,7 +40,10 @@ function detectLanguage(text: string): FreeSpeechLanguage {
 // ─── Calendar patterns ──────────────────────────────────────────────────────
 
 // Calendar QUERY — asking about existing events
-const CAL_QUERY_HE = /מה יש לי|מה יש היום|מה קבעתי|מה קורה היום|מה קורה מחר|מה התוכנית|מה יש מחר|יש לי משהו|מתי (יש לי |ה)?(רופא|תור|פגישה|אירוע)|מתי התור|יש (אירוע|תור|פגישה).{0,12}ביומן|יום עמוס|פנוי השבוע|פנויה השבוע|מה היה לי|מה יש ב|מה יש השבוע|מה יש שבוע הבא|הפגישות הקרובות|התורים הקרובים|האירועים הקרובים/i
+// Hebrew calendar query — requires clear calendar context.
+// The bare "מה יש ב" prefix was over-broad (matched "מה יש במקרר", "מה יש בטלוויזיה").
+// Now "מה יש ב..." only matches when followed by יומן or a known schedule scope word.
+const CAL_QUERY_HE = /מה יש לי|מה יש היום|מה קבעתי|מה קורה היום|מה קורה מחר|מה התוכנית|מה יש מחר|יש לי משהו|מתי (יש לי |ה)?(רופא|תור|פגישה|אירוע)|מתי התור|יש (אירוע|תור|פגישה).{0,12}ביומן|יום עמוס|פנוי השבוע|פנויה השבוע|מה היה לי|מה יש ב(יומן|שבוע הבא)|מה יש השבוע|מה יש שבוע הבא|הפגישות הקרובות|התורים הקרובים|האירועים הקרובים|איזה פגישות יש לי/i
 const CAL_QUERY_ES = /qu[eé]\s+tengo|qu[eé]\s+ten[eé]s|cu[aá]ndo\s+tengo\s+(?:m[eé]dico|doctor|turno|cita)|calendario|agenda\s+(?:de\s+)?(?:hoy|ma[nñ]ana|la\s+semana)/i
 const CAL_QUERY_EN = /what(?:'?s| do i have| is).{0,10}(?:today|tomorrow|this week|coming up|next|schedule|calendar|agenda)|upcoming\s+(?:appointments?|events?)|my\s+(?:calendar|agenda)|tomorrow(?:'?s)?\s+(?:schedule|calendar|agenda|appointments?)/i
 
