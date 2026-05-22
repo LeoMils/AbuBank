@@ -40,6 +40,7 @@ import { ManualModal } from './ManualModal'
 import { VoiceCard } from './VoiceCard'
 import { shapeCreateConfirmReadback } from '../AbuAI/responseShaper'
 import { parseCorrection, applyCorrection } from './correctionParser'
+import { shouldShowConfirmationReadback } from './voiceReadbackGuard'
 import { pickUpdateAck, CANCEL_RESPONSE, UNRELATED_RESPONSE, pickClarifyQuestion } from '../AbuAI/conversationLayer'
 import { speak } from '../../services/voice'
 import { Toast } from '../../components/Toast'
@@ -1173,16 +1174,22 @@ export function AbuCalendar() {
       )}
 
       {voiceParsed && (() => {
-        const baseConfirm = shapeCreateConfirmReadback({
-          title: voiceParsed.title,
-          personName: voiceParsed.personName ?? null,
-          date: voiceParsed.date,
-          time: voiceParsed.time,
-          location: voiceParsed.location ?? null,
-          notes: voiceParsed.notes ?? null,
-          ambiguousTime: voiceParsed.ambiguousTime ?? false,
-        })
-        const fullText = correctionAck ? `${correctionAck}\n${baseConfirm}` : baseConfirm
+        // Only build confirmation readback when the draft has meaningful
+        // content and the voice pipeline is not in an error/failure state.
+        const confirmText = shouldShowConfirmationReadback(voiceState, voiceParsed)
+          ? (() => {
+              const base = shapeCreateConfirmReadback({
+                title: voiceParsed.title,
+                personName: voiceParsed.personName ?? null,
+                date: voiceParsed.date,
+                time: voiceParsed.time,
+                location: voiceParsed.location ?? null,
+                notes: voiceParsed.notes ?? null,
+                ambiguousTime: voiceParsed.ambiguousTime ?? false,
+              })
+              return correctionAck ? `${correctionAck}\n${base}` : base
+            })()
+          : undefined
         return (
           <VoiceCard
             parsed={voiceParsed}
@@ -1200,7 +1207,7 @@ export function AbuCalendar() {
               setCorrectionAck(null)
               lastAckRef.current = null
             }}
-            confirmationText={fullText}
+            {...(confirmText ? { confirmationText: confirmText } : {})}
             onCorrection={startCorrection}
             isCorrecting={isCorrecting || isRecording}
             rawTranscript={rawTranscript}
