@@ -26,8 +26,9 @@ import { ChatBubble } from './ChatBubble'
 import { BackButton } from '../../components/BackButton'
 import { ScreenHeader } from '../../components/ScreenHeader'
 import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
-import { type CalendarCreateState, IDLE_STATE, isCreateIntent, startCreate, updateCreate, isConfirm, isCancel } from './calendarCreate'
-import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateClarify } from './responseShaper'
+import { type CalendarCreateState, IDLE_STATE, isCreateIntent, startCreate, resolvePendingMessage } from './calendarCreate'
+import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateUnclear, shapeCreateClarify } from './responseShaper'
+import { routePersonalQuery } from './router'
 import { addAppointment } from '../AbuCalendar/service'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
 
@@ -246,36 +247,49 @@ export function AbuAI() {
     try {
       // ─── Calendar Create State Machine ────────────────────────────────────
       if (createState.phase !== 'idle') {
-        // We're mid-conversation — handle confirm/cancel/update
-        if (isCancel(msgText)) {
-          setCreateState(IDLE_STATE)
-          const cancelMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: shapeCreateCancelled(), timestamp: Date.now() }
-          setMessages(prev => [...prev, cancelMsg])
+        // Forgiving recovery: cancel / confirm / replace-with-new-request /
+        // local read while pending / unclear → clarify. Never blindly repeat
+        // the same confirmation.
+        const pendingRoute = routePersonalQuery(msgText)
+        const isCalendarRead = pendingRoute.type.startsWith('calendar_') && pendingRoute.type !== 'calendar_create'
+        const resolution = resolvePendingMessage(createState, msgText, isCalendarRead)
+
+        const pushAssistant = (content: string) => {
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
           setLoading(false)
           streamingMsgIdRef.current = null
+        }
+
+        if (resolution.action === 'cancel') {
+          setCreateState(IDLE_STATE)
+          pushAssistant(shapeCreateCancelled())
           return
         }
-        if (createState.phase === 'confirming' && isConfirm(msgText)) {
-          const d = createState.draft
+        if (resolution.action === 'save') {
+          const d = resolution.draft
           addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
           soundSuccess()
           setCreateState(IDLE_STATE)
-          const savedMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: shapeCreateSaved(), timestamp: Date.now() }
-          setMessages(prev => [...prev, savedMsg])
-          setLoading(false)
-          streamingMsgIdRef.current = null
+          pushAssistant(shapeCreateSaved())
           return
         }
-        // Try to fill missing fields
-        const next = updateCreate(createState, msgText)
-        setCreateState(next)
-        const response = next.phase === 'confirming'
-          ? shapeCreateConfirm(next.draft)
-          : shapeCreateClarify(next.missing)
-        const followupMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: response, timestamp: Date.now() }
-        setMessages(prev => [...prev, followupMsg])
-        setLoading(false)
-        streamingMsgIdRef.current = null
+        if (resolution.action === 'replace' || resolution.action === 'update') {
+          setCreateState(resolution.state)
+          pushAssistant(
+            resolution.state.phase === 'confirming'
+              ? shapeCreateConfirm(resolution.state.draft)
+              : shapeCreateClarify(resolution.state.missing),
+          )
+          return
+        }
+        if (resolution.action === 'read') {
+          // Trusted local calendar path — never server/LLM. Pending draft is
+          // preserved so a following "כן" can still confirm it.
+          pushAssistant(tryGroundedAnswer(msgText) ?? shapeCreateUnclear())
+          return
+        }
+        // resolution.action === 'clarify'
+        pushAssistant(shapeCreateUnclear())
         return
       }
 

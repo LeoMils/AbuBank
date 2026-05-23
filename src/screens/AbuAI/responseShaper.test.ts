@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { shapeFamilyAnswer, shapeLocationAnswer, shapeCalendarAnswer, shapeNotFound, shapeToolError, timeInWords, shapeCreateConfirm, shapeCreateConfirmReadback, shapeCreateSaved, shapeCreateCancelled, shapeCreateClarify } from './responseShaper'
+import { shapeFamilyAnswer, shapeLocationAnswer, shapeCalendarAnswer, shapeNotFound, shapeToolError, timeInWords, shapeCreateConfirm, shapeCreateConfirmReadback, shapeCreateSaved, shapeCreateCancelled, shapeCreateUnclear, shapeCreateClarify } from './responseShaper'
 import type { FamilyMember } from '../../services/familyLoader'
 
 const makeMember = (overrides: Partial<FamilyMember> = {}): FamilyMember => ({
@@ -391,8 +391,15 @@ describe('shapeCreateSaved', () => {
 })
 
 describe('shapeCreateCancelled', () => {
-  it('natural cancel', () => {
-    expect(shapeCreateCancelled()).toContain('עזבתי')
+  it('natural cancel — invites a fresh request', () => {
+    expect(shapeCreateCancelled()).toContain('ביטלתי')
+  })
+})
+
+describe('shapeCreateUnclear', () => {
+  it('offers yes / no / rewrite without repeating the confirmation', () => {
+    expect(shapeCreateUnclear()).toContain('לא הבנתי')
+    expect(shapeCreateUnclear()).not.toContain('נכון?')
   })
 })
 

@@ -41,8 +41,13 @@ function hasTimeAndDateContext(text: string): boolean {
   return hasDate && hasTime
 }
 
+// Plural "do I have meetings this week" reads like a create intent
+// ("יש לי פגישה") but is actually a read query. Keep it out of create.
+const READ_NOT_CREATE = /יש\s+לי\s+(?:פגישות|תורים|אירועים)\s+.{0,8}(?:שבוע|השבוע)/i
+
 export function isCreateIntent(text: string): boolean {
   const t = text.trim()
+  if (READ_NOT_CREATE.test(t)) return false
   if (CREATE_INTENT.test(t)) return true
   // Natural speech with "צריכה להיות" etc.
   if (NATURAL_INTENT.test(t)) return true
@@ -53,8 +58,8 @@ export function isCreateIntent(text: string): boolean {
 
 // ─── Confirmation / Cancel ──────────────────────────────────────────────────
 
-const CONFIRM = /^(כן|נכון|בדיוק|בסדר|סבבה|יאללה|תרשמי|כן תרשמי|אוקיי|אוקי|ok|yes|כן כן|בטח|ברור)$/i
-const CANCEL = /^(לא|עזבי|תשכחי|ביטול|לא צריך|בטלי|לא רוצה|חבל|תעזבי|לא לא)$/i
+const CONFIRM = /^(כן|נכון|בדיוק|בסדר|סבבה|יאללה|תרשמי|כן תרשמי|אוקיי|אוקי|ok|yes|כן כן|בטח|ברור|מאשרת|תאשרי)$/i
+const CANCEL = /^(לא|לא נכון|עזבי|תשכחי|ביטול|לא צריך|בטלי|לא רוצה|חבל|תעזבי|לא לא)$/i
 
 export function isConfirm(text: string): boolean {
   return CONFIRM.test(text.trim())
@@ -336,4 +341,56 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
     return { phase: 'confirming', draft, missing: [] }
   }
   return { phase: 'creating', draft, missing: stillMissing }
+}
+
+// ─── Pending-confirmation Recovery ──────────────────────────────────────────
+//
+// Resolves a follow-up message that arrives while a create draft is pending
+// (creating or confirming). Pure + deterministic so the runtime never blindly
+// repeats the same confirmation. `isCalendarReadQuery` is passed in by the
+// caller (computed via the router) to avoid a circular import — the router
+// imports this module.
+
+export type PendingResolution =
+  | { action: 'cancel' }
+  | { action: 'save'; draft: CreateDraft }
+  | { action: 'replace'; state: CalendarCreateState }
+  | { action: 'read' }
+  | { action: 'clarify' }
+  | { action: 'update'; state: CalendarCreateState }
+
+export function resolvePendingMessage(
+  state: CalendarCreateState,
+  text: string,
+  isCalendarReadQuery: boolean,
+): PendingResolution {
+  const t = text.trim()
+
+  // Explicit cancel always wins.
+  if (isCancel(t)) return { action: 'cancel' }
+
+  // Explicit confirmation while confirming → save.
+  if (state.phase === 'confirming' && isConfirm(t)) {
+    return { action: 'save', draft: state.draft }
+  }
+
+  // A brand-new create request replaces the pending draft.
+  if (isCreateIntent(t)) {
+    const next = startCreate(t)
+    if (next.phase !== 'idle') return { action: 'replace', state: next }
+  }
+
+  // A calendar read query while pending → answer from local calendar.
+  if (isCalendarReadQuery) return { action: 'read' }
+
+  // Otherwise try to fill missing fields from this message.
+  const next = updateCreate(state, t)
+
+  // Confirming phase that did not advance = unclear answer. Do NOT blindly
+  // repeat the same confirmation — ask for a clear yes / no / rewrite.
+  if (state.phase === 'confirming' && next.phase === 'confirming') {
+    return { action: 'clarify' }
+  }
+
+  return { action: 'update', state: next }
 }
