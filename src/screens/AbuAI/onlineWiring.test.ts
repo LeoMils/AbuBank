@@ -116,10 +116,10 @@ describe('AbuAI does NOT call the online endpoint for family / calendar queries'
   })
 })
 
-describe('build version is bumped for AbuAI natural create understanding', () => {
-  it('APP_VERSION is the AbuAI natural-create marker', () => {
+describe('build version is bumped for AbuWhatsApp contacts import recovery', () => {
+  it('APP_VERSION is the AbuWhatsApp contacts-import marker', () => {
     const verSrc = fs.readFileSync(path.resolve(__dirname, '../../version.ts'), 'utf8')
-    expect(verSrc.includes("'0.4.14-abuai-natural-create'")).toBe(true)
-    expect(verSrc.includes('AbuAI — Natural Hebrew Calendar Create Understanding')).toBe(true)
+    expect(verSrc.includes("'0.4.15-abuwhatsapp-contacts-import'")).toBe(true)
+    expect(verSrc.includes('AbuWhatsApp — Local Contacts Import Recovery')).toBe(true)
   })
 })

@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.4.14-abuai-natural-create')
-    expect(APP_VERSION.buildLabel).toBe('AbuAI — Natural Hebrew Calendar Create Understanding')
+    expect(APP_VERSION.version).toBe('0.4.15-abuwhatsapp-contacts-import')
+    expect(APP_VERSION.buildLabel).toBe('AbuWhatsApp — Local Contacts Import Recovery')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

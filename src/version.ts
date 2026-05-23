@@ -12,10 +12,10 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.4.14-abuai-natural-create',
-  buildLabel: 'AbuAI — Natural Hebrew Calendar Create Understanding',
+  version:    '0.4.15-abuwhatsapp-contacts-import',
+  buildLabel: 'AbuWhatsApp — Local Contacts Import Recovery',
   buildDate:  '2026-05-23',
-  branchHint: 'fix/abuai-natural-create-understanding',
+  branchHint: 'fix/abuwhatsapp-operator-contacts-import-recovery',
   commitHint: 'local',
 } as const
 

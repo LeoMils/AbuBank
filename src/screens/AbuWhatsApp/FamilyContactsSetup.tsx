@@ -110,7 +110,11 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
 
   function handleAdvancedImport(jsonText: string): { ok: boolean; messages: string[] } {
     const r = importContactsJSON(jsonText)
-    if (!r.ok) return { ok: false, messages: r.errors }
+    if (!r.ok) {
+      // Hebrew, senior-readable header first; the technical line-level reasons
+      // follow so the operator can see exactly which row failed.
+      return { ok: false, messages: ['הייבוא נכשל. בדקי את השורות הבאות:', ...r.errors] }
+    }
     setLocalContacts(r.contacts)
     setStored(getLocalContacts())
     return { ok: true, messages: [`נשמרו ${r.contacts.length} אנשי קשר`] }
@@ -420,7 +424,7 @@ function AdvancedJsonPanel({
             fontFamily: "'Heebo',sans-serif", fontSize: 13, fontWeight: 600,
             cursor: draft.trim().length === 0 ? 'default' : 'pointer',
           }}
-        >ייבוא JSON</button>
+        >ייבוא אנשי קשר</button>
         <button
           type="button"
           data-testid="setup-adv-export"
@@ -434,7 +438,7 @@ function AdvancedJsonPanel({
             fontFamily: "'Heebo',sans-serif", fontSize: 13, fontWeight: 600,
             cursor: stored.length === 0 ? 'default' : 'pointer',
           }}
-        >ייצוא JSON</button>
+        >ייצוא לגיבוי</button>
         {!confirmClearAll ? (
           <button
             type="button"
