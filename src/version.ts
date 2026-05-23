@@ -12,10 +12,10 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.4.15-abuwhatsapp-contacts-import',
-  buildLabel: 'AbuWhatsApp — Local Contacts Import Recovery',
+  version:    '0.4.16-operational-ai-voice-calendar',
+  buildLabel: 'AbuBank — Operational AI Voice & Calendar',
   buildDate:  '2026-05-23',
-  branchHint: 'fix/abuwhatsapp-operator-contacts-import-recovery',
+  branchHint: 'fix/abubank-operational-ai-voice-calendar',
   commitHint: 'local',
 } as const
 

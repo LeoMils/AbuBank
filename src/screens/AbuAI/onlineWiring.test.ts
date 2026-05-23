@@ -116,10 +116,10 @@ describe('AbuAI does NOT call the online endpoint for family / calendar queries'
   })
 })
 
-describe('build version is bumped for AbuWhatsApp contacts import recovery', () => {
-  it('APP_VERSION is the AbuWhatsApp contacts-import marker', () => {
+describe('build version is bumped for operational AI voice & calendar', () => {
+  it('APP_VERSION is the operational-ai-voice-calendar marker', () => {
     const verSrc = fs.readFileSync(path.resolve(__dirname, '../../version.ts'), 'utf8')
-    expect(verSrc.includes("'0.4.15-abuwhatsapp-contacts-import'")).toBe(true)
-    expect(verSrc.includes('AbuWhatsApp — Local Contacts Import Recovery')).toBe(true)
+    expect(verSrc.includes("'0.4.16-operational-ai-voice-calendar'")).toBe(true)
+    expect(verSrc.includes('AbuBank — Operational AI Voice & Calendar')).toBe(true)
   })
 })
