@@ -116,10 +116,10 @@ describe('AbuAI does NOT call the online endpoint for family / calendar queries'
   })
 })
 
-describe('build version is bumped for AbuAI confirmation recovery', () => {
-  it('APP_VERSION is the AbuAI confirmation-recovery marker', () => {
+describe('build version is bumped for AbuAI natural create understanding', () => {
+  it('APP_VERSION is the AbuAI natural-create marker', () => {
     const verSrc = fs.readFileSync(path.resolve(__dirname, '../../version.ts'), 'utf8')
-    expect(verSrc.includes("'0.4.13-abuai-confirmation-recovery'")).toBe(true)
-    expect(verSrc.includes('AbuAI — Confirmation Recovery & Calendar Query Routing')).toBe(true)
+    expect(verSrc.includes("'0.4.14-abuai-natural-create'")).toBe(true)
+    expect(verSrc.includes('AbuAI — Natural Hebrew Calendar Create Understanding')).toBe(true)
   })
 })

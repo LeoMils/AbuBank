@@ -12,10 +12,10 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.4.13-abuai-confirmation-recovery',
-  buildLabel: 'AbuAI — Confirmation Recovery & Calendar Query Routing',
+  version:    '0.4.14-abuai-natural-create',
+  buildLabel: 'AbuAI — Natural Hebrew Calendar Create Understanding',
   buildDate:  '2026-05-23',
-  branchHint: 'fix/abuai-confirmation-and-calendar-query-recovery',
+  branchHint: 'fix/abuai-natural-create-understanding',
   commitHint: 'local',
 } as const
 

@@ -278,7 +278,7 @@ export function AbuAI() {
           pushAssistant(
             resolution.state.phase === 'confirming'
               ? shapeCreateConfirm(resolution.state.draft)
-              : shapeCreateClarify(resolution.state.missing),
+              : shapeCreateClarify(resolution.state.missing, resolution.state.draft),
           )
           return
         }
@@ -312,7 +312,7 @@ export function AbuAI() {
         setCreateState(next)
         const response = next.phase === 'confirming'
           ? shapeCreateConfirm(next.draft)
-          : shapeCreateClarify(next.missing)
+          : shapeCreateClarify(next.missing, next.draft)
         const createMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: response, timestamp: Date.now() }
         setMessages(prev => [...prev, createMsg])
         setLoading(false)
