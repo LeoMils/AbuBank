@@ -212,11 +212,24 @@ export function shapeCreateUnclear(): string {
   return 'לא הבנתי. אפשר לענות כן, לא, או לכתוב מחדש.'
 }
 
-export function shapeCreateClarify(missing: Array<'title' | 'date' | 'time'>): string {
+export function shapeCreateClarify(
+  missing: Array<'title' | 'date' | 'time'>,
+  draft?: CreateDraft,
+): string {
   const first = missing[0]
   if (first === 'title') return 'מה לרשום?'
   if (first === 'date') return 'באיזה יום?'
-  if (first === 'time') return 'באיזו שעה?'
+  if (first === 'time') {
+    // Understood the hour but not AM/PM — ask the specific question instead
+    // of a generic "באיזו שעה?".
+    if (draft?.ambiguousTime && draft.time) {
+      const h = Number(draft.time.split(':')[0])
+      const displayH = h > 12 ? h - 12 : h
+      const word = HOUR_WORDS[displayH] ?? String(displayH)
+      return `באיזו שעה בדיוק — ${word} בבוקר או ${word} בערב?`
+    }
+    return 'באיזו שעה?'
+  }
   return 'מה לרשום?'
 }
 

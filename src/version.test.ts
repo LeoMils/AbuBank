@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.4.13-abuai-confirmation-recovery')
-    expect(APP_VERSION.buildLabel).toBe('AbuAI — Confirmation Recovery & Calendar Query Routing')
+    expect(APP_VERSION.version).toBe('0.4.14-abuai-natural-create')
+    expect(APP_VERSION.buildLabel).toBe('AbuAI — Natural Hebrew Calendar Create Understanding')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

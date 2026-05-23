@@ -9,6 +9,8 @@ export interface CreateDraft {
   title: string | null
   date: string | null
   time: string | null
+  /** Hour was understood but AM/PM is unresolved (e.g. bare "בשבע"). */
+  ambiguousTime?: boolean
   emoji?: string
   location?: string | null
   notes?: string | null
@@ -26,9 +28,32 @@ export const IDLE_STATE: CalendarCreateState = {
   missing: [],
 }
 
+// ─── Hebrew create-command normalization ────────────────────────────────────
+//
+// Elderly users (and ASR) produce near-miss create verbs. We map the common
+// noisy forms to canonical feminine imperatives so intent detection and title
+// stripping stay robust without any server/LLM. Idempotent — safe to call on
+// already-clean text.
+const CREATE_VERB_FIXES: Array<[RegExp, string]> = [
+  [/תקווה לי/g, 'תקבעי לי'],   // typo / homophone of תקבעי לי
+  [/תקבע לי/g, 'תקבעי לי'],    // masculine → feminine
+  [/תרשום לי/g, 'תרשמי לי'],
+  [/תעשה לי/g, 'תעשי לי'],
+  [/תוסיף לי/g, 'תוסיפי לי'],
+  [/תכניס לי/g, 'תכניסי לי'],
+  [/תזכיר לי/g, 'תזכירי לי'],
+  [/תשים לי/g, 'שימי לי'],
+]
+
+export function normalizeCreateText(text: string): string {
+  let t = text
+  for (const [re, rep] of CREATE_VERB_FIXES) t = t.replace(re, rep)
+  return t
+}
+
 // ─── Intent Detection ───────────────────────────────────────────────────────
 
-const CREATE_INTENT = /תקבע[יה]? לי|תרשמ[יה]? לי|תוסיפ[יה]? לי|תזכיר[יה]? לי|קבע[יה]? לי|רשמ[יה]? לי|אני רוצה פגישה|אני רוצה תור|יש לי תור|יש לי פגישה|תכניס[יה]? ליומן|תשימ[יה]? ביומן|צריכה לקבוע|צריך לקבוע|רוצה לקבוע/i
+const CREATE_INTENT = /תקבע[יה]? לי|תרשמ[יה]? לי|תוסיפ[יה]? לי|תזכיר[יה]? לי|תכניס[יה]? לי|תעש[יה]? לי|שימ[יה]? לי|קבע[יה]? לי|רשמ[יה]? לי|אני רוצה פגישה|אני רוצה תור|יש לי תור|יש לי פגישה|תכניס[יה]? ליומן|תשימ[יה]? ביומן|צריכה לקבוע|צריך לקבוע|רוצה לקבוע/i
 
 // Natural speech: "אני צריכה להיות אצל...", "ביום רביעי בשעה חמש..."
 // These are implicit create intents — person describes a future event
@@ -46,7 +71,7 @@ function hasTimeAndDateContext(text: string): boolean {
 const READ_NOT_CREATE = /יש\s+לי\s+(?:פגישות|תורים|אירועים)\s+.{0,8}(?:שבוע|השבוע)/i
 
 export function isCreateIntent(text: string): boolean {
-  const t = text.trim()
+  const t = normalizeCreateText(text.trim())
   if (READ_NOT_CREATE.test(t)) return false
   if (CREATE_INTENT.test(t)) return true
   // Natural speech with "צריכה להיות" etc.
@@ -77,77 +102,86 @@ const HEBREW_HOUR_WORDS: Record<string, number> = {
   'אחת עשרה': 11, 'שתים עשרה': 12,
 }
 
-export function parseHebrewTime(text: string): string | null {
-  const t = text.trim()
+// Period hints. PM covers evening / noon / afternoon; AM covers morning.
+const PERIOD_PM = /בערב|בלילה|אחר[י]? הצהריים|אחה"צ|בצהריים/
+const PERIOD_AM = /בבוקר|לפנות בוקר/
 
-  // "בשעה 15:00" / "ב-10:30" / "בשעה 9"
-  const numericTime = t.match(/ב[־-]?(?:שעה\s+)?(\d{1,2})[:.:](\d{2})/)
+// Resolve a 1-12 hour to 24h using period hints. With no hint, hours 1-6 are
+// taken as PM (appointment convention) and 7-12 stay as the AM reading but are
+// flagged ambiguous so the create flow asks "בבוקר או בערב?" instead of
+// silently guessing.
+function applyPeriod(h: number, t: string): { hour: number; ambiguous: boolean } {
+  if (PERIOD_AM.test(t)) return { hour: h >= 12 ? h - 12 : h, ambiguous: false }
+  if (PERIOD_PM.test(t)) return { hour: h >= 1 && h <= 11 ? h + 12 : h, ambiguous: false }
+  if (h >= 1 && h <= 6) return { hour: h + 12, ambiguous: false }
+  return { hour: h, ambiguous: h >= 7 && h <= 11 }
+}
+
+export interface TimeParse {
+  time: string | null
+  ambiguous: boolean
+}
+
+export function parseHebrewTimeDetailed(text: string): TimeParse {
+  const t = normalizeCreateText(text.trim())
+
+  // "בשעה 15:00" / "ב-10:30" / "בשעה 9" — numeric is literal (never ambiguous).
+  const numericTime = t.match(/ב[־-]?(?:שעה\s+)?(\d{1,2})[:.](\d{2})/)
   if (numericTime) {
     const h = parseInt(numericTime[1]!, 10)
     const m = parseInt(numericTime[2]!, 10)
     if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
-      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      return { time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, ambiguous: false }
     }
   }
 
-  // "בשעה 10" (no minutes)
-  const hourOnly = t.match(/ב[־-]?שעה\s+(\d{1,2})(?!\s*[:.:]?\d)/)
+  // "בשעה 10" (no minutes) — literal.
+  const hourOnly = t.match(/ב[־-]?שעה\s+(\d{1,2})(?!\s*[:.]?\d)/)
   if (hourOnly) {
     const h = parseInt(hourOnly[1]!, 10)
-    if (h >= 0 && h <= 23) {
-      return `${String(h).padStart(2, '0')}:00`
-    }
+    if (h >= 0 && h <= 23) return { time: `${String(h).padStart(2, '0')}:00`, ambiguous: false }
   }
 
-  // "בצהריים" = 12:00
-  if (/בצהריים/.test(t)) return '12:00'
-
-  // "בשעה חמש" / "בשעה שלוש וחצי" — word-number after בשעה
+  // Hebrew word hours: "בשעה חמש" / "בשבע בערב" / "בשלוש וחצי" / "בעשר בבוקר".
+  // Longest words first so "אחת עשרה" beats "אחת".
   for (const [word, num] of Object.entries(HEBREW_HOUR_WORDS).sort((a, b) => b[0].length - a[0].length)) {
-    const shaahPattern = new RegExp(`בשעה\\s+${word}(\\s+וחצי)?(\\s+ורבע)?`)
-    const shaahMatch = t.match(shaahPattern)
-    if (shaahMatch) {
-      const half = !!shaahMatch[1]
-      const quarter = !!shaahMatch[2]
-      const minutes = half ? 30 : quarter ? 15 : 0
-      const isMorning = /בבוקר/.test(t)
-      const isEvening = /בערב/.test(t)
-      let h = num
-      if (isMorning) { /* keep */ }
-      else if (isEvening) { if (h < 12) h += 12 }
-      else { if (h >= 1 && h <= 6) h += 12 }
-      return `${String(h).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-    }
-  }
-
-  // "בבוקר" without specific hour — don't guess
-  // "בערב" without specific hour — don't guess
-
-  // Hebrew word hours: "בשלוש" / "בשלוש וחצי" / "בעשר בבוקר"
-  // Try compound first ("אחת עשרה"), then single
-  for (const [word, num] of Object.entries(HEBREW_HOUR_WORDS).sort((a, b) => b[0].length - a[0].length)) {
-    const pattern = new RegExp(`ב${word}(\\s+וחצי)?(\\s+ורבע)?`)
+    const pattern = new RegExp(`(?:בשעה\\s+|ב)${word}(\\s+וחצי)?(\\s+ורבע)?`)
     const match = t.match(pattern)
     if (match) {
-      const half = !!match[1]
-      const quarter = !!match[2]
-      const minutes = half ? 30 : quarter ? 15 : 0
-      const isMorning = /בבוקר/.test(t)
-      const isEvening = /בערב/.test(t)
-      // Default: hours 1-6 → PM (appointments), 7-11 → AM, explicit overrides
-      let h = num
-      if (isMorning) {
-        // keep as-is (1-12 = AM)
-      } else if (isEvening) {
-        if (h < 12) h += 12
-      } else {
-        // Default convention: 1-6 = PM for appointments
-        if (h >= 1 && h <= 6) h += 12
-      }
-      return `${String(h).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+      const minutes = match[1] ? 30 : match[2] ? 15 : 0
+      const { hour, ambiguous } = applyPeriod(num, t)
+      return { time: `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`, ambiguous }
     }
   }
 
+  // "השעה חמש" — hour word after the bare label.
+  for (const [word, num] of Object.entries(HEBREW_HOUR_WORDS).sort((a, b) => b[0].length - a[0].length)) {
+    if (new RegExp(`השעה\\s+${word}`).test(t)) {
+      const { hour, ambiguous } = applyPeriod(num, t)
+      return { time: `${String(hour).padStart(2, '0')}:00`, ambiguous }
+    }
+  }
+
+  // "בצהריים" with no explicit hour = 12:00. Checked AFTER hour words so
+  // "בשתיים בצהריים" resolves to 14:00, not noon.
+  if (/בצהריים/.test(t)) return { time: '12:00', ambiguous: false }
+
+  return { time: null, ambiguous: false }
+}
+
+export function parseHebrewTime(text: string): string | null {
+  return parseHebrewTimeDetailed(text).time
+}
+
+// Resolve an ambiguous tentative time given a period-only follow-up
+// ("בבוקר" / "בערב"). Preserves the minutes of the tentative time.
+function resolvePeriodFollowup(time: string, text: string): string | null {
+  const [hStr, mStr] = time.split(':')
+  const base = parseInt(hStr!, 10) % 12
+  if (/בוקר/.test(text)) return `${String(base).padStart(2, '0')}:${mStr}`
+  if (/ערב|לילה|צהריים|אחה|אחר הצהר/.test(text)) {
+    return `${String(base + 12).padStart(2, '0')}:${mStr}`
+  }
   return null
 }
 
@@ -179,6 +213,15 @@ function nextDayOfWeek(dayIndex: number): string {
   return localDateStr(d)
 }
 
+// Weekday `dayIndex` in the FOLLOWING calendar week (week starts Sunday).
+function weekdayInNextWeek(dayIndex: number): string {
+  const d = new Date()
+  let daysToNextSunday = (7 - d.getDay()) % 7
+  if (daysToNextSunday === 0) daysToNextSunday = 7
+  d.setDate(d.getDate() + daysToNextSunday + dayIndex)
+  return localDateStr(d)
+}
+
 export function parseCreateDate(text: string): string | null {
   const t = text.trim()
 
@@ -190,14 +233,25 @@ export function parseCreateDate(text: string): string | null {
   }
   if (/מחר/.test(t)) return tomorrowStr()
 
-  // Day of week: "ביום ראשון", "ביום שני", etc.
+  // Day of week with natural modifiers:
+  //   "ביום חמישי", "יום חמישי", "בחמישי", "חמישי הקרוב", "חמישי הבא",
+  //   "בשבוע הבא ביום שלישי".
+  // "הקרוב"/"הבא" → next occurrence of that weekday. "שבוע הבא" present →
+  // that weekday in the following calendar week.
   const dayNames: Record<string, number> = {
     'ראשון': 0, 'שני': 1, 'שלישי': 2, 'רביעי': 3,
     'חמישי': 4, 'שישי': 5, 'שבת': 6,
   }
+  const inNextWeek = /שבוע\s+הבא/.test(t)
   for (const [name, idx] of Object.entries(dayNames)) {
-    if (t.includes(`יום ${name}`) || t.includes(`ביום ${name}`)) {
-      return nextDayOfWeek(idx)
+    // Either: a prefixed weekday (ביום/יום/ב + name), OR a bare name carrying
+    // an explicit הקרוב/הבא modifier. The Hebrew negative-lookahead avoids
+    // matching the name as a prefix of a longer word.
+    const re = new RegExp(
+      `(?:ב?יום\\s+|ב)${name}(?![\\u0590-\\u05FF])|(?<![\\u0590-\\u05FF])${name}\\s+(?:הקרוב|הבא)`,
+    )
+    if (re.test(t)) {
+      return inNextWeek ? weekdayInNextWeek(idx) : nextDayOfWeek(idx)
     }
   }
 
@@ -218,21 +272,28 @@ export function parseCreateDate(text: string): string | null {
 // Hebrew has no \b word boundary — use space/start-of-string anchor
 const EXPLANATION_NOISE = /\s+(?:כי|כיוון ש|בגלל ש|למרות ש)\s.*/gi
 // Intent prefixes to strip (anywhere, not just start)
-const NOISE_PHRASES = /(תקבעי? לי|תרשמי? לי|תוסיפי? לי|תזכירי? לי|קבעי? לי|רשמי? לי|תכניסי? ליומן|תשימי? ביומן|צריכה? לקבוע|רוצה? לקבוע|אני רוצה|יש לי)\s*/gi
+const NOISE_PHRASES = /(תקבעי? לי|תרשמי? לי|תוסיפי? לי|תזכירי? לי|תכניסי? לי|תעשי? לי|שימי? לי|קבעי? לי|רשמי? לי|תכניסי? ליומן|תשימי? ביומן|צריכה? לקבוע|רוצה? לקבוע|אני רוצה|יש לי)\s*/gi
 // Natural speech verbs
 const NATURAL_NOISE = /(אני צריכה? להיות|אני צריכה? להגיע|אני צריכה? ללכת|אני צריכה? לנסוע|אני צריכה?)\s*/gi
-// Time words to strip
-const TIME_NOISE = /\s*ב(שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|אחת עשרה|שתים עשרה|צהריים)(\s+וחצי|\s+ורבע)?(\s+בבוקר|\s+בערב|\s+אחר הצהריים|\s+אחרי הצהריים|\s+בלילה)?\s*/gi
-const DATE_NOISE = /\s*(היום|מחר|מחרתיים|ביום\s+(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)|בעוד שבוע)\s*/gi
+// Time words to strip (includes אחת/שתיים and the noon period word)
+const TIME_NOISE = /\s*ב(אחת עשרה|שתים עשרה|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|צהריים)(\s+וחצי|\s+ורבע)?(\s+בבוקר|\s+בערב|\s+בצהריים|\s+אחר הצהריים|\s+אחרי הצהריים|\s+בלילה)?\s*/gi
+// Date words to strip — incl. weekday phrases with prefix or הקרוב/הבא modifier
+const WEEKDAY_NAMES = '(?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)'
+const DATE_NOISE = new RegExp(
+  `\\s*(?:היום|מחרתיים|מחר|בשבוע הבא|שבוע הבא|בעוד שבוע|` +
+  `(?:ב?יום\\s+|ב)${WEEKDAY_NAMES}(?:\\s+(?:הקרוב|הבא))?|` +
+  `${WEEKDAY_NAMES}\\s+(?:הקרוב|הבא))\\s*`,
+  'gi',
+)
 const HOUR_NOISE = /\s*בשעה\s+(?:אחת עשרה|שתים עשרה|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)(?:\s+וחצי|\s+ורבע)?\s*/gi
 const HOUR_DIGIT_NOISE = /\s*ב[־-]?(?:שעה\s+)?\d{1,2}[:.:]?\d{0,2}\s*/gi
 // Standalone time-of-day words (when not part of a time phrase already stripped)
-const PERIOD_NOISE = /(בבוקר|בערב|בלילה|אחר הצהריים|אחרי הצהריים)/gi
+const PERIOD_NOISE = /(בבוקר|בערב|בלילה|בצהריים|אחר הצהריים|אחרי הצהריים)/gi
 // Connector word leftover
 const LEADING_CONNECTOR = /^[שו]\s+/
 
 export function extractTitle(text: string): string | null {
-  let t = text.trim()
+  let t = normalizeCreateText(text.trim())
   // 1. Strip explanation clauses first
   t = t.replace(EXPLANATION_NOISE, '')
   // 2. Strip intent phrases and natural speech verbs
@@ -248,6 +309,9 @@ export function extractTitle(text: string): string | null {
   t = t.replace(/\s+/g, ' ').trim()
   t = t.replace(LEADING_CONNECTOR, '')
   t = t.replace(/[.!?,;]+$/, '').trim()
+  // A bare "עם <person>" is a meeting — restore the implicit noun so the
+  // stored title is "פגישה עם אופיר", never just "עם אופיר".
+  if (/^עם\s/.test(t)) t = `פגישה ${t}`
   return t.length >= 2 ? t : null
 }
 
@@ -263,16 +327,17 @@ export function parseCreateIntent(text: string): ParsedCreateIntent | null {
 
   const title = extractTitle(text)
   const date = parseCreateDate(text)
-  const time = parseHebrewTime(text)
+  const { time, ambiguous } = parseHebrewTimeDetailed(text)
   const emoji = title ? detectEmoji(title) : '📅'
 
   const missing: Array<'title' | 'date' | 'time'> = []
   if (!title) missing.push('title')
   if (!date) missing.push('date')
-  if (!time) missing.push('time')
+  // No time, OR an understood-but-ambiguous time, both need clarification.
+  if (!time || ambiguous) missing.push('time')
 
   return {
-    draft: { title, date, time, emoji },
+    draft: { title, date, time, ambiguousTime: ambiguous, emoji },
     missing,
   }
 }
@@ -329,11 +394,28 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
 
   // Time
   if (stillMissing.includes('time')) {
-    const time = parseHebrewTime(t)
-    if (time) {
-      draft.time = time
+    const removeTime = () => {
       const idx = stillMissing.indexOf('time')
       if (idx !== -1) stillMissing.splice(idx, 1)
+    }
+    const { time, ambiguous } = parseHebrewTimeDetailed(t)
+    if (time && !ambiguous) {
+      // A clear time in this message wins.
+      draft.time = time
+      draft.ambiguousTime = false
+      removeTime()
+    } else if (draft.ambiguousTime && draft.time) {
+      // We already heard the hour; this message may just resolve בבוקר/בערב.
+      const resolved = resolvePeriodFollowup(draft.time, t)
+      if (resolved) {
+        draft.time = resolved
+        draft.ambiguousTime = false
+        removeTime()
+      }
+    } else if (time && ambiguous) {
+      // A fresh but still-ambiguous hour — keep asking.
+      draft.time = time
+      draft.ambiguousTime = true
     }
   }
 
