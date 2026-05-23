@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { parseHebrewTime, parseCreateIntent, isCreateIntent } from './calendarCreate'
+import { parseHebrewTime, parseCreateIntent, isCreateIntent, startCreate, resolvePendingMessage } from './calendarCreate'
 import { parseLocally } from '../AbuCalendar/localParser'
 import { routePersonalQuery } from './router'
 import { tryGroundedAnswer } from './service'
@@ -262,5 +262,112 @@ describe('H. No demo data leaks into production runtime', () => {
     expect(answer).not.toContain('תור רופא')
     expect(answer).not.toContain('בדיקת דם')
     expect(answer).toContain('לא מצאתי')
+  })
+})
+
+// ═══ I. Pending-confirmation recovery (resolvePendingMessage) ════════════════
+
+function isCalendarRead(text: string): boolean {
+  const r = routePersonalQuery(text)
+  return r.type.startsWith('calendar_') && r.type !== 'calendar_create'
+}
+
+describe('I. Pending confirmation recovery', () => {
+  const confirming = startCreate('תקבעי לי תור לרופא מחר בעשר בבוקר')
+
+  it('confirming state is reached for a complete create request', () => {
+    expect(confirming.phase).toBe('confirming')
+    expect(confirming.missing).toEqual([])
+  })
+
+  it('1. unclear text → clarify, NOT a repeated confirmation', () => {
+    const r = resolvePendingMessage(confirming, 'אהלן מה', isCalendarRead('אהלן מה'))
+    expect(r.action).toBe('clarify')
+  })
+
+  it('2. "לא" → cancel clears the pending draft', () => {
+    const r = resolvePendingMessage(confirming, 'לא', isCalendarRead('לא'))
+    expect(r.action).toBe('cancel')
+  })
+
+  it('2b. "ביטול" / "לא נכון" also cancel', () => {
+    expect(resolvePendingMessage(confirming, 'ביטול', false).action).toBe('cancel')
+    expect(resolvePendingMessage(confirming, 'לא נכון', false).action).toBe('cancel')
+  })
+
+  it('"כן" / "מאשרת" / "אוקיי" → save', () => {
+    expect(resolvePendingMessage(confirming, 'כן', false).action).toBe('save')
+    expect(resolvePendingMessage(confirming, 'אוקיי', false).action).toBe('save')
+  })
+
+  it('3. new create request replaces the pending draft', () => {
+    const text = 'תקבעי לי פגישה עם אופיר מחר בשבע בערב'
+    const r = resolvePendingMessage(confirming, text, isCalendarRead(text))
+    expect(r.action).toBe('replace')
+    if (r.action === 'replace') {
+      expect(r.state.phase).toBe('confirming')
+      expect(r.state.draft.time).toBe('19:00')
+      expect(r.state.draft.title).not.toBe('תור לרופא')
+    }
+  })
+
+  it('4. calendar read query while pending → answered locally', () => {
+    const text = 'מה יש לי השבוע'
+    const r = resolvePendingMessage(confirming, text, isCalendarRead(text))
+    expect(r.action).toBe('read')
+  })
+
+  it('4b. "איזה פגישות יש לי שבוע הקרוב" while pending → read', () => {
+    const text = 'איזה פגישות יש לי שבוע הקרוב'
+    const r = resolvePendingMessage(confirming, text, isCalendarRead(text))
+    expect(r.action).toBe('read')
+  })
+})
+
+// ═══ J. Expanded Hebrew calendar query routing ═══════════════════════════════
+
+describe('J. Calendar read variants route to calendar_upcoming', () => {
+  it.each([
+    'איזה פגישות יש לי השבוע',
+    'איזה פגישות יש לי שבוע הקרוב',
+    'איזה פגישות יש לי בשבוע הקרוב',
+    'מה הפגישות שלי השבוע',
+    'מה הפגישות שלי בשבוע הקרוב',
+    'תראי לי את הפגישות שלי',
+    'יש לי פגישות השבוע',
+    'יש לי משהו השבוע',
+    'יש לי משהו בשבוע הקרוב',
+  ])('"%s" → calendar_upcoming', (text) => {
+    expect(routePersonalQuery(text).type).toBe('calendar_upcoming')
+  })
+
+  it('plural "יש לי פגישות השבוע" is a read, NOT a create intent', () => {
+    expect(isCreateIntent('יש לי פגישות השבוע')).toBe(false)
+  })
+
+  it('singular "יש לי תור מחר" stays a create intent', () => {
+    expect(isCreateIntent('יש לי תור מחר')).toBe(true)
+  })
+})
+
+describe('J. Calendar read variants are server/LLM-free (grounded)', () => {
+  let storage: Record<string, string> = {}
+  beforeEach(() => {
+    storage = {}
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => storage[key] ?? null,
+      setItem: (key: string, val: string) => { storage[key] = val },
+      removeItem: (key: string) => { delete storage[key] },
+    })
+  })
+
+  it.each([
+    'איזה פגישות יש לי שבוע הקרוב',
+    'מה הפגישות שלי בשבוע הקרוב',
+    'תראי לי את הפגישות שלי',
+    'יש לי פגישות השבוע',
+    'יש לי משהו בשבוע הקרוב',
+  ])('"%s" → tryGroundedAnswer non-null (no server/LLM)', (text) => {
+    expect(tryGroundedAnswer(text)).not.toBeNull()
   })
 })

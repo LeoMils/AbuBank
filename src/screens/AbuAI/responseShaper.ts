@@ -203,7 +203,13 @@ export function shapeCreateSaved(): string {
 }
 
 export function shapeCreateCancelled(): string {
-  return 'עזבתי, לא רשמתי.'
+  return 'בסדר, ביטלתי. אפשר לכתוב לי מחדש מה לקבוע.'
+}
+
+// Shown when a pending confirmation gets an unclear answer — never a blind
+// repeat of the same "זה נכון?" confirmation.
+export function shapeCreateUnclear(): string {
+  return 'לא הבנתי. אפשר לענות כן, לא, או לכתוב מחדש.'
 }
 
 export function shapeCreateClarify(missing: Array<'title' | 'date' | 'time'>): string {

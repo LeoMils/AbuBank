@@ -27,6 +27,11 @@ export interface RouteResult {
 const CALENDAR_TODAY = /מה יש לי היום|מה יש היום|יש לי משהו היום|מה קבעתי היום|מה קורה היום|מה התוכנית היום/i
 const CALENDAR_TOMORROW = /מה יש (לי )?מחר|יש לי משהו מחר|מה קבעתי מחר|מה קורה (לי )?מחר|מה התוכנית מחר|צריך לקום (מוקדם )?מחר/i
 const CALENDAR_UPCOMING = /מה יש (לי )?השבוע|מה יש (לי )?בשבוע|מה יש שבוע הבא|שבוע הבא\??$|מה הפגישות הקרובות|מה התורים הקרובים|מה האירועים הקרובים|יש לי משהו .{0,16}השבוע|מה התוכנית|מה יש (לי )?ביומן|מה יש ביומן/i
+
+// Forgiving week/upcoming variants for an elderly Hebrew user. Covers
+// "איזה פגישות יש לי (ב)שבוע הקרוב", "מה הפגישות שלי השבוע",
+// "תראי לי את הפגישות שלי", "יש לי פגישות/משהו (ב)שבוע הקרוב".
+const CALENDAR_UPCOMING_EXT = /איזה\s+(?:פגישות|תורים|אירועים)\s+(?:יש\s+לי|יש|שלי)|מה\s+ה?(?:פגישות|תורים|אירועים)\s+שלי|תראי לי\s+(?:את\s+)?ה?(?:פגישות|תורים|אירועים|יומן)|יש\s+לי\s+(?:פגישות|תורים|אירועים|משהו)\s+.{0,8}(?:שבוע|השבוע)/i
 const FAMILY_LOCATION = /איפה .+ גר|איפה גר/i
 const FAMILY_PATTERNS = /מי (זה|זאת|זו|הוא|היא)\s|מי ה(בן|בת|נכד|נכדה)|איך קוראים ל|מה הקשר (של|עם)|איך .+ קשור|הנכד שלי|הנכדה שלי|הבן שלי|הבת שלי|הילדים שלי|הנכדים שלי/i
 
@@ -158,6 +163,7 @@ export function routePersonalQuery(text: string): RouteResult {
   if (CALENDAR_TODAY.test(t)) return { type: 'calendar_today', query: t }
   if (CALENDAR_TOMORROW.test(t)) return { type: 'calendar_tomorrow', query: t }
   if (CALENDAR_UPCOMING.test(t)) return { type: 'calendar_upcoming', query: t }
+  if (CALENDAR_UPCOMING_EXT.test(t)) return { type: 'calendar_upcoming', query: t }
 
   // Spanish calendar
   if (SPANISH_CAL_TODAY.test(t)) return { type: 'calendar_today', query: t }

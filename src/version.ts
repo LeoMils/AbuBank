@@ -12,10 +12,10 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.4.12-abucalendar-semantic-intent',
-  buildLabel: 'AbuCalendar P0.8 — Semantic Calendar Intent',
-  buildDate:  '2026-05-20',
-  branchHint: 'feat/abuwhatsapp-local-family-contacts',
+  version:    '0.4.13-abuai-confirmation-recovery',
+  buildLabel: 'AbuAI — Confirmation Recovery & Calendar Query Routing',
+  buildDate:  '2026-05-23',
+  branchHint: 'fix/abuai-confirmation-and-calendar-query-recovery',
   commitHint: 'local',
 } as const
 
