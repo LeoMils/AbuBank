@@ -1,6 +1,6 @@
 import { loadFamilyData } from '../../services/familyLoader'
 import { parseHebrewDate, parseHebrewMonth } from './dateParser'
-import { isCreateIntent } from './calendarCreate'
+import { isCreateIntent, parseCreateDate } from './calendarCreate'
 
 export type RouteType =
   | 'family_lookup' | 'family_location' | 'family_relationship_between'
@@ -32,6 +32,11 @@ const CALENDAR_UPCOMING = /מה יש (לי )?השבוע|מה יש (לי )?בשב
 // "איזה פגישות יש לי (ב)שבוע הקרוב", "מה הפגישות שלי השבוע",
 // "תראי לי את הפגישות שלי", "יש לי פגישות/משהו (ב)שבוע הקרוב".
 const CALENDAR_UPCOMING_EXT = /איזה\s+(?:פגישות|תורים|אירועים)\s+(?:יש\s+לי|יש|שלי)|מה\s+ה?(?:פגישות|תורים|אירועים)\s+שלי|תראי לי\s+(?:את\s+)?ה?(?:פגישות|תורים|אירועים|יומן)|יש\s+לי\s+(?:פגישות|תורים|אירועים|משהו)\s+.{0,8}(?:שבוע|השבוע)/i
+
+// Specific-weekday READ: "יש לי משהו ביום חמישי", "מה יש לי ביום חמישי",
+// "מה יש בחמישי", "מה קבעתי ביום שני". Resolves the weekday to a concrete
+// date locally (no server) and reads that day's events.
+const CALENDAR_WEEKDAY_READ = /(?:מה\s+יש(?:\s+לי)?|יש\s+לי\s+משהו|מה\s+קבעתי|מה\s+התוכנית|מה\s+קורה)\s+ב(?:יום\s+)?(?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?![֐-׿])/i
 const FAMILY_LOCATION = /איפה .+ גר|איפה גר/i
 const FAMILY_PATTERNS = /מי (זה|זאת|זו|הוא|היא)\s|מי ה(בן|בת|נכד|נכדה)|איך קוראים ל|מה הקשר (של|עם)|איך .+ קשור|הנכד שלי|הנכדה שלי|הבן שלי|הבת שלי|הילדים שלי|הנכדים שלי/i
 
@@ -152,6 +157,44 @@ function detectRelationBetween(t: string): { a: string; b: string } | null {
 // stays open even though "podcast" is short.
 const OPEN_TOPIC = /\b(recomendame|recom[ie]ndame|recommend|recomienda|recomi[eé]ndale|recomi[eé]ndaselo|story|historia|cuento|pel[ií]cula|movie|film|podcast|libro|book|m[uú]sica|music|cultura|cultur(?:al|a)|pol[ií]tica|politics|ciencia|science|hist[oó]ricamente|history|argentina|italia|italy|spain|estados unidos|jap[oó]n|jap[oó]nes[ae]|jap[oó]n)\b/i
 
+// ─── Centralized AbuBank intent classifier ─────────────────────────────────
+//
+// Priority order (action beats information):
+//   1. calendar_create  2. calendar_read  3. whatsapp_action
+//   4. navigation       5. family_query   6. online_query   7. general
+//
+// This is a thin, pure projection over routePersonalQuery (which already
+// enforces create-before-read-before-family). It exists so callers/tests can
+// reason about the coarse intent without depending on the fine RouteType set.
+export type AbuBankIntent =
+  | 'calendar_create' | 'calendar_read' | 'whatsapp_action'
+  | 'navigation' | 'family_query' | 'online_query' | 'general'
+
+export function classifyAbuBankIntent(text: string): AbuBankIntent {
+  const r = routePersonalQuery(text)
+  switch (r.type) {
+    case 'calendar_create':
+      return 'calendar_create'
+    case 'calendar_today':
+    case 'calendar_tomorrow':
+    case 'calendar_upcoming':
+    case 'calendar_exact_date':
+    case 'calendar_month':
+      return 'calendar_read'
+    case 'contact_action':
+      return 'whatsapp_action'
+    case 'family_lookup':
+    case 'family_location':
+    case 'family_relationship_between':
+    case 'birthday_lookup':
+    case 'memorial_lookup':
+      return 'family_query'
+    case 'non_personal':
+    default:
+      return 'general'
+  }
+}
+
 export function routePersonalQuery(text: string): RouteResult {
   const t = text.trim()
 
@@ -164,6 +207,12 @@ export function routePersonalQuery(text: string): RouteResult {
   if (CALENDAR_TOMORROW.test(t)) return { type: 'calendar_tomorrow', query: t }
   if (CALENDAR_UPCOMING.test(t)) return { type: 'calendar_upcoming', query: t }
   if (CALENDAR_UPCOMING_EXT.test(t)) return { type: 'calendar_upcoming', query: t }
+
+  // Specific-weekday read → resolve weekday to a concrete date locally.
+  if (CALENDAR_WEEKDAY_READ.test(t)) {
+    const dateStr = parseCreateDate(t)
+    if (dateStr) return { type: 'calendar_exact_date', query: t, dateStr }
+  }
 
   // Spanish calendar
   if (SPANISH_CAL_TODAY.test(t)) return { type: 'calendar_today', query: t }

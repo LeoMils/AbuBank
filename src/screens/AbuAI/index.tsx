@@ -127,6 +127,10 @@ export function AbuAI() {
 
   // Calendar create conversation state machine
   const [createState, setCreateState] = useState<CalendarCreateState>(IDLE_STATE)
+  // Mirror of createState for the async hands-free voice loop (closures
+  // capture a stale state value otherwise).
+  const createStateRef = useRef<CalendarCreateState>(IDLE_STATE)
+  useEffect(() => { createStateRef.current = createState }, [createState])
 
   // v20.2: OpenAI Realtime API (WebRTC) — true real-time conversation
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
@@ -545,8 +549,10 @@ export function AbuAI() {
         try {
           const text = await transcribeAudio(blob)
           if (text.trim()) setInput(prev => prev ? `${prev} ${text}` : text)
-        } catch {
-          // silent
+        } catch (err) {
+          // Never fail silently — show a friendly local fallback so Martita
+          // knows she can simply type instead.
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediateVoiceCaptureError(err, 'transcription'), timestamp: Date.now() }])
         } finally {
           setTranscribing(false)
           setTimeout(() => inputRef.current?.focus(), 100)
@@ -630,6 +636,64 @@ export function AbuAI() {
       const userMsg: ChatMessage = { id: nextId(), role: 'user', content: text, timestamp: Date.now() }
       const currentMsgs = [...messagesRef.current, userMsg]
       setMessages(currentMsgs)
+
+      // ─── Calendar create (voice) — SAME rules as typed text ──────────────
+      // Voice create/confirmation must be confirmation-gated and local-first,
+      // exactly like the text path. We reuse the identical state-machine
+      // helpers (startCreate / resolvePendingMessage) so there is no weaker
+      // voice-only parser.
+      const cs = createStateRef.current
+      if (cs.phase !== 'idle' || isCreateIntent(text)) {
+        try {
+          let response: string
+          if (cs.phase !== 'idle') {
+            const r = routePersonalQuery(text)
+            const isCalRead = r.type.startsWith('calendar_') && r.type !== 'calendar_create'
+            const resolution = resolvePendingMessage(cs, text, isCalRead)
+            if (resolution.action === 'cancel') {
+              setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE
+              response = shapeCreateCancelled()
+            } else if (resolution.action === 'save') {
+              const d = resolution.draft
+              addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
+              soundSuccess()
+              setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE
+              response = shapeCreateSaved()
+            } else if (resolution.action === 'replace' || resolution.action === 'update') {
+              setCreateState(resolution.state); createStateRef.current = resolution.state
+              response = resolution.state.phase === 'confirming'
+                ? shapeCreateConfirm(resolution.state.draft)
+                : shapeCreateClarify(resolution.state.missing, resolution.state.draft)
+            } else if (resolution.action === 'read') {
+              response = tryGroundedAnswer(text) ?? shapeCreateUnclear()
+            } else {
+              response = shapeCreateUnclear()
+            }
+          } else {
+            const next = startCreate(text)
+            setCreateState(next); createStateRef.current = next
+            response = next.phase === 'confirming'
+              ? shapeCreateConfirm(next.draft)
+              : shapeCreateClarify(next.missing, next.draft)
+          }
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }])
+          if (!voiceModeRef.current) return
+          transitionVoice('RESPONDING', 'create-turn')
+          setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
+          await speakVoiceMode(shapeVoiceSafe(response))
+          setIsSpeaking(false); setStreamingText('')
+          if (!voiceModeRef.current) return
+          await new Promise(r => setTimeout(r, 120))
+          if (voiceModeRef.current) startVoiceListening()
+        } catch {
+          setIsSpeaking(false); setStreamingText('')
+          if (voiceModeRef.current) {
+            transitionVoice('RECOVERING', 'post-create-error')
+            startVoiceListening()
+          }
+        }
+        return
+      }
 
       // v20.1: PROVEN non-streaming voice path — fast LLM + full TTS (no cutoff)
       try {
@@ -788,7 +852,12 @@ export function AbuAI() {
 
       rec.onerror = (e: any) => {
         recognitionRef.current = null
-        if (e.error === 'not-allowed') {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          // Permission denied — never exit silently. Show + speak a friendly
+          // Hebrew fallback that points Martita to the text box.
+          const fallback = 'אני לא מצליחה לשמוע כרגע. אפשר לכתוב לי כאן.'
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: fallback, timestamp: Date.now() }])
+          try { speakVoiceMode(fallback) } catch { /* TTS best-effort */ }
           exitVoiceMode()
         } else {
           // Web Speech failed — fall through to Whisper below

@@ -70,12 +70,29 @@ function hasTimeAndDateContext(text: string): boolean {
 // ("יש לי פגישה") but is actually a read query. Keep it out of create.
 const READ_NOT_CREATE = /יש\s+לי\s+(?:פגישות|תורים|אירועים)\s+.{0,8}(?:שבוע|השבוע)/i
 
+// A scheduling verb WITHOUT the "לי" object — "תקבע עם מור", "קבע פגישה",
+// "שימי עם יעל". Each alternative is a whole word (Hebrew lookarounds) so we
+// never match a verb root inside a longer, unrelated word.
+const SCHEDULE_VERB = /(?<![֐-׿])(?:תקבעי|תקבע|קבעי|קבע|תרשמי|תרשום|רשמי|שימי|תשימי|תוסיפי|תוסיף|תזכירי|תכניסי|תכניס|תעשי)(?![֐-׿])/
+
+// A date OR time OR "עם <someone>" clue — enough, combined with a scheduling
+// verb, to commit to calendar_create even when a family name is present.
+function hasScheduleClue(t: string): boolean {
+  const hasDate = /היום|מחר|מחרתיים|(?:ב?יום\s+|ב)(?:ראשון|שני|שלישי|רביעי|רביע|חמישי|שישי|שבת)|בעוד\s+שבוע|שבוע\s+הבא/.test(t)
+  const hasTime = /בשעה|בבוקר|בערב|בצהריים|אחהצ|אחה"צ|אחר[י]?\s+הצהריים|ב(?:שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|אחת|שתיים)|\d{1,2}[:.]\d{2}|\d{1,2}\s*(?:אחהצ|בערב|בבוקר|בצהריים)/.test(t)
+  const hasWith = /(?<![֐-׿])עם\s+\S/.test(t)
+  return hasDate || hasTime || hasWith
+}
+
 export function isCreateIntent(text: string): boolean {
   const t = normalizeCreateText(text.trim())
   if (READ_NOT_CREATE.test(t)) return false
   if (CREATE_INTENT.test(t)) return true
   // Natural speech with "צריכה להיות" etc.
   if (NATURAL_INTENT.test(t)) return true
+  // Scheduling verb (even without "לי") + a date/time/with clue. Action beats
+  // family Q&A: "תקבע עם מור ברביעי" is a create, not "who is Mor?".
+  if (SCHEDULE_VERB.test(t) && hasScheduleClue(t)) return true
   // Implicit: has both date + time context (describing a future event)
   if (hasTimeAndDateContext(t)) return true
   return false
@@ -103,7 +120,8 @@ const HEBREW_HOUR_WORDS: Record<string, number> = {
 }
 
 // Period hints. PM covers evening / noon / afternoon; AM covers morning.
-const PERIOD_PM = /בערב|בלילה|אחר[י]? הצהריים|אחה"צ|בצהריים/
+// "אחהצ" (no gershayim) is the common bare abbreviation Martita types.
+const PERIOD_PM = /בערב|בלילה|אחר[י]? הצהריים|אחה"צ|אחה״צ|אחהצ|בצהריים/
 const PERIOD_AM = /בבוקר|לפנות בוקר/
 
 // Resolve a 1-12 hour to 24h using period hints. With no hint, hours 1-6 are
@@ -125,8 +143,10 @@ export interface TimeParse {
 export function parseHebrewTimeDetailed(text: string): TimeParse {
   const t = normalizeCreateText(text.trim())
 
-  // "בשעה 15:00" / "ב-10:30" / "בשעה 9" — numeric is literal (never ambiguous).
-  const numericTime = t.match(/ב[־-]?(?:שעה\s+)?(\d{1,2})[:.](\d{2})/)
+  // "בשעה 15:00" / "ב-10:30" / "בשעה 9" / bare "13:22" — numeric is literal
+  // (never ambiguous). The "ב"/"בשעה" prefix is optional so a clock time
+  // typed on its own ("בשני 13:22") is still understood.
+  const numericTime = t.match(/(?:ב[־-]?)?(?:שעה\s+)?(?<![\d/.])(\d{1,2})[:.](\d{2})(?![\d/])/)
   if (numericTime) {
     const h = parseInt(numericTime[1]!, 10)
     const m = parseInt(numericTime[2]!, 10)
@@ -158,6 +178,18 @@ export function parseHebrewTimeDetailed(text: string): TimeParse {
   for (const [word, num] of Object.entries(HEBREW_HOUR_WORDS).sort((a, b) => b[0].length - a[0].length)) {
     if (new RegExp(`השעה\\s+${word}`).test(t)) {
       const { hour, ambiguous } = applyPeriod(num, t)
+      return { time: `${String(hour).padStart(2, '0')}:00`, ambiguous }
+    }
+  }
+
+  // Bare numeric hour followed by a period word: "4 אחהצ", "7 בערב",
+  // "10 בבוקר", "4 אחר הצהריים". No colon, no "ב" prefix — the period word
+  // disambiguates AM/PM so it is never ambiguous.
+  const bareHourPeriod = t.match(/(?<![\d:.])(\d{1,2})\s*(?:אחהצ|אחה"צ|אחה״צ|אחר[י]?\s+הצהריים|בערב|בבוקר|בצהריים|בלילה)/)
+  if (bareHourPeriod) {
+    const h = parseInt(bareHourPeriod[1]!, 10)
+    if (h >= 0 && h <= 23) {
+      const { hour, ambiguous } = applyPeriod(h, t)
       return { time: `${String(hour).padStart(2, '0')}:00`, ambiguous }
     }
   }
@@ -241,6 +273,9 @@ export function parseCreateDate(text: string): string | null {
   const dayNames: Record<string, number> = {
     'ראשון': 0, 'שני': 1, 'שלישי': 2, 'רביעי': 3,
     'חמישי': 4, 'שישי': 5, 'שבת': 6,
+    // Common typo: "רביע" (missing final yod). Checked last so the correct
+    // "רביעי" always wins first.
+    'רביע': 3,
   }
   const inNextWeek = /שבוע\s+הבא/.test(t)
   for (const [name, idx] of Object.entries(dayNames)) {
@@ -278,7 +313,8 @@ const NATURAL_NOISE = /(אני צריכה? להיות|אני צריכה? להג�
 // Time words to strip (includes אחת/שתיים and the noon period word)
 const TIME_NOISE = /\s*ב(אחת עשרה|שתים עשרה|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|צהריים)(\s+וחצי|\s+ורבע)?(\s+בבוקר|\s+בערב|\s+בצהריים|\s+אחר הצהריים|\s+אחרי הצהריים|\s+בלילה)?\s*/gi
 // Date words to strip — incl. weekday phrases with prefix or הקרוב/הבא modifier
-const WEEKDAY_NAMES = '(?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)'
+// ("רביע" = common typo for רביעי)
+const WEEKDAY_NAMES = '(?:ראשון|שני|שלישי|רביעי|רביע|חמישי|שישי|שבת)'
 const DATE_NOISE = new RegExp(
   `\\s*(?:היום|מחרתיים|מחר|בשבוע הבא|שבוע הבא|בעוד שבוע|` +
   `(?:ב?יום\\s+|ב)${WEEKDAY_NAMES}(?:\\s+(?:הקרוב|הבא))?|` +
@@ -287,8 +323,14 @@ const DATE_NOISE = new RegExp(
 )
 const HOUR_NOISE = /\s*בשעה\s+(?:אחת עשרה|שתים עשרה|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)(?:\s+וחצי|\s+ורבע)?\s*/gi
 const HOUR_DIGIT_NOISE = /\s*ב[־-]?(?:שעה\s+)?\d{1,2}[:.:]?\d{0,2}\s*/gi
+// Bare clock time with no "ב" prefix: "13:22", "14.00".
+const BARE_TIME_NOISE = /\s*(?<![\d/])\d{1,2}[:.]\d{2}(?![\d/])\s*/g
+// Bare hour + period word: "4 אחהצ", "7 בערב".
+const BARE_HOUR_PERIOD_NOISE = /\s*\d{1,2}\s*(?:אחהצ|אחה"צ|אחה״צ|אחר[י]? הצהריים|בערב|בבוקר|בצהריים|בלילה)\s*/gi
 // Standalone time-of-day words (when not part of a time phrase already stripped)
-const PERIOD_NOISE = /(בבוקר|בערב|בלילה|בצהריים|אחר הצהריים|אחרי הצהריים)/gi
+const PERIOD_NOISE = /(בבוקר|בערב|בלילה|בצהריים|אחר הצהריים|אחרי הצהריים|אחהצ|אחה"צ|אחה״צ)/gi
+// Leading scheduling verb without "לי" ("תקבע עם מור" → "עם מור").
+const SCHEDULE_VERB_LEAD = /^(?:תקבעי|תקבע|קבעי|קבע|תרשמי|תרשום|רשמי|שימי|תשימי|תוסיפי|תוסיף|תזכירי|תכניסי|תכניס|תעשי)\s+(?:לי\s+)?/
 // Connector word leftover
 const LEADING_CONNECTOR = /^[שו]\s+/
 
@@ -299,11 +341,14 @@ export function extractTitle(text: string): string | null {
   // 2. Strip intent phrases and natural speech verbs
   t = t.replace(NOISE_PHRASES, ' ')
   t = t.replace(NATURAL_NOISE, ' ')
+  t = t.replace(SCHEDULE_VERB_LEAD, ' ')
   // 3. Strip time/date
   t = t.replace(HOUR_NOISE, ' ')
   t = t.replace(TIME_NOISE, ' ')
+  t = t.replace(BARE_HOUR_PERIOD_NOISE, ' ')
   t = t.replace(DATE_NOISE, ' ')
   t = t.replace(HOUR_DIGIT_NOISE, ' ')
+  t = t.replace(BARE_TIME_NOISE, ' ')
   t = t.replace(PERIOD_NOISE, ' ')
   // 4. Clean up
   t = t.replace(/\s+/g, ' ').trim()
