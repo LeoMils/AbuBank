@@ -1,6 +1,6 @@
 import type { ChatMessage } from './types'
 
-import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, getEventsByDate, getEventsByMonth, getBirthdayFor, getMemorialFor, searchFamily, searchFamilyLocation } from './tools'
+import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, getWeekEvents, getEventsByDate, getEventsByMonth, getBirthdayFor, getMemorialFor, searchFamily, searchFamilyLocation } from './tools'
 import { generateFamilyPromptSection } from '../../services/familyLoader'
 import { routePersonalQuery, type RouteResult } from './router'
 import { answerFromToolResult, type ToolResult } from './groundedResponse'
@@ -103,7 +103,9 @@ export function tryGroundedAnswer(text: string): string | null {
         break
       }
       case 'calendar_upcoming': {
-        const r = getUpcomingEvents()
+        // Use week-scoped query (today + 7 days) for "what do I have this
+        // week / coming up" — more relevant than unlimited future events.
+        const r = getWeekEvents()
         result = { ok: true, events: r.events, summary: r.summary }
         break
       }

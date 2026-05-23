@@ -293,7 +293,9 @@ function extractTime(text: string): TimeExtract {
   }
 
   const hourPat = Object.keys(HEBREW_HOUR_WORDS).sort((a, b) => b.length - a.length).join('|')
-  const wordRe = new RegExp(`(?:בשעה\\s+)?ב(${hourPat})${NA}([\\s\\u0590-\\u05FF]*)`)
+  // "בשעה שבע" (שעה + bare word) OR "בשבע" (ב + word).
+  // Previous regex required "ב" even after "בשעה", missing "בשעה שבע בערב".
+  const wordRe = new RegExp(`(?:בשעה\\s+|ב)(${hourPat})${NA}([\\s\\u0590-\\u05FF]*)`)
   const wm = text.match(wordRe)
   if (wm) {
     const h = HEBREW_HOUR_WORDS[wm[1]!]

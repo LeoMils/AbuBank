@@ -42,12 +42,10 @@ export function adviseFreeSpeech(text: string): FreeSpeechAdvisoryResult {
 
   switch (route.domain) {
     case 'calendar':
-      if (route.action === 'create') {
-        return {
-          response: 'זה נשמע כמו בקשה ליומן. כדי לקבוע את זה, נעבור ליומן.',
-          route,
-        }
-      }
+      // calendar/create → fall through to AbuAI's own create state machine
+      // (calendarCreate.ts) which parses title/date/time and runs the
+      // multi-turn confirmation dialog inline. Intercepting here previously
+      // blocked the parser from ever running, causing time=missing.
       // calendar/query → fall through to existing AbuAI calendar read path
       return { response: null, route }
 

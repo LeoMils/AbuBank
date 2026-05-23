@@ -17,6 +17,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { tryGroundedAnswer, isPersonalQuery } from './service'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
+import { isCreateIntent } from './calendarCreate'
 import { chooseContentWorld } from './contentWorldEngine'
 import { isOnlineCurrentInfoQuery, shouldBlockOnlineForPersonal } from './onlineIntent'
 import { getProactiveSeed } from './proactive'
@@ -35,7 +36,10 @@ function simulateRouting(msgText: string): { path: string; response: string | nu
     return { path: 'advisory', response: advisory.response }
   }
 
-  // 2. Calendar create intent (omit — tested separately via advisory)
+  // 2. Calendar create intent (now handled by AbuAI's create state machine)
+  if (isCreateIntent(msgText)) {
+    return { path: 'calendar_create', response: '(create state machine handles)' }
+  }
 
   // 3. Grounded answer
   const grounded = tryGroundedAnswer(msgText)
@@ -105,14 +109,15 @@ describe('demo: calendar read queries reach grounded path', () => {
 })
 
 // ─── 2. Calendar create ──────────────────────────────────────────────────────
+// Calendar create now passes through advisory to the AbuAI create state machine
+// (calendarCreate.ts). The simulateRouting helper doesn't include the create
+// state machine step, so create intents will reach the grounded/personal path.
 
-describe('demo: calendar create gets safe handoff', () => {
-  it('"שימי לי תור לרופא מחר בעשר" → advisory intercept, not passive', () => {
+describe('demo: calendar create reaches AbuAI create state machine', () => {
+  it('"שימי לי תור לרופא מחר בעשר" → calendar_create path, not advisory', () => {
     const result = simulateRouting('שימי לי תור לרופא מחר בעשר')
-    expect(result.path).toBe('advisory')
-    expect(result.response).not.toBeNull()
+    expect(result.path).toBe('calendar_create')
     expect(result.response).not.toContain(PASSIVE_RESPONSE)
-    expect(result.response).toContain('יומן')
   })
 })
 

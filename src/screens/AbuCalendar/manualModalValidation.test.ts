@@ -64,6 +64,31 @@ describe('AbuCalendar P0 — ManualModal hidden default removed', () => {
   })
 })
 
+describe('AbuCalendar — ManualModal mobile layout contract', () => {
+  it('modal has maxHeight to prevent overflow on 360×740', () => {
+    expect(SRC.includes('maxHeight')).toBe(true)
+    expect(SRC.includes('100dvh')).toBe(true)
+  })
+
+  it('form area is scrollable (overflowY: auto)', () => {
+    expect(SRC.includes("overflowY: 'auto'")).toBe(true)
+  })
+
+  it('action bar is a separate container outside the scroll area', () => {
+    expect(SRC.includes('data-testid="manual-action-bar"')).toBe(true)
+    expect(SRC.includes('data-testid="manual-form-scroll"')).toBe(true)
+  })
+
+  it('action bar has flex: 0 0 auto (never shrinks)', () => {
+    expect(SRC.includes("flex: '0 0 auto'")).toBe(true)
+  })
+
+  it('form scroll area has flex: 1 1 auto + minHeight: 0 (shrinks to fit)', () => {
+    expect(SRC.includes("flex: '1 1 auto'")).toBe(true)
+    expect(SRC.includes('minHeight: 0')).toBe(true)
+  })
+})
+
 describe('AbuCalendar P0 — ManualModal behavior contract (logic-level)', () => {
   // The component is React + DOM-heavy; we extract its pure gating
   // expressions and re-validate them here against the spec.
