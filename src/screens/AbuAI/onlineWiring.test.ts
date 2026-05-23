@@ -116,10 +116,10 @@ describe('AbuAI does NOT call the online endpoint for family / calendar queries'
   })
 })
 
-describe('build version is bumped for operational AI voice & calendar', () => {
-  it('APP_VERSION is the operational-ai-voice-calendar marker', () => {
+describe('build version is bumped for the final release war room', () => {
+  it('APP_VERSION is the final-release-war-room marker', () => {
     const verSrc = fs.readFileSync(path.resolve(__dirname, '../../version.ts'), 'utf8')
-    expect(verSrc.includes("'0.4.16-operational-ai-voice-calendar'")).toBe(true)
-    expect(verSrc.includes('AbuBank — Operational AI Voice & Calendar')).toBe(true)
+    expect(verSrc.includes("'0.4.17-final-release-war-room'")).toBe(true)
+    expect(verSrc.includes('AbuBank — Final Release War Room QA')).toBe(true)
   })
 })

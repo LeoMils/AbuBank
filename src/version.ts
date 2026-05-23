@@ -12,10 +12,10 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.4.16-operational-ai-voice-calendar',
-  buildLabel: 'AbuBank — Operational AI Voice & Calendar',
+  version:    '0.4.17-final-release-war-room',
+  buildLabel: 'AbuBank — Final Release War Room QA',
   buildDate:  '2026-05-23',
-  branchHint: 'fix/abubank-operational-ai-voice-calendar',
+  branchHint: 'fix/abubank-final-release-war-room',
   commitHint: 'local',
 } as const
 
