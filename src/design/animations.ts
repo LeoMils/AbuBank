@@ -50,6 +50,25 @@ export const SHARED_KEYFRAMES = `
     50%      { transform: scale(1.04); }
   }
 
+  /* ─── Icon-bar / wordmark polish (v0.4) ─── */
+  /* Animated gradient sweep used by ScreenHeader titles + the AbuWhatsApp
+     wordmark. Pair with background-size: 200% 100% on the text element. */
+  @keyframes abuTitleSheen {
+    0%, 100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+  }
+  /* Soft breathing alpha for the 1-px glow line at the bottom of every
+     icon bar. Slow and elegant — never distracting. */
+  @keyframes abuBarBreath {
+    0%, 100% { opacity: 0.55; }
+    50%      { opacity: 0.95; }
+  }
+  /* Gentle drop-shadow halo behind the WhatsApp word in the wordmark. */
+  @keyframes abuWaGlow {
+    0%, 100% { filter: drop-shadow(0 0 0 rgba(37,211,102,0)); }
+    50%      { filter: drop-shadow(0 0 6px rgba(37,211,102,0.55)); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     @keyframes ambientColorShift { from, to { filter: none; } }
     @keyframes gentleFloat { from, to { transform: none; } }
@@ -60,6 +79,9 @@ export const SHARED_KEYFRAMES = `
     @keyframes aiGlow { from, to { filter: none; } }
     @keyframes gamesShuffle { from, to { transform: none; } }
     @keyframes whatsappPulse { from, to { transform: none; } }
+    @keyframes abuTitleSheen { from, to { background-position: 0% 50%; } }
+    @keyframes abuBarBreath { from, to { opacity: 0.7; } }
+    @keyframes abuWaGlow { from, to { filter: none; } }
   }
 `
 

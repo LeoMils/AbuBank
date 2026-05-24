@@ -16,6 +16,7 @@ import { BackButton } from '../../components/BackButton'
 import { StyleSelector, STYLES, type Style } from './StyleSelector'
 import { Toast } from '../../components/Toast'
 import { PageShell } from '../../components/PageShell'
+import { injectSharedKeyframes } from '../../design/animations'
 import { LoadingState } from '../../components/LoadingState'
 import { FamilyQuickFaces } from './familyQuickFaces'
 import { FamilyContactsSetup } from './FamilyContactsSetup'
@@ -150,6 +151,7 @@ export function AbuWhatsApp() {
   const isReadingRef = useRef(false)
 
   // Keep refs in sync
+  useEffect(() => { injectSharedKeyframes() }, [])
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
   useEffect(() => { lastIntentRef.current = lastIntent }, [lastIntent])
   useEffect(() => { activeStyleRef.current = activeStyle }, [activeStyle])
@@ -584,17 +586,33 @@ export function AbuWhatsApp() {
     <PageShell>
 
       {/* ══════════════════════════════════════════════════
-          HEADER — "Abu הודעות", Martita photo, back button
+          HEADER — "Abu WhatsApp" wordmark, Martita photo, back button
          ══════════════════════════════════════════════════ */}
-      <header style={{
-        flexShrink: 0,
-        position: 'relative',
-        background: 'linear-gradient(180deg, rgba(5,12,18,1) 0%, rgba(4,14,10,1) 60%, rgba(5,10,24,1) 100%)',
-        borderBottom: '1px solid rgba(37,211,102,0.18)',
-        overflow: 'hidden',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.40), 0 1px 0 rgba(255,255,255,0.02)',
-        zIndex: 20,
-      }}>
+      <header
+        data-testid="abuwhatsapp-screen-header"
+        style={{
+          flexShrink: 0,
+          position: 'relative',
+          background: 'linear-gradient(180deg, rgba(5,12,18,1) 0%, rgba(4,14,10,1) 60%, rgba(5,10,24,1) 100%)',
+          borderBottom: '1px solid rgba(37,211,102,0.18)',
+          overflow: 'hidden',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.40), 0 1px 0 rgba(255,255,255,0.02)',
+          zIndex: 20,
+        }}
+      >
+        {/* Subtle breathing WhatsApp-green glow line at the bottom of the */}
+        {/* bar — matches the icon-bar treatment used on the other screens. */}
+        <div
+          aria-hidden="true"
+          data-testid="abuwhatsapp-screen-header-glow"
+          style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: 1,
+            background: 'linear-gradient(90deg, transparent, rgba(37,211,102,0.55) 30%, rgba(37,211,102,0.55) 70%, transparent)',
+            pointerEvents: 'none',
+            animation: 'abuBarBreath 6s ease-in-out infinite',
+            zIndex: 1,
+          }}
+        />
         <div style={{
           position: 'relative',
           height: 86,
@@ -629,28 +647,44 @@ export function AbuWhatsApp() {
             />
           </button>
 
-          {/* Wordmark: Abu + הודעות (WA-green gradient) */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'baseline', gap: 5,
-            direction: 'ltr', position: 'relative',
-          }}>
-            <span style={{
-              fontFamily: "'Cormorant Garamond',Georgia,serif",
-              fontSize: 31, fontWeight: 600, letterSpacing: '2px',
-              background: GRADIENT_TEAL,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            } as React.CSSProperties}>Abu</span>
-            <span style={{
-              fontFamily: "'DM Sans',sans-serif",
-              fontSize: 27, fontWeight: 500, letterSpacing: '0.3px',
-              direction: 'rtl',
-              background: 'linear-gradient(135deg, #86EFAC 0%, #4ADE80 12%, #25D366 24%, #16A34A 38%, #6EE7B7 52%, #15803D 66%, #34D399 78%, #86EFAC 90%, #4ADE80 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            } as React.CSSProperties}>הודעות</span>
+          {/* Wordmark: Abu (AbuBank teal) + WhatsApp (WhatsApp green) — */}
+          {/* both halves carry a gentle animated sheen so the title feels */}
+          {/* alive without being distracting. Paired with abuTitleSheen */}
+          {/* keyframes (reduced-motion safe). */}
+          <div
+            data-testid="abuwhatsapp-wordmark"
+            style={{
+              display: 'inline-flex', alignItems: 'baseline', gap: 8,
+              direction: 'ltr', position: 'relative',
+            }}
+          >
+            <span
+              data-testid="abuwhatsapp-wordmark-abu"
+              style={{
+                fontFamily: "'Cormorant Garamond',Georgia,serif",
+                fontSize: 32, fontWeight: 600, letterSpacing: '2px',
+                background: GRADIENT_TEAL,
+                backgroundSize: '200% 100%',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                animation: 'abuTitleSheen 7s ease-in-out infinite',
+              } as React.CSSProperties}
+            >Abu</span>
+            <span
+              data-testid="abuwhatsapp-wordmark-whatsapp"
+              style={{
+                fontFamily: "'DM Sans',sans-serif",
+                fontSize: 28, fontWeight: 600, letterSpacing: '0.6px',
+                background: 'linear-gradient(135deg, #86EFAC 0%, #4ADE80 18%, #25D366 36%, #128C7E 54%, #25D366 72%, #4ADE80 88%, #86EFAC 100%)',
+                backgroundSize: '220% 100%',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                animation: 'abuTitleSheen 6s ease-in-out infinite, abuWaGlow 5.5s ease-in-out infinite',
+                WebkitTextStroke: '0.4px rgba(37,211,102,0.18)',
+              } as React.CSSProperties}
+            >WhatsApp</span>
           </div>
 
           {/* Back button — right */}
@@ -662,7 +696,7 @@ export function AbuWhatsApp() {
       </header>
 
       <InfoButton
-        title="Abu הודעות"
+        title="Abu WhatsApp"
         lines={['כתיבת הודעות WhatsApp בסגנון של מרטיטה — כולל שגיאות אמיתיות.', 'בחרי בדיחה, חידה, או טריק לתוכן מיידי.']}
         howTo={['לחצי על בדיחה / חידה / טריק לתוכן מיידי', 'כתבי נושא בשדה ולחצי "כתבי לי" להודעה מותאמת אישית', 'לחצי "שלחי למשפחה" לשליחה קבוצת הווצאפ', 'לחצי על "תקשיבי" לשמיעת ההודעה']}
         position="top-left"
