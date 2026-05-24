@@ -6,7 +6,7 @@
 
 | # | Phase | Role | Gate | Status |
 |---|-------|------|------|--------|
-| 0 | Audit | Audit Agent [SPAWN] | ACCEPT-0 | 🟡 in_progress |
+| 0 | Audit | Audit Agent [SPAWN] | ACCEPT-0 | ✅ report written — awaiting ACCEPT-0 |
 | 1 | Brief | [INLINE] | ACCEPT-1 | ⬜ |
 | 2 | Information Architecture | [INLINE] | ACCEPT-2 | ⬜ |
 | 3 | Design (Visual+Motion+Hebrew+A11y) | [INLINE] | ACCEPT-3 | ⬜ |
