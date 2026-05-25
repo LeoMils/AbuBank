@@ -53,7 +53,7 @@ import { SeniorButton } from '../../components/SeniorButton'
 import { EmptyState } from '../../components/EmptyState'
 import { StatusPill } from '../../components/StatusPill'
 import { BackButton } from '../../components/BackButton'
-import { GOLD, BRIGHT_GOLD, BG, CREAM, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
+import { GOLD, BRIGHT_GOLD, BG, CREAM, TEXT_SECONDARY, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
 
 
 
@@ -812,13 +812,13 @@ export function AbuCalendar() {
           <InfoButton
             title="מדריך היומן"
             lines={[
-              '🟡 נקודה זהב = אירוע (תור, פגישה)',
-              '🩶 נקודה אפורה = אירוע שעבר',
-              '🩷 נקודה ורודה = יום הולדת משפחתי',
+              '▪ ריבוע זהב = אירוע (תור, פגישה)',
+              '● עיגול ורוד מלא = יום הולדת משפחתי',
+              '◯ עיגול ריק = יום זיכרון',
+              '🔢 מספר ליד הסימן = כמה אירועים יש ביום',
+              '🩶 סימן אפור = אירוע שעבר',
               '⬜ מסגרת זהב חזקה = היום',
               '⬜ מסגרת זהב עדינה = יום שנבחר',
-              '◾ תאים עמומים = ימים שעברו',
-              '🩵 פס טורקיז = אירוע עכשיו (ברשימת האירועים)',
               '🔔 התראה קולית לפני כל אירוע',
             ]}
             howTo={[
@@ -941,7 +941,7 @@ export function AbuCalendar() {
           {DAY_HEADERS.map((h, idx) => (
             <div key={h} style={{
               textAlign: 'center', fontSize: 16, fontWeight: 700,
-              color: idx === 6 ? 'rgba(201,168,76,0.90)' : idx === 5 ? 'rgba(201,168,76,0.60)' : 'rgba(245,240,232,0.50)',
+              color: idx === 6 ? GOLD : idx === 5 ? BRIGHT_GOLD : TEXT_SECONDARY,
               padding: '4px 0', fontFamily: "'Heebo',sans-serif",
               borderBottom: idx === 6 ? '1.5px solid rgba(201,168,76,0.30)' : idx === 5 ? '1px solid rgba(201,168,76,0.12)' : 'none',
             }}>{h}</div>
@@ -951,7 +951,7 @@ export function AbuCalendar() {
         {/* Day cells grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
           {cells.map((day, idx) => {
-            if (day === null) return <div key={`e${idx}`} style={{ minHeight: 54 }} />
+            if (day === null) return <div key={`e${idx}`} style={{ minHeight: 64 }} />
             const ds = dateStr(year, month, day)
             const isToday = ds === today
             const isSelected = ds === selectedDay && !isToday
@@ -961,6 +961,7 @@ export function AbuCalendar() {
             const isFriday = idx % 7 === 5
             const holiday = getHebrewHoliday(ds)
             const hasBirthday = dots.some(a => a.type === 'birthday')
+            const hasMemorial = dots.some(a => a.type === 'memory')
             const cellDelay = `${(idx % 7) * 0.02}s`
             return (
               <button
@@ -970,7 +971,7 @@ export function AbuCalendar() {
                 aria-label={`${day} ${formatHebrewMonth(year, month)}${holiday ? `, ${holiday}` : ''}${dots.length ? `, ${dots.length} אירועים` : ''}`}
                 aria-current={isToday ? 'date' : undefined}
                 style={{
-                  minHeight: 54, borderRadius: 14, position: 'relative',
+                  minHeight: 64, borderRadius: 14, position: 'relative',
                   animation: `fadeSlideUp 0.3s ease ${cellDelay} both`,
                   border: isToday
                     ? '2px solid rgba(201,168,76,0.65)'
@@ -1021,29 +1022,43 @@ export function AbuCalendar() {
                     color: isToday ? '#0C0A08'
                       : isSelected ? 'rgba(201,168,76,0.95)'
                       : holiday ? GOLD
-                      : isShabbat ? 'rgba(201,168,76,0.85)'
-                      : isFriday ? 'rgba(245,240,232,0.70)'
-                      : 'rgba(245,240,232,0.88)',
+                      : isShabbat ? GOLD
+                      : isFriday ? TEXT_SECONDARY
+                      : CREAM,
                     fontFamily: "'DM Sans',sans-serif", lineHeight: 1,
                     textShadow: isToday ? '0 1px 3px rgba(0,0,0,0.30)' : 'none',
                   }}>{day}</span>
                 </div>
 
-                {/* Dot indicator — color-coded by type + past/future */}
-                {dots.length > 0 && (
-                  <div style={{
-                    width: 6, height: 6, borderRadius: '50%', marginTop: 1,
-                    background: isPast && !isToday
-                      ? 'rgba(245,240,232,0.25)'
-                      : hasBirthday ? '#F472B6'
-                      : GOLD,
-                    boxShadow: isPast && !isToday
-                      ? 'none'
-                      : hasBirthday
-                      ? '0 0 6px rgba(244,114,182,0.50)'
-                      : '0 0 4px rgba(201,168,76,0.45)',
-                  }} />
-                )}
+                {/* Event indicator — shape encodes type (not color-only):
+                    birthday = filled circle, memorial = ring, regular = square.
+                    Count digit shown when >1 event on the day. */}
+                {dots.length > 0 && (() => {
+                  const pastDim = isPast && !isToday
+                  const isMemorialOnly = hasMemorial && !hasBirthday
+                  const isRegularOnly = !hasBirthday && !hasMemorial
+                  const shapeColor = pastDim ? 'rgba(245,240,232,0.45)' : hasBirthday ? '#F472B6' : GOLD
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 1, height: 10 }}>
+                      <span style={{
+                        width: isMemorialOnly ? 7 : 6,
+                        height: isMemorialOnly ? 7 : 6,
+                        borderRadius: isRegularOnly ? 2 : '50%',
+                        background: isMemorialOnly ? 'transparent' : shapeColor,
+                        border: isMemorialOnly ? `1.5px solid ${shapeColor}` : 'none',
+                        boxShadow: pastDim ? 'none' : hasBirthday ? '0 0 6px rgba(244,114,182,0.50)' : '0 0 4px rgba(201,168,76,0.45)',
+                        display: 'inline-block', flexShrink: 0, boxSizing: 'border-box',
+                      }} />
+                      {dots.length > 1 && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, lineHeight: 1,
+                          color: pastDim ? 'rgba(245,240,232,0.45)' : TEXT_SECONDARY,
+                          fontFamily: "'DM Sans',sans-serif",
+                        }}>{dots.length}</span>
+                      )}
+                    </div>
+                  )
+                })()}
               </button>
             )
           })}

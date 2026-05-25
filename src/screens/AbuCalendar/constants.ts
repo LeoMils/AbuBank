@@ -5,6 +5,10 @@ export const BRIGHT_GOLD = '#D4A853'
 export const TEAL = '#14b8a6'
 export const BG = '#050A18'
 export const CREAM = '#F5F0E8'
+// Solid text tokens (replace low-alpha text that fell below contrast targets).
+export const TEXT_PRIMARY = '#F5F0E8'
+export const TEXT_SECONDARY = '#D8D2C4'
+export const TEXT_MUTED = '#9C9486'
 
 export type ApptTimeState = 'past' | 'now' | 'today' | 'upcoming'
 
