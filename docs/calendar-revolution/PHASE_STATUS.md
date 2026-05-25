@@ -6,8 +6,8 @@
 
 | # | Phase | Role | Gate | Status |
 |---|-------|------|------|--------|
-| 0 | Audit | Audit Agent [SPAWN] | ACCEPT-0 | ✅ report written — awaiting ACCEPT-0 |
-| 1 | Brief | [INLINE] | ACCEPT-1 | ⬜ |
+| 0 | Audit | Audit Agent [SPAWN] | ACCEPT-0 | ✅ ACCEPT-0 received |
+| 1 | Brief | [INLINE] | ACCEPT-1 | ✅ brief written — awaiting ACCEPT-1 |
 | 2 | Information Architecture | [INLINE] | ACCEPT-2 | ⬜ |
 | 3 | Design (Visual+Motion+Hebrew+A11y) | [INLINE] | ACCEPT-3 | ⬜ |
 | 4 | Integration Intelligence | Integration Agent [SPAWN] | ACCEPT-4 | ⬜ |
@@ -25,3 +25,4 @@
 - **Calendar path correction:** code lives at `src/screens/AbuCalendar/`, not `src/calendar/` as the mega-prompt assumed. Audit targets the real path.
 - **Ship step:** PR-based delivery with explicit operator accept (per CLAUDE.md no-auto-merge rule), not an automatic squash-merge to main. Re-confirm at Phase 10.
 - **Off-limits:** `.git/`, `node_modules/`, anything outside repo root, and the bottom-bar screens' sources unless a chunk explicitly scopes them.
+- **Scope (ACCEPT-0):** IN — (a) bottom-sheet day-detail, (b) no-scroll-primary redesign, (c) ≥56pt cells + non-color indicators, (e) read birthdays from `knowledge/family_data.json`. OUT — (d) add-bill-as-reminder → deferred to `FOLLOW_UPS.md` (needs a due-date data model). Branch `claude/enable-family-contact-data-Hhcf4` declared out of scope for this mission.
