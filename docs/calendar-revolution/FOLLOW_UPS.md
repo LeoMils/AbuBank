@@ -8,6 +8,12 @@ Items intentionally OUT OF SCOPE for the current revolution, captured so they ar
 - **Then:** a one-tap "הוסיפי כתזכורת" affordance on the service launcher that creates a calendar reminder via the existing `createAppointmentSafe` path.
 - **Status:** future work — requires data model first. Not started.
 
+## FU-2 — Yarden & Sharon birthdays missing from source of truth
+Yarden and Sharon birthdays existed in the old hard-coded list (`service.ts` `FAMILY_BIRTHDAYS`: Yarden `10-12`, Sharon `09-11`) but are missing from `knowledge/family_data.json`. Need verified dates before restoring.
+- **Decision (ACCEPT-2):** do NOT invent dates; do NOT keep stale hard-coded dates. Drop Yarden and Sharon from the birthday runtime output until verified dates are added to `knowledge/family_data.json` through the proper validated flow (edit JSON → `npm run generate:memory`). Calendar-date integrity outranks preserving stale hard-coded data.
+- **To restore:** add `birthday` (`MM-DD`) to the respective entries in `family_data.json` (Yarden in `grandchildren_spouses[]`, Sharon in `close_friends[]`), regenerate memory, and they will flow through the source-of-truth path automatically.
+- **Status:** dropped pending verified dates. Not invented.
+
 ## (candidate, not yet approved) Other Phase-0 §9 abilities held back
 - Unified AbuAI voice-contract adapter (`{rawTranscript, contextDate, locale} → {status, reminder?, confidence, alternatives?, failureReason?}`).
 - Recurring user reminders (medication, weekly calls) — `isRecurring` field exists but is family-only today.
