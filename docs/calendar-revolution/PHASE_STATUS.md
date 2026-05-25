@@ -7,8 +7,8 @@
 | # | Phase | Role | Gate | Status |
 |---|-------|------|------|--------|
 | 0 | Audit | Audit Agent [SPAWN] | ACCEPT-0 | ✅ ACCEPT-0 received |
-| 1 | Brief | [INLINE] | ACCEPT-1 | ✅ brief written — awaiting ACCEPT-1 |
-| 2 | Information Architecture | [INLINE] | ACCEPT-2 | ⬜ |
+| 1 | Brief | [INLINE] | ACCEPT-1 | ✅ ACCEPT-1 received |
+| 2 | Information Architecture | [INLINE] | ACCEPT-2 | ✅ IA written — awaiting ACCEPT-2 |
 | 3 | Design (Visual+Motion+Hebrew+A11y) | [INLINE] | ACCEPT-3 | ⬜ |
 | 4 | Integration Intelligence | Integration Agent [SPAWN] | ACCEPT-4 | ⬜ |
 | 5 | Architecture + Plan | [INLINE] | ACCEPT-5 | ⬜ |
