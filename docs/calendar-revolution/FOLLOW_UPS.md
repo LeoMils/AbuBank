@@ -14,6 +14,14 @@ Yarden and Sharon birthdays existed in the old hard-coded list (`service.ts` `FA
 - **To restore:** add `birthday` (`MM-DD`) to the respective entries in `family_data.json` (Yarden in `grandchildren_spouses[]`, Sharon in `close_friends[]`), regenerate memory, and they will flow through the source-of-truth path automatically.
 - **Status:** dropped pending verified dates. Not invented.
 
+## FU-3 — People in family_data.json with NO birthday field (missing data, NOT deleted)
+As of the JSON-backed migration (Chunk 6.1), these family members exist in `knowledge/family_data.json` but carry no `birthday`, so they produce no birthday event. They are **present as people** — this is **missing birthday data, not a deletion**:
+- **Yael** (`children_related[]`, partner of Mor) — no `birthday`.
+- **Gilad** (`grandchildren_spouses[]`, spouse of Ofir) — no `birthday`.
+- **Mirta**, **Shoshana** (`close_friends[]`) — no `birthday`.
+- (Yarden, Sharon — see FU-2.)
+To add a birthday event for any of them: add a verified `birthday` (`MM-DD`) to their entry in `family_data.json` and run `npm run generate:memory`. Do not invent dates.
+
 ## (candidate, not yet approved) Other Phase-0 §9 abilities held back
 - Unified AbuAI voice-contract adapter (`{rawTranscript, contextDate, locale} → {status, reminder?, confidence, alternatives?, failureReason?}`).
 - Recurring user reminders (medication, weekly calls) — `isRecurring` field exists but is family-only today.
