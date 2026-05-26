@@ -22,6 +22,12 @@ As of the JSON-backed migration (Chunk 6.1), these family members exist in `know
 - (Yarden, Sharon — see FU-2.)
 To add a birthday event for any of them: add a verified `birthday` (`MM-DD`) to their entry in `family_data.json` and run `npm run generate:memory`. Do not invent dates.
 
+## FU-4 — Bottom-sheet (Chunk 6.3) deferred extras
+The `DayDetailSheet` ships the minimum safe accessible version: `role="dialog"`/`aria-modal`, Escape-to-close, scrim + close-button close, focus moved into the sheet on open and restored on close, slide-up motion with `prefers-reduced-motion` honored. Deferred (not overbuilt this chunk):
+- **Full Tab focus-trap** (cycle focus within the panel). Today focus is moved in and restored, but Tab can still leave the panel.
+- **Swipe-down-to-close** gesture (grip is present; only tap/Escape/scrim close today).
+- **`DayDetailSheet.test.tsx` render test:** the repo has no `jsdom`/`@testing-library/react` and vitest runs in `node`, so a DOM-render test can't run without adding test infra (a `package.json` change → re-gate). The sheet is currently covered by typecheck + build + Phase 7 browser QA. Add the render test if/when test infra is approved.
+
 ## (candidate, not yet approved) Other Phase-0 §9 abilities held back
 - Unified AbuAI voice-contract adapter (`{rawTranscript, contextDate, locale} → {status, reminder?, confidence, alternatives?, failureReason?}`).
 - Recurring user reminders (medication, weekly calls) — `isRecurring` field exists but is family-only today.

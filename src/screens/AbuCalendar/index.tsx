@@ -29,6 +29,7 @@ import {
   type VoiceTrace,
 } from './voiceTrace'
 import { VoiceTraceCard } from './VoiceTraceCard'
+import { DayDetailSheet } from './DayDetailSheet'
 import { transcribeCalendarAudio } from './calendarTranscribe'
 import { normalizeCalendarTranscript } from './calendarTranscriptCorrection'
 import { getSupportedMimeType } from '../AbuAI/service'
@@ -67,6 +68,7 @@ export function AbuCalendar() {
   const [year, setYear] = useState(todayDate.getFullYear())
   const [month, setMonth] = useState(todayDate.getMonth() + 1)
   const [selectedDay, setSelectedDay] = useState(today)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [appointments, setAppointments] = useState<Appointment[]>(() => loadAppointmentsWithFamily(todayDate.getFullYear()))
   const [showManual, setShowManual] = useState(false)
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
@@ -967,7 +969,7 @@ export function AbuCalendar() {
               <button
                 key={ds}
                 type="button"
-                onClick={() => { setSelectedDay(ds); soundTap() }}
+                onClick={() => { setSelectedDay(ds); soundTap(); setSheetOpen(true) }}
                 aria-label={`${day} ${formatHebrewMonth(year, month)}${holiday ? `, ${holiday}` : ''}${dots.length ? `, ${dots.length} אירועים` : ''}`}
                 aria-current={isToday ? 'date' : undefined}
                 style={{
@@ -1065,13 +1067,70 @@ export function AbuCalendar() {
         </div>
       </div>
 
-      {/* SELECTED DAY APPOINTMENTS */}
-      <div style={{ padding: '8px 16px 4px', flexShrink: 0, maxHeight: 200, overflowY: 'auto', scrollbarWidth: 'thin' as React.CSSProperties['scrollbarWidth'] }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
-        }}>
-          <span style={{ fontSize: 17, fontWeight: 700, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif" }}>אירועים</span>
-          <span style={{ fontSize: 16, color: 'rgba(245,240,232,0.50)', fontFamily: "'Heebo',sans-serif" }}>{formatShortHebrewDate(selectedDay)}</span>
+      {/* SELECTED DAY — bottom-sheet (replaces the inline list + sticky footer).
+          Owns its own scroll; ADD/mic/voice-trace live inside it only. */}
+      <DayDetailSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title={formatShortHebrewDate(selectedDay)}
+        footer={
+          <>
+            {/* Status pill — visible only when recording or processing */}
+            {(isRecording || (voiceStatus && !voiceParsed && !isRecording)) && (
+              isRecording
+                ? <StatusPill variant="red" icon="🔴" label="מקשיבה..." />
+                : <StatusPill variant="gold" label={voiceStatus} />
+            )}
+
+            {/* Visible voice trace — never silent; shows stage + every failure
+                message with a copy-diagnostic button. In-sheet only. */}
+            <VoiceTraceCard
+              trace={voiceTrace}
+              onDismiss={dismissVoiceTrace}
+              onCopied={() => { setVoiceTraceCopied(true); setTimeout(() => setVoiceTraceCopied(false), 2200) }}
+              copied={voiceTraceCopied}
+            />
+
+            {/* Action row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <SeniorButton variant="ghost" onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}>
+                ＋ הוספה ידנית
+              </SeniorButton>
+
+              <button type="button" onClick={() => handleVoiceRecord()}
+                onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
+                onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+                onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                aria-label="הוספת אירוע בקול"
+                style={{
+                  width: 60, height: 60, borderRadius: '50%',
+                  background: isRecording
+                    ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
+                    : 'linear-gradient(145deg, #D4A853 0%, #C9A84C 45%, #B8912A 100%)',
+                  border: 'none',
+                  boxShadow: isRecording
+                    ? '0 4px 16px rgba(239,68,68,0.35)'
+                    : '0 4px 16px rgba(201,168,76,0.25)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  transition: 'transform 0.12s ease, background 0.2s ease',
+                  animation: isRecording ? 'recordPulse 1.2s ease-in-out infinite' : 'none',
+                }}
+              >
+                {isRecording ? (
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                    <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
+                  </svg>
+                )}
+              </button>
+            </div>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, fontFamily: "'Heebo',sans-serif" }}>אירועים</span>
         </div>
 
         {getHebrewHoliday(selectedDay) && (
@@ -1098,73 +1157,7 @@ export function AbuCalendar() {
             )
           })
         )}
-      </div>
-
-      {/* FOOTER — always visible */}
-      <div style={{
-        position: 'sticky', bottom: 0,
-        flexShrink: 0,
-        padding: '12px 16px calc(10px + env(safe-area-inset-bottom, 0px))',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        background: 'linear-gradient(to top, rgba(5,10,24,0.97) 60%, rgba(5,10,24,0) 100%)',
-        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-        zIndex: 20,
-      } as React.CSSProperties}>
-        {/* Status pill — visible only when recording or processing */}
-        {(isRecording || (voiceStatus && !voiceParsed && !isRecording)) && (
-          isRecording
-            ? <StatusPill variant="red" icon="🔴" label="מקשיבה..." />
-            : <StatusPill variant="gold" label={voiceStatus} />
-        )}
-
-        {/* P0.6 — visible voice trace card. Renders whenever the
-            pipeline has something to say (recording / processing /
-            transcribing / parsing / creating / success / error). Never
-            silent — the user always sees the current stage AND every
-            failure message, with a copy-diagnostic button. */}
-        <VoiceTraceCard
-          trace={voiceTrace}
-          onDismiss={dismissVoiceTrace}
-          onCopied={() => { setVoiceTraceCopied(true); setTimeout(() => setVoiceTraceCopied(false), 2200) }}
-          copied={voiceTraceCopied}
-        />
-
-        {/* Action row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <SeniorButton variant="ghost" onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}>
-            ＋ הוספה ידנית
-          </SeniorButton>
-
-          <button type="button" onClick={() => handleVoiceRecord()}
-            onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
-            onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-            onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-            aria-label="הוספת אירוע בקול"
-            style={{
-              width: 60, height: 60, borderRadius: '50%',
-              background: isRecording
-                ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
-                : 'linear-gradient(145deg, #D4A853 0%, #C9A84C 45%, #B8912A 100%)',
-              border: 'none',
-              boxShadow: isRecording
-                ? '0 4px 16px rgba(239,68,68,0.35)'
-                : '0 4px 16px rgba(201,168,76,0.25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              transition: 'transform 0.12s ease, background 0.2s ease',
-              animation: isRecording ? 'recordPulse 1.2s ease-in-out infinite' : 'none',
-            }}
-          >
-            {isRecording ? (
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
-                <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
-              </svg>
-            )}
-          </button>
-        </div>
-      </div>
+      </DayDetailSheet>
 
       <Toast
         message="האירוע נמחק"
