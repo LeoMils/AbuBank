@@ -14,8 +14,8 @@
 | 5 | Architecture + Plan | [INLINE] | ACCEPT-5 | ✅ plan written — awaiting ACCEPT-5 (last gate before code) |
 | 6 | Build (chunk-by-chunk) | Build Executor [SPAWN/chunk] | ACCEPT-6.N → ACCEPT-6 | ✅ ACCEPT-6 received (6.1–6.4 done) |
 | 7 | QA | QA Agent [SPAWN] | ACCEPT-7 | ✅ ACCEPT-7 received |
-| 8 | Red Team | Red Team Agent [SPAWN] | ACCEPT-8 | ✅ report + remediation (RT-1/RT-3/RT-4 fixed; RT-2 → FU-5 browser gate) — awaiting ACCEPT-8 |
-| 9 | Principal Review | Principal Reviewer [SPAWN] | ACCEPT-9 | ⬜ |
+| 8 | Red Team | Red Team Agent [SPAWN] | ACCEPT-8 | ✅ ACCEPT-8 received |
+| 9 | Principal Review | Principal Reviewer [SPAWN] | ACCEPT-9 | 🟡 principal reviewer running |
 | 9.5 | External Second-Opinion | operator-triggered | EXTERNAL-9.5 | ⬜ (optional) |
 | 10 | Ship | [INLINE] | ACCEPT-10 | ⬜ |
 
