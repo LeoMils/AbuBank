@@ -12,8 +12,8 @@
 | 3 | Design (Visual+Motion+Hebrew+A11y) | [INLINE] | ACCEPT-3 | ✅ ACCEPT-3 received |
 | 4 | Integration Intelligence | Integration Agent [SPAWN] | ACCEPT-4 | ✅ ACCEPT-4 received |
 | 5 | Architecture + Plan | [INLINE] | ACCEPT-5 | ✅ plan written — awaiting ACCEPT-5 (last gate before code) |
-| 6 | Build (chunk-by-chunk) | Build Executor [SPAWN/chunk] | ACCEPT-6.N → ACCEPT-6 | 🟡 6.1 ✅ · 6.2 ✅ · 6.3 ✅ · 6.4 ✅ (glance + alert inset + AbuTime→sheet + v0.4.18) — awaiting ACCEPT-6.4 → ACCEPT-6 |
-| 7 | QA | QA Agent [SPAWN] | ACCEPT-7 | ⬜ |
+| 6 | Build (chunk-by-chunk) | Build Executor [SPAWN/chunk] | ACCEPT-6.N → ACCEPT-6 | ✅ ACCEPT-6 received (6.1–6.4 done) |
+| 7 | QA | QA Agent [SPAWN] | ACCEPT-7 | 🟡 QA agent running |
 | 8 | Red Team | Red Team Agent [SPAWN] | ACCEPT-8 | ⬜ |
 | 9 | Principal Review | Principal Reviewer [SPAWN] | ACCEPT-9 | ⬜ |
 | 9.5 | External Second-Opinion | operator-triggered | EXTERNAL-9.5 | ⬜ (optional) |
