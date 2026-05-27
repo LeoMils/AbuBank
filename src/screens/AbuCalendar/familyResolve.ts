@@ -21,12 +21,19 @@ export type FamilyResolveResult =
   | { status: 'none' }
 
 const STOP_WORDS = /^(הילדים|הרופא|המשפחה|הבית|העבודה|כולם|כולן)$/
-// "עם <relationship phrase>" — captured intact (longest kinship word first).
-const REL_AFTER_WITH = /עם\s+(ה?(?:נכדה|נכד|בת|בן)\s+של\s+[֐-׿']+)/
+// Kinship words we capture after "עם" — multi-word forms ("בן הזוג") MUST come
+// before their single-word prefixes ("בן") so the longer form wins.
+const KIND = `בן\\s+הזוג|בת\\s+הזוג|נכדה|נכד|בעלה|בעל|אשתו|אשת|אישה|בת|בן`
+// "עם <relationship phrase>" — captured intact (e.g. "הבעל של אופיר").
+const REL_AFTER_WITH = new RegExp(`עם\\s+(ה?(?:${KIND})\\s+של\\s+[֐-׿']+)`)
 // "עם <single name>"
 const NAME_AFTER_WITH = /עם\s+([֐-׿']+)/
 // A standalone relationship descriptor (already extracted).
-const REL_DESCRIPTOR = /^ה?(נכדה|נכד|בת|בן)\s+של\s+([֐-׿']+)$/
+const REL_DESCRIPTOR = new RegExp(`^ה?(${KIND})\\s+של\\s+([֐-׿']+)$`)
+
+// Spouse/partner descriptors → gender of the SPOUSE we're looking for.
+const SPOUSE_MALE = new Set(['בעל', 'בעלה', 'בן הזוג'])
+const SPOUSE_FEMALE = new Set(['אישה', 'אשתו', 'אשת', 'בת הזוג'])
 
 /** Extract the person phrase from a transcript, preferring a full kinship
  *  descriptor ("הבת של מור") over a bare name. Returns null if none. */
@@ -51,23 +58,28 @@ export function resolvePersonPhrase(phraseRaw: string | null | undefined): Famil
 
   const desc = phrase.match(REL_DESCRIPTOR)
   if (desc) {
-    const kind = desc[1]!                 // נכדה | נכד | בת | בן
+    const kind = desc[1]!.replace(/\s+/g, ' ').trim()  // normalize "בן  הזוג" → "בן הזוג"
     const ofName = desc[2]!
     const root = findNode(ofName)
     if (!root) return { status: 'missing', phrase }
 
-    const wantGender: 'female' | 'male' = kind === 'בת' || kind === 'נכדה' ? 'female' : 'male'
-    const isGrandchild = kind === 'נכד' || kind === 'נכדה'
+    const isSpouse = SPOUSE_MALE.has(kind) || SPOUSE_FEMALE.has(kind)
+    const wantGender: 'female' | 'male' = isSpouse
+      ? (SPOUSE_MALE.has(kind) ? 'male' : 'female')
+      : (kind === 'בת' || kind === 'נכדה' ? 'female' : 'male')
 
     let candidateHe: string[]
-    if (!isGrandchild) {
-      candidateHe = [...root.childrenHe]
-    } else {
+    if (isSpouse) {
+      // Spouse OR partner (married vs. unmarried), read straight from the graph.
+      candidateHe = [...root.spousesHe, ...root.partnersHe]
+    } else if (kind === 'נכד' || kind === 'נכדה') {
       candidateHe = []
       for (const childHe of root.childrenHe) {
         const child = findNode(childHe)
         if (child) candidateHe.push(...child.childrenHe)
       }
+    } else {
+      candidateHe = [...root.childrenHe]
     }
 
     // Keep only nodes whose gender matches with confidence — 'unknown' is
