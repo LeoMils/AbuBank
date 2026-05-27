@@ -12,7 +12,7 @@ export const TEXT_MUTED = '#9C9486'
 
 export type ApptTimeState = 'past' | 'now' | 'today' | 'upcoming'
 
-export const DAY_HEADERS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+export const DAY_HEADERS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'שבת']
 
 export function getTodayStr(): string {
   return new Date().toISOString().split('T')[0]!
