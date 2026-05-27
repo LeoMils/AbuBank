@@ -116,10 +116,10 @@ describe('AbuAI does NOT call the online endpoint for family / calendar queries'
   })
 })
 
-describe('build version is bumped for the final release war room', () => {
-  it('APP_VERSION is the final-release-war-room marker', () => {
+describe('build version marker', () => {
+  it('version.ts exposes a non-empty version + AbuBank buildLabel (not pinned to a specific release)', () => {
     const verSrc = fs.readFileSync(path.resolve(__dirname, '../../version.ts'), 'utf8')
-    expect(verSrc.includes("'0.4.17-final-release-war-room'")).toBe(true)
-    expect(verSrc.includes('AbuBank — Final Release War Room QA')).toBe(true)
+    expect(/version:\s*'[^']+'/.test(verSrc)).toBe(true)
+    expect(/buildLabel:\s*'AbuBank[^']*'/.test(verSrc)).toBe(true)
   })
 })

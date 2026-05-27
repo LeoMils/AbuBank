@@ -756,42 +756,19 @@ export function AbuCalendar() {
 
   const hebrewMonthLabel = formatHebrewMonth(year, month)
 
+  // Next-thing glance (primary view): next upcoming event + today's count,
+  // computed from the current year's merged set so it stays correct while the
+  // user navigates other months.
+  const glanceSource = useMemo(() => loadAppointmentsWithFamily(todayDate.getFullYear()), [appointments]) // eslint-disable-line react-hooks/exhaustive-deps
+  const nextEvent = useMemo(() => (
+    glanceSource
+      .filter(a => a.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0] ?? null
+  ), [glanceSource, today])
+  const todayCount = useMemo(() => glanceSource.filter(a => a.date === today).length, [glanceSource, today])
+
   return (
     <PageShell scrollable>
-
-      {/* ALERT BANNERS — max 2 stacked */}
-      {activeAlerts.length > 0 && (
-        <div style={{ position: 'fixed', top: 72, left: 0, right: 0, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {activeAlerts.map(alert => (
-            <div key={alert.id} style={{
-              background: 'rgba(12,10,8,0.97)',
-              backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-              borderBottom: '2px solid rgba(201,168,76,0.60)',
-              padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
-              animation: 'alertSlideIn 0.3s ease-out both',
-            } as React.CSSProperties}>
-              <span style={{ fontSize: 24, flexShrink: 0 }}>🔔</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 18, fontWeight: 700, color: GOLD, fontFamily: "'Heebo',sans-serif" }}>
-                  תזכורת: {alert.title}
-                </span>
-                <div style={{ fontSize: 16, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
-                  בעוד {alert.minutesLeft} דקות
-                </div>
-              </div>
-              <button type="button" onClick={() => setActiveAlerts(prev => prev.filter(a => a.id !== alert.id))}
-                aria-label="סגרי התראה" style={{
-                  minWidth: 64, height: 48, borderRadius: 12,
-                  background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.35)',
-                  color: GOLD, fontSize: 16, fontWeight: 700, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  fontFamily: "'Heebo',sans-serif", padding: '0 14px',
-                }}
-              >הבנתי</button>
-            </div>
-          ))}
-        </div>
-      )}
 
       <ScreenHeader
         title="Abu יומן"
@@ -836,6 +813,39 @@ export function AbuCalendar() {
         </>}
       />
 
+      {/* ALERT BANNERS — reflowing top inset (in-flow; never paints over chrome) */}
+      {activeAlerts.length > 0 && (
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {activeAlerts.map(alert => (
+            <div key={alert.id} style={{
+              background: 'rgba(12,10,8,0.97)',
+              borderBottom: '2px solid rgba(201,168,76,0.60)',
+              padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
+              animation: 'alertSlideIn 0.3s ease-out both',
+            } as React.CSSProperties}>
+              <span style={{ fontSize: 24, flexShrink: 0 }}>🔔</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 18, fontWeight: 700, color: GOLD, fontFamily: "'Heebo',sans-serif" }}>
+                  תזכורת: {alert.title}
+                </span>
+                <div style={{ fontSize: 16, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
+                  בעוד {alert.minutesLeft} דקות
+                </div>
+              </div>
+              <button type="button" onClick={() => setActiveAlerts(prev => prev.filter(a => a.id !== alert.id))}
+                aria-label="סגרי התראה" style={{
+                  minWidth: 64, height: 48, borderRadius: 12,
+                  background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.35)',
+                  color: GOLD, fontSize: 16, fontWeight: 700, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  fontFamily: "'Heebo',sans-serif", padding: '0 14px',
+                }}
+              >הבנתי</button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Alert time selector — inline, minimal */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -859,8 +869,37 @@ export function AbuCalendar() {
         </select>
       </div>
 
-      {/* ABU TIME — "מה קורה לי?" (includes birthday info via "הדבר הבא") */}
-      <AbuTime appointments={appointments} today={today} forceOpen={abuTimeOpen} onToggle={setAbuTimeOpen} />
+      {/* NEXT-THING GLANCE — single next event + today's count. Primary view
+          carries no list; tapping jumps to that day and opens the sheet. */}
+      <button
+        type="button"
+        onClick={() => { if (nextEvent) { const [y, m] = nextEvent.date.split('-').map(Number); setYear(y!); setMonth(m!); setSelectedDay(nextEvent.date); setSheetOpen(true) } }}
+        aria-label={nextEvent ? `הדבר הבא: ${nextEvent.title}${todayCount > 0 ? `, ${todayCount} אירועים היום` : ''}` : 'אין אירועים קרובים'}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+          width: 'calc(100% - 32px)', margin: '2px auto 0', padding: '10px 14px',
+          borderRadius: 14, background: 'rgba(201,168,76,0.06)',
+          border: '1px solid rgba(201,168,76,0.16)', textAlign: 'right',
+          cursor: nextEvent ? 'pointer' : 'default', fontFamily: "'Heebo',sans-serif",
+        }}
+      >
+        <span style={{ fontSize: 22, flexShrink: 0 }}>{nextEvent ? nextEvent.emoji : '🗓️'}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: TEXT_SECONDARY }}>הדבר הבא</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: CREAM, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {nextEvent
+              ? `${nextEvent.title} · ${nextEvent.date === today ? 'היום' : nextEvent.date.split('-').reverse().slice(0, 2).join('/')}`
+              : 'אין אירועים קרובים'}
+          </div>
+        </div>
+        {todayCount > 0 && (
+          <span style={{
+            fontSize: 13, fontWeight: 700, color: GOLD, flexShrink: 0,
+            background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.30)',
+            borderRadius: 10, padding: '3px 10px',
+          }}>היום: {todayCount}</span>
+        )}
+      </button>
 
       {/* MONTH NAVIGATOR */}
       <div style={{
@@ -1129,7 +1168,10 @@ export function AbuCalendar() {
           </>
         }
       >
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+        {/* AbuTime briefing — collapsed / opt-in inside the sheet */}
+        <AbuTime appointments={appointments} today={today} forceOpen={abuTimeOpen} onToggle={setAbuTimeOpen} />
+
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, marginTop: 8 }}>
           <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, fontFamily: "'Heebo',sans-serif" }}>אירועים</span>
         </div>
 
