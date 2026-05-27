@@ -28,6 +28,15 @@ The `DayDetailSheet` ships the minimum safe accessible version: `role="dialog"`/
 - **Swipe-down-to-close** gesture (grip is present; only tap/Escape/scrim close today).
 - **`DayDetailSheet.test.tsx` render test:** the repo has no `jsdom`/`@testing-library/react` and vitest runs in `node`, so a DOM-render test can't run without adding test infra (a `package.json` change → re-gate). The sheet is currently covered by typecheck + build + Phase 7 browser QA. Add the render test if/when test infra is approved.
 
+## FU-5 — RELEASE-GATE: no-scroll primary not enforced (Red Team RT-2)
+The primary calendar still renders inside `<PageShell scrollable>` (`index.tsx:771`), so the "no scroll on primary screens" product principle is **structurally unguaranteed**. It cannot be honestly proven here (no browser). **Release gate:** browser-measure the primary at 360×740 with 2 active alert insets. If it fits, document the measured proof and consider switching this `PageShell` to non-scrollable to lock the invariant; if it overflows, redesign (brief rule: "redesign — don't add scroll", e.g. shorter alert insets / collapsed alert-time selector). Do NOT claim no-scroll until measured.
+
+## Red Team remediations applied (Phase 8)
+- **RT-1 (Critical) — fixed:** the deceased husband's birthday now renders as a candle remembrance (🕯️, `type:'memory'`, gold), never a 🎂 cake — `familyEvents.ts buildFamilyBirthdays`. Kept in the array (not a separate memorial) so AbuAI `getBirthdayFor` still resolves the month name; guarded by `familyEvents.test.ts` ("RT-1" test).
+- **RT-3 (High) — fixed:** legacy event-id slugs preserved (`eili→bday-ilai`, `ayalon→bday-eylon`) so already-dismissed alerts don't re-fire after deploy — `familyEvents.ts LEGACY_BDAY_ID`.
+- **RT-4 (High) — fixed:** the day-sheet cannot be closed while a voice recording is active (`index.tsx` onClose guard `if (isRecording) return`), preventing an orphaned/silent processing state.
+- **RT-2 (High) — carried to browser QA** as FU-5 above (cannot be proven here).
+
 ## (candidate, not yet approved) Other Phase-0 §9 abilities held back
 - Unified AbuAI voice-contract adapter (`{rawTranscript, contextDate, locale} → {status, reminder?, confidence, alternatives?, failureReason?}`).
 - Recurring user reminders (medication, weekly calls) — `isRecurring` field exists but is family-only today.

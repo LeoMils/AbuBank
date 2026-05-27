@@ -24,9 +24,10 @@ describe('family birthdays from family_data.json', () => {
   })
 
   it('uses the JSON canonical names, not the old aliases', () => {
-    // old hard-coded used 'אילון' (alias) and id 'bday-eylon' / 'bday-ilai'
-    expect(bdays.find(b => b.id === 'bday-ayalon')?.personName).toBe('איילון')
-    expect(bdays.find(b => b.id === 'bday-eili')?.personName).toBe('עילי')
+    // personName is the JSON canonical (עילי/איילון), while the event id keeps
+    // the legacy slug (bday-ilai/bday-eylon) for alert-dedup continuity (RT-3).
+    expect(bdays.find(b => b.personName === 'איילון')?.id).toBe('bday-eylon')
+    expect(bdays.find(b => b.personName === 'עילי')?.id).toBe('bday-ilai')
   })
 
   it('DROPS people with no birthday in the JSON — Yarden, Sharon, Yael', () => {
@@ -38,17 +39,30 @@ describe('family birthdays from family_data.json', () => {
     expect(bdays.some(b => b.date.endsWith('-09-11'))).toBe(false) // Sharon
   })
 
-  it('every birthday is well-formed', () => {
+  it('every event is well-formed; living = cake birthday, deceased = candle remembrance', () => {
     for (const b of bdays) {
-      expect(b.type).toBe('birthday')
       expect(b.isRecurring).toBe(true)
-      expect(b.emoji).toBe('🎂')
       expect(b.time).toBe('09:00')
       expect(b.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
       expect(b.personName).toBeTruthy()
       expect(b.personName).not.toContain('יום הולדת')
       expect(b.id).toMatch(/^bday-/)
+      if (b.type === 'birthday') {
+        expect(b.emoji).toBe('🎂')
+      } else {
+        expect(b.type).toBe('memory')
+        expect(b.emoji).toBe('🕯️')
+      }
     }
+  })
+
+  it('RT-1: the deceased (Papi) birthday is a candle remembrance, never a cake', () => {
+    const papi = bdays.find(b => b.personName === 'פפי')
+    expect(papi).toBeDefined()
+    expect(papi?.type).toBe('memory')
+    expect(papi?.emoji).toBe('🕯️')
+    expect(papi?.type).not.toBe('birthday')
+    expect(papi?.emoji).not.toBe('🎂')
   })
 
   it('renders no private fields (no notes / location) into events', () => {

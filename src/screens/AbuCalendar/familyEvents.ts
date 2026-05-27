@@ -18,6 +18,13 @@ const FAMILY_EVENT_COLORS = [
 
 const MEMORIAL_COLOR = '#C9A84C' // gold — calm, respectful (design §4.2)
 
+// Preserve the pre-migration event ids for people whose canonical slug changed,
+// so already-dismissed alerts (keyed in localStorage by id) do not re-fire once.
+const LEGACY_BDAY_ID: Record<string, string> = {
+  eili: 'bday-ilai',
+  ayalon: 'bday-eylon',
+}
+
 const CURRENT_YEAR = new Date().getFullYear()
 
 // Deterministic, session-stable hash → color (never the global cycling colorIndex).
@@ -41,14 +48,18 @@ export function buildFamilyBirthdays(): Appointment[] {
     .map(m => {
       const slug = m.canonicalName.toLowerCase()
       const name = displayName(m.canonicalName, m.hebrew)
+      // A deceased member's birthday is a gentle remembrance (candle), NEVER a
+      // celebratory cake — emotional-accuracy rule. Kept here (not a separate
+      // memorial) so AbuAI's getBirthdayFor still resolves the month name.
+      const deceased = m.relationship === 'husband_deceased'
       return {
-        id: `bday-${slug}`,
-        title: `יום הולדת ${name} 🎂`,
+        id: deceased ? `bday-${slug}` : (LEGACY_BDAY_ID[slug] ?? `bday-${slug}`),
+        title: `יום הולדת ${name} ${deceased ? '🕯️' : '🎂'}`,
         date: `${CURRENT_YEAR}-${m.birthday}`,
         time: '09:00',
-        emoji: '🎂',
-        color: colorFor(slug),
-        type: 'birthday',
+        emoji: deceased ? '🕯️' : '🎂',
+        color: deceased ? MEMORIAL_COLOR : colorFor(slug),
+        type: deceased ? 'memory' : 'birthday',
         personName: name,
         isRecurring: true,
       } satisfies Appointment

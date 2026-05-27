@@ -1110,7 +1110,7 @@ export function AbuCalendar() {
           Owns its own scroll; ADD/mic/voice-trace live inside it only. */}
       <DayDetailSheet
         open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
+        onClose={() => { if (isRecording) return; setSheetOpen(false) }}
         title={formatShortHebrewDate(selectedDay)}
         footer={
           <>
