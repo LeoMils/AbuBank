@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { type Appointment, detectEmoji } from './service'
 import { GOLD, BRIGHT_GOLD, CREAM, getTodayStr, isDuplicate } from './constants'
 import { speak, stopSpeaking } from '../../services/voice'
+import { ConfirmCard } from './ConfirmCard'
 
 const HEBREW_MONTHS = [
   'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
@@ -44,7 +45,7 @@ const STATE_COLOR: Record<VoiceState, string> = {
 }
 
 interface VoiceCardProps {
-  parsed: { title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; confidence?: number; source?: 'local' | 'llm' | 'fallback' | null }
+  parsed: { title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; personName?: string | null; confidence?: number; source?: 'local' | 'llm' | 'fallback' | null }
   existingAppts: Appointment[]
   onConfirm: (final: { title: string; date: string; time: string; emoji: string; location?: string; notes?: string }) => void
   onCancel: () => void
@@ -90,6 +91,7 @@ export function VoiceCard({
   const [location, setLocation] = useState(parsed.location ?? '')
   const [notes, setNotes] = useState(parsed.notes ?? '')
   const [ttsError, setTtsError] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
   const lastSpokenRef = useRef<string>('')
 
   useEffect(() => { setTranscriptDraft(rawTranscript ?? '') }, [rawTranscript])
@@ -124,6 +126,15 @@ export function VoiceCard({
   const isPastDate = !!date && date < today
   const hasDuplicate = canSave && isDuplicate(trimmedTitle, date, time, existingAppts)
   const dateLabel = formatHebrewDateSlot(date || null, today)
+
+  const doSave = () => {
+    if (!canSave) return
+    onConfirm({
+      title: trimmedTitle, date, time, emoji,
+      ...(location.trim() ? { location: location.trim() } : {}),
+      ...(notes.trim() ? { notes: notes.trim() } : {}),
+    })
+  }
 
   const isDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
 
@@ -176,6 +187,17 @@ export function VoiceCard({
           }}>{ttsError}</div>
         )}
 
+        {!editing && voiceState !== 'error' && (
+          <ConfirmCard
+            draft={{ title: trimmedTitle || title, date: date || null, time: time || null, personName: parsed.personName ?? null }}
+            {...(confirmationText ? { confirmationText } : {})}
+            onConfirm={doSave}
+            onCorrect={() => setEditing(true)}
+            onCancel={onCancel}
+          />
+        )}
+
+        {(editing || voiceState === 'error') && (<>
         {confirmationText && (
           <div data-testid="voice-confirmation-text" style={{
             fontSize: 16, lineHeight: 1.55, color: CREAM,
@@ -348,6 +370,7 @@ export function VoiceCard({
             }}
           >שמירה</button>
         </div>
+        </>)}
       </div>
     </div>
   )

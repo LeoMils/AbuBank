@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { type Appointment, detectEmoji } from './service'
 import { GOLD, BRIGHT_GOLD, CREAM } from './constants'
+import { ConfirmCard } from './ConfirmCard'
 
 interface ManualModalProps {
   onClose: () => void
@@ -25,6 +26,7 @@ export function ManualModal({ onClose, onSave, defaultDate, editing }: ManualMod
   // P0 — surface the missing field so Martita can fix it instead of
   // staring at a disabled Save button with no explanation.
   const [missingHint, setMissingHint] = useState<string>('')
+  const [confirming, setConfirming] = useState(false)
   const modalTitle = editing ? 'עריכת אירוע' : 'אירוע חדש'
 
   // Required-field gate for the Save button (P0). No hidden defaults —
@@ -34,12 +36,16 @@ export function ManualModal({ onClose, onSave, defaultDate, editing }: ManualMod
   const isTimeValid = /^\d{2}:\d{2}$/.test(time)
   const canSave = Boolean(trimmedTitle && isDateValid && isTimeValid)
 
+  // Step 1 — gate then move to the shared confirmation (no silent save).
   function handleSave() {
-    // P0 — if Save fires while disabled, fall through to the visible
-    // hint instead of silently saving a partial event.
     if (!trimmedTitle) { setMissingHint('חסר לי פרט כדי לשמור את הפגישה.'); return }
     if (!isDateValid) { setMissingHint('חסר לי פרט כדי לשמור את הפגישה.'); return }
     if (!isTimeValid) { setMissingHint('חסר לי פרט כדי לשמור את הפגישה.'); return }
+    setConfirming(true)
+  }
+
+  // Step 2 — the user confirmed on the shared ConfirmCard.
+  function doManualSave() {
     const trimmedNotes = notes.trim()
     const appt: Omit<Appointment, 'id' | 'color'> = {
       title: trimmedTitle,
@@ -101,6 +107,7 @@ export function ManualModal({ onClose, onSave, defaultDate, editing }: ManualMod
           overflow: 'hidden',
         }}
       >
+        {!confirming && (<>
         {/* Scrollable form area — ensures save button stays reachable on 360×740 with keyboard */}
         <div data-testid="manual-form-scroll" style={{
           flex: '1 1 auto',
@@ -235,7 +242,7 @@ export function ManualModal({ onClose, onSave, defaultDate, editing }: ManualMod
                 boxShadow: canSave ? '0 4px 20px rgba(201,168,76,0.40)' : 'none',
                 minHeight: 56,
               }}
-            >שמירה</button>
+            >המשך</button>
           </div>
           {(missingHint || !canSave) && (
             <div data-testid="manual-missing-hint" style={{
@@ -248,6 +255,18 @@ export function ManualModal({ onClose, onSave, defaultDate, editing }: ManualMod
             </div>
           )}
         </div>
+        </>)}
+
+        {confirming && (
+          <div style={{ padding: '28px 22px calc(24px + env(safe-area-inset-bottom))' }}>
+            <ConfirmCard
+              draft={{ title: trimmedTitle, date: isDateValid ? date : null, time: isTimeValid ? time : null }}
+              onConfirm={doManualSave}
+              onCorrect={() => setConfirming(false)}
+              onCancel={onClose}
+            />
+          </div>
+        )}
       </div>
     </div>
   )
