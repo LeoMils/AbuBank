@@ -15,7 +15,7 @@
 | 6 | Build (chunk-by-chunk) | Build Executor [SPAWN/chunk] | ACCEPT-6.N → ACCEPT-6 | ✅ ACCEPT-6 received (6.1–6.4 done) |
 | 7 | QA | QA Agent [SPAWN] | ACCEPT-7 | ✅ ACCEPT-7 received |
 | 8 | Red Team | Red Team Agent [SPAWN] | ACCEPT-8 | ✅ ACCEPT-8 received |
-| 9 | Principal Review | Principal Reviewer [SPAWN] | ACCEPT-9 | 🟡 principal reviewer running |
+| 9 | Principal Review | Principal Reviewer [SPAWN] | ACCEPT-9 | ✅ review written INLINE (spawned agent hung) — verdict ACCEPTABLE_TO_BROWSER_QA, 0 blockers — awaiting ACCEPT-9 |
 | 9.5 | External Second-Opinion | operator-triggered | EXTERNAL-9.5 | ⬜ (optional) |
 | 10 | Ship | [INLINE] | ACCEPT-10 | ⬜ |
 
