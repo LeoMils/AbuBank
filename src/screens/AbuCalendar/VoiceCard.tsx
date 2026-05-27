@@ -58,6 +58,9 @@ interface VoiceCardProps {
   voiceError?: string | null
   onReparse?: (transcript: string) => void
   onSpokenDone?: () => void
+  relation?: { status: 'resolved' | 'ambiguous' | 'missing'; phrase: string; candidates?: string[] }
+  onPickPerson?: (name: string) => void
+  onKeepPhrase?: () => void
 }
 
 const FIELD_LABEL: React.CSSProperties = {
@@ -81,7 +84,7 @@ export function VoiceCard({
   parsed, existingAppts, onConfirm, onCancel, onRetry, confirmationText,
   onCorrection, isCorrecting, rawTranscript,
   voiceState = 'parsed', voiceError = null, onReparse,
-  onSpokenDone,
+  onSpokenDone, relation, onPickPerson, onKeepPhrase,
 }: VoiceCardProps) {
   const today = getTodayStr()
   const [transcriptDraft, setTranscriptDraft] = useState(rawTranscript ?? '')
@@ -191,6 +194,9 @@ export function VoiceCard({
           <ConfirmCard
             draft={{ title: trimmedTitle || title, date: date || null, time: time || null, personName: parsed.personName ?? null }}
             {...(confirmationText ? { confirmationText } : {})}
+            {...(relation ? { relation } : {})}
+            {...(onPickPerson ? { onPickPerson } : {})}
+            {...(onKeepPhrase ? { onKeepPhrase } : {})}
             onConfirm={doSave}
             onCorrect={() => setEditing(true)}
             onCancel={onCancel}

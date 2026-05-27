@@ -38,6 +38,23 @@ describe('ConfirmCard — senior-first action labels', () => {
   })
 })
 
+describe('ConfirmCard — clean structured summary (no narrative blob)', () => {
+  it('uses a structured headline + question, not a dumped readback sentence', () => {
+    expect(SRC).toMatch(/>\s*הבנתי\s*</)
+    expect(SRC).toMatch(/>\s*לשמור ביומן\?\s*</)
+    expect(SRC).toContain('data-testid="confirm-question"')
+  })
+
+  it('handles resolved / ambiguous / missing family relations', () => {
+    expect(SRC).toContain('data-testid="relation-secondary"')   // resolved → show original phrase
+    expect(SRC).toContain('data-testid="relation-candidate"')   // ambiguous → candidate buttons
+    expect(SRC).toContain('data-testid="relation-keep"')        // ambiguous → keep literal phrase
+    expect(SRC).toContain('data-testid="relation-missing"')     // missing → preserve, never invent
+    expect(SRC).toMatch(/למי התכוונת\?/)
+    expect(SRC).toContain('לא מצאתי בוודאות מי זו')
+  })
+})
+
 describe('ConfirmCard — shared by voice and manual', () => {
   it('voice flow uses ConfirmCard as the default (non-editing) confirmation', () => {
     expect(VOICE).toContain("import { ConfirmCard } from './ConfirmCard'")

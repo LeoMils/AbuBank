@@ -18,6 +18,7 @@ import {
   type CreateFailureCode,
 } from './service'
 import { processVoiceTranscript } from './voiceAutoCreate'
+import { resolvePersonPhrase } from './familyResolve'
 import { userFacingError } from '../../services/platformHealth'
 import { mediateVoiceCaptureError } from '../../services/errorMediation'
 import { APP_VERSION } from '../../version'
@@ -59,6 +60,21 @@ import { GOLD, BRIGHT_GOLD, BG, CREAM, TEXT_SECONDARY, DAY_HEADERS, getTodayStr,
 
 
 
+type VoiceRelation = { status: 'resolved' | 'ambiguous' | 'missing'; phrase: string; candidates?: string[] }
+
+// Resolve a spoken family phrase ("הבת של מור") to a verified name, or carry it
+// as ambiguous/missing. Never invents; resolved names replace the phrase in the
+// title so the saved event reads "פגישה עם <שם>".
+function resolveDraftPerson(draft: { title: string; personPhrase?: string | null }): { title: string; personName: string | null; relation?: VoiceRelation } {
+  const phrase = draft.personPhrase ?? null
+  if (!phrase) return { title: draft.title, personName: null }
+  const r = resolvePersonPhrase(phrase)
+  if (r.status === 'resolved') return { title: draft.title.replace(phrase, r.name), personName: r.name, relation: { status: 'resolved', phrase } }
+  if (r.status === 'ambiguous') return { title: draft.title, personName: phrase, relation: { status: 'ambiguous', phrase, candidates: r.candidates } }
+  if (r.status === 'missing') return { title: draft.title, personName: phrase, relation: { status: 'missing', phrase } }
+  return { title: draft.title, personName: null }
+}
+
 // ─── Main AbuCalendar Screen ───────────────────────────────────────────────────
 export function AbuCalendar() {
   const setScreen = useAppStore(s => s.setScreen)
@@ -77,7 +93,7 @@ export function AbuCalendar() {
   // (or the honest failure copy) instead of a generic "saved" string.
   const [toastMessage, setToastMessage] = useState<string>('האירוע נשמר')
   const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success')
-  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; personName?: string | null; ambiguousTime?: boolean; confidence?: number; source?: 'local' | 'llm' | 'fallback' | null } | null>(null)
+  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; personName?: string | null; ambiguousTime?: boolean; confidence?: number; source?: 'local' | 'llm' | 'fallback' | null; relation?: VoiceRelation } | null>(null)
   const [rawTranscript, setRawTranscript] = useState<string>('')
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing' | 'parsing' | 'parsed' | 'error'>('idle')
   const [voiceError, setVoiceError] = useState<string | null>(null)
@@ -569,15 +585,20 @@ export function AbuCalendar() {
               // clarification question. The user can fix the missing
               // field inline; no silent timeout-dismiss.
               updateTrace({}, `needs_clarification:${decision.missing.join('|')}`)
-              setVoiceParsed({
-                title: decision.draft.title,
-                date: decision.draft.date,
-                time: decision.draft.time,
-                emoji: decision.draft.emoji,
-                location: decision.draft.location ?? null,
-                notes: decision.draft.notes ?? null,
-                confidence: decision.draft.confidence,
-              })
+              {
+                const res = resolveDraftPerson(decision.draft)
+                setVoiceParsed({
+                  title: res.title,
+                  date: decision.draft.date,
+                  time: decision.draft.time,
+                  emoji: decision.draft.emoji,
+                  location: decision.draft.location ?? null,
+                  notes: decision.draft.notes ?? null,
+                  confidence: decision.draft.confidence,
+                  personName: res.personName,
+                  ...(res.relation ? { relation: res.relation } : {}),
+                })
+              }
               setVoiceState('parsed')
               setVoiceStatus(decision.question)
               setStage('idle', decision.question, 'showing_clarification_question')
@@ -587,15 +608,20 @@ export function AbuCalendar() {
               // Passive utterance — complete but no explicit create-verb.
               // Show the VoiceCard so the user explicitly confirms.
               updateTrace({}, 'show_confirm_card')
-              setVoiceParsed({
-                title: decision.draft.title,
-                date: decision.draft.date,
-                time: decision.draft.time,
-                emoji: decision.draft.emoji,
-                location: decision.draft.location ?? null,
-                notes: decision.draft.notes ?? null,
-                confidence: decision.draft.confidence,
-              })
+              {
+                const res = resolveDraftPerson(decision.draft)
+                setVoiceParsed({
+                  title: res.title,
+                  date: decision.draft.date,
+                  time: decision.draft.time,
+                  emoji: decision.draft.emoji,
+                  location: decision.draft.location ?? null,
+                  notes: decision.draft.notes ?? null,
+                  confidence: decision.draft.confidence,
+                  personName: res.personName,
+                  ...(res.relation ? { relation: res.relation } : {}),
+                })
+              }
               setVoiceState('parsed')
               setStage('idle', 'מחכה לאישור שלך לפני שמירה.', 'awaiting_confirm_tap')
               return
@@ -1248,6 +1274,9 @@ export function AbuCalendar() {
           <VoiceCard
             parsed={voiceParsed}
             existingAppts={appointments}
+            {...(voiceParsed.relation ? { relation: voiceParsed.relation } : {})}
+            onPickPerson={(name: string) => setVoiceParsed(prev => (prev && prev.relation) ? { ...prev, title: prev.title.replace(prev.relation.phrase, name), personName: name, relation: { status: 'resolved', phrase: prev.relation.phrase } } : prev)}
+            onKeepPhrase={() => setVoiceParsed(prev => (prev && prev.relation) ? { ...prev, personName: prev.relation.phrase, relation: { status: 'missing', phrase: prev.relation.phrase } } : prev)}
             onConfirm={handleVoiceConfirm}
             onRetry={handleVoiceRetry}
             onCancel={() => {

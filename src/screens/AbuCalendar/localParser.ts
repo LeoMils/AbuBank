@@ -9,6 +9,7 @@ export interface LocalDraft {
   notes: string | null
   emoji: string
   confidence: number
+  personPhrase?: string | null
 }
 
 const HEBREW_HOUR_WORDS: Record<string, number> = {

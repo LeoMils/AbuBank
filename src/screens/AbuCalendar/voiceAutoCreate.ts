@@ -16,6 +16,7 @@
 import { parseLocally, type LocalDraft } from './localParser'
 import { extractCalendarIntentLocally, type CalendarIntentDraft } from './semanticIntent'
 import { createAppointmentSafe, type Appointment } from './service'
+import { extractPersonPhrase, isRelationshipDescriptor } from './familyResolve'
 
 // ─── Create-verb detector ─────────────────────────────────────────────────
 //
@@ -118,13 +119,19 @@ export function processVoiceTranscript(transcript: string, todayISO: string, opt
 
   const semantic = extractCalendarIntentLocally({ ...(opts?.rawTranscript !== undefined ? { rawTranscript: opts.rawTranscript } : {}), correctedTranscript: transcript, todayISO, ...(opts?.asr ? { asr: opts.asr } : {}) })
   const draft = parseLocally(transcript, todayISO)
+  // Capture the WHOLE person phrase ("הבת של מור"), which the word-level title
+  // extractor truncates. Used for family resolution + a clean title.
+  const personPhrase = extractPersonPhrase(transcript)
+  let title = semantic.extractedTitle ?? draft.title
+  if (personPhrase && /פגישה\s+עם/.test(title)) title = `פגישה עם ${personPhrase}`
   const effectiveDraft: LocalDraft = {
     ...draft,
-    title: semantic.extractedTitle ?? draft.title,
+    title,
     date: semantic.extractedDate ?? draft.date,
     time: semantic.extractedStartTime ?? draft.time,
     location: semantic.extractedLocation ?? draft.location ?? null,
     notes: semantic.extractedNotes ?? draft.notes ?? null,
+    personPhrase,
   }
   if (semantic.validationResult === 'not_calendar') return { action: 'not_calendar', message: 'לא זיהיתי משהו לקבוע ביומן.', semantic }
   if (semantic.validationResult === 'low_confidence') return { action: 'low_confidence', message: 'לא שמעתי מספיק ברור. תוכלי להגיד שוב?', semantic }
@@ -141,6 +148,13 @@ export function processVoiceTranscript(transcript: string, todayISO: string, opt
   if (!effectiveDraft.time) missing.push('time')
   if (missing.length > 0) {
     return { action: 'needs_clarification', missing, question: semantic.clarificationQuestion ?? clarifyQuestion(missing, transcript), draft: effectiveDraft }
+  }
+
+  // 2b) A family relationship phrase ("הבת של מור") must always be reviewed in
+  // the confirmation card (resolved / clarified / preserved) — never silently
+  // auto-created, even with a create-verb.
+  if (isRelationshipDescriptor(personPhrase)) {
+    return { action: 'show_confirm_card', draft: effectiveDraft }
   }
 
   // 3) Complete + create-verb → auto-create through the safe path.
