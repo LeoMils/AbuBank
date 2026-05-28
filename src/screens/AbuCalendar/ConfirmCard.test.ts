@@ -6,6 +6,8 @@ import { confirmCanSave } from './ConfirmCard'
 const SRC = readFileSync(resolve(__dirname, 'ConfirmCard.tsx'), 'utf8')
 const VOICE = readFileSync(resolve(__dirname, 'VoiceCard.tsx'), 'utf8')
 const MANUAL = readFileSync(resolve(__dirname, 'ManualModal.tsx'), 'utf8')
+const SERVICE = readFileSync(resolve(__dirname, 'service.ts'), 'utf8')
+const FAMILY_EVENTS = readFileSync(resolve(__dirname, 'familyEvents.ts'), 'utf8')
 
 describe('ConfirmCard — save gate', () => {
   it('requires title + date + time', () => {
@@ -51,7 +53,8 @@ describe('ConfirmCard — clean structured summary (no narrative blob)', () => {
     expect(SRC).toContain('data-testid="relation-keep"')        // ambiguous → keep literal phrase
     expect(SRC).toContain('data-testid="relation-missing"')     // missing → preserve, never invent
     expect(SRC).toMatch(/למי התכוונת\?/)
-    expect(SRC).toContain('לא מצאתי בוודאות מי זו')
+    expect(SRC).toContain('לא מצאתי בוודאות מי')
+    expect(SRC).toContain('להשאיר כמו שאמרתי')
   })
 })
 
@@ -72,5 +75,21 @@ describe('ConfirmCard — shared by voice and manual', () => {
     // handleSave no longer saves directly; doManualSave is the only onSave caller
     expect(MANUAL).toMatch(/function doManualSave/)
     expect(MANUAL).toContain('onSave(appt)')
+  })
+})
+
+describe('War-room invariants', () => {
+  it('createAppointmentSafe is the only public create function in service.ts', () => {
+    expect(SERVICE).toMatch(/export\s+function\s+createAppointmentSafe\s*\(/)
+    // No other exported createAppointment* variant must exist.
+    expect(SERVICE).not.toMatch(/export\s+function\s+createAppointment\b(?!Safe)/)
+  })
+
+  it('Papi / Pepe remembrance uses a candle (🕯️), not a cake — deceased flag controls the emoji', () => {
+    expect(FAMILY_EVENTS).toContain('🕯️')
+    // The deceased→candle / living→cake rule must remain in this file.
+    expect(FAMILY_EVENTS).toMatch(/deceased\s*\?\s*'🕯️'/)
+    // Memorial-date events must always render the candle.
+    expect(FAMILY_EVENTS).toMatch(/יום הזיכרון של \$\{name\} 🕯️/)
   })
 })

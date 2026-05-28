@@ -47,6 +47,8 @@ describe('voice ADD — command verbs never leak into the title', () => {
     'תזכירי לי ללכת לרופא מחר בשעה 9',
     'שימי לי פגישה עם דנה מחר בשעה 21',
     'תוסיפי פגישה עם דנה מחר בשעה 21',
+    'תכניסי לי פגישה עם דנה מחר בשעה 21',
+    'תכניס פגישה עם דנה מחר בשעה 21',
   ]) {
     it(`no verb / "תקווה" in title: "${t}"`, () => {
       const r = processVoiceTranscript(t, TODAY)

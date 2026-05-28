@@ -91,4 +91,40 @@ describe('resolvePersonPhrase', () => {
     const r = resolvePersonPhrase('הנכדה הגדולה')
     expect(r.status === 'missing' || r.status === 'none').toBe(true)
   })
+
+  it('Hebrew prepositional prefixes (ל/ב/מ/ה/ש/כ/ו) on the kinship word', () => {
+    for (const prefix of ['ה', 'ל', 'ב', 'מ', 'ש', 'ו', 'כ', '']) {
+      const r = resolvePersonPhrase(`${prefix}בעל של אופיר`)
+      expect(r.status).toBe('resolved')
+      if (r.status === 'resolved') expect(r.name).toBe('גלעד')
+    }
+  })
+
+  it('female spouse forms — אשתו / אשת / בת הזוג של עילי → ירדן', () => {
+    for (const p of ['אשתו של עילי', 'אשת עילי'.replace('עילי','של עילי'), 'בת הזוג של עילי']) {
+      const r = resolvePersonPhrase(p)
+      expect(r.status).toBe('resolved')
+      if (r.status === 'resolved') expect(r.name).toBe('ירדן')
+    }
+  })
+
+  it('"בת הזוג של מור" → יעל (female partner from familyGraph.partnersHe)', () => {
+    const r = resolvePersonPhrase('בת הזוג של מור')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('יעל')
+  })
+
+  it('"בן הזוג של מור" → missing (no MALE partner/spouse, never invent)', () => {
+    const r = resolvePersonPhrase('בן הזוג של מור')
+    expect(r.status).toBe('missing')
+  })
+
+  it('command verbs never end up as the captured person phrase', () => {
+    for (const v of ['תקבעי', 'תקבע', 'קבעי', 'קבע', 'תזכירי', 'תזכיר', 'תזכרי',
+                     'שימי', 'שים', 'תוסיפי', 'תוסיף', 'תכניסי', 'תכניס',
+                     'תרשמי', 'תרשום']) {
+      const phrase = extractPersonPhrase(`${v} פגישה למחר עם הבעל של אופיר`)
+      expect(phrase).toBe('הבעל של אופיר')
+    }
+  })
 })

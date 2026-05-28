@@ -69,15 +69,15 @@ export function ConfirmCard({
         borderRadius: 14, padding: '14px 16px',
       }}>
         <Row label="מה" value={whatPerson} missing={!whatPerson} />
-        <Row label="מתי" value={`${dateLabel ?? ''}${draft.time ? ` · ${draft.time}` : ''}`.trim()} missing={!draft.date || !draft.time} />
         {relation?.status === 'resolved' && (
-          <div data-testid="relation-secondary" style={{ fontSize: 14, color: TEXT_SECONDARY, fontFamily: "'Heebo',sans-serif" }}>{relation.phrase}</div>
+          <div data-testid="relation-secondary" style={{ fontSize: 14, color: TEXT_SECONDARY, fontFamily: "'Heebo',sans-serif", paddingInlineStart: 66 }}>{relation.phrase}</div>
         )}
         {relation?.status === 'missing' && (
-          <div data-testid="relation-missing" style={{ fontSize: 14, color: 'rgba(251,146,60,0.95)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.5 }}>
-            לא מצאתי בוודאות מי זו {relation.phrase}. לשמור כך?
+          <div data-testid="relation-missing" style={{ fontSize: 14, color: 'rgba(251,146,60,0.95)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.5, paddingInlineStart: 66 }}>
+            לא מצאתי בוודאות מי {relation.phrase}. לשמור כך?
           </div>
         )}
+        <Row label="מתי" value={`${dateLabel ?? ''}${draft.time ? ` · ${draft.time}` : ''}`.trim()} missing={!draft.date || !draft.time} />
         {isPast && (
           <div style={{ fontSize: 14, color: 'rgba(251,146,60,0.95)', fontFamily: "'Heebo',sans-serif" }}>⚠️ התאריך עבר</div>
         )}
@@ -110,7 +110,8 @@ export function ConfirmCard({
               color: TEXT_SECONDARY, fontSize: 16, fontWeight: 600, fontFamily: "'Heebo',sans-serif",
               cursor: 'pointer', minHeight: 52,
             }}
-          >להשאיר: {relation!.phrase}</button>
+            title={relation!.phrase}
+          >להשאיר כמו שאמרתי</button>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

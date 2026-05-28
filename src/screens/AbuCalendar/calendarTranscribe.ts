@@ -35,10 +35,16 @@ export type CalendarLanguageHint = 'he' | 'es' | 'en'
 
 /** Concise Hebrew calendar-domain prompt. Keep well below Groq's
  *  ~224 token limit. Family names + Israeli places + common calendar
- *  vocabulary nudge the model toward correct spellings. */
+ *  vocabulary nudge the model toward correct spellings.
+ *
+ *  Verb hint + an explicit "do not substitute" instruction counter-balance
+ *  the place-context bias that caused "תקבעי" (the command verb) to be
+ *  mis-heard as "תקווה" (the city). Without the verb prior, Whisper had
+ *  no strong reason to prefer the verb over the place. */
 const HEBREW_DOMAIN_PROMPT = [
   'זו הקלטה קצרה בעברית לקביעת פגישה ביומן.',
-  'נא לתמלל בדיוק מילים ושמות.',
+  'נא לתמלל בדיוק את מה שנאמר. אל תמירי מילים דומות בשמיעה.',
+  'פעלים נפוצים בתחילת המשפט: תקבעי, תקבע, קבעי, תזכירי, תזכיר, שימי, תוסיפי, תכניסי, תרשמי.',
   'שמות אפשריים: לאו, אופיר, גלעד, אילון, מור, מרטיטה, רפי, יעל, נועם, עדי, אדר, עילי, ירדן, אנאבל, ארי, פפי.',
   'מקומות אפשריים: פתח תקווה, כפר סבא, תל אביב, הרצליה, רעננה, הוד השרון, ירושלים.',
   'מילים נפוצות: מחר, היום, פגישה, תור, רופא, רופאה, ארוחת ערב, יום הולדת, בעשר בבוקר, בארבע אחר הצהריים, בערב.',
