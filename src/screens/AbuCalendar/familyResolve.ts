@@ -21,15 +21,21 @@ export type FamilyResolveResult =
   | { status: 'none' }
 
 const STOP_WORDS = /^(הילדים|הרופא|המשפחה|הבית|העבודה|כולם|כולן)$/
-// Kinship words we capture after "עם" — multi-word forms ("בן הזוג") MUST come
-// before their single-word prefixes ("בן") so the longer form wins.
+// Kinship words we capture — multi-word forms ("בן הזוג") MUST come before
+// their single-word prefixes ("בן") so the longer form wins.
 const KIND = `בן\\s+הזוג|בת\\s+הזוג|נכדה|נכד|בעלה|בעל|אשתו|אשת|אישה|בת|בן`
-// "עם <relationship phrase>" — captured intact (e.g. "הבעל של אופיר").
+// "עם <relationship phrase>" — preferred when present.
 const REL_AFTER_WITH = new RegExp(`עם\\s+(ה?(?:${KIND})\\s+של\\s+[֐-׿']+)`)
+// Same kinship-of-Name pattern ANYWHERE, allowing the Hebrew prepositional
+// prefix that attaches directly to the kinship word (ב/ל/מ/ה/ש/כ/ו) — covers
+// "תזכירי לי להתקשר לבעל של אופיר…". Lookbehind keeps us out of the middle of
+// a Hebrew word.
+const REL_ANYWHERE = new RegExp(`(?<![֐-׿])([בלמהשכו]?(?:${KIND})\\s+של\\s+[֐-׿']+)`)
 // "עם <single name>"
 const NAME_AFTER_WITH = /עם\s+([֐-׿']+)/
-// A standalone relationship descriptor (already extracted).
-const REL_DESCRIPTOR = new RegExp(`^ה?(${KIND})\\s+של\\s+([֐-׿']+)$`)
+// A standalone relationship descriptor (already extracted), with optional
+// Hebrew prepositional prefix.
+const REL_DESCRIPTOR = new RegExp(`^[בלמהשכו]?(${KIND})\\s+של\\s+([֐-׿']+)$`)
 
 // Spouse/partner descriptors → gender of the SPOUSE we're looking for.
 const SPOUSE_MALE = new Set(['בעל', 'בעלה', 'בן הזוג'])
@@ -42,6 +48,8 @@ export function extractPersonPhrase(text: string | null | undefined): string | n
   if (!t) return null
   const rel = t.match(REL_AFTER_WITH)
   if (rel) return rel[1]!.trim()
+  const any = t.match(REL_ANYWHERE)
+  if (any) return any[1]!.trim()
   const name = t.match(NAME_AFTER_WITH)
   if (name && !STOP_WORDS.test(name[1]!)) return name[1]!.trim()
   return null

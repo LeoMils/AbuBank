@@ -57,6 +57,41 @@ describe('voice ADD — command verbs never leak into the title', () => {
   }
 })
 
+describe('voice ADD — "תזכירי לי להתקשר לבעל של אופיר מחר בתשע בערב" (item 3)', () => {
+  const r = processVoiceTranscript('תזכירי לי להתקשר לבעל של אופיר מחר בתשע בערב', TODAY)
+  it('captures the spouse phrase even with "ל" prefix, no command-verb leak, 21:00', () => {
+    expect(['show_confirm_card', 'auto_created', 'needs_clarification']).toContain(r.action)
+    const title = ('draft' in r ? r.draft.title : 'appointment' in r ? r.appointment.title : '') ?? ''
+    expect(title).not.toMatch(/^(תזכיר|תזכירי|תקבע|תקבעי|קבע|קבעי|שימי|תוסיפ|תרשמ)/)
+    expect(title).not.toContain('תקווה')
+    if (r.action === 'show_confirm_card' || r.action === 'needs_clarification') {
+      expect(r.draft.personPhrase).toMatch(/של אופיר$/)
+      expect(r.draft.time).toBe('21:00') // תשע בערב
+    } else if (r.action === 'auto_created') {
+      expect(r.appointment.time).toBe('21:00')
+    }
+  })
+
+  it('resolvePersonPhrase("לבעל של אופיר") → גלעד', async () => {
+    const { resolvePersonPhrase } = await import('./familyResolve')
+    const res = resolvePersonPhrase('לבעל של אופיר')
+    expect(res.status).toBe('resolved')
+    if (res.status === 'resolved') expect(res.name).toBe('גלעד')
+  })
+})
+
+describe('voice ADD — direct name "תקבעי פגישה למחר בשעה 21 עם אופיר" (item 6)', () => {
+  const r = processVoiceTranscript('תקבעי פגישה למחר בשעה 21 עם אופיר', TODAY)
+  it('clean title, no verb leak, time 21:00', () => {
+    const title = ('draft' in r ? r.draft.title : 'appointment' in r ? r.appointment.title : '') ?? ''
+    expect(title).toContain('אופיר')
+    expect(title).not.toContain('תקבעי')
+    expect(title).not.toContain('תקווה')
+    if (r.action === 'auto_created') expect(r.appointment.time).toBe('21:00')
+    else if ('draft' in r) expect(r.draft.time).toBe('21:00')
+  })
+})
+
 describe('voice ADD — "21" parses as 21:00', () => {
   it('bare 24h hour resolves to HH:00', () => {
     const r = processVoiceTranscript('תקבעי פגישה למחר בשעה 21', TODAY)
