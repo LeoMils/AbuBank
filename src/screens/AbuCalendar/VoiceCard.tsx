@@ -97,6 +97,10 @@ export function VoiceCard({
   const [editing, setEditing] = useState(false)
   const lastSpokenRef = useRef<string>('')
 
+  // Diagnostic mode: opt-in only. Never on in normal dev QA or production.
+  // Enable: localStorage.setItem('abu-voice-debug', 'true')
+  const isDiagMode = typeof localStorage !== 'undefined' && localStorage.getItem('abu-voice-debug') === 'true'
+
   useEffect(() => { setTranscriptDraft(rawTranscript ?? '') }, [rawTranscript])
   useEffect(() => { setTitle(parsed.title ?? '') }, [parsed.title])
   useEffect(() => { setDate(parsed.date ?? '') }, [parsed.date])
@@ -139,8 +143,6 @@ export function VoiceCard({
     })
   }
 
-  const isDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
-
   return (
     <div onClick={onCancel} style={{
       position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.84)',
@@ -159,20 +161,25 @@ export function VoiceCard({
         animation: 'sheetUp 0.32s cubic-bezier(0.34,1.3,0.64,1) both',
         maxHeight: '92vh', overflowY: 'auto',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div data-testid="voice-card-header" style={{ fontSize: 18, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif" }}>
-            {voiceState === 'error'
-              ? (voiceError?.includes('לשמור') ? 'הבנתי, אבל לא הצלחתי לשמור' : 'לא הצלחתי להבין')
-              : 'הבנתי ממך ש...'}
+
+        {/* Header + state badge — shown only in editing / error mode.
+            In confirmation mode ConfirmCard owns the entire visible UI. */}
+        {(editing || voiceState === 'error') && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div data-testid="voice-card-header" style={{ fontSize: 18, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif" }}>
+              {voiceState === 'error'
+                ? (voiceError?.includes('לשמור') ? 'הבנתי, אבל לא הצלחתי לשמור' : 'לא הצלחתי להבין')
+                : 'תיקון'}
+            </div>
+            <div data-testid="voice-state-badge" style={{
+              fontSize: 13, fontWeight: 700, color: STATE_COLOR[voiceState],
+              fontFamily: "'Heebo',sans-serif", padding: '4px 10px', borderRadius: 12,
+              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+            }}>
+              {STATE_LABEL[voiceState]}
+            </div>
           </div>
-          <div data-testid="voice-state-badge" style={{
-            fontSize: 13, fontWeight: 700, color: STATE_COLOR[voiceState],
-            fontFamily: "'Heebo',sans-serif", padding: '4px 10px', borderRadius: 12,
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-          }}>
-            {STATE_LABEL[voiceState]}
-          </div>
-        </div>
+        )}
 
         {voiceError && (
           <div data-testid="voice-error" style={{
@@ -190,6 +197,7 @@ export function VoiceCard({
           }}>{ttsError}</div>
         )}
 
+        {/* ── CONFIRMATION MODE: ConfirmCard owns the full UI ─────────── */}
         {!editing && voiceState !== 'error' && (
           <ConfirmCard
             draft={{ title: trimmedTitle || title, date: date || null, time: time || null, personName: parsed.personName ?? null }}
@@ -203,6 +211,7 @@ export function VoiceCard({
           />
         )}
 
+        {/* ── CORRECTION / ERROR MODE: clean editable fields ──────────── */}
         {(editing || voiceState === 'error') && (<>
         {confirmationText && (
           <div data-testid="voice-confirmation-text" style={{
@@ -214,31 +223,7 @@ export function VoiceCard({
           </div>
         )}
 
-        <div data-testid="transcript-box">
-          <div style={FIELD_LABEL}>מה שמעתי</div>
-          <textarea
-            value={transcriptDraft}
-            onChange={e => setTranscriptDraft(e.target.value)}
-            data-testid="transcript-textarea"
-            rows={3}
-            style={{ ...FIELD_INPUT, minHeight: 64, resize: 'vertical', lineHeight: 1.45 }}
-          />
-          {onReparse && (
-            <button
-              type="button"
-              data-testid="reparse-button"
-              onClick={() => onReparse(transcriptDraft)}
-              style={{
-                marginTop: 8, padding: '10px 14px', borderRadius: 10,
-                border: '1px solid rgba(201,168,76,0.32)',
-                background: 'rgba(201,168,76,0.10)', color: CREAM,
-                fontSize: 15, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
-                cursor: 'pointer', minHeight: 44,
-              }}
-            >נתחי שוב</button>
-          )}
-        </div>
-
+        {/* Clean editable fields — no raw transcript, no debug */}
         <div data-testid="voice-fields" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div data-testid="field-what">
             <div style={FIELD_LABEL}>מה</div>
@@ -252,7 +237,7 @@ export function VoiceCard({
 
           <div style={{ display: 'flex', gap: 10 }}>
             <div data-testid="field-date" style={{ flex: 1 }}>
-              <div style={FIELD_LABEL}>תאריך</div>
+              <div style={FIELD_LABEL}>מתי</div>
               <input
                 type="text" value={date}
                 onChange={e => setDate(e.target.value)}
@@ -310,7 +295,33 @@ export function VoiceCard({
           </div>
         )}
 
-        {isDev && (
+        {/* ── DIAGNOSTIC MODE ONLY — transcript + debug + reparse ──────── */}
+        {isDiagMode && (<>
+          <div data-testid="transcript-box">
+            <div style={FIELD_LABEL}>מה שמעתי</div>
+            <textarea
+              value={transcriptDraft}
+              onChange={e => setTranscriptDraft(e.target.value)}
+              data-testid="transcript-textarea"
+              rows={3}
+              style={{ ...FIELD_INPUT, minHeight: 64, resize: 'vertical', lineHeight: 1.45 }}
+            />
+            {onReparse && (
+              <button
+                type="button"
+                data-testid="reparse-button"
+                onClick={() => onReparse(transcriptDraft)}
+                style={{
+                  marginTop: 8, padding: '10px 14px', borderRadius: 10,
+                  border: '1px solid rgba(201,168,76,0.32)',
+                  background: 'rgba(201,168,76,0.10)', color: CREAM,
+                  fontSize: 15, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
+                  cursor: 'pointer', minHeight: 44,
+                }}
+              >נתחי שוב</button>
+            )}
+          </div>
+
           <div data-testid="voice-debug" style={{
             fontSize: 12, lineHeight: 1.5, color: 'rgba(255,250,240,0.55)',
             fontFamily: "'JetBrains Mono', ui-monospace, monospace",
@@ -330,7 +341,7 @@ export function VoiceCard({
             <div>tts: {ttsError ?? 'ok'}</div>
             <div>error: {voiceError ?? 'none'}</div>
           </div>
-        )}
+        </>)}
 
         {onCorrection && (
           <button type="button" onClick={onCorrection} data-testid="voice-correction-mic" style={{

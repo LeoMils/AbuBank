@@ -6,8 +6,12 @@ const VOICE_CARD = readFileSync(resolve(__dirname, './VoiceCard.tsx'), 'utf8')
 const INDEX = readFileSync(resolve(__dirname, './index.tsx'), 'utf8')
 
 describe('P02 — Voice confirmation persistence contract', () => {
-  it('VoiceCard header shows "הבנתי ממך ש..." for parsed state', () => {
-    expect(VOICE_CARD).toContain('הבנתי ממך ש...')
+  it('VoiceCard header shows "תיקון" label in editing/error mode (confirmation mode uses ConfirmCard "הבנתי")', () => {
+    // In confirmation mode ConfirmCard owns the UI including the "הבנתי" heading.
+    // VoiceCard's own header is visible only in editing or error mode.
+    expect(VOICE_CARD).toContain('תיקון')
+    // ConfirmCard (shared surface) provides the "הבנתי" heading.
+    expect(VOICE_CARD).toContain("import { ConfirmCard } from './ConfirmCard'")
   })
 
   it('VoiceCard header shows error text for error state', () => {

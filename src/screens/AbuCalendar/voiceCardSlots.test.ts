@@ -45,14 +45,15 @@ describe('VoiceCard — transcript review', () => {
 })
 
 describe('VoiceCard — editable fields', () => {
-  it('renders all five fields: מה / תאריך / שעה / איפה / הערה', () => {
+  it('renders all five fields: מה / מתי / שעה / איפה / הערה', () => {
     expect(SOURCE).toContain('data-testid="field-what"')
     expect(SOURCE).toContain('data-testid="field-date"')
     expect(SOURCE).toContain('data-testid="field-time"')
     expect(SOURCE).toContain('data-testid="field-where"')
     expect(SOURCE).toContain('data-testid="field-note"')
     expect(SOURCE).toMatch(/>\s*מה\s*</)
-    expect(SOURCE).toMatch(/>\s*תאריך\s*</)
+    // Date label renamed "מתי" (P5 — correction mode clean labels)
+    expect(SOURCE).toMatch(/>\s*מתי\s*</)
     expect(SOURCE).toMatch(/>\s*שעה\s*</)
     expect(SOURCE).toMatch(/>\s*איפה\s*</)
     expect(SOURCE).toMatch(/>\s*הערה\s*</)
@@ -164,10 +165,14 @@ describe('VoiceCard — error surfaces', () => {
 })
 
 describe('VoiceCard — debug block', () => {
-  it('only renders in dev mode', () => {
-    expect(SOURCE).toContain('import.meta')
-    expect(SOURCE).toContain('DEV')
+  it('only renders in explicit diagnostic mode (localStorage abu-voice-debug, not auto-enabled in dev)', () => {
+    // Debug block is gated by isDiagMode (localStorage flag), never by import.meta.env.DEV.
+    // This ensures it is never visible in normal browser QA or to Martita.
+    expect(SOURCE).toContain('isDiagMode')
+    expect(SOURCE).toContain('abu-voice-debug')
     expect(SOURCE).toContain('data-testid="voice-debug"')
+    // The debug testid must appear after the isDiagMode gate in the source
+    expect(SOURCE).toMatch(/isDiagMode[\s\S]*voice-debug/)
   })
 
   it('exposes raw / parsed / source / state / tts / error', () => {

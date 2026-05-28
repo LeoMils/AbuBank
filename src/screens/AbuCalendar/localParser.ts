@@ -518,6 +518,10 @@ const TITLE_LEAD_STRIPS = [
   /^תוסיפי לי\s+/, /^תוסיפי\s+/, /^תוסיף לי\s+/, /^תוסיף\s+/,
   /^תכניסי לי\s+/, /^תכניסי\s+/, /^תכניס לי\s+/, /^תכניס\s+/,
   /^תרשמי\s+/, /^תרשום\s+/,
+  // ASR mishear: Whisper may transcribe the command verb "תקבעי" as "תקווה"
+  // when no verb prior exists. Strip it here as a belt-and-suspenders guard.
+  // Safe: legitimate place references ("פתח תקווה") never start the title.
+  /^תקווה\s+/,
 ]
 
 function buildTitle(text: string, allConsumed: string[]): string {

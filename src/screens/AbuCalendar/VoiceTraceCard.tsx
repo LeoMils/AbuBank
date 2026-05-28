@@ -1,18 +1,15 @@
 /*
- * AbuCalendar P0.6 — visible voice trace card.
+ * AbuCalendar — VoiceTraceCard
  *
- * Renders whenever there's something to say about the voice pipeline:
- *   • a stage message ("מקליטה..." / "מתמללת..." / "יוצרת...")
- *   • an explicit error ("תמלול קולי לא מוגדר באפליקציה.")
- *   • a transcribed phrase ("הבנתי: ...")
+ * Renders in the DayDetailSheet footer to surface voice pipeline problems.
  *
- * The card is ALWAYS visible while the trace is active. No timer
- * auto-dismiss for errors — they stay until the user taps the close
- * button or records again. A "העתק אבחון קול" button copies the trace
- * JSON for operator paste-back.
+ * NORMAL FLOW: only shows for genuine errors ("בעיה בהקלטה").
+ * DIAGNOSTIC MODE: set localStorage key "abu-voice-debug"="true" to see
+ *   all stage/blob/chunks/mime/asr fields + the copy-diagnostic button.
+ *   Never enabled in production or standard dev QA.
  *
- * No secrets. No layout impact on Home (component is rendered only
- * inside AbuCalendar's voice action area).
+ * This component must NEVER show developer/diagnostic text (stage, blob,
+ * chunks, mime, asr, whisper, "העתק אבחון קול") in the normal user flow.
  */
 
 import type { VoiceTrace } from './voiceTrace'
@@ -29,7 +26,14 @@ export function VoiceTraceCard({ trace, onDismiss, onCopied, copied }: VoiceTrac
   const isError = trace.finalVoiceStage === 'error' && (trace.error || trace.visibleMessage)
   const isIdle = trace.finalVoiceStage === 'idle' && !trace.visibleMessage
 
+  // Diagnostic mode: opt-in only, never on by default.
+  // To enable: localStorage.setItem('abu-voice-debug', 'true')
+  const isDiagMode = typeof localStorage !== 'undefined' && localStorage.getItem('abu-voice-debug') === 'true'
+
+  // Normal flow: show only on errors.
+  // Diagnostic mode: show all non-idle stages.
   if (isIdle) return null
+  if (!isError && !isDiagMode) return null
 
   const borderColor = isError ? 'rgba(251,113,133,0.45)' : 'rgba(201,168,76,0.40)'
   const titleColor = isError ? '#FECDD3' : '#FFE9B3'
@@ -94,7 +98,8 @@ export function VoiceTraceCard({ trace, onDismiss, onCopied, copied }: VoiceTrac
         >{trace.visibleMessage}</div>
       )}
 
-      {trace.transcript && (
+      {/* ── DIAGNOSTIC MODE ONLY — never shown in normal flow ─────────── */}
+      {isDiagMode && trace.transcript && (
         <div data-testid="voice-trace-transcript" style={{
           padding: '8px 10px', borderRadius: 8,
           background: 'rgba(255,250,240,0.04)',
@@ -104,10 +109,7 @@ export function VoiceTraceCard({ trace, onDismiss, onCopied, copied }: VoiceTrac
         }}>הבנתי: {trace.transcript}</div>
       )}
 
-      {/* P0.7 — show the raw transcript only as a small diagnostic
-          subtitle when at least one domain correction was applied, so
-          the operator can see what changed. */}
-      {trace.rawTranscript && trace.correctionsApplied && trace.correctionsApplied.length > 0
+      {isDiagMode && trace.rawTranscript && trace.correctionsApplied && trace.correctionsApplied.length > 0
           && trace.rawTranscript !== trace.correctedTranscript && (
         <div data-testid="voice-trace-raw-transcript" style={{
           fontSize: 11, lineHeight: 1.5,
@@ -115,32 +117,36 @@ export function VoiceTraceCard({ trace, onDismiss, onCopied, copied }: VoiceTrac
         }}>לפני תיקון: {trace.rawTranscript}</div>
       )}
 
-      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', direction: 'ltr', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <span data-testid="voice-trace-stage">stage: {trace.finalVoiceStage}</span>
-        {trace.blobSize !== null && <span>blob: {trace.blobSize}B</span>}
-        {trace.chunksCount !== null && <span>chunks: {trace.chunksCount}</span>}
-        {trace.mimeType && <span>mime: {trace.mimeType}</span>}
-        {trace.asrModel && <span>asr: {trace.asrModel}{trace.asrFallbackUsed ? ' (fallback)' : ''}</span>}
-        {trace.correctionsApplied && trace.correctionsApplied.length > 0 && (
-          <span>fixes: {trace.correctionsApplied.length}</span>
-        )}
-      </div>
+      {isDiagMode && (
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', direction: 'ltr', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <span data-testid="voice-trace-stage">stage: {trace.finalVoiceStage}</span>
+          {trace.blobSize !== null && <span>blob: {trace.blobSize}B</span>}
+          {trace.chunksCount !== null && <span>chunks: {trace.chunksCount}</span>}
+          {trace.mimeType && <span>mime: {trace.mimeType}</span>}
+          {trace.asrModel && <span>asr: {trace.asrModel}{trace.asrFallbackUsed ? ' (fallback)' : ''}</span>}
+          {trace.correctionsApplied && trace.correctionsApplied.length > 0 && (
+            <span>fixes: {trace.correctionsApplied.length}</span>
+          )}
+        </div>
+      )}
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-        <button
-          type="button"
-          data-testid="voice-trace-copy"
-          onClick={() => void copy()}
-          style={{
-            flex: 1, minHeight: 44, padding: '10px 14px', borderRadius: 10,
-            border: '1px solid rgba(201,168,76,0.32)',
-            background: 'rgba(201,168,76,0.10)',
-            color: '#E8C76A', fontSize: 14, fontWeight: 700,
-            cursor: 'pointer',
-            fontFamily: "'Heebo','DM Sans',sans-serif",
-          }}
-        >{copied ? 'הועתק ✓' : 'העתק אבחון קול'}</button>
-      </div>
+      {isDiagMode && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <button
+            type="button"
+            data-testid="voice-trace-copy"
+            onClick={() => void copy()}
+            style={{
+              flex: 1, minHeight: 44, padding: '10px 14px', borderRadius: 10,
+              border: '1px solid rgba(201,168,76,0.32)',
+              background: 'rgba(201,168,76,0.10)',
+              color: '#E8C76A', fontSize: 14, fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: "'Heebo','DM Sans',sans-serif",
+            }}
+          >{copied ? 'הועתק ✓' : 'העתק אבחון קול'}</button>
+        </div>
+      )}
     </div>
   )
 }

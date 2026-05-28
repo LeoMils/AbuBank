@@ -75,6 +75,93 @@ function resolveDraftPerson(draft: { title: string; personPhrase?: string | null
   return { title: draft.title, personName: null }
 }
 
+// ─── P2: Clean saved confirmation overlay ──────────────────────────────────────
+// Built from the normalized appointment record, never from raw ASR text.
+function SavedCard({ title, date, time, onClose, onShowDay }: {
+  title: string; date: string; time: string;
+  onClose: () => void; onShowDay?: () => void;
+}) {
+  const today = getTodayStr()
+  const HEBREW_MONTHS_S = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר']
+  function dateLabel(d: string): string {
+    const [y, m, day] = d.split('-').map(Number)
+    if (!y || !m || !day) return d
+    if (d === today) return 'היום'
+    const diff = Math.round((new Date(y, m - 1, day).getTime() - new Date(today).getTime()) / 86400000)
+    if (diff === 1) return 'מחר'
+    if (diff === 2) return 'מחרתיים'
+    return `${day} ב${HEBREW_MONTHS_S[m - 1] ?? ''} ${y}`
+  }
+  return (
+    <div
+      data-testid="saved-card-overlay"
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 210, background: 'rgba(0,0,0,0.80)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+      } as React.CSSProperties}
+    >
+      <div
+        data-testid="saved-card"
+        onClick={e => e.stopPropagation()}
+        dir="rtl"
+        style={{
+          width: '100%', maxWidth: 480,
+          background: 'linear-gradient(160deg, rgba(14,12,10,0.99) 0%, rgba(10,8,6,0.99) 100%)',
+          border: '1px solid rgba(134,239,172,0.30)', borderBottom: 'none',
+          borderRadius: '24px 24px 0 0',
+          padding: 'calc(24px + env(safe-area-inset-bottom, 0px)) 20px 24px',
+          display: 'flex', flexDirection: 'column', gap: 16,
+          boxShadow: '0 -8px 40px rgba(134,239,172,0.10)',
+          animation: 'sheetUp 0.28s cubic-bezier(0.34,1.3,0.64,1) both',
+        }}
+      >
+        <div style={{ fontSize: 20, fontWeight: 800, color: '#86efac', fontFamily: "'Heebo',sans-serif" }}>
+          נשמר ביומן ✓
+        </div>
+        <div style={{
+          background: 'rgba(134,239,172,0.06)', border: '1px solid rgba(134,239,172,0.18)',
+          borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          <div data-testid="saved-card-title" style={{ fontSize: 19, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif" }}>
+            {title}
+          </div>
+          <div data-testid="saved-card-when" style={{ fontSize: 16, color: TEXT_SECONDARY, fontFamily: "'Heebo',sans-serif" }}>
+            {dateLabel(date)} · {time}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {onShowDay && (
+            <button
+              type="button"
+              data-testid="saved-card-show-day"
+              onClick={onShowDay}
+              style={{
+                flex: 1, padding: '14px', borderRadius: 14,
+                border: '1px solid rgba(201,168,76,0.32)', background: 'rgba(201,168,76,0.10)',
+                color: CREAM, fontSize: 17, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
+                cursor: 'pointer', minHeight: 56,
+              }}
+            >הצג ביום</button>
+          )}
+          <button
+            type="button"
+            data-testid="saved-card-close"
+            onClick={onClose}
+            style={{
+              flex: 1, padding: '14px', borderRadius: 14,
+              border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)',
+              color: CREAM, fontSize: 17, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
+              cursor: 'pointer', minHeight: 56,
+            }}
+          >סגור</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main AbuCalendar Screen ───────────────────────────────────────────────────
 export function AbuCalendar() {
   const setScreen = useAppStore(s => s.setScreen)
@@ -105,6 +192,8 @@ export function AbuCalendar() {
   const [isRecording, setIsRecording] = useState(false)
   const [voiceStatus, setVoiceStatus] = useState('')
   const [abuTimeOpen, setAbuTimeOpen] = useState(false)
+  // P2 — clean saved confirmation card (replaces the raw success text).
+  const [savedConfirmation, setSavedConfirmation] = useState<{ title: string; date: string; time: string } | null>(null)
   const [undoAppt, setUndoAppt] = useState<Appointment | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -727,11 +816,13 @@ export function AbuCalendar() {
     lastAckRef.current = null
     playChime()
     soundSuccess()
-    const lang = detectConfirmationLang(final.title)
-    showSuccessToast(formatCreatedConfirmation(
-      { title: result.appointment.title, date: result.appointment.date, time: result.appointment.time },
-      lang,
-    ))
+    // P2 — show clean saved confirmation card built from the normalized
+    // appointment record, never from raw ASR text.
+    setSavedConfirmation({
+      title: result.appointment.title,
+      date: result.appointment.date,
+      time: result.appointment.time,
+    })
   }
 
   function startCorrection() {
@@ -1348,6 +1439,21 @@ export function AbuCalendar() {
           </div>
         )
       })()}
+
+      {/* P2 — clean saved confirmation, built from normalized appointment data */}
+      {savedConfirmation && (
+        <SavedCard
+          title={savedConfirmation.title}
+          date={savedConfirmation.date}
+          time={savedConfirmation.time}
+          onClose={() => setSavedConfirmation(null)}
+          onShowDay={() => {
+            setSelectedDay(savedConfirmation.date)
+            setSheetOpen(true)
+            setSavedConfirmation(null)
+          }}
+        />
+      )}
 
       {/* KEYFRAMES */}
       <style>{`
