@@ -13,6 +13,7 @@ import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { VoiceCard } from './VoiceCard'
 import { VoiceTraceCard } from './VoiceTraceCard'
+import { ConfirmCard } from './ConfirmCard'
 import { createInitialTrace } from './voiceTrace'
 
 // Minimal in-memory localStorage shim so the components' isDiagMode
@@ -210,6 +211,99 @@ describe('Production gate — isDiagMode requires BOTH DEV build AND localStorag
     )
     for (const s of FORBIDDEN_DEFAULT) expect(html).not.toContain(s)
     expect(html).not.toContain('raw asr text')
+  })
+})
+
+// ── Tests 10–14: ConfirmCard direct render + VoiceCard error state ─────────
+
+describe('VoiceCard — error state renders correction fields, not ConfirmCard', () => {
+  it('error state shows voice-card-header and correction fields, not ConfirmCard confirm buttons', () => {
+    const html = renderToString(
+      React.createElement(VoiceCard, {
+        parsed: { title: '', date: null, time: null, emoji: '📌' },
+        existingAppts: [],
+        onConfirm: () => {},
+        onCancel: () => {},
+        voiceState: 'error',
+        voiceError: 'לא הצלחתי להבין את ההקלטה.',
+      }),
+    )
+    expect(html).toContain('voice-card-header')
+    expect(html).toContain('field-what')
+    expect(html).not.toContain('confirm-card')
+    expect(html).not.toContain('כן, לשמור')
+    for (const s of FORBIDDEN_DEFAULT) expect(html).not.toContain(s)
+  })
+})
+
+describe('ConfirmCard — standalone render checks', () => {
+  it('with null date and time, shows חסר labels and the save button element', () => {
+    const html = renderToString(
+      React.createElement(ConfirmCard, {
+        draft: { title: 'פגישה עם גלעד', date: null, time: null },
+        onConfirm: () => {},
+        onCorrect: () => {},
+        onCancel: () => {},
+      }),
+    )
+    expect(html).toContain('confirm-card')
+    expect(html).toContain('הבנתי')
+    expect(html).toContain('חסר')
+    expect(html).toContain('confirm-save-btn')
+    // Disabled attribute must be present (canSave=false).
+    expect(html).toContain('disabled')
+  })
+
+  it('with a past date, renders the ⚠️ past-date warning', () => {
+    const html = renderToString(
+      React.createElement(ConfirmCard, {
+        draft: { title: 'פגישה', date: '2020-01-01', time: '10:00' },
+        onConfirm: () => {},
+        onCorrect: () => {},
+        onCancel: () => {},
+      }),
+    )
+    expect(html).toContain('confirm-card')
+    expect(html).toContain('⚠️ התאריך עבר')
+    expect(html).toContain('confirm-save-btn')
+  })
+
+  it('ambiguous relation: shows candidate buttons and NOT the standard save/correct/cancel buttons', () => {
+    const html = renderToString(
+      React.createElement(ConfirmCard, {
+        draft: { title: 'פגישה עם הבן של מור', date: '2026-06-01', time: '15:00' },
+        relation: { status: 'ambiguous', phrase: 'הבן של מור', candidates: ['איילון', 'אדר', 'עילי'] },
+        onConfirm: () => {},
+        onCorrect: () => {},
+        onCancel: () => {},
+      }),
+    )
+    expect(html).toContain('relation-clarify')
+    expect(html).toContain('למי התכוונת?')
+    expect(html).toContain('relation-candidate')
+    expect(html).not.toContain('confirm-save-btn')
+    expect(html).not.toContain('confirm-correct-btn')
+    expect(html).not.toContain('confirm-cancel-btn')
+    expect(html).not.toContain('כן, לשמור')
+  })
+
+  it('resolved relation: shows secondary phrase line AND the normal save/correct/cancel buttons', () => {
+    const html = renderToString(
+      React.createElement(ConfirmCard, {
+        draft: { title: 'פגישה עם גלעד', date: '2026-06-01', time: '15:00' },
+        relation: { status: 'resolved', phrase: 'הבעל של אופיר' },
+        onConfirm: () => {},
+        onCorrect: () => {},
+        onCancel: () => {},
+      }),
+    )
+    expect(html).toContain('relation-secondary')
+    expect(html).toContain('הבעל של אופיר')
+    expect(html).toContain('confirm-save-btn')
+    expect(html).toContain('confirm-correct-btn')
+    expect(html).toContain('confirm-cancel-btn')
+    expect(html).toContain('כן, לשמור')
+    expect(html).not.toContain('confirm-save-btn" disabled')
   })
 })
 
