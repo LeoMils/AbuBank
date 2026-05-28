@@ -26,9 +26,13 @@ export function VoiceTraceCard({ trace, onDismiss, onCopied, copied }: VoiceTrac
   const isError = trace.finalVoiceStage === 'error' && (trace.error || trace.visibleMessage)
   const isIdle = trace.finalVoiceStage === 'idle' && !trace.visibleMessage
 
-  // Diagnostic mode: opt-in only, never on by default.
-  // To enable: localStorage.setItem('abu-voice-debug', 'true')
-  const isDiagMode = typeof localStorage !== 'undefined' && localStorage.getItem('abu-voice-debug') === 'true'
+  // Diagnostic mode: requires BOTH (a) Vite dev build AND (b) explicit
+  // localStorage flag. Production builds can NEVER show diagnostic UI.
+  // Enable in dev only: localStorage.setItem('abu-voice-debug', 'true')
+  const isDevBuild = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
+  const isDiagMode = isDevBuild
+    && typeof localStorage !== 'undefined'
+    && localStorage.getItem('abu-voice-debug') === 'true'
 
   // Normal flow: show only on errors.
   // Diagnostic mode: show all non-idle stages.

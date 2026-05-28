@@ -97,9 +97,14 @@ export function VoiceCard({
   const [editing, setEditing] = useState(false)
   const lastSpokenRef = useRef<string>('')
 
-  // Diagnostic mode: opt-in only. Never on in normal dev QA or production.
-  // Enable: localStorage.setItem('abu-voice-debug', 'true')
-  const isDiagMode = typeof localStorage !== 'undefined' && localStorage.getItem('abu-voice-debug') === 'true'
+  // Diagnostic mode: requires BOTH (a) Vite dev build AND (b) explicit
+  // localStorage flag. Production builds can NEVER show DEBUG, even if
+  // the localStorage flag is set. Normal dev QA never sees it.
+  // Enable in dev only: localStorage.setItem('abu-voice-debug', 'true')
+  const isDevBuild = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
+  const isDiagMode = isDevBuild
+    && typeof localStorage !== 'undefined'
+    && localStorage.getItem('abu-voice-debug') === 'true'
 
   useEffect(() => { setTranscriptDraft(rawTranscript ?? '') }, [rawTranscript])
   useEffect(() => { setTitle(parsed.title ?? '') }, [parsed.title])
