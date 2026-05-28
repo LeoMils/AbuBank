@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { shouldShowConfirmationReadback } from './voiceReadbackGuard'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-
-const INDEX = readFileSync(resolve(__dirname, './index.tsx'), 'utf8')
 
 describe('shouldShowConfirmationReadback — incomplete drafts must return false', () => {
   it('title-only => false', () => {
@@ -65,19 +61,3 @@ describe('shouldShowConfirmationReadback — edge cases', () => {
   })
 })
 
-describe('Readback guard wiring in index.tsx', () => {
-  it('index.tsx imports shouldShowConfirmationReadback', () => {
-    expect(INDEX).toContain("import { shouldShowConfirmationReadback } from './voiceReadbackGuard'")
-  })
-
-  it('confirmationText is gated by shouldShowConfirmationReadback', () => {
-    expect(INDEX).toContain('shouldShowConfirmationReadback(voiceState, voiceParsed)')
-  })
-
-  it('shapeCreateConfirmReadback is only called inside the guard (not unconditionally)', () => {
-    const guardIdx = INDEX.indexOf('shouldShowConfirmationReadback(voiceState, voiceParsed)')
-    const readbackIdx = INDEX.indexOf('shapeCreateConfirmReadback({', guardIdx)
-    expect(guardIdx).toBeGreaterThan(-1)
-    expect(readbackIdx).toBeGreaterThan(guardIdx)
-  })
-})

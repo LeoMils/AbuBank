@@ -48,14 +48,6 @@ describe('shouldBlockVoiceRecord — integration with index.tsx', () => {
     'utf-8',
   )
 
-  it('index.tsx uses shouldBlockVoiceRecord as the guard', () => {
-    expect(INDEX_SOURCE).toContain('shouldBlockVoiceRecord(voiceStatus, opts)')
-  })
-
-  it('index.tsx imports shouldBlockVoiceRecord from voiceRecordGuard', () => {
-    expect(INDEX_SOURCE).toContain("from './voiceRecordGuard'")
-  })
-
   it('handleVoiceRetry still passes bypassGuard: true', () => {
     expect(INDEX_SOURCE).toContain('handleVoiceRecord({ bypassGuard: true })')
   })

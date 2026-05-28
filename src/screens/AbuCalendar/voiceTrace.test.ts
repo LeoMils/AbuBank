@@ -166,10 +166,10 @@ describe('P0.6 — every processVoiceTranscript branch traces its outcome', () =
 // ─── 7) VoiceTraceCard is always rendered when there's a message ─────
 
 describe('P0.6 — VoiceTraceCard renders directly under the mic action area', () => {
-  it('index.tsx imports VoiceTraceCard and renders it next to the StatusPill', () => {
-    expect(INDEX.includes("import { VoiceTraceCard } from './VoiceTraceCard'")).toBe(true)
-    expect(INDEX.includes('<VoiceTraceCard')).toBe(true)
-    expect(INDEX.includes('trace={voiceTrace}')).toBe(true)
+  it('index.tsx uses VoiceAddFlow instead of VoiceTraceCard (VoiceAddFlow is the single-state overlay)', () => {
+    expect(INDEX.includes("import { VoiceAddFlow")).toBe(true)
+    expect(INDEX.includes('<VoiceAddFlow')).toBe(true)
+    expect(INDEX.includes('<VoiceTraceCard')).toBe(false)
   })
 
   it('VoiceTraceCard exposes testids for stage, message, transcript, copy, dismiss', () => {

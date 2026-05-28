@@ -37,11 +37,6 @@ describe('VoiceCard — transcript review', () => {
     expect(SOURCE).toMatch(/onClick=\{\(\)\s*=>\s*onReparse\(transcriptDraft\)\}/)
   })
 
-  it('parent screen wires the reparse handler', () => {
-    expect(INDEX_SOURCE).toContain('handleReparse')
-    expect(INDEX_SOURCE).toMatch(/onReparse=\{handleReparse\}/)
-    expect(INDEX_SOURCE).toContain('parseAppointmentText(transcript)')
-  })
 })
 
 describe('VoiceCard — editable fields', () => {
@@ -104,12 +99,6 @@ describe('VoiceCard — correction mic wiring', () => {
     expect(SOURCE).toMatch(/onClick=\{onCorrection\}/)
   })
 
-  it('parent\'s startCorrection actually calls handleVoiceRecord (which calls getUserMedia)', () => {
-    expect(INDEX_SOURCE).toContain('function startCorrection')
-    expect(INDEX_SOURCE).toContain('correctingRef.current = true')
-    expect(INDEX_SOURCE).toMatch(/handleVoiceRecord\(\)/)
-    expect(INDEX_SOURCE).toContain('navigator.mediaDevices.getUserMedia')
-  })
 })
 
 describe('VoiceCard — failed_to_save header is not speech-not-understood', () => {
@@ -128,10 +117,6 @@ describe('VoiceCard — retry bypass guard', () => {
   it('handleVoiceRecord accepts bypassGuard option', () => {
     expect(INDEX_SOURCE).toContain('bypassGuard')
     expect(INDEX_SOURCE).toMatch(/async function handleVoiceRecord\(opts\?/)
-  })
-
-  it('voiceStatus guard uses shouldBlockVoiceRecord', () => {
-    expect(INDEX_SOURCE).toContain('shouldBlockVoiceRecord(voiceStatus, opts)')
   })
 
   it('handleVoiceRetry passes bypassGuard: true', () => {

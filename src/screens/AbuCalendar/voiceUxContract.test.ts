@@ -25,6 +25,7 @@ const CONFIRM = readFileSync(resolve(DIR, 'ConfirmCard.tsx'), 'utf8')
 const INDEX = readFileSync(resolve(DIR, 'index.tsx'), 'utf8')
 const MANUAL = readFileSync(resolve(DIR, 'ManualModal.tsx'), 'utf8')
 const SERVICE = readFileSync(resolve(DIR, 'service.ts'), 'utf8')
+const FLOW = readFileSync(resolve(DIR, 'VoiceAddFlow.tsx'), 'utf8')
 
 // ─── 1: Ready-to-confirm voice state shows approval buttons ────────────────
 
@@ -106,12 +107,12 @@ describe('P0 — diagnostic UI hidden from normal flow', () => {
 // ─── 3: P2 — saved success state is clean ──────────────────────────────────
 
 describe('P2 — clean saved success state', () => {
-  it('SavedCard component exists and is built from structured appointment data', () => {
-    expect(INDEX).toContain('saved-card')
-    expect(INDEX).toContain('saved-card-title')
-    expect(INDEX).toContain('saved-card-when')
-    expect(INDEX).toContain('saved-card-close')
-    expect(INDEX).toContain('נשמר ביומן')
+  it('VoiceAddFlow saved panel has the required test IDs and copy', () => {
+    expect(FLOW).toContain('vaf-saved')
+    expect(FLOW).toContain('vaf-saved-title')
+    expect(FLOW).toContain('vaf-saved-when')
+    expect(FLOW).toContain('vaf-saved-close')
+    expect(FLOW).toContain('נשמר ביומן')
   })
 
   it('savedConfirmation state is set from normalized appointment, not raw ASR', () => {
@@ -122,11 +123,11 @@ describe('P2 — clean saved success state', () => {
     expect(INDEX).toMatch(/time: result\.appointment\.time/)
   })
 
-  it('SavedCard has a close button and an optional show-day button', () => {
-    expect(INDEX).toContain('saved-card-close')
-    expect(INDEX).toContain('saved-card-show-day')
-    expect(INDEX).toContain('סגור')
-    expect(INDEX).toContain('הצג ביום')
+  it('VoiceAddFlow saved panel has close and show-day buttons', () => {
+    expect(FLOW).toContain('vaf-saved-close')
+    expect(FLOW).toContain('vaf-saved-show-day')
+    expect(FLOW).toContain('סגור')
+    expect(FLOW).toContain('הצג ביום')
   })
 })
 

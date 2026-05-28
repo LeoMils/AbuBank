@@ -539,6 +539,22 @@ function buildTitle(text: string, allConsumed: string[]): string {
   return working.trim()
 }
 
+/** Final safety check before any appointment title is persisted.
+ *  Applies the same TITLE_LEAD_STRIPS loop used at parse time, then
+ *  falls back to a clean "פגישה עם <personName>" if stripping left nothing.
+ *  Call this immediately before createAppointmentSafe. */
+export function sanitizeTitleForSave(title: string, personName?: string | null): string {
+  let t = title.trim()
+  let prev: string
+  do {
+    prev = t
+    for (const re of TITLE_LEAD_STRIPS) t = t.replace(re, '')
+    t = t.trim()
+  } while (t !== prev && t.length > 0)
+  if (!t && personName?.trim()) return `פגישה עם ${personName.trim()}`
+  return t || title.trim()
+}
+
 export function cleanTranscript(text: string): string {
   let s = text.trim()
   // Strip stutters: repeated consecutive Hebrew word ("מחר מחר" → "מחר")

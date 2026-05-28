@@ -7,7 +7,6 @@ import {
   updateAppointment,
   deleteAppointment,
   playChime,
-  parseAppointmentText,
   formatHebrewMonth,
   formatShortHebrewDate,
   getHebrewHoliday,
@@ -15,7 +14,6 @@ import {
   formatCreatedConfirmation,
   formatCreateFailure,
   type Appointment,
-  type CreateFailureCode,
 } from './service'
 import { processVoiceTranscript } from './voiceAutoCreate'
 import { resolvePersonPhrase } from './familyResolve'
@@ -29,7 +27,6 @@ import {
   type VoiceStage,
   type VoiceTrace,
 } from './voiceTrace'
-import { VoiceTraceCard } from './VoiceTraceCard'
 import { DayDetailSheet } from './DayDetailSheet'
 import { transcribeCalendarAudio } from './calendarTranscribe'
 import { normalizeCalendarTranscript } from './calendarTranscriptCorrection'
@@ -40,20 +37,14 @@ import { injectSharedKeyframes } from '../../design/animations'
 import { InfoButton } from '../../components/InfoButton'
 import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
-import { VoiceCard } from './VoiceCard'
-import { shapeCreateConfirmReadback } from '../AbuAI/responseShaper'
-import { parseCorrection, applyCorrection } from './correctionParser'
-import { shouldShowConfirmationReadback } from './voiceReadbackGuard'
-import { shouldBlockVoiceRecord } from './voiceRecordGuard'
-import { pickUpdateAck, CANCEL_RESPONSE, UNRELATED_RESPONSE, pickClarifyQuestion } from '../AbuAI/conversationLayer'
-import { speak } from '../../services/voice'
+import { VoiceAddFlow, type VoiceDraft } from './VoiceAddFlow'
+import { sanitizeTitleForSave } from './localParser'
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
 import { PageShell } from '../../components/PageShell'
 import { ScreenHeader } from '../../components/ScreenHeader'
 import { SeniorButton } from '../../components/SeniorButton'
 import { EmptyState } from '../../components/EmptyState'
-import { StatusPill } from '../../components/StatusPill'
 import { BackButton } from '../../components/BackButton'
 import { GOLD, BRIGHT_GOLD, BG, CREAM, TEXT_SECONDARY, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
 
@@ -75,92 +66,6 @@ function resolveDraftPerson(draft: { title: string; personPhrase?: string | null
   return { title: draft.title, personName: null }
 }
 
-// ─── P2: Clean saved confirmation overlay ──────────────────────────────────────
-// Built from the normalized appointment record, never from raw ASR text.
-function SavedCard({ title, date, time, onClose, onShowDay }: {
-  title: string; date: string; time: string;
-  onClose: () => void; onShowDay?: () => void;
-}) {
-  const today = getTodayStr()
-  const HEBREW_MONTHS_S = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר']
-  function dateLabel(d: string): string {
-    const [y, m, day] = d.split('-').map(Number)
-    if (!y || !m || !day) return d
-    if (d === today) return 'היום'
-    const diff = Math.round((new Date(y, m - 1, day).getTime() - new Date(today).getTime()) / 86400000)
-    if (diff === 1) return 'מחר'
-    if (diff === 2) return 'מחרתיים'
-    return `${day} ב${HEBREW_MONTHS_S[m - 1] ?? ''} ${y}`
-  }
-  return (
-    <div
-      data-testid="saved-card-overlay"
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 210, background: 'rgba(0,0,0,0.80)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-      } as React.CSSProperties}
-    >
-      <div
-        data-testid="saved-card"
-        onClick={e => e.stopPropagation()}
-        dir="rtl"
-        style={{
-          width: '100%', maxWidth: 480,
-          background: 'linear-gradient(160deg, rgba(14,12,10,0.99) 0%, rgba(10,8,6,0.99) 100%)',
-          border: '1px solid rgba(134,239,172,0.30)', borderBottom: 'none',
-          borderRadius: '24px 24px 0 0',
-          padding: 'calc(24px + env(safe-area-inset-bottom, 0px)) 20px 24px',
-          display: 'flex', flexDirection: 'column', gap: 16,
-          boxShadow: '0 -8px 40px rgba(134,239,172,0.10)',
-          animation: 'sheetUp 0.28s cubic-bezier(0.34,1.3,0.64,1) both',
-        }}
-      >
-        <div style={{ fontSize: 20, fontWeight: 800, color: '#86efac', fontFamily: "'Heebo',sans-serif" }}>
-          נשמר ביומן ✓
-        </div>
-        <div style={{
-          background: 'rgba(134,239,172,0.06)', border: '1px solid rgba(134,239,172,0.18)',
-          borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6,
-        }}>
-          <div data-testid="saved-card-title" style={{ fontSize: 19, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif" }}>
-            {title}
-          </div>
-          <div data-testid="saved-card-when" style={{ fontSize: 16, color: TEXT_SECONDARY, fontFamily: "'Heebo',sans-serif" }}>
-            {dateLabel(date)} · {time}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          {onShowDay && (
-            <button
-              type="button"
-              data-testid="saved-card-show-day"
-              onClick={onShowDay}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 14,
-                border: '1px solid rgba(201,168,76,0.32)', background: 'rgba(201,168,76,0.10)',
-                color: CREAM, fontSize: 17, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
-                cursor: 'pointer', minHeight: 56,
-              }}
-            >הצג ביום</button>
-          )}
-          <button
-            type="button"
-            data-testid="saved-card-close"
-            onClick={onClose}
-            style={{
-              flex: 1, padding: '14px', borderRadius: 14,
-              border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)',
-              color: CREAM, fontSize: 17, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
-              cursor: 'pointer', minHeight: 56,
-            }}
-          >סגור</button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ─── Main AbuCalendar Screen ───────────────────────────────────────────────────
 export function AbuCalendar() {
@@ -180,19 +85,12 @@ export function AbuCalendar() {
   // (or the honest failure copy) instead of a generic "saved" string.
   const [toastMessage, setToastMessage] = useState<string>('האירוע נשמר')
   const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success')
-  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; personName?: string | null; ambiguousTime?: boolean; confidence?: number; source?: 'local' | 'llm' | 'fallback' | null; relation?: VoiceRelation } | null>(null)
-  const [rawTranscript, setRawTranscript] = useState<string>('')
+  const [voiceParsed, setVoiceParsed] = useState<VoiceDraft | null>(null)
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing' | 'parsing' | 'parsed' | 'error'>('idle')
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [ambiguousDraft, setAmbiguousDraft] = useState<{ title: string; date: string | null; time: string; emoji: string; location: string | null; notes: string | null } | null>(null)
-  const [isCorrecting, setIsCorrecting] = useState(false)
-  const [correctionAck, setCorrectionAck] = useState<string | null>(null)
-  const correctingRef = useRef(false)
-  const lastAckRef = useRef<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
-  const [voiceStatus, setVoiceStatus] = useState('')
   const [abuTimeOpen, setAbuTimeOpen] = useState(false)
-  // P2 — clean saved confirmation card (replaces the raw success text).
   const [savedConfirmation, setSavedConfirmation] = useState<{ title: string; date: string; time: string } | null>(null)
   const [undoAppt, setUndoAppt] = useState<Appointment | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -201,37 +99,18 @@ export function AbuCalendar() {
   // P0.6 — visible voice trace. Renders inside AbuCalendar's voice
   // action area no matter where the pipeline fails, so the user always
   // sees WHY a recording didn't create a meeting.
-  const [voiceTrace, setVoiceTrace] = useState<VoiceTrace>(() => createInitialTrace(APP_VERSION.version))
-  const [voiceTraceCopied, setVoiceTraceCopied] = useState(false)
-  const voiceTraceRef = useRef<VoiceTrace>(voiceTrace)
-  voiceTraceRef.current = voiceTrace
+  const voiceTraceRef = useRef<VoiceTrace>(createInitialTrace(APP_VERSION.version))
   function updateTrace(patch: Partial<VoiceTrace>, step?: string) {
     const next: VoiceTrace = { ...voiceTraceRef.current, ...patch }
-    const withStep = step ? pushStep(next, step) : next
-    voiceTraceRef.current = withStep
-    setVoiceTrace(withStep)
+    voiceTraceRef.current = step ? pushStep(next, step) : next
   }
   function setStage(stage: VoiceStage, customMessage?: string, step?: string) {
-    updateTrace({
-      finalVoiceStage: stage,
-      visibleMessage: customMessage ?? stageLabel(stage),
-    }, step ?? `stage:${stage}`)
+    updateTrace({ finalVoiceStage: stage, visibleMessage: customMessage ?? stageLabel(stage) }, step ?? `stage:${stage}`)
   }
   function setVoiceFailure(message: string, step: string) {
-    updateTrace({
-      finalVoiceStage: 'error',
-      error: message,
-      visibleMessage: message,
-    }, step)
+    updateTrace({ finalVoiceStage: 'error', error: message, visibleMessage: message }, step)
     setVoiceError(message)
     setVoiceState('error')
-    setVoiceStatus('')
-  }
-  function dismissVoiceTrace() {
-    const fresh = createInitialTrace(APP_VERSION.version)
-    voiceTraceRef.current = fresh
-    setVoiceTrace(fresh)
-    setVoiceTraceCopied(false)
   }
 
   // ─── Alert state (persisted) ─────────────────────────────────────────────────
@@ -404,35 +283,6 @@ export function AbuCalendar() {
     setUndoAppt(null)
   }
 
-  async function handleReparse(transcript: string) {
-    if (!transcript.trim()) {
-      setVoiceError('אין טקסט לנתח.')
-      setVoiceState('error')
-      return
-    }
-    setVoiceError(null)
-    setVoiceState('parsing')
-    try {
-      const parsed = await parseAppointmentText(transcript)
-      setRawTranscript(transcript)
-      if (parsed.ambiguousTime && parsed.time) {
-        setAmbiguousDraft({
-          title: parsed.title, date: parsed.date, time: parsed.time,
-          emoji: parsed.emoji, location: parsed.location, notes: parsed.notes,
-        })
-        setVoiceParsed(null)
-        setVoiceState('idle')
-        return
-      }
-      setVoiceParsed(parsed)
-      setVoiceState('parsed')
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      setVoiceError(`שגיאת ניתוח: ${msg}`)
-      setVoiceState('error')
-    }
-  }
-
   async function handleVoiceRecord(opts?: { bypassGuard?: boolean }) {
     // P0.6 — STOP path. The user tapped the red button. Make the
     // "stopping" state visible IMMEDIATELY so no tap ever feels silent.
@@ -464,12 +314,9 @@ export function AbuCalendar() {
       }
       return
     }
-    if (shouldBlockVoiceRecord(voiceStatus, opts)) return
     // Fresh trace for a new recording session.
     const fresh = createInitialTrace(APP_VERSION.version)
     voiceTraceRef.current = fresh
-    setVoiceTrace(fresh)
-    setVoiceTraceCopied(false)
     setVoiceError(null)
     // P0.6 — MediaRecorder availability guard.
     if (typeof MediaRecorder === 'undefined') {
@@ -501,7 +348,6 @@ export function AbuCalendar() {
             setVoiceFailure('ההקלטה קצרה מדי. נסי שוב.', `blob_too_small:${blob.size}`)
             return
           }
-          setVoiceStatus('מעבדת...')
         try {
           // P0.6 — visible "transcribing" stage + watchdog. P0.7 —
           // quality-first Hebrew Whisper (large-v3 + verbose_json +
@@ -541,86 +387,14 @@ export function AbuCalendar() {
             setVoiceFailure('לא הצלחתי להבין את ההקלטה. ננסה שוב?', 'transcript_empty')
             return
           }
-          if (!correctingRef.current) setRawTranscript(transcribed)
           setVoiceState('parsing')
-
-          if (correctingRef.current && voiceParsed) {
-            const todayISO = getTodayStr()
-            const result = parseCorrection(transcribed, {
-              title: voiceParsed.title,
-              date: voiceParsed.date,
-              time: voiceParsed.time,
-              emoji: voiceParsed.emoji,
-              location: voiceParsed.location ?? null,
-              notes: voiceParsed.notes ?? null,
-            }, todayISO)
-            correctingRef.current = false
-            setIsCorrecting(false)
-            setVoiceStatus('')
-            if (result.kind === 'cancel') {
-              speak(CANCEL_RESPONSE).catch(() => {})
-              setCorrectionAck(null)
-              setVoiceParsed(null)
-              return
-            }
-            if (result.kind === 'confirm') {
-              if (voiceParsed.title && voiceParsed.date && voiceParsed.time) {
-                handleVoiceConfirm({
-                  title: voiceParsed.title,
-                  date: voiceParsed.date,
-                  time: voiceParsed.time,
-                  emoji: voiceParsed.emoji,
-                  ...(voiceParsed.location ? { location: voiceParsed.location } : {}),
-                  ...(voiceParsed.notes ? { notes: voiceParsed.notes } : {}),
-                })
-              }
-              return
-            }
-            if (result.kind === 'clarify') {
-              const q = pickClarifyQuestion({
-                title: voiceParsed.title,
-                date: voiceParsed.date,
-                time: voiceParsed.time,
-                location: voiceParsed.location ?? null,
-              })
-              speak(q).catch(() => {})
-              setVoiceStatus(q)
-              setTimeout(() => setVoiceStatus(''), 4500)
-              return
-            }
-            if (result.kind === 'unrelated') {
-              speak(UNRELATED_RESPONSE).catch(() => {})
-              setVoiceStatus(UNRELATED_RESPONSE)
-              setTimeout(() => setVoiceStatus(''), 3500)
-              return
-            }
-            const ack = pickUpdateAck({ avoid: lastAckRef.current })
-            lastAckRef.current = ack
-            setCorrectionAck(ack)
-            const merged = applyCorrection({
-              title: voiceParsed.title,
-              date: voiceParsed.date,
-              time: voiceParsed.time,
-              emoji: voiceParsed.emoji,
-              location: voiceParsed.location ?? null,
-              notes: voiceParsed.notes ?? null,
-            }, result.updates)
-            setVoiceParsed({
-              ...merged,
-              location: merged.location ?? null,
-              notes: merged.notes ?? null,
-            })
-            return
-          }
 
           // Check if this is a schedule query ("מה קורה לי?")
           const { isScheduleQuery: isQuery } = await import('./intentParser')
           if (isQuery(transcribed)) {
-            setVoiceStatus('')
             setAbuTimeOpen(true)
             return
           }
-          setVoiceStatus('מנתחת...')
           // P0.1 — Route the final transcript through processVoiceTranscript.
           // This returns one of six explicit actions so the UI never
           // silently drops. Auto-creation is gated on a real create-verb
@@ -630,7 +404,6 @@ export function AbuCalendar() {
           const todayISO = getTodayStr()
           const decision = processVoiceTranscript(transcribed, todayISO, { rawTranscript: norm.rawText, asr: { avgLogprob: asr.avgLogprob ?? null, noSpeechProb: asr.noSpeechProb ?? null, compressionRatio: asr.compressionRatio ?? null } })
           updateTrace({ parseDecision: decision.action, ...(('semantic' in decision && decision.semantic) ? { semanticIntent: decision.semantic.intent, semanticSource: decision.semantic.semanticSource, extractionConfidence: decision.semantic.extractionConfidence, extractedTitle: decision.semantic.extractedTitle, extractedDate: decision.semantic.extractedDate, extractedStartTime: decision.semantic.extractedStartTime, extractedEndTime: decision.semantic.extractedEndTime, extractedLocation: decision.semantic.extractedLocation, extractedPeople: decision.semantic.extractedPeople, extractedNotes: decision.semantic.extractedNotes, missingFields: decision.semantic.missingFields, clarificationQuestion: decision.semantic.clarificationQuestion, llmFallbackUsed: decision.semantic.llmFallbackUsed, validationResult: decision.semantic.validationResult, semanticRawInput: decision.semantic.semanticRawInput, semanticCorrectedInput: decision.semantic.semanticCorrectedInput } : {}) }, `parse_decision:${decision.action}`)
-          setVoiceStatus('')
           switch (decision.action) {
             case 'auto_created': {
               setStage('creating', undefined, 'create_started')
@@ -641,8 +414,6 @@ export function AbuCalendar() {
               setVoiceParsed(null)
               setVoiceError(null)
               setVoiceState('idle')
-              setCorrectionAck(null)
-              lastAckRef.current = null
               playChime()
               soundSuccess()
               const lang = detectConfirmationLang(decision.appointment.title)
@@ -683,13 +454,11 @@ export function AbuCalendar() {
                   emoji: decision.draft.emoji,
                   location: decision.draft.location ?? null,
                   notes: decision.draft.notes ?? null,
-                  confidence: decision.draft.confidence,
                   personName: res.personName,
                   ...(res.relation ? { relation: res.relation } : {}),
                 })
               }
               setVoiceState('parsed')
-              setVoiceStatus(decision.question)
               setStage('idle', decision.question, 'showing_clarification_question')
               return
             }
@@ -706,7 +475,6 @@ export function AbuCalendar() {
                   emoji: decision.draft.emoji,
                   location: decision.draft.location ?? null,
                   notes: decision.draft.notes ?? null,
-                  confidence: decision.draft.confidence,
                   personName: res.personName,
                   ...(res.relation ? { relation: res.relation } : {}),
                 })
@@ -748,8 +516,6 @@ export function AbuCalendar() {
             }
           }
         } catch (e) {
-          correctingRef.current = false
-          setIsCorrecting(false)
           // P0.5/6 — translate known transcription failures into the
           // honest user-facing copy from platformHealth.userFacingError,
           // so the user always sees WHY the recording didn't work.
@@ -787,7 +553,6 @@ export function AbuCalendar() {
       mr.start()
       setIsRecording(true)
       setVoiceState('recording')
-      setVoiceStatus('מקשיבה... (לחצי שוב לסיום)')
       setStage('recording')
     } catch (err) {
       const msg = mediateVoiceCaptureError(err, 'permission_or_device')
@@ -796,28 +561,20 @@ export function AbuCalendar() {
   }
 
   function handleVoiceConfirm(final: { title: string; date: string; time: string; emoji: string; location?: string; notes?: string }) {
-    // P0 — same safe-create path as manual save. Voice cannot bypass
-    // validation or the round-trip read-back.
-    const result = createAppointmentSafe(final)
+    const cleanTitle = sanitizeTitleForSave(final.title, undefined)
+    const result = createAppointmentSafe({ ...final, title: cleanTitle })
     if (!result.ok) {
       const lang = detectConfirmationLang(final.title)
       showFailureToast(formatCreateFailure(result.code, lang))
       return
     }
     reload()
-    // P0.1 visibility fix — jump the calendar view to the new event's
-    // date so the user can see what was created.
     setSelectedDay(result.appointment.date)
     setVoiceParsed(null)
-    setVoiceStatus('')
     setVoiceError(null)
     setVoiceState('idle')
-    setCorrectionAck(null)
-    lastAckRef.current = null
     playChime()
     soundSuccess()
-    // P2 — show clean saved confirmation card built from the normalized
-    // appointment record, never from raw ASR text.
     setSavedConfirmation({
       title: result.appointment.title,
       date: result.appointment.date,
@@ -825,22 +582,24 @@ export function AbuCalendar() {
     })
   }
 
-  function startCorrection() {
-    if (isRecording) return
-    correctingRef.current = true
-    setIsCorrecting(true)
-    void handleVoiceRecord()
+  function handleVoiceCancel() {
+    setVoiceParsed(null)
+    setVoiceError(null)
+    setVoiceState('idle')
+    setAmbiguousDraft(null)
+  }
+
+  function handleVoiceManualAdd() {
+    handleVoiceCancel()
+    soundOpen()
+    setEditingAppt(null)
+    setShowManual(true)
   }
 
   function handleVoiceRetry() {
     setVoiceParsed(null)
     setVoiceError(null)
     setVoiceState('idle')
-    setVoiceStatus('')
-    setCorrectionAck(null)
-    lastAckRef.current = null
-    correctingRef.current = false
-    setIsCorrecting(false)
     void handleVoiceRecord({ bypassGuard: true })
   }
 
@@ -1231,22 +990,6 @@ export function AbuCalendar() {
         title={formatShortHebrewDate(selectedDay)}
         footer={
           <>
-            {/* Status pill — visible only when recording or processing */}
-            {(isRecording || (voiceStatus && !voiceParsed && !isRecording)) && (
-              isRecording
-                ? <StatusPill variant="red" icon="🔴" label="מקשיבה..." />
-                : <StatusPill variant="gold" label={voiceStatus} />
-            )}
-
-            {/* Visible voice trace — never silent; shows stage + every failure
-                message with a copy-diagnostic button. In-sheet only. */}
-            <VoiceTraceCard
-              trace={voiceTrace}
-              onDismiss={dismissVoiceTrace}
-              onCopied={() => { setVoiceTraceCopied(true); setTimeout(() => setVoiceTraceCopied(false), 2200) }}
-              copied={voiceTraceCopied}
-            />
-
             {/* Action row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <SeniorButton variant="ghost" onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}>
@@ -1344,116 +1087,25 @@ export function AbuCalendar() {
         />
       )}
 
-      {voiceParsed && (() => {
-        // Only build confirmation readback when the draft has meaningful
-        // content and the voice pipeline is not in an error/failure state.
-        const confirmText = shouldShowConfirmationReadback(voiceState, voiceParsed)
-          ? (() => {
-              const base = shapeCreateConfirmReadback({
-                title: voiceParsed.title,
-                personName: voiceParsed.personName ?? null,
-                date: voiceParsed.date,
-                time: voiceParsed.time,
-                location: voiceParsed.location ?? null,
-                notes: voiceParsed.notes ?? null,
-                ambiguousTime: voiceParsed.ambiguousTime ?? false,
-              })
-              return correctionAck ? `${correctionAck}\n${base}` : base
-            })()
-          : undefined
-        return (
-          <VoiceCard
-            parsed={voiceParsed}
-            existingAppts={appointments}
-            {...(voiceParsed.relation ? { relation: voiceParsed.relation } : {})}
-            onPickPerson={(name: string) => setVoiceParsed(prev => (prev && prev.relation) ? { ...prev, title: prev.title.replace(prev.relation.phrase, name), personName: name, relation: { status: 'resolved', phrase: prev.relation.phrase } } : prev)}
-            onKeepPhrase={() => setVoiceParsed(prev => (prev && prev.relation) ? { ...prev, personName: prev.relation.phrase, relation: { status: 'missing', phrase: prev.relation.phrase } } : prev)}
-            onConfirm={handleVoiceConfirm}
-            onRetry={handleVoiceRetry}
-            onCancel={() => {
-              speak(CANCEL_RESPONSE).catch(() => {})
-              setVoiceParsed(null)
-              setVoiceStatus('')
-              setVoiceError(null)
-              setVoiceState('idle')
-              correctingRef.current = false
-              setIsCorrecting(false)
-              setCorrectionAck(null)
-              lastAckRef.current = null
-            }}
-            {...(confirmText ? { confirmationText: confirmText } : {})}
-            onCorrection={startCorrection}
-            isCorrecting={isCorrecting || isRecording}
-            rawTranscript={rawTranscript}
-            voiceState={voiceState}
-            voiceError={voiceError}
-            onReparse={handleReparse}
-            onSpokenDone={() => {
-              // Auto-listen for spoken confirmation only when the card has just
-              // been (re)spoken AND we're not already recording or in error.
-              if (!isRecording && !correctingRef.current && voiceState !== 'error') {
-                startCorrection()
-              }
-            }}
-          />
-        )
-      })()}
-
-      {ambiguousDraft && (() => {
-        const [hStr] = ambiguousDraft.time.split(':')
-        const h = parseInt(hStr ?? '0', 10)
-        const HOUR_WORDS_HE = ['שתים עשרה','אחת','שתיים','שלוש','ארבע','חמש','שש','שבע','שמונה','תשע','עשר','אחת עשרה']
-        const hourWord = HOUR_WORDS_HE[h % 12] ?? String(h)
-        return (
-          <div onClick={() => setAmbiguousDraft(null)} style={{
-            position: 'fixed', inset: 0, zIndex: 220, background: 'rgba(0,0,0,0.84)',
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-          } as React.CSSProperties}>
-            <div onClick={e => e.stopPropagation()} dir="rtl" style={{
-              width: '100%', maxWidth: 480,
-              background: 'linear-gradient(160deg, rgba(14,12,10,0.99) 0%, rgba(10,8,6,0.99) 100%)',
-              border: '1px solid rgba(201,168,76,0.32)', borderBottom: 'none',
-              borderRadius: '24px 24px 0 0',
-              padding: 'calc(28px + env(safe-area-inset-bottom, 0px)) 20px 24px',
-              display: 'flex', flexDirection: 'column', gap: 14,
-            }}>
-              <div data-testid="ambiguity-question" style={{ fontSize: 20, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif", textAlign: 'center', lineHeight: 1.5 }}>
-                זה {hourWord} בצהריים או {hourWord} בלילה?
-              </div>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button type="button" onClick={() => resolveAmbiguity('am')} style={{
-                  flex: 1, padding: '15px', borderRadius: 14,
-                  border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.05)',
-                  color: CREAM, fontSize: 18, fontWeight: 700,
-                  fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 56,
-                }}>בלילה</button>
-                <button type="button" onClick={() => resolveAmbiguity('pm')} style={{
-                  flex: 1, padding: '15px', borderRadius: 14, border: 'none',
-                  background: `linear-gradient(135deg, ${BRIGHT_GOLD} 0%, #e8c76a 50%, ${GOLD} 100%)`,
-                  color: 'rgba(0,0,0,0.85)', fontSize: 18, fontWeight: 700,
-                  fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 56,
-                }}>בצהריים</button>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* P2 — clean saved confirmation, built from normalized appointment data */}
-      {savedConfirmation && (
-        <SavedCard
-          title={savedConfirmation.title}
-          date={savedConfirmation.date}
-          time={savedConfirmation.time}
-          onClose={() => setSavedConfirmation(null)}
-          onShowDay={() => {
-            setSelectedDay(savedConfirmation.date)
-            setSheetOpen(true)
-            setSavedConfirmation(null)
-          }}
-        />
-      )}
+      <VoiceAddFlow
+        isRecording={isRecording}
+        isProcessing={voiceState === 'transcribing' || voiceState === 'parsing'}
+        parsed={voiceParsed}
+        voiceError={voiceError}
+        ambiguousDraft={ambiguousDraft}
+        savedConfirmation={savedConfirmation}
+        existingAppts={appointments}
+        onToggleRecord={() => void handleVoiceRecord()}
+        onConfirm={handleVoiceConfirm}
+        onCancel={handleVoiceCancel}
+        onRetry={handleVoiceRetry}
+        onManualAdd={handleVoiceManualAdd}
+        onResolveAmPm={resolveAmbiguity}
+        onSavedClose={() => setSavedConfirmation(null)}
+        onSavedShowDay={() => { setSelectedDay(savedConfirmation!.date); setSheetOpen(true); setSavedConfirmation(null) }}
+        onPickPerson={(name: string) => setVoiceParsed(prev => (prev?.relation) ? { ...prev, title: prev.title.replace(prev.relation.phrase, name), personName: name, relation: { status: 'resolved', phrase: prev.relation.phrase } } : prev)}
+        onKeepPhrase={() => setVoiceParsed(prev => (prev?.relation) ? { ...prev, personName: prev.relation.phrase, relation: { status: 'missing', phrase: prev.relation.phrase } } : prev)}
+      />
 
       {/* KEYFRAMES */}
       <style>{`
