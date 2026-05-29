@@ -1113,6 +1113,17 @@ export function AbuCalendar() {
         onKeepPhrase={() => setVoiceParsed(prev => (prev?.relation) ? { ...prev, personName: prev.relation.phrase, relation: { status: 'missing', phrase: prev.relation.phrase } } : prev)}
       />
 
+      {import.meta.env.DEV && (
+        <div
+          data-testid="voice-reset-active-614f33d"
+          style={{
+            position: 'fixed', bottom: 8, left: 8,
+            fontSize: 9, color: 'rgba(201,168,76,0.35)', fontFamily: 'monospace',
+            zIndex: 9999, userSelect: 'none', pointerEvents: 'none',
+          }}
+        >VOICE_RESET_ACTIVE_614F33D</div>
+      )}
+
       {/* KEYFRAMES */}
       <style>{`
         @keyframes fadeSlideUp {
