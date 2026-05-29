@@ -9,12 +9,14 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { VoiceAddFlow } from './VoiceAddFlow'
+import { sanitizeTitleForSave } from './localParser'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const FLOW_SOURCE = readFileSync(resolve(__dirname, './VoiceAddFlow.tsx'), 'utf8')
 const INDEX_SOURCE = readFileSync(resolve(__dirname, './index.tsx'), 'utf8')
 const SERVICE_SOURCE = readFileSync(resolve(__dirname, './service.ts'), 'utf8')
+const CONFIRM_SOURCE = readFileSync(resolve(__dirname, './ConfirmCard.tsx'), 'utf8')
 
 class MemoryStorage {
   private store = new Map<string, string>()
@@ -183,5 +185,104 @@ describe('VoiceAddFlow — structural contract', () => {
     for (const s of FORBIDDEN) {
       expect(FLOW_SOURCE, `VoiceAddFlow.tsx must not contain "${s}"`).not.toContain(s)
     }
+  })
+
+  it('index.tsx does NOT import VoiceCard or VoiceTraceCard', () => {
+    expect(INDEX_SOURCE).not.toContain("from './VoiceCard'")
+    expect(INDEX_SOURCE).not.toContain("from './VoiceTraceCard'")
+    expect(INDEX_SOURCE).not.toContain('<VoiceCard')
+    expect(INDEX_SOURCE).not.toContain('<VoiceTraceCard')
+  })
+
+  it('ConfirmCard does NOT import VoiceCard', () => {
+    expect(CONFIRM_SOURCE).not.toContain("from './VoiceCard'")
+  })
+
+  it('VoiceAddFlow does NOT import VoiceCard', () => {
+    expect(FLOW_SOURCE).not.toContain("from './VoiceCard'")
+  })
+
+  it('index.tsx DOM render does not include diagnostic string literals', () => {
+    const JSX_SECTION = INDEX_SOURCE.slice(INDEX_SOURCE.indexOf('return ('))
+    const RENDER_FORBIDDEN = ['DEBUG', 'state:', 'raw:', 'מצב הקלטה', 'העתק אבחון קול', 'מה שמעתי']
+    for (const s of RENDER_FORBIDDEN) {
+      expect(JSX_SECTION, `index.tsx render section must not contain "${s}"`).not.toContain(s)
+    }
+  })
+
+  it('build marker VOICE_RESET_ACTIVE_8987215 is present in index.tsx', () => {
+    expect(INDEX_SOURCE).toContain('VOICE_RESET_ACTIVE_8987215')
+  })
+})
+
+describe('VoiceAddFlow — title sanitization (dirty title blocker)', () => {
+  it('strips "תקבעי" command verb from title', () => {
+    expect(sanitizeTitleForSave('תקבעי פגישה עם גלעד')).toBe('פגישה עם גלעד')
+  })
+
+  it('strips "תקווה" (Whisper mishear of "תקבעי") from title', () => {
+    expect(sanitizeTitleForSave('תקווה פגישה עם גלעד')).toBe('פגישה עם גלעד')
+  })
+
+  it('strips "קבעי" from title', () => {
+    expect(sanitizeTitleForSave('קבעי פגישה')).toBe('פגישה')
+  })
+
+  it('leaves "פגישה עם גלעד" unchanged', () => {
+    expect(sanitizeTitleForSave('פגישה עם גלעד')).toBe('פגישה עם גלעד')
+  })
+
+  it('falls back to personName when title stripped to empty', () => {
+    expect(sanitizeTitleForSave('תקבעי', 'גלעד')).toBe('פגישה עם גלעד')
+  })
+
+  it('does not save raw ASR sentence as title', () => {
+    const raw = 'תקבעי פגישה למחר בשעה 21 עם הבעל של אופיר'
+    const result = sanitizeTitleForSave(raw)
+    expect(result).not.toContain('תקבעי')
+    expect(result).not.toBe(raw)
+  })
+})
+
+describe('VoiceAddFlow — render confirms correct screen, not old VoiceCard UI', () => {
+  it('confirm state renders voice-add-flow container, not voice-card', () => {
+    const html = renderToString(
+      React.createElement(VoiceAddFlow, {
+        ...BASE_PROPS,
+        parsed: { title: 'פגישה עם גלעד', date: '2026-05-29', time: '21:00', emoji: '📅', personName: 'גלעד' },
+      }),
+    )
+    expect(html).toContain('data-testid="voice-add-flow"')
+    expect(html).not.toContain('data-testid="voice-card"')
+    expect(html).not.toContain('data-testid="voice-debug"')
+    expect(html).not.toContain('data-testid="transcript-box"')
+  })
+
+  it('confirm state has all three action buttons — no correction fields pre-tap', () => {
+    const html = renderToString(
+      React.createElement(VoiceAddFlow, {
+        ...BASE_PROPS,
+        parsed: { title: 'פגישה עם גלעד', date: '2026-05-29', time: '21:00', emoji: '📅', personName: 'גלעד' },
+      }),
+    )
+    expect(html).toContain('כן, לשמור')
+    expect(html).toContain('לא, לתקן')
+    expect(html).toContain('ביטול')
+    expect(html).not.toContain('data-testid="field-what"')
+    expect(html).not.toContain('data-testid="vaf-correcting"')
+  })
+
+  it('saved state shows נשמר ביומן and פגישה עם גלעד, not raw ASR sentence', () => {
+    const html = renderToString(
+      React.createElement(VoiceAddFlow, {
+        ...BASE_PROPS,
+        savedConfirmation: { title: 'פגישה עם גלעד', date: '2026-05-29', time: '21:00' },
+      }),
+    )
+    expect(html).toContain('נשמר ביומן')
+    expect(html).toContain('פגישה עם גלעד')
+    expect(html).not.toContain('תקבעי')
+    expect(html).not.toContain('תקווה')
+    expect(html).not.toContain('הבעל של אופיר')
   })
 })

@@ -1025,6 +1025,12 @@ export function AbuCalendar() {
                 )}
               </button>
             </div>
+            {import.meta.env.DEV && (
+              <div data-testid="voice-reset-active-8987215" style={{
+                fontSize: 10, color: 'rgba(201,168,76,0.45)', fontFamily: 'monospace',
+                textAlign: 'center', padding: '2px 0', userSelect: 'none',
+              }}>VOICE_RESET_ACTIVE_8987215</div>
+            )}
           </>
         }
       >

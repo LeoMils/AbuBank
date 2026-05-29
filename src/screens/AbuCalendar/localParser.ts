@@ -543,6 +543,8 @@ function buildTitle(text: string, allConsumed: string[]): string {
  *  Applies the same TITLE_LEAD_STRIPS loop used at parse time, then
  *  falls back to a clean "פגישה עם <personName>" if stripping left nothing.
  *  Call this immediately before createAppointmentSafe. */
+const COMMAND_VERB_ONLY = /^(תקבעי לי|תקבעי|תקבע לי|תקבע|קבעי|קבע|תזכירי לי|תזכירי|תזכיר לי|תזכיר|תזכרי|שימי לי|שימי|שים לי|שים|תוסיפי לי|תוסיפי|תוסיף לי|תוסיף|תכניסי לי|תכניסי|תכניס לי|תכניס|תרשמי|תרשום|תכנון פגישה|תקווה)$/
+
 export function sanitizeTitleForSave(title: string, personName?: string | null): string {
   let t = title.trim()
   let prev: string
@@ -551,6 +553,7 @@ export function sanitizeTitleForSave(title: string, personName?: string | null):
     for (const re of TITLE_LEAD_STRIPS) t = t.replace(re, '')
     t = t.trim()
   } while (t !== prev && t.length > 0)
+  if (COMMAND_VERB_ONLY.test(t)) t = ''
   if (!t && personName?.trim()) return `פגישה עם ${personName.trim()}`
   return t || title.trim()
 }

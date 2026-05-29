@@ -11,7 +11,7 @@
 
 import { useState, useEffect } from 'react'
 import { ConfirmCard } from './ConfirmCard'
-import { formatHebrewDateSlot } from './VoiceCard'
+import { formatHebrewDateSlot } from './voiceDateUtils'
 import { type Appointment, detectEmoji } from './service'
 import { GOLD, BRIGHT_GOLD, CREAM, TEXT_SECONDARY, getTodayStr, isDuplicate } from './constants'
 import { sanitizeTitleForSave } from './localParser'

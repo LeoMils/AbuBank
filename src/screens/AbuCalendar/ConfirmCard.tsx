@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { GOLD, BRIGHT_GOLD, CREAM, TEXT_SECONDARY, getTodayStr } from './constants'
-import { formatHebrewDateSlot } from './VoiceCard'
+import { formatHebrewDateSlot } from './voiceDateUtils'
 
 // Shared senior-first confirmation. Same calm UX for voice AND manual add:
 // a clean, normalized-Hebrew summary (מה / מתי) and three large actions.
