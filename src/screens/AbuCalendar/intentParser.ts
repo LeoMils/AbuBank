@@ -12,7 +12,9 @@ const QUERY_PATTERNS = [
   /^מה (יש|קורה) לי/,
   /^מה ביומן/,
   /^מה מחכה/,
-  /^מה התוכנית/,
+  // Singular "התוכנית" and plural "התוכניות" share the prefix "תוכני";
+  // gating on it lets "מה התוכניות שלי השבוע" route to schedule_query.
+  /^מה ה?תוכני/,
   /^מה עושים/,
   /^מתי יש לי/,
   /^יש לי משהו/,

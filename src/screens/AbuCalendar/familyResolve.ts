@@ -23,7 +23,7 @@ export type FamilyResolveResult =
 const STOP_WORDS = /^(הילדים|הרופא|המשפחה|הבית|העבודה|כולם|כולן)$/
 // Kinship words we capture — multi-word forms ("בן הזוג") MUST come before
 // their single-word prefixes ("בן") so the longer form wins.
-const KIND = `בן\\s+הזוג|בת\\s+הזוג|נכדה|נכד|בעלה|בעל|אשתו|אשת|אישה|בת|בן`
+const KIND = `בן\\s+הזוג|בת\\s+הזוג|נכדה|נכד|בעלה|בעל|אשתו|אשת|אישה|אחות|אח|בת|בן`
 // "עם <relationship phrase>" — preferred when present.
 const REL_AFTER_WITH = new RegExp(`עם\\s+(ה?(?:${KIND})\\s+של\\s+[֐-׿']+)`)
 // Same kinship-of-Name pattern ANYWHERE, allowing the Hebrew prepositional
@@ -72,9 +72,10 @@ export function resolvePersonPhrase(phraseRaw: string | null | undefined): Famil
     if (!root) return { status: 'missing', phrase }
 
     const isSpouse = SPOUSE_MALE.has(kind) || SPOUSE_FEMALE.has(kind)
+    const isSibling = kind === 'אח' || kind === 'אחות'
     const wantGender: 'female' | 'male' = isSpouse
       ? (SPOUSE_MALE.has(kind) ? 'male' : 'female')
-      : (kind === 'בת' || kind === 'נכדה' ? 'female' : 'male')
+      : (kind === 'בת' || kind === 'נכדה' || kind === 'אחות' ? 'female' : 'male')
 
     let candidateHe: string[]
     if (isSpouse) {
@@ -85,6 +86,19 @@ export function resolvePersonPhrase(phraseRaw: string | null | undefined): Famil
       for (const childHe of root.childrenHe) {
         const child = findNode(childHe)
         if (child) candidateHe.push(...child.childrenHe)
+      }
+    } else if (isSibling) {
+      // Sibling = any child of a parent of `root`, excluding `root` itself.
+      const seen = new Set<string>([root.hebrew])
+      candidateHe = []
+      for (const parentHe of root.parentsHe) {
+        const parent = findNode(parentHe)
+        if (!parent) continue
+        for (const sibHe of parent.childrenHe) {
+          if (seen.has(sibHe)) continue
+          seen.add(sibHe)
+          candidateHe.push(sibHe)
+        }
       }
     } else {
       candidateHe = [...root.childrenHe]

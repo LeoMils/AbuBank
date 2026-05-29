@@ -1,12 +1,18 @@
-import { parseLocally } from '../localParser'
+import { cleanTranscript, parseLocally } from '../localParser'
 import { extractPersonPhrase, resolvePersonPhrase } from '../familyResolve'
 import type { ReminderDraft, ReminderCategory, Reminder } from './types'
 
 // ─── Intent detection ────────────────────────────────────────────────────────
 
-const REMINDER_TRIGGERS = /תזכירי\s+לי|תזכרי\s+לי|תזכיר\s+לי|תזכורת|להזכיר\s+לי/
+const REMINDER_TRIGGERS = /תזכירי\s+לי|תזכרי\s+לי|תזכיר\s+לי|תזכורת|להזכיר\s+לי|אני\s+צריכ[הי]\s+לזכור/
 const APPOINTMENT_CONTENT = /פגישה\s+עם|תור\s+ל|לקבוע\s+פגישה/
-const APPOINTMENT_VERBS = /תקבעי|קבעי|אגנד[אה]/
+// Verbs that always mean "schedule an appointment".
+const STRONG_APPOINTMENT_VERBS = /תקבעי|תקבע|קבעי|קבע|אגנד[אה]/
+// Verbs that mean appointment only when paired with an appointment noun.
+const WEAK_APPOINTMENT_VERBS = /תוסיפי|תוסיף/
+// Appointment nouns, allowing a single Hebrew prepositional prefix (ל/ב/ה/א).
+// Hebrew has no \b, so guard with non-Hebrew-letter lookarounds.
+const APPOINTMENT_NOUN_RE = /(?<![֐-׿])[להאב]?(?:פגישה|תור|בדיקה|אירוע|תופרת)(?![֐-׿])/
 
 /**
  * Classify transcript intent for routing.
@@ -14,11 +20,18 @@ const APPOINTMENT_VERBS = /תקבעי|קבעי|אגנד[אה]/
  */
 export function detectReminderIntent(text: string): 'reminder' | 'appointment' | 'unknown' {
   const t = text.trim()
-  if (APPOINTMENT_VERBS.test(t)) return 'appointment'
+  if (STRONG_APPOINTMENT_VERBS.test(t)) return 'appointment'
+  if (WEAK_APPOINTMENT_VERBS.test(t) && APPOINTMENT_NOUN_RE.test(t)) return 'appointment'
   const hasReminderTrigger = REMINDER_TRIGGERS.test(t)
   const hasAppointmentContent = APPOINTMENT_CONTENT.test(t)
   if (hasReminderTrigger && hasAppointmentContent) return 'appointment'
   if (hasReminderTrigger) return 'reminder'
+  // Declarative possession: "יש לי <appointment noun>". Schedule queries
+  // ("מה יש לי …") are caught upstream by isScheduleQuery; the leading-"מה"
+  // guard is a belt for direct callers of this function.
+  if (!/^מה\s/.test(t) && /יש\s+לי/.test(t) && APPOINTMENT_NOUN_RE.test(t)) {
+    return 'appointment'
+  }
   return 'unknown'
 }
 
@@ -269,7 +282,9 @@ function buildReadbackText(
  */
 export function parseReminder(rawText: string, todayISO: string): ReminderDraft {
   const now = new Date()
-  const t = rawText.trim()
+  // cleanTranscript runs self-correction normalization ("X סליחה Y" → "Y")
+  // and digit-time cleanup before any downstream extractor sees the text.
+  const t = cleanTranscript(rawText)
 
   // Step 1: detect recurrence
   const recurBase = parseRecurrence(t)

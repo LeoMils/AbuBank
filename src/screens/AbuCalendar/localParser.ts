@@ -117,18 +117,22 @@ function extractDate(text: string, todayISO: string): DateExtract {
   const consumed: string[] = []
   const today = isoToday(todayISO)
 
-  if (new RegExp(`${NB}מחרתיים${NA}`).test(text)) {
+  // ל? allows the dative "למחר" / "להיום" prefix the speaker often uses.
+  const mahMatch = text.match(new RegExp(`${NB}(ל?מחרתיים)${NA}`))
+  if (mahMatch) {
     const t = new Date(today); t.setDate(t.getDate() + 2)
-    consumed.push('מחרתיים')
+    consumed.push(mahMatch[1]!)
     return { date: toISO(t), consumed }
   }
-  if (new RegExp(`${NB}מחר${NA}`).test(text)) {
+  const morMatch = text.match(new RegExp(`${NB}(ל?מחר)${NA}`))
+  if (morMatch) {
     const t = new Date(today); t.setDate(t.getDate() + 1)
-    consumed.push('מחר')
+    consumed.push(morMatch[1]!)
     return { date: toISO(t), consumed }
   }
-  if (new RegExp(`${NB}היום${NA}`).test(text)) {
-    consumed.push('היום')
+  const todayMatch = text.match(new RegExp(`${NB}(ל?היום)${NA}`))
+  if (todayMatch) {
+    consumed.push(todayMatch[1]!)
     return { date: todayISO, consumed }
   }
 
@@ -567,6 +571,11 @@ export function cleanTranscript(text: string): string {
   s = s.replace(/(?<![֐-׿])([֐-׿]{2,})(?:\s+\1)+(?![֐-׿])/g, '$1')
   // Repeated phrase up to 4 words ("בשעה 10:32 בשעה 10:32" → "בשעה 10:32")
   s = s.replace(/((?:\S+\s+){1,3}\S+)\s+\1/g, '$1')
+  // Self-correction: "בעוד X (סליחה|בעצם|תיקון|לא) בעוד Y" → "בעוד Y".
+  // Only fires when the corrector word is followed by a parallel "בעוד"
+  // phrase, so it never eats legitimate text. Non-greedy middle keeps the
+  // smallest first-clause.
+  s = s.replace(/בעוד\s+[֐-׿\s\d]+?\s+(?:סליחה|בעצם|תיקון|לא),?\s+(?=בעוד\s)/g, '')
   // Normalize "ב - 3" / "ב -3" → "ב-3" so the hour-only matcher catches it
   s = s.replace(/ב\s*-\s*(\d)/g, 'ב-$1')
   // Normalize "10 :32" / "10: 32" → "10:32"
