@@ -153,6 +153,23 @@ function extractDate(text: string, todayISO: string): DateExtract {
     }
   }
 
+  // "30 במאי" / "15 ביוני" — Hebrew month names.
+  const HEB_MONTHS_MAP: Record<string, number> = {
+    'ינואר': 1, 'פברואר': 2, 'מרץ': 3, 'אפריל': 4, 'מאי': 5, 'יוני': 6,
+    'יולי': 7, 'אוגוסט': 8, 'ספטמבר': 9, 'אוקטובר': 10, 'נובמבר': 11, 'דצמבר': 12,
+  }
+  const monthNameRe = /(?<!\d)(\d{1,2})\s+ב(ינואר|פברואר|מרץ|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)/
+  const mnm = text.match(monthNameRe)
+  if (mnm) {
+    const day = parseInt(mnm[1]!, 10)
+    const month = HEB_MONTHS_MAP[mnm[2]!]!
+    const yr = today.getFullYear()
+    const t = new Date(yr, month - 1, day)
+    if (t < today) t.setFullYear(yr + 1)
+    consumed.push(mnm[0])
+    return { date: toISO(t), consumed }
+  }
+
   const dmMatch = text.match(/(?<!\d)(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?(?!\d)/)
   if (dmMatch) {
     const day = parseInt(dmMatch[1]!, 10)
@@ -288,6 +305,22 @@ function extractTime(text: string): TimeExtract {
     }
   }
 
+  // Numeric hour + Hebrew fraction: "21 וחצי" → 21:30, "ב-21 וחצי" → 21:30.
+  // Must come before hourOnly so the fraction is not dropped.
+  const numFracMatch = text.match(/(?:(?:בשעה\s+|ב-)(\d{1,2})|(?<!\d)(\d{1,2}))\s+(וחצי|ורבע|ועשרים|ושלושים|וחמישים|ועשר|וחמש)(?![֐-׿])/)
+  if (numFracMatch) {
+    const raw = numFracMatch[1] ?? numFracMatch[2]
+    const h = parseInt(raw!, 10)
+    const fracMap: Record<string, number> = {
+      'וחצי': 30, 'ורבע': 15, 'ועשרים': 20, 'ושלושים': 30, 'וחמישים': 50, 'ועשר': 10, 'וחמש': 5,
+    }
+    const m = fracMap[numFracMatch[3]!] ?? 0
+    if (h >= 0 && h < 24) {
+      const { hour, ambiguous } = applyPeriod(h, text)
+      return { time: `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`, ambiguous, consumed: [numFracMatch[0]] }
+    }
+  }
+
   // Hour-only: "בשעה 3", "ב-3", "ב-15" — must NOT be a date marker like "ב-15 לחודש".
   const hourOnly = text.match(/(?:בשעה\s+(\d{1,2})|ב-(\d{1,2}))(?!\s*לחודש)(?=\s|$|[.,!?])/)
   if (hourOnly) {
@@ -329,15 +362,20 @@ function extractTime(text: string): TimeExtract {
     }
   }
 
+  const hasPeriodHint = PM_HINTS.test(text) || NIGHT_HINTS.test(text) || MORNING_HINTS.test(text)
+    || PM_HINTS_ES.test(text) || PM_HINTS_EN_INLINE.test(text)
+    || MORNING_HINTS_ES.test(text) || MORNING_HINTS_EN_INLINE.test(text)
   const bareRe = new RegExp(`${NB}(${hourPat})${NA}([\\s\\u0590-\\u05FF]*)`)
   const bm = text.match(bareRe)
   if (bm) {
     const h = HEBREW_HOUR_WORDS[bm[1]!]
     const minResult = parseHebrewMinuteWords(bm[2] ?? '')
-    if (typeof h === 'number' && minResult) {
+    if (typeof h === 'number' && (minResult || hasPeriodHint)) {
+      const minutes = minResult?.minutes ?? 0
       const { hour, ambiguous } = applyPeriod(h, text)
-      const time = `${String(hour).padStart(2, '0')}:${String(minResult.minutes).padStart(2, '0')}`
-      return { time, ambiguous, consumed: [`${bm[1]} ${minResult.consumed}`] }
+      const time = `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+      const consumedStr = minResult ? `${bm[1]} ${minResult.consumed}` : bm[1]!
+      return { time, ambiguous, consumed: [consumedStr] }
     }
   }
 
@@ -576,6 +614,13 @@ export function cleanTranscript(text: string): string {
   // phrase, so it never eats legitimate text. Non-greedy middle keeps the
   // smallest first-clause.
   s = s.replace(/בעוד\s+[֐-׿\s\d]+?\s+(?:סליחה|בעצם|תיקון|לא),?\s+(?=בעוד\s)/g, '')
+  // Date-word correction: "מחר/ביום X (סליחה|לא|בעצם|תיקון) מחר/ביום Y" → "ביום Y".
+  s = s.replace(/(?:מחר|מחרתיים|היום|ביום\s+[֐-׿]+)\s+(?:לא|סליחה|בעצם|תיקון),?\s+(?=(?:מחר|מחרתיים|היום|ביום\s))/g, '')
+  // Time-word correction: "ב<word> [<word>] (סליחה|לא|בעצם|תיקון) ב<word>" → "ב<word>".
+  // The optional second word handles "בשש בבוקר לא בשבע" → "בשבע".
+  s = s.replace(/ב[֐-׿]+(?:\s+[֐-׿]+)?\s+(?:סליחה|בעצם|תיקון|לא),?\s+(?=ב[֐-׿])/g, '')
+  // Person correction: "עם X (סליחה|לא|בעצם|תיקון) עם Y" → "עם Y".
+  s = s.replace(/עם\s+[֐-׿']+\s+(?:לא|סליחה|בעצם|תיקון),?\s+(?=עם\s)/g, '')
   // Normalize "ב - 3" / "ב -3" → "ב-3" so the hour-only matcher catches it
   s = s.replace(/ב\s*-\s*(\d)/g, 'ב-$1')
   // Normalize "10 :32" / "10: 32" → "10:32"

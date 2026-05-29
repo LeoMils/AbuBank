@@ -61,7 +61,7 @@ export function runVoicePipelineDiagnostic(rawText: string, todayISO: string): D
 }
 
 function rowFromReminder(rawText: string, normalized: string, todayISO: string): DiagnosticRow {
-  const draft = parseReminder(rawText, todayISO)
+  const draft = parseReminder(normalized, todayISO)
   const fr = draft.familyResolution
   const status: RelationStatus = fr ? fr.status : 'none'
   const missing = draft.missingFields

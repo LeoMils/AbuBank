@@ -4,34 +4,52 @@ import type { ReminderDraft, ReminderCategory, Reminder } from './types'
 
 // ─── Intent detection ────────────────────────────────────────────────────────
 
-const REMINDER_TRIGGERS = /תזכירי\s+לי|תזכרי\s+לי|תזכיר\s+לי|תזכורת|להזכיר\s+לי|אני\s+צריכ[הי]\s+לזכור/
+// Flexible reminder trigger: allows filler words between "צריכה/צריך" and "לזכור".
+const REMINDER_TRIGGERS = /תזכירי\s+לי|תזכרי\s+לי|תזכיר\s+לי|תזכורת|להזכיר\s+לי|אני\s+צריכ[הי](?:\s+\S+){0,3}\s+לזכור/
 const APPOINTMENT_CONTENT = /פגישה\s+עם|תור\s+ל|לקבוע\s+פגישה/
 // Verbs that always mean "schedule an appointment".
-const STRONG_APPOINTMENT_VERBS = /תקבעי|תקבע|קבעי|קבע|אגנד[אה]/
+// Hebrew word-boundary guards prevent substring matches (e.g. "שים" inside "שלושים").
+const STRONG_APPOINTMENT_VERBS = /(?<![֐-׿])(?:תקבעי|תקבע|קבעי|קבע|אגנד[אה]|תרשמי|תרשום|שימי|שים|תכניסי|תכניס)(?![֐-׿])/
 // Verbs that mean appointment only when paired with an appointment noun.
 const WEAK_APPOINTMENT_VERBS = /תוסיפי|תוסיף/
 // Appointment nouns, allowing a single Hebrew prepositional prefix (ל/ב/ה/א).
 // Hebrew has no \b, so guard with non-Hebrew-letter lookarounds.
-const APPOINTMENT_NOUN_RE = /(?<![֐-׿])[להאב]?(?:פגישה|תור|בדיקה|אירוע|תופרת)(?![֐-׿])/
+const APPOINTMENT_NOUN_RE = /(?<![֐-׿])[להאב]?(?:פגישה|תור|בדיקה|בדיקת|אירוע|תופרת|רופא|רופאה|דנטיסט|דיקור|קרדיולוג|יועץ|ספא|ביקור)(?![֐-׿])/
+// Bare recurring pattern without explicit reminder trigger.
+const RECURRING_RE = /(?:^|\s)כל\s+(?:ערב|בוקר|יום|לילה|שבת|שישי|חמישי|ראשון|שני|שלישי|רביעי|שבוע)/
+// Relative-time opener without an explicit reminder trigger.
+const RELATIVE_TIME_START_RE = /(?:^|\s)(?:בעוד|עוד)\s+(?:(?:\d+|[֐-׿]+)\s+(?:דקות?|שעות?|שעה|שעתיים)|שעה(?:\s*ו(?:חצי|רבע)|\s|$)|שעתיים|חצי\s+שעה|רבע\s+שעה)/
+// At least one calendar/time context clue (needed for bare-noun rule to fire).
+const APPT_CONTEXT_RE = /מחר|היום|מחרתיים|ביום\s|בשעה\s|\d{1,2}[:.]\d{2}|\d{1,2}\s+(?:בלילה|בבוקר|בצהריים|בערב|לפנות)|עם\s+[֐-׿]|ב-\d/
 
 /**
  * Classify transcript intent for routing.
- * Returns 'reminder' only when clearly a reminder (not calendar event).
+ * Priority order matters: stronger signals evaluated first.
  */
 export function detectReminderIntent(text: string): 'reminder' | 'appointment' | 'unknown' {
   const t = text.trim()
+  // 1. Strong appointment verbs always mean calendar event.
   if (STRONG_APPOINTMENT_VERBS.test(t)) return 'appointment'
+  // 2. Weak verbs become appointment only alongside an appointment noun.
   if (WEAK_APPOINTMENT_VERBS.test(t) && APPOINTMENT_NOUN_RE.test(t)) return 'appointment'
   const hasReminderTrigger = REMINDER_TRIGGERS.test(t)
-  const hasAppointmentContent = APPOINTMENT_CONTENT.test(t)
-  if (hasReminderTrigger && hasAppointmentContent) return 'appointment'
+  // 3. Reminder trigger + appointment content → scheduling-via-reminder phrasing.
+  if (hasReminderTrigger && APPOINTMENT_CONTENT.test(t)) return 'appointment'
+  // 4. Reminder trigger alone → reminder.
   if (hasReminderTrigger) return 'reminder'
-  // Declarative possession: "יש לי <appointment noun>". Schedule queries
-  // ("מה יש לי …") are caught upstream by isScheduleQuery; the leading-"מה"
-  // guard is a belt for direct callers of this function.
-  if (!/^מה\s/.test(t) && /יש\s+לי/.test(t) && APPOINTMENT_NOUN_RE.test(t)) {
-    return 'appointment'
-  }
+  // 5. Declarative possession: "יש לי <appointment noun>". Schedule queries
+  //    ("מה יש לי …") are caught upstream by isScheduleQuery.
+  if (!/^מה\s/.test(t) && /יש\s+לי/.test(t) && APPOINTMENT_NOUN_RE.test(t)) return 'appointment'
+  // 6. Standalone appointment-content phrase (no trigger needed).
+  if (APPOINTMENT_CONTENT.test(t)) return 'appointment'
+  // 7. Medication keyword without appointment noun → standalone reminder.
+  if (MEDICATION_RE.test(t) && !APPOINTMENT_NOUN_RE.test(t)) return 'reminder'
+  // 8. Recurring time pattern without explicit trigger → reminder.
+  if (RECURRING_RE.test(t)) return 'reminder'
+  // 9. Bare appointment noun + at least one calendar context clue → appointment.
+  if (!/^מה\s/.test(t) && APPOINTMENT_NOUN_RE.test(t) && APPT_CONTEXT_RE.test(t)) return 'appointment'
+  // 10. Relative-time opener without trigger → reminder.
+  if (RELATIVE_TIME_START_RE.test(t)) return 'reminder'
   return 'unknown'
 }
 
@@ -48,6 +66,8 @@ const HEB_TENS: Record<string, number> = {
   'עשרים': 20, 'שלושים': 30, 'ארבעים': 40, 'חמישים': 50,
 }
 const HEB_SPECIAL_MINUTES: Array<[RegExp, number]> = [
+  [/שעה\s+וחצי/, 90],
+  [/שעה\s+ורבע/, 75],
   [/חצי\s+שעה/, 30],
   [/רבע\s+שעה/, 15],
   [/שלושת\s+רבעי\s+שעה|שלושה\s+רבעי\s+שעה/, 45],
