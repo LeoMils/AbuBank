@@ -23,6 +23,8 @@ const HEBREW_HOUR_WORDS: Record<string, number> = {
   'שמונה': 8,
   'תשע': 9, 'תשעה': 9,
   'עשר': 10, 'עשרה': 10,
+  'אחת עשרה': 11, 'אחד עשר': 11,
+  'שתים עשרה': 12, 'שנים עשר': 12,
 }
 
 const HEBREW_TENS_WORDS: Record<string, number> = {
@@ -205,7 +207,8 @@ function applyPeriod(hour: number, text: string): { hour: number; ambiguous: boo
     return { hour, ambiguous: false }
   }
   if (NIGHT_HINTS.test(text)) {
-    return { hour, ambiguous: false }
+    // "שתים עשרה בלילה" / "12 בלילה" = midnight = 00:00, not 12:00
+    return { hour: hour === 12 ? 0 : hour, ambiguous: false }
   }
   // AM: Hebrew "בבוקר", Spanish "de la mañana", English "am / in the morning".
   if (MORNING_HINTS.test(text) || MORNING_HINTS_ES.test(text) || MORNING_HINTS_EN_INLINE.test(text)) {

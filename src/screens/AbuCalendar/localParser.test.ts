@@ -275,3 +275,98 @@ describe('parseLocally — date', () => {
     expect(r.date).toBe('2026-05-03')
   })
 })
+
+// ─── Phase 3 — Time Intelligence / AM-PM ────────────────────────────────────
+describe('parseLocally — AM/PM explicit period hints', () => {
+  it('"9 בערב" → 21:00 not ambiguous', () => {
+    const r = parseLocally('מחר פגישה בשעה 9 בערב', TODAY)
+    expect(r.time).toBe('21:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"9 בבוקר" → 09:00 not ambiguous', () => {
+    const r = parseLocally('מחר רופא בשעה 9 בבוקר', TODAY)
+    expect(r.time).toBe('09:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"תשע בערב" → 21:00 not ambiguous', () => {
+    const r = parseLocally('מחר בתשע בערב פגישה', TODAY)
+    expect(r.time).toBe('21:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"תשע בבוקר" → 09:00 not ambiguous', () => {
+    const r = parseLocally('מחר בתשע בבוקר רופא', TODAY)
+    expect(r.time).toBe('09:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"תשע וחצי בערב" → 21:30 not ambiguous', () => {
+    const r = parseLocally('מחר בתשע וחצי בערב פגישה', TODAY)
+    expect(r.time).toBe('21:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"תשע וחצי בבוקר" → 09:30 not ambiguous', () => {
+    const r = parseLocally('מחר בתשע וחצי בבוקר רופא', TODAY)
+    expect(r.time).toBe('09:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"12 בצהריים" → 12:00 not ambiguous', () => {
+    const r = parseLocally('מחר בשעה 12 בצהריים ארוחה', TODAY)
+    expect(r.time).toBe('12:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"12 בלילה" → 00:00 not ambiguous (midnight)', () => {
+    const r = parseLocally('הלילה בשעה 12 בלילה קריאה', TODAY)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"שתים עשרה בלילה" → 00:00 (midnight)', () => {
+    const r = parseLocally('הלילה בשתים עשרה בלילה', TODAY)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת בצהריים" → 13:00 not ambiguous', () => {
+    const r = parseLocally('מחר באחת בצהריים ארוחה', TODAY)
+    expect(r.time).toBe('13:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת בלילה" → 01:00 not ambiguous', () => {
+    const r = parseLocally('הלילה באחת בלילה', TODAY)
+    expect(r.time).toBe('01:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת וחצי בצהריים" → 13:30 not ambiguous', () => {
+    const r = parseLocally('מחר באחת וחצי בצהריים קפה', TODAY)
+    expect(r.time).toBe('13:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת וחצי בלילה" → 01:30 not ambiguous', () => {
+    const r = parseLocally('הלילה באחת וחצי בלילה', TODAY)
+    expect(r.time).toBe('01:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת" alone → 01:00 ambiguous (no period hint)', () => {
+    const r = parseLocally('מחר באחת פגישה', TODAY)
+    expect(r.time).toBe('01:00')
+    expect(r.ambiguousTime).toBe(true)
+  })
+
+  // Known product behavior: hours 7-11 alone default to morning (not ambiguous).
+  // "9" alone → 09:00. To be revisited if product decides to prompt for AM/PM.
+  it('"9" alone → 09:00 (morning default, not ambiguous — known behavior)', () => {
+    const r = parseLocally('מחר בשעה 9 פגישה', TODAY)
+    expect(r.time).toBe('09:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+})
