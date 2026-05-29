@@ -982,6 +982,9 @@ export function AbuCalendar() {
         </div>
       </div>
 
+      {/* Spacer so the fixed bottom action bar never covers the last calendar row */}
+      <div style={{ height: 88, flexShrink: 0 }} aria-hidden="true" />
+
       {/* SELECTED DAY — bottom-sheet (replaces the inline list + sticky footer).
           Owns its own scroll; ADD/mic/voice-trace live inside it only. */}
       <DayDetailSheet
@@ -1112,6 +1115,63 @@ export function AbuCalendar() {
         onPickPerson={(name: string) => setVoiceParsed(prev => (prev?.relation) ? { ...prev, title: prev.title.replace(prev.relation.phrase, name), personName: name, relation: { status: 'resolved', phrase: prev.relation.phrase } } : prev)}
         onKeepPhrase={() => setVoiceParsed(prev => (prev?.relation) ? { ...prev, personName: prev.relation.phrase, relation: { status: 'missing', phrase: prev.relation.phrase } } : prev)}
       />
+
+      {/* PRIMARY ADD — main-screen fixed bottom bar, always visible without day tap */}
+      {!sheetOpen && (
+        <div
+          data-testid="main-add-bar"
+          style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+            background: 'linear-gradient(to top, rgba(5,10,24,0.98) 0%, rgba(5,10,24,0.85) 100%)',
+            borderTop: '1px solid rgba(201,168,76,0.20)',
+            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+            padding: '10px 24px calc(10px + env(safe-area-inset-bottom, 0px))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24,
+          } as React.CSSProperties}
+        >
+          <SeniorButton
+            variant="ghost"
+            onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}
+          >＋ הוספה ידנית</SeniorButton>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <button
+              type="button"
+              onClick={() => handleVoiceRecord()}
+              onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
+              onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+              onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+              aria-label="הוספת אירוע בקול"
+              data-testid="main-mic-btn"
+              style={{
+                width: 64, height: 64, borderRadius: '50%', border: 'none',
+                background: isRecording
+                  ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
+                  : 'linear-gradient(145deg, #D4A853 0%, #C9A84C 45%, #B8912A 100%)',
+                boxShadow: isRecording
+                  ? '0 4px 20px rgba(239,68,68,0.40)'
+                  : '0 4px 20px rgba(201,168,76,0.30)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'transform 0.12s ease, background 0.2s ease',
+                animation: isRecording ? 'recordPulse 1.2s ease-in-out infinite' : 'none',
+              }}
+            >
+              {isRecording ? (
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                  <rect x="9" y="2" width="6" height="11" rx="3"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="22"/>
+                  <line x1="8" y1="22" x2="16" y2="22"/>
+                </svg>
+              )}
+            </button>
+            <span style={{ fontSize: 12, color: 'rgba(201,168,76,0.65)', fontFamily: "'Heebo',sans-serif", fontWeight: 600 }}>דברי אליי</span>
+          </div>
+        </div>
+      )}
 
       {import.meta.env.DEV && (
         <div
