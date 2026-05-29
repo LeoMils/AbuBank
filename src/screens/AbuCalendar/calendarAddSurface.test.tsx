@@ -339,8 +339,10 @@ describe('AbuCalendar index.tsx — structural contracts', () => {
     expect(INDEX_SOURCE).not.toContain('<VoiceTraceCard')
   })
 
-  it('ConfirmCard is reached via VoiceAddFlow, not imported directly', () => {
-    expect(INDEX_SOURCE).not.toMatch(/import[^;]+ConfirmCard/)
+  it('appointment ConfirmCard is reached via VoiceAddFlow, not imported directly from its own file', () => {
+    // The direct ./ConfirmCard import is forbidden — must go via VoiceAddFlow
+    expect(INDEX_SOURCE).not.toContain("from './ConfirmCard'")
+    expect(INDEX_SOURCE).not.toContain('<ConfirmCard')
     expect(INDEX_SOURCE).toContain("from './VoiceAddFlow'")
   })
 

@@ -39,6 +39,8 @@ import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
 import { VoiceAddFlow, type VoiceDraft } from './VoiceAddFlow'
 import { sanitizeTitleForSave } from './localParser'
+import { ReminderConfirmCard, ReminderDueEngine, ReminderBoard, createReminder, createDefaultAlertPolicy } from './reminders'
+import type { ReminderDraft } from './reminders'
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
 import { PageShell } from '../../components/PageShell'
@@ -93,6 +95,8 @@ export function AbuCalendar() {
   const [abuTimeOpen, setAbuTimeOpen] = useState(false)
   const [savedConfirmation, setSavedConfirmation] = useState<{ title: string; date: string; time: string } | null>(null)
   const [undoAppt, setUndoAppt] = useState<Appointment | null>(null)
+  const [reminderDraft, setReminderDraft] = useState<ReminderDraft | null>(null)
+  const [reminderFlowActive, setReminderFlowActive] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
@@ -395,13 +399,23 @@ export function AbuCalendar() {
             setAbuTimeOpen(true)
             return
           }
+          // Check if this is a reminder intent ("תזכירי לי...")
+          const todayISO = getTodayStr()
+          const { detectReminderIntent, parseReminder: parseRem } = await import('./reminders')
+          if (detectReminderIntent(transcribed) === 'reminder') {
+            setStage('idle', 'מחכה לאישור תזכורת.', 'reminder_detected')
+            setVoiceState('idle')
+            const draft = parseRem(transcribed, todayISO)
+            setReminderDraft(draft)
+            setReminderFlowActive(true)
+            return
+          }
           // P0.1 — Route the final transcript through processVoiceTranscript.
           // This returns one of six explicit actions so the UI never
           // silently drops. Auto-creation is gated on a real create-verb
           // ("תקבעי / תוסיפי / agregá / agendá / add / schedule") AND a
           // complete, unambiguous intent — same safety as the typed path.
           setStage('parsing')
-          const todayISO = getTodayStr()
           const decision = processVoiceTranscript(transcribed, todayISO, { rawTranscript: norm.rawText, asr: { avgLogprob: asr.avgLogprob ?? null, noSpeechProb: asr.noSpeechProb ?? null, compressionRatio: asr.compressionRatio ?? null } })
           updateTrace({ parseDecision: decision.action, ...(('semantic' in decision && decision.semantic) ? { semanticIntent: decision.semantic.intent, semanticSource: decision.semantic.semanticSource, extractionConfidence: decision.semantic.extractionConfidence, extractedTitle: decision.semantic.extractedTitle, extractedDate: decision.semantic.extractedDate, extractedStartTime: decision.semantic.extractedStartTime, extractedEndTime: decision.semantic.extractedEndTime, extractedLocation: decision.semantic.extractedLocation, extractedPeople: decision.semantic.extractedPeople, extractedNotes: decision.semantic.extractedNotes, missingFields: decision.semantic.missingFields, clarificationQuestion: decision.semantic.clarificationQuestion, llmFallbackUsed: decision.semantic.llmFallbackUsed, validationResult: decision.semantic.validationResult, semanticRawInput: decision.semantic.semanticRawInput, semanticCorrectedInput: decision.semantic.semanticCorrectedInput } : {}) }, `parse_decision:${decision.action}`)
           switch (decision.action) {
@@ -601,6 +615,27 @@ export function AbuCalendar() {
     setVoiceError(null)
     setVoiceState('idle')
     void handleVoiceRecord({ bypassGuard: true })
+  }
+
+  function handleReminderConfirm(draft: ReminderDraft) {
+    createReminder({
+      category: draft.category,
+      title: draft.title ?? '',
+      dueAt: draft.dueAt ?? new Date().toISOString(),
+      displayDateLabel: draft.displayDateLabel ?? '',
+      displayTimeLabel: draft.displayTimeLabel ?? '',
+      ...(draft.recurrence ? { recurrence: draft.recurrence } : {}),
+      alertPolicy: { ...createDefaultAlertPolicy(), ...draft.alertPolicyDraft },
+    })
+    setReminderDraft(null)
+    setReminderFlowActive(false)
+    soundSuccess()
+    showSuccessToast(`תזכורת נשמרה: ${draft.title ?? ''}`)
+  }
+
+  function handleReminderCancel() {
+    setReminderDraft(null)
+    setReminderFlowActive(false)
   }
 
   function resolveAmbiguity(period: 'pm' | 'am') {
@@ -982,6 +1017,9 @@ export function AbuCalendar() {
         </div>
       </div>
 
+      {/* REMINDER BOARD — today / overdue / recurring sections */}
+      <ReminderBoard />
+
       {/* Spacer so the fixed bottom action bar never covers the last calendar row */}
       <div style={{ height: 88, flexShrink: 0 }} aria-hidden="true" />
 
@@ -1093,6 +1131,74 @@ export function AbuCalendar() {
           editing={editingAppt}
           onClose={() => { setShowManual(false); setEditingAppt(null) }}
           onSave={handleManualSave}
+        />
+      )}
+
+      {/* REMINDER DUE ENGINE — polls every 30s, shows popup when due */}
+      <ReminderDueEngine />
+
+      {/* REMINDER CONFIRM CARD — shown after reminder voice parse */}
+      {reminderFlowActive && reminderDraft && (
+        <ReminderConfirmCard
+          draft={reminderDraft}
+          onConfirm={handleReminderConfirm}
+          onCancel={handleReminderCancel}
+          onCorrect={() => { /* correction handled inside ReminderConfirmCard */ }}
+          onResolvePerson={name => {
+            if (!reminderDraft) return
+            const updated: ReminderDraft = { ...reminderDraft }
+            if (updated.familyResolution) {
+              updated.familyResolution = { ...updated.familyResolution, status: 'resolved', resolvedName: name }
+            }
+            if (updated.title) updated.title = updated.title.replace(updated.familyResolution?.originalPhrase ?? '', name)
+            delete updated.ambiguity
+            setReminderDraft(updated)
+          }}
+          onKeepPhrase={() => {
+            if (!reminderDraft) return
+            const updated: ReminderDraft = { ...reminderDraft }
+            delete updated.ambiguity
+            setReminderDraft(updated)
+          }}
+          onResolveTime={val => {
+            if (!reminderDraft) return
+            const now = new Date()
+            let dueAt: string
+            let displayDateLabel: string
+            let displayTimeLabel: string
+            if (val === 'in_1h') {
+              const d = new Date(now.getTime() + 60 * 60_000)
+              dueAt = d.toISOString().slice(0, 19)
+              displayDateLabel = 'היום'
+              displayTimeLabel = d.toTimeString().slice(0, 5)
+            } else if (val === 'today_evening') {
+              const d = new Date(now)
+              d.setHours(20, 0, 0, 0)
+              dueAt = d.toISOString().slice(0, 19)
+              displayDateLabel = 'היום'
+              displayTimeLabel = '20:00'
+            } else if (val === 'tomorrow_morning') {
+              const d = new Date(now)
+              d.setDate(d.getDate() + 1)
+              d.setHours(9, 0, 0, 0)
+              dueAt = d.toISOString().slice(0, 19)
+              displayDateLabel = 'מחר'
+              displayTimeLabel = '09:00'
+            } else {
+              // Specific time value like "21:00"
+              const [h, m] = val.split(':').map(Number)
+              const d = new Date(now)
+              d.setHours(h ?? 9, m ?? 0, 0, 0)
+              if (d <= now) d.setDate(d.getDate() + 1)
+              dueAt = d.toISOString().slice(0, 19)
+              displayDateLabel = d.toDateString() === now.toDateString() ? 'היום' : 'מחר'
+              displayTimeLabel = val
+            }
+            const updated: ReminderDraft = { ...reminderDraft, dueAt, displayDateLabel, displayTimeLabel }
+            updated.missingFields = (updated.missingFields ?? []).filter(f => f !== 'time' && f !== 'date')
+            delete updated.ambiguity
+            setReminderDraft(updated)
+          }}
         />
       )}
 
