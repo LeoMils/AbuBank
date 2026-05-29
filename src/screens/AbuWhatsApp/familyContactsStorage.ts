@@ -11,8 +11,24 @@
  */
 
 import { isValidPhoneE164 } from './familyQuickFaces'
+import { FAMILY_QUICK_FACES } from './familyContacts.private'
 
 export const LOCAL_FAMILY_CONTACTS_STORAGE_KEY = 'abubank.familyContacts.v1'
+
+/**
+ * The only contact ids the operator may save/import — every scaffold person
+ * plus the family group. A typo'd id ("morr") would otherwise sit in
+ * localStorage forever and never render (the runtime merge only iterates the
+ * scaffold), so we reject unknown ids at the import/save boundary instead of
+ * swallowing them silently.
+ */
+export const KNOWN_CONTACT_IDS: ReadonlySet<string> = new Set(
+  FAMILY_QUICK_FACES.map((f) => f.id),
+)
+
+export function isKnownContactId(id: string): boolean {
+  return KNOWN_CONTACT_IDS.has(id)
+}
 
 export interface LocalFamilyContact {
   id: string
@@ -88,6 +104,7 @@ export interface SaveResult {
 export function upsertLocalContact(contact: LocalFamilyContact, storage: StorageLike | null = defaultStorage()): SaveResult {
   const errors: string[] = []
   if (!isLocalFamilyContactShape(contact)) errors.push('invalid contact shape')
+  if (!isKnownContactId(contact.id)) errors.push(`unknown contact id "${contact.id}"`)
   if (contact.enabled && !isValidPhoneE164(contact.phoneE164)) errors.push('phoneE164 fails E.164 validation')
   if (contact.whatsappE164 !== undefined && contact.whatsappE164.length > 0 && !isValidPhoneE164(contact.whatsappE164)) {
     errors.push('whatsappE164 fails E.164 validation')
@@ -117,6 +134,7 @@ export function importContactsJSON(jsonText: string): ImportResult {
   const out: LocalFamilyContact[] = []
   parsed.forEach((raw, i) => {
     if (!isLocalFamilyContactShape(raw)) { errors.push(`item ${i}: invalid shape`); return }
+    if (!isKnownContactId(raw.id)) { errors.push(`item ${i}: unknown id "${raw.id}"`); return }
     if (seen.has(raw.id)) { errors.push(`item ${i}: duplicate id "${raw.id}"`); return }
     seen.add(raw.id)
     if (raw.enabled && !isValidPhoneE164(raw.phoneE164)) {
