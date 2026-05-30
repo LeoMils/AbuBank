@@ -182,7 +182,10 @@ function buildRelResult(due: Date, minutesFromNow: number): RelativeTimeResult {
   let label: string
   if (minutesFromNow < 60) label = `בעוד ${minutesFromNow} דקות`
   else if (minutesFromNow === 60) label = 'בעוד שעה'
+  else if (minutesFromNow === 75) label = 'בעוד שעה ורבע'
+  else if (minutesFromNow === 90) label = 'בעוד שעה וחצי'
   else if (minutesFromNow === 120) label = 'בעוד שעתיים'
+  else if (minutesFromNow % 60 === 0) label = `בעוד ${minutesFromNow / 60} שעות`
   else label = `בעוד ${Math.round(minutesFromNow / 60)} שעות`
   return { dueAt, displayTimeLabel, displayDateLabel: `${displayDateLabel} (${label})`, minutesFromNow }
 }

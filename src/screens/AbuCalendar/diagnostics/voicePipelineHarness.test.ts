@@ -31,9 +31,9 @@ function runAll(): DiagnosticRow[] {
 
 describe('voice pipeline diagnostic harness — text fixtures', () => {
   it('runs all fixtures without throwing and writes a report artifact', () => {
-    expect(VOICE_PIPELINE_FIXTURES.length).toBeGreaterThanOrEqual(200)
+    expect(VOICE_PIPELINE_FIXTURES.length).toBeGreaterThanOrEqual(250)
     const rows = runAll()
-    expect(rows.length).toBeGreaterThanOrEqual(200)
+    expect(rows.length).toBeGreaterThanOrEqual(250)
     fs.mkdirSync(REPORT_DIR, { recursive: true })
 
     const divergences = VOICE_PIPELINE_FIXTURES

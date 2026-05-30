@@ -10,11 +10,11 @@
  */
 
 import { cleanTranscript, parseLocally } from '../localParser'
-import { isScheduleQuery } from '../intentParser'
+import { isScheduleQuery, isFamilyQuery } from '../intentParser'
 import { extractPersonPhrase, resolvePersonPhrase } from '../familyResolve'
 import { detectReminderIntent, parseReminder } from '../reminders/reminderParser'
 
-export type DiagnosticIntent = 'reminder' | 'appointment' | 'schedule_query' | 'unknown'
+export type DiagnosticIntent = 'reminder' | 'appointment' | 'schedule_query' | 'family_query' | 'unknown'
 export type DiagnosticConfidence = 'high' | 'medium' | 'low'
 export type RelationStatus = 'resolved' | 'ambiguous' | 'missing' | 'none'
 
@@ -50,6 +50,32 @@ export function runVoicePipelineDiagnostic(rawText: string, todayISO: string): D
       confidence: 'high',
       finalConfirmationText: '',
       saveAllowed: { allowed: false, reason: 'schedule_query_no_save' },
+    }
+  }
+
+  if (isFamilyQuery(normalized)) {
+    const phrase = extractPersonPhrase(normalized)
+    const resolved = phrase ? resolvePersonPhrase(phrase) : { status: 'none' as const }
+    const status: RelationStatus =
+      resolved.status === 'resolved' ? 'resolved'
+      : resolved.status === 'ambiguous' ? 'ambiguous'
+      : resolved.status === 'missing' ? 'missing'
+      : 'none'
+    return {
+      rawTranscript: rawText,
+      normalizedTranscript: normalized,
+      intent: 'family_query',
+      dateParse: { date: null, label: null },
+      timeParse: { time: null, ambiguous: false, label: null },
+      relationPhrase: phrase,
+      resolvedPerson: {
+        status,
+        name: resolved.status === 'resolved' ? resolved.name : null,
+        candidates: resolved.status === 'ambiguous' ? resolved.candidates : [],
+      },
+      confidence: status === 'resolved' ? 'high' : 'medium',
+      finalConfirmationText: '',
+      saveAllowed: { allowed: false, reason: 'family_query_no_save' },
     }
   }
 

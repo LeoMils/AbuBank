@@ -20,7 +20,7 @@ export const TODAY_ISO = '2026-05-29'
 export interface Fixture {
   id: string
   text: string
-  expectIntent: 'reminder' | 'appointment' | 'schedule_query' | 'unknown'
+  expectIntent: 'reminder' | 'appointment' | 'schedule_query' | 'family_query' | 'unknown'
 }
 
 export const VOICE_PIPELINE_FIXTURES: ReadonlyArray<Fixture> = [
@@ -283,4 +283,79 @@ export const VOICE_PIPELINE_FIXTURES: ReadonlyArray<Fixture> = [
   { id: 'mix-h-10', text: 'תזכירי לי מחר לקחת מטרייה',                            expectIntent: 'reminder' },
   { id: 'mix-h-11', text: 'תקבעי פגישה עם הבת של מור ביום שישי בצהריים',          expectIntent: 'appointment' },
   { id: 'mix-h-12', text: 'יש לי משהו ביום ראשון בבוקר',                          expectIntent: 'schedule_query' },
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  I. WAR-ROOM HARD CASES — Martita's actual speech patterns.
+  //     Family queries, time edges, self-corrections, no-trigger context.
+  // ══════════════════════════════════════════════════════════════════════
+
+  // ─── Family queries (NEW route — never saves) ───────────────────────
+  { id: 'fq-i-01', text: 'מי הבעל של אופיר',                                       expectIntent: 'family_query' },
+  { id: 'fq-i-02', text: 'מי האחות של ארי',                                        expectIntent: 'family_query' },
+  { id: 'fq-i-03', text: 'מי הילדים של מור',                                       expectIntent: 'family_query' },
+  { id: 'fq-i-04', text: 'מי הבת של מור',                                          expectIntent: 'family_query' },
+  { id: 'fq-i-05', text: 'מי הבן של לאו',                                          expectIntent: 'family_query' },
+  { id: 'fq-i-06', text: 'מי הנכד של מור',                                         expectIntent: 'family_query' },
+  { id: 'fq-i-07', text: 'מי בעלה של אופיר',                                       expectIntent: 'family_query' },
+  { id: 'fq-i-08', text: 'מי אחות של ארי',                                         expectIntent: 'family_query' },
+
+  // ─── Time edges (Martita's vocabulary) ──────────────────────────────
+  { id: 'time-i-01', text: 'מחר בתשע',                                              expectIntent: 'unknown' }, // bare date+ambiguous time, no noun/verb
+  { id: 'time-i-02', text: 'מחר בתשע בערב',                                         expectIntent: 'unknown' }, // same, contextual but no save target
+  { id: 'time-i-03', text: 'מחר ב-12 בלילה פגישה',                                  expectIntent: 'appointment' },
+  { id: 'time-i-04', text: 'מחר באחת בצהריים פגישה',                                expectIntent: 'appointment' },
+  { id: 'time-i-05', text: 'מחר ברבע לעשר בערב פגישה',                              expectIntent: 'appointment' },
+  { id: 'time-i-06', text: 'תזכירי לי מחר ב-12 בלילה לקחת תרופה',                  expectIntent: 'reminder' },
+  { id: 'time-i-07', text: 'תזכירי לי מחר באחת בצהריים לקחת כדור',                expectIntent: 'reminder' },
+  { id: 'time-i-08', text: 'תזכירי לי מחר ברבע לעשר בערב לכבות תנור',              expectIntent: 'reminder' },
+  { id: 'time-i-09', text: 'תזכירי לי בעוד שעה וחצי לשתות מים',                   expectIntent: 'reminder' },
+  { id: 'time-i-10', text: 'תזכירי לי עוד רבע שעה להתקשר',                         expectIntent: 'reminder' },
+  { id: 'time-i-11', text: 'תזכירי לי בעוד שעה ורבע לבדוק כביסה',                  expectIntent: 'reminder' },
+
+  // ─── Self-corrections, full sentences ───────────────────────────────
+  { id: 'corr-i-01', text: 'מחר בתשע לא סליחה בעשר לקחת כדור תזכירי לי',           expectIntent: 'reminder' },
+  { id: 'corr-i-02', text: 'תקבעי עם גלעד מחר לא עם אופיר מחר',                    expectIntent: 'appointment' },
+  { id: 'corr-i-03', text: 'תזכירי לי לקחת כדור בעוד שעה בעצם בעוד שעתיים',        expectIntent: 'reminder' },
+  { id: 'corr-i-04', text: 'תקבעי פגישה עם אופיר ביום ראשון לא ביום שני בעשר',     expectIntent: 'appointment' },
+
+  // ─── Implicit reminder via "אני צריכה" ──────────────────────────────
+  { id: 'imp-i-01', text: 'אני צריכה מחר בבוקר לקחת כדור תזכירי לי',               expectIntent: 'reminder' },
+  { id: 'imp-i-02', text: 'אני צריכה מחר בערב לדבר עם אופיר',                       expectIntent: 'unknown' }, // no trigger verb, no appt noun
+  { id: 'imp-i-03', text: 'אל תשכחי להזכיר לי בערב להתקשר לאופיר',                  expectIntent: 'reminder' },
+  { id: 'imp-i-04', text: 'אל תשכחי לי את התרופה בערב',                             expectIntent: 'reminder' }, // medication w/o noun
+
+  // ─── Recurring, no trigger ──────────────────────────────────────────
+  { id: 'rec-i-01', text: 'כל יום בתשע בבוקר לקחת תרופה',                          expectIntent: 'reminder' },
+  { id: 'rec-i-02', text: 'כל ערב בעשר לקחת כדור לחץ דם',                          expectIntent: 'reminder' },
+  { id: 'rec-i-03', text: 'כל יום שישי להתקשר למור',                                expectIntent: 'reminder' },
+
+  // ─── Bare appointment phrases (full Martita sentences) ──────────────
+  { id: 'bare-i-01', text: 'יש לי בדיקה מחרתיים בעשר בבוקר',                       expectIntent: 'appointment' },
+  { id: 'bare-i-02', text: 'יש לי תור לרופא ביום ראשון בשתיים בצהריים',            expectIntent: 'appointment' },
+  { id: 'bare-i-03', text: 'פגישה עם גלעד מחר ב-21:30',                            expectIntent: 'appointment' },
+  { id: 'bare-i-04', text: 'מחר בתשע וחצי בבוקר רופא שיניים',                      expectIntent: 'appointment' },
+  { id: 'bare-i-05', text: 'מחר בתשע וחצי בערב פגישה עם אופיר',                    expectIntent: 'appointment' },
+  { id: 'bare-i-06', text: 'תזכירי לי לבדוק כביסה עוד עשר דקות',                   expectIntent: 'reminder' },
+  { id: 'bare-i-07', text: 'תרשמי לי מחר בעשר רופא',                               expectIntent: 'appointment' },
+  { id: 'bare-i-08', text: 'תזכירי לי עוד חצי שעה לבדוק את הסיר',                  expectIntent: 'reminder' },
+
+  // ─── Calendar query — explicit weekend/specific ─────────────────────
+  { id: 'sq-i-01', text: 'מה התוכניות שלי השבוע',                                  expectIntent: 'schedule_query' },
+  { id: 'sq-i-02', text: 'מה יש לי השבוע',                                          expectIntent: 'schedule_query' },
+  { id: 'sq-i-03', text: 'יש לי משהו מחר בערב',                                    expectIntent: 'schedule_query' },
+
+  // ─── Cancel / minimal utterances ────────────────────────────────────
+  { id: 'cancel-i-01', text: 'ביטול',                                              expectIntent: 'unknown' },
+  { id: 'cancel-i-02', text: 'תעצרי',                                              expectIntent: 'unknown' },
+
+  // ─── Friday prep / dinner (Martita pattern) ─────────────────────────
+  { id: 'frid-i-01', text: 'ביום שישי בבוקר להכין דברים לשבת',                     expectIntent: 'unknown' }, // no trigger, no noun
+  { id: 'frid-i-02', text: 'תזכירי לי ביום שישי בבוקר להכין דברים לשבת',          expectIntent: 'reminder' },
+
+  // ─── More family-relation appointments ──────────────────────────────
+  { id: 'rel-i-01', text: 'תקבעי לי פגישה למחר בשעה 21 עם הבעל של אופיר',          expectIntent: 'appointment' },
+  { id: 'rel-i-02', text: 'תקבע לי פגישה מחר בתשע וחצי בערב עם אחות של ארי',       expectIntent: 'appointment' },
+  { id: 'rel-i-03', text: 'תזכירי לי להתקשר לאחות של ארי בערב',                    expectIntent: 'reminder' },
+  { id: 'rel-i-04', text: 'יש לי פגישה עם בעלה של אופיר מחר ב-14:00',              expectIntent: 'appointment' },
+  { id: 'rel-i-05', text: 'תזכירי לי בעוד שעה להתקשר לבן הזוג של אופיר',           expectIntent: 'reminder' },
 ]
