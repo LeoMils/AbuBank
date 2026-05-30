@@ -41,6 +41,7 @@ import { VoiceAddFlow, type VoiceDraft } from './VoiceAddFlow'
 import { sanitizeTitleForSave } from './localParser'
 import { ReminderConfirmCard, ReminderDueEngine, ReminderBoard, createReminder, createDefaultAlertPolicy } from './reminders'
 import type { ReminderDraft } from './reminders'
+import { VoiceDebugPanel } from './VoiceDebugPanel'
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
 import { PageShell } from '../../components/PageShell'
@@ -103,10 +104,14 @@ export function AbuCalendar() {
   // P0.6 — visible voice trace. Renders inside AbuCalendar's voice
   // action area no matter where the pipeline fails, so the user always
   // sees WHY a recording didn't create a meeting.
+  // The ref is the source of truth; `debugTrace` is a state mirror so the
+  // operator-only VoiceDebugPanel re-renders when the pipeline advances.
   const voiceTraceRef = useRef<VoiceTrace>(createInitialTrace(APP_VERSION.version))
+  const [debugTrace, setDebugTrace] = useState<VoiceTrace | null>(null)
   function updateTrace(patch: Partial<VoiceTrace>, step?: string) {
     const next: VoiceTrace = { ...voiceTraceRef.current, ...patch }
     voiceTraceRef.current = step ? pushStep(next, step) : next
+    setDebugTrace(voiceTraceRef.current)
   }
   function setStage(stage: VoiceStage, customMessage?: string, step?: string) {
     updateTrace({ finalVoiceStage: stage, visibleMessage: customMessage ?? stageLabel(stage) }, step ?? `stage:${stage}`)
@@ -406,6 +411,13 @@ export function AbuCalendar() {
             setStage('idle', 'מחכה לאישור תזכורת.', 'reminder_detected')
             setVoiceState('idle')
             const draft = parseRem(transcribed, todayISO)
+            updateTrace({
+              parseDecision: 'reminder',
+              semanticIntent: 'reminder',
+              ...(draft.title ? { extractedTitle: draft.title } : {}),
+              ...(draft.displayDateLabel ? { extractedDate: draft.displayDateLabel } : {}),
+              ...(draft.displayTimeLabel ? { extractedStartTime: draft.displayTimeLabel } : {}),
+            }, 'reminder_parsed')
             setReminderDraft(draft)
             setReminderFlowActive(true)
             return
@@ -1162,6 +1174,11 @@ export function AbuCalendar() {
           }}
           onResolveTime={val => {
             if (!reminderDraft) return
+            // 'manual' is handled locally inside ReminderConfirmCard
+            // (switches the card into correcting mode where the user picks
+            // a time via the time input). Guard here so a stray 'manual'
+            // never reaches the date math below.
+            if (val === 'manual') return
             const now = new Date()
             let dueAt: string
             let displayDateLabel: string
@@ -1278,6 +1295,8 @@ export function AbuCalendar() {
           </div>
         </div>
       )}
+
+      <VoiceDebugPanel trace={debugTrace} reminderDraft={reminderDraft} />
 
       {import.meta.env.DEV && (
         <div

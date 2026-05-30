@@ -36,12 +36,19 @@ export function ReminderConfirmCard({
   const hasAmbiguousPerson = draft.ambiguity?.type === 'person'
   const hasAmbiguousTimeOnly = draft.ambiguity?.type === 'time' && !draft.missingFields.includes('time')
 
-  // Save is blocked until all ambiguities resolved and required fields present
-  const canSave =
+  // Save is blocked until all ambiguities resolved and required fields present.
+  // Correction mode overrides: user is explicitly fixing the draft, so allow
+  // save once the corrected time is in editTime (and title isn't missing).
+  const canSaveBase =
     !draft.ambiguity &&
     !draft.missingFields.includes('title') &&
     !!draft.dueAt &&
     draft.familyResolution?.status !== 'ambiguous'
+  const canSaveCorrecting =
+    correcting &&
+    !!editTime.trim() &&
+    !!(editTitle.trim() || draft.title)
+  const canSave = canSaveBase || canSaveCorrecting
 
   function handleSave() {
     if (!canSave) return
@@ -51,12 +58,40 @@ export function ReminderConfirmCard({
       const tm = editTime.trim()
       const dt = editDate.trim()
       if (t) corrected.title = t
-      if (tm) corrected.displayTimeLabel = tm
-      if (dt) corrected.displayDateLabel = dt
+      if (tm) {
+        const [hStr, mStr] = tm.split(':')
+        const h = Number(hStr)
+        const m = Number(mStr ?? '0')
+        if (Number.isFinite(h) && Number.isFinite(m)) {
+          const now = new Date()
+          const d = new Date(now)
+          d.setHours(h, m, 0, 0)
+          if (d.getTime() <= now.getTime()) d.setDate(d.getDate() + 1)
+          corrected.dueAt = d.toISOString().slice(0, 19)
+          corrected.displayTimeLabel = tm
+          const isToday = d.toDateString() === now.toDateString()
+          corrected.displayDateLabel = dt || (isToday ? 'היום' : 'מחר')
+          corrected.missingFields = (corrected.missingFields ?? []).filter(
+            f => f !== 'time' && f !== 'date',
+          )
+        }
+      }
+      if (dt && !tm) corrected.displayDateLabel = dt
+      delete corrected.ambiguity
       onConfirm(corrected)
     } else {
       onConfirm(draft)
     }
+  }
+
+  // "לבחור שעה" is handled locally — switch to correcting mode where the user
+  // can pick a time via the time input. All other values bubble up.
+  function handleTimeChoice(val: string) {
+    if (val === 'manual') {
+      setCorrecting(true)
+      return
+    }
+    onResolveTime?.(val)
   }
 
   return (
@@ -148,7 +183,7 @@ export function ReminderConfirmCard({
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => onResolveTime?.(opt.value)}
+                  onClick={() => handleTimeChoice(opt.value)}
                   style={{
                     minHeight: 60, padding: '0 24px', borderRadius: 16,
                     background: 'rgba(201,168,76,0.10)', border: `1.5px solid ${GOLD}`,
@@ -174,7 +209,8 @@ export function ReminderConfirmCard({
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => onResolveTime?.(opt.value)}
+                  data-testid={`reminder-time-suggestion-${opt.value}`}
+                  onClick={() => handleTimeChoice(opt.value)}
                   style={{
                     minHeight: 56, padding: '0 18px', borderRadius: 14,
                     background: 'rgba(201,168,76,0.10)', border: `1px solid rgba(201,168,76,0.35)`,
@@ -303,21 +339,22 @@ export function ReminderConfirmCard({
 
         {/* Action buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Save button — hidden when ambiguity blocks */}
-          {!hasAmbiguousPerson && !hasAmbiguousTime && (
+          {/* Save button — appears when no ambiguity, OR when the user is in
+              correction mode (they're explicitly fixing the missing field). */}
+          {((!hasAmbiguousPerson && !hasAmbiguousTime) || correcting) && (
             <button
               type="button"
               data-testid="reminder-confirm-save-btn"
               onClick={handleSave}
-              disabled={!canSave && !correcting}
+              disabled={!canSave}
               style={{
                 minHeight: 60, borderRadius: 16, border: 'none',
-                background: (canSave || correcting)
+                background: canSave
                   ? `linear-gradient(135deg, #D4A853 0%, #C9A84C 50%, #B8912A 100%)`
                   : 'rgba(201,168,76,0.12)',
-                color: (canSave || correcting) ? '#0a0c1a' : 'rgba(201,168,76,0.30)',
+                color: canSave ? '#0a0c1a' : 'rgba(201,168,76,0.30)',
                 fontSize: 20, fontWeight: 800,
-                cursor: (canSave || correcting) ? 'pointer' : 'not-allowed',
+                cursor: canSave ? 'pointer' : 'not-allowed',
                 fontFamily: "'Heebo',sans-serif",
                 transition: 'background 0.2s, color 0.2s',
               }}

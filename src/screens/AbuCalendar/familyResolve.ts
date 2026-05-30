@@ -23,7 +23,13 @@ export type FamilyResolveResult =
 const STOP_WORDS = /^(הילדים|הרופא|המשפחה|הבית|העבודה|כולם|כולן)$/
 // Kinship words we capture — multi-word forms ("בן הזוג") MUST come before
 // their single-word prefixes ("בן") so the longer form wins.
-const KIND = `בן\\s+הזוג|בת\\s+הזוג|נכדה|נכד|בעלה|בעל|אשתו|אשת|אישה|אחות|אח|בת|בן`
+// "חבר/חברה" (friend) is intentionally captured so the UI can honestly
+// acknowledge the phrase, even though family_data.json holds no friend
+// records — the resolver returns `missing` for these (never invented).
+const KIND = `בן\\s+הזוג|בת\\s+הזוג|נכדה|נכד|בעלה|בעל|אשתו|אשת|אישה|אחות|אח|בת|בן|חברה|חבר`
+// Friend descriptors — recognized for honest "missing" acknowledgement, never
+// resolved to a family member.
+const FRIEND_KIND = new Set(['חבר', 'חברה'])
 // "עם <relationship phrase>" — preferred when present.
 const REL_AFTER_WITH = new RegExp(`עם\\s+(ה?(?:${KIND})\\s+של\\s+[֐-׿']+)`)
 // Same kinship-of-Name pattern ANYWHERE, allowing the Hebrew prepositional
@@ -68,6 +74,10 @@ export function resolvePersonPhrase(phraseRaw: string | null | undefined): Famil
   if (desc) {
     const kind = desc[1]!.replace(/\s+/g, ' ').trim()  // normalize "בן  הזוג" → "בן הזוג"
     const ofName = desc[2]!
+    // Friend phrases ("חברה של מור") are recognized but never resolved —
+    // family_data.json holds no friend records. UI surfaces a clear
+    // "לא מצאתי בוודאות מי…" message and lets the user save as-is.
+    if (FRIEND_KIND.has(kind)) return { status: 'missing', phrase }
     const root = findNode(ofName)
     if (!root) return { status: 'missing', phrase }
 
