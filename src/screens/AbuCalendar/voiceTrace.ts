@@ -28,6 +28,18 @@ export type VoiceStage =
   | 'success'
   | 'error'
 
+/**
+ * Canonical semantic route — what the user is trying to do, independent
+ * of any UI control-flow state. The voice flow must always set one of
+ * these so the QA panel never has to fall back to a UI action name.
+ */
+export type SemanticRoute =
+  | 'appointment_create'
+  | 'reminder_create'
+  | 'calendar_query'
+  | 'family_query'
+  | 'unknown'
+
 export interface VoiceTrace {
   version: string
   startedAt: string | null
@@ -70,6 +82,18 @@ export interface VoiceTrace {
   semanticRawInput: string | null
   semanticCorrectedInput: string | null
   parseDecision: string | null
+  /** Canonical semantic route — never a UI action like "show_confirm_card". */
+  semanticRoute: SemanticRoute | null
+  /** Final title shown to the user on the confirmation card. */
+  finalTitle: string | null
+  /** Relation phrase ("הבעל של אופיר") extracted from the utterance. */
+  relationPhrase: string | null
+  /** Family resolver result for the relation phrase. */
+  resolvedPersonStatus: 'resolved' | 'ambiguous' | 'missing' | 'none' | null
+  resolvedPersonName: string | null
+  /** Whether the confirmation card's primary save button is reachable. */
+  saveAllowed: boolean
+  saveBlockReason: string | null
   createResult: string | null
   error: string | null
   finalVoiceStage: VoiceStage
@@ -121,6 +145,13 @@ export function createInitialTrace(version: string): VoiceTrace {
     semanticRawInput: null,
     semanticCorrectedInput: null,
     parseDecision: null,
+    semanticRoute: null,
+    finalTitle: null,
+    relationPhrase: null,
+    resolvedPersonStatus: null,
+    resolvedPersonName: null,
+    saveAllowed: false,
+    saveBlockReason: null,
     createResult: null,
     error: null,
     finalVoiceStage: 'idle',

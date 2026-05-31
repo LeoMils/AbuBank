@@ -186,6 +186,58 @@ describe('BLOCKER 2 — family relation phrases', () => {
     if (r.status === 'resolved') expect(r.name).toBe('גלעד')
   })
 
+  // Live-QA additions: parent + ex-spouse + new sentence shapes.
+  it('extracts "אשתו של עילי" as a person phrase', () => {
+    expect(extractPersonPhrase('פגישה עם אשתו של עילי')).toBe('אשתו של עילי')
+  })
+
+  it('"אשתו של עילי" resolves to ירדן (regression for spouse-of-male path)', () => {
+    const r = resolvePersonPhrase('אשתו של עילי')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('ירדן')
+  })
+
+  it('"אשתו של אילי" is missing — אילי is not the canonical Hebrew', () => {
+    // Canonical is עילי; אילי has no node, so the resolver must NOT invent
+    // a wife. Spec: honest "missing" rather than silent guess.
+    const r = resolvePersonPhrase('אשתו של אילי')
+    expect(['missing', 'none']).toContain(r.status)
+  })
+
+  it('"אשתו של ארי" is missing — Ari is great-grandchild with no spouse', () => {
+    const r = resolvePersonPhrase('אשתו של ארי')
+    expect(r.status).toBe('missing')
+  })
+
+  it('extracts "אבא של אנאבל" as a person phrase', () => {
+    expect(extractPersonPhrase('פגישה עם אבא של אנאבל')).toBe('אבא של אנאבל')
+  })
+
+  it('"אבא של אנאבל" is ambiguous — both parents (אופיר, גלעד) are male', () => {
+    const r = resolvePersonPhrase('אבא של אנאבל')
+    expect(r.status).toBe('ambiguous')
+    if (r.status === 'ambiguous') {
+      expect(r.candidates.sort()).toEqual(['אופיר', 'גלעד'].sort())
+    }
+  })
+
+  it('extracts "הגרוש של מור" as a person phrase', () => {
+    // The "ה" prefix on הגרוש is part of REL_AFTER_WITH (ה?KIND).
+    expect(extractPersonPhrase('פגישה עם הגרוש של מור')).toBe('הגרוש של מור')
+  })
+
+  it('"גרוש של מור" resolves to רפי (ex-spouse)', () => {
+    const r = resolvePersonPhrase('גרוש של מור')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('רפי')
+  })
+
+  it('"הגרוש של מור" resolves to רפי (with ה prefix)', () => {
+    const r = resolvePersonPhrase('הגרוש של מור')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('רפי')
+  })
+
   it('appointment ConfirmCard: missing relation shows clear message + all three actions', () => {
     const html = renderToString(
       React.createElement(ConfirmCard, {

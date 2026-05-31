@@ -26,10 +26,17 @@ const STOP_WORDS = /^(הילדים|הרופא|המשפחה|הבית|העבודה
 // "חבר/חברה" (friend) is intentionally captured so the UI can honestly
 // acknowledge the phrase, even though family_data.json holds no friend
 // records — the resolver returns `missing` for these (never invented).
-const KIND = `בן\\s+הזוג|בת\\s+הזוג|נכדה|נכד|בעלה|בעל|אשתו|אשת|אישה|אחות|אח|בת|בן|חברה|חבר`
+const KIND = `בן\\s+הזוג|בת\\s+הזוג|נכדה|נכד|בעלה|בעל|אשתו|אשת|אישה|אחות|אח|אבא|אמא|אב|אם|גרושה|גרוש|בת|בן|חברה|חבר`
 // Friend descriptors — recognized for honest "missing" acknowledgement, never
 // resolved to a family member.
 const FRIEND_KIND = new Set(['חבר', 'חברה'])
+// Parent / ex-spouse descriptor sets — resolved from familyGraph
+// parentsHe / exSpousesHe respectively. "ה" prefix is handled by the
+// REL_DESCRIPTOR captures it via the [בלמהשכו]? prefix class.
+const PARENT_MALE = new Set(['אבא', 'אב'])
+const PARENT_FEMALE = new Set(['אמא', 'אם'])
+const EX_SPOUSE_MALE = new Set(['גרוש'])
+const EX_SPOUSE_FEMALE = new Set(['גרושה'])
 // "עם <relationship phrase>" — preferred when present.
 const REL_AFTER_WITH = new RegExp(`עם\\s+(ה?(?:${KIND})\\s+של\\s+[֐-׿']+)`)
 // Same kinship-of-Name pattern ANYWHERE, allowing the Hebrew prepositional
@@ -83,14 +90,22 @@ export function resolvePersonPhrase(phraseRaw: string | null | undefined): Famil
 
     const isSpouse = SPOUSE_MALE.has(kind) || SPOUSE_FEMALE.has(kind)
     const isSibling = kind === 'אח' || kind === 'אחות'
-    const wantGender: 'female' | 'male' = isSpouse
-      ? (SPOUSE_MALE.has(kind) ? 'male' : 'female')
+    const isParent = PARENT_MALE.has(kind) || PARENT_FEMALE.has(kind)
+    const isExSpouse = EX_SPOUSE_MALE.has(kind) || EX_SPOUSE_FEMALE.has(kind)
+    const wantGender: 'female' | 'male' =
+        isSpouse ? (SPOUSE_MALE.has(kind) ? 'male' : 'female')
+      : isParent ? (PARENT_MALE.has(kind) ? 'male' : 'female')
+      : isExSpouse ? (EX_SPOUSE_MALE.has(kind) ? 'male' : 'female')
       : (kind === 'בת' || kind === 'נכדה' || kind === 'אחות' ? 'female' : 'male')
 
     let candidateHe: string[]
     if (isSpouse) {
       // Spouse OR partner (married vs. unmarried), read straight from the graph.
       candidateHe = [...root.spousesHe, ...root.partnersHe]
+    } else if (isParent) {
+      candidateHe = [...root.parentsHe]
+    } else if (isExSpouse) {
+      candidateHe = [...root.exSpousesHe]
     } else if (kind === 'נכד' || kind === 'נכדה') {
       candidateHe = []
       for (const childHe of root.childrenHe) {

@@ -108,45 +108,41 @@ export function VoiceDebugPanel({ trace, reminderDraft }: Props) {
 
   const raw = trace?.rawTranscript ?? null
   const normalized = trace?.transcript ?? trace?.correctedTranscript ?? null
-  const route = reminderDraft
-    ? 'reminder'
-    : trace?.parseDecision || trace?.semanticIntent || null
-  const intent = trace?.semanticIntent || trace?.parseDecision || (reminderDraft ? 'reminder' : null)
+  // Route is the canonical semantic action — never a UI action like
+  // "show_confirm_card". Falls back to "unknown" rather than leaking
+  // parseDecision into the route field.
+  const route = trace?.semanticRoute ?? (reminderDraft ? 'reminder_create' : 'unknown')
+  const intent = trace?.semanticIntent || null
   const date = reminderDraft?.displayDateLabel ?? trace?.extractedDate ?? null
   const time = reminderDraft?.displayTimeLabel ?? trace?.extractedStartTime ?? null
-  const relation = reminderDraft?.familyResolution?.originalPhrase ?? null
+  const relation = reminderDraft?.familyResolution?.originalPhrase
+    ?? trace?.relationPhrase
+    ?? null
+  // When a relation phrase IS extracted, the person field must be
+  // honest: either the resolved name OR "—" (unresolved). Falling back
+  // to extractedPeople here would surface name fragments like "אבא"
+  // and contradict the relation/resolvedPerson story.
   const person = reminderDraft?.familyResolution?.resolvedName
-    ?? (trace?.extractedPeople && trace.extractedPeople.length > 0
-        ? trace.extractedPeople.join(', ')
-        : null)
+    ?? trace?.resolvedPersonName
+    ?? (relation
+        ? null
+        : (trace?.extractedPeople && trace.extractedPeople.length > 0
+            ? trace.extractedPeople.join(', ')
+            : null))
+  const finalTitle = trace?.finalTitle ?? reminderDraft?.title ?? null
 
-  // Derived save-allowed estimate. Honest, not a hard guarantee — the
-  // real gate lives inside ConfirmCard/ReminderConfirmCard, but this
-  // gives the operator immediate signal.
-  let saveAllowed: 'yes' | 'no' = 'no'
-  let reason = '—'
+  // Save-allowed comes from the trace (written by index.tsx alongside
+  // the same decision that drives the card), so panel and card never
+  // disagree on save reachability.
+  let saveAllowed: 'yes' | 'no' = trace?.saveAllowed ? 'yes' : 'no'
+  let reason: string = trace?.saveBlockReason ?? (trace?.saveAllowed ? 'ok' : '—')
   if (reminderDraft) {
     const fr = reminderDraft.familyResolution
-    if (reminderDraft.ambiguity) {
-      reason = 'ambiguity unresolved'
-    } else if (reminderDraft.missingFields?.includes('title')) {
-      reason = 'missing title'
-    } else if (!reminderDraft.dueAt) {
-      reason = 'missing dueAt'
-    } else if (fr?.status === 'ambiguous') {
-      reason = 'family ambiguous'
-    } else {
-      saveAllowed = 'yes'
-      reason = 'ok'
-    }
-  } else if (route === 'appointment') {
-    if (!date) reason = 'missing date'
-    else if (!time) reason = 'missing time'
+    if (reminderDraft.ambiguity) { saveAllowed = 'no'; reason = 'ambiguity unresolved' }
+    else if (reminderDraft.missingFields?.includes('title')) { saveAllowed = 'no'; reason = 'missing title' }
+    else if (!reminderDraft.dueAt) { saveAllowed = 'no'; reason = 'missing dueAt' }
+    else if (fr?.status === 'ambiguous') { saveAllowed = 'no'; reason = 'family ambiguous' }
     else { saveAllowed = 'yes'; reason = 'ok' }
-  } else if (route === 'schedule_query' || route === 'family_query') {
-    reason = 'query: no save'
-  } else if (route) {
-    reason = `route=${route}`
   }
 
   return (
@@ -183,6 +179,7 @@ export function VoiceDebugPanel({ trace, reminderDraft }: Props) {
       <div data-testid="mic-qa-time">time: {time ?? '—'}</div>
       <div data-testid="mic-qa-relation">relation: {relation ?? '—'}</div>
       <div data-testid="mic-qa-person">person: {person ?? '—'}</div>
+      <div data-testid="mic-qa-final-title">finalTitle: {finalTitle ?? '—'}</div>
       <div data-testid="mic-qa-save-allowed">saveAllowed: {saveAllowed}</div>
       <div data-testid="mic-qa-reason">reason: {reason}</div>
     </div>

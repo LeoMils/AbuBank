@@ -16,7 +16,7 @@ import {
   type Appointment,
 } from './service'
 import { processVoiceTranscript } from './voiceAutoCreate'
-import { resolvePersonPhrase } from './familyResolve'
+import { extractPersonPhrase, resolvePersonPhrase } from './familyResolve'
 import { userFacingError } from '../../services/platformHealth'
 import { mediateVoiceCaptureError } from '../../services/errorMediation'
 import { APP_VERSION } from '../../version'
@@ -411,12 +411,30 @@ export function AbuCalendar() {
             setStage('idle', 'מחכה לאישור תזכורת.', 'reminder_detected')
             setVoiceState('idle')
             const draft = parseRem(transcribed, todayISO)
+            const fr = draft.familyResolution
+            const reminderSaveAllowed =
+              !draft.ambiguity
+              && !draft.missingFields.includes('title')
+              && !!draft.dueAt
+              && fr?.status !== 'ambiguous'
+            const reminderBlockReason =
+              draft.ambiguity ? 'ambiguity unresolved'
+              : draft.missingFields.includes('title') ? 'missing title'
+              : !draft.dueAt ? 'missing dueAt'
+              : fr?.status === 'ambiguous' ? 'family ambiguous'
+              : null
             updateTrace({
               parseDecision: 'reminder',
               semanticIntent: 'reminder',
-              ...(draft.title ? { extractedTitle: draft.title } : {}),
+              semanticRoute: 'reminder_create',
+              ...(draft.title ? { extractedTitle: draft.title, finalTitle: draft.title } : {}),
               ...(draft.displayDateLabel ? { extractedDate: draft.displayDateLabel } : {}),
               ...(draft.displayTimeLabel ? { extractedStartTime: draft.displayTimeLabel } : {}),
+              ...(fr?.originalPhrase ? { relationPhrase: fr.originalPhrase } : {}),
+              ...(fr?.status ? { resolvedPersonStatus: fr.status } : {}),
+              ...(fr?.resolvedName ? { resolvedPersonName: fr.resolvedName } : {}),
+              saveAllowed: reminderSaveAllowed,
+              saveBlockReason: reminderBlockReason,
             }, 'reminder_parsed')
             setReminderDraft(draft)
             setReminderFlowActive(true)
@@ -429,7 +447,84 @@ export function AbuCalendar() {
           // complete, unambiguous intent — same safety as the typed path.
           setStage('parsing')
           const decision = processVoiceTranscript(transcribed, todayISO, { rawTranscript: norm.rawText, asr: { avgLogprob: asr.avgLogprob ?? null, noSpeechProb: asr.noSpeechProb ?? null, compressionRatio: asr.compressionRatio ?? null } })
-          updateTrace({ parseDecision: decision.action, ...(('semantic' in decision && decision.semantic) ? { semanticIntent: decision.semantic.intent, semanticSource: decision.semantic.semanticSource, extractionConfidence: decision.semantic.extractionConfidence, extractedTitle: decision.semantic.extractedTitle, extractedDate: decision.semantic.extractedDate, extractedStartTime: decision.semantic.extractedStartTime, extractedEndTime: decision.semantic.extractedEndTime, extractedLocation: decision.semantic.extractedLocation, extractedPeople: decision.semantic.extractedPeople, extractedNotes: decision.semantic.extractedNotes, missingFields: decision.semantic.missingFields, clarificationQuestion: decision.semantic.clarificationQuestion, llmFallbackUsed: decision.semantic.llmFallbackUsed, validationResult: decision.semantic.validationResult, semanticRawInput: decision.semantic.semanticRawInput, semanticCorrectedInput: decision.semantic.semanticCorrectedInput } : {}) }, `parse_decision:${decision.action}`)
+
+          // Canonical semantic route — never a UI action.
+          // Every appointment-pipeline action implies "the user is trying to
+          // create a calendar event"; failures map to `unknown`.
+          const semanticRoute: 'appointment_create' | 'unknown' =
+            decision.action === 'not_calendar'
+            || decision.action === 'low_confidence'
+            || decision.action === 'failed_to_understand'
+              ? 'unknown'
+              : 'appointment_create'
+
+          // Resolve the relation phrase + family lookup so the trace can
+          // show what the card will show.
+          let relationPhrase: string | null = null
+          let resolvedPersonStatus: 'resolved' | 'ambiguous' | 'missing' | 'none' | null = null
+          let resolvedPersonName: string | null = null
+          let finalTitle: string | null = null
+          let traceSaveAllowed = false
+          let traceSaveBlockReason: string | null = null
+          if ('draft' in decision) {
+            finalTitle = decision.draft.title || null
+            relationPhrase = decision.draft.personPhrase ?? extractPersonPhrase(transcribed)
+            if (relationPhrase) {
+              const r = resolvePersonPhrase(relationPhrase)
+              resolvedPersonStatus = r.status
+              if (r.status === 'resolved') resolvedPersonName = r.name
+            }
+          }
+          if (decision.action === 'auto_created') {
+            finalTitle = decision.appointment.title
+            traceSaveAllowed = true
+          } else if (decision.action === 'show_confirm_card') {
+            // Save reachable as soon as the user taps כן, לשמור — unless
+            // the family is ambiguous (chips block primary save).
+            traceSaveAllowed = resolvedPersonStatus !== 'ambiguous'
+            traceSaveBlockReason = resolvedPersonStatus === 'ambiguous' ? 'family ambiguous' : null
+          } else if (decision.action === 'needs_am_pm') {
+            traceSaveBlockReason = 'ambiguous time (AM/PM)'
+          } else if (decision.action === 'needs_clarification') {
+            traceSaveBlockReason = `missing: ${decision.missing.join(',')}`
+          } else if (decision.action === 'not_calendar') {
+            traceSaveBlockReason = 'not_calendar'
+          } else if (decision.action === 'low_confidence') {
+            traceSaveBlockReason = 'low_confidence'
+          } else if (decision.action === 'failed_to_understand') {
+            traceSaveBlockReason = 'failed_to_understand'
+          } else if (decision.action === 'failed_to_save') {
+            traceSaveBlockReason = `failed_to_save:${decision.reason}`
+          }
+
+          updateTrace({
+            parseDecision: decision.action,
+            semanticRoute,
+            finalTitle,
+            relationPhrase,
+            resolvedPersonStatus,
+            resolvedPersonName,
+            saveAllowed: traceSaveAllowed,
+            saveBlockReason: traceSaveBlockReason,
+            ...(('semantic' in decision && decision.semantic) ? {
+              semanticIntent: decision.semantic.intent,
+              semanticSource: decision.semantic.semanticSource,
+              extractionConfidence: decision.semantic.extractionConfidence,
+              extractedTitle: decision.semantic.extractedTitle,
+              extractedDate: decision.semantic.extractedDate,
+              extractedStartTime: decision.semantic.extractedStartTime,
+              extractedEndTime: decision.semantic.extractedEndTime,
+              extractedLocation: decision.semantic.extractedLocation,
+              extractedPeople: decision.semantic.extractedPeople,
+              extractedNotes: decision.semantic.extractedNotes,
+              missingFields: decision.semantic.missingFields,
+              clarificationQuestion: decision.semantic.clarificationQuestion,
+              llmFallbackUsed: decision.semantic.llmFallbackUsed,
+              validationResult: decision.semantic.validationResult,
+              semanticRawInput: decision.semantic.semanticRawInput,
+              semanticCorrectedInput: decision.semantic.semanticCorrectedInput,
+            } : {}),
+          }, `parse_decision:${decision.action}`)
           switch (decision.action) {
             case 'auto_created': {
               setStage('creating', undefined, 'create_started')

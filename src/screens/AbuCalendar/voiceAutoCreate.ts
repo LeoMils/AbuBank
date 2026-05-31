@@ -74,11 +74,11 @@ export type ProcessAction =
   | { action: 'not_calendar'; message: string; semantic: CalendarIntentDraft }
   | { action: 'low_confidence'; message: string; semantic: CalendarIntentDraft }
 
-  | { action: 'auto_created'; appointment: Appointment }
-  | { action: 'show_confirm_card'; draft: LocalDraft }
-  | { action: 'needs_am_pm'; draft: LocalDraft }
-  | { action: 'needs_clarification'; missing: Array<'title' | 'date' | 'time'>; question: string; draft: LocalDraft }
-  | { action: 'failed_to_save'; draft: LocalDraft; reason: string }
+  | { action: 'auto_created'; appointment: Appointment; semantic: CalendarIntentDraft }
+  | { action: 'show_confirm_card'; draft: LocalDraft; semantic: CalendarIntentDraft }
+  | { action: 'needs_am_pm'; draft: LocalDraft; semantic: CalendarIntentDraft }
+  | { action: 'needs_clarification'; missing: Array<'title' | 'date' | 'time'>; question: string; draft: LocalDraft; semantic: CalendarIntentDraft }
+  | { action: 'failed_to_save'; draft: LocalDraft; reason: string; semantic: CalendarIntentDraft }
   | { action: 'failed_to_understand'; transcript: string; semantic?: CalendarIntentDraft }
 
 function clarifyQuestion(missing: Array<'title' | 'date' | 'time'>, text: string): string {
@@ -138,7 +138,7 @@ export function processVoiceTranscript(transcript: string, todayISO: string, opt
 
   // 1) Ambiguous time → ALWAYS show resolver, never auto-create.
   if (effectiveDraft.time && effectiveDraft.ambiguousTime) {
-    return { action: 'needs_am_pm', draft: effectiveDraft }
+    return { action: 'needs_am_pm', draft: effectiveDraft, semantic }
   }
 
   // 2) Missing required fields → explicit clarification.
@@ -147,14 +147,14 @@ export function processVoiceTranscript(transcript: string, todayISO: string, opt
   if (!effectiveDraft.date) missing.push('date')
   if (!effectiveDraft.time) missing.push('time')
   if (missing.length > 0) {
-    return { action: 'needs_clarification', missing, question: semantic.clarificationQuestion ?? clarifyQuestion(missing, transcript), draft: effectiveDraft }
+    return { action: 'needs_clarification', missing, question: semantic.clarificationQuestion ?? clarifyQuestion(missing, transcript), draft: effectiveDraft, semantic }
   }
 
   // 2b) A family relationship phrase ("הבת של מור") must always be reviewed in
   // the confirmation card (resolved / clarified / preserved) — never silently
   // auto-created, even with a create-verb.
   if (isRelationshipDescriptor(personPhrase)) {
-    return { action: 'show_confirm_card', draft: effectiveDraft }
+    return { action: 'show_confirm_card', draft: effectiveDraft, semantic }
   }
 
   // 3) Complete + create-verb → auto-create through the safe path.
@@ -167,10 +167,10 @@ export function processVoiceTranscript(transcript: string, todayISO: string, opt
       ...(effectiveDraft.location ? { location: effectiveDraft.location } : {}),
       ...(effectiveDraft.notes ? { notes: effectiveDraft.notes } : {}),
     })
-    if (result.ok) return { action: 'auto_created', appointment: result.appointment }
-    return { action: 'failed_to_save', draft: effectiveDraft, reason: result.code }
+    if (result.ok) return { action: 'auto_created', appointment: result.appointment, semantic }
+    return { action: 'failed_to_save', draft: effectiveDraft, reason: result.code, semantic }
   }
 
   // 4) Complete but no explicit create-verb → visible confirmation card.
-  return { action: 'show_confirm_card', draft: effectiveDraft }
+  return { action: 'show_confirm_card', draft: effectiveDraft, semantic }
 }
