@@ -41,6 +41,7 @@ import {
   VoiceDebugToggle,
   VOICE_DEBUG_LOCALSTORAGE_KEY,
   isVoiceDebugEnabled,
+  setVoiceDebugEnabled,
 } from './VoiceDebugPanel'
 import type { VoiceTrace } from './voiceTrace'
 import { createInitialTrace } from './voiceTrace'
@@ -259,7 +260,7 @@ describe('BLOCKER 3 — voice debug panel', () => {
     expect(html).not.toContain('mic-qa-trace')
   })
 
-  it('renders panel with raw/normalized/route/date/time/person when flag is "true"', () => {
+  it('renders panel with all required fields when flag is "true"', () => {
     localStorage.setItem(VOICE_DEBUG_LOCALSTORAGE_KEY, 'true')
     expect(isVoiceDebugEnabled()).toBe(true)
     const html = renderToString(
@@ -269,9 +270,13 @@ describe('BLOCKER 3 — voice debug panel', () => {
     expect(html).toContain('data-testid="mic-qa-raw"')
     expect(html).toContain('data-testid="mic-qa-normalized"')
     expect(html).toContain('data-testid="mic-qa-route"')
+    expect(html).toContain('data-testid="mic-qa-intent"')
     expect(html).toContain('data-testid="mic-qa-date"')
     expect(html).toContain('data-testid="mic-qa-time"')
+    expect(html).toContain('data-testid="mic-qa-relation"')
     expect(html).toContain('data-testid="mic-qa-person"')
+    expect(html).toContain('data-testid="mic-qa-save-allowed"')
+    expect(html).toContain('data-testid="mic-qa-reason"')
     expect(html).toContain('תזכירי לי בשבע')
     expect(html).toContain('reminder')
     expect(html).toContain('מחר')
@@ -290,16 +295,79 @@ describe('BLOCKER 3 — voice debug panel', () => {
     }
   })
 
-  it('VoiceDebugToggle renders a tiny "QA" button in DEV (no DevTools required)', () => {
-    // In vitest, import.meta.env.DEV is true by default — we just need the
-    // button shape and testid. Production builds (DEV=false) render null.
+  it('VoiceDebugToggle renders a real <button> in DEV with explicit ON/OFF label', () => {
+    // Production builds (DEV=false) render null. In vitest DEV is true.
+    try { localStorage.removeItem(VOICE_DEBUG_LOCALSTORAGE_KEY) } catch { /* ignore */ }
     const html = renderToString(React.createElement(VoiceDebugToggle))
-    if (import.meta.env.DEV) {
-      expect(html).toContain('data-testid="voice-debug-toggle"')
-      expect(html).toContain('QA')
-      expect(html).toContain('aria-label="toggle mic QA debug panel"')
-    } else {
+    if (!import.meta.env.DEV) {
       expect(html).toBe('')
+      return
+    }
+    // Must be a real <button> element, not a <div>.
+    expect(html.startsWith('<button')).toBe(true)
+    expect(html).toContain('data-testid="voice-debug-toggle"')
+    // Default is OFF when no localStorage flag is set.
+    expect(html).toContain('QA OFF')
+    expect(html).toContain('data-qa-state="off"')
+    expect(html).toContain('aria-pressed="false"')
+    expect(html).toContain('aria-label="turn mic QA debug on"')
+  })
+
+  it('VoiceDebugToggle renders QA ON state when flag pre-set', () => {
+    if (!import.meta.env.DEV) return
+    setVoiceDebugEnabled(true)
+    const html = renderToString(React.createElement(VoiceDebugToggle))
+    expect(html).toContain('QA ON')
+    expect(html).toContain('data-qa-state="on"')
+    expect(html).toContain('aria-pressed="true"')
+    expect(html).toContain('aria-label="turn mic QA debug off"')
+  })
+
+  it('setVoiceDebugEnabled(true) updates localStorage and isVoiceDebugEnabled', () => {
+    try { localStorage.removeItem(VOICE_DEBUG_LOCALSTORAGE_KEY) } catch { /* ignore */ }
+    expect(isVoiceDebugEnabled()).toBe(false)
+    setVoiceDebugEnabled(true)
+    expect(localStorage.getItem(VOICE_DEBUG_LOCALSTORAGE_KEY)).toBe('true')
+    expect(isVoiceDebugEnabled()).toBe(true)
+  })
+
+  it('setVoiceDebugEnabled(false) clears the flag (no stale "false" string)', () => {
+    setVoiceDebugEnabled(true)
+    expect(isVoiceDebugEnabled()).toBe(true)
+    setVoiceDebugEnabled(false)
+    expect(localStorage.getItem(VOICE_DEBUG_LOCALSTORAGE_KEY)).toBeNull()
+    expect(isVoiceDebugEnabled()).toBe(false)
+  })
+
+  it('toggle ↔ panel: after setVoiceDebugEnabled(true) panel renders, after false it does not', () => {
+    try { localStorage.removeItem(VOICE_DEBUG_LOCALSTORAGE_KEY) } catch { /* ignore */ }
+    let html = renderToString(
+      React.createElement(VoiceDebugPanel, { trace, reminderDraft: null }),
+    )
+    expect(html).toBe('')
+
+    setVoiceDebugEnabled(true)
+    html = renderToString(
+      React.createElement(VoiceDebugPanel, { trace, reminderDraft: null }),
+    )
+    expect(html).toContain('data-testid="mic-qa-trace"')
+
+    setVoiceDebugEnabled(false)
+    html = renderToString(
+      React.createElement(VoiceDebugPanel, { trace, reminderDraft: null }),
+    )
+    expect(html).toBe('')
+  })
+
+  it('panel hidden by default — no diagnostic strings ever leak when QA OFF', () => {
+    try { localStorage.removeItem(VOICE_DEBUG_LOCALSTORAGE_KEY) } catch { /* ignore */ }
+    const html = renderToString(
+      React.createElement(VoiceDebugPanel, { trace, reminderDraft: null }),
+    )
+    // Empty string, no diagnostic markers anywhere.
+    expect(html).toBe('')
+    for (const s of ['mic-qa-trace', 'raw:', 'norm:', 'route:', 'תזכירי']) {
+      expect(html).not.toContain(s)
     }
   })
 
