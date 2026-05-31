@@ -444,3 +444,52 @@ describe('parseLocally — חצות (midnight word)', () => {
     expect(r.time).toBe('10:00')
   })
 })
+
+// "רבע ל" (quarter-to) red-team coverage. Live mic QA flagged
+// "רבע לעשר" as a real Hebrew speech pattern that the original
+// extractTime never handled — it would fall through to the bare-word
+// branch and treat "עשר" as 10:00 (ignoring the "רבע ל" prefix).
+describe('parseLocally — רבע ל (quarter-to)', () => {
+  const TODAY_QT = '2026-05-31'
+
+  it('"רבע לעשר בערב" → 21:45', () => {
+    const r = parseLocally('פגישה רבע לעשר בערב', TODAY_QT)
+    expect(r.time).toBe('21:45')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"רבע לעשר בבוקר" → 09:45', () => {
+    const r = parseLocally('פגישה רבע לעשר בבוקר', TODAY_QT)
+    expect(r.time).toBe('09:45')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"רבע לשבע בערב" → 18:45', () => {
+    const r = parseLocally('תור רבע לשבע בערב', TODAY_QT)
+    expect(r.time).toBe('18:45')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"רבע לאחת בלילה" → 00:45 (1AM minus quarter)', () => {
+    const r = parseLocally('תור רבע לאחת בלילה', TODAY_QT)
+    expect(r.time).toBe('00:45')
+  })
+
+  it('"רבע ל-10" numeric form → ambiguous or 09:45 depending on period', () => {
+    const r = parseLocally('פגישה רבע ל-10 בבוקר', TODAY_QT)
+    expect(r.time).toBe('09:45')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: "עשר ורבע בבוקר" still → 10:15 (and-quarter, not quarter-to)', () => {
+    const r = parseLocally('פגישה עשר ורבע בבוקר', TODAY_QT)
+    expect(r.time).toBe('10:15')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: "בעשר בבוקר" still → 10:00 (no quarter-to interference)', () => {
+    const r = parseLocally('פגישה בעשר בבוקר', TODAY_QT)
+    expect(r.time).toBe('10:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+})

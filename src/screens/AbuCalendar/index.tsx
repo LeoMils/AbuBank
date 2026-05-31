@@ -41,7 +41,7 @@ import { VoiceAddFlow, type VoiceDraft } from './VoiceAddFlow'
 import { sanitizeTitleForSave } from './localParser'
 import { ReminderConfirmCard, ReminderDueEngine, ReminderBoard, createReminder, createDefaultAlertPolicy } from './reminders'
 import type { ReminderDraft } from './reminders'
-import { VoiceDebugPanel } from './VoiceDebugPanel'
+import { VoiceDebugPanel, VoiceDebugToggle } from './VoiceDebugPanel'
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
 import { PageShell } from '../../components/PageShell'
@@ -1291,6 +1291,7 @@ export function AbuCalendar() {
       )}
 
       <VoiceDebugPanel trace={debugTrace} reminderDraft={reminderDraft} />
+      <VoiceDebugToggle />
 
       {import.meta.env.DEV && (
         <div

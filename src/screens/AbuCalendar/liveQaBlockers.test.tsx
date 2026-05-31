@@ -38,6 +38,7 @@ import { ConfirmCard } from './ConfirmCard'
 import { extractPersonPhrase, resolvePersonPhrase } from './familyResolve'
 import {
   VoiceDebugPanel,
+  VoiceDebugToggle,
   VOICE_DEBUG_LOCALSTORAGE_KEY,
   isVoiceDebugEnabled,
 } from './VoiceDebugPanel'
@@ -285,6 +286,19 @@ describe('BLOCKER 3 — voice debug panel', () => {
       const html = renderToString(
         React.createElement(VoiceDebugPanel, { trace, reminderDraft: null }),
       )
+      expect(html).toBe('')
+    }
+  })
+
+  it('VoiceDebugToggle renders a tiny "QA" button in DEV (no DevTools required)', () => {
+    // In vitest, import.meta.env.DEV is true by default — we just need the
+    // button shape and testid. Production builds (DEV=false) render null.
+    const html = renderToString(React.createElement(VoiceDebugToggle))
+    if (import.meta.env.DEV) {
+      expect(html).toContain('data-testid="voice-debug-toggle"')
+      expect(html).toContain('QA')
+      expect(html).toContain('aria-label="toggle mic QA debug panel"')
+    } else {
       expect(html).toBe('')
     }
   })

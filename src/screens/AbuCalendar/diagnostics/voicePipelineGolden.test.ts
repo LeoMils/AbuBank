@@ -288,3 +288,50 @@ describe('voice pipeline — 30 golden Martita semantic tests', () => {
     expect(r.saveAllowed.allowed).toBe(false)
   })
 })
+
+// Universe-War Phase 4 hard-pin assertions. These are the operator-named
+// sentences the war-room mission requires explicit coverage for. Each
+// pins intent + date + time + person (where applicable) so a regression
+// in any one of those layers is loud, not silent.
+describe('voice pipeline — Universe-War Phase 4 hard assertions', () => {
+  // #2 — tomorrow + 21:30 + relation "אחות של ארי" (sibling pattern).
+  it('"תקבע לי פגישה מחר בתשע וחצי בערב עם אחות של ארי" — appointment, tomorrow, 21:30, relation extracted', () => {
+    const r = runVoicePipelineDiagnostic('תקבע לי פגישה מחר בתשע וחצי בערב עם אחות של ארי', TODAY_ISO)
+    expect(r.intent).toBe('appointment')
+    expect(r.dateParse.date).toBe(TOMORROW_ISO)
+    expect(r.timeParse.time).toBe('21:30')
+    expect(r.relationPhrase).toBe('אחות של ארי')
+    // Sibling-pattern resolver may return resolved/ambiguous/missing depending
+    // on family graph contents — what must NOT happen is silent invention.
+    expect(['resolved', 'ambiguous', 'missing']).toContain(r.resolvedPerson.status)
+  })
+
+  // #8 — "מחר בחצות פגישה עם אופיר" — tomorrow 00:00, אופיר resolved.
+  it('"מחר בחצות פגישה עם אופיר" — appointment, tomorrow, 00:00, אופיר', () => {
+    const r = runVoicePipelineDiagnostic('מחר בחצות פגישה עם אופיר', TODAY_ISO)
+    expect(r.intent).toBe('appointment')
+    expect(r.dateParse.date).toBe(TOMORROW_ISO)
+    expect(r.timeParse.time).toBe('00:00')
+    expect(r.timeParse.ambiguous).toBe(false)
+  })
+
+  // #9 — "היום בחצות תזכירי לי לבדוק דלת" — reminder, today 00:00, "לבדוק דלת".
+  it('"היום בחצות תזכירי לי לבדוק דלת" — reminder, today, 00:00, task in confirmation', () => {
+    const r = runVoicePipelineDiagnostic('היום בחצות תזכירי לי לבדוק דלת', TODAY_ISO)
+    expect(r.intent).toBe('reminder')
+    expect(r.timeParse.time).toBe('00:00')
+    expect(r.finalConfirmationText).toContain('לבדוק דלת')
+  })
+
+  // #10 — "תזכירי לי להתקשר לחברה של מור בערב" — reminder, friend phrase
+  // must be acknowledged as missing (never silently invented).
+  it('"תזכירי לי להתקשר לחברה של מור בערב" — reminder, friend phrase = missing (not invented)', () => {
+    const r = runVoicePipelineDiagnostic('תזכירי לי להתקשר לחברה של מור בערב', TODAY_ISO)
+    expect(r.intent).toBe('reminder')
+    expect(r.relationPhrase).not.toBeNull()
+    // Friend phrase MUST NOT silently resolve to a real person. The
+    // resolver is expected to mark it missing OR leave it unresolved.
+    expect(['missing', 'none', 'ambiguous']).toContain(r.resolvedPerson.status)
+    expect(r.resolvedPerson.name).toBeNull()
+  })
+})

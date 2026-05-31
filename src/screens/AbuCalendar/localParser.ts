@@ -292,6 +292,34 @@ function extractTime(text: string): TimeExtract {
     return { time: '00:00', ambiguous: false, consumed: [midnightMatch[0]] }
   }
 
+  // "רבע ל<hour-word>" → (hour-1):45. "רבע לעשר" → 09:45,
+  // "רבע לעשר בערב" → 21:45. Checked before bare hour-word branches so
+  // the "ל" is not stripped and treated as a normal "ב" hour prefix.
+  const quarterToWordPat = Object.keys(HEBREW_HOUR_WORDS).sort((a, b) => b.length - a.length).join('|')
+  const quarterToWordRe = new RegExp(`רבע\\s+ל(${quarterToWordPat})${NA}`)
+  const qwm = text.match(quarterToWordRe)
+  if (qwm) {
+    const h = HEBREW_HOUR_WORDS[qwm[1]!]
+    if (typeof h === 'number') {
+      const baseHour = h === 1 ? 0 : h - 1
+      const { hour, ambiguous } = applyPeriod(baseHour, text)
+      const time = `${String(hour).padStart(2, '0')}:45`
+      return { time, ambiguous, consumed: [qwm[0]] }
+    }
+  }
+  // "רבע ל-10" / "רבע ל10" numeric form → 09:45.
+  const quarterToNumRe = /רבע\s+ל-?(\d{1,2})(?![֐-׿\d])/
+  const qnm = text.match(quarterToNumRe)
+  if (qnm) {
+    const h = parseInt(qnm[1]!, 10)
+    if (h >= 1 && h < 24) {
+      const baseHour = h === 1 ? 0 : h - 1
+      const { hour, ambiguous } = applyPeriod(baseHour, text)
+      const time = `${String(hour).padStart(2, '0')}:45`
+      return { time, ambiguous, consumed: [qnm[0]] }
+    }
+  }
+
   // Accept "HH:MM", "HH.MM", and optional "ב-" / "בשעה" prefix.
   // ASR commonly returns 17.34 instead of 17:34.
   const numMatch = text.match(/(?:בשעה\s+|ב-)?(\d{1,2})[:.](\d{2})(?!\d)/)

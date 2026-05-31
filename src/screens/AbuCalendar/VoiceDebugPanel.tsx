@@ -12,6 +12,7 @@
  * Never shows for Martita. Never exposes raw transcripts in the normal flow.
  */
 
+import { useState } from 'react'
 import type { VoiceTrace } from './voiceTrace'
 import type { ReminderDraft } from './reminders/types'
 
@@ -24,6 +25,45 @@ export function isVoiceDebugEnabled(): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * Tiny operator-only toggle. Renders ONLY in DEV builds, so production
+ * users never see it. Clicking it flips the `abu-voice-debug` flag,
+ * which gates the diagnostic panel above. No DevTools required.
+ */
+export function VoiceDebugToggle() {
+  if (!import.meta.env.DEV) return null
+  const [on, setOn] = useState<boolean>(isVoiceDebugEnabled())
+  function flip() {
+    const next = !on
+    try { localStorage.setItem(VOICE_DEBUG_LOCALSTORAGE_KEY, next ? 'true' : 'false') } catch { /* ignore */ }
+    setOn(next)
+  }
+  return (
+    <button
+      type="button"
+      data-testid="voice-debug-toggle"
+      aria-label="toggle mic QA debug panel"
+      onClick={flip}
+      style={{
+        position: 'fixed',
+        bottom: 8,
+        right: 8,
+        zIndex: 9999,
+        padding: '2px 8px',
+        fontSize: 10,
+        fontFamily: 'monospace',
+        color: on ? '#0B0F1F' : 'rgba(201,168,76,0.55)',
+        background: on ? 'rgba(232,199,106,0.85)' : 'rgba(8,12,24,0.55)',
+        border: '1px solid rgba(201,168,76,0.45)',
+        borderRadius: 6,
+        cursor: 'pointer',
+        userSelect: 'none',
+        opacity: on ? 0.92 : 0.6,
+      }}
+    >QA{on ? ' ●' : ''}</button>
+  )
 }
 
 interface Props {
