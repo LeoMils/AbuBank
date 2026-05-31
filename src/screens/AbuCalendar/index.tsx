@@ -1078,12 +1078,6 @@ export function AbuCalendar() {
                 )}
               </button>
             </div>
-            {import.meta.env.DEV && (
-              <div data-testid="voice-reset-active-8987215" style={{
-                fontSize: 10, color: 'rgba(201,168,76,0.45)', fontFamily: 'monospace',
-                textAlign: 'center', padding: '2px 0', userSelect: 'none',
-              }}>VOICE_RESET_ACTIVE_8987215</div>
-            )}
           </>
         }
       >
@@ -1300,13 +1294,13 @@ export function AbuCalendar() {
 
       {import.meta.env.DEV && (
         <div
-          data-testid="voice-reset-active-614f33d"
+          data-testid="dev-version-badge"
           style={{
             position: 'fixed', bottom: 8, left: 8,
-            fontSize: 9, color: 'rgba(201,168,76,0.35)', fontFamily: 'monospace',
+            fontSize: 9, color: 'rgba(201,168,76,0.45)', fontFamily: 'monospace',
             zIndex: 9999, userSelect: 'none', pointerEvents: 'none',
           }}
-        >VOICE_RESET_ACTIVE_614F33D</div>
+        >v{APP_VERSION.version} · {APP_VERSION.commitHint === 'local' ? 'local build' : APP_VERSION.commitHint}</div>
       )}
 
       {/* KEYFRAMES */}

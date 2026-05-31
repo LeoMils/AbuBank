@@ -60,6 +60,11 @@ const PM_HINTS = /(אחר.{0,4}הצהריים|אחה"צ|בצהריים|צהרי�
 const NIGHT_HINTS = /(בלילה|לפנות בוקר)/
 const MORNING_HINTS = /(בבוקר|לפני הצהריים)/
 
+// "חצות" (midnight) — accepts the bare word, the "ב" prefix, and the
+// explicit "חצות הלילה" expansion. Word-boundary guards prevent matches
+// inside longer Hebrew words. Always resolves to 00:00, never 12:00.
+const MIDNIGHT_RE = /(?<![֐-׿])(?:ב)?חצות(?:\s+הלילה)?(?![֐-׿])/
+
 // ─── Spanish / English period hints (P0 — deterministic, no Groq) ──────
 const PM_HINTS_ES = /(de\s+la\s+tarde|de\s+la\s+noche|por\s+la\s+tarde|por\s+la\s+noche)/i
 const MORNING_HINTS_ES = /(de\s+la\s+ma[ñn]ana|por\s+la\s+ma[ñn]ana)/i
@@ -279,6 +284,14 @@ function parseHebrewMinuteWords(after: string): { minutes: number; consumed: str
 }
 
 function extractTime(text: string): TimeExtract {
+  // "חצות" / "בחצות" / "חצות הלילה" → 00:00. Checked before numeric
+  // patterns so that a phrase like "מחר בחצות" never falls through into
+  // the bare-hour branches where 12 could end up.
+  const midnightMatch = text.match(MIDNIGHT_RE)
+  if (midnightMatch) {
+    return { time: '00:00', ambiguous: false, consumed: [midnightMatch[0]] }
+  }
+
   // Accept "HH:MM", "HH.MM", and optional "ב-" / "בשעה" prefix.
   // ASR commonly returns 17.34 instead of 17:34.
   const numMatch = text.match(/(?:בשעה\s+|ב-)?(\d{1,2})[:.](\d{2})(?!\d)/)

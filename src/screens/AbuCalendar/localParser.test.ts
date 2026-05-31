@@ -370,3 +370,77 @@ describe('parseLocally — AM/PM explicit period hints', () => {
     expect(r.ambiguousTime).toBe(false)
   })
 })
+
+// ─── חצות (midnight word) ─────────────────────────────────────────────────────
+// Live mic QA on 2026-05-31 reported the spoken word "חצות" was never
+// converted to 00:00 — only "12 בלילה" worked. These tests pin the
+// behavior of the new MIDNIGHT_RE branch in extractTime.
+describe('parseLocally — חצות (midnight word)', () => {
+  const TODAY_MID = '2026-04-30' // Thursday
+  const TOMORROW_MID = '2026-05-01' // Friday
+
+  it('"חצות" alone → 00:00', () => {
+    const r = parseLocally('תזכורת חצות', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"בחצות" → 00:00', () => {
+    const r = parseLocally('בחצות פגישה', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"חצות הלילה" → 00:00', () => {
+    const r = parseLocally('פגישה חצות הלילה', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"מחר בחצות" → tomorrow, 00:00', () => {
+    const r = parseLocally('מחר בחצות פגישה', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+    expect(r.date).toBe(TOMORROW_MID)
+  })
+
+  it('"היום בחצות" → today, 00:00', () => {
+    const r = parseLocally('היום בחצות', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+    expect(r.date).toBe(TODAY_MID)
+  })
+
+  it('regression: "12 בלילה" still → 00:00', () => {
+    const r = parseLocally('הלילה בשעה 12 בלילה קריאה', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: "12 בצהריים" still → 12:00 (not confused with midnight)', () => {
+    const r = parseLocally('מחר בשעה 12 בצהריים ארוחה', TODAY_MID)
+    expect(r.time).toBe('12:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: "אחת בלילה" → 01:00', () => {
+    const r = parseLocally('הלילה באחת בלילה', TODAY_MID)
+    expect(r.time).toBe('01:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: "אחת בצהריים" → 13:00', () => {
+    const r = parseLocally('מחר באחת בצהריים ארוחה', TODAY_MID)
+    expect(r.time).toBe('13:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('does not match the substring "חצות" inside a larger Hebrew word', () => {
+    // Word-boundary guards prevent false positives. There is no real
+    // Hebrew word that contains "חצות" as a substring, but this asserts
+    // the guard exists for any ASR garbage like "חצותרא".
+    const r = parseLocally('פגישה חצותרא בעשר בבוקר', TODAY_MID)
+    // Falls back to "בעשר בבוקר" → 10:00.
+    expect(r.time).toBe('10:00')
+  })
+})

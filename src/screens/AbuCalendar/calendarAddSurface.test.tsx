@@ -44,28 +44,38 @@ const BASE_FLOW_PROPS = {
   onSavedShowDay: () => {},
 }
 
-// ─── Root-level DEV marker ────────────────────────────────────────────────────
-describe('AbuCalendar — root-level DEV marker', () => {
-  it('index.tsx contains VOICE_RESET_ACTIVE_614F33D', () => {
-    expect(INDEX_SOURCE).toContain('VOICE_RESET_ACTIVE_614F33D')
+// ─── Root-level DEV version badge ─────────────────────────────────────────────
+describe('AbuCalendar — root-level DEV version badge', () => {
+  it('index.tsx no longer contains the misleading static markers', () => {
+    expect(INDEX_SOURCE).not.toContain('VOICE_RESET_ACTIVE_614F33D')
+    expect(INDEX_SOURCE).not.toContain('VOICE_RESET_ACTIVE_8987215')
+    expect(INDEX_SOURCE).not.toContain('voice-reset-active-614f33d')
+    expect(INDEX_SOURCE).not.toContain('voice-reset-active-8987215')
   })
 
-  it('root marker uses position fixed so it is visible without sheet open', () => {
-    const markerIdx = INDEX_SOURCE.indexOf('VOICE_RESET_ACTIVE_614F33D')
+  it('badge uses position fixed so it is visible without sheet open', () => {
+    const markerIdx = INDEX_SOURCE.indexOf('data-testid="dev-version-badge"')
     expect(markerIdx).toBeGreaterThan(-1)
-    const vicinity = INDEX_SOURCE.slice(Math.max(0, markerIdx - 300), markerIdx + 50)
+    const vicinity = INDEX_SOURCE.slice(Math.max(0, markerIdx - 300), markerIdx + 200)
     expect(vicinity).toContain("position: 'fixed'")
   })
 
-  it('root marker appears after </DayDetailSheet> in source (not trapped inside sheet)', () => {
+  it('badge appears after </DayDetailSheet> in source (not trapped inside sheet)', () => {
     const sheetEnd = INDEX_SOURCE.indexOf('</DayDetailSheet>')
-    const markerIdx = INDEX_SOURCE.indexOf('VOICE_RESET_ACTIVE_614F33D')
+    const markerIdx = INDEX_SOURCE.indexOf('data-testid="dev-version-badge"')
     expect(sheetEnd).toBeGreaterThan(-1)
     expect(markerIdx).toBeGreaterThan(sheetEnd)
   })
 
-  it('root marker has data-testid voice-reset-active-614f33d', () => {
-    expect(INDEX_SOURCE).toContain('data-testid="voice-reset-active-614f33d"')
+  it('badge renders APP_VERSION.version (not a hard-coded SHA-like marker)', () => {
+    expect(INDEX_SOURCE).toContain('data-testid="dev-version-badge"')
+    expect(INDEX_SOURCE).toContain('APP_VERSION.version')
+    expect(INDEX_SOURCE).toContain('APP_VERSION.commitHint')
+  })
+
+  it('badge handles commitHint==="local" honestly with "local build" label', () => {
+    expect(INDEX_SOURCE).toMatch(/APP_VERSION\.commitHint\s*===\s*'local'/)
+    expect(INDEX_SOURCE).toContain("'local build'")
   })
 })
 

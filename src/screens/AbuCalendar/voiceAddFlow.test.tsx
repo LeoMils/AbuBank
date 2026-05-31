@@ -210,8 +210,12 @@ describe('VoiceAddFlow — structural contract', () => {
     }
   })
 
-  it('build marker VOICE_RESET_ACTIVE_8987215 is present in index.tsx', () => {
-    expect(INDEX_SOURCE).toContain('VOICE_RESET_ACTIVE_8987215')
+  it('misleading static build markers are removed in favor of dev-version-badge', () => {
+    // Replaced by the real APP_VERSION-driven badge mounted at root.
+    // See calendarAddSurface.test.tsx "root-level DEV version badge".
+    expect(INDEX_SOURCE).not.toContain('VOICE_RESET_ACTIVE_8987215')
+    expect(INDEX_SOURCE).not.toContain('VOICE_RESET_ACTIVE_614F33D')
+    expect(INDEX_SOURCE).toContain('data-testid="dev-version-badge"')
   })
 })
 
