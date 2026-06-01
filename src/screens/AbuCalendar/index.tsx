@@ -31,6 +31,7 @@ import { DayDetailSheet } from './DayDetailSheet'
 import { transcribeCalendarAudio } from './calendarTranscribe'
 import { normalizeCalendarTranscript } from './calendarTranscriptCorrection'
 import { getSupportedMimeType } from '../AbuAI/service'
+import { createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 import { injectSharedKeyframes } from '../../design/animations'
@@ -100,6 +101,9 @@ export function AbuCalendar() {
   const [reminderFlowActive, setReminderFlowActive] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const silenceDetectorRef = useRef<{ stop: () => void } | null>(null)
+  const maxDurationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const recordingStartTimeRef = useRef<number>(0)
 
   // P0.6 — visible voice trace. Renders inside AbuCalendar's voice
   // action area no matter where the pipeline fails, so the user always
@@ -292,56 +296,123 @@ export function AbuCalendar() {
     setUndoAppt(null)
   }
 
-  async function handleVoiceRecord(opts?: { bypassGuard?: boolean }) {
-    // P0.6 — STOP path. The user tapped the red button. Make the
-    // "stopping" state visible IMMEDIATELY so no tap ever feels silent.
-    if (isRecording) {
-      updateTrace({
-        stopPressedAt: new Date().toISOString(),
-        recorderStateBeforeStop: mediaRecorderRef.current?.state ?? null,
-      }, 'stop_pressed')
-      setStage('stopping')
-      const rec = mediaRecorderRef.current
-      if (!rec) {
-        setVoiceFailure('לא מצאתי הקלטה פעילה. נסי שוב.', 'recorder_missing')
-        setIsRecording(false)
-        return
-      }
-      if (rec.state !== 'recording') {
-        updateTrace({ recorderStateAfterStop: rec.state }, `recorder_state_not_recording:${rec.state}`)
-        setVoiceFailure('ההקלטה כבר נעצרה. נסי שוב.', 'recorder_not_recording')
-        setIsRecording(false)
-        return
-      }
+  // ── Mic capture constants ─────────────────────────────────────────────
+  const MIN_RECORDING_MS = 1000   // don't send < 1s to Whisper
+  const MAX_RECORDING_MS = 22_000 // auto-stop after 22s
+  const SILENCE_AFTER_SPEECH_MS = 2500 // 2.5s silence after speech → auto-stop
+  const SILENCE_THRESHOLD = 25    // audio level threshold for speech detection
+  const SILENCE_MIN_ACTIVE_MS = 1500 // don't silence-stop before 1.5s
+
+  function cleanupRecordingRefs() {
+    if (silenceDetectorRef.current) { silenceDetectorRef.current.stop(); silenceDetectorRef.current = null }
+    if (maxDurationTimerRef.current) { clearTimeout(maxDurationTimerRef.current); maxDurationTimerRef.current = null }
+  }
+
+  function doStopRecorder(reason: 'manual' | 'silence_after_speech' | 'max_duration' | 'min_duration_delay') {
+    cleanupRecordingRefs()
+    updateTrace({ stopReason: reason, recorderStateAfterStop: mediaRecorderRef.current?.state ?? null }, `stop_reason:${reason}`)
+    const rec = mediaRecorderRef.current
+    if (rec && rec.state === 'recording') {
       try {
         rec.stop()
-        updateTrace({ recorderStateAfterStop: rec.state }, 'recorder_stop_called')
       } catch (err) {
         const m = err instanceof Error ? err.message : String(err)
         setVoiceFailure('ההקלטה נכשלה. נסי שוב.', `recorder_stop_threw:${m}`)
         setIsRecording(false)
       }
+    }
+  }
+
+  async function handleVoiceRecord(opts?: { bypassGuard?: boolean }) {
+    // ── STOP path — user tapped the red button. ────────────────────
+    if (isRecording) {
+      updateTrace({
+        stopPressedAt: new Date().toISOString(),
+        recorderStateBeforeStop: mediaRecorderRef.current?.state ?? null,
+      }, 'stop_pressed')
+
+      // Min duration guard — if the user tapped stop too quickly, delay
+      // so Whisper gets at least MIN_RECORDING_MS of audio.
+      const elapsed = Date.now() - recordingStartTimeRef.current
+      if (elapsed < MIN_RECORDING_MS) {
+        setStage('stopping', 'עוד רגע, אני מקשיבה...', 'min_duration_wait')
+        const remaining = MIN_RECORDING_MS - elapsed
+        setTimeout(() => doStopRecorder('min_duration_delay'), remaining)
+        return
+      }
+
+      setStage('stopping')
+      const rec = mediaRecorderRef.current
+      if (!rec) {
+        cleanupRecordingRefs()
+        setVoiceFailure('לא מצאתי הקלטה פעילה. נסי שוב.', 'recorder_missing')
+        setIsRecording(false)
+        return
+      }
+      if (rec.state !== 'recording') {
+        cleanupRecordingRefs()
+        updateTrace({ recorderStateAfterStop: rec.state }, `recorder_state_not_recording:${rec.state}`)
+        setVoiceFailure('ההקלטה כבר נעצרה. נסי שוב.', 'recorder_not_recording')
+        setIsRecording(false)
+        return
+      }
+      doStopRecorder('manual')
       return
     }
-    // Fresh trace for a new recording session.
+    // ── START path — fresh recording session. ──────────────────────
     const fresh = createInitialTrace(APP_VERSION.version)
     voiceTraceRef.current = fresh
     setVoiceError(null)
-    // P0.6 — MediaRecorder availability guard.
     if (typeof MediaRecorder === 'undefined') {
       setVoiceFailure('הקלטה קולית לא נתמכת בדפדפן הזה.', 'media_recorder_unsupported')
       return
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // AbuAI-grade audio constraints: echo cancellation + noise
+      // suppression + auto gain. Bare { audio: true } produced noisy
+      // blobs that Whisper mis-transcribed in phone QA.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      })
       const mimeType = getSupportedMimeType()
-      updateTrace({ mimeType: mimeType || '(default)', startedAt: new Date().toISOString() }, `recording_started mime:${mimeType || 'default'}`)
+      const startedAt = new Date().toISOString()
+      recordingStartTimeRef.current = Date.now()
+      updateTrace({ mimeType: mimeType || '(default)', startedAt }, `recording_started mime:${mimeType || 'default'}`)
       const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       mediaRecorderRef.current = mr
       chunksRef.current = []
       mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+
+      // Max duration auto-stop (22s) — prevents runaway recordings.
+      maxDurationTimerRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current?.state === 'recording') {
+          setStage('stopping', 'הבנתי, בודקת...', 'max_duration_stop')
+          doStopRecorder('max_duration')
+        }
+      }, MAX_RECORDING_MS)
+
+      // Silence detection: auto-stop after 2.5s of silence following
+      // speech. Uses the same AbuAI-grade detector (AudioContext +
+      // AnalyserNode + noise floor calibration).
+      try {
+        silenceDetectorRef.current = createSilenceDetector(stream, () => {
+          if (mediaRecorderRef.current?.state === 'recording') {
+            setStage('stopping', 'הבנתי, בודקת...', 'silence_stop')
+            doStopRecorder('silence_after_speech')
+          }
+        }, {
+          threshold: SILENCE_THRESHOLD,
+          silenceMs: SILENCE_AFTER_SPEECH_MS,
+          maxMs: MAX_RECORDING_MS,
+          minActiveMs: SILENCE_MIN_ACTIVE_MS,
+        })
+      } catch {
+        // AudioContext not available — fall back to manual stop + max timer only.
+      }
+
       mr.onstop = async () => {
         try {
+          cleanupRecordingRefs()
           updateTrace({ onstopFired: true }, 'onstop_fired')
           stream.getTracks().forEach(t => t.stop())
           setIsRecording(false)
@@ -353,6 +424,7 @@ export function AbuCalendar() {
             : null
           updateTrace({ chunksCount: chunksRef.current.length, blobSize: blob.size, audioDurationMs }, `blob_created chunks:${chunksRef.current.length} size:${blob.size} dur:${audioDurationMs ?? '?'}ms`)
           if (chunksRef.current.length === 0 || blob.size === 0) {
+            updateTrace({ stopReason: 'no_audio' }, 'no_audio_captured')
             setVoiceFailure('לא נקלט שמע בהקלטה. נסי שוב קרוב יותר למיקרופון.', 'no_audio_captured')
             return
           }
@@ -679,10 +751,10 @@ export function AbuCalendar() {
           setVoiceFailure('משהו השתבש בעיבוד ההקלטה. נסי שוב.', `onstop_threw:${m.slice(0, 50)}`)
         }
       }
-      mr.start()
+      mr.start(250) // 250ms timeslice for chunk-count diagnostics
       setIsRecording(true)
       setVoiceState('recording')
-      setStage('recording')
+      setStage('recording', 'אני מקשיבה...')
     } catch (err) {
       const msg = mediateVoiceCaptureError(err, 'permission_or_device')
       setVoiceFailure(msg, `getusermedia_failed:${err instanceof Error ? err.name : 'unknown'}`)

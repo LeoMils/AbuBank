@@ -56,6 +56,8 @@ export interface VoiceTrace {
   mimeType: string | null
   /** STT outcome: 'ok' | 'empty' | 'error' | 'timeout'. */
   sttStatus: 'ok' | 'empty' | 'error' | 'timeout' | null
+  /** Why recording stopped. */
+  stopReason: 'manual' | 'silence_after_speech' | 'max_duration' | 'min_duration_delay' | 'no_audio' | 'error' | null
   transcribeStarted: string | null
   transcribeFinished: string | null
   transcript: string | null
@@ -123,6 +125,7 @@ export function createInitialTrace(version: string): VoiceTrace {
     audioDurationMs: null,
     mimeType: null,
     sttStatus: null,
+    stopReason: null,
     transcribeStarted: null,
     transcribeFinished: null,
     transcript: null,
