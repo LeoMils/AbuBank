@@ -38,6 +38,8 @@ export type SemanticRoute =
   | 'reminder_create'
   | 'calendar_query'
   | 'family_query'
+  | 'correction'
+  | 'cancel'
   | 'unknown'
 
 export interface VoiceTrace {
@@ -49,7 +51,11 @@ export interface VoiceTrace {
   onstopFired: boolean
   chunksCount: number | null
   blobSize: number | null
+  /** Estimated recording duration in ms (stopPressedAt - startedAt). */
+  audioDurationMs: number | null
   mimeType: string | null
+  /** STT outcome: 'ok' | 'empty' | 'error' | 'timeout'. */
+  sttStatus: 'ok' | 'empty' | 'error' | 'timeout' | null
   transcribeStarted: string | null
   transcribeFinished: string | null
   transcript: string | null
@@ -114,7 +120,9 @@ export function createInitialTrace(version: string): VoiceTrace {
     onstopFired: false,
     chunksCount: null,
     blobSize: null,
+    audioDurationMs: null,
     mimeType: null,
+    sttStatus: null,
     transcribeStarted: null,
     transcribeFinished: null,
     transcript: null,

@@ -77,7 +77,15 @@ export function ConfirmCard({
             לא מצאתי בוודאות מי {relation.phrase}. לשמור כך?
           </div>
         )}
-        <Row label="מתי" value={`${dateLabel ?? ''}${draft.time ? ` · ${draft.time}` : ''}`.trim()} missing={!draft.date || !draft.time} />
+        <Row label="מתי"
+          value={`${dateLabel ?? ''}${draft.time ? ` · ${draft.time}` : ''}`.trim()}
+          missing={!draft.date || !draft.time}
+        />
+        {(!draft.date || !draft.time) && (
+          <div style={{ fontSize: 14, color: 'rgba(251,146,60,0.95)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.5, paddingInlineStart: 66 }}>
+            {!draft.date && !draft.time ? 'לא הבנתי מתי. תגידי יום ושעה.' : !draft.date ? 'חסר יום — מתי?' : 'חסרה שעה — באיזו שעה?'}
+          </div>
+        )}
         {isPast && (
           <div style={{ fontSize: 14, color: 'rgba(251,146,60,0.95)', fontFamily: "'Heebo',sans-serif" }}>⚠️ התאריך עבר</div>
         )}
@@ -129,6 +137,11 @@ export function ConfirmCard({
               cursor: canSave ? 'pointer' : 'not-allowed', minHeight: 60,
             }}
           >כן, לשמור</button>
+          {!canSave && (
+            <div data-testid="save-blocked-hint" style={{ fontSize: 14, color: 'rgba(251,146,60,0.85)', fontFamily: "'Heebo',sans-serif", textAlign: 'center' }}>
+              {!whatPerson ? 'מה לרשום? תגידי מה הפגישה.' : 'חסרים פרטים — תקני או תגידי שוב.'}
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 10 }}>
             <button

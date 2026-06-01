@@ -148,6 +148,28 @@ export function parseRelativeTime(text: string, now: Date): RelativeTimeResult |
     }
   }
 
+  // Compound: "בעוד שעה ו<X> דקות" → 60 + X minutes.
+  // Must come before the bare "שעה" match below.
+  const compoundHourMin = t.match(/(?:בעוד|עוד)\s+שעה\s+ו(\d+)\s+דקות?/)
+  if (compoundHourMin) {
+    const extraMin = parseInt(compoundHourMin[1]!, 10)
+    if (extraMin > 0 && extraMin < 60) {
+      const total = 60 + extraMin
+      const due = new Date(now.getTime() + total * 60_000)
+      return buildRelResult(due, total)
+    }
+  }
+  // Hebrew word compound: "בעוד שעה ועשרים דקות" / "שעה וחמש דקות"
+  const compoundHourMinHeb = t.match(/(?:בעוד|עוד)\s+שעה\s+ו([\u0590-\u05FF\s]+?)\s+דקות?/)
+  if (compoundHourMinHeb) {
+    const v = hebrewNumberToInt(compoundHourMinHeb[1]!.trim())
+    if (v !== null && v > 0 && v < 60) {
+      const total = 60 + v
+      const due = new Date(now.getTime() + total * 60_000)
+      return buildRelResult(due, total)
+    }
+  }
+
   // "בעוד שעה" / "עוד שעה" (single hour)
   if (/(?:בעוד|עוד)\s+שעה(?!\s+ו)/.test(t)) {
     const due = new Date(now.getTime() + 60 * 60_000)

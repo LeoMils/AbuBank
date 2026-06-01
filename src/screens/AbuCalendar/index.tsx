@@ -348,7 +348,10 @@ export function AbuCalendar() {
           setStage('processing')
           setVoiceState('transcribing')
           const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
-          updateTrace({ chunksCount: chunksRef.current.length, blobSize: blob.size }, `blob_created chunks:${chunksRef.current.length} size:${blob.size}`)
+          const audioDurationMs = voiceTraceRef.current.startedAt
+            ? Date.now() - new Date(voiceTraceRef.current.startedAt).getTime()
+            : null
+          updateTrace({ chunksCount: chunksRef.current.length, blobSize: blob.size, audioDurationMs }, `blob_created chunks:${chunksRef.current.length} size:${blob.size} dur:${audioDurationMs ?? '?'}ms`)
           if (chunksRef.current.length === 0 || blob.size === 0) {
             setVoiceFailure('לא נקלט שמע בהקלטה. נסי שוב קרוב יותר למיקרופון.', 'no_audio_captured')
             return
@@ -391,6 +394,7 @@ export function AbuCalendar() {
             noSpeechProb: asr.noSpeechProb ?? null,
             compressionRatio: asr.compressionRatio ?? null,
             correctionsApplied: norm.correctionsApplied,
+            sttStatus: transcribed.trim() ? 'ok' : 'empty',
           }, `transcript_received model:${asr.model} corrections:${norm.correctionsApplied.length}`)
           if (!transcribed || !transcribed.trim()) {
             setVoiceFailure('לא הצלחתי להבין את ההקלטה. ננסה שוב?', 'transcript_empty')
@@ -646,6 +650,7 @@ export function AbuCalendar() {
           if (raw === 'transcribe_timeout' || raw.includes('transcribe_timeout')) {
             friendly = 'התמלול לוקח יותר מדי זמן. נסי שוב.'
             step = 'transcribe_timeout'
+            updateTrace({ sttStatus: 'timeout' }, step)
           } else if (raw.includes('מפתח API לתמלול לא הוגדר')) {
             friendly = userFacingError('voice_transcribe_key_missing', 'he')
             step = 'transcribe_key_missing'
@@ -654,12 +659,15 @@ export function AbuCalendar() {
                   || /transcrib/i.test(raw)) {
             friendly = mediateVoiceCaptureError(e, 'transcription')
             step = `transcribe_failed:${raw.slice(0, 40)}`
+            updateTrace({ sttStatus: 'error' }, step)
           } else if (raw) {
             friendly = mediateVoiceCaptureError(e, 'transcription')
             step = `caught_error:${raw.slice(0, 40)}`
+            updateTrace({ sttStatus: 'error' }, step)
           } else {
             friendly = mediateVoiceCaptureError(e, 'transcription')
             step = 'caught_unknown_error'
+            updateTrace({ sttStatus: 'error' }, step)
           }
           setVoiceFailure(friendly, step)
         }
@@ -704,6 +712,7 @@ export function AbuCalendar() {
   }
 
   function handleVoiceCancel() {
+    updateTrace({ semanticRoute: 'cancel' }, 'user_cancel')
     setVoiceParsed(null)
     setVoiceError(null)
     setVoiceState('idle')
@@ -741,6 +750,7 @@ export function AbuCalendar() {
   }
 
   function handleReminderCancel() {
+    updateTrace({ semanticRoute: 'cancel' }, 'user_cancel_reminder')
     setReminderDraft(null)
     setReminderFlowActive(false)
   }

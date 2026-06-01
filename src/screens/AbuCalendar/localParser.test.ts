@@ -492,4 +492,63 @@ describe('parseLocally — רבע ל (quarter-to)', () => {
     expect(r.time).toBe('10:00')
     expect(r.ambiguousTime).toBe(false)
   })
+
+  it('"רבע לחצות" → 23:45 (quarter to midnight)', () => {
+    const r = parseLocally('פגישה רבע לחצות', TODAY_QT)
+    expect(r.time).toBe('23:45')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"רבע אחרי חצות" → 00:15 (quarter after midnight)', () => {
+    const r = parseLocally('פגישה רבע אחרי חצות', TODAY_QT)
+    expect(r.time).toBe('00:15')
+    expect(r.ambiguousTime).toBe(false)
+  })
+})
+
+// ─── P1 — midnight fractions ────────────────────────────────────────────────
+describe('parseLocally — חצות + fraction (midnight with minutes)', () => {
+  const TODAY_MF = '2026-05-31'
+
+  it('"בחצות וחצי" → 00:30', () => {
+    const r = parseLocally('מחר בחצות וחצי פגישה עם אופיר', TODAY_MF)
+    expect(r.time).toBe('00:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"חצות וחצי" → 00:30', () => {
+    const r = parseLocally('חצות וחצי פגישה', TODAY_MF)
+    expect(r.time).toBe('00:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"חצות ורבע" → 00:15', () => {
+    const r = parseLocally('פגישה חצות ורבע', TODAY_MF)
+    expect(r.time).toBe('00:15')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"12 וחצי בלילה" → 00:30 (numeric midnight + half)', () => {
+    const r = parseLocally('מחר 12 וחצי בלילה פגישה', TODAY_MF)
+    expect(r.time).toBe('00:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"שתים עשרה וחצי בלילה" → 00:30 (word midnight + half)', () => {
+    const r = parseLocally('מחר שתים עשרה וחצי בלילה פגישה', TODAY_MF)
+    expect(r.time).toBe('00:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת וחצי בלילה" → 01:30', () => {
+    const r = parseLocally('הלילה באחת וחצי בלילה', TODAY_MF)
+    expect(r.time).toBe('01:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: plain "בחצות" still → 00:00', () => {
+    const r = parseLocally('מחר בחצות פגישה', TODAY_MF)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
 })

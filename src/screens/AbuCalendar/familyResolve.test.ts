@@ -128,3 +128,64 @@ describe('resolvePersonPhrase', () => {
     }
   })
 })
+
+// ─── P2 — honest resolution for all required cases ──────────────────────────
+describe('resolvePersonPhrase — P2 honest resolution', () => {
+  it('"אשתו של אילי" → missing (אילי is not a known alias — never invent)', () => {
+    const r = resolvePersonPhrase('אשתו של אילי')
+    expect(r.status).toBe('missing')
+    if (r.status === 'missing') expect(r.phrase).toBe('אשתו של אילי')
+  })
+
+  it('"אשתו של גלעד" → missing (Gilad\'s spouse is male — gender-filtered, never invert)', () => {
+    const r = resolvePersonPhrase('אשתו של גלעד')
+    expect(r.status).toBe('missing')
+  })
+
+  it('"אבא של אנאבל" → ambiguous (Ofir and Gilad are both male parents)', () => {
+    const r = resolvePersonPhrase('אבא של אנאבל')
+    expect(r.status).toBe('ambiguous')
+    if (r.status === 'ambiguous') {
+      expect(r.candidates).toContain('אופיר')
+      expect(r.candidates).toContain('גלעד')
+    }
+  })
+
+  it('"אמא של אנאבל" → missing (both parents are male — no female parent)', () => {
+    const r = resolvePersonPhrase('אמא של אנאבל')
+    expect(r.status).toBe('missing')
+  })
+
+  it('"הגרוש של מור" → resolved to רפי', () => {
+    const r = resolvePersonPhrase('הגרוש של מור')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('רפי')
+  })
+
+  it('"הגרושה של מור" → missing (Mor\'s ex is male — never invent female)', () => {
+    const r = resolvePersonPhrase('הגרושה של מור')
+    expect(r.status).toBe('missing')
+  })
+
+  it('"חברה של מור" → missing (friend — never resolved from family data)', () => {
+    const r = resolvePersonPhrase('חברה של מור')
+    expect(r.status).toBe('missing')
+  })
+
+  it('"חבר של מור" → missing (friend — never resolved from family data)', () => {
+    const r = resolvePersonPhrase('חבר של מור')
+    expect(r.status).toBe('missing')
+  })
+
+  it('"סבא של ארי" → resolved to רפי (male grandparent via Ofir→Rafi)', () => {
+    const r = resolvePersonPhrase('סבא של ארי')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('רפי')
+  })
+
+  it('"סבתא של ארי" → resolved to מור (female grandparent via Ofir→Mor)', () => {
+    const r = resolvePersonPhrase('סבתא של ארי')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('מור')
+  })
+})

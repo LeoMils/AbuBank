@@ -108,6 +108,30 @@ describe('parseRelativeTime', () => {
     const r = parseRelativeTime('בעוד שעתיים', fixedNow)
     expect(r!.displayDateLabel).toContain('בעוד שעתיים')
   })
+
+  it('"בעוד שעה ועשרים דקות" → +80 min (compound hour + minutes)', () => {
+    const r = parseRelativeTime('תזכירי לי בעוד שעה ועשרים דקות', fixedNow)
+    expect(r).not.toBeNull()
+    expect(r!.minutesFromNow).toBe(80)
+  })
+
+  it('"בעוד שעה ו20 דקות" → +80 min (compound hour + numeric minutes)', () => {
+    const r = parseRelativeTime('בעוד שעה ו20 דקות', fixedNow)
+    expect(r).not.toBeNull()
+    expect(r!.minutesFromNow).toBe(80)
+  })
+
+  it('"בעוד 25 דקות" → +25 min', () => {
+    const r = parseRelativeTime('בעוד 25 דקות', fixedNow)
+    expect(r).not.toBeNull()
+    expect(r!.minutesFromNow).toBe(25)
+  })
+
+  it('"בעוד שעה וחמש דקות" → +65 min', () => {
+    const r = parseRelativeTime('בעוד שעה וחמש דקות', fixedNow)
+    expect(r).not.toBeNull()
+    expect(r!.minutesFromNow).toBe(65)
+  })
 })
 
 // ─── Recurrence parser ────────────────────────────────────────────────────────

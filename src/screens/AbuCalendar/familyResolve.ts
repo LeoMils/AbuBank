@@ -26,7 +26,7 @@ const STOP_WORDS = /^(הילדים|הרופא|המשפחה|הבית|העבודה
 // "חבר/חברה" (friend) is intentionally captured so the UI can honestly
 // acknowledge the phrase, even though family_data.json holds no friend
 // records — the resolver returns `missing` for these (never invented).
-const KIND = `בן\\s+הזוג|בת\\s+הזוג|נכדה|נכד|בעלה|בעל|אשתו|אשת|אישה|אחות|אח|אבא|אמא|אב|אם|גרושה|גרוש|בת|בן|חברה|חבר`
+const KIND = `בן\\s+הזוג|בת\\s+הזוג|סבתא|סבא|נכדה|נכד|בעלה|בעל|אשתו|אשת|אישה|אחות|אח|אבא|אמא|אב|אם|גרושה|גרוש|בת|בן|חברה|חבר`
 // Friend descriptors — recognized for honest "missing" acknowledgement, never
 // resolved to a family member.
 const FRIEND_KIND = new Set(['חבר', 'חברה'])
@@ -92,10 +92,12 @@ export function resolvePersonPhrase(phraseRaw: string | null | undefined): Famil
     const isSibling = kind === 'אח' || kind === 'אחות'
     const isParent = PARENT_MALE.has(kind) || PARENT_FEMALE.has(kind)
     const isExSpouse = EX_SPOUSE_MALE.has(kind) || EX_SPOUSE_FEMALE.has(kind)
+    const isGrandparent = kind === 'סבא' || kind === 'סבתא'
     const wantGender: 'female' | 'male' =
         isSpouse ? (SPOUSE_MALE.has(kind) ? 'male' : 'female')
       : isParent ? (PARENT_MALE.has(kind) ? 'male' : 'female')
       : isExSpouse ? (EX_SPOUSE_MALE.has(kind) ? 'male' : 'female')
+      : isGrandparent ? (kind === 'סבא' ? 'male' : 'female')
       : (kind === 'בת' || kind === 'נכדה' || kind === 'אחות' ? 'female' : 'male')
 
     let candidateHe: string[]
@@ -106,6 +108,20 @@ export function resolvePersonPhrase(phraseRaw: string | null | undefined): Famil
       candidateHe = [...root.parentsHe]
     } else if (isExSpouse) {
       candidateHe = [...root.exSpousesHe]
+    } else if (isGrandparent) {
+      // Grandparent = parent of a parent. Walk up two levels.
+      const seen = new Set<string>()
+      candidateHe = []
+      for (const parentHe of root.parentsHe) {
+        const parent = findNode(parentHe)
+        if (!parent) continue
+        for (const gpHe of parent.parentsHe) {
+          if (!seen.has(gpHe)) {
+            seen.add(gpHe)
+            candidateHe.push(gpHe)
+          }
+        }
+      }
     } else if (kind === 'נכד' || kind === 'נכדה') {
       candidateHe = []
       for (const childHe of root.childrenHe) {

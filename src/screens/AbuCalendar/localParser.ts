@@ -284,12 +284,32 @@ function parseHebrewMinuteWords(after: string): { minutes: number; consumed: str
 }
 
 function extractTime(text: string): TimeExtract {
-  // "חצות" / "בחצות" / "חצות הלילה" → 00:00. Checked before numeric
-  // patterns so that a phrase like "מחר בחצות" never falls through into
-  // the bare-hour branches where 12 could end up.
-  const midnightMatch = text.match(MIDNIGHT_RE)
+  // "רבע אחרי חצות" → 00:15 and "רבע לחצות" → 23:45 must be checked
+  // BEFORE the general midnight pattern, otherwise "חצות" gets caught first.
+  if (/רבע\s+אחרי\s+חצות/.test(text)) {
+    return { time: '00:15', ambiguous: false, consumed: [text.match(/רבע\s+אחרי\s+חצות/)![0]] }
+  }
+  if (/רבע\s+ל-?חצות/.test(text)) {
+    return { time: '23:45', ambiguous: false, consumed: [text.match(/רבע\s+ל-?חצות/)![0]] }
+  }
+
+  // "חצות" / "בחצות" / "חצות הלילה" → 00:00, with optional fraction:
+  //   "חצות וחצי" → 00:30, "חצות ורבע" → 00:15.
+  // Checked before numeric patterns so that a phrase like "מחר בחצות"
+  // never falls through into the bare-hour branches where 12 could end up.
+  const midnightFracRe = /(?<![֐-׿])(?:ב)?חצות(?:\s+הלילה)?(\s+(?:וחצי|ורבע|ועשרים|ושלושים|וארבעים|וחמישים|ועשר|וחמש))?(?![֐-׿])/
+  const midnightMatch = text.match(midnightFracRe)
   if (midnightMatch) {
-    return { time: '00:00', ambiguous: false, consumed: [midnightMatch[0]] }
+    let minutes = 0
+    if (midnightMatch[1]) {
+      const fracWord = midnightMatch[1].trim()
+      const fracMap: Record<string, number> = {
+        'וחצי': 30, 'ורבע': 15, 'ועשרים': 20, 'ושלושים': 30,
+        'וארבעים': 40, 'וחמישים': 50, 'ועשר': 10, 'וחמש': 5,
+      }
+      minutes = fracMap[fracWord] ?? 0
+    }
+    return { time: `00:${String(minutes).padStart(2, '0')}`, ambiguous: false, consumed: [midnightMatch[0]] }
   }
 
   // "רבע ל<hour-word>" → (hour-1):45. "רבע לעשר" → 09:45,
