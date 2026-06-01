@@ -13,9 +13,10 @@
  * Never shows for Martita. Never exposes raw transcripts in the normal flow.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import type { VoiceTrace } from './voiceTrace'
 import type { ReminderDraft } from './reminders/types'
+import type { QaRun } from './diagnostics/qaRunTypes'
 
 export const VOICE_DEBUG_LOCALSTORAGE_KEY = 'abu-voice-debug'
 
@@ -182,6 +183,164 @@ export function VoiceDebugPanel({ trace, reminderDraft }: Props) {
       <div data-testid="mic-qa-final-title">finalTitle: {finalTitle ?? '—'}</div>
       <div data-testid="mic-qa-save-allowed">saveAllowed: {saveAllowed}</div>
       <div data-testid="mic-qa-reason">reason: {reason}</div>
+    </div>
+  )
+}
+
+// ─── QA Run Recorder ─────────────────────────────────────────────────
+// Persists every voice attempt as a QaRun in localStorage.
+// Dev-only. Hidden unless QA ON.
+
+const QA_RUNS_KEY = 'abu-calendar-qa-runs'
+const MAX_QA_RUNS = 100
+
+function loadQaRuns(): QaRun[] {
+  try {
+    const raw = localStorage.getItem(QA_RUNS_KEY)
+    if (!raw) return []
+    return JSON.parse(raw) as QaRun[]
+  } catch { return [] }
+}
+
+function saveQaRuns(runs: QaRun[]): void {
+  try {
+    const trimmed = runs.slice(-MAX_QA_RUNS)
+    localStorage.setItem(QA_RUNS_KEY, JSON.stringify(trimmed))
+  } catch { /* ignore */ }
+}
+
+/** Build a QaRun from the current trace + reminderDraft. Call this
+ *  after every voice pipeline completion (success, error, or blocked). */
+export function buildQaRunFromTrace(trace: VoiceTrace, reminderDraft: ReminderDraft | null | undefined, appVersion: string): QaRun {
+  const fr = reminderDraft?.familyResolution
+  const route = trace.semanticRoute ?? (reminderDraft ? 'reminder_create' : 'unknown')
+  let runSaveAllowed = trace.saveAllowed
+  let runSaveBlockReason = trace.saveBlockReason ?? null
+  if (reminderDraft) {
+    if (reminderDraft.ambiguity) { runSaveAllowed = false; runSaveBlockReason = 'ambiguity' }
+    else if (reminderDraft.missingFields?.includes('title')) { runSaveAllowed = false; runSaveBlockReason = 'missing title' }
+    else if (!reminderDraft.dueAt) { runSaveAllowed = false; runSaveBlockReason = 'missing dueAt' }
+    else if (fr?.status === 'ambiguous') { runSaveAllowed = false; runSaveBlockReason = 'family ambiguous' }
+    else { runSaveAllowed = true; runSaveBlockReason = null }
+  }
+
+  return {
+    id: `qa-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    timestamp: new Date().toISOString(),
+    appVersion,
+    rawTranscript: trace.rawTranscript,
+    normalizedTranscript: trace.transcript ?? trace.correctedTranscript,
+    semanticRoute: route,
+    intent: trace.semanticIntent,
+    date: reminderDraft?.displayDateLabel ?? trace.extractedDate ?? null,
+    time: reminderDraft?.displayTimeLabel ?? trace.extractedStartTime ?? null,
+    relationPhrase: fr?.originalPhrase ?? trace.relationPhrase ?? null,
+    resolvedPersonName: fr?.resolvedName ?? trace.resolvedPersonName ?? null,
+    resolvedPersonStatus: fr?.status ?? trace.resolvedPersonStatus ?? null,
+    finalTitle: trace.finalTitle ?? reminderDraft?.title ?? null,
+    confirmationText: null,
+    saveAllowed: runSaveAllowed,
+    saveBlockReason: runSaveBlockReason,
+    cardState: trace.finalVoiceStage,
+    cardTitle: null, cardMainText: null, cardSecondaryText: null, cardActions: null,
+    audioDurationMs: trace.audioDurationMs ?? null,
+    blobSize: trace.blobSize ?? null,
+    chunksCount: trace.chunksCount ?? null,
+    mimeType: trace.mimeType ?? null,
+    stopReason: trace.stopReason ?? null,
+    sttStatus: trace.sttStatus ?? null,
+    transcriptLength: trace.transcriptLength ?? null,
+    normalizedLength: trace.transcript?.length ?? null,
+    noSpeechProb: trace.noSpeechProb ?? null,
+    avgLogprob: trace.avgLogprob ?? null,
+    compressionRatio: trace.compressionRatio ?? null,
+    errorStep: trace.error ?? null,
+    comparisonResult: 'pending',
+  }
+}
+
+export function appendQaRun(run: QaRun): void {
+  const runs = loadQaRuns()
+  runs.push(run)
+  saveQaRuns(runs)
+  notifyDebugChanged()
+}
+
+function copyToClipboard(text: string): void {
+  try {
+    navigator.clipboard.writeText(text).catch(() => {
+      window.prompt('העתיקי:', text)
+    })
+  } catch {
+    window.prompt('העתיקי:', text)
+  }
+}
+
+/** Dev-only QA recorder panel — shows run count + action buttons. */
+export function QaRecorderPanel() {
+  if (!import.meta.env.DEV) return null
+  const enabled = useVoiceDebugEnabled()
+  const [runs, setRuns] = useState<QaRun[]>([])
+
+  const refresh = useCallback(() => { setRuns(loadQaRuns()) }, [])
+  useEffect(() => {
+    refresh()
+    listeners.add(refresh)
+    return () => { listeners.delete(refresh) }
+  }, [refresh])
+
+  if (!enabled) return null
+
+  const last = runs.length > 0 ? runs[runs.length - 1]! : null
+
+  function handleClear() { saveQaRuns([]); refresh() }
+  function handleCopyLast() { if (last) copyToClipboard(JSON.stringify(last, null, 2)) }
+  function handleCopyAll() { copyToClipboard(JSON.stringify(runs, null, 2)) }
+  function handleMarkLast(result: 'pass' | 'fail') {
+    if (!last) return
+    last.comparisonResult = result
+    saveQaRuns(runs)
+    refresh()
+  }
+
+  const btnStyle: React.CSSProperties = {
+    padding: '4px 8px', fontSize: 10, fontFamily: 'monospace', fontWeight: 700,
+    border: '1px solid rgba(201,168,76,0.40)', borderRadius: 6,
+    background: 'rgba(201,168,76,0.10)', color: '#E8C76A', cursor: 'pointer',
+  }
+
+  return (
+    <div
+      data-testid="qa-recorder-panel"
+      dir="ltr"
+      style={{
+        position: 'fixed',
+        bottom: 'calc(30px + env(safe-area-inset-bottom, 0px))',
+        right: 8,
+        zIndex: 9999,
+        padding: '8px 10px',
+        borderRadius: 10,
+        background: 'rgba(8,12,24,0.94)',
+        border: '1px solid rgba(201,168,76,0.40)',
+        color: 'rgba(255,255,255,0.92)',
+        fontFamily: 'monospace',
+        fontSize: 10,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+      }}
+    >
+      <div style={{ fontWeight: 700, color: '#E8C76A', marginBottom: 4 }}>
+        QA RECORDER ({runs.length})
+        {last?.comparisonResult === 'pass' && <span style={{ color: '#4ade80' }}> LAST:PASS</span>}
+        {last?.comparisonResult === 'fail' && <span style={{ color: '#f87171' }}> LAST:FAIL</span>}
+        {last?.comparisonResult === 'pending' && <span style={{ color: '#fbbf24' }}> LAST:?</span>}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+        <button type="button" data-testid="qa-clear" onClick={handleClear} style={btnStyle}>Clear</button>
+        <button type="button" data-testid="qa-copy-last" onClick={handleCopyLast} style={btnStyle}>Copy Last</button>
+        <button type="button" data-testid="qa-copy-all" onClick={handleCopyAll} style={btnStyle}>Copy All JSON</button>
+        <button type="button" data-testid="qa-mark-pass" onClick={() => handleMarkLast('pass')} style={{ ...btnStyle, color: '#4ade80', borderColor: '#4ade80' }}>PASS</button>
+        <button type="button" data-testid="qa-mark-fail" onClick={() => handleMarkLast('fail')} style={{ ...btnStyle, color: '#f87171', borderColor: '#f87171' }}>FAIL</button>
+      </div>
     </div>
   )
 }

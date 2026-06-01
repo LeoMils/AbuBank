@@ -32,6 +32,7 @@ import { transcribeCalendarAudio } from './calendarTranscribe'
 import { normalizeCalendarTranscript } from './calendarTranscriptCorrection'
 import { getSupportedMimeType } from '../AbuAI/service'
 import { createSilenceDetector } from '../../services/voice'
+import { buildQaRunFromTrace, appendQaRun, QaRecorderPanel, isVoiceDebugEnabled, VoiceDebugPanel, VoiceDebugToggle } from './VoiceDebugPanel'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 import { injectSharedKeyframes } from '../../design/animations'
@@ -42,7 +43,7 @@ import { VoiceAddFlow, type VoiceDraft } from './VoiceAddFlow'
 import { sanitizeTitleForSave } from './localParser'
 import { ReminderConfirmCard, ReminderDueEngine, ReminderBoard, createReminder, createDefaultAlertPolicy } from './reminders'
 import type { ReminderDraft } from './reminders'
-import { VoiceDebugPanel, VoiceDebugToggle } from './VoiceDebugPanel'
+// VoiceDebugPanel, VoiceDebugToggle imported above with QA recorder exports
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
 import { PageShell } from '../../components/PageShell'
@@ -124,6 +125,16 @@ export function AbuCalendar() {
     updateTrace({ finalVoiceStage: 'error', error: message, visibleMessage: message }, step)
     setVoiceError(message)
     setVoiceState('error')
+    // QA recorder: log every failure
+    if (isVoiceDebugEnabled()) {
+      appendQaRun(buildQaRunFromTrace(voiceTraceRef.current, null, APP_VERSION.version))
+    }
+  }
+  /** Log a QA run at pipeline-done (non-failure paths). */
+  function logQaRunIfEnabled(draft?: ReminderDraft | null) {
+    if (isVoiceDebugEnabled()) {
+      appendQaRun(buildQaRunFromTrace(voiceTraceRef.current, draft ?? null, APP_VERSION.version))
+    }
   }
 
   // ─── Alert state (persisted) ─────────────────────────────────────────────────
@@ -512,6 +523,7 @@ export function AbuCalendar() {
               saveAllowed: reminderSaveAllowed,
               saveBlockReason: reminderBlockReason,
             }, 'reminder_parsed')
+            logQaRunIfEnabled(draft)
             setReminderDraft(draft)
             setReminderFlowActive(true)
             return
@@ -621,12 +633,14 @@ export function AbuCalendar() {
               }, lang)
               showSuccessToast(successMsg)
               updateTrace({ createResult: `ok:${decision.appointment.id}` }, 'create_finished')
+              logQaRunIfEnabled()
               setStage('success', successMsg)
               return
             }
             case 'needs_am_pm': {
               updateTrace({}, 'needs_am_pm')
               setStage('idle', 'מחכה לאישור בוקר או צהריים.', 'awaiting_am_pm')
+              logQaRunIfEnabled()
               setAmbiguousDraft({
                 title: decision.draft.title,
                 date: decision.draft.date,
@@ -657,6 +671,7 @@ export function AbuCalendar() {
               }
               setVoiceState('parsed')
               setStage('idle', decision.question, 'showing_clarification_question')
+              logQaRunIfEnabled()
               return
             }
             case 'show_confirm_card': {
@@ -678,6 +693,7 @@ export function AbuCalendar() {
               }
               setVoiceState('parsed')
               setStage('idle', 'מחכה לאישור שלך לפני שמירה.', 'awaiting_confirm_tap')
+              logQaRunIfEnabled()
               return
             }
             case 'failed_to_save': {
@@ -1468,6 +1484,7 @@ export function AbuCalendar() {
       )}
 
       <VoiceDebugPanel trace={debugTrace} reminderDraft={reminderDraft} />
+      <QaRecorderPanel />
       <VoiceDebugToggle />
 
       {import.meta.env.DEV && (
