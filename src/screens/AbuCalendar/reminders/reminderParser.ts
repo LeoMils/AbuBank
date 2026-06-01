@@ -6,7 +6,7 @@ import type { ReminderDraft, ReminderCategory, Reminder } from './types'
 
 // Flexible reminder trigger: allows filler words between "צריכה/צריך" and "לזכור".
 const REMINDER_TRIGGERS = /תזכירי\s+לי|תזכרי\s+לי|תזכיר\s+לי|תזכורת|להזכיר\s+לי|אני\s+צריכ[הי](?:\s+\S+){0,3}\s+לזכור/
-const APPOINTMENT_CONTENT = /פגישה\s+עם|תור\s+ל|לקבוע\s+פגישה/
+const APPOINTMENT_CONTENT = /פגישה\s+עם|תור\s+ל|לקבוע\s+פגישה|להיפגש\s+עם|להפגש\s+עם/
 // Verbs that always mean "schedule an appointment".
 // Hebrew word-boundary guards prevent substring matches (e.g. "שים" inside "שלושים").
 const STRONG_APPOINTMENT_VERBS = /(?<![֐-׿])(?:תקבעי|תקבע|קבעי|קבע|אגנד[אה]|תרשמי|תרשום|שימי|שים|תכניסי|תכניס)(?![֐-׿])/
