@@ -188,6 +188,150 @@ export function VoiceDebugPanel({ trace, reminderDraft }: Props) {
   )
 }
 
+// ─── Mic Self-Test ───────────────────────────────────────────────────
+// Standalone diagnostic that tests each step of the recording pipeline.
+
+export function MicSelfTest() {
+  if (!import.meta.env.DEV) return null
+  const enabled = useVoiceDebugEnabled()
+  const [result, setResult] = useState<string | null>(null)
+  const [running, setRunning] = useState(false)
+  const [open, setOpen] = useState(false)
+
+  if (!enabled) return null
+
+  if (!open) {
+    return (
+      <button type="button" data-testid="mic-self-test-trigger" onClick={() => { setOpen(true); void doRunTest() }} style={{
+        position: 'fixed', top: 8, left: 8, zIndex: 10002,
+        padding: '4px 10px', fontSize: 10, fontFamily: 'monospace', fontWeight: 700,
+        border: '1px solid rgba(96,165,250,0.50)', borderRadius: 6,
+        background: 'rgba(96,165,250,0.10)', color: '#60a5fa', cursor: 'pointer',
+      }}>Mic Test</button>
+    )
+  }
+
+  async function doRunTest() { setRunning(true); await runTest(); setRunning(false) }
+
+  async function runTest() {
+    setRunning(true)
+    const lines: string[] = []
+    const log = (s: string) => { lines.push(s); setResult(lines.join('\n')) }
+
+    // 1. Secure context
+    log(`secureContext: ${window.isSecureContext}`)
+    log(`protocol: ${window.location.protocol}`)
+
+    // 2. getUserMedia available
+    log(`mediaDevices: ${!!navigator.mediaDevices}`)
+    log(`getUserMedia: ${!!(navigator.mediaDevices?.getUserMedia)}`)
+
+    // 3. MediaRecorder available
+    log(`MediaRecorder: ${typeof MediaRecorder !== 'undefined'}`)
+
+    // 4. Enumerate devices
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const mics = devices.filter(d => d.kind === 'audioinput')
+      log(`micCount: ${mics.length}`)
+    } catch (e) { log(`enumerateDevices: ERROR ${e instanceof Error ? e.name : e}`) }
+
+    // 5. getUserMedia with constraints
+    let stream: MediaStream | null = null
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      })
+      log('getUserMedia(constraints): OK')
+    } catch (e) {
+      const name = e instanceof Error ? e.name : 'unknown'
+      log(`getUserMedia(constraints): FAIL ${name}`)
+      // Fallback
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        log('getUserMedia(bare): OK (fallback)')
+      } catch (e2) {
+        log(`getUserMedia(bare): FAIL ${e2 instanceof Error ? e2.name : e2}`)
+        setRunning(false)
+        return
+      }
+    }
+
+    // 6. Supported MIME
+    const types = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus']
+    const supported = types.filter(t => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t))
+    log(`supportedMime: ${supported.join(', ') || 'none (default)'}`)
+
+    // 7. Create MediaRecorder
+    let mr: MediaRecorder
+    try {
+      mr = supported.length > 0 ? new MediaRecorder(stream, { mimeType: supported[0]! }) : new MediaRecorder(stream)
+      log(`MediaRecorder created: ${mr.mimeType || 'default'}`)
+    } catch (e) {
+      log(`MediaRecorder: FAIL ${e instanceof Error ? e.name : e}`)
+      stream.getTracks().forEach(t => t.stop())
+      setRunning(false)
+      return
+    }
+
+    // 8. Start with timeslice
+    const chunks: Blob[] = []
+    mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
+    try {
+      mr.start(250)
+      log('start(250): OK')
+    } catch {
+      try { mr.start(); log('start(): OK (no timeslice)') } catch (e) {
+        log(`start: FAIL ${e instanceof Error ? e.name : e}`)
+        stream.getTracks().forEach(t => t.stop())
+        setRunning(false)
+        return
+      }
+    }
+
+    // 9. Record for 1.5s then stop
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    try { mr.stop(); log('stop: OK') } catch (e) { log(`stop: FAIL ${e instanceof Error ? e.name : e}`) }
+
+    // Wait for onstop
+    await new Promise(resolve => { mr.onstop = resolve; setTimeout(resolve, 2000) })
+    stream.getTracks().forEach(t => t.stop())
+
+    log(`chunks: ${chunks.length}`)
+    const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' })
+    log(`blobSize: ${blob.size}`)
+    log(`blobType: ${blob.type}`)
+    log(blob.size > 1000 ? 'RESULT: MIC OK' : 'RESULT: MIC PROBLEM — blob too small')
+    setRunning(false)
+  }
+
+  return (
+    <div data-testid="mic-self-test" style={{
+      position: 'fixed', top: 'calc(50% - 120px)', left: 8, right: 8, zIndex: 10002,
+      padding: '12px', borderRadius: 12,
+      background: 'rgba(8,12,24,0.97)', border: '1.5px solid rgba(96,165,250,0.50)',
+      fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.90)',
+      lineHeight: 1.6, whiteSpace: 'pre-wrap', maxHeight: '50vh', overflow: 'auto',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+    }}>
+      <div style={{ fontWeight: 700, color: '#60a5fa', marginBottom: 4 }}>MIC SELF-TEST</div>
+      {running ? 'Running...' : result ?? 'Starting...'}
+      <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+        <button type="button" data-testid="mic-self-test-rerun" onClick={() => void doRunTest()} disabled={running} style={{
+          padding: '6px 12px', fontSize: 11, fontFamily: 'monospace',
+          border: '1px solid rgba(96,165,250,0.4)', borderRadius: 6,
+          background: 'rgba(96,165,250,0.1)', color: '#60a5fa', cursor: running ? 'wait' : 'pointer',
+        }}>Rerun</button>
+        <button type="button" data-testid="mic-self-test-close" onClick={() => { setOpen(false); setResult(null) }} style={{
+          padding: '6px 12px', fontSize: 11, fontFamily: 'monospace',
+          border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6,
+          background: 'transparent', color: 'rgba(255,255,255,0.5)', cursor: 'pointer',
+        }}>Close</button>
+      </div>
+    </div>
+  )
+}
+
 // ─── QA Run Recorder ─────────────────────────────────────────────────
 // Persists every voice attempt as a QaRun in localStorage.
 // Dev-only. Hidden unless QA ON.

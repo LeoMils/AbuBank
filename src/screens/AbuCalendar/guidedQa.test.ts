@@ -11,6 +11,7 @@ import fs from 'fs'
 import path from 'path'
 
 const SRC = fs.readFileSync(path.resolve(__dirname, 'VoiceDebugPanel.tsx'), 'utf8')
+const IDX = fs.readFileSync(path.resolve(__dirname, 'index.tsx'), 'utf8')
 
 describe('guided QA — internal record button', () => {
   it('has an internal record button with mic emoji', () => {
@@ -131,5 +132,78 @@ describe('guided QA — end state and misc', () => {
     const matches = SRC.match(/minHeight:\s*5[6-9]|minHeight:\s*60/g)
     expect(matches).not.toBeNull()
     expect(matches!.length).toBeGreaterThanOrEqual(5)
+  })
+})
+
+describe('guided QA — mic recording fix (P0 blocker)', () => {
+  it('guided QA has internal record button with 🎤', () => {
+    expect(SRC.includes('guided-qa-record-btn')).toBe(true)
+    expect(SRC.includes('לחץ כאן והקלט את המשפט')).toBe(true)
+  })
+
+  it('does NOT tell user to press external hidden mic', () => {
+    expect(SRC.includes('1. לחץ על המיקרופון')).toBe(false)
+    expect(SRC.includes('לחץ על המיקרופון ואז תגיד')).toBe(false)
+  })
+
+  it('QaRecorderPanel hidden while guided QA active', () => {
+    expect(SRC.includes('_guidedQaActive')).toBe(true)
+    expect(SRC.includes('if (!enabled || _guidedQaActive) return null')).toBe(true)
+  })
+
+  it('record button minHeight >= 56px', () => {
+    expect(SRC.includes('guided-qa-record-btn')).toBe(true)
+    // record button uses minHeight: 60
+    expect(SRC.includes('minHeight: 60')).toBe(true)
+  })
+})
+
+describe('recording start — iOS Safari fallback chain', () => {
+  it('getUserMedia falls back from constraints to bare audio', () => {
+    expect(IDX.includes('constraintsFallback = true')).toBe(true)
+    expect(IDX.includes("getUserMedia({ audio: true })")).toBe(true)
+  })
+
+  it('MediaRecorder creation falls back to no mimeType', () => {
+    expect(IDX.includes('MediaRecorder creation failed')).toBe(true)
+    expect(IDX.includes('mediarecorder_failed')).toBe(true)
+  })
+
+  it('mr.start() falls back from timeslice to no-timeslice', () => {
+    expect(IDX.includes('mr.start(250)')).toBe(true)
+    expect(IDX.includes('mr.start()')).toBe(true)
+    expect(IDX.includes('recorder_start_failed')).toBe(true)
+  })
+
+  it('error messages include actual error name for diagnosis', () => {
+    // getUserMedia errors now include the error name
+    expect(IDX.includes('getUserMedia_failed:')).toBe(true)
+    // All catch blocks surface error name
+    expect(IDX.includes("err.name : 'unknown'")).toBe(true)
+  })
+})
+
+describe('mic self-test diagnostic', () => {
+  it('MicSelfTest component exists', () => {
+    expect(SRC.includes('export function MicSelfTest')).toBe(true)
+    expect(SRC.includes('mic-self-test')).toBe(true)
+  })
+
+  it('tests secure context + getUserMedia + MediaRecorder + start/stop', () => {
+    expect(SRC.includes('secureContext')).toBe(true)
+    expect(SRC.includes('getUserMedia(constraints)')).toBe(true)
+    expect(SRC.includes('getUserMedia(bare)')).toBe(true)
+    expect(SRC.includes('MediaRecorder created')).toBe(true)
+    expect(SRC.includes('start(250)')).toBe(true)
+    expect(SRC.includes('RESULT: MIC OK')).toBe(true)
+    expect(SRC.includes('RESULT: MIC PROBLEM')).toBe(true)
+  })
+
+  it('MicSelfTest rendered in index.tsx', () => {
+    expect(IDX.includes('<MicSelfTest')).toBe(true)
+  })
+
+  it('hidden when QA OFF', () => {
+    expect(SRC.includes("if (!import.meta.env.DEV) return null")).toBe(true)
   })
 })

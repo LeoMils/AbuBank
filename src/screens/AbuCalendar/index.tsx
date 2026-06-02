@@ -32,7 +32,7 @@ import { transcribeCalendarAudio } from './calendarTranscribe'
 import { normalizeCalendarTranscript } from './calendarTranscriptCorrection'
 import { getSupportedMimeType } from '../AbuAI/service'
 import { createSilenceDetector } from '../../services/voice'
-import { buildQaRunFromTrace, appendQaRun, QaRecorderPanel, GuidedMicQaPanel, isVoiceDebugEnabled, VoiceDebugPanel, VoiceDebugToggle } from './VoiceDebugPanel'
+import { buildQaRunFromTrace, appendQaRun, QaRecorderPanel, GuidedMicQaPanel, MicSelfTest, isVoiceDebugEnabled, VoiceDebugPanel, VoiceDebugToggle } from './VoiceDebugPanel'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 import { injectSharedKeyframes } from '../../design/animations'
@@ -379,17 +379,58 @@ export function AbuCalendar() {
       return
     }
     try {
-      // AbuAI-grade audio constraints: echo cancellation + noise
-      // suppression + auto gain. Bare { audio: true } produced noisy
-      // blobs that Whisper mis-transcribed in phone QA.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      })
+      // ── getUserMedia with fallback chain ──────────────────────────
+      // Try AbuAI-grade constraints first; fall back to bare { audio: true }
+      // if the device rejects constraints (iOS OverconstrainedError).
+      let stream: MediaStream
+      let constraintsFallback = false
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        })
+      } catch (constraintErr) {
+        // Constraints rejected — try bare audio (common on older iOS)
+        constraintsFallback = true
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        } catch (bareErr) {
+          // Both failed — surface the actual error
+          const name = bareErr instanceof Error ? bareErr.name : 'unknown'
+          const message = bareErr instanceof Error ? bareErr.message : String(bareErr)
+          updateTrace({ error: `getUserMedia_failed: ${name}: ${message}` }, `getusermedia_failed:${name}`)
+          const friendly = mediateVoiceCaptureError(bareErr, 'permission_or_device')
+          setVoiceFailure(`${friendly}\n(${name})`, `getusermedia_failed:${name}:${message.slice(0, 40)}`)
+          return
+        }
+      }
+
       const mimeType = getSupportedMimeType()
       const startedAt = new Date().toISOString()
       recordingStartTimeRef.current = Date.now()
-      updateTrace({ mimeType: mimeType || '(default)', startedAt }, `recording_started mime:${mimeType || 'default'}`)
-      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      updateTrace({
+        mimeType: mimeType || '(default)',
+        startedAt,
+        ...(constraintsFallback ? { error: 'constraints_fallback:bare_audio' } : {}),
+      }, `recording_started mime:${mimeType || 'default'}${constraintsFallback ? ' FALLBACK:bare' : ''}`)
+
+      // ── MediaRecorder creation with fallback ─────────────────────
+      let mr: MediaRecorder
+      try {
+        mr = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream)
+      } catch (mrErr) {
+        // MediaRecorder creation failed — try without mimeType
+        try {
+          mr = new MediaRecorder(stream)
+        } catch (mrErr2) {
+          stream.getTracks().forEach(t => t.stop())
+          const name = mrErr2 instanceof Error ? mrErr2.name : 'unknown'
+          const message = mrErr2 instanceof Error ? mrErr2.message : String(mrErr2)
+          setVoiceFailure(`לא הצלחתי להתחיל הקלטה.\n(${name}: ${message.slice(0, 50)})`, `mediarecorder_failed:${name}`)
+          return
+        }
+      }
       mediaRecorderRef.current = mr
       chunksRef.current = []
       mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
@@ -767,13 +808,28 @@ export function AbuCalendar() {
           setVoiceFailure('משהו השתבש בעיבוד ההקלטה. נסי שוב.', `onstop_threw:${m.slice(0, 50)}`)
         }
       }
-      mr.start(250) // 250ms timeslice for chunk-count diagnostics
+      // Start recording — try timeslice first, fall back to no-timeslice
+      // (iOS Safari may not support timeslice).
+      try {
+        mr.start(250)
+      } catch {
+        try { mr.start() } catch (startErr) {
+          stream.getTracks().forEach(t => t.stop())
+          cleanupRecordingRefs()
+          const name = startErr instanceof Error ? startErr.name : 'unknown'
+          const message = startErr instanceof Error ? startErr.message : String(startErr)
+          setVoiceFailure(`לא הצלחתי להתחיל הקלטה.\n(${name}: ${message.slice(0, 50)})`, `recorder_start_failed:${name}`)
+          return
+        }
+      }
       setIsRecording(true)
       setVoiceState('recording')
       setStage('recording', 'אני מקשיבה...')
     } catch (err) {
+      const name = err instanceof Error ? err.name : 'unknown'
+      const message = err instanceof Error ? err.message : String(err)
       const msg = mediateVoiceCaptureError(err, 'permission_or_device')
-      setVoiceFailure(msg, `getusermedia_failed:${err instanceof Error ? err.name : 'unknown'}`)
+      setVoiceFailure(`${msg}\n(${name}: ${message.slice(0, 60)})`, `getusermedia_failed:${name}:${message.slice(0, 40)}`)
     }
   }
 
@@ -1484,6 +1540,7 @@ export function AbuCalendar() {
       )}
 
       <VoiceDebugPanel trace={debugTrace} reminderDraft={reminderDraft} />
+      <MicSelfTest />
       <QaRecorderPanel />
       <GuidedMicQaPanel onRecord={() => void handleVoiceRecord()} voiceState={voiceState} isRecording={isRecording} />
       <VoiceDebugToggle />

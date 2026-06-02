@@ -24,13 +24,11 @@ describe('mic capture — AbuAI-grade audio constraints', () => {
     expect(INDEX.includes('autoGainControl: true')).toBe(true)
   })
 
-  it('does NOT use bare { audio: true } for calendar recording', () => {
-    // The only getUserMedia call should be the one with constraints.
-    // Count occurrences of getUserMedia({ audio: true }) vs
-    // getUserMedia({ audio: { ... } })
-    const barePattern = /getUserMedia\(\{\s*audio:\s*true\s*\}\)/g
-    const matches = INDEX.match(barePattern)
-    expect(matches).toBeNull()
+  it('bare { audio: true } is only used as a fallback, never as the primary path', () => {
+    // Primary path uses constraints; bare audio is the fallback for iOS.
+    // The fallback is inside a catch block labeled "constraintsFallback".
+    expect(INDEX.includes('constraintsFallback = true')).toBe(true)
+    expect(INDEX.includes('echoCancellation: true')).toBe(true)
   })
 })
 
