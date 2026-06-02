@@ -184,6 +184,12 @@ export function VoiceDebugPanel({ trace, reminderDraft }: Props) {
       <div data-testid="mic-qa-final-title">finalTitle: {finalTitle ?? '—'}</div>
       <div data-testid="mic-qa-save-allowed">saveAllowed: {saveAllowed}</div>
       <div data-testid="mic-qa-reason">reason: {reason}</div>
+      {/* Mic startup diagnostics — show error details when recording fails */}
+      {trace?.error && (
+        <div data-testid="mic-qa-error" style={{ marginTop: 6, padding: '4px 6px', borderRadius: 4, background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.25)', whiteSpace: 'pre-wrap', fontSize: 10, color: '#fca5a5' }}>
+          {trace.error}
+        </div>
+      )}
     </div>
   )
 }

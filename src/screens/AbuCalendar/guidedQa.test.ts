@@ -165,7 +165,7 @@ describe('recording start — iOS Safari fallback chain', () => {
   })
 
   it('MediaRecorder creation falls back to no mimeType', () => {
-    expect(IDX.includes('MediaRecorder creation failed')).toBe(true)
+    expect(IDX.includes("MediaRecorder(bare) FAIL")).toBe(true)
     expect(IDX.includes('mediarecorder_failed')).toBe(true)
   })
 

@@ -374,37 +374,67 @@ export function AbuCalendar() {
     const fresh = createInitialTrace(APP_VERSION.version)
     voiceTraceRef.current = fresh
     setVoiceError(null)
+
+    // ── MIC STARTUP DIAGNOSTICS ────────────────────────────────────
+    // Log every step so iOS Safari failures are visible in trace + console.
+    const micDiag: string[] = []
+    const dlog = (s: string) => { micDiag.push(s); console.log(`[mic-diag] ${s}`) }
+    dlog(`secureContext: ${window.isSecureContext}`)
+    dlog(`protocol: ${location.protocol}`)
+    dlog(`host: ${location.host}`)
+    dlog(`mediaDevices: ${!!navigator.mediaDevices}`)
+    dlog(`getUserMedia: ${!!(navigator.mediaDevices?.getUserMedia)}`)
+    dlog(`MediaRecorder: ${typeof MediaRecorder !== 'undefined'}`)
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const reason = !window.isSecureContext
+        ? 'המיקרופון דורש HTTPS. פתח את הכתובת עם https:// או השתמש ב-localhost.'
+        : 'הדפדפן לא תומך בגישה למיקרופון.'
+      dlog(`BLOCKED: mediaDevices unavailable. secureContext=${window.isSecureContext}`)
+      updateTrace({ error: `mic_blocked: ${micDiag.join(' | ')}` }, 'mic_startup_blocked')
+      setVoiceFailure(`${reason}\n\n${micDiag.join('\n')}`, 'media_devices_unavailable')
+      return
+    }
+
     if (typeof MediaRecorder === 'undefined') {
-      setVoiceFailure('הקלטה קולית לא נתמכת בדפדפן הזה.', 'media_recorder_unsupported')
+      dlog('BLOCKED: MediaRecorder undefined')
+      setVoiceFailure(`הקלטה קולית לא נתמכת בדפדפן הזה.\n\n${micDiag.join('\n')}`, 'media_recorder_unsupported')
       return
     }
     try {
       // ── getUserMedia with fallback chain ──────────────────────────
-      // Try AbuAI-grade constraints first; fall back to bare { audio: true }
-      // if the device rejects constraints (iOS OverconstrainedError).
       let stream: MediaStream
       let constraintsFallback = false
+      dlog('getUserMedia(constraints) starting...')
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         })
+        dlog(`getUserMedia(constraints) OK, tracks=${stream.getTracks().length}`)
       } catch (constraintErr) {
-        // Constraints rejected — try bare audio (common on older iOS)
+        const cName = constraintErr instanceof Error ? constraintErr.name : 'unknown'
+        const cMsg = constraintErr instanceof Error ? constraintErr.message : String(constraintErr)
+        dlog(`getUserMedia(constraints) FAIL: ${cName}: ${cMsg}`)
         constraintsFallback = true
+        dlog('getUserMedia(bare) starting...')
         try {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          dlog(`getUserMedia(bare) OK, tracks=${stream.getTracks().length}`)
         } catch (bareErr) {
-          // Both failed — surface the actual error
           const name = bareErr instanceof Error ? bareErr.name : 'unknown'
           const message = bareErr instanceof Error ? bareErr.message : String(bareErr)
-          updateTrace({ error: `getUserMedia_failed: ${name}: ${message}` }, `getusermedia_failed:${name}`)
+          const stack = bareErr instanceof Error ? bareErr.stack?.slice(0, 200) : ''
+          dlog(`getUserMedia(bare) FAIL: ${name}: ${message}`)
+          dlog(`stack: ${stack}`)
+          updateTrace({ error: `getUserMedia_failed: ${name}: ${message}\n${micDiag.join('\n')}` }, `getusermedia_failed:${name}`)
           const friendly = mediateVoiceCaptureError(bareErr, 'permission_or_device')
-          setVoiceFailure(`${friendly}\n(${name})`, `getusermedia_failed:${name}:${message.slice(0, 40)}`)
+          setVoiceFailure(`${friendly}\n(${name}: ${message})\n\n${micDiag.join('\n')}`, `getusermedia_failed:${name}:${message.slice(0, 40)}`)
           return
         }
       }
 
       const mimeType = getSupportedMimeType()
+      dlog(`mimeType: ${mimeType || '(default)'}`)
       const startedAt = new Date().toISOString()
       recordingStartTimeRef.current = Date.now()
       updateTrace({
@@ -415,19 +445,24 @@ export function AbuCalendar() {
 
       // ── MediaRecorder creation with fallback ─────────────────────
       let mr: MediaRecorder
+      dlog(`MediaRecorder(stream, {mimeType: ${mimeType}}) creating...`)
       try {
         mr = mimeType
           ? new MediaRecorder(stream, { mimeType })
           : new MediaRecorder(stream)
+        dlog(`MediaRecorder created OK, state=${mr.state}, mimeType=${mr.mimeType}`)
       } catch (mrErr) {
-        // MediaRecorder creation failed — try without mimeType
+        const n = mrErr instanceof Error ? mrErr.name : 'unknown'
+        dlog(`MediaRecorder(mimeType) FAIL: ${n}: ${mrErr instanceof Error ? mrErr.message : mrErr}`)
         try {
           mr = new MediaRecorder(stream)
+          dlog(`MediaRecorder(bare) OK, state=${mr.state}`)
         } catch (mrErr2) {
           stream.getTracks().forEach(t => t.stop())
           const name = mrErr2 instanceof Error ? mrErr2.name : 'unknown'
           const message = mrErr2 instanceof Error ? mrErr2.message : String(mrErr2)
-          setVoiceFailure(`לא הצלחתי להתחיל הקלטה.\n(${name}: ${message.slice(0, 50)})`, `mediarecorder_failed:${name}`)
+          dlog(`MediaRecorder(bare) FAIL: ${name}: ${message}`)
+          setVoiceFailure(`לא הצלחתי להתחיל הקלטה.\n(${name}: ${message.slice(0, 50)})\n\n${micDiag.join('\n')}`, `mediarecorder_failed:${name}`)
           return
         }
       }
@@ -443,9 +478,8 @@ export function AbuCalendar() {
         }
       }, MAX_RECORDING_MS)
 
-      // Silence detection: auto-stop after 2.5s of silence following
-      // speech. Uses the same AbuAI-grade detector (AudioContext +
-      // AnalyserNode + noise floor calibration).
+      // Silence detection
+      dlog('createSilenceDetector starting...')
       try {
         silenceDetectorRef.current = createSilenceDetector(stream, () => {
           if (mediaRecorderRef.current?.state === 'recording') {
@@ -458,8 +492,9 @@ export function AbuCalendar() {
           maxMs: MAX_RECORDING_MS,
           minActiveMs: SILENCE_MIN_ACTIVE_MS,
         })
-      } catch {
-        // AudioContext not available — fall back to manual stop + max timer only.
+        dlog('silenceDetector OK')
+      } catch (sdErr) {
+        dlog(`silenceDetector FAIL: ${sdErr instanceof Error ? sdErr.name : sdErr}`)
       }
 
       mr.onstop = async () => {
@@ -809,27 +844,37 @@ export function AbuCalendar() {
         }
       }
       // Start recording — try timeslice first, fall back to no-timeslice
-      // (iOS Safari may not support timeslice).
+      dlog('mr.start(250) starting...')
       try {
         mr.start(250)
-      } catch {
-        try { mr.start() } catch (startErr) {
+        dlog('mr.start(250) OK')
+      } catch (ts250Err) {
+        dlog(`mr.start(250) FAIL: ${ts250Err instanceof Error ? ts250Err.name : ts250Err}`)
+        try {
+          mr.start()
+          dlog('mr.start() OK (no timeslice)')
+        } catch (startErr) {
           stream.getTracks().forEach(t => t.stop())
           cleanupRecordingRefs()
           const name = startErr instanceof Error ? startErr.name : 'unknown'
           const message = startErr instanceof Error ? startErr.message : String(startErr)
-          setVoiceFailure(`לא הצלחתי להתחיל הקלטה.\n(${name}: ${message.slice(0, 50)})`, `recorder_start_failed:${name}`)
+          dlog(`mr.start() FAIL: ${name}: ${message}`)
+          setVoiceFailure(`לא הצלחתי להתחיל הקלטה.\n(${name}: ${message.slice(0, 50)})\n\n${micDiag.join('\n')}`, `recorder_start_failed:${name}`)
           return
         }
       }
+      dlog('RECORDING STARTED SUCCESSFULLY')
       setIsRecording(true)
       setVoiceState('recording')
       setStage('recording', 'אני מקשיבה...')
     } catch (err) {
       const name = err instanceof Error ? err.name : 'unknown'
       const message = err instanceof Error ? err.message : String(err)
+      const stack = err instanceof Error ? err.stack?.slice(0, 300) : ''
+      dlog(`OUTER CATCH: ${name}: ${message}`)
+      dlog(`stack: ${stack}`)
       const msg = mediateVoiceCaptureError(err, 'permission_or_device')
-      setVoiceFailure(`${msg}\n(${name}: ${message.slice(0, 60)})`, `getusermedia_failed:${name}:${message.slice(0, 40)}`)
+      setVoiceFailure(`${msg}\n(${name}: ${message})\n\n${micDiag.join('\n')}`, `outer_catch:${name}:${message.slice(0, 40)}`)
     }
   }
 
