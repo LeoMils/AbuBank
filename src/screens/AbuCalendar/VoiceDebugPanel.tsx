@@ -291,7 +291,8 @@ function copyToClipboard(text: string): void {
   }
 }
 
-/** Dev-only QA recorder panel — shows run count + action buttons. */
+/** Dev-only QA recorder panel — shows run count + action buttons.
+ *  Hidden while Guided QA is active to avoid covering the mic/actions. */
 export function QaRecorderPanel() {
   if (!import.meta.env.DEV) return null
   const enabled = useVoiceDebugEnabled()
@@ -304,7 +305,7 @@ export function QaRecorderPanel() {
     return () => { listeners.delete(refresh) }
   }, [refresh])
 
-  if (!enabled) return null
+  if (!enabled || _guidedQaActive) return null
 
   const last = runs.length > 0 ? runs[runs.length - 1]! : null
 
@@ -364,7 +365,11 @@ export function QaRecorderPanel() {
 // States: ready → waiting_for_result → result_ready → marked → (next → ready)
 // Operator cannot misuse: buttons disabled until their prerequisite state.
 
-type GuidedState = 'ready' | 'waiting_for_result' | 'result_ready' | 'marked' | 'done'
+type GuidedState = 'ready' | 'recording' | 'processing' | 'result_ready' | 'marked' | 'done'
+
+// Module-level flag so QaRecorderPanel can hide itself during guided QA.
+let _guidedQaActive = false
+export function isGuidedQaActive(): boolean { return _guidedQaActive }
 
 function findLastRunForExpected(expectedId: string): QaRun | null {
   const runs = loadQaRuns()
@@ -393,7 +398,11 @@ function formatActualSummary(run: QaRun): string {
   return parts.join(' · ')
 }
 
-export function GuidedMicQaPanel() {
+export function GuidedMicQaPanel({ onRecord, voiceState, isRecording }: {
+  onRecord: () => void
+  voiceState: string
+  isRecording: boolean
+}) {
   if (!import.meta.env.DEV) return null
   const enabled = useVoiceDebugEnabled()
   const [idx, setIdx] = useState(0)
@@ -405,6 +414,9 @@ export function GuidedMicQaPanel() {
   const total = RELEASE_CANDIDATE_EXPECTATIONS.length
   const exp = RELEASE_CANDIDATE_EXPECTATIONS[idx]
 
+  // Track guided QA active for hiding QaRecorderPanel
+  useEffect(() => { _guidedQaActive = active; notifyDebugChanged(); return () => { _guidedQaActive = false } }, [active])
+
   // Set expected ID when phrase changes
   useEffect(() => {
     if (!active) { setCurrentExpected(null, null); return }
@@ -412,14 +424,21 @@ export function GuidedMicQaPanel() {
     else setCurrentExpected(null, null)
   }, [idx, active, exp])
 
+  // Track voiceState to advance from recording → processing → waiting_for_result
+  useEffect(() => {
+    if (!active || state === 'result_ready' || state === 'marked') return
+    if (isRecording) { setState('recording'); return }
+    if (voiceState === 'transcribing' || voiceState === 'parsing') { setState('processing'); return }
+  }, [active, voiceState, isRecording, state])
+
   // Poll for new QA run matching current expectedId
   useEffect(() => {
-    if (!active || state !== 'waiting_for_result' || !exp) return
+    if (!active || !exp) return
+    if (state !== 'processing' && state !== 'recording') return
     const check = () => {
       const run = findLastRunForExpected(exp.id)
       if (run) { setCurrentRun(run); setState('result_ready') }
     }
-    check() // immediate check
     listeners.add(check)
     return () => { listeners.delete(check) }
   }, [active, state, exp])
@@ -475,7 +494,6 @@ export function GuidedMicQaPanel() {
     )
   }
 
-  const handleStartListening = () => { setState('waiting_for_result'); setCurrentRun(null); setMarked(null) }
   const handleMark = (result: 'pass' | 'fail') => {
     if (!currentRun) return
     // Update the run in storage
@@ -541,22 +559,35 @@ export function GuidedMicQaPanel() {
       {/* State-specific content */}
       {state === 'ready' && (
         <div data-testid="guided-qa-instruction">
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 8 }}>
-            לחץ על המיקרופון ואז תגיד בדיוק את המשפט הזה
-          </div>
-          <button type="button" data-testid="guided-qa-ready-btn" onClick={handleStartListening} style={{
-            width: '100%', padding: '14px', fontSize: 16, fontWeight: 700, borderRadius: 12,
-            border: '2px solid rgba(201,168,76,0.50)', background: 'rgba(201,168,76,0.12)',
-            color: '#E8C76A', cursor: 'pointer', minHeight: 56,
+          <button type="button" data-testid="guided-qa-record-btn" onClick={() => { onRecord(); setState('recording') }} style={{
+            width: '100%', padding: '16px', fontSize: 18, fontWeight: 700, borderRadius: 14,
+            border: '2px solid rgba(220,38,38,0.60)', background: 'rgba(220,38,38,0.15)',
+            color: '#fca5a5', cursor: 'pointer', minHeight: 60,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
           }}>
-            1. לחץ על המיקרופון
+            <span style={{ fontSize: 24 }}>🎤</span> לחץ כאן והקלט את המשפט
           </button>
         </div>
       )}
 
-      {state === 'waiting_for_result' && (
-        <div data-testid="guided-qa-waiting" style={{ fontSize: 14, color: 'rgba(251,191,36,0.85)', textAlign: 'center', padding: '10px 0' }}>
-          אני מקשיבה... תגיד את כל המשפט
+      {state === 'recording' && (
+        <div data-testid="guided-qa-recording">
+          <div style={{ fontSize: 16, color: 'rgba(251,191,36,0.95)', textAlign: 'center', padding: '8px 0', fontWeight: 600 }}>
+            🔴 אני מקשיבה... תגיד את כל המשפט
+          </div>
+          <button type="button" data-testid="guided-qa-stop-record" onClick={onRecord} style={{
+            width: '100%', padding: '14px', fontSize: 16, fontWeight: 700, borderRadius: 12,
+            border: '2px solid rgba(251,191,36,0.50)', background: 'rgba(251,191,36,0.10)',
+            color: '#fbbf24', cursor: 'pointer', minHeight: 56, marginTop: 8,
+          }}>
+            סיימתי — עצור הקלטה
+          </button>
+        </div>
+      )}
+
+      {state === 'processing' && (
+        <div data-testid="guided-qa-processing" style={{ fontSize: 15, color: 'rgba(201,168,76,0.85)', textAlign: 'center', padding: '14px 0', fontWeight: 600 }}>
+          בודקת מה הבנתי...
         </div>
       )}
 

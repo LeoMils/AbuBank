@@ -1485,7 +1485,7 @@ export function AbuCalendar() {
 
       <VoiceDebugPanel trace={debugTrace} reminderDraft={reminderDraft} />
       <QaRecorderPanel />
-      <GuidedMicQaPanel />
+      <GuidedMicQaPanel onRecord={() => void handleVoiceRecord()} voiceState={voiceState} isRecording={isRecording} />
       <VoiceDebugToggle />
 
       {import.meta.env.DEV && (
