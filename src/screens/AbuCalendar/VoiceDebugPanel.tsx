@@ -360,101 +360,287 @@ export function QaRecorderPanel() {
   )
 }
 
-/** Guided Mic QA — shows one phrase at a time from the RC expectations. */
+// ─── Guided Mic QA — state-machine flow ─────────────────────────────
+// States: ready → waiting_for_result → result_ready → marked → (next → ready)
+// Operator cannot misuse: buttons disabled until their prerequisite state.
+
+type GuidedState = 'ready' | 'waiting_for_result' | 'result_ready' | 'marked' | 'done'
+
+function findLastRunForExpected(expectedId: string): QaRun | null {
+  const runs = loadQaRuns()
+  for (let i = runs.length - 1; i >= 0; i--) {
+    if (runs[i]!.expectedId === expectedId) return runs[i]!
+  }
+  return null
+}
+
+function formatExpectedSummary(exp: typeof RELEASE_CANDIDATE_EXPECTATIONS[number]): string {
+  const parts: string[] = []
+  parts.push(`route: ${exp.expectedRoute}`)
+  if (exp.expectedTime) parts.push(`time: ${exp.expectedTime}`)
+  if (exp.expectedPersonPolicy !== 'none') parts.push(`person: ${exp.expectedPersonPolicy}`)
+  if (exp.expectedSaveAllowed !== null) parts.push(`save: ${exp.expectedSaveAllowed ? 'yes' : 'no'}`)
+  return parts.join(' · ')
+}
+
+function formatActualSummary(run: QaRun): string {
+  const parts: string[] = []
+  parts.push(`route: ${run.semanticRoute ?? '—'}`)
+  if (run.time) parts.push(`time: ${run.time}`)
+  if (run.resolvedPersonName) parts.push(`person: ${run.resolvedPersonName}`)
+  else if (run.resolvedPersonStatus && run.resolvedPersonStatus !== 'none') parts.push(`person: ${run.resolvedPersonStatus}`)
+  parts.push(`save: ${run.saveAllowed ? 'yes' : 'no'}`)
+  return parts.join(' · ')
+}
+
 export function GuidedMicQaPanel() {
   if (!import.meta.env.DEV) return null
   const enabled = useVoiceDebugEnabled()
   const [idx, setIdx] = useState(0)
   const [active, setActive] = useState(false)
-
-  useEffect(() => {
-    if (!active) { setCurrentExpected(null, null); return }
-    const exp = RELEASE_CANDIDATE_EXPECTATIONS[idx]
-    if (exp) setCurrentExpected(exp.id, exp.utterance)
-    else setCurrentExpected(null, null)
-  }, [idx, active])
-
-  if (!enabled) return null
+  const [state, setState] = useState<GuidedState>('ready')
+  const [currentRun, setCurrentRun] = useState<QaRun | null>(null)
+  const [marked, setMarked] = useState<'pass' | 'fail' | null>(null)
 
   const total = RELEASE_CANDIDATE_EXPECTATIONS.length
   const exp = RELEASE_CANDIDATE_EXPECTATIONS[idx]
+
+  // Set expected ID when phrase changes
+  useEffect(() => {
+    if (!active) { setCurrentExpected(null, null); return }
+    if (exp) setCurrentExpected(exp.id, exp.utterance)
+    else setCurrentExpected(null, null)
+  }, [idx, active, exp])
+
+  // Poll for new QA run matching current expectedId
+  useEffect(() => {
+    if (!active || state !== 'waiting_for_result' || !exp) return
+    const check = () => {
+      const run = findLastRunForExpected(exp.id)
+      if (run) { setCurrentRun(run); setState('result_ready') }
+    }
+    check() // immediate check
+    listeners.add(check)
+    return () => { listeners.delete(check) }
+  }, [active, state, exp])
+
+  if (!enabled) return null
 
   if (!active) {
     return (
       <button
         type="button"
         data-testid="guided-qa-start"
-        onClick={() => { setActive(true); setIdx(0) }}
+        onClick={() => { setActive(true); setIdx(0); setState('ready'); setMarked(null); setCurrentRun(null) }}
         style={{
           position: 'fixed', top: 8, right: 8, zIndex: 10001,
-          padding: '6px 12px', fontSize: 11, fontFamily: 'monospace', fontWeight: 700,
-          border: '1px solid rgba(201,168,76,0.55)', borderRadius: 8,
+          padding: '8px 16px', fontSize: 13, fontFamily: "'Heebo', sans-serif", fontWeight: 700,
+          border: '1.5px solid rgba(201,168,76,0.55)', borderRadius: 10,
           background: 'rgba(201,168,76,0.15)', color: '#E8C76A', cursor: 'pointer',
+          minHeight: 44,
         }}
-      >Start Guided QA</button>
+      >התחל בדיקת מיקרופון</button>
     )
   }
 
-  return (
-    <div
-      data-testid="guided-qa-panel"
-      dir="rtl"
-      style={{
+  // End state — all 30 done
+  if (idx >= total || !exp) {
+    return (
+      <div data-testid="guided-qa-panel" data-guided-state="done" dir="rtl" style={{
         position: 'fixed', top: 8, left: 8, right: 8, zIndex: 10001,
-        padding: '10px 14px', borderRadius: 12,
-        background: 'rgba(8,12,24,0.96)', border: '1.5px solid rgba(201,168,76,0.50)',
-        color: '#E8C76A', fontFamily: "'Heebo', sans-serif",
-        boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <span style={{ fontSize: 12, fontFamily: 'monospace', direction: 'ltr' }}>
-          {idx + 1}/{total} · {exp?.id ?? '—'} · {exp?.criticality ?? '—'}
-        </span>
-        <button
-          type="button"
-          data-testid="guided-qa-stop"
-          onClick={() => setActive(false)}
-          style={{
-            padding: '2px 8px', fontSize: 10, fontFamily: 'monospace',
-            border: '1px solid rgba(255,100,100,0.4)', borderRadius: 4,
-            background: 'rgba(255,100,100,0.1)', color: '#f87171', cursor: 'pointer',
-          }}
-        >Stop</button>
-      </div>
-      <div data-testid="guided-qa-phrase" style={{
-        fontSize: 18, fontWeight: 700, color: 'rgba(255,255,255,0.95)',
-        lineHeight: 1.5, marginBottom: 8, minHeight: 28,
+        padding: '16px', borderRadius: 14,
+        background: 'rgba(8,12,24,0.97)', border: '2px solid rgba(74,222,128,0.50)',
+        fontFamily: "'Heebo', sans-serif", boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+        display: 'flex', flexDirection: 'column', gap: 12,
       }}>
-        {exp?.utterance ?? 'סיימנו!'}
+        <div style={{ fontSize: 20, fontWeight: 700, color: '#4ade80', textAlign: 'center' }}>
+          סיימנו את 30 הבדיקות
+        </div>
+        <button type="button" data-testid="guided-qa-copy-all" onClick={() => copyToClipboard(JSON.stringify(loadQaRuns(), null, 2))} style={{
+          padding: '14px', fontSize: 17, fontWeight: 700, borderRadius: 12,
+          border: '2px solid rgba(201,168,76,0.60)', background: 'rgba(201,168,76,0.15)',
+          color: '#E8C76A', cursor: 'pointer', minHeight: 56,
+        }}>
+          העתק את כל ה-JSON
+        </button>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+          העתק ושלח את זה לניתוח.
+        </div>
+        <button type="button" data-testid="guided-qa-stop" onClick={() => setActive(false)} style={{
+          padding: '8px', fontSize: 13, borderRadius: 8,
+          border: '1px solid rgba(255,255,255,0.15)', background: 'transparent',
+          color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+        }}>סגור</button>
       </div>
-      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>
-        {exp ? 'הקליטי את המשפט ← סמני PASS/FAIL ← לחצי הבא' : 'לחצי Copy All JSON בפאנל הריקורדר'}
+    )
+  }
+
+  const handleStartListening = () => { setState('waiting_for_result'); setCurrentRun(null); setMarked(null) }
+  const handleMark = (result: 'pass' | 'fail') => {
+    if (!currentRun) return
+    // Update the run in storage
+    const runs = loadQaRuns()
+    const target = runs.find(r => r.id === currentRun.id)
+    if (target) { target.comparisonResult = result; saveQaRuns(runs) }
+    setMarked(result)
+    setState('marked')
+    notifyDebugChanged()
+  }
+  const handleNext = () => {
+    setIdx(i => i + 1)
+    setState('ready')
+    setCurrentRun(null)
+    setMarked(null)
+  }
+
+  // Auto-comparison (simple check)
+  let autoPass: boolean | null = null
+  if (currentRun && exp) {
+    const routeMap: Record<string, string> = { appointment: 'appointment_create', reminder: 'reminder_create', schedule_query: 'calendar_query', family_query: 'family_query' }
+    const actualRoute = currentRun.semanticRoute ?? (currentRun.intent ? (routeMap[currentRun.intent] ?? currentRun.intent) : 'unknown')
+    const expectedRoute = exp.expectedRoute
+    let routeOk = actualRoute === expectedRoute
+    let timeOk = !exp.expectedTime || currentRun.time === exp.expectedTime
+    let saveOk = exp.expectedSaveAllowed === null || currentRun.saveAllowed === exp.expectedSaveAllowed
+    autoPass = routeOk && timeOk && saveOk
+  }
+
+  const passFailEnabled = state === 'result_ready'
+  const nextEnabled = state === 'marked'
+
+  const panelBorder = state === 'result_ready' ? (autoPass ? 'rgba(74,222,128,0.50)' : 'rgba(248,113,113,0.50)') : 'rgba(201,168,76,0.50)'
+
+  return (
+    <div data-testid="guided-qa-panel" data-guided-state={state} dir="rtl" style={{
+      position: 'fixed', top: 8, left: 8, right: 8, zIndex: 10001,
+      padding: '14px 16px', borderRadius: 14,
+      background: 'rgba(8,12,24,0.97)', border: `2px solid ${panelBorder}`,
+      fontFamily: "'Heebo', sans-serif", boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      {/* Header: phrase number + stop */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div data-testid="guided-qa-counter" style={{ fontSize: 16, fontWeight: 700, color: '#E8C76A' }}>
+          בדיקה {idx + 1} מתוך {total}
+        </div>
+        <button type="button" data-testid="guided-qa-stop" onClick={() => setActive(false)} style={{
+          padding: '4px 10px', fontSize: 11, fontFamily: 'monospace',
+          border: '1px solid rgba(255,100,100,0.3)', borderRadius: 6,
+          background: 'transparent', color: '#f87171', cursor: 'pointer',
+        }}>עצור</button>
       </div>
-      <div style={{ display: 'flex', gap: 8, direction: 'ltr' }}>
-        <button
-          type="button"
-          data-testid="guided-qa-prev"
-          disabled={idx <= 0}
-          onClick={() => setIdx(i => Math.max(0, i - 1))}
-          style={{
-            padding: '6px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8,
-            border: '1px solid rgba(201,168,76,0.30)', background: 'rgba(201,168,76,0.08)',
-            color: idx <= 0 ? 'rgba(255,255,255,0.2)' : '#E8C76A', cursor: idx <= 0 ? 'default' : 'pointer',
-          }}
-        >← Prev</button>
-        <button
-          type="button"
-          data-testid="guided-qa-next"
-          disabled={idx >= total - 1}
-          onClick={() => setIdx(i => Math.min(total - 1, i + 1))}
-          style={{
-            flex: 1, padding: '6px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8,
-            border: '1px solid rgba(201,168,76,0.50)', background: 'rgba(201,168,76,0.15)',
-            color: idx >= total - 1 ? 'rgba(255,255,255,0.2)' : '#E8C76A',
-            cursor: idx >= total - 1 ? 'default' : 'pointer',
-          }}
-        >Next →</button>
+
+      {/* Phrase to speak */}
+      <div data-testid="guided-qa-phrase" style={{
+        fontSize: 19, fontWeight: 700, color: 'rgba(255,255,255,0.95)',
+        lineHeight: 1.6, padding: '8px 0',
+      }}>
+        {exp.utterance}
+      </div>
+
+      {/* State-specific content */}
+      {state === 'ready' && (
+        <div data-testid="guided-qa-instruction">
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 8 }}>
+            לחץ על המיקרופון ואז תגיד בדיוק את המשפט הזה
+          </div>
+          <button type="button" data-testid="guided-qa-ready-btn" onClick={handleStartListening} style={{
+            width: '100%', padding: '14px', fontSize: 16, fontWeight: 700, borderRadius: 12,
+            border: '2px solid rgba(201,168,76,0.50)', background: 'rgba(201,168,76,0.12)',
+            color: '#E8C76A', cursor: 'pointer', minHeight: 56,
+          }}>
+            1. לחץ על המיקרופון
+          </button>
+        </div>
+      )}
+
+      {state === 'waiting_for_result' && (
+        <div data-testid="guided-qa-waiting" style={{ fontSize: 14, color: 'rgba(251,191,36,0.85)', textAlign: 'center', padding: '10px 0' }}>
+          אני מקשיבה... תגיד את כל המשפט
+        </div>
+      )}
+
+      {(state === 'result_ready' || state === 'marked') && currentRun && (
+        <div data-testid="guided-qa-result">
+          {/* Expected vs Actual */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>מה ציפינו:</div>
+            <div data-testid="guided-qa-expected" style={{ fontSize: 13, fontFamily: 'monospace', color: 'rgba(201,168,76,0.85)', direction: 'ltr', textAlign: 'left' }}>
+              {formatExpectedSummary(exp)}
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>מה יצא בפועל:</div>
+            <div data-testid="guided-qa-actual" style={{ fontSize: 13, fontFamily: 'monospace', color: 'rgba(255,255,255,0.85)', direction: 'ltr', textAlign: 'left' }}>
+              {formatActualSummary(currentRun)}
+            </div>
+          </div>
+
+          {/* Auto comparison hint */}
+          {state === 'result_ready' && autoPass !== null && (
+            <div data-testid="guided-qa-auto-hint" style={{
+              fontSize: 14, fontWeight: 600, padding: '8px 12px', borderRadius: 8, marginBottom: 8,
+              background: autoPass ? 'rgba(74,222,128,0.10)' : 'rgba(248,113,113,0.10)',
+              color: autoPass ? '#4ade80' : '#f87171',
+              border: `1px solid ${autoPass ? 'rgba(74,222,128,0.30)' : 'rgba(248,113,113,0.30)'}`,
+            }}>
+              {autoPass
+                ? 'נראה תקין — אם גם המסך נראה נכון, לחץ PASS'
+                : 'יש פער — בדוק וסמן FAIL'}
+            </div>
+          )}
+
+          {/* Marked state */}
+          {state === 'marked' && marked && (
+            <div data-testid="guided-qa-marked" style={{
+              fontSize: 15, fontWeight: 700, textAlign: 'center', padding: '8px',
+              color: marked === 'pass' ? '#4ade80' : '#f87171',
+            }}>
+              {marked === 'pass' ? 'סומן PASS' : 'סומן FAIL'}
+              {marked === 'fail' && (
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: 400, marginTop: 4 }}>
+                  אפשר להמשיך. בסוף נעתיק JSON וננתח הכול.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* PASS / FAIL buttons — disabled until result_ready */}
+      {(state === 'result_ready') && (
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button type="button" data-testid="guided-qa-pass" disabled={!passFailEnabled} onClick={() => handleMark('pass')} style={{
+            flex: 1, padding: '14px', fontSize: 17, fontWeight: 700, borderRadius: 12,
+            border: '2px solid rgba(74,222,128,0.50)', background: passFailEnabled ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.03)',
+            color: passFailEnabled ? '#4ade80' : 'rgba(255,255,255,0.15)', cursor: passFailEnabled ? 'pointer' : 'not-allowed',
+            minHeight: 56,
+          }}>PASS</button>
+          <button type="button" data-testid="guided-qa-fail" disabled={!passFailEnabled} onClick={() => handleMark('fail')} style={{
+            flex: 1, padding: '14px', fontSize: 17, fontWeight: 700, borderRadius: 12,
+            border: '2px solid rgba(248,113,113,0.50)', background: passFailEnabled ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.03)',
+            color: passFailEnabled ? '#f87171' : 'rgba(255,255,255,0.15)', cursor: passFailEnabled ? 'pointer' : 'not-allowed',
+            minHeight: 56,
+          }}>FAIL</button>
+        </div>
+      )}
+
+      {/* Next button — disabled until marked */}
+      {state === 'marked' && (
+        <button type="button" data-testid="guided-qa-next" onClick={handleNext} style={{
+          width: '100%', padding: '14px', fontSize: 16, fontWeight: 700, borderRadius: 12,
+          border: '2px solid rgba(201,168,76,0.50)', background: 'rgba(201,168,76,0.15)',
+          color: '#E8C76A', cursor: 'pointer', minHeight: 56,
+        }}>
+          הבא →
+        </button>
+      )}
+
+      {/* Help line — always visible */}
+      <div data-testid="guided-qa-help" style={{
+        fontSize: 11, color: 'rgba(255,255,255,0.35)', textAlign: 'center',
+        borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 8,
+        direction: 'ltr', fontFamily: 'monospace',
+      }}>
+        הסדר: מיקרופון → לדבר → לבדוק תוצאה → PASS/FAIL → Next
       </div>
     </div>
   )
