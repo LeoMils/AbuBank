@@ -169,6 +169,61 @@ async function edgeTTS(text: string, voice: string): Promise<Buffer> {
   })
 }
 
+/**
+ * Dev-only QA log receiver — phone browser POSTs QA runs here,
+ * server writes them to tmp/abu-calendar-qa/latest.json (+ timestamped).
+ * No clipboard needed on mobile.
+ */
+function qaLogPlugin(): Plugin {
+  const QA_DIR = path.resolve(process.cwd(), 'tmp', 'abu-calendar-qa')
+  return {
+    name: 'qa-log-receiver',
+    enforce: 'pre',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== '/__abu_calendar_qa_log' || req.method !== 'POST') return next()
+        try {
+          const chunks: Buffer[] = []
+          for await (const chunk of req) chunks.push(Buffer.from(chunk))
+          const body = Buffer.concat(chunks).toString('utf8')
+          const data = JSON.parse(body)
+
+          fs.mkdirSync(QA_DIR, { recursive: true })
+          const now = new Date()
+          const ts = now.toISOString().replace(/[:.]/g, '-').slice(0, 19)
+          const latestPath = path.join(QA_DIR, 'latest.json')
+          const stampedPath = path.join(QA_DIR, `run-${ts}.json`)
+          const content = JSON.stringify(data, null, 2)
+          fs.writeFileSync(latestPath, content)
+          fs.writeFileSync(stampedPath, content)
+
+          const count = Array.isArray(data.runs) ? data.runs.length : 0
+          console.log(`[qa-log] Saved ${count} runs → ${stampedPath}`)
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+          res.end(JSON.stringify({ ok: true, path: stampedPath, count }))
+        } catch (e) {
+          console.error('[qa-log] Error:', e)
+          res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+          res.end(JSON.stringify({ ok: false, error: String(e) }))
+        }
+      })
+      // CORS preflight for the QA endpoint
+      server.middlewares.use((req, res, next) => {
+        if (req.url === '/__abu_calendar_qa_log' && req.method === 'OPTIONS') {
+          res.writeHead(204, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+          })
+          res.end()
+          return
+        }
+        next()
+      })
+    },
+  }
+}
+
 function ttsProxyPlugin(): Plugin {
   return {
     name: 'tts-proxy',
@@ -260,6 +315,7 @@ function ttsProxyPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [
+    qaLogPlugin(),
     ttsProxyPlugin(),
     react(),
     VitePWA({

@@ -423,6 +423,52 @@ export function appendQaRun(run: QaRun): void {
   runs.push(run)
   saveQaRuns(runs)
   notifyDebugChanged()
+  // Auto-upload to dev server (non-blocking)
+  void sendQaRunsToDevServer(runs)
+}
+
+// ─── Auto-save to dev server ─────────────────────────────────────────
+// POSTs all QA runs to /__abu_calendar_qa_log on the Vite dev server.
+// Server writes to tmp/abu-calendar-qa/latest.json. No clipboard needed.
+
+export type QaUploadStatus = 'idle' | 'uploading' | 'saved' | 'failed'
+let _qaUploadStatus: QaUploadStatus = 'idle'
+let _qaLastSavedAt: string | null = null
+let _qaLastServerPath: string | null = null
+let _qaLastUploadError: string | null = null
+export function getQaUploadStatus() {
+  return { status: _qaUploadStatus, lastSavedAt: _qaLastSavedAt, serverPath: _qaLastServerPath, error: _qaLastUploadError }
+}
+
+export async function sendQaRunsToDevServer(runs: QaRun[]): Promise<boolean> {
+  if (!import.meta.env.DEV) return false
+  _qaUploadStatus = 'uploading'
+  _qaLastUploadError = null
+  notifyDebugChanged()
+  try {
+    const res = await fetch('/__abu_calendar_qa_log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ runs, createdAt: new Date().toISOString(), appVersion: runs[0]?.appVersion ?? 'unknown' }),
+    })
+    const data = await res.json() as { ok: boolean; path?: string; count?: number; error?: string }
+    if (data.ok) {
+      _qaUploadStatus = 'saved'
+      _qaLastSavedAt = new Date().toISOString()
+      _qaLastServerPath = data.path ?? null
+      notifyDebugChanged()
+      return true
+    }
+    _qaUploadStatus = 'failed'
+    _qaLastUploadError = data.error ?? 'unknown'
+    notifyDebugChanged()
+    return false
+  } catch (e) {
+    _qaUploadStatus = 'failed'
+    _qaLastUploadError = e instanceof Error ? e.message : String(e)
+    notifyDebugChanged()
+    return false
+  }
 }
 
 function copyToClipboard(text: string): void {
@@ -494,10 +540,21 @@ export function QaRecorderPanel() {
         {last?.comparisonResult === 'fail' && <span style={{ color: '#f87171' }}> LAST:FAIL</span>}
         {last?.comparisonResult === 'pending' && <span style={{ color: '#fbbf24' }}> LAST:?</span>}
       </div>
+      {/* Auto-save status */}
+      <div data-testid="qa-upload-status" style={{
+        fontSize: 9, marginTop: 4, padding: '2px 4px', borderRadius: 4,
+        color: _qaUploadStatus === 'saved' ? '#4ade80' : _qaUploadStatus === 'failed' ? '#f87171' : 'rgba(255,255,255,0.4)',
+        background: _qaUploadStatus === 'saved' ? 'rgba(74,222,128,0.08)' : _qaUploadStatus === 'failed' ? 'rgba(248,113,113,0.08)' : 'transparent',
+      }}>
+        {_qaUploadStatus === 'saved' && `נשמר למחשב ${_qaLastSavedAt?.slice(11, 19) ?? ''}`}
+        {_qaUploadStatus === 'failed' && `שמירה למחשב נכשלה: ${_qaLastUploadError?.slice(0, 30) ?? ''}`}
+        {_qaUploadStatus === 'uploading' && 'שומר למחשב...'}
+        {_qaUploadStatus === 'idle' && 'לא נשמר עדיין'}
+      </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+        <button type="button" data-testid="qa-save-to-computer" onClick={() => void sendQaRunsToDevServer(runs)} style={{ ...btnStyle, color: '#60a5fa', borderColor: '#60a5fa' }}>שמור למחשב</button>
         <button type="button" data-testid="qa-clear" onClick={handleClear} style={btnStyle}>Clear</button>
-        <button type="button" data-testid="qa-copy-last" onClick={handleCopyLast} style={btnStyle}>Copy Last</button>
-        <button type="button" data-testid="qa-copy-all" onClick={handleCopyAll} style={btnStyle}>Copy All JSON</button>
+        <button type="button" data-testid="qa-copy-all" onClick={handleCopyAll} style={btnStyle}>Copy JSON</button>
         <button type="button" data-testid="qa-mark-pass" onClick={() => handleMarkLast('pass')} style={{ ...btnStyle, color: '#4ade80', borderColor: '#4ade80' }}>PASS</button>
         <button type="button" data-testid="qa-mark-fail" onClick={() => handleMarkLast('fail')} style={{ ...btnStyle, color: '#f87171', borderColor: '#f87171' }}>FAIL</button>
       </div>
@@ -626,9 +683,19 @@ export function GuidedMicQaPanel({ onRecord, voiceState, isRecording }: {
         }}>
           העתק את כל ה-JSON
         </button>
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
-          העתק ושלח את זה לניתוח.
+        <div data-testid="guided-qa-save-status" style={{
+          fontSize: 13, textAlign: 'center', padding: '6px',
+          color: _qaUploadStatus === 'saved' ? '#4ade80' : _qaUploadStatus === 'failed' ? '#f87171' : 'rgba(255,255,255,0.5)',
+        }}>
+          {_qaUploadStatus === 'saved' ? 'נשמר למחשב אוטומטית' : _qaUploadStatus === 'failed' ? 'שמירה נכשלה — לחץ העתק' : 'במחשב: tmp/abu-calendar-qa/latest.json'}
         </div>
+        <button type="button" data-testid="guided-qa-save-now" onClick={() => void sendQaRunsToDevServer(loadQaRuns())} style={{
+          width: '100%', padding: '12px', fontSize: 15, fontWeight: 700, borderRadius: 10,
+          border: '1.5px solid rgba(96,165,250,0.50)', background: 'rgba(96,165,250,0.10)',
+          color: '#60a5fa', cursor: 'pointer', minHeight: 48,
+        }}>
+          שמור עכשיו למחשב
+        </button>
         <button type="button" data-testid="guided-qa-stop" onClick={() => setActive(false)} style={{
           padding: '8px', fontSize: 13, borderRadius: 8,
           border: '1px solid rgba(255,255,255,0.15)', background: 'transparent',
@@ -770,6 +837,9 @@ export function GuidedMicQaPanel({ onRecord, voiceState, isRecording }: {
               color: marked === 'pass' ? '#4ade80' : '#f87171',
             }}>
               {marked === 'pass' ? 'סומן PASS' : 'סומן FAIL'}
+              <div style={{ fontSize: 11, fontWeight: 400, marginTop: 4, color: _qaUploadStatus === 'saved' ? '#4ade80' : 'rgba(255,255,255,0.4)' }}>
+                {_qaUploadStatus === 'saved' ? 'נשמר למחשב' : _qaUploadStatus === 'failed' ? 'לא נשמר — לחץ שמור עכשיו למחשב' : ''}
+              </div>
               {marked === 'fail' && (
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: 400, marginTop: 4 }}>
                   אפשר להמשיך. בסוף נעתיק JSON וננתח הכול.
