@@ -20,3 +20,4 @@ docs/voice-pipeline/voice-pipeline-diagnostic.txt
 # backup into the repo by accident, these patterns block it from staging.
 private/
 *.local.json
+tmp/dev-cert/

@@ -357,6 +357,16 @@ export default defineConfig({
   ],
   server: {
     host: true,   // listen on all interfaces (LAN access from iPhone)
+    // HTTPS for iPhone mic access: `npm run dev:https` reads cert from tmp/dev-cert/
+    // Generate cert: `node scripts/generate-dev-cert.cjs`
+    ...(process.env.VITE_HTTPS === '1' && fs.existsSync(path.resolve(process.cwd(), 'tmp', 'dev-cert', 'key.pem'))
+      ? {
+          https: {
+            key: fs.readFileSync(path.resolve(process.cwd(), 'tmp', 'dev-cert', 'key.pem')),
+            cert: fs.readFileSync(path.resolve(process.cwd(), 'tmp', 'dev-cert', 'cert.pem')),
+          },
+        }
+      : {}),
     headers: {
       // Prevent iPhone Safari from serving stale JS/CSS during development
       'Cache-Control': 'no-store, no-cache, must-revalidate',
