@@ -17,6 +17,7 @@ import { useEffect, useState, useCallback } from 'react'
 import type { VoiceTrace } from './voiceTrace'
 import type { ReminderDraft } from './reminders/types'
 import type { QaRun } from './diagnostics/qaRunTypes'
+import { RELEASE_CANDIDATE_EXPECTATIONS } from './diagnostics/releaseCandidateExpectations'
 
 export const VOICE_DEBUG_LOCALSTORAGE_KEY = 'abu-voice-debug'
 
@@ -259,7 +260,21 @@ export function buildQaRunFromTrace(trace: VoiceTrace, reminderDraft: ReminderDr
   }
 }
 
+// Guided QA: track which expectation the operator is currently testing.
+let _currentExpectedId: string | null = null
+let _currentExpectedUtterance: string | null = null
+export function setCurrentExpected(id: string | null, utterance: string | null): void {
+  _currentExpectedId = id
+  _currentExpectedUtterance = utterance
+}
+export function getCurrentExpectedId(): string | null { return _currentExpectedId }
+
 export function appendQaRun(run: QaRun): void {
+  // Attach the guided QA expectation if active
+  if (_currentExpectedId) {
+    run.expectedId = _currentExpectedId
+    if (_currentExpectedUtterance) run.expectedUtterance = _currentExpectedUtterance
+  }
   const runs = loadQaRuns()
   runs.push(run)
   saveQaRuns(runs)
@@ -340,6 +355,106 @@ export function QaRecorderPanel() {
         <button type="button" data-testid="qa-copy-all" onClick={handleCopyAll} style={btnStyle}>Copy All JSON</button>
         <button type="button" data-testid="qa-mark-pass" onClick={() => handleMarkLast('pass')} style={{ ...btnStyle, color: '#4ade80', borderColor: '#4ade80' }}>PASS</button>
         <button type="button" data-testid="qa-mark-fail" onClick={() => handleMarkLast('fail')} style={{ ...btnStyle, color: '#f87171', borderColor: '#f87171' }}>FAIL</button>
+      </div>
+    </div>
+  )
+}
+
+/** Guided Mic QA — shows one phrase at a time from the RC expectations. */
+export function GuidedMicQaPanel() {
+  if (!import.meta.env.DEV) return null
+  const enabled = useVoiceDebugEnabled()
+  const [idx, setIdx] = useState(0)
+  const [active, setActive] = useState(false)
+
+  useEffect(() => {
+    if (!active) { setCurrentExpected(null, null); return }
+    const exp = RELEASE_CANDIDATE_EXPECTATIONS[idx]
+    if (exp) setCurrentExpected(exp.id, exp.utterance)
+    else setCurrentExpected(null, null)
+  }, [idx, active])
+
+  if (!enabled) return null
+
+  const total = RELEASE_CANDIDATE_EXPECTATIONS.length
+  const exp = RELEASE_CANDIDATE_EXPECTATIONS[idx]
+
+  if (!active) {
+    return (
+      <button
+        type="button"
+        data-testid="guided-qa-start"
+        onClick={() => { setActive(true); setIdx(0) }}
+        style={{
+          position: 'fixed', top: 8, right: 8, zIndex: 10001,
+          padding: '6px 12px', fontSize: 11, fontFamily: 'monospace', fontWeight: 700,
+          border: '1px solid rgba(201,168,76,0.55)', borderRadius: 8,
+          background: 'rgba(201,168,76,0.15)', color: '#E8C76A', cursor: 'pointer',
+        }}
+      >Start Guided QA</button>
+    )
+  }
+
+  return (
+    <div
+      data-testid="guided-qa-panel"
+      dir="rtl"
+      style={{
+        position: 'fixed', top: 8, left: 8, right: 8, zIndex: 10001,
+        padding: '10px 14px', borderRadius: 12,
+        background: 'rgba(8,12,24,0.96)', border: '1.5px solid rgba(201,168,76,0.50)',
+        color: '#E8C76A', fontFamily: "'Heebo', sans-serif",
+        boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <span style={{ fontSize: 12, fontFamily: 'monospace', direction: 'ltr' }}>
+          {idx + 1}/{total} · {exp?.id ?? '—'} · {exp?.criticality ?? '—'}
+        </span>
+        <button
+          type="button"
+          data-testid="guided-qa-stop"
+          onClick={() => setActive(false)}
+          style={{
+            padding: '2px 8px', fontSize: 10, fontFamily: 'monospace',
+            border: '1px solid rgba(255,100,100,0.4)', borderRadius: 4,
+            background: 'rgba(255,100,100,0.1)', color: '#f87171', cursor: 'pointer',
+          }}
+        >Stop</button>
+      </div>
+      <div data-testid="guided-qa-phrase" style={{
+        fontSize: 18, fontWeight: 700, color: 'rgba(255,255,255,0.95)',
+        lineHeight: 1.5, marginBottom: 8, minHeight: 28,
+      }}>
+        {exp?.utterance ?? 'סיימנו!'}
+      </div>
+      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>
+        {exp ? 'הקליטי את המשפט ← סמני PASS/FAIL ← לחצי הבא' : 'לחצי Copy All JSON בפאנל הריקורדר'}
+      </div>
+      <div style={{ display: 'flex', gap: 8, direction: 'ltr' }}>
+        <button
+          type="button"
+          data-testid="guided-qa-prev"
+          disabled={idx <= 0}
+          onClick={() => setIdx(i => Math.max(0, i - 1))}
+          style={{
+            padding: '6px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8,
+            border: '1px solid rgba(201,168,76,0.30)', background: 'rgba(201,168,76,0.08)',
+            color: idx <= 0 ? 'rgba(255,255,255,0.2)' : '#E8C76A', cursor: idx <= 0 ? 'default' : 'pointer',
+          }}
+        >← Prev</button>
+        <button
+          type="button"
+          data-testid="guided-qa-next"
+          disabled={idx >= total - 1}
+          onClick={() => setIdx(i => Math.min(total - 1, i + 1))}
+          style={{
+            flex: 1, padding: '6px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8,
+            border: '1px solid rgba(201,168,76,0.50)', background: 'rgba(201,168,76,0.15)',
+            color: idx >= total - 1 ? 'rgba(255,255,255,0.2)' : '#E8C76A',
+            cursor: idx >= total - 1 ? 'default' : 'pointer',
+          }}
+        >Next →</button>
       </div>
     </div>
   )

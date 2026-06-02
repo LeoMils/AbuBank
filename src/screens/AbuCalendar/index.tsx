@@ -32,7 +32,7 @@ import { transcribeCalendarAudio } from './calendarTranscribe'
 import { normalizeCalendarTranscript } from './calendarTranscriptCorrection'
 import { getSupportedMimeType } from '../AbuAI/service'
 import { createSilenceDetector } from '../../services/voice'
-import { buildQaRunFromTrace, appendQaRun, QaRecorderPanel, isVoiceDebugEnabled, VoiceDebugPanel, VoiceDebugToggle } from './VoiceDebugPanel'
+import { buildQaRunFromTrace, appendQaRun, QaRecorderPanel, GuidedMicQaPanel, isVoiceDebugEnabled, VoiceDebugPanel, VoiceDebugToggle } from './VoiceDebugPanel'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 import { injectSharedKeyframes } from '../../design/animations'
@@ -1485,6 +1485,7 @@ export function AbuCalendar() {
 
       <VoiceDebugPanel trace={debugTrace} reminderDraft={reminderDraft} />
       <QaRecorderPanel />
+      <GuidedMicQaPanel />
       <VoiceDebugToggle />
 
       {import.meta.env.DEV && (
