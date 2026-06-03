@@ -16,6 +16,9 @@ const GOLD = '#C9A84C'
 const CREAM = '#F5F0E8'
 const CHECK_INTERVAL_MS = 30_000
 const OVERDUE_THRESHOLD_MS = 2 * 60 * 60 * 1000  // 2 hours
+// Re-fire intervals: medication is more urgent than casual reminders
+const REFIRE_MS_MEDICATION = 15 * 60 * 1000  // 15 min
+const REFIRE_MS_DEFAULT = 30 * 60 * 1000     // 30 min
 
 interface Props {
   onReminderDue?: (reminder: Reminder) => void
@@ -25,8 +28,11 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
   const [dueReminders, setDueReminders] = useState<Reminder[]>([])
   const [currentIdx, setCurrentIdx] = useState(0)
   // Track which reminders we've shown the popup for in this session.
-  // Prevents marking overdue before the user ever sees the popup.
   const [firedIds] = useState(() => new Set<string>())
+  // Track first-shown time for re-fire logic (id → timestamp)
+  const [firstShownAt] = useState(() => new Map<string, number>())
+  // Track how many times we've re-fired each reminder
+  const [refireCount] = useState(() => new Map<string, number>())
 
   const checkDue = useCallback(() => {
     const now = Date.now()
@@ -54,8 +60,11 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
     if (due.length > 0) {
       setDueReminders(due)
       setCurrentIdx(0)
-      // Mark all as fired so they can transition to overdue next cycle
-      for (const r of due) firedIds.add(r.id)
+      // Mark all as fired + track first-shown time
+      for (const r of due) {
+        firedIds.add(r.id)
+        if (!firstShownAt.has(r.id)) firstShownAt.set(r.id, now)
+      }
       // Sound + TTS for first due reminder
       const first = due[0]!
       playReminderBeep()
@@ -64,7 +73,26 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
       }
       onReminderDue?.(first)
     }
-  }, [onReminderDue, firedIds])
+
+    // Re-fire: if a reminder was shown but user hasn't acted, re-alert.
+    // Medication re-fires every 15 min, others every 30 min.
+    for (const r of allReminders) {
+      if (r.status !== 'scheduled') continue
+      const shownAt = firstShownAt.get(r.id)
+      if (!shownAt) continue
+      const refireMs = r.category === 'medication' ? REFIRE_MS_MEDICATION : REFIRE_MS_DEFAULT
+      const count = refireCount.get(r.id) ?? 0
+      const nextRefireAt = shownAt + refireMs * (count + 1)
+      if (now >= nextRefireAt && count < 3) {
+        refireCount.set(r.id, count + 1)
+        playReminderBeep()
+        if (r.alertPolicy.voice) {
+          const urgency = count >= 1 ? 'עדיין לא בוצע. ' : ''
+          speakReminder(`${urgency}תזכורת: ${r.title}`)
+        }
+      }
+    }
+  }, [onReminderDue, firedIds, firstShownAt, refireCount])
 
   useEffect(() => {
     checkDue()
@@ -76,8 +104,14 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
 
   if (!current) return null
 
+  function clearRefireTracking(id: string) {
+    firstShownAt.delete(id)
+    refireCount.delete(id)
+  }
+
   function handleDone() {
     if (!current) return
+    clearRefireTracking(current.id)
     // Recurring reminders: schedule next occurrence instead of permanent done.
     if (current.recurrence) {
       const rec = current.recurrence
@@ -115,6 +149,7 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
 
   function handleSnooze() {
     if (!current) return
+    clearRefireTracking(current.id)
     snoozeReminder(current.id, current.alertPolicy.snoozeMinutes)
     const next = dueReminders.filter(r => r.id !== current.id)
     setDueReminders(next)
@@ -123,6 +158,7 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
 
   function handleDelete() {
     if (!current) return
+    clearRefireTracking(current.id)
     cancelReminder(current.id)
     const next = dueReminders.filter(r => r.id !== current.id)
     setDueReminders(next)
@@ -184,10 +220,19 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
         <div style={{
           fontSize: 18, fontWeight: 700,
           color: '#E97943',
-          marginBottom: 24,
+          marginBottom: current.category === 'medication' && (refireCount.get(current.id) ?? 0) > 0 ? 8 : 24,
         }}>
           הגיע הזמן עכשיו
         </div>
+        {/* Medication re-fire urgency — gentle but clear */}
+        {current.category === 'medication' && (refireCount.get(current.id) ?? 0) > 0 && (
+          <div data-testid="reminder-refire-notice" style={{
+            fontSize: 15, fontWeight: 600, color: '#fbbf24',
+            marginBottom: 24, lineHeight: 1.4,
+          }}>
+            עדיין לא סומן — חשוב לקחת
+          </div>
+        )}
 
         {/* Count if multiple due */}
         {dueReminders.length > 1 && (
@@ -212,34 +257,32 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
             {getDoneLabel(current.category)}
           </button>
 
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              type="button"
-              data-testid="reminder-due-snooze-btn"
-              onClick={handleSnooze}
-              style={{
-                flex: 1, minHeight: 56, borderRadius: 14,
-                background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)',
-                color: GOLD, fontSize: 17, fontWeight: 700, cursor: 'pointer',
-                fontFamily: "'Heebo',sans-serif",
-              }}
-            >
-              עוד {current.alertPolicy.snoozeMinutes} דקות
-            </button>
-            <button
-              type="button"
-              data-testid="reminder-due-delete-btn"
-              onClick={handleDelete}
-              style={{
-                flex: 1, minHeight: 56, borderRadius: 14,
-                background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)',
-                color: GOLD, fontSize: 17, fontWeight: 700, cursor: 'pointer',
-                fontFamily: "'Heebo',sans-serif",
-              }}
-            >
-              מחיקה
-            </button>
-          </div>
+          <button
+            type="button"
+            data-testid="reminder-due-snooze-btn"
+            onClick={handleSnooze}
+            style={{
+              width: '100%', minHeight: 56, borderRadius: 14,
+              background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)',
+              color: GOLD, fontSize: 17, fontWeight: 700, cursor: 'pointer',
+              fontFamily: "'Heebo',sans-serif",
+            }}
+          >
+            עוד {current.alertPolicy.snoozeMinutes} דקות
+          </button>
+          <button
+            type="button"
+            data-testid="reminder-due-delete-btn"
+            onClick={handleDelete}
+            style={{
+              width: '100%', minHeight: 48, borderRadius: 14,
+              background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+              color: 'rgba(255,255,255,0.35)', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+              fontFamily: "'Heebo',sans-serif",
+            }}
+          >
+            לא צריך
+          </button>
         </div>
       </div>
 

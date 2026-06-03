@@ -168,11 +168,12 @@ describe('reminderStore — list queries', () => {
   })
 
   it('listTodayReminders returns only today scheduled', () => {
-    const today = new Date()
-    today.setHours(23, 59, 59, 0)
+    // listTodayReminders uses UTC date (toISOString().slice(0,10)), so dueAt must match UTC
+    const utcToday = new Date().toISOString().slice(0, 10)
+    const dueAt = `${utcToday}T12:00:00.000Z`
     createReminder({
-      category: 'general', title: 'היום', dueAt: today.toISOString(),
-      displayDateLabel: 'היום', displayTimeLabel: '23:59',
+      category: 'general', title: 'היום', dueAt,
+      displayDateLabel: 'היום', displayTimeLabel: '12:00',
       alertPolicy: createDefaultAlertPolicy(),
     })
     makeReminder()  // tomorrow
