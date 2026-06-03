@@ -25,3 +25,4 @@ tmp/dev-cert/
 # Capacitor
 ios/App/App/public/
 ios/App/Pods/
+android/app/src/main/assets/public/
