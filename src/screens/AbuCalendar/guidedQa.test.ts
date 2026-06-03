@@ -207,3 +207,43 @@ describe('mic self-test diagnostic', () => {
     expect(SRC.includes("if (!import.meta.env.DEV) return null")).toBe(true)
   })
 })
+
+// ─── P0: State transition regression tests ──────────────────────────────
+describe('guided QA — state transition guards (P0 fix)', () => {
+  it('voiceState effect only advances from recording state, never from ready', () => {
+    // The effect must check `state === "recording"` before advancing.
+    // It must NOT advance when state is 'ready' — that would skip the
+    // record button and jump directly to processing/result_ready.
+    expect(SRC.includes("if (state === 'recording')")).toBe(true)
+    // Must NOT have the old pattern that advances from any non-result state
+    expect(SRC.includes("if (!active || state === 'result_ready' || state === 'marked') return")).toBe(false)
+  })
+
+  it('poll effect requires recordStartedAt > 0 (user pressed record)', () => {
+    expect(SRC.includes('recordStartedAt === 0')).toBe(true)
+    expect(SRC.includes('recordStartedAt')).toBe(true)
+  })
+
+  it('poll effect checks run timestamp > recordStartedAt (rejects stale runs)', () => {
+    expect(SRC.includes('runTime >= recordStartedAt')).toBe(true)
+    expect(SRC.includes("new Date(run.timestamp).getTime()")).toBe(true)
+  })
+
+  it('record button sets recordStartedAt before calling onRecord', () => {
+    expect(SRC.includes('setRecordStartedAt(Date.now()')).toBe(true)
+  })
+
+  it('handleNext resets recordStartedAt to 0', () => {
+    expect(SRC.includes('setRecordStartedAt(0)')).toBe(true)
+  })
+
+  it('ready → result_ready without recording is impossible', () => {
+    // The poll effect only runs when state is recording/processing AND
+    // recordStartedAt > 0. Both conditions require the user to have
+    // pressed the record button.
+    // Verify: poll returns early when state is not recording/processing
+    expect(SRC.includes("state !== 'processing' && state !== 'recording'")).toBe(true)
+    // Verify: poll returns early when recordStartedAt is 0
+    expect(SRC.includes('if (recordStartedAt === 0) return')).toBe(true)
+  })
+})

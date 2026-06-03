@@ -617,6 +617,10 @@ export function GuidedMicQaPanel({ onRecord, voiceState, isRecording }: {
   const [state, setState] = useState<GuidedState>('ready')
   const [currentRun, setCurrentRun] = useState<QaRun | null>(null)
   const [marked, setMarked] = useState<'pass' | 'fail' | null>(null)
+  // Timestamp when the user pressed the record button for the current phrase.
+  // Only runs created AFTER this timestamp are accepted for comparison.
+  // Prevents stale runs from previous sessions from triggering result_ready.
+  const [recordStartedAt, setRecordStartedAt] = useState(0)
 
   const total = RELEASE_CANDIDATE_EXPECTATIONS.length
   const exp = RELEASE_CANDIDATE_EXPECTATIONS[idx]
@@ -631,24 +635,40 @@ export function GuidedMicQaPanel({ onRecord, voiceState, isRecording }: {
     else setCurrentExpected(null, null)
   }, [idx, active, exp])
 
-  // Track voiceState to advance from recording → processing → waiting_for_result
+  // Track voiceState to advance ONLY after the user has pressed record
+  // (state must already be 'recording' or 'processing' — never 'ready').
+  // This prevents stale voiceState from a previous flow from forcing a
+  // ready → recording/processing jump on activation.
   useEffect(() => {
-    if (!active || state === 'result_ready' || state === 'marked') return
-    if (isRecording) { setState('recording'); return }
-    if (voiceState === 'transcribing' || voiceState === 'parsing') { setState('processing'); return }
+    if (!active) return
+    // Only advance from recording/processing — never from ready/result_ready/marked
+    if (state === 'recording') {
+      if (!isRecording && (voiceState === 'transcribing' || voiceState === 'parsing')) {
+        setState('processing')
+      }
+    }
   }, [active, voiceState, isRecording, state])
 
-  // Poll for new QA run matching current expectedId
+  // Poll for new QA run matching current expectedId — only accept runs
+  // created AFTER recordStartedAt to ignore stale runs from old sessions.
   useEffect(() => {
     if (!active || !exp) return
     if (state !== 'processing' && state !== 'recording') return
+    if (recordStartedAt === 0) return // user hasn't pressed record yet
     const check = () => {
       const run = findLastRunForExpected(exp.id)
-      if (run) { setCurrentRun(run); setState('result_ready') }
+      if (run) {
+        // Only accept runs created after the current record button press
+        const runTime = new Date(run.timestamp).getTime()
+        if (runTime >= recordStartedAt) {
+          setCurrentRun(run)
+          setState('result_ready')
+        }
+      }
     }
     listeners.add(check)
     return () => { listeners.delete(check) }
-  }, [active, state, exp])
+  }, [active, state, exp, recordStartedAt])
 
   if (!enabled) return null
 
@@ -726,6 +746,7 @@ export function GuidedMicQaPanel({ onRecord, voiceState, isRecording }: {
     setState('ready')
     setCurrentRun(null)
     setMarked(null)
+    setRecordStartedAt(0)
   }
 
   // Auto-comparison (simple check)
@@ -776,7 +797,7 @@ export function GuidedMicQaPanel({ onRecord, voiceState, isRecording }: {
       {/* State-specific content */}
       {state === 'ready' && (
         <div data-testid="guided-qa-instruction">
-          <button type="button" data-testid="guided-qa-record-btn" onClick={() => { onRecord(); setState('recording') }} style={{
+          <button type="button" data-testid="guided-qa-record-btn" onClick={() => { setRecordStartedAt(Date.now()); onRecord(); setState('recording') }} style={{
             width: '100%', padding: '16px', fontSize: 18, fontWeight: 700, borderRadius: 14,
             border: '2px solid rgba(220,38,38,0.60)', background: 'rgba(220,38,38,0.15)',
             color: '#fca5a5', cursor: 'pointer', minHeight: 60,
