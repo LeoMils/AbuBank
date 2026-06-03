@@ -23,7 +23,7 @@ beforeEach(() => {
 
 function makeReminder(overrides: Partial<Omit<Reminder, 'id' | 'kind' | 'status' | 'createdAt' | 'updatedAt'>> = {}): Reminder {
   const tomorrow = new Date(Date.now() + 86_400_000)
-  return createReminder({
+  const { reminder } = createReminder({
     category: 'general',
     title: 'בדיקה',
     dueAt: tomorrow.toISOString(),
@@ -31,6 +31,7 @@ function makeReminder(overrides: Partial<Omit<Reminder, 'id' | 'kind' | 'status'
     displayTimeLabel: '10:00',
     ...overrides,
   })
+  return reminder
 }
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────

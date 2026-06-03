@@ -24,16 +24,21 @@ interface Props {
 export function ReminderDueEngine({ onReminderDue }: Props) {
   const [dueReminders, setDueReminders] = useState<Reminder[]>([])
   const [currentIdx, setCurrentIdx] = useState(0)
+  // Track which reminders we've shown the popup for in this session.
+  // Prevents marking overdue before the user ever sees the popup.
+  const [firedIds] = useState(() => new Set<string>())
 
   const checkDue = useCallback(() => {
     const now = Date.now()
 
-    // Transition overdue reminders (scheduled past threshold)
+    // Transition overdue: only mark overdue if we already showed the
+    // popup for this reminder in this session. Otherwise let the due
+    // popup fire first so the user is always notified at least once.
     const allReminders = listAllReminders()
     for (const r of allReminders) {
       if (r.status === 'scheduled') {
         const dueMs = new Date(r.dueAt).getTime()
-        if (dueMs < now - OVERDUE_THRESHOLD_MS) {
+        if (dueMs < now - OVERDUE_THRESHOLD_MS && firedIds.has(r.id)) {
           markOverdue(r.id)
         }
       }
@@ -49,6 +54,8 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
     if (due.length > 0) {
       setDueReminders(due)
       setCurrentIdx(0)
+      // Mark all as fired so they can transition to overdue next cycle
+      for (const r of due) firedIds.add(r.id)
       // Sound + TTS for first due reminder
       const first = due[0]!
       playReminderBeep()
@@ -57,7 +64,7 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
       }
       onReminderDue?.(first)
     }
-  }, [onReminderDue])
+  }, [onReminderDue, firedIds])
 
   useEffect(() => {
     checkDue()
@@ -71,9 +78,38 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
 
   function handleDone() {
     if (!current) return
-    markReminderDone(current.id)
-    const next = dueReminders.filter(r => r.id !== current.id)
-    setDueReminders(next)
+    // Recurring reminders: schedule next occurrence instead of permanent done.
+    if (current.recurrence) {
+      const rec = current.recurrence
+      const time = rec.time || current.displayTimeLabel || '09:00'
+      const [h, m] = time.split(':').map(Number)
+      const now = new Date()
+      const next = new Date(now)
+      if (rec.frequency === 'daily') {
+        // Next day at the same time
+        next.setDate(next.getDate() + 1)
+        next.setHours(h ?? 9, m ?? 0, 0, 0)
+      } else if (rec.frequency === 'weekly' && rec.daysOfWeek?.length) {
+        const target = rec.daysOfWeek[0]!
+        const cur = now.getDay()
+        let diff = (target - cur + 7) % 7
+        if (diff === 0) diff = 7
+        next.setDate(next.getDate() + diff)
+        next.setHours(h ?? 9, m ?? 0, 0, 0)
+      } else {
+        // Default weekly: +7 days
+        next.setDate(next.getDate() + 7)
+        next.setHours(h ?? 9, m ?? 0, 0, 0)
+      }
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const nextDueAt = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}T${pad(next.getHours())}:${pad(next.getMinutes())}:00`
+      const nextDateLabel = rec.frequency === 'daily' ? 'כל יום' : 'כל שבוע'
+      rescheduleReminder(current.id, nextDueAt, nextDateLabel, time)
+    } else {
+      markReminderDone(current.id)
+    }
+    const remaining = dueReminders.filter(r => r.id !== current.id)
+    setDueReminders(remaining)
     setCurrentIdx(0)
   }
 

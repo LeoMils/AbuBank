@@ -14,10 +14,19 @@ function readStore(): Reminder[] {
   }
 }
 
-function writeStore(items: Reminder[]): void {
+/** Write reminders to localStorage. Returns false if write failed
+ *  (quota exceeded, private mode, etc.) — caller MUST check. */
+function writeStore(items: Reminder[]): boolean {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(items))
-  } catch { /* storage full or unavailable — silently continue */ }
+    const json = JSON.stringify(items)
+    localStorage.setItem(STORE_KEY, json)
+    // Round-trip verify: read back and check length matches
+    const readback = localStorage.getItem(STORE_KEY)
+    if (!readback || readback.length !== json.length) return false
+    return true
+  } catch {
+    return false
+  }
 }
 
 function nowISO(): string {
@@ -43,7 +52,7 @@ export function createReminder(
   fields: Omit<Reminder, 'id' | 'kind' | 'status' | 'alertPolicy' | 'createdAt' | 'updatedAt'> & {
     alertPolicy?: Reminder['alertPolicy']
   },
-): Reminder {
+): { reminder: Reminder; saved: boolean } {
   const reminder: Reminder = {
     ...fields,
     id: generateId(),
@@ -55,8 +64,8 @@ export function createReminder(
   }
   const items = readStore()
   items.push(reminder)
-  writeStore(items)
-  return reminder
+  const saved = writeStore(items)
+  return { reminder, saved }
 }
 
 export function updateReminder(id: string, patch: Partial<Omit<Reminder, 'id' | 'kind'>>): Reminder | null {

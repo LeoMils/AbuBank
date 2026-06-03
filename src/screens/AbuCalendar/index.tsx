@@ -923,7 +923,7 @@ export function AbuCalendar() {
   }
 
   function handleReminderConfirm(draft: ReminderDraft) {
-    createReminder({
+    const { saved } = createReminder({
       category: draft.category,
       title: draft.title ?? '',
       dueAt: draft.dueAt ?? new Date().toISOString(),
@@ -934,8 +934,13 @@ export function AbuCalendar() {
     })
     setReminderDraft(null)
     setReminderFlowActive(false)
-    soundSuccess()
-    showSuccessToast(`תזכורת נשמרה: ${draft.title ?? ''}`)
+    if (saved) {
+      soundSuccess()
+      showSuccessToast(`תזכורת נשמרה: ${draft.title ?? ''}`)
+    } else {
+      soundAlert()
+      showFailureToast('לא הצלחתי לשמור את התזכורת. נסי שוב.')
+    }
   }
 
   function handleReminderCancel() {
