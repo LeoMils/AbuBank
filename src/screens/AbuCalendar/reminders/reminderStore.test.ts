@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import fs from 'fs'
+import path from 'path'
 import {
   createReminder, updateReminder, deleteReminder, markReminderDone,
   snoozeReminder, cancelReminder, listAllReminders, listScheduledReminders,
@@ -21,12 +23,18 @@ beforeEach(() => {
   localStorage.clear()
 })
 
+function localISO(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
+}
+
 function makeReminder(overrides: Partial<Omit<Reminder, 'id' | 'kind' | 'status' | 'createdAt' | 'updatedAt'>> = {}): Reminder {
   const tomorrow = new Date(Date.now() + 86_400_000)
+  tomorrow.setHours(10, 0, 0, 0)
   const { reminder } = createReminder({
     category: 'general',
     title: 'בדיקה',
-    dueAt: tomorrow.toISOString(),
+    dueAt: localISO(tomorrow),
     displayDateLabel: 'מחר',
     displayTimeLabel: '10:00',
     ...overrides,
@@ -168,9 +176,11 @@ describe('reminderStore — list queries', () => {
   })
 
   it('listTodayReminders returns only today scheduled', () => {
-    // listTodayReminders uses UTC date (toISOString().slice(0,10)), so dueAt must match UTC
-    const utcToday = new Date().toISOString().slice(0, 10)
-    const dueAt = `${utcToday}T12:00:00.000Z`
+    // dueAt uses local time (no Z suffix), listTodayReminders now uses local date
+    const now = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const localToday = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+    const dueAt = `${localToday}T12:00:00`
     createReminder({
       category: 'general', title: 'היום', dueAt,
       displayDateLabel: 'היום', displayTimeLabel: '12:00',
@@ -180,6 +190,23 @@ describe('reminderStore — list queries', () => {
     const todayList = listTodayReminders()
     expect(todayList.some(r => r.title === 'היום')).toBe(true)
     expect(todayList.some(r => r.title === 'בדיקה')).toBe(false)
+  })
+
+  it('listTodayReminders uses local date, not UTC (Israel timezone fix)', () => {
+    // Scenario: at 01:00 Israel time (UTC+3), UTC date is still yesterday.
+    // A reminder with local dueAt "2026-06-04T09:00:00" must appear in today's
+    // list even though UTC is "2026-06-03". Verify the function body uses local
+    // date methods, not toISOString (which returns UTC).
+    const src = fs.readFileSync(path.resolve(__dirname, 'reminderStore.ts'), 'utf8')
+    const fnStart = src.indexOf('export function listTodayReminders')
+    const fnEnd = src.indexOf('\n}', fnStart) + 2
+    const fn = src.slice(fnStart, fnEnd)
+    // Must NOT use toISOString inside this function (that gives UTC)
+    expect(fn.includes('toISOString')).toBe(false)
+    // Must use local date methods
+    expect(fn.includes('getFullYear()')).toBe(true)
+    expect(fn.includes('getMonth()')).toBe(true)
+    expect(fn.includes('getDate()')).toBe(true)
   })
 
   it('listOverdueReminders returns overdue-status only', () => {

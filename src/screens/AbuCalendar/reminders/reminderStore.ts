@@ -127,7 +127,12 @@ export function listDueReminders(): Reminder[] {
 }
 
 export function listTodayReminders(): Reminder[] {
-  const today = new Date().toISOString().slice(0, 10)
+  // dueAt is stored in local time (no Z suffix), so compare against local date.
+  // UTC-based date extraction would give the wrong day for Israel (UTC+3)
+  // where midnight–02:59 local is still the previous day in UTC.
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
   return readStore().filter(r =>
     (r.status === 'scheduled' || r.status === 'snoozed') &&
     r.dueAt.startsWith(today),
