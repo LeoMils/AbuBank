@@ -10,4 +10,5 @@ export { playReminderBeep, speakReminder, isTtsAvailable } from './reminderSound
 export { ReminderConfirmCard } from './ReminderConfirmCard'
 export { ReminderDueEngine } from './ReminderDueEngine'
 export { ReminderBoard } from './ReminderBoard'
+export { isNativeReminderAvailable, scheduleReminderNotification, cancelReminderNotification, rescheduleReminderNotification, requestNativeNotificationPermission } from './reminderDelivery'
 export type { Reminder, ReminderDraft, ReminderCategory, ReminderStatus } from './types'

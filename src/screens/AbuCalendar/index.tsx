@@ -936,7 +936,7 @@ export function AbuCalendar() {
     setReminderFlowActive(false)
     if (saved) {
       soundSuccess()
-      showSuccessToast(`תזכורת נשמרה: ${draft.title ?? ''} (כשהאפליקציה פתוחה)`)
+      showSuccessToast(`תזכורת נשמרה: ${draft.title ?? ''}`)
     } else {
       soundAlert()
       showFailureToast('לא הצלחתי לשמור את התזכורת. נסי שוב.')

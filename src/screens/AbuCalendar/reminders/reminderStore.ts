@@ -1,4 +1,5 @@
 import type { Reminder, ReminderCategory, ReminderStatus } from './types'
+import { scheduleReminderNotification, cancelReminderNotification, rescheduleReminderNotification } from './reminderDelivery'
 
 const STORE_KEY = 'abu_reminders_v1'
 
@@ -65,6 +66,8 @@ export function createReminder(
   const items = readStore()
   items.push(reminder)
   const saved = writeStore(items)
+  // Schedule native notification (no-op on web, never throws)
+  void scheduleReminderNotification(reminder)
   return { reminder, saved }
 }
 
@@ -87,15 +90,20 @@ export function deleteReminder(id: string): boolean {
 }
 
 export function markReminderDone(id: string): Reminder | null {
+  void cancelReminderNotification(id)
   return updateReminder(id, { status: 'done', confirmedAt: nowISO() })
 }
 
 export function snoozeReminder(id: string, minutes = 10): Reminder | null {
   const snoozedUntil = new Date(Date.now() + minutes * 60_000).toISOString()
-  return updateReminder(id, { status: 'snoozed', snoozedUntil })
+  const updated = updateReminder(id, { status: 'snoozed', snoozedUntil })
+  // Reschedule native notification to snooze time
+  if (updated) void rescheduleReminderNotification({ ...updated, dueAt: snoozedUntil })
+  return updated
 }
 
 export function cancelReminder(id: string): Reminder | null {
+  void cancelReminderNotification(id)
   return updateReminder(id, { status: 'cancelled' })
 }
 
@@ -155,5 +163,7 @@ export function rescheduleReminder(id: string, dueAt: string, displayDateLabel: 
   delete item.snoozedUntil
   items[idx] = item
   writeStore(items)
+  // Reschedule native notification to new dueAt
+  void rescheduleReminderNotification(item)
   return item
 }
