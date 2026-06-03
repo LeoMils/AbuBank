@@ -79,6 +79,7 @@ export function ReminderBoard() {
       }}>
         <span style={{ fontSize: 16 }}>🔔</span>
         <span style={{ fontSize: 16, fontWeight: 700, color: GOLD }}>תזכורות</span>
+        <span style={{ fontSize: 11, color: 'rgba(201,168,76,0.35)', fontWeight: 400 }}>כשהאפליקציה פתוחה</span>
       </div>
 
       {sections.map(section => (

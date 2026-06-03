@@ -130,7 +130,7 @@ export function ReminderConfirmCard({
             letterSpacing: '0.01em',
           }}>הבנתי</div>
           <div style={{ fontSize: 16, color: `rgba(201,168,76,0.70)`, marginTop: 4 }}>
-            אני אזכור בשבילך
+            אני אזכור בשבילך — כשהאפליקציה פתוחה
           </div>
         </div>
 
@@ -332,7 +332,7 @@ export function ReminderConfirmCard({
           </div>
           <div style={{ fontSize: 13, color: 'rgba(251,191,36,0.55)', lineHeight: 1.5, paddingRight: 24 }}>
             התזכורת תופיע כשהאפליקציה פתוחה על המסך.
-            כשהטלפון נעול או האפליקציה סגורה — עדיין לא זמין.
+            כשהטלפון נעול או האפליקציה סגורה — עדיין לא תופיע התראה.
           </div>
         </div>
 
