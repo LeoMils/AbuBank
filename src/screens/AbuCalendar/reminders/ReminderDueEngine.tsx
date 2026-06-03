@@ -158,8 +158,9 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
         aria-modal="true"
         aria-label={`תזכורת: ${current.title}`}
       >
-        {/* Bell icon */}
-        <div style={{ fontSize: 40, marginBottom: 4 }}>🔔</div>
+        {/* Bell icon — pulses to catch attention even if sound is blocked */}
+        <style>{`@keyframes bellPulse { 0%,100% { transform: scale(1); } 25% { transform: scale(1.15) rotate(-8deg); } 50% { transform: scale(1.1) rotate(8deg); } 75% { transform: scale(1.15) rotate(-4deg); } }`}</style>
+        <div style={{ fontSize: 48, marginBottom: 4, animation: 'bellPulse 1s ease-in-out infinite' }}>🔔</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: GOLD, marginBottom: 8 }}>
           תזכורת
         </div>

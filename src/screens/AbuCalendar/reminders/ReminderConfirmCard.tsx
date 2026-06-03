@@ -318,19 +318,22 @@ export function ReminderConfirmCard({
           </div>
         )}
 
-        {/* Alert info */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
+        {/* Alert info — honest about delivery limitation */}
+        <div data-testid="reminder-delivery-notice" style={{
+          display: 'flex', flexDirection: 'column', gap: 4,
           padding: '10px 14px', borderRadius: 12,
           background: 'rgba(201,168,76,0.06)', marginBottom: 20,
         }}>
-          <span style={{ fontSize: 16 }}>🔔</span>
-          <span style={{ fontSize: 14, color: 'rgba(201,168,76,0.55)' }}>
-            צליל + הודעה על המסך
-          </span>
-          <span style={{ fontSize: 12, color: 'rgba(201,168,76,0.30)', marginRight: 'auto' }}>
-            כשהאפליקציה פתוחה
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🔔</span>
+            <span style={{ fontSize: 14, color: 'rgba(201,168,76,0.55)' }}>
+              צליל + הודעה על המסך
+            </span>
+          </div>
+          <div style={{ fontSize: 13, color: 'rgba(251,191,36,0.55)', lineHeight: 1.5, paddingRight: 24 }}>
+            התזכורת תופיע כשהאפליקציה פתוחה על המסך.
+            כשהטלפון נעול או האפליקציה סגורה — עדיין לא זמין.
+          </div>
         </div>
 
         <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(201,168,76,0.60)', textAlign: 'center', marginBottom: 14 }}>
