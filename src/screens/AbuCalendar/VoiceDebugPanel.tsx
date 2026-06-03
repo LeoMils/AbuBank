@@ -307,8 +307,10 @@ export function MicSelfTest() {
     const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' })
     log(`blobSize: ${blob.size}`)
     log(`blobType: ${blob.type}`)
-    log(blob.size > 1000 ? 'RESULT: MIC OK' : 'RESULT: MIC PROBLEM — blob too small')
+    const ok = blob.size > 1000
+    log(ok ? 'RESULT: MIC OK' : 'RESULT: MIC PROBLEM — blob too small')
     setRunning(false)
+    if (ok) setTimeout(() => { setOpen(false); setResult(null) }, 2500)
   }
 
   return (
@@ -386,7 +388,9 @@ export function buildQaRunFromTrace(trace: VoiceTrace, reminderDraft: ReminderDr
     date: reminderDraft?.displayDateLabel ?? trace.extractedDate ?? null,
     time: reminderDraft?.displayTimeLabel ?? trace.extractedStartTime ?? null,
     relationPhrase: fr?.originalPhrase ?? trace.relationPhrase ?? null,
-    resolvedPersonName: fr?.resolvedName ?? trace.resolvedPersonName ?? null,
+    resolvedPersonName: fr?.resolvedName
+      ?? trace.resolvedPersonName
+      ?? (trace.extractedPeople && trace.extractedPeople.length > 0 ? trace.extractedPeople[0]! : null),
     resolvedPersonStatus: fr?.status ?? trace.resolvedPersonStatus ?? null,
     finalTitle: trace.finalTitle ?? reminderDraft?.title ?? null,
     confirmationText: null,
@@ -755,10 +759,20 @@ export function GuidedMicQaPanel({ onRecord, voiceState, isRecording }: {
     const routeMap: Record<string, string> = { appointment: 'appointment_create', reminder: 'reminder_create', schedule_query: 'calendar_query', family_query: 'family_query' }
     const actualRoute = currentRun.semanticRoute ?? (currentRun.intent ? (routeMap[currentRun.intent] ?? currentRun.intent) : 'unknown')
     const expectedRoute = exp.expectedRoute
-    let routeOk = actualRoute === expectedRoute
-    let timeOk = !exp.expectedTime || currentRun.time === exp.expectedTime
-    let saveOk = exp.expectedSaveAllowed === null || currentRun.saveAllowed === exp.expectedSaveAllowed
-    autoPass = routeOk && timeOk && saveOk
+    const routeOk = actualRoute === expectedRoute
+    const timeOk = !exp.expectedTime || currentRun.time === exp.expectedTime
+    const saveOk = exp.expectedSaveAllowed === null || currentRun.saveAllowed === exp.expectedSaveAllowed
+    // Person check: if expectation requires a resolved person, verify it
+    let personOk = true
+    if (exp.expectedPersonPolicy.startsWith('resolved:')) {
+      const expectedName = exp.expectedPersonPolicy.slice('resolved:'.length)
+      personOk = currentRun.resolvedPersonName === expectedName
+    } else if (exp.expectedPersonPolicy === 'ambiguous') {
+      personOk = currentRun.resolvedPersonStatus === 'ambiguous'
+    } else if (exp.expectedPersonPolicy === 'missing') {
+      personOk = currentRun.resolvedPersonStatus === 'missing'
+    }
+    autoPass = routeOk && timeOk && saveOk && personOk
   }
 
   const passFailEnabled = state === 'result_ready'
