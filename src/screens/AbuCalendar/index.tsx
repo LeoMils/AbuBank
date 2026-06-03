@@ -41,7 +41,7 @@ import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
 import { VoiceAddFlow, type VoiceDraft } from './VoiceAddFlow'
 import { sanitizeTitleForSave } from './localParser'
-import { ReminderConfirmCard, ReminderDueEngine, ReminderBoard, createReminder, createDefaultAlertPolicy } from './reminders'
+import { ReminderConfirmCard, ReminderDueEngine, ReminderBoard, createReminder, createDefaultAlertPolicy, requestNativeNotificationPermission } from './reminders'
 import type { ReminderDraft } from './reminders'
 // VoiceDebugPanel, VoiceDebugToggle imported above with QA recorder exports
 import { Toast } from '../../components/Toast'
@@ -923,6 +923,8 @@ export function AbuCalendar() {
   }
 
   function handleReminderConfirm(draft: ReminderDraft) {
+    // Request native notification permission (no-op on web, one-time prompt on native)
+    void requestNativeNotificationPermission()
     const { saved } = createReminder({
       category: draft.category,
       title: draft.title ?? '',
