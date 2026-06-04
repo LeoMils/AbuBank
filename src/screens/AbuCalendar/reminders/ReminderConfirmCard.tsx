@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import type { ReminderDraft } from './types'
 import { categoryIcon } from './reminderFormat'
+import { isNativeReminderAvailable } from './reminderDelivery'
 
 const GOLD = '#C9A84C'
 const BRIGHT_GOLD = '#E0C060'
@@ -130,7 +131,9 @@ export function ReminderConfirmCard({
             letterSpacing: '0.01em',
           }}>הבנתי</div>
           <div style={{ fontSize: 16, color: `rgba(201,168,76,0.70)`, marginTop: 4 }}>
-            אני אזכור בשבילך — כשהאפליקציה פתוחה
+            {isNativeReminderAvailable()
+              ? 'אני אזכור בשבילך — גם כשהטלפון נעול'
+              : 'אני אזכור בשבילך — כשהאפליקציה פתוחה'}
           </div>
         </div>
 
@@ -330,9 +333,10 @@ export function ReminderConfirmCard({
               צליל + הודעה על המסך
             </span>
           </div>
-          <div style={{ fontSize: 13, color: 'rgba(251,191,36,0.55)', lineHeight: 1.5, paddingRight: 24 }}>
-            התזכורת תופיע כשהאפליקציה פתוחה על המסך.
-            כשהטלפון נעול או האפליקציה סגורה — עדיין לא תופיע התראה.
+          <div style={{ fontSize: 13, color: isNativeReminderAvailable() ? 'rgba(74,222,128,0.60)' : 'rgba(251,191,36,0.55)', lineHeight: 1.5, paddingRight: 24 }}>
+            {isNativeReminderAvailable()
+              ? 'התזכורת תופיע גם כשהטלפון נעול או האפליקציה סגורה.'
+              : 'התזכורת תופיע כשהאפליקציה פתוחה על המסך.\nכשהטלפון נעול או האפליקציה סגורה — עדיין לא תופיע התראה.'}
           </div>
         </div>
 

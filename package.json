@@ -17,6 +17,11 @@
     "workbench": "node scripts/ai-workbench.js"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/ios": "^8.4.0",
+    "@capacitor/local-notifications": "^8.2.0",
     "@phosphor-icons/react": "^2.1.7",
     "@types/ws": "^8.18.1",
     "edge-tts": "^1.0.1",
