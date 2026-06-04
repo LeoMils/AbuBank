@@ -270,19 +270,43 @@ export function ReminderDueEngine({ onReminderDue }: Props) {
           >
             עוד {current.alertPolicy.snoozeMinutes} דקות
           </button>
-          <button
-            type="button"
-            data-testid="reminder-due-delete-btn"
-            onClick={handleDelete}
-            style={{
-              width: '100%', minHeight: 48, borderRadius: 14,
-              background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
-              color: 'rgba(255,255,255,0.35)', fontSize: 15, fontWeight: 600, cursor: 'pointer',
-              fontFamily: "'Heebo',sans-serif",
-            }}
-          >
-            לא צריך
-          </button>
+          {/* Medication: dismiss without deleting (re-fires will continue).
+              Non-medication: delete permanently ("לא צריך"). */}
+          {current.category === 'medication' ? (
+            <button
+              type="button"
+              data-testid="reminder-due-dismiss-btn"
+              onClick={() => {
+                // Dismiss popup only — do NOT delete. Follow-up native
+                // notifications will re-fire. Overdue engine will catch it.
+                const remaining = dueReminders.filter(r => r.id !== current.id)
+                setDueReminders(remaining)
+                setCurrentIdx(0)
+              }}
+              style={{
+                width: '100%', minHeight: 48, borderRadius: 14,
+                background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+                color: 'rgba(255,255,255,0.35)', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                fontFamily: "'Heebo',sans-serif",
+              }}
+            >
+              לא עכשיו
+            </button>
+          ) : (
+            <button
+              type="button"
+              data-testid="reminder-due-delete-btn"
+              onClick={handleDelete}
+              style={{
+                width: '100%', minHeight: 48, borderRadius: 14,
+                background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+                color: 'rgba(255,255,255,0.35)', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                fontFamily: "'Heebo',sans-serif",
+              }}
+            >
+              לא צריך
+            </button>
+          )}
         </div>
       </div>
 

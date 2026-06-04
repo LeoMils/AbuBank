@@ -71,9 +71,26 @@ describe('popup simplification', () => {
     expect(snoozeSection.includes("width: '100%'")).toBe(true)
   })
 
-  it('popup has exactly 3 buttons: done, snooze, delete', () => {
+  it('popup has done, snooze, and delete/dismiss buttons', () => {
     expect(ENGINE.includes('reminder-due-done-btn')).toBe(true)
     expect(ENGINE.includes('reminder-due-snooze-btn')).toBe(true)
+    expect(ENGINE.includes('reminder-due-delete-btn')).toBe(true)
+    expect(ENGINE.includes('reminder-due-dismiss-btn')).toBe(true)
+  })
+
+  it('medication popup shows "לא עכשיו" (dismiss) instead of "לא צריך" (delete)', () => {
+    // Medication: dismiss-only button, does NOT call handleDelete
+    expect(ENGINE.includes("current.category === 'medication'")).toBe(true)
+    expect(ENGINE.includes('לא עכשיו')).toBe(true)
+    // Dismiss button does NOT call cancelReminder — only removes from popup
+    const dismissSection = ENGINE.slice(ENGINE.indexOf('reminder-due-dismiss-btn'))
+    const dismissEnd = dismissSection.indexOf('</button>')
+    const dismissBlock = dismissSection.slice(0, dismissEnd)
+    expect(dismissBlock.includes('handleDelete')).toBe(false)
+  })
+
+  it('non-medication popup still shows "לא צריך" (delete)', () => {
+    expect(ENGINE.includes('לא צריך')).toBe(true)
     expect(ENGINE.includes('reminder-due-delete-btn')).toBe(true)
   })
 })
