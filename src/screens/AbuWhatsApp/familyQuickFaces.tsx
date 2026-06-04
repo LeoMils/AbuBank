@@ -18,6 +18,24 @@ export function sanitizePhoneE164(raw: string): string {
   return raw.replace(/[^\d]/g, '')
 }
 
+/**
+ * Normalize an Israeli local phone number to E.164 format.
+ * "0541111111" → "+972541111111"
+ * "+972541111111" → "+972541111111" (already E.164, pass through)
+ * Non-Israeli / unrecognized → returned as-is.
+ */
+export function normalizeIsraeliPhone(raw: string): string {
+  if (typeof raw !== 'string') return ''
+  const trimmed = raw.trim().replace(/[\s\-()]/g, '')
+  // Already E.164
+  if (trimmed.startsWith('+')) return trimmed
+  // Israeli local: 05X, 07X, 02, 03, 04, 08, 09 (mobile starts with 05)
+  if (trimmed.startsWith('0') && trimmed.length === 10) {
+    return '+972' + trimmed.slice(1)
+  }
+  return trimmed
+}
+
 export function isValidPhoneE164(raw: string): boolean {
   if (typeof raw !== 'string') return false
   if (!raw.startsWith('+')) return false

@@ -10,7 +10,7 @@
  * Operator setup is the only UI path that writes to this storage.
  */
 
-import { isValidPhoneE164 } from './familyQuickFaces'
+import { isValidPhoneE164, normalizeIsraeliPhone } from './familyQuickFaces'
 import { FAMILY_QUICK_FACES } from './familyContacts.private'
 
 export const LOCAL_FAMILY_CONTACTS_STORAGE_KEY = 'abubank.familyContacts.v1'
@@ -103,6 +103,9 @@ export interface SaveResult {
 
 export function upsertLocalContact(contact: LocalFamilyContact, storage: StorageLike | null = defaultStorage()): SaveResult {
   const errors: string[] = []
+  // Normalize Israeli local numbers before validation
+  contact = { ...contact, phoneE164: normalizeIsraeliPhone(contact.phoneE164) }
+  if (contact.whatsappE164) contact = { ...contact, whatsappE164: normalizeIsraeliPhone(contact.whatsappE164) }
   if (!isLocalFamilyContactShape(contact)) errors.push('invalid contact shape')
   if (!isKnownContactId(contact.id)) errors.push(`unknown contact id "${contact.id}"`)
   if (contact.enabled && !isValidPhoneE164(contact.phoneE164)) errors.push('phoneE164 fails E.164 validation')
@@ -137,6 +140,9 @@ export function importContactsJSON(jsonText: string): ImportResult {
     if (!isKnownContactId(raw.id)) { errors.push(`item ${i}: unknown id "${raw.id}"`); return }
     if (seen.has(raw.id)) { errors.push(`item ${i}: duplicate id "${raw.id}"`); return }
     seen.add(raw.id)
+    // Normalize Israeli local numbers before validation
+    raw.phoneE164 = normalizeIsraeliPhone(raw.phoneE164)
+    if (raw.whatsappE164) raw.whatsappE164 = normalizeIsraeliPhone(raw.whatsappE164)
     if (raw.enabled && !isValidPhoneE164(raw.phoneE164)) {
       errors.push(`item ${i} (${raw.id}): phoneE164 fails E.164 validation`)
       return
