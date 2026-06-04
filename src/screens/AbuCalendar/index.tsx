@@ -41,7 +41,7 @@ import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
 import { VoiceAddFlow, type VoiceDraft } from './VoiceAddFlow'
 import { sanitizeTitleForSave } from './localParser'
-import { ReminderConfirmCard, ReminderDueEngine, ReminderBoard, createReminder, createDefaultAlertPolicy, requestNativeNotificationPermission } from './reminders'
+import { ReminderConfirmCard, ReminderDueEngine, ReminderBoard, createReminder, createDefaultAlertPolicy, requestNativeNotificationPermission, registerNotificationTapHandler } from './reminders'
 import type { ReminderDraft } from './reminders'
 // VoiceDebugPanel, VoiceDebugToggle imported above with QA recorder exports
 import { Toast } from '../../components/Toast'
@@ -164,6 +164,17 @@ export function AbuCalendar() {
 
   // ─── Feature 1: Alert interval ───────────────────────────────────────────────
   useEffect(() => { injectSharedKeyframes() }, [])
+
+  // Register native notification tap handler — opens the reminder when
+  // user taps the lock-screen notification. No-op on web.
+  useEffect(() => {
+    registerNotificationTapHandler((_reminderId) => {
+      // Navigate to calendar screen — the ReminderDueEngine will show
+      // the popup for any due reminders on next checkDue cycle (30s).
+      // Force an immediate check by triggering a state update.
+      setSelectedDay(new Date().toISOString().slice(0, 10))
+    })
+  }, [])
   // Reload appointments when year changes (birthdays are year-specific)
   useEffect(() => { setAppointments(loadAppointmentsWithFamily(year)) }, [year])
 
