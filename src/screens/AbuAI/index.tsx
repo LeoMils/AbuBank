@@ -711,6 +711,75 @@ export function AbuAI() {
       // helpers (startCreate / resolvePendingMessage) so there is no weaker
       // voice-only parser.
       const cs = createStateRef.current
+      // ─── Voice reminder (before appointment create) ──────────────────
+      if (isCreateIntent(text) && detectReminderIntent(text) === 'reminder' && cs.phase === 'idle') {
+        try {
+          const _n = new Date(); const _p = (n: number) => String(n).padStart(2,'0')
+          const todayStr = `${_n.getFullYear()}-${_p(_n.getMonth()+1)}-${_p(_n.getDate())}`
+          const draft = parseReminder(text, todayStr)
+          let response: string
+          if (draft.dueAt && draft.title && !draft.ambiguity && draft.missingFields.length === 0) {
+            setPendingReminder(draft)
+            response = `${draft.readbackText}\n\nלשמור?`
+          } else if (draft.missingFields.includes('time')) {
+            response = `הבנתי: ${draft.title ?? text}\nמתי להזכיר לך?`
+          } else {
+            response = draft.readbackText ? `${draft.readbackText}\nלשמור?` : 'לא הצלחתי להבין. מתי להזכיר לך?'
+            if (draft.dueAt && draft.title) setPendingReminder(draft)
+          }
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }])
+          if (!voiceModeRef.current) return
+          transitionVoice('RESPONDING', 'reminder-turn')
+          setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
+          await speakVoiceMode(shapeVoiceSafe(response))
+          setIsSpeaking(false); setStreamingText('')
+          if (!voiceModeRef.current) return
+          await new Promise(r => setTimeout(r, 120))
+          if (voiceModeRef.current) startVoiceListening()
+        } catch {
+          setIsSpeaking(false); setStreamingText('')
+          if (voiceModeRef.current) { transitionVoice('RECOVERING', 'post-reminder-error'); startVoiceListening() }
+        }
+        return
+      }
+
+      // ─── Voice pending reminder confirmation ──────────────────────────
+      if (pendingReminder && (isConfirm(text) || isCancel(text))) {
+        try {
+          let response: string
+          if (isConfirm(text)) {
+            const { saved } = createReminder({
+              category: pendingReminder.category,
+              title: pendingReminder.title ?? '',
+              dueAt: pendingReminder.dueAt ?? new Date().toISOString(),
+              displayDateLabel: pendingReminder.displayDateLabel ?? '',
+              displayTimeLabel: pendingReminder.displayTimeLabel ?? '',
+              ...(pendingReminder.recurrence ? { recurrence: pendingReminder.recurrence } : {}),
+              alertPolicy: { ...createDefaultAlertPolicy(), ...pendingReminder.alertPolicyDraft },
+            })
+            setPendingReminder(null)
+            response = saved ? `תזכורת נשמרה: ${pendingReminder.title ?? ''}` : 'לא הצלחתי לשמור את התזכורת.'
+            if (saved) soundSuccess()
+          } else {
+            setPendingReminder(null)
+            response = 'בסדר, ביטלתי.'
+          }
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }])
+          if (!voiceModeRef.current) return
+          transitionVoice('RESPONDING', 'reminder-confirm-turn')
+          setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
+          await speakVoiceMode(shapeVoiceSafe(response))
+          setIsSpeaking(false); setStreamingText('')
+          if (!voiceModeRef.current) return
+          await new Promise(r => setTimeout(r, 120))
+          if (voiceModeRef.current) startVoiceListening()
+        } catch {
+          setIsSpeaking(false); setStreamingText('')
+          if (voiceModeRef.current) { transitionVoice('RECOVERING', 'post-reminder-confirm-error'); startVoiceListening() }
+        }
+        return
+      }
+
       if (cs.phase !== 'idle' || isCreateIntent(text)) {
         try {
           let response: string

@@ -115,3 +115,28 @@ describe('AbuAI index.tsx reminder routing wiring', () => {
     expect(INDEX_SRC.includes("לשמור?")).toBe(true)
   })
 })
+
+describe('AbuAI voice mode reminder routing', () => {
+  it('voice handleText checks detectReminderIntent before appointment create', () => {
+    // The voice path (handleText) must detect reminders BEFORE falling
+    // through to the appointment create state machine
+    const voiceReminderCheck = INDEX_SRC.indexOf("// ─── Voice reminder (before appointment create)")
+    const voiceAppointmentCheck = INDEX_SRC.indexOf("if (cs.phase !== 'idle' || isCreateIntent(text))")
+    expect(voiceReminderCheck).toBeGreaterThan(0)
+    expect(voiceAppointmentCheck).toBeGreaterThan(0)
+    expect(voiceReminderCheck).toBeLessThan(voiceAppointmentCheck)
+  })
+
+  it('voice path handles pendingReminder confirmation', () => {
+    const voicePendingCheck = INDEX_SRC.indexOf("// ─── Voice pending reminder confirmation")
+    expect(voicePendingCheck).toBeGreaterThan(0)
+  })
+
+  it('voice reminder speaks response via TTS', () => {
+    // After creating reminder response, voice mode speaks it
+    const section = INDEX_SRC.slice(INDEX_SRC.indexOf("// ─── Voice reminder (before appointment create)"))
+    const block = section.slice(0, section.indexOf("// ─── Voice pending reminder confirmation"))
+    expect(block.includes('speakVoiceMode')).toBe(true)
+    expect(block.includes("'reminder-turn'")).toBe(true)
+  })
+})
