@@ -385,8 +385,15 @@ describe('shapeCreateConfirmReadback', () => {
 })
 
 describe('shapeCreateSaved', () => {
-  it('short confirmation', () => {
-    expect(shapeCreateSaved()).toBe('נרשם ביומן.')
+  it('warm confirmation without draft', () => {
+    expect(shapeCreateSaved()).toBe('מעולה, נרשם ביומן.')
+  })
+
+  it('warm confirmation with draft echoes what was saved', () => {
+    const result = shapeCreateSaved({ title: 'רופא', date: '2026-06-10', time: '10:00' })
+    expect(result).toContain('מעולה')
+    expect(result).toContain('רופא')
+    expect(result).toContain('עשר')
   })
 })
 

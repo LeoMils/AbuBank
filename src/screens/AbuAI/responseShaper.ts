@@ -198,18 +198,22 @@ export function shapeCreateConfirmReadback(draft: ReadbackDraft): string {
   return parts.join(' ')
 }
 
-export function shapeCreateSaved(): string {
-  return 'נרשם ביומן.'
+export function shapeCreateSaved(draft?: { title?: string | null; date?: string | null; time?: string | null }): string {
+  if (draft?.title) {
+    const what = humanTitle(draft.title)
+    const when = draft.date ? ` ${dateLabel(draft.date)}` : ''
+    const time = draft.time ? ` ${timeInWords(draft.time)}` : ''
+    return `מעולה, קבעתי לך ${what}${when}${time}.`
+  }
+  return 'מעולה, נרשם ביומן.'
 }
 
 export function shapeCreateCancelled(): string {
-  return 'בסדר, ביטלתי. אפשר לכתוב לי מחדש מה לקבוע.'
+  return 'בסדר, ביטלתי. תגידי לי מתי שתרצי לקבוע משהו.'
 }
 
-// Shown when a pending confirmation gets an unclear answer — never a blind
-// repeat of the same "זה נכון?" confirmation.
 export function shapeCreateUnclear(): string {
-  return 'לא הבנתי. אפשר לענות כן, לא, או לכתוב מחדש.'
+  return 'לא הבנתי — את רוצה שאקבע את זה?'
 }
 
 export function shapeCreateClarify(

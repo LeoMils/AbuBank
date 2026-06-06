@@ -288,7 +288,7 @@ export function AbuAI() {
           addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
           soundSuccess()
           setCreateState(IDLE_STATE)
-          pushAssistant(shapeCreateSaved())
+          pushAssistant(shapeCreateSaved(d))
           return
         }
         if (resolution.action === 'replace' || resolution.action === 'update') {
@@ -351,7 +351,7 @@ export function AbuAI() {
             return
           }
           // Still can't parse time — ask again
-          pushAssistant('לא הבנתי את השעה. תגידי שעה, למשל "מחר בערב" או "בעוד שעה".')
+          pushAssistant('לא תפסתי מתי. תגידי למשל "מחר בערב" או "בעוד שעה".')
           return
         }
 
@@ -369,7 +369,7 @@ export function AbuAI() {
           setPendingReminder(null)
           if (saved) {
             soundSuccess()
-            pushAssistant(`תזכורת נשמרה: ${pendingReminder.title ?? ''}`)
+            pushAssistant(`רשמתי. אזכיר לך ${pendingReminder.title ?? ''}.`)
           } else {
             pushAssistant('לא הצלחתי לשמור את התזכורת. נסי שוב.')
           }
@@ -797,7 +797,7 @@ export function AbuAI() {
               alertPolicy: { ...createDefaultAlertPolicy(), ...pendingReminder.alertPolicyDraft },
             })
             setPendingReminder(null)
-            response = saved ? `תזכורת נשמרה: ${pendingReminder.title ?? ''}` : 'לא הצלחתי לשמור את התזכורת.'
+            response = saved ? `רשמתי. אזכיר לך ${pendingReminder.title ?? ''}.` : 'לא הצלחתי לשמור את התזכורת.'
             if (saved) soundSuccess()
           } else {
             setPendingReminder(null)
@@ -834,7 +834,7 @@ export function AbuAI() {
               addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
               soundSuccess()
               setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE
-              response = shapeCreateSaved()
+              response = shapeCreateSaved(d)
             } else if (resolution.action === 'replace' || resolution.action === 'update') {
               setCreateState(resolution.state); createStateRef.current = resolution.state
               response = resolution.state.phase === 'confirming'

@@ -98,7 +98,7 @@ describe('AbuAI index.tsx reminder routing wiring', () => {
 
   it('confirmation saves via createReminder', () => {
     expect(INDEX_SRC.includes("createReminder({")).toBe(true)
-    expect(INDEX_SRC.includes("תזכורת נשמרה:")).toBe(true)
+    expect(INDEX_SRC.includes("אזכיר לך")).toBe(true)
   })
 
   it('cancel clears pendingReminder', () => {
@@ -131,7 +131,7 @@ describe('AbuAI index.tsx reminder routing wiring', () => {
   })
 
   it('unresolvable time asks again clearly', () => {
-    expect(INDEX_SRC.includes("לא הבנתי את השעה")).toBe(true)
+    expect(INDEX_SRC.includes("לא תפסתי מתי")).toBe(true)
   })
 
   it('no false saved claim — confirmation required before save', () => {
