@@ -111,13 +111,28 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
   function handleAdvancedImport(jsonText: string): { ok: boolean; messages: string[] } {
     const r = importContactsJSON(jsonText)
     if (!r.ok) {
-      // Hebrew, senior-readable header first; the technical line-level reasons
-      // follow so the operator can see exactly which row failed.
       return { ok: false, messages: ['הייבוא נכשל. בדקי את השורות הבאות:', ...r.errors] }
     }
-    setLocalContacts(r.contacts)
+    // Merge: upsert each imported contact instead of replacing all.
+    // Preserves existing contacts that are not in the import.
+    const updated: string[] = []
+    for (const c of r.contacts) {
+      const res = upsertLocalContact(c)
+      if (res.ok) updated.push(c.id)
+    }
     setStored(getLocalContacts())
-    return { ok: true, messages: [`נשמרו ${r.contacts.length} אנשי קשר`] }
+    const names = FAMILY_QUICK_FACES
+      .filter(f => f.type === 'person' && updated.includes(f.id))
+      .map(f => (f as Extract<FamilyQuickFace, { type: 'person' }>).displayName)
+    return { ok: true, messages: [
+      `עודכנו ${updated.length} אנשי קשר: ${names.join(', ')}`,
+      ...updated.map(id => {
+        const saved = getLocalContacts().find(c => c.id === id)
+        const phone = saved?.phoneE164 ?? ''
+        const ready = isValidPhoneE164(phone)
+        return `${id}: ${ready ? '✓ מוכן ל-WhatsApp' : '✗ חסר מספר תקין'}`
+      }),
+    ] }
   }
 
   function handleClearAll() {
@@ -392,13 +407,26 @@ function AdvancedJsonPanel({
           {banner.messages.map((m, i) => <div key={i}>{m}</div>)}
         </div>
       )}
+      {/* Import instructions */}
+      <div data-testid="setup-import-instructions" style={{
+        fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6,
+        padding: '6px 0', direction: 'rtl',
+      }}>
+        <div style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)', marginBottom: 4 }}>ייבוא אנשי קשר</div>
+        <div>הדביקו JSON עם מספרי טלפון ישראליים.</div>
+        <div>מספרים כמו 054... יומרו אוטומטית ל-+972...</div>
+        <div>אנשי קשר קיימים יישמרו — רק מה שביבוא יתעדכן.</div>
+        <div style={{ marginTop: 4, fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+          אנשי קשר נתמכים: מור, לאו, יעל, רפי, אופיר, איילון, עילי, אדר, עדי, נועם, ירדן, גלעד, אנאבל, ארי
+        </div>
+      </div>
       <textarea
         data-testid="setup-adv-json"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         rows={8}
         spellCheck={false}
-        placeholder={'[ { "id": "mor", "enabled": true, "phoneE164": "+972XXXXXXXXX" } ]'}
+        placeholder={'דוגמה:\n[\n  { "id": "yael", "enabled": true, "phoneE164": "05XXXXXXXX" },\n  { "id": "mor", "enabled": true, "phoneE164": "05XXXXXXXX" }\n]'}
         style={{
           width: '100%', minHeight: 140,
           padding: '10px 12px', borderRadius: 12,

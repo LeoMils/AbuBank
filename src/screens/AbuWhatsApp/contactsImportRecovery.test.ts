@@ -141,8 +141,8 @@ describe('operator setup UX — phone-friendly labels & feedback', () => {
     expect(setupSrc.includes('ייצוא לגיבוי')).toBe(true)
   })
 
-  it('successful import surfaces "נשמרו X אנשי קשר" (#18)', () => {
-    expect(setupSrc.includes('`נשמרו ${r.contacts.length} אנשי קשר`')).toBe(true)
+  it('successful import surfaces contact count message (#18)', () => {
+    expect(setupSrc.includes('עודכנו ${updated.length} אנשי קשר:')).toBe(true)
   })
 
   it('failed import surfaces a Hebrew error banner header (#19)', () => {

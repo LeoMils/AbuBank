@@ -124,6 +124,61 @@ describe('upsertLocalContact normalizes phones', () => {
   })
 })
 
+describe('import merges — does not wipe existing contacts', () => {
+  it('importing Yael does not remove existing Mor', () => {
+    upsertLocalContact({ id: 'mor', enabled: true, phoneE164: '+972501234567' }, mockStorage)
+    // Now import only Yael
+    const json = JSON.stringify([
+      { id: 'yael', enabled: true, phoneE164: '0541111111' },
+    ])
+    const result = importContactsJSON(json)
+    expect(result.ok).toBe(true)
+    // Save via upsert (same merge pattern as FamilyContactsSetup)
+    for (const c of result.contacts) upsertLocalContact(c, mockStorage)
+    const saved = getLocalContacts(mockStorage)
+    expect(saved.find(c => c.id === 'mor')?.phoneE164).toBe('+972501234567')
+    expect(saved.find(c => c.id === 'yael')?.phoneE164).toBe('+972541111111')
+    expect(saved.length).toBe(2)
+  })
+})
+
+describe('FamilyContactsSetup import UI', () => {
+  it('has Hebrew import instructions', () => {
+    const src = fs.readFileSync(path.resolve(__dirname, 'FamilyContactsSetup.tsx'), 'utf8')
+    expect(src.includes('ייבוא אנשי קשר')).toBe(true)
+    expect(src.includes('מספרים כמו 054')).toBe(true)
+    expect(src.includes('אנשי קשר קיימים יישמרו')).toBe(true)
+  })
+
+  it('lists supported contacts including Yael', () => {
+    const src = fs.readFileSync(path.resolve(__dirname, 'FamilyContactsSetup.tsx'), 'utf8')
+    expect(src.includes('יעל')).toBe(true)
+  })
+
+  it('uses upsertLocalContact (merge) not setLocalContacts (replace)', () => {
+    const src = fs.readFileSync(path.resolve(__dirname, 'FamilyContactsSetup.tsx'), 'utf8')
+    const importFn = src.slice(src.indexOf('function handleAdvancedImport'))
+    const fnEnd = importFn.indexOf('\n  }')
+    const body = importFn.slice(0, fnEnd)
+    expect(body.includes('upsertLocalContact')).toBe(true)
+    expect(body.includes('setLocalContacts(r.contacts)')).toBe(false)
+  })
+
+  it('shows WhatsApp readiness per contact after import', () => {
+    const src = fs.readFileSync(path.resolve(__dirname, 'FamilyContactsSetup.tsx'), 'utf8')
+    expect(src.includes('מוכן ל-WhatsApp')).toBe(true)
+    expect(src.includes('חסר מספר תקין')).toBe(true)
+  })
+
+  it('no real phone numbers in placeholder', () => {
+    const src = fs.readFileSync(path.resolve(__dirname, 'FamilyContactsSetup.tsx'), 'utf8')
+    // Placeholder uses 05XXXXXXXX pattern, not real numbers
+    expect(src.includes('05XXXXXXXX')).toBe(true)
+    const realPhoneInPlaceholder = /placeholder=.*0544720580|placeholder=.*0545606084/.test(src)
+    expect(realPhoneInPlaceholder).toBe(false)
+  })
+})
+
 describe('no real phone numbers in committed source', () => {
   it('familyContacts.private.ts has no real phone numbers', () => {
     const src = fs.readFileSync(path.resolve(__dirname, 'familyContacts.private.ts'), 'utf8')
