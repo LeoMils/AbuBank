@@ -110,8 +110,31 @@ describe('AbuAI index.tsx reminder routing wiring', () => {
     expect(INDEX_SRC.includes("מתי להזכיר לך")).toBe(true)
   })
 
+  it('missing time stores partial draft for time follow-up', () => {
+    // When time is missing, setPendingReminder(draft) is called
+    // so the next user message can provide time
+    const section = INDEX_SRC.slice(INDEX_SRC.indexOf("// Missing time → store partial"))
+    const block = section.slice(0, section.indexOf('return'))
+    expect(block.includes('setPendingReminder(draft)')).toBe(true)
+  })
+
+  it('time follow-up re-parses with pending title', () => {
+    // Case 1 in pending handler: !pendingReminder.dueAt → combines
+    // user's time answer with pending title and re-parses
+    expect(INDEX_SRC.includes('// Case 1: waiting for time')).toBe(true)
+    expect(INDEX_SRC.includes('תזכירי לי ${msgText} ${pendingReminder.title')).toBe(true)
+  })
+
+  it('time follow-up still allows cancel', () => {
+    expect(INDEX_SRC.includes("isCancel(msgText)")).toBe(true)
+    expect(INDEX_SRC.includes("ביטלתי")).toBe(true)
+  })
+
+  it('unresolvable time asks again clearly', () => {
+    expect(INDEX_SRC.includes("לא הבנתי את השעה")).toBe(true)
+  })
+
   it('no false saved claim — confirmation required before save', () => {
-    // readbackText shown with "לשמור?" — user must confirm
     expect(INDEX_SRC.includes("לשמור?")).toBe(true)
   })
 })

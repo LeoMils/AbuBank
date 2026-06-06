@@ -316,13 +316,38 @@ export function AbuAI() {
         return
       }
 
-      // ─── Reminder confirmation pending ───────────────────────────────
+      // ─── Reminder pending (confirmation or time follow-up) ────────────
       if (pendingReminder) {
         const pushAssistant = (content: string) => {
           setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
           setLoading(false)
           streamingMsgIdRef.current = null
         }
+
+        // Case 1: waiting for time ("מתי להזכיר לך?")
+        if (!pendingReminder.dueAt) {
+          // Try to parse the user's answer as a time/date for the pending title
+          const combined = `תזכירי לי ${msgText} ${pendingReminder.title ?? ''}`
+          const _n = new Date(); const _p = (n: number) => String(n).padStart(2,'0')
+          const todayStr = `${_n.getFullYear()}-${_p(_n.getMonth()+1)}-${_p(_n.getDate())}`
+          const reParsed = parseReminder(combined, todayStr)
+          if (reParsed.dueAt && reParsed.title) {
+            // Resolved! Show confirmation
+            setPendingReminder(reParsed)
+            pushAssistant(`${reParsed.readbackText}\n\nלשמור?`)
+            return
+          }
+          if (isCancel(msgText)) {
+            setPendingReminder(null)
+            pushAssistant('בסדר, ביטלתי.')
+            return
+          }
+          // Still can't parse time — ask again
+          pushAssistant('לא הבנתי את השעה. תגידי שעה, למשל "מחר בערב" או "בעוד שעה".')
+          return
+        }
+
+        // Case 2: waiting for confirmation ("לשמור?")
         if (isConfirm(msgText)) {
           const { saved } = createReminder({
             category: pendingReminder.category,
@@ -367,8 +392,9 @@ export function AbuAI() {
           pushAssistant(`${draft.readbackText}\n\nלשמור?`)
           return
         }
-        // Missing time → ask
+        // Missing time → store partial draft and ask
         if (draft.missingFields.includes('time')) {
+          setPendingReminder(draft) // dueAt is undefined → triggers time follow-up
           pushAssistant(`הבנתי: ${draft.title ?? msgText}\nמתי להזכיר לך?`)
           return
         }
@@ -722,6 +748,7 @@ export function AbuAI() {
             setPendingReminder(draft)
             response = `${draft.readbackText}\n\nלשמור?`
           } else if (draft.missingFields.includes('time')) {
+            setPendingReminder(draft) // dueAt undefined → triggers time follow-up
             response = `הבנתי: ${draft.title ?? text}\nמתי להזכיר לך?`
           } else {
             response = draft.readbackText ? `${draft.readbackText}\nלשמור?` : 'לא הצלחתי להבין. מתי להזכיר לך?'
