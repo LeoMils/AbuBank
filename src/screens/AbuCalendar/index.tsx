@@ -939,7 +939,7 @@ export function AbuCalendar() {
     const { saved } = createReminder({
       category: draft.category,
       title: draft.title ?? '',
-      dueAt: draft.dueAt ?? new Date().toISOString(),
+      dueAt: draft.dueAt ?? (() => { const d = new Date(); const p = (n: number) => String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00` })(),
       displayDateLabel: draft.displayDateLabel ?? '',
       displayTimeLabel: draft.displayTimeLabel ?? '',
       ...(draft.recurrence ? { recurrence: draft.recurrence } : {}),

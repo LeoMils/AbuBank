@@ -15,7 +15,9 @@ export type ApptTimeState = 'past' | 'now' | 'today' | 'upcoming'
 export const DAY_HEADERS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'שבת']
 
 export function getTodayStr(): string {
-  return new Date().toISOString().split('T')[0]!
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
 export function daysInMonth(year: number, month: number): number {

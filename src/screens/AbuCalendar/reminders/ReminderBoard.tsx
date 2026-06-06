@@ -22,7 +22,8 @@ interface Section {
 
 function buildSections(now: Date): Section[] {
   const all = listAllReminders()
-  const today = now.toISOString().slice(0, 10)
+  const p = (n: number) => String(n).padStart(2, '0')
+  const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`
   const nowMs = now.getTime()
 
   const due = all.filter(r => r.status === 'due' || (r.status === 'scheduled' && new Date(r.dueAt).getTime() <= nowMs))
@@ -105,8 +106,10 @@ export function ReminderBoard() {
               onSnooze={() => { snoozeReminder(r.id); refresh() }}
               onDelete={() => { cancelReminder(r.id); refresh() }}
               onReschedule={() => {
-                const dueAt = new Date(Date.now() + 60 * 60_000).toISOString()
-                rescheduleReminder(r.id, dueAt, 'היום', new Date(dueAt).toTimeString().slice(0, 5))
+                const d = new Date(Date.now() + 60 * 60_000)
+                const pd = (n: number) => String(n).padStart(2, '0')
+                const dueAt = `${d.getFullYear()}-${pd(d.getMonth()+1)}-${pd(d.getDate())}T${pd(d.getHours())}:${pd(d.getMinutes())}:00`
+                rescheduleReminder(r.id, dueAt, 'היום', d.toTimeString().slice(0, 5))
                 refresh()
               }}
             />
