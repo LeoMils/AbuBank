@@ -34,6 +34,7 @@ import type { ReminderDraft } from '../AbuCalendar/reminders/types'
 import { routePersonalQuery } from './router'
 import { addAppointment } from '../AbuCalendar/service'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
+import { resolvePronouns } from './pronounResolver'
 
 let msgCounter = 0
 function nextId(): string {
@@ -241,8 +242,15 @@ export function AbuAI() {
   })
 
   const handleSend = async (text?: string) => {
-    const msgText = (text ?? input).trim()
+    let msgText = (text ?? input).trim()
     if (!msgText || loading) return
+
+    // ─── Cross-turn pronoun resolution ──────────────────────────────────
+    // "תזכירי לי להתקשר אליו" after talking about נועם → resolves to
+    // "תזכירי לי להתקשר לנועם". Scans recent messages for last mentioned
+    // family member. Must run before intent detection.
+    const { resolved, personName: _resolvedPerson } = resolvePronouns(msgText, messages)
+    if (resolved !== msgText) msgText = resolved
 
     const userMsg: ChatMessage = { id: nextId(), role: 'user', content: msgText, timestamp: Date.now() }
     const newMessages = [...messages, userMsg]
@@ -727,7 +735,11 @@ export function AbuAI() {
 
       setLastHeardText(text) // v20: Show what was heard
 
-      const userMsg: ChatMessage = { id: nextId(), role: 'user', content: text, timestamp: Date.now() }
+      // Cross-turn pronoun resolution (voice path)
+      const { resolved: resolvedText } = resolvePronouns(text, messagesRef.current)
+      const effectiveText = resolvedText !== text ? resolvedText : text
+
+      const userMsg: ChatMessage = { id: nextId(), role: 'user', content: effectiveText, timestamp: Date.now() }
       const currentMsgs = [...messagesRef.current, userMsg]
       setMessages(currentMsgs)
 
@@ -738,11 +750,11 @@ export function AbuAI() {
       // voice-only parser.
       const cs = createStateRef.current
       // ─── Voice reminder (before appointment create) ──────────────────
-      if (isCreateIntent(text) && detectReminderIntent(text) === 'reminder' && cs.phase === 'idle') {
+      if (isCreateIntent(effectiveText) && detectReminderIntent(effectiveText) === 'reminder' && cs.phase === 'idle') {
         try {
           const _n = new Date(); const _p = (n: number) => String(n).padStart(2,'0')
           const todayStr = `${_n.getFullYear()}-${_p(_n.getMonth()+1)}-${_p(_n.getDate())}`
-          const draft = parseReminder(text, todayStr)
+          const draft = parseReminder(effectiveText, todayStr)
           let response: string
           if (draft.dueAt && draft.title && !draft.ambiguity && draft.missingFields.length === 0) {
             setPendingReminder(draft)
@@ -771,10 +783,10 @@ export function AbuAI() {
       }
 
       // ─── Voice pending reminder confirmation ──────────────────────────
-      if (pendingReminder && (isConfirm(text) || isCancel(text))) {
+      if (pendingReminder && (isConfirm(effectiveText) || isCancel(effectiveText))) {
         try {
           let response: string
-          if (isConfirm(text)) {
+          if (isConfirm(effectiveText)) {
             const { saved } = createReminder({
               category: pendingReminder.category,
               title: pendingReminder.title ?? '',
@@ -807,7 +819,7 @@ export function AbuAI() {
         return
       }
 
-      if (cs.phase !== 'idle' || isCreateIntent(text)) {
+      if (cs.phase !== 'idle' || isCreateIntent(effectiveText)) {
         try {
           let response: string
           if (cs.phase !== 'idle') {
