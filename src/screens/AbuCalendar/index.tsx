@@ -1486,25 +1486,31 @@ export function AbuCalendar() {
             // never reaches the date math below.
             if (val === 'manual') return
             const now = new Date()
+            // Local ISO string — NOT toISOString() which returns UTC.
+            // In Israel (UTC+3), toISOString shifts time by 3 hours.
+            const toLocalISO = (d: Date) => {
+              const p = (n: number) => String(n).padStart(2, '0')
+              return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00`
+            }
             let dueAt: string
             let displayDateLabel: string
             let displayTimeLabel: string
             if (val === 'in_1h') {
               const d = new Date(now.getTime() + 60 * 60_000)
-              dueAt = d.toISOString().slice(0, 19)
+              dueAt = toLocalISO(d)
               displayDateLabel = 'היום'
               displayTimeLabel = d.toTimeString().slice(0, 5)
             } else if (val === 'today_evening') {
               const d = new Date(now)
               d.setHours(20, 0, 0, 0)
-              dueAt = d.toISOString().slice(0, 19)
+              dueAt = toLocalISO(d)
               displayDateLabel = 'היום'
               displayTimeLabel = '20:00'
             } else if (val === 'tomorrow_morning') {
               const d = new Date(now)
               d.setDate(d.getDate() + 1)
               d.setHours(9, 0, 0, 0)
-              dueAt = d.toISOString().slice(0, 19)
+              dueAt = toLocalISO(d)
               displayDateLabel = 'מחר'
               displayTimeLabel = '09:00'
             } else {
@@ -1513,7 +1519,7 @@ export function AbuCalendar() {
               const d = new Date(now)
               d.setHours(h ?? 9, m ?? 0, 0, 0)
               if (d <= now) d.setDate(d.getDate() + 1)
-              dueAt = d.toISOString().slice(0, 19)
+              dueAt = toLocalISO(d)
               displayDateLabel = d.toDateString() === now.toDateString() ? 'היום' : 'מחר'
               displayTimeLabel = val
             }

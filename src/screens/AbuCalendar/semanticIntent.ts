@@ -28,7 +28,7 @@ export type CalendarIntentDraft = {
 }
 
 const CREATE_RE = /(תקבעי|תקבע|תוסיפי|תוסיף|תרשמי|תרשום|להוסיף|לקבוע|תכניסי|תכניס|תזכירי|תזכיר|שימי|שים|agreg[áa]|agendar|agenda|add|schedule|create|book)/i
-const STRONG_SCHED_RE = /(רוצה שאני אשמור|אשמור על הילדים|לשמור על הילדים|אני צריך לשמור על הילדים|לקחת את הילדים|לאסוף את הילדים|לקחת את הילדים מאופיר|יש לי פגישה|יש לי תור|remind me to|m[eé]dico|meeting with)/i
+const STRONG_SCHED_RE = /(אשמור על הילדים|לשמור על הילדים|אני צריך לשמור על הילדים|לקחת את הילדים|לאסוף את הילדים|לקחת את הילדים מאופיר|יש לי פגישה|יש לי תור|remind me to|m[eé]dico|meeting with)/i
 const CONVERSATION_ONLY_RE = /(סיפרה לי על סרט יפה|גלעד יצא למילואים|אופיר התקשרה אליי|מחר יש סרט יפה)/
 
 function plusDays(iso: string, n: number): string {

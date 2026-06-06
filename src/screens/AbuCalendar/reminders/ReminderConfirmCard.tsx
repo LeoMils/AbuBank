@@ -68,7 +68,8 @@ export function ReminderConfirmCard({
           const d = new Date(now)
           d.setHours(h, m, 0, 0)
           if (d.getTime() <= now.getTime()) d.setDate(d.getDate() + 1)
-          corrected.dueAt = d.toISOString().slice(0, 19)
+          const p = (n: number) => String(n).padStart(2, '0')
+          corrected.dueAt = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00`
           corrected.displayTimeLabel = tm
           const isToday = d.toDateString() === now.toDateString()
           corrected.displayDateLabel = dt || (isToday ? 'היום' : 'מחר')

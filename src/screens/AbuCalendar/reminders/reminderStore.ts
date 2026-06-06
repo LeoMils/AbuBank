@@ -119,10 +119,13 @@ export function listDueReminders(): Reminder[] {
   const now = Date.now()
   return readStore().filter(r => {
     if (r.status === 'snoozed') {
-      return r.snoozedUntil ? new Date(r.snoozedUntil).getTime() <= now : false
+      if (!r.snoozedUntil) return false
+      const ms = new Date(r.snoozedUntil).getTime()
+      return !isNaN(ms) && ms <= now
     }
     if (r.status !== 'scheduled') return false
-    return new Date(r.dueAt).getTime() <= now
+    const ms = new Date(r.dueAt).getTime()
+    return !isNaN(ms) && ms <= now
   })
 }
 
