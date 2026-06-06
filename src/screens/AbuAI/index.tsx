@@ -26,8 +26,11 @@ import { ChatBubble } from './ChatBubble'
 import { BackButton } from '../../components/BackButton'
 import { ScreenHeader } from '../../components/ScreenHeader'
 import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
-import { type CalendarCreateState, IDLE_STATE, isCreateIntent, startCreate, resolvePendingMessage } from './calendarCreate'
+import { type CalendarCreateState, IDLE_STATE, isCreateIntent, startCreate, resolvePendingMessage, isConfirm, isCancel } from './calendarCreate'
 import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateUnclear, shapeCreateClarify } from './responseShaper'
+import { detectReminderIntent, parseReminder } from '../AbuCalendar/reminders/reminderParser'
+import { createReminder, createDefaultAlertPolicy } from '../AbuCalendar/reminders/reminderStore'
+import type { ReminderDraft } from '../AbuCalendar/reminders/types'
 import { routePersonalQuery } from './router'
 import { addAppointment } from '../AbuCalendar/service'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
@@ -127,6 +130,9 @@ export function AbuAI() {
 
   // Calendar create conversation state machine
   const [createState, setCreateState] = useState<CalendarCreateState>(IDLE_STATE)
+  // ─── Reminder creation from AbuAI ─────────────────────────────────
+  const [pendingReminder, setPendingReminder] = useState<ReminderDraft | null>(null)
+
   // Mirror of createState for the async hands-free voice loop (closures
   // capture a stale state value otherwise).
   const createStateRef = useRef<CalendarCreateState>(IDLE_STATE)
@@ -310,7 +316,69 @@ export function AbuAI() {
         return
       }
 
-      // Check for new create intent
+      // ─── Reminder confirmation pending ───────────────────────────────
+      if (pendingReminder) {
+        const pushAssistant = (content: string) => {
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
+          setLoading(false)
+          streamingMsgIdRef.current = null
+        }
+        if (isConfirm(msgText)) {
+          const { saved } = createReminder({
+            category: pendingReminder.category,
+            title: pendingReminder.title ?? '',
+            dueAt: pendingReminder.dueAt ?? new Date().toISOString(),
+            displayDateLabel: pendingReminder.displayDateLabel ?? '',
+            displayTimeLabel: pendingReminder.displayTimeLabel ?? '',
+            ...(pendingReminder.recurrence ? { recurrence: pendingReminder.recurrence } : {}),
+            alertPolicy: { ...createDefaultAlertPolicy(), ...pendingReminder.alertPolicyDraft },
+          })
+          setPendingReminder(null)
+          if (saved) {
+            soundSuccess()
+            pushAssistant(`תזכורת נשמרה: ${pendingReminder.title ?? ''}`)
+          } else {
+            pushAssistant('לא הצלחתי לשמור את התזכורת. נסי שוב.')
+          }
+          return
+        }
+        if (isCancel(msgText)) {
+          setPendingReminder(null)
+          pushAssistant('בסדר, ביטלתי.')
+          return
+        }
+        // Not confirm/cancel — cancel pending and continue normally
+        setPendingReminder(null)
+      }
+
+      // ─── Reminder intent detection (before appointment create) ─────
+      if (isCreateIntent(msgText) && detectReminderIntent(msgText) === 'reminder') {
+        const _n = new Date(); const _p = (n: number) => String(n).padStart(2,'0')
+        const todayStr = `${_n.getFullYear()}-${_p(_n.getMonth()+1)}-${_p(_n.getDate())}`
+        const draft = parseReminder(msgText, todayStr)
+        const pushAssistant = (content: string) => {
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
+          setLoading(false)
+          streamingMsgIdRef.current = null
+        }
+        // If all fields present and no ambiguity → ask confirmation
+        if (draft.dueAt && draft.title && !draft.ambiguity && draft.missingFields.length === 0) {
+          setPendingReminder(draft)
+          pushAssistant(`${draft.readbackText}\n\nלשמור?`)
+          return
+        }
+        // Missing time → ask
+        if (draft.missingFields.includes('time')) {
+          pushAssistant(`הבנתי: ${draft.title ?? msgText}\nמתי להזכיר לך?`)
+          return
+        }
+        // Other missing/ambiguous → general ask
+        pushAssistant(draft.readbackText ? `${draft.readbackText}\nלשמור?` : 'לא הצלחתי להבין. מתי להזכיר לך?')
+        if (draft.dueAt && draft.title) setPendingReminder(draft)
+        return
+      }
+
+      // Check for new create intent (appointments only — reminders handled above)
       if (isCreateIntent(msgText)) {
         const next = startCreate(msgText)
         setCreateState(next)
