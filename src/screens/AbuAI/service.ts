@@ -545,8 +545,10 @@ async function tryProvider(
     return { result: stripMarkdown(content), retryAfter: 0 }
   }
 
+  // Gemini can be slow — give it more time than Groq
+  const timeoutMs = provider.kind === 'gemini-client' ? 18000 : 12000
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 10000)
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(provider.url, {
       method: 'POST',
@@ -558,15 +560,15 @@ async function tryProvider(
       signal: controller.signal,
     })
     if (!res.ok) {
-      // v25: Detect quota/billing errors — set flag so all OpenAI calls are skipped
-      const errBody = await res.text().catch(() => '')
-      if (res.status === 402 || res.status === 429 || errBody.includes('quota') || errBody.includes('exceeded') || errBody.includes('billing')) {
-        console.warn('[AbuAI] OpenAI quota exceeded — setting skip flag')
-        try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
-        return { result: null, retryAfter: 0 } // skip to next provider silently
+      if (res.status === 429) {
+        // Rate limited — extract retry-after for the caller's backoff
+        const ra = parseInt(res.headers.get('retry-after') ?? '0', 10)
+        const retryAfter = Math.min(ra || 3, 10) // default 3s, max 10s
+        console.warn(`[AbuAI] ${provider.kind} rate-limited (429), retry-after ${retryAfter}s`)
+        return { result: null, retryAfter }
       }
-      if (res.status === 401 || res.status >= 500) return { result: null, retryAfter: 0 }
-      return { result: null, retryAfter: 0 } // skip to next provider, don't throw
+      if (res.status === 402 || res.status >= 500) return { result: null, retryAfter: 0 }
+      return { result: null, retryAfter: 0 }
     }
     const data = await res.json()
     const message = data?.choices?.[0]?.message
@@ -610,6 +612,7 @@ export async function* streamMessage(
   const maxTokens = voiceMode ? 800 : 2048  // v20.1: voice can tell full stories (~200 words)
   const temperature = voiceMode ? 0.3 : 0.65
 
+  for (let streamAttempt = 0; streamAttempt < 2; streamAttempt++) {
   for (const provider of providers) {
     try {
       const body: Record<string, unknown> = {
@@ -653,6 +656,10 @@ export async function* streamMessage(
 
         if (!res.ok) {
           clearTimeout(timeout)
+          if (res.status === 429 && streamAttempt === 0) {
+            // Rate limited — wait then retry all providers
+            await wait(3000)
+          }
           continue // try next provider
         }
 
@@ -702,7 +709,9 @@ export async function* streamMessage(
     }
   }
 
-  // All providers failed — yield error message
+  } // end streamAttempt loop
+
+  // All providers failed across all attempts — yield error message
   yield 'שגיאה בחיבור. נסי שוב.'
 }
 
@@ -731,7 +740,7 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
   let hadToolCall = false
 
   for (let toolRound = 0; toolRound < 2; toolRound++) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       let maxRetryAfter = 0
       for (const provider of providers) {
         const supportsTools = toolsEnabled() && (provider.kind === 'openai-server' || provider.kind === 'groq-client')
