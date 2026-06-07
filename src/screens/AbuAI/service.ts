@@ -711,8 +711,8 @@ export async function* streamMessage(
 
   } // end streamAttempt loop
 
-  // All providers failed across all attempts — yield error message
-  yield 'שגיאה בחיבור. נסי שוב.'
+  // All providers failed across all attempts — warm fallback
+  yield 'אני לא מצליחה לענות על זה כרגע. אבל אפשר לקבוע פגישה, להגדיר תזכורת, לבדוק יומן או לשאול על המשפחה.'
 }
 
 export const VOICE_SUFFIX = `
@@ -786,5 +786,5 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
   if (lastMsg?.role === 'tool') {
     throw new Error('לא הצלחתי לעבד את המידע. נסי שוב.')
   }
-  throw new Error('כל השרתים תפוסים. נסי שוב בעוד חצי דקה.')
+  throw new Error('אני לא מצליחה לחשוב על זה כרגע. אבל אפשר עדיין לקבוע פגישה, להגדיר תזכורת, לבדוק את היומן או לשאול על המשפחה.')
 }
