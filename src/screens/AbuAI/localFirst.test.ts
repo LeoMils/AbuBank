@@ -140,3 +140,18 @@ describe('LLM failure message is warm and helpful', () => {
     expect(SERVICE_SRC.includes('שגיאה בחיבור')).toBe(false)
   })
 })
+
+describe('Groq does not receive tools (prevents 400)', () => {
+  it('supportsTools excludes groq-client', () => {
+    // The supportsTools line must NOT include groq-client
+    expect(SERVICE_SRC.includes("provider.kind === 'openai-server' || provider.kind === 'groq-client'")).toBe(false)
+    expect(SERVICE_SRC.includes("provider.kind === 'openai-server'")).toBe(true)
+  })
+
+  it('only openai-server is treated as supportsTools', () => {
+    const line = SERVICE_SRC.split('\n').find(l => l.includes('const supportsTools'))
+    expect(line).toBeDefined()
+    expect(line).not.toContain('groq')
+    expect(line).toContain('openai-server')
+  })
+})

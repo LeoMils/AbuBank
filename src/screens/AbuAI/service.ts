@@ -743,7 +743,10 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
     for (let attempt = 0; attempt < 3; attempt++) {
       let maxRetryAfter = 0
       for (const provider of providers) {
-        const supportsTools = toolsEnabled() && (provider.kind === 'openai-server' || provider.kind === 'groq-client')
+        // Tools only via OpenAI server proxy. Groq returns 400 with
+        // tool_choice on llama-3.3-70b. Core actions are local-first
+        // anyway — LLM only handles open conversation (no tools needed).
+        const supportsTools = toolsEnabled() && provider.kind === 'openai-server'
         const body: Record<string, unknown> = {
           messages: conversationMessages,
           temperature,

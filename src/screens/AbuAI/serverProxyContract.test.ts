@@ -123,8 +123,9 @@ describe('service.ts uses the server-proxy provider for OpenAI', () => {
     expect(svc.includes('sendServerChat({ model: provider.model')).toBe(true)
   })
 
-  it('toolsEnabled() supports tools for openai-server and groq-client only', () => {
-    expect(svc.includes("provider.kind === 'openai-server' || provider.kind === 'groq-client'")).toBe(true)
+  it('toolsEnabled() supports tools for openai-server only (Groq 400 fix)', () => {
+    expect(svc.includes("provider.kind === 'openai-server'")).toBe(true)
+    expect(svc.includes("provider.kind === 'openai-server' || provider.kind === 'groq-client'")).toBe(false)
   })
 })
 
