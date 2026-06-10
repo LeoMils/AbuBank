@@ -212,34 +212,69 @@ interface Provider {
   apiKey?: string
 }
 
+// ─── Provider cooldown tracking ───
+// When any provider returns 429 / quota error, we record a cooldown
+// timestamp. The provider is skipped until the cooldown expires.
+// Cooldown durations: OpenAI 5 min (quota), Groq/Gemini 60s (rate limit).
+const COOLDOWN_KEYS: Record<Provider['kind'], string> = {
+  'openai-server': 'abu-openai-quota-failed',
+  'groq-client':   'abu-groq-cooldown',
+  'gemini-client': 'abu-gemini-cooldown',
+}
+const COOLDOWN_MS: Record<Provider['kind'], number> = {
+  'openai-server': 300_000,  // 5 min — server quota / key missing
+  'groq-client':   60_000,   // 60s — free-tier rate limit
+  'gemini-client': 60_000,   // 60s — free-tier rate limit
+}
+
+function isProviderCoolingDown(kind: Provider['kind']): boolean {
+  try {
+    const ts = localStorage.getItem(COOLDOWN_KEYS[kind])
+    if (!ts) return false
+    return (Date.now() - parseInt(ts, 10)) < COOLDOWN_MS[kind]
+  } catch { return false }
+}
+
+function markProviderCooldown(kind: Provider['kind']): void {
+  try { localStorage.setItem(COOLDOWN_KEYS[kind], String(Date.now())) } catch {}
+}
+
 function getProviders(voiceMode = false): Provider[] {
   const providers: Provider[] = []
   const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
   const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
 
-  // v25: Skip OpenAI entirely if quota exhausted (saves timeout delays).
-  // The flag is set by the runtime when the SERVER endpoint reports
-  // OPENAI_API_KEY_MISSING / quota errors via _recordServerChatError.
-  const qf = typeof localStorage !== 'undefined' ? localStorage.getItem('abu-openai-quota-failed') : null
-  const openaiAvailable = !qf || (Date.now() - parseInt(qf, 10)) > 300_000
+  const openaiAvailable = !isProviderCoolingDown('openai-server')
+  const groqAvailable   = !isProviderCoolingDown('groq-client')
+  const geminiAvailable = !isProviderCoolingDown('gemini-client')
 
   if (voiceMode) {
     // Voice mode: SPEED — Groq (free) first, then OpenAI server-proxy, then Gemini.
-    if (groqKey)         providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
-    if (openaiAvailable) providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_VOICE })
-    if (geminiKey)       providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
+    if (groqKey && groqAvailable)     providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
+    if (openaiAvailable)             providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_VOICE })
+    if (geminiKey && geminiAvailable) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
   } else {
     // Text mode: OpenAI server-proxy → Gemini (free, client) → Groq (free, client)
-    if (openaiAvailable) providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_TEXT })
-    if (geminiKey)       providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
-    if (groqKey)         providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
+    if (openaiAvailable)             providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_TEXT })
+    if (geminiKey && geminiAvailable) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
+    if (groqKey && groqAvailable)     providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
   }
 
-  // The server proxy is always added when OpenAI is not in cooldown, so
-  // this list is empty only in the rare combination of a stale cooldown
-  // flag plus no Gemini/Groq client keys. The user-facing copy now
-  // points to the SERVER configuration — never to a client-side
-  // the legacy client-side OpenAI key (which we no longer use at all).
+  // All providers in cooldown — force-add them anyway (expired cooldown
+  // is better than zero providers). The cooldowns are short enough that
+  // this path is rare.
+  if (providers.length === 0) {
+    if (voiceMode) {
+      if (groqKey)   providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
+      providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_VOICE })
+      if (geminiKey) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
+    } else {
+      providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_TEXT })
+      if (geminiKey) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
+      if (groqKey)   providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
+    }
+  }
+
   if (providers.length === 0) {
     throw new Error('אני לא יכולה לענות כרגע כי חיבור ה-AI בשרת לא מוגדר. הגדירו OPENAI_API_KEY ב-Vercel.')
   }
@@ -532,7 +567,7 @@ async function tryProvider(
       // Tag a quota-skip cool-down only when the server reports the
       // dedicated key-missing code; transient failures keep trying.
       if (r.errorCode === 'OPENAI_API_KEY_MISSING') {
-        try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+        markProviderCooldown('openai-server')
       }
       return { result: null, retryAfter: 0 }
     }
@@ -561,10 +596,12 @@ async function tryProvider(
     })
     if (!res.ok) {
       if (res.status === 429) {
-        // Rate limited — extract retry-after for the caller's backoff
+        // Rate limited — mark cooldown so getProviders() skips this
+        // provider on subsequent calls until cooldown expires.
+        markProviderCooldown(provider.kind)
         const ra = parseInt(res.headers.get('retry-after') ?? '0', 10)
         const retryAfter = Math.min(ra || 3, 10) // default 3s, max 10s
-        console.warn(`[AbuAI] ${provider.kind} rate-limited (429), retry-after ${retryAfter}s`)
+        console.warn(`[AbuAI] ${provider.kind} rate-limited (429), cooldown set, retry-after ${retryAfter}s`)
         return { result: null, retryAfter }
       }
       if (res.status === 402 || res.status >= 500) return { result: null, retryAfter: 0 }
@@ -656,9 +693,9 @@ export async function* streamMessage(
 
         if (!res.ok) {
           clearTimeout(timeout)
-          if (res.status === 429 && streamAttempt === 0) {
-            // Rate limited — wait then retry all providers
-            await wait(3000)
+          if (res.status === 429) {
+            markProviderCooldown(provider.kind)
+            if (streamAttempt === 0) await wait(3000)
           }
           continue // try next provider
         }
