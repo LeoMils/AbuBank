@@ -490,71 +490,114 @@ function stripMarkdown(text: string): string {
     .trim()
 }
 
-// ─── Voice transcription (Whisper on Groq) ───
+// ─── Voice transcription (Whisper STT with fallback) ───
 
-const WHISPER_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
-const WHISPER_MODEL = 'whisper-large-v3-turbo'
+const GROQ_WHISPER_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
+// Groq deprecated whisper-large-v3-turbo in some regions; use the stable model
+const GROQ_WHISPER_MODEL = 'whisper-large-v3'
 
-export async function transcribeAudio(audioBlob: Blob): Promise<string> {
-  const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-  if (!groqKey) {
-    throw new Error('מפתח API לתמלול לא הוגדר.')
-  }
+// STT provider health — disable broken providers for the session
+let _sttGroqDisabled = false
+let _sttGroqDisabledAt = 0
+const STT_COOLDOWN_MS = 120_000 // 2 min cooldown after 400
 
+// Consecutive STT failure counter — prevents infinite listen→fail loop
+let _sttConsecutiveFailures = 0
+const STT_MAX_CONSECUTIVE = 3
+
+export function resetSttFailureCount(): void { _sttConsecutiveFailures = 0 }
+export function getSttConsecutiveFailures(): number { return _sttConsecutiveFailures }
+
+function buildSttFormData(audioBlob: Blob, model: string): FormData {
   const formData = new FormData()
-  // Whisper accepts: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, webm
-  // iOS records as audio/mp4 → use m4a extension (Whisper-compatible)
   const t = audioBlob.type
   const ext = t.includes('mp4') || t.includes('m4a') || t.includes('aac') ? 'm4a'
     : t.includes('webm') ? 'webm'
     : t.includes('ogg')  ? 'ogg'
     : t.includes('wav')  ? 'wav'
-    : 'webm' // fallback — Whisper still tries webm
+    : 'webm'
   formData.append('file', audioBlob, `recording.${ext}`)
-  formData.append('model', WHISPER_MODEL)
-  // v20: Read language setting — 'auto' lets Whisper detect, 'he'/'es' forces language
+  formData.append('model', model)
   const voiceLang = localStorage.getItem('abu-voice-lang') || 'auto'
-  if (voiceLang === 'he') {
+  if (voiceLang === 'he' || voiceLang === 'auto') {
     formData.append('language', 'he')
     formData.append('prompt', 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.')
   } else if (voiceLang === 'es') {
     formData.append('language', 'es')
     formData.append('prompt', 'Hola Martita, cómo estás, dale, bueno, familia, receta, empanadas, asado, Buenos Aires.')
-  } else {
-    // Auto: default to Hebrew (most common) but let Whisper detect Spanish
-    formData.append('language', 'he')
-    formData.append('prompt', 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.')
   }
+  return formData
+}
 
+async function tryWhisperProvider(
+  url: string, apiKey: string, model: string, audioBlob: Blob,
+): Promise<{ text: string | null; status: number; errorBody: string }> {
+  const formData = buildSttFormData(audioBlob, model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 12000)
-
   try {
-    const res = await fetch(WHISPER_URL, {
+    const res = await fetch(url, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${groqKey}` },
+      headers: { Authorization: `Bearer ${apiKey}` },
       body: formData,
       signal: controller.signal,
     })
-
-    if (!res.ok) {
-      if (res.status === 401) throw new Error('מפתח API לא תקין.')
-      if (res.status === 429) throw new Error('השירות עמוס כרגע. ננסה שוב בעוד רגע.')
-      throw new Error('לא הצלחתי לשמוע. ננסה שוב?')
-    }
-
-    const data = await res.json()
-    const text = data?.text
-    if (!text) throw new Error('לא הצלחתי להבין. נסי שוב.')
-    return text.trim()
-  } catch (err: unknown) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      throw new Error('התמלול נמשך יותר מדי זמן. נסי שוב.')
-    }
-    throw err
-  } finally {
     clearTimeout(timeout)
+    if (!res.ok) {
+      let errorBody = ''
+      try { errorBody = await res.text() } catch {}
+      console.warn(`[STT] ${url} returned ${res.status}:`, errorBody)
+      return { text: null, status: res.status, errorBody }
+    }
+    const data = await res.json()
+    return { text: data?.text?.trim() || null, status: 200, errorBody: '' }
+  } catch (err: unknown) {
+    clearTimeout(timeout)
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return { text: null, status: 0, errorBody: 'timeout' }
+    }
+    return { text: null, status: 0, errorBody: String(err) }
   }
+}
+
+export async function transcribeAudio(audioBlob: Blob): Promise<string> {
+  const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
+
+  // Guard: too many consecutive failures → stop trying
+  if (_sttConsecutiveFailures >= STT_MAX_CONSECUTIVE) {
+    throw new SttExhaustedError('התמלול לא עובד כרגע. תנסי לכתוב במקום.')
+  }
+
+  console.log(`[STT] blob: ${audioBlob.size} bytes, type: ${audioBlob.type}`)
+
+  // Provider 1: Groq Whisper (free, fast)
+  const groqCooledDown = _sttGroqDisabled && (Date.now() - _sttGroqDisabledAt) < STT_COOLDOWN_MS
+  if (groqKey && !groqCooledDown) {
+    const r = await tryWhisperProvider(GROQ_WHISPER_URL, groqKey, GROQ_WHISPER_MODEL, audioBlob)
+    if (r.text) { _sttConsecutiveFailures = 0; return r.text }
+    if (r.status === 400) {
+      // 400 = bad request (model deprecated, unsupported format, etc.)
+      // Disable Groq STT for this session to prevent retries
+      _sttGroqDisabled = true
+      _sttGroqDisabledAt = Date.now()
+      console.warn(`[STT] Groq disabled for ${STT_COOLDOWN_MS / 1000}s after 400:`, r.errorBody)
+    }
+    if (r.status === 429) {
+      console.warn('[STT] Groq rate-limited')
+    }
+  }
+
+  // All API providers failed
+  _sttConsecutiveFailures++
+  if (_sttConsecutiveFailures >= STT_MAX_CONSECUTIVE) {
+    throw new SttExhaustedError('התמלול לא עובד כרגע. תנסי לכתוב במקום.')
+  }
+  throw new Error('לא הצלחתי לשמוע. ננסה שוב?')
+}
+
+/** Thrown when STT is exhausted — caller should stop the listening loop. */
+export class SttExhaustedError extends Error {
+  constructor(message: string) { super(message); this.name = 'SttExhaustedError' }
 }
 
 export { getSupportedMimeType } from '../../services/recording'

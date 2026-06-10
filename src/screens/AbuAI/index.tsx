@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
-import { sendMessage, streamMessage, transcribeAudio, isPersonalQuery, containsUngroundedClaim, tryGroundedAnswer, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
+import { sendMessage, streamMessage, transcribeAudio, SttExhaustedError, resetSttFailureCount, isPersonalQuery, containsUngroundedClaim, tryGroundedAnswer, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
 import { getProactiveSeed } from './proactive'
 import { isOnlineCurrentInfoQuery, shouldBlockOnlineForPersonal } from './onlineIntent'
 import { answerOnlineCurrentInfo, _recordOnlineError } from './onlineProvider'
@@ -1141,7 +1141,14 @@ export function AbuAI() {
             handleText(text.trim())
           } catch (err) {
             setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediateVoiceCaptureError(err, 'transcription'), timestamp: Date.now() }])
-            if (voiceModeRef.current) startVoiceListening()
+            // SttExhaustedError = all providers failed repeatedly → stop
+            // listening to prevent infinite loop. Otherwise retry once.
+            if (err instanceof SttExhaustedError) {
+              console.warn('[AbuAI] STT exhausted, exiting voice mode')
+              exitVoiceMode()
+            } else if (voiceModeRef.current) {
+              startVoiceListening()
+            }
           }
         }
 
@@ -1303,6 +1310,7 @@ ${fewShotText}`
     acquireWakeLock()
     setVoiceMode(true)
     voiceModeRef.current = true
+    resetSttFailureCount() // fresh session — clear any previous STT failures
 
     // v25.2: SIMPLE DECISION — can we use Realtime or not?
     const quotaFlag = localStorage.getItem('abu-openai-quota-failed')
