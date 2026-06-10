@@ -104,7 +104,9 @@ describe('service.ts uses the server-proxy provider for OpenAI', () => {
   const svc = read('src/screens/AbuAI/service.ts')
 
   it('imports sendServerChat + streamServerChat from ./serverChatProvider', () => {
-    expect(svc.includes("import { sendServerChat, streamServerChat } from './serverChatProvider'")).toBe(true)
+    expect(svc.includes("sendServerChat")).toBe(true)
+    expect(svc.includes("streamServerChat")).toBe(true)
+    expect(svc.includes("from './serverChatProvider'")).toBe(true)
   })
 
   it('OPENAI_PROXY_URL points to /api/abuai-chat (no public OpenAI URL hardcoded)', () => {

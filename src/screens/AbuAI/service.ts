@@ -4,7 +4,7 @@ import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUp
 import { generateFamilyPromptSection } from '../../services/familyLoader'
 import { routePersonalQuery, type RouteResult } from './router'
 import { answerFromToolResult, type ToolResult } from './groundedResponse'
-import { sendServerChat, streamServerChat } from './serverChatProvider'
+import { sendServerChat, streamServerChat, checkServerChatHealth } from './serverChatProvider'
 import { describeRelation, type Lang } from './familyGraph'
 
 // Feature flag — disable tools without redeploy
@@ -671,7 +671,12 @@ export async function* streamMessage(
           yield token
         }
         if (yieldedAny) return // success — done
-        continue // server proxy failed (e.g. OPENAI_API_KEY_MISSING) → next provider
+        // Streaming failed — check if it was a key/quota issue and mark cooldown
+        const health = checkServerChatHealth()
+        if (health.lastErrorCode === 'OPENAI_API_KEY_MISSING') {
+          markProviderCooldown('openai-server')
+        }
+        continue // server proxy failed → next provider
       }
 
       const controller = new AbortController()
