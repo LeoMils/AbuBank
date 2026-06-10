@@ -150,7 +150,7 @@ describe('executeTool', () => {
 
   it('unknown tool returns error', () => {
     const r = executeTool('nonexistent', {})
-    expect(r).toContain('לא מוכר')
+    expect(r).toContain('לא הצלחתי לבדוק')
   })
 })
 

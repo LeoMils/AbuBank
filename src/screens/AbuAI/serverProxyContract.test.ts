@@ -92,10 +92,11 @@ describe('User-facing copy does not instruct anyone to set VITE_OPENAI_API_KEY',
     expect(offenders, `instructional reference found in: ${offenders.join(', ')}`).toEqual([])
   })
 
-  it('AbuAI runtime "API not set" copy points to the server config (HE), not the client env', () => {
+  it('AbuAI runtime "API not set" copy does NOT leak technical jargon to the user', () => {
     const svc = read('src/screens/AbuAI/service.ts')
-    // The Hebrew error must point to OPENAI_API_KEY in Vercel, not VITE_OPENAI_API_KEY.
-    expect(svc.includes('OPENAI_API_KEY ב-Vercel')).toBe(true)
+    // The user-facing error must NEVER mention API keys, Vercel, or config details.
+    // It should direct to Leo (דברי עם לאו).
+    expect(svc.includes('דברי עם לאו')).toBe(true)
     expect(svc.includes('פנה לבן המשפחה שהתקין')).toBe(false)
   })
 })

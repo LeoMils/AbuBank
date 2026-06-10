@@ -180,7 +180,7 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
   // TOOL EXECUTOR: error handling
   describe('tool executor safety', () => {
     it('unknown tool returns safe message', () => {
-      expect(executeTool('nonexistent_tool', {})).toBe('כלי לא מוכר.')
+      expect(executeTool('nonexistent_tool', {})).toBe('לא הצלחתי לבדוק את זה.')
     })
 
     it('executeTool handles missing args gracefully', () => {

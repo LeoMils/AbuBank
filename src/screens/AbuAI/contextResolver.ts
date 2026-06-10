@@ -14,7 +14,9 @@ import { routePersonalQuery, type RouteType } from './router'
 
 // Short temporal fragments — bare time references that need context.
 // These are follow-ups like "ומחר?", "ובשלישי?", "והשבוע?", "ואתמול?"
-const TEMPORAL_FRAGMENT = /^ו?(?:מחר|היום|אתמול|השבוע|שבוע הבא|בשבוע הבא|ב?יום (?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)|ב?(?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת))\??$/i
+// Short temporal fragments — bare time references that need context.
+// Includes "בעצם" prefix for corrections: "בעצם מחר", "בעצם בשלישי"
+const TEMPORAL_FRAGMENT = /^(?:ו|בעצם\s+)?(?:מחר|היום|אתמול|השבוע|שבוע הבא|בשבוע הבא|ב?יום (?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)|ב?(?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת))\??$/i
 
 // Short name fragments — bare names that need context.
 // "ומור?", "ולאו?", "ונועם?", "ויעל?"
@@ -55,8 +57,8 @@ function findLastContext(messages: ChatMessage[]): RouteType | null {
  * "ובשלישי?" → "מה יש לי ביום שלישי?"
  */
 function expandTemporal(fragment: string): string {
-  // Strip leading ו and trailing ?
-  let core = fragment.replace(/^ו/, '').replace(/\?$/, '').trim()
+  // Strip leading ו, "בעצם", and trailing ?
+  let core = fragment.replace(/^(?:ו|בעצם\s*)/i, '').replace(/\?$/, '').trim()
 
   // Weekday without "ביום" prefix? Add it: "שלישי" → "ביום שלישי", "בשלישי" → "ביום שלישי"
   const BARE_WEEKDAY = /^(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)$/
@@ -95,7 +97,7 @@ export function resolveFollowUp(
     return { resolved: text, wasFollowUp: false }
   }
 
-  // Check for temporal follow-up: "ומחר?", "ובשלישי?"
+  // Check for temporal follow-up: "ומחר?", "ובשלישי?", "בעצם מחר"
   if (TEMPORAL_FRAGMENT.test(trimmed)) {
     const lastContext = findLastContext(recentMessages)
     if (lastContext && CALENDAR_ROUTES.has(lastContext)) {
@@ -103,8 +105,23 @@ export function resolveFollowUp(
     }
     // Even without calendar context, a bare "מחר?" is almost certainly
     // asking about tomorrow's schedule
-    if (trimmed.replace(/^ו/, '').replace(/\?$/, '').trim() === 'מחר') {
+    if (trimmed.replace(/^(?:ו|בעצם\s*)/i, '').replace(/\?$/, '').trim() === 'מחר') {
       return { resolved: 'מה יש לי מחר?', wasFollowUp: true }
+    }
+  }
+
+  // Multi-word calendar follow-ups: "ומה אחרי זה?", "ומה בשבוע הבא?"
+  const CALENDAR_FOLLOWUP = /^ו?מה\s+(אחרי זה|אחר כך|הלאה|בשבוע הבא|בחודש הבא)\??$/i
+  const calFollowUp = trimmed.match(CALENDAR_FOLLOWUP)
+  if (calFollowUp) {
+    const lastContext = findLastContext(recentMessages)
+    if (lastContext && CALENDAR_ROUTES.has(lastContext)) {
+      const phrase = calFollowUp[1]!
+      if (/אחרי זה|אחר כך|הלאה/.test(phrase)) {
+        // "what's after that" after today → upcoming/week
+        return { resolved: 'מה יש לי השבוע?', wasFollowUp: true }
+      }
+      return { resolved: `מה יש לי ${phrase}?`, wasFollowUp: true }
     }
   }
 

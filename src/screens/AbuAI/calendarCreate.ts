@@ -101,7 +101,7 @@ export function isCreateIntent(text: string): boolean {
 // ─── Confirmation / Cancel ──────────────────────────────────────────────────
 
 const CONFIRM = /^(כן|נכון|בדיוק|בסדר|סבבה|יאללה|תרשמי|כן תרשמי|אוקיי|אוקי|ok|yes|כן כן|בטח|ברור|מאשרת|תאשרי)$/i
-const CANCEL = /^(לא|לא נכון|עזבי|תשכחי|ביטול|לא צריך|בטלי|לא רוצה|חבל|תעזבי|לא לא)$/i
+const CANCEL = /^(לא|לא נכון|עזבי|עזבי את זה|תשכחי|ביטול|לא צריך|בטלי|לא רוצה|חבל|תעזבי|לא לא|לא לא לא|לא לא לא לא|עזבי עזבי|לא לזה התכוונתי)$/i
 
 export function isConfirm(text: string): boolean {
   return CONFIRM.test(text.trim())
@@ -509,6 +509,19 @@ export function resolvePendingMessage(
 
   // A calendar read query while pending → answer from local calendar.
   if (isCalendarReadQuery) return { action: 'read' }
+
+  // Off-topic detection: if the user switches to a completely different
+  // subject (no date, no time, no scheduling word, not a question about
+  // a person or the calendar), cancel the pending draft silently rather
+  // than forcing it into the create state machine.
+  // Examples: "אני קצת משועממת היום", "ספרי לי בדיחה"
+  // NOT off-topic: "מי זה מור?", "מה יש לי מחר?", "בעשר בבוקר"
+  const hasDateOrTime = /מחר|היום|אתמול|שבוע|ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת|בבוקר|בערב|בצהריים|בלילה|בשעה|ב[־-]?\d|אחרי|לפני|בעוד/i.test(t)
+  const hasScheduleWord = /תור|פגישה|רופא|בדיקה|קבוע|אחרי הפגישה|אחרי התור/i.test(t)
+  const isQuestion = /^(מי|מה|מתי|איפה|איך|למה|כמה|האם)\s/i.test(t) || t.endsWith('?')
+  if (!hasDateOrTime && !hasScheduleWord && !isQuestion && t.length > 8) {
+    return { action: 'cancel' }
+  }
 
   // Otherwise try to fill missing fields from this message.
   const next = updateCreate(state, t)

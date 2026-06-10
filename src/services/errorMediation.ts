@@ -72,7 +72,7 @@ export function mediateError(err: unknown, status?: number): MediatedError {
       return {
         category,
         emoji: '💛',
-        message: 'היום לא אוכל לעזור יותר. דברי עם לאו.',
+        message: 'היום יש לי בעיה בשירות. דברי עם לאו.',
         primaryLabel: 'לשלוח הודעה ללאו',
         primaryAction: 'whatsapp-leo',
         secondaryLabel: 'חזרה הביתה',

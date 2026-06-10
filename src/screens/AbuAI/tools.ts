@@ -371,7 +371,7 @@ export function executeTool(name: string, args: Record<string, string>): string 
       case 'get_events_by_date': return getEventsByDate(args.date ?? '').summary
       case 'get_birthday_for': return getBirthdayFor(args.name ?? '').summary
       case 'get_memorial_for': return getMemorialFor(args.name ?? '').summary
-      default: return 'כלי לא מוכר.'
+      default: return 'לא הצלחתי לבדוק את זה.'
     }
   } catch {
     return 'לא הצלחתי לבדוק את זה כרגע.'

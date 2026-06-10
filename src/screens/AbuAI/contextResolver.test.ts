@@ -72,6 +72,44 @@ describe('bare "מחר?" without prior context', () => {
   })
 })
 
+describe('correction prefix "בעצם"', () => {
+  const calendarHistory: ChatMessage[] = [
+    msg('user', 'מה יש לי היום?'),
+    msg('assistant', 'היום יש לך תור ב-10:00.'),
+  ]
+
+  it('"בעצם מחר" expands to "מה יש לי מחר?"', () => {
+    const r = resolveFollowUp('בעצם מחר', calendarHistory)
+    expect(r.wasFollowUp).toBe(true)
+    expect(r.resolved).toBe('מה יש לי מחר?')
+  })
+
+  it('"בעצם בשלישי" expands to "מה יש לי ביום שלישי?"', () => {
+    const r = resolveFollowUp('בעצם בשלישי', calendarHistory)
+    expect(r.wasFollowUp).toBe(true)
+    expect(r.resolved).toBe('מה יש לי ביום שלישי?')
+  })
+})
+
+describe('multi-word calendar follow-ups', () => {
+  const calendarHistory: ChatMessage[] = [
+    msg('user', 'מה יש לי מחר?'),
+    msg('assistant', 'מחר יש לך פגישה ב-14:00.'),
+  ]
+
+  it('"ומה אחרי זה?" expands to "מה יש לי השבוע?"', () => {
+    const r = resolveFollowUp('ומה אחרי זה?', calendarHistory)
+    expect(r.wasFollowUp).toBe(true)
+    expect(r.resolved).toBe('מה יש לי השבוע?')
+  })
+
+  it('"ומה בשבוע הבא?" expands to "מה יש לי בשבוע הבא?"', () => {
+    const r = resolveFollowUp('ומה בשבוע הבא?', calendarHistory)
+    expect(r.wasFollowUp).toBe(true)
+    expect(r.resolved).toBe('מה יש לי בשבוע הבא?')
+  })
+})
+
 describe('name follow-ups after family query', () => {
   const familyHistory: ChatMessage[] = [
     msg('user', 'מי זה נועם?'),

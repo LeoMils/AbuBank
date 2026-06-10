@@ -279,7 +279,7 @@ function getProviders(voiceMode = false): Provider[] {
   }
 
   if (providers.length === 0) {
-    throw new Error('אני לא יכולה לענות כרגע כי חיבור ה-AI בשרת לא מוגדר. הגדירו OPENAI_API_KEY ב-Vercel.')
+    throw new Error('יש בעיה בשירות. דברי עם לאו והוא יסדר את זה.')
   }
   return providers
 }
