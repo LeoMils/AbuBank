@@ -204,6 +204,9 @@ async function speakOpenAI(text: string): Promise<boolean> {
       clearTimeout(t)
       if (!res.ok) {
         console.log('[TTS] OpenAI status:', res.status)
+        if (res.status === 429 || res.status === 402) {
+          try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+        }
         return false
       }
       const blob = await res.blob()
@@ -459,8 +462,11 @@ export async function speakVoiceMode(text: string): Promise<void> {
           if (await playBlob(blob)) return
         }
       }
-      // 429/402 = quota exceeded — fall through to free Gemini
-      console.log('[TTS-VM] OpenAI failed, trying free Gemini...')
+      // 429/402 = quota exceeded — mark cooldown and fall through to free Gemini
+      if (res.status === 429 || res.status === 402) {
+        try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+      }
+      console.log('[TTS-VM] OpenAI failed (' + res.status + '), trying free Gemini...')
     } catch (e) {
       console.log('[TTS-VM] OpenAI error:', e)
     }
@@ -698,6 +704,8 @@ export async function streamSpeakVoiceMode(
         if (res.ok) {
           const blob = await res.blob()
           if (blob.size > 100) { queue.enqueue(blob); return }
+        } else if (res.status === 429 || res.status === 402) {
+          try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
         }
       } catch { /* try fallback */ }
     }

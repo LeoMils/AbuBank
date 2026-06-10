@@ -1312,7 +1312,7 @@ ${fewShotText}`
             console.error('[Realtime] Error:', error)
             // v27: Mediate error — always Hebrew, always with action buttons
             const mediated = mediateError(error)
-            if (mediated.category === 'quota' || mediated.category === 'auth') {
+            if (mediated.category === 'quota' || mediated.category === 'auth' || mediated.category === 'rate-limit') {
               try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
             }
             setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediated.message, timestamp: Date.now(), error: mediated }])
