@@ -130,6 +130,12 @@ export function tryGroundedAnswer(text: string): string | null {
         return r.summary
       }
       case 'family_lookup': {
+        // Age questions: "בן כמה הוא?", "בת כמה אופיר?"
+        // We don't have birth years, so answer honestly.
+        if (/בן כמה|בת כמה|כמה (הוא|היא) בן|כמה (הוא|היא) בת|מה הגיל/.test(route.query)) {
+          const name = route.familyQuery ?? ''
+          return `לא רשומה לי שנת לידה של ${name}, אז אני לא רוצה לנחש.`
+        }
         // Try group query first: "הנכדים", "הילדים של מור", "ספרי לי על הנכדים"
         const groupAnswer = searchFamilyGroup(route.query)
         if (groupAnswer) return groupAnswer

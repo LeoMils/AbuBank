@@ -86,11 +86,55 @@ function expandName(name: string): string {
  * Returns the expanded text if a follow-up was detected, or the
  * original text if no expansion is needed.
  */
+// Hebrew month names → month numbers for date extraction
+const HE_MONTHS: Record<string, string> = {
+  'ינואר': '01', 'פברואר': '02', 'מרץ': '03', 'אפריל': '04',
+  'מאי': '05', 'יוני': '06', 'יולי': '07', 'אוגוסט': '08',
+  'ספטמבר': '09', 'אוקטובר': '10', 'נובמבר': '11', 'דצמבר': '12',
+}
+
+/**
+ * Extract a date from a birthday response like "יום ההולדת של נועם — 15 במרץ."
+ * Returns YYYY-MM-DD or null.
+ */
+function extractDateFromBirthdayResponse(messages: ChatMessage[]): string | null {
+  // Scan last 3 messages for birthday response pattern
+  for (let i = messages.length - 1; i >= Math.max(0, messages.length - 3); i--) {
+    const msg = messages[i]!
+    if (msg.role !== 'assistant') continue
+    // Pattern: "X — DD בMONTH" or "DD בMONTH"
+    const match = msg.content.match(/(\d{1,2})\s+ב(ינואר|פברואר|מרץ|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)/)
+    if (match) {
+      const day = match[1]!.padStart(2, '0')
+      const month = HE_MONTHS[match[2]!]
+      if (month) {
+        const year = new Date().getFullYear()
+        return `${year}-${month}-${day}`
+      }
+    }
+  }
+  return null
+}
+
 export function resolveFollowUp(
   text: string,
   recentMessages: ChatMessage[],
 ): { resolved: string; wasFollowUp: boolean } {
   const trimmed = text.trim()
+
+  // "באותו יום" / "באותו תאריך" — reference to a date mentioned in
+  // a previous birthday/calendar response. Extract the date and convert
+  // to a calendar query. Must run BEFORE the word-count check.
+  if (/באותו\s+(יום|תאריך)/.test(trimmed)) {
+    const date = extractDateFromBirthdayResponse(recentMessages)
+    if (date) {
+      // Expand: "יש לי משהו באותו יום?" → "מה יש לי ב-DATE?"
+      const d = new Date(date + 'T00:00:00')
+      const day = d.getDate()
+      const monthName = Object.keys(HE_MONTHS).find(k => HE_MONTHS[k] === String(d.getMonth() + 1).padStart(2, '0')) ?? ''
+      return { resolved: `מה יש לי ב-${day} ב${monthName}?`, wasFollowUp: true }
+    }
+  }
 
   // Only operate on short fragments (≤ 4 words)
   if (trimmed.split(/\s+/).length > 4) {

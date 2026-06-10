@@ -409,7 +409,24 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
   // If confirming, check for yes/no
   if (state.phase === 'confirming') {
     if (isConfirm(t)) return state // caller handles save
-    // Not a confirm — maybe they're correcting? Try re-parse
+    // Not a confirm — user may be correcting. Try to re-parse
+    // date/time from their message even though fields are filled.
+    const correctionDraft = { ...state.draft }
+    let corrected = false
+    const newDate = parseCreateDate(t)
+    if (newDate && newDate !== correctionDraft.date) {
+      correctionDraft.date = newDate
+      corrected = true
+    }
+    const { time: newTime, ambiguous } = parseHebrewTimeDetailed(t)
+    if (newTime && !ambiguous && newTime !== correctionDraft.time) {
+      correctionDraft.time = newTime
+      correctionDraft.ambiguousTime = false
+      corrected = true
+    }
+    if (corrected) {
+      return { phase: 'confirming', draft: correctionDraft, missing: [] }
+    }
   }
 
   // Try to fill missing fields from the new message
@@ -526,10 +543,14 @@ export function resolvePendingMessage(
   // Otherwise try to fill missing fields from this message.
   const next = updateCreate(state, t)
 
-  // Confirming phase that did not advance = unclear answer. Do NOT blindly
-  // repeat the same confirmation — ask for a clear yes / no / rewrite.
+  // Confirming phase that did not advance AND draft unchanged = unclear
+  // answer. Do NOT blindly repeat the same confirmation.
+  // But if the draft DID change (date/time correction), treat as update.
   if (state.phase === 'confirming' && next.phase === 'confirming') {
-    return { action: 'clarify' }
+    const draftChanged = next.draft.date !== state.draft.date
+      || next.draft.time !== state.draft.time
+      || next.draft.title !== state.draft.title
+    if (!draftChanged) return { action: 'clarify' }
   }
 
   return { action: 'update', state: next }
