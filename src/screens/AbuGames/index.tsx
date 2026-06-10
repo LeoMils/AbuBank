@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { BackButton } from '../../components/BackButton'
@@ -39,7 +39,8 @@ const GAMES: Game[] = [
   { id: 'mahjong-3d', label: 'Dimensiones', labelHe: 'תלת-מימד', accent: '#8b5cf6', category: 'mahjong', emoji: '🧊', url: 'https://www.arkadium.com/games/mahjongg-dimensions/' },
 ]
 
-// ─── Navigation guard ───────────────────────────────────────────────────────
+// ─── NAVIGATION GUARD ───────────────────────────────────────────────────────
+
 let isNavigating = false
 let navTimer: ReturnType<typeof setTimeout> | null = null
 function handleTap(url: string): void {
@@ -51,32 +52,28 @@ function handleTap(url: string): void {
   window.location.href = url
 }
 
-// ─── Floating game pieces overlay ───────────────────────────────────────────
-const FLOATING_PIECES = Array.from({ length: 14 }, (_, i) => ({
-  emoji: ['🃏','🀄','🔤','♠️','♥️','♦️','♣️','🎯','🎲','✨','⭐','💫','🌟','🎮'][i]!,
-  left: `${(i * 7.3 + 3) % 94}%`,
-  top: `${(i * 11.7 + 8) % 70}%`,
-  size: 16 + (i % 4) * 6,
-  delay: `${(i * 0.4).toFixed(1)}s`,
-  duration: `${6 + (i % 3) * 2}s`,
+// ─── ATMOSPHERE: Stars + Particles ──────────────────────────────────────────
+
+const STARS = Array.from({ length: 24 }, (_, i) => ({
+  left: `${(i * 4.2 + (i % 3) * 7.1 + 2) % 96}%`,
+  top: `${(i * 3.8 + (i % 5) * 6.3 + 1) % 95}%`,
+  size: 1.5 + (i % 4) * 0.8,
+  delay: `${(i * 0.13).toFixed(2)}s`,
+  duration: `${2.2 + (i % 4) * 0.4}s`,
+  isGold: i % 5 === 0,
 }))
 
-function FloatingPiecesOverlay() {
-  return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 1 }}>
-      {FLOATING_PIECES.map((p, i) => (
-        <div key={i} style={{
-          position: 'absolute', left: p.left, top: p.top,
-          fontSize: p.size, opacity: 0.12,
-          animation: `gamesFloat ${p.duration} ${p.delay} ease-in-out infinite`,
-          userSelect: 'none',
-        }}>{p.emoji}</div>
-      ))}
-    </div>
-  )
-}
+const FLOATING_EMOJIS = [
+  { emoji: '✨', left: '8%', top: '12%', size: 18, delay: '0s', duration: '7s' },
+  { emoji: '🎯', left: '85%', top: '20%', size: 16, delay: '0.4s', duration: '8s' },
+  { emoji: '⭐', left: '72%', top: '8%', size: 14, delay: '1.2s', duration: '6s' },
+  { emoji: '💫', left: '20%', top: '25%', size: 15, delay: '0.8s', duration: '9s' },
+  { emoji: '🎲', left: '55%', top: '15%', size: 16, delay: '1.5s', duration: '7.5s' },
+  { emoji: '🌟', left: '40%', top: '5%', size: 14, delay: '0.3s', duration: '8.5s' },
+]
 
-// ─── Greeting banner ────────────────────────────────────────────────────────
+// ─── GREETING ───────────────────────────────────────────────────────────────
+
 function getTimeGreeting(): string {
   const h = new Date().getHours()
   if (h < 5) return 'לילה טוב'
@@ -86,89 +83,139 @@ function getTimeGreeting(): string {
   return 'לילה טוב'
 }
 
-// ─── Featured hero card ─────────────────────────────────────────────────────
+// ─── CSS KEYFRAMES ──────────────────────────────────────────────────────────
+
+const STYLES = `
+  @keyframes gFloat    { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-12px) rotate(6deg)} }
+  @keyframes gFadeUp   { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes gStar     { 0%,100%{opacity:0.2;transform:scale(0.7)} 50%{opacity:1;transform:scale(1.3)} }
+  @keyframes gPulse    { 0%,100%{box-shadow:0 0 30px rgba(201,168,76,0.08)} 50%{box-shadow:0 0 50px rgba(201,168,76,0.18)} }
+  @keyframes gBreathe  { 0%,100%{opacity:0.03} 50%{opacity:0.07} }
+  @keyframes gShimmer  { 0%{background-position:200% 50%} 100%{background-position:-200% 50%} }
+  @keyframes gHeroIcon { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-8px) scale(1.04)} }
+
+  .games-strip::-webkit-scrollbar { display:none }
+  .games-strip { scrollbar-width:none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-g-animate] { animation: none !important; }
+  }
+`
+
+// ─── FEATURED HERO CARD ─────────────────────────────────────────────────────
+
 function FeaturedHero({ game, onTap }: { game: Game; onTap: () => void }) {
   return (
     <div
       role="button" tabIndex={0} aria-label={game.labelHe}
       onClick={onTap}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap() } }}
+      data-g-animate
       style={{
         position: 'relative', zIndex: 3,
         margin: '0 20px', borderRadius: 24, overflow: 'hidden',
-        background: 'linear-gradient(160deg, rgba(201,168,76,0.12) 0%, rgba(255,250,240,0.06) 40%, rgba(201,168,76,0.06) 100%)',
-        border: '1.5px solid rgba(201,168,76,0.28)',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.45), 0 0 50px rgba(201,168,76,0.06), inset 0 1px 0 rgba(255,250,240,0.06)',
+        background: 'linear-gradient(160deg, rgba(201,168,76,0.14) 0%, rgba(255,250,240,0.07) 40%, rgba(201,168,76,0.06) 100%)',
+        border: '1.5px solid rgba(201,168,76,0.32)',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.45), 0 0 60px rgba(201,168,76,0.08), inset 0 1px 0 rgba(255,250,240,0.08)',
         padding: '24px 22px 20px',
         direction: 'rtl', cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
-        animation: 'gamesFadeUp 0.5s ease both',
+        animation: 'gFadeUp 0.5s ease both, gPulse 4s 1s ease-in-out infinite',
+        backdropFilter: 'blur(10px)',
       }}
     >
-      <div style={{ position: 'absolute', inset: 0, borderRadius: 24, background: 'radial-gradient(ellipse at 50% 15%, rgba(201,168,76,0.10) 0%, transparent 55%)', pointerEvents: 'none' }} />
+      {/* Radiant glow overlay */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 24, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at 50% 10%, rgba(201,168,76,0.12) 0%, transparent 50%)',
+      }} />
+      {/* Shimmer stripe */}
+      <div data-g-animate style={{
+        position: 'absolute', inset: 0, borderRadius: 24, pointerEvents: 'none',
+        background: 'linear-gradient(105deg, transparent 35%, rgba(255,250,240,0.05) 45%, rgba(255,250,240,0.10) 50%, rgba(255,250,240,0.05) 55%, transparent 65%)',
+        backgroundSize: '300% 100%',
+        animation: 'gShimmer 6s 2s ease-in-out infinite',
+      }} />
+
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 18 }}>
+        {/* Game emoji orb */}
         <div style={{
-          width: 76, height: 76, borderRadius: 20,
-          background: 'radial-gradient(circle at 40% 35%, rgba(201,168,76,0.22), rgba(201,168,76,0.06) 70%)',
-          border: '1px solid rgba(201,168,76,0.22)',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,250,240,0.06)',
+          width: 80, height: 80, borderRadius: 22,
+          background: 'radial-gradient(circle at 40% 35%, rgba(201,168,76,0.25), rgba(201,168,76,0.06) 70%)',
+          border: '1.5px solid rgba(201,168,76,0.28)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.30), 0 0 30px rgba(201,168,76,0.10), inset 0 1px 0 rgba(255,250,240,0.08)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }}>
-          <span style={{ fontSize: 42, lineHeight: 1 }}>{game.emoji}</span>
+          <span style={{ fontSize: 44, lineHeight: 1, filter: 'drop-shadow(0 2px 8px rgba(201,168,76,0.30))' }}>{game.emoji}</span>
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 24, fontWeight: 700, color: 'rgba(255,255,255,0.95)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.2, marginBottom: 3 }}>{game.labelHe}</div>
-          <div style={{ fontSize: 15, fontWeight: 500, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.4 }}>משחק המילים של Martita</div>
-          {game.desc && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.40)', fontFamily: "'Heebo',sans-serif", marginTop: 4 }}>{game.desc}</div>}
+          <div style={{ fontSize: 26, fontWeight: 800, color: 'rgba(255,255,255,0.97)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.2, marginBottom: 3 }}>
+            {game.labelHe}
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: 'rgba(201,168,76,0.75)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.4 }}>
+            משחק המילים של Martita
+          </div>
+          {game.desc && (
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.42)', fontFamily: "'Heebo',sans-serif", marginTop: 4 }}>
+              {game.desc}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* CTA button */}
       <div style={{
         position: 'relative', zIndex: 1, marginTop: 18,
-        background: 'linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.08))',
-        border: '1px solid rgba(201,168,76,0.25)', borderRadius: 14,
+        background: 'linear-gradient(135deg, rgba(201,168,76,0.22), rgba(201,168,76,0.08))',
+        border: '1px solid rgba(201,168,76,0.30)', borderRadius: 14,
         padding: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
       }}>
-        <span style={{ fontSize: 18, fontWeight: 700, color: 'rgba(201,168,76,0.80)', fontFamily: "'Heebo',sans-serif" }}>שחקי עכשיו</span>
+        <span style={{ fontSize: 18, fontWeight: 700, color: 'rgba(201,168,76,0.85)', fontFamily: "'Heebo',sans-serif" }}>
+          שחקי עכשיו
+        </span>
         <span style={{ fontSize: 14, color: 'rgba(201,168,76,0.55)', transform: 'scaleX(-1)', display: 'inline-block' }}>▶</span>
       </div>
     </div>
   )
 }
 
-// ─── Game card (horizontal strip style like weather time cards) ──────────────
+// ─── GAME BUBBLE (strip card) ───────────────────────────────────────────────
+
 function GameBubble({ game, onTap, delay }: { game: Game; onTap: () => void; delay: number }) {
   return (
     <div
       role="button" tabIndex={0} aria-label={game.labelHe}
       onClick={onTap}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap() } }}
+      data-g-animate
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        padding: '16px 14px 14px', borderRadius: 20, minWidth: 96, flexShrink: 0,
-        background: `linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.05) 100%)`,
-        border: `1px solid ${game.accent}30`,
+        padding: '18px 16px 16px', borderRadius: 20, minWidth: 104, flexShrink: 0,
+        background: 'linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.05) 100%)',
+        border: `1.5px solid ${game.accent}30`,
         backdropFilter: 'blur(8px)',
-        boxShadow: `0 4px 16px rgba(0,0,0,0.25), 0 0 10px ${game.accent}14`,
+        boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 14px ${game.accent}10`,
         cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
-        animation: `gamesFadeUp 0.4s ${delay}s ease both`,
+        animation: `gFadeUp 0.45s ${delay}s ease both`,
         opacity: 0,
       } as React.CSSProperties}
     >
-      <span style={{ fontSize: 32, lineHeight: 1, userSelect: 'none' }}>{game.emoji}</span>
+      <span style={{ fontSize: 36, lineHeight: 1, userSelect: 'none', filter: `drop-shadow(0 2px 6px ${game.accent}30)` }}>{game.emoji}</span>
       <span style={{
-        fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.88)',
+        fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.90)',
         fontFamily: "'Heebo',sans-serif", textAlign: 'center', lineHeight: 1.2,
       }}>{game.labelHe}</span>
       <span style={{
         fontSize: 11, color: game.accent, fontWeight: 600,
-        fontFamily: "'Heebo',sans-serif", opacity: 0.7,
+        fontFamily: "'Heebo',sans-serif", opacity: 0.75,
       }}>{game.label}</span>
     </div>
   )
 }
 
-// ─── Main Screen ────────────────────────────────────────────────────────────
+// ─── MAIN SCREEN ────────────────────────────────────────────────────────────
+
 export function AbuGames() {
   const setScreen = useAppStore(s => s.setScreen)
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
@@ -185,31 +232,59 @@ export function AbuGames() {
 
   return (
     <>
-      <style>{`
-        @keyframes gamesFloat   { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-12px) rotate(8deg)} }
-        @keyframes gamesFadeUp  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes gamesShimmer { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-        .games-strip::-webkit-scrollbar { display:none }
-      `}</style>
+      <style>{STYLES}</style>
 
       <div style={{
         display: 'flex', flexDirection: 'column', minHeight: '100dvh',
         overflowY: 'auto', overflowX: 'hidden',
         background: '#050A18', direction: 'rtl',
-        fontFamily: "'Heebo',sans-serif",
+        fontFamily: "'Heebo', sans-serif",
       }}>
 
         {/* ═══ HERO SECTION ═══════════════════════════════════════════════ */}
         <div style={{
-          position: 'relative', minHeight: 320,
-          background: 'linear-gradient(180deg, #0c1a35 0%, #0a1428 40%, #050A18 100%)',
+          position: 'relative', minHeight: 340,
+          background: 'linear-gradient(180deg, #0f1e3d 0%, #0a1630 30%, #050A18 100%)',
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', overflow: 'hidden',
           paddingBottom: 28,
         }}>
-          <FloatingPiecesOverlay />
 
-          {/* Header bar */}
+          {/* ─── Atmosphere: Stars ──── */}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+            {STARS.map((s, i) => (
+              <div key={i} data-g-animate style={{
+                position: 'absolute', left: s.left, top: s.top,
+                width: s.size, height: s.size, borderRadius: '50%',
+                background: s.isGold ? 'rgba(201,168,76,0.90)' : 'rgba(255,255,255,0.85)',
+                animation: `gStar ${s.duration} ${s.delay} ease-in-out infinite`,
+              }} />
+            ))}
+          </div>
+
+          {/* ─── Atmosphere: Floating emojis ──── */}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 1 }}>
+            {FLOATING_EMOJIS.map((p, i) => (
+              <div key={i} data-g-animate style={{
+                position: 'absolute', left: p.left, top: p.top,
+                fontSize: p.size, opacity: 0.15,
+                animation: `gFloat ${p.duration} ${p.delay} ease-in-out infinite`,
+                userSelect: 'none',
+              }}>{p.emoji}</div>
+            ))}
+          </div>
+
+          {/* ─── Warm radial glow ──── */}
+          <div data-g-animate style={{
+            position: 'absolute', top: '25%', left: '50%',
+            width: '120%', height: '70%',
+            transform: 'translate(-50%, -50%)',
+            background: 'radial-gradient(ellipse, rgba(201,168,76,0.05) 0%, transparent 55%)',
+            animation: 'gBreathe 6s ease-in-out infinite',
+            pointerEvents: 'none',
+          }} />
+
+          {/* ─── Header bar ──── */}
           <div style={{
             position: 'relative', zIndex: 4, width: '100%',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -219,7 +294,7 @@ export function AbuGames() {
             <div style={{
               width: 44, height: 44, borderRadius: '50%',
               border: '2px solid rgba(201,168,76,0.30)',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.40)',
               overflow: 'hidden', background: 'rgba(0,0,0,0.3)', flexShrink: 0,
             }}>
               <img src={martitaPhoto} alt="Martita" loading="eager"
@@ -228,45 +303,45 @@ export function AbuGames() {
             </div>
           </div>
 
-          {/* Greeting */}
-          <div style={{
+          {/* ─── Greeting ──── */}
+          <div data-g-animate style={{
             position: 'relative', zIndex: 3, textAlign: 'center',
-            marginTop: 12, animation: 'gamesFadeUp 0.4s ease both',
+            marginTop: 12, animation: 'gFadeUp 0.4s ease both',
           }}>
-            <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.05em', color: 'rgba(201,168,76,0.75)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.05em', color: 'rgba(201,168,76,0.80)' }}>
               {getTimeGreeting()}, Martita ✨
             </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.30)', letterSpacing: '0.10em', marginTop: 2, textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.30)', letterSpacing: '0.12em', marginTop: 3, textTransform: 'uppercase' }}>
               Abu Games
             </div>
           </div>
 
-          {/* Big game icon */}
-          <div style={{
-            position: 'relative', zIndex: 3, marginTop: 16,
+          {/* ─── Hero game icon ──── */}
+          <div data-g-animate style={{
+            position: 'relative', zIndex: 3, marginTop: 18,
             fontSize: 90, lineHeight: 1,
-            filter: 'drop-shadow(0px 0px 30px rgba(201,168,76,0.35))',
-            animation: 'gamesFloat 4s ease-in-out infinite',
+            filter: 'drop-shadow(0px 0px 35px rgba(201,168,76,0.40))',
+            animation: 'gHeroIcon 4s ease-in-out infinite',
             userSelect: 'none',
           }}>
             🎮
           </div>
 
-          {/* Title */}
-          <div style={{
+          {/* ─── Title ──── */}
+          <div data-g-animate style={{
             position: 'relative', zIndex: 3, marginTop: 10, textAlign: 'center',
-            animation: 'gamesFadeUp 0.55s ease both',
+            animation: 'gFadeUp 0.55s ease both',
           }}>
             <div style={{
-              fontSize: 32, fontWeight: 800, lineHeight: 1.1,
+              fontSize: 34, fontWeight: 800, lineHeight: 1.1,
               color: 'rgba(255,255,255,0.97)',
               letterSpacing: '-0.02em',
-              textShadow: '0 4px 20px rgba(0,0,0,0.35), 0 0 40px rgba(201,168,76,0.20)',
+              textShadow: '0 4px 24px rgba(0,0,0,0.40), 0 0 50px rgba(201,168,76,0.22)',
             }}>
               בואי נשחק!
             </div>
             <div style={{
-              fontSize: 16, fontWeight: 500, color: 'rgba(201,168,76,0.60)',
+              fontSize: 16, fontWeight: 500, color: 'rgba(201,168,76,0.65)',
               marginTop: 6,
             }}>
               המשחקים האהובים של Martita
@@ -275,63 +350,73 @@ export function AbuGames() {
         </div>
 
         {/* ═══ CONTENT SECTION ═══════════════════════════════════════════ */}
-        <div style={{ background: '#050A18', paddingTop: 4, paddingBottom: 40 }}>
+        <div style={{ background: '#050A18', paddingTop: 4, paddingBottom: 44, position: 'relative' }}>
 
-          {/* Featured game */}
-          <div style={{ marginBottom: 24 }}>
+          {/* Ambient glow behind content */}
+          <div data-g-animate style={{
+            position: 'absolute', top: '20%', left: '50%',
+            width: '100%', height: '40%',
+            transform: 'translate(-50%, 0)',
+            background: 'radial-gradient(ellipse, rgba(201,168,76,0.03) 0%, transparent 60%)',
+            animation: 'gBreathe 8s 3s ease-in-out infinite',
+            pointerEvents: 'none',
+          }} />
+
+          {/* ─── Featured game ──── */}
+          <div style={{ marginBottom: 28 }}>
             <FeaturedHero game={featured} onTap={() => handleTap(featured.url)} />
           </div>
 
-          {/* Solitaire strip */}
-          <div style={{
-            padding: '0 22px 8px', fontSize: 12, fontWeight: 700,
-            color: 'rgba(255,255,255,0.30)', letterSpacing: '0.10em', textTransform: 'uppercase',
-            animation: 'gamesFadeUp 0.5s 0.15s ease both', opacity: 0,
+          {/* ─── Solitaire strip ──── */}
+          <div data-g-animate style={{
+            padding: '0 22px 10px', fontSize: 12, fontWeight: 800,
+            color: 'rgba(255,255,255,0.35)', letterSpacing: '0.10em', textTransform: 'uppercase',
+            animation: 'gFadeUp 0.5s 0.15s ease both', opacity: 0,
           } as React.CSSProperties}>
             🃏 סוליטר · {solitaire.length} משחקים
           </div>
           <div className="games-strip" style={{
             display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none',
-            padding: '0 20px 16px',
+            padding: '0 20px 20px',
           }}>
             {solitaire.map((g, i) => (
               <GameBubble key={g.id} game={g} onTap={() => handleTap(g.url)} delay={0.2 + i * 0.04} />
             ))}
           </div>
 
-          {/* Mahjong strip */}
-          <div style={{
-            padding: '8px 22px 8px', fontSize: 12, fontWeight: 700,
-            color: 'rgba(255,255,255,0.30)', letterSpacing: '0.10em', textTransform: 'uppercase',
-            animation: 'gamesFadeUp 0.5s 0.5s ease both', opacity: 0,
+          {/* ─── Mahjong strip ──── */}
+          <div data-g-animate style={{
+            padding: '4px 22px 10px', fontSize: 12, fontWeight: 800,
+            color: 'rgba(255,255,255,0.35)', letterSpacing: '0.10em', textTransform: 'uppercase',
+            animation: 'gFadeUp 0.5s 0.5s ease both', opacity: 0,
           } as React.CSSProperties}>
             🀄 מהג'ונג · {mahjong.length} משחקים
           </div>
           <div className="games-strip" style={{
             display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none',
-            padding: '0 20px 16px',
+            padding: '0 20px 20px',
           }}>
             {mahjong.map((g, i) => (
               <GameBubble key={g.id} game={g} onTap={() => handleTap(g.url)} delay={0.55 + i * 0.04} />
             ))}
           </div>
 
-          {/* MartitAI tip */}
-          <div style={{
-            margin: '16px 20px 0', padding: '16px 18px', borderRadius: 22,
-            background: 'linear-gradient(160deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.04) 100%)',
-            border: '1.5px solid rgba(201,168,76,0.18)',
+          {/* ─── MartitAI tip ──── */}
+          <div data-g-animate style={{
+            margin: '8px 20px 0', padding: '18px 20px', borderRadius: 22,
+            background: 'linear-gradient(160deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)',
+            border: '1.5px solid rgba(201,168,76,0.20)',
             backdropFilter: 'blur(10px)',
-            boxShadow: '0 6px 24px rgba(0,0,0,0.28), 0 0 16px rgba(201,168,76,0.06)',
-            animation: 'gamesFadeUp 0.5s 0.7s ease both', opacity: 0,
+            boxShadow: '0 6px 28px rgba(0,0,0,0.30), 0 0 20px rgba(201,168,76,0.05)',
+            animation: 'gFadeUp 0.5s 0.7s ease both', opacity: 0,
           } as React.CSSProperties}>
             <div style={{
-              fontSize: 11, fontWeight: 800, color: 'rgba(201,168,76,0.65)',
+              fontSize: 11, fontWeight: 800, color: 'rgba(201,168,76,0.70)',
               letterSpacing: '0.10em', marginBottom: 10, textTransform: 'uppercase',
             }}>
               ✨ MartitAI אומרת:
             </div>
-            <div style={{ fontSize: 16, lineHeight: 1.7, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>
+            <div style={{ fontSize: 16, lineHeight: 1.7, color: 'rgba(255,255,255,0.88)', fontWeight: 500 }}>
               המשחקים טובים לראש! סוליטר לריכוז, מילים לזיכרון.
             </div>
             <div style={{ fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,0.50)', marginTop: 4 }}>
