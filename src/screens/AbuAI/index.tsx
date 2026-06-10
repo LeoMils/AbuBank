@@ -35,6 +35,7 @@ import { routePersonalQuery } from './router'
 import { addAppointment } from '../AbuCalendar/service'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
 import { resolvePronouns } from './pronounResolver'
+import { resolveFollowUp } from './contextResolver'
 
 let msgCounter = 0
 function nextId(): string {
@@ -252,6 +253,12 @@ export function AbuAI() {
     const { resolved, personName: _resolvedPerson } = resolvePronouns(msgText, messages)
     if (resolved !== msgText) msgText = resolved
 
+    // ─── Cross-turn follow-up resolution ─────────────────────────────────
+    // "ומחר?" after "מה יש לי היום?" → expands to "מה יש לי מחר?"
+    // "ומור?" after "מי זה נועם?" → expands to "ספרי לי על מור"
+    const followUp = resolveFollowUp(msgText, messages)
+    if (followUp.wasFollowUp) msgText = followUp.resolved
+
     const userMsg: ChatMessage = { id: nextId(), role: 'user', content: msgText, timestamp: Date.now() }
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
@@ -382,6 +389,21 @@ export function AbuAI() {
         }
         // Not confirm/cancel — cancel pending and continue normally
         setPendingReminder(null)
+      }
+
+      // ─── Unresolved pronoun guard ─────────────────────────────────────
+      // If a create intent still has an unresolved pronoun (אליו/אליה/שלו/שלה)
+      // after pronoun resolution failed, ask who instead of creating with
+      // a raw pronoun like "להתקשר אליה".
+      const UNRESOLVED_PRONOUN = /(?<![֐-׿])(אליו|אליה|שלו|שלה|אותו|אותה|איתו|איתה)(?![֐-׿])/
+      if (isCreateIntent(msgText) && UNRESOLVED_PRONOUN.test(msgText) && !_resolvedPerson) {
+        const pronoun = msgText.match(UNRESOLVED_PRONOUN)?.[1] ?? ''
+        const genderHint = /אליה|שלה|אותה|איתה/.test(pronoun) ? 'למי את מתכוונת?' : 'למי את מתכוונת?'
+        const aiMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: genderHint, timestamp: Date.now() }
+        setMessages(prev => [...prev, aiMsg])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
       }
 
       // ─── Reminder intent detection (before appointment create) ─────
@@ -737,7 +759,11 @@ export function AbuAI() {
 
       // Cross-turn pronoun resolution (voice path)
       const { resolved: resolvedText } = resolvePronouns(text, messagesRef.current)
-      const effectiveText = resolvedText !== text ? resolvedText : text
+      let effectiveText = resolvedText !== text ? resolvedText : text
+
+      // Cross-turn follow-up resolution (voice path)
+      const voiceFollowUp = resolveFollowUp(effectiveText, messagesRef.current)
+      if (voiceFollowUp.wasFollowUp) effectiveText = voiceFollowUp.resolved
 
       const userMsg: ChatMessage = { id: nextId(), role: 'user', content: effectiveText, timestamp: Date.now() }
       const currentMsgs = [...messagesRef.current, userMsg]
@@ -749,6 +775,22 @@ export function AbuAI() {
       // helpers (startCreate / resolvePendingMessage) so there is no weaker
       // voice-only parser.
       const cs = createStateRef.current
+
+      // ─── Unresolved pronoun guard (voice) ────────────────────────────
+      const VOICE_UNRESOLVED = /(?<![֐-׿])(אליו|אליה|שלו|שלה|אותו|אותה|איתו|איתה)(?![֐-׿])/
+      if (isCreateIntent(effectiveText) && VOICE_UNRESOLVED.test(effectiveText) && resolvedText === text) {
+        const askWho = 'למי את מתכוונת?'
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: askWho, timestamp: Date.now() }])
+        if (voiceModeRef.current) {
+          transitionVoice('RESPONDING', 'ask-who')
+          setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(askWho)
+          await speakVoiceMode(askWho)
+          setIsSpeaking(false); setStreamingText('')
+          if (voiceModeRef.current) startVoiceListening()
+        }
+        return
+      }
+
       // ─── Voice reminder (before appointment create) ──────────────────
       if (isCreateIntent(effectiveText) && detectReminderIntent(effectiveText) === 'reminder' && cs.phase === 'idle') {
         try {

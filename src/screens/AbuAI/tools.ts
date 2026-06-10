@@ -61,6 +61,60 @@ export function getFamilyContext(): string {
   return `ילדים: ${kids.map(m => m.hebrew).join(', ')}. נכדים: ${grandkids.map(m => m.hebrew).join(', ')}.`
 }
 
+/**
+ * Group family queries: "ספרי לי על הנכדים", "הילדים של מור", "כמה נכדים יש".
+ * Returns a warm summary listing the relevant group members.
+ */
+export function searchFamilyGroup(query: string): string | null {
+  const q = query.trim()
+  const family = getFamilyMembers()
+
+  // "הילדים של X" / "הנכדים של X" — find children of a named parent
+  const childrenOfMatch = q.match(/(?:הילדים|הבנים|הבנות|הנכדים|הנכדות)\s+של\s+(.+)/i)
+  if (childrenOfMatch?.[1]) {
+    const parentName = childrenOfMatch[1].replace(/[?？]/g, '').trim()
+    const parentMember = family.find(m =>
+      m.hebrew === parentName || m.canonicalName.toLowerCase() === parentName.toLowerCase() ||
+      m.aliases.some(a => a.toLowerCase() === parentName.toLowerCase())
+    )
+    if (!parentMember) return null
+    // Use the parent's `children` field to find their children
+    const childNames = parentMember.children ?? []
+    if (childNames.length === 0) return `אין לי מידע על ילדים של ${parentMember.hebrew}.`
+    // Resolve canonical names to Hebrew names
+    const childMembers = childNames
+      .map(cn => family.find(m => m.canonicalName === cn))
+      .filter((m): m is FamilyMember => !!m)
+    const names = childMembers.length > 0
+      ? childMembers.map(m => m.hebrew).join(', ')
+      : childNames.join(', ')
+    return `ל${parentMember.hebrew} יש ${childNames.length} ילדים: ${names}.`
+  }
+
+  // Generic group: "הנכדים", "ספרי לי על הנכדים", "כמה נכדים יש"
+  const isGrandchildren = /נכד|נכדות|נכדים/.test(q)
+  const isChildren = /ילדים|בנים|בנות/.test(q) && !isGrandchildren
+  const isFamily = /משפחה/.test(q)
+
+  if (isGrandchildren) {
+    const grandkids = family.filter(m => m.relationship === 'grandson' || m.relationship === 'granddaughter')
+    if (grandkids.length === 0) return 'אין לי מידע על נכדים.'
+    const names = grandkids.map(m => m.hebrew).join(', ')
+    return `ל-Martita יש ${grandkids.length} נכדים: ${names}.`
+  }
+  if (isChildren) {
+    const kids = family.filter(m => m.relationship === 'daughter' || m.relationship === 'son')
+    if (kids.length === 0) return 'אין לי מידע על ילדים.'
+    const names = kids.map(m => m.hebrew).join(', ')
+    return `ל-Martita יש ${kids.length} ילדים: ${names}.`
+  }
+  if (isFamily) {
+    return getFamilyContext()
+  }
+
+  return null
+}
+
 function todayStr(): string { return new Date().toISOString().split('T')[0]! }
 function tomorrowStr(): string { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]! }
 function weekEndStr(): string { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().split('T')[0]! }

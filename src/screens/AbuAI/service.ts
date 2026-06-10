@@ -1,6 +1,6 @@
 import type { ChatMessage } from './types'
 
-import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, getWeekEvents, getEventsByDate, getEventsByMonth, getBirthdayFor, getMemorialFor, searchFamily, searchFamilyLocation } from './tools'
+import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, getWeekEvents, getEventsByDate, getEventsByMonth, getBirthdayFor, getMemorialFor, searchFamily, searchFamilyLocation, searchFamilyGroup } from './tools'
 import { generateFamilyPromptSection } from '../../services/familyLoader'
 import { routePersonalQuery, type RouteResult } from './router'
 import { answerFromToolResult, type ToolResult } from './groundedResponse'
@@ -130,6 +130,9 @@ export function tryGroundedAnswer(text: string): string | null {
         return r.summary
       }
       case 'family_lookup': {
+        // Try group query first: "הנכדים", "הילדים של מור", "ספרי לי על הנכדים"
+        const groupAnswer = searchFamilyGroup(route.query)
+        if (groupAnswer) return groupAnswer
         const r = searchFamily(route.familyQuery ?? '')
         result = { ok: true, found: r.found, members: r.members, answer: r.answer }
         break
