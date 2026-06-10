@@ -444,6 +444,7 @@ export async function speakVoiceMode(text: string): Promise<void> {
   const quotaOk = !localStorage.getItem('abu-openai-quota-failed') ||
     (Date.now() - parseInt(localStorage.getItem('abu-openai-quota-failed') ?? '0', 10)) > 300_000
   if (apiKey && quotaOk) {
+    console.log('[TTS-VM] trying OpenAI TTS...')
     try {
       const controller = new AbortController()
       const t = setTimeout(() => controller.abort(), 6000)
@@ -457,6 +458,7 @@ export async function speakVoiceMode(text: string): Promise<void> {
       if (res.ok) {
         const blob = await res.blob()
         if (blob.size > 100) {
+          console.log(`[TTS-VM] ✅ OpenAI TTS returned ${blob.size} bytes`)
           const ok = await playBlobViaAudioCtx(blob)
           if (ok) return
           if (await playBlob(blob)) return
@@ -466,16 +468,19 @@ export async function speakVoiceMode(text: string): Promise<void> {
       if (res.status === 429 || res.status === 402) {
         try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
       }
-      console.log('[TTS-VM] OpenAI failed (' + res.status + '), trying free Gemini...')
+      console.log('[TTS-VM] ❌ OpenAI failed (' + res.status + '), trying Gemini...')
     } catch (e) {
-      console.log('[TTS-VM] OpenAI error:', e)
+      console.log('[TTS-VM] ❌ OpenAI error:', e)
     }
+  } else {
+    console.log(`[TTS-VM] OpenAI TTS skipped: key=${!!apiKey} quotaOk=${quotaOk}`)
   }
 
   // 2) Gemini TTS (FREE with existing key)
-  if (await speakGeminiViaAudioCtx(text)) { console.log('[TTS-VM] ✅ Gemini TTS worked'); return }
+  if (await speakGeminiViaAudioCtx(text)) { console.log('[TTS-VM] ✅ Gemini TTS'); return }
 
   // 3) Web Speech API (FREE, last resort)
+  console.log('[TTS-VM] ⚠️ Using Web Speech fallback')
   await speakWebAPI(text)
 }
 

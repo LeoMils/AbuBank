@@ -150,6 +150,17 @@ export function AbuAI() {
   // To re-enable: set localStorage 'abubank-realtime-enabled' = 'true'
   const useRealtime = false
 
+  // Auto-clear stale OpenAI cooldown on mount — ensures fresh credits are
+  // picked up without requiring manual localStorage clearing.
+  useEffect(() => {
+    const key = 'abu-openai-quota-failed'
+    const ts = localStorage.getItem(key)
+    if (ts && (Date.now() - parseInt(ts, 10)) > 300_000) {
+      localStorage.removeItem(key)
+      console.log('[AbuAI] Cleared stale OpenAI cooldown on mount')
+    }
+  }, [])
+
   // v25.2: Simplified — noise mode defaults to quiet, user can change manually
   type VoiceEnvMode = 'quiet' | 'noisy' | 'listen'
   const [noiseMode, setNoiseMode] = useState<VoiceEnvMode>('quiet') // always start quiet
@@ -1363,9 +1374,10 @@ ${fewShotText}`
     const quotaFlag = localStorage.getItem('abu-openai-quota-failed')
     const openaiAvailable = useRealtime && (!quotaFlag || (Date.now() - parseInt(quotaFlag, 10)) > 300_000)
 
-    // No OpenAI credits? Go straight to free pipeline. No complexity.
+    // Realtime disabled → use pipeline mode (STT → local-first router → LLM → TTS).
+    // OpenAI is still available as LLM provider via sendMessage().
     if (!openaiAvailable) {
-      console.log('[AbuAI] No OpenAI → free pipeline (Groq + Gemini)')
+      console.log('[AbuAI] Pipeline voice mode (Realtime disabled). LLM providers: OpenAI → Groq → Gemini')
       startPipelineVoiceMode()
       return
     }

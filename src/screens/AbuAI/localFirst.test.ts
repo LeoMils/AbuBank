@@ -120,15 +120,13 @@ describe('local-first: confirm/cancel are local', () => {
 })
 
 describe('LLM failure message is warm and helpful', () => {
-  it('sendMessage fallback guides user to local capabilities', () => {
-    // The fallback must mention local capabilities without sounding robotic
-    expect(SERVICE_SRC.includes('אני כאן')).toBe(true)
-    expect(SERVICE_SRC.includes('להגדיר תזכורת')).toBe(true)
-    expect(SERVICE_SRC.includes('לבדוק יומן')).toBe(true)
+  it('sendMessage fallback is warm, not a system menu', () => {
+    expect(SERVICE_SRC.includes('רגע, לא הצלחתי')).toBe(true)
+    expect(SERVICE_SRC.includes('בואי ננסה שוב')).toBe(true)
   })
 
-  it('streamMessage fallback guides user to local capabilities', () => {
-    expect(SERVICE_SRC.includes('השיחה החופשית לא עובדת')).toBe(true)
+  it('streamMessage fallback is warm and human', () => {
+    expect(SERVICE_SRC.includes('רגע, לא הצלחתי')).toBe(true)
   })
 
   it('fallback does NOT say "כל השרתים תפוסים"', () => {

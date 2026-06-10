@@ -87,7 +87,12 @@ function shapeRelationshipBetween(route: RouteResult): string {
 
 export function tryGroundedAnswer(text: string): string | null {
   const route = routePersonalQuery(text)
-  if (route.type === 'non_personal') return null
+  if (route.type === 'non_personal') {
+    console.log(`[AbuAI:route] "${text.slice(0, 40)}" → non_personal (needs LLM)`)
+    return null
+  }
+  console.log(`[AbuAI:route] "${text.slice(0, 40)}" → ${route.type} [LOCAL] person=${route.familyQuery ?? '-'}`)
+
 
   try {
     let result: ToolResult
@@ -258,9 +263,10 @@ function getProviders(voiceMode = false): Provider[] {
   const geminiAvailable = !isProviderCoolingDown('gemini-client')
 
   if (voiceMode) {
-    // Voice mode: SPEED — Groq (free) first, then OpenAI server-proxy, then Gemini.
-    if (groqKey && groqAvailable)     providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
+    // Voice mode: QUALITY FIRST — OpenAI (gpt-4o-mini, fast+quality) → Groq (free) → Gemini.
+    // Groq/Llama produces formulaic Hebrew; OpenAI is dramatically better for natural conversation.
     if (openaiAvailable)             providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_VOICE })
+    if (groqKey && groqAvailable)     providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
     if (geminiKey && geminiAvailable) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
   } else {
     // Text mode: OpenAI server-proxy → Gemini (free, client) → Groq (free, client)
@@ -274,8 +280,8 @@ function getProviders(voiceMode = false): Provider[] {
   // this path is rare.
   if (providers.length === 0) {
     if (voiceMode) {
-      if (groqKey)   providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
       providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_VOICE })
+      if (groqKey)   providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
       if (geminiKey) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
     } else {
       providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_TEXT })
@@ -287,6 +293,7 @@ function getProviders(voiceMode = false): Provider[] {
   if (providers.length === 0) {
     throw new Error('יש בעיה בשירות. דברי עם לאו והוא יסדר את זה.')
   }
+  console.log(`[AbuAI:providers] ${voiceMode ? 'VOICE' : 'TEXT'} → ${providers.map(p => p.kind).join(' → ')}`)
   return providers
 }
 
@@ -731,8 +738,9 @@ export async function* streamMessage(
           yieldedAny = true
           yield token
         }
-        if (yieldedAny) return // success — done
+        if (yieldedAny) { console.log('[AbuAI:stream] ✅ openai-server delivered tokens'); return }
         // Streaming failed — check if it was a key/quota issue and mark cooldown
+        console.log('[AbuAI:stream] ❌ openai-server yielded nothing')
         failedKinds.add('openai-server')
         const health = checkServerChatHealth()
         if (health.lastErrorCode === 'OPENAI_API_KEY_MISSING') {
@@ -802,10 +810,12 @@ export async function* streamMessage(
         }
 
         clearTimeout(timeout)
-        if (yieldedAny) return // success — done
+        if (yieldedAny) { console.log(`[AbuAI:stream] ✅ ${provider.kind} delivered tokens`); return }
+        console.log(`[AbuAI:stream] ❌ ${provider.kind} yielded nothing`)
         // No tokens yielded — try next provider
       } catch {
         clearTimeout(timeout)
+        console.log(`[AbuAI:stream] ❌ ${provider.kind} threw error`)
         failedKinds.add(provider.kind)
         continue // try next provider
       }
@@ -819,7 +829,7 @@ export async function* streamMessage(
   } // end streamAttempt loop
 
   // All providers failed across all attempts — warm fallback
-  yield 'השיחה החופשית לא עובדת לי כרגע. אבל אני כאן — אפשר לבדוק יומן, להגדיר תזכורת, או לדבר על המשפחה.'
+  yield 'רגע, לא הצלחתי. בואי ננסה שוב, או תשאלי אותי משהו אחר.'
 }
 
 export const VOICE_SUFFIX = `
@@ -887,11 +897,13 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
       }
 
       if (result) {
+        console.log(`[AbuAI:send] ✅ ${provider.kind} returned result`)
         if (containsUngroundedClaim(result, hadToolCall)) return SAFE_REFUSAL
         return result
       }
 
       // Provider failed — mark it so we don't retry in this utterance
+      console.log(`[AbuAI:send] ❌ ${provider.kind} failed (retryAfter=${retryAfter})`)
       failedKinds.add(provider.kind)
       if (retryAfter > 0) markProviderCooldown(provider.kind)
     }
@@ -903,5 +915,5 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
   if (lastMsg?.role === 'tool') {
     throw new Error('משהו השתבש. ננסה שוב?')
   }
-  throw new Error('השיחה החופשית לא עובדת לי כרגע. אבל אני כאן — אפשר לבדוק יומן, להגדיר תזכורת, או לדבר על המשפחה.')
+  throw new Error('רגע, לא הצלחתי. בואי ננסה שוב, או תשאלי אותי משהו אחר.')
 }

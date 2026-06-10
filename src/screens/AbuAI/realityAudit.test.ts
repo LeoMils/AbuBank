@@ -83,7 +83,7 @@ describe('Provider loop elimination — source contracts', () => {
   })
 
   it('fallback message is human-friendly, not technical', () => {
-    const fallback = 'השיחה החופשית לא עובדת לי כרגע. אבל אני כאן — אפשר לבדוק יומן, להגדיר תזכורת, או לדבר על המשפחה.'
+    const fallback = 'רגע, לא הצלחתי. בואי ננסה שוב, או תשאלי אותי משהו אחר.'
     expect(SERVICE_SRC).toContain(fallback)
     expect(SERVICE_SRC).not.toContain('כל השרתים תפוסים')
   })
@@ -333,12 +333,12 @@ describe('Context continuity — pronoun resolution', () => {
     expect(personName).toBe('נועם')
   })
 
-  it('resolves שלה after talking about עדי (female)', () => {
+  it('resolves שלו after talking about עדי (male)', () => {
     const history = [
-      msg('user', 'מי זו עדי?'),
-      msg('assistant', 'עדי היא הנכדה שלך, בת של לאו.'),
+      msg('user', 'מי זה עדי?'),
+      msg('assistant', 'עדי הוא הנכד שלך, בן של לאו.'),
     ]
-    const { resolved, personName } = resolvePronouns('מתי יום ההולדת שלה?', history)
+    const { resolved, personName } = resolvePronouns('מתי יום ההולדת שלו?', history)
     expect(resolved).toContain('עדי')
     expect(personName).toBe('עדי')
   })
@@ -555,10 +555,9 @@ describe('Human tone — no robotic/technical language', () => {
     expect(combined).not.toContain(phrase)
   })
 
-  it('fallback mentions family/calendar/reminder alternatives', () => {
-    expect(SERVICE_SRC).toContain('אפשר לבדוק יומן')
-    expect(SERVICE_SRC).toContain('להגדיר תזכורת')
-    expect(SERVICE_SRC).toContain('לדבר על המשפחה')
+  it('fallback is warm and actionable', () => {
+    expect(SERVICE_SRC).toContain('בואי ננסה שוב')
+    expect(SERVICE_SRC).toContain('תשאלי אותי משהו אחר')
   })
 
   it('cooldown-based error messages use warm Hebrew', () => {
@@ -739,5 +738,196 @@ describe('Multi-turn journey tests', () => {
     const answer = tryGroundedAnswer('מתי יום ההולדת של מור?')
     expect(answer).not.toBeNull()
     expect(answer!.length).toBeGreaterThan(5)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 4 — FAMILY GENDER AUDIT
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('Family gender audit — correct pronouns and wording', () => {
+  it('Adi (עדי) is male — answer uses masculine wording', () => {
+    const answer = tryGroundedAnswer('מי זה עדי?')
+    expect(answer).not.toBeNull()
+    // Must use "הוא" (he) not "היא" (she), or "נכד" (grandson) not "נכדה"
+    expect(answer!).not.toMatch(/נכדה|היא/)
+    expect(answer!).toMatch(/נכד|הוא/)
+  })
+
+  it('Noam (נועם) is male — answer uses masculine wording', () => {
+    const answer = tryGroundedAnswer('מי זה נועם?')
+    expect(answer).not.toBeNull()
+    expect(answer!).toMatch(/נכד|הוא/)
+  })
+
+  it('Mor (מור) is female — answer uses feminine wording', () => {
+    const answer = tryGroundedAnswer('מי זו מור?')
+    expect(answer).not.toBeNull()
+    expect(answer!).toMatch(/הבת|היא/)
+  })
+
+  it('family_data.json has Adi as grandson, not granddaughter', () => {
+    const data = readFileSync(resolve(__dirname, '../../..', 'knowledge/family_data.json'), 'utf8')
+    const json = JSON.parse(data)
+    const adi = json.family.grandchildren_leo.find((m: any) => m.canonical_name === 'Adi')
+    expect(adi).toBeDefined()
+    expect(adi.relationship).toBe('grandson')
+    expect(adi.relationship_hebrew).toContain('נכד')
+    expect(adi.relationship_hebrew).not.toContain('נכדה')
+  })
+
+  it('Martita is always addressed in feminine Hebrew', () => {
+    // SYSTEM_PROMPT must use feminine address
+    expect(SERVICE_SRC).toContain('את MartitAI')
+    expect(SERVICE_SRC).toContain('פנייה: "את" (נקבה)')
+    expect(SERVICE_SRC).toContain('תגידי')
+    expect(SERVICE_SRC).toContain('לחצי')
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 3 — PROVIDER POLICY: OpenAI first in both modes
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('Provider policy — OpenAI first in voice AND text', () => {
+  it('voice mode puts OpenAI first, not Groq', () => {
+    // Find the voice mode provider block
+    const voiceBlock = SERVICE_SRC.slice(
+      SERVICE_SRC.indexOf('if (voiceMode) {'),
+      SERVICE_SRC.indexOf('} else {', SERVICE_SRC.indexOf('if (voiceMode) {'))
+    )
+    const openaiIdx = voiceBlock.indexOf('openai-server')
+    const groqIdx = voiceBlock.indexOf('groq-client')
+    expect(openaiIdx).toBeGreaterThan(0)
+    expect(groqIdx).toBeGreaterThan(0)
+    expect(openaiIdx).toBeLessThan(groqIdx)
+  })
+
+  it('text mode puts OpenAI first', () => {
+    const textBlock = SERVICE_SRC.slice(
+      SERVICE_SRC.indexOf('} else {', SERVICE_SRC.indexOf('if (voiceMode) {')),
+      SERVICE_SRC.indexOf('// All providers in cooldown')
+    )
+    const openaiIdx = textBlock.indexOf('openai-server')
+    const groqIdx = textBlock.indexOf('groq-client')
+    expect(openaiIdx).toBeGreaterThan(0)
+    expect(openaiIdx).toBeLessThan(groqIdx)
+  })
+
+  it('diagnostic logging present for provider selection', () => {
+    expect(SERVICE_SRC).toContain('[AbuAI:providers]')
+  })
+
+  it('diagnostic logging present for stream results', () => {
+    expect(SERVICE_SRC).toContain('[AbuAI:stream] ✅')
+    expect(SERVICE_SRC).toContain('[AbuAI:stream] ❌')
+  })
+
+  it('diagnostic logging present for route classification', () => {
+    expect(SERVICE_SRC).toContain('[AbuAI:route]')
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 5 — HUMAN HEBREW FALLBACK
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('Human Hebrew fallback — no robotic menu', () => {
+  it('streaming fallback is warm and short', () => {
+    expect(SERVICE_SRC).toContain('רגע, לא הצלחתי. בואי ננסה שוב')
+  })
+
+  it('fallback does NOT contain provider/system language', () => {
+    const fallbackLines = SERVICE_SRC.split('\n').filter(l =>
+      /yield\s+'|throw\s+new Error\('/.test(l)
+    ).join('\n')
+    expect(fallbackLines).not.toContain('שרת')
+    expect(fallbackLines).not.toContain('provider')
+    expect(fallbackLines).not.toContain('API')
+    expect(fallbackLines).not.toContain('timeout')
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 6 — PHONE MIRROR TESTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('Phone mirror tests — exact Leo scenarios', () => {
+  it('PM1: "מי זו מור" → LOCAL_FAMILY, female wording', () => {
+    const route = routePersonalQuery('מי זו מור')
+    expect(route.type).toBe('family_lookup')
+    const answer = tryGroundedAnswer('מי זו מור')
+    expect(answer).not.toBeNull()
+    expect(answer!).toMatch(/הבת|היא/)
+    // No LLM needed — pure local
+  })
+
+  it('PM2: "מי זה עדי" → LOCAL_FAMILY, male wording', () => {
+    const route = routePersonalQuery('מי זה עדי')
+    expect(route.type).toBe('family_lookup')
+    const answer = tryGroundedAnswer('מי זה עדי')
+    expect(answer).not.toBeNull()
+    expect(answer!).toMatch(/נכד|הוא/)
+    expect(answer!).not.toMatch(/נכדה|היא/)
+  })
+
+  it('PM3: "ספרי לי בדיחה" → non_personal (LLM path)', () => {
+    expect(isPersonalQuery('ספרי לי בדיחה')).toBe(false)
+    const grounded = tryGroundedAnswer('ספרי לי בדיחה')
+    expect(grounded).toBeNull() // should NOT be grounded
+  })
+
+  it('PM4: "מי הילדים שלי" → LOCAL_FAMILY', () => {
+    const answer = tryGroundedAnswer('מי הילדים שלי?')
+    expect(answer).not.toBeNull()
+    expect(answer!).toContain('מור')
+    expect(answer!).toContain('לאו')
+  })
+
+  it('PM5: "מה יש לי היום" → LOCAL_CALENDAR', () => {
+    const route = routePersonalQuery('מה יש לי היום')
+    expect(route.type).toBe('calendar_today')
+    const answer = tryGroundedAnswer('מה יש לי היום')
+    expect(answer).not.toBeNull()
+  })
+
+  it('PM6: "תזכירי לי לקחת כדור בערב" → reminder with 20:00', () => {
+    const draft = parseReminder('תזכירי לי לקחת כדור בערב', TODAY_ISO)
+    expect(draft.title).toBeDefined()
+    expect(draft.dueAt).toBeDefined()
+    if (draft.dueAt) expect(draft.dueAt).toContain('20:00')
+  })
+
+  it('PM7: TTS diagnostic logging exists', () => {
+    const voiceSrc = readFileSync(resolve(__dirname, '../../services/voice.ts'), 'utf8')
+    expect(voiceSrc).toContain('[TTS-VM] trying OpenAI TTS')
+    expect(voiceSrc).toContain('[TTS-VM] ✅ OpenAI TTS returned')
+    expect(voiceSrc).toContain('[TTS-VM] ⚠️ Using Web Speech fallback')
+  })
+
+  it('PM8: stale cooldown auto-cleared on mount', () => {
+    expect(INDEX_SRC).toContain('Cleared stale OpenAI cooldown on mount')
+    expect(INDEX_SRC).toContain("localStorage.removeItem(key)")
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VOICE MODE — PIPELINE ARCHITECTURE CONTRACTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('Voice mode pipeline architecture', () => {
+  it('enterVoiceMode does NOT say "No OpenAI" (misleading)', () => {
+    expect(INDEX_SRC).not.toContain("'[AbuAI] No OpenAI →")
+  })
+
+  it('enterVoiceMode logs correct pipeline message', () => {
+    expect(INDEX_SRC).toContain('Pipeline voice mode (Realtime disabled)')
+  })
+
+  it('voice transcript goes through same local-first router as text', () => {
+    // Voice path must call tryGroundedAnswer — search entire file
+    expect(INDEX_SRC).toContain('tryGroundedAnswer')
+    // And sendMessage with voiceMode=true
+    expect(INDEX_SRC).toContain('sendMessage(currentMsgs, true)')
   })
 })
