@@ -19,14 +19,11 @@ describe('voice pipeline — 30 golden Martita semantic tests', () => {
   it('#1 "אני צריכה מחר בבוקר לקחת כדור, תזכירי לי" — reminder, tomorrow, morning', () => {
     const r = runVoicePipelineDiagnostic('אני צריכה מחר בבוקר לקחת כדור, תזכירי לי', TODAY_ISO)
     expect(r.intent).toBe('reminder')
-    // Pipeline picks up "מחר" as date label but does not resolve a numeric time
-    // from "בבוקר" alone — it sets displayDateLabel='מחר' but leaves dueAt null.
     expect(r.dateParse.label).not.toBeNull()
     expect(r.dateParse.label).toContain('מחר')
     expect(r.finalConfirmationText).toContain('לקחת כדור')
-    // Without a fully resolved dueAt, save is blocked.
-    expect(r.saveAllowed.allowed).toBe(false)
-    expect(r.saveAllowed.reason.length).toBeGreaterThan(0)
+    // Bare "בבוקר" now resolves to 08:00 (evening-ambiguity fix) — save is allowed.
+    expect(r.saveAllowed.allowed).toBe(true)
   })
 
   // ── 2 ────────────────────────────────────────────────────────────────

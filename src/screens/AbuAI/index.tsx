@@ -9,7 +9,7 @@ import { chooseContentWorld } from './contentWorldEngine'
 import { compileHumanAnswer } from './answerCompiler'
 import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
-import { getTodayEvents, getTomorrowEvents } from './tools'
+import { getTodayEvents, getTomorrowEvents, getBirthdayFor } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
@@ -410,7 +410,35 @@ export function AbuAI() {
       if (isCreateIntent(msgText) && detectReminderIntent(msgText) === 'reminder') {
         const _n = new Date(); const _p = (n: number) => String(n).padStart(2,'0')
         const todayStr = `${_n.getFullYear()}-${_p(_n.getMonth()+1)}-${_p(_n.getDate())}`
-        const draft = parseReminder(msgText, todayStr)
+
+        // Family birthday fusion: "שבוע לפני יום ההולדת של נועם" →
+        // resolve birthday from family data, subtract offset, inject concrete date.
+        let reminderText = msgText
+        const bdayFusionMatch = msgText.match(/(?:(\S+)\s+)?לפני\s+יום ה?הולדת של\s+(\S+)/)
+        if (bdayFusionMatch) {
+          const offsetWord = bdayFusionMatch[1] ?? 'שבוע'
+          const personName = bdayFusionMatch[2]!
+          const bdayResult = getBirthdayFor(personName)
+          // Extract MM-DD from summary text (format: "יום ההולדת של X — MM-DD.")
+          const dateMatch = bdayResult.summary.match(/(\d{2})-(\d{2})/)
+          if (bdayResult.found && dateMatch) {
+            const offsetDays = /שבוע/.test(offsetWord) ? 7
+              : /יומיים/.test(offsetWord) ? 2
+              : /חודש/.test(offsetWord) ? 30
+              : /שלושה/.test(offsetWord) ? 3
+              : 7
+            const mm = parseInt(dateMatch[1]!, 10)
+            const dd = parseInt(dateMatch[2]!, 10)
+            const thisYear = new Date().getFullYear()
+            let bdayDate = new Date(thisYear, mm - 1, dd)
+            if (bdayDate.getTime() < Date.now()) bdayDate = new Date(thisYear + 1, mm - 1, dd)
+            bdayDate.setDate(bdayDate.getDate() - offsetDays)
+            const resolvedDate = `${bdayDate.getFullYear()}-${_p(bdayDate.getMonth()+1)}-${_p(bdayDate.getDate())}`
+            reminderText = msgText.replace(bdayFusionMatch[0], `ב-${resolvedDate}`)
+          }
+        }
+
+        const draft = parseReminder(reminderText, todayStr)
         const pushAssistant = (content: string) => {
           setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
           setLoading(false)
@@ -454,6 +482,25 @@ export function AbuAI() {
       if (groundedAnswer !== null) {
         const groundedMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: groundedAnswer, timestamp: Date.now() }
         setMessages(prev => [...prev, groundedMsg])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── Conversation recall ("מה אמרתי לך קודם?") ─────────────────────
+      // Local-first: scan recent user messages, no LLM needed.
+      const RECALL_RE = /מה אמרתי|על מי דיברנו|מה קבענו|למי אמרתי|what did I say|de qu[eé] hablamos/i
+      if (RECALL_RE.test(msgText)) {
+        const recentUser = messages.filter(m => m.role === 'user').slice(-6, -1) // exclude current msg
+        let recallContent: string
+        if (recentUser.length > 0) {
+          const items = recentUser.map(m => `• "${m.content}"`).join('\n')
+          recallContent = `הנה מה שאמרת לאחרונה:\n${items}`
+        } else {
+          recallContent = 'עוד לא אמרת לי משהו בשיחה הזו.'
+        }
+        const recallMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: recallContent, timestamp: Date.now() }
+        setMessages(prev => [...prev, recallMsg])
         setLoading(false)
         streamingMsgIdRef.current = null
         return

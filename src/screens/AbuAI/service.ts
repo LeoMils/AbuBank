@@ -691,7 +691,12 @@ export async function* streamMessage(
   voiceMode = false,
   signal?: AbortSignal,
 ): AsyncGenerator<string, void, undefined> {
-  const providers = getProviders(voiceMode)
+  // Per-utterance tracking: never re-call a provider that already failed
+  // in this user message. Prevents the 429 spam loop.
+  const failedKinds = new Set<Provider['kind']>()
+  let totalCalls = 0
+  const MAX_CALLS_PER_UTTERANCE = 4
+
   const systemContent = voiceMode ? SYSTEM_PROMPT + VOICE_SUFFIX : SYSTEM_PROMPT
   const chatMessages = [
     { role: 'system', content: systemContent },
@@ -702,7 +707,11 @@ export async function* streamMessage(
   const temperature = voiceMode ? 0.3 : 0.65
 
   for (let streamAttempt = 0; streamAttempt < 2; streamAttempt++) {
+  const providers = getProviders(voiceMode) // re-fetch each attempt (picks up cooldowns)
   for (const provider of providers) {
+    if (failedKinds.has(provider.kind)) continue // already failed this utterance
+    if (totalCalls >= MAX_CALLS_PER_UTTERANCE) break
+    totalCalls++
     try {
       const body: Record<string, unknown> = {
         model: provider.model,
@@ -724,6 +733,7 @@ export async function* streamMessage(
         }
         if (yieldedAny) return // success — done
         // Streaming failed — check if it was a key/quota issue and mark cooldown
+        failedKinds.add('openai-server')
         const health = checkServerChatHealth()
         if (health.lastErrorCode === 'OPENAI_API_KEY_MISSING') {
           markProviderCooldown('openai-server')
@@ -750,9 +760,9 @@ export async function* streamMessage(
 
         if (!res.ok) {
           clearTimeout(timeout)
+          failedKinds.add(provider.kind)
           if (res.status === 429) {
             markProviderCooldown(provider.kind)
-            if (streamAttempt === 0) await wait(3000)
           }
           continue // try next provider
         }
@@ -796,12 +806,15 @@ export async function* streamMessage(
         // No tokens yielded — try next provider
       } catch {
         clearTimeout(timeout)
+        failedKinds.add(provider.kind)
         continue // try next provider
       }
     } catch {
+      failedKinds.add(provider.kind)
       continue
     }
   }
+  if (totalCalls >= MAX_CALLS_PER_UTTERANCE) break
 
   } // end streamAttempt loop
 
@@ -821,7 +834,11 @@ export const VOICE_SUFFIX = `
 
 
 export async function sendMessage(messages: ChatMessage[], voiceMode = false): Promise<string> {
-  const providers = getProviders(voiceMode)
+  // Per-utterance tracking: never re-call a provider that returned 429 / failed
+  const failedKinds = new Set<Provider['kind']>()
+  let totalCalls = 0
+  const MAX_CALLS_PER_UTTERANCE = 4
+
   const systemContent = voiceMode ? SYSTEM_PROMPT + VOICE_SUFFIX : SYSTEM_PROMPT
   const conversationMessages: Array<{ role: string; content?: string; tool_calls?: ToolCall[]; tool_call_id?: string; name?: string }> = [
     { role: 'system', content: systemContent },
@@ -834,46 +851,49 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
   let hadToolCall = false
 
   for (let toolRound = 0; toolRound < 2; toolRound++) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      let maxRetryAfter = 0
-      for (const provider of providers) {
-        // Tools only via OpenAI server proxy. Groq returns 400 with
-        // tool_choice on llama-3.3-70b. Core actions are local-first
-        // anyway — LLM only handles open conversation (no tools needed).
-        const supportsTools = toolsEnabled() && provider.kind === 'openai-server'
-        const body: Record<string, unknown> = {
-          messages: conversationMessages,
-          temperature,
-          max_tokens: maxTokens,
-        }
-        if (supportsTools && toolRound === 0) {
-          body.tools = TOOL_DEFINITIONS
-          body.tool_choice = 'auto'
-        }
+    const providers = getProviders(voiceMode).filter(p => !failedKinds.has(p.kind))
+    if (providers.length === 0 || totalCalls >= MAX_CALLS_PER_UTTERANCE) break
 
-        const { result, retryAfter, toolCalls, rawMessage } = await tryProvider(provider, body)
+    for (const provider of providers) {
+      if (totalCalls >= MAX_CALLS_PER_UTTERANCE) break
+      totalCalls++
 
-        if (toolCalls?.length && rawMessage) {
-          hadToolCall = true
-          conversationMessages.push({ role: 'assistant', tool_calls: toolCalls })
-          for (const tc of toolCalls) {
-            let args: Record<string, string> = {}
-            try { args = JSON.parse(tc.function.arguments) } catch {}
-            const toolResult = executeTool(tc.function.name, args)
-            conversationMessages.push({ role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: toolResult })
-          }
-          break
-        }
-
-        if (result) {
-          if (containsUngroundedClaim(result, hadToolCall)) return SAFE_REFUSAL
-          return result
-        }
-        if (retryAfter > maxRetryAfter) maxRetryAfter = retryAfter
+      // Tools only via OpenAI server proxy. Groq returns 400 with
+      // tool_choice on llama-3.3-70b. Core actions are local-first
+      // anyway — LLM only handles open conversation (no tools needed).
+      const supportsTools = toolsEnabled() && provider.kind === 'openai-server'
+      const body: Record<string, unknown> = {
+        messages: conversationMessages,
+        temperature,
+        max_tokens: maxTokens,
+      }
+      if (supportsTools && toolRound === 0) {
+        body.tools = TOOL_DEFINITIONS
+        body.tool_choice = 'auto'
       }
 
-      if (conversationMessages[conversationMessages.length - 1]?.role === 'tool') break
-      if (attempt === 0 && maxRetryAfter > 0) await wait(maxRetryAfter * 1000)
+      const { result, retryAfter, toolCalls, rawMessage } = await tryProvider(provider, body)
+
+      if (toolCalls?.length && rawMessage) {
+        hadToolCall = true
+        conversationMessages.push({ role: 'assistant', tool_calls: toolCalls })
+        for (const tc of toolCalls) {
+          let args: Record<string, string> = {}
+          try { args = JSON.parse(tc.function.arguments) } catch {}
+          const toolResult = executeTool(tc.function.name, args)
+          conversationMessages.push({ role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: toolResult })
+        }
+        break // got tool calls — proceed to next toolRound
+      }
+
+      if (result) {
+        if (containsUngroundedClaim(result, hadToolCall)) return SAFE_REFUSAL
+        return result
+      }
+
+      // Provider failed — mark it so we don't retry in this utterance
+      failedKinds.add(provider.kind)
+      if (retryAfter > 0) markProviderCooldown(provider.kind)
     }
 
     if (conversationMessages[conversationMessages.length - 1]?.role !== 'tool') break

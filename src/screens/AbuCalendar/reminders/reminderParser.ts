@@ -407,6 +407,18 @@ export function parseReminder(rawText: string, todayISO: string): ReminderDraft 
     displayTimeLabel = localDraft.time
   }
 
+  // Bare time-of-day fallback: "בערב" → 20:00, "בבוקר" → 08:00, etc.
+  // when localParser found no time (no specific hour in the text).
+  if (!dueAt && !relTime && !isRecurring) {
+    const bareTime = extractTimeFromText(t)
+    if (bareTime) {
+      const dateStr = localDraft?.date ?? todayISO
+      dueAt = `${dateStr}T${bareTime}:00`
+      displayDateLabel = displayDateLabel ?? (localDraft?.date ? buildDateLabel(localDraft.date, todayISO) : 'היום')
+      displayTimeLabel = bareTime
+    }
+  }
+
   // Recurrence: if recurring, override dueAt with next occurrence
   if (isRecurring && recurBase) {
     const timeStr = localDraft?.time || extractTimeFromText(t) || '09:00'
@@ -518,6 +530,13 @@ function extractTimeFromText(text: string): string | null {
       return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
     }
   }
+  // Bare time-of-day words without a specific hour → sensible defaults
+  // for reminders (medication, calls, tasks). "בערב" → 20:00 covers
+  // the common "take a pill in the evening" pattern.
+  if (/(?:^|\s)בערב(?:\s|$)/.test(text)) return '20:00'
+  if (/(?:^|\s)בבוקר(?:\s|$)/.test(text)) return '08:00'
+  if (/(?:^|\s)בצהריים(?:\s|$)/.test(text)) return '12:00'
+  if (/(?:^|\s)בלילה(?:\s|$)/.test(text)) return '22:00'
   return null
 }
 
