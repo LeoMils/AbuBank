@@ -290,7 +290,7 @@ const SEEDS: ProactiveSeed[] = [
   // ── Missing Pepe — Hebrew (deeply personal, gentle) ──
   {
     id: 'pepe-he-1', intent: 'missing_pepe', lang: 'he',
-    text: 'הוא היה מיוחד. הגעגוע הזה לא עובר — אבל הוא נמצא בכל הילדים והנכדים שלך.',
+    text: 'פפי היה מיוחד. הגעגוע הזה לא עובר — אבל הוא נמצא בכל הילדים והנכדים שלך.',
   },
   {
     id: 'pepe-he-2', intent: 'missing_pepe', lang: 'he',

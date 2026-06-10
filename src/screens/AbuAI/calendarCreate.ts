@@ -536,7 +536,10 @@ export function resolvePendingMessage(
   const hasDateOrTime = /מחר|היום|אתמול|שבוע|ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת|בבוקר|בערב|בצהריים|בלילה|בשעה|ב[־-]?\d|אחרי|לפני|בעוד/i.test(t)
   const hasScheduleWord = /תור|פגישה|רופא|בדיקה|קבוע|אחרי הפגישה|אחרי התור/i.test(t)
   const isQuestion = /^(מי|מה|מתי|איפה|איך|למה|כמה|האם)\s/i.test(t) || t.endsWith('?')
-  if (!hasDateOrTime && !hasScheduleWord && !isQuestion && t.length > 8) {
+  // Off-topic: 3+ words, no scheduling context, not a question
+  // OR: emotional/personal statement (starts with "אני") with no date/time
+  const isPersonalStatement = /^אני\s/.test(t) && !hasDateOrTime
+  if (!hasDateOrTime && !hasScheduleWord && !isQuestion && (t.split(/\s+/).length >= 3 || isPersonalStatement)) {
     return { action: 'cancel' }
   }
 

@@ -39,10 +39,24 @@ export function findLastMentionedPerson(
     }
   }
 
-  // Scan messages from newest to oldest
+  // Pass 1: Scan USER messages from newest to oldest (highest priority —
+  // the user explicitly mentioned this person).
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i]!
+    if ((msg as { role?: string }).role !== 'user') continue
+    for (const [name, node] of nameToNode) {
+      if (msg.content.includes(name)) {
+        if (gender && node.gender !== gender) continue
+        return node.hebrew
+      }
+    }
+  }
+
+  // Pass 2: Scan ALL messages (including assistant responses that mention
+  // names) as fallback — e.g. when the user never typed the name but the
+  // assistant mentioned it.
   for (let i = messages.length - 1; i >= 0; i--) {
     const content = messages[i]!.content
-    // Check each known family name in the message
     for (const [name, node] of nameToNode) {
       if (content.includes(name)) {
         if (gender && node.gender !== gender) continue
