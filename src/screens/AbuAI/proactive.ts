@@ -19,7 +19,7 @@
  */
 
 export type ProactiveLang = 'he' | 'es' | 'en' | 'mixed'
-export type ProactiveIntent = 'boredom' | 'no_topic' | 'loneliness' | 'ideas'
+export type ProactiveIntent = 'boredom' | 'no_topic' | 'loneliness' | 'ideas' | 'sadness' | 'talk_to_me' | 'missing_pepe'
 
 export interface ProactiveSeed {
   id: string
@@ -98,10 +98,27 @@ const IDEAS_HE = /תני לי רעיון|מה אפשר לעשות (היום|עכ
 const IDEAS_ES = /dame\s+ideas?|qu[eé]\s+puedo\s+hacer\s+hoy|alguna\s+idea/i
 const IDEAS_EN = /\bgive me (an?\s+)?ideas?\b|what can i do today/i
 
+// Sadness / low energy — distinct from loneliness (lonely = alone, sad = feeling bad)
+const SADNESS_HE = /עצובה|עצוב|אין לי כוח|לא בכיף|לא טוב לי|קשה לי היום|יום קשה/
+const SADNESS_ES = /estoy\s+triste|me\s+siento\s+mal|no\s+tengo\s+ganas|d[ií]a\s+dif[ií]cil/i
+const SADNESS_EN = /\b(i'?m\s+sad|feeling\s+(down|bad)|tough\s+day|no\s+energy)\b/i
+
+// "Talk to me" — needs company, not a specific intent
+const TALK_HE = /תדברי איתי|דברי איתי|תספרי לי משהו|ספרי לי משהו/
+const TALK_ES = /habl[aá]me|cont[aá]me\s+algo|charlemos/i
+const TALK_EN = /\btalk\s+to\s+me\b|\btell\s+me\s+something\b/i
+
+// Missing Pepe — deeply emotional, requires gentle specific response
+const MISSING_PEPE = /מתגעגע[ת]?\s+(ל|אל\s+)?פפ[יה]|געגועים\s+(ל|אל\s+)?פפ[יה]|חסר\s+לי\s+פפ[יה]|extra[nñ]o\s+(a\s+)?pep[eé]/i
+
 export function detectIntent(input: string): ProactiveIntent | null {
+  // Missing Pepe — most specific, check first
+  if (MISSING_PEPE.test(input)) return 'missing_pepe'
   if (BOREDOM_HE.test(input) || BOREDOM_ES.test(input) || BOREDOM_EN.test(input)) return 'boredom'
   if (NO_TOPIC_HE.test(input) || NO_TOPIC_ES.test(input) || NO_TOPIC_EN.test(input)) return 'no_topic'
   if (LONELINESS_HE.test(input) || LONELINESS_ES.test(input) || LONELINESS_EN.test(input)) return 'loneliness'
+  if (SADNESS_HE.test(input) || SADNESS_ES.test(input) || SADNESS_EN.test(input)) return 'sadness'
+  if (TALK_HE.test(input) || TALK_ES.test(input) || TALK_EN.test(input)) return 'talk_to_me'
   if (IDEAS_HE.test(input) || IDEAS_ES.test(input) || IDEAS_EN.test(input)) return 'ideas'
   return null
 }
@@ -132,15 +149,15 @@ const SEEDS: ProactiveSeed[] = [
   // ── Boredom — Hebrew ──
   {
     id: 'boredom-he-1', intent: 'boredom', lang: 'he',
-    text: 'תקשיבי, יש לנו שלוש אפשרויות טובות: לדבר על משהו שמעניין אותך, לשמוע סיפור קצר, או לחשוב על משהו לעשות מחר. מה עובד לך?',
+    text: 'בואי נעשה משהו. רוצה לשמוע סיפור קצר, לדבר על משהו שמעניין אותך, או לחשוב על תוכנית למחר?',
   },
   {
     id: 'boredom-he-2', intent: 'boredom', lang: 'he',
-    text: 'אז ככה — אני יכולה לספר לך משהו על המדע שאני אוהבת, להציע מתכון לשבת, או להזכיר לך עם מי לא דיברת מזמן. את בוחרת.',
+    text: 'אני כאן. אפשר לדבר על משהו שעובר עליך, לחשוב על מתכון לסוף השבוע, או שאני אספר לך משהו מעניין.',
   },
   {
     id: 'boredom-he-3', intent: 'boredom', lang: 'he',
-    text: 'נשמע מוכר. בואי ננסה: סיפור קצר, רעיון לטיול קטן בכפר סבא, או שיחה על משהו שראית בחדשות. מה את מעדיפה?',
+    text: 'יש כמה דברים נחמדים — סיפור קצר, טיול קטן בכפר סבא, או לצלצל למישהו מהמשפחה. מה מתחשק לך?',
   },
   // ── Boredom — English ──
   {
@@ -220,16 +237,73 @@ const SEEDS: ProactiveSeed[] = [
   // ── Ideas — Hebrew ──
   {
     id: 'ideas-he-1', intent: 'ideas', lang: 'he',
-    text: 'שלוש אפשרויות להיום: לדבר עם מור או לאו דקה קצרה, לטייל עשר דקות בכפר סבא, או לשבת עם סיפור קצר. מה תופס לך?',
+    text: 'מה דעתך על שיחה קצרה עם מור או לאו? או לצאת לטיול קטן בכפר סבא. גם סרט טוב יכול להיות נחמד.',
   },
   {
     id: 'ideas-he-2', intent: 'ideas', lang: 'he',
-    text: 'נסי אחת מהאלה: להכין משהו קטן בבית, לשלוח הודעה למישהו מהמשפחה, או לראות סרט שכיף לך. את בוחרת.',
+    text: 'אפשר להכין משהו טעים, לשלוח הודעה למישהו מהמשפחה, או פשוט לשבת עם סיפור. מה מתחשק?',
   },
   // ── Ideas — English ──
   {
     id: 'ideas-en-1', intent: 'ideas', lang: 'en',
-    text: 'Three ideas: a quick call to Mor or Leo, a short walk in Kfar Saba, or a small recipe. Which one tempts you?',
+    text: 'How about a quick call to Mor or Leo, a short walk, or trying a simple recipe? Whatever feels right.',
+  },
+
+  // ── Sadness — Hebrew ──
+  {
+    id: 'sadness-he-1', intent: 'sadness', lang: 'he',
+    text: 'זה בסדר להרגיש ככה. אני איתך. רוצה לדבר על מה שעובר עליך, או שנדבר על משהו אחר?',
+  },
+  {
+    id: 'sadness-he-2', intent: 'sadness', lang: 'he',
+    text: 'אני שומעת אותך. לפעמים הימים כבדים. אם בא לך אני כאן — לדבר, לשתוק, מה שנוח.',
+  },
+  // ── Sadness — Spanish ──
+  {
+    id: 'sadness-es-1', intent: 'sadness', lang: 'es',
+    text: 'Está bien sentirse así, Martita. Estoy acá. Si querés hablamos de lo que sea, o simplemente te hago compañía un rato.',
+  },
+  {
+    id: 'sadness-es-2', intent: 'sadness', lang: 'es',
+    text: 'Te escucho. A veces los días pesan. Si te sirve, charlamos de algo — lo que venga.',
+  },
+
+  // ── Talk to me — Hebrew ──
+  {
+    id: 'talk-he-1', intent: 'talk_to_me', lang: 'he',
+    text: 'אני כאן. ספרי לי מה היה לך היום, או שאני אספר לך משהו — מה שנוח.',
+  },
+  {
+    id: 'talk-he-2', intent: 'talk_to_me', lang: 'he',
+    text: 'בכיף. על מה בא לך? יש לי סיפור קצר, או שנדבר על מה שעובר עליך.',
+  },
+  // ── Talk to me — Spanish ──
+  {
+    id: 'talk-es-1', intent: 'talk_to_me', lang: 'es',
+    text: 'Dale, acá estoy. Contame qué onda tu día, o yo te cuento algo — como quieras.',
+  },
+  {
+    id: 'talk-es-2', intent: 'talk_to_me', lang: 'es',
+    text: 'Bueno, charlemos. ¿De qué tenés ganas? Puedo contarte algo lindo o simplemente escucharte.',
+  },
+
+  // ── Missing Pepe — Hebrew (deeply personal, gentle) ──
+  {
+    id: 'pepe-he-1', intent: 'missing_pepe', lang: 'he',
+    text: 'הוא היה מיוחד. הגעגוע הזה לא עובר — אבל הוא נמצא בכל הילדים והנכדים שלך.',
+  },
+  {
+    id: 'pepe-he-2', intent: 'missing_pepe', lang: 'he',
+    text: 'פפי היה אחד במינו. מותר להתגעגע. רוצה לספר לי עליו משהו?',
+  },
+  // ── Missing Pepe — Spanish ──
+  {
+    id: 'pepe-es-1', intent: 'missing_pepe', lang: 'es',
+    text: 'Pepe era único. Eso no se olvida — ni tiene por qué. Está en cada uno de tus nietos.',
+  },
+  {
+    id: 'pepe-es-2', intent: 'missing_pepe', lang: 'es',
+    text: 'Extrañarlo es natural. ¿Querés contarme algo de él? Me gusta escucharte hablar de Pepe.',
   },
 ]
 

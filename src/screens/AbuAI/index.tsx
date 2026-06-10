@@ -562,7 +562,7 @@ export function AbuAI() {
             return updated
           })
         } catch (err) {
-          const errMsg = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
+          const errMsg = err instanceof Error ? err.message : 'משהו לא עבד. ננסה שוב?'
           setMessages(prev => {
             const updated = [...prev]
             const idx = updated.findIndex(m => m.id === aiMsgId)
@@ -1019,7 +1019,7 @@ export function AbuAI() {
         setStreamingText('')
         if ((err as DOMException)?.name === 'AbortError') return // interrupted
         transitionVoice('ERROR', err instanceof Error ? err.message : 'unknown')
-        const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
+        const errText = err instanceof Error ? err.message : 'משהו לא עבד. ננסה שוב?'
         setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
         if (voiceModeRef.current) {
           setVoicePhase('speaking'); setIsSpeaking(true)

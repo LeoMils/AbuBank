@@ -62,12 +62,12 @@ function userMessageFor(code: OnlineErrorCode, lang: OnlineLang = 'he'): string 
     CLIENT_NETWORK_ERROR: 'No tengo conexión ahora. Probá cuando vuelva el internet.',
   }
   const HE: Record<OnlineErrorCode, string> = {
-    OPENAI_API_KEY_MISSING: 'אני לא יכולה לבדוק מידע אונליין כרגע כי חיבור ה-AI לא מוגדר.',
-    ONLINE_PROVIDER_FAILED: 'אני לא מצליחה לבדוק מידע אונליין כרגע. נסי שוב בעוד רגע.',
-    ONLINE_QUERY_BLOCKED_PERSONAL: 'לשאלות על המשפחה או היומן אני משתמשת במידע המקומי — לא מחפשת את זה אונליין.',
-    ONLINE_TIMEOUT: 'החיפוש האונליין לקח יותר מדי זמן. נסי שוב.',
-    BAD_REQUEST: 'לא הבנתי את השאלה. נסי לנסח אחרת.',
-    CLIENT_NETWORK_ERROR: 'אין לי חיבור עכשיו. נסי כשהאינטרנט יחזור.',
+    OPENAI_API_KEY_MISSING: 'לא הצלחתי לחפש אונליין כרגע. דברי עם לאו.',
+    ONLINE_PROVIDER_FAILED: 'החיפוש לא עבד הפעם. ננסה שוב?',
+    ONLINE_QUERY_BLOCKED_PERSONAL: 'על המשפחה והיומן אני עונה מהמידע שלי — לא צריך לחפש אונליין.',
+    ONLINE_TIMEOUT: 'החיפוש לקח יותר מדי זמן. ננסה שוב?',
+    BAD_REQUEST: 'לא הבנתי. תנסי לשאול אחרת?',
+    CLIENT_NETWORK_ERROR: 'אין אינטרנט כרגע. ננסה שוב כשיחזור.',
   }
   const EN: Record<OnlineErrorCode, string> = {
     OPENAI_API_KEY_MISSING: 'I cannot check online information right now because the AI connection is not configured.',

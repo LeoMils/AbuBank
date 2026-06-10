@@ -426,8 +426,8 @@ describe('shapeNotFound', () => {
 describe('shapeToolError', () => {
   it('human, short', () => {
     const msg = shapeToolError()
-    expect(msg).toContain('אני לא מצליחה לבדוק')
-    expect(msg).toContain('נסי שוב')
+    expect(msg).toContain('לא עבד')
+    expect(msg).toContain('ננסה שוב')
   })
 })
 

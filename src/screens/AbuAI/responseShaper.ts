@@ -268,9 +268,8 @@ export function shapeToolError(lang: ShaperLang = 'he'): string {
     case 'en':
       return 'I cannot check that right now. Please try again in a moment.'
     case 'mixed':
-      return 'אני לא מצליחה לבדוק את זה כרגע. נסי שוב.'
     case 'he':
     default:
-      return 'אני לא מצליחה לבדוק את זה כרגע. נסי שוב.'
+      return 'משהו לא עבד. ננסה שוב?'
   }
 }

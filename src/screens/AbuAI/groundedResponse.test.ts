@@ -3,7 +3,7 @@ import { answerFromToolResult } from './groundedResponse'
 
 describe('answerFromToolResult', () => {
   it('tool error returns safe message', () => {
-    expect(answerFromToolResult('calendar_today', { ok: false })).toContain('אני לא מצליחה לבדוק')
+    expect(answerFromToolResult('calendar_today', { ok: false })).toContain('לא עבד')
   })
 
   it('empty calendar passes through shaped summary', () => {

@@ -37,7 +37,7 @@ describe('shapeNotFound — language hint', () => {
 
 describe('shapeToolError — language hint', () => {
   it('default (no hint) returns Hebrew (regression)', () => {
-    expect(shapeToolError()).toBe('אני לא מצליחה לבדוק את זה כרגע. נסי שוב.')
+    expect(shapeToolError()).toBe('משהו לא עבד. ננסה שוב?')
   })
 
   it('lang="es" returns Spanish', () => {
@@ -49,11 +49,11 @@ describe('shapeToolError — language hint', () => {
   })
 
   it('lang="he" returns Hebrew', () => {
-    expect(shapeToolError('he')).toBe('אני לא מצליחה לבדוק את זה כרגע. נסי שוב.')
+    expect(shapeToolError('he')).toBe('משהו לא עבד. ננסה שוב?')
   })
 
   it('lang="mixed" prefers Hebrew', () => {
-    expect(shapeToolError('mixed')).toBe('אני לא מצליחה לבדוק את זה כרגע. נסי שוב.')
+    expect(shapeToolError('mixed')).toBe('משהו לא עבד. ננסה שוב?')
   })
 })
 
@@ -63,6 +63,6 @@ describe('Hebrew behavior preserved across the existing call surface', () => {
     expect(shapeNotFound()).toBe('לא מצאתי מידע על זה.')
   })
   it('shapeToolError() always returns the original Hebrew string when called without args', () => {
-    expect(shapeToolError()).toBe('אני לא מצליחה לבדוק את זה כרגע. נסי שוב.')
+    expect(shapeToolError()).toBe('משהו לא עבד. ננסה שוב?')
   })
 })

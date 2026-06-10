@@ -185,7 +185,7 @@ export function containsUngroundedClaim(response: string, hadToolCall: boolean):
     || ENGLISH_CLAIM_PATTERNS.test(response)
 }
 
-const SAFE_REFUSAL = 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
+const SAFE_REFUSAL = 'אני לא בטוחה בתשובה. תשאלי אותי שוב או תבדקי ביומן.'
 
 // Provider priority (B2.1):
 //   1. OpenAI via SERVER PROXY (/api/abuai-chat) — OPENAI_API_KEY lives
@@ -533,8 +533,8 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
 
     if (!res.ok) {
       if (res.status === 401) throw new Error('מפתח API לא תקין.')
-      if (res.status === 429) throw new Error('יותר מדי בקשות. נסי שוב בעוד דקה.')
-      throw new Error(`שגיאה בתמלול (${res.status}).`)
+      if (res.status === 429) throw new Error('השירות עמוס כרגע. ננסה שוב בעוד רגע.')
+      throw new Error('לא הצלחתי לשמוע. ננסה שוב?')
     }
 
     const data = await res.json()
@@ -757,7 +757,7 @@ export async function* streamMessage(
   } // end streamAttempt loop
 
   // All providers failed across all attempts — warm fallback
-  yield 'אני לא מצליחה לענות על זה כרגע. אבל אפשר לקבוע פגישה, להגדיר תזכורת, לבדוק יומן או לשאול על המשפחה.'
+  yield 'השיחה החופשית לא עובדת לי כרגע. אבל אני כאן — אפשר לבדוק יומן, להגדיר תזכורת, או לדבר על המשפחה.'
 }
 
 export const VOICE_SUFFIX = `
@@ -832,7 +832,7 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
 
   const lastMsg = conversationMessages[conversationMessages.length - 1]
   if (lastMsg?.role === 'tool') {
-    throw new Error('לא הצלחתי לעבד את המידע. נסי שוב.')
+    throw new Error('משהו השתבש. ננסה שוב?')
   }
-  throw new Error('אני לא מצליחה לחשוב על זה כרגע. אבל אפשר עדיין לקבוע פגישה, להגדיר תזכורת, לבדוק את היומן או לשאול על המשפחה.')
+  throw new Error('השיחה החופשית לא עובדת לי כרגע. אבל אני כאן — אפשר לבדוק יומן, להגדיר תזכורת, או לדבר על המשפחה.')
 }
