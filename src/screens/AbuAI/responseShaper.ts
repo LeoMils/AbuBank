@@ -79,9 +79,10 @@ export function shapeFamilyAnswer(m: FamilyMember): string {
 
 // ─── Location ───────────────────────────────────────────────────────────────
 
-export function shapeLocationAnswer(name: string, location: string, notes?: string): string {
-  if (notes) return `${name} גרה ב${location}, ${notes}.`
-  return `${name} גרה ב${location}.`
+export function shapeLocationAnswer(name: string, location: string, notes?: string, gender?: 'male' | 'female' | 'unknown'): string {
+  const verb = gender === 'male' ? 'גר' : 'גרה'
+  if (notes) return `${name} ${verb} ב${location}, ${notes}.`
+  return `${name} ${verb} ב${location}.`
 }
 
 // ─── Calendar Read ──────────────────────────────────────────────────────────

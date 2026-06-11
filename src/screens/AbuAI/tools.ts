@@ -50,8 +50,11 @@ export function searchFamilyLocation(query: string): { found: boolean; answer: s
   const r = searchFamily(query)
   if (!r.found || r.members.length === 0) return { found: false, answer: shapeNotFound(query) }
   const m = r.members[0]!
-  if (!m.location) return { found: true, answer: `אין לי מידע איפה ${m.hebrew} גרה.` }
-  return { found: true, answer: shapeLocationAnswer(m.hebrew, m.location, m.locationNotes) }
+  const MALE_REL = new Set(['son', 'grandson', 'husband_deceased', 'son_in_law', 'ex_son_in_law', 'grandson_in_law'])
+  const gender = MALE_REL.has(m.relationship) ? 'male' as const : 'female' as const
+  const verb = gender === 'male' ? 'גר' : 'גרה'
+  if (!m.location) return { found: true, answer: `אין לי מידע איפה ${m.hebrew} ${verb}.` }
+  return { found: true, answer: shapeLocationAnswer(m.hebrew, m.location, m.locationNotes, gender) }
 }
 
 export function getFamilyContext(): string {
