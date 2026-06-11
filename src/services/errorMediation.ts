@@ -134,7 +134,7 @@ export function mediateError(err: unknown, status?: number): MediatedError {
       return {
         category,
         emoji: '👂',
-        message: 'לא שמעתי טוב. אמרי עוד פעם.',
+        message: 'לא שמעתי טוב. תנסי שוב?',
         primaryLabel: 'ננסה שוב',
         primaryAction: 'retry',
       }
@@ -185,10 +185,10 @@ export function mediateVoiceCaptureError(
     return 'לא הצלחתי להתחיל הקלטה. ננסה שוב.'
   }
   if (err instanceof DOMException && err.name === 'NotAllowedError') {
-    return 'המיקרופון חסום. צריך לאפשר שימוש במיקרופון כדי שאוכל לשמוע אותך.'
+    return 'המיקרופון חסום. תאפשרי לי שימוש כדי שאוכל לשמוע אותך.'
   }
   if (err instanceof DOMException && err.name === 'NotFoundError') {
-    return 'לא מצאתי מיקרופון במכשיר.'
+    return 'אין מיקרופון בטלפון הזה.'
   }
   return 'לא הצלחתי להתחיל הקלטה. ננסה שוב.'
 }

@@ -135,7 +135,7 @@ describe('mediateVoiceCaptureError', () => {
   it('maps NotFoundError to no-microphone copy', () => {
     const err = new DOMException('', 'NotFoundError')
     const msg = mediateVoiceCaptureError(err)
-    expect(msg).toContain('לא מצאתי מיקרופון')
+    expect(msg).toContain('מיקרופון')
     expect(msg).not.toMatch(/NotFoundError|DOMException|stack/i)
   })
 

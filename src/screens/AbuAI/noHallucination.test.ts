@@ -160,7 +160,7 @@ describe('AbuAI no-hallucination — web/online claim', () => {
 
   it('SYSTEM_PROMPT instructs the model to say it cannot check when a tool fails', () => {
     expect(SYSTEM_PROMPT).toContain('אם הכלי לא עובד')
-    expect(SYSTEM_PROMPT).toContain('אני לא מצליחה לבדוק')
+    expect(SYSTEM_PROMPT).toContain('לא הצלחת לבדוק')
     expect(SYSTEM_PROMPT).toContain('אם הכלי מחזיר תוצאה ריקה')
     expect(SYSTEM_PROMPT).toContain('אל תמציאי')
   })
