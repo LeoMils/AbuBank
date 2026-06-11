@@ -176,8 +176,8 @@ function getTTSInstructions(text: string): string {
 async function speakOpenAI(text: string): Promise<boolean> {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
   if (!apiKey) return false
-  // v25: Skip if OpenAI quota exhausted — don't waste 8s on timeout
-  const qf = localStorage.getItem('abu-openai-quota-failed')
+  // Skip if TTS-specific quota exhausted (separate from LLM chat quota)
+  const qf = localStorage.getItem('abu-openai-tts-quota-failed')
   if (qf && (Date.now() - parseInt(qf, 10)) < 300_000) return false
 
   const chunks = splitText(text, 400)
@@ -205,7 +205,7 @@ async function speakOpenAI(text: string): Promise<boolean> {
       if (!res.ok) {
         console.log('[TTS] OpenAI status:', res.status)
         if (res.status === 429 || res.status === 402) {
-          try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+          try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
         }
         return false
       }
@@ -255,6 +255,7 @@ async function speakAzureTTS(text: string): Promise<boolean> {
 
 const GEMINI_TTS_MODELS = [
   'gemini-2.5-flash-preview-tts',
+  'gemini-2.0-flash',            // fallback: standard flash also supports TTS
 ]
 
 async function speakGemini(text: string): Promise<boolean> {
@@ -439,11 +440,14 @@ function speakWebAPI(text: string): Promise<void> {
 export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 1) OpenAI TTS (paid — skip entirely if quota exhausted)
+  // 1) OpenAI TTS (paid — skip only if TTS-specific quota exhausted)
+  // IMPORTANT: TTS quota is separate from LLM chat quota. The
+  // abu-openai-quota-failed flag is for chat API only. TTS has its
+  // own flag so LLM rate limits don't kill voice quality.
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-  const quotaOk = !localStorage.getItem('abu-openai-quota-failed') ||
-    (Date.now() - parseInt(localStorage.getItem('abu-openai-quota-failed') ?? '0', 10)) > 300_000
-  if (apiKey && quotaOk) {
+  const ttsQuotaFlag = localStorage.getItem('abu-openai-tts-quota-failed')
+  const ttsQuotaOk = !ttsQuotaFlag || (Date.now() - parseInt(ttsQuotaFlag, 10)) > 300_000
+  if (apiKey && ttsQuotaOk) {
     console.log('[TTS-VM] trying OpenAI TTS...')
     try {
       const controller = new AbortController()
@@ -464,16 +468,16 @@ export async function speakVoiceMode(text: string): Promise<void> {
           if (await playBlob(blob)) return
         }
       }
-      // 429/402 = quota exceeded — mark cooldown and fall through to free Gemini
+      // 429/402 = TTS quota exceeded — mark TTS-specific cooldown
       if (res.status === 429 || res.status === 402) {
-        try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+        try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
       }
       console.log('[TTS-VM] ❌ OpenAI failed (' + res.status + '), trying Gemini...')
     } catch (e) {
       console.log('[TTS-VM] ❌ OpenAI error:', e)
     }
   } else {
-    console.log(`[TTS-VM] OpenAI TTS skipped: key=${!!apiKey} quotaOk=${quotaOk}`)
+    console.log(`[TTS-VM] OpenAI TTS skipped: key=${!!apiKey} ttsQuotaOk=${ttsQuotaOk}`)
   }
 
   // 2) Gemini TTS (FREE with existing key)
@@ -694,9 +698,9 @@ export async function streamSpeakVoiceMode(
 
   const speakChunk = async (text: string): Promise<void> => {
     if (signal?.aborted) return
-    // v25: OpenAI (paid, skip if quota exhausted) → Gemini (FREE) → Web Speech (FREE)
+    // OpenAI (paid, skip if TTS quota exhausted) → Gemini (FREE) → Web Speech (FREE)
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-    const sqf = localStorage.getItem('abu-openai-quota-failed')
+    const sqf = localStorage.getItem('abu-openai-tts-quota-failed')
     const skipOpenAI = sqf && (Date.now() - parseInt(sqf, 10)) < 300_000
     if (apiKey && !skipOpenAI) {
       try {
@@ -710,7 +714,7 @@ export async function streamSpeakVoiceMode(
           const blob = await res.blob()
           if (blob.size > 100) { queue.enqueue(blob); return }
         } else if (res.status === 429 || res.status === 402) {
-          try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+          try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
         }
       } catch { /* try fallback */ }
     }
