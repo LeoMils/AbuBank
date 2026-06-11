@@ -315,26 +315,43 @@ export function MicSelfTest() {
 
   return (
     <div data-testid="mic-self-test" style={{
-      position: 'fixed', top: 'calc(50% - 120px)', left: 8, right: 8, zIndex: 10002,
+      position: 'fixed', top: 60, left: 8, right: 8, bottom: 'env(safe-area-inset-bottom, 20px)',
+      zIndex: 10002,
       padding: '12px', borderRadius: 12,
       background: 'rgba(8,12,24,0.97)', border: '1.5px solid rgba(96,165,250,0.50)',
       fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.90)',
-      lineHeight: 1.6, whiteSpace: 'pre-wrap', maxHeight: '50vh', overflow: 'auto',
+      lineHeight: 1.6,
       boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+      display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 100px)',
     }}>
-      <div style={{ fontWeight: 700, color: '#60a5fa', marginBottom: 4 }}>MIC SELF-TEST</div>
-      {running ? 'Running...' : result ?? 'Starting...'}
-      <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+      {/* Header with title + X close */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexShrink: 0 }}>
+        <div style={{ fontWeight: 700, color: '#60a5fa' }}>MIC SELF-TEST</div>
+        <button type="button" data-testid="mic-self-test-x" onClick={() => { setOpen(false); setResult(null) }}
+          aria-label="close mic test"
+          style={{
+            width: 28, height: 28, border: 'none', borderRadius: 6,
+            background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)',
+            fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>✕</button>
+      </div>
+      {/* Scrollable log area */}
+      <div style={{ flex: 1, overflow: 'auto', whiteSpace: 'pre-wrap', marginBottom: 8, minHeight: 0 }}>
+        {running ? 'Running...' : result ?? 'Starting...'}
+      </div>
+      {/* Bottom buttons — always visible */}
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
         <button type="button" data-testid="mic-self-test-rerun" onClick={() => void doRunTest()} disabled={running} style={{
-          padding: '6px 12px', fontSize: 11, fontFamily: 'monospace',
+          padding: '8px 14px', fontSize: 12, fontFamily: 'monospace',
           border: '1px solid rgba(96,165,250,0.4)', borderRadius: 6,
           background: 'rgba(96,165,250,0.1)', color: '#60a5fa', cursor: running ? 'wait' : 'pointer',
         }}>Rerun</button>
         <button type="button" data-testid="mic-self-test-close" onClick={() => { setOpen(false); setResult(null) }} style={{
-          padding: '6px 12px', fontSize: 11, fontFamily: 'monospace',
-          border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6,
-          background: 'transparent', color: 'rgba(255,255,255,0.5)', cursor: 'pointer',
-        }}>Close</button>
+          padding: '8px 14px', fontSize: 12, fontFamily: 'monospace',
+          border: '1px solid rgba(255,255,255,0.3)', borderRadius: 6,
+          background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+          flex: 1,
+        }}>סגור וחזור ליומן</button>
       </div>
     </div>
   )
@@ -582,10 +599,17 @@ type GuidedState = 'ready' | 'recording' | 'processing' | 'result_ready' | 'mark
 let _guidedQaActive = false
 export function isGuidedQaActive(): boolean { return _guidedQaActive }
 
-function findLastRunForExpected(expectedId: string): QaRun | null {
+function findLastRunForExpected(expectedId: string, afterTimestamp?: number): QaRun | null {
   const runs = loadQaRuns()
   for (let i = runs.length - 1; i >= 0; i--) {
-    if (runs[i]!.expectedId === expectedId) return runs[i]!
+    const run = runs[i]!
+    if (run.expectedId !== expectedId) continue
+    // Skip stale runs from previous sessions
+    if (afterTimestamp) {
+      const runTime = new Date(run.timestamp).getTime()
+      if (runTime < afterTimestamp) continue
+    }
+    return run
   }
   return null
 }
@@ -660,9 +684,8 @@ export function GuidedMicQaPanel({ onRecord, voiceState, isRecording }: {
     if (state !== 'processing' && state !== 'recording') return
     if (recordStartedAt === 0) return // user hasn't pressed record yet
     const check = () => {
-      const run = findLastRunForExpected(exp.id)
+      const run = findLastRunForExpected(exp.id, recordStartedAt)
       if (run) {
-        // Only accept runs created after the current record button press
         const runTime = new Date(run.timestamp).getTime()
         if (runTime >= recordStartedAt) {
           setCurrentRun(run)
@@ -840,6 +863,11 @@ export function GuidedMicQaPanel({ onRecord, voiceState, isRecording }: {
       {state === 'processing' && (
         <div data-testid="guided-qa-processing" style={{ fontSize: 15, color: 'rgba(201,168,76,0.85)', textAlign: 'center', padding: '14px 0', fontWeight: 600 }}>
           בודקת מה הבנתי...
+          {recordStartedAt > 0 && Date.now() - recordStartedAt > 15000 && (
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+              עדיין אין תוצאה — נסה שוב
+            </div>
+          )}
         </div>
       )}
 
