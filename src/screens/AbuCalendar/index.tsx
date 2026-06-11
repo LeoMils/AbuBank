@@ -33,6 +33,7 @@ import { normalizeCalendarTranscript } from './calendarTranscriptCorrection'
 import { getSupportedMimeType } from '../AbuAI/service'
 import { createSilenceDetector } from '../../services/voice'
 import { buildQaRunFromTrace, appendQaRun, QaRecorderPanel, GuidedMicQaPanel, MicSelfTest, isVoiceDebugEnabled, VoiceDebugPanel, VoiceDebugToggle } from './VoiceDebugPanel'
+import { appendVoiceDiag } from '../../services/voiceDiagLog'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 import { injectSharedKeyframes } from '../../design/animations'
@@ -125,13 +126,20 @@ export function AbuCalendar() {
     updateTrace({ finalVoiceStage: 'error', error: message, visibleMessage: message }, step)
     setVoiceError(message)
     setVoiceState('error')
-    // QA recorder: log every failure
+    // Production diagnostic log (always)
+    const t = voiceTraceRef.current
+    appendVoiceDiag({ transcript: t.transcript ?? '', route: t.semanticRoute ?? 'error', date: t.extractedDate ?? null, time: t.extractedStartTime ?? null, person: t.resolvedPersonName ?? null, saveAllowed: null, error: message })
+    // QA recorder: log every failure (dev only)
     if (isVoiceDebugEnabled()) {
       appendQaRun(buildQaRunFromTrace(voiceTraceRef.current, null, APP_VERSION.version))
     }
   }
   /** Log a QA run at pipeline-done (non-failure paths). */
   function logQaRunIfEnabled(draft?: ReminderDraft | null) {
+    // Production diagnostic log (always)
+    const t = voiceTraceRef.current
+    appendVoiceDiag({ transcript: t.transcript ?? '', route: t.semanticRoute ?? 'unknown', date: t.extractedDate ?? null, time: t.extractedStartTime ?? null, person: t.resolvedPersonName ?? null, saveAllowed: t.saveAllowed ?? null, error: null })
+    // QA recorder (dev only)
     if (isVoiceDebugEnabled()) {
       appendQaRun(buildQaRunFromTrace(voiceTraceRef.current, draft ?? null, APP_VERSION.version))
     }

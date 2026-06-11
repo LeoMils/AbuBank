@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.4.18-calendar-revolution',
-  buildLabel: 'AbuBank — Calendar Revolution',
-  buildDate:  '2026-05-26',
+  version:    '0.5.0-production-candidate',
+  buildLabel: 'AbuBank — Production Candidate',
+  buildDate:  '2026-06-11',
   branchHint: 'feat/calendar-revolution',
   commitHint: 'local',
 } as const
