@@ -170,7 +170,7 @@ export function tryGroundedAnswer(text: string): string | null {
     }
     return answerFromToolResult(route.type, result)
   } catch {
-    return 'אני לא מצליחה לבדוק כרגע.'
+    return 'רגע, משהו לא עבד. ננסה שוב?'
   }
 }
 

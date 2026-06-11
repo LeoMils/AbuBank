@@ -446,13 +446,13 @@ describe('Conversation recall — source contract', () => {
     expect(INDEX_SRC).toContain('למי אמרתי')
   })
 
-  it('builds response from recent user messages', () => {
-    expect(INDEX_SRC).toContain("messages.filter(m => m.role === 'user')")
-    expect(INDEX_SRC).toContain('הנה מה שאמרת לאחרונה')
+  it('builds intelligent response from conversation', () => {
+    expect(INDEX_SRC).toContain('דיברנו על')
+    expect(INDEX_SRC).toContain('loadGraph')
   })
 
   it('handles empty conversation gracefully', () => {
-    expect(INDEX_SRC).toContain('עוד לא אמרת לי משהו בשיחה הזו')
+    expect(INDEX_SRC).toContain('עוד לא דיברנו על משהו')
   })
 
   it('recall handler is placed before LLM path', () => {

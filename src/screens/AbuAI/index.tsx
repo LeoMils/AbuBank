@@ -499,16 +499,47 @@ export function AbuAI() {
       }
 
       // ─── Conversation recall ("מה אמרתי לך קודם?") ─────────────────────
-      // Local-first: scan recent user messages, no LLM needed.
+      // Local-first: intelligently summarize what was discussed, not raw dump.
       const RECALL_RE = /מה אמרתי|על מי דיברנו|מה קבענו|למי אמרתי|what did I say|de qu[eé] hablamos/i
       if (RECALL_RE.test(msgText)) {
-        const recentUser = messages.filter(m => m.role === 'user').slice(-6, -1) // exclude current msg
+        const recent = messages.slice(-20, -1) // exclude current msg
         let recallContent: string
-        if (recentUser.length > 0) {
-          const items = recentUser.map(m => `• "${m.content}"`).join('\n')
-          recallContent = `הנה מה שאמרת לאחרונה:\n${items}`
+
+        if (recent.length === 0) {
+          recallContent = 'עוד לא דיברנו על משהו בשיחה הזו.'
         } else {
-          recallContent = 'עוד לא אמרת לי משהו בשיחה הזו.'
+          const parts: string[] = []
+
+          // Find family members discussed
+          const { loadGraph } = await import('./familyGraph')
+          const graph = loadGraph()
+          const mentioned = new Set<string>()
+          for (const m of recent) {
+            for (const node of graph) {
+              if (m.content.includes(node.hebrew)) mentioned.add(node.hebrew)
+            }
+          }
+          if (mentioned.size > 0) {
+            parts.push(`דיברנו על ${Array.from(mentioned).join(', ')}`)
+          }
+
+          // Find calendar topics discussed
+          const calKeywords = recent.some(m => /יומן|היום|מחר|השבוע|פגישה|תור/.test(m.content))
+          if (calKeywords) parts.push('בדקנו את היומן')
+
+          // Find reminders/appointments created
+          const reminders = recent.some(m => m.role === 'assistant' && /רשמתי|קבעתי|אזכיר/.test(m.content))
+          if (reminders) parts.push('קבענו תזכורת או פגישה')
+
+          // Find last user statement
+          const lastUserMsgs = recent.filter(m => m.role === 'user').slice(-3)
+          if (lastUserMsgs.length > 0 && parts.length === 0) {
+            parts.push(`אמרת: "${lastUserMsgs[lastUserMsgs.length - 1]!.content}"`)
+          }
+
+          recallContent = parts.length > 0
+            ? parts.join('. ') + '.'
+            : 'לא מצאתי נושא ברור שדיברנו עליו.'
         }
         const recallMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: recallContent, timestamp: Date.now() }
         setMessages(prev => [...prev, recallMsg])

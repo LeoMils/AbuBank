@@ -19,7 +19,7 @@
  */
 
 export type ProactiveLang = 'he' | 'es' | 'en' | 'mixed'
-export type ProactiveIntent = 'boredom' | 'no_topic' | 'loneliness' | 'ideas' | 'sadness' | 'talk_to_me' | 'missing_pepe'
+export type ProactiveIntent = 'boredom' | 'no_topic' | 'loneliness' | 'ideas' | 'sadness' | 'talk_to_me' | 'missing_pepe' | 'thanks'
 
 export interface ProactiveSeed {
   id: string
@@ -108,6 +108,11 @@ const TALK_HE = /תדברי איתי|דברי איתי|תספרי לי משהו|
 const TALK_ES = /habl[aá]me|cont[aá]me\s+algo|charlemos/i
 const TALK_EN = /\btalk\s+to\s+me\b|\btell\s+me\s+something\b/i
 
+// Thanks — simple acknowledgment, no LLM needed
+const THANKS_HE = /^תודה[!.\s]*$|^תודה רבה[!.\s]*$/
+const THANKS_ES = /^gracias[!.\s]*$/i
+const THANKS_EN = /^thanks?(?:\s+you)?[!.\s]*$|^thank\s+you[!.\s]*$/i
+
 // Missing Pepe — deeply emotional, requires gentle specific response
 const MISSING_PEPE = /מתגעגע[ת]?\s+(ל|אל\s+)?פפ[יה]|געגועים\s+(ל|אל\s+)?פפ[יה]|חסר\s+לי\s+פפ[יה]|extra[nñ]o\s+(a\s+)?pep[eé]/i
 
@@ -119,6 +124,7 @@ export function detectIntent(input: string): ProactiveIntent | null {
   if (LONELINESS_HE.test(input) || LONELINESS_ES.test(input) || LONELINESS_EN.test(input)) return 'loneliness'
   if (SADNESS_HE.test(input) || SADNESS_ES.test(input) || SADNESS_EN.test(input)) return 'sadness'
   if (TALK_HE.test(input) || TALK_ES.test(input) || TALK_EN.test(input)) return 'talk_to_me'
+  if (THANKS_HE.test(input) || THANKS_ES.test(input) || THANKS_EN.test(input)) return 'thanks'
   if (IDEAS_HE.test(input) || IDEAS_ES.test(input) || IDEAS_EN.test(input)) return 'ideas'
   return null
 }
@@ -285,6 +291,21 @@ const SEEDS: ProactiveSeed[] = [
   {
     id: 'talk-es-2', intent: 'talk_to_me', lang: 'es',
     text: 'Bueno, charlemos. ¿De qué tenés ganas? Puedo contarte algo lindo o simplemente escucharte.',
+  },
+
+  // ── Thanks — Hebrew ──
+  {
+    id: 'thanks-he-1', intent: 'thanks', lang: 'he',
+    text: 'בכיף. אני כאן אם תצטרכי עוד משהו.',
+  },
+  {
+    id: 'thanks-he-2', intent: 'thanks', lang: 'he',
+    text: 'בשמחה. תגידי אם צריך עוד משהו.',
+  },
+  // ── Thanks — Spanish ──
+  {
+    id: 'thanks-es-1', intent: 'thanks', lang: 'es',
+    text: 'De nada, Martita. Acá estoy si necesitás algo más.',
   },
 
   // ── Missing Pepe — Hebrew (deeply personal, gentle) ──
