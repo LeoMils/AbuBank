@@ -906,7 +906,7 @@ describe('Phone mirror tests — exact Leo scenarios', () => {
   })
 
   it('PM8: stale cooldown auto-cleared on mount', () => {
-    expect(INDEX_SRC).toContain('Cleared stale OpenAI cooldown on mount')
+    expect(INDEX_SRC).toContain('Cleared stale cooldown')
     expect(INDEX_SRC).toContain("localStorage.removeItem(key)")
   })
 })

@@ -150,14 +150,14 @@ export function AbuAI() {
   // To re-enable: set localStorage 'abubank-realtime-enabled' = 'true'
   const useRealtime = false
 
-  // Auto-clear stale OpenAI cooldown on mount — ensures fresh credits are
-  // picked up without requiring manual localStorage clearing.
+  // Auto-clear stale cooldowns on mount — ensures fresh state
   useEffect(() => {
-    const key = 'abu-openai-quota-failed'
-    const ts = localStorage.getItem(key)
-    if (ts && (Date.now() - parseInt(ts, 10)) > 300_000) {
-      localStorage.removeItem(key)
-      console.log('[AbuAI] Cleared stale OpenAI cooldown on mount')
+    for (const key of ['abu-openai-quota-failed', 'abu-openai-tts-quota-failed', 'abu-groq-cooldown', 'abu-gemini-cooldown']) {
+      const ts = localStorage.getItem(key)
+      if (ts && (Date.now() - parseInt(ts, 10)) > 300_000) {
+        localStorage.removeItem(key)
+        console.log(`[AbuAI] Cleared stale cooldown: ${key}`)
+      }
     }
   }, [])
 
