@@ -902,7 +902,7 @@ describe('Phone mirror tests — exact Leo scenarios', () => {
     const voiceSrc = readFileSync(resolve(__dirname, '../../services/voice.ts'), 'utf8')
     expect(voiceSrc).toContain('[TTS-VM] trying OpenAI TTS')
     expect(voiceSrc).toContain('[TTS-VM] ✅ OpenAI TTS returned')
-    expect(voiceSrc).toContain('[TTS-VM] ⚠️ Using Web Speech fallback')
+    expect(voiceSrc).toContain('[TTS-VM] ⚠️ All quality TTS failed')
   })
 
   it('PM8: stale cooldown auto-cleared on mount', () => {

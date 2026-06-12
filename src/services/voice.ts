@@ -483,9 +483,9 @@ export async function speakVoiceMode(text: string): Promise<void> {
   // 2) Gemini TTS (FREE with existing key)
   if (await speakGeminiViaAudioCtx(text)) { console.log('[TTS-VM] ✅ Gemini TTS'); return }
 
-  // 3) Web Speech API (FREE, last resort)
-  console.log('[TTS-VM] ⚠️ Using Web Speech fallback')
-  await speakWebAPI(text)
+  // 3) Skip Web Speech in voice mode — bad Hebrew voice is worse than text-only.
+  // The caller shows the response as text in the chat. User reads instead of hearing robot.
+  console.log('[TTS-VM] ⚠️ All quality TTS failed — staying text-only (no Web Speech robot)')
 }
 
 // Gemini TTS via AudioContext for voice mode (bypasses iOS audio restrictions)
