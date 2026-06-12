@@ -11,7 +11,20 @@ import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
 import { getTodayEvents, getTomorrowEvents, getBirthdayFor } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
-import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
+import { speakVoiceMode as _speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
+
+/** speakVoiceMode with 15s safety timeout — prevents stuck speaking state */
+async function speakVoiceMode(text: string): Promise<void> {
+  const timeout = new Promise<void>((_, reject) =>
+    setTimeout(() => reject(new Error('TTS_TIMEOUT')), 15000)
+  )
+  try {
+    await Promise.race([_speakVoiceMode(text), timeout])
+  } catch (err) {
+    stopSpeaking()
+    console.warn('[VOICE] TTS timed out or failed, stopping playback:', err)
+  }
+}
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
@@ -85,30 +98,11 @@ const KEYFRAMES = `
   }
 `
 
-// ─── Dynamic voice greeting ───────────────────────────────────────────────────
+// ─── Voice greeting — short, calm, adult ──────────────────────────────────────
 function getVoiceGreeting(): string {
   const h = new Date().getHours()
   const timeGreet = h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : h < 21 ? 'ערב טוב' : 'לילה טוב'
-
-  const openers = [
-    `${timeGreet}, Martita! ספרי לי — מה עובר עלייך היום?`,
-    `${timeGreet}! מה שלום טוצי? ומה שלומך את?`,
-    `${timeGreet}, Martita. יש משהו שרצית לדעת? אני כאן.`,
-    `${timeGreet}! שמחתי שהתקשרת. מה בסדר?`,
-    `${timeGreet}, Martita. שאלי אותי כל דבר — אפילו הדברים שמביך לשאול אחרים.`,
-    `${timeGreet}! מה חדש אצלך? ספרי לי.`,
-    `${timeGreet}, Martita. אני כאן — שאלי, ספרי, שוחח. מה בא לך?`,
-    `${timeGreet}! מה אכלת היום? ומה שלום המשפחה?`,
-    `${timeGreet}, Martita. מה עלה בדעתך עכשיו?`,
-    `${timeGreet}! חיכיתי שתתקשרי. מה קורה?`,
-    `${timeGreet}, Martita. יש משהו מעניין שקרה היום?`,
-    `${timeGreet}! רוצה לדעת משהו מעניין? או פשוט לשוחח?`,
-    `${timeGreet}, Martita. בואי נדבר — על מה שרוצה, בעברית או בספרדית.`,
-    `${timeGreet}! מה שלומך היום באמת?`,
-    `${timeGreet}, Martita. אני פה. מה על הלב?`,
-    `${timeGreet}! ספרי לי משהו — כל דבר שתרצי.`,
-  ]
-  return openers[Math.floor(Math.random() * openers.length)] ?? openers[0]!
+  return `${timeGreet}, Martita. אני כאן.`
 }
 
 export function AbuAI() {
@@ -1353,45 +1347,16 @@ ${fewShotText}`
     const isFirstToday = localStorage.getItem('abuai-voice-date') !== todayKey
     if (isFirstToday) localStorage.setItem('abuai-voice-date', todayKey)
 
-    let greeting = getVoiceGreeting()
-    if (Math.random() < 0.20) {
-      const reminders = [
-        ' — ואם רוצה, אפשר גם בספרדית.',
-        ' Acordate que podés hablarme en español.',
-        ' — y también hablo español, si preferís.',
-      ]
-      greeting += reminders[Math.floor(Math.random() * reminders.length)]!
-    }
-
+    // Visual greeting only — no auto-speak (iPhone blocks audio without gesture,
+    // and Web Speech fallback sounds robotic). User sees text, then mic starts.
+    const greeting = getVoiceGreeting()
     const greetMsg: ChatMessage = { id: nextId(), role: 'assistant', content: greeting, timestamp: Date.now() }
     setMessages(prev => [...prev, greetMsg])
 
-    if (isFirstToday) {
-      const dateStr = new Date().toLocaleDateString('he-IL', { month: 'long', day: 'numeric' })
-      sendMessage(
-        [{ id: 'date-q', role: 'user', content: `מה מיוחד בתאריך ${dateStr}? אירוע היסטורי, יום הולדת מפורסם, חג — 2-3 משפטים, עברית.`, timestamp: Date.now() }],
-        false
-      )
-        .then(dateFactResponse => {
-          const factMsg: ChatMessage = { id: nextId(), role: 'assistant', content: dateFactResponse, timestamp: Date.now() }
-          setMessages(prev => [...prev, factMsg])
-        })
-        .catch(() => {})
-    }
-    transitionVoice('RESPONDING', 'greeting')
-    setVoicePhase('greeting')
-    setIsSpeaking(true)
-    speakVoiceMode(greeting)
-      .then(() => {
-        setIsSpeaking(false)
-        if (voiceModeRef.current) {
-          setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 150)
-        }
-      })
-      .catch(() => {
-        setIsSpeaking(false)
-        if (voiceModeRef.current) startVoiceListening()
-      })
+    // Go straight to listening — no TTS greeting, no date fact LLM call
+    transitionVoice('LISTENING', 'greeting-skip-to-listen')
+    setVoicePhase('listening')
+    setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 200)
   }, [startVoiceListening, transitionVoice])
 
   const enterVoiceMode = useCallback(() => {
