@@ -130,6 +130,8 @@ const PERIOD_AM = /בבוקר|לפנות בוקר/
 // silently guessing.
 function applyPeriod(h: number, t: string): { hour: number; ambiguous: boolean } {
   if (PERIOD_AM.test(t)) return { hour: h >= 12 ? h - 12 : h, ambiguous: false }
+  // "בלילה" for hours 1-5 = after midnight (AM), not PM
+  if (/בלילה/.test(t) && h >= 1 && h <= 5) return { hour: h, ambiguous: false }
   if (PERIOD_PM.test(t)) return { hour: h >= 1 && h <= 11 ? h + 12 : h, ambiguous: false }
   if (h >= 1 && h <= 6) return { hour: h + 12, ambiguous: false }
   return { hour: h, ambiguous: h >= 7 && h <= 11 }
@@ -155,11 +157,16 @@ export function parseHebrewTimeDetailed(text: string): TimeParse {
     }
   }
 
-  // "בשעה 10" (no minutes) — literal.
+  // "בשעה 10" (no minutes) — apply period logic for 1-12 range.
+  // "בשעה 3" without context should ask AM/PM, not assume 03:00.
   const hourOnly = t.match(/ב[־-]?שעה\s+(\d{1,2})(?!\s*[:.]?\d)/)
   if (hourOnly) {
     const h = parseInt(hourOnly[1]!, 10)
-    if (h >= 0 && h <= 23) return { time: `${String(h).padStart(2, '0')}:00`, ambiguous: false }
+    if (h >= 13 && h <= 23) return { time: `${String(h).padStart(2, '0')}:00`, ambiguous: false }
+    if (h >= 0 && h <= 12) {
+      const { hour, ambiguous } = applyPeriod(h, t)
+      return { time: `${String(hour).padStart(2, '0')}:00`, ambiguous }
+    }
   }
 
   // Hebrew word hours: "בשעה חמש" / "בשבע בערב" / "בשלוש וחצי" / "בעשר בבוקר".

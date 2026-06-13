@@ -80,8 +80,8 @@ describe('Blocker #3: correction during confirmation updates draft', () => {
     }
     const originalDate = state.draft.date
 
-    // User corrects to a different day
-    const updated = updateCreate(state, 'בעצם ביום ראשון')
+    // User corrects to a different day (use Wednesday — always different from tomorrow)
+    const updated = updateCreate(state, 'בעצם ביום רביעי')
     expect(updated.phase).toBe('confirming')
     expect(updated.draft.title).toBe(state.draft.title) // title preserved
     expect(updated.draft.date).not.toBe(originalDate) // date changed
