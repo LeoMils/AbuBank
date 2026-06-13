@@ -576,26 +576,58 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     throw new SttExhaustedError('התמלול לא עובד כרגע. תנסי לכתוב במקום.')
   }
 
-  console.log(`[STT] blob: ${audioBlob.size} bytes, type: ${audioBlob.type}`)
+  const mimeType = audioBlob.type
+  console.log(`[STT] blob: ${audioBlob.size} bytes, type: ${mimeType}`)
 
-  // Provider 1: Groq Whisper (free, fast)
+  // iPhone records audio/mp4 which Groq often rejects (400 invalid media).
+  // Route mp4 to OpenAI server STT first for reliability.
+  const isIphoneMp4 = mimeType.includes('mp4') || mimeType.includes('m4a')
+
+  // Provider 1: Groq Whisper (free, fast) — skip for iPhone mp4
   const groqCooledDown = _sttGroqDisabled && (Date.now() - _sttGroqDisabledAt) < STT_COOLDOWN_MS
-  if (groqKey && !groqCooledDown) {
+  if (groqKey && !groqCooledDown && !isIphoneMp4) {
     const r = await tryWhisperProvider(GROQ_WHISPER_URL, groqKey, GROQ_WHISPER_MODEL, audioBlob)
     if (r.text) { _sttConsecutiveFailures = 0; return r.text }
     if (r.status === 400) {
-      // 400 = bad request (model deprecated, unsupported format, etc.)
-      // Disable Groq STT for this session to prevent retries
       _sttGroqDisabled = true
       _sttGroqDisabledAt = Date.now()
-      console.warn(`[STT] Groq disabled for ${STT_COOLDOWN_MS / 1000}s after 400:`, r.errorBody)
+      console.warn(`[STT] Groq disabled after 400:`, r.errorBody)
+      // Don't exhaust — try OpenAI server fallback
     }
     if (r.status === 429) {
-      console.warn('[STT] Groq rate-limited')
+      console.warn('[STT] Groq rate-limited, trying OpenAI server')
     }
   }
 
-  // All API providers failed
+  // Provider 2: OpenAI Whisper via server proxy (/api/abuai-stt)
+  // Works with iPhone mp4 and doesn't expose API key to client.
+  try {
+    console.log('[STT] Trying OpenAI server proxy...')
+    const formData = buildSttFormData(audioBlob, 'whisper-1')
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000)
+    const res = await fetch('/api/abuai-stt', {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+    if (res.ok) {
+      const data = await res.json()
+      if (data.ok && data.text?.trim()) {
+        console.log('[STT] ✅ OpenAI server STT succeeded')
+        _sttConsecutiveFailures = 0
+        return data.text.trim()
+      }
+    } else {
+      const errBody = await res.text().catch(() => '')
+      console.warn(`[STT] OpenAI server STT failed (${res.status}):`, errBody.slice(0, 100))
+    }
+  } catch (err) {
+    console.warn('[STT] OpenAI server STT error:', err)
+  }
+
+  // All providers failed
   _sttConsecutiveFailures++
   if (_sttConsecutiveFailures >= STT_MAX_CONSECUTIVE) {
     throw new SttExhaustedError('התמלול לא עובד כרגע. תנסי לכתוב במקום.')

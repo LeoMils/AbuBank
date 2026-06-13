@@ -853,6 +853,21 @@ export function AbuAI() {
         exitVoiceMode(); return
       }
 
+      // ─── Self-listening guard ──────────────────────────────────────────
+      // The mic can hear AbuAI's own TTS output and feed it back as input.
+      // Reject transcripts that match known assistant phrases.
+      const SELF_PHRASES = /רגע.*לא הצלחתי|לא הצלחתי.*בואי ננסה|בואי ננסה שוב|לא שמעתי טוב|התמלול לא עובד|משהו לא עבד|ננסה שוב/
+      if (SELF_PHRASES.test(lower)) {
+        console.warn('[VOICE] Self-listening blocked:', lower.slice(0, 40))
+        if (voiceModeRef.current) startVoiceListening()
+        return
+      }
+      // Also reject if TTS just finished (mic picks up tail end of playback)
+      if (isSpeaking) {
+        console.warn('[VOICE] Ignored transcript while TTS speaking:', lower.slice(0, 40))
+        return
+      }
+
       setLastHeardText(text) // v20: Show what was heard
 
       // Cross-turn pronoun resolution (voice path)
@@ -1108,8 +1123,9 @@ export function AbuAI() {
         abortControllerRef.current = null
 
         if (!voiceModeRef.current) return
-        // Minimal gap before resuming listen
-        await new Promise(r => setTimeout(r, 120))
+        // Post-TTS cooldown — wait for speaker audio to fade before mic resumes.
+        // 800ms prevents the mic from picking up AbuAI's own voice (self-listening bug).
+        await new Promise(r => setTimeout(r, 800))
         if (voiceModeRef.current) startVoiceListening()
       } catch (err) {
         abortControllerRef.current = null
