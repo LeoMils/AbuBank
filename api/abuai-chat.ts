@@ -44,10 +44,10 @@ function userMessageFor(code: ChatProxyErrorCode, lang: ChatProxyPayload['lang']
     BAD_REQUEST: 'No entendí la consulta.',
   }
   const HE: Record<ChatProxyErrorCode, string> = {
-    OPENAI_API_KEY_MISSING: 'אני לא יכולה לענות כרגע כי חיבור ה-AI בשרת לא מוגדר.',
-    CHAT_PROVIDER_FAILED: 'אני לא מצליחה לענות כרגע. נסי שוב בעוד רגע.',
-    CHAT_TIMEOUT: 'התשובה לקחה יותר מדי זמן. נסי שוב.',
-    BAD_REQUEST: 'לא הבנתי את השאלה.',
+    OPENAI_API_KEY_MISSING: 'יש בעיה בשירות. דברי עם לאו והוא יסדר את זה.',
+    CHAT_PROVIDER_FAILED: 'רגע, זה לא עבר לי. ננסה שוב?',
+    CHAT_TIMEOUT: 'התשובה לקחה יותר מדי זמן. ננסה שוב?',
+    BAD_REQUEST: 'לא הבנתי. תנסי לשאול אחרת?',
   }
   const EN: Record<ChatProxyErrorCode, string> = {
     OPENAI_API_KEY_MISSING: 'I cannot answer right now because the server AI connection is not configured.',

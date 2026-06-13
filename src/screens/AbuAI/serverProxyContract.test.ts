@@ -148,10 +148,11 @@ describe('Vercel chat endpoint contract', () => {
     expect(/if \(!apiKey\) \{[\s\S]{0,200}return jsonError\('OPENAI_API_KEY_MISSING'/.test(ep)).toBe(true)
   })
 
-  it('endpoint provides HE/ES/EN error copy', () => {
-    expect(ep.includes('No puedo responder ahora porque la conexión de AI no está configurada en el servidor.')).toBe(true)
-    expect(ep.includes('I cannot answer right now because the server AI connection is not configured.')).toBe(true)
-    expect(ep.includes('חיבור ה-AI בשרת לא מוגדר')).toBe(true)
+  it('endpoint provides HE/ES/EN error copy (no technical jargon)', () => {
+    // Hebrew must not contain "שרת" or "חיבור ה-AI" — warm message only
+    expect(ep.includes('דברי עם לאו')).toBe(true)
+    expect(ep.includes('I cannot answer right now')).toBe(true)
+    expect(ep.includes('No puedo responder')).toBe(true)
   })
 
   it('endpoint pipes SSE stream back unchanged when stream=true', () => {

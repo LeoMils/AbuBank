@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.4.6-platform-health-recovery'
-const BUILD_LABEL = 'AbuBank P0 — Platform/API Health Recovery'
+const BUILD_VERSION = '0.5.0-production-candidate'
+const BUILD_LABEL = 'AbuBank — Production Candidate'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
