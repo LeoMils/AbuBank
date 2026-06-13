@@ -33,7 +33,7 @@ import { normalizeCalendarTranscript } from './calendarTranscriptCorrection'
 import { getSupportedMimeType } from '../AbuAI/service'
 import { createSilenceDetector } from '../../services/voice'
 import { buildQaRunFromTrace, appendQaRun, QaRecorderPanel, GuidedMicQaPanel, MicSelfTest, isVoiceDebugEnabled, VoiceDebugPanel, VoiceDebugToggle } from './VoiceDebugPanel'
-import { appendVoiceDiag } from '../../services/voiceDiagLog'
+import { traceStart as _calTraceStart, traceSet as _calTraceSet, traceEnd as _calTraceEnd } from '../../services/voiceDiagLog'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 import { injectSharedKeyframes } from '../../design/animations'
@@ -128,7 +128,7 @@ export function AbuCalendar() {
     setVoiceState('error')
     // Production diagnostic log (always)
     const t = voiceTraceRef.current
-    appendVoiceDiag({ transcript: t.transcript ?? '', route: t.semanticRoute ?? 'error', date: t.extractedDate ?? null, time: t.extractedStartTime ?? null, person: t.resolvedPersonName ?? null, saveAllowed: null, error: message })
+    _calTraceStart(); _calTraceSet({ rawTranscript: t.transcript ?? '', route: t.semanticRoute ?? 'error', error: message }); _calTraceEnd()
     // QA recorder: log every failure (dev only)
     if (isVoiceDebugEnabled()) {
       appendQaRun(buildQaRunFromTrace(voiceTraceRef.current, null, APP_VERSION.version))
@@ -138,7 +138,7 @@ export function AbuCalendar() {
   function logQaRunIfEnabled(draft?: ReminderDraft | null) {
     // Production diagnostic log (always)
     const t = voiceTraceRef.current
-    appendVoiceDiag({ transcript: t.transcript ?? '', route: t.semanticRoute ?? 'unknown', date: t.extractedDate ?? null, time: t.extractedStartTime ?? null, person: t.resolvedPersonName ?? null, saveAllowed: t.saveAllowed ?? null, error: null })
+    _calTraceStart(); _calTraceSet({ rawTranscript: t.transcript ?? '', route: t.semanticRoute ?? 'unknown', calendarAction: t.saveAllowed ? 'create_draft' : 'none' }); _calTraceEnd()
     // QA recorder (dev only)
     if (isVoiceDebugEnabled()) {
       appendQaRun(buildQaRunFromTrace(voiceTraceRef.current, draft ?? null, APP_VERSION.version))

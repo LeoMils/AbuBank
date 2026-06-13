@@ -34,6 +34,7 @@ import { RealtimeVoiceSession } from '../../services/realtimeVoice'
 import type { RealtimeState } from '../../services/realtimeVoice'
 import { mediateError } from '../../services/errorMediation'
 import { mediateVoiceCaptureError } from '../../services/errorMediation'
+import { traceStart, traceSet, traceEnd, getLastTraceText } from '../../services/voiceDiagLog'
 import type { MediatedError } from '../../services/errorMediation'
 import { ChatBubble } from './ChatBubble'
 import { BackButton } from '../../components/BackButton'
@@ -250,6 +251,8 @@ export function AbuAI() {
   const handleSend = async (text?: string) => {
     let msgText = (text ?? input).trim()
     if (!msgText || loading) return
+    traceStart()
+    traceSet({ rawTranscript: msgText, sttProvider: 'none' }) // text mode — no STT
 
     // ─── Cross-turn pronoun resolution ──────────────────────────────────
     // "תזכירי לי להתקשר אליו" after talking about נועם → resolves to
@@ -300,7 +303,10 @@ export function AbuAI() {
           addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
           soundSuccess()
           setCreateState(IDLE_STATE)
-          pushAssistant(shapeCreateSaved(d))
+          const savedText = shapeCreateSaved(d)
+          traceSet({ route: 'calendar_create', calendarAction: 'save', calendarStorageWrite: true, groundedAnswerUsed: true, finalResponse: savedText })
+          traceEnd()
+          pushAssistant(savedText)
           return
         }
         if (resolution.action === 'replace' || resolution.action === 'update') {
@@ -485,6 +491,10 @@ export function AbuAI() {
       // Personal queries → try grounded answer first (no LLM), fall back to tools-based LLM
       const groundedAnswer = tryGroundedAnswer(msgText)
       if (groundedAnswer !== null) {
+        const route = routePersonalQuery(msgText)
+        const isCal = route.type.startsWith('calendar_')
+        traceSet({ route: route.type, groundedAnswerUsed: true, groundedAnswer, calendarAction: isCal ? 'read' : 'none', calendarStorageRead: isCal, finalResponse: groundedAnswer })
+        traceEnd()
         const groundedMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: groundedAnswer, timestamp: Date.now() }
         setMessages(prev => [...prev, groundedMsg])
         setLoading(false)
@@ -660,6 +670,7 @@ export function AbuAI() {
       }
 
       // General questions → stream for responsiveness
+      traceSet({ route: 'non_personal', groundedAnswerUsed: false, llmProvider: 'openai-server' })
       const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: '▍', timestamp: Date.now() }
       setMessages(prev => [...prev, placeholderMsg])
       setLoading(false)
@@ -696,7 +707,11 @@ export function AbuAI() {
         }
         return updated
       })
+      traceSet({ finalResponse: accumulated.trim() || null })
+      traceEnd()
     } catch (err: unknown) {
+      traceSet({ llmError: err instanceof Error ? err.message : String(err), finalResponse: accumulated.trim() || null, error: err instanceof Error ? err.message : String(err) })
+      traceEnd()
       // v27: Mediate error — always Hebrew, always with action buttons
       const mediated: MediatedError = mediateError(err)
       setMessages(prev => {
@@ -2287,6 +2302,27 @@ ${fewShotText}`
                 שיחה קולית
               </span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                const text = getLastTraceText()
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(text).then(() => alert('הועתק!')).catch(() => prompt('העתיקי ידנית:', text))
+                } else {
+                  prompt('העתיקי ידנית:', text)
+                }
+              }}
+              style={{
+                marginRight: 8,
+                padding: '10px 16px',
+                borderRadius: 20,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >📋 trace</button>
           </div>
         </div>
       )}
