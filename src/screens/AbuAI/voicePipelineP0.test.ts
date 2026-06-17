@@ -44,8 +44,9 @@ describe('Self-listening guard', () => {
     expect(SELF_PHRASES.test('מי זה נועם')).toBe(false)
   })
 
-  it('ignores transcript while isSpeaking', () => {
-    expect(INDEX_SRC).toContain('if (isSpeaking)')
+  it('ignores transcript while TTS is responding', () => {
+    // v30.10: Fixed stale closure — now uses voiceStateRef instead of isSpeaking state
+    expect(INDEX_SRC).toContain("voiceStateRef.current === 'RESPONDING'")
     expect(INDEX_SRC).toContain('Ignored transcript while TTS speaking')
   })
 })

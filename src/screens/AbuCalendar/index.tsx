@@ -1097,7 +1097,7 @@ export function AbuCalendar() {
         <span style={{ fontSize: 13, color: 'rgba(201,168,76,0.55)', fontFamily: "'Heebo',sans-serif" }}>🔔</span>
         <select
           value={alertMinutes}
-          onChange={e => { const v = parseInt(e.target.value, 10); setAlertMinutes(v); localStorage.setItem('abubank-alert-minutes', String(v)) }}
+          onChange={e => { const v = parseInt(e.target.value, 10); setAlertMinutes(v); try { localStorage.setItem('abubank-alert-minutes', String(v)) } catch { /* quota */ } }}
           style={{
             background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.18)',
             borderRadius: 8, color: GOLD, fontSize: 13, fontWeight: 600,

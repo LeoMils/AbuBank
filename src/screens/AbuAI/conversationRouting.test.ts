@@ -143,7 +143,7 @@ describe('edge cases — no false creation', () => {
     ['אממ', 'LLM'],
     ['12345', 'LLM'],
     ['טוב', 'LLM'],
-    ['מחר בערב', 'APPOINTMENT'], // implicit future event → asks what to schedule
+    ['מחר בערב', 'LLM'], // bare time+date without noun/verb → NOT create (P0 fix: prevents false event creation)
     ['בעוד שעה', 'LLM'], // vague relative time without create verb
     ['אופיר', 'LLM'], // bare name
     ['רופא', 'LLM'], // bare noun

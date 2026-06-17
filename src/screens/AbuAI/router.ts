@@ -99,9 +99,11 @@ const CONTACT_ACTION_WHATSAPP_EN = /\bwhatsapp\s+\w+|\bsend\s+(?:a\s+)?whatsapp\
 const CONTACT_ACTION_MESSAGE_EN = /\btext\s+\w+|\bsend\s+(?:a\s+)?message\s+to\b/i
 
 function detectContactAction(t: string): 'call' | 'whatsapp' | 'message' | null {
+  // Message check BEFORE WhatsApp: "שלחי הודעה ל-X" is a message, not WhatsApp.
+  // The WhatsApp HE regex also matches "הודעה" so message must win first.
+  if (CONTACT_ACTION_MESSAGE_HE.test(t) || CONTACT_ACTION_MESSAGE_ES.test(t) || CONTACT_ACTION_MESSAGE_EN.test(t)) return 'message'
   if (CONTACT_ACTION_WHATSAPP_HE.test(t) || CONTACT_ACTION_WHATSAPP_ES.test(t) || CONTACT_ACTION_WHATSAPP_EN.test(t)) return 'whatsapp'
   if (CONTACT_ACTION_CALL_HE.test(t) || CONTACT_ACTION_CALL_ES.test(t) || CONTACT_ACTION_CALL_EN.test(t)) return 'call'
-  if (CONTACT_ACTION_MESSAGE_HE.test(t) || CONTACT_ACTION_MESSAGE_ES.test(t) || CONTACT_ACTION_MESSAGE_EN.test(t)) return 'message'
   return null
 }
 

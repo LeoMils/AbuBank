@@ -93,8 +93,10 @@ export function isCreateIntent(text: string): boolean {
   // Scheduling verb (even without "לי") + a date/time/with clue. Action beats
   // family Q&A: "תקבע עם מור ברביעי" is a create, not "who is Mor?".
   if (SCHEDULE_VERB.test(t) && hasScheduleClue(t)) return true
-  // Implicit: has both date + time context (describing a future event)
-  if (hasTimeAndDateContext(t)) return true
+  // Implicit: has date + time + an appointment/event noun (describing a future event).
+  // Bare "מחר בערב" without a noun must NOT trigger create — it could be casual speech.
+  const APPOINTMENT_NOUN = /פגישה|תור|בדיקה|רופא|רופאה|אירוע|ארוחה|שיעור|ביקור|אצל\s|עם\s/i
+  if (hasTimeAndDateContext(t) && APPOINTMENT_NOUN.test(t)) return true
   return false
 }
 

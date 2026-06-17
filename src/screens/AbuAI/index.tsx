@@ -191,6 +191,7 @@ export function AbuAI() {
   const recognitionRef = useRef<any>(null)
   const abortControllerRef = useRef<AbortController | null>(null) // v20: for interruption
   const startVoiceListeningRef = useRef<() => void>(() => {}) // v20: stable ref for interrupt→listen
+  const wsEmptyCountRef = useRef(0) // v30.10: Web Speech empty-result backoff counter
   // B1 patch: track the last proactive seed id so repeated boredom / loneliness
   // queries deterministically rotate to a different seed.
   const lastProactiveSeedIdRef = useRef<string | null>(null)
@@ -862,8 +863,8 @@ export function AbuAI() {
         if (voiceModeRef.current) startVoiceListening()
         return
       }
-      // Also reject if TTS just finished (mic picks up tail end of playback)
-      if (isSpeaking) {
+      // Also reject if TTS is currently playing (use ref to avoid stale closure)
+      if (voiceStateRef.current === 'RESPONDING') {
         console.warn('[VOICE] Ignored transcript while TTS speaking:', lower.slice(0, 40))
         return
       }
@@ -1169,6 +1170,7 @@ export function AbuAI() {
           if (result.isFinal) {
             finalTranscript += result[0]?.transcript ?? ''
             gotResult = true
+            wsEmptyCountRef.current = 0 // reset backoff on successful result
           } else {
             interim += result[0]?.transcript ?? ''
           }
@@ -1200,8 +1202,15 @@ export function AbuAI() {
       rec.onend = () => {
         recognitionRef.current = null
         if (!gotResult && voiceModeRef.current) {
-          // No result from Web Speech — restart immediately
-          setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 50)
+          // No result from Web Speech — restart with backoff, max 5 empty rounds
+          wsEmptyCountRef.current++
+          if (wsEmptyCountRef.current >= 5) {
+            wsEmptyCountRef.current = 0
+            startWhisperFallback()
+          } else {
+            const delay = Math.min(50 * Math.pow(2, wsEmptyCountRef.current - 1), 800)
+            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, delay)
+          }
         }
       }
 
@@ -1458,7 +1467,7 @@ ${fewShotText}`
         // v25: onFatalError — Realtime died, remember + fall back to free pipeline
         () => {
           console.log('[AbuAI] Realtime failed, saving quota flag, falling back to free pipeline')
-          localStorage.setItem('abu-openai-quota-failed', String(Date.now()))
+          try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch { /* quota */ }
           realtimeRef.current = null
           setRealtimeState('idle')
           setRealtimeTranscript('')

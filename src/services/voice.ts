@@ -536,22 +536,40 @@ async function speakGeminiViaAudioCtx(text: string): Promise<boolean> {
 
 // speak — for TEXT CHAT and other non-realtime uses
 // v24.3: OpenAI (paid) → Gemini (FREE) → Web Speech (FREE)
+// v30.10: Added 20s safety timeout to prevent indefinite hang
 export async function speak(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 1) OpenAI TTS (paid, best quality)
-  if (await speakOpenAI(text)) return
+  const timeout = new Promise<void>((_, reject) =>
+    setTimeout(() => reject(new Error('TTS_TIMEOUT')), 20_000),
+  )
 
-  // 2) Gemini TTS (FREE)
-  if (await speakGemini(text)) return
+  try {
+    await Promise.race([
+      (async () => {
+        // 1) OpenAI TTS (paid, best quality)
+        if (await speakOpenAI(text)) return
 
-  // 3) Web Speech API (FREE, last resort)
-  await speakWebAPI(text)
+        // 2) Gemini TTS (FREE)
+        if (await speakGemini(text)) return
+
+        // 3) Web Speech API (FREE, last resort)
+        await speakWebAPI(text)
+      })(),
+      timeout,
+    ])
+  } catch {
+    stopSpeaking()
+  }
 }
 
 export function stopSpeaking(): void {
   // 1) HTMLAudioElement (used by playBlob fallback)
   if (currentAudio) {
+    // Revoke blob URL to prevent memory leak on interrupted playback
+    if (currentAudio.src?.startsWith('blob:')) {
+      URL.revokeObjectURL(currentAudio.src)
+    }
     currentAudio.pause()
     currentAudio.currentTime = 0
     currentAudio = null
@@ -832,7 +850,13 @@ export function createSilenceDetector(
   }, maxMs + 1500)
 
   try {
-    ctx = new AudioContext()
+    // Reuse shared AudioContext to avoid iOS Safari limit (~4-6 contexts)
+    if (_sharedAudioCtx && _sharedAudioCtx.state !== 'closed') {
+      ctx = _sharedAudioCtx
+    } else {
+      ctx = new AudioContext()
+      _sharedAudioCtx = ctx
+    }
     const source  = ctx.createMediaStreamSource(stream)
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 512
@@ -915,7 +939,7 @@ export function createSilenceDetector(
     stopped = true
     clearTimeout(hardTimer)
     cancelAnimationFrame(frame)
-    ctx?.close().catch(() => {})
+    // Don't close shared AudioContext — it's reused across sessions (iOS limit ~4-6)
   }
 
   return { stop: cleanup, getLevel: () => level }

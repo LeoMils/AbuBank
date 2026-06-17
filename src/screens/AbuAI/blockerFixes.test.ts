@@ -69,7 +69,7 @@ describe('Blocker #2: "באותו יום" after birthday lookup', () => {
 // ─── Blocker #3: Correction during confirmation ─────────────────────────────
 
 describe('Blocker #3: correction during confirmation updates draft', () => {
-  it('"בעצם מחר" updates date during confirming phase', () => {
+  it('"בעצם ביום X" updates date during confirming phase', () => {
     // Build a confirming-phase state directly
     const s = startCreate('תקבעי לי רופא מחר בעשר בבוקר')
     // If startCreate returns 'creating' (ambiguous time), manually advance
@@ -80,8 +80,13 @@ describe('Blocker #3: correction during confirmation updates draft', () => {
     }
     const originalDate = state.draft.date
 
-    // User corrects to a different day (use Wednesday — always different from tomorrow)
-    const updated = updateCreate(state, 'בעצם ביום רביעי')
+    // Pick a weekday that is guaranteed NOT to be tomorrow (3 days from now)
+    const HE_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+    const threeDaysFromNow = new Date()
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
+    const safeDay = HE_DAYS[threeDaysFromNow.getDay()]!
+
+    const updated = updateCreate(state, `בעצם ביום ${safeDay}`)
     expect(updated.phase).toBe('confirming')
     expect(updated.draft.title).toBe(state.draft.title) // title preserved
     expect(updated.draft.date).not.toBe(originalDate) // date changed

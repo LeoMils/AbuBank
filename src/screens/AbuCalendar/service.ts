@@ -227,12 +227,15 @@ export async function parseAppointmentText(text: string): Promise<{ title: strin
 
   if (groqKey) {
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10_000)
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${groqKey}`,
         },
+        signal: controller.signal,
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
           messages: [
@@ -272,6 +275,7 @@ confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very 
           max_tokens: 200,
         }),
       })
+      clearTimeout(timeout)
       if (res.ok) {
         const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
         const content = data?.choices?.[0]?.message?.content ?? ''
@@ -294,7 +298,7 @@ confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very 
         }
       }
     } catch {
-      // fall through to fallback
+      // fall through to fallback (timeout, network error, or parse error)
     }
   }
 

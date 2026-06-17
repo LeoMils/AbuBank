@@ -58,7 +58,7 @@ export function loadLocContacts(): LocContact[] {
 }
 
 function saveLocContacts(cs: LocContact[]) {
-  localStorage.setItem(LOC_CONTACTS_KEY, JSON.stringify(cs))
+  try { localStorage.setItem(LOC_CONTACTS_KEY, JSON.stringify(cs)) } catch { /* quota */ }
 }
 
 function loadContacts(): Contact[] {
@@ -72,7 +72,7 @@ function loadContacts(): Contact[] {
 }
 
 function saveContacts(contacts: Contact[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts))
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts)) } catch { /* quota */ }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 # ⚠️ 100% GENERATED FILE — DO NOT EDIT
 # Source of truth: knowledge/family_data.json + knowledge/martita_personality.yaml
 # Regenerate with: npm run generate:memory
-# Generated: 2026-06-10
+# Generated: 2026-06-17
 
 
 aliases:
@@ -15,7 +15,7 @@ aliases:
   Ayalon      : ["איילון","Eylon","אילון"]
   Eili        : ["עילי","Ilai","עילאי"]
   Adar        : ["אדר"]
-  Adi         : ["עדי"]
+  Adi         : ["עדי","אדי"]
   Noam        : ["נועם"]
   Yarden      : ["ירדן"]
   Gilad       : ["גלעד"]
