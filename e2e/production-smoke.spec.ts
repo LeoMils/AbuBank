@@ -24,17 +24,18 @@ async function sendChatMessage(page: Page, text: string) {
   // Press Enter to send
   await textarea.press('Enter')
 
-  // Wait for a new assistant response to appear (the loading dots disappear
-  // and a new bubble shows up). We detect this by waiting for the assistant
-  // message count to increase.
+  // Wait for a new assistant response with actual text content (not loading dots).
   await page.waitForFunction(
     (prevCount) => {
-      // Each assistant bubble is preceded by a label div containing "אבו AI".
-      // We count those labels to know how many assistant messages exist.
       const labels = Array.from(document.querySelectorAll('div')).filter(
         (el) => el.textContent?.trim() === 'אבו AI' && el.children.length === 0
       )
-      return labels.length > prevCount
+      if (labels.length <= prevCount) return false
+      // Check that the last assistant bubble has real text (not just dots)
+      const lastLabel = labels[labels.length - 1]
+      const bubble = lastLabel?.nextElementSibling
+      const text = bubble?.textContent?.trim() ?? ''
+      return text.length > 5 && !/^[●•·.\s]+$/.test(text)
     },
     beforeCount,
     { timeout: AI_TIMEOUT }
