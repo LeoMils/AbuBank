@@ -131,14 +131,16 @@ describe('parseHebrewTime', () => {
 
 describe('parseCreateDate', () => {
   it('היום → today', () => {
-    const today = new Date().toISOString().split('T')[0]!
+    // parseCreateDate uses local dates (new Date()), not UTC (toISOString)
+    const d = new Date()
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     expect(parseCreateDate('היום')).toBe(today)
   })
 
   it('מחר → tomorrow', () => {
     const d = new Date()
     d.setDate(d.getDate() + 1)
-    const tmrw = d.toISOString().split('T')[0]!
+    const tmrw = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     expect(parseCreateDate('מחר')).toBe(tmrw)
   })
 

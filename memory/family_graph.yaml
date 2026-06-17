@@ -1,7 +1,7 @@
 # ⚠️ 100% GENERATED FILE — DO NOT EDIT
 # Source of truth: knowledge/family_data.json + knowledge/martita_personality.yaml
 # Regenerate with: npm run generate:memory
-# Generated: 2026-05-01
+# Generated: 2026-06-17
 
 
 matriarch:
@@ -49,8 +49,8 @@ children:
     children:
       - canonical_name: "Adi"
         hebrew: "עדי"
-        relationship: "granddaughter"
-        notes: "תאומה של נועם. בת דודה של אופיר, איילון, עילי, אדר."
+        relationship: "grandson"
+        notes: "תאום של נועם. בן דוד של אופיר, איילון, עילי, אדר."
       - canonical_name: "Noam"
         hebrew: "נועם"
         relationship: "grandson"

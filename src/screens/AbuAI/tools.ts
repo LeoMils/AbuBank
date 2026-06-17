@@ -50,8 +50,11 @@ export function searchFamilyLocation(query: string): { found: boolean; answer: s
   const r = searchFamily(query)
   if (!r.found || r.members.length === 0) return { found: false, answer: shapeNotFound(query) }
   const m = r.members[0]!
-  if (!m.location) return { found: true, answer: `אין לי מידע איפה ${m.hebrew} גרה.` }
-  return { found: true, answer: shapeLocationAnswer(m.hebrew, m.location, m.locationNotes) }
+  const MALE_REL = new Set(['son', 'grandson', 'husband_deceased', 'son_in_law', 'ex_son_in_law', 'grandson_in_law'])
+  const gender = MALE_REL.has(m.relationship) ? 'male' as const : 'female' as const
+  const verb = gender === 'male' ? 'גר' : 'גרה'
+  if (!m.location) return { found: true, answer: `אין לי מידע איפה ${m.hebrew} ${verb}.` }
+  return { found: true, answer: shapeLocationAnswer(m.hebrew, m.location, m.locationNotes, gender) }
 }
 
 export function getFamilyContext(): string {
@@ -59,6 +62,60 @@ export function getFamilyContext(): string {
   const kids = family.filter(m => m.relationship === 'daughter' || m.relationship === 'son')
   const grandkids = family.filter(m => m.relationship === 'grandson' || m.relationship === 'granddaughter')
   return `ילדים: ${kids.map(m => m.hebrew).join(', ')}. נכדים: ${grandkids.map(m => m.hebrew).join(', ')}.`
+}
+
+/**
+ * Group family queries: "ספרי לי על הנכדים", "הילדים של מור", "כמה נכדים יש".
+ * Returns a warm summary listing the relevant group members.
+ */
+export function searchFamilyGroup(query: string): string | null {
+  const q = query.trim()
+  const family = getFamilyMembers()
+
+  // "הילדים של X" / "הנכדים של X" — find children of a named parent
+  const childrenOfMatch = q.match(/(?:הילדים|הבנים|הבנות|הנכדים|הנכדות)\s+של\s+(.+)/i)
+  if (childrenOfMatch?.[1]) {
+    const parentName = childrenOfMatch[1].replace(/[?？]/g, '').trim()
+    const parentMember = family.find(m =>
+      m.hebrew === parentName || m.canonicalName.toLowerCase() === parentName.toLowerCase() ||
+      m.aliases.some(a => a.toLowerCase() === parentName.toLowerCase())
+    )
+    if (!parentMember) return null
+    // Use the parent's `children` field to find their children
+    const childNames = parentMember.children ?? []
+    if (childNames.length === 0) return `אין לי מידע על ילדים של ${parentMember.hebrew}.`
+    // Resolve canonical names to Hebrew names
+    const childMembers = childNames
+      .map(cn => family.find(m => m.canonicalName === cn))
+      .filter((m): m is FamilyMember => !!m)
+    const names = childMembers.length > 0
+      ? childMembers.map(m => m.hebrew).join(', ')
+      : childNames.join(', ')
+    return `ל${parentMember.hebrew} יש ${childNames.length} ילדים: ${names}.`
+  }
+
+  // Generic group: "הנכדים", "ספרי לי על הנכדים", "כמה נכדים יש"
+  const isGrandchildren = /נכד|נכדות|נכדים/.test(q)
+  const isChildren = /ילדים|בנים|בנות/.test(q) && !isGrandchildren
+  const isFamily = /משפחה/.test(q)
+
+  if (isGrandchildren) {
+    const grandkids = family.filter(m => m.relationship === 'grandson' || m.relationship === 'granddaughter')
+    if (grandkids.length === 0) return 'אין לי מידע על נכדים.'
+    const names = grandkids.map(m => m.hebrew).join(', ')
+    return `ל-Martita יש ${grandkids.length} נכדים: ${names}.`
+  }
+  if (isChildren) {
+    const kids = family.filter(m => m.relationship === 'daughter' || m.relationship === 'son')
+    if (kids.length === 0) return 'אין לי מידע על ילדים.'
+    const names = kids.map(m => m.hebrew).join(', ')
+    return `ל-Martita יש ${kids.length} ילדים: ${names}.`
+  }
+  if (isFamily) {
+    return getFamilyContext()
+  }
+
+  return null
 }
 
 function todayStr(): string { return new Date().toISOString().split('T')[0]! }
@@ -129,7 +186,7 @@ export function findEventsByPerson(personName: string): { events: Appointment[];
     a.date >= today &&
     ((a.personName?.toLowerCase().includes(q)) || a.title.toLowerCase().includes(q) || (a.notes?.toLowerCase().includes(q)))
   )
-  if (events.length === 0) return { events, summary: `לא מצאתי משהו ביומן עם ${personName}.` }
+  if (events.length === 0) return { events, summary: `אין כלום ביומן עם ${personName}.` }
   return { events, summary: `מה שיש לך עם ${personName}:\n${formatEventList(events)}` }
 }
 
@@ -139,7 +196,7 @@ export function findNextEventByType(type: string): { event: Appointment | null; 
   const future = all.filter(a => a.date >= today)
   const sorted = sortByPriority(future)
   const match = sorted.find(a => classifyMeaning(a) === type)
-  if (!match) return { event: null, summary: `לא מצאתי ${type === 'medical' ? 'תור לרופא' : 'אירוע'} קרוב ביומן.` }
+  if (!match) return { event: null, summary: `אין ${type === 'medical' ? 'תור לרופא' : 'אירוע'} קרוב ביומן.` }
   const time = match.time ? ` ב-${match.time}` : ''
   return { event: match, summary: `${match.emoji} ${match.title} — ${match.date.split('-').reverse().join('/')}${time}` }
 }
@@ -152,7 +209,7 @@ export function getEventsByDate(dateStr: string): { events: Appointment[]; summa
   const events = sortByPriority(all.filter(a => a.date === dateStr))
   if (events.length === 0) {
     const label = formatHebrewDate(dateStr)
-    return { events, summary: `לא מצאתי כלום ביומן ב${label}.` }
+    return { events, summary: `אין כלום ביומן ב${label}.` }
   }
   const label = formatHebrewDate(dateStr)
   if (events.length === 1) {
@@ -171,7 +228,7 @@ export function getEventsByMonth(month: number): { events: Appointment[]; summar
   const events = all.filter(a => a.date.slice(5, 7) === mm).sort((a, b) => a.date.localeCompare(b.date))
   if (events.length === 0) {
     const MONTHS = ['', 'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
-    return { events, summary: `לא מצאתי כלום ביומן ב${MONTHS[month] ?? ''}.` }
+    return { events, summary: `אין כלום ביומן ב${MONTHS[month] ?? ''}.` }
   }
   const lines = events.map(e => {
     const day = parseInt(e.date.slice(8, 10), 10)
@@ -211,7 +268,7 @@ export function getMemorialFor(name: string): { found: boolean; summary: string 
     m.personName?.toLowerCase() === q ||
     m.title.toLowerCase().includes(q)
   )
-  if (!match) return { found: false, summary: `אין לי מידע על יום הזיכרון של ${name}.` }
+  if (!match) return { found: false, summary: `לא יודעת מתי יום הזיכרון של ${name}.` }
   const day = parseInt(match.date.slice(8, 10), 10)
   const monthIdx = parseInt(match.date.slice(5, 7), 10) - 1
   const MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
@@ -317,7 +374,7 @@ export function executeTool(name: string, args: Record<string, string>): string 
       case 'get_events_by_date': return getEventsByDate(args.date ?? '').summary
       case 'get_birthday_for': return getBirthdayFor(args.name ?? '').summary
       case 'get_memorial_for': return getMemorialFor(args.name ?? '').summary
-      default: return 'כלי לא מוכר.'
+      default: return 'לא הצלחתי לבדוק את זה.'
     }
   } catch {
     return 'לא הצלחתי לבדוק את זה כרגע.'

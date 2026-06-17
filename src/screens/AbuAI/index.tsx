@@ -1,10 +1,30 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
-import { sendMessage, streamMessage, transcribeAudio, isPersonalQuery, containsUngroundedClaim, tryGroundedAnswer, SYSTEM_PROMPT, VOICE_SUFFIX } from './service'
-import { getTodayEvents, getTomorrowEvents } from './tools'
+import { sendMessage, streamMessage, transcribeAudio, SttExhaustedError, resetSttFailureCount, isPersonalQuery, containsUngroundedClaim, tryGroundedAnswer, groundedLLMAnswer, SYSTEM_PROMPT, VOICE_SUFFIX, loadSummary, saveSummary, updateSummaryFromMessages, generateLLMSummary, type ConversationSummary } from './service'
+import { getProactiveSeed } from './proactive'
+import { isOnlineCurrentInfoQuery, shouldBlockOnlineForPersonal } from './onlineIntent'
+import { answerOnlineCurrentInfo, _recordOnlineError } from './onlineProvider'
+import { chooseContentWorld } from './contentWorldEngine'
+import { compileHumanAnswer } from './answerCompiler'
+import { makeOpenEvidence } from './evidencePacket'
+import { shapeVoiceSafe } from './voiceShaper'
+import { getTodayEvents, getTomorrowEvents, getBirthdayFor } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
-import { speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
+import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
+
+/** speakVoiceMode with 15s safety timeout — prevents stuck speaking state */
+async function speakVoiceMode(text: string): Promise<void> {
+  const timeout = new Promise<void>((_, reject) =>
+    setTimeout(() => reject(new Error('TTS_TIMEOUT')), 15000)
+  )
+  try {
+    await Promise.race([_speakVoiceMode(text), timeout])
+  } catch (err) {
+    stopSpeaking()
+    console.warn('[VOICE] TTS timed out or failed, stopping playback:', err)
+  }
+}
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
 import type { SilenceDetector } from '../../services/voice'
@@ -13,14 +33,23 @@ import { soundProcessing, soundSuccess } from '../../services/sounds'
 import { RealtimeVoiceSession } from '../../services/realtimeVoice'
 import type { RealtimeState } from '../../services/realtimeVoice'
 import { mediateError } from '../../services/errorMediation'
+import { mediateVoiceCaptureError } from '../../services/errorMediation'
+import { traceStart, traceSet, traceEnd, getLastTraceText } from '../../services/voiceDiagLog'
 import type { MediatedError } from '../../services/errorMediation'
 import { ChatBubble } from './ChatBubble'
 import { BackButton } from '../../components/BackButton'
 import { ScreenHeader } from '../../components/ScreenHeader'
 import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
-import { type CalendarCreateState, IDLE_STATE, isCreateIntent, startCreate, updateCreate, isConfirm, isCancel } from './calendarCreate'
-import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateClarify } from './responseShaper'
-import { addAppointment } from '../AbuCalendar/service'
+import { type CalendarCreateState, IDLE_STATE, isCreateIntent, isRecurringIntent, startCreate, resolvePendingMessage, isConfirm, isCancel, isSearchIntent, searchAppointments, isDeleteIntent, isModifyIntent } from './calendarCreate'
+import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateUnclear, shapeCreateClarify, timeInWords } from './responseShaper'
+import { detectReminderIntent, parseReminder } from '../AbuCalendar/reminders/reminderParser'
+import { createReminder, createDefaultAlertPolicy } from '../AbuCalendar/reminders/reminderStore'
+import type { ReminderDraft } from '../AbuCalendar/reminders/types'
+import { routePersonalQuery } from './router'
+import { addAppointment, deleteAppointment, updateAppointment, loadAppointments, findConflicts } from '../AbuCalendar/service'
+import { adviseFreeSpeech } from './freeSpeechAdvisory'
+import { resolvePronouns } from './pronounResolver'
+import { resolveFollowUp } from './contextResolver'
 
 let msgCounter = 0
 function nextId(): string {
@@ -70,35 +99,24 @@ const KEYFRAMES = `
   }
 `
 
-// ─── Dynamic voice greeting ───────────────────────────────────────────────────
+// ─── Voice greeting — short, calm, adult ──────────────────────────────────────
 function getVoiceGreeting(): string {
   const h = new Date().getHours()
   const timeGreet = h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : h < 21 ? 'ערב טוב' : 'לילה טוב'
-
-  const openers = [
-    `${timeGreet}, Martita! ספרי לי — מה עובר עלייך היום?`,
-    `${timeGreet}! מה שלום טוצי? ומה שלומך את?`,
-    `${timeGreet}, Martita. יש משהו שרצית לדעת? אני כאן.`,
-    `${timeGreet}! שמחתי שהתקשרת. מה בסדר?`,
-    `${timeGreet}, Martita. שאלי אותי כל דבר — אפילו הדברים שמביך לשאול אחרים.`,
-    `${timeGreet}! מה חדש אצלך? ספרי לי.`,
-    `${timeGreet}, Martita. אני כאן — שאלי, ספרי, שוחח. מה בא לך?`,
-    `${timeGreet}! מה אכלת היום? ומה שלום המשפחה?`,
-    `${timeGreet}, Martita. מה עלה בדעתך עכשיו?`,
-    `${timeGreet}! חיכיתי שתתקשרי. מה קורה?`,
-    `${timeGreet}, Martita. יש משהו מעניין שקרה היום?`,
-    `${timeGreet}! רוצה לדעת משהו מעניין? או פשוט לשוחח?`,
-    `${timeGreet}, Martita. בואי נדבר — על מה שרוצה, בעברית או בספרדית.`,
-    `${timeGreet}! מה שלומך היום באמת?`,
-    `${timeGreet}, Martita. אני פה. מה על הלב?`,
-    `${timeGreet}! ספרי לי משהו — כל דבר שתרצי.`,
-  ]
-  return openers[Math.floor(Math.random() * openers.length)] ?? openers[0]!
+  return `${timeGreet}, Martita. אני כאן.`
 }
 
 export function AbuAI() {
   const setScreen = useAppStore(s => s.setScreen)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem('abuai-conversation-history')
+      if (!saved) return []
+      const parsed = JSON.parse(saved) as ChatMessage[]
+      // Only keep last 50 messages to prevent storage bloat
+      return parsed.slice(-50)
+    } catch { return [] }
+  })
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [recording, setRecording] = useState(false)
@@ -115,8 +133,42 @@ export function AbuAI() {
   const [lastHeardText, setLastHeardText] = useState('')  // v20: transcript feedback
   const [streamingText, setStreamingText] = useState('')   // v20: streaming response text
 
+  // ─── Conversation Summary (long-term context) ─────────────────────
+  const [conversationSummary, setConversationSummary] = useState<ConversationSummary | null>(() => loadSummary())
+
+  // Update summary: pattern-matching every 10 msgs, LLM-generated every 20 msgs
+  useEffect(() => {
+    if (messages.length > 0 && messages.length % 10 === 0) {
+      const msgData = messages.map(m => ({ role: m.role, content: m.content }))
+      if (messages.length % 20 === 0) {
+        // Every 20 messages: generate LLM summary (async, non-blocking)
+        generateLLMSummary(msgData, conversationSummary).then(updated => {
+          setConversationSummary(updated)
+          saveSummary(updated)
+        }).catch(() => {
+          // Fallback to pattern summary
+          const updated = updateSummaryFromMessages(msgData, conversationSummary)
+          setConversationSummary(updated)
+          saveSummary(updated)
+        })
+      } else {
+        // Every 10 messages: pattern-matching summary (instant)
+        const updated = updateSummaryFromMessages(msgData, conversationSummary)
+        setConversationSummary(updated)
+        saveSummary(updated)
+      }
+    }
+  }, [messages.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Calendar create conversation state machine
   const [createState, setCreateState] = useState<CalendarCreateState>(IDLE_STATE)
+  // ─── Reminder creation from AbuAI ─────────────────────────────────
+  const [pendingReminder, setPendingReminder] = useState<ReminderDraft | null>(null)
+
+  // Mirror of createState for the async hands-free voice loop (closures
+  // capture a stale state value otherwise).
+  const createStateRef = useRef<CalendarCreateState>(IDLE_STATE)
+  useEffect(() => { createStateRef.current = createState }, [createState])
 
   // v20.2: OpenAI Realtime API (WebRTC) — true real-time conversation
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
@@ -127,6 +179,52 @@ export function AbuAI() {
   // Do not re-enable until personal-query interception is implemented for Realtime.
   // To re-enable: set localStorage 'abubank-realtime-enabled' = 'true'
   const useRealtime = false
+
+  // Auto-clear stale cooldowns on mount — ensures fresh state
+  useEffect(() => {
+    for (const key of ['abu-openai-quota-failed', 'abu-openai-tts-quota-failed', 'abu-groq-cooldown', 'abu-gemini-cooldown']) {
+      const ts = localStorage.getItem(key)
+      if (ts && (Date.now() - parseInt(ts, 10)) > 300_000) {
+        localStorage.removeItem(key)
+        console.log(`[AbuAI] Cleared stale cooldown: ${key}`)
+      }
+    }
+  }, [])
+
+  // Auto-backup reminder — gentle nudge if >7 days since last backup and data exists
+  useEffect(() => {
+    try {
+      const lastBackup = localStorage.getItem('abubank-last-backup')
+      const hasAppointments = localStorage.getItem('abubank-calendar-appointments')
+      if (hasAppointments && (!lastBackup || Date.now() - new Date(lastBackup).getTime() > 7 * 86400000)) {
+        setTimeout(() => {
+          setMessages(prev => {
+            if (prev.length > 2) return prev
+            return [...prev, {
+              id: nextId(),
+              role: 'assistant' as const,
+              content: 'טיפ קטן — כדאי לגבות את הנתונים שלך מדי פעם. תמצאי את זה בהגדרות.',
+              timestamp: Date.now(),
+            }]
+          })
+        }, 2000)
+      }
+    } catch {}
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist conversation history to localStorage
+  useEffect(() => {
+    if (messages.length === 0) return
+    try {
+      const toSave = messages.slice(-50)
+      localStorage.setItem('abuai-conversation-history', JSON.stringify(toSave))
+    } catch { /* quota exceeded — silently skip */ }
+  }, [messages])
+
+  const clearConversation = useCallback(() => {
+    setMessages([])
+    try { localStorage.removeItem('abuai-conversation-history') } catch {}
+  }, [])
 
   // v25.2: Simplified — noise mode defaults to quiet, user can change manually
   type VoiceEnvMode = 'quiet' | 'noisy' | 'listen'
@@ -163,6 +261,10 @@ export function AbuAI() {
   const recognitionRef = useRef<any>(null)
   const abortControllerRef = useRef<AbortController | null>(null) // v20: for interruption
   const startVoiceListeningRef = useRef<() => void>(() => {}) // v20: stable ref for interrupt→listen
+  const wsEmptyCountRef = useRef(0) // v30.10: Web Speech empty-result backoff counter
+  // B1 patch: track the last proactive seed id so repeated boredom / loneliness
+  // queries deterministically rotate to a different seed.
+  const lastProactiveSeedIdRef = useRef<string | null>(null)
 
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
@@ -204,6 +306,34 @@ export function AbuAI() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // P0 fix: recover voice mode after phone call / tab switch
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && voiceModeRef.current) {
+        // Page hidden (phone call, tab switch) — clean up voice resources
+        cleanupIndividualRefs({ recorderRef, streamRef, silenceRef, levelRef })
+        stopSpeaking()
+        if (recognitionRef.current) {
+          try { recognitionRef.current.abort() } catch {}
+          recognitionRef.current = null
+        }
+      } else if (!document.hidden && voiceModeRef.current) {
+        // Page visible again — restart listening with a spoken nudge
+        transitionVoice('RECOVERING', 'visibility-return')
+        setVoicePhase('processing')
+        setTimeout(() => {
+          if (voiceModeRef.current) {
+            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'חזרת! אני פה. דברי.', timestamp: Date.now() }])
+            transitionVoice('LISTENING', 'visibility-recovered')
+            startVoiceListeningRef.current()
+          }
+        }, 500)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ─── Text chat ────────────────────────────────────────────────────────────
 
   // v20.1: Streaming text chat — token-by-token with auto-scroll
@@ -218,8 +348,23 @@ export function AbuAI() {
   })
 
   const handleSend = async (text?: string) => {
-    const msgText = (text ?? input).trim()
+    let msgText = (text ?? input).trim()
     if (!msgText || loading) return
+    traceStart()
+    traceSet({ rawTranscript: msgText, sttProvider: 'none' }) // text mode — no STT
+
+    // ─── Cross-turn pronoun resolution ──────────────────────────────────
+    // "תזכירי לי להתקשר אליו" after talking about נועם → resolves to
+    // "תזכירי לי להתקשר לנועם". Scans recent messages for last mentioned
+    // family member. Must run before intent detection.
+    const { resolved, personName: _resolvedPerson } = resolvePronouns(msgText, messages)
+    if (resolved !== msgText) msgText = resolved
+
+    // ─── Cross-turn follow-up resolution ─────────────────────────────────
+    // "ומחר?" after "מה יש לי היום?" → expands to "מה יש לי מחר?"
+    // "ומור?" after "מי זה נועם?" → expands to "ספרי לי על מור"
+    const followUp = resolveFollowUp(msgText, messages)
+    if (followUp.wasFollowUp) msgText = followUp.resolved
 
     const userMsg: ChatMessage = { id: nextId(), role: 'user', content: msgText, timestamp: Date.now() }
     const newMessages = [...messages, userMsg]
@@ -234,46 +379,323 @@ export function AbuAI() {
     try {
       // ─── Calendar Create State Machine ────────────────────────────────────
       if (createState.phase !== 'idle') {
-        // We're mid-conversation — handle confirm/cancel/update
-        if (isCancel(msgText)) {
-          setCreateState(IDLE_STATE)
-          const cancelMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: shapeCreateCancelled(), timestamp: Date.now() }
-          setMessages(prev => [...prev, cancelMsg])
+        // Forgiving recovery: cancel / confirm / replace-with-new-request /
+        // local read while pending / unclear → clarify. Never blindly repeat
+        // the same confirmation.
+        const pendingRoute = routePersonalQuery(msgText)
+        const isCalendarRead = pendingRoute.type.startsWith('calendar_') && pendingRoute.type !== 'calendar_create'
+        const resolution = resolvePendingMessage(createState, msgText, isCalendarRead)
+
+        const pushAssistant = (content: string) => {
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
           setLoading(false)
           streamingMsgIdRef.current = null
+        }
+
+        if (resolution.action === 'cancel') {
+          setCreateState(IDLE_STATE)
+          pushAssistant(shapeCreateCancelled())
           return
         }
-        if (createState.phase === 'confirming' && isConfirm(msgText)) {
-          const d = createState.draft
+        if (resolution.action === 'save') {
+          const d = resolution.draft
           addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
           soundSuccess()
           setCreateState(IDLE_STATE)
-          const savedMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: shapeCreateSaved(), timestamp: Date.now() }
-          setMessages(prev => [...prev, savedMsg])
-          setLoading(false)
-          streamingMsgIdRef.current = null
+          const savedText = shapeCreateSaved(d)
+          traceSet({ route: 'calendar_create', calendarAction: 'save', calendarStorageWrite: true, groundedAnswerUsed: true, finalResponse: savedText })
+          traceEnd()
+          pushAssistant(savedText)
           return
         }
-        // Try to fill missing fields
-        const next = updateCreate(createState, msgText)
-        setCreateState(next)
-        const response = next.phase === 'confirming'
-          ? shapeCreateConfirm(next.draft)
-          : shapeCreateClarify(next.missing)
-        const followupMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: response, timestamp: Date.now() }
-        setMessages(prev => [...prev, followupMsg])
+        if (resolution.action === 'replace' || resolution.action === 'update') {
+          setCreateState(resolution.state)
+          pushAssistant(
+            resolution.state.phase === 'confirming'
+              ? shapeCreateConfirm(resolution.state.draft)
+              : shapeCreateClarify(resolution.state.missing, resolution.state.draft),
+          )
+          return
+        }
+        if (resolution.action === 'read') {
+          // Trusted local calendar path — never server/LLM. Pending draft is
+          // preserved so a following "כן" can still confirm it.
+          pushAssistant(tryGroundedAnswer(msgText) ?? shapeCreateUnclear())
+          return
+        }
+        // resolution.action === 'clarify'
+        pushAssistant(shapeCreateUnclear())
+        return
+      }
+
+      // ─── Free Speech first-pass advisory (P04) ──────────────────────────
+      // Runs routeFreeSpeech() as a safe classifier. Intercepts cross-domain
+      // intents (calendar create, WhatsApp, navigation, unclear) with
+      // no-side-effect responses. Falls through for AbuAI-native domains.
+      const advisory = adviseFreeSpeech(msgText)
+      if (advisory.response !== null) {
+        const advisoryMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: advisory.response, timestamp: Date.now() }
+        setMessages(prev => [...prev, advisoryMsg])
         setLoading(false)
         streamingMsgIdRef.current = null
         return
       }
 
-      // Check for new create intent
+      // ─── Reminder pending (confirmation or time follow-up) ────────────
+      if (pendingReminder) {
+        const pushAssistant = (content: string) => {
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
+          setLoading(false)
+          streamingMsgIdRef.current = null
+        }
+
+        // Case 1: waiting for time ("מתי להזכיר לך?")
+        if (!pendingReminder.dueAt) {
+          // Try to parse the user's answer as a time/date for the pending title
+          const combined = `תזכירי לי ${msgText} ${pendingReminder.title ?? ''}`
+          const _n = new Date(); const _p = (n: number) => String(n).padStart(2,'0')
+          const todayStr = `${_n.getFullYear()}-${_p(_n.getMonth()+1)}-${_p(_n.getDate())}`
+          const reParsed = parseReminder(combined, todayStr)
+          if (reParsed.dueAt && reParsed.title) {
+            // Resolved! Show confirmation
+            setPendingReminder(reParsed)
+            pushAssistant(`${reParsed.readbackText}\n\nלשמור?`)
+            return
+          }
+          if (isCancel(msgText)) {
+            setPendingReminder(null)
+            pushAssistant('בסדר, ביטלתי.')
+            return
+          }
+          // Still can't parse time — ask again
+          pushAssistant('לא תפסתי מתי. תגידי למשל "מחר בערב" או "בעוד שעה".')
+          return
+        }
+
+        // Case 2: waiting for confirmation ("לשמור?")
+        if (isConfirm(msgText)) {
+          const { saved } = createReminder({
+            category: pendingReminder.category,
+            title: pendingReminder.title ?? '',
+            dueAt: pendingReminder.dueAt ?? new Date().toISOString(),
+            displayDateLabel: pendingReminder.displayDateLabel ?? '',
+            displayTimeLabel: pendingReminder.displayTimeLabel ?? '',
+            ...(pendingReminder.recurrence ? { recurrence: pendingReminder.recurrence } : {}),
+            alertPolicy: { ...createDefaultAlertPolicy(), ...pendingReminder.alertPolicyDraft },
+          })
+          setPendingReminder(null)
+          if (saved) {
+            soundSuccess()
+            pushAssistant(`רשמתי. אזכיר לך ${pendingReminder.title ?? ''}.`)
+          } else {
+            pushAssistant('לא הצלחתי לשמור את התזכורת. נסי שוב.')
+          }
+          return
+        }
+        if (isCancel(msgText)) {
+          setPendingReminder(null)
+          pushAssistant('בסדר, ביטלתי.')
+          return
+        }
+        // Not confirm/cancel — cancel pending and continue normally
+        setPendingReminder(null)
+      }
+
+      // ─── Unresolved pronoun guard ─────────────────────────────────────
+      // If a create intent still has an unresolved pronoun (אליו/אליה/שלו/שלה)
+      // after pronoun resolution failed, ask who instead of creating with
+      // a raw pronoun like "להתקשר אליה".
+      const UNRESOLVED_PRONOUN = /(?<![֐-׿])(אליו|אליה|שלו|שלה|אותו|אותה|איתו|איתה)(?![֐-׿])/
+      if (isCreateIntent(msgText) && UNRESOLVED_PRONOUN.test(msgText) && !_resolvedPerson) {
+        const pronoun = msgText.match(UNRESOLVED_PRONOUN)?.[1] ?? ''
+        const genderHint = /אליה|שלה|אותה|איתה/.test(pronoun) ? 'למי את מתכוונת?' : 'למי את מתכוונת?'
+        const aiMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: genderHint, timestamp: Date.now() }
+        setMessages(prev => [...prev, aiMsg])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── Reminder intent detection (before appointment create) ─────
+      if (isCreateIntent(msgText) && detectReminderIntent(msgText) === 'reminder') {
+        const _n = new Date(); const _p = (n: number) => String(n).padStart(2,'0')
+        const todayStr = `${_n.getFullYear()}-${_p(_n.getMonth()+1)}-${_p(_n.getDate())}`
+
+        // Family birthday fusion: "שבוע לפני יום ההולדת של נועם" →
+        // resolve birthday from family data, subtract offset, inject concrete date.
+        let reminderText = msgText
+        const bdayFusionMatch = msgText.match(/(?:(\S+)\s+)?לפני\s+יום ה?הולדת של\s+(\S+)/)
+        if (bdayFusionMatch) {
+          const offsetWord = bdayFusionMatch[1] ?? 'שבוע'
+          const personName = bdayFusionMatch[2]!
+          const bdayResult = getBirthdayFor(personName)
+          // Extract MM-DD from summary text (format: "יום ההולדת של X — MM-DD.")
+          const dateMatch = bdayResult.summary.match(/(\d{2})-(\d{2})/)
+          if (bdayResult.found && dateMatch) {
+            const offsetDays = /שבוע/.test(offsetWord) ? 7
+              : /יומיים/.test(offsetWord) ? 2
+              : /חודש/.test(offsetWord) ? 30
+              : /שלושה/.test(offsetWord) ? 3
+              : 7
+            const mm = parseInt(dateMatch[1]!, 10)
+            const dd = parseInt(dateMatch[2]!, 10)
+            const thisYear = new Date().getFullYear()
+            let bdayDate = new Date(thisYear, mm - 1, dd)
+            if (bdayDate.getTime() < Date.now()) bdayDate = new Date(thisYear + 1, mm - 1, dd)
+            bdayDate.setDate(bdayDate.getDate() - offsetDays)
+            const resolvedDate = `${bdayDate.getFullYear()}-${_p(bdayDate.getMonth()+1)}-${_p(bdayDate.getDate())}`
+            reminderText = msgText.replace(bdayFusionMatch[0], `ב-${resolvedDate}`)
+          }
+        }
+
+        const draft = parseReminder(reminderText, todayStr)
+        const pushAssistant = (content: string) => {
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
+          setLoading(false)
+          streamingMsgIdRef.current = null
+        }
+        // If all fields present and no ambiguity → ask confirmation
+        if (draft.dueAt && draft.title && !draft.ambiguity && draft.missingFields.length === 0) {
+          setPendingReminder(draft)
+          pushAssistant(`${draft.readbackText}\n\nלשמור?`)
+          return
+        }
+        // Missing time → store partial draft and ask
+        if (draft.missingFields.includes('time')) {
+          setPendingReminder(draft) // dueAt is undefined → triggers time follow-up
+          pushAssistant(`הבנתי: ${draft.title ?? msgText}\nמתי להזכיר לך?`)
+          return
+        }
+        // Other missing/ambiguous → general ask
+        pushAssistant(draft.readbackText ? `${draft.readbackText}\nלשמור?` : 'לא הצלחתי להבין. מתי להזכיר לך?')
+        if (draft.dueAt && draft.title) setPendingReminder(draft)
+        return
+      }
+
+      // ─── Calendar Search ──────────────────────────────────────────────────
+      if (isSearchIntent(msgText)) {
+        const result = searchAppointments(msgText)
+        setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: result, timestamp: Date.now() }])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── Calendar Delete ──────────────────────────────────────────────────
+      if (isDeleteIntent(msgText)) {
+        const appts = loadAppointments()
+        const nameMatch = msgText.match(/עם\s+(\S+)|אצל\s+(\S+)/)
+        const searchTerm = nameMatch?.[1] ?? nameMatch?.[2] ?? ''
+
+        const matches = searchTerm
+          ? appts.filter(a => a.title.toLowerCase().includes(searchTerm.toLowerCase()))
+          : appts.slice(-1) // last created if no name specified
+
+        if (matches.length === 0) {
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'אין פגישה כזו ביומן.', timestamp: Date.now() }])
+        } else if (matches.length === 1) {
+          deleteAppointment(matches[0]!.id)
+          const time = matches[0]!.time ? ` ${timeInWords(matches[0]!.time)}` : ''
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `מחקתי את ${matches[0]!.title}${time}.`, timestamp: Date.now() }])
+        } else {
+          const lines = matches.map((m, i) => `${i + 1}. ${m.title} — ${m.date}`)
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `יש כמה אפשרויות:\n${lines.join('\n')}\nאיזו למחוק?`, timestamp: Date.now() }])
+        }
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── Calendar Modify ─────────────────────────────────────────────────
+      if (isModifyIntent(msgText)) {
+        const appts = loadAppointments()
+        if (appts.length === 0) {
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'אין כלום ביומן לשנות.', timestamp: Date.now() }])
+          setLoading(false)
+          streamingMsgIdRef.current = null
+          return
+        }
+
+        // Find target appointment (by name or last created)
+        const nameMatch = msgText.match(/את\s+(ה?(פגישה|תור|ביקור)\s+)?(?:עם\s+)?(\S+)/i)
+        const searchName = nameMatch?.[3] ?? ''
+        let target = searchName
+          ? appts.find(a => a.title.toLowerCase().includes(searchName.toLowerCase()))
+          : appts[appts.length - 1]
+
+        if (!target) target = appts[appts.length - 1]!
+
+        // Parse new date/time from the modify request
+        const { parseCreateDate, parseHebrewTimeDetailed } = await import('./calendarCreate')
+
+        const newDate = parseCreateDate(msgText)
+        const newTimeResult = parseHebrewTimeDetailed ? parseHebrewTimeDetailed(msgText) : null
+        const newTime = newTimeResult?.time ?? null
+
+        // Apply changes
+        const updates: Partial<typeof target> = {}
+        if (newDate) updates.date = newDate
+        if (newTime) updates.time = newTime
+
+        if (Object.keys(updates).length === 0) {
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'לא הבנתי מה לשנות. תגידי לאיזה יום או שעה להזיז.', timestamp: Date.now() }])
+        } else {
+          updateAppointment(target.id, updates)
+          // Use friendly date label (מחר, ביום רביעי) instead of raw YYYY-MM-DD
+          const today = new Date().toISOString().split('T')[0]!
+          const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+          let dateStr = ''
+          if (updates.date) {
+            if (updates.date === today) dateStr = ' להיום'
+            else if (updates.date === tmrw) dateStr = ' למחר'
+            else dateStr = ` ל${updates.date}`
+          }
+          const timeStr = updates.time ? ` ${timeInWords(updates.time)}` : ''
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `עדכנתי: ${target!.title}${dateStr}${timeStr}.`, timestamp: Date.now() }])
+        }
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // Check for new create intent (appointments only — reminders handled above)
+      if (isCreateIntent(msgText) && isRecurringIntent(msgText)) {
+        const { extractRecurringDay, getNextOccurrences } = await import('./calendarCreate')
+        const recurDay = extractRecurringDay(msgText)
+        if (recurDay !== null) {
+          // Parse title and time from the text
+          const next = startCreate(msgText)
+          const title = next.draft.title || 'פגישה'
+          const time = next.draft.time || null
+          const dates = getNextOccurrences(recurDay, 4)
+          // Create 4 individual events
+          for (const date of dates) {
+            addAppointment({ title, date, time: time || '09:00', emoji: next.draft.emoji || '📅', type: 'regular' })
+          }
+          const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+          const timeStr = time ? ` בשעה ${time}` : ''
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `קבעתי ${title} כל יום ${dayNames[recurDay]}${timeStr} ל-4 השבועות הקרובים.`, timestamp: Date.now() }])
+        } else {
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'באיזה יום בשבוע? למשל: "כל יום שלישי בעשר"', timestamp: Date.now() }])
+        }
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
       if (isCreateIntent(msgText)) {
         const next = startCreate(msgText)
         setCreateState(next)
-        const response = next.phase === 'confirming'
+        let response = next.phase === 'confirming'
           ? shapeCreateConfirm(next.draft)
-          : shapeCreateClarify(next.missing)
+          : shapeCreateClarify(next.missing, next.draft)
+        // Conflict detection — warn if same date+time already has an event
+        if (next.phase === 'confirming' && next.draft.date && next.draft.time) {
+          const conflicts = findConflicts(next.draft.date, next.draft.time)
+          if (conflicts.length > 0) {
+            const conflictText = conflicts.map(c => c.title).join(', ')
+            response = `שימי לב — כבר יש לך ${conflictText} באותו זמן.\n${response}`
+          }
+        }
         const createMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: response, timestamp: Date.now() }
         setMessages(prev => [...prev, createMsg])
         setLoading(false)
@@ -282,11 +704,196 @@ export function AbuAI() {
       }
 
       // ─── Existing grounded answer path ────────────────────────────────────
-      // Personal queries → try grounded answer first (no LLM), fall back to tools-based LLM
+      // Personal queries → try grounded answer first, then LLM-paraphrase for
+      // family/calendar answers (text mode only) so responses sound natural
+      // instead of database-like. Voice mode skips paraphrasing for speed.
       const groundedAnswer = tryGroundedAnswer(msgText)
       if (groundedAnswer !== null) {
-        const groundedMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: groundedAnswer, timestamp: Date.now() }
+        const route = routePersonalQuery(msgText)
+        const isCal = route.type.startsWith('calendar_')
+        const isFamily = route.type.startsWith('family_') || route.type === 'birthday_lookup' || route.type === 'memorial_lookup'
+
+        let finalResponse = groundedAnswer
+        if (isFamily || isCal) {
+          // LLM paraphrase: warm, natural response grounded in verified facts
+          finalResponse = await groundedLLMAnswer(
+            msgText,
+            groundedAnswer,
+            messages.map(m => ({ role: m.role, content: m.content })),
+            groundedAnswer,
+          )
+        }
+
+        traceSet({ route: route.type, groundedAnswerUsed: true, groundedAnswer, calendarAction: isCal ? 'read' : 'none', calendarStorageRead: isCal, finalResponse })
+        traceEnd()
+        const groundedMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: finalResponse, timestamp: Date.now() }
         setMessages(prev => [...prev, groundedMsg])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── Conversation recall ("מה אמרתי לך קודם?") ─────────────────────
+      // Local-first: intelligently summarize what was discussed, not raw dump.
+      const RECALL_RE = /מה אמרתי|על מי דיברנו|מה קבענו|למי אמרתי|what did I say|de qu[eé] hablamos/i
+      if (RECALL_RE.test(msgText)) {
+        const recent = messages.slice(-20, -1) // exclude current msg
+        let recallContent: string
+
+        if (recent.length === 0) {
+          recallContent = 'עוד לא דיברנו על משהו בשיחה הזו.'
+        } else {
+          const parts: string[] = []
+
+          // Find family members discussed
+          const { loadGraph } = await import('./familyGraph')
+          const graph = loadGraph()
+          const mentioned = new Set<string>()
+          for (const m of recent) {
+            for (const node of graph) {
+              if (m.content.includes(node.hebrew)) mentioned.add(node.hebrew)
+            }
+          }
+          if (mentioned.size > 0) {
+            parts.push(`דיברנו על ${Array.from(mentioned).join(', ')}`)
+          }
+
+          // Find calendar topics discussed
+          const calKeywords = recent.some(m => /יומן|היום|מחר|השבוע|פגישה|תור/.test(m.content))
+          if (calKeywords) parts.push('בדקנו את היומן')
+
+          // Find reminders/appointments created
+          const reminders = recent.some(m => m.role === 'assistant' && /רשמתי|קבעתי|אזכיר/.test(m.content))
+          if (reminders) parts.push('קבענו תזכורת או פגישה')
+
+          // Find last user statement
+          const lastUserMsgs = recent.filter(m => m.role === 'user').slice(-3)
+          if (lastUserMsgs.length > 0 && parts.length === 0) {
+            parts.push(`אמרת: "${lastUserMsgs[lastUserMsgs.length - 1]!.content}"`)
+          }
+
+          recallContent = parts.length > 0
+            ? parts.join('. ') + '.'
+            : 'לא זוכרת נושא ברור שדיברנו עליו.'
+        }
+        const recallMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: recallContent, timestamp: Date.now() }
+        setMessages(prev => [...prev, recallMsg])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── B1 patch: proactive layer ────────────────────────────────────────
+      // After grounding fails, check if the input is one of the warmth
+      // intents (boredom / loneliness / no_topic / ideas). The proactive
+      // helper is purely deterministic — no LLM, no API. Rotates via
+      // `lastProactiveSeedIdRef` so a repeated "Estoy aburrida" never
+      // returns the same seed twice in a row.
+      const proactiveSeed = getProactiveSeed(msgText, {
+        previousSeedId: lastProactiveSeedIdRef.current,
+      })
+      if (proactiveSeed) {
+        lastProactiveSeedIdRef.current = proactiveSeed.id
+        // Route emotional responses through LLM for natural variation
+        // The seed text serves as grounded context (tone + intent)
+        if (!voiceMode) {
+          const enhanced = await groundedLLMAnswer(
+            msgText,
+            `Intent: ${proactiveSeed.intent}. Suggested response style: ${proactiveSeed.text}`,
+            messages.map(m => ({ role: m.role, content: m.content })),
+            proactiveSeed.text,
+          )
+          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enhanced, timestamp: Date.now() }
+          setMessages(prev => [...prev, proactiveMsg])
+        } else {
+          // Voice mode: use deterministic seed for speed
+          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: proactiveSeed.text, timestamp: Date.now() }
+          setMessages(prev => [...prev, proactiveMsg])
+        }
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── B2.3 patch: content world for vague open prompts ────────────────
+      // "Hola", "no sé", "שלום", "hi" — short greetings AbuAI should answer
+      // with a calm 2–3 option opening instead of paying for a full LLM
+      // call. We ONLY enter this branch when:
+      //   • the input is non-personal (grounded path already missed)
+      //   • the proactive layer did not match (estoy aburrida etc.)
+      //   • the input is NOT a live-info query (films now / weather / news)
+      //   • the content world picks `open_chat` AND ships gentle options
+      //     (named content cues like film / cooking / podcast fall
+      //     through to the open LLM stream so the model can be rich).
+      if (!isOnlineCurrentInfoQuery(msgText) || shouldBlockOnlineForPersonal(msgText)) {
+        const world = chooseContentWorld(msgText)
+        if (world.contentMode === 'open_chat' && world.suggestedOpening && world.gentleOptions.length > 0) {
+          const compiled = compileHumanAnswer(
+            msgText,
+            makeOpenEvidence('content_world_engine'),
+            { lang: world.language, allowFollowUp: true },
+            world,
+          )
+          const contentMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: compiled.text, timestamp: Date.now() }
+          setMessages(prev => [...prev, contentMsg])
+          setLoading(false)
+          streamingMsgIdRef.current = null
+          return
+        }
+      }
+
+      // ─── B2 patch: online current-info layer ─────────────────────────────
+      // Live questions (cinema / weather / news / "this week" / "open now")
+      // need a real web lookup. The server endpoint /api/abuai-online holds
+      // the OPENAI_API_KEY (server-side) and uses the OpenAI Responses API
+      // with the built-in web_search tool. Personal/family/calendar queries
+      // are blocked client-side AND server-side as defense in depth.
+      if (isOnlineCurrentInfoQuery(msgText) && !shouldBlockOnlineForPersonal(msgText)) {
+        const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: 'רגע, בודקת אונליין...', timestamp: Date.now() }
+        setMessages(prev => [...prev, placeholderMsg])
+        const online = await answerOnlineCurrentInfo(msgText, { locationHint: 'Kfar Saba area, Israel' })
+        if (online.ok) {
+          _recordOnlineError(null)
+          // Render the answer + sources (if any) appended on a new line so
+          // Martita sees where the info came from, but the speech-friendly
+          // text stays in the answer body.
+          let body = online.answer
+          if (online.sources && online.sources.length > 0) {
+            const list = online.sources
+              .slice(0, 3)
+              .map((s) => s.title ? `• ${s.title}${s.url ? ` (${s.url})` : ''}` : (s.url ? `• ${s.url}` : ''))
+              .filter((s) => s.length > 0)
+              .join('\n')
+            if (list) body = `${online.answer}\n\nמקורות:\n${list}`
+          }
+          setMessages(prev => {
+            const updated = [...prev]
+            const idx = updated.findIndex(m => m.id === aiMsgId)
+            if (idx !== -1) updated[idx] = { ...updated[idx]!, content: body }
+            return updated
+          })
+        } else {
+          _recordOnlineError(online.errorCode)
+          setMessages(prev => {
+            const updated = [...prev]
+            const idx = updated.findIndex(m => m.id === aiMsgId)
+            if (idx !== -1) updated[idx] = { ...updated[idx]!, content: online.userMessage }
+            return updated
+          })
+        }
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── Hard guard: temporal current-data queries without online tool ───
+      // If the query asks for live/changing data (exchange rates, sports
+      // scores, temperature) but the online detector did not catch it,
+      // refuse honestly instead of sending to the LLM which might fabricate.
+      const TEMPORAL_CURRENT = /שער ה?דולר|שער ה?יורו|מי ניצח|תוצאות ה?(משחק|ליגה|גביע)|מה הטמפרטורה (היום|עכשיו)|כמה מעלות (היום|עכשיו)|מה (ה?מחיר|העלות) של|בורסה היום|מניות|bitcoin|ביטקוין/i
+      if (TEMPORAL_CURRENT.test(msgText) && !isOnlineCurrentInfoQuery(msgText)) {
+        const honestMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: 'אני לא יכולה לבדוק את זה כרגע. תשאלי אותי שוב מאוחר יותר.', timestamp: Date.now() }
+        setMessages(prev => [...prev, honestMsg])
         setLoading(false)
         streamingMsgIdRef.current = null
         return
@@ -306,7 +913,7 @@ export function AbuAI() {
             return updated
           })
         } catch (err) {
-          const errMsg = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
+          const errMsg = err instanceof Error ? err.message : 'משהו לא עבד. ננסה שוב?'
           setMessages(prev => {
             const updated = [...prev]
             const idx = updated.findIndex(m => m.id === aiMsgId)
@@ -321,6 +928,7 @@ export function AbuAI() {
       }
 
       // General questions → stream for responsiveness
+      traceSet({ route: 'non_personal', groundedAnswerUsed: false, llmProvider: 'openai-server' })
       const placeholderMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: '▍', timestamp: Date.now() }
       setMessages(prev => [...prev, placeholderMsg])
       setLoading(false)
@@ -357,7 +965,11 @@ export function AbuAI() {
         }
         return updated
       })
+      traceSet({ finalResponse: accumulated.trim() || null })
+      traceEnd()
     } catch (err: unknown) {
+      traceSet({ llmError: err instanceof Error ? err.message : String(err), finalResponse: accumulated.trim() || null, error: err instanceof Error ? err.message : String(err) })
+      traceEnd()
       // v27: Mediate error — always Hebrew, always with action buttons
       const mediated: MediatedError = mediateError(err)
       setMessages(prev => {
@@ -417,8 +1029,10 @@ export function AbuAI() {
         try {
           const text = await transcribeAudio(blob)
           if (text.trim()) setInput(prev => prev ? `${prev} ${text}` : text)
-        } catch {
-          // silent
+        } catch (err) {
+          // Never fail silently — show a friendly local fallback so Martita
+          // knows she can simply type instead.
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediateVoiceCaptureError(err, 'transcription'), timestamp: Date.now() }])
         } finally {
           setTranscribing(false)
           setTimeout(() => inputRef.current?.focus(), 100)
@@ -429,8 +1043,8 @@ export function AbuAI() {
       setRecordingTime(0)
       setRecording(true)
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
-    } catch {
-      // mic denied
+    } catch (err) {
+      setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediateVoiceCaptureError(err, 'permission_or_device'), timestamp: Date.now() }])
     }
   }, [])
 
@@ -439,8 +1053,10 @@ export function AbuAI() {
   }, [])
 
   const handleMicTap = () => {
+    // Unified voice entry: mic button starts voice conversation mode
+    // instead of dictation-to-text. One mental model for Martita.
     if (recording) stopRecording()
-    else if (!loading && !transcribing) startRecording()
+    else if (!loading && !transcribing) handleVoiceTap()
   }
 
   // ─── Voice Conversation Mode ──────────────────────────────────────────────
@@ -497,11 +1113,209 @@ export function AbuAI() {
         exitVoiceMode(); return
       }
 
+      // ─── Self-listening guard ──────────────────────────────────────────
+      // The mic can hear AbuAI's own TTS output and feed it back as input.
+      // Reject transcripts that match known assistant phrases.
+      const SELF_PHRASES = /רגע.*לא הצלחתי|לא הצלחתי.*בואי ננסה|בואי ננסה שוב|לא שמעתי טוב|התמלול לא עובד|משהו לא עבד|ננסה שוב/
+      if (SELF_PHRASES.test(lower)) {
+        console.warn('[VOICE] Self-listening blocked:', lower.slice(0, 40))
+        if (voiceModeRef.current) startVoiceListening()
+        return
+      }
+      // Also reject if TTS is currently playing (use ref to avoid stale closure)
+      if (voiceStateRef.current === 'RESPONDING') {
+        console.warn('[VOICE] Ignored transcript while TTS speaking:', lower.slice(0, 40))
+        return
+      }
+
       setLastHeardText(text) // v20: Show what was heard
 
-      const userMsg: ChatMessage = { id: nextId(), role: 'user', content: text, timestamp: Date.now() }
+      // Cross-turn pronoun resolution (voice path)
+      const { resolved: resolvedText } = resolvePronouns(text, messagesRef.current)
+      let effectiveText = resolvedText !== text ? resolvedText : text
+
+      // Cross-turn follow-up resolution (voice path)
+      const voiceFollowUp = resolveFollowUp(effectiveText, messagesRef.current)
+      if (voiceFollowUp.wasFollowUp) effectiveText = voiceFollowUp.resolved
+
+      const userMsg: ChatMessage = { id: nextId(), role: 'user', content: effectiveText, timestamp: Date.now() }
       const currentMsgs = [...messagesRef.current, userMsg]
       setMessages(currentMsgs)
+
+      // ─── Calendar create (voice) — SAME rules as typed text ──────────────
+      // Voice create/confirmation must be confirmation-gated and local-first,
+      // exactly like the text path. We reuse the identical state-machine
+      // helpers (startCreate / resolvePendingMessage) so there is no weaker
+      // voice-only parser.
+      const cs = createStateRef.current
+
+      // ─── Unresolved pronoun guard (voice) ────────────────────────────
+      const VOICE_UNRESOLVED = /(?<![֐-׿])(אליו|אליה|שלו|שלה|אותו|אותה|איתו|איתה)(?![֐-׿])/
+      if (isCreateIntent(effectiveText) && VOICE_UNRESOLVED.test(effectiveText) && resolvedText === text) {
+        const askWho = 'למי את מתכוונת?'
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: askWho, timestamp: Date.now() }])
+        if (voiceModeRef.current) {
+          transitionVoice('RESPONDING', 'ask-who')
+          setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(askWho)
+          await speakVoiceMode(askWho)
+          setIsSpeaking(false); setStreamingText('')
+          if (voiceModeRef.current) startVoiceListening()
+        }
+        return
+      }
+
+      // ─── Voice reminder (before appointment create) ──────────────────
+      if (isCreateIntent(effectiveText) && detectReminderIntent(effectiveText) === 'reminder' && cs.phase === 'idle') {
+        try {
+          const _n = new Date(); const _p = (n: number) => String(n).padStart(2,'0')
+          const todayStr = `${_n.getFullYear()}-${_p(_n.getMonth()+1)}-${_p(_n.getDate())}`
+          const draft = parseReminder(effectiveText, todayStr)
+          let response: string
+          if (draft.dueAt && draft.title && !draft.ambiguity && draft.missingFields.length === 0) {
+            setPendingReminder(draft)
+            response = `${draft.readbackText}\n\nלשמור?`
+          } else if (draft.missingFields.includes('time')) {
+            setPendingReminder(draft) // dueAt undefined → triggers time follow-up
+            response = `הבנתי: ${draft.title ?? text}\nמתי להזכיר לך?`
+          } else {
+            response = draft.readbackText ? `${draft.readbackText}\nלשמור?` : 'לא הצלחתי להבין. מתי להזכיר לך?'
+            if (draft.dueAt && draft.title) setPendingReminder(draft)
+          }
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }])
+          if (!voiceModeRef.current) return
+          transitionVoice('RESPONDING', 'reminder-turn')
+          setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
+          await speakVoiceMode(shapeVoiceSafe(response))
+          setIsSpeaking(false); setStreamingText('')
+          if (!voiceModeRef.current) return
+          await new Promise(r => setTimeout(r, 120))
+          if (voiceModeRef.current) startVoiceListening()
+        } catch {
+          setIsSpeaking(false); setStreamingText('')
+          if (voiceModeRef.current) { transitionVoice('RECOVERING', 'post-reminder-error'); startVoiceListening() }
+        }
+        return
+      }
+
+      // ─── Voice pending reminder confirmation ──────────────────────────
+      if (pendingReminder && (isConfirm(effectiveText) || isCancel(effectiveText))) {
+        try {
+          let response: string
+          if (isConfirm(effectiveText)) {
+            const { saved } = createReminder({
+              category: pendingReminder.category,
+              title: pendingReminder.title ?? '',
+              dueAt: pendingReminder.dueAt ?? new Date().toISOString(),
+              displayDateLabel: pendingReminder.displayDateLabel ?? '',
+              displayTimeLabel: pendingReminder.displayTimeLabel ?? '',
+              ...(pendingReminder.recurrence ? { recurrence: pendingReminder.recurrence } : {}),
+              alertPolicy: { ...createDefaultAlertPolicy(), ...pendingReminder.alertPolicyDraft },
+            })
+            setPendingReminder(null)
+            response = saved ? `רשמתי. אזכיר לך ${pendingReminder.title ?? ''}.` : 'לא הצלחתי לשמור את התזכורת.'
+            if (saved) soundSuccess()
+          } else {
+            setPendingReminder(null)
+            response = 'בסדר, ביטלתי.'
+          }
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }])
+          if (!voiceModeRef.current) return
+          transitionVoice('RESPONDING', 'reminder-confirm-turn')
+          setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
+          await speakVoiceMode(shapeVoiceSafe(response))
+          setIsSpeaking(false); setStreamingText('')
+          if (!voiceModeRef.current) return
+          await new Promise(r => setTimeout(r, 120))
+          if (voiceModeRef.current) startVoiceListening()
+        } catch {
+          setIsSpeaking(false); setStreamingText('')
+          if (voiceModeRef.current) { transitionVoice('RECOVERING', 'post-reminder-confirm-error'); startVoiceListening() }
+        }
+        return
+      }
+
+      // Recurring intent — honest limitation (voice flow)
+      if (cs.phase === 'idle' && isCreateIntent(effectiveText) && isRecurringIntent(effectiveText)) {
+        const recurResponse = 'כרגע אני יודעת לקבוע פגישה בודדת. תגידי לי את התאריך הספציפי ואני אקבע.'
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: recurResponse, timestamp: Date.now() }])
+        if (!voiceModeRef.current) return
+        transitionVoice('RESPONDING', 'recurring-limitation')
+        setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(recurResponse)
+        try {
+          await speakVoiceMode(shapeVoiceSafe(recurResponse))
+        } catch { /* ignore */ }
+        setIsSpeaking(false); setStreamingText('')
+        if (voiceModeRef.current) { await new Promise(r => setTimeout(r, 120)); startVoiceListening() }
+        return
+      }
+
+      if (cs.phase !== 'idle' || isCreateIntent(effectiveText)) {
+        try {
+          let response: string
+          if (cs.phase !== 'idle') {
+            const r = routePersonalQuery(text)
+            const isCalRead = r.type.startsWith('calendar_') && r.type !== 'calendar_create'
+            const resolution = resolvePendingMessage(cs, text, isCalRead)
+            if (resolution.action === 'cancel') {
+              setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE
+              response = shapeCreateCancelled()
+            } else if (resolution.action === 'save') {
+              const d = resolution.draft
+              addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
+              soundSuccess()
+              setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE
+              response = shapeCreateSaved(d)
+            } else if (resolution.action === 'replace' || resolution.action === 'update') {
+              setCreateState(resolution.state); createStateRef.current = resolution.state
+              response = resolution.state.phase === 'confirming'
+                ? shapeCreateConfirm(resolution.state.draft)
+                : shapeCreateClarify(resolution.state.missing, resolution.state.draft)
+              // Conflict detection for voice flow updates
+              if (resolution.state.phase === 'confirming' && resolution.state.draft.date && resolution.state.draft.time) {
+                const conflicts = findConflicts(resolution.state.draft.date, resolution.state.draft.time)
+                if (conflicts.length > 0) {
+                  const conflictText = conflicts.map(c => c.title).join(', ')
+                  response = `שימי לב — כבר יש לך ${conflictText} באותו זמן.\n${response}`
+                }
+              }
+            } else if (resolution.action === 'read') {
+              response = tryGroundedAnswer(text) ?? shapeCreateUnclear()
+            } else {
+              response = shapeCreateUnclear()
+            }
+          } else {
+            const next = startCreate(text)
+            setCreateState(next); createStateRef.current = next
+            response = next.phase === 'confirming'
+              ? shapeCreateConfirm(next.draft)
+              : shapeCreateClarify(next.missing, next.draft)
+            // Conflict detection for voice flow new create
+            if (next.phase === 'confirming' && next.draft.date && next.draft.time) {
+              const conflicts = findConflicts(next.draft.date, next.draft.time)
+              if (conflicts.length > 0) {
+                const conflictText = conflicts.map(c => c.title).join(', ')
+                response = `שימי לב — כבר יש לך ${conflictText} באותו זמן.\n${response}`
+              }
+            }
+          }
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }])
+          if (!voiceModeRef.current) return
+          transitionVoice('RESPONDING', 'create-turn')
+          setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
+          await speakVoiceMode(shapeVoiceSafe(response))
+          setIsSpeaking(false); setStreamingText('')
+          if (!voiceModeRef.current) return
+          await new Promise(r => setTimeout(r, 120))
+          if (voiceModeRef.current) startVoiceListening()
+        } catch {
+          setIsSpeaking(false); setStreamingText('')
+          if (voiceModeRef.current) {
+            transitionVoice('RECOVERING', 'post-create-error')
+            startVoiceListening()
+          }
+        }
+        return
+      }
 
       // v20.1: PROVEN non-streaming voice path — fast LLM + full TTS (no cutoff)
       try {
@@ -523,8 +1337,123 @@ export function AbuAI() {
         }, 20000)
 
         // Try grounded answer first (no LLM for personal queries)
+        // B1 voice ordering: grounded → proactive → LLM. Grounded ALWAYS
+        // wins; the proactive layer never answers calendar / family /
+        // personal questions because getProactiveSeed only fires on the
+        // four warmth intents (boredom / no_topic / loneliness / ideas).
         const voiceGrounded = tryGroundedAnswer(text)
-        const response = voiceGrounded ?? await sendMessage(currentMsgs, true)
+        let response: string
+        if (voiceGrounded !== null) {
+          response = voiceGrounded
+        } else {
+          const voiceProactive = getProactiveSeed(text, {
+            previousSeedId: lastProactiveSeedIdRef.current,
+          })
+          // B2.3 voice: same content-world short-circuit as the text
+          // path. Vague open prompts (hola / no sé) get a deterministic
+          // opening spoken instead of a full LLM call. Voice mode skips
+          // the bullet-list follow-up — speech sounds unnatural reading
+          // "•". allowFollowUp = false ensures only the opening renders.
+          const voiceWorld = (!isOnlineCurrentInfoQuery(text) || shouldBlockOnlineForPersonal(text))
+            ? chooseContentWorld(text)
+            : null
+          const voiceWorldFires =
+            voiceWorld !== null
+            && voiceWorld.contentMode === 'open_chat'
+            && voiceWorld.suggestedOpening !== ''
+            && voiceWorld.gentleOptions.length > 0
+          if (voiceProactive) {
+            lastProactiveSeedIdRef.current = voiceProactive.id
+            response = voiceProactive.text
+          } else if (voiceWorldFires) {
+            const compiled = compileHumanAnswer(
+              text,
+              makeOpenEvidence('content_world_engine'),
+              { lang: voiceWorld!.language, allowFollowUp: false },
+              voiceWorld!,
+            )
+            response = compiled.text
+          } else if (isOnlineCurrentInfoQuery(text) && !shouldBlockOnlineForPersonal(text)) {
+            // B2: online current-info via server endpoint. Voice mode
+            // speaks the answer concisely; sources are not read aloud.
+            const online = await answerOnlineCurrentInfo(text, { locationHint: 'Kfar Saba area, Israel' })
+            if (online.ok) {
+              _recordOnlineError(null)
+              response = online.answer
+            } else {
+              _recordOnlineError(online.errorCode)
+              response = online.userMessage
+            }
+          } else {
+            // ── Streaming LLM + progressive TTS ──────────────────────
+            // Stream tokens and speak each sentence as it completes.
+            // First sentence plays while the rest is still generating,
+            // cutting perceived latency roughly in half.
+            if (ac.signal.aborted) { clearTimeout(watchdog); return } // abort-early guard
+
+            transitionVoice('RESPONDING', 'stream-speak-start')
+            setVoicePhase('speaking')
+            setIsSpeaking(true)
+
+            let streamedText = ''
+            const streamAiMsgId = nextId()
+            setMessages(prev => [...prev, { id: streamAiMsgId, role: 'assistant', content: '▍', timestamp: Date.now() }])
+
+            // Async iterable that captures text and updates the chat bubble
+            async function* capturedStream(): AsyncGenerator<string, void, undefined> {
+              for await (const token of streamMessage(currentMsgs, true, ac.signal)) {
+                if (ac.signal.aborted) return
+                streamedText += token
+                setStreamingText(streamedText)
+                setMessages(prev => {
+                  const updated = [...prev]
+                  const idx = updated.findIndex(m => m.id === streamAiMsgId)
+                  if (idx !== -1) updated[idx] = { ...updated[idx]!, content: streamedText }
+                  return updated
+                })
+                yield token
+              }
+            }
+
+            // streamSpeakVoiceMode detects sentence boundaries and fires
+            // TTS per sentence while still consuming the token stream.
+            clearTimeout(watchdog)
+            await Promise.race([
+              _streamSpeakVoiceMode(
+                capturedStream(),
+                (phase) => {
+                  if (phase === 'done') { setIsSpeaking(false); setStreamingText('') }
+                },
+                ac.signal,
+              ),
+              new Promise<void>((_, reject) =>
+                setTimeout(() => reject(new Error('STREAM_TTS_TIMEOUT')), 20000)
+              ),
+            ]).catch(() => { stopSpeaking() })
+
+            // Finalize chat message with full streamed text
+            if (streamedText.trim()) {
+              const finalContent = containsUngroundedClaim(streamedText.trim(), false)
+                ? 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
+                : streamedText.trim()
+              setMessages(prev => {
+                const updated = [...prev]
+                const idx = updated.findIndex(m => m.id === streamAiMsgId)
+                if (idx !== -1) updated[idx] = { ...updated[idx]!, content: finalContent }
+                return updated
+              })
+            }
+
+            setIsSpeaking(false)
+            setStreamingText('')
+            abortControllerRef.current = null
+
+            if (!voiceModeRef.current) return
+            await new Promise(r => setTimeout(r, 800))
+            if (voiceModeRef.current) startVoiceListening()
+            return // streaming TTS path complete — skip serial speak below
+          }
+        }
         clearTimeout(watchdog)
 
         if (ac.signal.aborted) return // interrupted during LLM call
@@ -533,21 +1462,27 @@ export function AbuAI() {
         setMessages(prev => [...prev, aiMsg])
         if (!voiceModeRef.current) return
 
-        // Speak the full response (Gemini→OpenAI→Web Speech — proven chain)
+        // Speak the full response (for grounded / proactive / content-world / online).
+        // These are fast deterministic answers — serial TTS is fine.
+        // B2.4: voice-safe shaping strips bullets, URLs, and multi-line
+        // profile dumps, then caps at ≤ 2 sentences so the spoken answer
+        // feels human instead of like a recited list.
         transitionVoice('RESPONDING', 'speak-start')
         setVoicePhase('speaking')
         setIsSpeaking(true)
         setStreamingText(response)
 
-        await speakVoiceMode(response)
+        const spokenText = shapeVoiceSafe(response)
+        await speakVoiceMode(spokenText)
 
         setIsSpeaking(false)
         setStreamingText('')
         abortControllerRef.current = null
 
         if (!voiceModeRef.current) return
-        // Minimal gap before resuming listen
-        await new Promise(r => setTimeout(r, 120))
+        // Post-TTS cooldown — wait for speaker audio to fade before mic resumes.
+        // 800ms prevents the mic from picking up AbuAI's own voice (self-listening bug).
+        await new Promise(r => setTimeout(r, 800))
         if (voiceModeRef.current) startVoiceListening()
       } catch (err) {
         abortControllerRef.current = null
@@ -555,7 +1490,7 @@ export function AbuAI() {
         setStreamingText('')
         if ((err as DOMException)?.name === 'AbortError') return // interrupted
         transitionVoice('ERROR', err instanceof Error ? err.message : 'unknown')
-        const errText = err instanceof Error ? err.message : 'שגיאה. נסי שוב.'
+        const errText = err instanceof Error ? err.message : 'משהו לא עבד. ננסה שוב?'
         setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
         if (voiceModeRef.current) {
           setVoicePhase('speaking'); setIsSpeaking(true)
@@ -591,6 +1526,7 @@ export function AbuAI() {
           if (result.isFinal) {
             finalTranscript += result[0]?.transcript ?? ''
             gotResult = true
+            wsEmptyCountRef.current = 0 // reset backoff on successful result
           } else {
             interim += result[0]?.transcript ?? ''
           }
@@ -606,7 +1542,12 @@ export function AbuAI() {
 
       rec.onerror = (e: any) => {
         recognitionRef.current = null
-        if (e.error === 'not-allowed') {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          // Permission denied — never exit silently. Show + speak a friendly
+          // Hebrew fallback that points Martita to the text box.
+          const fallback = 'אני לא מצליחה לשמוע כרגע. אפשר לכתוב לי כאן.'
+          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: fallback, timestamp: Date.now() }])
+          try { speakVoiceMode(fallback) } catch { /* TTS best-effort */ }
           exitVoiceMode()
         } else {
           // Web Speech failed — fall through to Whisper below
@@ -617,8 +1558,15 @@ export function AbuAI() {
       rec.onend = () => {
         recognitionRef.current = null
         if (!gotResult && voiceModeRef.current) {
-          // No result from Web Speech — restart immediately
-          setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 50)
+          // No result from Web Speech — restart with backoff, max 5 empty rounds
+          wsEmptyCountRef.current++
+          if (wsEmptyCountRef.current >= 5) {
+            wsEmptyCountRef.current = 0
+            startWhisperFallback()
+          } else {
+            const delay = Math.min(50 * Math.pow(2, wsEmptyCountRef.current - 1), 800)
+            setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, delay)
+          }
         }
       }
 
@@ -671,9 +1619,15 @@ export function AbuAI() {
             }
             handleText(text.trim())
           } catch (err) {
-            const errText = err instanceof Error ? err.message : 'שגיאה בתמלול.'
-            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
-            if (voiceModeRef.current) startVoiceListening()
+            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediateVoiceCaptureError(err, 'transcription'), timestamp: Date.now() }])
+            // SttExhaustedError = all providers failed repeatedly → stop
+            // listening to prevent infinite loop. Otherwise retry once.
+            if (err instanceof SttExhaustedError) {
+              console.warn('[AbuAI] STT exhausted, exiting voice mode')
+              exitVoiceMode()
+            } else if (voiceModeRef.current) {
+              startVoiceListening()
+            }
           }
         }
 
@@ -684,7 +1638,7 @@ export function AbuAI() {
           if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
         }, noiseMode === 'noisy'
           ? { threshold: 40, silenceMs: 3000, maxMs: 15000, minActiveMs: 2500 }  // TV/noise: very strict
-          : { threshold: 25, silenceMs: 2500, maxMs: 15000, minActiveMs: 2000 }  // quiet room
+          : { threshold: 25, silenceMs: 3000, maxMs: 15000, minActiveMs: 2000 }  // quiet room — 3s for elderly pauses
         )
         silenceRef.current = detector
 
@@ -711,6 +1665,7 @@ export function AbuAI() {
         const origStop = detector.stop
         detector.stop = () => { origStop(); clearInterval(cdInterval); setListenCountdown(null) }
       } catch (err) {
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediateVoiceCaptureError(err, 'permission_or_device'), timestamp: Date.now() }])
         console.error('[AbuAI] getUserMedia error:', err)
         exitVoiceMode()
       }
@@ -783,50 +1738,27 @@ ${fewShotText}`
   }, [])
 
   // v21: Pipeline voice mode extracted so Realtime can fall back to it
-  const startPipelineVoiceMode = useCallback(() => {
+  // v31: Speak greeting aloud — user tapped button so we have gesture context for iOS audio
+  const startPipelineVoiceMode = useCallback(async () => {
     const todayKey = new Date().toISOString().split('T')[0]!
     const isFirstToday = localStorage.getItem('abuai-voice-date') !== todayKey
     if (isFirstToday) localStorage.setItem('abuai-voice-date', todayKey)
 
-    let greeting = getVoiceGreeting()
-    if (Math.random() < 0.20) {
-      const reminders = [
-        ' — ואם רוצה, אפשר גם בספרדית.',
-        ' Acordate que podés hablarme en español.',
-        ' — y también hablo español, si preferís.',
-      ]
-      greeting += reminders[Math.floor(Math.random() * reminders.length)]!
-    }
-
+    const greeting = getVoiceGreeting()
     const greetMsg: ChatMessage = { id: nextId(), role: 'assistant', content: greeting, timestamp: Date.now() }
     setMessages(prev => [...prev, greetMsg])
 
-    if (isFirstToday) {
-      const dateStr = new Date().toLocaleDateString('he-IL', { month: 'long', day: 'numeric' })
-      sendMessage(
-        [{ id: 'date-q', role: 'user', content: `מה מיוחד בתאריך ${dateStr}? אירוע היסטורי, יום הולדת מפורסם, חג — 2-3 משפטים, עברית.`, timestamp: Date.now() }],
-        false
-      )
-        .then(dateFactResponse => {
-          const factMsg: ChatMessage = { id: nextId(), role: 'assistant', content: dateFactResponse, timestamp: Date.now() }
-          setMessages(prev => [...prev, factMsg])
-        })
-        .catch(() => {})
-    }
-    transitionVoice('RESPONDING', 'greeting')
-    setVoicePhase('greeting')
-    setIsSpeaking(true)
-    speakVoiceMode(greeting)
-      .then(() => {
-        setIsSpeaking(false)
-        if (voiceModeRef.current) {
-          setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 150)
-        }
-      })
-      .catch(() => {
-        setIsSpeaking(false)
-        if (voiceModeRef.current) startVoiceListening()
-      })
+    // Speak the greeting aloud before starting to listen
+    transitionVoice('RESPONDING', 'greeting-speak')
+    setVoicePhase('speaking')
+    try {
+      await speakVoiceMode(greeting)
+    } catch { /* TTS failed, continue to listening anyway */ }
+
+    // Now start listening — after TTS finishes so mic doesn't pick up speaker output
+    transitionVoice('LISTENING', 'greeting-done-to-listen')
+    setVoicePhase('listening')
+    setTimeout(() => { if (voiceModeRef.current) startVoiceListening() }, 200)
   }, [startVoiceListening, transitionVoice])
 
   const enterVoiceMode = useCallback(() => {
@@ -834,14 +1766,16 @@ ${fewShotText}`
     acquireWakeLock()
     setVoiceMode(true)
     voiceModeRef.current = true
+    resetSttFailureCount() // fresh session — clear any previous STT failures
 
     // v25.2: SIMPLE DECISION — can we use Realtime or not?
     const quotaFlag = localStorage.getItem('abu-openai-quota-failed')
     const openaiAvailable = useRealtime && (!quotaFlag || (Date.now() - parseInt(quotaFlag, 10)) > 300_000)
 
-    // No OpenAI credits? Go straight to free pipeline. No complexity.
+    // Realtime disabled → use pipeline mode (STT → local-first router → LLM → TTS).
+    // OpenAI is still available as LLM provider via sendMessage().
     if (!openaiAvailable) {
-      console.log('[AbuAI] No OpenAI → free pipeline (Groq + Gemini)')
+      console.log('[AbuAI] Pipeline voice mode (Realtime disabled). LLM providers: OpenAI → Groq → Gemini')
       startPipelineVoiceMode()
       return
     }
@@ -885,7 +1819,7 @@ ${fewShotText}`
             console.error('[Realtime] Error:', error)
             // v27: Mediate error — always Hebrew, always with action buttons
             const mediated = mediateError(error)
-            if (mediated.category === 'quota' || mediated.category === 'auth') {
+            if (mediated.category === 'quota' || mediated.category === 'auth' || mediated.category === 'rate-limit') {
               try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
             }
             setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediated.message, timestamp: Date.now(), error: mediated }])
@@ -895,7 +1829,7 @@ ${fewShotText}`
         // v25: onFatalError — Realtime died, remember + fall back to free pipeline
         () => {
           console.log('[AbuAI] Realtime failed, saving quota flag, falling back to free pipeline')
-          localStorage.setItem('abu-openai-quota-failed', String(Date.now()))
+          try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch { /* quota */ }
           realtimeRef.current = null
           setRealtimeState('idle')
           setRealtimeTranscript('')
@@ -1716,45 +2650,45 @@ ${fewShotText}`
             </button>
           </div>
 
-          {/* "שיחה קולית" pill */}
+          {/* Bottom actions — mic button is the single voice entry point */}
           <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center' }}>
+            {import.meta.env.DEV && (
             <button
               type="button"
-              onClick={handleVoiceTap}
-              aria-label="מצב שיחה קולית"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 24px',
-                borderRadius: 20,
-                background: 'rgba(20,184,166,0.06)',
-                border: '1px solid rgba(20,184,166,0.40)',
-                cursor: 'pointer',
-                WebkitTapHighlightColor: 'transparent',
-                transition: 'background 0.15s ease',
+              onClick={() => {
+                const text = getLastTraceText()
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(text).then(() => alert('הועתק!')).catch(() => prompt('העתיקי ידנית:', text))
+                } else {
+                  prompt('העתיקי ידנית:', text)
+                }
               }}
-              onPointerDown={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.14)' }}
-              onPointerUp={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.06)' }}
-              onPointerLeave={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.06)' }}
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
-                stroke={GOLD} strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                <path d="M19 10v2a7 7 0 01-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
-              <span style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: 'rgba(20,184,166,0.95)',
-                fontFamily: "'Heebo',sans-serif",
-                direction: 'rtl',
-              }}>
-                שיחה קולית
-              </span>
-            </button>
+              style={{
+                marginRight: 8,
+                padding: '10px 16px',
+                borderRadius: 20,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >📋 trace</button>
+            )}
+            <button
+              type="button"
+              onClick={clearConversation}
+              style={{
+                marginRight: 8,
+                padding: '10px 16px',
+                borderRadius: 20,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >ניקוי שיחה</button>
           </div>
         </div>
       )}

@@ -14,7 +14,20 @@
  *
  * The UI silently skips any entry where `enabled !== true` or `phoneE164` fails
  * the basic validator in familyQuickFaces.tsx.
+ *
+ * Avatar photos:
+ * These are public demo/contact avatar assets. Do not place sensitive photos
+ * here unless public preview exposure is acceptable.
  */
+
+/**
+ * Per-photo display crop metadata (optional). Defaults to `contain` /
+ * `center` so the bubble never crops a face — but a contact whose photo
+ * has letterbox bands or unusual aspect ratio (e.g. Adar's 883×2048 tall
+ * portrait) can opt into `cover` with a per-image object-position so the
+ * face fills the whole circle without leaving black empty bands.
+ */
+export type PhotoFit = 'contain' | 'cover'
 
 export type FamilyQuickFace =
   | {
@@ -22,6 +35,8 @@ export type FamilyQuickFace =
       id: 'family-group'
       label: 'המשפחה'
       photoFile?: string
+      photoFit?: PhotoFit
+      photoObjectPosition?: string
       whatsappUrl: string
       enabled: boolean
     }
@@ -33,10 +48,42 @@ export type FamilyQuickFace =
       phoneE164: string
       whatsappE164?: string
       photoFile?: string
+      photoFit?: PhotoFit
+      photoObjectPosition?: string
       enabled: boolean
     }
 
 const FAMILY_GROUP_WHATSAPP_URL = 'https://chat.whatsapp.com/JqqGpPKTCq3L0JnitU5y5f'
+
+/**
+ * Stable id → public-asset photo path. Keys MUST match scaffold person ids
+ * below.
+ *
+ * These are public demo/contact avatar assets. Do not place sensitive photos
+ * here unless public preview exposure is acceptable.
+ *
+ * `as const` keeps each value as a literal string (defeats
+ * noUncheckedIndexedAccess at the scaffold use sites below).
+ *
+ * Note: filenames preserve their committed case (e.g. ARI.JPEG, Anabel.JPEG)
+ * because we never edit committed image files.
+ */
+export const KNOWN_CONTACT_PHOTOS = {
+  mor:    '/family-contacts/mor.jpeg',
+  leo:    '/family-contacts/leo.png',
+  yael:   '/family-contacts/yael.jpeg',
+  raphi:  '/family-contacts/raphi.png',
+  ofir:   '/family-contacts/ophir.png',
+  ayalon: '/family-contacts/eylon.jpeg',
+  eili:   '/family-contacts/ilai.jpeg',
+  adar:   '/family-contacts/adar.jpeg',
+  adi:    '/family-contacts/adi.jpeg',
+  noam:   '/family-contacts/noam.jpeg',
+  yarden: '/family-contacts/yarden.jpeg',
+  gilad:  '/family-contacts/gilad.jpeg',
+  ari:    '/family-contacts/ARI.JPEG',
+  anabel: '/family-contacts/Anabel.JPEG',
+} as const
 
 export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
   {
@@ -52,6 +99,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'מור',
     relationshipHebrew: 'הבת',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.mor,
     enabled: false,
   },
   {
@@ -60,6 +108,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'לאו',
     relationshipHebrew: 'הבן',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.leo,
     enabled: false,
   },
   {
@@ -68,6 +117,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'יעל',
     relationshipHebrew: 'בת זוג של מור',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.yael,
     enabled: false,
   },
   {
@@ -76,6 +126,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'רפי',
     relationshipHebrew: 'אבא של הנכדים',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.raphi,
     enabled: false,
   },
   {
@@ -84,6 +135,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'אופיר',
     relationshipHebrew: 'נכד',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.ofir,
     enabled: false,
   },
   {
@@ -92,6 +144,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'איילון',
     relationshipHebrew: 'נכד',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.ayalon,
     enabled: false,
   },
   {
@@ -100,6 +153,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'עילי',
     relationshipHebrew: 'נכד',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.eili,
     enabled: false,
   },
   {
@@ -108,6 +162,13 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'אדר',
     relationshipHebrew: 'נכד',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.adar,
+    // Adar's source photo is a 883×2048 tall portrait (screenshot). With
+    // the default object-fit:contain it leaves black bands inside the
+    // 80 px circle. Force cover + a centred crop biased toward the upper
+    // third so his face stays visible after the zoom.
+    photoFit: 'cover',
+    photoObjectPosition: 'center 28%',
     enabled: false,
   },
   {
@@ -116,6 +177,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'עדי',
     relationshipHebrew: 'נכדה',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.adi,
     enabled: false,
   },
   {
@@ -124,6 +186,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'נועם',
     relationshipHebrew: 'נכד',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.noam,
     enabled: false,
   },
   {
@@ -132,6 +195,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'ירדן',
     relationshipHebrew: 'אשת עילי',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.yarden,
     enabled: false,
   },
   {
@@ -140,6 +204,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'גלעד',
     relationshipHebrew: 'בן זוג של אופיר',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.gilad,
     enabled: false,
   },
   {
@@ -148,6 +213,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'אנאבל',
     relationshipHebrew: 'נינה',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.anabel,
     enabled: false,
   },
   {
@@ -156,6 +222,7 @@ export const FAMILY_QUICK_FACES: ReadonlyArray<FamilyQuickFace> = [
     displayName: 'ארי',
     relationshipHebrew: 'נין',
     phoneE164: '',
+    photoFile: KNOWN_CONTACT_PHOTOS.ari,
     enabled: false,
   },
 ]

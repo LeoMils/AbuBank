@@ -2,28 +2,14 @@ name: Android Debug APK
 
 on:
   workflow_dispatch:
-    inputs:
-      target_ref:
-        description: 'Branch or ref to build'
-        required: true
-        default: 'feat/calendar-revolution'
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout target ref
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.target_ref }}
-
-      - name: Diagnostics
-        run: |
-          echo "ref: ${{ github.event.inputs.target_ref }}"
-          git log -1 --oneline
-          grep capacitor package.json || echo "no capacitor in package.json"
-          test -d android && echo "android/ exists" || echo "android/ MISSING"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

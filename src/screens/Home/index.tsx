@@ -570,21 +570,33 @@ export function Home() {
           pointerEvents: 'none',
         }} />
         {/* Settings moved to header three-dots */}
-        {/* Version indicator — visible for identification/support */}
-        <div style={{
-          position: 'absolute', top: 8, left: 10,
-          fontSize: 12, fontWeight: 700, letterSpacing: '0.6px',
-          color: 'rgba(201,168,76,0.65)',
-          fontFamily: "'DM Sans',monospace",
-          userSelect: 'none',
-          pointerEvents: 'none',
-          background: 'rgba(201,168,76,0.08)',
-          padding: '2px 8px',
-          borderRadius: 6,
-          border: '1px solid rgba(201,168,76,0.18)',
-        }}>{appVersion ? `v${appVersion}` : ''}</div>
+        {/* QA build marker — visible source-of-truth for identification/support.
+            Sourced from src/version.ts (single visible-version source). */}
+        <div
+          data-testid="home-qa-version"
+          style={{
+            position: 'absolute', top: 8, left: 10,
+            fontSize: 12, fontWeight: 700, letterSpacing: '0.6px',
+            color: 'rgba(201,168,76,0.65)',
+            fontFamily: "'DM Sans',monospace",
+            userSelect: 'none',
+            pointerEvents: 'none',
+            background: 'rgba(201,168,76,0.08)',
+            padding: '2px 8px',
+            borderRadius: 6,
+            border: '1px solid rgba(201,168,76,0.18)',
+          }}
+        >QA: v{appVersion}</div>
+        {/* P0.4 — the Home diagnostic pill from PR #31 was removed.
+            It lived inside the family-footer flex container and could
+            disturb the normal Home/footer layout on phone-width Hebrew
+            RTL screens. Diagnostic access remains via:
+              • Settings → big "אבחון מערכת" button at the top.
+              • Direct URL: ?diagnostics=1 / #diagnostics. */}
         {import.meta.env.DEV && (
-          <div style={{
+          <div
+            data-testid="home-qa-dev-build"
+            style={{
             position: 'absolute', top: 24, left: 10,
             fontSize: 11, fontWeight: 700,
             color: 'rgba(239,68,68,0.80)',
@@ -593,7 +605,7 @@ export function Home() {
             padding: '2px 8px', borderRadius: 6,
             border: '1px solid rgba(239,68,68,0.25)',
             pointerEvents: 'none', zIndex: 999,
-          }}>DEV BUILD {appVersion} / 382e71f</div>
+          }}>DEV BUILD v{appVersion}</div>
         )}
         {/* 5 nav icons — with micro-animations */}
         {footerItems.map((item, idx) => {
@@ -618,7 +630,7 @@ export function Home() {
               aria-label={item.hebrewLabel}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                padding: '4px 2px', minWidth: 60, minHeight: 64,
+                padding: '4px 2px', minWidth: 72, minHeight: 72,
                 cursor: 'pointer', background: 'none', border: 'none',
               }}
               onPointerDown={(e) => {

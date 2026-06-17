@@ -7,35 +7,70 @@ import {
   updateAppointment,
   deleteAppointment,
   playChime,
-  parseAppointmentText,
   formatHebrewMonth,
   formatShortHebrewDate,
   getHebrewHoliday,
+  createAppointmentSafe,
+  formatCreatedConfirmation,
+  formatCreateFailure,
   type Appointment,
 } from './service'
-import { transcribeAudio, getSupportedMimeType } from '../AbuAI/service'
+import { processVoiceTranscript } from './voiceAutoCreate'
+import { extractPersonPhrase, resolvePersonPhrase } from './familyResolve'
+import { userFacingError } from '../../services/platformHealth'
+import { mediateVoiceCaptureError } from '../../services/errorMediation'
+import { APP_VERSION } from '../../version'
+import {
+  createInitialTrace,
+  pushStep,
+  stageLabel,
+  type VoiceStage,
+  type VoiceTrace,
+} from './voiceTrace'
+import { DayDetailSheet } from './DayDetailSheet'
+import { transcribeCalendarAudio } from './calendarTranscribe'
+import { normalizeCalendarTranscript } from './calendarTranscriptCorrection'
+import { getSupportedMimeType } from '../AbuAI/service'
+import { createSilenceDetector } from '../../services/voice'
+import { buildQaRunFromTrace, appendQaRun, QaRecorderPanel, GuidedMicQaPanel, MicSelfTest, isVoiceDebugEnabled, VoiceDebugPanel, VoiceDebugToggle } from './VoiceDebugPanel'
+import { traceStart as _calTraceStart, traceSet as _calTraceSet, traceEnd as _calTraceEnd } from '../../services/voiceDiagLog'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
 import { injectSharedKeyframes } from '../../design/animations'
 import { InfoButton } from '../../components/InfoButton'
 import { ApptCard } from './ApptCard'
 import { ManualModal } from './ManualModal'
-import { VoiceCard } from './VoiceCard'
-import { shapeCreateConfirmReadback } from '../AbuAI/responseShaper'
-import { parseCorrection, applyCorrection } from './correctionParser'
-import { pickUpdateAck, CANCEL_RESPONSE, UNRELATED_RESPONSE, pickClarifyQuestion } from '../AbuAI/conversationLayer'
-import { speak } from '../../services/voice'
+import { VoiceAddFlow, type VoiceDraft } from './VoiceAddFlow'
+import { sanitizeTitleForSave } from './localParser'
+import { ReminderConfirmCard, ReminderDueEngine, ReminderBoard, createReminder, createDefaultAlertPolicy, requestNativeNotificationPermission, registerNotificationTapHandler } from './reminders'
+import type { ReminderDraft } from './reminders'
+// VoiceDebugPanel, VoiceDebugToggle imported above with QA recorder exports
 import { Toast } from '../../components/Toast'
 import { AbuTime } from './AbuTime'
 import { PageShell } from '../../components/PageShell'
 import { ScreenHeader } from '../../components/ScreenHeader'
 import { SeniorButton } from '../../components/SeniorButton'
 import { EmptyState } from '../../components/EmptyState'
-import { StatusPill } from '../../components/StatusPill'
 import { BackButton } from '../../components/BackButton'
-import { GOLD, BRIGHT_GOLD, BG, CREAM, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
+import { GOLD, BRIGHT_GOLD, BG, CREAM, TEXT_SECONDARY, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
 
 
+
+
+type VoiceRelation = { status: 'resolved' | 'ambiguous' | 'missing'; phrase: string; candidates?: string[] }
+
+// Resolve a spoken family phrase ("הבת של מור") to a verified name, or carry it
+// as ambiguous/missing. Never invents; resolved names replace the phrase in the
+// title so the saved event reads "פגישה עם <שם>".
+function resolveDraftPerson(draft: { title: string; personPhrase?: string | null }): { title: string; personName: string | null; relation?: VoiceRelation } {
+  const phrase = draft.personPhrase ?? null
+  if (!phrase) return { title: draft.title, personName: null }
+  const r = resolvePersonPhrase(phrase)
+  if (r.status === 'resolved') return { title: draft.title.replace(phrase, r.name), personName: r.name, relation: { status: 'resolved', phrase } }
+  if (r.status === 'ambiguous') return { title: draft.title, personName: phrase, relation: { status: 'ambiguous', phrase, candidates: r.candidates } }
+  if (r.status === 'missing') return { title: draft.title, personName: phrase, relation: { status: 'missing', phrase } }
+  return { title: draft.title, personName: null }
+}
 
 
 // ─── Main AbuCalendar Screen ───────────────────────────────────────────────────
@@ -47,25 +82,68 @@ export function AbuCalendar() {
   const [year, setYear] = useState(todayDate.getFullYear())
   const [month, setMonth] = useState(todayDate.getMonth() + 1)
   const [selectedDay, setSelectedDay] = useState(today)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [appointments, setAppointments] = useState<Appointment[]>(() => loadAppointmentsWithFamily(todayDate.getFullYear()))
   const [showManual, setShowManual] = useState(false)
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [toast, setToast] = useState(false)
-  const [voiceParsed, setVoiceParsed] = useState<{ title: string; date: string | null; time: string | null; emoji: string; location?: string | null; notes?: string | null; personName?: string | null; ambiguousTime?: boolean; confidence?: number; source?: 'local' | 'llm' | 'fallback' | null } | null>(null)
-  const [rawTranscript, setRawTranscript] = useState<string>('')
+  // P0 — structured toast message so the user sees title/date/time
+  // (or the honest failure copy) instead of a generic "saved" string.
+  const [toastMessage, setToastMessage] = useState<string>('האירוע נשמר')
+  const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success')
+  const [voiceParsed, setVoiceParsed] = useState<VoiceDraft | null>(null)
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing' | 'parsing' | 'parsed' | 'error'>('idle')
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [ambiguousDraft, setAmbiguousDraft] = useState<{ title: string; date: string | null; time: string; emoji: string; location: string | null; notes: string | null } | null>(null)
-  const [isCorrecting, setIsCorrecting] = useState(false)
-  const [correctionAck, setCorrectionAck] = useState<string | null>(null)
-  const correctingRef = useRef(false)
-  const lastAckRef = useRef<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
-  const [voiceStatus, setVoiceStatus] = useState('')
   const [abuTimeOpen, setAbuTimeOpen] = useState(false)
+  const [savedConfirmation, setSavedConfirmation] = useState<{ title: string; date: string; time: string } | null>(null)
   const [undoAppt, setUndoAppt] = useState<Appointment | null>(null)
+  const [reminderDraft, setReminderDraft] = useState<ReminderDraft | null>(null)
+  const [reminderFlowActive, setReminderFlowActive] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const silenceDetectorRef = useRef<{ stop: () => void } | null>(null)
+  const maxDurationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const recordingStartTimeRef = useRef<number>(0)
+
+  // P0.6 — visible voice trace. Renders inside AbuCalendar's voice
+  // action area no matter where the pipeline fails, so the user always
+  // sees WHY a recording didn't create a meeting.
+  // The ref is the source of truth; `debugTrace` is a state mirror so the
+  // operator-only VoiceDebugPanel re-renders when the pipeline advances.
+  const voiceTraceRef = useRef<VoiceTrace>(createInitialTrace(APP_VERSION.version))
+  const [debugTrace, setDebugTrace] = useState<VoiceTrace | null>(null)
+  function updateTrace(patch: Partial<VoiceTrace>, step?: string) {
+    const next: VoiceTrace = { ...voiceTraceRef.current, ...patch }
+    voiceTraceRef.current = step ? pushStep(next, step) : next
+    setDebugTrace(voiceTraceRef.current)
+  }
+  function setStage(stage: VoiceStage, customMessage?: string, step?: string) {
+    updateTrace({ finalVoiceStage: stage, visibleMessage: customMessage ?? stageLabel(stage) }, step ?? `stage:${stage}`)
+  }
+  function setVoiceFailure(message: string, step: string) {
+    updateTrace({ finalVoiceStage: 'error', error: message, visibleMessage: message }, step)
+    setVoiceError(message)
+    setVoiceState('error')
+    // Production diagnostic log (always)
+    const t = voiceTraceRef.current
+    _calTraceStart(); _calTraceSet({ rawTranscript: t.transcript ?? '', route: t.semanticRoute ?? 'error', error: message }); _calTraceEnd()
+    // QA recorder: log every failure (dev only)
+    if (isVoiceDebugEnabled()) {
+      appendQaRun(buildQaRunFromTrace(voiceTraceRef.current, null, APP_VERSION.version))
+    }
+  }
+  /** Log a QA run at pipeline-done (non-failure paths). */
+  function logQaRunIfEnabled(draft?: ReminderDraft | null) {
+    // Production diagnostic log (always)
+    const t = voiceTraceRef.current
+    _calTraceStart(); _calTraceSet({ rawTranscript: t.transcript ?? '', route: t.semanticRoute ?? 'unknown', calendarAction: t.saveAllowed ? 'create_draft' : 'none' }); _calTraceEnd()
+    // QA recorder (dev only)
+    if (isVoiceDebugEnabled()) {
+      appendQaRun(buildQaRunFromTrace(voiceTraceRef.current, draft ?? null, APP_VERSION.version))
+    }
+  }
 
   // ─── Alert state (persisted) ─────────────────────────────────────────────────
   const [alertMinutes, setAlertMinutes] = useState<number>(() => {
@@ -94,6 +172,17 @@ export function AbuCalendar() {
 
   // ─── Feature 1: Alert interval ───────────────────────────────────────────────
   useEffect(() => { injectSharedKeyframes() }, [])
+
+  // Register native notification tap handler — opens the reminder when
+  // user taps the lock-screen notification. No-op on web.
+  useEffect(() => {
+    registerNotificationTapHandler((_reminderId) => {
+      // Navigate to calendar screen — the ReminderDueEngine will show
+      // the popup for any due reminders on next checkDue cycle (30s).
+      // Force an immediate check by triggering a state update.
+      setSelectedDay(new Date().toISOString().slice(0, 10))
+    })
+  }, [])
   // Reload appointments when year changes (birthdays are year-specific)
   useEffect(() => { setAppointments(loadAppointmentsWithFamily(year)) }, [year])
 
@@ -164,18 +253,63 @@ export function AbuCalendar() {
 
   function showToast() { setToast(true) }
 
+  // P0 — show a specific success message (title + date + time) or an
+  // honest failure message. Variant flips colour from gold → red.
+  function showSuccessToast(message: string) {
+    setToastMessage(message)
+    setToastVariant('success')
+    setToast(true)
+  }
+  function showFailureToast(message: string) {
+    setToastMessage(message)
+    setToastVariant('error')
+    setToast(true)
+  }
+
+  // P0 — language detection for confirmation/failure copy. Defaults to
+  // Hebrew (Martita's primary). Spanish/English detection is intentionally
+  // narrow: only fires when the input clearly looks ES/EN.
+  function detectConfirmationLang(text: string): 'he' | 'es' | 'en' {
+    const t = text.trim()
+    if (!t) return 'he'
+    if (/[֐-׿]/.test(t)) return 'he'
+    if (/[áéíóúñ¿¡]/i.test(t) || /\b(reuni[oó]n|m[eé]dico|ma[ñn]ana|hoy|a las)\b/i.test(t)) return 'es'
+    if (/\b(meeting|tomorrow|today|at \d)\b/i.test(t)) return 'en'
+    return 'he'
+  }
+
   function handleManualSave(appt: Omit<Appointment, 'id' | 'color'>) {
     if (editingAppt) {
+      // Editing path is unchanged: we already have a valid event id.
       updateAppointment(editingAppt.id, appt)
-    } else {
-      addAppointment(appt)
+      reload()
+      setShowManual(false)
+      setEditingAppt(null)
+      playChime()
+      soundSuccess()
+      showToast()
+      return
+    }
+    // P0 — single safe-create path. Validates, persists, round-trips.
+    const result = createAppointmentSafe(appt)
+    if (!result.ok) {
+      const lang = detectConfirmationLang(appt.title)
+      showFailureToast(formatCreateFailure(result.code, lang))
+      return
     }
     reload()
+    // P0.1 visibility fix — jump the calendar view to the new event's
+    // date so the user can see what was created.
+    setSelectedDay(result.appointment.date)
     setShowManual(false)
     setEditingAppt(null)
     playChime()
     soundSuccess()
-    showToast()
+    const lang = detectConfirmationLang(appt.title)
+    showSuccessToast(formatCreatedConfirmation(
+      { title: result.appointment.title, date: result.appointment.date, time: result.appointment.time },
+      lang,
+    ))
   }
 
   function handleDelete(appt: Appointment) {
@@ -192,215 +326,648 @@ export function AbuCalendar() {
     setUndoAppt(null)
   }
 
-  async function handleReparse(transcript: string) {
-    if (!transcript.trim()) {
-      setVoiceError('אין טקסט לנתח.')
-      setVoiceState('error')
-      return
-    }
-    setVoiceError(null)
-    setVoiceState('parsing')
-    try {
-      const parsed = await parseAppointmentText(transcript)
-      setRawTranscript(transcript)
-      if (parsed.ambiguousTime && parsed.time) {
-        setAmbiguousDraft({
-          title: parsed.title, date: parsed.date, time: parsed.time,
-          emoji: parsed.emoji, location: parsed.location, notes: parsed.notes,
-        })
-        setVoiceParsed(null)
-        setVoiceState('idle')
-        return
+  // ── Mic capture constants ─────────────────────────────────────────────
+  const MIN_RECORDING_MS = 1000   // don't send < 1s to Whisper
+  const MAX_RECORDING_MS = 22_000 // auto-stop after 22s
+  const SILENCE_AFTER_SPEECH_MS = 2500 // 2.5s silence after speech → auto-stop
+  const SILENCE_THRESHOLD = 25    // audio level threshold for speech detection
+  const SILENCE_MIN_ACTIVE_MS = 1500 // don't silence-stop before 1.5s
+
+  function cleanupRecordingRefs() {
+    if (silenceDetectorRef.current) { silenceDetectorRef.current.stop(); silenceDetectorRef.current = null }
+    if (maxDurationTimerRef.current) { clearTimeout(maxDurationTimerRef.current); maxDurationTimerRef.current = null }
+  }
+
+  function doStopRecorder(reason: 'manual' | 'silence_after_speech' | 'max_duration' | 'min_duration_delay') {
+    cleanupRecordingRefs()
+    updateTrace({ stopReason: reason, recorderStateAfterStop: mediaRecorderRef.current?.state ?? null }, `stop_reason:${reason}`)
+    const rec = mediaRecorderRef.current
+    if (rec && rec.state === 'recording') {
+      try {
+        rec.stop()
+      } catch (err) {
+        const m = err instanceof Error ? err.message : String(err)
+        setVoiceFailure('ההקלטה נכשלה. נסי שוב.', `recorder_stop_threw:${m}`)
+        setIsRecording(false)
       }
-      setVoiceParsed(parsed)
-      setVoiceState('parsed')
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      setVoiceError(`שגיאת ניתוח: ${msg}`)
-      setVoiceState('error')
     }
   }
 
-  async function handleVoiceRecord() {
+  async function handleVoiceRecord(opts?: { bypassGuard?: boolean }) {
+    // ── STOP path — user tapped the red button. ────────────────────
     if (isRecording) {
-      mediaRecorderRef.current?.stop()
+      updateTrace({
+        stopPressedAt: new Date().toISOString(),
+        recorderStateBeforeStop: mediaRecorderRef.current?.state ?? null,
+      }, 'stop_pressed')
+
+      // Min duration guard — if the user tapped stop too quickly, delay
+      // so Whisper gets at least MIN_RECORDING_MS of audio.
+      const elapsed = Date.now() - recordingStartTimeRef.current
+      if (elapsed < MIN_RECORDING_MS) {
+        setStage('stopping', 'עוד רגע, אני מקשיבה...', 'min_duration_wait')
+        const remaining = MIN_RECORDING_MS - elapsed
+        setTimeout(() => doStopRecorder('min_duration_delay'), remaining)
+        return
+      }
+
+      setStage('stopping')
+      const rec = mediaRecorderRef.current
+      if (!rec) {
+        cleanupRecordingRefs()
+        setVoiceFailure('לא מצאתי הקלטה פעילה. נסי שוב.', 'recorder_missing')
+        setIsRecording(false)
+        return
+      }
+      if (rec.state !== 'recording') {
+        cleanupRecordingRefs()
+        updateTrace({ recorderStateAfterStop: rec.state }, `recorder_state_not_recording:${rec.state}`)
+        setVoiceFailure('ההקלטה כבר נעצרה. נסי שוב.', 'recorder_not_recording')
+        setIsRecording(false)
+        return
+      }
+      doStopRecorder('manual')
       return
     }
-    if (voiceStatus) return
+    // ── START path — fresh recording session. ──────────────────────
+    const fresh = createInitialTrace(APP_VERSION.version)
+    voiceTraceRef.current = fresh
     setVoiceError(null)
+
+    // ── MIC STARTUP DIAGNOSTICS ────────────────────────────────────
+    // Log every step so iOS Safari failures are visible in trace + console.
+    const micDiag: string[] = []
+    const dlog = (s: string) => { micDiag.push(s); console.log(`[mic-diag] ${s}`) }
+    dlog(`secureContext: ${window.isSecureContext}`)
+    dlog(`protocol: ${location.protocol}`)
+    dlog(`host: ${location.host}`)
+    dlog(`mediaDevices: ${!!navigator.mediaDevices}`)
+    dlog(`getUserMedia: ${!!(navigator.mediaDevices?.getUserMedia)}`)
+    dlog(`MediaRecorder: ${typeof MediaRecorder !== 'undefined'}`)
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const reason = !window.isSecureContext
+        ? 'המיקרופון דורש HTTPS. פתח את הכתובת עם https:// או השתמש ב-localhost.'
+        : 'הדפדפן לא תומך בגישה למיקרופון.'
+      dlog(`BLOCKED: mediaDevices unavailable. secureContext=${window.isSecureContext}`)
+      updateTrace({ error: `mic_blocked: ${micDiag.join(' | ')}` }, 'mic_startup_blocked')
+      setVoiceFailure(`${reason}\n\n${micDiag.join('\n')}`, 'media_devices_unavailable')
+      return
+    }
+
+    if (typeof MediaRecorder === 'undefined') {
+      dlog('BLOCKED: MediaRecorder undefined')
+      setVoiceFailure(`הקלטה קולית לא נתמכת בדפדפן הזה.\n\n${micDiag.join('\n')}`, 'media_recorder_unsupported')
+      return
+    }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // ── getUserMedia with fallback chain ──────────────────────────
+      let stream: MediaStream
+      let constraintsFallback = false
+      dlog('getUserMedia(constraints) starting...')
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        })
+        dlog(`getUserMedia(constraints) OK, tracks=${stream.getTracks().length}`)
+      } catch (constraintErr) {
+        const cName = constraintErr instanceof Error ? constraintErr.name : 'unknown'
+        const cMsg = constraintErr instanceof Error ? constraintErr.message : String(constraintErr)
+        dlog(`getUserMedia(constraints) FAIL: ${cName}: ${cMsg}`)
+        constraintsFallback = true
+        dlog('getUserMedia(bare) starting...')
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          dlog(`getUserMedia(bare) OK, tracks=${stream.getTracks().length}`)
+        } catch (bareErr) {
+          const name = bareErr instanceof Error ? bareErr.name : 'unknown'
+          const message = bareErr instanceof Error ? bareErr.message : String(bareErr)
+          const stack = bareErr instanceof Error ? bareErr.stack?.slice(0, 200) : ''
+          dlog(`getUserMedia(bare) FAIL: ${name}: ${message}`)
+          dlog(`stack: ${stack}`)
+          updateTrace({ error: `getUserMedia_failed: ${name}: ${message}\n${micDiag.join('\n')}` }, `getusermedia_failed:${name}`)
+          const friendly = mediateVoiceCaptureError(bareErr, 'permission_or_device')
+          setVoiceFailure(`${friendly}\n(${name}: ${message})\n\n${micDiag.join('\n')}`, `getusermedia_failed:${name}:${message.slice(0, 40)}`)
+          return
+        }
+      }
+
       const mimeType = getSupportedMimeType()
-      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      dlog(`mimeType: ${mimeType || '(default)'}`)
+      const startedAt = new Date().toISOString()
+      recordingStartTimeRef.current = Date.now()
+      updateTrace({
+        mimeType: mimeType || '(default)',
+        startedAt,
+        ...(constraintsFallback ? { error: 'constraints_fallback:bare_audio' } : {}),
+      }, `recording_started mime:${mimeType || 'default'}${constraintsFallback ? ' FALLBACK:bare' : ''}`)
+
+      // ── MediaRecorder creation with fallback ─────────────────────
+      let mr: MediaRecorder
+      dlog(`MediaRecorder(stream, {mimeType: ${mimeType}}) creating...`)
+      try {
+        mr = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream)
+        dlog(`MediaRecorder created OK, state=${mr.state}, mimeType=${mr.mimeType}`)
+      } catch (mrErr) {
+        const n = mrErr instanceof Error ? mrErr.name : 'unknown'
+        dlog(`MediaRecorder(mimeType) FAIL: ${n}: ${mrErr instanceof Error ? mrErr.message : mrErr}`)
+        try {
+          mr = new MediaRecorder(stream)
+          dlog(`MediaRecorder(bare) OK, state=${mr.state}`)
+        } catch (mrErr2) {
+          stream.getTracks().forEach(t => t.stop())
+          const name = mrErr2 instanceof Error ? mrErr2.name : 'unknown'
+          const message = mrErr2 instanceof Error ? mrErr2.message : String(mrErr2)
+          dlog(`MediaRecorder(bare) FAIL: ${name}: ${message}`)
+          setVoiceFailure(`לא הצלחתי להתחיל הקלטה.\n(${name}: ${message.slice(0, 50)})\n\n${micDiag.join('\n')}`, `mediarecorder_failed:${name}`)
+          return
+        }
+      }
       mediaRecorderRef.current = mr
       chunksRef.current = []
       mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-      mr.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop())
-        setIsRecording(false)
-        setVoiceState('transcribing')
-        const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
-        if (blob.size < 1000) {
-          setVoiceError('ההקלטה קצרה מדי. נסי שוב.')
-          setVoiceState('error')
-          setVoiceStatus('')
-          return
-        }
-        setVoiceStatus('מעבדת...')
-        try {
-          const transcribed = await transcribeAudio(blob)
-          if (!transcribed || !transcribed.trim()) {
-            setVoiceError('לא שמעתי כלום')
-            setVoiceState('error')
-            setVoiceStatus('')
-            return
-          }
-          if (!correctingRef.current) setRawTranscript(transcribed)
-          setVoiceState('parsing')
 
-          if (correctingRef.current && voiceParsed) {
-            const todayISO = getTodayStr()
-            const result = parseCorrection(transcribed, {
-              title: voiceParsed.title,
-              date: voiceParsed.date,
-              time: voiceParsed.time,
-              emoji: voiceParsed.emoji,
-              location: voiceParsed.location ?? null,
-              notes: voiceParsed.notes ?? null,
-            }, todayISO)
-            correctingRef.current = false
-            setIsCorrecting(false)
-            setVoiceStatus('')
-            if (result.kind === 'cancel') {
-              speak(CANCEL_RESPONSE).catch(() => {})
-              setCorrectionAck(null)
-              setVoiceParsed(null)
-              return
-            }
-            if (result.kind === 'confirm') {
-              if (voiceParsed.title && voiceParsed.date && voiceParsed.time) {
-                handleVoiceConfirm({
-                  title: voiceParsed.title,
-                  date: voiceParsed.date,
-                  time: voiceParsed.time,
-                  emoji: voiceParsed.emoji,
-                  ...(voiceParsed.location ? { location: voiceParsed.location } : {}),
-                  ...(voiceParsed.notes ? { notes: voiceParsed.notes } : {}),
-                })
-              }
-              return
-            }
-            if (result.kind === 'clarify') {
-              const q = pickClarifyQuestion({
-                title: voiceParsed.title,
-                date: voiceParsed.date,
-                time: voiceParsed.time,
-                location: voiceParsed.location ?? null,
-              })
-              speak(q).catch(() => {})
-              setVoiceStatus(q)
-              setTimeout(() => setVoiceStatus(''), 4500)
-              return
-            }
-            if (result.kind === 'unrelated') {
-              speak(UNRELATED_RESPONSE).catch(() => {})
-              setVoiceStatus(UNRELATED_RESPONSE)
-              setTimeout(() => setVoiceStatus(''), 3500)
-              return
-            }
-            const ack = pickUpdateAck({ avoid: lastAckRef.current })
-            lastAckRef.current = ack
-            setCorrectionAck(ack)
-            const merged = applyCorrection({
-              title: voiceParsed.title,
-              date: voiceParsed.date,
-              time: voiceParsed.time,
-              emoji: voiceParsed.emoji,
-              location: voiceParsed.location ?? null,
-              notes: voiceParsed.notes ?? null,
-            }, result.updates)
-            setVoiceParsed({
-              ...merged,
-              location: merged.location ?? null,
-              notes: merged.notes ?? null,
-            })
+      // Max duration auto-stop (22s) — prevents runaway recordings.
+      maxDurationTimerRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current?.state === 'recording') {
+          setStage('stopping', 'הבנתי, בודקת...', 'max_duration_stop')
+          doStopRecorder('max_duration')
+        }
+      }, MAX_RECORDING_MS)
+
+      // Silence detection
+      dlog('createSilenceDetector starting...')
+      try {
+        silenceDetectorRef.current = createSilenceDetector(stream, () => {
+          if (mediaRecorderRef.current?.state === 'recording') {
+            setStage('stopping', 'הבנתי, בודקת...', 'silence_stop')
+            doStopRecorder('silence_after_speech')
+          }
+        }, {
+          threshold: SILENCE_THRESHOLD,
+          silenceMs: SILENCE_AFTER_SPEECH_MS,
+          maxMs: MAX_RECORDING_MS,
+          minActiveMs: SILENCE_MIN_ACTIVE_MS,
+        })
+        dlog('silenceDetector OK')
+      } catch (sdErr) {
+        dlog(`silenceDetector FAIL: ${sdErr instanceof Error ? sdErr.name : sdErr}`)
+      }
+
+      mr.onstop = async () => {
+        try {
+          cleanupRecordingRefs()
+          updateTrace({ onstopFired: true }, 'onstop_fired')
+          stream.getTracks().forEach(t => t.stop())
+          setIsRecording(false)
+          setStage('processing')
+          setVoiceState('transcribing')
+          const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
+          const audioDurationMs = voiceTraceRef.current.startedAt
+            ? Date.now() - new Date(voiceTraceRef.current.startedAt).getTime()
+            : null
+          updateTrace({ chunksCount: chunksRef.current.length, blobSize: blob.size, audioDurationMs }, `blob_created chunks:${chunksRef.current.length} size:${blob.size} dur:${audioDurationMs ?? '?'}ms`)
+          if (chunksRef.current.length === 0 || blob.size === 0) {
+            updateTrace({ stopReason: 'no_audio' }, 'no_audio_captured')
+            setVoiceFailure('לא נקלט שמע בהקלטה. נסי שוב קרוב יותר למיקרופון.', 'no_audio_captured')
             return
           }
+          if (blob.size < 1000) {
+            setVoiceFailure('ההקלטה קצרה מדי. נסי שוב.', `blob_too_small:${blob.size}`)
+            return
+          }
+        try {
+          // P0.6 — visible "transcribing" stage + watchdog. P0.7 —
+          // quality-first Hebrew Whisper (large-v3 + verbose_json +
+          // domain prompt) with fallback to turbo, and a deterministic
+          // domain-correction pass before the parser.
+          setStage('transcribing')
+          updateTrace({ transcribeStarted: new Date().toISOString() }, 'transcribe_started')
+          const WATCHDOG_MS = 20_000
+          let watchdog: ReturnType<typeof setTimeout> | null = null
+          const asr = await Promise.race<Awaited<ReturnType<typeof transcribeCalendarAudio>>>([
+            transcribeCalendarAudio(blob, { languageHint: 'he' }),
+            new Promise<Awaited<ReturnType<typeof transcribeCalendarAudio>>>((_, reject) => {
+              watchdog = setTimeout(() => reject(new Error('transcribe_timeout')), WATCHDOG_MS)
+            }),
+          ]).finally(() => { if (watchdog) clearTimeout(watchdog) })
+          const rawTranscript = asr.text
+          // P0.7 — deterministic domain correction for known family
+          // names + Israeli places. Conservative: only replace tokens
+          // that appear in the curated rule set.
+          const norm = normalizeCalendarTranscript(rawTranscript)
+          const transcribed = norm.corrected
+          updateTrace({
+            transcribeFinished: new Date().toISOString(),
+            transcript: transcribed,
+            transcriptLength: transcribed.length,
+            rawTranscript: norm.rawText,
+            correctedTranscript: transcribed,
+            asrModel: asr.model,
+            asrFallbackUsed: asr.asrFallbackUsed,
+            languageHint: asr.languageHint,
+            avgLogprob: asr.avgLogprob ?? null,
+            noSpeechProb: asr.noSpeechProb ?? null,
+            compressionRatio: asr.compressionRatio ?? null,
+            correctionsApplied: norm.correctionsApplied,
+            sttStatus: transcribed.trim() ? 'ok' : 'empty',
+          }, `transcript_received model:${asr.model} corrections:${norm.correctionsApplied.length}`)
+          if (!transcribed || !transcribed.trim()) {
+            setVoiceFailure('לא הצלחתי להבין את ההקלטה. ננסה שוב?', 'transcript_empty')
+            return
+          }
+          setVoiceState('parsing')
 
           // Check if this is a schedule query ("מה קורה לי?")
           const { isScheduleQuery: isQuery } = await import('./intentParser')
           if (isQuery(transcribed)) {
-            setVoiceStatus('')
             setAbuTimeOpen(true)
             return
           }
-          setVoiceStatus('מנתחת...')
-          const parsed = await parseAppointmentText(transcribed)
-          if (parsed.confidence < 0.5) {
-            setVoiceStatus('לא הבנתי בדיוק. נסי להגיד יום, שעה ומה האירוע.')
-            setTimeout(() => setVoiceStatus(''), 4000)
+          // Check if this is a reminder intent ("תזכירי לי...")
+          const todayISO = getTodayStr()
+          const { detectReminderIntent, parseReminder: parseRem } = await import('./reminders')
+          if (detectReminderIntent(transcribed) === 'reminder') {
+            setStage('idle', 'מחכה לאישור תזכורת.', 'reminder_detected')
+            setVoiceState('idle')
+            const draft = parseRem(transcribed, todayISO)
+            const fr = draft.familyResolution
+            const reminderSaveAllowed =
+              !draft.ambiguity
+              && !draft.missingFields.includes('title')
+              && !!draft.dueAt
+              && fr?.status !== 'ambiguous'
+            const reminderBlockReason =
+              draft.ambiguity ? 'ambiguity unresolved'
+              : draft.missingFields.includes('title') ? 'missing title'
+              : !draft.dueAt ? 'missing dueAt'
+              : fr?.status === 'ambiguous' ? 'family ambiguous'
+              : null
+            updateTrace({
+              parseDecision: 'reminder',
+              semanticIntent: 'reminder',
+              semanticRoute: 'reminder_create',
+              ...(draft.title ? { extractedTitle: draft.title, finalTitle: draft.title } : {}),
+              ...(draft.displayDateLabel ? { extractedDate: draft.displayDateLabel } : {}),
+              ...(draft.displayTimeLabel ? { extractedStartTime: draft.displayTimeLabel } : {}),
+              ...(fr?.originalPhrase ? { relationPhrase: fr.originalPhrase } : {}),
+              ...(fr?.status ? { resolvedPersonStatus: fr.status } : {}),
+              ...(fr?.resolvedName ? { resolvedPersonName: fr.resolvedName } : {}),
+              saveAllowed: reminderSaveAllowed,
+              saveBlockReason: reminderBlockReason,
+            }, 'reminder_parsed')
+            logQaRunIfEnabled(draft)
+            setReminderDraft(draft)
+            setReminderFlowActive(true)
             return
           }
-          if (parsed.ambiguousTime && parsed.time) {
-            setVoiceStatus('')
-            setAmbiguousDraft({
-              title: parsed.title,
-              date: parsed.date,
-              time: parsed.time,
-              emoji: parsed.emoji,
-              location: parsed.location,
-              notes: parsed.notes,
-            })
-            return
+          // P0.1 — Route the final transcript through processVoiceTranscript.
+          // This returns one of six explicit actions so the UI never
+          // silently drops. Auto-creation is gated on a real create-verb
+          // ("תקבעי / תוסיפי / agregá / agendá / add / schedule") AND a
+          // complete, unambiguous intent — same safety as the typed path.
+          setStage('parsing')
+          const decision = processVoiceTranscript(transcribed, todayISO, { rawTranscript: norm.rawText, asr: { avgLogprob: asr.avgLogprob ?? null, noSpeechProb: asr.noSpeechProb ?? null, compressionRatio: asr.compressionRatio ?? null } })
+
+          // Canonical semantic route — never a UI action.
+          // Every appointment-pipeline action implies "the user is trying to
+          // create a calendar event"; failures map to `unknown`.
+          const semanticRoute: 'appointment_create' | 'unknown' =
+            decision.action === 'not_calendar'
+            || decision.action === 'low_confidence'
+            || decision.action === 'failed_to_understand'
+              ? 'unknown'
+              : 'appointment_create'
+
+          // Resolve the relation phrase + family lookup so the trace can
+          // show what the card will show.
+          let relationPhrase: string | null = null
+          let resolvedPersonStatus: 'resolved' | 'ambiguous' | 'missing' | 'none' | null = null
+          let resolvedPersonName: string | null = null
+          let finalTitle: string | null = null
+          let traceSaveAllowed = false
+          let traceSaveBlockReason: string | null = null
+          if ('draft' in decision) {
+            finalTitle = decision.draft.title || null
+            relationPhrase = decision.draft.personPhrase ?? extractPersonPhrase(transcribed)
+            if (relationPhrase) {
+              const r = resolvePersonPhrase(relationPhrase)
+              resolvedPersonStatus = r.status
+              if (r.status === 'resolved') resolvedPersonName = r.name
+            }
           }
-          setVoiceParsed(parsed)
-          setVoiceState('parsed')
+          if (decision.action === 'auto_created') {
+            finalTitle = decision.appointment.title
+            traceSaveAllowed = true
+          } else if (decision.action === 'show_confirm_card') {
+            // Save reachable as soon as the user taps כן, לשמור — unless
+            // the family is ambiguous (chips block primary save).
+            traceSaveAllowed = resolvedPersonStatus !== 'ambiguous'
+            traceSaveBlockReason = resolvedPersonStatus === 'ambiguous' ? 'family ambiguous' : null
+          } else if (decision.action === 'needs_am_pm') {
+            traceSaveBlockReason = 'ambiguous time (AM/PM)'
+          } else if (decision.action === 'needs_clarification') {
+            traceSaveBlockReason = `missing: ${decision.missing.join(',')}`
+          } else if (decision.action === 'not_calendar') {
+            traceSaveBlockReason = 'not_calendar'
+          } else if (decision.action === 'low_confidence') {
+            traceSaveBlockReason = 'low_confidence'
+          } else if (decision.action === 'failed_to_understand') {
+            traceSaveBlockReason = 'failed_to_understand'
+          } else if (decision.action === 'failed_to_save') {
+            traceSaveBlockReason = `failed_to_save:${decision.reason}`
+          }
+
+          updateTrace({
+            parseDecision: decision.action,
+            semanticRoute,
+            finalTitle,
+            relationPhrase,
+            resolvedPersonStatus,
+            resolvedPersonName,
+            saveAllowed: traceSaveAllowed,
+            saveBlockReason: traceSaveBlockReason,
+            ...(('semantic' in decision && decision.semantic) ? {
+              semanticIntent: decision.semantic.intent,
+              semanticSource: decision.semantic.semanticSource,
+              extractionConfidence: decision.semantic.extractionConfidence,
+              extractedTitle: decision.semantic.extractedTitle,
+              extractedDate: decision.semantic.extractedDate,
+              extractedStartTime: decision.semantic.extractedStartTime,
+              extractedEndTime: decision.semantic.extractedEndTime,
+              extractedLocation: decision.semantic.extractedLocation,
+              extractedPeople: decision.semantic.extractedPeople,
+              extractedNotes: decision.semantic.extractedNotes,
+              missingFields: decision.semantic.missingFields,
+              clarificationQuestion: decision.semantic.clarificationQuestion,
+              llmFallbackUsed: decision.semantic.llmFallbackUsed,
+              validationResult: decision.semantic.validationResult,
+              semanticRawInput: decision.semantic.semanticRawInput,
+              semanticCorrectedInput: decision.semantic.semanticCorrectedInput,
+            } : {}),
+          }, `parse_decision:${decision.action}`)
+          switch (decision.action) {
+            case 'auto_created': {
+              setStage('creating', undefined, 'create_started')
+              reload()
+              // Jump the calendar view to the new event's date so the
+              // user can immediately see it.
+              setSelectedDay(decision.appointment.date)
+              setVoiceParsed(null)
+              setVoiceError(null)
+              setVoiceState('idle')
+              playChime()
+              soundSuccess()
+              const lang = detectConfirmationLang(decision.appointment.title)
+              const successMsg = formatCreatedConfirmation({
+                title: decision.appointment.title,
+                date: decision.appointment.date,
+                time: decision.appointment.time,
+              }, lang)
+              showSuccessToast(successMsg)
+              updateTrace({ createResult: `ok:${decision.appointment.id}` }, 'create_finished')
+              logQaRunIfEnabled()
+              setStage('success', successMsg)
+              return
+            }
+            case 'needs_am_pm': {
+              updateTrace({}, 'needs_am_pm')
+              setStage('idle', 'מחכה לאישור בוקר או צהריים.', 'awaiting_am_pm')
+              logQaRunIfEnabled()
+              setAmbiguousDraft({
+                title: decision.draft.title,
+                date: decision.draft.date,
+                time: decision.draft.time!,
+                emoji: decision.draft.emoji,
+                location: decision.draft.location,
+                notes: decision.draft.notes,
+              })
+              return
+            }
+            case 'needs_clarification': {
+              // Show the VoiceCard with whatever was parsed AND a visible
+              // clarification question. The user can fix the missing
+              // field inline; no silent timeout-dismiss.
+              updateTrace({}, `needs_clarification:${decision.missing.join('|')}`)
+              {
+                const res = resolveDraftPerson(decision.draft)
+                setVoiceParsed({
+                  title: res.title,
+                  date: decision.draft.date,
+                  time: decision.draft.time,
+                  emoji: decision.draft.emoji,
+                  location: decision.draft.location ?? null,
+                  notes: decision.draft.notes ?? null,
+                  personName: res.personName,
+                  ...(res.relation ? { relation: res.relation } : {}),
+                })
+              }
+              setVoiceState('parsed')
+              setStage('idle', decision.question, 'showing_clarification_question')
+              logQaRunIfEnabled()
+              return
+            }
+            case 'show_confirm_card': {
+              // Passive utterance — complete but no explicit create-verb.
+              // Show the VoiceCard so the user explicitly confirms.
+              updateTrace({}, 'show_confirm_card')
+              {
+                const res = resolveDraftPerson(decision.draft)
+                setVoiceParsed({
+                  title: res.title,
+                  date: decision.draft.date,
+                  time: decision.draft.time,
+                  emoji: decision.draft.emoji,
+                  location: decision.draft.location ?? null,
+                  notes: decision.draft.notes ?? null,
+                  personName: res.personName,
+                  ...(res.relation ? { relation: res.relation } : {}),
+                })
+              }
+              setVoiceState('parsed')
+              setStage('idle', 'מחכה לאישור שלך לפני שמירה.', 'awaiting_confirm_tap')
+              logQaRunIfEnabled()
+              return
+            }
+            case 'failed_to_save': {
+              const lang = detectConfirmationLang(decision.draft.title)
+              const failMsg = formatCreateFailure('storage_failed', lang)
+              showFailureToast(failMsg)
+              setVoiceFailure(failMsg, `create_failed:${decision.reason}`)
+              setVoiceParsed({
+                title: decision.draft.title,
+                date: decision.draft.date,
+                time: decision.draft.time,
+                emoji: decision.draft.emoji,
+                location: decision.draft.location ?? null,
+                notes: decision.draft.notes ?? null,
+              })
+              return
+            }
+            case 'not_calendar': {
+              setVoiceFailure('לא זיהיתי משהו לקבוע ביומן.', 'not_calendar')
+              return
+            }
+            case 'low_confidence': {
+              setVoiceFailure('לא שמעתי מספיק ברור. תוכלי להגיד שוב?', 'low_confidence')
+              return
+            }
+            case 'failed_to_understand': {
+              const failMsg = 'לא הצלחתי להבין את ההקלטה. ננסה שוב?'
+              setVoiceFailure(failMsg, 'failed_to_understand')
+              setVoiceParsed({
+                title: '', date: null, time: null, emoji: '📌',
+              })
+              return
+            }
+          }
         } catch (e) {
-          correctingRef.current = false
-          setIsCorrecting(false)
-          const msg = e instanceof Error ? e.message : 'לא הצלחתי להבין. נסי שוב לאט יותר'
-          setVoiceError(msg)
-          setVoiceState('error')
-          setVoiceStatus('')
+          // P0.5/6 — translate known transcription failures into the
+          // honest user-facing copy from platformHealth.userFacingError,
+          // so the user always sees WHY the recording didn't work.
+          const raw = e instanceof Error ? e.message : ''
+          let friendly: string
+          let step: string
+          if (raw === 'transcribe_timeout' || raw.includes('transcribe_timeout')) {
+            friendly = 'התמלול לוקח יותר מדי זמן. נסי שוב.'
+            step = 'transcribe_timeout'
+            updateTrace({ sttStatus: 'timeout' }, step)
+          } else if (raw.includes('מפתח API לתמלול לא הוגדר')) {
+            friendly = userFacingError('voice_transcribe_key_missing', 'he')
+            step = 'transcribe_key_missing'
+          } else if (raw.includes('מפתח API לא תקין')
+                  || raw.includes('יותר מדי בקשות')
+                  || /transcrib/i.test(raw)) {
+            friendly = mediateVoiceCaptureError(e, 'transcription')
+            step = `transcribe_failed:${raw.slice(0, 40)}`
+            updateTrace({ sttStatus: 'error' }, step)
+          } else if (raw) {
+            friendly = mediateVoiceCaptureError(e, 'transcription')
+            step = `caught_error:${raw.slice(0, 40)}`
+            updateTrace({ sttStatus: 'error' }, step)
+          } else {
+            friendly = mediateVoiceCaptureError(e, 'transcription')
+            step = 'caught_unknown_error'
+            updateTrace({ sttStatus: 'error' }, step)
+          }
+          setVoiceFailure(friendly, step)
+        }
+        } catch (outerErr) {
+          // Defense in depth: if anything inside onstop throws (e.g. a
+          // bug in trace push), still surface a visible failure rather
+          // than fall through to a silent UI.
+          const m = outerErr instanceof Error ? outerErr.message : String(outerErr)
+          setVoiceFailure('משהו השתבש בעיבוד ההקלטה. נסי שוב.', `onstop_threw:${m.slice(0, 50)}`)
         }
       }
-      mr.start()
+      // Start recording — try timeslice first, fall back to no-timeslice
+      dlog('mr.start(250) starting...')
+      try {
+        mr.start(250)
+        dlog('mr.start(250) OK')
+      } catch (ts250Err) {
+        dlog(`mr.start(250) FAIL: ${ts250Err instanceof Error ? ts250Err.name : ts250Err}`)
+        try {
+          mr.start()
+          dlog('mr.start() OK (no timeslice)')
+        } catch (startErr) {
+          stream.getTracks().forEach(t => t.stop())
+          cleanupRecordingRefs()
+          const name = startErr instanceof Error ? startErr.name : 'unknown'
+          const message = startErr instanceof Error ? startErr.message : String(startErr)
+          dlog(`mr.start() FAIL: ${name}: ${message}`)
+          setVoiceFailure(`לא הצלחתי להתחיל הקלטה.\n(${name}: ${message.slice(0, 50)})\n\n${micDiag.join('\n')}`, `recorder_start_failed:${name}`)
+          return
+        }
+      }
+      dlog('RECORDING STARTED SUCCESSFULLY')
       setIsRecording(true)
       setVoiceState('recording')
-      setVoiceStatus('מקשיבה... (לחצי שוב לסיום)')
+      setStage('recording', 'אני מקשיבה...')
     } catch (err) {
-      const msg = err instanceof DOMException && err.name === 'NotAllowedError'
-        ? 'צריך לאשר גישה למיקרופון'
-        : err instanceof DOMException && err.name === 'NotFoundError'
-        ? 'לא נמצא מיקרופון'
-        : err instanceof Error
-        ? `מיקרופון לא זמין: ${err.message}`
-        : 'מיקרופון לא זמין — נסי ב-HTTPS'
-      setVoiceError(msg)
-      setVoiceState('error')
-      setVoiceStatus('')
+      const name = err instanceof Error ? err.name : 'unknown'
+      const message = err instanceof Error ? err.message : String(err)
+      const stack = err instanceof Error ? err.stack?.slice(0, 300) : ''
+      dlog(`OUTER CATCH: ${name}: ${message}`)
+      dlog(`stack: ${stack}`)
+      const msg = mediateVoiceCaptureError(err, 'permission_or_device')
+      setVoiceFailure(`${msg}\n(${name}: ${message})\n\n${micDiag.join('\n')}`, `outer_catch:${name}:${message.slice(0, 40)}`)
     }
   }
 
   function handleVoiceConfirm(final: { title: string; date: string; time: string; emoji: string; location?: string; notes?: string }) {
-    addAppointment(final)
+    const cleanTitle = sanitizeTitleForSave(final.title, undefined)
+    const result = createAppointmentSafe({ ...final, title: cleanTitle })
+    if (!result.ok) {
+      const lang = detectConfirmationLang(final.title)
+      showFailureToast(formatCreateFailure(result.code, lang))
+      return
+    }
     reload()
+    setSelectedDay(result.appointment.date)
     setVoiceParsed(null)
-    setVoiceStatus('')
     setVoiceError(null)
     setVoiceState('idle')
-    setCorrectionAck(null)
-    lastAckRef.current = null
     playChime()
     soundSuccess()
-    showToast()
+    setSavedConfirmation({
+      title: result.appointment.title,
+      date: result.appointment.date,
+      time: result.appointment.time,
+    })
   }
 
-  function startCorrection() {
-    if (isRecording) return
-    correctingRef.current = true
-    setIsCorrecting(true)
-    void handleVoiceRecord()
+  function handleVoiceCancel() {
+    updateTrace({ semanticRoute: 'cancel' }, 'user_cancel')
+    setVoiceParsed(null)
+    setVoiceError(null)
+    setVoiceState('idle')
+    setAmbiguousDraft(null)
+  }
+
+  function handleVoiceManualAdd() {
+    handleVoiceCancel()
+    soundOpen()
+    setEditingAppt(null)
+    setShowManual(true)
+  }
+
+  function handleVoiceRetry() {
+    setVoiceParsed(null)
+    setVoiceError(null)
+    setVoiceState('idle')
+    void handleVoiceRecord({ bypassGuard: true })
+  }
+
+  function handleReminderConfirm(draft: ReminderDraft) {
+    // Request native notification permission (no-op on web, one-time prompt on native)
+    void requestNativeNotificationPermission()
+    const { saved } = createReminder({
+      category: draft.category,
+      title: draft.title ?? '',
+      dueAt: draft.dueAt ?? (() => { const d = new Date(); const p = (n: number) => String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00` })(),
+      displayDateLabel: draft.displayDateLabel ?? '',
+      displayTimeLabel: draft.displayTimeLabel ?? '',
+      ...(draft.recurrence ? { recurrence: draft.recurrence } : {}),
+      alertPolicy: { ...createDefaultAlertPolicy(), ...draft.alertPolicyDraft },
+    })
+    setReminderDraft(null)
+    setReminderFlowActive(false)
+    if (saved) {
+      soundSuccess()
+      showSuccessToast(`תזכורת נשמרה: ${draft.title ?? ''}`)
+    } else {
+      soundAlert()
+      showFailureToast('לא הצלחתי לשמור את התזכורת. נסי שוב.')
+    }
+  }
+
+  function handleReminderCancel() {
+    updateTrace({ semanticRoute: 'cancel' }, 'user_cancel_reminder')
+    setReminderDraft(null)
+    setReminderFlowActive(false)
   }
 
   function resolveAmbiguity(period: 'pm' | 'am') {
@@ -432,16 +999,69 @@ export function AbuCalendar() {
 
   const hebrewMonthLabel = formatHebrewMonth(year, month)
 
+  // Next-thing glance (primary view): next upcoming event + today's count,
+  // computed from the current year's merged set so it stays correct while the
+  // user navigates other months.
+  const glanceSource = useMemo(() => loadAppointmentsWithFamily(todayDate.getFullYear()), [appointments]) // eslint-disable-line react-hooks/exhaustive-deps
+  const nextEvent = useMemo(() => (
+    glanceSource
+      .filter(a => a.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0] ?? null
+  ), [glanceSource, today])
+  const todayCount = useMemo(() => glanceSource.filter(a => a.date === today).length, [glanceSource, today])
+
   return (
     <PageShell scrollable>
 
-      {/* ALERT BANNERS — max 2 stacked */}
+      <ScreenHeader
+        title="Abu יומן"
+        left={<BackButton onPress={() => setScreen(Screen.Home)} />}
+        right={<>
+
+        {/* Left side: Martita photo with hearts + 3-dot settings */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{ position: 'relative' }}>
+            <img
+              src={martitaPhoto}
+              alt="Martita"
+              onError={handleMartitaImgError}
+              style={{
+                width: 52, height: 52, borderRadius: '50%', objectFit: 'cover',
+                boxShadow: '0 0 0 2px rgba(201,168,76,0.50), 0 2px 14px rgba(0,0,0,0.45)',
+              }}
+            />
+          </div>
+          <InfoButton
+            title="מדריך היומן"
+            lines={[
+              '▪ ריבוע זהב = אירוע (תור, פגישה)',
+              '● עיגול ורוד מלא = יום הולדת משפחתי',
+              '◯ עיגול ריק = יום זיכרון',
+              '🔢 מספר ליד הסימן = כמה אירועים יש ביום',
+              '🩶 סימן אפור = אירוע שעבר',
+              '⬜ מסגרת זהב חזקה = היום',
+              '⬜ מסגרת זהב עדינה = יום שנבחר',
+              '🔔 התראה קולית לפני כל אירוע',
+            ]}
+            howTo={[
+              'לחצי על יום לראות את האירועים שלו',
+              'לחצי על המיקרופון ותגידי מה להוסיף',
+              'לחצי ＋ להוסיף אירוע בכתב',
+              'לחצי על אירוע כדי לערוך אותו',
+              'לחצי × כדי למחוק (4 שניות לביטול)',
+            ]}
+            positionStyle={{ top: 80, left: 14 }}
+          />
+        </div>
+        </>}
+      />
+
+      {/* ALERT BANNERS — reflowing top inset (in-flow; never paints over chrome) */}
       {activeAlerts.length > 0 && (
-        <div style={{ position: 'fixed', top: 72, left: 0, right: 0, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {activeAlerts.map(alert => (
             <div key={alert.id} style={{
               background: 'rgba(12,10,8,0.97)',
-              backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
               borderBottom: '2px solid rgba(201,168,76,0.60)',
               padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
               animation: 'alertSlideIn 0.3s ease-out both',
@@ -469,49 +1089,6 @@ export function AbuCalendar() {
         </div>
       )}
 
-      <ScreenHeader
-        title="Abu יומן"
-        left={<BackButton onPress={() => setScreen(Screen.Home)} />}
-        right={<>
-
-        {/* Left side: Martita photo with hearts + 3-dot settings */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <div style={{ position: 'relative' }}>
-            <img
-              src={martitaPhoto}
-              alt="Martita"
-              onError={handleMartitaImgError}
-              style={{
-                width: 52, height: 52, borderRadius: '50%', objectFit: 'cover',
-                boxShadow: '0 0 0 2px rgba(201,168,76,0.50), 0 2px 14px rgba(0,0,0,0.45)',
-              }}
-            />
-          </div>
-          <InfoButton
-            title="מדריך היומן"
-            lines={[
-              '🟡 נקודה זהב = אירוע (תור, פגישה)',
-              '🩶 נקודה אפורה = אירוע שעבר',
-              '🩷 נקודה ורודה = יום הולדת משפחתי',
-              '⬜ מסגרת זהב חזקה = היום',
-              '⬜ מסגרת זהב עדינה = יום שנבחר',
-              '◾ תאים עמומים = ימים שעברו',
-              '🩵 פס טורקיז = אירוע עכשיו (ברשימת האירועים)',
-              '🔔 התראה קולית לפני כל אירוע',
-            ]}
-            howTo={[
-              'לחצי על יום לראות את האירועים שלו',
-              'לחצי על המיקרופון ותגידי מה להוסיף',
-              'לחצי ＋ להוסיף אירוע בכתב',
-              'לחצי על אירוע כדי לערוך אותו',
-              'לחצי × כדי למחוק (4 שניות לביטול)',
-            ]}
-            positionStyle={{ top: 80, left: 14 }}
-          />
-        </div>
-        </>}
-      />
-
       {/* Alert time selector — inline, minimal */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -520,7 +1097,7 @@ export function AbuCalendar() {
         <span style={{ fontSize: 13, color: 'rgba(201,168,76,0.55)', fontFamily: "'Heebo',sans-serif" }}>🔔</span>
         <select
           value={alertMinutes}
-          onChange={e => { const v = parseInt(e.target.value, 10); setAlertMinutes(v); localStorage.setItem('abubank-alert-minutes', String(v)) }}
+          onChange={e => { const v = parseInt(e.target.value, 10); setAlertMinutes(v); try { localStorage.setItem('abubank-alert-minutes', String(v)) } catch { /* quota */ } }}
           style={{
             background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.18)',
             borderRadius: 8, color: GOLD, fontSize: 13, fontWeight: 600,
@@ -535,8 +1112,37 @@ export function AbuCalendar() {
         </select>
       </div>
 
-      {/* ABU TIME — "מה קורה לי?" (includes birthday info via "הדבר הבא") */}
-      <AbuTime appointments={appointments} today={today} forceOpen={abuTimeOpen} onToggle={setAbuTimeOpen} />
+      {/* NEXT-THING GLANCE — single next event + today's count. Primary view
+          carries no list; tapping jumps to that day and opens the sheet. */}
+      <button
+        type="button"
+        onClick={() => { if (nextEvent) { const [y, m] = nextEvent.date.split('-').map(Number); setYear(y!); setMonth(m!); setSelectedDay(nextEvent.date); setSheetOpen(true) } }}
+        aria-label={nextEvent ? `הדבר הבא: ${nextEvent.title}${todayCount > 0 ? `, ${todayCount} אירועים היום` : ''}` : 'אין אירועים קרובים'}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+          width: 'calc(100% - 32px)', margin: '2px auto 0', padding: '10px 14px',
+          borderRadius: 14, background: 'rgba(201,168,76,0.06)',
+          border: '1px solid rgba(201,168,76,0.16)', textAlign: 'right',
+          cursor: nextEvent ? 'pointer' : 'default', fontFamily: "'Heebo',sans-serif",
+        }}
+      >
+        <span style={{ fontSize: 22, flexShrink: 0 }}>{nextEvent ? nextEvent.emoji : '🗓️'}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: TEXT_SECONDARY }}>הדבר הבא</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: CREAM, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {nextEvent
+              ? `${nextEvent.title} · ${nextEvent.date === today ? 'היום' : nextEvent.date.split('-').reverse().slice(0, 2).join('/')}`
+              : 'אין אירועים קרובים'}
+          </div>
+        </div>
+        {todayCount > 0 && (
+          <span style={{
+            fontSize: 13, fontWeight: 700, color: GOLD, flexShrink: 0,
+            background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.30)',
+            borderRadius: 10, padding: '3px 10px',
+          }}>היום: {todayCount}</span>
+        )}
+      </button>
 
       {/* MONTH NAVIGATOR */}
       <div style={{
@@ -619,7 +1225,7 @@ export function AbuCalendar() {
           {DAY_HEADERS.map((h, idx) => (
             <div key={h} style={{
               textAlign: 'center', fontSize: 16, fontWeight: 700,
-              color: idx === 6 ? 'rgba(201,168,76,0.90)' : idx === 5 ? 'rgba(201,168,76,0.60)' : 'rgba(245,240,232,0.50)',
+              color: idx === 6 ? GOLD : idx === 5 ? BRIGHT_GOLD : TEXT_SECONDARY,
               padding: '4px 0', fontFamily: "'Heebo',sans-serif",
               borderBottom: idx === 6 ? '1.5px solid rgba(201,168,76,0.30)' : idx === 5 ? '1px solid rgba(201,168,76,0.12)' : 'none',
             }}>{h}</div>
@@ -629,7 +1235,7 @@ export function AbuCalendar() {
         {/* Day cells grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
           {cells.map((day, idx) => {
-            if (day === null) return <div key={`e${idx}`} style={{ minHeight: 54 }} />
+            if (day === null) return <div key={`e${idx}`} style={{ minHeight: 64 }} />
             const ds = dateStr(year, month, day)
             const isToday = ds === today
             const isSelected = ds === selectedDay && !isToday
@@ -639,16 +1245,17 @@ export function AbuCalendar() {
             const isFriday = idx % 7 === 5
             const holiday = getHebrewHoliday(ds)
             const hasBirthday = dots.some(a => a.type === 'birthday')
+            const hasMemorial = dots.some(a => a.type === 'memory')
             const cellDelay = `${(idx % 7) * 0.02}s`
             return (
               <button
                 key={ds}
                 type="button"
-                onClick={() => { setSelectedDay(ds); soundTap() }}
+                onClick={() => { setSelectedDay(ds); soundTap(); setSheetOpen(true) }}
                 aria-label={`${day} ${formatHebrewMonth(year, month)}${holiday ? `, ${holiday}` : ''}${dots.length ? `, ${dots.length} אירועים` : ''}`}
                 aria-current={isToday ? 'date' : undefined}
                 style={{
-                  minHeight: 54, borderRadius: 14, position: 'relative',
+                  minHeight: 64, borderRadius: 14, position: 'relative',
                   animation: `fadeSlideUp 0.3s ease ${cellDelay} both`,
                   border: isToday
                     ? '2px solid rgba(201,168,76,0.65)'
@@ -699,42 +1306,106 @@ export function AbuCalendar() {
                     color: isToday ? '#0C0A08'
                       : isSelected ? 'rgba(201,168,76,0.95)'
                       : holiday ? GOLD
-                      : isShabbat ? 'rgba(201,168,76,0.85)'
-                      : isFriday ? 'rgba(245,240,232,0.70)'
-                      : 'rgba(245,240,232,0.88)',
+                      : isShabbat ? GOLD
+                      : isFriday ? TEXT_SECONDARY
+                      : CREAM,
                     fontFamily: "'DM Sans',sans-serif", lineHeight: 1,
                     textShadow: isToday ? '0 1px 3px rgba(0,0,0,0.30)' : 'none',
                   }}>{day}</span>
                 </div>
 
-                {/* Dot indicator — color-coded by type + past/future */}
-                {dots.length > 0 && (
-                  <div style={{
-                    width: 6, height: 6, borderRadius: '50%', marginTop: 1,
-                    background: isPast && !isToday
-                      ? 'rgba(245,240,232,0.25)'
-                      : hasBirthday ? '#F472B6'
-                      : GOLD,
-                    boxShadow: isPast && !isToday
-                      ? 'none'
-                      : hasBirthday
-                      ? '0 0 6px rgba(244,114,182,0.50)'
-                      : '0 0 4px rgba(201,168,76,0.45)',
-                  }} />
-                )}
+                {/* Event indicator — shape encodes type (not color-only):
+                    birthday = filled circle, memorial = ring, regular = square.
+                    Count digit shown when >1 event on the day. */}
+                {dots.length > 0 && (() => {
+                  const pastDim = isPast && !isToday
+                  const isMemorialOnly = hasMemorial && !hasBirthday
+                  const isRegularOnly = !hasBirthday && !hasMemorial
+                  const shapeColor = pastDim ? 'rgba(245,240,232,0.45)' : hasBirthday ? '#F472B6' : GOLD
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 1, height: 10 }}>
+                      <span style={{
+                        width: isMemorialOnly ? 7 : 6,
+                        height: isMemorialOnly ? 7 : 6,
+                        borderRadius: isRegularOnly ? 2 : '50%',
+                        background: isMemorialOnly ? 'transparent' : shapeColor,
+                        border: isMemorialOnly ? `1.5px solid ${shapeColor}` : 'none',
+                        boxShadow: pastDim ? 'none' : hasBirthday ? '0 0 6px rgba(244,114,182,0.50)' : '0 0 4px rgba(201,168,76,0.45)',
+                        display: 'inline-block', flexShrink: 0, boxSizing: 'border-box',
+                      }} />
+                      {dots.length > 1 && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, lineHeight: 1,
+                          color: pastDim ? 'rgba(245,240,232,0.45)' : TEXT_SECONDARY,
+                          fontFamily: "'DM Sans',sans-serif",
+                        }}>{dots.length}</span>
+                      )}
+                    </div>
+                  )
+                })()}
               </button>
             )
           })}
         </div>
       </div>
 
-      {/* SELECTED DAY APPOINTMENTS */}
-      <div style={{ padding: '8px 16px 4px', flexShrink: 0, maxHeight: 200, overflowY: 'auto', scrollbarWidth: 'thin' as React.CSSProperties['scrollbarWidth'] }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
-        }}>
-          <span style={{ fontSize: 17, fontWeight: 700, color: 'rgba(201,168,76,0.70)', fontFamily: "'Heebo',sans-serif" }}>אירועים</span>
-          <span style={{ fontSize: 16, color: 'rgba(245,240,232,0.50)', fontFamily: "'Heebo',sans-serif" }}>{formatShortHebrewDate(selectedDay)}</span>
+      {/* REMINDER BOARD — today / overdue / recurring sections */}
+      <ReminderBoard />
+
+      {/* Spacer so the fixed bottom action bar never covers the last calendar row */}
+      <div style={{ height: 88, flexShrink: 0 }} aria-hidden="true" />
+
+      {/* SELECTED DAY — bottom-sheet (replaces the inline list + sticky footer).
+          Owns its own scroll; ADD/mic/voice-trace live inside it only. */}
+      <DayDetailSheet
+        open={sheetOpen}
+        onClose={() => { if (isRecording) return; setSheetOpen(false) }}
+        title={formatShortHebrewDate(selectedDay)}
+        footer={
+          <>
+            {/* Action row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <SeniorButton variant="ghost" onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}>
+                ＋ הוספה ידנית
+              </SeniorButton>
+
+              <button type="button" onClick={() => handleVoiceRecord()}
+                onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
+                onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+                onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                aria-label="הוספת אירוע בקול"
+                style={{
+                  width: 60, height: 60, borderRadius: '50%',
+                  background: isRecording
+                    ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
+                    : 'linear-gradient(145deg, #D4A853 0%, #C9A84C 45%, #B8912A 100%)',
+                  border: 'none',
+                  boxShadow: isRecording
+                    ? '0 4px 16px rgba(239,68,68,0.35)'
+                    : '0 4px 16px rgba(201,168,76,0.25)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  transition: 'transform 0.12s ease, background 0.2s ease',
+                  animation: isRecording ? 'recordPulse 1.2s ease-in-out infinite' : 'none',
+                }}
+              >
+                {isRecording ? (
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                    <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
+                  </svg>
+                )}
+              </button>
+            </div>
+          </>
+        }
+      >
+        {/* AbuTime briefing — collapsed / opt-in inside the sheet */}
+        <AbuTime appointments={appointments} today={today} forceOpen={abuTimeOpen} onToggle={setAbuTimeOpen} />
+
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, marginTop: 8 }}>
+          <span style={{ fontSize: 17, fontWeight: 700, color: GOLD, fontFamily: "'Heebo',sans-serif" }}>אירועים</span>
         </div>
 
         {getHebrewHoliday(selectedDay) && (
@@ -761,61 +1432,7 @@ export function AbuCalendar() {
             )
           })
         )}
-      </div>
-
-      {/* FOOTER — always visible */}
-      <div style={{
-        position: 'sticky', bottom: 0,
-        flexShrink: 0,
-        padding: '12px 16px calc(10px + env(safe-area-inset-bottom, 0px))',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        background: 'linear-gradient(to top, rgba(5,10,24,0.97) 60%, rgba(5,10,24,0) 100%)',
-        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-        zIndex: 20,
-      } as React.CSSProperties}>
-        {/* Status pill — visible only when recording or processing */}
-        {(isRecording || (voiceStatus && !voiceParsed && !isRecording)) && (
-          isRecording
-            ? <StatusPill variant="red" icon="🔴" label="מקשיבה..." />
-            : <StatusPill variant="gold" label={voiceStatus} />
-        )}
-
-        {/* Action row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <SeniorButton variant="ghost" onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}>
-            ＋ הוספה ידנית
-          </SeniorButton>
-
-          <button type="button" onClick={handleVoiceRecord}
-            onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
-            onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-            onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-            aria-label="הוספת אירוע בקול"
-            style={{
-              width: 60, height: 60, borderRadius: '50%',
-              background: isRecording
-                ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
-                : 'linear-gradient(145deg, #D4A853 0%, #C9A84C 45%, #B8912A 100%)',
-              border: 'none',
-              boxShadow: isRecording
-                ? '0 4px 16px rgba(239,68,68,0.35)'
-                : '0 4px 16px rgba(201,168,76,0.25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              transition: 'transform 0.12s ease, background 0.2s ease',
-              animation: isRecording ? 'recordPulse 1.2s ease-in-out infinite' : 'none',
-            }}
-          >
-            {isRecording ? (
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
-                <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
-              </svg>
-            )}
-          </button>
-        </div>
-      </div>
+      </DayDetailSheet>
 
       <Toast
         message="האירוע נמחק"
@@ -827,10 +1444,10 @@ export function AbuCalendar() {
       />
 
       <Toast
-        message="האירוע נשמר"
+        message={toastMessage}
         visible={toast}
         onDismiss={() => setToast(false)}
-        variant="success"
+        variant={toastVariant}
       />
 
       {/* MODALS */}
@@ -843,91 +1460,178 @@ export function AbuCalendar() {
         />
       )}
 
-      {voiceParsed && (() => {
-        const baseConfirm = shapeCreateConfirmReadback({
-          title: voiceParsed.title,
-          personName: voiceParsed.personName ?? null,
-          date: voiceParsed.date,
-          time: voiceParsed.time,
-          location: voiceParsed.location ?? null,
-          notes: voiceParsed.notes ?? null,
-          ambiguousTime: voiceParsed.ambiguousTime ?? false,
-        })
-        const fullText = correctionAck ? `${correctionAck}\n${baseConfirm}` : baseConfirm
-        return (
-          <VoiceCard
-            parsed={voiceParsed}
-            existingAppts={appointments}
-            onConfirm={handleVoiceConfirm}
-            onCancel={() => {
-              speak(CANCEL_RESPONSE).catch(() => {})
-              setVoiceParsed(null)
-              setVoiceStatus('')
-              setVoiceError(null)
-              setVoiceState('idle')
-              correctingRef.current = false
-              setIsCorrecting(false)
-              setCorrectionAck(null)
-              lastAckRef.current = null
-            }}
-            confirmationText={fullText}
-            onCorrection={startCorrection}
-            isCorrecting={isCorrecting || isRecording}
-            rawTranscript={rawTranscript}
-            voiceState={voiceState}
-            voiceError={voiceError}
-            onReparse={handleReparse}
-            onSpokenDone={() => {
-              // Auto-listen for spoken confirmation only when the card has just
-              // been (re)spoken AND we're not already recording or in error.
-              if (!isRecording && !correctingRef.current && voiceState !== 'error') {
-                startCorrection()
-              }
-            }}
-          />
-        )
-      })()}
+      {/* REMINDER DUE ENGINE — polls every 30s, shows popup when due */}
+      <ReminderDueEngine />
 
-      {ambiguousDraft && (() => {
-        const [hStr] = ambiguousDraft.time.split(':')
-        const h = parseInt(hStr ?? '0', 10)
-        const HOUR_WORDS_HE = ['שתים עשרה','אחת','שתיים','שלוש','ארבע','חמש','שש','שבע','שמונה','תשע','עשר','אחת עשרה']
-        const hourWord = HOUR_WORDS_HE[h % 12] ?? String(h)
-        return (
-          <div onClick={() => setAmbiguousDraft(null)} style={{
-            position: 'fixed', inset: 0, zIndex: 220, background: 'rgba(0,0,0,0.84)',
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-          } as React.CSSProperties}>
-            <div onClick={e => e.stopPropagation()} dir="rtl" style={{
-              width: '100%', maxWidth: 480,
-              background: 'linear-gradient(160deg, rgba(14,12,10,0.99) 0%, rgba(10,8,6,0.99) 100%)',
-              border: '1px solid rgba(201,168,76,0.32)', borderBottom: 'none',
-              borderRadius: '24px 24px 0 0',
-              padding: 'calc(28px + env(safe-area-inset-bottom, 0px)) 20px 24px',
-              display: 'flex', flexDirection: 'column', gap: 14,
-            }}>
-              <div data-testid="ambiguity-question" style={{ fontSize: 20, fontWeight: 700, color: CREAM, fontFamily: "'Heebo',sans-serif", textAlign: 'center', lineHeight: 1.5 }}>
-                זה {hourWord} בצהריים או {hourWord} בלילה?
-              </div>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button type="button" onClick={() => resolveAmbiguity('am')} style={{
-                  flex: 1, padding: '15px', borderRadius: 14,
-                  border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.05)',
-                  color: CREAM, fontSize: 18, fontWeight: 700,
-                  fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 56,
-                }}>בלילה</button>
-                <button type="button" onClick={() => resolveAmbiguity('pm')} style={{
-                  flex: 1, padding: '15px', borderRadius: 14, border: 'none',
-                  background: `linear-gradient(135deg, ${BRIGHT_GOLD} 0%, #e8c76a 50%, ${GOLD} 100%)`,
-                  color: 'rgba(0,0,0,0.85)', fontSize: 18, fontWeight: 700,
-                  fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 56,
-                }}>בצהריים</button>
-              </div>
-            </div>
+      {/* REMINDER CONFIRM CARD — shown after reminder voice parse */}
+      {reminderFlowActive && reminderDraft && (
+        <ReminderConfirmCard
+          draft={reminderDraft}
+          onConfirm={handleReminderConfirm}
+          onCancel={handleReminderCancel}
+          onCorrect={() => { /* correction handled inside ReminderConfirmCard */ }}
+          onResolvePerson={name => {
+            if (!reminderDraft) return
+            const updated: ReminderDraft = { ...reminderDraft }
+            if (updated.familyResolution) {
+              updated.familyResolution = { ...updated.familyResolution, status: 'resolved', resolvedName: name }
+            }
+            if (updated.title) updated.title = updated.title.replace(updated.familyResolution?.originalPhrase ?? '', name)
+            delete updated.ambiguity
+            setReminderDraft(updated)
+          }}
+          onKeepPhrase={() => {
+            if (!reminderDraft) return
+            const updated: ReminderDraft = { ...reminderDraft }
+            delete updated.ambiguity
+            setReminderDraft(updated)
+          }}
+          onResolveTime={val => {
+            if (!reminderDraft) return
+            // 'manual' is handled locally inside ReminderConfirmCard
+            // (switches the card into correcting mode where the user picks
+            // a time via the time input). Guard here so a stray 'manual'
+            // never reaches the date math below.
+            if (val === 'manual') return
+            const now = new Date()
+            // Local ISO string — NOT toISOString() which returns UTC.
+            // In Israel (UTC+3), toISOString shifts time by 3 hours.
+            const toLocalISO = (d: Date) => {
+              const p = (n: number) => String(n).padStart(2, '0')
+              return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00`
+            }
+            let dueAt: string
+            let displayDateLabel: string
+            let displayTimeLabel: string
+            if (val === 'in_1h') {
+              const d = new Date(now.getTime() + 60 * 60_000)
+              dueAt = toLocalISO(d)
+              displayDateLabel = 'היום'
+              displayTimeLabel = d.toTimeString().slice(0, 5)
+            } else if (val === 'today_evening') {
+              const d = new Date(now)
+              d.setHours(20, 0, 0, 0)
+              dueAt = toLocalISO(d)
+              displayDateLabel = 'היום'
+              displayTimeLabel = '20:00'
+            } else if (val === 'tomorrow_morning') {
+              const d = new Date(now)
+              d.setDate(d.getDate() + 1)
+              d.setHours(9, 0, 0, 0)
+              dueAt = toLocalISO(d)
+              displayDateLabel = 'מחר'
+              displayTimeLabel = '09:00'
+            } else {
+              // Specific time value like "21:00"
+              const [h, m] = val.split(':').map(Number)
+              const d = new Date(now)
+              d.setHours(h ?? 9, m ?? 0, 0, 0)
+              if (d <= now) d.setDate(d.getDate() + 1)
+              dueAt = toLocalISO(d)
+              displayDateLabel = d.toDateString() === now.toDateString() ? 'היום' : 'מחר'
+              displayTimeLabel = val
+            }
+            const updated: ReminderDraft = { ...reminderDraft, dueAt, displayDateLabel, displayTimeLabel }
+            updated.missingFields = (updated.missingFields ?? []).filter(f => f !== 'time' && f !== 'date')
+            delete updated.ambiguity
+            setReminderDraft(updated)
+          }}
+        />
+      )}
+
+      <VoiceAddFlow
+        isRecording={isRecording}
+        isProcessing={voiceState === 'transcribing' || voiceState === 'parsing'}
+        parsed={voiceParsed}
+        voiceError={voiceError}
+        ambiguousDraft={ambiguousDraft}
+        savedConfirmation={savedConfirmation}
+        existingAppts={appointments}
+        onToggleRecord={() => void handleVoiceRecord()}
+        onConfirm={handleVoiceConfirm}
+        onCancel={handleVoiceCancel}
+        onRetry={handleVoiceRetry}
+        onManualAdd={handleVoiceManualAdd}
+        onResolveAmPm={resolveAmbiguity}
+        onSavedClose={() => setSavedConfirmation(null)}
+        onSavedShowDay={() => { setSelectedDay(savedConfirmation!.date); setSheetOpen(true); setSavedConfirmation(null) }}
+        onPickPerson={(name: string) => setVoiceParsed(prev => (prev?.relation) ? { ...prev, title: prev.title.replace(prev.relation.phrase, name), personName: name, relation: { status: 'resolved', phrase: prev.relation.phrase } } : prev)}
+        onKeepPhrase={() => setVoiceParsed(prev => (prev?.relation) ? { ...prev, personName: prev.relation.phrase, relation: { status: 'missing', phrase: prev.relation.phrase } } : prev)}
+      />
+
+      {/* PRIMARY ADD — main-screen fixed bottom bar, always visible without day tap */}
+      {!sheetOpen && (
+        <div
+          data-testid="main-add-bar"
+          style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+            background: 'linear-gradient(to top, rgba(5,10,24,0.98) 0%, rgba(5,10,24,0.85) 100%)',
+            borderTop: '1px solid rgba(201,168,76,0.20)',
+            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+            padding: '10px 24px calc(10px + env(safe-area-inset-bottom, 0px))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24,
+          } as React.CSSProperties}
+        >
+          <SeniorButton
+            variant="ghost"
+            onClick={() => { soundOpen(); setEditingAppt(null); setShowManual(true) }}
+          >＋ הוספה ידנית</SeniorButton>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <button
+              type="button"
+              onClick={() => handleVoiceRecord()}
+              onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.94)')}
+              onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+              onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+              aria-label="הוספת אירוע בקול"
+              data-testid="main-mic-btn"
+              style={{
+                width: 64, height: 64, borderRadius: '50%', border: 'none',
+                background: isRecording
+                  ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
+                  : 'linear-gradient(145deg, #D4A853 0%, #C9A84C 45%, #B8912A 100%)',
+                boxShadow: isRecording
+                  ? '0 4px 20px rgba(239,68,68,0.40)'
+                  : '0 4px 20px rgba(201,168,76,0.30)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'transform 0.12s ease, background 0.2s ease',
+                animation: isRecording ? 'recordPulse 1.2s ease-in-out infinite' : 'none',
+              }}
+            >
+              {isRecording ? (
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                  <rect x="9" y="2" width="6" height="11" rx="3"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="22"/>
+                  <line x1="8" y1="22" x2="16" y2="22"/>
+                </svg>
+              )}
+            </button>
+            <span style={{ fontSize: 12, color: 'rgba(201,168,76,0.65)', fontFamily: "'Heebo',sans-serif", fontWeight: 600 }}>דברי אליי</span>
           </div>
-        )
-      })()}
+        </div>
+      )}
+
+      <VoiceDebugPanel trace={debugTrace} reminderDraft={reminderDraft} />
+      <MicSelfTest />
+      <QaRecorderPanel />
+      <GuidedMicQaPanel onRecord={() => void handleVoiceRecord()} voiceState={voiceState} isRecording={isRecording} />
+      <VoiceDebugToggle />
+
+      {import.meta.env.DEV && (
+        <div
+          data-testid="dev-version-badge"
+          style={{
+            position: 'fixed', bottom: 8, left: 8,
+            fontSize: 9, color: 'rgba(201,168,76,0.45)', fontFamily: 'monospace',
+            zIndex: 9999, userSelect: 'none', pointerEvents: 'none',
+          }}
+        >v{APP_VERSION.version} · {APP_VERSION.commitHint === 'local' ? 'local build' : APP_VERSION.commitHint}</div>
+      )}
 
       {/* KEYFRAMES */}
       <style>{`

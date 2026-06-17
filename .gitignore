@@ -9,3 +9,20 @@ dist/
 .vercel
 
 .ai-runs/
+
+# Voice pipeline diagnostic harness output — regenerated on every test run.
+# The harness code under src/screens/AbuCalendar/diagnostics/ IS tracked;
+# only the generated artifact is ignored because it embeds wall-clock times.
+docs/voice-pipeline/voice-pipeline-diagnostic.txt
+
+# AbuWhatsApp local-only private contact data.
+# Real phone numbers must never be committed; if an operator drops a JSON
+# backup into the repo by accident, these patterns block it from staging.
+private/
+*.local.json
+tmp/dev-cert/
+
+# Capacitor
+ios/App/App/public/
+ios/App/Pods/
+android/app/src/main/assets/public/

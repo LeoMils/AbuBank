@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { type Appointment } from './service'
-import { GOLD, TEAL, CREAM, type ApptTimeState, isFamily } from './constants'
+import { GOLD, TEAL, CREAM, TEXT_SECONDARY, TEXT_MUTED, type ApptTimeState, isFamily } from './constants'
 
 export function ApptCard({ appt, onDelete, onEdit, timeState = 'upcoming' }: {
   appt: Appointment
@@ -15,10 +15,10 @@ export function ApptCard({ appt, onDelete, onEdit, timeState = 'upcoming' }: {
   const family = isFamily(appt)
   const showDelete = !family
 
-  const textColor = isPast ? 'rgba(245,240,232,0.50)' : isNow ? CREAM : isToday ? 'rgba(245,240,232,0.92)' : 'rgba(245,240,232,0.88)'
-  const timeColor = isPast ? 'rgba(201,168,76,0.30)' : isNow ? TEAL : GOLD
+  const textColor = isPast ? TEXT_MUTED : isNow ? CREAM : isToday ? CREAM : CREAM
+  const timeColor = isPast ? TEXT_MUTED : isNow ? TEAL : GOLD
   const timeWeight = isNow || isToday ? 700 : 400
-  const notesColor = isPast ? 'rgba(245,240,232,0.30)' : 'rgba(245,240,232,0.55)'
+  const notesColor = isPast ? TEXT_MUTED : TEXT_SECONDARY
   const stripeColor = isPast ? 'rgba(255,255,255,0.12)' : isNow ? TEAL : isToday ? GOLD : 'rgba(201,168,76,0.45)'
   const stripeWidth = isNow ? 5 : isPast ? 3 : 4
   const deleteOpacity = isPast ? 0.25 : 0.40
@@ -63,12 +63,20 @@ export function ApptCard({ appt, onDelete, onEdit, timeState = 'upcoming' }: {
 
       <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0, filter: isPast ? 'grayscale(0.6)' : 'none' }}>{appt.emoji === '📅' ? '📌' : appt.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 16, fontWeight: 600, color: textColor,
-          fontFamily: "'DM Sans','Heebo',sans-serif", marginBottom: 3,
-          textDecoration: isPast ? 'line-through' : 'none',
-          textDecorationColor: 'rgba(245,240,232,0.25)',
-        }}>{appt.title}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: 16, fontWeight: 600, color: textColor,
+            fontFamily: "'DM Sans','Heebo',sans-serif",
+          }}>{appt.title}</span>
+          {isPast && (
+            <span style={{
+              fontSize: 12, fontWeight: 700, color: TEXT_MUTED,
+              border: '1px solid rgba(156,148,134,0.55)', borderRadius: 6,
+              padding: '1px 7px', lineHeight: 1.4, fontFamily: "'Heebo',sans-serif",
+              flexShrink: 0,
+            }}>עבר</span>
+          )}
+        </div>
         <div style={{
           fontSize: 16, fontWeight: timeWeight, color: timeColor,
           fontFamily: "'DM Sans',sans-serif",

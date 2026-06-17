@@ -6,6 +6,8 @@ import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } f
 import { speak, speakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { getRandomFamilyPhoto, handleFamilyImgError } from '../../services/familyPhotos'
+import { FamilyPhotoGallery } from './FamilyPhotoGallery'
+import type { FamilyGalleryPhoto } from './familyQuickFaces'
 import { soundTap, soundSuccess, soundSend, soundCopy } from '../../services/sounds'
 import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
@@ -16,6 +18,15 @@ import { Toast } from '../../components/Toast'
 import { PageShell } from '../../components/PageShell'
 import { LoadingState } from '../../components/LoadingState'
 import { FamilyQuickFaces } from './familyQuickFaces'
+import { FamilyContactsSetup } from './FamilyContactsSetup'
+
+function isOperatorQueryParam(): boolean {
+  try {
+    if (typeof window === 'undefined' || !window.location) return false
+    const params = new URLSearchParams(window.location.search || '')
+    return params.get('operator') === '1'
+  } catch { return false }
+}
 
 type WhatsAppTab = 'family' | 'actions'
 
@@ -100,6 +111,10 @@ export function AbuWhatsApp() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [lastIntent, setLastIntent] = useState('')
 
+  // Operator-only setup for local family contacts. Hidden from normal use:
+  // toggled by `?operator=1` query param or a long-press on the family title.
+  const [operatorMode, setOperatorMode] = useState<boolean>(isOperatorQueryParam)
+
   // Voice conversation mode
   const [voiceMode, setVoiceMode] = useState(false)
   const [voicePhase, setVoicePhase] = useState<'listening' | 'processing' | 'speaking' | null>(null)
@@ -109,6 +124,15 @@ export function AbuWhatsApp() {
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
   const familyPhoto = useMemo(() => getRandomFamilyPhoto(), [])
+
+  // Family-photo gallery (album) modal triggered from the header portrait.
+  const [galleryOpen, setGalleryOpen] = useState(false)
+  const galleryExtras = useMemo<FamilyGalleryPhoto[]>(() => {
+    const out: FamilyGalleryPhoto[] = []
+    if (martitaPhoto) out.push({ id: 'martita-portrait', label: 'Martita', photoUrl: martitaPhoto })
+    if (familyPhoto) out.push({ id: 'family-portrait', label: 'המשפחה', photoUrl: familyPhoto })
+    return out
+  }, [martitaPhoto, familyPhoto])
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -578,23 +602,32 @@ export function AbuWhatsApp() {
           padding: '0 16px',
         }}>
 
-          {/* Family portrait — left */}
-          <div style={{
-            position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
-            width: 66, height: 66, borderRadius: '50%',
-            border: '2px solid rgba(37,211,102,0.55)',
-            boxShadow: '0 0 0 3px rgba(37,211,102,0.07), 0 0 20px rgba(37,211,102,0.18), 0 4px 12px rgba(0,0,0,0.45)',
-            overflow: 'hidden',
-            background: 'linear-gradient(145deg, #0b2220, #050A18)',
-          }}>
+          {/* Family / Martita portrait — left. Tap → opens the family album. */}
+          <button
+            type="button"
+            data-testid="abuwhatsapp-header-portrait"
+            onClick={() => setGalleryOpen(true)}
+            aria-label="פתיחת גלריית המשפחה"
+            style={{
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+              width: 76, height: 76, borderRadius: '50%',
+              padding: 0, margin: 0,
+              border: '2px solid rgba(37,211,102,0.65)',
+              boxShadow: '0 0 0 3px rgba(37,211,102,0.10), 0 0 24px rgba(37,211,102,0.22), 0 6px 16px rgba(0,0,0,0.50)',
+              overflow: 'hidden',
+              background: 'linear-gradient(145deg, #0b2220, #050A18)',
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
             <img
               src={familyPhoto}
-              alt="Family"
+              alt=""
               loading="eager"
               style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%', display: 'block' }}
               onError={handleFamilyImgError}
             />
-          </div>
+          </button>
 
           {/* Wordmark: Abu + הודעות (WA-green gradient) */}
           <div style={{
@@ -649,11 +682,16 @@ export function AbuWhatsApp() {
         position: 'relative',
       }}>
 
-        {tab === 'family' && !voiceMode && (
+        {tab === 'family' && !voiceMode && !operatorMode && (
           <FamilyQuickFaces
             onOpenWhatsApp={(url) => { window.location.href = url }}
             onOpenTel={(url) => { window.location.href = url }}
+            onOperatorSetup={() => setOperatorMode(true)}
           />
+        )}
+
+        {tab === 'family' && !voiceMode && operatorMode && (
+          <FamilyContactsSetup onClose={() => setOperatorMode(false)} />
         )}
 
         {tab === 'actions' && (
@@ -1096,8 +1134,14 @@ export function AbuWhatsApp() {
 
       {/* ══════════════════════════════════════════════════
           BOTTOM TAB BAR — משפחה / פעולות segmented control
+          Hidden from Martita's default view (v0.3.2). The "פעולות"
+          AI-message-generation flow remains in the codebase but is only
+          reachable from operator mode so the family bubble grid is the
+          single, calm surface Martita sees. Re-enable by also rendering
+          this bar when operatorMode = true if you want operators to flip
+          back to actions.
          ══════════════════════════════════════════════════ */}
-      {!voiceMode && (
+      {!voiceMode && operatorMode && (
         <div
           data-testid="abuwhatsapp-tab-bar"
           style={{
@@ -1343,6 +1387,13 @@ export function AbuWhatsApp() {
                                 100%  {transform:scale(1.30);opacity:0;   } }
         @keyframes slideUpIn  { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
       `}</style>
+
+      {/* Family-photo gallery — opens when the header portrait is tapped. */}
+      <FamilyPhotoGallery
+        open={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        extras={galleryExtras}
+      />
     </PageShell>
   )
 }

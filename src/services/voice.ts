@@ -10,7 +10,7 @@ function getVoiceSpeed(): number {
     const saved = localStorage.getItem('abu-voice-speed')
     if (saved) return parseFloat(saved)
   } catch {}
-  return 0.95 // default — slightly faster for natural pacing
+  return 0.88 // default — slower pace for 80+ listener
 }
 
 let currentAudio: HTMLAudioElement | null = null
@@ -176,8 +176,8 @@ function getTTSInstructions(text: string): string {
 async function speakOpenAI(text: string): Promise<boolean> {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
   if (!apiKey) return false
-  // v25: Skip if OpenAI quota exhausted — don't waste 8s on timeout
-  const qf = localStorage.getItem('abu-openai-quota-failed')
+  // Skip if TTS-specific quota exhausted (separate from LLM chat quota)
+  const qf = localStorage.getItem('abu-openai-tts-quota-failed')
   if (qf && (Date.now() - parseInt(qf, 10)) < 300_000) return false
 
   const chunks = splitText(text, 400)
@@ -204,6 +204,9 @@ async function speakOpenAI(text: string): Promise<boolean> {
       clearTimeout(t)
       if (!res.ok) {
         console.log('[TTS] OpenAI status:', res.status)
+        if (res.status === 429 || res.status === 402) {
+          try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
+        }
         return false
       }
       const blob = await res.blob()
@@ -252,6 +255,7 @@ async function speakAzureTTS(text: string): Promise<boolean> {
 
 const GEMINI_TTS_MODELS = [
   'gemini-2.5-flash-preview-tts',
+  'gemini-2.0-flash',            // fallback: standard flash also supports TTS
 ]
 
 async function speakGemini(text: string): Promise<boolean> {
@@ -436,11 +440,15 @@ function speakWebAPI(text: string): Promise<void> {
 export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 1) OpenAI TTS (paid — skip entirely if quota exhausted)
+  // 1) OpenAI TTS (paid — skip only if TTS-specific quota exhausted)
+  // IMPORTANT: TTS quota is separate from LLM chat quota. The
+  // abu-openai-quota-failed flag is for chat API only. TTS has its
+  // own flag so LLM rate limits don't kill voice quality.
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-  const quotaOk = !localStorage.getItem('abu-openai-quota-failed') ||
-    (Date.now() - parseInt(localStorage.getItem('abu-openai-quota-failed') ?? '0', 10)) > 300_000
-  if (apiKey && quotaOk) {
+  const ttsQuotaFlag = localStorage.getItem('abu-openai-tts-quota-failed')
+  const ttsQuotaOk = !ttsQuotaFlag || (Date.now() - parseInt(ttsQuotaFlag, 10)) > 300_000
+  if (apiKey && ttsQuotaOk) {
+    console.log('[TTS-VM] trying OpenAI TTS...')
     try {
       const controller = new AbortController()
       const t = setTimeout(() => controller.abort(), 6000)
@@ -454,23 +462,30 @@ export async function speakVoiceMode(text: string): Promise<void> {
       if (res.ok) {
         const blob = await res.blob()
         if (blob.size > 100) {
+          console.log(`[TTS-VM] ✅ OpenAI TTS returned ${blob.size} bytes`)
           const ok = await playBlobViaAudioCtx(blob)
           if (ok) return
           if (await playBlob(blob)) return
         }
       }
-      // 429/402 = quota exceeded — fall through to free Gemini
-      console.log('[TTS-VM] OpenAI failed, trying free Gemini...')
+      // 429/402 = TTS quota exceeded — mark TTS-specific cooldown
+      if (res.status === 429 || res.status === 402) {
+        try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
+      }
+      console.log('[TTS-VM] ❌ OpenAI failed (' + res.status + '), trying Gemini...')
     } catch (e) {
-      console.log('[TTS-VM] OpenAI error:', e)
+      console.log('[TTS-VM] ❌ OpenAI error:', e)
     }
+  } else {
+    console.log(`[TTS-VM] OpenAI TTS skipped: key=${!!apiKey} ttsQuotaOk=${ttsQuotaOk}`)
   }
 
   // 2) Gemini TTS (FREE with existing key)
-  if (await speakGeminiViaAudioCtx(text)) { console.log('[TTS-VM] ✅ Gemini TTS worked'); return }
+  if (await speakGeminiViaAudioCtx(text)) { console.log('[TTS-VM] ✅ Gemini TTS'); return }
 
-  // 3) Web Speech API (FREE, last resort)
-  await speakWebAPI(text)
+  // 3) P0 fix: when all TTS providers fail in voice mode, notify via Web Speech
+  console.log('[TTS-VM] ⚠️ All quality TTS failed — notifying via Web Speech')
+  await speakWebAPI('ראי את המסך.').catch(() => {})
 }
 
 // Gemini TTS via AudioContext for voice mode (bypasses iOS audio restrictions)
@@ -521,22 +536,40 @@ async function speakGeminiViaAudioCtx(text: string): Promise<boolean> {
 
 // speak — for TEXT CHAT and other non-realtime uses
 // v24.3: OpenAI (paid) → Gemini (FREE) → Web Speech (FREE)
+// v30.10: Added 20s safety timeout to prevent indefinite hang
 export async function speak(text: string): Promise<void> {
   if (!text.trim()) return
 
-  // 1) OpenAI TTS (paid, best quality)
-  if (await speakOpenAI(text)) return
+  const timeout = new Promise<void>((_, reject) =>
+    setTimeout(() => reject(new Error('TTS_TIMEOUT')), 20_000),
+  )
 
-  // 2) Gemini TTS (FREE)
-  if (await speakGemini(text)) return
+  try {
+    await Promise.race([
+      (async () => {
+        // 1) OpenAI TTS (paid, best quality)
+        if (await speakOpenAI(text)) return
 
-  // 3) Web Speech API (FREE, last resort)
-  await speakWebAPI(text)
+        // 2) Gemini TTS (FREE)
+        if (await speakGemini(text)) return
+
+        // 3) Web Speech API (FREE, last resort)
+        await speakWebAPI(text)
+      })(),
+      timeout,
+    ])
+  } catch {
+    stopSpeaking()
+  }
 }
 
 export function stopSpeaking(): void {
   // 1) HTMLAudioElement (used by playBlob fallback)
   if (currentAudio) {
+    // Revoke blob URL to prevent memory leak on interrupted playback
+    if (currentAudio.src?.startsWith('blob:')) {
+      URL.revokeObjectURL(currentAudio.src)
+    }
     currentAudio.pause()
     currentAudio.currentTime = 0
     currentAudio = null
@@ -683,9 +716,9 @@ export async function streamSpeakVoiceMode(
 
   const speakChunk = async (text: string): Promise<void> => {
     if (signal?.aborted) return
-    // v25: OpenAI (paid, skip if quota exhausted) → Gemini (FREE) → Web Speech (FREE)
+    // OpenAI (paid, skip if TTS quota exhausted) → Gemini (FREE) → Web Speech (FREE)
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-    const sqf = localStorage.getItem('abu-openai-quota-failed')
+    const sqf = localStorage.getItem('abu-openai-tts-quota-failed')
     const skipOpenAI = sqf && (Date.now() - parseInt(sqf, 10)) < 300_000
     if (apiKey && !skipOpenAI) {
       try {
@@ -698,6 +731,8 @@ export async function streamSpeakVoiceMode(
         if (res.ok) {
           const blob = await res.blob()
           if (blob.size > 100) { queue.enqueue(blob); return }
+        } else if (res.status === 429 || res.status === 402) {
+          try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
         }
       } catch { /* try fallback */ }
     }
@@ -815,7 +850,13 @@ export function createSilenceDetector(
   }, maxMs + 1500)
 
   try {
-    ctx = new AudioContext()
+    // Reuse shared AudioContext to avoid iOS Safari limit (~4-6 contexts)
+    if (_sharedAudioCtx && _sharedAudioCtx.state !== 'closed') {
+      ctx = _sharedAudioCtx
+    } else {
+      ctx = new AudioContext()
+      _sharedAudioCtx = ctx
+    }
     const source  = ctx.createMediaStreamSource(stream)
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 512
@@ -898,7 +939,7 @@ export function createSilenceDetector(
     stopped = true
     clearTimeout(hardTimer)
     cancelAnimationFrame(frame)
-    ctx?.close().catch(() => {})
+    // Don't close shared AudioContext — it's reused across sessions (iOS limit ~4-6)
   }
 
   return { stop: cleanup, getLevel: () => level }

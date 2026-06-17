@@ -65,7 +65,7 @@ describe('SYSTEM_PROMPT anti-hallucination', () => {
   })
 
   it('has tool-failure instruction', () => {
-    expect(SYSTEM_PROMPT).toContain('לא מצליחה לבדוק')
+    expect(SYSTEM_PROMPT).toContain('לא הצלחת לבדוק')
   })
 
   it('lists forbidden opener phrases in the אסור section', () => {

@@ -1,8 +1,10 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
+import { APP_VERSION } from '../../version'
+import { downloadBackup, importBackup } from '../../services/backup'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -57,7 +59,7 @@ export function loadLocContacts(): LocContact[] {
 }
 
 function saveLocContacts(cs: LocContact[]) {
-  localStorage.setItem(LOC_CONTACTS_KEY, JSON.stringify(cs))
+  try { localStorage.setItem(LOC_CONTACTS_KEY, JSON.stringify(cs)) } catch { /* quota */ }
 }
 
 function loadContacts(): Contact[] {
@@ -71,7 +73,7 @@ function loadContacts(): Contact[] {
 }
 
 function saveContacts(contacts: Contact[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts))
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts)) } catch { /* quota */ }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -236,6 +238,26 @@ export function Settings() {
   // Voice settings (v20: reactive state instead of raw localStorage reads)
   const [voiceLang, setVoiceLang] = useState(() => localStorage.getItem('abu-voice-lang') || 'auto')
   const [voiceSpeed, setVoiceSpeed] = useState(() => parseFloat(localStorage.getItem('abu-voice-speed') || '0.88'))
+
+  // Backup / restore
+  const [backupStatus, setBackupStatus] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImportBackup = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    importBackup(file)
+      .then(({ restored, skipped }) => {
+        setBackupStatus(`שוחזרו ${restored} פריטים` + (skipped > 0 ? ` (${skipped} דולגו)` : ''))
+        setTimeout(() => setBackupStatus(null), 4000)
+      })
+      .catch((err: Error) => {
+        setBackupStatus(err.message)
+        setTimeout(() => setBackupStatus(null), 4000)
+      })
+    // reset input so the same file can be selected again
+    e.target.value = ''
+  }, [])
 
   // Location map
   const [locStatus, setLocStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
@@ -603,6 +625,39 @@ export function Settings() {
           <div style={{ fontSize: 12, color: `rgba(${hexToRgb(GOLD)},0.55)`, marginTop: 2 }}>
             v{appVersion || '1.0.0'} · {new Date().getFullYear()}
           </div>
+          <div
+            data-testid="settings-build-identity"
+            style={{
+              fontSize: 11, lineHeight: 1.55, marginTop: 6,
+              color: 'rgba(255,255,255,0.40)',
+              direction: 'ltr', fontFamily: "'DM Sans',monospace",
+              wordBreak: 'break-all',
+            }}
+          >
+            {APP_VERSION.buildLabel} · build {APP_VERSION.version}
+            <br />
+            {APP_VERSION.branchHint} · {APP_VERSION.buildDate}
+          </div>
+          {/* P0.3 — the diagnostic panel moved to a top-level button +
+              full-screen overlay (impossible to miss). Tap "אבחון מערכת"
+              at the top of Settings, the pill on Home, or visit
+              ?diagnostics=1 to open it. */}
+          <button
+            type="button"
+            data-testid="about-diagnostic-button"
+            onClick={() => {
+              const w = window as unknown as { __abubankOpenDiag?: () => void }
+              if (typeof w.__abubankOpenDiag === 'function') w.__abubankOpenDiag()
+            }}
+            style={{
+              marginTop: 12, padding: '10px 16px', borderRadius: 12,
+              border: '1px solid rgba(201,168,76,0.45)',
+              background: 'rgba(201,168,76,0.10)',
+              color: '#FFE9B3', fontSize: 14, fontWeight: 700,
+              fontFamily: "'Heebo','DM Sans',sans-serif",
+              cursor: 'pointer',
+            }}
+          >אבחון מערכת</button>
         </div>
       ),
     },
@@ -656,6 +711,39 @@ export function Settings() {
           />
         </div>
       </header>
+
+      {/* ─── P0.3 — DIAGNOSTIC ENTRY POINT (always at top, big & visible) ─── */}
+      <div style={{ padding: '14px 14px 0' }}>
+        <button
+          type="button"
+          data-testid="settings-diagnostic-button"
+          onClick={() => {
+            const w = window as unknown as { __abubankOpenDiag?: () => void }
+            if (typeof w.__abubankOpenDiag === 'function') w.__abubankOpenDiag()
+          }}
+          style={{
+            width: '100%',
+            minHeight: 64,
+            padding: '14px 16px',
+            borderRadius: 16,
+            border: '1px solid rgba(201,168,76,0.45)',
+            background: 'linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.04))',
+            color: '#FFE9B3',
+            fontSize: 16, fontWeight: 800,
+            fontFamily: "'Heebo','DM Sans',sans-serif",
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            cursor: 'pointer',
+            direction: 'rtl',
+            boxShadow: '0 4px 20px rgba(201,168,76,0.12)',
+          }}
+        >
+          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+            <span style={{ fontSize: 17, fontWeight: 800 }}>אבחון מערכת</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,233,179,0.75)' }}>בדיקת API, גרסה, קול וקלנדר</span>
+          </span>
+          <span style={{ fontSize: 22, lineHeight: 1, color: 'rgba(201,168,76,0.85)' }}>›</span>
+        </button>
+      </div>
 
       {/* ─── SECTIONS ─── */}
       <div style={{ padding: '14px 14px 40px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -716,6 +804,59 @@ export function Settings() {
             </div>
           )
         })}
+
+        {/* ─── BACKUP / RESTORE ─── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+          <div style={sectionLabel}>גיבוי ושחזור</div>
+          <button
+            type="button"
+            onClick={downloadBackup}
+            style={btnStyle(TEAL)}
+          >
+            <span>💾</span> גיבוי נתונים
+          </button>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            style={btnStyle('#3b82f6')}
+          >
+            <span>📂</span> שחזור מגיבוי
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImportBackup}
+            style={{ display: 'none' }}
+          />
+          {(() => {
+            try {
+              const ts = localStorage.getItem('abubank-last-backup')
+              if (!ts) return null
+              const formatted = new Date(ts).toLocaleDateString('he-IL')
+              return (
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'right', direction: 'rtl', fontFamily: "'Heebo',sans-serif" }}>
+                  גיבוי אחרון: {formatted}
+                </div>
+              )
+            } catch { return null }
+          })()}
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'right', direction: 'rtl', marginTop: 4, fontFamily: "'Heebo',sans-serif" }}>
+            הנתונים שמורים בטלפון בלבד. מומלץ לגבות מדי פעם.
+          </div>
+          {backupStatus && (
+            <div style={{
+              padding: '10px 14px', borderRadius: 12,
+              background: 'rgba(20,184,166,0.10)',
+              border: '1px solid rgba(20,184,166,0.25)',
+              color: 'rgba(255,255,255,0.85)',
+              fontSize: 14, fontFamily: "'Heebo',sans-serif",
+              textAlign: 'right', direction: 'rtl',
+            }}>
+              {backupStatus}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

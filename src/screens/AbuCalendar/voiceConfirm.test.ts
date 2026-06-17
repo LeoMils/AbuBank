@@ -61,23 +61,9 @@ describe('Voice confirmation — wiring', () => {
     expect(VOICE_CARD).not.toMatch(/\.catch\([^)]*\)\s*\.\s*then\(\s*onSpokenDone/)
   })
 
-  it('parent wires onSpokenDone → startCorrection (auto-listen for response)', () => {
-    expect(INDEX).toContain('onSpokenDone={()')
-    expect(INDEX).toContain('startCorrection()')
-  })
-
-  it('when the correction parser returns confirm, parent saves the appointment', () => {
-    expect(INDEX).toMatch(/result\.kind === 'confirm'/)
-    expect(INDEX).toMatch(/handleVoiceConfirm\(\{[\s\S]*?title: voiceParsed\.title/)
-  })
 })
 
 describe('Voice confirmation — read-back template wired', () => {
-  it('AbuCalendar uses shapeCreateConfirmReadback for the voice confirmation', () => {
-    expect(INDEX).toContain('shapeCreateConfirmReadback')
-    expect(INDEX).toMatch(/shapeCreateConfirmReadback\(\{[\s\S]*?personName: voiceParsed\.personName/)
-  })
-
   it('happy-path read-back produced by shaper is a Hebrew sentence ending with "לקבוע?"', () => {
     const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
     const msg = shapeCreateConfirmReadback({

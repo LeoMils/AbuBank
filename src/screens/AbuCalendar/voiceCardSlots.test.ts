@@ -37,22 +37,18 @@ describe('VoiceCard — transcript review', () => {
     expect(SOURCE).toMatch(/onClick=\{\(\)\s*=>\s*onReparse\(transcriptDraft\)\}/)
   })
 
-  it('parent screen wires the reparse handler', () => {
-    expect(INDEX_SOURCE).toContain('handleReparse')
-    expect(INDEX_SOURCE).toMatch(/onReparse=\{handleReparse\}/)
-    expect(INDEX_SOURCE).toContain('parseAppointmentText(transcript)')
-  })
 })
 
 describe('VoiceCard — editable fields', () => {
-  it('renders all five fields: מה / תאריך / שעה / איפה / הערה', () => {
+  it('renders all five fields: מה / מתי / שעה / איפה / הערה', () => {
     expect(SOURCE).toContain('data-testid="field-what"')
     expect(SOURCE).toContain('data-testid="field-date"')
     expect(SOURCE).toContain('data-testid="field-time"')
     expect(SOURCE).toContain('data-testid="field-where"')
     expect(SOURCE).toContain('data-testid="field-note"')
     expect(SOURCE).toMatch(/>\s*מה\s*</)
-    expect(SOURCE).toMatch(/>\s*תאריך\s*</)
+    // Date label renamed "מתי" (P5 — correction mode clean labels)
+    expect(SOURCE).toMatch(/>\s*מתי\s*</)
     expect(SOURCE).toMatch(/>\s*שעה\s*</)
     expect(SOURCE).toMatch(/>\s*איפה\s*</)
     expect(SOURCE).toMatch(/>\s*הערה\s*</)
@@ -103,11 +99,28 @@ describe('VoiceCard — correction mic wiring', () => {
     expect(SOURCE).toMatch(/onClick=\{onCorrection\}/)
   })
 
-  it('parent\'s startCorrection actually calls handleVoiceRecord (which calls getUserMedia)', () => {
-    expect(INDEX_SOURCE).toContain('function startCorrection')
-    expect(INDEX_SOURCE).toContain('correctingRef.current = true')
-    expect(INDEX_SOURCE).toMatch(/handleVoiceRecord\(\)/)
-    expect(INDEX_SOURCE).toContain('navigator.mediaDevices.getUserMedia')
+})
+
+describe('VoiceCard — failed_to_save header is not speech-not-understood', () => {
+  it('header says "הבנתי, אבל לא הצלחתי לשמור" when voiceError mentions save', () => {
+    // VoiceCard uses voiceError content to differentiate save-failure from speech failure
+    expect(SOURCE).toContain('לשמור')
+    expect(SOURCE).toContain('הבנתי, אבל לא הצלחתי לשמור')
+  })
+
+  it('header still says "לא הצלחתי להבין" for non-save errors', () => {
+    expect(SOURCE).toContain("'לא הצלחתי להבין'")
+  })
+})
+
+describe('VoiceCard — retry bypass guard', () => {
+  it('handleVoiceRecord accepts bypassGuard option', () => {
+    expect(INDEX_SOURCE).toContain('bypassGuard')
+    expect(INDEX_SOURCE).toMatch(/async function handleVoiceRecord\(opts\?/)
+  })
+
+  it('handleVoiceRetry passes bypassGuard: true', () => {
+    expect(INDEX_SOURCE).toContain('handleVoiceRecord({ bypassGuard: true })')
   })
 })
 
@@ -121,22 +134,30 @@ describe('VoiceCard — error surfaces', () => {
     expect(SOURCE).toMatch(/speak\(confirmationText\)[\s\S]*\.catch/)
   })
 
-  it('parent surfaces "לא שמעתי כלום" when transcription is empty', () => {
-    expect(INDEX_SOURCE).toContain('לא שמעתי כלום')
+  it('parent surfaces a senior-friendly empty-transcript error (P0.6: "לא הצלחתי להבין את ההקלטה")', () => {
+    // P0.6 — the empty-transcript message was upgraded from the
+    // terse "לא שמעתי כלום" to the friendlier
+    // "לא הצלחתי להבין את ההקלטה. ננסה שוב?" so the user knows
+    // exactly what to try next.
+    expect(INDEX_SOURCE).toContain('לא הצלחתי להבין את ההקלטה. ננסה שוב?')
   })
 
-  it('parent surfaces the exact error message from getUserMedia failures', () => {
-    expect(INDEX_SOURCE).toMatch(/err\.message/)
-    expect(INDEX_SOURCE).toContain("'NotAllowedError'")
-    expect(INDEX_SOURCE).toContain("'NotFoundError'")
+  it('parent surfaces getUserMedia failures via mediateVoiceCaptureError', () => {
+    // PR #37 moved DOMException handling into errorMediation.ts;
+    // index now delegates to mediateVoiceCaptureError for device errors.
+    expect(INDEX_SOURCE).toContain("mediateVoiceCaptureError(err, 'permission_or_device')")
   })
 })
 
 describe('VoiceCard — debug block', () => {
-  it('only renders in dev mode', () => {
-    expect(SOURCE).toContain('import.meta')
-    expect(SOURCE).toContain('DEV')
+  it('only renders in explicit diagnostic mode (localStorage abu-voice-debug, not auto-enabled in dev)', () => {
+    // Debug block is gated by isDiagMode (localStorage flag), never by import.meta.env.DEV.
+    // This ensures it is never visible in normal browser QA or to Martita.
+    expect(SOURCE).toContain('isDiagMode')
+    expect(SOURCE).toContain('abu-voice-debug')
     expect(SOURCE).toContain('data-testid="voice-debug"')
+    // The debug testid must appear after the isDiagMode gate in the source
+    expect(SOURCE).toMatch(/isDiagMode[\s\S]*voice-debug/)
   })
 
   it('exposes raw / parsed / source / state / tts / error', () => {

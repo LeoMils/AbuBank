@@ -7,13 +7,13 @@ import { addAppointment, loadAppointmentsWithFamily } from '../AbuCalendar/servi
 import { getTomorrowEvents, getEventsByDate } from './tools'
 import { tryGroundedAnswer } from './service'
 
+// Must use toISOString() (UTC) to match tools.ts tomorrowStr() which
+// also uses toISOString(). Using local dates causes failures near midnight
+// when local and UTC dates differ.
 function tomorrowLocal(): string {
   const d = new Date()
   d.setDate(d.getDate() + 1)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return d.toISOString().split('T')[0]!
 }
 
 describe('RUNTIME PROOF — end-to-end calendar pipeline', () => {
@@ -123,7 +123,7 @@ describe('RUNTIME PROOF — end-to-end calendar pipeline', () => {
     console.log(`Answer: ${answer}`)
 
     expect(answer).not.toBeNull()
-    expect(answer).toContain('לא מצאתי')
+    expect(answer).toContain('אין שום דבר')
   })
 
   it('STEP 7: multiple appointments — all appear', () => {

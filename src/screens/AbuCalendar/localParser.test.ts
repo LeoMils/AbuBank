@@ -275,3 +275,280 @@ describe('parseLocally — date', () => {
     expect(r.date).toBe('2026-05-03')
   })
 })
+
+// ─── Phase 3 — Time Intelligence / AM-PM ────────────────────────────────────
+describe('parseLocally — AM/PM explicit period hints', () => {
+  it('"9 בערב" → 21:00 not ambiguous', () => {
+    const r = parseLocally('מחר פגישה בשעה 9 בערב', TODAY)
+    expect(r.time).toBe('21:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"9 בבוקר" → 09:00 not ambiguous', () => {
+    const r = parseLocally('מחר רופא בשעה 9 בבוקר', TODAY)
+    expect(r.time).toBe('09:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"תשע בערב" → 21:00 not ambiguous', () => {
+    const r = parseLocally('מחר בתשע בערב פגישה', TODAY)
+    expect(r.time).toBe('21:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"תשע בבוקר" → 09:00 not ambiguous', () => {
+    const r = parseLocally('מחר בתשע בבוקר רופא', TODAY)
+    expect(r.time).toBe('09:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"תשע וחצי בערב" → 21:30 not ambiguous', () => {
+    const r = parseLocally('מחר בתשע וחצי בערב פגישה', TODAY)
+    expect(r.time).toBe('21:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"תשע וחצי בבוקר" → 09:30 not ambiguous', () => {
+    const r = parseLocally('מחר בתשע וחצי בבוקר רופא', TODAY)
+    expect(r.time).toBe('09:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"12 בצהריים" → 12:00 not ambiguous', () => {
+    const r = parseLocally('מחר בשעה 12 בצהריים ארוחה', TODAY)
+    expect(r.time).toBe('12:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"12 בלילה" → 00:00 not ambiguous (midnight)', () => {
+    const r = parseLocally('הלילה בשעה 12 בלילה קריאה', TODAY)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"שתים עשרה בלילה" → 00:00 (midnight)', () => {
+    const r = parseLocally('הלילה בשתים עשרה בלילה', TODAY)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת בצהריים" → 13:00 not ambiguous', () => {
+    const r = parseLocally('מחר באחת בצהריים ארוחה', TODAY)
+    expect(r.time).toBe('13:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת בלילה" → 01:00 not ambiguous', () => {
+    const r = parseLocally('הלילה באחת בלילה', TODAY)
+    expect(r.time).toBe('01:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת וחצי בצהריים" → 13:30 not ambiguous', () => {
+    const r = parseLocally('מחר באחת וחצי בצהריים קפה', TODAY)
+    expect(r.time).toBe('13:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת וחצי בלילה" → 01:30 not ambiguous', () => {
+    const r = parseLocally('הלילה באחת וחצי בלילה', TODAY)
+    expect(r.time).toBe('01:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת" alone → 01:00 ambiguous (no period hint)', () => {
+    const r = parseLocally('מחר באחת פגישה', TODAY)
+    expect(r.time).toBe('01:00')
+    expect(r.ambiguousTime).toBe(true)
+  })
+
+  // Known product behavior: hours 7-11 alone default to morning (not ambiguous).
+  // "9" alone → 09:00. To be revisited if product decides to prompt for AM/PM.
+  it('"9" alone → 09:00 (morning default, not ambiguous — known behavior)', () => {
+    const r = parseLocally('מחר בשעה 9 פגישה', TODAY)
+    expect(r.time).toBe('09:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+})
+
+// ─── חצות (midnight word) ─────────────────────────────────────────────────────
+// Live mic QA on 2026-05-31 reported the spoken word "חצות" was never
+// converted to 00:00 — only "12 בלילה" worked. These tests pin the
+// behavior of the new MIDNIGHT_RE branch in extractTime.
+describe('parseLocally — חצות (midnight word)', () => {
+  const TODAY_MID = '2026-04-30' // Thursday
+  const TOMORROW_MID = '2026-05-01' // Friday
+
+  it('"חצות" alone → 00:00', () => {
+    const r = parseLocally('תזכורת חצות', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"בחצות" → 00:00', () => {
+    const r = parseLocally('בחצות פגישה', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"חצות הלילה" → 00:00', () => {
+    const r = parseLocally('פגישה חצות הלילה', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"מחר בחצות" → tomorrow, 00:00', () => {
+    const r = parseLocally('מחר בחצות פגישה', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+    expect(r.date).toBe(TOMORROW_MID)
+  })
+
+  it('"היום בחצות" → today, 00:00', () => {
+    const r = parseLocally('היום בחצות', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+    expect(r.date).toBe(TODAY_MID)
+  })
+
+  it('regression: "12 בלילה" still → 00:00', () => {
+    const r = parseLocally('הלילה בשעה 12 בלילה קריאה', TODAY_MID)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: "12 בצהריים" still → 12:00 (not confused with midnight)', () => {
+    const r = parseLocally('מחר בשעה 12 בצהריים ארוחה', TODAY_MID)
+    expect(r.time).toBe('12:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: "אחת בלילה" → 01:00', () => {
+    const r = parseLocally('הלילה באחת בלילה', TODAY_MID)
+    expect(r.time).toBe('01:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: "אחת בצהריים" → 13:00', () => {
+    const r = parseLocally('מחר באחת בצהריים ארוחה', TODAY_MID)
+    expect(r.time).toBe('13:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('does not match the substring "חצות" inside a larger Hebrew word', () => {
+    // Word-boundary guards prevent false positives. There is no real
+    // Hebrew word that contains "חצות" as a substring, but this asserts
+    // the guard exists for any ASR garbage like "חצותרא".
+    const r = parseLocally('פגישה חצותרא בעשר בבוקר', TODAY_MID)
+    // Falls back to "בעשר בבוקר" → 10:00.
+    expect(r.time).toBe('10:00')
+  })
+})
+
+// "רבע ל" (quarter-to) red-team coverage. Live mic QA flagged
+// "רבע לעשר" as a real Hebrew speech pattern that the original
+// extractTime never handled — it would fall through to the bare-word
+// branch and treat "עשר" as 10:00 (ignoring the "רבע ל" prefix).
+describe('parseLocally — רבע ל (quarter-to)', () => {
+  const TODAY_QT = '2026-05-31'
+
+  it('"רבע לעשר בערב" → 21:45', () => {
+    const r = parseLocally('פגישה רבע לעשר בערב', TODAY_QT)
+    expect(r.time).toBe('21:45')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"רבע לעשר בבוקר" → 09:45', () => {
+    const r = parseLocally('פגישה רבע לעשר בבוקר', TODAY_QT)
+    expect(r.time).toBe('09:45')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"רבע לשבע בערב" → 18:45', () => {
+    const r = parseLocally('תור רבע לשבע בערב', TODAY_QT)
+    expect(r.time).toBe('18:45')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"רבע לאחת בלילה" → 00:45 (1AM minus quarter)', () => {
+    const r = parseLocally('תור רבע לאחת בלילה', TODAY_QT)
+    expect(r.time).toBe('00:45')
+  })
+
+  it('"רבע ל-10" numeric form → ambiguous or 09:45 depending on period', () => {
+    const r = parseLocally('פגישה רבע ל-10 בבוקר', TODAY_QT)
+    expect(r.time).toBe('09:45')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: "עשר ורבע בבוקר" still → 10:15 (and-quarter, not quarter-to)', () => {
+    const r = parseLocally('פגישה עשר ורבע בבוקר', TODAY_QT)
+    expect(r.time).toBe('10:15')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: "בעשר בבוקר" still → 10:00 (no quarter-to interference)', () => {
+    const r = parseLocally('פגישה בעשר בבוקר', TODAY_QT)
+    expect(r.time).toBe('10:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"רבע לחצות" → 23:45 (quarter to midnight)', () => {
+    const r = parseLocally('פגישה רבע לחצות', TODAY_QT)
+    expect(r.time).toBe('23:45')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"רבע אחרי חצות" → 00:15 (quarter after midnight)', () => {
+    const r = parseLocally('פגישה רבע אחרי חצות', TODAY_QT)
+    expect(r.time).toBe('00:15')
+    expect(r.ambiguousTime).toBe(false)
+  })
+})
+
+// ─── P1 — midnight fractions ────────────────────────────────────────────────
+describe('parseLocally — חצות + fraction (midnight with minutes)', () => {
+  const TODAY_MF = '2026-05-31'
+
+  it('"בחצות וחצי" → 00:30', () => {
+    const r = parseLocally('מחר בחצות וחצי פגישה עם אופיר', TODAY_MF)
+    expect(r.time).toBe('00:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"חצות וחצי" → 00:30', () => {
+    const r = parseLocally('חצות וחצי פגישה', TODAY_MF)
+    expect(r.time).toBe('00:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"חצות ורבע" → 00:15', () => {
+    const r = parseLocally('פגישה חצות ורבע', TODAY_MF)
+    expect(r.time).toBe('00:15')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"12 וחצי בלילה" → 00:30 (numeric midnight + half)', () => {
+    const r = parseLocally('מחר 12 וחצי בלילה פגישה', TODAY_MF)
+    expect(r.time).toBe('00:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"שתים עשרה וחצי בלילה" → 00:30 (word midnight + half)', () => {
+    const r = parseLocally('מחר שתים עשרה וחצי בלילה פגישה', TODAY_MF)
+    expect(r.time).toBe('00:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('"אחת וחצי בלילה" → 01:30', () => {
+    const r = parseLocally('הלילה באחת וחצי בלילה', TODAY_MF)
+    expect(r.time).toBe('01:30')
+    expect(r.ambiguousTime).toBe(false)
+  })
+
+  it('regression: plain "בחצות" still → 00:00', () => {
+    const r = parseLocally('מחר בחצות פגישה', TODAY_MF)
+    expect(r.time).toBe('00:00')
+    expect(r.ambiguousTime).toBe(false)
+  })
+})

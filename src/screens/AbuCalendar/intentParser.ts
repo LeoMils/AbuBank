@@ -12,7 +12,10 @@ const QUERY_PATTERNS = [
   /^מה (יש|קורה) לי/,
   /^מה ביומן/,
   /^מה מחכה/,
-  /^מה התוכנית/,
+  // Singular "התוכנית" and plural "התוכניות" share the prefix "תוכני";
+  // gating on it lets "מה התוכניות שלי השבוע" route to schedule_query.
+  /^מה ה?תוכני/,
+  /^מה מתוכנן/,
   /^מה עושים/,
   /^מתי יש לי/,
   /^יש לי משהו/,
@@ -21,6 +24,17 @@ const QUERY_PATTERNS = [
 export function isScheduleQuery(text: string): boolean {
   const t = text.trim()
   return QUERY_PATTERNS.some(p => p.test(t))
+}
+
+// Family question patterns: "מי הבעל של X", "מי האח של X", "מי הילדים של X".
+// Routed as family_query — never saves, never auto-creates anything.
+// Allow optional ה prefix on every noun so "מי האחות של X" and "מי אחות של X" both match.
+const FAMILY_RELATION_NOUN = /(?:ה?בעל|בעלה|ה?אשה|אשת|בן\s+הזוג|ה?אחות|ה?אח|ה?בת|ה?בן|ה?בנות|ה?בנים|ה?ילדים|ה?אמא|ה?אבא|ה?נכד|ה?נכדה|ה?נכדים)/
+const FAMILY_QUERY_RE = new RegExp(`^(?:מי(?:\\s+הם|\\s+היא|\\s+הוא)?\\s+)${FAMILY_RELATION_NOUN.source}(?:\\s+של\\s+)`)
+
+export function isFamilyQuery(text: string): boolean {
+  const t = text.trim()
+  return FAMILY_QUERY_RE.test(t)
 }
 
 export function extractQueryTimeframe(text: string): { scope: 'today' | 'tomorrow' | 'week' | 'specific'; date?: string } {

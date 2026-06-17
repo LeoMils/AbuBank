@@ -5,13 +5,19 @@ export const BRIGHT_GOLD = '#D4A853'
 export const TEAL = '#14b8a6'
 export const BG = '#050A18'
 export const CREAM = '#F5F0E8'
+// Solid text tokens (replace low-alpha text that fell below contrast targets).
+export const TEXT_PRIMARY = '#F5F0E8'
+export const TEXT_SECONDARY = '#D8D2C4'
+export const TEXT_MUTED = '#9C9486'
 
 export type ApptTimeState = 'past' | 'now' | 'today' | 'upcoming'
 
-export const DAY_HEADERS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+export const DAY_HEADERS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'שבת']
 
 export function getTodayStr(): string {
-  return new Date().toISOString().split('T')[0]!
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
 export function daysInMonth(year: number, month: number): number {

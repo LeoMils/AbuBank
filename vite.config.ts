@@ -169,6 +169,142 @@ async function edgeTTS(text: string, voice: string): Promise<Buffer> {
   })
 }
 
+/**
+ * Dev-only QA log receiver — phone browser POSTs QA runs here,
+ * server writes them to tmp/abu-calendar-qa/latest.json (+ timestamped).
+ * No clipboard needed on mobile.
+ */
+/**
+ * Dev-only OpenAI chat proxy — replaces the Vercel serverless function
+ * /api/abuai-chat locally. Reads VITE_OPENAI_API_KEY from .env and
+ * forwards chat requests to OpenAI. Supports both JSON and SSE streaming.
+ */
+function openaiChatProxyPlugin(): Plugin {
+  return {
+    name: 'openai-chat-proxy',
+    enforce: 'pre',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== '/api/abuai-chat' || req.method !== 'POST') return next()
+        const apiKey = process.env.VITE_OPENAI_API_KEY
+        if (!apiKey) {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, errorCode: 'OPENAI_API_KEY_MISSING', userMessage: 'מפתח OpenAI לא מוגדר ב-.env' }))
+          return
+        }
+        try {
+          const chunks: Buffer[] = []
+          for await (const chunk of req) chunks.push(Buffer.from(chunk))
+          const payload = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+          const stream = payload.stream === true
+          const upstreamBody = { ...payload.body, stream }
+
+          const controller = new AbortController()
+          const timer = setTimeout(() => controller.abort(), 25_000)
+          const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify(upstreamBody),
+            signal: controller.signal,
+          })
+          clearTimeout(timer)
+
+          if (!upstream.ok) {
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: false, errorCode: 'CHAT_PROVIDER_FAILED', userMessage: `OpenAI שגיאה ${upstream.status}` }))
+            return
+          }
+
+          if (stream && upstream.body) {
+            res.writeHead(200, {
+              'Content-Type': 'text/event-stream; charset=utf-8',
+              'Cache-Control': 'no-store',
+              'Connection': 'keep-alive',
+            })
+            const reader = upstream.body.getReader()
+            const pump = async () => {
+              while (true) {
+                const { done, value } = await reader.read()
+                if (done) { res.end(); return }
+                res.write(Buffer.from(value))
+              }
+            }
+            await pump()
+            return
+          }
+
+          const json = await upstream.json()
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: true, openai: json }))
+        } catch (e) {
+          const code = (e as { name?: string })?.name === 'AbortError' ? 'CHAT_TIMEOUT' : 'CHAT_PROVIDER_FAILED'
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: false, errorCode: code, userMessage: 'שגיאה בחיבור לשרת.' }))
+        }
+      })
+      // CORS preflight
+      server.middlewares.use((req, res, next) => {
+        if (req.url === '/api/abuai-chat' && req.method === 'OPTIONS') {
+          res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type' })
+          res.end()
+          return
+        }
+        next()
+      })
+    },
+  }
+}
+
+function qaLogPlugin(): Plugin {
+  const QA_DIR = path.resolve(process.cwd(), 'tmp', 'abu-calendar-qa')
+  return {
+    name: 'qa-log-receiver',
+    enforce: 'pre',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== '/__abu_calendar_qa_log' || req.method !== 'POST') return next()
+        try {
+          const chunks: Buffer[] = []
+          for await (const chunk of req) chunks.push(Buffer.from(chunk))
+          const body = Buffer.concat(chunks).toString('utf8')
+          const data = JSON.parse(body)
+
+          fs.mkdirSync(QA_DIR, { recursive: true })
+          const now = new Date()
+          const ts = now.toISOString().replace(/[:.]/g, '-').slice(0, 19)
+          const latestPath = path.join(QA_DIR, 'latest.json')
+          const stampedPath = path.join(QA_DIR, `run-${ts}.json`)
+          const content = JSON.stringify(data, null, 2)
+          fs.writeFileSync(latestPath, content)
+          fs.writeFileSync(stampedPath, content)
+
+          const count = Array.isArray(data.runs) ? data.runs.length : 0
+          console.log(`[qa-log] Saved ${count} runs → ${stampedPath}`)
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+          res.end(JSON.stringify({ ok: true, path: stampedPath, count }))
+        } catch (e) {
+          console.error('[qa-log] Error:', e)
+          res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+          res.end(JSON.stringify({ ok: false, error: String(e) }))
+        }
+      })
+      // CORS preflight for the QA endpoint
+      server.middlewares.use((req, res, next) => {
+        if (req.url === '/__abu_calendar_qa_log' && req.method === 'OPTIONS') {
+          res.writeHead(204, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+          })
+          res.end()
+          return
+        }
+        next()
+      })
+    },
+  }
+}
+
 function ttsProxyPlugin(): Plugin {
   return {
     name: 'tts-proxy',
@@ -260,6 +396,8 @@ function ttsProxyPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [
+    openaiChatProxyPlugin(),
+    qaLogPlugin(),
     ttsProxyPlugin(),
     react(),
     VitePWA({
@@ -301,6 +439,16 @@ export default defineConfig({
   ],
   server: {
     host: true,   // listen on all interfaces (LAN access from iPhone)
+    // HTTPS for iPhone mic access: `npm run dev:https` reads cert from tmp/dev-cert/
+    // Generate cert: `node scripts/generate-dev-cert.cjs`
+    ...(process.env.VITE_HTTPS === '1' && fs.existsSync(path.resolve(process.cwd(), 'tmp', 'dev-cert', 'key.pem'))
+      ? {
+          https: {
+            key: fs.readFileSync(path.resolve(process.cwd(), 'tmp', 'dev-cert', 'key.pem')),
+            cert: fs.readFileSync(path.resolve(process.cwd(), 'tmp', 'dev-cert', 'cert.pem')),
+          },
+        }
+      : {}),
     headers: {
       // Prevent iPhone Safari from serving stale JS/CSS during development
       'Cache-Control': 'no-store, no-cache, must-revalidate',

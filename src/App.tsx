@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { useAppStore } from './state/store'
 import { Screen, SCREEN_LABELS } from './state/types'
 import { IMMUTABLE_DEFAULTS } from './state/defaults'
@@ -10,6 +10,7 @@ import { Shell } from './components/Shell'
 import { MoreModal } from './components/MoreModal'
 import { UpdateToast } from './components/UpdateToast'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { DiagnosticOverlay } from './components/DiagnosticOverlay'
 import { useSWUpdate } from './hooks/useSWUpdate'
 // T7.1: Critical path — keep in main bundle
 import { Home } from './screens/Home'
@@ -79,6 +80,41 @@ export function App() {
   const setAdminInitComplete = useAppStore(s => s.setAdminInitComplete)
   const setInstallDismissed = useAppStore(s => s.setInstallDismissed)
   const { updateReady, applyUpdate } = useSWUpdate()
+
+  // P0.3 — app-wide diagnostic overlay. Visible whenever the user
+  // navigates to ?diagnostics=1 / ?diagnostic=1 / #diagnostics, or when
+  // any entry point (Settings top button, Home pill) opens it.
+  const [diagOpen, setDiagOpen] = useState<boolean>(() => {
+    try {
+      if (typeof window === 'undefined') return false
+      const url = new URL(window.location.href)
+      if (url.searchParams.get('diagnostics') === '1' || url.searchParams.get('diagnostic') === '1') return true
+      if (url.hash === '#diagnostics' || url.hash === '#diagnostic') return true
+      return false
+    } catch { return false }
+  })
+  useEffect(() => {
+    function checkHash() {
+      try {
+        const url = new URL(window.location.href)
+        const open = url.searchParams.get('diagnostics') === '1'
+          || url.searchParams.get('diagnostic') === '1'
+          || url.hash === '#diagnostics' || url.hash === '#diagnostic'
+        if (open) setDiagOpen(true)
+      } catch { /* nothing */ }
+    }
+    window.addEventListener('hashchange', checkHash)
+    return () => window.removeEventListener('hashchange', checkHash)
+  }, [])
+  useEffect(() => {
+    // Expose a single global so any deeply-nested component (Settings
+    // top button, Home pill) can request the overlay without prop
+    // drilling through Suspense boundaries.
+    ;(window as unknown as { __abubankOpenDiag?: () => void }).__abubankOpenDiag = () => setDiagOpen(true)
+    return () => {
+      delete (window as unknown as { __abubankOpenDiag?: () => void }).__abubankOpenDiag
+    }
+  }, [])
 
   // §9 lifecycle useEffect
   useEffect(() => {
@@ -172,6 +208,8 @@ export function App() {
       )}
 
       {updateReady && <UpdateToast onUpdate={applyUpdate} />}
+
+      {diagOpen && <DiagnosticOverlay onClose={() => setDiagOpen(false)} />}
 
       <div aria-live="polite" aria-atomic="true" className={styles.srOnly}>
         {SCREEN_LABELS[currentScreen]}

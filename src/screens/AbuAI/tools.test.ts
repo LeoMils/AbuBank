@@ -85,36 +85,39 @@ describe('calendar tools', () => {
   it('getTodayEvents returns empty for no events', () => {
     const r = getTodayEvents()
     expect(r.events).toHaveLength(0)
-    expect(r.summary).toContain('לא מצאתי')
+    expect(r.summary).toContain('חופשי')
   })
 
   it('getTomorrowEvents returns empty for no events', () => {
     const r = getTomorrowEvents()
     expect(r.events).toHaveLength(0)
-    expect(r.summary).toContain('לא מצאתי')
+    expect(r.summary).toContain('אין שום דבר')
   })
 
   it('getWeekEvents returns empty for no events', () => {
     const r = getWeekEvents()
-    expect(r.summary).toContain('לא מצאתי')
+    expect(r.summary).toContain('ריק')
   })
 
   it('findEventsByPerson returns empty for unknown person', () => {
     const r = findEventsByPerson('יוסי הדמיוני')
     expect(r.events).toHaveLength(0)
-    expect(r.summary).toContain('לא מצאתי')
+    expect(r.summary).toContain('אין כלום ביומן')
   })
 
   it('findEventsByPerson finds family birthdays', () => {
-    const r = findEventsByPerson('אופיר')
+    // Query a person whose own birthday is the event subject (matched by
+    // personName/title), not via leaked relationship notes. Use one whose
+    // birthday is upcoming relative to today so the date filter keeps it.
+    const r = findEventsByPerson('ארי')
     expect(r.events.length).toBeGreaterThan(0)
-    expect(r.summary).toContain('אופיר')
+    expect(r.summary).toContain('ארי')
   })
 
   it('findNextEventByType returns empty when no match', () => {
     const r = findNextEventByType('medical')
     expect(r.event).toBeNull()
-    expect(r.summary).toContain('לא מצאתי')
+    expect(r.summary).toContain('אין')
   })
 })
 
@@ -132,7 +135,7 @@ describe('executeTool', () => {
 
   it('executes get_today_events', () => {
     const r = executeTool('get_today_events', {})
-    expect(r).toContain('לא מצאתי')
+    expect(r).toContain('חופשי')
   })
 
   it('executes search_family_info', () => {
@@ -147,7 +150,7 @@ describe('executeTool', () => {
 
   it('unknown tool returns error', () => {
     const r = executeTool('nonexistent', {})
-    expect(r).toContain('לא מוכר')
+    expect(r).toContain('לא הצלחתי לבדוק')
   })
 })
 

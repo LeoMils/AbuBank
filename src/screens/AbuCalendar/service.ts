@@ -62,6 +62,122 @@ export function addAppointment(appt: Omit<Appointment, 'id' | 'color'>): Appoint
   return newAppt
 }
 
+// ─── P0 — createAppointmentSafe ───────────────────────────────────────────
+//
+// Single safe creation path used by ManualModal AND the voice-confirm flow.
+// Validates required fields, attempts persistence, and ROUND-TRIPS through
+// storage to confirm the event is actually there. Returns a structured
+// result so the UI can show the correct success / failure / clarification
+// message — never a false "saved" toast.
+
+export type CreateFailureCode =
+  | 'missing_title' | 'missing_date' | 'missing_time'
+  | 'invalid_date' | 'invalid_time'
+  | 'storage_failed'
+
+export type CreateResult =
+  | { ok: true; appointment: Appointment }
+  | { ok: false; code: CreateFailureCode }
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const TIME_RE = /^\d{2}:\d{2}$/
+
+export function createAppointmentSafe(input: Omit<Appointment, 'id' | 'color'>): CreateResult {
+  // 1) Required-field validation — no silent acceptance.
+  if (!input.title || !input.title.trim()) return { ok: false, code: 'missing_title' }
+  if (!input.date || !input.date.trim()) return { ok: false, code: 'missing_date' }
+  if (!input.time || !input.time.trim()) return { ok: false, code: 'missing_time' }
+
+  // 2) Format validation.
+  if (!DATE_RE.test(input.date)) return { ok: false, code: 'invalid_date' }
+  if (!TIME_RE.test(input.time)) return { ok: false, code: 'invalid_time' }
+  // Cross-check: date must be parseable.
+  const [y, m, d] = input.date.split('-').map(Number)
+  if (!y || !m || !d || m < 1 || m > 12 || d < 1 || d > 31) return { ok: false, code: 'invalid_date' }
+  const [hh, mm] = input.time.split(':').map(Number)
+  if (hh === undefined || mm === undefined || hh < 0 || hh > 23 || mm < 0 || mm > 59) {
+    return { ok: false, code: 'invalid_time' }
+  }
+
+  // 3) Attempt persistence. addAppointment + saveAppointments together
+  //    will swallow storage errors (private-mode / quota), so we catch
+  //    throws from setItem AND we read back to verify presence.
+  let created: Appointment
+  try {
+    created = addAppointment(input)
+  } catch {
+    return { ok: false, code: 'storage_failed' }
+  }
+
+  // 4) Round-trip verification — defends against silent no-op storage.
+  const persisted = loadAppointments().find((a) => a.id === created.id)
+  if (!persisted) return { ok: false, code: 'storage_failed' }
+
+  return { ok: true, appointment: created }
+}
+
+// ─── P0 — user-facing copy helpers (HE/ES/EN) ─────────────────────────────
+
+export type ConfirmationLang = 'he' | 'es' | 'en'
+
+export function formatCreatedConfirmation(
+  appt: { title: string; date: string; time: string },
+  lang: ConfirmationLang,
+): string {
+  if (lang === 'es') return `Listo, lo agendé: ${appt.title}, ${appt.date}, a las ${appt.time}.`
+  if (lang === 'en') return `Done, I added: ${appt.title}, ${appt.date}, at ${appt.time}.`
+  return `קבעתי: ${appt.title}, ${appt.date}, בשעה ${appt.time}.`
+}
+
+export function formatCreateFailure(code: CreateFailureCode, lang: ConfirmationLang): string {
+  if (code === 'storage_failed') {
+    if (lang === 'es') return 'No pude guardarlo ahora. ¿Probamos otra vez?'
+    if (lang === 'en') return "I couldn't save it right now. Want to try again?"
+    return 'לא הצלחתי לשמור את הפגישה כרגע. ננסה שוב?'
+  }
+  if (code === 'missing_title' || code === 'missing_date' || code === 'missing_time' ||
+      code === 'invalid_date' || code === 'invalid_time') {
+    if (lang === 'es') return 'Me falta un dato. ¿Me lo decís otra vez?'
+    if (lang === 'en') return "I'm missing something. Can you say that again?"
+    return 'חסר לי פרט. תוכלי לחזור על זה?'
+  }
+  // exhaustive
+  const _exhaust: never = code
+  void _exhaust
+  return ''
+}
+
+export function formatMissingFieldQuestion(
+  field: 'title' | 'date' | 'time',
+  lang: ConfirmationLang,
+): string {
+  if (lang === 'es') {
+    if (field === 'time') return '¿A qué hora querés que la agende?'
+    if (field === 'date') return '¿Para qué día?'
+    return '¿Qué nombre le ponemos a la cita?'
+  }
+  if (lang === 'en') {
+    if (field === 'time') return 'What time should I set?'
+    if (field === 'date') return 'What day?'
+    return 'What should I call this meeting?'
+  }
+  if (field === 'time') return 'באיזו שעה לקבוע את הפגישה?'
+  if (field === 'date') return 'מתי לקבוע את הפגישה?'
+  return 'מה השם של הפגישה?'
+}
+
+export function findConflicts(date: string, time: string | null): Appointment[] {
+  if (!time) return []
+  const appts = loadAppointments()
+  return appts.filter(a => {
+    if (a.date !== date || !a.time) return false
+    // Check if times overlap (within 1 hour)
+    const [h1] = time.split(':').map(Number)
+    const [h2] = a.time.split(':').map(Number)
+    return Math.abs((h1 ?? 0) - (h2 ?? 0)) < 1
+  })
+}
+
 export function updateAppointment(id: string, updates: Partial<Omit<Appointment, 'id'>>): void {
   const appts = loadAppointments()
   saveAppointments(appts.map(a => a.id === id ? { ...a, ...updates } : a))
@@ -123,12 +239,15 @@ export async function parseAppointmentText(text: string): Promise<{ title: strin
 
   if (groqKey) {
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10_000)
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${groqKey}`,
         },
+        signal: controller.signal,
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
           messages: [
@@ -168,6 +287,7 @@ confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very 
           max_tokens: 200,
         }),
       })
+      clearTimeout(timeout)
       if (res.ok) {
         const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
         const content = data?.choices?.[0]?.message?.content ?? ''
@@ -190,7 +310,7 @@ confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very 
         }
       }
     } catch {
-      // fall through to fallback
+      // fall through to fallback (timeout, network error, or parse error)
     }
   }
 
@@ -233,39 +353,11 @@ export function formatHebrewMonth(year: number, month: number): string {
   return `${monthName} ${year}`
 }
 
-// ─── Family Birthdays & Memorial (hardcoded from memory/birthdays_registry.yaml) ───
-
-const CURRENT_YEAR = new Date().getFullYear()
-
-export const FAMILY_BIRTHDAYS: Appointment[] = [
-  // February
-  { id: 'bday-ofir',    title: 'יום הולדת אופיר 🎂',      date: `${CURRENT_YEAR}-02-15`, time: '09:00', emoji: '🎂', color: '#FF6B9D', type: 'birthday', personName: 'אופיר', isRecurring: true },
-  { id: 'bday-adar',    title: 'יום הולדת אדר 🎂',        date: `${CURRENT_YEAR}-02-28`, time: '09:00', emoji: '🎂', color: '#A78BFA', type: 'birthday', personName: 'אדר', isRecurring: true },
-  // April
-  { id: 'bday-martita', title: 'יום הולדת Martita! 🎉👑',  date: `${CURRENT_YEAR}-04-01`, time: '09:00', emoji: '👑', color: '#FFE66D', type: 'birthday', personName: 'Martita', isRecurring: true },
-  { id: 'bday-adi',     title: 'יום הולדת עדי 🎂',        date: `${CURRENT_YEAR}-04-05`, time: '09:00', emoji: '🎂', color: '#F472B6', type: 'birthday', personName: 'עדי', isRecurring: true },
-  { id: 'bday-noam',    title: 'יום הולדת נועם 🎂',       date: `${CURRENT_YEAR}-04-05`, time: '09:00', emoji: '🎂', color: '#4ECDC4', type: 'birthday', personName: 'נועם', isRecurring: true },
-  { id: 'bday-ilai',    title: 'יום הולדת עילי 🎂',       date: `${CURRENT_YEAR}-04-08`, time: '09:00', emoji: '🎂', color: '#60A5FA', type: 'birthday', personName: 'עילי', isRecurring: true },
-  { id: 'bday-papi',    title: 'יום הולדת פפי 🕯️❤️',      date: `${CURRENT_YEAR}-04-19`, time: '09:00', emoji: '🕯️', color: '#C9A84C', type: 'birthday', personName: 'פפי', isRecurring: true },
-  // July
-  { id: 'bday-raphi',   title: 'יום הולדת רפי 🎂',        date: `${CURRENT_YEAR}-07-29`, time: '09:00', emoji: '🎂', color: '#FB923C', type: 'birthday', personName: 'רפי', isRecurring: true },
-  { id: 'bday-eylon',   title: 'יום הולדת אילון 🎂',      date: `${CURRENT_YEAR}-07-31`, time: '09:00', emoji: '🎂', color: '#34D399', type: 'birthday', personName: 'אילון', isRecurring: true },
-  // August
-  { id: 'bday-mor',     title: 'יום הולדת מור 🎂❤️',       date: `${CURRENT_YEAR}-08-10`, time: '09:00', emoji: '🎂', color: '#FF6B9D', type: 'birthday', personName: 'מור', isRecurring: true },
-  { id: 'bday-leo',     title: 'יום הולדת לאו 🎂❤️',       date: `${CURRENT_YEAR}-08-22`, time: '09:00', emoji: '🎂', color: '#4ECDC4', type: 'birthday', personName: 'לאו', isRecurring: true },
-  // September
-  { id: 'bday-sharon',  title: 'יום הולדת שרון 🎂',       date: `${CURRENT_YEAR}-09-11`, time: '09:00', emoji: '🎂', color: '#A78BFA', type: 'birthday', personName: 'שרון', isRecurring: true },
-  // October
-  { id: 'bday-anabel',  title: 'יום הולדת אנאבל 🎂👶',     date: `${CURRENT_YEAR}-10-01`, time: '09:00', emoji: '🎂', color: '#F472B6', type: 'birthday', personName: 'אנאבל', isRecurring: true, notes: 'נינה — בת של אופיר וגלעד' },
-  { id: 'bday-yarden',  title: 'יום הולדת ירדן 🎂',       date: `${CURRENT_YEAR}-10-12`, time: '09:00', emoji: '🎂', color: '#60A5FA', type: 'birthday', personName: 'ירדן', isRecurring: true },
-  // November
-  { id: 'bday-ari',     title: 'יום הולדת ארי 🎂👶',       date: `${CURRENT_YEAR}-11-26`, time: '09:00', emoji: '🎂', color: '#FB923C', type: 'birthday', personName: 'ארי', isRecurring: true, notes: 'נינה — בת של אופיר וגלעד, אחות של אנאבל' },
-]
-
-export const FAMILY_MEMORIALS: Appointment[] = [
-  { id: 'memorial-papi', title: 'יום הזיכרון של פפי 🕯️',  date: `${CURRENT_YEAR}-01-01`, time: '09:00', emoji: '🕯️', color: '#C9A84C', type: 'memory', personName: 'פפי', isRecurring: true,
-    notes: 'פפי נפטר ב-1 בינואר 2025. נולד ב-19 באפריל 1941.' },
-]
+// ─── Family Birthdays & Memorial ───
+// Source of truth: knowledge/family_data.json (see ./familyEvents). Re-exported
+// here under the same names that the calendar screen and AbuAI tools.ts consume.
+export { FAMILY_BIRTHDAYS, FAMILY_MEMORIALS } from './familyEvents'
+import { FAMILY_BIRTHDAYS, FAMILY_MEMORIALS } from './familyEvents'
 
 /** Load appointments + merge permanent family birthdays & memorials for a specific year */
 export function loadAppointmentsWithFamily(viewYear?: number): Appointment[] {

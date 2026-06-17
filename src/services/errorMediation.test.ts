@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { classifyError, mediateError, LEO_CONTACT_URL } from './errorMediation'
+import { classifyError, mediateError, mediateVoiceCaptureError, LEO_CONTACT_URL } from './errorMediation'
 
 describe('classifyError', () => {
   it('classifies 402 as quota', () => {
@@ -121,5 +121,64 @@ describe('mediateError', () => {
 describe('LEO_CONTACT_URL', () => {
   it('is a valid HTTPS WhatsApp URL', () => {
     expect(LEO_CONTACT_URL).toMatch(/^https:\/\/chat\.whatsapp\.com\//)
+  })
+})
+
+describe('mediateVoiceCaptureError', () => {
+  it('maps NotAllowedError to senior-friendly permission copy', () => {
+    const err = new DOMException('', 'NotAllowedError')
+    const msg = mediateVoiceCaptureError(err)
+    expect(msg).toContain('המיקרופון חסום')
+    expect(msg).not.toMatch(/NotAllowedError|DOMException|stack/i)
+  })
+
+  it('maps NotFoundError to no-microphone copy', () => {
+    const err = new DOMException('', 'NotFoundError')
+    const msg = mediateVoiceCaptureError(err)
+    expect(msg).toContain('מיקרופון')
+    expect(msg).not.toMatch(/NotFoundError|DOMException|stack/i)
+  })
+
+  it('maps unknown recording start failures to retry copy', () => {
+    const msg = mediateVoiceCaptureError(new Error('boom'), 'recording_start')
+    expect(msg).toBe('לא הצלחתי להתחיל הקלטה. ננסה שוב.')
+    expect(msg).not.toMatch(/boom|Error|stack/i)
+  })
+
+  it('maps true speech-not-understood transcription failures to speech copy', () => {
+    const msg = mediateVoiceCaptureError(new Error('transcribe failed'), 'transcription')
+    expect(msg).toBe('לא הצלחתי להבין את ההקלטה. ננסה שוב.')
+    expect(msg).not.toMatch(/transcribe|Error|stack/i)
+  })
+
+  it('maps auth transcription errors to service/setup copy, not speech copy', () => {
+    const msg = mediateVoiceCaptureError(new Error('invalid_api_key'), 'transcription')
+    expect(msg).toContain('בעיה בהגדרות')
+    expect(msg).not.toContain('להבין את ההקלטה')
+  })
+
+  it('maps rate-limit transcription errors to service busy copy, not speech copy', () => {
+    const err = new Error('too many requests')
+    const msg = mediateVoiceCaptureError(err, 'transcription')
+    expect(msg).toContain('עמוס')
+    expect(msg).not.toContain('להבין את ההקלטה')
+  })
+
+  it('maps network transcription errors to connection copy, not speech copy', () => {
+    const msg = mediateVoiceCaptureError(new Error('failed to fetch'), 'transcription')
+    expect(msg).toContain('חיבור')
+    expect(msg).not.toContain('להבין את ההקלטה')
+  })
+
+  it('maps quota transcription errors to service unavailable copy, not speech copy', () => {
+    const msg = mediateVoiceCaptureError(new Error('quota exceeded'), 'transcription')
+    expect(msg).toContain('לא זמין')
+    expect(msg).not.toContain('להבין את ההקלטה')
+  })
+
+  it('maps timeout transcription errors to timeout copy, not speech copy', () => {
+    const msg = mediateVoiceCaptureError(new Error('request timed out'), 'transcription')
+    expect(msg).toContain('יותר מדי זמן')
+    expect(msg).not.toContain('להבין את ההקלטה')
   })
 })
