@@ -83,7 +83,7 @@ describe('Provider loop elimination — source contracts', () => {
   })
 
   it('fallback message is human-friendly, not technical', () => {
-    const fallback = 'רגע, לא הצלחתי. בואי ננסה שוב, או תשאלי אותי משהו אחר.'
+    const fallback = 'לא הצלחתי עכשיו — תנסי שוב עוד רגע.'
     expect(SERVICE_SRC).toContain(fallback)
     expect(SERVICE_SRC).not.toContain('כל השרתים תפוסים')
   })
@@ -556,8 +556,8 @@ describe('Human tone — no robotic/technical language', () => {
   })
 
   it('fallback is warm and actionable', () => {
-    expect(SERVICE_SRC).toContain('בואי ננסה שוב')
-    expect(SERVICE_SRC).toContain('תשאלי אותי משהו אחר')
+    expect(SERVICE_SRC).toContain('תנסי שוב עוד רגע')
+    expect(SERVICE_SRC).toContain('לא הצלחתי עכשיו')
   })
 
   it('cooldown-based error messages use warm Hebrew', () => {
@@ -834,7 +834,7 @@ describe('Provider policy — OpenAI first in voice AND text', () => {
 
 describe('Human Hebrew fallback — no robotic menu', () => {
   it('streaming fallback is warm and short', () => {
-    expect(SERVICE_SRC).toContain('רגע, לא הצלחתי. בואי ננסה שוב')
+    expect(SERVICE_SRC).toContain('לא הצלחתי עכשיו — תנסי שוב עוד רגע')
   })
 
   it('fallback does NOT contain provider/system language', () => {
@@ -927,7 +927,7 @@ describe('Voice mode pipeline architecture', () => {
   it('voice transcript goes through same local-first router as text', () => {
     // Voice path must call tryGroundedAnswer — search entire file
     expect(INDEX_SRC).toContain('tryGroundedAnswer')
-    // And sendMessage with voiceMode=true
-    expect(INDEX_SRC).toContain('sendMessage(currentMsgs, true)')
+    // And streamMessage with voiceMode=true for progressive TTS
+    expect(INDEX_SRC).toContain('streamMessage(currentMsgs, true')
   })
 })

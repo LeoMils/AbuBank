@@ -58,7 +58,8 @@ describe('B2.4 — relationship route is wired and shaped', () => {
   })
 
   it('service.ts imports describeRelation from familyGraph', () => {
-    expect(SERVICE.includes("import { describeRelation, type Lang } from './familyGraph'")).toBe(true)
+    expect(SERVICE.includes("describeRelation")).toBe(true)
+    expect(SERVICE.includes("from './familyGraph'")).toBe(true)
   })
 })
 

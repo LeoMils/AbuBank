@@ -28,9 +28,9 @@ describe('compileHumanAnswer — tool failure', () => {
 })
 
 describe('compileHumanAnswer — no evidence on personal/current request', () => {
-  it('Hebrew "לא מצאתי." for empty calendar evidence', () => {
+  it('Hebrew not-found for empty calendar evidence', () => {
     const r = compileHumanAnswer('q', makeCalendarEvidence([]), { lang: 'he' })
-    expect(r.text).toBe('לא מצאתי.')
+    expect(r.text).toBe('אין לי מידע על זה.')
     expect(r.isFailureCopy).toBe(true)
   })
   it('Spanish "No encontré nada." for empty family evidence', () => {
@@ -94,6 +94,6 @@ describe('compileHumanAnswer — open conversation', () => {
 describe('compileHumanAnswer — none / unknown', () => {
   it('makeNoEvidence with no content world → not-found copy', () => {
     const r = compileHumanAnswer('q', makeNoEvidence('local'), { lang: 'he' })
-    expect(r.text).toBe('לא מצאתי.')
+    expect(r.text).toBe('אין לי מידע על זה.')
   })
 })

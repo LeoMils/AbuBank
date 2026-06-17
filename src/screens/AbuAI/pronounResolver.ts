@@ -12,11 +12,11 @@ import { loadGraph, type GraphNode } from './familyGraph'
 
 // Hebrew pronoun patterns that refer to a previously mentioned person.
 // Captures: אליו/אליה/לו/לה/שלו/שלה/אותו/אותה/איתו/איתה
-const HE_PRONOUN = /(?<![֐-׿])(אליו|אליה|לו|לה|שלו|שלה|אותו|אותה|איתו|איתה)(?![֐-׿])/
+const HE_PRONOUN = /(?<![֐-׿])(אליו|אליה|לו|לה|שלו|שלה|אותו|אותה|איתו|איתה|הוא|היא)(?![֐-׿])/
 
 // Gender from pronoun
 function pronounGender(pronoun: string): 'male' | 'female' {
-  return /אליה|לה|שלה|אותה|איתה/.test(pronoun) ? 'female' : 'male'
+  return /אליה|לה|שלה|אותה|איתה|היא/.test(pronoun) ? 'female' : 'male'
 }
 
 /**
@@ -100,6 +100,8 @@ export function resolvePronouns(
     'אותה': `את ${person}`,
     'איתו': `עם ${person}`,
     'איתה': `עם ${person}`,
+    'הוא': person,
+    'היא': person,
   }
 
   const replacement = replacements[pronoun] ?? person

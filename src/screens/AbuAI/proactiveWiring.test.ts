@@ -61,8 +61,10 @@ describe('voice path — grounded → proactive → LLM ordering', () => {
   // The voice handler is around `tryGroundedAnswer(text)` followed by the
   // sendMessage(true) fallback.
   const voiceStart = SRC.indexOf('const voiceGrounded = tryGroundedAnswer(text)')
-  const voiceEnd = SRC.indexOf('clearTimeout(watchdog)', voiceStart)
-  const voiceBlock = SRC.slice(voiceStart, voiceEnd > voiceStart ? voiceEnd : voiceStart + 1500)
+  // Skip past inline abort guard's clearTimeout to the main one after the streaming block
+  const firstClear = SRC.indexOf('clearTimeout(watchdog)', voiceStart)
+  const voiceEnd = SRC.indexOf('clearTimeout(watchdog)', firstClear + 1)
+  const voiceBlock = SRC.slice(voiceStart, voiceEnd > voiceStart ? voiceEnd : voiceStart + 3000)
 
   it('voice block exists', () => {
     expect(voiceStart).toBeGreaterThan(-1)
@@ -70,10 +72,10 @@ describe('voice path — grounded → proactive → LLM ordering', () => {
   it('voice block calls tryGroundedAnswer first', () => {
     expect(voiceBlock.includes('tryGroundedAnswer(text)')).toBe(true)
   })
-  it('voice block consults getProactiveSeed before sendMessage', () => {
+  it('voice block consults getProactiveSeed before LLM streaming', () => {
     const groundedIdx = voiceBlock.indexOf('tryGroundedAnswer(text)')
     const proactiveIdx = voiceBlock.indexOf('getProactiveSeed(text')
-    const sendIdx = voiceBlock.indexOf('sendMessage(currentMsgs, true)')
+    const sendIdx = voiceBlock.indexOf('streamMessage(currentMsgs, true')
     expect(proactiveIdx).toBeGreaterThan(groundedIdx)
     expect(sendIdx).toBeGreaterThan(proactiveIdx)
   })
@@ -81,10 +83,10 @@ describe('voice path — grounded → proactive → LLM ordering', () => {
     expect(/getProactiveSeed\(text,\s*\{\s*previousSeedId:\s*lastProactiveSeedIdRef\.current/.test(voiceBlock)).toBe(true)
     expect(voiceBlock.includes('lastProactiveSeedIdRef.current = voiceProactive.id')).toBe(true)
   })
-  it('voice block falls through to sendMessage only when neither grounded nor proactive matched', () => {
-    // Pattern: response = voiceGrounded (when not null) OR proactive text OR sendMessage
+  it('voice block falls through to streaming LLM only when neither grounded nor proactive matched', () => {
+    // Pattern: response = voiceGrounded (when not null) OR proactive text OR streamMessage
     expect(voiceBlock.includes('voiceGrounded !== null')).toBe(true)
-    expect(voiceBlock.includes('await sendMessage(currentMsgs, true)')).toBe(true)
+    expect(voiceBlock.includes('streamMessage(currentMsgs, true')).toBe(true)
   })
 })
 

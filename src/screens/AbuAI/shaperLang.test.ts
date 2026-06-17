@@ -11,18 +11,18 @@ import { shapeNotFound, shapeToolError } from './responseShaper'
 
 describe('shapeNotFound — language hint', () => {
   it('default (no hint) returns Hebrew (regression)', () => {
-    expect(shapeNotFound()).toBe('לא מצאתי מידע על זה.')
-    expect(shapeNotFound('Pepito')).toBe('לא מצאתי מידע על Pepito.')
+    expect(shapeNotFound()).toBe('לא יודעת, אין לי מידע על זה.')
+    expect(shapeNotFound('Pepito')).toBe('לא יודעת, אין לי מידע על Pepito.')
   })
 
   it('lang="he" returns Hebrew', () => {
-    expect(shapeNotFound(undefined, 'he')).toBe('לא מצאתי מידע על זה.')
-    expect(shapeNotFound('Pepito', 'he')).toBe('לא מצאתי מידע על Pepito.')
+    expect(shapeNotFound(undefined, 'he')).toBe('לא יודעת, אין לי מידע על זה.')
+    expect(shapeNotFound('Pepito', 'he')).toBe('לא יודעת, אין לי מידע על Pepito.')
   })
 
   it('lang="es" returns Spanish', () => {
-    expect(shapeNotFound(undefined, 'es')).toBe('No lo encontré.')
-    expect(shapeNotFound('Pepito', 'es')).toBe('No lo encontré (Pepito).')
+    expect(shapeNotFound(undefined, 'es')).toBe('No tengo eso, Martita.')
+    expect(shapeNotFound('Pepito', 'es')).toBe('No tengo eso, Martita.')
   })
 
   it('lang="en" returns English', () => {
@@ -31,38 +31,38 @@ describe('shapeNotFound — language hint', () => {
   })
 
   it('lang="mixed" prefers Hebrew when uncertain', () => {
-    expect(shapeNotFound(undefined, 'mixed')).toBe('לא מצאתי מידע על זה.')
+    expect(shapeNotFound(undefined, 'mixed')).toBe('לא יודעת, אין לי מידע על זה.')
   })
 })
 
 describe('shapeToolError — language hint', () => {
   it('default (no hint) returns Hebrew (regression)', () => {
-    expect(shapeToolError()).toBe('משהו לא עבד. ננסה שוב?')
+    expect(shapeToolError()).toBe('רגע, משהו תקוע. תנסי שוב עוד רגע.')
   })
 
   it('lang="es" returns Spanish', () => {
-    expect(shapeToolError('es')).toBe('No puedo comprobarlo ahora. Probá de nuevo en un rato.')
+    expect(shapeToolError('es')).toBe('Algo se trabó. Probá de nuevo en un ratito.')
   })
 
   it('lang="en" returns English', () => {
-    expect(shapeToolError('en')).toBe('I cannot check that right now. Please try again in a moment.')
+    expect(shapeToolError('en')).toBe('Something got stuck. Try again in a moment.')
   })
 
   it('lang="he" returns Hebrew', () => {
-    expect(shapeToolError('he')).toBe('משהו לא עבד. ננסה שוב?')
+    expect(shapeToolError('he')).toBe('רגע, משהו תקוע. תנסי שוב עוד רגע.')
   })
 
   it('lang="mixed" prefers Hebrew', () => {
-    expect(shapeToolError('mixed')).toBe('משהו לא עבד. ננסה שוב?')
+    expect(shapeToolError('mixed')).toBe('רגע, משהו תקוע. תנסי שוב עוד רגע.')
   })
 })
 
 describe('Hebrew behavior preserved across the existing call surface', () => {
   it('shapeNotFound() always returns the original Hebrew string when called without args', () => {
     // This is the exact contract every legacy call site relies on.
-    expect(shapeNotFound()).toBe('לא מצאתי מידע על זה.')
+    expect(shapeNotFound()).toBe('לא יודעת, אין לי מידע על זה.')
   })
   it('shapeToolError() always returns the original Hebrew string when called without args', () => {
-    expect(shapeToolError()).toBe('משהו לא עבד. ננסה שוב?')
+    expect(shapeToolError()).toBe('רגע, משהו תקוע. תנסי שוב עוד רגע.')
   })
 })

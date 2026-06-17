@@ -123,7 +123,7 @@ describe('RUNTIME PROOF — end-to-end calendar pipeline', () => {
     console.log(`Answer: ${answer}`)
 
     expect(answer).not.toBeNull()
-    expect(answer).toContain('לא מצאתי')
+    expect(answer).toContain('אין שום דבר')
   })
 
   it('STEP 7: multiple appointments — all appear', () => {

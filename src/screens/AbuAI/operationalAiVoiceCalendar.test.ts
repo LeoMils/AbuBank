@@ -125,7 +125,7 @@ describe('D. calendar read is grounded/local', () => {
   })
 
   it('empty store answers truthfully with "לא מצאתי"', () => {
-    expect(tryGroundedAnswer('מה יש לי מחר?')).toContain('לא מצאתי')
+    expect(tryGroundedAnswer('מה יש לי מחר?')).toContain('אין שום דבר')
   })
 })
 

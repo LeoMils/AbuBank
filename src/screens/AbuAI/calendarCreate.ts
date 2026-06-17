@@ -53,6 +53,12 @@ export function normalizeCreateText(text: string): string {
 
 // ─── Intent Detection ───────────────────────────────────────────────────────
 
+const RECURRING_INTENT = /כל\s+(יום\s+)?(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)|כל\s+שבוע|כל\s+יום/i
+
+export function isRecurringIntent(text: string): boolean {
+  return RECURRING_INTENT.test(text)
+}
+
 const CREATE_INTENT = /תקבע[יה]? לי|תרשמ[יה]? לי|תוסיפ[יה]? לי|תזכיר[יה]? לי|תכניס[יה]? לי|תעש[יה]? לי|שימ[יה]? לי|קבע[יה]? לי|רשמ[יה]? לי|אני רוצה פגישה|אני רוצה תור|יש לי תור|יש לי פגישה|תכניס[יה]? ליומן|תשימ[יה]? ביומן|צריכה לקבוע|צריך לקבוע|רוצה לקבוע/i
 
 // Natural speech: "אני צריכה להיות אצל...", "ביום רביעי בשעה חמש..."
@@ -62,7 +68,7 @@ const NATURAL_INTENT = /צריכ[הא]? להיות|צריכ[הא]? להגיע|צ
 // Detects if text contains time+date context that implies a future event description
 function hasTimeAndDateContext(text: string): boolean {
   const hasDate = /היום|מחר|מחרתיים|ביום\s+(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)|בעוד\s+שבוע/i.test(text)
-  const hasTime = /בשעה|בבוקר|בערב|בצהריים|ב(שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)/i.test(text)
+  const hasTime = /בשעה|בבוקר|בערב|בצהריים|[בל](שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)/i.test(text)
   return hasDate && hasTime
 }
 
@@ -79,7 +85,7 @@ const SCHEDULE_VERB = /(?<![֐-׿])(?:תקבעי|תקבע|קבעי|קבע|תרש
 // verb, to commit to calendar_create even when a family name is present.
 function hasScheduleClue(t: string): boolean {
   const hasDate = /היום|מחר|מחרתיים|(?:ב?יום\s+|ב)(?:ראשון|שני|שלישי|רביעי|רביע|חמישי|שישי|שבת)|בעוד\s+שבוע|שבוע\s+הבא/.test(t)
-  const hasTime = /בשעה|בבוקר|בערב|בצהריים|אחהצ|אחה"צ|אחר[י]?\s+הצהריים|ב(?:שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|אחת|שתיים)|\d{1,2}[:.]\d{2}|\d{1,2}\s*(?:אחהצ|בערב|בבוקר|בצהריים)/.test(t)
+  const hasTime = /בשעה|בבוקר|בערב|בצהריים|אחהצ|אחה"צ|אחר[י]?\s+הצהריים|[בל](?:שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|אחת|שתיים)|\d{1,2}[:.]\d{2}|\d{1,2}\s*(?:אחהצ|בערב|בבוקר|בצהריים)/.test(t)
   const hasWith = /(?<![֐-׿])עם\s+\S/.test(t)
   return hasDate || hasTime || hasWith
 }
@@ -174,7 +180,7 @@ export function parseHebrewTimeDetailed(text: string): TimeParse {
   // Hebrew word hours: "בשעה חמש" / "בשבע בערב" / "בשלוש וחצי" / "בעשר בבוקר".
   // Longest words first so "אחת עשרה" beats "אחת".
   for (const [word, num] of Object.entries(HEBREW_HOUR_WORDS).sort((a, b) => b[0].length - a[0].length)) {
-    const pattern = new RegExp(`(?:בשעה\\s+|ב)${word}(\\s+וחצי)?(\\s+ורבע)?`)
+    const pattern = new RegExp(`(?:בשעה\\s+|[בל])${word}(\\s+וחצי)?(\\s+ורבע)?`)
     const match = t.match(pattern)
     if (match) {
       const minutes = match[1] ? 30 : match[2] ? 15 : 0
@@ -292,7 +298,7 @@ export function parseCreateDate(text: string): string | null {
     // an explicit הקרוב/הבא modifier. The Hebrew negative-lookahead avoids
     // matching the name as a prefix of a longer word.
     const re = new RegExp(
-      `(?:ב?יום\\s+|ב)${name}(?![\\u0590-\\u05FF])|(?<![\\u0590-\\u05FF])${name}\\s+(?:הקרוב|הבא)`,
+      `(?:[בל]?יום\\s+|[בל])${name}(?![\\u0590-\\u05FF])|(?<![\\u0590-\\u05FF])${name}\\s+(?:הקרוב|הבא)`,
     )
     if (re.test(t)) {
       return inNextWeek ? weekdayInNextWeek(idx) : nextDayOfWeek(idx)
@@ -320,17 +326,17 @@ const NOISE_PHRASES = /(תקבעי? לי|תרשמי? לי|תוסיפי? לי|ת�
 // Natural speech verbs
 const NATURAL_NOISE = /(אני צריכה? להיות|אני צריכה? להגיע|אני צריכה? ללכת|אני צריכה? לנסוע|אני צריכה?)\s*/gi
 // Time words to strip (includes אחת/שתיים and the noon period word)
-const TIME_NOISE = /\s*ב(אחת עשרה|שתים עשרה|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|צהריים)(\s+וחצי|\s+ורבע)?(\s+בבוקר|\s+בערב|\s+בצהריים|\s+אחר הצהריים|\s+אחרי הצהריים|\s+בלילה)?\s*/gi
+const TIME_NOISE = /\s*[בל](אחת עשרה|שתים עשרה|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|צהריים)(\s+וחצי|\s+ורבע)?(\s+בבוקר|\s+בערב|\s+בצהריים|\s+אחר הצהריים|\s+אחרי הצהריים|\s+בלילה)?\s*/gi
 // Date words to strip — incl. weekday phrases with prefix or הקרוב/הבא modifier
 // ("רביע" = common typo for רביעי)
 const WEEKDAY_NAMES = '(?:ראשון|שני|שלישי|רביעי|רביע|חמישי|שישי|שבת)'
 const DATE_NOISE = new RegExp(
   `\\s*(?:היום|מחרתיים|מחר|בשבוע הבא|שבוע הבא|בעוד שבוע|` +
-  `(?:ב?יום\\s+|ב)${WEEKDAY_NAMES}(?:\\s+(?:הקרוב|הבא))?|` +
+  `(?:[בל]?יום\\s+|[בל])${WEEKDAY_NAMES}(?:\\s+(?:הקרוב|הבא))?|` +
   `${WEEKDAY_NAMES}\\s+(?:הקרוב|הבא))\\s*`,
   'gi',
 )
-const HOUR_NOISE = /\s*בשעה\s+(?:אחת עשרה|שתים עשרה|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)(?:\s+וחצי|\s+ורבע)?\s*/gi
+const HOUR_NOISE = /\s*[בל]שעה\s+(?:אחת עשרה|שתים עשרה|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)(?:\s+וחצי|\s+ורבע)?\s*/gi
 const HOUR_DIGIT_NOISE = /\s*ב[־-]?(?:שעה\s+)?\d{1,2}[:.:]?\d{0,2}\s*/gi
 // Bare clock time with no "ב" prefix: "13:22", "14.00".
 const BARE_TIME_NOISE = /\s*(?<![\d/])\d{1,2}[:.]\d{2}(?![\d/])\s*/g
@@ -494,6 +500,83 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
     return { phase: 'confirming', draft, missing: [] }
   }
   return { phase: 'creating', draft, missing: stillMissing }
+}
+
+// ─── Friendly date label (inline to avoid circular import with responseShaper) ──
+
+const WEEKDAY_LABELS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
+function friendlyDateLabel(date: string): string {
+  const today = new Date().toISOString().split('T')[0]!
+  const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+  if (date === today) return 'היום'
+  if (date === tmrw) return 'מחר'
+  const d = new Date(date + 'T00:00:00')
+  const dayName = WEEKDAY_LABELS[d.getDay()] ?? ''
+  const day = d.getDate()
+  const MONTH_LABELS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+  const monthName = MONTH_LABELS[d.getMonth()] ?? ''
+  return `ביום ${dayName}, ${day} ב${monthName}`
+}
+
+// ─── Calendar Search Intent ─────────────────────────────────────────────────
+
+const SEARCH_INTENT = /מתי\s+(ה?(פגישה|תור|ביקור|אירוע)\s+(עם|אצל)\s+\S+)|מתי\s+ה?(רופא|רופאה|רופאת|שיניים|עיניים)|מה קבעתי עם|יש לי (פגישה|תור) עם/i
+
+export function isSearchIntent(text: string): boolean {
+  return SEARCH_INTENT.test(text.trim())
+}
+
+export function searchAppointments(text: string): string {
+  // Dynamic import to avoid circular dependency
+  const { loadAppointments } = require('../AbuCalendar/service') as { loadAppointments: () => Array<{ id: string; title: string; date: string; time?: string }> }
+  const appts = loadAppointments()
+  if (appts.length === 0) return 'אין כלום ביומן כרגע.'
+
+  // Extract search term from "עם X" or "אצל X"
+  const nameMatch = text.match(/עם\s+(\S+)|אצל\s+(\S+)/)
+  const searchTerm = nameMatch?.[1] ?? nameMatch?.[2] ?? ''
+
+  // Also check for role words (רופא, שיניים, etc.)
+  const roleMatch = text.match(/ה?(רופא|רופאה|רופאת|שיניים|עיניים)/)
+  const roleTerm = roleMatch?.[1] ?? ''
+
+  const query = (searchTerm + ' ' + roleTerm).trim().toLowerCase()
+  if (!query) return 'מה לחפש? תגידי לי שם או סוג פגישה.'
+
+  const matches = appts.filter((a: { title: string }) =>
+    a.title.toLowerCase().includes(query) ||
+    (searchTerm && a.title.toLowerCase().includes(searchTerm.toLowerCase()))
+  )
+
+  if (matches.length === 0) return `אין פגישה עם "${searchTerm || roleTerm}" ביומן.`
+  if (matches.length === 1) {
+    const m = matches[0]!
+    const time = m.time ? ` בשעה ${m.time}` : ''
+    return `${m.title} — ${friendlyDateLabel(m.date)}${time}.`
+  }
+  // Multiple matches
+  const lines = matches.slice(0, 3).map((m: { title: string; date: string; time?: string }) => {
+    const time = m.time ? ` בשעה ${m.time}` : ''
+    return `${m.title} — ${friendlyDateLabel(m.date)}${time}`
+  })
+  return `יש ${matches.length} פגישות:\n${lines.join('\n')}`
+}
+
+// ─── Calendar Delete Intent ─────────────────────────────────────────────────
+
+const DELETE_INTENT = /תמחק[י]?\s+(את\s+)?(ה?(פגישה|תור|אירוע))|תבטל[י]?\s+(את\s+)?(ה?(פגישה|תור|אירוע))|למחוק\s+(את\s+)?(ה?(פגישה|תור))/i
+
+export function isDeleteIntent(text: string): boolean {
+  return DELETE_INTENT.test(text.trim())
+}
+
+// ─── Calendar Modify Intent ─────────────────────────────────────────────────
+
+const MODIFY_INTENT = /תזיז[י]?\s|תשנ[י]?\s|תעביר[י]?\s|בעצם\s+(ב|ל)|תעדכנ[י]?\s|לשנות\s|להזיז\s/i
+
+export function isModifyIntent(text: string): boolean {
+  return MODIFY_INTENT.test(text)
 }
 
 // ─── Pending-confirmation Recovery ──────────────────────────────────────────

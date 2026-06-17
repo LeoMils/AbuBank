@@ -51,14 +51,14 @@ describe('FAMILY — 30 scenarios', () => {
     ['הילדים של מור', 'מור'],                  // 22
     ['מי הנכדים שלי?', 'נכדים'],              // 23
     // Age (honest)
-    ['בן כמה נועם?', 'לא רשומה לי שנת לידה'], // 24
-    ['בת כמה מור?', 'לא רשומה לי שנת לידה'],  // 25
-    ['בן כמה עדי?', 'לא רשומה לי שנת לידה'],  // 26
+    ['בן כמה נועם?', 'אין לי את שנת הלידה'], // 24
+    ['בת כמה מור?', 'אין לי את שנת הלידה'],  // 25
+    ['בן כמה עדי?', 'אין לי את שנת הלידה'],  // 26
     // Relationships
     ['מי זה רפי?', null],                      // 27
     ['מי זאת אילנית?', null],                  // 28
     // Not found
-    ['מי זה דניאל?', /לא מכירה|לא מצאתי/],    // 29
+    ['מי זה דניאל?', /לא מכירה|לא יודעת/],    // 29
     // Relationship between
     ['מה הקשר בין מור ללאו?', null],           // 30
   ]
@@ -415,13 +415,13 @@ describe('GENDER — 15 scenarios', () => {
       expect(a).toMatch(/יעל גרה/)
     }
   })
-  it('164. family answer for מור uses היא', () => {
+  it('164. family answer for מור mentions הבת', () => {
     const a = tryGroundedAnswer('מי זאת מור?')
-    expect(a).toContain('היא')
+    expect(a).toContain('הבת')
   })
-  it('165. family answer for לאו uses הוא', () => {
+  it('165. family answer for לאו mentions הבן', () => {
     const a = tryGroundedAnswer('מי זה לאו?')
-    expect(a).toContain('הוא')
+    expect(a).toContain('הבן')
   })
 })
 
@@ -430,21 +430,21 @@ describe('EDGE CASES — 35 scenarios', () => {
   // Empty calendar
   it('166. empty calendar today', () => {
     const a = tryGroundedAnswer('מה יש לי היום?')
-    expect(a).toContain('לא מצאתי')
+    expect(a).toContain('חופשי')
     expect(a).not.toContain('שגיאה')
   })
   it('167. empty calendar tomorrow', () => {
     const a = tryGroundedAnswer('מה יש לי מחר?')
-    expect(a).toContain('לא מצאתי')
+    expect(a).toContain('אין שום דבר')
   })
   it('168. empty calendar week', () => {
     const a = tryGroundedAnswer('מה יש לי השבוע?')
-    expect(a).toContain('לא מצאתי')
+    expect(a).toContain('ריק')
   })
   // Unknown person
   it('169. unknown person', () => {
     const a = tryGroundedAnswer('מי זה שמעון?')
-    expect(a).toMatch(/לא מכירה|לא מצאתי/)
+    expect(a).toMatch(/לא מכירה|לא יודעת/)
   })
   // Create intent detection
   it('170. "יש לי תור מחר" is a calendar read, not create', () => {

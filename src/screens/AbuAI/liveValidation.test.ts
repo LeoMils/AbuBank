@@ -32,7 +32,7 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
     expect(isPersonalQuery('מה יש לי מחר?')).toBe(true)
     const result = getTomorrowEvents()
     expect(result.events).toHaveLength(0)
-    expect(result.summary).toContain('לא מצאתי')
+    expect(result.summary).toContain('אין שום דבר')
   })
 
   // Item 3: "מה יש לי השבוע?"
@@ -51,7 +51,7 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
   it('#4 next doctor query uses find_next_event_by_type', () => {
     expect(isPersonalQuery('מתי הרופא הבא שלי?')).toBe(true)
     const result = findNextEventByType('medical')
-    expect(result.summary).toMatch(/לא מצאתי|🏥/)
+    expect(result.summary).toMatch(/אין.*ביומן|🏥/)
   })
 
   // Item 5: "מי זו מור?"
@@ -102,7 +102,7 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
   it('#11 empty calendar returns empty-state message', () => {
     const result = getTodayEvents()
     // Only family birthdays if today matches, otherwise empty
-    expect(result.summary).toMatch(/לא מצאתי|🎂/)
+    expect(result.summary).toMatch(/חופשי|אין כלום|🎂/)
   })
 
   // Item 12: Pipeline voice uses same sendMessage path as text

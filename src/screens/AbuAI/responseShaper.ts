@@ -42,42 +42,72 @@ export function timeInWords(time: string): string {
 export function shapeFamilyAnswer(m: FamilyMember): string {
   const parts: string[] = []
   const rel = m.relationshipHebrew
-
   const clauses = rel.split(',').map(s => s.trim())
   const baseRole = clauses[0] ?? rel
   const details = clauses.slice(1)
-
   const isFemale = baseRole.includes('הבת') || baseRole.includes('נכדה') || baseRole.includes('בת זוג')
   const possessive = isFemale ? 'שלה' : 'שלו'
-  const pronoun = isFemale ? 'היא' : 'הוא'
 
   if (baseRole.includes('הבת') || baseRole.includes('הבן')) {
-    parts.push(`${m.hebrew} ${pronoun} ${baseRole} שלך.`)
-    if (details.length > 0) {
-      parts.push(`${pronoun} ${details.join(', ')}.`)
-    }
-  } else if (baseRole.includes('נכד') || baseRole.includes('נכדה')) {
-    parts.push(`${m.hebrew} — ${rel}.`)
+    parts.push(`${m.hebrew}? ${baseRole} שלך.`)
+    if (details.length > 0) parts.push(details.join(', ') + '.')
   } else {
     parts.push(`${m.hebrew} — ${rel}.`)
   }
 
   if (m.spouse) {
-    const spouseRole = isFemale ? 'בן הזוג' : 'בת הזוג'
-    parts.push(`${spouseRole} ${possessive} — ${m.spouse}.`)
+    const verb = isFemale ? 'עם' : 'עם'
+    parts.push(`${verb} ${m.spouse}.`)
   }
   if (m.children?.length) {
     const last = m.children[m.children.length - 1]
     const rest = m.children.slice(0, -1)
     const childList = rest.length > 0 ? `${rest.join(', ')} ו${last}` : last!
-    parts.push(`הילדים ${possessive} — ${childList}.`)
+    parts.push(`הילדים: ${childList}.`)
   }
   if (m.notes) parts.push(m.notes)
+  return parts.join('\n')
+}
 
+// ─── Family (Spanish) ────────────────────────────────────────────────────────
+
+export function shapeFamilyAnswerES(m: FamilyMember): string {
+  const parts: string[] = []
+  const rel = m.relationshipHebrew
+
+  if (rel.includes('הבת')) {
+    parts.push(`${m.canonicalName}? Tu hija.`)
+  } else if (rel.includes('הבן')) {
+    parts.push(`${m.canonicalName}? Tu hijo.`)
+  } else if (rel.includes('נכדה')) {
+    parts.push(`${m.canonicalName} — tu nieta.`)
+  } else if (rel.includes('נכד')) {
+    parts.push(`${m.canonicalName} — tu nieto.`)
+  } else if (rel.includes('בת זוג')) {
+    parts.push(`${m.canonicalName} — la pareja.`)
+  } else {
+    parts.push(`${m.canonicalName} — ${rel}.`) // fallback to Hebrew rel
+  }
+
+  if (m.spouse) {
+    parts.push(`Con ${m.spouse}.`)
+  }
+  if (m.children?.length) {
+    const last = m.children[m.children.length - 1]
+    const rest = m.children.slice(0, -1)
+    const childList = rest.length > 0 ? `${rest.join(', ')} y ${last}` : last!
+    parts.push(`Hijos: ${childList}.`)
+  }
+  if (m.notes) parts.push(m.notes)
   return parts.join('\n')
 }
 
 // ─── Location ───────────────────────────────────────────────────────────────
+
+export function shapeLocationAnswerES(name: string, location: string, notes?: string): string {
+  if (notes) return `${name} vive en ${location}, ${notes}.`
+  return `${name} vive en ${location}.`
+}
 
 export function shapeLocationAnswer(name: string, location: string, notes?: string, gender?: 'male' | 'female' | 'unknown'): string {
   const verb = gender === 'male' ? 'גר' : 'גרה'
@@ -94,8 +124,10 @@ export function shapeCalendarAnswer(events: Appointment[], scope: 'today' | 'tom
 
   // Empty
   if (events.length === 0) {
-    if (scope === 'week') return 'לא מצאתי משהו ביומן לשבוע הזה.'
-    return `לא מצאתי משהו ביומן ל${scopeWord === 'היום' ? 'היום' : scopeWord === 'מחר' ? 'מחר' : 'תקופה הזו'}.`
+    if (scope === 'week') return 'השבוע ריק — אין שום דבר ביומן. רוצה לקבוע משהו?'
+    if (scope === 'today') return 'היום חופשי, אין כלום ביומן.'
+    if (scope === 'tomorrow') return 'מחר ריק, אין שום דבר ביומן.'
+    return 'אין כלום ביומן לתקופה הזו.'
   }
 
   // Single event
@@ -118,6 +150,28 @@ export function shapeCalendarAnswer(events: Appointment[], scope: 'today' | 'tom
   let answer = `${scopeWord} יש לך ${countWord} דברים:\n${lines.join('\n')}`
   if (events.length > 4) answer += `\nועוד ${events.length - 4}.`
   return answer.trim()
+}
+
+// ─── Calendar Read (Spanish) ─────────────────────────────────────────────────
+
+export function shapeCalendarAnswerES(events: Appointment[], scope: 'today' | 'tomorrow' | 'week' | 'upcoming'): string {
+  const scopeWord = scope === 'today' ? 'Hoy'
+    : scope === 'tomorrow' ? 'Mañana'
+    : 'Esta semana'
+
+  if (events.length === 0) {
+    return `${scopeWord} no tenés nada en el calendario.`
+  }
+  if (events.length === 1) {
+    const e = events[0]!
+    const time = e.time ? ` a las ${e.time}` : ''
+    return `${scopeWord} tenés ${e.title}${time}.`
+  }
+  const lines = events.slice(0, 4).map(e => {
+    const time = e.time ? `${e.time} — ` : ''
+    return `${time}${e.title}`
+  })
+  return `${scopeWord} tenés ${events.length} cosas:\n${lines.join('\n')}`
 }
 
 // ─── Calendar Create ────────────────────────────────────────────────────────
@@ -206,11 +260,55 @@ export function shapeCreateSaved(draft?: { title?: string | null; date?: string 
     const time = draft.time ? ` ${timeInWords(draft.time)}` : ''
     return `מעולה, קבעתי לך ${what}${when}${time}.`
   }
-  return 'מעולה, נרשם ביומן.'
+  return 'קבוע, רשמתי ביומן.'
 }
 
 export function shapeCreateCancelled(): string {
   return 'בסדר, ביטלתי. תגידי לי מתי שתרצי לקבוע משהו.'
+}
+
+// ─── Calendar Create (Spanish) ─────────────────────────────────────────────
+
+function dateLabelES(date: string): string {
+  const today = new Date().toISOString().split('T')[0]!
+  const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+  if (date === today) return 'hoy'
+  if (date === tmrw) return 'mañana'
+  const d = new Date(date)
+  const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+  const dayName = days[d.getDay()] ?? ''
+  const day = d.getDate()
+  const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+  const monthName = months[d.getMonth()] ?? ''
+  return `el ${dayName} ${day} de ${monthName}`
+}
+
+export function shapeCreateConfirmES(draft: CreateDraft): string {
+  const what = draft.title ?? 'algo'
+  const when = draft.date ? ` ${dateLabelES(draft.date)}` : ''
+  const time = draft.time ? ` a las ${draft.time}` : ''
+  return `Te agendo ${what}${when}${time}.\n¿Está bien?`
+}
+
+export function shapeCreateSavedES(draft?: { title?: string | null; date?: string | null; time?: string | null }): string {
+  if (draft?.title) {
+    const when = draft.date ? ` ${dateLabelES(draft.date)}` : ''
+    const time = draft.time ? ` a las ${draft.time}` : ''
+    return `Listo, te agendé ${draft.title}${when}${time}.`
+  }
+  return 'Listo, quedó agendado.'
+}
+
+export function shapeCreateCancelledES(): string {
+  return 'Dale, lo cancelé. Decime cuando quieras agendar algo.'
+}
+
+export function shapeCreateClarifyES(missing: Array<'title' | 'date' | 'time'>): string {
+  const first = missing[0]
+  if (first === 'title') return '¿Qué agendo?'
+  if (first === 'date') return '¿Qué día?'
+  if (first === 'time') return '¿A qué hora?'
+  return '¿Qué agendo?'
 }
 
 export function shapeCreateUnclear(): string {
@@ -248,29 +346,26 @@ export type ShaperLang = 'he' | 'es' | 'en' | 'mixed'
 export function shapeNotFound(context?: string, lang: ShaperLang = 'he'): string {
   switch (lang) {
     case 'es':
-      // Per spec: short, adult, no diagnostic.
-      return context ? `No lo encontré (${context}).` : 'No lo encontré.'
+      return 'No tengo eso, Martita.'
     case 'en':
       return context ? `I could not find anything about ${context}.` : 'I could not find anything about that.'
     case 'mixed':
-      // Mixed → prefer Hebrew (Martita's local language for app-state
-      // negatives). The mother-tongue Spanish wins ONLY on explicit ES.
-      return context ? `לא מצאתי מידע על ${context}.` : 'לא מצאתי מידע על זה.'
+      return context ? `לא יודעת, אין לי מידע על ${context}.` : 'לא יודעת, אין לי מידע על זה.'
     case 'he':
     default:
-      return context ? `לא מצאתי מידע על ${context}.` : 'לא מצאתי מידע על זה.'
+      return context ? `לא יודעת, אין לי מידע על ${context}.` : 'לא יודעת, אין לי מידע על זה.'
   }
 }
 
 export function shapeToolError(lang: ShaperLang = 'he'): string {
   switch (lang) {
     case 'es':
-      return 'No puedo comprobarlo ahora. Probá de nuevo en un rato.'
+      return 'Algo se trabó. Probá de nuevo en un ratito.'
     case 'en':
-      return 'I cannot check that right now. Please try again in a moment.'
+      return 'Something got stuck. Try again in a moment.'
     case 'mixed':
     case 'he':
     default:
-      return 'משהו לא עבד. ננסה שוב?'
+      return 'רגע, משהו תקוע. תנסי שוב עוד רגע.'
   }
 }

@@ -19,7 +19,7 @@
  */
 
 export type ProactiveLang = 'he' | 'es' | 'en' | 'mixed'
-export type ProactiveIntent = 'boredom' | 'no_topic' | 'loneliness' | 'ideas' | 'sadness' | 'talk_to_me' | 'missing_pepe' | 'thanks'
+export type ProactiveIntent = 'boredom' | 'no_topic' | 'loneliness' | 'ideas' | 'sadness' | 'talk_to_me' | 'missing_pepe' | 'thanks' | 'happiness' | 'greeting'
 
 export interface ProactiveSeed {
   id: string
@@ -108,6 +108,11 @@ const TALK_HE = /תדברי איתי|דברי איתי|תספרי לי משהו|
 const TALK_ES = /habl[aá]me|cont[aá]me\s+algo|charlemos/i
 const TALK_EN = /\btalk\s+to\s+me\b|\btell\s+me\s+something\b/i
 
+// Happiness — positive emotional state
+const HAPPINESS_HE = /אני שמחה|שמח[ה]? היום|יום טוב|מצב רוח טוב|כיף לי/
+const HAPPINESS_ES = /estoy\s+content[ao]|qu[eé]\s+lindo\s+d[ií]a|me\s+siento\s+bien/i
+const HAPPINESS_EN = /\b(i'?m\s+happy|feeling\s+great|great\s+day|good\s+mood)\b/i
+
 // Thanks — simple acknowledgment, no LLM needed
 const THANKS_HE = /^תודה[!.\s]*$|^תודה רבה[!.\s]*$/
 const THANKS_ES = /^gracias[!.\s]*$/i
@@ -115,6 +120,11 @@ const THANKS_EN = /^thanks?(?:\s+you)?[!.\s]*$|^thank\s+you[!.\s]*$/i
 
 // Missing Pepe — deeply emotional, requires gentle specific response
 const MISSING_PEPE = /מתגעגע[ת]?\s+(ל|אל\s+)?פפ[יה]|געגועים\s+(ל|אל\s+)?פפ[יה]|חסר\s+לי\s+פפ[יה]|extra[nñ]o\s+(a\s+)?pep[eé]/i
+
+// Greeting — warm instant response, no menu
+const GREETING_HE = /^(שלום|היי|בוקר טוב|ערב טוב|מה נשמע|מה קורה|מה שלומך|אהלן)[.!?\s]*$/i
+const GREETING_ES = /^(hola|buen[ao]s?\s+(d[ií]as?|tardes?|noches?)|qu[eé]\s+tal|c[oó]mo\s+and[aá]s)[.!?\s]*$/i
+const GREETING_EN = /^(hi|hey|hello|good\s+(morning|evening|afternoon)|how\s+are\s+you|what'?s?\s+up)[.!?\s]*$/i
 
 export function detectIntent(input: string): ProactiveIntent | null {
   // Missing Pepe — most specific, check first
@@ -124,8 +134,10 @@ export function detectIntent(input: string): ProactiveIntent | null {
   if (LONELINESS_HE.test(input) || LONELINESS_ES.test(input) || LONELINESS_EN.test(input)) return 'loneliness'
   if (SADNESS_HE.test(input) || SADNESS_ES.test(input) || SADNESS_EN.test(input)) return 'sadness'
   if (TALK_HE.test(input) || TALK_ES.test(input) || TALK_EN.test(input)) return 'talk_to_me'
+  if (HAPPINESS_HE.test(input) || HAPPINESS_ES.test(input) || HAPPINESS_EN.test(input)) return 'happiness'
   if (THANKS_HE.test(input) || THANKS_ES.test(input) || THANKS_EN.test(input)) return 'thanks'
   if (IDEAS_HE.test(input) || IDEAS_ES.test(input) || IDEAS_EN.test(input)) return 'ideas'
+  if (GREETING_HE.test(input) || GREETING_ES.test(input) || GREETING_EN.test(input)) return 'greeting'
   return null
 }
 
@@ -308,6 +320,25 @@ const SEEDS: ProactiveSeed[] = [
     text: 'De nada, Martita. Acá estoy si necesitás algo más.',
   },
 
+  // ── Happiness — Hebrew ──
+  {
+    id: 'happiness-he-1', intent: 'happiness', lang: 'he',
+    text: 'כיף לשמוע! מה קרה? ספרי לי.',
+  },
+  {
+    id: 'happiness-he-2', intent: 'happiness', lang: 'he',
+    text: 'שמח לשמוע. יום טוב מגיע לך!',
+  },
+  // ── Happiness — Spanish ──
+  {
+    id: 'happiness-es-1', intent: 'happiness', lang: 'es',
+    text: '¡Qué lindo! ¿Qué pasó? Contame.',
+  },
+  {
+    id: 'happiness-es-2', intent: 'happiness', lang: 'es',
+    text: 'Me alegra escucharte así. Te lo merecés.',
+  },
+
   // ── Missing Pepe — Hebrew (deeply personal, gentle) ──
   {
     id: 'pepe-he-1', intent: 'missing_pepe', lang: 'he',
@@ -325,6 +356,48 @@ const SEEDS: ProactiveSeed[] = [
   {
     id: 'pepe-es-2', intent: 'missing_pepe', lang: 'es',
     text: 'Extrañarlo es natural. ¿Querés contarme algo de él? Me gusta escucharte hablar de Pepe.',
+  },
+
+  // ── Greeting — Hebrew ──
+  {
+    id: 'greeting-he-1', intent: 'greeting', lang: 'he',
+    text: 'שלום, Martita! מה נשמע? ספרי לי מה חדש.',
+  },
+  {
+    id: 'greeting-he-2', intent: 'greeting', lang: 'he',
+    text: 'היי! כיף שבאת. מה עושים היום?',
+  },
+  {
+    id: 'greeting-he-3', intent: 'greeting', lang: 'he',
+    text: 'שלום! אני כאן. על מה בא לך לדבר?',
+  },
+  // ── Greeting — Spanish ──
+  {
+    id: 'greeting-es-1', intent: 'greeting', lang: 'es',
+    text: '¡Hola, Martita! ¿Cómo andás? Contame qué onda.',
+  },
+  {
+    id: 'greeting-es-2', intent: 'greeting', lang: 'es',
+    text: '¡Hola! Qué bueno verte. ¿Qué hacemos hoy?',
+  },
+  {
+    id: 'greeting-es-3', intent: 'greeting', lang: 'es',
+    text: '¡Hola, Martita! ¿Qué tal tu día?',
+  },
+  // ── Greeting — English ──
+  {
+    id: 'greeting-en-1', intent: 'greeting', lang: 'en',
+    text: 'Hey, Martita! How are you? Tell me what is new.',
+  },
+  // ── Talk to me — Spanish (additional) ──
+  {
+    id: 'talk-es-3', intent: 'talk_to_me', lang: 'es',
+    text: 'Acá estoy, Martita. ¿Querés que te cuente algo, o charlamos de lo que venga?',
+  },
+  // ── Happiness — Spanish (additional) ──
+  {
+    id: 'happiness-es-3', intent: 'happiness', lang: 'es',
+    text: 'Me encanta verte así. ¿Qué te puso contenta?',
   },
 ]
 

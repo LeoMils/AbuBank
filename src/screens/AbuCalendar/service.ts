@@ -166,6 +166,18 @@ export function formatMissingFieldQuestion(
   return 'מה השם של הפגישה?'
 }
 
+export function findConflicts(date: string, time: string | null): Appointment[] {
+  if (!time) return []
+  const appts = loadAppointments()
+  return appts.filter(a => {
+    if (a.date !== date || !a.time) return false
+    // Check if times overlap (within 1 hour)
+    const [h1] = time.split(':').map(Number)
+    const [h2] = a.time.split(':').map(Number)
+    return Math.abs((h1 ?? 0) - (h2 ?? 0)) < 1
+  })
+}
+
 export function updateAppointment(id: string, updates: Partial<Omit<Appointment, 'id'>>): void {
   const appts = loadAppointments()
   saveAppointments(appts.map(a => a.id === id ? { ...a, ...updates } : a))

@@ -19,19 +19,19 @@ describe('Blocker #1: age questions get honest answer', () => {
   it('"בן כמה אופיר?" returns honest "לא רשומה לי שנת לידה"', () => {
     const answer = tryGroundedAnswer('בן כמה אופיר?')
     expect(answer).not.toBeNull()
-    expect(answer).toContain('לא רשומה לי שנת לידה')
+    expect(answer).toContain('אין לי את שנת הלידה')
   })
 
   it('"בת כמה מור?" returns honest answer', () => {
     const answer = tryGroundedAnswer('בת כמה מור?')
     expect(answer).not.toBeNull()
-    expect(answer).toContain('לא רשומה לי שנת לידה')
+    expect(answer).toContain('אין לי את שנת הלידה')
   })
 
   it('"מה הגיל של נועם?" returns honest answer', () => {
     const answer = tryGroundedAnswer('מה הגיל של נועם?')
     expect(answer).not.toBeNull()
-    expect(answer).toContain('לא רשומה לי שנת לידה')
+    expect(answer).toContain('אין לי את שנת הלידה')
   })
 })
 

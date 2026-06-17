@@ -61,17 +61,19 @@ describe('text path — order grounded → proactive → online → personal/ope
 })
 
 describe('voice path — order grounded → proactive → online → LLM', () => {
-  // Voice block lives between voiceGrounded and clearTimeout(watchdog).
+  // Voice block lives between voiceGrounded and the main clearTimeout(watchdog).
+  // Skip past the inline abort guard's clearTimeout to the common-path one.
   const start = SRC.indexOf('const voiceGrounded = tryGroundedAnswer(text)')
-  const end = SRC.indexOf('clearTimeout(watchdog)', start)
-  const block = SRC.slice(start, end > start ? end : start + 2000)
+  const firstClear = SRC.indexOf('clearTimeout(watchdog)', start)
+  const end = SRC.indexOf('clearTimeout(watchdog)', firstClear + 1)
+  const block = SRC.slice(start, end > start ? end : start + 3000)
 
   it('block is found', () => { expect(start).toBeGreaterThan(-1) })
 
-  it('online step lives between proactive and sendMessage', () => {
+  it('online step lives between proactive and LLM streaming', () => {
     const proactiveIdx = block.indexOf('getProactiveSeed(text')
     const onlineIdx = block.indexOf('isOnlineCurrentInfoQuery(text)')
-    const sendIdx = block.indexOf('await sendMessage(currentMsgs, true)')
+    const sendIdx = block.indexOf('streamMessage(currentMsgs, true')
     expect(proactiveIdx).toBeGreaterThan(-1)
     expect(onlineIdx).toBeGreaterThan(proactiveIdx)
     expect(sendIdx).toBeGreaterThan(onlineIdx)

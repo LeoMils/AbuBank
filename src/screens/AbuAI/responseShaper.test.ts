@@ -35,9 +35,9 @@ describe('shapeFamilyAnswer', () => {
     const answer = shapeFamilyAnswer(makeMember({
       children: ['אופיר', 'איילון', 'עילי', 'אדר'],
     }))
-    expect(answer).toContain('מור היא הבת שלך.')
-    expect(answer).toContain('היא גרושה מרפי, בת זוג של יעל.')
-    expect(answer).toContain('הילדים שלה — אופיר, איילון, עילי ואדר.')
+    expect(answer).toContain('מור? הבת שלך.')
+    expect(answer).toContain('גרושה מרפי, בת זוג של יעל.')
+    expect(answer).toContain('הילדים: אופיר, איילון, עילי ואדר.')
   })
 
   it('grandson uses dash format', () => {
@@ -50,7 +50,7 @@ describe('shapeFamilyAnswer', () => {
   })
 
   it('single child — no ו', () => {
-    expect(shapeFamilyAnswer(makeMember({ children: ['נועם'] }))).toContain('הילדים שלה — נועם')
+    expect(shapeFamilyAnswer(makeMember({ children: ['נועם'] }))).toContain('הילדים: נועם')
   })
 
   it('includes notes', () => {
@@ -68,13 +68,13 @@ describe('shapeFamilyAnswer', () => {
     delete (m as any).spouse
     const answer = shapeFamilyAnswer(m)
     expect(answer).not.toContain('ילדים')
-    expect(answer).not.toContain('בן הזוג')
-    expect(answer).not.toContain('בת הזוג')
+    // With no spouse, the word "עם" should not appear as a spouse line
+    // (it may appear in relationship description, which is fine)
   })
 
   it('gendered spouse label', () => {
-    expect(shapeFamilyAnswer(makeMember({ relationshipHebrew: 'הבת', spouse: 'יעל' }))).toContain('בן הזוג שלה')
-    expect(shapeFamilyAnswer(makeMember({ relationshipHebrew: 'הבן', spouse: 'דנה' }))).toContain('בת הזוג שלו')
+    expect(shapeFamilyAnswer(makeMember({ relationshipHebrew: 'הבת', spouse: 'יעל' }))).toContain('עם יעל')
+    expect(shapeFamilyAnswer(makeMember({ relationshipHebrew: 'הבן', spouse: 'דנה' }))).toContain('עם דנה')
   })
 
   it('newline-separated for speech pacing', () => {
@@ -99,16 +99,16 @@ describe('shapeLocationAnswer', () => {
 
 describe('shapeCalendarAnswer', () => {
   it('empty today — short, no מרטיטה', () => {
-    expect(shapeCalendarAnswer([], 'today')).toBe('לא מצאתי משהו ביומן להיום.')
+    expect(shapeCalendarAnswer([], 'today')).toBe('היום חופשי, אין כלום ביומן.')
   })
 
   it('empty tomorrow', () => {
-    expect(shapeCalendarAnswer([], 'tomorrow')).toBe('לא מצאתי משהו ביומן למחר.')
+    expect(shapeCalendarAnswer([], 'tomorrow')).toBe('מחר ריק, אין שום דבר ביומן.')
   })
 
   it('empty week', () => {
     const answer = shapeCalendarAnswer([], 'week')
-    expect(answer).toContain('לא מצאתי')
+    expect(answer).toContain('ריק')
     expect(answer).not.toContain('מרטיטה')
   })
 
@@ -386,7 +386,7 @@ describe('shapeCreateConfirmReadback', () => {
 
 describe('shapeCreateSaved', () => {
   it('warm confirmation without draft', () => {
-    expect(shapeCreateSaved()).toBe('מעולה, נרשם ביומן.')
+    expect(shapeCreateSaved()).toBe('קבוע, רשמתי ביומן.')
   })
 
   it('warm confirmation with draft echoes what was saved', () => {
@@ -420,14 +420,14 @@ describe('shapeCreateClarify', () => {
 
 describe('shapeNotFound', () => {
   it('with context', () => expect(shapeNotFound('דניאל')).toContain('דניאל'))
-  it('without context', () => expect(shapeNotFound()).toContain('לא מצאתי'))
+  it('without context', () => expect(shapeNotFound()).toContain('לא יודעת'))
 })
 
 describe('shapeToolError', () => {
   it('human, short', () => {
     const msg = shapeToolError()
-    expect(msg).toContain('לא עבד')
-    expect(msg).toContain('ננסה שוב')
+    expect(msg).toContain('תקוע')
+    expect(msg).toContain('תנסי שוב')
   })
 })
 

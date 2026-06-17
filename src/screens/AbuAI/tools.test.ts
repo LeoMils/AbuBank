@@ -85,24 +85,24 @@ describe('calendar tools', () => {
   it('getTodayEvents returns empty for no events', () => {
     const r = getTodayEvents()
     expect(r.events).toHaveLength(0)
-    expect(r.summary).toContain('לא מצאתי')
+    expect(r.summary).toContain('חופשי')
   })
 
   it('getTomorrowEvents returns empty for no events', () => {
     const r = getTomorrowEvents()
     expect(r.events).toHaveLength(0)
-    expect(r.summary).toContain('לא מצאתי')
+    expect(r.summary).toContain('אין שום דבר')
   })
 
   it('getWeekEvents returns empty for no events', () => {
     const r = getWeekEvents()
-    expect(r.summary).toContain('לא מצאתי')
+    expect(r.summary).toContain('ריק')
   })
 
   it('findEventsByPerson returns empty for unknown person', () => {
     const r = findEventsByPerson('יוסי הדמיוני')
     expect(r.events).toHaveLength(0)
-    expect(r.summary).toContain('לא מצאתי')
+    expect(r.summary).toContain('אין כלום ביומן')
   })
 
   it('findEventsByPerson finds family birthdays', () => {
@@ -117,7 +117,7 @@ describe('calendar tools', () => {
   it('findNextEventByType returns empty when no match', () => {
     const r = findNextEventByType('medical')
     expect(r.event).toBeNull()
-    expect(r.summary).toContain('לא מצאתי')
+    expect(r.summary).toContain('אין')
   })
 })
 
@@ -135,7 +135,7 @@ describe('executeTool', () => {
 
   it('executes get_today_events', () => {
     const r = executeTool('get_today_events', {})
-    expect(r).toContain('לא מצאתי')
+    expect(r).toContain('חופשי')
   })
 
   it('executes search_family_info', () => {

@@ -140,7 +140,7 @@ describe('30-minute Martita simulation — minute by minute', () => {
     const text = 'בן כמה נועם?'
     const answer = tryGroundedAnswer(text)
     expect(answer).not.toBeNull()
-    expect(answer).toContain('לא רשומה לי שנת לידה')
+    expect(answer).toContain('אין לי את שנת הלידה')
     userSays(text)
     assistantSays(answer!)
   })

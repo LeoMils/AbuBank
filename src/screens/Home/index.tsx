@@ -630,7 +630,7 @@ export function Home() {
               aria-label={item.hebrewLabel}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                padding: '4px 2px', minWidth: 60, minHeight: 64,
+                padding: '4px 2px', minWidth: 72, minHeight: 72,
                 cursor: 'pointer', background: 'none', border: 'none',
               }}
               onPointerDown={(e) => {

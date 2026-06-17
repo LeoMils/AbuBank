@@ -38,10 +38,10 @@ export interface CompiledAnswer {
 }
 
 const NOT_FOUND: Record<Lang, string> = {
-  he: 'לא מצאתי.',
+  he: 'אין לי מידע על זה.',
   es: 'No encontré nada.',
   en: 'I did not find anything.',
-  mixed: 'לא מצאתי.',
+  mixed: 'אין לי מידע על זה.',
 }
 
 const TOOL_ERROR: Record<Lang, string> = {

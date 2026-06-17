@@ -5,7 +5,113 @@ import { generateFamilyPromptSection } from '../../services/familyLoader'
 import { routePersonalQuery, type RouteResult } from './router'
 import { answerFromToolResult, type ToolResult } from './groundedResponse'
 import { sendServerChat, streamServerChat, checkServerChatHealth } from './serverChatProvider'
-import { describeRelation, type Lang } from './familyGraph'
+import { describeRelation, loadGraph, type Lang } from './familyGraph'
+import { detectLanguage } from './proactive'
+import { shapeFamilyAnswerES, shapeCalendarAnswerES, shapeLocationAnswerES, shapeCreateConfirmES, shapeCreateSavedES, shapeCreateCancelledES, shapeCreateClarifyES } from './responseShaper'
+
+// ─── Conversation Summary ────────────────────────────────────────────────────
+
+const SUMMARY_KEY = 'abuai-conversation-summary'
+
+export interface ConversationSummary {
+  updatedAt: number
+  peopleDiscussed: string[]
+  topicsDiscussed: string[]
+  appointmentsMentioned: string[]
+  emotionalContext: string | null
+  lastUserRequest: string | null
+  factsMentioned: string[]
+}
+
+export function loadSummary(): ConversationSummary | null {
+  try {
+    const raw = localStorage.getItem(SUMMARY_KEY)
+    return raw ? JSON.parse(raw) as ConversationSummary : null
+  } catch { return null }
+}
+
+export function saveSummary(summary: ConversationSummary): void {
+  try { localStorage.setItem(SUMMARY_KEY, JSON.stringify(summary)) } catch { /* storage full */ }
+}
+
+/**
+ * Extracts key facts from recent messages and updates the rolling summary.
+ * Pure function — no LLM call, just pattern matching.
+ */
+export function updateSummaryFromMessages(
+  messages: Array<{ role: string; content: string }>,
+  existing: ConversationSummary | null,
+): ConversationSummary {
+  const summary: ConversationSummary = existing
+    ? { ...existing, peopleDiscussed: [...existing.peopleDiscussed], topicsDiscussed: [...existing.topicsDiscussed], appointmentsMentioned: [...existing.appointmentsMentioned], factsMentioned: [...existing.factsMentioned] }
+    : { updatedAt: Date.now(), peopleDiscussed: [], topicsDiscussed: [], appointmentsMentioned: [], emotionalContext: null, lastUserRequest: null, factsMentioned: [] }
+
+  // Load family graph for name detection
+  let familyNames: string[] = []
+  try {
+    const graph = loadGraph()
+    familyNames = graph.map(n => n.hebrew)
+  } catch { /* graph unavailable */ }
+
+  const recent = messages.slice(-10)
+  const peopleSet = new Set(summary.peopleDiscussed)
+  const topicSet = new Set(summary.topicsDiscussed)
+
+  for (const msg of recent) {
+    // Detect family members mentioned
+    for (const name of familyNames) {
+      if (msg.content.includes(name)) peopleSet.add(name)
+    }
+
+    // Detect topics
+    if (/יומן|פגישה|תור|קבע/.test(msg.content)) topicSet.add('יומן')
+    if (/רופא|בריאות|כדור|תרופ/.test(msg.content)) topicSet.add('בריאות')
+    if (/בישול|מתכון|אוכל/.test(msg.content)) topicSet.add('בישול')
+    if (/חדשות|פוליטי/.test(msg.content)) topicSet.add('חדשות')
+    if (/פפי|געגוע|זיכרון/.test(msg.content)) topicSet.add('פפי')
+
+    // Detect emotional context
+    if (msg.role === 'user') {
+      if (/עצוב|קשה|לא טוב|בודד/.test(msg.content)) summary.emotionalContext = 'עצובה'
+      if (/שמח|כיף|טוב|יופי/.test(msg.content)) summary.emotionalContext = 'שמחה'
+      if (/משעמם|שעמום/.test(msg.content)) summary.emotionalContext = 'משועממת'
+      summary.lastUserRequest = msg.content
+    }
+
+    // Detect appointments mentioned in assistant responses
+    if (msg.role === 'assistant' && /קבעתי|פגישה|תור/.test(msg.content)) {
+      const apptMatch = msg.content.match(/(פגישה|תור)\s+(עם\s+\S+|.{3,20})/)
+      if (apptMatch) summary.appointmentsMentioned.push(apptMatch[0])
+    }
+  }
+
+  summary.peopleDiscussed = [...peopleSet].slice(-10) // cap at 10
+  summary.topicsDiscussed = [...topicSet].slice(-8)
+  summary.appointmentsMentioned = summary.appointmentsMentioned.slice(-5)
+  summary.updatedAt = Date.now()
+
+  return summary
+}
+
+/**
+ * Format summary as a context string for the LLM system message.
+ */
+export function formatSummaryForLLM(summary: ConversationSummary): string {
+  const parts: string[] = []
+  if (summary.peopleDiscussed.length > 0) {
+    parts.push(`בשיחה הזו דיברנו על: ${summary.peopleDiscussed.join(', ')}`)
+  }
+  if (summary.topicsDiscussed.length > 0) {
+    parts.push(`נושאים: ${summary.topicsDiscussed.join(', ')}`)
+  }
+  if (summary.emotionalContext) {
+    parts.push(`מצב רוח: ${summary.emotionalContext}`)
+  }
+  if (summary.appointmentsMentioned.length > 0) {
+    parts.push(`פגישות שנדונו: ${summary.appointmentsMentioned.join('; ')}`)
+  }
+  return parts.length > 0 ? `[סיכום שיחה: ${parts.join('. ')}]` : ''
+}
 
 // Feature flag — disable tools without redeploy
 function toolsEnabled(): boolean {
@@ -82,16 +188,77 @@ function shapeRelationshipBetween(route: RouteResult): string {
   if (desc) return desc
   if (lang === 'es') return `No encontré una relación directa entre ${a} y ${b}.`
   if (lang === 'en') return `I did not find a direct relation between ${a} and ${b}.`
-  return `לא מצאתי קשר ישיר בין ${a} ל${b}.`
+  return `לא יודעת מה הקשר בין ${a} ל${b}.`
+}
+
+/**
+ * Takes verified grounded facts and lets the LLM paraphrase them naturally.
+ * Falls back to the raw deterministic answer if the LLM call fails.
+ */
+export async function groundedLLMAnswer(
+  userMessage: string,
+  groundedFacts: string,
+  recentMessages: Array<{ role: string; content: string }>,
+  fallback: string,
+): Promise<string> {
+  const factSystemMsg = `You have these VERIFIED FACTS. Answer using ONLY these facts. Do not add, invent, or guess anything not stated here.
+
+VERIFIED FACTS:
+${groundedFacts}
+
+RULES:
+- Use ONLY the facts above. Do not invent additional details.
+- Match the user's language (Hebrew → Hebrew, Spanish → Spanish).
+- Be warm, short (2-3 sentences max), conversational.
+- Use feminine Hebrew address (את, שלך).
+- Never say "according to data" / "I found" / "מצאתי" / "על פי".
+- Sound like a friend who knows the family, not a database.
+- If the user asked in Spanish, answer entirely in Spanish.`
+
+  try {
+    const messages = [
+      { role: 'system' as const, content: factSystemMsg },
+      ...recentMessages.slice(-6).map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+      { role: 'user' as const, content: userMessage },
+    ]
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+
+    const res = await fetch('/api/abuai-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages,
+        max_tokens: 150,
+        temperature: 0.7,
+      }),
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+
+    if (!res.ok) return fallback
+
+    const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
+    const content = data?.choices?.[0]?.message?.content?.trim()
+
+    if (!content) return fallback
+
+    return stripMarkdown(content)
+  } catch {
+    return fallback
+  }
 }
 
 export function tryGroundedAnswer(text: string): string | null {
+  const lang = detectLanguage(text) // 'he' | 'es' | 'en' | 'mixed'
   const route = routePersonalQuery(text)
   if (route.type === 'non_personal') {
     console.log(`[AbuAI:route] "${text.slice(0, 40)}" → non_personal (needs LLM)`)
     return null
   }
-  console.log(`[AbuAI:route] "${text.slice(0, 40)}" → ${route.type} [LOCAL] person=${route.familyQuery ?? '-'}`)
+  console.log(`[AbuAI:route] "${text.slice(0, 40)}" → ${route.type} [LOCAL] lang=${lang} person=${route.familyQuery ?? '-'}`)
 
 
   try {
@@ -99,11 +266,13 @@ export function tryGroundedAnswer(text: string): string | null {
     switch (route.type) {
       case 'calendar_today': {
         const r = getTodayEvents()
+        if (lang === 'es') return shapeCalendarAnswerES(r.events, 'today')
         result = { ok: true, events: r.events, summary: r.summary }
         break
       }
       case 'calendar_tomorrow': {
         const r = getTomorrowEvents()
+        if (lang === 'es') return shapeCalendarAnswerES(r.events, 'tomorrow')
         result = { ok: true, events: r.events, summary: r.summary }
         break
       }
@@ -111,6 +280,7 @@ export function tryGroundedAnswer(text: string): string | null {
         // Use week-scoped query (today + 7 days) for "what do I have this
         // week / coming up" — more relevant than unlimited future events.
         const r = getWeekEvents()
+        if (lang === 'es') return shapeCalendarAnswerES(r.events, 'week')
         result = { ok: true, events: r.events, summary: r.summary }
         break
       }
@@ -128,10 +298,47 @@ export function tryGroundedAnswer(text: string): string | null {
       }
       case 'birthday_lookup': {
         const r = getBirthdayFor(route.familyQuery ?? '')
+        if (lang === 'es' && r.found) {
+          // Re-shape the Hebrew summary into Spanish
+          const summaryMatch = r.summary.match(/(\S+)\s*—\s*(\d+)\s*ב(.+)\./)
+          if (summaryMatch) {
+            const personName = summaryMatch[1]
+            const day = summaryMatch[2]
+            const heMonth = summaryMatch[3]!.trim()
+            const ES_MONTHS: Record<string, string> = {
+              'ינואר': 'enero', 'פברואר': 'febrero', 'מרץ': 'marzo', 'אפריל': 'abril',
+              'מאי': 'mayo', 'יוני': 'junio', 'יולי': 'julio', 'אוגוסט': 'agosto',
+              'ספטמבר': 'septiembre', 'אוקטובר': 'octubre', 'נובמבר': 'noviembre', 'דצמבר': 'diciembre',
+            }
+            const esMonth = ES_MONTHS[heMonth] ?? heMonth
+            return `El cumpleaños de ${personName} es el ${day} de ${esMonth}.`
+          }
+        }
+        if (lang === 'es' && !r.found) {
+          return `No tengo la fecha de cumpleaños de ${route.familyQuery ?? ''}.`
+        }
         return r.summary
       }
       case 'memorial_lookup': {
         const r = getMemorialFor(route.familyQuery ?? '')
+        if (lang === 'es' && r.found) {
+          const summaryMatch = r.summary.match(/(\S+)\s*—\s*(\d+)\s*ב(.+)\.\s*🕯️/)
+          if (summaryMatch) {
+            const personName = summaryMatch[1]
+            const day = summaryMatch[2]
+            const heMonth = summaryMatch[3]!.trim()
+            const ES_MONTHS: Record<string, string> = {
+              'ינואר': 'enero', 'פברואר': 'febrero', 'מרץ': 'marzo', 'אפריל': 'abril',
+              'מאי': 'mayo', 'יוני': 'junio', 'יולי': 'julio', 'אוגוסט': 'agosto',
+              'ספטמבר': 'septiembre', 'אוקטובר': 'octubre', 'נובמבר': 'noviembre', 'דצמבר': 'diciembre',
+            }
+            const esMonth = ES_MONTHS[heMonth] ?? heMonth
+            return `El aniversario de ${personName} es el ${day} de ${esMonth}. Un día especial.`
+          }
+        }
+        if (lang === 'es' && !r.found) {
+          return `No tengo esa fecha, Martita.`
+        }
         return r.summary
       }
       case 'family_lookup': {
@@ -139,16 +346,30 @@ export function tryGroundedAnswer(text: string): string | null {
         // We don't have birth years, so answer honestly.
         if (/בן כמה|בת כמה|כמה (הוא|היא) בן|כמה (הוא|היא) בת|מה הגיל/.test(route.query)) {
           const name = route.familyQuery ?? ''
-          return `לא רשומה לי שנת לידה של ${name}, אז אני לא רוצה לנחש.`
+          return `אין לי את שנת הלידה של ${name}. תשאלי ישירות — אני לא רוצה לנחש.`
         }
         // Try group query first: "הנכדים", "הילדים של מור", "ספרי לי על הנכדים"
         const groupAnswer = searchFamilyGroup(route.query)
         if (groupAnswer) return groupAnswer
         const r = searchFamily(route.familyQuery ?? '')
+        // Spanish: re-shape with Spanish family answer
+        if (lang === 'es' && r.found && r.members.length > 0) {
+          return shapeFamilyAnswerES(r.members[0]!)
+        }
+        if (lang === 'es' && !r.found) {
+          return 'No conozco a nadie con ese nombre. ¿Otro nombre?'
+        }
         result = { ok: true, found: r.found, members: r.members, answer: r.answer }
         break
       }
       case 'family_location': {
+        if (lang === 'es') {
+          const fam = searchFamily(route.familyQuery ?? '')
+          if (!fam.found || fam.members.length === 0) return 'No conozco a nadie con ese nombre. ¿Otro nombre?'
+          const m = fam.members[0]!
+          if (!m.location) return `No tengo información de dónde vive ${m.canonicalName}.`
+          return shapeLocationAnswerES(m.canonicalName, m.location, m.locationNotes)
+        }
         const r = searchFamilyLocation(route.familyQuery ?? '')
         return r.answer
       }
@@ -196,7 +417,7 @@ export function containsUngroundedClaim(response: string, hadToolCall: boolean):
     || ENGLISH_CLAIM_PATTERNS.test(response)
 }
 
-const SAFE_REFUSAL = 'אני לא בטוחה בתשובה. תשאלי אותי שוב או תבדקי ביומן.'
+const SAFE_REFUSAL = 'רגע, אני לא בטוחה. תשאלי שוב ואני אבדוק.'
 
 // Provider priority (B2.1):
 //   1. OpenAI via SERVER PROXY (/api/abuai-chat) — OPENAI_API_KEY lives
@@ -342,6 +563,13 @@ ${generateFamilyPromptSection()}
 - לומר "אני בינה מלאכותית" — פשוט לדבר
 - להמציא עובדות אישיות על Martita, על המשפחה, או על היומן שלה
 - להגיד "יש לך..." על אירוע ביומן בלי שהכלי החזיר את המידע
+- להגיד "אני מבינה אותך" / "זה מובן" — שפת מטפלת
+- להגיד "אם יש לך שאלות נוספות" — שפת שירות לקוחות
+- להגיד "האם תרצי ש..." — שפת מלצרית
+- להגיד "בהקשר הזה" / "חשוב לציין" — שפת פקידה
+- להתחיל תשובה עם "כמובן" / "בהחלט" / "בוודאי" — מלאכותי
+- להשתמש ב"בהקשר של" — שפת פקידה
+- לסיים תשובה עם "אם את צריכה עוד משהו..." — שירות לקוחות
 
 מותר:
 - "רגע —" / "תשמעי —" / "תגידי, זה..."
@@ -366,10 +594,23 @@ Markdown — לא. רשימות רק אם עוזרות להבין.
 שמחה → להיות איתה בשמחה.
 געגוע לPepe → חום ועדינות.
 
+═══ כשטועים ═══
+אם Martita מתקנת אותך — "צדקת, טעיתי" ולהמשיך. לא להתנצל יותר מדי.
+
 ═══ מידע חי / live info / información en vivo ═══
 לשאלות על מזג אוויר, חדשות, סרטים נוכחיים, זמינות בזמן אמת — יש לי כלי חיפוש אונליין שהמערכת מפעילה אוטומטית. אם הכלי החזיר תשובה, השתמשי בה ובמקורות שלה. אם הכלי לא זמין או נכשל, תגידי בכנות שלא הצלחת לבדוק כרגע, ותציעי עזרה כללית. לעולם אל תמציאי מידע נוכחי.
 Para preguntas en vivo (clima, noticias, películas en cartelera, disponibilidad ahora) hay una herramienta online que el sistema activa automáticamente. Si la herramienta devolvió una respuesta, usala con sus fuentes. Si la herramienta no está disponible o falla, decí honestamente que no podés comprobarlo ahora y ofrecé ayuda general. Nunca inventes información en vivo.
 For live questions (weather, news, current cinema, real-time availability) there is an online tool the runtime invokes automatically. If the tool returned an answer, use it with its sources. If the tool is unavailable or fails, say honestly that you cannot check right now and offer general help. Never invent current information.
+
+═══ מידע שמשתנה ═══
+אם שואלים על: מזג אוויר, חדשות, תוצאות ספורט, שערי מטבע, מחירים, מה מקרינים —
+ואין לך תוצאה מכלי חיפוש — תגידי בכנות:
+"אין לי אפשרות לבדוק את זה עכשיו."
+לעולם אל תמציאי מספרים, תוצאות, טמפרטורות, או שערים.
+Si preguntan sobre: clima, noticias, resultados deportivos, cotizaciones, precios, cartelera —
+y no tenés resultado de una herramienta de búsqueda — decí honestamente:
+"No puedo verificar eso ahora."
+Nunca inventes números, resultados, temperaturas ni cotizaciones.
 
 ═══ AbuBank ═══
 מזרחי טפחות / בנק הדואר / MAX / חשמל / מים / ארנונה / HOT / פרטנר / yes.
@@ -442,7 +683,7 @@ export const FEW_SHOT: Array<{ role: 'user' | 'assistant'; content: string }> = 
   },
   {
     role: 'assistant',
-    content: 'מחר בכפר סבא צפוי להיות שמשי וחם, סביב 26 מעלות אחרי הצהריים. לילה קריר עד 16. אין גשם.',
+    content: 'אני לא יכולה לבדוק מזג אוויר בזמן אמת. אם את רוצה, תשאלי אותי "מזג אוויר" ואני אנסה לבדוק אונליין.',
   },
   {
     role: 'user',
@@ -478,11 +719,35 @@ export const FEW_SHOT: Array<{ role: 'user' | 'assistant'; content: string }> = 
   },
   {
     role: 'user',
-    content: 'מה Ilai עושה?',
+    content: 'מה נשמע עם עילי?',
   },
   {
     role: 'assistant',
-    content: 'עבר לאחרונה לדירה חדשה — בגדול בשבילו. תשאלי אותו ישירות, הוא בטח שמח לספר.',
+    content: 'עילי וירדן גרים יחד, יש להם פנסיון לכלבים ושלושה כלבים משלהם. תשאלי אותו ישירות — הוא בטח שמח לספר.',
+  },
+  {
+    role: 'user',
+    content: 'זה לא נכון, טעית',
+  },
+  {
+    role: 'assistant',
+    content: 'צדקת, טעיתי. מה הגרסה הנכונה?',
+  },
+  {
+    role: 'user',
+    content: 'מה יש לי מחר?',
+  },
+  {
+    role: 'assistant',
+    content: 'מחר ריק, אין כלום ביומן. רוצה לקבוע משהו?',
+  },
+  {
+    role: 'user',
+    content: 'תודה',
+  },
+  {
+    role: 'assistant',
+    content: 'בכיף. אני כאן.',
   },
 ]
 
@@ -738,11 +1003,23 @@ export async function* streamMessage(
   const MAX_CALLS_PER_UTTERANCE = 4
 
   const systemContent = voiceMode ? SYSTEM_PROMPT + VOICE_SUFFIX : SYSTEM_PROMPT
-  const chatMessages = [
+  const chatMessages: Array<{ role: string; content: string }> = [
     { role: 'system', content: systemContent },
-    ...(voiceMode ? FEW_SHOT.slice(-4) : FEW_SHOT), // voice: fewer shots for speed
-    ...messages.slice(voiceMode ? -4 : -20).map(m => ({ role: m.role, content: m.content })),
   ]
+
+  // Inject conversation summary for long-term context
+  const existingSummary = loadSummary()
+  if (existingSummary) {
+    const summaryText = formatSummaryForLLM(existingSummary)
+    if (summaryText) {
+      chatMessages.push({ role: 'system', content: summaryText })
+    }
+  }
+
+  chatMessages.push(
+    ...(voiceMode ? FEW_SHOT.slice(-4) : FEW_SHOT).map(m => ({ role: m.role as string, content: m.content })),
+    ...messages.slice(voiceMode ? -10 : -20).map(m => ({ role: m.role as string, content: m.content })),
+  )
   const maxTokens = voiceMode ? 800 : 2048  // v20.1: voice can tell full stories (~200 words)
   const temperature = voiceMode ? 0.3 : 0.65
 
@@ -862,7 +1139,7 @@ export async function* streamMessage(
   } // end streamAttempt loop
 
   // All providers failed across all attempts — warm fallback
-  yield 'רגע, לא הצלחתי. בואי ננסה שוב, או תשאלי אותי משהו אחר.'
+  yield 'לא הצלחתי עכשיו — תנסי שוב עוד רגע.'
 }
 
 export const VOICE_SUFFIX = `
@@ -885,9 +1162,21 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
   const systemContent = voiceMode ? SYSTEM_PROMPT + VOICE_SUFFIX : SYSTEM_PROMPT
   const conversationMessages: Array<{ role: string; content?: string; tool_calls?: ToolCall[]; tool_call_id?: string; name?: string }> = [
     { role: 'system', content: systemContent },
-    ...FEW_SHOT,
-    ...messages.map(m => ({ role: m.role, content: m.content })),
   ]
+
+  // Inject conversation summary for long-term context
+  const sendSummary = loadSummary()
+  if (sendSummary) {
+    const sendSummaryText = formatSummaryForLLM(sendSummary)
+    if (sendSummaryText) {
+      conversationMessages.push({ role: 'system', content: sendSummaryText })
+    }
+  }
+
+  conversationMessages.push(
+    ...FEW_SHOT.map(m => ({ role: m.role as string, content: m.content })),
+    ...messages.map(m => ({ role: m.role as string, content: m.content })),
+  )
   const maxTokens = voiceMode ? 800 : 2048
   const temperature = voiceMode ? 0.4 : 0.65
 
@@ -948,5 +1237,5 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
   if (lastMsg?.role === 'tool') {
     throw new Error('משהו השתבש. ננסה שוב?')
   }
-  throw new Error('רגע, לא הצלחתי. בואי ננסה שוב, או תשאלי אותי משהו אחר.')
+  throw new Error('לא הצלחתי עכשיו — תנסי שוב עוד רגע.')
 }

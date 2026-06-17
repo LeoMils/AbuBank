@@ -3,21 +3,21 @@ import { answerFromToolResult } from './groundedResponse'
 
 describe('answerFromToolResult', () => {
   it('tool error returns safe message', () => {
-    expect(answerFromToolResult('calendar_today', { ok: false })).toContain('לא עבד')
+    expect(answerFromToolResult('calendar_today', { ok: false })).toContain('תקוע')
   })
 
   it('empty calendar passes through shaped summary', () => {
-    const shaped = 'לא מצאתי משהו ביומן להיום.'
+    const shaped = 'היום חופשי, אין כלום ביומן.'
     expect(answerFromToolResult('calendar_today', { ok: true, events: [], summary: shaped })).toBe(shaped)
   })
 
   it('empty tomorrow passes through shaped summary', () => {
-    const shaped = 'לא מצאתי משהו ביומן למחר.'
+    const shaped = 'מחר ריק, אין שום דבר ביומן.'
     expect(answerFromToolResult('calendar_tomorrow', { ok: true, events: [], summary: shaped })).toBe(shaped)
   })
 
   it('empty upcoming passes through shaped summary', () => {
-    const shaped = 'לא מצאתי משהו ביומן קרוב.'
+    const shaped = 'אין כלום ביומן לתקופה הזו.'
     expect(answerFromToolResult('calendar_upcoming', { ok: true, events: [], summary: shaped })).toBe(shaped)
   })
 
@@ -32,7 +32,7 @@ describe('answerFromToolResult', () => {
   })
 
   it('family not found returns "לא מצאתי"', () => {
-    expect(answerFromToolResult('family_lookup', { ok: true, found: false, members: [], answer: '' })).toMatch(/^לא מצאתי/)
+    expect(answerFromToolResult('family_lookup', { ok: true, found: false, members: [], answer: '' })).toMatch(/^לא יודעת/)
   })
 
   it('family found returns answer from data', () => {

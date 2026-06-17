@@ -139,7 +139,7 @@ describe('B2.4 — relationship answers do not equal a single-person profile dum
     // resolver returns null → service.ts surfaces the explicit
     // not-found Hebrew copy.
     const ans = tryGroundedAnswer('מה הקשר בין רפי לפלוני?') ?? ''
-    expect(/לא מצאתי|אין קשר|לא ידוע/.test(ans)).toBe(true)
+    expect(/לא יודעת|אין קשר|לא ידוע/.test(ans)).toBe(true)
     // And never repeats Rafi's full profile dump in this case.
     const rafiProfile = tryGroundedAnswer('מי זה רפי?') ?? ''
     expect(ans).not.toBe(rafiProfile)

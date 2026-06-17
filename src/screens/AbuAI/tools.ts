@@ -186,7 +186,7 @@ export function findEventsByPerson(personName: string): { events: Appointment[];
     a.date >= today &&
     ((a.personName?.toLowerCase().includes(q)) || a.title.toLowerCase().includes(q) || (a.notes?.toLowerCase().includes(q)))
   )
-  if (events.length === 0) return { events, summary: `לא מצאתי משהו ביומן עם ${personName}.` }
+  if (events.length === 0) return { events, summary: `אין כלום ביומן עם ${personName}.` }
   return { events, summary: `מה שיש לך עם ${personName}:\n${formatEventList(events)}` }
 }
 
@@ -196,7 +196,7 @@ export function findNextEventByType(type: string): { event: Appointment | null; 
   const future = all.filter(a => a.date >= today)
   const sorted = sortByPriority(future)
   const match = sorted.find(a => classifyMeaning(a) === type)
-  if (!match) return { event: null, summary: `לא מצאתי ${type === 'medical' ? 'תור לרופא' : 'אירוע'} קרוב ביומן.` }
+  if (!match) return { event: null, summary: `אין ${type === 'medical' ? 'תור לרופא' : 'אירוע'} קרוב ביומן.` }
   const time = match.time ? ` ב-${match.time}` : ''
   return { event: match, summary: `${match.emoji} ${match.title} — ${match.date.split('-').reverse().join('/')}${time}` }
 }
@@ -209,7 +209,7 @@ export function getEventsByDate(dateStr: string): { events: Appointment[]; summa
   const events = sortByPriority(all.filter(a => a.date === dateStr))
   if (events.length === 0) {
     const label = formatHebrewDate(dateStr)
-    return { events, summary: `לא מצאתי כלום ביומן ב${label}.` }
+    return { events, summary: `אין כלום ביומן ב${label}.` }
   }
   const label = formatHebrewDate(dateStr)
   if (events.length === 1) {
@@ -228,7 +228,7 @@ export function getEventsByMonth(month: number): { events: Appointment[]; summar
   const events = all.filter(a => a.date.slice(5, 7) === mm).sort((a, b) => a.date.localeCompare(b.date))
   if (events.length === 0) {
     const MONTHS = ['', 'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
-    return { events, summary: `לא מצאתי כלום ביומן ב${MONTHS[month] ?? ''}.` }
+    return { events, summary: `אין כלום ביומן ב${MONTHS[month] ?? ''}.` }
   }
   const lines = events.map(e => {
     const day = parseInt(e.date.slice(8, 10), 10)
@@ -268,7 +268,7 @@ export function getMemorialFor(name: string): { found: boolean; summary: string 
     m.personName?.toLowerCase() === q ||
     m.title.toLowerCase().includes(q)
   )
-  if (!match) return { found: false, summary: `אין לי מידע על יום הזיכרון של ${name}.` }
+  if (!match) return { found: false, summary: `לא יודעת מתי יום הזיכרון של ${name}.` }
   const day = parseInt(match.date.slice(8, 10), 10)
   const monthIdx = parseInt(match.date.slice(5, 7), 10) - 1
   const MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']

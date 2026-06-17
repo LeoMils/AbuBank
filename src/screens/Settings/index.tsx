@@ -1,9 +1,10 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { APP_VERSION } from '../../version'
+import { downloadBackup, importBackup } from '../../services/backup'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -237,6 +238,26 @@ export function Settings() {
   // Voice settings (v20: reactive state instead of raw localStorage reads)
   const [voiceLang, setVoiceLang] = useState(() => localStorage.getItem('abu-voice-lang') || 'auto')
   const [voiceSpeed, setVoiceSpeed] = useState(() => parseFloat(localStorage.getItem('abu-voice-speed') || '0.88'))
+
+  // Backup / restore
+  const [backupStatus, setBackupStatus] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImportBackup = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    importBackup(file)
+      .then(({ restored, skipped }) => {
+        setBackupStatus(`שוחזרו ${restored} פריטים` + (skipped > 0 ? ` (${skipped} דולגו)` : ''))
+        setTimeout(() => setBackupStatus(null), 4000)
+      })
+      .catch((err: Error) => {
+        setBackupStatus(err.message)
+        setTimeout(() => setBackupStatus(null), 4000)
+      })
+    // reset input so the same file can be selected again
+    e.target.value = ''
+  }, [])
 
   // Location map
   const [locStatus, setLocStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
@@ -783,6 +804,59 @@ export function Settings() {
             </div>
           )
         })}
+
+        {/* ─── BACKUP / RESTORE ─── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+          <div style={sectionLabel}>גיבוי ושחזור</div>
+          <button
+            type="button"
+            onClick={downloadBackup}
+            style={btnStyle(TEAL)}
+          >
+            <span>💾</span> גיבוי נתונים
+          </button>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            style={btnStyle('#3b82f6')}
+          >
+            <span>📂</span> שחזור מגיבוי
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImportBackup}
+            style={{ display: 'none' }}
+          />
+          {(() => {
+            try {
+              const ts = localStorage.getItem('abubank-last-backup')
+              if (!ts) return null
+              const formatted = new Date(ts).toLocaleDateString('he-IL')
+              return (
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'right', direction: 'rtl', fontFamily: "'Heebo',sans-serif" }}>
+                  גיבוי אחרון: {formatted}
+                </div>
+              )
+            } catch { return null }
+          })()}
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'right', direction: 'rtl', marginTop: 4, fontFamily: "'Heebo',sans-serif" }}>
+            הנתונים שמורים בטלפון בלבד. מומלץ לגבות מדי פעם.
+          </div>
+          {backupStatus && (
+            <div style={{
+              padding: '10px 14px', borderRadius: 12,
+              background: 'rgba(20,184,166,0.10)',
+              border: '1px solid rgba(20,184,166,0.25)',
+              color: 'rgba(255,255,255,0.85)',
+              fontSize: 14, fontFamily: "'Heebo',sans-serif",
+              textAlign: 'right', direction: 'rtl',
+            }}>
+              {backupStatus}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

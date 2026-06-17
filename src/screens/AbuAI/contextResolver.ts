@@ -51,6 +51,18 @@ function findLastContext(messages: ChatMessage[]): RouteType | null {
   return null
 }
 
+/** Like findLastContext but also returns the user message text, for follow-up extraction. */
+function findLastContextWithMsg(messages: ChatMessage[], routeSet: Set<RouteType>): { type: RouteType; userMsg: string } | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i]!
+    if (msg.role === 'user') {
+      const route = routePersonalQuery(msg.content)
+      if (routeSet.has(route.type)) return { type: route.type, userMsg: msg.content }
+    }
+  }
+  return null
+}
+
 /**
  * Expand a short temporal fragment into a full calendar query.
  * "ומחר?" → "מה יש לי מחר?"
@@ -173,6 +185,21 @@ export function resolveFollowUp(
   const nameMatch = trimmed.match(NAME_FRAGMENT)
   if (nameMatch?.[1] && trimmed.startsWith('ו')) {
     const name = nameMatch[1].replace(/\?$/, '')
+
+    // Guard: "ועוד?" means "tell me more", not a name lookup.
+    // If the previous context was family, re-route to "tell me more about <name>".
+    if (/^עוד\??$/.test(name)) {
+      const familyCtx = findLastContextWithMsg(recentMessages, FAMILY_ROUTES)
+      if (familyCtx) {
+        const nameInPrev = familyCtx.userMsg.match(/על\s+(\S+)|מי\s+(?:זה|זאת)\s+(\S+)/)?.[1]
+          ?? familyCtx.userMsg.match(/על\s+(\S+)|מי\s+(?:זה|זאת)\s+(\S+)/)?.[2]
+        if (nameInPrev) {
+          return { resolved: `ספרי לי עוד על ${nameInPrev}`, wasFollowUp: true }
+        }
+      }
+      return { resolved: 'ספרי לי עוד', wasFollowUp: true }
+    }
+
     // Only expand if we have family context AND the fragment is short (a name)
     const lastContext = findLastContext(recentMessages)
     if (lastContext && FAMILY_ROUTES.has(lastContext) && name.length <= 10) {

@@ -52,7 +52,7 @@ function userMessageFor(code: ServerChatErrorCode, lang: ServerChatLang = 'he'):
   const HE: Record<ServerChatErrorCode, string> = {
     OPENAI_API_KEY_MISSING: 'יש בעיה בשירות. דברי עם לאו והוא יסדר את זה.',
     CHAT_PROVIDER_FAILED: 'רגע, זה לא עבר לי. ננסה שוב?',
-    CHAT_TIMEOUT: 'התשובה לקחה יותר מדי זמן. נסי שוב.',
+    CHAT_TIMEOUT: 'התשובה לקחה יותר מדי זמן. תנסי עוד רגע.',
     BAD_REQUEST: 'לא הבנתי את השאלה.',
     CLIENT_NETWORK_ERROR: 'אין לי חיבור עכשיו. נסי כשהאינטרנט יחזור.',
   }

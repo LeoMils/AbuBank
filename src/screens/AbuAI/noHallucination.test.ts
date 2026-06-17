@@ -35,11 +35,10 @@ const FORBIDDEN_SUCCESS_CLAIMS: Array<{ name: string; re: RegExp }> = [
 // Honest, allowed wording when a tool failed or had no result.
 const ALLOWED_HONEST_PHRASES = [
   'אני לא מצליחה לבדוק',
-  'משהו לא עבד',
-  'לא מצאתי מידע',
-  'לא מצאתי משהו',
-  'אין לי מידע',
+  'משהו תקוע',
   'לא יודעת',
+  'אין לי מידע',
+  'תנסי שוב',
   'ננסה שוב',
 ]
 
@@ -71,7 +70,7 @@ describe('AbuAI no-hallucination — shaper outputs', () => {
     const out = shapeNotFound('דניאל')
     expect(out).toContain('דניאל')
     expectNoForbiddenClaims(out, 'shapeNotFound(דניאל)')
-    expect(out.startsWith('לא מצאתי')).toBe(true)
+    expect(out.startsWith('לא יודעת')).toBe(true)
   })
 })
 
@@ -79,13 +78,13 @@ describe('AbuAI no-hallucination — answerFromToolResult', () => {
   it('calendar tool error → honest message, no claim verbs', () => {
     const out = answerFromToolResult('calendar_today', { ok: false })
     expectNoForbiddenClaims(out, 'tool error / calendar_today')
-    expect(out).toContain('לא עבד')
+    expect(out).toContain('תקוע')
   })
 
   it('family tool error → honest message, no claim verbs', () => {
     const out = answerFromToolResult('family_lookup', { ok: false })
     expectNoForbiddenClaims(out, 'tool error / family_lookup')
-    expect(out).toContain('לא עבד')
+    expect(out).toContain('תקוע')
   })
 
   it('family found=false → "לא מצאתי", no fabrication, no past-tense success claim', () => {
@@ -93,11 +92,11 @@ describe('AbuAI no-hallucination — answerFromToolResult', () => {
       ok: true, found: false, members: [], answer: '',
     })
     expectNoForbiddenClaims(out, 'family found=false')
-    expect(out.startsWith('לא מצאתי')).toBe(true)
+    expect(out.startsWith('לא יודעת')).toBe(true)
   })
 
   it('empty calendar summary passes through without injecting a claim verb', () => {
-    const shaped = 'לא מצאתי משהו ביומן להיום.'
+    const shaped = 'היום חופשי, אין כלום ביומן.'
     const out = answerFromToolResult('calendar_today', { ok: true, events: [], summary: shaped })
     expectNoForbiddenClaims(out, 'empty calendar today')
     expect(out).toBe(shaped)
@@ -107,7 +106,7 @@ describe('AbuAI no-hallucination — answerFromToolResult', () => {
     for (const scope of ['today', 'tomorrow', 'week', 'upcoming'] as const) {
       const out = shapeCalendarAnswer([], scope)
       expectNoForbiddenClaims(out, `shapeCalendarAnswer [] ${scope}`)
-      expect(out).toContain('לא מצאתי')
+      expect(out).toMatch(/ריק|חופשי|אין כלום|אין שום דבר/)
     }
   })
 })
@@ -132,7 +131,7 @@ describe('AbuAI no-hallucination — tryGroundedAnswer', () => {
     const out = tryGroundedAnswer('מי זה דניאלאלאלא')
     expect(out).not.toBeNull()
     expectNoForbiddenClaims(out!, 'unknown family')
-    expect(out!).toContain('לא מצאתי')
+    expect(out!).toContain('לא יודעת')
   })
 
   it('"מה יש לי היום" with empty user-storage returns honest empty message, not "בדקתי"', () => {
@@ -183,9 +182,9 @@ describe('AbuAI no-hallucination — truthGuard runtime claim detection', () => 
   })
 
   it('honest empty / not-found responses are never flagged as ungrounded', () => {
-    expect(containsUngroundedClaim('לא מצאתי משהו ביומן להיום.', false)).toBe(false)
-    expect(containsUngroundedClaim('משהו לא עבד. ננסה שוב?', false)).toBe(false)
-    expect(containsUngroundedClaim('לא מצאתי מידע על דניאלאלאלא.', false)).toBe(false)
+    expect(containsUngroundedClaim('היום חופשי, אין כלום ביומן.', false)).toBe(false)
+    expect(containsUngroundedClaim('רגע, משהו תקוע. תנסי שוב עוד רגע.', false)).toBe(false)
+    expect(containsUngroundedClaim('לא יודעת, אין לי מידע על דניאלאלאלא.', false)).toBe(false)
   })
 })
 
@@ -205,12 +204,12 @@ describe('AbuAI no-hallucination — past-tense success claims (tightened)', () 
   })
 
   it('does NOT flag the negation "לא מצאתי" (honest)', () => {
-    expect(containsUngroundedClaim('לא מצאתי משהו ביומן להיום.', false)).toBe(false)
-    expect(containsUngroundedClaim('לא מצאתי מידע על דניאל.', false)).toBe(false)
+    expect(containsUngroundedClaim('היום חופשי, אין כלום ביומן.', false)).toBe(false)
+    expect(containsUngroundedClaim('לא יודעת, אין לי מידע על דניאל.', false)).toBe(false)
   })
 
   it('does NOT flag "אני לא מצליחה לבדוק" (honest)', () => {
-    expect(containsUngroundedClaim('משהו לא עבד. ננסה שוב?', false)).toBe(false)
+    expect(containsUngroundedClaim('רגע, משהו תקוע. תנסי שוב עוד רגע.', false)).toBe(false)
   })
 
   it('does NOT flag "לא בדקתי" (honest)', () => {

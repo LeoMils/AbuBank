@@ -192,7 +192,7 @@ describe('30-MINUTE CONVERSATION — continuous', () => {
 
     // Minute 26-28: back to family
     { input: 'ספרי לי על הנכדים', check: (a) => { expect(a).not.toBeNull(); expect(a).toContain('נכדים') } },
-    { input: 'בן כמה נועם?', check: (a) => { expect(a).not.toBeNull(); expect(a).toContain('לא רשומה לי שנת לידה') } },
+    { input: 'בן כמה נועם?', check: (a) => { expect(a).not.toBeNull(); expect(a).toContain('אין לי את שנת הלידה') } },
 
     // Minute 29-30: birthday fusion
     { input: 'מתי יום ההולדת של מור?', check: (a) => expect(a).not.toBeNull() },

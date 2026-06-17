@@ -10,7 +10,7 @@ function getVoiceSpeed(): number {
     const saved = localStorage.getItem('abu-voice-speed')
     if (saved) return parseFloat(saved)
   } catch {}
-  return 0.95 // default — slightly faster for natural pacing
+  return 0.88 // default — slower pace for 80+ listener
 }
 
 let currentAudio: HTMLAudioElement | null = null
@@ -483,9 +483,9 @@ export async function speakVoiceMode(text: string): Promise<void> {
   // 2) Gemini TTS (FREE with existing key)
   if (await speakGeminiViaAudioCtx(text)) { console.log('[TTS-VM] ✅ Gemini TTS'); return }
 
-  // 3) Skip Web Speech in voice mode — bad Hebrew voice is worse than text-only.
-  // The caller shows the response as text in the chat. User reads instead of hearing robot.
-  console.log('[TTS-VM] ⚠️ All quality TTS failed — staying text-only (no Web Speech robot)')
+  // 3) P0 fix: when all TTS providers fail in voice mode, notify via Web Speech
+  console.log('[TTS-VM] ⚠️ All quality TTS failed — notifying via Web Speech')
+  await speakWebAPI('ראי את המסך.').catch(() => {})
 }
 
 // Gemini TTS via AudioContext for voice mode (bypasses iOS audio restrictions)

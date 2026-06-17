@@ -9,7 +9,7 @@
  * No secrets are read or logged here.
  */
 
-import { shouldBlockOnlineForPersonal, isOnlineCurrentInfoQuery } from './onlineIntent'
+import { shouldBlockOnlineForPersonal, isOnlineCurrentInfoQuery, getOnlineQueryKind } from './onlineIntent'
 
 export type OnlineLang = 'he' | 'es' | 'en' | 'mixed'
 
@@ -52,6 +52,40 @@ export interface AnswerOnlineOptions {
 const DEFAULT_TIMEOUT_MS = 14_000
 const ENDPOINT = '/api/abuai-online'
 
+/**
+ * Category-specific honest fallback messages when the online endpoint fails.
+ * Instead of a generic "I can't check", tell Martita exactly WHAT we couldn't check.
+ */
+function getHonestFallback(kind: string, lang: string): string {
+  const fallbacks: Record<string, Record<string, string>> = {
+    weather: {
+      he: 'אני לא מצליחה לבדוק מזג אוויר כרגע. תנסי שוב עוד כמה דקות.',
+      es: 'No puedo revisar el clima ahora. Probá de nuevo en un ratito.',
+    },
+    news: {
+      he: 'אני לא מצליחה לגשת לחדשות כרגע. תנסי שוב מאוחר יותר.',
+      es: 'No puedo ver las noticias ahora. Probá más tarde.',
+    },
+    sports: {
+      he: 'אני לא מצליחה לבדוק תוצאות ספורט כרגע.',
+      es: 'No puedo revisar resultados deportivos ahora.',
+    },
+    movies: {
+      he: 'אני לא מצליחה לבדוק מה מקרינים כרגע. תנסי שוב מאוחר יותר.',
+      es: 'No puedo ver la cartelera ahora. Probá después.',
+    },
+    general_current: {
+      he: 'אני לא מצליחה לבדוק שערים ומחירים כרגע. תנסי שוב מאוחר יותר.',
+      es: 'No puedo revisar cotizaciones ahora. Probá más tarde.',
+    },
+    holidays: {
+      he: 'אני לא מצליחה לבדוק תאריכי חגים כרגע. תנסי שוב מאוחר יותר.',
+      es: 'No puedo revisar fechas de feriados ahora. Probá más tarde.',
+    },
+  }
+  return fallbacks[kind]?.[lang] ?? fallbacks[kind]?.he ?? 'אני לא מצליחה לבדוק את זה כרגע.'
+}
+
 function userMessageFor(code: OnlineErrorCode, lang: OnlineLang = 'he'): string {
   const ES: Record<OnlineErrorCode, string> = {
     OPENAI_API_KEY_MISSING: 'No puedo comprobar información online ahora porque la conexión de AI no está configurada.',
@@ -64,7 +98,7 @@ function userMessageFor(code: OnlineErrorCode, lang: OnlineLang = 'he'): string 
   const HE: Record<OnlineErrorCode, string> = {
     OPENAI_API_KEY_MISSING: 'לא הצלחתי לחפש אונליין כרגע. דברי עם לאו.',
     ONLINE_PROVIDER_FAILED: 'החיפוש לא עבד הפעם. ננסה שוב?',
-    ONLINE_QUERY_BLOCKED_PERSONAL: 'על המשפחה והיומן אני עונה מהמידע שלי — לא צריך לחפש אונליין.',
+    ONLINE_QUERY_BLOCKED_PERSONAL: 'על המשפחה והיומן אני עונה ממה שאני יודעת — לא צריך לחפש אונליין.',
     ONLINE_TIMEOUT: 'החיפוש לקח יותר מדי זמן. ננסה שוב?',
     BAD_REQUEST: 'לא הבנתי. תנסי לשאול אחרת?',
     CLIENT_NETWORK_ERROR: 'אין אינטרנט כרגע. ננסה שוב כשיחזור.',
@@ -91,13 +125,14 @@ export async function answerOnlineCurrentInfo(
   options: AnswerOnlineOptions = {},
 ): Promise<OnlineResult> {
   const lang: OnlineLang = options.lang ?? 'he'
+  const queryKind = getOnlineQueryKind(query)
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const f = options.fetchImpl ?? (typeof fetch !== 'undefined' ? fetch : null)
   if (!f) {
     return {
       ok: false,
       errorCode: 'CLIENT_NETWORK_ERROR',
-      userMessage: userMessageFor('CLIENT_NETWORK_ERROR', lang),
+      userMessage: queryKind ? getHonestFallback(queryKind, lang) : userMessageFor('CLIENT_NETWORK_ERROR', lang),
     }
   }
 
@@ -137,7 +172,7 @@ export async function answerOnlineCurrentInfo(
     clearTimeout(timer)
     const isAbort = (err as { name?: string } | null)?.name === 'AbortError'
     const code: OnlineErrorCode = isAbort ? 'ONLINE_TIMEOUT' : 'CLIENT_NETWORK_ERROR'
-    return { ok: false, errorCode: code, userMessage: userMessageFor(code, lang) }
+    return { ok: false, errorCode: code, userMessage: queryKind ? getHonestFallback(queryKind, lang) : userMessageFor(code, lang) }
   }
   clearTimeout(timer)
 
@@ -146,7 +181,7 @@ export async function answerOnlineCurrentInfo(
     return {
       ok: false,
       errorCode: 'ONLINE_PROVIDER_FAILED',
-      userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang),
+      userMessage: queryKind ? getHonestFallback(queryKind, lang) : userMessageFor('ONLINE_PROVIDER_FAILED', lang),
     }
   }
 
@@ -182,7 +217,7 @@ export async function answerOnlineCurrentInfo(
   return {
     ok: false,
     errorCode: 'ONLINE_PROVIDER_FAILED',
-    userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang),
+    userMessage: queryKind ? getHonestFallback(queryKind, lang) : userMessageFor('ONLINE_PROVIDER_FAILED', lang),
   }
 }
 
