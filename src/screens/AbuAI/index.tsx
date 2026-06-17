@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
-import { sendMessage, streamMessage, transcribeAudio, SttExhaustedError, resetSttFailureCount, isPersonalQuery, containsUngroundedClaim, tryGroundedAnswer, groundedLLMAnswer, SYSTEM_PROMPT, VOICE_SUFFIX, loadSummary, saveSummary, updateSummaryFromMessages, type ConversationSummary } from './service'
+import { sendMessage, streamMessage, transcribeAudio, SttExhaustedError, resetSttFailureCount, isPersonalQuery, containsUngroundedClaim, tryGroundedAnswer, groundedLLMAnswer, SYSTEM_PROMPT, VOICE_SUFFIX, loadSummary, saveSummary, updateSummaryFromMessages, generateLLMSummary, type ConversationSummary } from './service'
 import { getProactiveSeed } from './proactive'
 import { isOnlineCurrentInfoQuery, shouldBlockOnlineForPersonal } from './onlineIntent'
 import { answerOnlineCurrentInfo, _recordOnlineError } from './onlineProvider'
@@ -41,7 +41,7 @@ import { BackButton } from '../../components/BackButton'
 import { ScreenHeader } from '../../components/ScreenHeader'
 import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
 import { type CalendarCreateState, IDLE_STATE, isCreateIntent, isRecurringIntent, startCreate, resolvePendingMessage, isConfirm, isCancel, isSearchIntent, searchAppointments, isDeleteIntent, isModifyIntent } from './calendarCreate'
-import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateUnclear, shapeCreateClarify } from './responseShaper'
+import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateUnclear, shapeCreateClarify, timeInWords } from './responseShaper'
 import { detectReminderIntent, parseReminder } from '../AbuCalendar/reminders/reminderParser'
 import { createReminder, createDefaultAlertPolicy } from '../AbuCalendar/reminders/reminderStore'
 import type { ReminderDraft } from '../AbuCalendar/reminders/types'
@@ -136,15 +136,27 @@ export function AbuAI() {
   // ─── Conversation Summary (long-term context) ─────────────────────
   const [conversationSummary, setConversationSummary] = useState<ConversationSummary | null>(() => loadSummary())
 
-  // Update summary every 10 messages for rolling long-term context
+  // Update summary: pattern-matching every 10 msgs, LLM-generated every 20 msgs
   useEffect(() => {
     if (messages.length > 0 && messages.length % 10 === 0) {
-      const updated = updateSummaryFromMessages(
-        messages.map(m => ({ role: m.role, content: m.content })),
-        conversationSummary,
-      )
-      setConversationSummary(updated)
-      saveSummary(updated)
+      const msgData = messages.map(m => ({ role: m.role, content: m.content }))
+      if (messages.length % 20 === 0) {
+        // Every 20 messages: generate LLM summary (async, non-blocking)
+        generateLLMSummary(msgData, conversationSummary).then(updated => {
+          setConversationSummary(updated)
+          saveSummary(updated)
+        }).catch(() => {
+          // Fallback to pattern summary
+          const updated = updateSummaryFromMessages(msgData, conversationSummary)
+          setConversationSummary(updated)
+          saveSummary(updated)
+        })
+      } else {
+        // Every 10 messages: pattern-matching summary (instant)
+        const updated = updateSummaryFromMessages(msgData, conversationSummary)
+        setConversationSummary(updated)
+        saveSummary(updated)
+      }
     }
   }, [messages.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -580,10 +592,10 @@ export function AbuAI() {
           : appts.slice(-1) // last created if no name specified
 
         if (matches.length === 0) {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'לא מצאתי פגישה כזו ביומן.', timestamp: Date.now() }])
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'אין פגישה כזו ביומן.', timestamp: Date.now() }])
         } else if (matches.length === 1) {
           deleteAppointment(matches[0]!.id)
-          const time = matches[0]!.time ? ` בשעה ${matches[0]!.time}` : ''
+          const time = matches[0]!.time ? ` ${timeInWords(matches[0]!.time)}` : ''
           setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `מחקתי את ${matches[0]!.title}${time}.`, timestamp: Date.now() }])
         } else {
           const lines = matches.map((m, i) => `${i + 1}. ${m.title} — ${m.date}`)
@@ -629,8 +641,16 @@ export function AbuAI() {
           setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'לא הבנתי מה לשנות. תגידי לאיזה יום או שעה להזיז.', timestamp: Date.now() }])
         } else {
           updateAppointment(target.id, updates)
-          const dateStr = updates.date ? ` ל${updates.date}` : ''
-          const timeStr = updates.time ? ` לשעה ${updates.time}` : ''
+          // Use friendly date label (מחר, ביום רביעי) instead of raw YYYY-MM-DD
+          const today = new Date().toISOString().split('T')[0]!
+          const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+          let dateStr = ''
+          if (updates.date) {
+            if (updates.date === today) dateStr = ' להיום'
+            else if (updates.date === tmrw) dateStr = ' למחר'
+            else dateStr = ` ל${updates.date}`
+          }
+          const timeStr = updates.time ? ` ${timeInWords(updates.time)}` : ''
           setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `עדכנתי: ${target!.title}${dateStr}${timeStr}.`, timestamp: Date.now() }])
         }
         setLoading(false)
@@ -640,7 +660,24 @@ export function AbuAI() {
 
       // Check for new create intent (appointments only — reminders handled above)
       if (isCreateIntent(msgText) && isRecurringIntent(msgText)) {
-        setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'כרגע אני יודעת לקבוע פגישה בודדת. תגידי לי את התאריך הספציפי ואני אקבע.', timestamp: Date.now() }])
+        const { extractRecurringDay, getNextOccurrences } = await import('./calendarCreate')
+        const recurDay = extractRecurringDay(msgText)
+        if (recurDay !== null) {
+          // Parse title and time from the text
+          const next = startCreate(msgText)
+          const title = next.draft.title || 'פגישה'
+          const time = next.draft.time || null
+          const dates = getNextOccurrences(recurDay, 4)
+          // Create 4 individual events
+          for (const date of dates) {
+            addAppointment({ title, date, time: time || '09:00', emoji: next.draft.emoji || '📅', type: 'regular' })
+          }
+          const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+          const timeStr = time ? ` בשעה ${time}` : ''
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `קבעתי ${title} כל יום ${dayNames[recurDay]}${timeStr} ל-4 השבועות הקרובים.`, timestamp: Date.now() }])
+        } else {
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'באיזה יום בשבוע? למשל: "כל יום שלישי בעשר"', timestamp: Date.now() }])
+        }
         setLoading(false)
         streamingMsgIdRef.current = null
         return
@@ -737,7 +774,7 @@ export function AbuAI() {
 
           recallContent = parts.length > 0
             ? parts.join('. ') + '.'
-            : 'לא מצאתי נושא ברור שדיברנו עליו.'
+            : 'לא זוכרת נושא ברור שדיברנו עליו.'
         }
         const recallMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: recallContent, timestamp: Date.now() }
         setMessages(prev => [...prev, recallMsg])
@@ -757,8 +794,22 @@ export function AbuAI() {
       })
       if (proactiveSeed) {
         lastProactiveSeedIdRef.current = proactiveSeed.id
-        const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: proactiveSeed.text, timestamp: Date.now() }
-        setMessages(prev => [...prev, proactiveMsg])
+        // Route emotional responses through LLM for natural variation
+        // The seed text serves as grounded context (tone + intent)
+        if (!voiceMode) {
+          const enhanced = await groundedLLMAnswer(
+            msgText,
+            `Intent: ${proactiveSeed.intent}. Suggested response style: ${proactiveSeed.text}`,
+            messages.map(m => ({ role: m.role, content: m.content })),
+            proactiveSeed.text,
+          )
+          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enhanced, timestamp: Date.now() }
+          setMessages(prev => [...prev, proactiveMsg])
+        } else {
+          // Voice mode: use deterministic seed for speed
+          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: proactiveSeed.text, timestamp: Date.now() }
+          setMessages(prev => [...prev, proactiveMsg])
+        }
         setLoading(false)
         streamingMsgIdRef.current = null
         return
@@ -1002,8 +1053,10 @@ export function AbuAI() {
   }, [])
 
   const handleMicTap = () => {
+    // Unified voice entry: mic button starts voice conversation mode
+    // instead of dictation-to-text. One mental model for Martita.
     if (recording) stopRecording()
-    else if (!loading && !transcribing) startRecording()
+    else if (!loading && !transcribing) handleVoiceTap()
   }
 
   // ─── Voice Conversation Mode ──────────────────────────────────────────────
@@ -2597,45 +2650,8 @@ ${fewShotText}`
             </button>
           </div>
 
-          {/* "שיחה קולית" pill */}
+          {/* Bottom actions — mic button is the single voice entry point */}
           <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center' }}>
-            <button
-              type="button"
-              onClick={handleVoiceTap}
-              aria-label="מצב שיחה קולית"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 24px',
-                borderRadius: 20,
-                background: 'rgba(20,184,166,0.06)',
-                border: '1px solid rgba(20,184,166,0.40)',
-                cursor: 'pointer',
-                WebkitTapHighlightColor: 'transparent',
-                transition: 'background 0.15s ease',
-              }}
-              onPointerDown={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.14)' }}
-              onPointerUp={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.06)' }}
-              onPointerLeave={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.06)' }}
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
-                stroke={GOLD} strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                <path d="M19 10v2a7 7 0 01-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
-              <span style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: 'rgba(20,184,166,0.95)',
-                fontFamily: "'Heebo',sans-serif",
-                direction: 'rtl',
-              }}>
-                שיחה קולית
-              </span>
-            </button>
             {import.meta.env.DEV && (
             <button
               type="button"

@@ -10,8 +10,8 @@
  *   - sources field is preserved when present and dropped when empty
  */
 
-import { describe, it, expect } from 'vitest'
-import { answerOnlineCurrentInfo, checkOnlineProviderHealth, _recordOnlineError } from './onlineProvider'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { answerOnlineCurrentInfo, checkOnlineProviderHealth, _recordOnlineError, _clearOnlineCache } from './onlineProvider'
 
 function fakeFetchOk(answer: string, sources?: Array<{ title?: string; url?: string }>) {
   return async (_url: string | URL | Request, _init?: RequestInit): Promise<Response> => {
@@ -45,6 +45,8 @@ function fakeFetchAbort() {
     })
   }
 }
+
+beforeEach(() => { _clearOnlineCache() })
 
 describe('answerOnlineCurrentInfo — success path', () => {
   it('maps a structured ok=true response to OnlineSuccessResult', async () => {

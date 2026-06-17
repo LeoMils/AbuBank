@@ -59,6 +59,32 @@ export function isRecurringIntent(text: string): boolean {
   return RECURRING_INTENT.test(text)
 }
 
+/** Extract the day-of-week from a recurring intent. Returns 0 (Sun) - 6 (Sat) or null. */
+export function extractRecurringDay(text: string): number | null {
+  const dayMap: Record<string, number> = {
+    'ראשון': 0, 'שני': 1, 'שלישי': 2, 'רביעי': 3, 'חמישי': 4, 'שישי': 5, 'שבת': 6,
+  }
+  const m = text.match(/כל\s+(?:יום\s+)?(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)/i)
+  if (m) return dayMap[m[1]!] ?? null
+  return null
+}
+
+/** Generate dates for the next N occurrences of a given day-of-week. */
+export function getNextOccurrences(dayOfWeek: number, count: number = 4): string[] {
+  const dates: string[] = []
+  const today = new Date()
+  const current = new Date(today)
+  // Find next occurrence
+  while (current.getDay() !== dayOfWeek) {
+    current.setDate(current.getDate() + 1)
+  }
+  for (let i = 0; i < count; i++) {
+    dates.push(current.toISOString().split('T')[0]!)
+    current.setDate(current.getDate() + 7)
+  }
+  return dates
+}
+
 const CREATE_INTENT = /תקבע[יה]? לי|תרשמ[יה]? לי|תוסיפ[יה]? לי|תזכיר[יה]? לי|תכניס[יה]? לי|תעש[יה]? לי|שימ[יה]? לי|קבע[יה]? לי|רשמ[יה]? לי|אני רוצה פגישה|אני רוצה תור|יש לי תור|יש לי פגישה|תכניס[יה]? ליומן|תשימ[יה]? ביומן|צריכה לקבוע|צריך לקבוע|רוצה לקבוע/i
 
 // Natural speech: "אני צריכה להיות אצל...", "ביום רביעי בשעה חמש..."

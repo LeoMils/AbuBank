@@ -11,6 +11,23 @@
 
 import { shouldBlockOnlineForPersonal, isOnlineCurrentInfoQuery, getOnlineQueryKind } from './onlineIntent'
 
+// Simple stale-while-revalidate cache for online answers (weather safe for 30min)
+const _onlineCache = new Map<string, { answer: string; sources: Array<{ title?: string; url?: string }>; ts: number }>()
+const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
+
+function getCachedAnswer(kind: string): { answer: string; sources: Array<{ title?: string; url?: string }> } | null {
+  const entry = _onlineCache.get(kind)
+  if (entry && Date.now() - entry.ts < CACHE_TTL_MS) return { answer: entry.answer, sources: entry.sources }
+  return null
+}
+
+function setCachedAnswer(kind: string, answer: string, sources: Array<{ title?: string; url?: string }>) {
+  _onlineCache.set(kind, { answer, sources, ts: Date.now() })
+}
+
+/** Clear the online cache — used by tests. */
+export function _clearOnlineCache() { _onlineCache.clear() }
+
 export type OnlineLang = 'he' | 'es' | 'en' | 'mixed'
 
 export type OnlineErrorCode =
@@ -145,6 +162,14 @@ export async function answerOnlineCurrentInfo(
       userMessage: userMessageFor('ONLINE_QUERY_BLOCKED_PERSONAL', lang),
     }
   }
+  // Stale-while-revalidate: return cached answer if fresh (weather, etc.)
+  if (queryKind) {
+    const cached = getCachedAnswer(queryKind)
+    if (cached) {
+      return { ok: true, answer: cached.answer, userMessage: cached.answer, sources: cached.sources }
+    }
+  }
+
   if (!query.trim() || query.length > 600) {
     return {
       ok: false,
@@ -197,6 +222,8 @@ export async function answerOnlineCurrentInfo(
         userMessage: body.answer.trim(),
         ...(sources && sources.length > 0 ? { sources } : {}),
       }
+      // Cache successful answer for stale-while-revalidate
+      if (queryKind) setCachedAnswer(queryKind, success.answer, sources ?? [])
       return success
     }
   }

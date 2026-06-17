@@ -94,6 +94,55 @@ export function updateSummaryFromMessages(
 }
 
 /**
+ * Generate an LLM-powered conversation summary every 20 messages.
+ * Falls back to pattern-matching summary if LLM fails.
+ */
+export async function generateLLMSummary(
+  messages: Array<{ role: string; content: string }>,
+  existing: ConversationSummary | null,
+): Promise<ConversationSummary> {
+  // Always update the pattern-matching summary as fallback
+  const patternSummary = updateSummaryFromMessages(messages, existing)
+
+  try {
+    const recent = messages.slice(-20)
+    if (recent.length < 4) return patternSummary
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 6000)
+
+    const res = await fetch('/api/abuai-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'Summarize this conversation in 2-3 short Hebrew sentences. Include: who was discussed, what topics, what was decided, what emotional state. Be factual and brief. Output ONLY the summary text.' },
+          ...recent.map(m => ({ role: m.role, content: m.content })),
+        ],
+        max_tokens: 100,
+        temperature: 0.3,
+      }),
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+
+    if (!res.ok) return patternSummary
+
+    const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
+    const llmSummaryText = data?.choices?.[0]?.message?.content?.trim()
+
+    if (llmSummaryText && llmSummaryText.length > 10) {
+      patternSummary.factsMentioned = [llmSummaryText]
+    }
+  } catch {
+    // LLM failed — pattern summary is still valid
+  }
+
+  return patternSummary
+}
+
+/**
  * Format summary as a context string for the LLM system message.
  */
 export function formatSummaryForLLM(summary: ConversationSummary): string {
@@ -109,6 +158,10 @@ export function formatSummaryForLLM(summary: ConversationSummary): string {
   }
   if (summary.appointmentsMentioned.length > 0) {
     parts.push(`פגישות שנדונו: ${summary.appointmentsMentioned.join('; ')}`)
+  }
+  // Include LLM-generated summary if available
+  if (summary.factsMentioned.length > 0) {
+    parts.push(`סיכום: ${summary.factsMentioned[summary.factsMentioned.length - 1]}`)
   }
   return parts.length > 0 ? `[סיכום שיחה: ${parts.join('. ')}]` : ''
 }
