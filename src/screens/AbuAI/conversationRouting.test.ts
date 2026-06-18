@@ -106,7 +106,7 @@ describe('emotional + vague → LLM (warm response)', () => {
     ['ספרי לי בדיחה', 'LLM'],
     ['hola', 'LLM'],
     ['estoy aburrida', 'LLM'],
-    ['תודה', 'LLM'],
+    ['תודה', 'CONFIRM'],
     ['אני אוהבת אותך', 'LLM'],
     ['מה את חושבת על הגשם', 'LLM'],
   ]

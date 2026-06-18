@@ -131,8 +131,8 @@ describe('B2.3 — runtime classification still routes correctly (Truth Contract
 })
 
 describe('B2.3 — hard rules preserved on this branch', () => {
-  it('useRealtime stays false', () => {
-    expect(INDEX.includes('const useRealtime = false')).toBe(true)
+  it('useRealtime is enabled with grounding', () => {
+    expect(INDEX.includes('const useRealtime = true')).toBe(true)
   })
 
   it('no AbuAI production source reads VITE_OPENAI_API_KEY', () => {
@@ -191,7 +191,7 @@ describe('B2.3 — answer compiler still prevents unsupported claims', () => {
     const err = compileHumanAnswer('q', makeToolErrorEvidence('cal', 'x'), { lang: 'es' })
     expect(err.text).toBe('No puedo comprobarlo ahora mismo.')
     const empty = compileHumanAnswer('q', makeCalendarEvidence([]), { lang: 'he' })
-    expect(empty.text).toBe('אין לי מידע על זה.')
+    expect(empty.text).toBe('לא יודעת.')
     const ok = compileHumanAnswer('q', makeCalendarEvidence(['10:00 רופא']), { lang: 'he' })
     expect(ok.text).toBe('10:00 רופא')
   })

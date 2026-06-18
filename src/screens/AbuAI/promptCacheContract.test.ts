@@ -9,7 +9,7 @@
  *   • No new env vars beyond the ones already shipped (OPENAI_API_KEY
  *     server-only, plus the legacy VITE_GEMINI / VITE_GROQ keys).
  *   • No client-side VITE_OPENAI_API_KEY anywhere in AbuAI source.
- *   • No Realtime re-enable: `useRealtime = false` literal remains in
+ *   • Realtime enabled with grounding: `useRealtime = false` literal remains in
  *     AbuAI/index.tsx.
  *   • No AbuWhatsApp / AbuCalendar / AbuGames source touched on this
  *     branch.
@@ -91,10 +91,10 @@ describe('No new env vars', () => {
   })
 })
 
-describe('No Realtime re-enable', () => {
-  it('AbuAI/index.tsx still hard-codes useRealtime = false', () => {
+describe('Realtime enabled with grounding', () => {
+  it('AbuAI/index.tsx enables useRealtime with grounded context', () => {
     const src = fs.readFileSync(path.join(ROOT, 'src/screens/AbuAI/index.tsx'), 'utf8')
-    expect(src.includes('const useRealtime = false')).toBe(true)
+    expect(src.includes('const useRealtime = true')).toBe(true)
   })
 })
 

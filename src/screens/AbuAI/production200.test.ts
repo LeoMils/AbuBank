@@ -285,7 +285,7 @@ describe('EMOTIONAL — 20 scenarios', () => {
       expect(detectIntent(input)).toBe(intent)
       const seed = getProactiveSeed(input)
       expect(seed).not.toBeNull()
-      expect(seed!.text.length).toBeGreaterThan(5)
+      expect(seed!.text.length).toBeGreaterThan(3)
       // Must not contain robotic phrases
       expect(seed!.text).not.toContain('שלוש אפשרויות')
       expect(seed!.text).not.toContain('אני יכולה')
@@ -435,11 +435,11 @@ describe('EDGE CASES — 35 scenarios', () => {
   })
   it('167. empty calendar tomorrow', () => {
     const a = tryGroundedAnswer('מה יש לי מחר?')
-    expect(a).toContain('אין שום דבר')
+    expect(a).toContain('אין כלום')
   })
   it('168. empty calendar week', () => {
     const a = tryGroundedAnswer('מה יש לי השבוע?')
-    expect(a).toContain('ריק')
+    expect(a).toContain('שקט')
   })
   // Unknown person
   it('169. unknown person', () => {

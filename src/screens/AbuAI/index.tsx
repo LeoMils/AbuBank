@@ -9,6 +9,7 @@ import { chooseContentWorld } from './contentWorldEngine'
 import { compileHumanAnswer } from './answerCompiler'
 import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
+import { diagReset, diagSet, diagCommit, diagCopyText } from '../../services/productDiagnostics'
 import { getTodayEvents, getTomorrowEvents, getBirthdayFor } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
@@ -174,11 +175,10 @@ export function AbuAI() {
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
   const [realtimeTranscript, setRealtimeTranscript] = useState('')
   const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
-  // Realtime disabled: it bypasses runtime grounding (tryGroundedAnswer).
-  // Personal queries in Realtime go directly to OpenAI audio with no tool interception.
-  // Do not re-enable until personal-query interception is implemented for Realtime.
-  // To re-enable: set localStorage 'abubank-realtime-enabled' = 'true'
-  const useRealtime = false
+  // v32: Realtime ENABLED — grounding is handled by injecting verified facts
+  // into session instructions (calendar snapshot + family data + memory summary).
+  // The Realtime model speaks directly — no TTS pipeline, < 2s response.
+  const useRealtime = true
 
   // Auto-clear stale cooldowns on mount — ensures fresh state
   useEffect(() => {
@@ -223,7 +223,11 @@ export function AbuAI() {
 
   const clearConversation = useCallback(() => {
     setMessages([])
-    try { localStorage.removeItem('abuai-conversation-history') } catch {}
+    setConversationSummary(null)
+    try {
+      localStorage.removeItem('abuai-conversation-history')
+      localStorage.removeItem('abuai-conversation-summary')
+    } catch {}
   }, [])
 
   // v25.2: Simplified — noise mode defaults to quiet, user can change manually
@@ -703,11 +707,23 @@ export function AbuAI() {
         return
       }
 
+      // ─── Emotional mode: skip family lookup during emotional sharing ──────
+      // When the last assistant turn was emotional (missing_pepe, sadness, loneliness)
+      // and the current message is NOT a direct question, let the LLM handle it
+      // with full conversation context instead of intercepting with a data dump.
+      const lastAssistantWasEmotional = messages.length >= 2 && (() => {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i]!.role === 'assistant') {
+            return /פפי|געגוע|קשה|עצוב|בודד|לדבר על זה|לספר לי עליו|extraño|triste/i.test(messages[i]!.content)
+          }
+        }
+        return false
+      })()
+      const isDirectQuestion = /^מי |^מתי |^איפה |^כמה |^מה זה |^מה זאת |[?؟]$/.test(msgText.trim())
+      const skipGroundingForEmotion = lastAssistantWasEmotional && !isDirectQuestion
+
       // ─── Existing grounded answer path ────────────────────────────────────
-      // Personal queries → try grounded answer first, then LLM-paraphrase for
-      // family/calendar answers (text mode only) so responses sound natural
-      // instead of database-like. Voice mode skips paraphrasing for speed.
-      const groundedAnswer = tryGroundedAnswer(msgText)
+      const groundedAnswer = skipGroundingForEmotion ? null : tryGroundedAnswer(msgText)
       if (groundedAnswer !== null) {
         const route = routePersonalQuery(msgText)
         const isCal = route.type.startsWith('calendar_')
@@ -1336,15 +1352,24 @@ export function AbuAI() {
           }
         }, 20000)
 
-        // Try grounded answer first (no LLM for personal queries)
-        // B1 voice ordering: grounded → proactive → LLM. Grounded ALWAYS
-        // wins; the proactive layer never answers calendar / family /
-        // personal questions because getProactiveSeed only fires on the
-        // four warmth intents (boredom / no_topic / loneliness / ideas).
+        // Product diagnostics: trace the full pipeline
+        diagReset()
+        diagSet({ sttProvider: 'WebSpeech', sttFileType: 'n/a', sttTranscript: text, sttStatus: '✅' })
+
+        // Try grounded answer first
         const voiceGrounded = tryGroundedAnswer(text)
         let response: string
         if (voiceGrounded !== null) {
-          // LLM paraphrase for natural spoken answers (falls back to deterministic if LLM fails)
+          const route = routePersonalQuery(text)
+          const isCal = route.type.startsWith('calendar_')
+          diagSet({
+            routeDecision: route.type,
+            responseSource: 'grounded+LLM',
+            rawResponse: voiceGrounded,
+            calendarSource: isCal ? 'localStorage' : 'n/a',
+            genderDebug: route.familyQuery ? `family: ${route.familyQuery}` : 'n/a',
+          })
+          // LLM paraphrase for natural spoken answers
           response = await groundedLLMAnswer(
             text,
             voiceGrounded,
@@ -1479,7 +1504,15 @@ export function AbuAI() {
         setStreamingText(response)
 
         const spokenText = shapeVoiceSafe(response)
+        diagSet({ spokenResponse: spokenText })
         await speakVoiceMode(spokenText)
+        // TTS trace is captured by voice.ts ttsTrace() — copy to diagnostics
+        try {
+          const { getTTSTrace } = await import('../../services/voice')
+          const lastTTS = getTTSTrace().slice(-1)[0]
+          if (lastTTS) diagSet({ ttsProvider: lastTTS.provider, ttsModel: lastTTS.model, ttsVoice: lastTTS.voice, ttsLatencyMs: lastTTS.latencyMs, ttsStatus: lastTTS.status, ttsFallback: lastTTS.fallback })
+        } catch {}
+        diagCommit()
 
         setIsSpeaking(false)
         setStreamingText('')
@@ -1701,7 +1734,7 @@ export function AbuAI() {
     try {
       const todayResult = getTodayEvents()
       const tmrwResult = getTomorrowEvents()
-      calendarSnapshot = `\n═══ מידע אמיתי מהיומן (נכון לרגע זה) ═══\nהיום: ${todayResult.summary}\nמחר: ${tmrwResult.summary}\nזה המידע היחיד שיש לך. אל תמציאי מעבר לזה.\n`
+      calendarSnapshot = `\n═══ יומן פנימי של אבו (לא גוגל/אפל — נתונים מקומיים בלבד) ═══\nהיום: ${todayResult.summary}\nמחר: ${tmrwResult.summary}\nזה היומן הפנימי של האפליקציה בלבד. אם שואלים — הגידי בכנות שזה לא יומן גוגל או אפל.\nאל תמציאי אירועים מעבר למה שמופיע כאן.\n`
     } catch {
       calendarSnapshot = '\n═══ יומן ═══\nאין לי גישה ליומן כרגע. אל תמציאי אירועים.\n'
     }
@@ -1718,8 +1751,36 @@ export function AbuAI() {
       .map(p => `שאלה: ${p.q}\nתשובה: ${p.a}`)
       .join('\n\n')
 
+    // Inject family facts so Realtime can answer family questions without tools
+    let familyFacts = ''
+    try {
+      const { loadGraph } = require('./familyGraph')
+      const graph = loadGraph()
+      const lines = graph.map((n: { hebrew: string; role: string; gender: string; childrenHe: string[]; spousesHe: string[]; partnersHe: string[] }) => {
+        const parts = [`${n.hebrew} (${n.role}, ${n.gender === 'female' ? 'נקבה' : n.gender === 'male' ? 'זכר' : '?'})`]
+        if (n.spousesHe.length > 0) parts.push(`נשוי/אה ל${n.spousesHe.join(',')}`)
+        if (n.partnersHe.length > 0) parts.push(`בן/בת זוג: ${n.partnersHe.join(',')}`)
+        if (n.childrenHe.length > 0) parts.push(`ילדים: ${n.childrenHe.join(', ')}`)
+        return parts.join(' | ')
+      })
+      familyFacts = `\n═══ משפחה של Martita (עובדות מאומתות) ═══\n${lines.join('\n')}\nMartita = נקבה. תמיד פני אליה בנקבה (את, שלך, תגידי).\nכל בן משפחה — השתמשי במגדר הנכון (הוא/היא, שלו/שלה).\nאל תמציאי עובדות משפחתיות. אם לא מופיע כאן — אמרי שאת לא יודעת.\n`
+    } catch {
+      familyFacts = '\n═══ משפחה ═══\nאין לי מידע על המשפחה כרגע.\n'
+    }
+
+    // Inject conversation summary for memory continuity
+    let memorySummary = ''
+    try {
+      const summary = loadSummary()
+      if (summary) {
+        const { formatSummaryForLLM } = require('./service')
+        const text = formatSummaryForLLM(summary)
+        if (text) memorySummary = `\n═══ זיכרון שיחה ═══\n${text}\n`
+      }
+    } catch {}
+
     return `${SYSTEM_PROMPT}${VOICE_SUFFIX}
-${calendarSnapshot}
+${calendarSnapshot}${familyFacts}${memorySummary}
 ═══ כלל ברזל — יומן ═══
 יש לך מידע אמיתי מהיומן למעלה. תשתמשי רק בו.
 אם שואלים על יום שאין לך מידע עליו — תגידי:
@@ -1786,8 +1847,10 @@ ${fewShotText}`
       return
     }
 
-    // Use OpenAI Realtime API (WebRTC) if available
+    // Use OpenAI Realtime API (WebRTC) — native audio, < 2s response
     if (useRealtime) {
+      diagReset()
+      diagSet({ sttProvider: 'Realtime (WebRTC)', sttFileType: 'native', ttsProvider: 'OpenAI Realtime', ttsModel: 'gpt-4o-realtime-preview', ttsVoice: 'shimmer', responseSource: 'Realtime native audio' })
       setRealtimeTranscript('')
       const session = new RealtimeVoiceSession(
         {
@@ -2698,28 +2761,36 @@ ${fewShotText}`
             <button
               type="button"
               onClick={() => {
-                const { getTTSTrace } = require('../../services/voice')
-                const trace = getTTSTrace()
-                if (trace.length === 0) {
-                  alert('אין נתוני TTS עדיין. דברי קודם.')
-                  return
+                const text = diagCopyText()
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(text).then(() => alert('הועתק! שלחי ללאו.')).catch(() => {
+                    // Fallback for iOS Safari
+                    const ta = document.createElement('textarea')
+                    ta.value = text
+                    ta.style.position = 'fixed'
+                    ta.style.left = '-9999px'
+                    document.body.appendChild(ta)
+                    ta.select()
+                    document.execCommand('copy')
+                    document.body.removeChild(ta)
+                    alert('הועתק! שלחי ללאו.')
+                  })
+                } else {
+                  prompt('העתיקי ידנית:', text)
                 }
-                const lines = trace.map((t: { ts: string; provider: string; model: string; voice: string; latencyMs: number; status: string }) =>
-                  `${t.ts.split('T')[1]?.slice(0,8)} | ${t.provider} | ${t.model} | ${t.voice} | ${t.latencyMs}ms | ${t.status}`
-                ).join('\n')
-                alert(`TTS Trace (last ${trace.length}):\n\n${lines}`)
               }}
               style={{
                 marginRight: 8,
                 padding: '10px 16px',
                 borderRadius: 20,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                color: 'rgba(255,255,255,0.5)',
-                fontSize: 12,
+                background: 'rgba(201,168,76,0.08)',
+                border: '1px solid rgba(201,168,76,0.30)',
+                color: 'rgba(201,168,76,0.8)',
+                fontSize: 13,
+                fontWeight: 600,
                 cursor: 'pointer',
               }}
-            >🔊 TTS trace</button>
+            >📋 Copy Diagnostics</button>
           </div>
         </div>
       )}

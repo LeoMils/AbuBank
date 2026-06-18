@@ -21,7 +21,7 @@ describe('WAR ROOM — AbuAI Recovery Test Matrix', () => {
   it('T1: מה יש לי מחר? (empty) → לא מצאתי', () => {
     const answer = tryGroundedAnswer('מה יש לי מחר?')
     expect(answer).not.toBeNull()
-    expect(answer).toContain('אין שום דבר')
+    expect(answer).toContain('אין כלום')
   })
 
   // T2: Tomorrow with seeded event

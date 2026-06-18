@@ -35,9 +35,8 @@ describe('shapeFamilyAnswer', () => {
     const answer = shapeFamilyAnswer(makeMember({
       children: ['אופיר', 'איילון', 'עילי', 'אדר'],
     }))
-    expect(answer).toContain('מור? הבת שלך.')
-    expect(answer).toContain('גרושה מרפי, בת זוג של יעל.')
-    expect(answer).toContain('הילדים: אופיר, איילון, עילי ואדר.')
+    expect(answer).toContain('מור, הבת שלך.')
+    expect(answer).toContain('אופיר, איילון, עילי ואדר.')
   })
 
   it('grandson uses dash format', () => {
@@ -50,11 +49,13 @@ describe('shapeFamilyAnswer', () => {
   })
 
   it('single child — no ו', () => {
-    expect(shapeFamilyAnswer(makeMember({ children: ['נועם'] }))).toContain('הילדים: נועם')
+    expect(shapeFamilyAnswer(makeMember({ children: ['נועם'] }))).toContain('ילד אחד — נועם')
   })
 
-  it('includes notes', () => {
-    expect(shapeFamilyAnswer(makeMember({ notes: 'גרה בהוד השרון.' }))).toContain('גרה בהוד השרון')
+  it('no notes in new format', () => {
+    const answer = shapeFamilyAnswer(makeMember({ notes: 'גרה בהוד השרון.' }))
+    // New format doesn't include notes — just role, spouse, children
+    expect(answer).toContain('מור')
   })
 
   it('never empty', () => {
@@ -77,8 +78,9 @@ describe('shapeFamilyAnswer', () => {
     expect(shapeFamilyAnswer(makeMember({ relationshipHebrew: 'הבן', spouse: 'דנה' }))).toContain('עם דנה')
   })
 
-  it('newline-separated for speech pacing', () => {
-    expect(shapeFamilyAnswer(makeMember({ children: ['אופיר'] }))).toContain('\n')
+  it('space-separated for natural speech', () => {
+    const answer = shapeFamilyAnswer(makeMember({ children: ['אופיר'] }))
+    expect(answer).not.toContain('\n')
   })
 })
 
@@ -99,16 +101,16 @@ describe('shapeLocationAnswer', () => {
 
 describe('shapeCalendarAnswer', () => {
   it('empty today — short, no מרטיטה', () => {
-    expect(shapeCalendarAnswer([], 'today')).toBe('היום חופשי, אין כלום ביומן.')
+    expect(shapeCalendarAnswer([], 'today')).toBe('היום אין כלום. יום חופשי.')
   })
 
   it('empty tomorrow', () => {
-    expect(shapeCalendarAnswer([], 'tomorrow')).toBe('מחר ריק, אין שום דבר ביומן.')
+    expect(shapeCalendarAnswer([], 'tomorrow')).toBe('מחר אין כלום. יום שקט.')
   })
 
   it('empty week', () => {
     const answer = shapeCalendarAnswer([], 'week')
-    expect(answer).toContain('ריק')
+    expect(answer).toContain('שקט')
     expect(answer).not.toContain('מרטיטה')
   })
 
@@ -187,33 +189,33 @@ describe('shapeCalendarAnswer', () => {
 describe('shapeCreateConfirm', () => {
   it('אצל אופיר → להיות אצל אופיר', () => {
     const msg = shapeCreateConfirm({ title: 'אצל אופיר', date: '2026-05-06', time: '17:00', emoji: '📅' })
-    expect(msg).toContain('אני קובעת לך להיות אצל אופיר')
+    expect(msg).toContain('להיות אצל אופיר')
     expect(msg).toContain('בחמש')
-    expect(msg).toContain('זה נכון?')
+    expect(msg).toContain('נכון?')
   })
 
   it('רופא → תור לרופא kept as-is', () => {
     const msg = shapeCreateConfirm({ title: 'תור לרופא', date: '2026-05-01', time: '10:00', emoji: '🏥' })
-    expect(msg).toContain('אני קובעת לך תור לרופא')
+    expect(msg).toContain('תור לרופא')
     expect(msg).toContain('בעשר בבוקר')
   })
 
   it('ארוחת ערב kept as-is', () => {
     const msg = shapeCreateConfirm({ title: 'ארוחת ערב עם המשפחה', date: '2026-05-01', time: '20:00', emoji: '🍽️' })
-    expect(msg).toContain('אני קובעת לך ארוחת ערב עם המשפחה')
+    expect(msg).toContain('ארוחת ערב עם המשפחה')
     expect(msg).toContain('בשמונה בערב')
   })
 
   it('no title → fallback to משהו', () => {
     const msg = shapeCreateConfirm({ title: null, date: '2026-05-01', time: '15:00', emoji: '📅' })
-    expect(msg).toContain('אני קובעת לך משהו')
+    expect(msg).toContain('משהו')
     expect(msg).not.toContain('undefined')
     expect(msg).not.toContain('null')
   })
 
   it('no time → no time in output', () => {
     const msg = shapeCreateConfirm({ title: 'פגישה', date: '2026-05-01', time: null, emoji: '📅' })
-    expect(msg).toContain('אני קובעת לך פגישה')
+    expect(msg).toContain('פגישה')
     expect(msg).not.toContain('undefined')
   })
 
@@ -235,10 +237,10 @@ describe('shapeCreateConfirm', () => {
     // alter it via shared helpers.
     const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
     const msg = shapeCreateConfirm({ title: 'תור לרופא', date: tmrw, time: '10:00', emoji: '🏥' })
-    expect(msg).toContain('אני קובעת לך תור לרופא')
+    expect(msg).toContain('תור לרופא')
     expect(msg).toContain('מחר')
     expect(msg).toContain('בעשר בבוקר')
-    expect(msg.trim().endsWith('זה נכון?')).toBe(true)
+    expect(msg.trim().endsWith('נכון?')).toBe(true)
     expect(msg).not.toContain('הבנתי')
     expect(msg).not.toContain('לקבוע?')
   })
@@ -385,15 +387,13 @@ describe('shapeCreateConfirmReadback', () => {
 })
 
 describe('shapeCreateSaved', () => {
-  it('warm confirmation without draft', () => {
-    expect(shapeCreateSaved()).toBe('קבוע, רשמתי ביומן.')
+  it('short confirmation without draft', () => {
+    expect(shapeCreateSaved()).toBe('רשום.')
   })
 
-  it('warm confirmation with draft echoes what was saved', () => {
+  it('short confirmation with draft', () => {
     const result = shapeCreateSaved({ title: 'רופא', date: '2026-06-10', time: '10:00' })
-    expect(result).toContain('מעולה')
-    expect(result).toContain('רופא')
-    expect(result).toContain('עשר')
+    expect(result).toBe('קבוע.')
   })
 })
 
@@ -426,8 +426,8 @@ describe('shapeNotFound', () => {
 describe('shapeToolError', () => {
   it('human, short', () => {
     const msg = shapeToolError()
-    expect(msg).toContain('תקוע')
-    expect(msg).toContain('תנסי שוב')
+    expect(msg).toContain('לא עבד')
+    expect(msg).toContain('תנסי עוד פעם')
   })
 })
 

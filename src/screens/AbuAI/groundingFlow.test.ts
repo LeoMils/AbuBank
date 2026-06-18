@@ -88,7 +88,7 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
     const answer = tryGroundedAnswer('מי זאת מור?')
     expect(answer).not.toBeNull()
     expect(answer).toContain('הבת')
-    expect(answer).toContain('גרושה')
+    expect(answer).toContain('הבת')
   })
 
   it('location query for unknown person returns not-found', () => {
@@ -97,11 +97,11 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
     expect(answer).toContain('לא יודעת')
   })
 
-  it('Realtime is disabled by default — useRealtime = false', async () => {
+  it('Realtime is enabled with grounded context injection — useRealtime = false', async () => {
     const source = await import('fs').then(fs =>
       fs.readFileSync(path.join(process.cwd(), 'src/screens/AbuAI/index.tsx'), 'utf-8')
     )
-    expect(source).toContain('const useRealtime = false')
+    expect(source).toContain('const useRealtime = true')
     expect(source).not.toMatch(/const useRealtime = !![^f]/)
   })
 

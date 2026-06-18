@@ -134,7 +134,7 @@ export function isCreateIntent(text: string): boolean {
 
 // ─── Confirmation / Cancel ──────────────────────────────────────────────────
 
-const CONFIRM = /^(כן|נכון|בדיוק|בסדר|סבבה|יאללה|תרשמי|כן תרשמי|אוקיי|אוקי|ok|yes|כן כן|בטח|ברור|מאשרת|תאשרי)$/i
+const CONFIRM = /^(כן|נכון|בדיוק|בסדר|סבבה|יאללה|תרשמי|כן תרשמי|אוקיי|אוקי|ok|yes|כן כן|בטח|ברור|מאשרת|תאשרי|תודה|תודה רבה|dale|sí|si)$/i
 const CANCEL = /^(לא|לא נכון|עזבי|עזבי את זה|תשכחי|ביטול|לא צריך|בטלי|לא רוצה|חבל|תעזבי|לא לא|לא לא לא|לא לא לא לא|עזבי עזבי|לא לזה התכוונתי|תמחקי|תמחקי את זה|תבטלי|תבטלי את זה|מחקי|תמחקי את הפגישה|תבטלי את הפגישה)$/i
 
 export function isConfirm(text: string): boolean {
@@ -474,8 +474,14 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
   const draft = { ...state.draft }
   const stillMissing = [...state.missing]
 
-  // Title
-  if (stillMissing.includes('title')) {
+  // Title — but not if the text is a confirmation/cancel word
+  // If user confirms with only title missing, use default "פגישה"
+  if (stillMissing.includes('title') && isConfirm(t)) {
+    draft.title = 'פגישה'
+    draft.emoji = '📌'
+    const idx = stillMissing.indexOf('title')
+    if (idx !== -1) stillMissing.splice(idx, 1)
+  } else if (stillMissing.includes('title') && !isCancel(t)) {
     const title = extractTitle(t) ?? t.replace(/[.!?,;]+$/, '').trim()
     if (title.length >= 2) {
       draft.title = title

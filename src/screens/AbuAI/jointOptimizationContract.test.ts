@@ -26,7 +26,7 @@
  *      introduced).
  *
  * Honesty rules (PR #21 envelope, re-asserted):
- *   • useRealtime stays false.
+ *   • useRealtime is enabled with grounding.
  *   • No production AbuAI source reads VITE_OPENAI_API_KEY.
  *   • No new vendor env vars (Tavily / Exa / Perplexity / Brave /
  *     OpenRouter / Vercel AI Gateway).
@@ -248,8 +248,8 @@ describe('B2.3 joint-opt — both online call sites pass the static Kfar Saba lo
 })
 
 describe('B2.3 joint-opt — hard-rule envelope preserved', () => {
-  it('useRealtime stays false in index.tsx', () => {
-    expect(INDEX.includes('const useRealtime = false')).toBe(true)
+  it('useRealtime is enabled with grounding in index.tsx', () => {
+    expect(INDEX.includes('const useRealtime = true')).toBe(true)
   })
 
   it('no production AbuAI source reads VITE_OPENAI_API_KEY', () => {

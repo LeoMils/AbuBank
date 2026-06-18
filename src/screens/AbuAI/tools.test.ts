@@ -91,12 +91,12 @@ describe('calendar tools', () => {
   it('getTomorrowEvents returns empty for no events', () => {
     const r = getTomorrowEvents()
     expect(r.events).toHaveLength(0)
-    expect(r.summary).toContain('אין שום דבר')
+    expect(r.summary).toContain('אין כלום')
   })
 
   it('getWeekEvents returns empty for no events', () => {
     const r = getWeekEvents()
-    expect(r.summary).toContain('ריק')
+    expect(r.summary).toContain('שקט')
   })
 
   it('findEventsByPerson returns empty for unknown person', () => {
