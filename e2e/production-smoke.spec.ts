@@ -35,7 +35,7 @@ async function sendChatMessage(page: Page, text: string) {
       const lastLabel = labels[labels.length - 1]
       const bubble = lastLabel?.nextElementSibling
       const text = bubble?.textContent?.trim() ?? ''
-      return text.length > 5 && !/^[●•·.\s]+$/.test(text)
+      return text.length > 2 && !/^[●•·.\s]+$/.test(text)
     },
     beforeCount,
     { timeout: AI_TIMEOUT }
@@ -148,14 +148,13 @@ test.describe('AbuBank Production Smoke Tests', () => {
     const response = await getLastAssistantMessage(page)
     expect(response.length).toBeGreaterThan(0)
 
-    // Look for confirmation language
+    // Look for confirmation language — may be very short ("קבוע.")
     const hasConfirmation =
+      response.includes('קבוע') ||
+      response.includes('רשום') ||
       response.includes('קבעתי') ||
       response.includes('נקבע') ||
-      response.includes('רשמתי') ||
-      response.includes('הוספתי') ||
-      response.includes('ביומן') ||
-      response.includes('נוצר')
+      response.includes('רשמתי')
     expect(hasConfirmation).toBe(true)
 
     await page.screenshot({
