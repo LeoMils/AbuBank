@@ -61,7 +61,7 @@ export function getFamilyContext(): string {
   const family = getFamilyMembers()
   const kids = family.filter(m => m.relationship === 'daughter' || m.relationship === 'son')
   const grandkids = family.filter(m => m.relationship === 'grandson' || m.relationship === 'granddaughter')
-  return `ילדים: ${kids.map(m => m.hebrew).join(', ')}. נכדים: ${grandkids.map(m => m.hebrew).join(', ')}.`
+  return `הילדים — ${kids.map(m => m.hebrew).join(' ו')}. הנכדים — ${grandkids.map(m => m.hebrew).join(', ')}.`
 }
 
 /**
@@ -91,7 +91,7 @@ export function searchFamilyGroup(query: string): string | null {
     const names = childMembers.length > 0
       ? childMembers.map(m => m.hebrew).join(', ')
       : childNames.join(', ')
-    return `ל${parentMember.hebrew} יש ${childNames.length} ילדים: ${names}.`
+    return `ל${parentMember.hebrew} יש ${childNames.length} ילדים — ${names}.`
   }
 
   // Generic group: "הנכדים", "ספרי לי על הנכדים", "כמה נכדים יש"
@@ -109,7 +109,7 @@ export function searchFamilyGroup(query: string): string | null {
     const kids = family.filter(m => m.relationship === 'daughter' || m.relationship === 'son')
     if (kids.length === 0) return 'אין לי מידע על ילדים.'
     const names = kids.map(m => m.hebrew).join(', ')
-    return `ל-Martita יש ${kids.length} ילדים: ${names}.`
+    return `יש לך ${kids.length} ילדים — ${names}.`
   }
   if (isFamily) {
     return getFamilyContext()
