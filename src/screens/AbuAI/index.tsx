@@ -9,6 +9,7 @@ import { chooseContentWorld } from './contentWorldEngine'
 import { compileHumanAnswer } from './answerCompiler'
 import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
+import { diagReset, diagSet, diagCommit, diagCopyText } from '../../services/productDiagnostics'
 import { getTodayEvents, getTomorrowEvents, getBirthdayFor } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
@@ -1336,15 +1337,24 @@ export function AbuAI() {
           }
         }, 20000)
 
-        // Try grounded answer first (no LLM for personal queries)
-        // B1 voice ordering: grounded → proactive → LLM. Grounded ALWAYS
-        // wins; the proactive layer never answers calendar / family /
-        // personal questions because getProactiveSeed only fires on the
-        // four warmth intents (boredom / no_topic / loneliness / ideas).
+        // Product diagnostics: trace the full pipeline
+        diagReset()
+        diagSet({ sttProvider: 'WebSpeech', sttFileType: 'n/a', sttTranscript: text, sttStatus: '✅' })
+
+        // Try grounded answer first
         const voiceGrounded = tryGroundedAnswer(text)
         let response: string
         if (voiceGrounded !== null) {
-          // LLM paraphrase for natural spoken answers (falls back to deterministic if LLM fails)
+          const route = routePersonalQuery(text)
+          const isCal = route.type.startsWith('calendar_')
+          diagSet({
+            routeDecision: route.type,
+            responseSource: 'grounded+LLM',
+            rawResponse: voiceGrounded,
+            calendarSource: isCal ? 'localStorage' : 'n/a',
+            genderDebug: route.familyQuery ? `family: ${route.familyQuery}` : 'n/a',
+          })
+          // LLM paraphrase for natural spoken answers
           response = await groundedLLMAnswer(
             text,
             voiceGrounded,
@@ -1479,7 +1489,15 @@ export function AbuAI() {
         setStreamingText(response)
 
         const spokenText = shapeVoiceSafe(response)
+        diagSet({ spokenResponse: spokenText })
         await speakVoiceMode(spokenText)
+        // TTS trace is captured by voice.ts ttsTrace() — copy to diagnostics
+        try {
+          const { getTTSTrace } = await import('../../services/voice')
+          const lastTTS = getTTSTrace().slice(-1)[0]
+          if (lastTTS) diagSet({ ttsProvider: lastTTS.provider, ttsModel: lastTTS.model, ttsVoice: lastTTS.voice, ttsLatencyMs: lastTTS.latencyMs, ttsStatus: lastTTS.status, ttsFallback: lastTTS.fallback })
+        } catch {}
+        diagCommit()
 
         setIsSpeaking(false)
         setStreamingText('')
@@ -2698,28 +2716,36 @@ ${fewShotText}`
             <button
               type="button"
               onClick={() => {
-                const { getTTSTrace } = require('../../services/voice')
-                const trace = getTTSTrace()
-                if (trace.length === 0) {
-                  alert('אין נתוני TTS עדיין. דברי קודם.')
-                  return
+                const text = diagCopyText()
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(text).then(() => alert('הועתק! שלחי ללאו.')).catch(() => {
+                    // Fallback for iOS Safari
+                    const ta = document.createElement('textarea')
+                    ta.value = text
+                    ta.style.position = 'fixed'
+                    ta.style.left = '-9999px'
+                    document.body.appendChild(ta)
+                    ta.select()
+                    document.execCommand('copy')
+                    document.body.removeChild(ta)
+                    alert('הועתק! שלחי ללאו.')
+                  })
+                } else {
+                  prompt('העתיקי ידנית:', text)
                 }
-                const lines = trace.map((t: { ts: string; provider: string; model: string; voice: string; latencyMs: number; status: string }) =>
-                  `${t.ts.split('T')[1]?.slice(0,8)} | ${t.provider} | ${t.model} | ${t.voice} | ${t.latencyMs}ms | ${t.status}`
-                ).join('\n')
-                alert(`TTS Trace (last ${trace.length}):\n\n${lines}`)
               }}
               style={{
                 marginRight: 8,
                 padding: '10px 16px',
                 borderRadius: 20,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                color: 'rgba(255,255,255,0.5)',
-                fontSize: 12,
+                background: 'rgba(201,168,76,0.08)',
+                border: '1px solid rgba(201,168,76,0.30)',
+                color: 'rgba(201,168,76,0.8)',
+                fontSize: 13,
+                fontWeight: 600,
                 cursor: 'pointer',
               }}
-            >🔊 TTS trace</button>
+            >📋 Copy Diagnostics</button>
           </div>
         </div>
       )}
