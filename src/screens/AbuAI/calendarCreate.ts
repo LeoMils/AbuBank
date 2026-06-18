@@ -474,8 +474,14 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
   const draft = { ...state.draft }
   const stillMissing = [...state.missing]
 
-  // Title
-  if (stillMissing.includes('title')) {
+  // Title — but not if the text is a confirmation/cancel word
+  // If user confirms with only title missing, use default "פגישה"
+  if (stillMissing.includes('title') && isConfirm(t)) {
+    draft.title = 'פגישה'
+    draft.emoji = '📌'
+    const idx = stillMissing.indexOf('title')
+    if (idx !== -1) stillMissing.splice(idx, 1)
+  } else if (stillMissing.includes('title') && !isCancel(t)) {
     const title = extractTitle(t) ?? t.replace(/[.!?,;]+$/, '').trim()
     if (title.length >= 2) {
       draft.title = title
