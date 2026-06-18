@@ -17,6 +17,8 @@ import { routePersonalQuery, type RouteType } from './router'
 // Short temporal fragments — bare time references that need context.
 // Includes "בעצם" prefix for corrections: "בעצם מחר", "בעצם בשלישי"
 const TEMPORAL_FRAGMENT = /^(?:ו|בעצם\s+)?(?:מחר|היום|אתמול|השבוע|שבוע הבא|בשבוע הבא|ב?יום (?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)|ב?(?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת))\??$/i
+// Spanish temporal follow-ups: "¿Y mañana?", "¿Y hoy?", "¿Y esta semana?"
+const TEMPORAL_FRAGMENT_ES = /^(?:¿?\s*)?(?:y\s+)?(?:mañana|hoy|ayer|esta\s+semana|la\s+semana\s+que\s+viene)\s*\??$/i
 
 // Short name fragments — bare names that need context.
 // "ומור?", "ולאו?", "ונועם?", "ויעל?"
@@ -153,8 +155,8 @@ export function resolveFollowUp(
     return { resolved: text, wasFollowUp: false }
   }
 
-  // Check for temporal follow-up: "ומחר?", "ובשלישי?", "בעצם מחר"
-  if (TEMPORAL_FRAGMENT.test(trimmed)) {
+  // Check for temporal follow-up: "ומחר?", "ובשלישי?", "¿Y mañana?"
+  if (TEMPORAL_FRAGMENT.test(trimmed) || TEMPORAL_FRAGMENT_ES.test(trimmed)) {
     const lastContext = findLastContext(recentMessages)
     if (lastContext && CALENDAR_ROUTES.has(lastContext)) {
       return { resolved: expandTemporal(trimmed), wasFollowUp: true }
@@ -162,6 +164,10 @@ export function resolveFollowUp(
     // Even without calendar context, a bare "מחר?" is almost certainly
     // asking about tomorrow's schedule
     if (trimmed.replace(/^(?:ו|בעצם\s*)/i, '').replace(/\?$/, '').trim() === 'מחר') {
+      return { resolved: 'מה יש לי מחר?', wasFollowUp: true }
+    }
+    // Spanish: "¿Y mañana?" → "מה יש לי מחר?"
+    if (/ma[nñ]ana/i.test(trimmed)) {
       return { resolved: 'מה יש לי מחר?', wasFollowUp: true }
     }
   }

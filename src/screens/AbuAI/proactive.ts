@@ -108,8 +108,8 @@ const SADNESS_ES = /estoy\s+triste|me\s+siento\s+mal|no\s+tengo\s+ganas|d[ií]a\
 const SADNESS_EN = /\b(i'?m\s+sad|feeling\s+(down|bad)|tough\s+day|no\s+energy)\b/i
 
 // "Talk to me" — needs company, not a specific intent
-const TALK_HE = /תדברי איתי|דברי איתי|תספרי לי משהו|ספרי לי משהו/
-const TALK_ES = /habl[aá]me|cont[aá]me\s+algo|charlemos/i
+const TALK_HE = /תדברי איתי|דברי איתי|תספרי לי משהו|ספרי לי משהו|בואי נדבר|בוא נדבר/
+const TALK_ES = /habl[aá]me|cont[aá]me\s+algo|cont[aá]me|charlemos|dale.+cont[aá]me/i
 const TALK_EN = /\btalk\s+to\s+me\b|\btell\s+me\s+something\b/i
 
 // Happiness — positive emotional state

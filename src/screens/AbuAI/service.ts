@@ -70,11 +70,12 @@ export function updateSummaryFromMessages(
     if (/חדשות|פוליטי/.test(msg.content)) topicSet.add('חדשות')
     if (/פפי|געגוע|זיכרון/.test(msg.content)) topicSet.add('פפי')
 
-    // Detect emotional context
+    // Detect emotional context — only from strong signals, not incidental words
     if (msg.role === 'user') {
-      if (/עצוב|קשה|לא טוב|בודד/.test(msg.content)) summary.emotionalContext = 'עצובה'
-      if (/שמח|כיף|טוב|יופי/.test(msg.content)) summary.emotionalContext = 'שמחה'
-      if (/משעמם|שעמום/.test(msg.content)) summary.emotionalContext = 'משועממת'
+      if (/עצוב[הא]?|קשה לי|לא טוב לי|בודד[הא]?|מתגעגע|חסר לי|triste|extraño/i.test(msg.content)) summary.emotionalContext = 'עצובה'
+      else if (/שמח[הא]?|כיף לי|יום טוב|content[ao]/i.test(msg.content)) summary.emotionalContext = 'שמחה'
+      else if (/משעמם|שעמום|aburrid/i.test(msg.content)) summary.emotionalContext = 'משועממת'
+      // Don't overwrite emotional context with incidental word matches
       summary.lastUserRequest = msg.content
     }
 

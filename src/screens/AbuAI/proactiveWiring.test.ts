@@ -33,7 +33,7 @@ describe('text path — grounded → proactive → personal/open ordering', () =
   const block = SRC.slice(start, end)
 
   it('text block contains tryGroundedAnswer call', () => {
-    expect(block.includes('const groundedAnswer = tryGroundedAnswer(msgText)')).toBe(true)
+    expect(block.includes('tryGroundedAnswer(msgText)')).toBe(true)
   })
 
   it('text block calls getProactiveSeed AFTER tryGroundedAnswer and BEFORE the LLM', () => {

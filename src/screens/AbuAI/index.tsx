@@ -223,7 +223,11 @@ export function AbuAI() {
 
   const clearConversation = useCallback(() => {
     setMessages([])
-    try { localStorage.removeItem('abuai-conversation-history') } catch {}
+    setConversationSummary(null)
+    try {
+      localStorage.removeItem('abuai-conversation-history')
+      localStorage.removeItem('abuai-conversation-summary')
+    } catch {}
   }, [])
 
   // v25.2: Simplified — noise mode defaults to quiet, user can change manually
@@ -703,11 +707,23 @@ export function AbuAI() {
         return
       }
 
+      // ─── Emotional mode: skip family lookup during emotional sharing ──────
+      // When the last assistant turn was emotional (missing_pepe, sadness, loneliness)
+      // and the current message is NOT a direct question, let the LLM handle it
+      // with full conversation context instead of intercepting with a data dump.
+      const lastAssistantWasEmotional = messages.length >= 2 && (() => {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i]!.role === 'assistant') {
+            return /פפי|געגוע|קשה|עצוב|בודד|לדבר על זה|לספר לי עליו|extraño|triste/i.test(messages[i]!.content)
+          }
+        }
+        return false
+      })()
+      const isDirectQuestion = /^מי |^מתי |^איפה |^כמה |^מה זה |^מה זאת |[?؟]$/.test(msgText.trim())
+      const skipGroundingForEmotion = lastAssistantWasEmotional && !isDirectQuestion
+
       // ─── Existing grounded answer path ────────────────────────────────────
-      // Personal queries → try grounded answer first, then LLM-paraphrase for
-      // family/calendar answers (text mode only) so responses sound natural
-      // instead of database-like. Voice mode skips paraphrasing for speed.
-      const groundedAnswer = tryGroundedAnswer(msgText)
+      const groundedAnswer = skipGroundingForEmotion ? null : tryGroundedAnswer(msgText)
       if (groundedAnswer !== null) {
         const route = routePersonalQuery(msgText)
         const isCal = route.type.startsWith('calendar_')
