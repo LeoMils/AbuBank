@@ -437,18 +437,32 @@ function speakWebAPI(text: string): Promise<void> {
 
 // speakVoiceMode — for LIVE CONVERSATION (AbuAI voice mode, pipeline fallback)
 // v24.3: OpenAI (paid, best quality) → Gemini (FREE) → Web Speech (FREE, last resort)
+// Runtime TTS trace — visible on screen via localStorage for iPhone debugging
+function ttsTrace(entry: { provider: string; model: string; voice: string; latencyMs: number; fallback: boolean; status: string }) {
+  console.log(`[TTS-VM] ${entry.status} provider=${entry.provider} model=${entry.model} voice=${entry.voice} latency=${entry.latencyMs}ms fallback=${entry.fallback}`)
+  try {
+    const history = JSON.parse(localStorage.getItem('abu-tts-trace') || '[]') as unknown[]
+    history.push({ ...entry, ts: new Date().toISOString() })
+    // Keep last 20 entries
+    if (history.length > 20) history.splice(0, history.length - 20)
+    localStorage.setItem('abu-tts-trace', JSON.stringify(history))
+  } catch {}
+}
+
+/** Read TTS trace for diagnostics. */
+export function getTTSTrace(): Array<{ provider: string; model: string; voice: string; latencyMs: number; fallback: boolean; status: string; ts: string }> {
+  try { return JSON.parse(localStorage.getItem('abu-tts-trace') || '[]') } catch { return [] }
+}
+
 export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
+  const ttsStart = Date.now()
 
   // 1) OpenAI TTS (paid — skip only if TTS-specific quota exhausted)
-  // IMPORTANT: TTS quota is separate from LLM chat quota. The
-  // abu-openai-quota-failed flag is for chat API only. TTS has its
-  // own flag so LLM rate limits don't kill voice quality.
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
   const ttsQuotaFlag = localStorage.getItem('abu-openai-tts-quota-failed')
   const ttsQuotaOk = !ttsQuotaFlag || (Date.now() - parseInt(ttsQuotaFlag, 10)) > 300_000
   if (apiKey && ttsQuotaOk) {
-    console.log('[TTS-VM] trying OpenAI TTS...')
     try {
       const controller = new AbortController()
       const t = setTimeout(() => controller.abort(), 6000)
@@ -462,30 +476,30 @@ export async function speakVoiceMode(text: string): Promise<void> {
       if (res.ok) {
         const blob = await res.blob()
         if (blob.size > 100) {
-          console.log(`[TTS-VM] ✅ OpenAI TTS returned ${blob.size} bytes`)
           const ok = await playBlobViaAudioCtx(blob)
-          if (ok) return
-          if (await playBlob(blob)) return
+          if (ok) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via AudioCtx' }); return }
+          if (await playBlob(blob)) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via HTMLAudio' }); return }
         }
       }
-      // 429/402 = TTS quota exceeded — mark TTS-specific cooldown
       if (res.status === 429 || res.status === 402) {
         try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
       }
-      console.log('[TTS-VM] ❌ OpenAI failed (' + res.status + '), trying Gemini...')
+      ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: true, status: `❌ HTTP ${res.status}` })
     } catch (e) {
-      console.log('[TTS-VM] ❌ OpenAI error:', e)
+      ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: true, status: `❌ ${e instanceof Error ? e.message : 'error'}` })
     }
   } else {
-    console.log(`[TTS-VM] OpenAI TTS skipped: key=${!!apiKey} ttsQuotaOk=${ttsQuotaOk}`)
+    ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: 0, fallback: true, status: `⏭ skipped: key=${!!apiKey} quotaOk=${ttsQuotaOk}` })
   }
 
   // 2) Gemini TTS (FREE with existing key)
-  if (await speakGeminiViaAudioCtx(text)) { console.log('[TTS-VM] ✅ Gemini TTS'); return }
+  if (await speakGeminiViaAudioCtx(text)) {
+    ttsTrace({ provider: 'Gemini', model: 'gemini-2.5-flash-preview-tts', voice: 'Kore', latencyMs: Date.now() - ttsStart, fallback: true, status: '✅ Gemini TTS' })
+    return
+  }
 
-  // 3) P0 fix: when all TTS providers fail in voice mode, notify via Web Speech
-  console.log('[TTS-VM] ⚠️ All quality TTS failed — notifying via Web Speech')
-  await speakWebAPI('ראי את המסך.').catch(() => {})
+  // All quality TTS failed — NO robot voice
+  ttsTrace({ provider: 'NONE', model: '-', voice: '-', latencyMs: Date.now() - ttsStart, fallback: true, status: '⚠️ ALL FAILED — text only' })
 }
 
 // Gemini TTS via AudioContext for voice mode (bypasses iOS audio restrictions)

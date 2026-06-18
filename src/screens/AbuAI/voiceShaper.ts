@@ -39,21 +39,34 @@ export function shapeVoiceSafe(text: string): string {
   // Strip leading inline "- " sequences (after newline collapse).
   t = t.replace(/(^|\.\s)-\s+/g, '$1')
 
+  // Strip robotic filler phrases that sound bad when spoken
+  t = t.replace(/על פי הנתונים,?\s*/gi, '')
+  t = t.replace(/מצאתי עבורך,?\s*/gi, '')
+  t = t.replace(/להלן\s*/gi, '')
+  t = t.replace(/אם יש לך שאלות נוספות[^.]*[.!?]?\s*/gi, '')
+  t = t.replace(/אם תצטרכי עוד משהו[^.]*[.!?]?\s*/gi, '')
+
   // Collapse newlines into sentence breaks.
   t = t.replace(/\n+/g, '. ')
 
   // Collapse runs of whitespace.
   t = t.replace(/\s+/g, ' ').trim()
 
-  // Cap at ≤ 2 short sentences. Splitting preserves the punctuation by
-  // walking matches; a single sentence with no terminal punctuation is
-  // returned as-is.
+  // Remove repeated "Martita" — once is enough for speech
+  const martitaCount = (t.match(/Martita/gi) || []).length
+  if (martitaCount > 1) {
+    let found = 0
+    t = t.replace(/Martita/gi, (match) => { found++; return found === 1 ? match : '' })
+    t = t.replace(/\s+/g, ' ').trim()
+  }
+
+  // Cap at ≤ 3 short sentences for natural speech.
   const parts: string[] = []
   const re = /[^.!?]+[.!?]+/g
   let m: RegExpExecArray | null
   while ((m = re.exec(t)) !== null) {
     parts.push(m[0].trim())
-    if (parts.length >= 2) break
+    if (parts.length >= 3) break
   }
   if (parts.length === 0) return t
   return parts.join(' ').trim()

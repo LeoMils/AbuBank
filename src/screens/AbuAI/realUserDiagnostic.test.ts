@@ -183,11 +183,11 @@ describe('B2.4 — contact-action precedence still wins after the fix', () => {
 })
 
 describe('B2.4 — voice-safe shaping for family answers', () => {
-  it('voice-safe family lookup is at most 2 short sentences', () => {
+  it('voice-safe family lookup is at most 3 short sentences', () => {
     const raw = tryGroundedAnswer('מי זה רפי?') ?? ''
     const safe = shapeVoiceSafe(raw)
     const sentences = safe.split(/[.!?]+/).map(s => s.trim()).filter(Boolean)
-    expect(sentences.length).toBeLessThanOrEqual(2)
+    expect(sentences.length).toBeLessThanOrEqual(3)
   })
 
   it('voice-safe text contains no bullet glyphs', () => {

@@ -1344,7 +1344,13 @@ export function AbuAI() {
         const voiceGrounded = tryGroundedAnswer(text)
         let response: string
         if (voiceGrounded !== null) {
-          response = voiceGrounded
+          // LLM paraphrase for natural spoken answers (falls back to deterministic if LLM fails)
+          response = await groundedLLMAnswer(
+            text,
+            voiceGrounded,
+            messages.map(m => ({ role: m.role, content: m.content })),
+            voiceGrounded,
+          )
         } else {
           const voiceProactive = getProactiveSeed(text, {
             previousSeedId: lastProactiveSeedIdRef.current,
@@ -2689,6 +2695,31 @@ ${fewShotText}`
                 cursor: 'pointer',
               }}
             >ניקוי שיחה</button>
+            <button
+              type="button"
+              onClick={() => {
+                const { getTTSTrace } = require('../../services/voice')
+                const trace = getTTSTrace()
+                if (trace.length === 0) {
+                  alert('אין נתוני TTS עדיין. דברי קודם.')
+                  return
+                }
+                const lines = trace.map((t: { ts: string; provider: string; model: string; voice: string; latencyMs: number; status: string }) =>
+                  `${t.ts.split('T')[1]?.slice(0,8)} | ${t.provider} | ${t.model} | ${t.voice} | ${t.latencyMs}ms | ${t.status}`
+                ).join('\n')
+                alert(`TTS Trace (last ${trace.length}):\n\n${lines}`)
+              }}
+              style={{
+                marginRight: 8,
+                padding: '10px 16px',
+                borderRadius: 20,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >🔊 TTS trace</button>
           </div>
         </div>
       )}
