@@ -52,6 +52,10 @@ const FORBIDDEN_PHRASES = [
   // Therapy openers
   'how does that make you feel',
   '¿cómo te hace sentir',
+  // Customer-service closings
+  'אני כאן אם תצטרכי',
+  'אם יש לך שאלות',
+  'אשמח לעזור',
 ] as const
 
 export function hasForbiddenTone(text: string): boolean {
@@ -154,28 +158,28 @@ const SEEDS: ProactiveSeed[] = [
   // ── Boredom — Spanish ──
   {
     id: 'boredom-es-1', intent: 'boredom', lang: 'es',
-    text: 'Mirá, podemos hacer algo lindo. Te propongo tres caminos: una película para hoy, una historia corta, o pensar a quién te gustaría llamar un rato. ¿Cuál te tienta más?',
+    text: '¿Sabías que hay un tiburón que vive 400 años? Increíble, ¿no?',
   },
   {
     id: 'boredom-es-2', intent: 'boredom', lang: 'es',
-    text: 'Bueno, la tarde es nuestra. Podemos charlar de algo que te dé curiosidad, escuchar un cuento corto, o armarte un plan rápido para mañana. ¿Por dónde arrancamos?',
+    text: '¿Cuándo fue la última vez que hablaste con Mor? Capaz le viene bien una llamada.',
   },
   {
     id: 'boredom-es-3', intent: 'boredom', lang: 'es',
-    text: 'Te entiendo. Tres opciones: te cuento algo de Argentina, hablamos de una receta para esta semana, o pensamos un mensaje lindo para Mor o Leo. Vos decís.',
+    text: 'Te cuento algo lindo — en Japón hay una isla llena de gatos. Viven mejor que nosotros.',
   },
   // ── Boredom — Hebrew ──
   {
     id: 'boredom-he-1', intent: 'boredom', lang: 'he',
-    text: 'בואי נעשה משהו. רוצה לשמוע סיפור קצר, לדבר על משהו שמעניין אותך, או לחשוב על תוכנית למחר?',
+    text: 'ידעת שדבורים מזהות פנים של בני אדם? מטורף, לא?',
   },
   {
     id: 'boredom-he-2', intent: 'boredom', lang: 'he',
-    text: 'אני כאן. אפשר לדבר על משהו שעובר עליך, לחשוב על מתכון לסוף השבוע, או שאני אספר לך משהו מעניין.',
+    text: 'מתי בפעם האחרונה דיברת עם מור? אולי תתקשרי.',
   },
   {
     id: 'boredom-he-3', intent: 'boredom', lang: 'he',
-    text: 'יש כמה דברים נחמדים — סיפור קצר, טיול קטן בכפר סבא, או לצלצל למישהו מהמשפחה. מה מתחשק לך?',
+    text: 'בואי אספר לך משהו — פעם באוסטרליה מצאו כריש שחי 400 שנה.',
   },
   // ── Boredom — English ──
   {
@@ -218,24 +222,20 @@ const SEEDS: ProactiveSeed[] = [
   // ── Loneliness — Spanish (warm, NOT therapy) ──
   {
     id: 'loneliness-es-1', intent: 'loneliness', lang: 'es',
-    text: 'Estos días pasan. Estoy acá un rato si querés. Podemos charlar de cualquier cosa, o si te gusta, pensamos a quién mandarle un mensajito de la familia.',
+    text: 'Estoy acá. ¿Charlamos un rato?',
   },
   {
     id: 'loneliness-es-2', intent: 'loneliness', lang: 'es',
-    text: 'A veces pasa, Martita. Si querés, te hago compañía un rato — me contás algo de Mor o de los chicos, o yo te cuento algo lindo. Vos elegís.',
-  },
-  {
-    id: 'loneliness-es-3', intent: 'loneliness', lang: 'es',
-    text: 'Tiene sentido sentirse así de a ratos. Estoy disponible. ¿Querés escuchar una historia corta, charlar nomás, o pensar quién está para llamar?',
+    text: 'Pasa, sí. ¿Querés que hablemos de algo?',
   },
   // ── Loneliness — Hebrew ──
   {
     id: 'loneliness-he-1', intent: 'loneliness', lang: 'he',
-    text: 'הימים האלה לפעמים כבדים. אני איתך עכשיו אם בא לך. אפשר פשוט לדבר על משהו, או לחשוב למי בא לך לשלוח הודעה קטנה.',
+    text: 'אני פה. מה בא לך — לדבר, או שאספר לך משהו?',
   },
   {
     id: 'loneliness-he-2', intent: 'loneliness', lang: 'he',
-    text: 'זה הגיוני להרגיש ככה לפעמים. אני כאן רגע — אם בא לך אני יכולה לספר לך משהו, או שנדבר על משהו שעובר עליך.',
+    text: 'יש ימים כאלה. בואי נדבר על משהו.',
   },
   // ── Loneliness — English ──
   {
@@ -270,20 +270,20 @@ const SEEDS: ProactiveSeed[] = [
   // ── Sadness — Hebrew ──
   {
     id: 'sadness-he-1', intent: 'sadness', lang: 'he',
-    text: 'זה בסדר להרגיש ככה. אני איתך. רוצה לדבר על מה שעובר עליך, או שנדבר על משהו אחר?',
+    text: 'כן, זה קשה. את רוצה לדבר על זה?',
   },
   {
     id: 'sadness-he-2', intent: 'sadness', lang: 'he',
-    text: 'אני שומעת אותך. לפעמים הימים כבדים. אם בא לך אני כאן — לדבר, לשתוק, מה שנוח.',
+    text: 'אני שומעת. ספרי לי מה עובר עליך.',
   },
   // ── Sadness — Spanish ──
   {
     id: 'sadness-es-1', intent: 'sadness', lang: 'es',
-    text: 'Está bien sentirse así, Martita. Estoy acá. Si querés hablamos de lo que sea, o simplemente te hago compañía un rato.',
+    text: 'Sí, es difícil. ¿Querés contarme?',
   },
   {
     id: 'sadness-es-2', intent: 'sadness', lang: 'es',
-    text: 'Te escucho. A veces los días pesan. Si te sirve, charlamos de algo — lo que venga.',
+    text: 'Te escucho. Contame qué te pasa.',
   },
 
   // ── Talk to me — Hebrew ──
@@ -308,16 +308,16 @@ const SEEDS: ProactiveSeed[] = [
   // ── Thanks — Hebrew ──
   {
     id: 'thanks-he-1', intent: 'thanks', lang: 'he',
-    text: 'בכיף. אני כאן אם תצטרכי עוד משהו.',
+    text: 'בכיף.',
   },
   {
     id: 'thanks-he-2', intent: 'thanks', lang: 'he',
-    text: 'בשמחה. תגידי אם צריך עוד משהו.',
+    text: 'אין בעד מה.',
   },
   // ── Thanks — Spanish ──
   {
     id: 'thanks-es-1', intent: 'thanks', lang: 'es',
-    text: 'De nada, Martita. Acá estoy si necesitás algo más.',
+    text: 'De nada.',
   },
 
   // ── Happiness — Hebrew ──
@@ -342,52 +342,48 @@ const SEEDS: ProactiveSeed[] = [
   // ── Missing Pepe — Hebrew (deeply personal, gentle) ──
   {
     id: 'pepe-he-1', intent: 'missing_pepe', lang: 'he',
-    text: 'פפי היה מיוחד. הגעגוע הזה לא עובר — אבל הוא נמצא בכל הילדים והנכדים שלך.',
+    text: 'כן, פפי היה מיוחד. את רוצה לספר לי עליו?',
   },
   {
     id: 'pepe-he-2', intent: 'missing_pepe', lang: 'he',
-    text: 'פפי היה אחד במינו. מותר להתגעגע. רוצה לספר לי עליו משהו?',
+    text: 'אני יודעת. את רוצה לדבר על זה?',
   },
   // ── Missing Pepe — Spanish ──
   {
     id: 'pepe-es-1', intent: 'missing_pepe', lang: 'es',
-    text: 'Pepe era único. Eso no se olvida — ni tiene por qué. Está en cada uno de tus nietos.',
+    text: 'Sí, Pepe era especial. ¿Querés contarme algo de él?',
   },
   {
     id: 'pepe-es-2', intent: 'missing_pepe', lang: 'es',
-    text: 'Extrañarlo es natural. ¿Querés contarme algo de él? Me gusta escucharte hablar de Pepe.',
+    text: 'Te entiendo. ¿Querés hablar de eso?',
   },
 
   // ── Greeting — Hebrew ──
   {
     id: 'greeting-he-1', intent: 'greeting', lang: 'he',
-    text: 'שלום, Martita! מה נשמע? ספרי לי מה חדש.',
+    text: 'היי! מה קורה?',
   },
   {
     id: 'greeting-he-2', intent: 'greeting', lang: 'he',
-    text: 'היי! כיף שבאת. מה עושים היום?',
+    text: 'שלום! מה שלומך?',
   },
   {
     id: 'greeting-he-3', intent: 'greeting', lang: 'he',
-    text: 'שלום! אני כאן. על מה בא לך לדבר?',
+    text: 'היי, מה נשמע? הכל בסדר?',
   },
   // ── Greeting — Spanish ──
   {
     id: 'greeting-es-1', intent: 'greeting', lang: 'es',
-    text: '¡Hola, Martita! ¿Cómo andás? Contame qué onda.',
+    text: '¡Hola! ¿Cómo andás?',
   },
   {
     id: 'greeting-es-2', intent: 'greeting', lang: 'es',
-    text: '¡Hola! Qué bueno verte. ¿Qué hacemos hoy?',
-  },
-  {
-    id: 'greeting-es-3', intent: 'greeting', lang: 'es',
-    text: '¡Hola, Martita! ¿Qué tal tu día?',
+    text: '¡Hola! ¿Todo bien?',
   },
   // ── Greeting — English ──
   {
     id: 'greeting-en-1', intent: 'greeting', lang: 'en',
-    text: 'Hey, Martita! How are you? Tell me what is new.',
+    text: 'Hey! How are you?',
   },
   // ── Talk to me — Spanish (additional) ──
   {

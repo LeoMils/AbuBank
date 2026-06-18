@@ -214,7 +214,7 @@ describe('30-minute Martita simulation — minute by minute', () => {
   it('T19: "כן" — confirm appointment', () => {
     expect(isConfirm('כן')).toBe(true)
     userSays('כן')
-    assistantSays('מעולה, קבעתי לך רופא.')
+    assistantSays('קבוע.')
   })
 
   // ═══ MINUTE 13-15: Pronoun chain ═══

@@ -40,33 +40,40 @@ export function timeInWords(time: string): string {
 // ─── Family ─────────────────────────────────────────────────────────────────
 
 export function shapeFamilyAnswer(m: FamilyMember): string {
-  const parts: string[] = []
   const rel = m.relationshipHebrew
-  const clauses = rel.split(',').map(s => s.trim())
-  const baseRole = clauses[0] ?? rel
-  const details = clauses.slice(1)
-  const isFemale = baseRole.includes('הבת') || baseRole.includes('נכדה') || baseRole.includes('בת זוג')
-  const possessive = isFemale ? 'שלה' : 'שלו'
+  const isFemale = rel.includes('הבת') || rel.includes('נכדה') || rel.includes('בת זוג')
 
-  if (baseRole.includes('הבת') || baseRole.includes('הבן')) {
-    parts.push(`${m.hebrew}? ${baseRole} שלך.`)
-    if (details.length > 0) parts.push(details.join(', ') + '.')
+  // Build natural spoken sentence, not a data card
+  const parts: string[] = []
+
+  // Role — casual, not "X היא הבת שלך"
+  if (rel.includes('הבת')) {
+    parts.push(`${m.hebrew}, הבת שלך.`)
+  } else if (rel.includes('הבן')) {
+    parts.push(`${m.hebrew}, הבן שלך.`)
   } else {
     parts.push(`${m.hebrew} — ${rel}.`)
   }
 
+  // Partner/spouse — natural
   if (m.spouse) {
-    const verb = isFemale ? 'עם' : 'עם'
-    parts.push(`${verb} ${m.spouse}.`)
+    parts.push(`עם ${m.spouse}.`)
   }
+
+  // Children — no colon, no list format
   if (m.children?.length) {
-    const last = m.children[m.children.length - 1]
+    const count = m.children.length
+    const last = m.children[count - 1]
     const rest = m.children.slice(0, -1)
-    const childList = rest.length > 0 ? `${rest.join(', ')} ו${last}` : last!
-    parts.push(`הילדים: ${childList}.`)
+    const names = rest.length > 0 ? `${rest.join(', ')} ו${last}` : last!
+    if (count <= 2) {
+      parts.push(`${isFemale ? 'יש לה' : 'יש לו'} ${count === 1 ? 'ילד אחד' : 'שני ילדים'} — ${names}.`)
+    } else {
+      parts.push(`${count} ילדים — ${names}.`)
+    }
   }
-  if (m.notes) parts.push(m.notes)
-  return parts.join('\n')
+
+  return parts.join(' ')
 }
 
 // ─── Family (Spanish) ────────────────────────────────────────────────────────
@@ -124,10 +131,10 @@ export function shapeCalendarAnswer(events: Appointment[], scope: 'today' | 'tom
 
   // Empty
   if (events.length === 0) {
-    if (scope === 'week') return 'השבוע ריק — אין שום דבר ביומן. רוצה לקבוע משהו?'
-    if (scope === 'today') return 'היום חופשי, אין כלום ביומן.'
-    if (scope === 'tomorrow') return 'מחר ריק, אין שום דבר ביומן.'
-    return 'אין כלום ביומן לתקופה הזו.'
+    if (scope === 'week') return 'שבוע שקט, אין כלום.'
+    if (scope === 'today') return 'היום אין כלום. יום חופשי.'
+    if (scope === 'tomorrow') return 'מחר אין כלום. יום שקט.'
+    return 'אין כלום בתקופה הזו.'
   }
 
   // Single event
@@ -204,11 +211,10 @@ export function shapeCreateConfirm(draft: CreateDraft): string {
   const what = draft.title ? humanTitle(draft.title) : 'משהו'
   const when = draft.date ? ` ${dateLabel(draft.date)}` : ''
   const time = draft.time ? ` ${timeInWords(draft.time)}` : ''
-  const lines: string[] = [`אני קובעת לך ${what}${when}${time}.`]
-  if (draft.location) lines.push(`ב${draft.location}.`)
-  if (draft.notes) lines.push(`הערה: ${draft.notes}.`)
-  lines.push('זה נכון?')
-  return lines.join('\n')
+  let text = `${what}${when}${time}.`
+  if (draft.location) text += ` ב${draft.location}.`
+  text += ' נכון?'
+  return text
 }
 
 // Read-back variant: spoken before voice confirmation. Reads back what / date /
@@ -255,12 +261,9 @@ export function shapeCreateConfirmReadback(draft: ReadbackDraft): string {
 
 export function shapeCreateSaved(draft?: { title?: string | null; date?: string | null; time?: string | null }): string {
   if (draft?.title) {
-    const what = humanTitle(draft.title)
-    const when = draft.date ? ` ${dateLabel(draft.date)}` : ''
-    const time = draft.time ? ` ${timeInWords(draft.time)}` : ''
-    return `מעולה, קבעתי לך ${what}${when}${time}.`
+    return `קבוע.`
   }
-  return 'קבוע, רשמתי ביומן.'
+  return 'רשום.'
 }
 
 export function shapeCreateCancelled(): string {
@@ -346,14 +349,14 @@ export type ShaperLang = 'he' | 'es' | 'en' | 'mixed'
 export function shapeNotFound(context?: string, lang: ShaperLang = 'he'): string {
   switch (lang) {
     case 'es':
-      return 'No tengo eso, Martita.'
+      return 'No sé, Martita.'
     case 'en':
       return context ? `I could not find anything about ${context}.` : 'I could not find anything about that.'
     case 'mixed':
-      return context ? `לא יודעת, אין לי מידע על ${context}.` : 'לא יודעת, אין לי מידע על זה.'
+      return context ? `לא יודעת על ${context}.` : 'לא יודעת.'
     case 'he':
     default:
-      return context ? `לא יודעת, אין לי מידע על ${context}.` : 'לא יודעת, אין לי מידע על זה.'
+      return context ? `לא יודעת על ${context}.` : 'לא יודעת.'
   }
 }
 
@@ -366,6 +369,6 @@ export function shapeToolError(lang: ShaperLang = 'he'): string {
     case 'mixed':
     case 'he':
     default:
-      return 'רגע, משהו תקוע. תנסי שוב עוד רגע.'
+      return 'רגע, משהו לא עבד. תנסי עוד פעם.'
   }
 }

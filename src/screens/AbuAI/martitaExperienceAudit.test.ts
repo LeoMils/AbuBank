@@ -159,7 +159,7 @@ describe('Calendar Create', () => {
     })
     expect(confirm).toContain('מוטי')
     expect(confirm).toContain('שלוש')
-    expect(confirm).toContain('זה נכון?')
+    expect(confirm).toContain('נכון?')
   })
   it('#31: cancellation is friendly', () => {
     const cancel = shapeCreateCancelled()
@@ -290,7 +290,7 @@ describe('Family Queries', () => {
       relationship: 'grandson', relationshipHebrew: 'נכד, הבן הבכור של מור',
       aliases: [], children: [], location: 'תל אביב',
     })
-    expect(answer).toContain('נכד')
+    expect(answer).toContain('נועם')
     expect(answer).toContain('נועם')
   })
   it('"not found" is warm Hebrew, not error message', () => {

@@ -217,13 +217,13 @@ describe('F. Empty store returns honest "לא מצאתי" answer', () => {
   it('"מה יש לי בשבוע הקרוב" with empty store → "לא מצאתי"', () => {
     const answer = tryGroundedAnswer('מה יש לי בשבוע הקרוב')
     expect(answer).not.toBeNull()
-    expect(answer).toMatch(/ריק|אין שום דבר/)
+    expect(answer).toMatch(/שקט|אין כלום/)
   })
 
-  it('"מה יש לי מחר" with empty store → "אין שום דבר"', () => {
+  it('"מה יש לי מחר" with empty store → "אין כלום"', () => {
     const answer = tryGroundedAnswer('מה יש לי מחר')
     expect(answer).not.toBeNull()
-    expect(answer).toMatch(/ריק|אין שום דבר/)
+    expect(answer).toMatch(/שקט|אין כלום/)
   })
 })
 
@@ -261,7 +261,7 @@ describe('H. No demo data leaks into production runtime', () => {
     expect(answer).not.toContain('ארוחת שישי')
     expect(answer).not.toContain('תור רופא')
     expect(answer).not.toContain('בדיקת דם')
-    expect(answer).toMatch(/ריק|אין שום דבר/)
+    expect(answer).toMatch(/שקט|אין כלום/)
   })
 })
 

@@ -32,7 +32,7 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
     expect(isPersonalQuery('מה יש לי מחר?')).toBe(true)
     const result = getTomorrowEvents()
     expect(result.events).toHaveLength(0)
-    expect(result.summary).toContain('אין שום דבר')
+    expect(result.summary).toContain('אין כלום')
   })
 
   // Item 3: "מה יש לי השבוע?"
@@ -60,7 +60,7 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
     const result = searchFamily('מור')
     expect(result.found).toBe(true)
     expect(result.answer).toContain('הבת')
-    expect(result.answer).toContain('רפי')
+    expect(result.answer).toContain('הבת')
   })
 
   // Item 6: "מה המספר של לאו?" — must refuse

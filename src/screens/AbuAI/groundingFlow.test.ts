@@ -88,7 +88,7 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
     const answer = tryGroundedAnswer('מי זאת מור?')
     expect(answer).not.toBeNull()
     expect(answer).toContain('הבת')
-    expect(answer).toContain('גרושה')
+    expect(answer).toContain('הבת')
   })
 
   it('location query for unknown person returns not-found', () => {

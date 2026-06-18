@@ -191,7 +191,7 @@ describe('B2.3 — answer compiler still prevents unsupported claims', () => {
     const err = compileHumanAnswer('q', makeToolErrorEvidence('cal', 'x'), { lang: 'es' })
     expect(err.text).toBe('No puedo comprobarlo ahora mismo.')
     const empty = compileHumanAnswer('q', makeCalendarEvidence([]), { lang: 'he' })
-    expect(empty.text).toBe('אין לי מידע על זה.')
+    expect(empty.text).toBe('לא יודעת.')
     const ok = compileHumanAnswer('q', makeCalendarEvidence(['10:00 רופא']), { lang: 'he' })
     expect(ok.text).toBe('10:00 רופא')
   })

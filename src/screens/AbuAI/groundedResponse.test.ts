@@ -3,21 +3,21 @@ import { answerFromToolResult } from './groundedResponse'
 
 describe('answerFromToolResult', () => {
   it('tool error returns safe message', () => {
-    expect(answerFromToolResult('calendar_today', { ok: false })).toContain('תקוע')
+    expect(answerFromToolResult('calendar_today', { ok: false })).toContain('לא עבד')
   })
 
   it('empty calendar passes through shaped summary', () => {
-    const shaped = 'היום חופשי, אין כלום ביומן.'
+    const shaped = 'היום אין כלום. יום חופשי.'
     expect(answerFromToolResult('calendar_today', { ok: true, events: [], summary: shaped })).toBe(shaped)
   })
 
   it('empty tomorrow passes through shaped summary', () => {
-    const shaped = 'מחר ריק, אין שום דבר ביומן.'
+    const shaped = 'מחר אין כלום. יום שקט.'
     expect(answerFromToolResult('calendar_tomorrow', { ok: true, events: [], summary: shaped })).toBe(shaped)
   })
 
   it('empty upcoming passes through shaped summary', () => {
-    const shaped = 'אין כלום ביומן לתקופה הזו.'
+    const shaped = 'אין כלום בתקופה הזו.'
     expect(answerFromToolResult('calendar_upcoming', { ok: true, events: [], summary: shaped })).toBe(shaped)
   })
 
