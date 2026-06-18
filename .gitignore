@@ -26,3 +26,6 @@ tmp/dev-cert/
 ios/App/App/public/
 ios/App/Pods/
 android/app/src/main/assets/public/
+openai api.txt
+tmp/
+test-results/

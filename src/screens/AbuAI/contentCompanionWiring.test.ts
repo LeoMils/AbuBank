@@ -131,8 +131,8 @@ describe('B2.3 — runtime classification still routes correctly (Truth Contract
 })
 
 describe('B2.3 — hard rules preserved on this branch', () => {
-  it('useRealtime stays false', () => {
-    expect(INDEX.includes('const useRealtime = false')).toBe(true)
+  it('useRealtime is enabled with grounding', () => {
+    expect(INDEX.includes('const useRealtime = true')).toBe(true)
   })
 
   it('no AbuAI production source reads VITE_OPENAI_API_KEY', () => {

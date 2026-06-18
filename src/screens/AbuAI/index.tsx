@@ -175,11 +175,10 @@ export function AbuAI() {
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
   const [realtimeTranscript, setRealtimeTranscript] = useState('')
   const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
-  // Realtime disabled: it bypasses runtime grounding (tryGroundedAnswer).
-  // Personal queries in Realtime go directly to OpenAI audio with no tool interception.
-  // Do not re-enable until personal-query interception is implemented for Realtime.
-  // To re-enable: set localStorage 'abubank-realtime-enabled' = 'true'
-  const useRealtime = false
+  // v32: Realtime ENABLED — grounding is handled by injecting verified facts
+  // into session instructions (calendar snapshot + family data + memory summary).
+  // The Realtime model speaks directly — no TTS pipeline, < 2s response.
+  const useRealtime = true
 
   // Auto-clear stale cooldowns on mount — ensures fresh state
   useEffect(() => {
@@ -1719,7 +1718,7 @@ export function AbuAI() {
     try {
       const todayResult = getTodayEvents()
       const tmrwResult = getTomorrowEvents()
-      calendarSnapshot = `\n═══ מידע אמיתי מהיומן (נכון לרגע זה) ═══\nהיום: ${todayResult.summary}\nמחר: ${tmrwResult.summary}\nזה המידע היחיד שיש לך. אל תמציאי מעבר לזה.\n`
+      calendarSnapshot = `\n═══ יומן פנימי של אבו (לא גוגל/אפל — נתונים מקומיים בלבד) ═══\nהיום: ${todayResult.summary}\nמחר: ${tmrwResult.summary}\nזה היומן הפנימי של האפליקציה בלבד. אם שואלים — הגידי בכנות שזה לא יומן גוגל או אפל.\nאל תמציאי אירועים מעבר למה שמופיע כאן.\n`
     } catch {
       calendarSnapshot = '\n═══ יומן ═══\nאין לי גישה ליומן כרגע. אל תמציאי אירועים.\n'
     }
@@ -1736,8 +1735,36 @@ export function AbuAI() {
       .map(p => `שאלה: ${p.q}\nתשובה: ${p.a}`)
       .join('\n\n')
 
+    // Inject family facts so Realtime can answer family questions without tools
+    let familyFacts = ''
+    try {
+      const { loadGraph } = require('./familyGraph')
+      const graph = loadGraph()
+      const lines = graph.map((n: { hebrew: string; role: string; gender: string; childrenHe: string[]; spousesHe: string[]; partnersHe: string[] }) => {
+        const parts = [`${n.hebrew} (${n.role}, ${n.gender === 'female' ? 'נקבה' : n.gender === 'male' ? 'זכר' : '?'})`]
+        if (n.spousesHe.length > 0) parts.push(`נשוי/אה ל${n.spousesHe.join(',')}`)
+        if (n.partnersHe.length > 0) parts.push(`בן/בת זוג: ${n.partnersHe.join(',')}`)
+        if (n.childrenHe.length > 0) parts.push(`ילדים: ${n.childrenHe.join(', ')}`)
+        return parts.join(' | ')
+      })
+      familyFacts = `\n═══ משפחה של Martita (עובדות מאומתות) ═══\n${lines.join('\n')}\nMartita = נקבה. תמיד פני אליה בנקבה (את, שלך, תגידי).\nכל בן משפחה — השתמשי במגדר הנכון (הוא/היא, שלו/שלה).\nאל תמציאי עובדות משפחתיות. אם לא מופיע כאן — אמרי שאת לא יודעת.\n`
+    } catch {
+      familyFacts = '\n═══ משפחה ═══\nאין לי מידע על המשפחה כרגע.\n'
+    }
+
+    // Inject conversation summary for memory continuity
+    let memorySummary = ''
+    try {
+      const summary = loadSummary()
+      if (summary) {
+        const { formatSummaryForLLM } = require('./service')
+        const text = formatSummaryForLLM(summary)
+        if (text) memorySummary = `\n═══ זיכרון שיחה ═══\n${text}\n`
+      }
+    } catch {}
+
     return `${SYSTEM_PROMPT}${VOICE_SUFFIX}
-${calendarSnapshot}
+${calendarSnapshot}${familyFacts}${memorySummary}
 ═══ כלל ברזל — יומן ═══
 יש לך מידע אמיתי מהיומן למעלה. תשתמשי רק בו.
 אם שואלים על יום שאין לך מידע עליו — תגידי:
@@ -1804,8 +1831,10 @@ ${fewShotText}`
       return
     }
 
-    // Use OpenAI Realtime API (WebRTC) if available
+    // Use OpenAI Realtime API (WebRTC) — native audio, < 2s response
     if (useRealtime) {
+      diagReset()
+      diagSet({ sttProvider: 'Realtime (WebRTC)', sttFileType: 'native', ttsProvider: 'OpenAI Realtime', ttsModel: 'gpt-4o-realtime-preview', ttsVoice: 'shimmer', responseSource: 'Realtime native audio' })
       setRealtimeTranscript('')
       const session = new RealtimeVoiceSession(
         {

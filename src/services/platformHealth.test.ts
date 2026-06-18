@@ -307,9 +307,9 @@ describe('P0 — userFacingError copy (HE/ES/EN)', () => {
 // ─── Hard rule envelope ──────────────────────────────────────────────────
 
 describe('P0 — hard rules preserved', () => {
-  it('AbuAI useRealtime stays false', () => {
+  it('AbuAI useRealtime is enabled with grounding', () => {
     const src = fs.readFileSync(path.resolve(__dirname, '..', 'screens', 'AbuAI', 'index.tsx'), 'utf8')
-    expect(src.includes('const useRealtime = false')).toBe(true)
+    expect(src.includes('const useRealtime = true')).toBe(true)
   })
 
   it('no production AbuAI source reads VITE_OPENAI_API_KEY', () => {

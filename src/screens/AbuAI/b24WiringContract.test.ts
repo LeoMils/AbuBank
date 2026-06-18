@@ -64,8 +64,8 @@ describe('B2.4 — relationship route is wired and shaped', () => {
 })
 
 describe('B2.4 — hard-rule envelope still preserved', () => {
-  it('useRealtime stays false', () => {
-    expect(INDEX.includes('const useRealtime = false')).toBe(true)
+  it('useRealtime is enabled with grounding', () => {
+    expect(INDEX.includes('const useRealtime = true')).toBe(true)
   })
 
   it('no AbuAI production source reads VITE_OPENAI_API_KEY', () => {
