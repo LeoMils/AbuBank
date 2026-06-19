@@ -325,12 +325,17 @@ export function tryGroundedAnswer(text: string): string | null {
     switch (route.type) {
       case 'calendar_today': {
         const r = getTodayEvents()
-        // P0-5: Filter by specific time if query mentions one ("מה יש לי בארבע")
+        // Filter by specific or after time ("מה יש לי בארבע" / "מה יש לי אחרי ארבע")
         const todayRequestedTime = parseHebrewTime(text)
         let todayEvents = r.events
+        const isAfterQuery = /אחרי|אחר|after/i.test(text)
         if (todayRequestedTime && todayEvents.length > 0) {
-          const filtered = todayEvents.filter(e => e.time === todayRequestedTime)
-          if (filtered.length > 0) todayEvents = filtered
+          if (isAfterQuery) {
+            todayEvents = todayEvents.filter(e => e.time && e.time > todayRequestedTime)
+          } else {
+            const filtered = todayEvents.filter(e => e.time === todayRequestedTime)
+            if (filtered.length > 0) todayEvents = filtered
+          }
         }
         if (lang === 'es') return shapeCalendarAnswerES(todayEvents, 'today')
         result = { ok: true, events: todayEvents, summary: r.summary }
@@ -342,8 +347,13 @@ export function tryGroundedAnswer(text: string): string | null {
         const tmrwRequestedTime = parseHebrewTime(text)
         let tmrwEvents = r.events
         if (tmrwRequestedTime && tmrwEvents.length > 0) {
-          const filtered = tmrwEvents.filter(e => e.time === tmrwRequestedTime)
-          if (filtered.length > 0) tmrwEvents = filtered
+          const tmrwIsAfter = /אחרי|אחר|after/i.test(text)
+          if (tmrwIsAfter) {
+            tmrwEvents = tmrwEvents.filter(e => e.time && e.time > tmrwRequestedTime)
+          } else {
+            const filtered = tmrwEvents.filter(e => e.time === tmrwRequestedTime)
+            if (filtered.length > 0) tmrwEvents = filtered
+          }
         }
         if (lang === 'es') return shapeCalendarAnswerES(tmrwEvents, 'tomorrow')
         result = { ok: true, events: tmrwEvents, summary: r.summary }

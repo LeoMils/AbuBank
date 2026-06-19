@@ -411,7 +411,28 @@ export interface ParsedCreateIntent {
 export function parseCreateIntent(text: string): ParsedCreateIntent | null {
   if (!isCreateIntent(text)) return null
 
-  const title = extractTitle(text)
+  let title = extractTitle(text)
+  // Resolve family references: "החברה של מור" → "יעל", "בת הזוג של מור" → "יעל"
+  if (title) {
+    const familyRef = title.match(/(החברה|בת הזוג|בן הזוג|השותפה) של\s+(\S+)/)
+    if (familyRef) {
+      try {
+        const { loadGraph } = require('./familyGraph')
+        const graph = loadGraph()
+        const targetName = familyRef[2]!
+        const target = graph.find((n: { matchNames: string[]; hebrew: string }) => n.matchNames.includes(targetName.toLowerCase()) || n.hebrew === targetName)
+        if (target) {
+          const isFemaleRole = /החברה|בת הזוג|השותפה/.test(familyRef[1]!)
+          const resolved = [...(target as { partnersHe: string[]; spousesHe: string[] }).partnersHe, ...(target as { partnersHe: string[]; spousesHe: string[] }).spousesHe]
+            .map((p: string) => graph.find((n: { hebrew: string; gender: string }) => n.hebrew === p))
+            .find((n: { gender: string } | undefined) => n && (isFemaleRole ? n.gender === 'female' : n.gender === 'male'))
+          if (resolved) {
+            title = title.replace(familyRef[0], (resolved as { hebrew: string }).hebrew)
+          }
+        }
+      } catch {}
+    }
+  }
   const date = parseCreateDate(text)
   const { time, ambiguous } = parseHebrewTimeDetailed(text)
   const emoji = title ? detectEmoji(title) : '📅'
