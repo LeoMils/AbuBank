@@ -415,6 +415,56 @@ export function tryGroundedAnswer(text: string): string | null {
         return r.summary
       }
       case 'family_lookup': {
+        // Relational role queries: "מי אמא של X?", "מי בת הזוג של X?", "מי סבתא של X?"
+        const roleMatch = route.query.match(/מי\s+(אמא|אבא|סבתא|סבא|אחות|אח|בת הזוג|בן הזוג|החברה|החבר)\s+של\s+(\S+)/)
+        if (roleMatch) {
+          const role = roleMatch[1]!
+          const targetName = roleMatch[2]!.replace(/[?!.,]$/, '')
+          const graph = loadGraph()
+          const target = graph.find(n => n.matchNames.includes(targetName.toLowerCase()) || n.hebrew === targetName)
+          if (target) {
+            // Resolve by role
+            if (role === 'אמא' || role === 'אבא') {
+              const parent = target.parentsHe
+                .map(p => graph.find(n => n.hebrew === p))
+                .find(n => n && (role === 'אמא' ? n.gender === 'female' : n.gender === 'male'))
+              if (parent) return `${parent.hebrew}.`
+            }
+            if (role === 'סבתא' || role === 'סבא') {
+              // Grandparent = parent of parent
+              for (const pHe of target.parentsHe) {
+                const p = graph.find(n => n.hebrew === pHe)
+                if (!p) continue
+                const gp = p.parentsHe
+                  .map(g => graph.find(n => n.hebrew === g))
+                  .find(n => n && (role === 'סבתא' ? n.gender === 'female' : n.gender === 'male'))
+                if (gp) return `${gp.hebrew}.`
+              }
+            }
+            if (role === 'אחות' || role === 'אח') {
+              const siblings = target.parentsHe
+                .flatMap(p => graph.find(n => n.hebrew === p)?.childrenHe ?? [])
+                .filter(c => c !== target.hebrew)
+                .map(c => graph.find(n => n.hebrew === c))
+                .filter(n => n && (role === 'אחות' ? n.gender === 'female' : n.gender === 'male'))
+              if (siblings.length > 0) return siblings.map(s => s!.hebrew).join(' ו') + '.'
+            }
+            if (role === 'בת הזוג' || role === 'החברה') {
+              const partner = [...target.partnersHe, ...target.spousesHe]
+                .map(p => graph.find(n => n.hebrew === p))
+                .find(n => n && n.gender === 'female')
+              if (partner) return `${partner.hebrew}.`
+            }
+            if (role === 'בן הזוג' || role === 'החבר') {
+              const partner = [...target.partnersHe, ...target.spousesHe]
+                .map(p => graph.find(n => n.hebrew === p))
+                .find(n => n && n.gender === 'male')
+              if (partner) return `${partner.hebrew}.`
+            }
+            return `לא יודעת מי ${role} של ${targetName}.`
+          }
+        }
+
         // Age questions: "בן כמה הוא?", "בת כמה אופיר?"
         // We don't have birth years, so answer honestly.
         if (/בן כמה|בת כמה|כמה (הוא|היא) בן|כמה (הוא|היא) בת|מה הגיל/.test(route.query)) {
