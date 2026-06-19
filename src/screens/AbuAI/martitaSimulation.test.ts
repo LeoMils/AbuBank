@@ -276,7 +276,7 @@ describe('30-minute Martita simulation — minute by minute', () => {
     expect(intent).toBe('missing_pepe')
     const seed = getProactiveSeed(text)
     expect(seed).not.toBeNull()
-    expect(seed!.text).toContain('פפי') // must mention Pepe
+    expect(seed!.text).toMatch(/פפי|פאפי/) // must mention Pepe/Papi
     userSays(text)
     assistantSays(seed!.text)
   })

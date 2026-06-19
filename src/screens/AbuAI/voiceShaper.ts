@@ -26,6 +26,10 @@ export function shapeVoiceSafe(text: string): string {
   // Strip URLs (http/https).
   t = t.replace(/https?:\/\/\S+/gi, '')
 
+  // Strip "מקורות:" source section — not speakable
+  t = t.replace(/מקורות:[\s\S]*$/i, '')
+  t = t.replace(/sources:[\s\S]*$/i, '')
+
   // Strip Markdown headers / horizontal rules.
   t = t.replace(/^#+\s+/gm, '')
   t = t.replace(/^[-—=]{3,}\s*$/gm, '')

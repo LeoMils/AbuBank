@@ -3,6 +3,7 @@ import type { ChatMessage } from './types'
 import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, getWeekEvents, getEventsByDate, getEventsByMonth, getBirthdayFor, getMemorialFor, searchFamily, searchFamilyLocation, searchFamilyGroup } from './tools'
 import { generateFamilyPromptSection } from '../../services/familyLoader'
 import { routePersonalQuery, type RouteResult } from './router'
+import { parseHebrewTime } from './calendarCreate'
 import { answerFromToolResult, type ToolResult } from './groundedResponse'
 import { sendServerChat, streamServerChat, checkServerChatHealth } from './serverChatProvider'
 import { describeRelation, loadGraph, type Lang } from './familyGraph'
@@ -324,14 +325,28 @@ export function tryGroundedAnswer(text: string): string | null {
     switch (route.type) {
       case 'calendar_today': {
         const r = getTodayEvents()
-        if (lang === 'es') return shapeCalendarAnswerES(r.events, 'today')
-        result = { ok: true, events: r.events, summary: r.summary }
+        // P0-5: Filter by specific time if query mentions one ("מה יש לי בארבע")
+        const todayRequestedTime = parseHebrewTime(text)
+        let todayEvents = r.events
+        if (todayRequestedTime && todayEvents.length > 0) {
+          const filtered = todayEvents.filter(e => e.time === todayRequestedTime)
+          if (filtered.length > 0) todayEvents = filtered
+        }
+        if (lang === 'es') return shapeCalendarAnswerES(todayEvents, 'today')
+        result = { ok: true, events: todayEvents, summary: r.summary }
         break
       }
       case 'calendar_tomorrow': {
         const r = getTomorrowEvents()
-        if (lang === 'es') return shapeCalendarAnswerES(r.events, 'tomorrow')
-        result = { ok: true, events: r.events, summary: r.summary }
+        // P0-5: Filter by specific time if query mentions one
+        const tmrwRequestedTime = parseHebrewTime(text)
+        let tmrwEvents = r.events
+        if (tmrwRequestedTime && tmrwEvents.length > 0) {
+          const filtered = tmrwEvents.filter(e => e.time === tmrwRequestedTime)
+          if (filtered.length > 0) tmrwEvents = filtered
+        }
+        if (lang === 'es') return shapeCalendarAnswerES(tmrwEvents, 'tomorrow')
+        result = { ok: true, events: tmrwEvents, summary: r.summary }
         break
       }
       case 'calendar_upcoming': {

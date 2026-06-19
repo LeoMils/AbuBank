@@ -185,7 +185,7 @@ export function shapeCalendarAnswerES(events: Appointment[], scope: 'today' | 't
 
 import type { CreateDraft } from './calendarCreate'
 
-function dateLabel(date: string): string {
+export function dateLabel(date: string): string {
   const today = new Date().toISOString().split('T')[0]!
   const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
   if (date === today) return 'היום'

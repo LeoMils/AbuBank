@@ -42,7 +42,7 @@ import { BackButton } from '../../components/BackButton'
 import { ScreenHeader } from '../../components/ScreenHeader'
 import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
 import { type CalendarCreateState, IDLE_STATE, isCreateIntent, isRecurringIntent, startCreate, resolvePendingMessage, isConfirm, isCancel, isSearchIntent, searchAppointments, isDeleteIntent, isModifyIntent } from './calendarCreate'
-import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateUnclear, shapeCreateClarify, timeInWords } from './responseShaper'
+import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateUnclear, shapeCreateClarify, timeInWords, dateLabel } from './responseShaper'
 import { detectReminderIntent, parseReminder } from '../AbuCalendar/reminders/reminderParser'
 import { createReminder, createDefaultAlertPolicy } from '../AbuCalendar/reminders/reminderStore'
 import type { ReminderDraft } from '../AbuCalendar/reminders/types'
@@ -406,7 +406,15 @@ export function AbuAI() {
           addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
           soundSuccess()
           setCreateState(IDLE_STATE)
-          const savedText = shapeCreateSaved(d)
+          // P0-4: Deterministic readback — verify appointment was saved
+          const verified = loadAppointments().find(a => a.title === d.title && a.date === d.date)
+          let savedText: string
+          if (verified) {
+            const timeStr = verified.time ? ` ${timeInWords(verified.time)}` : ''
+            savedText = `קבוע — ${verified.title}${d.date ? ' ' + dateLabel(d.date) : ''}${timeStr}.`
+          } else {
+            savedText = 'משהו לא עבד — הפגישה לא נשמרה. תנסי שוב.'
+          }
           traceSet({ route: 'calendar_create', calendarAction: 'save', calendarStorageWrite: true, groundedAnswerUsed: true, finalResponse: savedText })
           traceEnd()
           pushAssistant(savedText)
@@ -995,7 +1003,13 @@ export function AbuAI() {
           if (accumulated.trim()) {
             // Keep partial response + append error card as separate message
             updated[idx] = { ...updated[idx]!, content: accumulated.trim() }
-            return [...updated, { id: nextId(), role: 'assistant', content: mediated.message, timestamp: Date.now(), error: mediated }]
+            const errorMsg = { id: nextId(), role: 'assistant' as const, content: mediated.message, timestamp: Date.now(), error: mediated }
+            // P0-8: Don't spam error cards — replace last error if it was also an error
+            const last = updated[updated.length - 1]
+            if (last?.error) {
+              return [...updated.slice(0, -1), errorMsg]
+            }
+            return [...updated, errorMsg]
           }
           updated[idx] = { ...updated[idx]!, content: mediated.message, error: mediated }
         }
@@ -1123,6 +1137,10 @@ export function AbuAI() {
     setStreamingText('')
 
     const handleText = async (text: string) => {
+      // P0: Stop any playing audio immediately when user starts speaking
+      stopSpeaking()
+      setIsSpeaking(false)
+
       if (!voiceModeRef.current) return
       const lower = text.trim()
       if (/^(ביי|להתראות|תודה|עצור|עצרי|סטופ|stop|bye)$/i.test(lower)) {
@@ -1280,7 +1298,14 @@ export function AbuAI() {
               addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
               soundSuccess()
               setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE
-              response = shapeCreateSaved(d)
+              // P0-4: Deterministic readback — verify appointment was saved
+              const verified = loadAppointments().find(a => a.title === d.title && a.date === d.date)
+              if (verified) {
+                const timeStr = verified.time ? ` ${timeInWords(verified.time)}` : ''
+                response = `קבוע — ${verified.title}${d.date ? ' ' + dateLabel(d.date) : ''}${timeStr}.`
+              } else {
+                response = 'משהו לא עבד — הפגישה לא נשמרה. תנסי שוב.'
+              }
             } else if (resolution.action === 'replace' || resolution.action === 'update') {
               setCreateState(resolution.state); createStateRef.current = resolution.state
               response = resolution.state.phase === 'confirming'
@@ -1572,6 +1597,8 @@ export function AbuAI() {
         }
         if (interim) setAudioLevel(0.6)
         if (gotResult && finalTranscript.trim()) {
+          // P0: Stop TTS before processing new speech (WebSpeech path)
+          stopSpeaking()
           recognitionRef.current = null
           setVoicePhase('processing')
           handleText(finalTranscript.trim())
@@ -1891,7 +1918,15 @@ ${fewShotText}`
             if (mediated.category === 'quota' || mediated.category === 'auth' || mediated.category === 'rate-limit') {
               try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
             }
-            setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediated.message, timestamp: Date.now(), error: mediated }])
+            // P0-8: Don't spam error cards — replace last error if it was also an error
+            const errorMsg = { id: nextId(), role: 'assistant' as const, content: mediated.message, timestamp: Date.now(), error: mediated }
+            setMessages(prev => {
+              const last = prev[prev.length - 1]
+              if (last?.error) {
+                return [...prev.slice(0, -1), errorMsg]
+              }
+              return [...prev, errorMsg]
+            })
           },
         },
         buildRealtimeInstructions(),

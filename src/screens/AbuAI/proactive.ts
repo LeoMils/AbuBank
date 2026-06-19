@@ -123,7 +123,7 @@ const THANKS_ES = /^gracias[!.\s]*$/i
 const THANKS_EN = /^thanks?(?:\s+you)?[!.\s]*$|^thank\s+you[!.\s]*$/i
 
 // Missing Pepe — deeply emotional, requires gentle specific response
-const MISSING_PEPE = /מתגעגע[ת]?\s+(ל|אל\s+)?פפ[יה]|געגועים\s+(ל|אל\s+)?פפ[יה]|חסר\s+לי\s+פפ[יה]|extra[nñ]o\s+(a\s+)?pep[eé]/i
+const MISSING_PEPE = /מתגעגע[ת]?\s+(ל|אל\s+)?(פפ[יה]|פאפי)|געגועים\s+(ל|אל\s+)?(פפ[יה]|פאפי)|חסר\s+לי\s+(פפ[יה]|פאפי)|extra[nñ]o\s+(a\s+)?pep[eé]/i
 
 // Greeting — warm instant response, no menu
 const GREETING_HE = /^(שלום|היי|בוקר טוב|ערב טוב|מה נשמע|מה קורה|מה שלומך|אהלן)[.!?\s]*$/i
@@ -342,7 +342,7 @@ const SEEDS: ProactiveSeed[] = [
   // ── Missing Pepe — Hebrew (deeply personal, gentle) ──
   {
     id: 'pepe-he-1', intent: 'missing_pepe', lang: 'he',
-    text: 'כן, פפי היה מיוחד. את רוצה לספר לי עליו?',
+    text: 'כן, פאפי היה מיוחד. את רוצה לספר לי עליו?',
   },
   {
     id: 'pepe-he-2', intent: 'missing_pepe', lang: 'he',
