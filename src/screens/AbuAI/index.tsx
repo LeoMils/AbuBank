@@ -10,6 +10,8 @@ import { compileHumanAnswer } from './answerCompiler'
 import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
 import { diagReset, diagSet, diagCommit, diagCopyText } from '../../services/productDiagnostics'
+import { planCompanionTurn, deriveStateFromMessages } from './companionPlanner'
+import { enforceCompanion } from './companionComposer'
 import { getTodayEvents, getTomorrowEvents, getBirthdayFor } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
@@ -376,6 +378,14 @@ export function AbuAI() {
     setInput('')
     setLoading(true)
 
+    // ─── Companion Brain (STEP 1-7): MANDATORY before every response ──────
+    // Decide what Martita needs (goal/emotion/family/memory/calendar/online)
+    // and which act serves her, with the emotional suppression rule. The plan
+    // gates grounding (below) and is surfaced in diagnostics every turn.
+    const companionState = deriveStateFromMessages(messages)
+    const companionPlan = planCompanionTurn(msgText, companionState)
+    diagSet({ companionPlan: `frame=${companionPlan.step7_frame} act=${companionPlan.step7_act} suppress=${companionPlan.suppressLookups} cal=${companionPlan.step5_calendar} online=${companionPlan.step6_onlineNeeded} person=${companionPlan.step4_continuity.resolvedPerson ?? '-'}` })
+
     const aiMsgId = nextId()
     streamingMsgIdRef.current = aiMsgId
     let accumulated = ''
@@ -728,7 +738,11 @@ export function AbuAI() {
         return false
       })()
       const isDirectQuestion = /^מי |^מתי |^איפה |^כמה |^מה זה |^מה זאת |[?؟]$/.test(msgText.trim())
-      const skipGroundingForEmotion = lastAssistantWasEmotional && !isDirectQuestion
+      // Companion Brain drives suppression: skip the grounded data lookup when
+      // the plan says this turn is emotional/companionship (grief, worry,
+      // loneliness, boredom) and she did not ask a direct factual question —
+      // so a feeling is never answered with a data dump.
+      const skipGroundingForEmotion = (lastAssistantWasEmotional || companionPlan.suppressLookups) && !isDirectQuestion
 
       // ─── Existing grounded answer path ────────────────────────────────────
       const groundedAnswer = skipGroundingForEmotion ? null : tryGroundedAnswer(msgText)
@@ -747,6 +761,9 @@ export function AbuAI() {
             groundedAnswer,
           )
         }
+        // Companion Response Composer: no raw tool answer / banned register
+        // reaches Martita — strip database/support/AI-self phrasing as a floor.
+        finalResponse = enforceCompanion(finalResponse, companionPlan)
 
         traceSet({ route: route.type, groundedAnswerUsed: true, groundedAnswer, calendarAction: isCal ? 'read' : 'none', calendarStorageRead: isCal, finalResponse })
         traceEnd()
@@ -1381,10 +1398,17 @@ export function AbuAI() {
         diagReset()
         diagSet({ sttProvider: 'WebSpeech', sttFileType: 'n/a', sttTranscript: text, sttStatus: '✅' })
 
+        // Companion Brain (STEP 1-7): MANDATORY before every voice response.
+        const voicePlan = planCompanionTurn(text, deriveStateFromMessages(messages))
+        diagSet({ companionPlan: `frame=${voicePlan.step7_frame} act=${voicePlan.step7_act} suppress=${voicePlan.suppressLookups} cal=${voicePlan.step5_calendar} online=${voicePlan.step6_onlineNeeded} person=${voicePlan.step4_continuity.resolvedPerson ?? '-'}` })
+
         // Try grounded answer first
+        const isDirectVoiceQ = /^מי |^מתי |^איפה |^כמה |^מה זה |^מה זאת |[?؟]$/.test(text.trim())
         const voiceGrounded = tryGroundedAnswer(text)
         let response: string
-        if (voiceGrounded !== null) {
+        // Companion Brain suppression: a feeling/companionship turn (not a direct
+        // question) skips the grounded data answer and flows to the warm path.
+        if (voiceGrounded !== null && !(voicePlan.suppressLookups && !isDirectVoiceQ)) {
           const route = routePersonalQuery(text)
           const isCal = route.type.startsWith('calendar_')
           diagSet({
@@ -1401,6 +1425,8 @@ export function AbuAI() {
             messages.map(m => ({ role: m.role, content: m.content })),
             voiceGrounded,
           )
+          // Companion Response Composer: no raw/banned register reaches Martita.
+          response = enforceCompanion(response, voicePlan)
         } else {
           const voiceProactive = getProactiveSeed(text, {
             previousSeedId: lastProactiveSeedIdRef.current,

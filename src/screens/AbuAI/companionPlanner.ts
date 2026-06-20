@@ -216,6 +216,35 @@ export function planCompanionTurn(inputRaw: string, state: ConversationState = E
   }
 }
 
+/**
+ * Derive a ConversationState from recent chat messages (runtime helper). Scans
+ * backwards for the last family person mentioned and the lingering emotional
+ * context, so the planner has continuity/stickiness even without an explicit
+ * session store. Cheap and side-effect-free.
+ */
+export function deriveStateFromMessages(
+  messages: Array<{ role: string; content: string }>,
+): ConversationState {
+  let lastPerson: string | null = null
+  let emotionalContext: Mood | null = null
+  const recent = messages.slice(-10)
+  for (let i = recent.length - 1; i >= 0; i--) {
+    const c = recent[i]!.content
+    if (!lastPerson) {
+      for (const tok of c.split(/[\s,?.!"'״’]+/).filter(Boolean)) {
+        const n = findNode(tok)
+        if (n) { lastPerson = n.hebrew; break }
+      }
+    }
+    if (!emotionalContext) {
+      const m = detectMood(c)
+      if (m === 'grief' || m === 'worried' || m === 'lonely') emotionalContext = m
+    }
+    if (lastPerson && emotionalContext) break
+  }
+  return { lastPerson, lastTopic: null, lastMood: emotionalContext, emotionalContext, openLoops: [] }
+}
+
 /** Update sticky conversation state after a turn (STEP "REMEMBER" helper). */
 export function advanceState(prev: ConversationState, plan: CompanionPlan): ConversationState {
   const person = plan.step4_continuity.resolvedPerson ?? prev.lastPerson
