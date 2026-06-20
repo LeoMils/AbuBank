@@ -426,7 +426,7 @@ export function tryGroundedAnswer(text: string): string | null {
       }
       case 'family_lookup': {
         // Relational role queries: "מי אמא של X?", "מי בת הזוג של X?", "מי סבתא של X?"
-        const roleMatch = route.query.match(/מי\s+(אמא|אבא|סבתא|סבא|אחות|אח|בת הזוג|בן הזוג|החברה|החבר)\s+של\s+(\S+)/)
+        const roleMatch = route.query.match(/מי\s+(סבתא רבתא|סבא רבא|אמא|אבא|סבתא|סבא|דודה|דוד|אחות|אח|בת הזוג|בן הזוג|החברה|החבר)\s+של\s+(\S+)/)
         if (roleMatch) {
           const role = roleMatch[1]!
           const targetName = roleMatch[2]!.replace(/[?!.,]$/, '')
@@ -450,6 +450,45 @@ export function tryGroundedAnswer(text: string): string | null {
                   .find(n => n && (role === 'סבתא' ? n.gender === 'female' : n.gender === 'male'))
                 if (gp) return `${gp.hebrew}.`
               }
+            }
+            if (role === 'סבתא רבתא' || role === 'סבא רבא') {
+              // Great-grandparent = parent of grandparent (3 hops up).
+              const wantFemale = role === 'סבתא רבתא'
+              for (const pHe of target.parentsHe) {
+                const p = graph.find(n => n.hebrew === pHe)
+                if (!p) continue
+                for (const gpHe of p.parentsHe) {
+                  const gp = graph.find(n => n.hebrew === gpHe)
+                  if (!gp) continue
+                  const ggp = gp.parentsHe
+                    .map(g => graph.find(n => n.hebrew === g))
+                    .find(n => n && (wantFemale ? n.gender === 'female' : n.gender === 'male'))
+                  if (ggp) return `${ggp.hebrew}.`
+                }
+              }
+            }
+            if (role === 'דוד' || role === 'דודה') {
+              // Aunt/uncle = a sibling of one of the target's parents.
+              const wantFemale = role === 'דודה'
+              const seen = new Set<string>()
+              const auntsUncles: string[] = []
+              for (const pHe of target.parentsHe) {
+                const p = graph.find(n => n.hebrew === pHe)
+                if (!p) continue
+                for (const gpHe of p.parentsHe) {
+                  const gp = graph.find(n => n.hebrew === gpHe)
+                  if (!gp) continue
+                  for (const sibHe of gp.childrenHe) {
+                    if (sibHe === p.hebrew || seen.has(sibHe)) continue
+                    const sib = graph.find(n => n.hebrew === sibHe)
+                    if (sib && (wantFemale ? sib.gender === 'female' : sib.gender === 'male')) {
+                      seen.add(sibHe)
+                      auntsUncles.push(sib.hebrew)
+                    }
+                  }
+                }
+              }
+              if (auntsUncles.length > 0) return auntsUncles.join(' ו') + '.'
             }
             if (role === 'אחות' || role === 'אח') {
               const siblings = target.parentsHe

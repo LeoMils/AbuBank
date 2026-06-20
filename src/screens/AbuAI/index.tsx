@@ -996,6 +996,9 @@ export function AbuAI() {
           if (finalContent && containsUngroundedClaim(finalContent, false)) {
             finalContent = 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
           }
+          // Companion Response Composer guards the streamed LLM output too —
+          // no banned/customer-support/database register reaches Martita.
+          if (finalContent) finalContent = enforceCompanion(finalContent, companionPlan)
           if (finalContent) {
             updated[idx] = { ...updated[idx]!, content: finalContent }
           } else {
@@ -1515,9 +1518,12 @@ export function AbuAI() {
 
             // Finalize chat message with full streamed text
             if (streamedText.trim()) {
-              const finalContent = containsUngroundedClaim(streamedText.trim(), false)
-                ? 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
-                : streamedText.trim()
+              const finalContent = enforceCompanion(
+                containsUngroundedClaim(streamedText.trim(), false)
+                  ? 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
+                  : streamedText.trim(),
+                voicePlan,
+              )
               setMessages(prev => {
                 const updated = [...prev]
                 const idx = updated.findIndex(m => m.id === streamAiMsgId)
