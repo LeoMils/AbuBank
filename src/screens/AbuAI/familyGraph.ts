@@ -246,16 +246,100 @@ export function describeRelation(aQuery: string, bQuery: string, lang: Lang): st
   const parentOfSpouse = detectParentOfSpouse(a, b)
   if (parentOfSpouse) return phraseParentOfSpouse(parentOfSpouse, lang)
 
-  // 6) Grandparent ↔ grandchild (one hop).
-  for (const childHe of a.childrenHe) {
-    const mid = nodeByHebrew(childHe)
-    if (mid && mid.childrenHe.includes(b.hebrew)) return phraseGrandparent(a, b, mid, lang)
-  }
-  for (const childHe of b.childrenHe) {
-    const mid = nodeByHebrew(childHe)
-    if (mid && mid.childrenHe.includes(a.hebrew)) return phraseGrandparent(b, a, mid, lang)
-  }
+  // 6) Aunt / uncle: A is a sibling of a parent of B (or vice versa).
+  const auntUncle = detectAuntUncle(a, b)
+  if (auntUncle) return phraseAuntUncle(auntUncle, lang)
 
+  // 7) First cousins: a parent of A and a parent of B are siblings.
+  const cousins = detectCousins(a, b)
+  if (cousins) return phraseCousins(cousins, lang)
+
+  // 8) Ancestor ↔ descendant at any depth (grandparent at 2 hops,
+  //    great-grandparent at 3, …). Generalizes the old one-hop walk so
+  //    Martita ↔ great-grandchild resolves instead of returning null.
+  const aAncOfB = findAncestor(b, a)
+  if (aAncOfB) return phraseAncestor(a, b, aAncOfB.mid, aAncOfB.distance, lang)
+  const bAncOfA = findAncestor(a, b)
+  if (bAncOfA) return phraseAncestor(b, a, bAncOfA.mid, bAncOfA.distance, lang)
+
+  return null
+}
+
+// ─── Generation / collateral detectors ─────────────────────────────────────
+
+interface AuntUncleHit {
+  /** The aunt or uncle. */
+  auntUncle: GraphNode
+  /** The niece or nephew. */
+  nephew: GraphNode
+  /** The connecting parent (auntUncle's sibling, nephew's parent). */
+  via: GraphNode
+}
+
+/** A is aunt/uncle of B when A shares a parent with one of B's parents. */
+function detectAuntUncle(a: GraphNode, b: GraphNode): AuntUncleHit | null {
+  const oneWay = (x: GraphNode, y: GraphNode): AuntUncleHit | null => {
+    for (const pHe of y.parentsHe) {
+      if (pHe === x.hebrew) continue
+      const p = nodeByHebrew(pHe)
+      if (!p) continue
+      const shared = x.parentsHe.find((q) => p.parentsHe.includes(q))
+      if (shared) return { auntUncle: x, nephew: y, via: p }
+    }
+    return null
+  }
+  return oneWay(a, b) ?? oneWay(b, a)
+}
+
+interface CousinHit {
+  a: GraphNode
+  b: GraphNode
+  /** A's parent and B's parent, who are siblings. */
+  via1: GraphNode
+  via2: GraphNode
+}
+
+/** A and B are first cousins when a parent of A and a parent of B are siblings. */
+function detectCousins(a: GraphNode, b: GraphNode): CousinHit | null {
+  for (const paHe of a.parentsHe) {
+    for (const pbHe of b.parentsHe) {
+      if (paHe === pbHe) continue
+      const pa = nodeByHebrew(paHe)
+      const pb = nodeByHebrew(pbHe)
+      if (!pa || !pb) continue
+      const shared = pa.parentsHe.find((q) => pb.parentsHe.includes(q))
+      if (shared) return { a, b, via1: pa, via2: pb }
+    }
+  }
+  return null
+}
+
+/** Walk up B's parent edges to find ancestor A; return generational distance
+ *  (1 = parent, 2 = grandparent, 3 = great-grandparent) and the ancestor's
+ *  direct child on the path (for "דרך X" phrasing). */
+function findAncestor(descendant: GraphNode, ancestor: GraphNode): { distance: number; mid: GraphNode } | null {
+  const targetHe = ancestor.hebrew
+  const visited = new Set<string>([descendant.hebrew])
+  const cameFrom = new Map<string, string>() // parentHe → child-on-path
+  let frontier: Array<{ he: string; dist: number }> = [{ he: descendant.hebrew, dist: 0 }]
+  while (frontier.length) {
+    const next: Array<{ he: string; dist: number }> = []
+    for (const cur of frontier) {
+      const node = nodeByHebrew(cur.he)
+      if (!node) continue
+      for (const pHe of node.parentsHe) {
+        if (visited.has(pHe)) continue
+        visited.add(pHe)
+        cameFrom.set(pHe, cur.he)
+        if (pHe === targetHe) {
+          const mid = nodeByHebrew(cameFrom.get(targetHe)!)
+          return mid ? { distance: cur.dist + 1, mid } : null
+        }
+        next.push({ he: pHe, dist: cur.dist + 1 })
+      }
+    }
+    frontier = next
+  }
   return null
 }
 
@@ -484,16 +568,56 @@ function phraseParentOfSpouse(hit: ParentOfSpouseHit, lang: Lang): string {
   return `${P} is the ${parentLabel} of ${C}, and ${C} ${verb} ${S}.`
 }
 
-function phraseGrandparent(grand: GraphNode, child: GraphNode, mid: GraphNode, lang: Lang): string {
-  const G = displayName(grand, lang), C = displayName(child, lang), M = displayName(mid, lang)
+function phraseAuntUncle(hit: AuntUncleHit, lang: Lang): string {
+  const { auntUncle, nephew, via } = hit
+  const A = displayName(auntUncle, lang), N = displayName(nephew, lang), V = displayName(via, lang)
   if (lang === 'es') {
-    const role = grand.gender === 'female' ? 'abuela' : grand.gender === 'male' ? 'abuelo' : 'abuelo/a'
+    const role = auntUncle.gender === 'female' ? 'tía' : auntUncle.gender === 'male' ? 'tío' : 'tía/tío'
+    return `${A} es ${role} de ${N}.`
+  }
+  if (lang === 'en') {
+    const role = auntUncle.gender === 'female' ? 'aunt' : auntUncle.gender === 'male' ? 'uncle' : 'aunt/uncle'
+    return `${A} is the ${role} of ${N}.`
+  }
+  const role = auntUncle.gender === 'female' ? 'הדודה' : auntUncle.gender === 'male' ? 'הדוד' : 'הדוד/ה'
+  const sib = via.gender === 'female' ? 'אחות' : 'אח'
+  return `${A} ${role} של ${N} (${sib} של ${V}).`
+}
+
+function phraseCousins(hit: CousinHit, lang: Lang): string {
+  const { a, b, via1, via2 } = hit
+  const A = displayName(a, lang), B = displayName(b, lang)
+  const V1 = displayName(via1, lang), V2 = displayName(via2, lang)
+  const bothFemale = a.gender === 'female' && b.gender === 'female'
+  if (lang === 'es') {
+    const label = bothFemale ? 'primas' : 'primos'
+    return `${A} y ${B} son ${label}, hijos de ${V1} y ${V2}.`
+  }
+  if (lang === 'en') {
+    return `${A} and ${B} are cousins, children of ${V1} and ${V2}.`
+  }
+  const label = bothFemale ? 'בנות דוד' : 'בני דוד'
+  return `${A} ו${B} ${label}, הילדים של ${V1} ו${V2}.`
+}
+
+/** Ancestor phrasing at any depth. distance 2 = grandparent, 3 = great-grandparent. */
+function phraseAncestor(grand: GraphNode, child: GraphNode, mid: GraphNode, distance: number, lang: Lang): string {
+  const G = displayName(grand, lang), C = displayName(child, lang), M = displayName(mid, lang)
+  const f = grand.gender === 'female', m = grand.gender === 'male'
+  if (lang === 'es') {
+    const role = distance >= 3
+      ? (f ? 'bisabuela' : m ? 'bisabuelo' : 'bisabuelo/a')
+      : (f ? 'abuela' : m ? 'abuelo' : 'abuelo/a')
     return `${G} es ${role} de ${C} (a través de ${M}).`
   }
   if (lang === 'en') {
-    const role = grand.gender === 'female' ? 'grandmother' : grand.gender === 'male' ? 'grandfather' : 'grandparent'
+    const role = distance >= 3
+      ? (f ? 'great-grandmother' : m ? 'great-grandfather' : 'great-grandparent')
+      : (f ? 'grandmother' : m ? 'grandfather' : 'grandparent')
     return `${G} is the ${role} of ${C} (through ${M}).`
   }
-  const role = grand.gender === 'female' ? 'הסבתא' : grand.gender === 'male' ? 'הסבא' : 'הסב/ה'
+  const role = distance >= 3
+    ? (f ? 'הסבתא רבתא' : m ? 'הסבא רבא' : 'הסב/ה רבא')
+    : (f ? 'הסבתא' : m ? 'הסבא' : 'הסב/ה')
   return `${G} ${role} של ${C} (דרך ${M}).`
 }
