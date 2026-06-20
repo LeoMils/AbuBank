@@ -320,16 +320,14 @@ describe('voice pipeline — Universe-War Phase 4 hard assertions', () => {
     expect(r.finalConfirmationText).toContain('לבדוק דלת')
   })
 
-  // #10 — "תזכירי לי להתקשר לחברה של מור בערב" — reminder, friend phrase
-  // must be acknowledged as missing (never silently invented).
-  it('"תזכירי לי להתקשר לחברה של מור בערב" — reminder, friend phrase = missing (not invented)', () => {
+  // #10 — "תזכירי לי להתקשר לחברה של מור בערב" — "החברה של מור" is the partner
+  // alias (Mor's girlfriend = Yael), resolved from the graph, not invented.
+  it('"תזכירי לי להתקשר לחברה של מור בערב" — reminder, partner alias → יעל', () => {
     const r = runVoicePipelineDiagnostic('תזכירי לי להתקשר לחברה של מור בערב', TODAY_ISO)
     expect(r.intent).toBe('reminder')
     expect(r.relationPhrase).not.toBeNull()
-    // Friend phrase MUST NOT silently resolve to a real person. The
-    // resolver is expected to mark it missing OR leave it unresolved.
-    expect(['missing', 'none', 'ambiguous']).toContain(r.resolvedPerson.status)
-    expect(r.resolvedPerson.name).toBeNull()
+    expect(r.resolvedPerson.status).toBe('resolved')
+    expect(r.resolvedPerson.name).toBe('יעל')
   })
 })
 
@@ -487,12 +485,12 @@ describe('voice pipeline — release-candidate gauntlet (30 scenarios)', () => {
     expect(r.resolvedPerson.name).toBe('גלעד')
   })
 
-  // RC-19: friend phrase (honest missing)
-  it('RC-19 "תזכירי לי להתקשר לחברה של מור בערב" → reminder, friend missing (never invented)', () => {
+  // RC-19: partner alias — "החברה של מור" = Yael (grounded, not invented)
+  it('RC-19 "תזכירי לי להתקשר לחברה של מור בערב" → reminder, partner alias → יעל', () => {
     const r = runVoicePipelineDiagnostic('תזכירי לי להתקשר לחברה של מור בערב', TODAY_ISO)
     expect(r.intent).toBe('reminder')
-    expect(r.resolvedPerson.name).toBeNull()
-    expect(['missing', 'none']).toContain(r.resolvedPerson.status)
+    expect(r.resolvedPerson.name).toBe('יעל')
+    expect(r.resolvedPerson.status).toBe('resolved')
   })
 
   // RC-20: family query

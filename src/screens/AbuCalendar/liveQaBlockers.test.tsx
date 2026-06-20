@@ -158,17 +158,20 @@ describe('BLOCKER 2 — family relation phrases', () => {
       .toBe('לחברה של מור')
   })
 
-  it('marks "חברה של מור" (and "ל" prefix form) as missing', () => {
+  it('resolves "חברה של מור" (and ל/ה prefix forms) → יעל (partner alias, RC4)', () => {
+    // "חברה" = girlfriend/partner when one exists. Mor's partner is Yael —
+    // a grounded resolution from the family graph, NOT an invented friend.
     for (const p of ['חברה של מור', 'לחברה של מור', 'החברה של מור']) {
       const r = resolvePersonPhrase(p)
-      expect(r.status).toBe('missing')
-      if (r.status === 'missing') expect(r.phrase).toBe(p)
+      expect(r.status).toBe('resolved')
+      if (r.status === 'resolved') expect(r.name).toBe('יעל')
     }
   })
 
-  it('marks "חבר של אופיר" as missing (friend, not family)', () => {
+  it('resolves "חבר של אופיר" → גלעד (partner alias — Ofir\'s boyfriend)', () => {
     const r = resolvePersonPhrase('חבר של אופיר')
-    expect(r.status).toBe('missing')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('גלעד')
   })
 
   it('"אחות של ארי" extracts and is resolvable (sibling pattern)', () => {

@@ -167,13 +167,24 @@ describe('resolvePersonPhrase — P2 honest resolution', () => {
     expect(r.status).toBe('missing')
   })
 
-  it('"חברה של מור" → missing (friend — never resolved from family data)', () => {
+  it('"חברה של מור" → resolved to יעל (partner alias — RC4 product law)', () => {
+    // Hebrew "חברה" = girlfriend/partner when the person has one. Mor's partner
+    // is Yael, so the partner alias resolves. (Platonic friends with no partner
+    // still return missing — see "חברה של מרטיטה" below.)
     const r = resolvePersonPhrase('חברה של מור')
+    expect(r.status).toBe('resolved')
+    expect(r).toMatchObject({ status: 'resolved', name: 'יעל' })
+  })
+
+  it('"חבר של מור" → missing (Mor has no male partner — never invent)', () => {
+    // "חבר" (male partner) of Mor does not exist — her partner Yael is female —
+    // so we honestly return missing rather than guess.
+    const r = resolvePersonPhrase('חבר של מור')
     expect(r.status).toBe('missing')
   })
 
-  it('"חבר של מור" → missing (friend — never resolved from family data)', () => {
-    const r = resolvePersonPhrase('חבר של מור')
+  it('"חברה של מרטיטה" → missing (no partner → platonic friend, never invented)', () => {
+    const r = resolvePersonPhrase('חברה של מרטיטה')
     expect(r.status).toBe('missing')
   })
 

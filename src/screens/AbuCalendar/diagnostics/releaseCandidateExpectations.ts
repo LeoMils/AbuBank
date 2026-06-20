@@ -135,7 +135,8 @@ export const RELEASE_CANDIDATE_EXPECTATIONS: QaExpectation[] = [
   {
     id: 'rc-19', utterance: 'תזכירי לי להתקשר לחברה של מור בערב',
     expectedRoute: 'reminder_create', expectedDatePolicy: 'any', expectedTime: null,
-    expectedRelationPolicy: 'present', expectedPersonPolicy: 'missing',
+    // "החברה של מור" = Mor's partner Yael (RC4 partner alias) — resolved honestly.
+    expectedRelationPolicy: 'present', expectedPersonPolicy: 'any_honest',
     expectedSaveAllowed: null, expectedCardPolicy: 'any', criticality: 'P1',
   },
 

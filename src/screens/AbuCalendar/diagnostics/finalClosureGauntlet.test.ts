@@ -141,9 +141,10 @@ describe('Phase 4 — Family resolution', () => {
     expect(row.resolvedPerson.status).toBe('missing')
   })
 
-  it('#37: "חברה של מור" → missing', () => {
+  it('#37: "חברה של מור" → resolved, יעל (partner alias)', () => {
     const row = runVoicePipelineDiagnostic(familyPrefix('חברה של מור'), TODAY_ISO)
-    expect(row.resolvedPerson.status).toBe('missing')
+    expect(row.resolvedPerson.status).toBe('resolved')
+    expect(row.resolvedPerson.name).toBe('יעל')
   })
 
   it('#38: "הגרוש של מור" → resolved, רפי', () => {
