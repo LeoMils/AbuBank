@@ -81,7 +81,9 @@ export const CRITICAL_KEYS = [
   'abu_reminders_v1',              // reminders (SAFETY-CRITICAL)
   'abuai-conversation-history',    // conversation memory
   'abuai-conversation-summary',    // rolling summary
-  'abu-time-memory-v1',            // learned time preferences
+  'abutime-memory',                // learned time preferences
+  'martita-contacts-v1',           // saved contacts
+  'martita-loc-contacts-v1',       // local contacts
 ] as const
 
 const SCHEMA_KEY = '__abu_schema_version__'

@@ -12,6 +12,7 @@ import { shapeVoiceSafe } from './voiceShaper'
 import { diagReset, diagSet, diagCommit, diagCopyText } from '../../services/productDiagnostics'
 import { planCompanionTurn, deriveStateFromMessages } from './companionPlanner'
 import { enforceCompanion } from './companionComposer'
+import { durable } from '../../services/durableStore'
 import { getTodayEvents, getTomorrowEvents, getBirthdayFor } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
@@ -219,7 +220,7 @@ export function AbuAI() {
     if (messages.length === 0) return
     try {
       const toSave = messages.slice(-50)
-      localStorage.setItem('abuai-conversation-history', JSON.stringify(toSave))
+      durable.setString('abuai-conversation-history', JSON.stringify(toSave))
     } catch { /* quota exceeded — silently skip */ }
   }, [messages])
 
@@ -227,8 +228,8 @@ export function AbuAI() {
     setMessages([])
     setConversationSummary(null)
     try {
-      localStorage.removeItem('abuai-conversation-history')
-      localStorage.removeItem('abuai-conversation-summary')
+      durable.remove('abuai-conversation-history')
+      durable.remove('abuai-conversation-summary')
     } catch {}
   }, [])
 

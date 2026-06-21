@@ -5,6 +5,7 @@ import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { APP_VERSION } from '../../version'
 import { downloadBackup, importBackup } from '../../services/backup'
+import { durable } from '../../services/durableStore'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -59,7 +60,7 @@ export function loadLocContacts(): LocContact[] {
 }
 
 function saveLocContacts(cs: LocContact[]) {
-  try { localStorage.setItem(LOC_CONTACTS_KEY, JSON.stringify(cs)) } catch { /* quota */ }
+  try { durable.setString(LOC_CONTACTS_KEY, JSON.stringify(cs)) } catch { /* quota */ }
 }
 
 function loadContacts(): Contact[] {
@@ -73,7 +74,7 @@ function loadContacts(): Contact[] {
 }
 
 function saveContacts(contacts: Contact[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts)) } catch { /* quota */ }
+  try { durable.setString(STORAGE_KEY, JSON.stringify(contacts)) } catch { /* quota */ }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────

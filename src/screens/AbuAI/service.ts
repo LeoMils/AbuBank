@@ -9,6 +9,7 @@ import { sendServerChat, streamServerChat, checkServerChatHealth } from './serve
 import { describeRelation, loadGraph, type Lang } from './familyGraph'
 import { detectLanguage } from './proactive'
 import { shapeFamilyAnswerES, shapeCalendarAnswerES, shapeLocationAnswerES, shapeCreateConfirmES, shapeCreateSavedES, shapeCreateCancelledES, shapeCreateClarifyES } from './responseShaper'
+import { durable } from '../../services/durableStore'
 
 // ─── Conversation Summary ────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ export function loadSummary(): ConversationSummary | null {
 }
 
 export function saveSummary(summary: ConversationSummary): void {
-  try { localStorage.setItem(SUMMARY_KEY, JSON.stringify(summary)) } catch { /* storage full */ }
+  try { durable.setString(SUMMARY_KEY, JSON.stringify(summary)) } catch { /* storage full */ }
 }
 
 /**
