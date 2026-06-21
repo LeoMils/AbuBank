@@ -15,7 +15,7 @@ function getFamilyMembers(): FamilyMember[] {
   return loadFamilyData()
 }
 
-export function searchFamily(query: string): { found: boolean; members: FamilyMember[]; answer: string } {
+export function searchFamily(query: string, rich = false): { found: boolean; members: FamilyMember[]; answer: string } {
   const q = query.trim().toLowerCase()
   if (!q) return { found: false, members: [], answer: 'לא הבנתי את מי את מחפשת.' }
 
@@ -24,7 +24,7 @@ export function searchFamily(query: string): { found: boolean; members: FamilyMe
     m.hebrew === q || m.canonicalName.toLowerCase() === q || m.aliases.some(a => a.toLowerCase() === q)
   )
   if (exact.length === 1) {
-    return { found: true, members: exact, answer: shapeFamilyAnswer(exact[0]!) }
+    return { found: true, members: exact, answer: shapeFamilyAnswer(exact[0]!, rich) }
   }
   if (exact.length > 1) {
     return { found: true, members: exact, answer: `יש כמה אנשים עם השם הזה: ${exact.map(m => `${m.hebrew} (${m.relationshipHebrew})`).join(', ')}. את מתכוונת למי?` }

@@ -1,4 +1,5 @@
 import type { FamilyMember } from '../../services/familyLoader'
+import { loadFamilyData } from '../../services/familyLoader'
 import type { Appointment } from '../AbuCalendar/service'
 
 // ─── Hebrew number words ────────────────────────────────────────────────────
@@ -39,74 +40,110 @@ export function timeInWords(time: string): string {
 
 // ─── Family ─────────────────────────────────────────────────────────────────
 
-export function shapeFamilyAnswer(m: FamilyMember): string {
+// Pull the partner's name out of a relationship string:
+//   "בת זוג של יעל" → "יעל" ; "כלה (אשת עילי)" → "עילי" ; "בעל ראובן" → "ראובן".
+// Requires a 2+ letter Hebrew name, so "הבעל ז\"ל" (no name) yields null.
+function extractPartner(rel: string): string | null {
+  const m = rel.match(/ב[תן]\s+זוג\s+של\s+([א-ת]{2,})|אשת\s+([א-ת]{2,})|בעל\s+([א-ת]{2,})/)
+  return m ? (m[1] ?? m[2] ?? m[3] ?? null) : null
+}
+
+const COUNT_HE: Record<number, string> = { 1: 'ילד אחד', 2: 'שני ילדים', 3: 'שלושה ילדים', 4: 'ארבעה ילדים' }
+
+function joinHe(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? ''
+  return `${names.slice(0, -1).join(', ')} ו${names[names.length - 1]}`
+}
+
+/**
+ * Hebrew family answer. `rich=false` ("מי זאת X") → one terse, warm line:
+ * role + a single anchor (location/partner). `rich=true` ("ספרי לי על X") →
+ * a fuller, still-conversational reply: location/context + children + a warm
+ * opening — deliberately DIFFERENT from the terse form, never a data card.
+ */
+export function shapeFamilyAnswer(m: FamilyMember, rich = false): string {
   const rel = m.relationshipHebrew
-  const isFemale = rel.includes('הבת') || rel.includes('נכדה') || rel.includes('בת זוג')
+  const isFemale = rel.includes('הבת') || rel.includes('נכדה') || rel.includes('בת זוג') || rel.includes('נינה') || rel.includes('כלה')
+  const deceased = rel.includes('ז"ל') || rel.includes('המנוח')
+  const live = isFemale ? 'גרה' : 'גר'
+  const partner = m.spouse ?? extractPartner(rel)
 
-  // Build natural spoken sentence, not a data card
-  const parts: string[] = []
+  let role: string
+  if (rel.includes('הבת')) role = `${m.hebrew}, הבת שלך`
+  else if (rel.includes('הבן')) role = `${m.hebrew}, הבן שלך`
+  else if (rel.includes('נכדה')) role = `${m.hebrew}, הנכדה שלך`
+  else if (rel.includes('נכד')) role = `${m.hebrew}, הנכד שלך`
+  else if (rel.includes('נינה') || rel.includes('נין')) role = `${m.hebrew}, ${isFemale ? 'הנינה' : 'הנין'} שלך`
+  else if (rel.includes('כלה')) role = partner ? `${m.hebrew}, אשת ${partner}` : `${m.hebrew}, הכלה שלך`
+  else if (rel.includes('בת זוג') && partner) role = `${m.hebrew}, בת הזוג של ${partner}`
+  else if (rel.includes('בעל')) role = `${m.hebrew}, בעלך${deceased ? ' ז"ל' : ''}`
+  // Pets, friends, and any unrecognized role keep their (short) descriptor.
+  else role = `${m.hebrew} — ${rel}`
 
-  // Role — casual, not "X היא הבת שלך"
-  if (rel.includes('הבת')) {
-    parts.push(`${m.hebrew}, הבת שלך.`)
-  } else if (rel.includes('הבן')) {
-    parts.push(`${m.hebrew}, הבן שלך.`)
-  } else {
-    parts.push(`${m.hebrew} — ${rel}.`)
+  if (!rich) {
+    // Terse: role + ONE anchor. e.g. "מור, הבת שלך. בהוד השרון עם יעל."
+    const bits: string[] = []
+    if (m.location) bits.push(`ב${m.location}`)
+    if (partner && !role.includes(partner)) bits.push(`עם ${partner}`)
+    return bits.length ? `${role}. ${bits.join(' ')}.` : `${role}.`
   }
 
-  // Partner/spouse — natural
-  if (m.spouse) {
-    parts.push(`עם ${m.spouse}.`)
+  // Rich: a warmer, fuller reply.
+  const parts: string[] = [`${role}.`]
+  if (m.location) {
+    parts.push(`${live} ב${m.location}${m.locationNotes ? `, ${m.locationNotes}` : ''}${partner && !role.includes(partner) ? ` עם ${partner}` : ''}.`)
+  } else if (partner && !role.includes(partner)) {
+    parts.push(`עם ${partner}.`)
   }
-
-  // Children — no colon, no list format
   if (m.children?.length) {
-    const count = m.children.length
-    const last = m.children[count - 1]
-    const rest = m.children.slice(0, -1)
-    const names = rest.length > 0 ? `${rest.join(', ')} ו${last}` : last!
-    if (count <= 2) {
-      parts.push(`${isFemale ? 'יש לה' : 'יש לו'} ${count === 1 ? 'ילד אחד' : 'שני ילדים'} — ${names}.`)
-    } else {
-      parts.push(`${count} ילדים — ${names}.`)
-    }
+    parts.push(`${COUNT_HE[m.children.length] ?? `${m.children.length} ילדים`} — ${joinHe(m.children)}.`)
   }
-
+  if (m.notes && !deceased) parts.push(m.notes)
+  if (!deceased) parts.push(isFemale ? 'מתי דיברת איתה לאחרונה?' : 'מתי דיברת איתו לאחרונה?')
   return parts.join(' ')
 }
 
-// ─── Family (Spanish) ────────────────────────────────────────────────────────
+// ─── Family (Spanish, Rioplatense) ───────────────────────────────────────────
 
-export function shapeFamilyAnswerES(m: FamilyMember): string {
-  const parts: string[] = []
+// Hebrew → Latin display map for child names in Spanish answers.
+function latinName(hebrew: string): string {
+  const node = loadFamilyData().find(m => m.hebrew === hebrew)
+  if (!node) return hebrew
+  const latinAlias = node.aliases.find(a => /^[A-Za-z]/.test(a))
+  return latinAlias ?? node.canonicalName
+}
+
+export function shapeFamilyAnswerES(m: FamilyMember, rich = false): string {
   const rel = m.relationshipHebrew
+  const partner = m.spouse ?? extractPartner(rel)
 
-  if (rel.includes('הבת')) {
-    parts.push(`${m.canonicalName}? Tu hija.`)
-  } else if (rel.includes('הבן')) {
-    parts.push(`${m.canonicalName}? Tu hijo.`)
-  } else if (rel.includes('נכדה')) {
-    parts.push(`${m.canonicalName} — tu nieta.`)
-  } else if (rel.includes('נכד')) {
-    parts.push(`${m.canonicalName} — tu nieto.`)
-  } else if (rel.includes('בת זוג')) {
-    parts.push(`${m.canonicalName} — la pareja.`)
-  } else {
-    parts.push(`${m.canonicalName} — ${rel}.`) // fallback to Hebrew rel
+  let role: string
+  if (rel.includes('הבת')) role = `${m.canonicalName}, tu hija`
+  else if (rel.includes('הבן')) role = `${m.canonicalName}, tu hijo`
+  else if (rel.includes('נכדה')) role = `${m.canonicalName}, tu nieta`
+  else if (rel.includes('נכד')) role = `${m.canonicalName}, tu nieto`
+  else if (rel.includes('נינה') || rel.includes('נין')) role = `${m.canonicalName}, tu bisnieta`
+  else if (rel.includes('בת זוג') && partner) role = `${m.canonicalName}, la pareja de ${latinName(partner)}`
+  else role = m.canonicalName
+
+  const partnerLatin = partner ? latinName(partner) : null
+  if (!rich) {
+    const bits: string[] = []
+    if (m.location) bits.push(`vive en ${m.location}`)
+    if (partnerLatin && !role.includes(partnerLatin)) bits.push(`con ${partnerLatin}`)
+    return bits.length ? `${role}. ${bits.join(', ')}.` : `${role}.`
   }
 
-  if (m.spouse) {
-    parts.push(`Con ${m.spouse}.`)
-  }
+  const parts: string[] = [`${role}.`]
+  if (m.location) parts.push(`Vive en ${m.location}${partnerLatin && !role.includes(partnerLatin) ? ` con ${partnerLatin}` : ''}.`)
+  else if (partnerLatin && !role.includes(partnerLatin)) parts.push(`Con ${partnerLatin}.`)
   if (m.children?.length) {
-    const last = m.children[m.children.length - 1]
-    const rest = m.children.slice(0, -1)
-    const childList = rest.length > 0 ? `${rest.join(', ')} y ${last}` : last!
-    parts.push(`Hijos: ${childList}.`)
+    const kids = m.children.map(latinName)
+    const list = kids.length > 1 ? `${kids.slice(0, -1).join(', ')} y ${kids[kids.length - 1]}` : kids[0]!
+    parts.push(`Sus hijos son ${list}.`)
   }
-  if (m.notes) parts.push(m.notes)
-  return parts.join('\n')
+  parts.push('¿Cuándo hablaste con ella la última vez?')
+  return parts.join(' ')
 }
 
 // ─── Location ───────────────────────────────────────────────────────────────

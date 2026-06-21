@@ -523,10 +523,12 @@ export function tryGroundedAnswer(text: string): string | null {
         // Try group query first: "הנכדים", "הילדים של מור", "ספרי לי על הנכדים"
         const groupAnswer = searchFamilyGroup(route.query)
         if (groupAnswer) return groupAnswer
-        const r = searchFamily(route.familyQuery ?? '')
+        // "ספרי לי על X" / "contame de X" → rich, warmer reply; "מי זאת X" → terse.
+        const richMode = /ספרי לי (עוד )?על|ספר לי על|תספרי לי על|ספרי עוד על|cont[aá]me (de|sobre)|h[aá]blame de/i.test(route.query)
+        const r = searchFamily(route.familyQuery ?? '', richMode)
         // Spanish: re-shape with Spanish family answer
         if (lang === 'es' && r.found && r.members.length > 0) {
-          return shapeFamilyAnswerES(r.members[0]!)
+          return shapeFamilyAnswerES(r.members[0]!, richMode)
         }
         if (lang === 'es' && !r.found) {
           return 'No conozco a nadie con ese nombre. ¿Otro nombre?'

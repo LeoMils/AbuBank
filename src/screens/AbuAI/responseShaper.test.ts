@@ -31,25 +31,28 @@ describe('timeInWords', () => {
 // ─── Family ─────────────────────────────────────────────────────────────────
 
 describe('shapeFamilyAnswer', () => {
-  it('Mor: natural pronoun sentence', () => {
-    const answer = shapeFamilyAnswer(makeMember({
-      children: ['אופיר', 'איילון', 'עילי', 'אדר'],
-    }))
-    expect(answer).toContain('מור, הבת שלך.')
-    expect(answer).toContain('אופיר, איילון, עילי ואדר.')
+  it('terse ("מי זאת") gives role only; rich ("ספרי לי על") adds children — they DIFFER', () => {
+    const member = makeMember({ children: ['אופיר', 'איילון', 'עילי', 'אדר'] })
+    const terse = shapeFamilyAnswer(member, false)
+    const rich = shapeFamilyAnswer(member, true)
+    expect(terse).toContain('מור, הבת שלך.')
+    expect(terse).not.toContain('אופיר, איילון, עילי ואדר.') // terse omits the children list
+    expect(rich).toContain('אופיר, איילון, עילי ואדר.')       // rich includes it
+    expect(rich).not.toBe(terse)                              // RC4: the two answers must differ
   })
 
-  it('grandson uses dash format', () => {
+  it('grandson uses warm role phrasing, not a dash dump', () => {
     const answer = shapeFamilyAnswer(makeMember({ relationshipHebrew: 'נכד (בן של מור ורפי)' }))
-    expect(answer).toContain('מור —')
+    expect(answer).toContain('מור, הנכד שלך')
+    expect(answer).not.toContain('מור —')
   })
 
-  it('children list uses ו before last name', () => {
-    expect(shapeFamilyAnswer(makeMember({ children: ['א', 'ב', 'ג'] }))).toContain('א, ב וג')
+  it('rich children list uses ו before last name', () => {
+    expect(shapeFamilyAnswer(makeMember({ children: ['א', 'ב', 'ג'] }), true)).toContain('א, ב וג')
   })
 
-  it('single child — no ו', () => {
-    expect(shapeFamilyAnswer(makeMember({ children: ['נועם'] }))).toContain('ילד אחד — נועם')
+  it('rich single child — no ו', () => {
+    expect(shapeFamilyAnswer(makeMember({ children: ['נועם'] }), true)).toContain('ילד אחד — נועם')
   })
 
   it('no notes in new format', () => {
