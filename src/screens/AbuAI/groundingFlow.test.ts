@@ -15,7 +15,7 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
   })
 
   it('"מה יש לי היום?" returns grounded answer, never calls LLM', () => {
-    const today = new Date().toISOString().split('T')[0]!
+    const today = new Date().toLocaleDateString('sv-SE')
     storage['abubank-calendar-appointments'] = JSON.stringify([
       { id: 'a1', title: 'רופא שיניים', date: today, time: '10:00', emoji: '🏥', color: '#C9A84C' },
     ])

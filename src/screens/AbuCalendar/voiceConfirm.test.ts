@@ -65,7 +65,7 @@ describe('Voice confirmation — wiring', () => {
 
 describe('Voice confirmation — read-back template wired', () => {
   it('happy-path read-back produced by shaper is a Hebrew sentence ending with "לקבוע?"', () => {
-    const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+    const tmrw = new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
     const msg = shapeCreateConfirmReadback({
       title: 'תור אצל התופרת',
       personName: null,

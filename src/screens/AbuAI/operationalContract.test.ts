@@ -38,7 +38,7 @@ function tomorrowLocal(): string {
 function tomorrowUTC(): string {
   const d = new Date()
   d.setDate(d.getDate() + 1)
-  return d.toISOString().split('T')[0]!
+  return d.toLocaleDateString('sv-SE')
 }
 
 // ═══ A. Hebrew Time Parsing ═══════════════════════════════════════════════════

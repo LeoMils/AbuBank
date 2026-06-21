@@ -223,7 +223,7 @@ describe('shapeCreateConfirm', () => {
   })
 
   it('says מחר for tomorrow date', () => {
-    const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+    const tmrw = new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
     const msg = shapeCreateConfirm({ title: 'קניות', date: tmrw, time: '10:00', emoji: '🛒' })
     expect(msg).toContain('מחר')
   })
@@ -238,7 +238,7 @@ describe('shapeCreateConfirm', () => {
   it('default shapeCreateConfirm output is unchanged for the baseline fixture', () => {
     // Pin the existing wording so the readback variant cannot accidentally
     // alter it via shared helpers.
-    const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+    const tmrw = new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
     const msg = shapeCreateConfirm({ title: 'תור לרופא', date: tmrw, time: '10:00', emoji: '🏥' })
     expect(msg).toContain('תור לרופא')
     expect(msg).toContain('מחר')
@@ -252,7 +252,7 @@ describe('shapeCreateConfirm', () => {
 // ─── Calendar Create Read-back ──────────────────────────────────────────────
 
 describe('shapeCreateConfirmReadback', () => {
-  const tmrw = () => new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+  const tmrw = () => new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
 
   it('happy path — all fields → ends with לקבוע? and includes every clause', () => {
     const msg = shapeCreateConfirmReadback({

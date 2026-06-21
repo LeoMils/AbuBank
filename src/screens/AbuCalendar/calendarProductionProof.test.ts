@@ -30,10 +30,10 @@ beforeEach(() => {
 })
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
-const today = new Date().toISOString().split('T')[0]!
-const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]! })()
-const nextWeek = (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.toISOString().split('T')[0]! })()
-const lastWeek = (() => { const d = new Date(); d.setDate(d.getDate() - 3); return d.toISOString().split('T')[0]! })()
+const today = new Date().toLocaleDateString('sv-SE')
+const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toLocaleDateString('sv-SE') })()
+const nextWeek = (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.toLocaleDateString('sv-SE') })()
+const lastWeek = (() => { const d = new Date(); d.setDate(d.getDate() - 3); return d.toLocaleDateString('sv-SE') })()
 
 function seedEvents() {
   const events: Omit<Appointment, 'id' | 'color'>[] = [

@@ -13,7 +13,7 @@ import { tryGroundedAnswer } from './service'
 function tomorrowLocal(): string {
   const d = new Date()
   d.setDate(d.getDate() + 1)
-  return d.toISOString().split('T')[0]!
+  return d.toLocaleDateString('sv-SE')
 }
 
 describe('RUNTIME PROOF — end-to-end calendar pipeline', () => {

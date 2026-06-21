@@ -223,8 +223,11 @@ export function shapeCalendarAnswerES(events: Appointment[], scope: 'today' | 't
 import type { CreateDraft } from './calendarCreate'
 
 export function dateLabel(date: string): string {
-  const today = new Date().toISOString().split('T')[0]!
-  const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+  // LOCAL today/tomorrow (sv-SE = ISO YYYY-MM-DD in local TZ), consistent with
+  // the calendar write/read paths — toISOString() would mis-detect "מחר" in the
+  // early-morning UTC+offset window.
+  const today = new Date().toLocaleDateString('sv-SE')
+  const tmrw = new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
   if (date === today) return 'היום'
   if (date === tmrw) return 'מחר'
   const d = new Date(date)
