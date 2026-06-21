@@ -4,6 +4,18 @@
 
 const REALTIME_MODEL = 'gpt-4o-realtime-preview'
 
+// The ephemeral-session endpoint. It is a BETA route — it requires the
+// `OpenAI-Beta: realtime=v1` header, without which it returns 404 ("Invalid
+// URL"). Exported + asserted by a guard test so a future edit can't silently
+// drop the header or path.
+export const REALTIME_SESSION_URL = 'https://api.openai.com/v1/realtime/sessions'
+export const REALTIME_BETA_HEADER = { 'OpenAI-Beta': 'realtime=v1' }
+
+/** Reject the docs placeholder / obvious stubs before any network call. */
+export function isPlaceholderKey(k: string | undefined): boolean {
+  return !k || k.length < 20 || /^(sk-\.\.\.|sk-xxx|your_|placeholder|example|<)/i.test(k)
+}
+
 export type RealtimeState = 'idle' | 'connecting' | 'listening' | 'speaking' | 'error'
 
 export interface RealtimeCallbacks {
@@ -52,8 +64,10 @@ export class RealtimeVoiceSession {
 
   async connect(): Promise<void> {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-    if (!apiKey) {
-      this.cb.onError('מפתח OpenAI לא הוגדר.')
+    if (isPlaceholderKey(apiKey)) {
+      // Missing or placeholder ("sk-...") key — never call OpenAI (it would 401/404).
+      // Fall back to the pipeline gracefully, no retries.
+      this.cb.onError('מצב הקול לא מוגדר. עוברת למצב חלופי.')
       this.setState('error')
       this.onFatalError?.()
       return
@@ -63,11 +77,12 @@ export class RealtimeVoiceSession {
 
     try {
       // 1. Get ephemeral token
-      const tokenRes = await fetch('https://api.openai.com/v1/realtime/sessions', {
+      const tokenRes = await fetch(REALTIME_SESSION_URL, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          ...REALTIME_BETA_HEADER, // required — without it the endpoint 404s
         },
         body: JSON.stringify({
           model: REALTIME_MODEL,
@@ -86,16 +101,16 @@ export class RealtimeVoiceSession {
 
       if (!tokenRes.ok) {
         const errText = await tokenRes.text().catch(() => '')
-        // v24.3: Detect quota/billing errors — fall back to free pipeline immediately
-        if (tokenRes.status === 429 || errText.includes('quota') || errText.includes('billing') || errText.includes('exceeded')) {
-          console.error('[Realtime] OpenAI quota exceeded — falling back to free pipeline')
-          this.cb.onError('המכסה של OpenAI נגמרה. עוברת למצב חלופי.')
-          this.setState('error')
-          this.cleanup()
-          this.onFatalError?.() // immediately fall back to pipeline — don't retry
-          return
-        }
-        throw new Error(`Session creation failed (${tokenRes.status}): ${errText.slice(0, 100)}`)
+        const isQuota = tokenRes.status === 429 || /quota|billing|exceeded/.test(errText)
+        // ANY token failure (404 invalid-URL, 401/403 auth, 404 no-realtime-access,
+        // quota) falls back to the free pipeline ONCE — never a noisy retry loop and
+        // never a raw provider error to the UI. Diagnostic logs the status only, no key.
+        console.error(`[Realtime] session creation failed (${tokenRes.status}) — falling back to pipeline`)
+        this.cb.onError(isQuota ? 'המכסה של OpenAI נגמרה. עוברת למצב חלופי.' : 'מצב הקול לא זמין כרגע. עוברת למצב חלופי.')
+        this.setState('error')
+        this.cleanup()
+        this.onFatalError?.() // immediately fall back — do not retry, do not throw
+        return
       }
 
       const sessionData = await tokenRes.json()

@@ -8,6 +8,13 @@
 
 export const config = { runtime: 'edge' }
 
+// A real OpenAI key is sk-... with length >> 20. Reject the docs placeholder and
+// obvious stubs BEFORE calling OpenAI, so an unconfigured server never produces a
+// raw 401 (and never leaks the provider error).
+export function isPlaceholderKey(k: string | undefined): boolean {
+  return !k || k.length < 20 || /^(sk-\.\.\.|sk-xxx|your_|placeholder|example|<)/i.test(k)
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ ok: false, error: 'POST only' }), { status: 405 })
@@ -17,6 +24,14 @@ export default async function handler(req: Request): Promise<Response> {
   const apiKey = env.OPENAI_API_KEY
   if (!apiKey) {
     return new Response(JSON.stringify({ ok: false, error: 'OPENAI_API_KEY_MISSING' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  if (isPlaceholderKey(apiKey)) {
+    // Placeholder/invalid key configured on the server — don't call OpenAI (it
+    // would 401). Safe, non-leaking message for the UI.
+    return new Response(JSON.stringify({ ok: false, error: 'OPENAI_API_KEY_INVALID', userMessage: 'יש בעיה בהגדרת השירות. דברי עם לאו והוא יסדר.' }), {
       status: 503,
       headers: { 'Content-Type': 'application/json' },
     })
@@ -46,9 +61,15 @@ export default async function handler(req: Request): Promise<Response> {
     })
 
     if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      return new Response(JSON.stringify({ ok: false, error: `OpenAI STT ${res.status}`, detail: errText.slice(0, 200) }), {
-        status: res.status,
+      // NEVER leak the raw provider error to the UI. Map to a safe shape.
+      await res.text().catch(() => '')
+      const isAuth = res.status === 401 || res.status === 403
+      return new Response(JSON.stringify({
+        ok: false,
+        error: isAuth ? 'OPENAI_API_KEY_INVALID' : 'STT_PROVIDER_FAILED',
+        userMessage: isAuth ? 'יש בעיה בהגדרת השירות. דברי עם לאו.' : 'לא הצלחתי להבין את ההקלטה. ננסה שוב?',
+      }), {
+        status: isAuth ? 503 : 502,
         headers: { 'Content-Type': 'application/json' },
       })
     }

@@ -130,6 +130,24 @@ function extractDateFromBirthdayResponse(messages: ChatMessage[]): string | null
   return null
 }
 
+/** Last substantive (non-fragment, non-family/calendar) user topic, scaffolding
+ *  stripped — e.g. "באיזה שנה הייתה המהפכה הצרפתית" → "המהפכה הצרפתית". */
+function findLastUserTopic(messages: ChatMessage[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]!
+    if (m.role !== 'user') continue
+    const t = m.content.trim()
+    if (t.split(/\s+/).length < 2) continue // fragment
+    if (/^(מי\b|מה יש לי|מתי|תקבעי|תזכירי|עליה|עליו|ו?עוד|תמשיכי|על זה|ומה עם זה)/.test(t)) continue // family/calendar/fragment
+    const topic = t
+      .replace(/^(?:באיזה|איזה|מה|מתי|איפה|כמה|למה|ספרי לי עוד על|ספרי לי על|תספרי לי על|ספרי לי)\s+/i, '')
+      .replace(/^(?:שנה|זמן|תאריך)\s+(?:הייתה|היה|הי?תה)\s+/, '')
+      .replace(/[?？]/g, '').trim()
+    return topic.length >= 2 ? topic : null
+  }
+  return null
+}
+
 export function resolveFollowUp(
   text: string,
   recentMessages: ChatMessage[],
@@ -203,13 +221,29 @@ export function resolveFollowUp(
           return { resolved: `ספרי לי עוד על ${nameInPrev}`, wasFollowUp: true }
         }
       }
-      return { resolved: 'ספרי לי עוד', wasFollowUp: true }
+      // Not family — continue the last general topic so the thread holds.
+      const topic = findLastUserTopic(recentMessages)
+      return { resolved: topic ? `ספרי לי עוד על ${topic}` : 'ספרי לי עוד', wasFollowUp: true }
     }
 
     // Only expand if we have family context AND the fragment is short (a name)
     const lastContext = findLastContext(recentMessages)
     if (lastContext && FAMILY_ROUTES.has(lastContext) && name.length <= 10) {
       return { resolved: expandName(name), wasFollowUp: true }
+    }
+  }
+
+  // General-topic continuation (NOT family/calendar): "תמשיכי", "עוד", "על זה",
+  // "ומה עם זה", "על ההיסטוריה" → continue the last substantive topic so the LLM
+  // keeps the thread instead of losing it. (Family/calendar already handled above.)
+  const CONTINUE_FRAG = /^(?:עוד|תמשיכי|תמשיך|המשיכי|הלאה|על זה|ועל זה|ומה עם זה)\??$/i
+  const aboutMatch = trimmed.match(/^ו?על\s+(.{2,40}?)\??$/)
+  if (CONTINUE_FRAG.test(trimmed) || aboutMatch) {
+    const lastCtx = findLastContext(recentMessages)
+    const familyOrCal = !!lastCtx && (FAMILY_ROUTES.has(lastCtx) || CALENDAR_ROUTES.has(lastCtx))
+    if (!familyOrCal) {
+      const topic = (aboutMatch && !/^זה$/.test(aboutMatch[1]!.trim())) ? aboutMatch[1]!.trim() : findLastUserTopic(recentMessages)
+      if (topic) return { resolved: `ספרי לי עוד על ${topic}`, wasFollowUp: true }
     }
   }
 
