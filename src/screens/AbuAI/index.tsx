@@ -433,7 +433,7 @@ export function AbuAI() {
           soundSuccess()
           setCreateState(IDLE_STATE)
           // P0-4: Deterministic readback — verify appointment was saved
-          const verified = loadAppointments().find(a => a.title === d.title && a.date === d.date)
+          const verified = loadAppointments().find(a => a.title === d.title && a.date === d.date && (a.time ?? null) === (d.time ?? null))
           let savedText: string
           if (verified) {
             const timeStr = verified.time ? ` ${timeInWords(verified.time)}` : ''
@@ -1358,7 +1358,7 @@ export function AbuAI() {
               soundSuccess()
               setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE
               // P0-4: Deterministic readback — verify appointment was saved
-              const verified = loadAppointments().find(a => a.title === d.title && a.date === d.date)
+              const verified = loadAppointments().find(a => a.title === d.title && a.date === d.date && (a.time ?? null) === (d.time ?? null))
               if (verified) {
                 const timeStr = verified.time ? ` ${timeInWords(verified.time)}` : ''
                 response = `קבוע — ${verified.title}${d.date ? ' ' + dateLabel(d.date) : ''}${timeStr}.`
