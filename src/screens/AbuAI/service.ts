@@ -10,6 +10,35 @@ import { describeRelation, loadGraph, type Lang } from './familyGraph'
 import { detectLanguage } from './proactive'
 import { shapeFamilyAnswerES, shapeCalendarAnswerES, shapeLocationAnswerES, shapeCreateConfirmES, shapeCreateSavedES, shapeCreateCancelledES, shapeCreateClarifyES } from './responseShaper'
 import { durable } from '../../services/durableStore'
+import { resolveRelationalQuery } from './relationalResolver'
+
+// ─── Boundary-time parser for READ queries ("אחרי 5" / "לפני 10" / "אחרי שבע
+// בערב" / "לפני הצהריים"). More permissive than parseHebrewTime (which needs a
+// ב/ל prefix and stays strict for CREATE) — used ONLY for before/after/exact
+// filtering, NEVER to create an event. ─────────────────────────────────────────
+const QB_HOUR_WORDS: Record<string, number> = {
+  'אחת עשרה': 11, 'שתים עשרה': 12, 'אחת': 1, 'שתיים': 2, 'שתים': 2, 'שלוש': 3,
+  'ארבע': 4, 'חמש': 5, 'שש': 6, 'שבע': 7, 'שמונה': 8, 'תשע': 9, 'עשר': 10,
+}
+function applyReadPeriod(h: number, t: string): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  if (/בבוקר|לפנות בוקר|morning/i.test(t)) return `${pad(h >= 12 ? h - 12 : h)}:00`
+  if (/בערב|בלילה|אחר[י]? הצהריים|אחה"צ|אחה״צ|אחהצ|evening|night/i.test(t)) return `${pad(h >= 1 && h <= 11 ? h + 12 : h)}:00`
+  if (/בצהריים|הצהריים|noon/i.test(t)) return `${pad(h === 12 ? 12 : h)}:00`
+  // No period word: appointment-day convention — 1-6 → afternoon/evening, 7-12 → AM.
+  return `${pad(h >= 1 && h <= 6 ? h + 12 : h)}:00`
+}
+export function parseQueryBoundaryTime(text: string): string | null {
+  const direct = parseHebrewTime(text)
+  if (direct) return direct
+  const d = text.match(/(?:לפני|אחרי|before|after)\s+(?:ה?שעה\s+)?(\d{1,2})(?!\s*[:.]?\d)/i)
+  if (d) return applyReadPeriod(parseInt(d[1]!, 10), text)
+  for (const [w, n] of Object.entries(QB_HOUR_WORDS).sort((a, b) => b[0].length - a[0].length)) {
+    if (new RegExp(`(?:לפני|אחרי)\\s+(?:ה?שעה\\s+)?${w}`).test(text)) return applyReadPeriod(n, text)
+  }
+  if (/(?:לפני|אחרי)\s+(?:ה)?צהריים/.test(text)) return '12:00'
+  return null
+}
 
 // ─── Conversation Summary ────────────────────────────────────────────────────
 
@@ -327,7 +356,7 @@ export function tryGroundedAnswer(text: string): string | null {
       case 'calendar_today': {
         const r = getTodayEvents()
         // Filter by specific or after time ("מה יש לי בארבע" / "מה יש לי אחרי ארבע")
-        const todayRequestedTime = parseHebrewTime(text)
+        const todayRequestedTime = parseQueryBoundaryTime(text)
         let todayEvents = r.events
         const isAfterQuery = /אחרי|אחר|after/i.test(text)
         const isBeforeQuery = /לפני|before/i.test(text)
@@ -355,7 +384,7 @@ export function tryGroundedAnswer(text: string): string | null {
       case 'calendar_tomorrow': {
         const r = getTomorrowEvents()
         // P0-5: Filter by specific time if query mentions one
-        const tmrwRequestedTime = parseHebrewTime(text)
+        const tmrwRequestedTime = parseQueryBoundaryTime(text)
         let tmrwEvents = r.events
         if (tmrwRequestedTime && tmrwEvents.length > 0) {
           const tmrwIsAfter = /אחרי|אחר|after/i.test(text)
@@ -443,6 +472,12 @@ export function tryGroundedAnswer(text: string): string | null {
         return r.summary
       }
       case 'family_lookup': {
+        // Spanish/English relational queries ("la hija de Mor", "Ofir's mother",
+        // "quién es la tía de X") → resolve via the same graph, Latin names.
+        if (lang === 'es' || lang === 'en') {
+          const rel = resolveRelationalQuery(route.query, lang)
+          if (rel) return rel
+        }
         // Relational role queries: "מי אמא של X?", "מי בת הזוג של X?", "מי סבתא של X?"
         const roleMatch = route.query.match(/מי\s+(סבתא רבתא|סבא רבא|אמא|אבא|סבתא|סבא|דודה|דוד|אחות|אח|בת הזוג|בן הזוג|החברה|החבר)\s+של\s+(\S+)/)
         if (roleMatch) {

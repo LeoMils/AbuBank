@@ -25,6 +25,7 @@ import { enforceCompanion, findBannedPhrase } from '../src/screens/AbuAI/compani
 import { tryGroundedAnswer } from '../src/screens/AbuAI/service'
 import { routePersonalQuery } from '../src/screens/AbuAI/router'
 import { saveAppointments, loadAppointments, createAppointmentSafe } from '../src/screens/AbuCalendar/service'
+import { resolveRelationalQuery } from '../src/screens/AbuAI/relationalResolver'
 
 // seed tomorrow 16:00 for calendar reads
 const now = new Date(); const tmr = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
@@ -84,6 +85,22 @@ const SC: Scenario[] = [
     const found = loadAppointments().some(a => a.title === 'בדיקה' && a.date === tISO && a.time === '11:00')
     const ok = (res as { ok?: boolean }).ok !== false && found
     return { score: ok ? 3 : 0, reason: ok ? 'save verified by readback' : 'fake-save risk (HARD)' }
+  } },
+  // ── Spanish / English relational (deterministic, L-2 closed) ──
+  { id: 'M-ES-REL', cat: 'spanish/relational', turns: ['la mamá de Ofir'], check: () => {
+    const a = resolveRelationalQuery('la mamá de Ofir', 'es') ?? ''
+    const ok = a.includes('Mor') && !/[֐-׿]/.test(a) && noRaw(a)
+    return { score: ok ? 3 : 0, reason: ok ? 'ES relation, Latin name, no dump' : 'wrong relation (HARD)' }
+  } },
+  { id: 'M-EN-REL', cat: 'english/relational', turns: ["who is Ofir's uncle"], check: () => {
+    const a = resolveRelationalQuery("who is Ofir's uncle", 'en') ?? ''
+    const ok = a.includes('Leo') && noRaw(a)
+    return { score: ok ? 3 : 0, reason: ok ? 'EN uncle inferred' : 'wrong relation (HARD)' }
+  } },
+  { id: 'M-FAM-HONEST', cat: 'family/no-invention', turns: ['la hija de Mor'], check: () => {
+    const a = resolveRelationalQuery('la hija de Mor', 'es') ?? ''
+    const ok = /no tiene/.test(a) // Mor has only sons — must not invent a daughter
+    return { score: ok ? 3 : 0, reason: ok ? 'honest: no invented relation' : 'invented relation (HARD)' }
   } },
   // ── LLM-dependent (BLOCKED_BY_KEYS) ──
   { id: 'M-CASUAL-1', cat: 'casual chat', turns: ['מה נשמע?'], needs: 'llm', check: () => ({ score: 0, reason: 'prose quality needs live model' }) },
