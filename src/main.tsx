@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { App } from './App'
 import { APP_VERSION } from './version'
+import { durable } from './services/durableStore'
 
 console.info('[AbuBank Build]', APP_VERSION)
 
@@ -24,13 +25,21 @@ if ((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
   }).catch(() => { /* nothing — best-effort cleanup */ })
 }
 
-const root = document.getElementById('root')
-if (root) {
-  createRoot(root).render(
-    <StrictMode>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </StrictMode>,
-  )
+// Hydrate durable storage (migrate localStorage → IndexedDB, restore the
+// localStorage mirror from IndexedDB so evicted appointments/reminders come
+// back) BEFORE mounting, so the first read sees durable data. Best-effort:
+// any failure degrades gracefully to the localStorage-only path.
+async function boot() {
+  try { await durable.init() } catch { /* best-effort; degrade to localStorage */ }
+  const root = document.getElementById('root')
+  if (root) {
+    createRoot(root).render(
+      <StrictMode>
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+      </StrictMode>,
+    )
+  }
 }
+void boot()

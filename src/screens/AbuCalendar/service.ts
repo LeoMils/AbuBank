@@ -1,3 +1,5 @@
+import { durable } from '../../services/durableStore'
+
 const STORAGE_KEY = 'abubank-calendar-appointments'
 
 export interface Appointment {
@@ -43,7 +45,9 @@ export function loadAppointments(): Appointment[] {
 
 export function saveAppointments(appts: Appointment[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appts))
+    // Durable write-through: localStorage mirror (sync, read by loadAppointments)
+    // + IndexedDB (durable, restored to the mirror on next app start).
+    durable.setString(STORAGE_KEY, JSON.stringify(appts))
   } catch {
     // ignore storage errors
   }
