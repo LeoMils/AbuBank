@@ -142,6 +142,7 @@ function findLastUserTopic(messages: ChatMessage[]): string | null {
     const topic = t
       .replace(/^(?:באיזה|איזה|מה|מתי|איפה|כמה|למה|ספרי לי עוד על|ספרי לי על|תספרי לי על|ספרי לי)\s+/i, '')
       .replace(/^(?:שנה|זמן|תאריך)\s+(?:הייתה|היה|הי?תה)\s+/, '')
+      .replace(/^ו?על\s+/, '') // avoid "ספרי לי עוד על על X" when the topic already starts with "על"
       .replace(/[?？]/g, '').trim()
     return topic.length >= 2 ? topic : null
   }
@@ -191,7 +192,7 @@ export function resolveFollowUp(
   }
 
   // Multi-word calendar follow-ups: "ומה אחרי זה?", "ומה בשבוע הבא?"
-  const CALENDAR_FOLLOWUP = /^ו?מה\s+(אחרי זה|אחר כך|הלאה|בשבוע הבא|בחודש הבא)\??$/i
+  const CALENDAR_FOLLOWUP = /^ו?מה\s+(אחרי זה|אחר כך|הלאה|בשבוע הבא|בחודש הבא|ביום הבא|למחרת)\??$/i
   const calFollowUp = trimmed.match(CALENDAR_FOLLOWUP)
   if (calFollowUp) {
     const lastContext = findLastContext(recentMessages)
@@ -200,6 +201,10 @@ export function resolveFollowUp(
       if (/אחרי זה|אחר כך|הלאה/.test(phrase)) {
         // "what's after that" after today → upcoming/week
         return { resolved: 'מה יש לי השבוע?', wasFollowUp: true }
+      }
+      if (/ביום הבא|למחרת/.test(phrase)) {
+        // "and the next day" → tomorrow's schedule
+        return { resolved: 'מה יש לי מחר?', wasFollowUp: true }
       }
       return { resolved: `מה יש לי ${phrase}?`, wasFollowUp: true }
     }
