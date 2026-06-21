@@ -118,9 +118,15 @@ export function searchFamilyGroup(query: string): string | null {
   return null
 }
 
-function todayStr(): string { return new Date().toISOString().split('T')[0]! }
-function tomorrowStr(): string { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]! }
-function weekEndStr(): string { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().split('T')[0]! }
+// LOCAL date (not UTC) — must match the calendar WRITE path (getTodayStr in
+// AbuCalendar/constants), or "מה יש לי היום" returns yesterday's events in the
+// early-morning UTC+2/+3 window (Israel). toISOString() would use UTC.
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function todayStr(): string { return localDateStr(new Date()) }
+function tomorrowStr(): string { const d = new Date(); d.setDate(d.getDate() + 1); return localDateStr(d) }
+function weekEndStr(): string { const d = new Date(); d.setDate(d.getDate() + 7); return localDateStr(d) }
 
 function formatEventNatural(e: Appointment): string {
   const time = e.time ? ` בשעה ${e.time}` : ''

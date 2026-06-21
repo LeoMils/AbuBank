@@ -26,9 +26,12 @@ describe('WAR ROOM — AbuAI Recovery Test Matrix', () => {
 
   // T2: Tomorrow with seeded event
   it('T2: מה יש לי מחר? (with רופא 10:00) → רופא + time', () => {
-    // Compute tomorrow dynamically (fake timers set to April 29, 2026)
+    // Compute tomorrow dynamically (fake timers set to April 29, 2026).
+    // Seed with the LOCAL date (matching the calendar write path / tools.ts
+    // read path) — toISOString() would UTC-shift local midnight to the prior
+    // day at positive offsets and seed the wrong date.
     const tomorrow = new Date(2026, 3, 30)
-    const tomorrowStr = tomorrow.toISOString().split('T')[0]!
+    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
     storage['abubank-calendar-appointments'] = JSON.stringify([
       { id: 'test-1', title: 'רופא', date: tomorrowStr, time: '10:00', emoji: '🏥', color: '#C9A84C' },
     ])

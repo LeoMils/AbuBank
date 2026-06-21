@@ -66,15 +66,25 @@ interface TurnOut {
 function runTurn(msgText: string, history: Msg[], idx: number): TurnOut {
   const plan = planCompanionTurn(msgText, deriveStateFromMessages(history))
   const planStr = `frame=${plan.step7_frame} act=${plan.step7_act} suppress=${plan.suppressLookups} cal=${plan.step5_calendar} online=${plan.step6_onlineNeeded} person=${plan.step4_continuity.resolvedPerson ?? '-'}`
-  const isDirectQ = DIRECT_Q.test(msgText.trim())
+  // Mirror runtime continuity consumption: rewrite a pronoun/topic continuation
+  // to a grounded query so the family engine answers (not the LLM).
+  let effectiveMsg = msgText
+  if (
+    plan.step4_continuity.continuesTopic && plan.step4_continuity.resolvedPerson &&
+    !plan.step3_familyEntity && !plan.suppressLookups &&
+    plan.step5_calendar === 'none' && !plan.step6_onlineNeeded
+  ) {
+    effectiveMsg = `ספרי לי על ${plan.step4_continuity.resolvedPerson}`
+  }
+  const isDirectQ = DIRECT_Q.test(effectiveMsg.trim())
   const skip = plan.suppressLookups && !isDirectQ
 
   let grounded: string | null = null
-  try { grounded = skip ? null : tryGroundedAnswer(msgText) } catch { grounded = null }
+  try { grounded = skip ? null : tryGroundedAnswer(effectiveMsg) } catch { grounded = null }
 
   let route = 'non_personal', source: string, engine: string, truth = '-', raw: string
   if (grounded !== null) {
-    const r = routePersonalQuery(msgText)
+    const r = routePersonalQuery(effectiveMsg)
     route = r.type
     const isCal = r.type.startsWith('calendar_')
     const isFamily = r.type.startsWith('family_') || r.type === 'birthday_lookup' || r.type === 'memorial_lookup'
@@ -109,7 +119,7 @@ interface Convo { id: string; cat: string; turns: Array<{ in: string; ex?: Expec
 const CONVOS: Convo[] = [
   { id: 'FAM', cat: 'family', turns: [
     { in: 'מי זאת מור?', ex: { truthHas: 'מור', person: 'מור' } },
-    { in: 'ספרי לי עליה', ex: { person: 'מור' } },
+    { in: 'ספרי לי עליה', ex: { person: 'מור', truthHas: 'מור', source: 'grounded+LLM' } },
     { in: 'מי אמא של אופיר?', ex: { truthHas: 'מור' } },
     { in: 'ומי סבתא רבתא של אנאבל?', ex: { truthHas: 'מרטיטה' } },
     { in: 'מי החברה של מור?', ex: { truthHas: 'יעל' } },
@@ -150,7 +160,7 @@ const CONVOS: Convo[] = [
   ]},
   { id: 'MEMORY', cat: 'memory/follow-up', turns: [
     { in: 'מי זאת יעל?', ex: { truthHas: 'יעל', person: 'יעל' } },
-    { in: 'ספרי לי עליה', ex: { person: 'יעל' } },
+    { in: 'ספרי לי עליה', ex: { person: 'יעל', truthHas: 'יעל', source: 'grounded+LLM' } },
     { in: 'ועוד?' },
   ]},
   { id: 'CORRECTION', cat: 'correction', turns: [

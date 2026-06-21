@@ -386,6 +386,22 @@ export function AbuAI() {
     const companionPlan = planCompanionTurn(msgText, companionState)
     diagSet({ companionPlan: `frame=${companionPlan.step7_frame} act=${companionPlan.step7_act} suppress=${companionPlan.suppressLookups} cal=${companionPlan.step5_calendar} online=${companionPlan.step6_onlineNeeded} person=${companionPlan.step4_continuity.resolvedPerson ?? '-'}` })
 
+    // Companion Brain continuity consumption: when the plan resolved a
+    // pronoun/topic-continuation ("ספרי לי עליה/עליו", "תמשיכי", "ועוד?") to a
+    // known person and the message itself names no one, rewrite to a grounded
+    // query so the deterministic family engine answers — not a raw LLM
+    // fallthrough. Skipped during emotion (suppress) and for task/online turns.
+    if (
+      companionPlan.step4_continuity.continuesTopic &&
+      companionPlan.step4_continuity.resolvedPerson &&
+      !companionPlan.step3_familyEntity &&
+      !companionPlan.suppressLookups &&
+      companionPlan.step5_calendar === 'none' &&
+      !companionPlan.step6_onlineNeeded
+    ) {
+      msgText = `ספרי לי על ${companionPlan.step4_continuity.resolvedPerson}`
+    }
+
     const aiMsgId = nextId()
     streamingMsgIdRef.current = aiMsgId
     let accumulated = ''
@@ -401,7 +417,7 @@ export function AbuAI() {
         const resolution = resolvePendingMessage(createState, msgText, isCalendarRead)
 
         const pushAssistant = (content: string) => {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(content, companionPlan), timestamp: Date.now() }])
           setLoading(false)
           streamingMsgIdRef.current = null
         }
@@ -456,7 +472,7 @@ export function AbuAI() {
       // no-side-effect responses. Falls through for AbuAI-native domains.
       const advisory = adviseFreeSpeech(msgText)
       if (advisory.response !== null) {
-        const advisoryMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: advisory.response, timestamp: Date.now() }
+        const advisoryMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(advisory.response, companionPlan), timestamp: Date.now() }
         setMessages(prev => [...prev, advisoryMsg])
         setLoading(false)
         streamingMsgIdRef.current = null
@@ -466,7 +482,7 @@ export function AbuAI() {
       // ─── Reminder pending (confirmation or time follow-up) ────────────
       if (pendingReminder) {
         const pushAssistant = (content: string) => {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(content, companionPlan), timestamp: Date.now() }])
           setLoading(false)
           streamingMsgIdRef.current = null
         }
@@ -531,7 +547,7 @@ export function AbuAI() {
       if (isCreateIntent(msgText) && UNRESOLVED_PRONOUN.test(msgText) && !_resolvedPerson) {
         const pronoun = msgText.match(UNRESOLVED_PRONOUN)?.[1] ?? ''
         const genderHint = /אליה|שלה|אותה|איתה/.test(pronoun) ? 'למי את מתכוונת?' : 'למי את מתכוונת?'
-        const aiMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: genderHint, timestamp: Date.now() }
+        const aiMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(genderHint, companionPlan), timestamp: Date.now() }
         setMessages(prev => [...prev, aiMsg])
         setLoading(false)
         streamingMsgIdRef.current = null
@@ -572,7 +588,7 @@ export function AbuAI() {
 
         const draft = parseReminder(reminderText, todayStr)
         const pushAssistant = (content: string) => {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(content, companionPlan), timestamp: Date.now() }])
           setLoading(false)
           streamingMsgIdRef.current = null
         }
@@ -696,7 +712,15 @@ export function AbuAI() {
           }
           const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
           const timeStr = time ? ` בשעה ${time}` : ''
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `קבעתי ${title} כל יום ${dayNames[recurDay]}${timeStr} ל-4 השבועות הקרובים.`, timestamp: Date.now() }])
+          // Readback: never say "קבעתי" without verifying the events persisted (P0 — no fake-save).
+          const savedRec = loadAppointments()
+          const persisted = dates.filter(date => savedRec.some(a => a.title === title && a.date === date && (a.time ?? null) === (time || '09:00'))).length
+          const recurMsg = persisted === dates.length
+            ? `קבעתי ${title} כל יום ${dayNames[recurDay]}${timeStr} ל-4 השבועות הקרובים.`
+            : persisted > 0
+              ? `קבעתי ${persisted} מתוך ${dates.length} פעמים. ${title} כל יום ${dayNames[recurDay]}${timeStr}.`
+              : 'לא הצליח להישמר. ננסה שוב?'
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(recurMsg, companionPlan), timestamp: Date.now() }])
         } else {
           setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'באיזה יום בשבוע? למשל: "כל יום שלישי בעשר"', timestamp: Date.now() }])
         }
@@ -817,7 +841,7 @@ export function AbuAI() {
             ? parts.join('. ') + '.'
             : 'לא זוכרת נושא ברור שדיברנו עליו.'
         }
-        const recallMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: recallContent, timestamp: Date.now() }
+        const recallMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(recallContent, companionPlan), timestamp: Date.now() }
         setMessages(prev => [...prev, recallMsg])
         setLoading(false)
         streamingMsgIdRef.current = null
@@ -844,11 +868,11 @@ export function AbuAI() {
             messages.map(m => ({ role: m.role, content: m.content })),
             proactiveSeed.text,
           )
-          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enhanced, timestamp: Date.now() }
+          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(enhanced, companionPlan), timestamp: Date.now() }
           setMessages(prev => [...prev, proactiveMsg])
         } else {
           // Voice mode: use deterministic seed for speed
-          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: proactiveSeed.text, timestamp: Date.now() }
+          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(proactiveSeed.text, companionPlan), timestamp: Date.now() }
           setMessages(prev => [...prev, proactiveMsg])
         }
         setLoading(false)
@@ -875,7 +899,7 @@ export function AbuAI() {
             { lang: world.language, allowFollowUp: true },
             world,
           )
-          const contentMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: compiled.text, timestamp: Date.now() }
+          const contentMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(compiled.text, companionPlan), timestamp: Date.now() }
           setMessages(prev => [...prev, contentMsg])
           setLoading(false)
           streamingMsgIdRef.current = null
@@ -907,6 +931,7 @@ export function AbuAI() {
               .join('\n')
             if (list) body = `${online.answer}\n\nמקורות:\n${list}`
           }
+          body = enforceCompanion(body, companionPlan)
           setMessages(prev => {
             const updated = [...prev]
             const idx = updated.findIndex(m => m.id === aiMsgId)

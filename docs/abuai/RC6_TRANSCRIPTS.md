@@ -18,8 +18,8 @@
 <sub>plan: frame=fact act=answer suppress=false cal=none online=false person=מור | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר. | raw(stub): "על פי הנתונים, מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר." | ✅</sub>
 
 **M:** ספרי לי עליה
-**A:** בטח, נדבר על זה.
-<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=מור | route: fact/continue | source: llm(stub) | engine: streamMessage | truth: - | raw(stub): "אשמח לעזור! בטח, נדבר על זה." | ✅</sub>
+**A:** מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר.
+<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=מור | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר. | raw(stub): "אשמח לעזור! מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר." | ✅</sub>
 
 **M:** מי אמא של אופיר?
 **A:** מור.
@@ -41,12 +41,16 @@
 ### CAL — calendar
 
 **M:** מה יש לי מחר?
-**A:** מחר אין כלום. יום שקט.
-<sub>plan: frame=task act=answer suppress=false cal=read online=false person=- | route: calendar_tomorrow | source: grounded+LLM | engine: calendar/service | truth: מחר אין כלום. יום שקט. | raw(stub): "על פי הנתונים, מחר אין כלום. יום שקט." | ✅</sub>
+**A:** מחר יש לך רופא. בארבע אחר הצהריים.
+<sub>plan: frame=task act=answer suppress=false cal=read online=false person=- | route: calendar_tomorrow | source: grounded+LLM | engine: calendar/service | truth: מחר יש לך רופא.
+בארבע אחר הצהריים. | raw(stub): "על פי הנתונים, מחר יש לך רופא.
+בארבע אחר הצהריים." | ✅</sub>
 
 **M:** מה יש לי מחר בארבע?
-**A:** מחר אין כלום. יום שקט.
-<sub>plan: frame=task act=answer suppress=false cal=read online=false person=- | route: calendar_tomorrow | source: grounded+LLM | engine: calendar/service | truth: מחר אין כלום. יום שקט. | raw(stub): "אשמח לעזור! מחר אין כלום. יום שקט." | ✅</sub>
+**A:** מחר יש לך רופא. בארבע אחר הצהריים.
+<sub>plan: frame=task act=answer suppress=false cal=read online=false person=- | route: calendar_tomorrow | source: grounded+LLM | engine: calendar/service | truth: מחר יש לך רופא.
+בארבע אחר הצהריים. | raw(stub): "אשמח לעזור! מחר יש לך רופא.
+בארבע אחר הצהריים." | ✅</sub>
 
 **M:** ומה יש אחרי ארבע?
 **A:** בטח, נדבר על זה.
@@ -126,12 +130,12 @@
 <sub>plan: frame=fact act=answer suppress=false cal=none online=false person=יעל | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: יעל — בת זוג של מור. | raw(stub): "על פי הנתונים, יעל — בת זוג של מור." | ✅</sub>
 
 **M:** ספרי לי עליה
-**A:** בטח, נדבר על זה.
-<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=יעל | route: fact/continue | source: llm(stub) | engine: streamMessage | truth: - | raw(stub): "אשמח לעזור! בטח, נדבר על זה." | ✅</sub>
+**A:** יעל — בת זוג של מור.
+<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=יעל | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: יעל — בת זוג של מור. | raw(stub): "אשמח לעזור! יעל — בת זוג של מור." | ✅</sub>
 
 **M:** ועוד?
-**A:** בטח, נדבר על זה.
-<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=יעל | route: fact/continue | source: llm(stub) | engine: streamMessage | truth: - | raw(stub): "שאלה מצוינת. בטח, נדבר על זה." | ✅</sub>
+**A:** יעל — בת זוג של מור.
+<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=יעל | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: יעל — בת זוג של מור. | raw(stub): "שאלה מצוינת. יעל — בת זוג של מור." | ✅</sub>
 
 
 ### CORRECTION — correction
