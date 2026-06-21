@@ -41,6 +41,27 @@ describe('WAR ROOM — AbuAI Recovery Test Matrix', () => {
     expect(answer).toContain('מחר')
   })
 
+  // T2b: before-time vs after-time vs exact-time tomorrow
+  it('T2b: before/after/exact-time queries filter correctly', () => {
+    const tomorrow = new Date(2026, 3, 30)
+    const d = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
+    storage['abubank-calendar-appointments'] = JSON.stringify([
+      { id: 'a', title: 'בוקר', date: d, time: '09:00', emoji: '☕', color: '#C9A84C' },
+      { id: 'b', title: 'רופא', date: d, time: '16:00', emoji: '🏥', color: '#C9A84C' },
+    ])
+    // Numeric times (the bare Hebrew word "ארבע" needs a ב/ל prefix to parse,
+    // which "לפני ארבע" cannot provide — a pre-existing parser limit).
+    const before = tryGroundedAnswer('מה יש לי מחר לפני 16:00?')!
+    expect(before).toContain('בוקר')
+    expect(before).not.toContain('רופא')        // before 16:00 excludes the 16:00 event
+    const after = tryGroundedAnswer('מה יש לי מחר אחרי 10:00?')!
+    expect(after).toContain('רופא')
+    expect(after).not.toContain('בוקר')         // after 10:00 excludes the 09:00 event
+    const exact = tryGroundedAnswer('מה יש לי מחר בארבע?')!
+    expect(exact).toContain('רופא')
+    expect(exact).not.toContain('בוקר')
+  })
+
   // T3: Past query — אתמול
   it('T3: מה היה לי אתמול? → routes to calendar_exact_date', () => {
     const route = routePersonalQuery('מה היה לי אתמול?')

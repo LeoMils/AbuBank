@@ -329,8 +329,11 @@ export function tryGroundedAnswer(text: string): string | null {
         const todayRequestedTime = parseHebrewTime(text)
         let todayEvents = r.events
         const isAfterQuery = /אחרי|אחר|after/i.test(text)
+        const isBeforeQuery = /לפני|before/i.test(text)
         if (todayRequestedTime && todayEvents.length > 0) {
-          if (isAfterQuery) {
+          if (isBeforeQuery) {
+            todayEvents = todayEvents.filter(e => e.time && e.time < todayRequestedTime)
+          } else if (isAfterQuery) {
             todayEvents = todayEvents.filter(e => e.time && e.time > todayRequestedTime)
           } else {
             const filtered = todayEvents.filter(e => e.time === todayRequestedTime)
@@ -338,7 +341,14 @@ export function tryGroundedAnswer(text: string): string | null {
           }
         }
         if (lang === 'es') return shapeCalendarAnswerES(todayEvents, 'today')
-        result = { ok: true, events: todayEvents, summary: r.summary }
+        // If a time filter changed the set, rebuild the summary from the
+        // filtered events (the original summary is unfiltered — it would leak
+        // events outside the asked window).
+        result = (todayRequestedTime && r.events.length !== todayEvents.length)
+          ? { ok: true, events: todayEvents, summary: todayEvents.length === 0
+              ? 'אין כלום בזמן הזה. יום שקט.'
+              : `היום ${todayEvents.map(e => `${e.emoji} ${e.title}${e.time ? ` ב${e.time}` : ''}`).join(', ')}.` }
+          : { ok: true, events: todayEvents, summary: r.summary }
         break
       }
       case 'calendar_tomorrow': {
@@ -348,7 +358,10 @@ export function tryGroundedAnswer(text: string): string | null {
         let tmrwEvents = r.events
         if (tmrwRequestedTime && tmrwEvents.length > 0) {
           const tmrwIsAfter = /אחרי|אחר|after/i.test(text)
-          if (tmrwIsAfter) {
+          const tmrwIsBefore = /לפני|before/i.test(text)
+          if (tmrwIsBefore) {
+            tmrwEvents = tmrwEvents.filter(e => e.time && e.time < tmrwRequestedTime)
+          } else if (tmrwIsAfter) {
             tmrwEvents = tmrwEvents.filter(e => e.time && e.time > tmrwRequestedTime)
           } else {
             const filtered = tmrwEvents.filter(e => e.time === tmrwRequestedTime)
@@ -356,7 +369,11 @@ export function tryGroundedAnswer(text: string): string | null {
           }
         }
         if (lang === 'es') return shapeCalendarAnswerES(tmrwEvents, 'tomorrow')
-        result = { ok: true, events: tmrwEvents, summary: r.summary }
+        result = (tmrwRequestedTime && r.events.length !== tmrwEvents.length)
+          ? { ok: true, events: tmrwEvents, summary: tmrwEvents.length === 0
+              ? 'מחר אין כלום בזמן הזה. יום שקט.'
+              : `מחר ${tmrwEvents.map(e => `${e.emoji} ${e.title}${e.time ? ` ב${e.time}` : ''}`).join(', ')}.` }
+          : { ok: true, events: tmrwEvents, summary: r.summary }
         break
       }
       case 'calendar_upcoming': {

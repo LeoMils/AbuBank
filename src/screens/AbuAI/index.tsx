@@ -749,6 +749,20 @@ export function AbuAI() {
         return
       }
 
+      // ─── Standalone "drop it / never mind" (no pending flow) ─────────────
+      // Inside a create/reminder flow these are handled by isCancel; arriving
+      // here means nothing is pending, so acknowledge warmly and reopen instead
+      // of falling through to the LLM with no handler.
+      const ABORT_RE = /^(עזבי|עזבי את זה|תעזבי|תשכחי|שכחי מזה|לא משנה|לא חשוב)\s*\.?$/
+      const NOT_THAT_RE = /^(לא לזה התכוונתי|לא זה|לא לזה)\s*\.?$/
+      if (ABORT_RE.test(msgText.trim()) || NOT_THAT_RE.test(msgText.trim())) {
+        const reply = ABORT_RE.test(msgText.trim()) ? 'בסדר, עזבנו. על מה בא לך לדבר?' : 'אה, סליחה. אז למה התכוונת?'
+        setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(reply, companionPlan), timestamp: Date.now() }])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
       // ─── Emotional mode: skip family lookup during emotional sharing ──────
       // When the last assistant turn was emotional (missing_pepe, sadness, loneliness)
       // and the current message is NOT a direct question, let the LLM handle it
