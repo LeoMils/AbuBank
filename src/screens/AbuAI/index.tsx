@@ -387,12 +387,18 @@ export function AbuAI() {
     const companionPlan = planCompanionTurn(msgText, companionState)
     diagSet({ companionPlan: `frame=${companionPlan.step7_frame} act=${companionPlan.step7_act} suppress=${companionPlan.suppressLookups} cal=${companionPlan.step5_calendar} online=${companionPlan.step6_onlineNeeded} person=${companionPlan.step4_continuity.resolvedPerson ?? '-'}` })
 
-    // Companion Brain continuity consumption: when the plan resolved a
-    // pronoun/topic-continuation ("ספרי לי עליה/עליו", "תמשיכי", "ועוד?") to a
-    // known person and the message itself names no one, rewrite to a grounded
-    // query so the deterministic family engine answers — not a raw LLM
-    // fallthrough. Skipped during emotion (suppress) and for task/online turns.
-    if (
+    // "תחזרי ל<name>" / "נחזור ל<name>" (go back to X) — the ל prefix on the name
+    // defeats the word-boundary matcher, so rewrite to a groundable form using
+    // the EXPLICIT name (not the last person). Grounding validates the name.
+    const backToMatch = msgText.match(/(?:תחזרי|נחזור|חזרה)\s+ל([֐-׿]{2,})/)
+    if (backToMatch && !companionPlan.suppressLookups) {
+      msgText = `ספרי לי על ${backToMatch[1]}`
+    } else if (
+      // Companion Brain continuity consumption: when the plan resolved a
+      // pronoun/topic-continuation ("ספרי לי עליה/עליו", "תמשיכי", "ועוד?") to a
+      // known person and the message itself names no one, rewrite to a grounded
+      // query so the deterministic family engine answers — not a raw LLM
+      // fallthrough. Skipped during emotion (suppress) and for task/online turns.
       companionPlan.step4_continuity.continuesTopic &&
       companionPlan.step4_continuity.resolvedPerson &&
       !companionPlan.step3_familyEntity &&
