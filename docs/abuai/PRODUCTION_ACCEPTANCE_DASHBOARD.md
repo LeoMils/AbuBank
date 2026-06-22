@@ -10,6 +10,18 @@
 
 ---
 
+## RUN 4 — NON-MIC GREEN CLOSURE (2026-06-22)
+
+Turned every code/test/data-fixable AbuAI + Calendar gate GREEN with executable evidence. **Tests 4585 → 4608 (+23), 0 fail.** 11 acceptance harnesses green. See `FINAL_GO_NO_GO.md` for the exact GREEN/LEO-ONLY/MARTITA-ONLY table (no yellow).
+
+New deterministic harnesses (all green): `hebrewConversation` 32/32 · `spanishConversation` 32/32 · `companionSimulation` 26/26 · `continuity40` 40/40 · `familyMatrix` 27/27 · `calendarMatrix` 16/16. New suite tests: `closureRegressions`, `apiEndpointSafety`, `onlineProductionSafety`, `familyShaperDedup`.
+
+Real bugs fixed this run (all locked by tests): doubled "עם יעל" in rich family answer · `detectLanguage` missing accented/plain Spanish (gracias / no sé / extraño / charlemos) · `shapeFamilyAnswerES` "ella"→gendered + Hebrew city leak → Latin · `MISSING_PEPE`/`IDEAS_ES` regex gaps · "תשארי איתי" not recognized · **"מחרתיים" wrong-day** (matched "מחר") · "מי ההורים של X" plural-parent inference.
+
+Remaining non-green = **Leo device** (mic/realtime/TTS), **Leo factual** (D-1 memorial, D-2 Yarden), **Martita subjective** (felt warmth/satisfaction). Verdict: `NON_MIC_PRODUCTION_GREEN_READY_FOR_LEO_DEVICE_TEST`.
+
+---
+
 ## RUN 3 — DEEP-REVIEW RELEASE-BLOCKER CLOSURE (2026-06-22)
 
 Closed the release blockers surfaced by `DEEP_REVIEW_DOSSIER.md`. **Test suite: 4570 → 4585 (+15), 0 fail.** tsc clean, build+PWA green, all 5 harnesses pass.

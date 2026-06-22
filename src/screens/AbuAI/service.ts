@@ -476,13 +476,20 @@ export function tryGroundedAnswer(text: string): string | null {
           if (rel) return rel
         }
         // Relational role queries: "מי אמא של X?", "מי בת הזוג של X?", "מי סבתא של X?"
-        const roleMatch = route.query.match(/מי\s+(סבתא רבתא|סבא רבא|אמא|אבא|סבתא|סבא|דודה|דוד|אחות|אח|בת הזוג|בן הזוג|החברה|החבר)\s+של\s+(\S+)/)
+        const roleMatch = route.query.match(/מי\s+(ההורים|הורים|סבתא רבתא|סבא רבא|אמא|אבא|סבתא|סבא|דודה|דוד|אחות|אח|בת הזוג|בן הזוג|החברה|החבר)\s+של\s+(\S+)/)
         if (roleMatch) {
           const role = roleMatch[1]!
           const targetName = roleMatch[2]!.replace(/[?!.,]$/, '')
           const graph = loadGraph()
           const target = graph.find(n => n.matchNames.includes(targetName.toLowerCase()) || n.hebrew === targetName)
           if (target) {
+            // Both parents: "מי ההורים של ארי?" → "אופיר וגלעד."
+            if (role === 'הורים' || role === 'ההורים') {
+              const parents = target.parentsHe
+                .map(p => graph.find(n => n.hebrew === p))
+                .filter((n): n is NonNullable<typeof n> => !!n)
+              if (parents.length) return `${parents.map(p => p.hebrew).join(' ו')}.`
+            }
             // Resolve by role
             if (role === 'אמא' || role === 'אבא') {
               const parent = target.parentsHe

@@ -91,7 +91,11 @@ export function shapeFamilyAnswer(m: FamilyMember, rich = false): string {
   // Rich: a warmer, fuller reply.
   const parts: string[] = [`${role}.`]
   if (m.location) {
-    parts.push(`${live} ב${m.location}${m.locationNotes ? `, ${m.locationNotes}` : ''}${partner && !role.includes(partner) ? ` עם ${partner}` : ''}.`)
+    // Don't repeat the partner if the location notes already mention them
+    // (e.g. notes "וילה עם יעל" + partner "יעל" → avoid "...עם יעל עם יעל").
+    const notesHasPartner = !!(m.locationNotes && partner && m.locationNotes.includes(partner))
+    const addPartner = partner && !role.includes(partner) && !notesHasPartner
+    parts.push(`${live} ב${m.location}${m.locationNotes ? `, ${m.locationNotes}` : ''}${addPartner ? ` עם ${partner}` : ''}.`)
   } else if (partner && !role.includes(partner)) {
     parts.push(`עם ${partner}.`)
   }
@@ -113,6 +117,18 @@ function latinName(hebrew: string): string {
   return latinAlias ?? node.canonicalName
 }
 
+// Hebrew → Latin city map so Spanish answers never leak Hebrew place names.
+const LATIN_CITY: Record<string, string> = {
+  'הוד השרון': 'Hod HaSharon',
+  'הרצליה': 'Herzliya',
+  'כפר סבא': 'Kfar Saba',
+  'תל אביב': 'Tel Aviv',
+  'רמת גן': 'Ramat Gan',
+}
+function latinCity(loc: string): string {
+  return LATIN_CITY[loc.trim()] ?? loc
+}
+
 export function shapeFamilyAnswerES(m: FamilyMember, rich = false): string {
   const rel = m.relationshipHebrew
   const partner = m.spouse ?? extractPartner(rel)
@@ -127,30 +143,34 @@ export function shapeFamilyAnswerES(m: FamilyMember, rich = false): string {
   else role = m.canonicalName
 
   const partnerLatin = partner ? latinName(partner) : null
+  const isFemale = rel.includes('הבת') || rel.includes('נכדה') || rel.includes('בת זוג') || rel.includes('נינה') || rel.includes('כלה')
   if (!rich) {
     const bits: string[] = []
-    if (m.location) bits.push(`vive en ${m.location}`)
+    if (m.location) bits.push(`vive en ${latinCity(m.location)}`)
     if (partnerLatin && !role.includes(partnerLatin)) bits.push(`con ${partnerLatin}`)
     return bits.length ? `${role}. ${bits.join(', ')}.` : `${role}.`
   }
 
   const parts: string[] = [`${role}.`]
-  if (m.location) parts.push(`Vive en ${m.location}${partnerLatin && !role.includes(partnerLatin) ? ` con ${partnerLatin}` : ''}.`)
+  if (m.location) parts.push(`Vive en ${latinCity(m.location)}${partnerLatin && !role.includes(partnerLatin) ? ` con ${partnerLatin}` : ''}.`)
   else if (partnerLatin && !role.includes(partnerLatin)) parts.push(`Con ${partnerLatin}.`)
   if (m.children?.length) {
     const kids = m.children.map(latinName)
     const list = kids.length > 1 ? `${kids.slice(0, -1).join(', ')} y ${kids[kids.length - 1]}` : kids[0]!
     parts.push(`Sus hijos son ${list}.`)
   }
-  parts.push('¿Cuándo hablaste con ella la última vez?')
+  parts.push(`¿Cuándo hablaste con ${isFemale ? 'ella' : 'él'} la última vez?`)
   return parts.join(' ')
 }
 
 // ─── Location ───────────────────────────────────────────────────────────────
 
 export function shapeLocationAnswerES(name: string, location: string, notes?: string): string {
-  if (notes) return `${name} vive en ${location}, ${notes}.`
-  return `${name} vive en ${location}.`
+  const city = latinCity(location)
+  // Drop Hebrew-only notes from a Spanish answer (no Hebrew leak).
+  const cleanNotes = notes && !/[֐-׿]/.test(notes) ? notes : undefined
+  if (cleanNotes) return `${name} vive en ${city}, ${cleanNotes}.`
+  return `${name} vive en ${city}.`
 }
 
 export function shapeLocationAnswer(name: string, location: string, notes?: string, gender?: 'male' | 'female' | 'unknown'): string {

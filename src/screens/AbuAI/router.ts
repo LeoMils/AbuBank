@@ -25,7 +25,9 @@ export interface RouteResult {
 
 // ─── Hebrew patterns (preserved + extended) ─────────────────────────────────
 const CALENDAR_TODAY = /מה יש לי היום|מה יש היום|יש לי משהו היום|מה קבעתי היום|מה קורה היום|מה התוכנית ל?היום/i
-const CALENDAR_TOMORROW = /מה יש (לי )?מחר|יש לי משהו מחר|מה קבעתי מחר|מה קורה (לי )?מחר|מה התוכנית מחר|צריך לקום (מוקדם )?מחר/i
+// (?!ת) prevents "מחרתיים" (day-after-tomorrow) from matching the "מחר" prefix —
+// otherwise a day-after query wrongly returns tomorrow's events (a wrong-day fail).
+const CALENDAR_TOMORROW = /מה יש (לי )?מחר(?!ת)|יש לי משהו מחר(?!ת)|מה קבעתי מחר(?!ת)|מה קורה (לי )?מחר(?!ת)|מה התוכנית מחר(?!ת)|צריך לקום (מוקדם )?מחר(?!ת)/i
 const CALENDAR_UPCOMING = /מה יש (לי )?השבוע|מה יש (לי )?בשבוע|מה יש שבוע הבא|שבוע הבא\??$|מה הפגישות הקרובות|מה התורים הקרובים|מה האירועים הקרובים|יש לי משהו .{0,16}השבוע|מה התוכני[ותי]+|מה יש (לי )?ביומן|מה יש ביומן/i
 
 // Forgiving week/upcoming variants for an elderly Hebrew user. Covers
