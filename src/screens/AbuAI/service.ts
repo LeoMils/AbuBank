@@ -140,29 +140,26 @@ export async function generateLLMSummary(
     const recent = messages.slice(-20)
     if (recent.length < 4) return patternSummary
 
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 6000)
+    // Go through the server-chat proxy with its real contract ({ body, lang,
+    // stream }) — NOT a bare top-level OpenAI body. The previous direct fetch
+    // posted { model, messages, … } at the top level, which the proxy rejected
+    // as BAD_REQUEST, so the LLM summary silently never ran. sendServerChat also
+    // returns the upstream JSON wrapped as { ok, openai }, so we read
+    // result.openai.choices — not res.choices.
+    const result = await sendServerChat({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'Summarize this conversation in 2-3 short Hebrew sentences. Include: who was discussed, what topics, what was decided, what emotional state. Be factual and brief. Output ONLY the summary text.' },
+        ...recent.map(m => ({ role: m.role, content: m.content })),
+      ],
+      max_tokens: 100,
+      temperature: 0.3,
+    }, { lang: 'he', timeoutMs: 6000 })
 
-    const res = await fetch('/api/abuai-chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'Summarize this conversation in 2-3 short Hebrew sentences. Include: who was discussed, what topics, what was decided, what emotional state. Be factual and brief. Output ONLY the summary text.' },
-          ...recent.map(m => ({ role: m.role, content: m.content })),
-        ],
-        max_tokens: 100,
-        temperature: 0.3,
-      }),
-      signal: controller.signal,
-    })
-    clearTimeout(timeout)
+    if (!result.ok) return patternSummary
 
-    if (!res.ok) return patternSummary
-
-    const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
-    const llmSummaryText = data?.choices?.[0]?.message?.content?.trim()
+    const openai = result.openai as { choices?: Array<{ message?: { content?: string } }> } | undefined
+    const llmSummaryText = openai?.choices?.[0]?.message?.content?.trim()
 
     if (llmSummaryText && llmSummaryText.length > 10) {
       patternSummary.factsMentioned = [llmSummaryText]
