@@ -28,6 +28,19 @@ function applyReadPeriod(h: number, t: string): string {
   // No period word: appointment-day convention — 1-6 → afternoon/evening, 7-12 → AM.
   return `${pad(h >= 1 && h <= 6 ? h + 12 : h)}:00`
 }
+/**
+ * Period-of-day read filter ("מה יש לי מחר בבוקר/בערב/בצהריים"). Applied ONLY when
+ * the query has no explicit boundary time/number (those go through
+ * parseQueryBoundaryTime). Morning < 12:00, noon 12:00–15:00, evening >= 17:00.
+ */
+export function filterEventsByPeriod<T extends { time?: string }>(events: T[], text: string): { filtered: T[]; applied: boolean } {
+  if (/לפני|אחרי|before|after|\d/.test(text)) return { filtered: events, applied: false }
+  if (/בבוקר|in the morning|por la ma[ñn]ana/i.test(text)) return { filtered: events.filter(e => !!e.time && e.time < '12:00'), applied: true }
+  if (/בערב|בלילה|in the evening|at night|por la noche/i.test(text)) return { filtered: events.filter(e => !!e.time && e.time >= '17:00'), applied: true }
+  if (/בצהריים|at noon|al mediod[ií]a/i.test(text)) return { filtered: events.filter(e => !!e.time && e.time >= '12:00' && e.time < '15:00'), applied: true }
+  return { filtered: events, applied: false }
+}
+
 export function parseQueryBoundaryTime(text: string): string | null {
   const direct = parseHebrewTime(text)
   if (direct) return direct
@@ -367,11 +380,14 @@ export function tryGroundedAnswer(text: string): string | null {
             if (filtered.length > 0) todayEvents = filtered
           }
         }
+        // Period-of-day filter ("היום בבוקר/בערב") when no explicit time was given.
+        const todayPeriod = filterEventsByPeriod(todayEvents, text)
+        todayEvents = todayPeriod.filtered
         if (lang === 'es') return shapeCalendarAnswerES(todayEvents, 'today')
-        // If a time filter changed the set, rebuild the summary from the
+        // If a time/period filter changed the set, rebuild the summary from the
         // filtered events (the original summary is unfiltered — it would leak
         // events outside the asked window).
-        result = (todayRequestedTime && r.events.length !== todayEvents.length)
+        result = (r.events.length !== todayEvents.length)
           ? { ok: true, events: todayEvents, summary: todayEvents.length === 0
               ? 'אין כלום בזמן הזה. יום שקט.'
               : `היום ${todayEvents.map(e => `${e.emoji} ${e.title}${e.time ? ` ב${e.time}` : ''}`).join(', ')}.` }
@@ -395,8 +411,11 @@ export function tryGroundedAnswer(text: string): string | null {
             if (filtered.length > 0) tmrwEvents = filtered
           }
         }
+        // Period-of-day filter ("מחר בבוקר/בערב") when no explicit time was given.
+        const tmrwPeriod = filterEventsByPeriod(tmrwEvents, text)
+        tmrwEvents = tmrwPeriod.filtered
         if (lang === 'es') return shapeCalendarAnswerES(tmrwEvents, 'tomorrow')
-        result = (tmrwRequestedTime && r.events.length !== tmrwEvents.length)
+        result = (r.events.length !== tmrwEvents.length)
           ? { ok: true, events: tmrwEvents, summary: tmrwEvents.length === 0
               ? 'מחר אין כלום בזמן הזה. יום שקט.'
               : `מחר ${tmrwEvents.map(e => `${e.emoji} ${e.title}${e.time ? ` ב${e.time}` : ''}`).join(', ')}.` }
@@ -476,7 +495,7 @@ export function tryGroundedAnswer(text: string): string | null {
           if (rel) return rel
         }
         // Relational role queries: "מי אמא של X?", "מי בת הזוג של X?", "מי סבתא של X?"
-        const roleMatch = route.query.match(/מי\s+(ההורים|הורים|סבתא רבתא|סבא רבא|אמא|אבא|סבתא|סבא|דודה|דוד|אחות|אח|בת הזוג|בן הזוג|החברה|החבר)\s+של\s+(\S+)/)
+        const roleMatch = route.query.match(/מי\s+ה?(בני הדוד|בן הדוד|בת הדוד|ההורים|הורים|אחים|אחיות|סבתא רבתא|סבא רבא|אמא|אבא|אישה|אשתו|בעלה|בעל|סבתא|סבא|דודה|דוד|אחות|אח|בת הזוג|בן הזוג|החברה|החבר)\s+של\s+(\S+)/)
         if (roleMatch) {
           const role = roleMatch[1]!
           const targetName = roleMatch[2]!.replace(/[?!.,]$/, '')
@@ -547,13 +566,46 @@ export function tryGroundedAnswer(text: string): string | null {
               }
               if (auntsUncles.length > 0) return auntsUncles.join(' ו') + '.'
             }
-            if (role === 'אחות' || role === 'אח') {
+            if (role === 'אחות' || role === 'אח' || role === 'אחים' || role === 'אחיות') {
+              // Plural (אחים/אחיות) = all siblings; singular filters by gender.
+              const allSibs = role === 'אחים' || role === 'אחיות'
+              const wantFemaleSib = role === 'אחות' || role === 'אחיות'
               const siblings = target.parentsHe
                 .flatMap(p => graph.find(n => n.hebrew === p)?.childrenHe ?? [])
                 .filter(c => c !== target.hebrew)
                 .map(c => graph.find(n => n.hebrew === c))
-                .filter(n => n && (role === 'אחות' ? n.gender === 'female' : n.gender === 'male'))
-              if (siblings.length > 0) return siblings.map(s => s!.hebrew).join(' ו') + '.'
+                .filter((n): n is NonNullable<typeof n> => !!n && (allSibs ? true
+                  : wantFemaleSib ? n.gender === 'female' : n.gender === 'male'))
+              // de-dupe (two parents share the same children)
+              const uniq = [...new Map(siblings.map(s => [s.hebrew, s])).values()]
+              if (uniq.length > 0) return uniq.map(s => s.hebrew).join(' ו') + '.'
+            }
+            if (role === 'בן הדוד' || role === 'בת הדוד' || role === 'בני הדוד') {
+              // Cousin = child of a sibling of one of the target's parents.
+              const wantGender = role === 'בת הדוד' ? 'female' : role === 'בן הדוד' ? 'male' : null
+              const cousins = new Map<string, NonNullable<ReturnType<typeof graph.find>>>()
+              for (const pHe of target.parentsHe) {
+                const p = graph.find(n => n.hebrew === pHe); if (!p) continue
+                for (const gpHe of p.parentsHe) {
+                  const gp = graph.find(n => n.hebrew === gpHe); if (!gp) continue
+                  for (const sibHe of gp.childrenHe) {
+                    if (sibHe === p.hebrew) continue
+                    const sib = graph.find(n => n.hebrew === sibHe); if (!sib) continue
+                    for (const cHe of sib.childrenHe) {
+                      const c = graph.find(n => n.hebrew === cHe)
+                      if (c && (!wantGender || c.gender === wantGender)) cousins.set(c.hebrew, c)
+                    }
+                  }
+                }
+              }
+              if (cousins.size > 0) return [...cousins.values()].map(c => c.hebrew).join(' ו') + '.'
+            }
+            if (role === 'אישה' || role === 'אשתו' || role === 'בעל' || role === 'בעלה') {
+              const wantFemale = role === 'אישה' || role === 'אשתו'
+              const spouse = [...target.spousesHe, ...target.partnersHe]
+                .map(p => graph.find(n => n.hebrew === p))
+                .find(n => n && (wantFemale ? n.gender === 'female' : n.gender === 'male'))
+              if (spouse) return `${spouse.hebrew}.`
             }
             if (role === 'בת הזוג' || role === 'החברה') {
               const partner = [...target.partnersHe, ...target.spousesHe]

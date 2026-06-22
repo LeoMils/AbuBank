@@ -63,6 +63,10 @@ const SCRIPT: Array<{ u: string; cat: Cat; mixed?: boolean; resp: () => { kind: 
   { u: '¿quién es la abuela de Anabel?', cat: 'family', resp: () => grounded('¿quién es la abuela de Anabel?') },
   { u: 'me aburro un poco', cat: 'emotional', resp: () => emo('me aburro un poco') },
   { u: 'Leo, ¿él tiene hijos?', cat: 'family', resp: () => grounded('contame de Leo') },
+  { u: '¿quiénes son los hijos de Mor?', cat: 'family', resp: () => grounded('¿quiénes son los hijos de Mor?') },
+  { u: 'los nietos de Abu', cat: 'family', resp: () => grounded('los nietos de Abu') },
+  { u: 'me siento muy sola', cat: 'emotional', resp: () => emo('me siento muy sola') },
+  { u: 'los hermanos de Ofir', cat: 'family', resp: () => grounded('los hermanos de Ofir') },
 ]
 
 function grounded(q: string): { kind: Kind; text: string } {

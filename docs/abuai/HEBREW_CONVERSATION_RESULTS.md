@@ -13,7 +13,7 @@ _Deterministic structural scoring (anti-robotic / anti-patronizing / perspective
 | HE-7 | family/grounded | מי דוד של אופיר? | לאו. | ✅ |  |
 | HE-8 | family/grounded | מתי יום הזיכרון של פפי? | יום הזיכרון של פפי — 1 בינואר. 🕯️ | ✅ |  |
 | HE-9 | calendar/grounded | מה יש לי מחר? | מחר יש לך רופא. בארבע אחר הצהריים. | ✅ |  |
-| HE-10 | followup/grounded | ומה אחרי זה? | יום שלישי (23/06): 🏥 רופא בשעה 16:00 | ✅ |  |
+| HE-10 | followup/grounded | ומה אחרי זה? | יום רביעי (24/06): 🏥 רופא בשעה 16:00 | ✅ |  |
 | HE-11 | followup/grounded | ומה ביום הבא? | מחר יש לך רופא. בארבע אחר הצהריים. | ✅ |  |
 | HE-12 | calendar/grounded | מה יש לי מחר אחרי ארבע? | מחר אין כלום בזמן הזה. יום שקט. | ✅ |  |
 | HE-13 | calendar/grounded | מה יש לי מחר לפני ארבע? | מחר אין כלום בזמן הזה. יום שקט. | ✅ |  |
@@ -34,7 +34,7 @@ _Deterministic structural scoring (anti-robotic / anti-patronizing / perspective
 | HE-28 | correction/general | עזבי | (LLM prose — floor: route=non_personal) | ✅ |  |
 | HE-29 | family/grounded | מי סבתא רבתא של ארי? | מרטיטה. | ✅ |  |
 | HE-30 | family/grounded | איפה גרה מור? | מור גרה בהוד השרון, וילה עם יעל. | ✅ |  |
-| HE-31 | calendar/grounded | מה יש לי השבוע? | יום שלישי (23/06): 🏥 רופא בשעה 16:00 | ✅ |  |
+| HE-31 | calendar/grounded | מה יש לי השבוע? | יום רביעי (24/06): 🏥 רופא בשעה 16:00 | ✅ |  |
 | HE-32 | greeting/general | תודה לך | (LLM prose — floor: route=non_personal) | ✅ |  |
 
 **Total 32 · pass 32 · fail 0**

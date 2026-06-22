@@ -14,6 +14,7 @@ import { loadGraph, findNode, displayName, type GraphNode } from './familyGraph'
 
 type RelType =
   | 'mother' | 'father' | 'daughter' | 'son'
+  | 'children' | 'siblings' | 'grandchildren'
   | 'grandmother' | 'grandfather' | 'granddaughter' | 'grandson'
   | 'greatgm' | 'greatgf'
   | 'wife' | 'husband' | 'partner'
@@ -58,6 +59,9 @@ function resolveTargets(t: GraphNode, type: RelType): GraphNode[] {
     case 'father': return ancestors(t, 1, 'male')
     case 'daughter': return descendants(t, 1, 'female')
     case 'son': return descendants(t, 1, 'male')
+    case 'children': return descendants(t, 1)
+    case 'siblings': return siblings(t)
+    case 'grandchildren': return descendants(t, 2)
     case 'grandmother': return ancestors(t, 2, 'female')
     case 'grandfather': return ancestors(t, 2, 'male')
     case 'granddaughter': return descendants(t, 2, 'female')
@@ -80,10 +84,12 @@ const ES: Array<[RegExp, RelType]> = [
   [/^bisabuela$/, 'greatgm'], [/^bisabuelo$/, 'greatgf'],
   [/^abuela$/, 'grandmother'], [/^abuelo$/, 'grandfather'],
   [/^nieta$/, 'granddaughter'], [/^nieto$/, 'grandson'],
+  [/^(?:nietos|nietas)$/, 'grandchildren'],
   [/^(?:madre|mam[aá])$/, 'mother'], [/^(?:padre|pap[aá])$/, 'father'],
   [/^hija$/, 'daughter'], [/^hijo$/, 'son'],
+  [/^hijos$/, 'children'], [/^hijas$/, 'daughter'],
   [/^(?:esposa|mujer)$/, 'wife'], [/^(?:marido|esposo)$/, 'husband'], [/^(?:pareja|novia|novio)$/, 'partner'],
-  [/^hermana$/, 'sister'], [/^hermano$/, 'brother'],
+  [/^hermana$/, 'sister'], [/^hermano$/, 'brother'], [/^(?:hermanos|hermanas)$/, 'siblings'],
   [/^t[ií]a$/, 'aunt'], [/^t[ií]o$/, 'uncle'], [/^prim[ao]$/, 'cousin'],
 ]
 const EN: Array<[RegExp, RelType]> = [
@@ -105,6 +111,7 @@ function mapRel(word: string, lang: 'es' | 'en'): RelType | null {
 const NOUN: Record<RelType, { es: string; en: string }> = {
   mother: { es: 'mamá', en: 'mother' }, father: { es: 'papá', en: 'father' },
   daughter: { es: 'hija', en: 'daughter' }, son: { es: 'hijo', en: 'son' },
+  children: { es: 'hijos', en: 'children' }, siblings: { es: 'hermanos', en: 'siblings' }, grandchildren: { es: 'nietos', en: 'grandchildren' },
   grandmother: { es: 'abuela', en: 'grandmother' }, grandfather: { es: 'abuelo', en: 'grandfather' },
   granddaughter: { es: 'nieta', en: 'granddaughter' }, grandson: { es: 'nieto', en: 'grandson' },
   greatgm: { es: 'bisabuela', en: 'great-grandmother' }, greatgf: { es: 'bisabuelo', en: 'great-grandfather' },
@@ -112,7 +119,7 @@ const NOUN: Record<RelType, { es: string; en: string }> = {
   sister: { es: 'hermana', en: 'sister' }, brother: { es: 'hermano', en: 'brother' },
   aunt: { es: 'tía', en: 'aunt' }, uncle: { es: 'tío', en: 'uncle' }, cousin: { es: 'primo/a', en: 'cousin' },
 }
-const ART: Partial<Record<RelType, string>> = { mother: 'la', father: 'el', daughter: 'la', son: 'el', grandmother: 'la', grandfather: 'el', granddaughter: 'la', grandson: 'el', greatgm: 'la', greatgf: 'el', wife: 'la', husband: 'el', partner: 'la', sister: 'la', brother: 'el', aunt: 'la', uncle: 'el', cousin: 'el/la' }
+const ART: Partial<Record<RelType, string>> = { mother: 'la', father: 'el', daughter: 'la', son: 'el', grandmother: 'la', grandfather: 'el', granddaughter: 'la', grandson: 'el', greatgm: 'la', greatgf: 'el', wife: 'la', husband: 'el', partner: 'la', sister: 'la', brother: 'el', aunt: 'la', uncle: 'el', cousin: 'el/la', children: 'los', siblings: 'los', grandchildren: 'los' }
 
 function joinNames(ns: GraphNode[], lang: 'es' | 'en'): string {
   const names = ns.map((n) => displayName(n, lang))
@@ -150,8 +157,10 @@ export function resolveRelationalQuery(text: string, lang: 'es' | 'en'): string 
     return lang === 'es' ? `${tName} no tiene ${noun}.` : `${tName} has no ${noun}.`
   }
   const names = joinNames(targets, lang)
-  if (lang === 'es') return `${capES(ART[type] ?? 'la')} ${noun} de ${tName} es ${names}.`
-  return `${tName}'s ${noun} is ${names}.`
+  // Plural-noun relations agree in number ("Los hijos ... son", not "es").
+  const pluralNoun = type === 'children' || type === 'siblings' || type === 'grandchildren'
+  if (lang === 'es') return `${capES(ART[type] ?? 'la')} ${noun} de ${tName} ${pluralNoun ? 'son' : 'es'} ${names}.`
+  return `${tName}'s ${noun} ${pluralNoun ? 'are' : 'is'} ${names}.`
 }
 
 function capES(a: string): string { return a.charAt(0).toUpperCase() + a.slice(1) }

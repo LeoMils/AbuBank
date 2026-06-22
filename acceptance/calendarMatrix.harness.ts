@@ -53,6 +53,8 @@ read('CAL-AFTER4WORD', 'after-time', 'מה יש לי מחר אחרי ארבע?',
 read('CAL-BEFORE4WORD', 'before-time', 'מה יש לי מחר לפני ארבע?', both(has('יוגה'), lacks('רופא')), 'before four shows morning')
 read('CAL-EMPTY', 'empty', 'מה יש לי ביום ראשון?', (a) => a !== null && /אין כלום|שקט|רופא|יוגה|בדיקה/.test(a), 'weekday answered honestly (empty or real)')
 read('CAL-DAYAFTER', 'no-wrong-day', 'מה יש לי מחרתיים?', (a) => a === null || lacks('רופא', 'יוגה')(a), 'day-after must NOT return tomorrow events (null = deferred, OK)')
+read('CAL-MORNING', 'period', 'מה יש לי מחר בבוקר?', both(has('יוגה'), lacks('רופא')), 'morning = before 12:00')
+read('CAL-EVENING', 'period', 'מה יש לי מחר בערב?', (a) => a !== null && /אין כלום|שקט/.test(a), 'evening (>=17:00) empty here')
 
 // Follow-up resolution (next-day / after-that)
 function follow(id: string, ctx: string, frag: string, re: RegExp, note: string) {

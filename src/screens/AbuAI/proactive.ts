@@ -101,7 +101,7 @@ const NO_TOPIC_ES = /no\s+s[eé]\s+(de\s+qu[eé]\s+hablar|qu[eé]\s+hacer|qu[eé
 const NO_TOPIC_EN = /\b(i\s+don'?t\s+know\s+what\s+to\s+(talk\s+about|do))\b/i
 
 const LONELINESS_HE = /קצת\s+לבד|אני\s+מרגישה?\s+לבד|מרגישה?\s+לבד|בודדה|בדידות/
-const LONELINESS_ES = /(?:me\s+siento\s+(un\s+poco\s+)?sol[ao]|estoy\s+sol[ao]|hoy\s+me\s+siento\s+sol[ao])/i
+const LONELINESS_ES = /(?:me\s+siento\s+(?:un\s+poco\s+|muy\s+|tan\s+|bastante\s+)?sol[ao]|estoy\s+(?:muy\s+|tan\s+)?sol[ao]|hoy\s+me\s+siento\s+sol[ao])/i
 const LONELINESS_EN = /\b(i'?m\s+(a\s+bit\s+)?lonely|i\s+feel\s+(a\s+little\s+)?(lonely|alone))\b/i
 
 const IDEAS_HE = /תני לי רעיון|מה אפשר לעשות (היום|עכשיו)|רעיונות/

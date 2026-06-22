@@ -27,9 +27,20 @@ _Identity, aliases, pronouns, location, inferred relations, Spanish, and unknown
 | ES-OFIR-MOM | ¿quién es la mamá de Ofir? | La mamá de Ofir es Mor. | ✅ | ES Ofir mom, no leak |
 | ES-ANABEL-GGM | ¿quién es la bisabuela de Anabel? | La bisabuela de Annabel es Abu. | ✅ | ES Anabel great-grandma |
 | ES-MOR-HIJA | ¿quién es la hija de Mor? | Mor no tiene hija. | ✅ | ES honest: Mor has no daughter (all sons) |
+| RL-SIB | מי האח של אופיר? | איילון ועילי ואדר. | ✅ | Ofir brothers |
+| RL-SIBS | מי האחים של אופיר? | איילון ועילי ואדר. | ✅ | all siblings |
+| RL-COUSIN | מי בן הדוד של עדי? | אופיר ואיילון ועילי ואדר. | ✅ | Adi cousins |
+| RL-UNCLE | מי הדוד של אופיר? | לאו. | ✅ | Ofir uncle = Leo |
+| RL-WIFE | מי האישה של עילי? | ירדן. | ✅ | Eili wife = Yarden |
+| RL-NOAUNT | מי הדודה של אופיר? | לא יודעת מי דודה של אופיר. | ✅ | no aunt → honest decline |
+| RL-NOSIS | מי האחות של אופיר? | לא יודעת מי אחות של אופיר. | ✅ | no sister → no invention |
+| A-LEON | מי זה לאון? | לאו, הבן שלך. | ✅ | alias לאון → Leo |
+| A-LIO | מי זה ליאו? | לאו, הבן שלך. | ✅ | alias ליאו → Leo |
+| G-GRANDKIDS | מי הנכדים שלי? | יש לך 6 נכדים — אופיר, איילון, עילי, אדר, עדי, נועם. | ✅ | all grandchildren |
+| G-LEO-KIDS | מי הילדים של לאו? | ללאו יש 2 ילדים — עדי, נועם. | ✅ | Leo's children |
 | U-1 | מי זה זבולון הקוסם? | לא יודעת. | ✅ | unknown → no invented relation |
 | U-2 | מי סבתא רבתא של דניאל הלא-קיים? | ∅ | ✅ | unknown great-grandchild → no invention |
 | D-UNK | describeRelation(unknown) | null | ✅ | returns null, no invention |
 | D-ES-UNK | resolveRelationalQuery(unknown,es) | null | ✅ | declines |
 
-**Total 27 · pass 27 · fail 0**
+**Total 38 · pass 38 · fail 0**

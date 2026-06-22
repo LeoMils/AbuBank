@@ -24,8 +24,8 @@ _Deterministic structural scoring (anti-robotic / anti-patronizing / perspective
 | ES-18 | calendar/calendar | ¿qué tengo mañana? | Mañana tenés médico a las 16:00. | ✅ |  |
 | ES-19 | calendar/calendar | ¿qué tengo esta semana? | Esta semana tenés médico a las 16:00. | ✅ |  |
 | ES-20 | calendar/calendar | ¿qué tengo hoy? | Hoy no tenés nada en el calendario. | ✅ |  |
-| ES-21 | calendar/calendar | agendame el médico mañana a las cuatro | Te agendo médico mañana a las 16:00. / ¿Está bien? | ✅ |  |
-| ES-22 | calendar/calendar | sí, dale | Listo, te agendé médico mañana a las 16:00. | ✅ |  |
+| ES-21 | calendar/calendar | agendame el médico mañana a las cuatro | Te agendo médico el miércoles 24 de junio a las 16:00. / ¿Está bien? | ✅ |  |
+| ES-22 | calendar/calendar | sí, dale | Listo, te agendé médico el miércoles 24 de junio a las 16:00. | ✅ |  |
 | ES-23 | calendar/calendar | no, cancelá | Dale, lo cancelé. Decime cuando quieras agendar algo. | ✅ |  |
 | ES-24 | calendar/calendar | ¿a qué hora? | ¿A qué hora? | ✅ |  |
 | ES-25 | family/grounded | ¿quién es la madre de Ari? | Ari no tiene mamá. | ✅ |  |
@@ -36,5 +36,9 @@ _Deterministic structural scoring (anti-robotic / anti-patronizing / perspective
 | ES-30 | family/grounded | ¿quién es la abuela de Anabel? | La abuela de Annabel es Mor. | ✅ |  |
 | ES-31 | emotional/emotional | me aburro un poco | ¿Sabías que hay un tiburón que vive 400 años? Increíble, ¿no? | ✅ |  |
 | ES-32 | family/grounded | Leo, ¿él tiene hijos? | Leo, tu hijo. Sus hijos son Adi y Noam. ¿Cuándo hablaste con él la última vez? | ✅ |  |
+| ES-33 | family/grounded | ¿quiénes son los hijos de Mor? | Los hijos de Mor son Ofir, Eylon, Ilai y Adar. | ✅ |  |
+| ES-34 | family/grounded | los nietos de Abu | Los nietos de Abu son Ofir, Eylon, Ilai, Adar, Adi y Noam. | ✅ |  |
+| ES-35 | emotional/emotional | me siento muy sola | Estoy acá. ¿Charlamos un rato? | ✅ |  |
+| ES-36 | family/grounded | los hermanos de Ofir | Los hermanos de Ofir son Eylon, Ilai y Adar. | ✅ |  |
 
-**Total 32 · pass 32 · fail 0**
+**Total 36 · pass 36 · fail 0**
