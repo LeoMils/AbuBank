@@ -1,4 +1,5 @@
 import { loadFamilyData } from '../../services/familyLoader'
+import { sendServerChat } from '../AbuAI/serverChatProvider'
 
 function buildFamilySummary(): string {
   const members = loadFamilyData()
@@ -16,8 +17,7 @@ function buildFamilySummary(): string {
   return lines.join('\n')
 }
 
-// Provider priority: OpenAI GPT-4o (paid, 10/10) > Gemini 2.0 Flash (free, 8.5/10) > Groq Llama (free, 5/10)
-const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
+// Provider priority: OpenAI GPT-4o (server-proxied, paid) > Gemini 2.0 Flash (free) > Groq Llama (free)
 const OPENAI_MODEL = 'gpt-4o'
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
@@ -29,15 +29,18 @@ const GROQ_MODEL = 'llama-3.3-70b-versatile'
 const WHISPER_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
 const WHISPER_MODEL = 'whisper-large-v3-turbo'
 
-function getChatProviders(): Array<{ url: string; model: string; apiKey: string }> {
-  const providers: Array<{ url: string; model: string; apiKey: string }> = []
-  const openaiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-  if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL, apiKey: openaiKey })
+interface ChatProvider { url: string; model: string; apiKey: string; serverProxy?: boolean }
+
+function getChatProviders(): ChatProvider[] {
+  const providers: ChatProvider[] = []
+  // OpenAI GPT-4o via the server proxy — the OpenAI key lives server-side only
+  // (OPENAI_API_KEY) and never reaches the client bundle. If the server has no
+  // key it returns a structured error and we fall through to the free tiers.
+  providers.push({ url: '/api/abuai-chat', model: OPENAI_MODEL, apiKey: '', serverProxy: true })
   const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
   if (geminiKey) providers.push({ url: GEMINI_URL, model: GEMINI_MODEL, apiKey: geminiKey })
   const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
   if (groqKey) providers.push({ url: GROQ_URL, model: GROQ_MODEL, apiKey: groqKey })
-  if (providers.length === 0) throw new Error('מפתח API לא הוגדר. פנה לבן המשפחה שהתקין את האפליקציה.')
   return providers
 }
 
@@ -163,9 +166,16 @@ const STYLE_PROMPTS: Record<string, string> = {
 }
 
 async function tryProvider(
-  provider: { url: string; model: string; apiKey: string },
+  provider: ChatProvider,
   body: object,
 ): Promise<string | null> {
+  if (provider.serverProxy) {
+    // OpenAI tier through /api/abuai-chat — no client key. Returns wrapped { ok, openai }.
+    const result = await sendServerChat({ model: provider.model, ...body }, { lang: 'he', timeoutMs: 20000 })
+    if (!result.ok) return null
+    const content = (result.openai as { choices?: Array<{ message?: { content?: string } }> } | undefined)?.choices?.[0]?.message?.content
+    return content ? content.trim() : null
+  }
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 20000)
   try {

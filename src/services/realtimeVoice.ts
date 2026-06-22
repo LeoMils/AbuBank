@@ -63,34 +63,23 @@ export class RealtimeVoiceSession {
   }
 
   async connect(): Promise<void> {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-    if (isPlaceholderKey(apiKey)) {
-      // Missing or placeholder ("sk-...") key — never call OpenAI (it would 401/404).
-      // Fall back to the pipeline gracefully, no retries.
-      this.cb.onError('מצב הקול לא מוגדר. עוברת למצב חלופי.')
-      this.setState('error')
-      this.onFatalError?.()
-      return
-    }
-
     this.setState('connecting')
 
     try {
-      // 1. Get ephemeral token
-      const tokenRes = await fetch(REALTIME_SESSION_URL, {
+      // 1. Mint a SHORT-LIVED ephemeral session SERVER-SIDE (/api/realtime-token).
+      //    The long-lived OpenAI key lives server-side only and never reaches the
+      //    client bundle. Only the ephemeral client_secret (safe for the browser
+      //    SDP exchange) comes back. Any failure (missing/invalid key, quota, no
+      //    realtime access) falls back to the free pipeline ONCE — no retry loop,
+      //    no raw provider error, no key.
+      const tokenRes = await fetch('/api/realtime-token', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          ...REALTIME_BETA_HEADER, // required — without it the endpoint 404s
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: REALTIME_MODEL,
           voice: 'shimmer',  // v26.1: shimmer is warmer and more natural for Hebrew/Spanish than coral
           instructions: this.instructions,
-          input_audio_transcription: { model: 'whisper-1' },
           // v22.6: Quiet = server VAD (auto-detect speech), Noisy = no VAD (push-to-talk)
-          turn_detection: this.pushToTalk ? null : {
+          turnDetection: this.pushToTalk ? null : {
             type: 'server_vad',
             threshold: this.vadThreshold,
             prefix_padding_ms: 250,
@@ -99,23 +88,20 @@ export class RealtimeVoiceSession {
         }),
       })
 
-      if (!tokenRes.ok) {
-        const errText = await tokenRes.text().catch(() => '')
-        const isQuota = tokenRes.status === 429 || /quota|billing|exceeded/.test(errText)
-        // ANY token failure (404 invalid-URL, 401/403 auth, 404 no-realtime-access,
-        // quota) falls back to the free pipeline ONCE — never a noisy retry loop and
-        // never a raw provider error to the UI. Diagnostic logs the status only, no key.
-        console.error(`[Realtime] session creation failed (${tokenRes.status}) — falling back to pipeline`)
-        this.cb.onError(isQuota ? 'המכסה של OpenAI נגמרה. עוברת למצב חלופי.' : 'מצב הקול לא זמין כרגע. עוברת למצב חלופי.')
+      const sessionData = await tokenRes.json().catch(() => null) as { ok?: boolean; client_secret?: string; error?: string } | null
+      if (!tokenRes.ok || !sessionData?.ok || !sessionData.client_secret) {
+        const code = sessionData?.error ?? String(tokenRes.status)
+        const isQuota = code === 'REALTIME_QUOTA'
+        const isMissing = code === 'OPENAI_API_KEY_MISSING' || code === 'OPENAI_API_KEY_INVALID'
+        console.error(`[Realtime] session mint failed (${code}) — falling back to pipeline`)
+        this.cb.onError(isQuota ? 'המכסה של OpenAI נגמרה. עוברת למצב חלופי.' : isMissing ? 'מצב הקול לא מוגדר. עוברת למצב חלופי.' : 'מצב הקול לא זמין כרגע. עוברת למצב חלופי.')
         this.setState('error')
         this.cleanup()
         this.onFatalError?.() // immediately fall back — do not retry, do not throw
         return
       }
 
-      const sessionData = await tokenRes.json()
-      const ephemeralKey = sessionData.client_secret?.value
-      if (!ephemeralKey) throw new Error('No ephemeral key received')
+      const ephemeralKey = sessionData.client_secret
 
       // 2. Create WebRTC peer connection
       this.pc = new RTCPeerConnection()

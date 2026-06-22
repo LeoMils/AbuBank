@@ -6,6 +6,9 @@ Two data contradictions remain. **They were NOT guessed or auto-fixed** — the 
 
 ## D-1 — Pepe / Papi memorial date (01-01 vs 12-26)  · P1 · emotional-trust
 
+> **STATUS (Run 3): engineering contradiction RESOLVED.** The live AbuAI SYSTEM_PROMPT no longer hardcodes "26 בדצמבר" — it defers the date to the `get_memorial_for` tool, which reads `family_data.json` (01-01). The `.claude/rules` no longer hardcode a date. The runtime is now **self-consistent at 01-01** (the source of truth), locked by `memorialDatePromptContract.test.ts`. **What remains for Leo:** a one-line confirmation that 01-01 is the *real-world* date. If it is, nothing to do. If the true date differs, update **only** `knowledge/family_data.json` `deceased.memorial_date` + `date_of_passing`, run `npm run generate:memory`, and the prompt/calendar follow automatically. Until confirmed, treat Pepe's memorial gently in the pilot.
+
+
 **Conflict:**
 | Source | Value | Authority |
 |--------|-------|-----------|

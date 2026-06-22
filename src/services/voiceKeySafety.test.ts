@@ -41,7 +41,9 @@ describe('realtime session declares bounded retries (no infinite loop)', () => {
     expect(m).not.toBeNull()
     expect(Number(m![1])).toBeGreaterThanOrEqual(1)
     expect(Number(m![1])).toBeLessThanOrEqual(3)
-    // The placeholder-key guard must run inside connect() before any fetch.
-    expect(src).toMatch(/isPlaceholderKey\(apiKey\)/)
+    // The realtime session is now minted SERVER-SIDE (/api/realtime-token); the
+    // client never reads the long-lived OpenAI key. The server validates the key.
+    expect(src).toMatch(/\/api\/realtime-token/)
+    expect(src).not.toMatch(/import\.meta\.env\.VITE_OPENAI_API_KEY/)
   })
 })

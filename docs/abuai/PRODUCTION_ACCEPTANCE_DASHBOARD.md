@@ -10,6 +10,22 @@
 
 ---
 
+## RUN 3 — DEEP-REVIEW RELEASE-BLOCKER CLOSURE (2026-06-22)
+
+Closed the release blockers surfaced by `DEEP_REVIEW_DOSSIER.md`. **Test suite: 4570 → 4585 (+15), 0 fail.** tsc clean, build+PWA green, all 5 harnesses pass.
+
+| Blocker | Status | Evidence | Residual |
+|---------|--------|----------|----------|
+| **B1 — Pepe memorial date in live prompt** | **FIXED (runtime)** | SYSTEM_PROMPT now defers to `get_memorial_for` (no hardcoded Dec-26); rules aligned; `memorialDatePromptContract.test.ts` (4) | soft Leo confirmation of real-world date (runtime self-consistent at 01-01 SoT) |
+| **B2 — client-exposed billable OpenAI key** | **FIXED** | 5 client sites → server proxies (`api/abuai-tts`, `api/realtime-token`, `api/abuai-chat`); `clientProviderKeyContract.test.ts` guard; `ENV_CONTRACT.md` | Groq/Gemini stay client free-tier (documented); full server-proxy = post-pilot hardening |
+| **B3 — spend-guard persistence** | **REFRAMED (no code)** | guard is contract-only by design (`jointOptimizationContract.test.ts:287`) → no live caps to reset | enforce caps = deferred Leo product decision (supervised pilot = observable) |
+| **B4 — version identity** | **FIXED + reframed** | split is by-design; fixed stale buildDate/branchHint; health↔version sync now test-locked | none |
+| **B5 — Open-Meteo weather TODO** | **REFRAMED (no code)** | router unwired; weather works via proven `web_search` | Open-Meteo = non-blocking cost optimization |
+
+**Verdict after Run 3:** `READY_EXCEPT_LEO_AND_MARTITA_ONLY` — code-side release blockers closed; remaining items are Leo's memorial-date confirmation (D-1, soft) + Leo device/voice + Martita real-use. Spanish/companion/voice still **not green**.
+
+---
+
 ## RUN 2 — PRODUCTION CLOSURE UPDATE (2026-06-22)
 
 Closed every non-device, non-human blocker that code/test/data could close. **Spanish, companion warmth, and voice are deliberately NOT marked green** — they need a real run / device / user.

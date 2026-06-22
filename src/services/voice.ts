@@ -173,50 +173,55 @@ function getTTSInstructions(text: string): string {
     : 'You are a warm Israeli woman in her 40s. Speak naturally and gently in casual everyday Hebrew. Native Israeli accent — NOT American. Intimate, like a relaxed phone call with a close friend. Brief natural pauses between sentences. Never robotic, never reading aloud. Sound human, real, kind.'
 }
 
+/**
+ * Server-proxied OpenAI TTS. The OpenAI key lives server-side only
+ * (/api/abuai-tts) and never reaches the client bundle. Returns the audio Blob,
+ * or null + an error code so the caller can fall back to a free TTS tier.
+ */
+async function openAITTSBlob(
+  openaiBody: Record<string, unknown>,
+  opts: { signal?: AbortSignal | null; timeoutMs?: number } = {},
+): Promise<{ blob: Blob | null; error: string | null }> {
+  const local = new AbortController()
+  const t = opts.timeoutMs ? setTimeout(() => local.abort(), opts.timeoutMs) : null
+  const signal = opts.signal ?? local.signal
+  try {
+    const res = await fetch('/api/abuai-tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: openaiBody }),
+      signal,
+    })
+    if (t) clearTimeout(t)
+    const ct = res.headers.get('Content-Type') ?? ''
+    if (!res.ok || ct.includes('application/json')) {
+      let error = 'TTS_PROVIDER_FAILED'
+      try { const j = await res.json() as { error?: string }; if (j?.error) error = j.error } catch { /* ignore */ }
+      return { blob: null, error }
+    }
+    return { blob: await res.blob(), error: null }
+  } catch (e) {
+    if (t) clearTimeout(t)
+    return { blob: null, error: (e as { name?: string } | null)?.name === 'AbortError' ? 'TTS_TIMEOUT' : 'TTS_PROVIDER_FAILED' }
+  }
+}
+
 async function speakOpenAI(text: string): Promise<boolean> {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-  if (!apiKey) return false
-  // Skip if TTS-specific quota exhausted (separate from LLM chat quota)
+  // OpenAI TTS via the server proxy — the OpenAI key never reaches the client.
+  // Skip if TTS-specific quota exhausted (separate from LLM chat quota).
   const qf = localStorage.getItem('abu-openai-tts-quota-failed')
   if (qf && (Date.now() - parseInt(qf, 10)) < 300_000) return false
 
   const chunks = splitText(text, 400)
   for (const chunk of chunks) {
-    try {
-      const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 8000)
-      const res = await fetch('https://api.openai.com/v1/audio/speech', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini-tts',  // v22.4: steerable, best quality
-          input: chunk,
-          voice: 'coral',
-          instructions: getTTSInstructions(chunk),
-          speed: getVoiceSpeed(),
-          response_format: 'mp3',
-        }),
-        signal: controller.signal,
-      })
-      clearTimeout(t)
-      if (!res.ok) {
-        console.log('[TTS] OpenAI status:', res.status)
-        if (res.status === 429 || res.status === 402) {
-          try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
-        }
-        return false
-      }
-      const blob = await res.blob()
-      if (blob.size < 100) { console.log('[TTS] OpenAI: empty audio'); return false }
-      const ok = await playBlob(blob)
-      if (!ok) return false
-    } catch (e) {
-      console.log('[TTS] OpenAI error:', e)
-      return false
-    }
+    const { blob, error } = await openAITTSBlob(
+      { model: 'gpt-4o-mini-tts', input: chunk, voice: 'coral', instructions: getTTSInstructions(chunk), speed: getVoiceSpeed() },
+      { timeoutMs: 8000 },
+    )
+    if (error === 'TTS_QUOTA') { try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {} }
+    if (!blob || blob.size < 100) return false
+    const ok = await playBlob(blob)
+    if (!ok) return false
   }
   return true
 }
@@ -458,38 +463,23 @@ export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
   const ttsStart = Date.now()
 
-  // 1) OpenAI TTS (paid — skip only if TTS-specific quota exhausted)
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
+  // 1) OpenAI TTS (paid — server-proxied; key never in client) — skip only if TTS-specific quota exhausted
   const ttsQuotaFlag = localStorage.getItem('abu-openai-tts-quota-failed')
   const ttsQuotaOk = !ttsQuotaFlag || (Date.now() - parseInt(ttsQuotaFlag, 10)) > 300_000
-  if (apiKey && ttsQuotaOk) {
-    try {
-      const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 6000)
-      const res = await fetch('https://api.openai.com/v1/audio/speech', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed(), response_format: 'mp3' }),
-        signal: controller.signal,
-      })
-      clearTimeout(t)
-      if (res.ok) {
-        const blob = await res.blob()
-        if (blob.size > 100) {
-          const ok = await playBlobViaAudioCtx(blob)
-          if (ok) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via AudioCtx' }); return }
-          if (await playBlob(blob)) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via HTMLAudio' }); return }
-        }
-      }
-      if (res.status === 429 || res.status === 402) {
-        try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
-      }
-      ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: true, status: `❌ HTTP ${res.status}` })
-    } catch (e) {
-      ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: true, status: `❌ ${e instanceof Error ? e.message : 'error'}` })
+  if (ttsQuotaOk) {
+    const { blob, error } = await openAITTSBlob(
+      { model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed() },
+      { timeoutMs: 6000 },
+    )
+    if (error === 'TTS_QUOTA') { try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {} }
+    if (blob && blob.size > 100) {
+      const ok = await playBlobViaAudioCtx(blob)
+      if (ok) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via AudioCtx' }); return }
+      if (await playBlob(blob)) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via HTMLAudio' }); return }
     }
+    ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: true, status: `❌ ${error ?? 'no audio'}` })
   } else {
-    ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: 0, fallback: true, status: `⏭ skipped: key=${!!apiKey} quotaOk=${ttsQuotaOk}` })
+    ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: 0, fallback: true, status: `⏭ skipped: quotaOk=false` })
   }
 
   // 2) Gemini TTS (FREE with existing key)
@@ -730,25 +720,16 @@ export async function streamSpeakVoiceMode(
 
   const speakChunk = async (text: string): Promise<void> => {
     if (signal?.aborted) return
-    // OpenAI (paid, skip if TTS quota exhausted) → Gemini (FREE) → Web Speech (FREE)
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
+    // OpenAI (paid, server-proxied; key never in client) → Gemini (FREE) → Web Speech (FREE)
     const sqf = localStorage.getItem('abu-openai-tts-quota-failed')
     const skipOpenAI = sqf && (Date.now() - parseInt(sqf, 10)) < 300_000
-    if (apiKey && !skipOpenAI) {
-      try {
-        const res = await fetch('https://api.openai.com/v1/audio/speech', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed(), response_format: 'mp3' }),
-          signal: signal ?? null,
-        })
-        if (res.ok) {
-          const blob = await res.blob()
-          if (blob.size > 100) { queue.enqueue(blob); return }
-        } else if (res.status === 429 || res.status === 402) {
-          try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
-        }
-      } catch { /* try fallback */ }
+    if (!skipOpenAI) {
+      const { blob, error } = await openAITTSBlob(
+        { model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed() },
+        { signal: signal ?? null },
+      )
+      if (error === 'TTS_QUOTA') { try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {} }
+      if (blob && blob.size > 100) { queue.enqueue(blob); return }
     }
     // Gemini TTS (FREE) — convert to blob and enqueue
     const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined

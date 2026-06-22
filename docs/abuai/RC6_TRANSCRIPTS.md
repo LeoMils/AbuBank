@@ -14,12 +14,12 @@
 ### FAM — family
 
 **M:** מי זאת מור?
-**A:** מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר.
-<sub>plan: frame=fact act=answer suppress=false cal=none online=false person=מור | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר. | raw(stub): "על פי הנתונים, מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר." | ✅</sub>
+**A:** מור, הבת שלך. בהוד השרון עם יעל.
+<sub>plan: frame=fact act=answer suppress=false cal=none online=false person=מור | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: מור, הבת שלך. בהוד השרון עם יעל. | raw(stub): "על פי הנתונים, מור, הבת שלך. בהוד השרון עם יעל." | ✅</sub>
 
 **M:** ספרי לי עליה
-**A:** מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר.
-<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=מור | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר. | raw(stub): "אשמח לעזור! מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר." | ✅</sub>
+**A:** מור, הבת שלך. גרה בהוד השרון, וילה עם יעל עם יעל. ארבעה ילדים — אופיר, איילון, עילי ואדר. מתי דיברת איתה לאחרונה?
+<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=מור | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: מור, הבת שלך. גרה בהוד השרון, וילה עם יעל עם יעל. ארבעה ילדים — אופיר, איילון, עילי ואדר. מתי דיברת איתה לאחרונה? | raw(stub): "אשמח לעזור! מור, הבת שלך. גרה בהוד השרון, וילה עם יעל עם יעל. ארבעה ילדים — אופיר, איילון, עילי ואדר. מתי דיברת איתה לאחרונה?" | ✅</sub>
 
 **M:** מי אמא של אופיר?
 **A:** מור.
@@ -126,24 +126,24 @@
 ### MEMORY — memory/follow-up
 
 **M:** מי זאת יעל?
-**A:** יעל — בת זוג של מור.
-<sub>plan: frame=fact act=answer suppress=false cal=none online=false person=יעל | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: יעל — בת זוג של מור. | raw(stub): "על פי הנתונים, יעל — בת זוג של מור." | ✅</sub>
+**A:** יעל, בת הזוג של מור. בהוד השרון.
+<sub>plan: frame=fact act=answer suppress=false cal=none online=false person=יעל | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: יעל, בת הזוג של מור. בהוד השרון. | raw(stub): "על פי הנתונים, יעל, בת הזוג של מור. בהוד השרון." | ✅</sub>
 
 **M:** ספרי לי עליה
-**A:** יעל — בת זוג של מור.
-<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=יעל | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: יעל — בת זוג של מור. | raw(stub): "אשמח לעזור! יעל — בת זוג של מור." | ✅</sub>
+**A:** יעל, בת הזוג של מור. גרה בהוד השרון. גרה עם מור בוילה בהוד השרון. מתי דיברת איתה לאחרונה?
+<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=יעל | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: יעל, בת הזוג של מור. גרה בהוד השרון. גרה עם מור בוילה בהוד השרון. מתי דיברת איתה לאחרונה? | raw(stub): "אשמח לעזור! יעל, בת הזוג של מור. גרה בהוד השרון. גרה עם מור בוילה בהוד השרון. מתי דיברת איתה לאחרונה?" | ✅</sub>
 
 **M:** ועוד?
-**A:** יעל — בת זוג של מור.
-<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=יעל | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: יעל — בת זוג של מור. | raw(stub): "שאלה מצוינת. יעל — בת זוג של מור." | ✅</sub>
+**A:** יעל, בת הזוג של מור. גרה בהוד השרון. גרה עם מור בוילה בהוד השרון. מתי דיברת איתה לאחרונה?
+<sub>plan: frame=fact act=continue suppress=false cal=none online=false person=יעל | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: יעל, בת הזוג של מור. גרה בהוד השרון. גרה עם מור בוילה בהוד השרון. מתי דיברת איתה לאחרונה? | raw(stub): "שאלה מצוינת. יעל, בת הזוג של מור. גרה בהוד השרון. גרה עם מור בוילה בהוד השרון. מתי דיברת איתה לאחרונה?" | ✅</sub>
 
 
 ### CORRECTION — correction
 
 **M:** מי זאת מור?
-**A:** מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר.
-<sub>plan: frame=fact act=answer suppress=false cal=none online=false person=מור | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר. | raw(stub): "על פי הנתונים, מור, הבת שלך. 4 ילדים — אופיר, איילון, עילי ואדר." | ✅</sub>
+**A:** מור, הבת שלך. בהוד השרון עם יעל.
+<sub>plan: frame=fact act=answer suppress=false cal=none online=false person=מור | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: מור, הבת שלך. בהוד השרון עם יעל. | raw(stub): "על פי הנתונים, מור, הבת שלך. בהוד השרון עם יעל." | ✅</sub>
 
 **M:** לא, ספרי לי על לאו
-**A:** לאו, הבן שלך. יש לו שני ילדים — עדי ונועם.
-<sub>plan: frame=fact act=answer suppress=false cal=none online=false person=לאו | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: לאו, הבן שלך. יש לו שני ילדים — עדי ונועם. | raw(stub): "אשמח לעזור! לאו, הבן שלך. יש לו שני ילדים — עדי ונועם." | ✅</sub>
+**A:** לאו, הבן שלך. שני ילדים — עדי ונועם. מתי דיברת איתו לאחרונה?
+<sub>plan: frame=fact act=answer suppress=false cal=none online=false person=לאו | route: family_lookup | source: grounded+LLM | engine: familyGraph | truth: לאו, הבן שלך. שני ילדים — עדי ונועם. מתי דיברת איתו לאחרונה? | raw(stub): "אשמח לעזור! לאו, הבן שלך. שני ילדים — עדי ונועם. מתי דיברת איתו לאחרונה?" | ✅</sub>

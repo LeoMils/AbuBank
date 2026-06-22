@@ -14,8 +14,8 @@ export const APP_VERSION = {
   appName:    'AbuBank',
   version:    '0.5.0-production-candidate',
   buildLabel: 'AbuBank — Production Candidate',
-  buildDate:  '2026-06-11',
-  branchHint: 'feat/calendar-revolution',
+  buildDate:  '2026-06-22',
+  branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
 } as const
 

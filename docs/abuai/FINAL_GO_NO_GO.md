@@ -2,6 +2,8 @@
 
 The honest boundary between "the code is as ready as code can make it" and "only Martita can tell us if it's a companion."
 
+> **Run-3 update (2026-06-22): deep-review release blockers closed.** Memorial-date contradiction removed from the live prompt (defers to data/tool; `memorialDatePromptContract.test.ts`); billable OpenAI key removed from all client code → server-proxied (`clientProviderKeyContract.test.ts`, `ENV_CONTRACT.md`); version sync test-locked. Spend-cap enforcement + Open-Meteo confirmed contract-only/unwired (not live defects). Suite **4585/0**, build+PWA green, harnesses pass. Remaining: D-1 soft confirmation (Leo), device/voice (Leo), real-use quality (Martita).
+
 ## What is GREEN (proven by executed evidence — code-side closed)
 - **Engineering:** tsc clean · **4570 tests pass** · vite build + PWA green.
 - **Persistence:** IndexedDB durable store + localStorage mirror; migrate→evict→restore e2e passed.

@@ -45,6 +45,23 @@ describe('APP_VERSION shape', () => {
   })
 })
 
+describe('canonical version identity is single-sourced and health stays in sync', () => {
+  it('api/health.ts BUILD_VERSION matches APP_VERSION.version (no manual drift)', () => {
+    const health = readSrc('api/health.ts')
+    const mVer = health.match(/const BUILD_VERSION = '([^']+)'/)
+    const mLabel = health.match(/const BUILD_LABEL = '([^']+)'/)
+    expect(mVer).not.toBeNull()
+    expect(mLabel).not.toBeNull()
+    expect(mVer![1]).toBe(APP_VERSION.version)
+    expect(mLabel![1]).toBe(APP_VERSION.buildLabel)
+  })
+
+  it('buildDate and branchHint are not the known-stale placeholders', () => {
+    expect(APP_VERSION.buildDate).not.toBe('2026-06-11')
+    expect(APP_VERSION.branchHint).not.toBe('feat/calendar-revolution')
+  })
+})
+
 describe('no visible UI source hardcodes the npm semver "30.10.0"', () => {
   for (const rel of VISIBLE_UI_FILES) {
     it(`${rel} does not include "30.10.0"`, () => {
