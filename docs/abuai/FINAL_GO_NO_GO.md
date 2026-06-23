@@ -1,5 +1,7 @@
 # AbuAI — Final Go / No-Go
 
+**Run 5 (2026-06-23): live real-model verified.** Drove the actual `gpt-4o` (localhost:5173, real key) → **20/20 scenarios, 0 P0/P1/P2**: Hebrew, Rioplatense Spanish, family/calendar memory, continuity, grief/loneliness, correction, and **online-honesty (declines instead of inventing)**. Deployed Edge online grounding 200 (fresh + sourced). Brutal 18-gap audit: all code/test gaps GREEN; only Leo factual (`LEO_DATA_DECISIONS_REQUIRED.md` D-1/D-2), Leo device, and Martita subjective remain. **No code-fixable blocker.** Evidence: `PRODUCTION_FINAL_VERDICT.md`, `LIVE_MARTITA_RESULTS.md`, dashboard Run-5.
+
 **Run 4 (2026-06-22): non-mic green closure.** Every code/test/data-fixable gate is now proven GREEN with executable evidence. The only non-green items are exclusively **Leo device/microphone** or **Martita subjective satisfaction**. There is **no yellow** left.
 
 Baseline this run: `tsc` clean · **vitest 4608/4608** (+23) · `vite build` + PWA green · 11 acceptance harnesses green.

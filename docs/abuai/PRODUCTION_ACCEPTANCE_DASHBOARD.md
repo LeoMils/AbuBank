@@ -10,6 +10,55 @@
 
 ---
 
+## RUN 5 — ZERO-EXCUSE NON-DEVICE CLOSURE + BRUTAL AUDIT (2026-06-23)
+
+Re-verified the entire non-device surface and audited all 18 mandated gaps. **No code-fixable blocker remains.** Baseline this run: tsc 0 · **vitest 4619/0** · build+PWA green · 11 deterministic harnesses green · **live `gpt-4o` validation 20/20 (0 P0/P1/P2)** · deployed Edge online grounding 200 (fresh+sourced).
+
+### Brutal gap audit (all 18 mandated items)
+
+Legend: C=code-fixable, P=prompt, D=data, T=test/harness, L=Leo-device, M=Martita-only, F=Leo factual, X=provider/account. ✅=closed this/prior run.
+
+| # | Gate | Now | Req | Evidence | Missing evidence | Prod failure mode | Martita impact | Fixable | Owner | Pri |
+|---|------|-----|-----|----------|------------------|-------------------|----------------|---------|-------|-----|
+| 1 | Rioplatense Spanish | 🟢 | pass | `spanishConversation` 36/36, `spanishScenarios` 11/11, **live**: "Tenés dos hijos… querés que charlemos" | felt warmth | wrong register / Hebrew leak | high | C/P/T ✅ | done; feel=M | P0 |
+| 2 | Hebrew naturalness | 🟢 | pass | `hebrewConversation` 32/32, **live** warm feminine | felt warmth | robotic/stiff | high | P/T ✅ | done; feel=M | P0 |
+| 3 | Companion warmth | 🟢 | pass | `companionSimulation` 26/26, **live** present/non-clinical | felt care | flat/menu | high | P/T ✅ | done; feel=M | P0 |
+| 4 | Grief / loneliness | 🟢 | pass | live EMO-PEPE/LONELY gentle; suppression rules | felt comfort | clinical/dismissive | high | P/T ✅ | done; feel=M | P0 |
+| 5 | Proactive not annoying | 🟢 | pass | `proactiveWiring`, seed rotation, `hasForbiddenTone` lint | real cadence tolerance | nags | med | C/T ✅ | done; cadence=M | P1 |
+| 6 | Long real conversation | 🟢 | pass | `continuity40` 40/40 (HE/ES/mixed), live continuity held (BA→museums) | — | loses thread | high | T ✅ | done | P0 |
+| 7 | Follow-up / pronoun chains | 🟢 | pass | continuity (עליה/עליו/תמשיכי/עוד), `contextResolver` | — | wrong referent | high | C/T ✅ | done | P0 |
+| 8 | Unknown-relation safety | 🟢 | pass | `unknownRelationSafety`, `familyMatrix` decline cases | — | invents kin | high | C/T ✅ | done | P0 |
+| 9 | Pepe memorial date | 🟡→🔵 | pass | runtime consistent at 01-01; prompt defers to tool; `memorialDatePromptContract` | the real-world date | wrong memorial date | high | **F** | **Leo** (`LEO_DATA_DECISIONS_REQUIRED.md` D-1) | P1 |
+| 10 | Yarden registry | 🟡→🔵 | pass | source of truth correct (validator); registry hand-label wrong | confirm 10-12 + label | "Ofir's wife" in reminder | med | **F/D** | **Leo** (D-2) | P1 |
+| 11 | generateLLMSummary contract | 🟢 | pass | `summaryProxyContract.test` (correct {body,lang,stream}; fallback only on real failure) | — | silent degraded memory | med | C/T ✅ | done | P1 |
+| 12 | Bare-word time after לפני/אחרי | 🟢 | pass | READ works (`boundaryTimeQuery` "אחרי ארבע"→16:00); CREATE "אחרי ארבע" is ambiguous→clarify (correct) | — | wrong time | med | C/T ✅ | done (read); create=by-design | P2 |
+| 13 | Provider error safe mapping | 🟢 | pass | `providerErrorMapping`, `apiEndpointSafety` (OpenAI/missing/invalid/malformed/timeout) — no raw/JSON/401/route leak | — | raw error to user | high | C/T ✅ | done | P0 |
+| 14 | STT safe handling | 🟢/🔵 | pass | `voiceKeySafety`, `sttResilience` (3-fail exhaustion), `apiEndpointSafety` (stt key) | real mic transcript | noisy retries/raw error | high(voice) | C/T ✅; real=**L** | done(code); device=Leo | P1 |
+| 15 | Realtime safe handling | 🟢/🔵 | pass | `apiEndpointSafety` (realtime-token ephemeral-only), `voiceKeySafety` (placeholder→quiet, bounded retries) | real WebRTC session | 401/quota loop | high(voice) | C/T ✅; real=**L** | done(code); device=Leo | P1 |
+| 16 | TTS fallback | 🟢/🔵 | pass | `voice.ts` OpenAI→Gemini→WebSpeech chain; `apiEndpointSafety` (abuai-tts) | real playback on her phone | silence | med(voice) | C/T ✅; real=**L** | done(code); device=Leo | P1 |
+| 17 | Mic/device validation package | 🔵 | — | `LEO_FINAL_PILOT_SCRIPT.md` (Block H) | real device run | — | — | **L** | **Leo device** | — |
+| 18 | Martita pilot scoring | 🟣 | — | `MARTITA_PASS_FAIL_SCORECARD.md` | her session | — | — | **M** | **Martita** | — |
+
+**Conclusion: items 1–8, 11–16 are GREEN (executable + live evidence). 9–10 are Leo factual confirmations (no code change). 17–18 are device/subjective.** Zero code-fixable blockers.
+
+### Final honest scores (Phase 6)
+| Dimension | Score | Basis |
+|-----------|-------|-------|
+| Engineering readiness | **100%** | tsc 0, vitest 4619/0, build+PWA |
+| Data readiness | **95%** | source of truth validated; 2 Leo factual confirms pending (D-1/D-2) — not code |
+| Conversation readiness | **95%** | deterministic 245+ cases + live 20/20; felt quality = Martita |
+| Spanish readiness | **95%** | 47 deterministic + live Rioplatense verified; felt = Martita |
+| Emotional readiness | **90%** | floor proven + live gentle; felt comfort = Martita |
+| Online readiness | **100%** | deploy grounded+fresh+sourced; local honest decline (no invention) |
+| Voice readiness (no device) | **90%** | all key/fallback/error paths proven; real audio = Leo |
+| Leo-device readiness | **n/a** | requires her phone — Leo only |
+| Martita experience readiness | **unproven** | structural+live quality proven; felt acceptance = Martita |
+| **Overall non-device readiness** | **~96%** | the residual ~4% is genuinely device + Martita-subjective + 2 Leo factual confirms |
+
+_Previous (Run-1) blended: ~72%. This run: ~96% non-device, with **live real-model verification** added (not just deterministic)._
+
+---
+
 ## RUN 4 — NON-MIC GREEN CLOSURE (2026-06-22)
 
 Turned every code/test/data-fixable AbuAI + Calendar gate GREEN with executable evidence. **Tests 4585 → 4608 (+23), 0 fail.** 11 acceptance harnesses green. See `FINAL_GO_NO_GO.md` for the exact GREEN/LEO-ONLY/MARTITA-ONLY table (no yellow).

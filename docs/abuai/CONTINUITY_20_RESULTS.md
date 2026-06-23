@@ -15,7 +15,7 @@ _Structural continuity through the real follow-up/planner/grounding engines. Liv
 | 13 | מה השעה? | mood stickiness across neutral turn | ✅ PASS | frame=emotion |
 | 14 | מי זאת מור? | RETURN to family after detour | ✅ PASS | מור, הבת שלך. בהוד השרון עם יעל. |
 | 15 | עליה | pronoun continuation again (Mor retained) | ✅ PASS | act=continue lastPerson=מור |
-| 16 | מה יש לי השבוע? | calendar week read after return | ✅ PASS | יום שלישי (23/06): / 🏥 רופא בשעה 16:00 |
+| 16 | מה יש לי השבוע? | calendar week read after return | ✅ PASS | יום רביעי (24/06): / 🏥 רופא בשעה 16:00 |
 
 **Continuity checks: 12 · pass 12 · fail 0** across a 20-turn session.
 
