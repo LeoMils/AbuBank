@@ -1,10 +1,12 @@
 {
   "name": "abu-bank",
   "private": true,
-  "version": "30.10.0",
+  "version": "30.11.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:https": "node scripts/dev-https.cjs",
+    "gen:cert": "node scripts/generate-dev-cert.cjs",
     "prepare": "node scripts/setup-git-hooks.cjs",
     "generate:memory": "npx tsx scripts/generate-memory-from-knowledge.ts",
     "validate:family": "npx tsx scripts/validate-family-data.ts",

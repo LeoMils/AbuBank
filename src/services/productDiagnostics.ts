@@ -33,6 +33,9 @@ export interface PipelineEntry {
   calendarSource: string     // 'localStorage' | 'none'
   // Companion Brain plan (STEP 1-7) — computed before every response.
   companionPlan: string      // 'frame=emotion act=listen suppress=true ...'
+  // Microphone preflight (secure-context check before any getUserMedia)
+  micPreflight: string       // '❌ insecure_context' | 'ok'
+  micPreflightDetail: string // dev-facing reason (e.g. insecure origin → use https)
 }
 
 const DIAG_KEY = 'abu-product-diagnostics'

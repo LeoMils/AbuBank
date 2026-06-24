@@ -15,6 +15,7 @@ import { enforceCompanion } from './companionComposer'
 import { durable } from '../../services/durableStore'
 import { getTodayEvents, getTomorrowEvents, getBirthdayFor } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
+import { checkMicPreflight } from '../../services/micPreflight'
 import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
 
 /** speakVoiceMode with 15s safety timeout — prevents stuck speaking state */
@@ -103,11 +104,14 @@ const KEYFRAMES = `
   }
 `
 
-// ─── Voice greeting — short, calm, adult ──────────────────────────────────────
+// ─── Voice greeting — one warm line that invites action ───────────────────────
+// The old "...אני כאן." was a dead end — it greeted and then nothing happened.
+// This opens the door: she knows immediately she can just talk, ask, or have me
+// put something in the calendar. One sentence, warm, adult — never a menu.
 function getVoiceGreeting(): string {
   const h = new Date().getHours()
   const timeGreet = h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : h < 21 ? 'ערב טוב' : 'לילה טוב'
-  return `${timeGreet}, Martita. אני כאן.`
+  return `${timeGreet}, Martita. אפשר לדבר איתי, לשאול משהו, או לבקש שאקבע לך משהו ביומן.`
 }
 
 export function AbuAI() {
@@ -1099,6 +1103,18 @@ export function AbuAI() {
   // ─── Manual voice recording (fills text input) ────────────────────────────
 
   const startRecording = useCallback(async () => {
+    // Same secure-context guard as voice mode — a clear honest message instead
+    // of a confusing "failed to start recording" when mediaDevices is missing.
+    const preflight = checkMicPreflight()
+    if (!preflight.ok) {
+      console.warn(`[AbuAI] Mic unavailable (${preflight.reason}): ${preflight.devReason}`)
+      setMessages(prev => {
+        const last = prev[prev.length - 1]
+        if (last?.role === 'assistant' && last.content === preflight.userMessage) return prev
+        return [...prev, { id: nextId(), role: 'assistant', content: preflight.userMessage, timestamp: Date.now() }]
+      })
+      return
+    }
     try {
       const stream = await startMicStream()
       streamRef.current = stream
@@ -1934,6 +1950,28 @@ ${fewShotText}`
   }, [startVoiceListening, transitionVoice])
 
   const enterVoiceMode = useCallback(() => {
+    // ─── P0 mic preflight (real iPhone Safari) ────────────────────────────
+    // Before we unlock audio, greet, or open WebRTC, answer one question: can
+    // this context record at all? Over plain http on a LAN IP, iOS Safari hides
+    // navigator.mediaDevices, so getUserMedia is impossible. If we entered voice
+    // mode anyway, Realtime would retry → fall back → greet → fail to record →
+    // the user taps again → greeting loop. So we refuse ONCE, calmly, with a
+    // single actionable message — and never enter the loop.
+    const preflight = checkMicPreflight()
+    if (!preflight.ok) {
+      console.warn(`[AbuAI] Mic unavailable (${preflight.reason}): ${preflight.devReason}`)
+      try { diagSet({ micPreflight: `❌ ${preflight.reason}`, micPreflightDetail: preflight.devReason }); diagCommit() } catch {}
+      // Show the calm message once. Don't stack duplicates if she taps again.
+      setMessages(prev => {
+        const last = prev[prev.length - 1]
+        if (last?.role === 'assistant' && last.content === preflight.userMessage) return prev
+        return [...prev, { id: nextId(), role: 'assistant', content: preflight.userMessage, timestamp: Date.now() }]
+      })
+      // Stay in text mode — focus the input so she can type immediately.
+      setTimeout(() => inputRef.current?.focus(), 150)
+      return
+    }
+
     unlockIOSAudio()
     acquireWakeLock()
     setVoiceMode(true)

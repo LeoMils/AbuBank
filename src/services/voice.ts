@@ -4,13 +4,18 @@
 //           3) Gemini TTS (Aoede — human but not Israeli/Argentine)
 //           4) Google Translate TTS  5) Web Speech API
 
-// v20: Read user voice settings from Settings screen
-function getVoiceSpeed(): number {
+import { getVoiceProfile, getEffectiveRate, describeVoiceConfig, type VoiceLang } from './voiceConfig'
+
+// v20: Read user voice settings from Settings screen.
+// Rate is language-tuned in voiceConfig (warm but not "old"); a saved user
+// override still wins, clamped to a non-robotic range.
+function getVoiceSpeed(lang: VoiceLang = 'he'): number {
+  let override: number | null = null
   try {
     const saved = localStorage.getItem('abu-voice-speed')
-    if (saved) return parseFloat(saved)
+    if (saved) override = parseFloat(saved)
   } catch {}
-  return 0.88 // default — slower pace for 80+ listener
+  return getEffectiveRate(lang, override)
 }
 
 let currentAudio: HTMLAudioElement | null = null
@@ -214,8 +219,9 @@ async function speakOpenAI(text: string): Promise<boolean> {
 
   const chunks = splitText(text, 400)
   for (const chunk of chunks) {
+    const lang = detectLang(chunk)
     const { blob, error } = await openAITTSBlob(
-      { model: 'gpt-4o-mini-tts', input: chunk, voice: 'coral', instructions: getTTSInstructions(chunk), speed: getVoiceSpeed() },
+      { model: 'gpt-4o-mini-tts', input: chunk, voice: getVoiceProfile(lang).openaiVoice, instructions: getTTSInstructions(chunk), speed: getVoiceSpeed(lang) },
       { timeoutMs: 8000 },
     )
     if (error === 'TTS_QUOTA') { try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {} }
@@ -398,34 +404,25 @@ function speakWebAPI(text: string): Promise<void> {
     speechSynthesis.cancel()
     loadVoices()
     const lang = detectLang(text)
+    const profile = getVoiceProfile(lang)
     const voices = speechSynthesis.getVoices()
     const prefix = lang === 'es' ? 'es' : 'he'
     const allForLang = voices.filter(v => v.lang.startsWith(prefix))
 
-    // Hebrew priority: Carmit (macOS Israeli) → Google (Android) → any Hebrew female
-    // Spanish priority: Paulina (macOS) → Google (Android) → any Spanish female
+    // Warmest available system voice, ordered by voiceConfig preference
+    // (Carmit/Paulina → Google → any female), then "anything not clearly male".
     let bestVoice: SpeechSynthesisVoice | undefined
-    if (lang === 'he') {
-      bestVoice =
-        allForLang.find(v => /carmit/i.test(v.name)) ??
-        allForLang.find(v => /google/i.test(v.name)) ??
-        allForLang.find(v => /lihi|yael|female|woman/i.test(v.name)) ??
-        allForLang.find(v => !/amit|asaf|male(?!.*fe)/i.test(v.name)) ??
-        allForLang[0]
-    } else {
-      bestVoice =
-        allForLang.find(v => /paulina/i.test(v.name)) ??
-        allForLang.find(v => /google/i.test(v.name)) ??
-        allForLang.find(v => /mónica|penélope|elena|female|woman/i.test(v.name)) ??
-        allForLang.find(v => !/jorge|diego|male(?!.*fe)/i.test(v.name)) ??
-        allForLang[0]
+    for (const matcher of profile.webSpeechPrefer) {
+      bestVoice = allForLang.find(v => matcher.test(v.name))
+      if (bestVoice) break
     }
+    if (!bestVoice) bestVoice = allForLang.find(v => !profile.webSpeechAvoid.test(v.name)) ?? allForLang[0]
 
     const u = new SpeechSynthesisUtterance(text)
-    u.lang = lang === 'es' ? 'es-AR' : 'he-IL'
-    u.rate = lang === 'he' ? 0.88 : 0.90   // natural pace — clear but not robotic
-    u.pitch = 1.0                            // neutral pitch — no robot adjustment
-    u.volume = 1.0
+    u.lang = profile.webSpeechLang
+    u.rate = getVoiceSpeed(lang)   // language-tuned, calm but not "old"
+    u.pitch = profile.pitch        // neutral pitch — no robot adjustment
+    u.volume = profile.volume
     if (bestVoice) u.voice = bestVoice
     console.log('[TTS] Web Speech voice:', bestVoice?.name ?? 'default', 'lang:', u.lang)
     u.onend = () => resolve()
@@ -459,6 +456,21 @@ export function getTTSTrace(): Array<{ provider: string; model: string; voice: s
   try { return JSON.parse(localStorage.getItem('abu-tts-trace') || '[]') } catch { return [] }
 }
 
+/**
+ * Debug summary: the configured voice profile + the engine/voice that actually
+ * played last. Surfaced in diagnostics + console so Leo can confirm on a real
+ * device which TTS engine spoke (not just which we intended).
+ */
+export function getVoiceDebug(): { config: string; lastEngine: string; lastVoice: string; lastStatus: string } {
+  const last = getTTSTrace().slice(-1)[0]
+  return {
+    config: describeVoiceConfig(),
+    lastEngine: last?.provider ?? '(none yet)',
+    lastVoice: last?.voice ?? '(none yet)',
+    lastStatus: last?.status ?? '(none yet)',
+  }
+}
+
 export async function speakVoiceMode(text: string): Promise<void> {
   if (!text.trim()) return
   const ttsStart = Date.now()
@@ -466,20 +478,22 @@ export async function speakVoiceMode(text: string): Promise<void> {
   // 1) OpenAI TTS (paid — server-proxied; key never in client) — skip only if TTS-specific quota exhausted
   const ttsQuotaFlag = localStorage.getItem('abu-openai-tts-quota-failed')
   const ttsQuotaOk = !ttsQuotaFlag || (Date.now() - parseInt(ttsQuotaFlag, 10)) > 300_000
+  const vmLang = detectLang(text)
+  const vmVoice = getVoiceProfile(vmLang).openaiVoice
   if (ttsQuotaOk) {
     const { blob, error } = await openAITTSBlob(
-      { model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed() },
+      { model: 'gpt-4o-mini-tts', input: text, voice: vmVoice, instructions: getTTSInstructions(text), speed: getVoiceSpeed(vmLang) },
       { timeoutMs: 6000 },
     )
     if (error === 'TTS_QUOTA') { try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {} }
     if (blob && blob.size > 100) {
       const ok = await playBlobViaAudioCtx(blob)
-      if (ok) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via AudioCtx' }); return }
-      if (await playBlob(blob)) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via HTMLAudio' }); return }
+      if (ok) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via AudioCtx' }); return }
+      if (await playBlob(blob)) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via HTMLAudio' }); return }
     }
-    ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: true, status: `❌ ${error ?? 'no audio'}` })
+    ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: Date.now() - ttsStart, fallback: true, status: `❌ ${error ?? 'no audio'}` })
   } else {
-    ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: 0, fallback: true, status: `⏭ skipped: quotaOk=false` })
+    ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: 0, fallback: true, status: `⏭ skipped: quotaOk=false` })
   }
 
   // 2) Gemini TTS (FREE with existing key)
@@ -724,8 +738,9 @@ export async function streamSpeakVoiceMode(
     const sqf = localStorage.getItem('abu-openai-tts-quota-failed')
     const skipOpenAI = sqf && (Date.now() - parseInt(sqf, 10)) < 300_000
     if (!skipOpenAI) {
+      const chunkLang = detectLang(text)
       const { blob, error } = await openAITTSBlob(
-        { model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed() },
+        { model: 'gpt-4o-mini-tts', input: text, voice: getVoiceProfile(chunkLang).openaiVoice, instructions: getTTSInstructions(text), speed: getVoiceSpeed(chunkLang) },
         { signal: signal ?? null },
       )
       if (error === 'TTS_QUOTA') { try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {} }

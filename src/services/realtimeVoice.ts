@@ -2,6 +2,8 @@
 // v24.3: Reverted to gpt-4o-realtime-preview (gpt-realtime may not be available on all accounts)
 // Keep coral voice (marin may be gpt-realtime exclusive)
 
+import { HE_VOICE } from './voiceConfig'
+
 const REALTIME_MODEL = 'gpt-4o-realtime-preview'
 
 // The ephemeral-session endpoint. It is a BETA route — it requires the
@@ -76,7 +78,7 @@ export class RealtimeVoiceSession {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          voice: 'shimmer',  // v26.1: shimmer is warmer and more natural for Hebrew/Spanish than coral
+          voice: HE_VOICE.realtimeVoice,  // shimmer — warmer/more natural than coral (single source: voiceConfig)
           instructions: this.instructions,
           // v22.6: Quiet = server VAD (auto-detect speech), Noisy = no VAD (push-to-talk)
           turnDetection: this.pushToTalk ? null : {
@@ -157,7 +159,9 @@ export class RealtimeVoiceSession {
             type: 'response.create',
             response: {
               modalities: ['audio', 'text'],
-              instructions: 'Greet Martita warmly in Hebrew based on the time of day. One short sentence only. Speak slowly, gently, like greeting a close friend. Example: "אחר הצהריים טובים, Martita!"',
+              // One warm sentence that INVITES action (talk / ask / calendar) —
+              // never a dead "I'm here." Warm Israeli woman, calm but alive pace.
+              instructions: 'Greet Martita warmly in Hebrew based on the time of day, in ONE short sentence that gently invites her to talk, ask something, or have you put something in her calendar. Warm, human, like a close friend on the phone — calm but not slow, never robotic, never a menu. Example: "בוקר טוב, Martita. אפשר לדבר איתי, לשאול משהו, או לבקש שאקבע לך משהו ביומן."',
             },
           })
         }
