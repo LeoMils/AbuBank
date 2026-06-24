@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.5.5-semantic-understanding',
-  buildLabel: 'AbuBank — AI Semantic Understanding layer (LLM + deterministic grounding)',
+  version:    '0.5.6-nonvoice-closure',
+  buildLabel: 'AbuBank — Non-voice production closure (calendar/family/memory/games)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

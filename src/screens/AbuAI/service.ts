@@ -8,6 +8,7 @@ import { answerFromToolResult, type ToolResult } from './groundedResponse'
 import { sendServerChat, streamServerChat, checkServerChatHealth } from './serverChatProvider'
 import { describeRelation, loadGraph, type Lang } from './familyGraph'
 import { detectLanguage } from './proactive'
+import { deriveConversationMemory } from './conversationMemory'
 import { shapeFamilyAnswerES, shapeCalendarAnswerES, shapeLocationAnswerES, shapeCreateConfirmES, shapeCreateSavedES, shapeCreateCancelledES, shapeCreateClarifyES, calendarEventExtras, timeInWords, dateLabel } from './responseShaper'
 import { durable } from '../../services/durableStore'
 import { resolveRelationalQuery } from './relationalResolver'
@@ -65,6 +66,10 @@ export interface ConversationSummary {
   emotionalContext: string | null
   lastUserRequest: string | null
   factsMentioned: string[]
+  /** Most-recently-mentioned person (continuity for pronouns / "עליה"). */
+  lastPerson?: string | null
+  /** Last calendar ACTION the conversation performed (not just a mention). */
+  lastCalendarAction?: 'create' | 'read' | 'delete' | null
 }
 
 export function loadSummary(): ConversationSummary | null {
@@ -133,6 +138,15 @@ export function updateSummaryFromMessages(
   summary.peopleDiscussed = [...peopleSet].slice(-10) // cap at 10
   summary.topicsDiscussed = [...topicSet].slice(-8)
   summary.appointmentsMentioned = summary.appointmentsMentioned.slice(-5)
+
+  // Continuity: last person + last calendar ACTION (create/read/delete), derived
+  // deterministically so AbuAI can answer "מה עשינו ביומן?" / follow "עליה".
+  try {
+    const mem = deriveConversationMemory(messages)
+    summary.lastPerson = mem.lastPerson
+    summary.lastCalendarAction = mem.lastCalendarAction
+  } catch { /* memory derivation is best-effort */ }
+
   summary.updatedAt = Date.now()
 
   return summary

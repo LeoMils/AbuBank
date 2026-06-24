@@ -57,7 +57,8 @@ function planFallback(plan: CompanionPlan): string {
     case 'lead': return 'בא לך שנדבר על משהו?'
     case 'encourage': return 'איזה כיף לשמוע.'
     case 'ask': return 'תגידי לי עוד קצת?'
-    default: return 'אני כאן.'
+    // Never a bare dead-end "אני כאן." — stay warm and present without a menu.
+    default: return 'אני כאן איתך.'
   }
 }
 
