@@ -159,12 +159,12 @@ const READ_NOT_CREATE = /יש\s+לי\s+(?:פגישות|תורים|אירועים
 // A scheduling verb WITHOUT the "לי" object — "תקבע עם מור", "קבע פגישה",
 // "שימי עם יעל". Each alternative is a whole word (Hebrew lookarounds) so we
 // never match a verb root inside a longer, unrelated word.
-const SCHEDULE_VERB = /(?<![֐-׿])(?:תקבעי|תקבע|קבעי|קבע|תרשמי|תרשום|רשמי|שימי|תשימי|תוסיפי|תוסיף|תזכירי|תכניסי|תכניס|תעשי)(?![֐-׿])/
+const SCHEDULE_VERB = /(?<![֐-׿])(?:תקבעי|תקבע|קבעי|קבע|נקבע|אקבע|תרשמי|תרשום|רשמי|שימי|תשימי|תוסיפי|תוסיף|תזכירי|תכניסי|תכניס|תעשי)(?![֐-׿])/
 
 // A date OR time OR "עם <someone>" clue — enough, combined with a scheduling
 // verb, to commit to calendar_create even when a family name is present.
 function hasScheduleClue(t: string): boolean {
-  const hasDate = /היום|מחר|מחרתיים|(?:ב?יום\s+|ב)(?:ראשון|שני|שלישי|רביעי|רביע|חמישי|שישי|שבת)|בעוד\s+שבוע|שבוע\s+הבא/.test(t)
+  const hasDate = /היום|מחר|מחרתיים|(?:ב?יום\s+|ב)(?:ראשון|שני|שלישי|רביעי|רביע|חמישי|שישי|שבת)|בעוד\s+שבוע|השבוע|שבוע\s+הבא/.test(t)
   const hasTime = /בשעה|בבוקר|בערב|בצהריים|אחהצ|אחה"צ|אחר[י]?\s+הצהריים|[בל](?:שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|אחת|שתיים)|\d{1,2}[:.]\d{2}|\d{1,2}\s*(?:אחהצ|בערב|בבוקר|בצהריים)/.test(t)
   const hasWith = /(?<![֐-׿])עם\s+\S/.test(t)
   return hasDate || hasTime || hasWith
@@ -174,7 +174,7 @@ function hasScheduleClue(t: string): boolean {
 // "אני חושבת שכדאי שנקבע משהו עם …", "בא לי לשבת עם …", "אני צריכה להיפגש עם …".
 // A meeting verb buried in conversational lead-in, paired with a real
 // date/time/with clue, is still a create — a form-parser misses it.
-const NATURAL_MEETING = /(?:כדאי\s+ש|בא\s+לי|אני\s+רוצ[הא]?|אני\s+חושב[הת]?\s+ש|אני\s+צריכ[הא]?|נצטרך|צריך)\s*\S{0,14}(?:נקבע|אקבע|להיפגש|להפגש|לפגוש|לשבת\s+עם|להיות\s+עם)/
+const NATURAL_MEETING = /(?:כדאי\s+ש|בא\s+לי|אני\s+רוצ[הא]?|אני\s+חושב[הת]?\s+ש|אני\s+צריכ[הא]?|נצטרך|צריך)\s*\S{0,14}(?:נקבע|אקבע|להיפגש|להפגש|לפגוש|לראות\s+את|לבקר|לשבת\s+עם|להיות\s+עם)/
 
 export function isCreateIntent(text: string): boolean {
   const t = normalizeCreateText(text.trim())

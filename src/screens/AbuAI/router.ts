@@ -53,7 +53,7 @@ const CALENDAR_NOUN_FIRST_WEEK = /(?:פגיש[הות]+|תור(?:ים)?|אירו�
 // Next appointment: "מה/מתי/איפה הפגישה הבאה שלי", "הפגישה הבאה", "האירוע הבא".
 // "איפה" is also accepted so a where-is-my-next-meeting question resolves to the
 // next event (its location is included in the answer). מסעדה-agnostic.
-const CALENDAR_NEXT = /(?:^|\s)(?:ה?פגישה|ה?אירוע|ה?תור|ה?מפגש)\s+ה?באה?(?:\s|$|[?.,]|שלי)/i
+const CALENDAR_NEXT = /(?:^|\s)(?:ה?פגישה|ה?אירוע|ה?תור|ה?מפגש|ה?דבר)\s+ה?באה?(?:\s|$|[?.,]|שלי|ביומן)/i
 
 // "מתי אני נפגשת עם X", "מתי הפגישה שלי עם X", "מה יש לי עם X", "מתי אני רואה את X".
 // The captured name flows to findEventsByPerson — searches title/personName/notes.

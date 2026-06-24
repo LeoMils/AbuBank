@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.5.7-nonvoice-green',
-  buildLabel: 'AbuBank — Non-voice green (STT recovery + hostile corpus + companion)',
+  version:    '0.5.8-final-nonmic',
+  buildLabel: 'AbuBank — Final non-mic production acceptance (product-behavior proven)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
