@@ -1,5 +1,6 @@
 import { parseHebrewDate } from './dateParser'
 import { detectEmoji } from '../AbuCalendar/service'
+import { extractEventDetails } from './eventExtractor'
 
 // ─── State Machine ──────────────────────────────────────────────────────────
 
@@ -12,8 +13,11 @@ export interface CreateDraft {
   /** Hour was understood but AM/PM is unresolved (e.g. bare "בשבע"). */
   ambiguousTime?: boolean
   emoji?: string
-  location?: string | null
-  notes?: string | null
+  // ─── Dedicated event-extraction fields (WHO / WHERE / WHAT-about) ───
+  person?: string | null     // "עם אלכסנדרה" → אלכסנדרה
+  location?: string | null   // "בקפה גרג רעננה" → קפה גרג רעננה
+  subject?: string | null    // "על הטיול לאיטליה" → טיול לאיטליה
+  notes?: string | null      // reason clause ("כי …")
 }
 
 export interface CalendarCreateState {
@@ -411,7 +415,13 @@ export interface ParsedCreateIntent {
 export function parseCreateIntent(text: string): ParsedCreateIntent | null {
   if (!isCreateIntent(text)) return null
 
-  let title = extractTitle(text)
+  // ─── Dedicated extraction pass (runs BEFORE title/date/time) ──────────
+  // Pulls WHO / WHERE / SUBJECT / notes out of the whole utterance and hands
+  // back a residual with the venue + topic phrases removed, so the title stays
+  // clean ("פגישה עם אלכסנדרה") instead of swallowing "בקפה גרג רעננה על …".
+  const event = extractEventDetails(text)
+
+  let title = extractTitle(event.residualText)
   // Resolve family references: "החברה של מור" → "יעל", "בת הזוג של מור" → "יעל"
   if (title) {
     const familyRef = title.match(/(החברה|בת הזוג|בן הזוג|השותפה) של\s+(\S+)/)
@@ -433,6 +443,10 @@ export function parseCreateIntent(text: string): ParsedCreateIntent | null {
       } catch {}
     }
   }
+  // Title fallback: a bare "פגישה עם <person>" when the title extractor came up
+  // empty but we did capture a person.
+  if (!title && event.person) title = `פגישה עם ${event.person}`
+
   const date = parseCreateDate(text)
   const { time, ambiguous } = parseHebrewTimeDetailed(text)
   const emoji = title ? detectEmoji(title) : '📅'
@@ -444,7 +458,13 @@ export function parseCreateIntent(text: string): ParsedCreateIntent | null {
   if (!time || ambiguous) missing.push('time')
 
   return {
-    draft: { title, date, time, ambiguousTime: ambiguous, emoji },
+    draft: {
+      title, date, time, ambiguousTime: ambiguous, emoji,
+      person: event.person,
+      location: event.location,
+      subject: event.subject,
+      notes: event.notes,
+    },
     missing,
   }
 }

@@ -11,6 +11,7 @@ export interface Appointment {
   color: string
   notes?: string
   location?: string      // v18: venue/address
+  subject?: string       // what the meeting is about ("טיול לאיטליה")
   // Family Intelligence
   type?: 'regular' | 'birthday' | 'anniversary' | 'memory'
   personName?: string    // for birthdays: the person's name

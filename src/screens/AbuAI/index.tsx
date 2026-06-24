@@ -440,7 +440,13 @@ export function AbuAI() {
         }
         if (resolution.action === 'save') {
           const d = resolution.draft
-          addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
+          addAppointment({
+            title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅',
+            ...(d.location ? { location: d.location } : {}),
+            ...(d.subject ? { subject: d.subject } : {}),
+            ...(d.notes ? { notes: d.notes } : {}),
+            ...(d.person ? { personName: d.person } : {}),
+          })
           soundSuccess()
           setCreateState(IDLE_STATE)
           // P0-4: Deterministic readback — verify appointment was saved
@@ -717,9 +723,16 @@ export function AbuAI() {
           const title = next.draft.title || 'פגישה'
           const time = next.draft.time || null
           const dates = getNextOccurrences(recurDay, 4)
+          const d = next.draft
           // Create 4 individual events
           for (const date of dates) {
-            addAppointment({ title, date, time: time || '09:00', emoji: next.draft.emoji || '📅', type: 'regular' })
+            addAppointment({
+              title, date, time: time || '09:00', emoji: next.draft.emoji || '📅', type: 'regular',
+              ...(d.location ? { location: d.location } : {}),
+              ...(d.subject ? { subject: d.subject } : {}),
+              ...(d.notes ? { notes: d.notes } : {}),
+              ...(d.person ? { personName: d.person } : {}),
+            })
           }
           const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
           const timeStr = time ? ` בשעה ${time}` : ''
@@ -1377,7 +1390,13 @@ export function AbuAI() {
               response = shapeCreateCancelled()
             } else if (resolution.action === 'save') {
               const d = resolution.draft
-              addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
+              addAppointment({
+                title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅',
+                ...(d.location ? { location: d.location } : {}),
+                ...(d.subject ? { subject: d.subject } : {}),
+                ...(d.notes ? { notes: d.notes } : {}),
+                ...(d.person ? { personName: d.person } : {}),
+              })
               soundSuccess()
               setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE
               // P0-4: Deterministic readback — verify appointment was saved

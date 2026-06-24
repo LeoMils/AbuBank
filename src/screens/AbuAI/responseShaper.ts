@@ -273,6 +273,7 @@ export function shapeCreateConfirm(draft: CreateDraft): string {
   const time = draft.time ? ` ${timeInWords(draft.time)}` : ''
   let text = `${what}${when}${time}.`
   if (draft.location) text += ` ב${draft.location}.`
+  if (draft.subject) text += ` בנושא ${draft.subject}.`
   text += ' נכון?'
   return text
 }
