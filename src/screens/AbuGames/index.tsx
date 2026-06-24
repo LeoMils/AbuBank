@@ -4,57 +4,54 @@ import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/mar
 import { soundTap } from '../../services/sounds'
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ABU GAMES — redesigned from zero (v31)
-// Design language: calm spatial depth — VisionOS ambient light + Apple Arcade
-// cover tiles + Switch library clarity + Duolingo legibility. Premium and quiet,
-// never flashy. Built for Martita (80+): big covers, high contrast, calm motion.
+// ABU GAMES — bubble redesign (v32)
+// Matches the Abu Bank home screen: each game is a glossy 3D "water-drop" orb,
+// the exact volumetric-sphere recipe used on Home, made even more polished.
+// Premium English wordmark on top, warm time greeting, WOW as the favorite,
+// then every game as a round bubble in a vertical-scroll grid. No cards.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ─── Palette ──────────────────────────────────────────────────────────────────
-const INK = '#F3EFE7'          // warm off-white text
-const INK_SOFT = 'rgba(243,239,231,0.62)'
-const INK_FAINT = 'rgba(243,239,231,0.34)'
-const GOLD = '#D8B670'
-const TEAL = '#2DD4BF'
+// ─── Brand palette (Abu Bank identity) ───────────────────────────────────────
+const GOLD = '#C9A84C'
+const TEAL = '#14b8a6'
+const INK = 'rgba(255,255,255,0.95)'
+const INK_SOFT = 'rgba(255,255,255,0.62)'
 
 // ─── Games ────────────────────────────────────────────────────────────────────
 interface Game {
   id: string
-  label: string        // Latin / source name
-  labelHe: string      // Hebrew name (primary)
+  label: string        // Latin / source name (for a11y context)
+  labelHe: string      // Hebrew name shown under the bubble
   url: string
-  accent: string       // single calm accent for ring + cover wash
-  gradient: string     // cover gradient
+  accent: string       // single brand color → drives the volumetric sphere
   category: 'featured' | 'solitaire' | 'mahjong'
   emoji: string
-  mood: string         // one-line Hebrew descriptor
-  desc?: string        // featured only
 }
 
 const GAMES: Game[] = [
-  { id: 'wow', label: 'Words of Wonders', labelHe: 'אבו וואו', url: 'https://www.crazygames.com/game/words-of-wonders', accent: '#F2B45A', gradient: 'linear-gradient(150deg, #C9762E 0%, #E59A4A 50%, #F2C078 100%)', category: 'featured', emoji: '🔤', mood: 'חידת המילים שלך', desc: 'בונים מילים, מתקדמים בשלבים — נעים ומרגיע.' },
+  { id: 'wow', label: 'Words of Wonders', labelHe: 'אבו וואו', url: 'https://www.crazygames.com/game/words-of-wonders', accent: '#F2A93B', category: 'featured', emoji: '🔤' },
 
-  { id: 'klondike', label: 'Clásico', labelHe: 'סוליטר קלאסי', accent: '#34D399', gradient: 'linear-gradient(150deg, #0E6B53 0%, #2BAE84 100%)', category: 'solitaire', emoji: '🃏', url: 'https://www.arkadium.com/games/klondike-solitaire/', mood: 'הקלאסיקה' },
-  { id: 'spider', label: 'Spider', labelHe: 'עכביש', accent: '#A78BFA', gradient: 'linear-gradient(150deg, #4C3A8C 0%, #8B72E0 100%)', category: 'solitaire', emoji: '🕷️', url: 'https://www.arkadium.com/games/spider-solitaire/', mood: 'אסטרטגיה' },
-  { id: 'freecell', label: 'FreeCell', labelHe: 'פריסל', accent: '#60A5FA', gradient: 'linear-gradient(150deg, #234E8C 0%, #4C8FE0 100%)', category: 'solitaire', emoji: '💎', url: 'https://www.arkadium.com/games/freecell/', mood: 'כל משחק פתיר' },
-  { id: 'pyramid', label: 'Pirámide', labelHe: 'פירמידה', accent: '#FBBF24', gradient: 'linear-gradient(150deg, #9A6512 0%, #E0A52E 100%)', category: 'solitaire', emoji: '🔺', url: 'https://games.aarp.org/games/pyramid-solitaire', mood: 'חשבון מהנה' },
-  { id: 'tripeaks', label: 'Tri Peaks', labelHe: 'שלוש פסגות', accent: '#2DD4BF', gradient: 'linear-gradient(150deg, #0C6B61 0%, #25B3A3 100%)', category: 'solitaire', emoji: '⛰️', url: 'https://www.arkadium.com/games/tripeaks-solitaire-free/', mood: 'מהיר ומשמח' },
-  { id: 'hearts', label: 'Corazones', labelHe: 'לבבות', accent: '#FB7185', gradient: 'linear-gradient(150deg, #9A2942 0%, #E0596E 100%)', category: 'solitaire', emoji: '❤️', url: 'https://cardgames.io/hearts/', mood: 'משחק חברתי' },
-  { id: 'canfield', label: 'Canfield', labelHe: 'קאנפילד', accent: '#22D3EE', gradient: 'linear-gradient(150deg, #0C5F73 0%, #1FAecb 100%)', category: 'solitaire', emoji: '🎴', url: 'https://solitaired.com/canfield', mood: 'אתגר גבוה' },
-  { id: 'golf', label: 'Golf', labelHe: 'גולף', accent: '#4ADE80', gradient: 'linear-gradient(150deg, #166534 0%, #34B45F 100%)', category: 'solitaire', emoji: '⛳', url: 'https://www.solitaire-play.com/golf/', mood: 'פשוט ומרגיע' },
-  { id: 'yukon', label: 'Yukon', labelHe: 'יוקון', accent: '#38BDF8', gradient: 'linear-gradient(150deg, #1E5E8C 0%, #2F9DD8 100%)', category: 'solitaire', emoji: '🌊', url: 'https://solitaired.com/yukon', mood: 'טוויסט מפתיע' },
-  { id: 'spider2', label: 'Spider ×2', labelHe: 'עכביש ×2', accent: '#FB923C', gradient: 'linear-gradient(150deg, #9A4413 0%, #E0742E 100%)', category: 'solitaire', emoji: '🕸️', url: 'https://www.arkadium.com/games/spider-solitaire-2-suits/', mood: 'למנוסות' },
-  { id: 'forty', label: '40 Ladrones', labelHe: '40 ליסטים', accent: '#C084FC', gradient: 'linear-gradient(150deg, #5B2E8C 0%, #9D5FE0 100%)', category: 'solitaire', emoji: '⚔️', url: 'https://solitaired.com/forty-thieves', mood: 'לאמיצות' },
+  { id: 'klondike', label: 'Clásico', labelHe: 'סוליטר קלאסי', accent: '#34D399', category: 'solitaire', emoji: '🃏', url: 'https://www.arkadium.com/games/klondike-solitaire/' },
+  { id: 'spider', label: 'Spider', labelHe: 'עכביש', accent: '#A78BFA', category: 'solitaire', emoji: '🕷️', url: 'https://www.arkadium.com/games/spider-solitaire/' },
+  { id: 'freecell', label: 'FreeCell', labelHe: 'פריסל', accent: '#60A5FA', category: 'solitaire', emoji: '💎', url: 'https://www.arkadium.com/games/freecell/' },
+  { id: 'pyramid', label: 'Pirámide', labelHe: 'פירמידה', accent: '#FBBF24', category: 'solitaire', emoji: '🔺', url: 'https://games.aarp.org/games/pyramid-solitaire' },
+  { id: 'tripeaks', label: 'Tri Peaks', labelHe: 'שלוש פסגות', accent: '#2DD4BF', category: 'solitaire', emoji: '⛰️', url: 'https://www.arkadium.com/games/tripeaks-solitaire-free/' },
+  { id: 'hearts', label: 'Corazones', labelHe: 'לבבות', accent: '#FB7185', category: 'solitaire', emoji: '❤️', url: 'https://cardgames.io/hearts/' },
+  { id: 'canfield', label: 'Canfield', labelHe: 'קאנפילד', accent: '#22D3EE', category: 'solitaire', emoji: '🎴', url: 'https://solitaired.com/canfield' },
+  { id: 'golf', label: 'Golf', labelHe: 'גולף', accent: '#4ADE80', category: 'solitaire', emoji: '⛳', url: 'https://www.solitaire-play.com/golf/' },
+  { id: 'yukon', label: 'Yukon', labelHe: 'יוקון', accent: '#38BDF8', category: 'solitaire', emoji: '🌊', url: 'https://solitaired.com/yukon' },
+  { id: 'spider2', label: 'Spider ×2', labelHe: 'עכביש ×2', accent: '#FB923C', category: 'solitaire', emoji: '🕸️', url: 'https://www.arkadium.com/games/spider-solitaire-2-suits/' },
+  { id: 'forty', label: '40 Ladrones', labelHe: '40 ליסטים', accent: '#C084FC', category: 'solitaire', emoji: '⚔️', url: 'https://solitaired.com/forty-thieves' },
 
-  { id: 'mahjong', label: 'Clásico', labelHe: "מהג'ונג קלאסי", accent: '#F87171', gradient: 'linear-gradient(150deg, #8C2424 0%, #D85151 100%)', category: 'mahjong', emoji: '🀄', url: 'https://www.arkadium.com/games/mahjongg-solitaire/', mood: 'שלווה קלאסית' },
-  { id: 'mahjong-connect', label: 'Connect', labelHe: 'חיבור', accent: '#FB923C', gradient: 'linear-gradient(150deg, #9A4413 0%, #E0742E 100%)', category: 'mahjong', emoji: '🔗', url: 'https://www.arkadium.com/games/mahjong-connect/', mood: 'מצאי זוגות' },
-  { id: 'mahjong-3d', label: 'Dimensiones', labelHe: 'תלת-מימד', accent: '#A78BFA', gradient: 'linear-gradient(150deg, #4C3A8C 0%, #8B72E0 100%)', category: 'mahjong', emoji: '🧊', url: 'https://www.arkadium.com/games/mahjongg-dimensions/', mood: 'אריחים מסתובבים' },
-  { id: 'mahjong-candy', label: 'Candy', labelHe: 'ממתקים', accent: '#F472B6', gradient: 'linear-gradient(150deg, #8C2F66 0%, #D858A0 100%)', category: 'mahjong', emoji: '🍬', url: 'https://www.arkadium.com/games/mahjongg-candy/', mood: 'צבעוני ומתוק' },
-  { id: 'mahjong-dark', label: 'Dark', labelHe: "מהג'ונג לילה", accent: '#818CF8', gradient: 'linear-gradient(150deg, #2E348C 0%, #5F69E0 100%)', category: 'mahjong', emoji: '🌙', url: 'https://www.mahjong.com/games/dark-mahjong/', mood: 'שקט מסתורי' },
-  { id: 'mahjong-garden', label: 'Garden', labelHe: 'גן פורח', accent: '#4ADE80', gradient: 'linear-gradient(150deg, #166534 0%, #34B45F 100%)', category: 'mahjong', emoji: '🌸', url: 'https://www.arkadium.com/games/garden-tales/', mood: 'טבע ושלווה' },
+  { id: 'mahjong', label: 'Clásico', labelHe: "מהג'ונג קלאסי", accent: '#F87171', category: 'mahjong', emoji: '🀄', url: 'https://www.arkadium.com/games/mahjongg-solitaire/' },
+  { id: 'mahjong-connect', label: 'Connect', labelHe: 'חיבור', accent: '#FB923C', category: 'mahjong', emoji: '🔗', url: 'https://www.arkadium.com/games/mahjong-connect/' },
+  { id: 'mahjong-3d', label: 'Dimensiones', labelHe: 'תלת-מימד', accent: '#A78BFA', category: 'mahjong', emoji: '🧊', url: 'https://www.arkadium.com/games/mahjongg-dimensions/' },
+  { id: 'mahjong-candy', label: 'Candy', labelHe: 'ממתקים', accent: '#F472B6', category: 'mahjong', emoji: '🍬', url: 'https://www.arkadium.com/games/mahjongg-candy/' },
+  { id: 'mahjong-dark', label: 'Dark', labelHe: "מהג'ונג לילה", accent: '#818CF8', category: 'mahjong', emoji: '🌙', url: 'https://www.mahjong.com/games/dark-mahjong/' },
+  { id: 'mahjong-garden', label: 'Garden', labelHe: 'גן פורח', accent: '#4ADE80', category: 'mahjong', emoji: '🌸', url: 'https://www.arkadium.com/games/garden-tales/' },
 ]
 
-// ─── Navigation (same-tab, guarded) ───────────────────────────────────────────
+// ─── Navigation (same-tab, guarded) — identical logic to Home ─────────────────
 let isNavigating = false
 let navTimer: ReturnType<typeof setTimeout> | null = null
 function handleTap(url: string): void {
@@ -75,89 +72,135 @@ function getTimeGreeting(): string {
   return 'לילה טוב'
 }
 
-// ─── Motion / surface CSS (calm, spatial) ─────────────────────────────────────
+// ─── Color helpers — build a volumetric sphere from a single accent ───────────
+function hexToRgbArr(hex: string): [number, number, number] {
+  const h = hex.replace('#', '')
+  const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+function mix(hex: string, target: [number, number, number], t: number): string {
+  const [r, g, b] = hexToRgbArr(hex)
+  const r2 = Math.round(r + (target[0] - r) * t)
+  const g2 = Math.round(g + (target[1] - g) * t)
+  const b2 = Math.round(b + (target[2] - b) * t)
+  return `rgb(${r2},${g2},${b2})`
+}
+const WHITE: [number, number, number] = [255, 255, 255]
+const BLACK: [number, number, number] = [10, 8, 4]
+
+// Same 4-stop volumetric recipe Home uses (light → accent → deep → near-black),
+// generated per game from its accent so every orb has real spherical depth.
+function sphereGradient(accent: string): string {
+  const light = mix(accent, WHITE, 0.78)
+  const deep = mix(accent, BLACK, 0.55)
+  const darkest = mix(accent, BLACK, 0.86)
+  return `radial-gradient(circle at 38% 32%, ${light} 0%, ${accent} 42%, ${deep} 72%, ${darkest} 100%)`
+}
+
 const CSS = `
-  @keyframes ag-rise { from { opacity:0; transform:translateY(18px) } to { opacity:1; transform:translateY(0) } }
-  @keyframes ag-aurora { 0%,100% { transform:translate(0,0) scale(1); opacity:.55 } 50% { transform:translate(3%, 4%) scale(1.12); opacity:.8 } }
-  @keyframes ag-sheen { 0% { transform:translateX(-160%) } 100% { transform:translateX(260%) } }
-
-  .ag-tile, .ag-hero {
-    transition: transform .26s cubic-bezier(.2,.7,.2,1), box-shadow .26s ease, border-color .26s ease;
-    will-change: transform;
-  }
-  .ag-tile:hover { transform:translateY(-3px); border-color:var(--ring,rgba(255,255,255,.18)) !important; }
-  .ag-tile:active { transform:scale(.97); }
-  .ag-hero:hover { transform:translateY(-2px); }
-  .ag-hero:active { transform:scale(.985); }
-
-  .ag-tile:focus-visible, .ag-hero:focus-visible {
-    outline:none; box-shadow:0 0 0 3px rgba(45,212,191,.55), 0 14px 36px rgba(0,0,0,.4) !important;
-  }
-  .ag-scroll::-webkit-scrollbar { width:0; height:0; }
-  .ag-scroll { scrollbar-width:none; }
-
+  @keyframes ag-rise { from { opacity:0; transform:translateY(16px) scale(.9) } to { opacity:1; transform:translateY(0) scale(1) } }
+  @keyframes ag-glow { 0%,100% { opacity:.5 } 50% { opacity:.8 } }
+  @keyframes ag-shine { 0% { background-position:0% 50% } 100% { background-position:200% 50% } }
+  .ag-scroll::-webkit-scrollbar { width:0; height:0 }
+  .ag-scroll { scrollbar-width:none }
   @media (prefers-reduced-motion: reduce) {
-    [data-ag] { animation:none !important; }
-    .ag-tile, .ag-hero { transition:none !important; }
-    .ag-sheen { display:none !important; }
+    [data-ag] { animation:none !important }
+    .ag-bubble { transition:none !important }
   }
 `
 
-// ─── Game cover tile (library card) ───────────────────────────────────────────
-function GameTile({ g, index }: { g: Game; index: number }) {
+// ─── Game bubble — the glossy water-drop orb (matches Home, more polished) ─────
+function GameBubble({ g, size, index, caption }: { g: Game; size: number; index: number; caption?: string }) {
+  const [pressed, setPressed] = useState(false)
+  const rgb = hexToRgbArr(g.accent).join(',')
+  const emojiSize = Math.round(size * 0.42)
+
   return (
     <div
       role="button" tabIndex={0} aria-label={g.labelHe}
       onClick={() => handleTap(g.url)}
+      onPointerDown={() => setPressed(true)}
+      onPointerUp={() => setPressed(false)}
+      onPointerLeave={() => setPressed(false)}
+      onPointerCancel={() => setPressed(false)}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(g.url) } }}
-      className="ag-tile"
       data-ag
       style={{
-        '--ring': `${g.accent}66`,
-        display: 'flex', flexDirection: 'column',
-        borderRadius: 24, overflow: 'hidden', cursor: 'pointer',
-        background: 'rgba(255,255,255,0.045)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 10px 26px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.07)',
-        WebkitTapHighlightColor: 'transparent',
-        animation: `ag-rise .5s ${(0.12 + index * 0.035).toFixed(2)}s cubic-bezier(.2,.7,.2,1) both`,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+        animation: `ag-rise .5s ${(0.06 + index * 0.03).toFixed(2)}s cubic-bezier(.22,1,.36,1) both`,
         opacity: 0,
-      } as React.CSSProperties}
+      }}
     >
-      {/* Cover — the game's identity, like an Arcade cover */}
-      <div style={{
-        position: 'relative', height: 96,
-        background: g.gradient,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: 'inset 0 -18px 30px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.18)',
+      {/* Volumetric sphere */}
+      <div className="ag-bubble" style={{
+        width: size, height: size, borderRadius: '50%',
+        position: 'relative', overflow: 'hidden',
+        background: sphereGradient(g.accent),
+        boxShadow: pressed
+          ? `0 0 18px rgba(201,168,76,0.35), 0 0 6px rgba(201,168,76,0.20), 0 2px 8px rgba(0,0,0,0.5)`
+          : `0 0 24px rgba(${rgb},0.60), 0 0 9px rgba(${rgb},0.28), 0 22px 44px rgba(0,0,0,0.50), inset 0 2px 10px rgba(255,255,255,0.10)`,
+        transform: pressed ? 'scale(0.93)' : 'scale(1)',
+        transition: 'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
       }}>
-        {/* soft spatial light from top */}
+        {/* Emoji — the game's identity, centered in the sphere */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{ fontSize: emojiSize, lineHeight: 1, filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.35))' }}>{g.emoji}</span>
+        </div>
+        {/* Primary specular — large soft highlight top-left */}
         <div aria-hidden style={{
-          position: 'absolute', inset: 0,
-          background: 'radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.22), transparent 60%)',
+          position: 'absolute', inset: 0, borderRadius: '50%', zIndex: 2, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at 28% 22%, rgba(255,255,255,0.90) 0%, rgba(255,255,255,0.30) 22%, transparent 55%)',
         }} />
-        <span style={{ fontSize: 42, lineHeight: 1, filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.28))' }}>{g.emoji}</span>
+        {/* Secondary caustic */}
+        <div aria-hidden style={{
+          position: 'absolute', inset: 0, borderRadius: '50%', zIndex: 3, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at 55% 12%, rgba(255,255,255,0.55) 0%, transparent 30%)',
+        }} />
+        {/* Tight sparkle — the "wet" point */}
+        <div aria-hidden style={{
+          position: 'absolute', top: '14%', left: '22%', width: '13%', height: '9%', zIndex: 4,
+          background: 'radial-gradient(ellipse, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 80%)',
+          borderRadius: '50%', pointerEvents: 'none',
+        }} />
+        {/* Deep bottom shadow — volume */}
+        <div aria-hidden style={{
+          position: 'absolute', inset: 0, borderRadius: '50%', zIndex: 5, pointerEvents: 'none',
+          boxShadow: 'inset 0 -14px 28px rgba(0,0,0,0.55), inset 0 6px 12px rgba(255,255,255,0.12)',
+        }} />
+        {/* Elegant rim */}
+        <div aria-hidden style={{
+          position: 'absolute', inset: 0, borderRadius: '50%', zIndex: 6, pointerEvents: 'none',
+          border: '1px solid rgba(255,255,255,0.18)',
+        }} />
       </div>
 
-      {/* Info row */}
-      <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <span style={{ fontSize: 17, fontWeight: 700, color: INK, lineHeight: 1.2 }}>{g.labelHe}</span>
-        <span style={{ fontSize: 13, fontWeight: 500, color: INK_SOFT, lineHeight: 1.25 }}>{g.mood}</span>
-      </div>
+      {/* Label */}
+      <span style={{
+        fontSize: 15, fontWeight: 700, color: INK, fontFamily: "'Heebo',sans-serif",
+        textAlign: 'center', lineHeight: 1.25, direction: 'rtl', maxWidth: size + 28,
+        textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+      }}>{g.labelHe}</span>
+      {caption && (
+        <span style={{ fontSize: 12, fontWeight: 600, color: GOLD, marginTop: -3, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{caption}</span>
+      )}
     </div>
   )
 }
 
-// ─── Section header ───────────────────────────────────────────────────────────
-function SectionHeader({ title, count, accent, delay }: { title: string; count: number; accent: string; delay: number }) {
+// ─── Subtle group label (visible, not a hidden section) ───────────────────────
+function GroupLabel({ text, delay }: { text: string; delay: number }) {
   return (
     <div data-ag style={{
-      display: 'flex', alignItems: 'baseline', gap: 10, padding: '0 20px 2px',
-      animation: `ag-rise .5s ${delay}s cubic-bezier(.2,.7,.2,1) both`, opacity: 0,
-    } as React.CSSProperties}>
-      <span style={{ width: 8, height: 8, borderRadius: 4, background: accent, boxShadow: `0 0 12px ${accent}` }} />
-      <h2 style={{ fontSize: 20, fontWeight: 800, color: INK, margin: 0, lineHeight: 1 }}>{title}</h2>
-      <span style={{ fontSize: 14, fontWeight: 500, color: INK_FAINT }}>{count} משחקים</span>
+      display: 'flex', alignItems: 'center', gap: 10, padding: '0 22px',
+      animation: `ag-rise .45s ${delay}s cubic-bezier(.22,1,.36,1) both`, opacity: 0,
+    }}>
+      <span style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12))' }} />
+      <span style={{ fontSize: 14, fontWeight: 700, color: INK_SOFT, letterSpacing: '0.04em' }}>{text}</span>
+      <span style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(255,255,255,0.12), transparent)' }} />
     </div>
   )
 }
@@ -176,7 +219,8 @@ export function AbuGames() {
   }, [])
 
   const grid: React.CSSProperties = {
-    display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, padding: '12px 16px 4px',
+    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '22px 6px', padding: '18px 14px 4px', justifyItems: 'center',
   }
 
   return (
@@ -185,151 +229,96 @@ export function AbuGames() {
 
       <div className="ag-scroll" dir="rtl" style={{
         minHeight: '100dvh', overflowY: 'auto', overflowX: 'hidden',
-        fontFamily: "'Heebo','DM Sans',sans-serif",
-        // Deep spatial background — light pooled from above, settling to near-black
-        background: 'radial-gradient(125% 80% at 50% -8%, #16223f 0%, #0a1430 34%, #060b1c 70%, #04060f 100%)',
+        // Identical background to the Abu Bank home screen
+        background: 'linear-gradient(180deg, #070D1E 0%, #050A18 40%, #050A18 100%)',
+        fontFamily: "'DM Sans','Heebo',sans-serif",
         position: 'relative',
       }}>
-        {/* Ambient aurora glows — subtle depth, slow drift */}
+        {/* Ambient brand glow — same gold/teal wash as Home */}
         <div aria-hidden data-ag style={{
-          position: 'fixed', top: '-8%', right: '-12%', width: 320, height: 320, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(45,212,191,0.16), transparent 65%)',
-          filter: 'blur(40px)', animation: 'ag-aurora 16s ease-in-out infinite', pointerEvents: 'none', zIndex: 0,
-        }} />
-        <div aria-hidden data-ag style={{
-          position: 'fixed', bottom: '4%', left: '-14%', width: 340, height: 340, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(216,182,112,0.12), transparent 65%)',
-          filter: 'blur(48px)', animation: 'ag-aurora 22s 3s ease-in-out infinite', pointerEvents: 'none', zIndex: 0,
+          position: 'fixed', top: '-6%', left: '50%', transform: 'translateX(-50%)',
+          width: '120%', height: 360,
+          background: 'radial-gradient(ellipse at center, rgba(201,168,76,0.10) 0%, rgba(20,184,166,0.05) 38%, transparent 68%)',
+          pointerEvents: 'none', zIndex: 0, animation: 'ag-glow 7s ease-in-out infinite',
         }} />
 
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', paddingBottom: 40 }}>
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', paddingBottom: 44 }}>
 
-          {/* ── Top bar ── */}
+          {/* Top bar */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 0' }}>
             <BackButton />
             <div style={{ width: 40 }} />
           </div>
 
-          {/* ── Title row: greeting + portrait ── */}
-          <header data-ag style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            gap: 14, padding: '14px 20px 18px',
-            animation: 'ag-rise .55s .05s cubic-bezier(.2,.7,.2,1) both', opacity: 0,
-          } as React.CSSProperties}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: GOLD, letterSpacing: '.01em' }}>
-                {getTimeGreeting()}, Martita
-              </div>
-              <h1 style={{
-                fontSize: 32, fontWeight: 800, color: INK, margin: '6px 0 0', lineHeight: 1.05,
-              }}>
-                המשחקים שלך
-              </h1>
-              <div style={{ fontSize: 14, fontWeight: 500, color: INK_SOFT, marginTop: 6 }}>
-                בחרי משחק ושבי בנחת ✨
-              </div>
-            </div>
+          {/* ── Premium brand block ── */}
+          <header style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 20px 6px' }}>
+            {/* Abu Bank identity eyebrow */}
+            <div data-ag style={{
+              direction: 'ltr', fontSize: 12, fontWeight: 700, letterSpacing: '0.42em',
+              color: TEAL, marginInlineStart: '0.42em', opacity: 0,
+              animation: 'ag-rise .5s .02s cubic-bezier(.22,1,.36,1) both',
+            }}>ABU BANK</div>
 
-            {/* Calm portrait — single soft ring, no clutter */}
-            <div style={{
-              width: 66, height: 66, borderRadius: '50%', flexShrink: 0,
-              padding: 2, background: `conic-gradient(from 210deg, ${TEAL}, ${GOLD}, ${TEAL})`,
-              boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+            {/* Large premium English wordmark */}
+            <h1 data-ag style={{
+              direction: 'ltr', margin: '6px 0 0', fontWeight: 800, fontSize: 46,
+              letterSpacing: '-0.02em', lineHeight: 1.02,
+              fontFamily: "'DM Sans',sans-serif",
+              background: 'linear-gradient(135deg, #FBF1CE 0%, #E9CB76 20%, #C9A84C 44%, #9C7B2E 60%, #E9CB76 80%, #FBF1CE 100%)',
+              backgroundSize: '200% auto',
+              WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              filter: 'drop-shadow(0 3px 16px rgba(201,168,76,0.28))',
+              animation: 'ag-rise .55s .06s cubic-bezier(.22,1,.36,1) both, ag-shine 9s linear infinite',
+              opacity: 0,
+            }}>Abu Games</h1>
+
+            {/* Time greeting — warm, elegant */}
+            <div data-ag style={{
+              display: 'flex', alignItems: 'center', gap: 12, marginTop: 14,
+              animation: 'ag-rise .5s .12s cubic-bezier(.22,1,.36,1) both', opacity: 0,
             }}>
-              <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(6,11,28,0.9)' }}>
-                <img
-                  src={martitaPhoto} alt="Martita" loading="eager"
+              <div style={{
+                width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+                border: `2px solid ${GOLD}`, boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+              }}>
+                <img src={martitaPhoto} alt="Martita" loading="eager"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 18%', display: 'block' }}
-                  onError={handleMartitaImgError}
-                />
+                  onError={handleMartitaImgError} />
+              </div>
+              <div style={{ fontSize: 19, fontWeight: 600, color: INK }}>
+                {getTimeGreeting()} <span style={{ direction: 'ltr' }}>Martita</span> 💛
               </div>
             </div>
           </header>
 
-          {/* ── Featured hero (WOW) ── */}
-          <div
-            role="button" tabIndex={0}
-            aria-label={`${featured.labelHe} — מומלץ`}
-            onClick={() => handleTap(featured.url)}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(featured.url) } }}
-            className="ag-hero" data-ag
-            style={{
-              margin: '0 16px 8px', borderRadius: 30, overflow: 'hidden', cursor: 'pointer',
-              position: 'relative', WebkitTapHighlightColor: 'transparent',
-              background: 'rgba(255,255,255,0.045)',
-              border: `1px solid ${featured.accent}3a`,
-              boxShadow: '0 18px 44px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
-              animation: 'ag-rise .6s .12s cubic-bezier(.2,.7,.2,1) both', opacity: 0,
-            } as React.CSSProperties}
-          >
-            {/* Cover */}
-            <div style={{
-              position: 'relative', height: 150, background: featured.gradient,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-              boxShadow: 'inset 0 -26px 44px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.2)',
-            }}>
-              <div aria-hidden style={{
-                position: 'absolute', inset: 0,
-                background: 'radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,0.25), transparent 58%)',
-              }} />
-              {/* slow specular sheen */}
-              <div aria-hidden className="ag-sheen" style={{
-                position: 'absolute', top: 0, bottom: 0, width: '34%',
-                background: 'linear-gradient(100deg, transparent, rgba(255,255,255,0.28), transparent)',
-                animation: 'ag-sheen 6s 1.4s ease-in-out infinite', pointerEvents: 'none',
-              }} />
-              {/* recommended pill */}
-              <div style={{
-                position: 'absolute', top: 14, insetInlineStart: 14,
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '6px 13px', borderRadius: 20,
-                background: 'rgba(6,11,28,0.5)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255,255,255,0.22)',
-                fontSize: 13, fontWeight: 700, color: INK,
-              }}>★ מומלץ בשבילך</div>
-              <span style={{ fontSize: 64, lineHeight: 1, filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.3))' }}>{featured.emoji}</span>
-            </div>
-
-            {/* Body */}
-            <div style={{ padding: '16px 18px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 24, fontWeight: 800, color: INK, lineHeight: 1.1 }}>{featured.labelHe}</div>
-                {featured.desc && (
-                  <div style={{ fontSize: 14, fontWeight: 500, color: INK_SOFT, marginTop: 5, lineHeight: 1.45 }}>{featured.desc}</div>
-                )}
-              </div>
-              <div style={{
-                flexShrink: 0, padding: '13px 22px', borderRadius: 16,
-                background: `linear-gradient(135deg, ${featured.accent}, ${GOLD})`,
-                color: '#2A1A06', fontSize: 17, fontWeight: 800,
-                boxShadow: `0 8px 22px ${featured.accent}44, inset 0 1px 0 rgba(255,255,255,0.3)`,
-                whiteSpace: 'nowrap',
-              }}>להתחיל ›</div>
-            </div>
+          {/* ── WOW — the favorite, a large hero bubble ── */}
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0 6px' }}>
+            <GameBubble g={featured} size={132} index={0} caption="האהוב שלך ⭐" />
           </div>
 
-          {/* ── Solitaire library ── */}
-          <section style={{ marginTop: 18 }}>
-            <SectionHeader title="סוליטר" count={solitaire.length} accent={TEAL} delay={0.2} />
-            <div style={grid}>
-              {solitaire.map((g, i) => <GameTile key={g.id} g={g} index={i} />)}
-            </div>
-          </section>
+          {/* ── Solitaire bubbles ── */}
+          <GroupLabel text="סוליטר" delay={0.18} />
+          <div style={grid}>
+            {solitaire.map((g, i) => <GameBubble key={g.id} g={g} size={92} index={i + 1} />)}
+          </div>
 
-          {/* ── Mahjong library ── */}
-          <section style={{ marginTop: 22 }}>
-            <SectionHeader title="מהג'ונג" count={mahjong.length} accent={GOLD} delay={0.28} />
-            <div style={grid}>
-              {mahjong.map((g, i) => <GameTile key={g.id} g={g} index={i} />)}
-            </div>
-          </section>
+          {/* ── Mahjong bubbles ── */}
+          <div style={{ marginTop: 18 }}>
+            <GroupLabel text="מהג'ונג" delay={0.28} />
+          </div>
+          <div style={grid}>
+            {mahjong.map((g, i) => <GameBubble key={g.id} g={g} size={92} index={i + 1} />)}
+          </div>
 
-          {/* ── Footer hint ── */}
+          {/* Footer identity */}
           <footer data-ag style={{
-            textAlign: 'center', padding: '26px 24px 0',
-            animation: 'ag-rise .5s .4s cubic-bezier(.2,.7,.2,1) both', opacity: 0,
-          } as React.CSSProperties}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: INK_FAINT, lineHeight: 1.6 }}>
+            textAlign: 'center', padding: '24px 24px 0',
+            animation: 'ag-rise .5s .4s cubic-bezier(.22,1,.36,1) both', opacity: 0,
+          }}>
+            <div style={{ direction: 'ltr', fontSize: 13, fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(201,168,76,0.7)' }}>
+              ABU BANK · ABU GAMES
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.32)', marginTop: 6 }}>
               כל משחק נפתח בדפדפן. לחצי על החץ למעלה כדי לחזור.
             </div>
           </footer>
