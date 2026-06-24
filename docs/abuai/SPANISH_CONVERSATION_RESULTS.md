@@ -24,8 +24,8 @@ _Deterministic structural scoring (anti-robotic / anti-patronizing / perspective
 | ES-18 | calendar/calendar | ¿qué tengo mañana? | Mañana tenés médico a las 16:00. | ✅ |  |
 | ES-19 | calendar/calendar | ¿qué tengo esta semana? | Esta semana tenés médico a las 16:00. | ✅ |  |
 | ES-20 | calendar/calendar | ¿qué tengo hoy? | Hoy no tenés nada en el calendario. | ✅ |  |
-| ES-21 | calendar/calendar | agendame el médico mañana a las cuatro | Te agendo médico el miércoles 24 de junio a las 16:00. / ¿Está bien? | ✅ |  |
-| ES-22 | calendar/calendar | sí, dale | Listo, te agendé médico el miércoles 24 de junio a las 16:00. | ✅ |  |
+| ES-21 | calendar/calendar | agendame el médico mañana a las cuatro | Te agendo médico mañana a las 16:00. / ¿Está bien? | ✅ |  |
+| ES-22 | calendar/calendar | sí, dale | Listo, te agendé médico mañana a las 16:00. | ✅ |  |
 | ES-23 | calendar/calendar | no, cancelá | Dale, lo cancelé. Decime cuando quieras agendar algo. | ✅ |  |
 | ES-24 | calendar/calendar | ¿a qué hora? | ¿A qué hora? | ✅ |  |
 | ES-25 | family/grounded | ¿quién es la madre de Ari? | Ari no tiene mamá. | ✅ |  |

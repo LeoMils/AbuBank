@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.5.6-nonvoice-closure',
-  buildLabel: 'AbuBank — Non-voice production closure (calendar/family/memory/games)',
+  version:    '0.5.7-nonvoice-green',
+  buildLabel: 'AbuBank — Non-voice green (STT recovery + hostile corpus + companion)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

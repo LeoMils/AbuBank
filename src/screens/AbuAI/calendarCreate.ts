@@ -5,6 +5,7 @@ import { extractEventDetails } from './eventExtractor'
 // because refineMeeting is only ever called at runtime (live ES bindings), never
 // at module-eval time.
 import { refineMeeting } from './meetingIntelligence'
+import { recoverHebrewStt } from './sttSemanticRecovery'
 
 // ─── State Machine ──────────────────────────────────────────────────────────
 
@@ -550,9 +551,11 @@ export function parseCreateIntent(text: string): ParsedCreateIntent | null {
 // ─── State Transitions ──────────────────────────────────────────────────────
 
 export function startCreate(text: string): CalendarCreateState {
-  // Pipeline step 1: clean the (often messy / voice) transcript BEFORE parsing.
+  // Pipeline step 1: clean the (often messy / voice) transcript, then repair
+  // obvious Hebrew STT slips (שחירות→שכירות, "אחר צהריים"→"אחר הצהריים") BEFORE
+  // parsing so the extractor never sees garbage.
   const rawTranscript = text
-  const cleaned = cleanTranscript(text)
+  const cleaned = recoverHebrewStt(cleanTranscript(text)).text
   const parsed = parseCreateIntent(cleaned)
   if (!parsed) return IDLE_STATE
 

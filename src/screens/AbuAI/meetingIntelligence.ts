@@ -37,6 +37,7 @@ import {
 } from './calendarCreate'
 import { extractEventDetails } from './eventExtractor'
 import { loadGraph } from './familyGraph'
+import { recoverHebrewStt, type SttCorrection } from './sttSemanticRecovery'
 
 export interface MeetingObject {
   who: string | null
@@ -53,6 +54,8 @@ export interface MeetingObject {
   missing: Array<'who' | 'date' | 'time'>
   needsClarification: boolean
   clarificationQuestion: string | null
+  /** STT slips repaired from context before extraction (evidence trail). */
+  corrections: SttCorrection[]
 }
 
 // ── small shared helpers ────────────────────────────────────────────────────
@@ -117,7 +120,10 @@ export function resolveMeetingTime(text: string): { time: string | null; ambiguo
 
 // ── 2. Purpose + subject synthesis ──────────────────────────────────────────
 // Action verbs that introduce the meeting's purpose/topic.
-const PURPOSE_VERB = '(?:לסגור|לסיים|לחתום|לחתום\\s+על|לדבר|לדון|לשוחח|לשאול|לתאם|להחליט|לקבוע|לבדוק|לטפל|לסדר|להתייעץ|לחגוג|לארגן)'
+// NOTE: scheduling verbs (לקבוע / לתאם / לסדר) are deliberately EXCLUDED — they
+// are the action, not the meeting's topic ("לקבוע עם מור" must not yield a
+// subject of "עם מור").
+const PURPOSE_VERB = '(?:לסגור|לסיים|לחתום|לחתום\\s+על|לדבר|לדון|לשוחח|לשאול|להחליט|לבדוק|לטפל|להתייעץ|לחגוג|לארגן)'
 
 /**
  * Understand WHY the meeting exists (purpose) and WHAT it is about (subject).
@@ -137,24 +143,35 @@ export function understandPurpose(text: string): { purpose: string | null; subje
     const verbClause = text.match(new RegExp(`(?:^|\\s)((?:${PURPOSE_FILLER.source.replace(/^\^/, '')})?${PURPOSE_VERB}\\s+[^.?!]+)`, 'u'))
     if (verbClause?.[1]) clause = verbClause[1]
   }
-  if (!clause) return { purpose: null, subject: null }
 
-  // Purpose = the clause with conversational filler removed.
-  const purpose = tidy(clause.replace(PURPOSE_FILLER, ''))
+  // A "לפני/אחרי …" timing clause carries the WHY ("לפני שהדיירים נכנסים",
+  // "לפני הטיסה לאיטליה"). It is the purpose when nothing stronger exists, and a
+  // NOUN-phrase form ("הטיסה לאיטליה") can also seed the subject.
+  const beforeAfter = text.match(/(?<![א-ת])(לפני|אחרי)\s+(ש?[^.?!,]+)/u)
+  const beforeAfterNoun = beforeAfter && !/^ש/u.test(beforeAfter[2]!.trim())
+    ? cleanSubject(beforeAfter[2]!.replace(/\s+(?:עם|ב|ל)\s.*$/u, ''))
+    : null
+
+  let purpose: string | null = clause ? tidy(clause.replace(PURPOSE_FILLER, '')) : null
+  if (!purpose && beforeAfter) purpose = tidy(`${beforeAfter[1]} ${beforeAfter[2]}`)
 
   // Subject = the topic noun. Prefer an explicit topic marker ("…על הבדיקות" →
-  // "בדיקות", skipping a pronoun object like "אותה"); otherwise take the noun
-  // right after the purpose verb ("לסגור את הסכם השכירות"). Cut before a trailing
-  // temporal/sub-clause ("…לפני שהדיירים…").
+  // "בדיקות", skipping a pronoun object like "אותה"); otherwise the noun right
+  // after the purpose verb ("לסגור את הסכם השכירות"); otherwise the "לפני/אחרי"
+  // noun ("הטיסה לאיטליה"). Cut before a trailing temporal/sub-clause.
   let subject: string | null = null
-  const topic = purpose.match(/(?:על|בנושא|לגבי|בעניין)\s+([^.?!]+)/u)?.[1]
-    ?? purpose.match(new RegExp(`${PURPOSE_VERB}\\s+(?:את\\s+|ל)?([^.?!]+)`, 'u'))?.[1]
-  if (topic) {
-    const cut = topic.replace(/\s+(?:לפני|אחרי|כי|כדי|עם|בגלל|ש[א-ת]).*$/u, '')
-    const s = cleanSubject(cut)
-    if (s.length >= 2) subject = s
+  if (clause) {
+    const topic = clause.match(/(?:על|בנושא|לגבי|בעניין)\s+([^.?!]+)/u)?.[1]
+      ?? clause.match(new RegExp(`${PURPOSE_VERB}\\s+(?:את\\s+|ל)?([^.?!]+)`, 'u'))?.[1]
+    if (topic) {
+      const cut = topic.replace(/\s+(?:לפני|אחרי|כי|כדי|עם|בגלל|ש[א-ת]).*$/u, '')
+      const s = cleanSubject(cut)
+      if (s.length >= 2) subject = s
+    }
   }
-  return { purpose: purpose.length >= 2 ? purpose : null, subject }
+  if (!subject && beforeAfterNoun && beforeAfterNoun.length >= 2) subject = beforeAfterNoun
+
+  return { purpose: purpose && purpose.length >= 2 ? purpose : null, subject }
 }
 
 /**
@@ -164,7 +181,9 @@ export function understandPurpose(text: string): { purpose: string | null; subje
  */
 export function resolveWho(text: string, basePerson: string | null): string | null {
   if (basePerson) return basePerson
+  // "…עם X", "…אצל X", or a meeting verb + "את X" ("לראות את מור", "לפגוש את לאו").
   const cand = text.match(/(?<![֐-׿])(?:עם|אצל)\s+([א-ת]{2,})/u)?.[1]
+    ?? text.match(/(?:לראות|לפגוש|לבקר|להיפגש)\s+את\s+([א-ת]{2,})/u)?.[1]
   if (!cand) return null
   try {
     const graph = loadGraph()
@@ -250,7 +269,11 @@ export function refineMeeting(base: CreateDraft, cleanedText: string): CreateDra
  */
 export function understandMeeting(raw: string): MeetingObject {
   const rawTranscript = raw ?? ''
-  const cleanedTranscript = cleanTranscript(rawTranscript)
+  // Clean fillers, then repair obvious Hebrew STT slips from context BEFORE
+  // extraction. The repaired text is what we parse and store; the raw transcript
+  // stays as evidence.
+  const recovered = recoverHebrewStt(cleanTranscript(rawTranscript))
+  const cleanedTranscript = recovered.text
 
   // Base entity extraction (who / where / topic / base-notes) + date.
   const ev = extractEventDetails(cleanedTranscript)
@@ -276,11 +299,12 @@ export function understandMeeting(raw: string): MeetingObject {
     : missing.includes('time') ? 'באיזו שעה?'
     : null
 
-  // Confidence — completeness-weighted.
+  // Confidence — completeness-weighted, minus any context-gated STT guess.
   let confidence = 1
   if (missing.includes('who')) confidence -= 0.3
   if (missing.includes('date')) confidence -= 0.35
   if (missing.includes('time')) confidence -= 0.3
+  confidence -= recovered.confidencePenalty
   confidence = Math.max(0, Math.min(1, Number(confidence.toFixed(2))))
 
   return {
@@ -298,5 +322,6 @@ export function understandMeeting(raw: string): MeetingObject {
     missing,
     needsClarification: missing.length > 0,
     clarificationQuestion,
+    corrections: recovered.corrections,
   }
 }
