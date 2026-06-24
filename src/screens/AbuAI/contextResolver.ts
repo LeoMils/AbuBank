@@ -11,6 +11,7 @@
 
 import type { ChatMessage } from './types'
 import { routePersonalQuery, type RouteType } from './router'
+import { findLastMentionedPerson } from './pronounResolver'
 
 // Short temporal fragments — bare time references that need context.
 // These are follow-ups like "ומחר?", "ובשלישי?", "והשבוע?", "ואתמול?"
@@ -210,6 +211,18 @@ export function resolveFollowUp(
     }
   }
 
+  // Bare "עליה" / "עליו" / "עליהם" — "(tell me) about her/him/them". A
+  // continuation that must STAY on the last-mentioned person via the family
+  // graph (deterministic), never cold-start the LLM. Resolves to a family lookup.
+  const ABOUT_PERSON_FRAG = /^(?:ו)?(עליה|עליו|עליהם|עליהן)\??$/
+  const aboutPerson = trimmed.match(ABOUT_PERSON_FRAG)
+  if (aboutPerson) {
+    const tok = aboutPerson[1]!
+    const g = /עליה|עליהן/.test(tok) ? 'female' as const : 'male' as const
+    const person = findLastMentionedPerson(recentMessages, g) ?? findLastMentionedPerson(recentMessages)
+    if (person) return { resolved: `ספרי לי על ${person}`, wasFollowUp: true }
+  }
+
   // Check for name follow-up: "ומור?", "ולאו?"
   const nameMatch = trimmed.match(NAME_FRAGMENT)
   if (nameMatch?.[1] && trimmed.startsWith('ו')) {
@@ -245,6 +258,12 @@ export function resolveFollowUp(
   const aboutMatch = trimmed.match(/^ו?על\s+(.{2,40}?)\??$/)
   if (CONTINUE_FRAG.test(trimmed) || aboutMatch) {
     const lastCtx = findLastContext(recentMessages)
+    // Family context: a bare "תמשיכי" / "עוד" continues on the PERSON,
+    // deterministically (graph), instead of cold-starting the LLM.
+    if (!aboutMatch && lastCtx && FAMILY_ROUTES.has(lastCtx)) {
+      const person = findLastMentionedPerson(recentMessages)
+      if (person) return { resolved: `ספרי לי עוד על ${person}`, wasFollowUp: true }
+    }
     const familyOrCal = !!lastCtx && (FAMILY_ROUTES.has(lastCtx) || CALENDAR_ROUTES.has(lastCtx))
     if (!familyOrCal) {
       const topic = (aboutMatch && !/^זה$/.test(aboutMatch[1]!.trim())) ? aboutMatch[1]!.trim() : findLastUserTopic(recentMessages)

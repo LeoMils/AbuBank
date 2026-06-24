@@ -181,6 +181,23 @@ export function shapeLocationAnswer(name: string, location: string, notes?: stri
 
 // ─── Calendar Read ──────────────────────────────────────────────────────────
 
+// Append the WHERE (location) and SUBJECT to a single-event answer when present.
+// "פגישה עם אלכסנדרה." → "... בקפה גרג רעננה. בנושא טיול לאיטליה." The production
+// gap Leo reported was that calendar reads never surfaced location/subject even
+// after they were captured on create.
+export function calendarEventExtras(e: Appointment): string {
+  let s = ''
+  if (e.location) s += ` ב${e.location}.`
+  if (e.subject) s += ` הנושא — ${e.subject}.`
+  // The WHY (purpose / notes) when it adds something beyond the bare topic, so a
+  // read sounds like an assistant who understood ("הנושא — שכירות. רצית לדבר על
+  // ההכנות לפני הדיירים."), not a field dump. notes already holds the synthesized
+  // purpose for engine-created events.
+  const why = e.notes ?? e.purpose
+  if (why && why.trim() !== (e.subject ?? '').trim()) s += ` ${why}.`
+  return s
+}
+
 export function shapeCalendarAnswer(events: Appointment[], scope: 'today' | 'tomorrow' | 'week' | 'upcoming'): string {
   const scopeWord = scope === 'today' ? 'היום'
     : scope === 'tomorrow' ? 'מחר'
@@ -201,7 +218,7 @@ export function shapeCalendarAnswer(events: Appointment[], scope: 'today' | 'tom
     if (e.type === 'birthday') {
       return `${scopeWord} ${e.title}.`
     }
-    return `${scopeWord} יש לך ${e.title}.${time}`
+    return `${scopeWord} יש לך ${e.title}.${time}${calendarEventExtras(e)}`
   }
 
   // Multiple events — time — title format
@@ -274,6 +291,7 @@ export function shapeCreateConfirm(draft: CreateDraft): string {
   let text = `${what}${when}${time}.`
   if (draft.location) text += ` ב${draft.location}.`
   if (draft.subject) text += ` בנושא ${draft.subject}.`
+  if (draft.notes) text += ` (${draft.notes}).`
   text += ' נכון?'
   return text
 }

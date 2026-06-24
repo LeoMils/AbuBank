@@ -1,6 +1,10 @@
 import { parseHebrewDate } from './dateParser'
 import { detectEmoji } from '../AbuCalendar/service'
 import { extractEventDetails } from './eventExtractor'
+// NOTE: meetingIntelligence imports back from this module — the cycle is safe
+// because refineMeeting is only ever called at runtime (live ES bindings), never
+// at module-eval time.
+import { refineMeeting } from './meetingIntelligence'
 
 // ─── State Machine ──────────────────────────────────────────────────────────
 
@@ -16,8 +20,13 @@ export interface CreateDraft {
   // ─── Dedicated event-extraction fields (WHO / WHERE / WHAT-about) ───
   person?: string | null     // "עם אלכסנדרה" → אלכסנדרה
   location?: string | null   // "בקפה גרג רעננה" → קפה גרג רעננה
-  subject?: string | null    // "על הטיול לאיטליה" → טיול לאיטליה
-  notes?: string | null      // reason clause ("כי …")
+  subject?: string | null    // "על הטיול לאיטליה" → טיול לאיטליה (topic)
+  purpose?: string | null    // WHY — "לסגור את הסכם השכירות לפני הדיירים"
+  notes?: string | null      // clean one-line summary (NOT the raw transcript)
+  // ─── Understanding-pipeline provenance (set by runCalendarPipeline) ───
+  rawTranscript?: string | null      // exactly what STT / the user gave us
+  cleanedTranscript?: string | null  // Hebrew/STT-normalized text we parsed
+  confidence?: number                // 0..1 — how complete/sure the parse is
 }
 
 export interface CalendarCreateState {
@@ -53,6 +62,46 @@ export function normalizeCreateText(text: string): string {
   let t = text
   for (const [re, rep] of CREATE_VERB_FIXES) t = t.replace(re, rep)
   return t
+}
+
+// ─── Understanding-pipeline cleanup + confidence (calendar intelligence) ─────
+//
+// Hebrew / Spanish speech fillers and disfluencies that carry no meeting
+// meaning. Removed before extraction so they never reach the title or notes.
+// Conservative — only well-known fillers, never content words.
+const FILLER_TOKENS =
+  /(?:^|\s)(?:אֵה+|אה+ה|אמ+|אהם|המ+|emm+|ehh+|este|eh|hmm+|יעני|כאילו|בקיצור|נו)(?=\s|$)/gi
+
+/**
+ * Hebrew / STT normalization run BEFORE extraction. Fixes near-miss create
+ * verbs, strips speech fillers, collapses an immediately-repeated word
+ * ("מור מור" → "מור", a common STT stutter), and tidies whitespace. Meaning-
+ * preserving: only filler and exact dittos are removed. Idempotent.
+ */
+export function cleanTranscript(raw: string): string {
+  let t = normalizeCreateText((raw ?? '').trim())
+  t = t.replace(FILLER_TOKENS, ' ')
+  t = t.replace(/(?<![֐-׿\w])([֐-׿\w]{2,})\s+\1(?![֐-׿\w])/gu, '$1')
+  t = t.replace(/\s+/g, ' ').replace(/\s+([.,!?])/g, '$1').trim()
+  return t
+}
+
+/**
+ * Confidence (0..1) that we understood enough to save a good event. Critical
+ * fields are title, date, time. An ambiguous (AM/PM) time and a missing person
+ * each lower confidence.
+ */
+export function scoreConfidence(
+  draft: CreateDraft,
+  missing: Array<'title' | 'date' | 'time'>,
+): number {
+  let c = 1
+  if (missing.includes('title')) c -= 0.35
+  if (missing.includes('date')) c -= 0.35
+  if (missing.includes('time')) c -= 0.30
+  if (draft.ambiguousTime) c -= 0.15
+  if (!draft.person && !draft.title) c -= 0.15
+  return Math.max(0, Math.min(1, Number(c.toFixed(2))))
 }
 
 // ─── Intent Detection ───────────────────────────────────────────────────────
@@ -120,12 +169,20 @@ function hasScheduleClue(t: string): boolean {
   return hasDate || hasTime || hasWith
 }
 
+// Narrative scheduling — Martita rambles before she gets to the point:
+// "אני חושבת שכדאי שנקבע משהו עם …", "בא לי לשבת עם …", "אני צריכה להיפגש עם …".
+// A meeting verb buried in conversational lead-in, paired with a real
+// date/time/with clue, is still a create — a form-parser misses it.
+const NATURAL_MEETING = /(?:כדאי\s+ש|בא\s+לי|אני\s+רוצ[הא]?|אני\s+חושב[הת]?\s+ש|אני\s+צריכ[הא]?|נצטרך|צריך)\s*\S{0,14}(?:נקבע|אקבע|להיפגש|להפגש|לפגוש|לשבת\s+עם|להיות\s+עם)/
+
 export function isCreateIntent(text: string): boolean {
   const t = normalizeCreateText(text.trim())
   if (READ_NOT_CREATE.test(t)) return false
   if (CREATE_INTENT.test(t)) return true
   // Natural speech with "צריכה להיות" etc.
   if (NATURAL_INTENT.test(t)) return true
+  // Narrative meeting intent ("בא לי לשבת עם לאו מחר") + a real schedule clue.
+  if (NATURAL_MEETING.test(t) && hasScheduleClue(t)) return true
   // Scheduling verb (even without "לי") + a date/time/with clue. Action beats
   // family Q&A: "תקבע עם מור ברביעי" is a create, not "who is Mor?".
   if (SCHEDULE_VERB.test(t) && hasScheduleClue(t)) return true
@@ -183,14 +240,21 @@ export interface TimeParse {
 export function parseHebrewTimeDetailed(text: string): TimeParse {
   const t = normalizeCreateText(text.trim())
 
-  // "בשעה 15:00" / "ב-10:30" / "בשעה 9" / bare "13:22" — numeric is literal
-  // (never ambiguous). The "ב"/"בשעה" prefix is optional so a clock time
-  // typed on its own ("בשני 13:22") is still understood.
+  // "בשעה 15:00" / "ב-10:30" / "בשעה 9" / bare "13:22" — numeric clock.
+  // The "ב"/"בשעה" prefix is optional so a clock time typed on its own
+  // ("בשני 13:22") is still understood.
   const numericTime = t.match(/(?:ב[־-]?)?(?:שעה\s+)?(?<![\d/.])(\d{1,2})[:.](\d{2})(?![\d/])/)
   if (numericTime) {
     const h = parseInt(numericTime[1]!, 10)
     const m = parseInt(numericTime[2]!, 10)
     if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+      // A 1-12 clock time with an explicit period word must honour the period:
+      // "3:00 אחר הצהריים" → 15:00, never literal 03:00 (the iPhone "שלוש בלילה"
+      // bug). A 13-23 clock is already unambiguous and stays literal.
+      if (h >= 1 && h <= 12 && (PERIOD_PM.test(t) || PERIOD_AM.test(t) || /בלילה/.test(t))) {
+        const { hour } = applyPeriod(h, t)
+        return { time: `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`, ambiguous: false }
+      }
       return { time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, ambiguous: false }
     }
   }
@@ -224,6 +288,20 @@ export function parseHebrewTimeDetailed(text: string): TimeParse {
     if (new RegExp(`השעה\\s+${word}`).test(t)) {
       const { hour, ambiguous } = applyPeriod(num, t)
       return { time: `${String(hour).padStart(2, '0')}:00`, ambiguous }
+    }
+  }
+
+  // BARE hour word directly followed by a period word, NO ב/ל prefix — speech
+  // recognition frequently drops the prefix: "שלוש אחר הצהריים", "שבע בערב",
+  // "חמש וחצי בערב". The period word disambiguates, so it is never ambiguous.
+  const PERIOD_WORD = '(?:אחהצ|אחה"צ|אחה״צ|אחר[י]?\\s+הצהריים|בערב|בבוקר|בצהריים|בלילה)'
+  for (const [word, num] of Object.entries(HEBREW_HOUR_WORDS).sort((a, b) => b[0].length - a[0].length)) {
+    const re = new RegExp(`(?<![א-ת])${word}(\\s+וחצי|\\s+ורבע)?\\s+${PERIOD_WORD}`)
+    const match = t.match(re)
+    if (match) {
+      const minutes = match[1] ? 30 : match[2] ? 15 : 0
+      const { hour, ambiguous } = applyPeriod(num, t)
+      return { time: `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`, ambiguous }
     }
   }
 
@@ -472,13 +550,36 @@ export function parseCreateIntent(text: string): ParsedCreateIntent | null {
 // ─── State Transitions ──────────────────────────────────────────────────────
 
 export function startCreate(text: string): CalendarCreateState {
-  const parsed = parseCreateIntent(text)
+  // Pipeline step 1: clean the (often messy / voice) transcript BEFORE parsing.
+  const rawTranscript = text
+  const cleaned = cleanTranscript(text)
+  const parsed = parseCreateIntent(cleaned)
   if (!parsed) return IDLE_STATE
 
-  if (parsed.missing.length === 0) {
-    return { phase: 'confirming', draft: parsed.draft, missing: [] }
+  // Meeting Intelligence: refine the base draft with discourse-level
+  // understanding (cross-clause time, purpose/subject synthesis, clean notes,
+  // narrative-stripped title). Lazy require breaks the module cycle (same
+  // pattern as the familyGraph require in parseCreateIntent).
+  const refined: CreateDraft = refineMeeting(parsed.draft, cleaned)
+
+  // Recompute missing critical fields AFTER refinement (the engine may have
+  // resolved a previously-missing time or title).
+  const missing: Array<'title' | 'date' | 'time'> = []
+  if (!refined.title) missing.push('title')
+  if (!refined.date) missing.push('date')
+  if (!refined.time || refined.ambiguousTime) missing.push('time')
+
+  const draft: CreateDraft = {
+    ...refined,
+    rawTranscript,
+    cleanedTranscript: cleaned,
+    confidence: scoreConfidence(refined, missing),
   }
-  return { phase: 'creating', draft: parsed.draft, missing: parsed.missing }
+
+  if (missing.length === 0) {
+    return { phase: 'confirming', draft, missing: [] }
+  }
+  return { phase: 'creating', draft, missing }
 }
 
 /** Process a follow-up message while in creating/confirming phase. */

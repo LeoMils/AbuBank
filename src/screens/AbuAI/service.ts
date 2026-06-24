@@ -1,6 +1,6 @@
 import type { ChatMessage } from './types'
 
-import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, getWeekEvents, getEventsByDate, getEventsByMonth, getBirthdayFor, getMemorialFor, searchFamily, searchFamilyLocation, searchFamilyGroup } from './tools'
+import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, getWeekEvents, getEventsByDate, getEventsByMonth, getBirthdayFor, getMemorialFor, searchFamily, searchFamilyLocation, searchFamilyGroup, findEventsByPerson } from './tools'
 import { generateFamilyPromptSection } from '../../services/familyLoader'
 import { routePersonalQuery, type RouteResult } from './router'
 import { parseHebrewTime } from './calendarCreate'
@@ -8,7 +8,7 @@ import { answerFromToolResult, type ToolResult } from './groundedResponse'
 import { sendServerChat, streamServerChat, checkServerChatHealth } from './serverChatProvider'
 import { describeRelation, loadGraph, type Lang } from './familyGraph'
 import { detectLanguage } from './proactive'
-import { shapeFamilyAnswerES, shapeCalendarAnswerES, shapeLocationAnswerES, shapeCreateConfirmES, shapeCreateSavedES, shapeCreateCancelledES, shapeCreateClarifyES } from './responseShaper'
+import { shapeFamilyAnswerES, shapeCalendarAnswerES, shapeLocationAnswerES, shapeCreateConfirmES, shapeCreateSavedES, shapeCreateCancelledES, shapeCreateClarifyES, calendarEventExtras, timeInWords, dateLabel } from './responseShaper'
 import { durable } from '../../services/durableStore'
 import { resolveRelationalQuery } from './relationalResolver'
 
@@ -439,6 +439,40 @@ export function tryGroundedAnswer(text: string): string | null {
       case 'calendar_month': {
         if (!route.month) return null
         const r = getEventsByMonth(route.month)
+        result = { ok: true, events: r.events, summary: r.summary }
+        break
+      }
+      case 'calendar_next': {
+        // "מה/מתי/איפה הפגישה הבאה שלי" → the single soonest upcoming event,
+        // with location + subject surfaced (the "איפה" variant needs the WHERE).
+        const r = getUpcomingEvents(1)
+        const next = r.events[0]
+        if (!next) {
+          if (lang === 'es') return 'No tenés nada próximo en el calendario.'
+          return 'אין לך פגישות קרובות ביומן.'
+        }
+        if (lang === 'es') {
+          const t = next.time ? ` a las ${next.time}` : ''
+          const loc = next.location ? ` en ${next.location}` : ''
+          return `Lo próximo: ${next.title}${t}${loc}.`
+        }
+        const when = `${dateLabel(next.date)}${next.time ? ` ${timeInWords(next.time)}` : ''}`
+        return `${next.emoji} הדבר הבא שלך: ${next.title} ${when}.${calendarEventExtras(next)}`.replace(/\s+/g, ' ').trim()
+      }
+      case 'calendar_with_person': {
+        // "מתי אני נפגשת עם אלכסנדרה" → upcoming events that mention that person.
+        const person = route.familyQuery ?? ''
+        const r = findEventsByPerson(person)
+        if (r.events.length === 0) {
+          if (lang === 'es') return `No tenés nada con ${person} en el calendario.`
+          return `אין לך כלום ביומן עם ${person}.`
+        }
+        // Single match → a full, warm line with date/time/location/subject.
+        if (r.events.length === 1) {
+          const e = r.events[0]!
+          const when = `${dateLabel(e.date)}${e.time ? ` ${timeInWords(e.time)}` : ''}`
+          return `${e.emoji} ${e.title} ${when}.${calendarEventExtras(e)}`.replace(/\s+/g, ' ').trim()
+        }
         result = { ok: true, events: r.events, summary: r.summary }
         break
       }

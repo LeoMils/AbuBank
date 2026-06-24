@@ -6,6 +6,7 @@ export type RouteType =
   | 'family_lookup' | 'family_location' | 'family_relationship_between'
   | 'calendar_today' | 'calendar_tomorrow' | 'calendar_upcoming'
   | 'calendar_exact_date' | 'calendar_month'
+  | 'calendar_next' | 'calendar_with_person'
   | 'calendar_create'
   | 'birthday_lookup' | 'memorial_lookup'
   | 'contact_action'
@@ -34,6 +35,29 @@ const CALENDAR_UPCOMING = /מה יש (לי )?השבוע|מה יש (לי )?בשב
 // "איזה פגישות יש לי (ב)שבוע הקרוב", "מה הפגישות שלי השבוע",
 // "תראי לי את הפגישות שלי", "יש לי פגישות/משהו (ב)שבוע הקרוב".
 const CALENDAR_UPCOMING_EXT = /איזה\s+(?:פגישות|תורים|אירועים)\s+(?:יש\s+לי|יש|שלי)|מה\s+ה?(?:פגישות|תורים|אירועים)\s+שלי|תראי לי\s+(?:את\s+)?ה?(?:פגישות|תורים|אירועים|יומן)|יש\s+לי\s+(?:פגישות|תורים|אירועים|משהו)\s+.{0,8}(?:שבוע|השבוע)/i
+
+// "איזה פגישה/תור/אירוע יש לי היום/מחר" — the SINGULAR "איזה" phrasing the
+// elderly user actually said on device. The legacy CALENDAR_TODAY/_TOMORROW only
+// matched "מה יש לי היום"; "איזה פגישה יש לי היום" fell through to the LLM and
+// produced the false "אני לא יכולה לבדוק את היומן". Scope word (היום/מחר) decides
+// which route. Singular OR plural noun; both today and tomorrow covered.
+const CALENDAR_AIZE_TODAY = /איזה\s+(?:פגיש[הות]+|תור(?:ים)?|אירוע(?:ים)?)\s+(?:יש\s+לי|יש|קבעתי|שלי).{0,6}היום/i
+const CALENDAR_AIZE_TOMORROW = /איזה\s+(?:פגיש[הות]+|תור(?:ים)?|אירוע(?:ים)?)\s+(?:יש\s+לי|יש|קבעתי|שלי).{0,6}מחר(?!ת)/i
+
+// Noun-FIRST phrasing with no מה/איזה lead, often via STT:
+// "פגישות יש לי ביומן היום", "פגישות יש לי היום", "תורים יש לי מחר".
+const CALENDAR_NOUN_FIRST_TODAY = /(?:פגיש[הות]+|תור(?:ים)?|אירוע(?:ים)?)\s+(?:יש\s+לי|קבעתי|שלי)\s.{0,10}היום/i
+const CALENDAR_NOUN_FIRST_TOMORROW = /(?:פגיש[הות]+|תור(?:ים)?|אירוע(?:ים)?)\s+(?:יש\s+לי|קבעתי|שלי)\s.{0,10}מחר(?!ת)/i
+const CALENDAR_NOUN_FIRST_WEEK = /(?:פגיש[הות]+|תור(?:ים)?|אירוע(?:ים)?)\s+(?:יש\s+לי|קבעתי|שלי)\s.{0,10}(?:השבוע|שבוע|ביומן)/i
+
+// Next appointment: "מה/מתי/איפה הפגישה הבאה שלי", "הפגישה הבאה", "האירוע הבא".
+// "איפה" is also accepted so a where-is-my-next-meeting question resolves to the
+// next event (its location is included in the answer). מסעדה-agnostic.
+const CALENDAR_NEXT = /(?:^|\s)(?:ה?פגישה|ה?אירוע|ה?תור|ה?מפגש)\s+ה?באה?(?:\s|$|[?.,]|שלי)/i
+
+// "מתי אני נפגשת עם X", "מתי הפגישה שלי עם X", "מה יש לי עם X", "מתי אני רואה את X".
+// The captured name flows to findEventsByPerson — searches title/personName/notes.
+const CALENDAR_WITH_PERSON = /(?:מתי|מה|איזה)\s+(?:אני\s+)?(?:נפגשת|פוגשת|רואה|מפגש|פגיש[הת])\s+(?:את\s+|עם\s+)(.+)|מתי\s+ה?פגיש[הת]\s+(?:שלי\s+)?עם\s+(.+)|מה\s+יש\s+לי\s+עם\s+(.+)/i
 
 // Specific-weekday READ: "יש לי משהו ביום חמישי", "מה יש לי ביום חמישי",
 // "מה יש בחמישי", "מה קבעתי ביום שני". Resolves the weekday to a concrete
@@ -184,6 +208,8 @@ export function classifyAbuBankIntent(text: string): AbuBankIntent {
     case 'calendar_upcoming':
     case 'calendar_exact_date':
     case 'calendar_month':
+    case 'calendar_next':
+    case 'calendar_with_person':
       return 'calendar_read'
     case 'contact_action':
       return 'whatsapp_action'
@@ -206,11 +232,23 @@ export function routePersonalQuery(text: string): RouteResult {
   // "תקבעי לי / יש לי תור / תזכירי לי" = create, not read
   if (isCreateIntent(t)) return { type: 'calendar_create', query: t }
 
+  // Meeting-with-a-person read: "מתי אני נפגשת עם אלכסנדרה". Runs BEFORE the
+  // generic today/tomorrow and the loose family-name fallback so the person is
+  // searched in the calendar instead of described as a relative.
+  const withPersonMatch = t.match(CALENDAR_WITH_PERSON)
+  if (withPersonMatch) {
+    const raw = (withPersonMatch[1] ?? withPersonMatch[2] ?? withPersonMatch[3] ?? '').trim().replace(/[?!.,]+$/u, '')
+    if (raw) return { type: 'calendar_with_person', query: t, familyQuery: raw }
+  }
+
+  // Next appointment: "מה/מתי/איפה הפגישה הבאה שלי".
+  if (CALENDAR_NEXT.test(t)) return { type: 'calendar_next', query: t }
+
   // Fixed-scope calendar (order matters: today/tomorrow before general date)
-  if (CALENDAR_TODAY.test(t)) return { type: 'calendar_today', query: t }
-  if (CALENDAR_TOMORROW.test(t)) return { type: 'calendar_tomorrow', query: t }
+  if (CALENDAR_TODAY.test(t) || CALENDAR_AIZE_TODAY.test(t) || CALENDAR_NOUN_FIRST_TODAY.test(t)) return { type: 'calendar_today', query: t }
+  if (CALENDAR_TOMORROW.test(t) || CALENDAR_AIZE_TOMORROW.test(t) || CALENDAR_NOUN_FIRST_TOMORROW.test(t)) return { type: 'calendar_tomorrow', query: t }
   if (CALENDAR_UPCOMING.test(t)) return { type: 'calendar_upcoming', query: t }
-  if (CALENDAR_UPCOMING_EXT.test(t)) return { type: 'calendar_upcoming', query: t }
+  if (CALENDAR_UPCOMING_EXT.test(t) || CALENDAR_NOUN_FIRST_WEEK.test(t)) return { type: 'calendar_upcoming', query: t }
 
   // Specific-weekday read → resolve weekday to a concrete date locally.
   if (CALENDAR_WEEKDAY_READ.test(t)) {

@@ -16,18 +16,39 @@ import { durable } from '../../services/durableStore'
 import { getTodayEvents, getTomorrowEvents, getBirthdayFor } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { checkMicPreflight } from '../../services/micPreflight'
-import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
+import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector, getTTSTrace } from '../../services/voice'
 
-/** speakVoiceMode with 15s safety timeout — prevents stuck speaking state */
+/**
+ * speakVoiceMode with 15s safety timeout — prevents stuck speaking state.
+ *
+ * Emits the device-debuggable TTS evidence Leo asked for after EVERY voice
+ * answer (TTS_ENGINE_USED / VOICE_NAME / SPOKEN_TEXT_LENGTH / TTS_SUCCESS|FAIL),
+ * so a "text shows but nothing spoke" report can be traced to the real engine
+ * that ran (or failed) on the phone instead of guessing.
+ */
 async function speakVoiceMode(text: string): Promise<void> {
   const timeout = new Promise<void>((_, reject) =>
     setTimeout(() => reject(new Error('TTS_TIMEOUT')), 15000)
   )
+  let failed = false
   try {
     await Promise.race([_speakVoiceMode(text), timeout])
   } catch (err) {
+    failed = true
     stopSpeaking()
     console.warn('[VOICE] TTS timed out or failed, stopping playback:', err)
+  } finally {
+    try {
+      const last = getTTSTrace().slice(-1)[0]
+      const engine = last?.provider ?? 'UNKNOWN'
+      const voice = last?.voice ?? '-'
+      const ok = !failed && !!last && !/❌|⚠️|FAIL/i.test(last.status) && engine !== 'NONE'
+      console.log(
+        `[VOICE][TTS_EVIDENCE] TTS_ENGINE_USED=${engine} VOICE_NAME=${voice} ` +
+        `SPOKEN_TEXT_LENGTH=${(text ?? '').length} TTS_${ok ? 'SUCCESS' : 'FAIL'}` +
+        (last ? ` status="${last.status}"` : '')
+      )
+    } catch { /* logging must never throw into the voice flow */ }
   }
 }
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
@@ -51,6 +72,7 @@ import { detectReminderIntent, parseReminder } from '../AbuCalendar/reminders/re
 import { createReminder, createDefaultAlertPolicy } from '../AbuCalendar/reminders/reminderStore'
 import type { ReminderDraft } from '../AbuCalendar/reminders/types'
 import { routePersonalQuery } from './router'
+import { understandMeetingSemantic, mergedToCreateState } from './semanticUnderstanding'
 import { addAppointment, deleteAppointment, updateAppointment, loadAppointments, findConflicts } from '../AbuCalendar/service'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
 import { resolvePronouns } from './pronounResolver'
@@ -444,8 +466,12 @@ export function AbuAI() {
             title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅',
             ...(d.location ? { location: d.location } : {}),
             ...(d.subject ? { subject: d.subject } : {}),
+            ...(d.purpose ? { purpose: d.purpose } : {}),
             ...(d.notes ? { notes: d.notes } : {}),
             ...(d.person ? { personName: d.person } : {}),
+            ...(d.rawTranscript ? { rawTranscript: d.rawTranscript } : {}),
+            ...(d.cleanedTranscript ? { cleanedTranscript: d.cleanedTranscript } : {}),
+            ...(typeof d.confidence === 'number' ? { confidence: d.confidence } : {}),
           })
           soundSuccess()
           setCreateState(IDLE_STATE)
@@ -730,8 +756,12 @@ export function AbuAI() {
               title, date, time: time || '09:00', emoji: next.draft.emoji || '📅', type: 'regular',
               ...(d.location ? { location: d.location } : {}),
               ...(d.subject ? { subject: d.subject } : {}),
+              ...(d.purpose ? { purpose: d.purpose } : {}),
               ...(d.notes ? { notes: d.notes } : {}),
               ...(d.person ? { personName: d.person } : {}),
+              ...(d.rawTranscript ? { rawTranscript: d.rawTranscript } : {}),
+              ...(d.cleanedTranscript ? { cleanedTranscript: d.cleanedTranscript } : {}),
+              ...(typeof d.confidence === 'number' ? { confidence: d.confidence } : {}),
             })
           }
           const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
@@ -753,11 +783,28 @@ export function AbuAI() {
         return
       }
       if (isCreateIntent(msgText)) {
-        const next = startCreate(msgText)
+        // Deterministic Meeting Intelligence is the instant floor (and the
+        // offline fallback). The AI Semantic Understanding layer runs on top,
+        // best-effort: it understands messy speech / fixes STT slips, but
+        // deterministic date/time grounding wins and a network/parse failure
+        // simply keeps the deterministic draft. Never blocks the calendar.
+        let next = startCreate(msgText)
+        let clarifyQuestion: string | null = null
+        try {
+          const merged = await understandMeetingSemantic(
+            msgText,
+            { nowISO: new Date().toISOString(), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+            { timeoutMs: 8000 },
+          )
+          if (merged.semanticLayerUsed) {
+            next = mergedToCreateState(merged)
+            if (merged.needsClarification) clarifyQuestion = merged.clarificationQuestion
+          }
+        } catch { /* keep the deterministic draft */ }
         setCreateState(next)
         let response = next.phase === 'confirming'
           ? shapeCreateConfirm(next.draft)
-          : shapeCreateClarify(next.missing, next.draft)
+          : (clarifyQuestion ?? shapeCreateClarify(next.missing, next.draft))
         // Conflict detection — warn if same date+time already has an event
         if (next.phase === 'confirming' && next.draft.date && next.draft.time) {
           const conflicts = findConflicts(next.draft.date, next.draft.time)
@@ -1394,8 +1441,12 @@ export function AbuAI() {
                 title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅',
                 ...(d.location ? { location: d.location } : {}),
                 ...(d.subject ? { subject: d.subject } : {}),
+                ...(d.purpose ? { purpose: d.purpose } : {}),
                 ...(d.notes ? { notes: d.notes } : {}),
                 ...(d.person ? { personName: d.person } : {}),
+                ...(d.rawTranscript ? { rawTranscript: d.rawTranscript } : {}),
+                ...(d.cleanedTranscript ? { cleanedTranscript: d.cleanedTranscript } : {}),
+                ...(typeof d.confidence === 'number' ? { confidence: d.confidence } : {}),
               })
               soundSuccess()
               setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE
@@ -1584,6 +1635,7 @@ export function AbuAI() {
             // streamSpeakVoiceMode detects sentence boundaries and fires
             // TTS per sentence while still consuming the token stream.
             clearTimeout(watchdog)
+            let streamSpeakThrew = false
             await Promise.race([
               _streamSpeakVoiceMode(
                 capturedStream(),
@@ -1595,7 +1647,7 @@ export function AbuAI() {
               new Promise<void>((_, reject) =>
                 setTimeout(() => reject(new Error('STREAM_TTS_TIMEOUT')), 20000)
               ),
-            ]).catch(() => { stopSpeaking() })
+            ]).catch(() => { streamSpeakThrew = true; stopSpeaking() })
 
             // Finalize chat message with full streamed text
             if (streamedText.trim()) {
@@ -1611,6 +1663,13 @@ export function AbuAI() {
                 if (idx !== -1) updated[idx] = { ...updated[idx]!, content: finalContent }
                 return updated
               })
+              // P0 (#3): never leave a voice answer text-only. If the streaming
+              // TTS path threw/timed-out, speak the final text serially through
+              // the reliable wrapper (same engine the greeting uses) so the
+              // answer is actually heard — and TTS_EVIDENCE is logged.
+              if (streamSpeakThrew && voiceModeRef.current && !ac.signal.aborted) {
+                await speakVoiceMode(shapeVoiceSafe(finalContent))
+              }
             }
 
             setIsSpeaking(false)

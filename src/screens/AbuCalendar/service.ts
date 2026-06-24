@@ -12,6 +12,11 @@ export interface Appointment {
   notes?: string
   location?: string      // v18: venue/address
   subject?: string       // what the meeting is about ("טיול לאיטליה")
+  purpose?: string       // WHY — synthesized reason ("לסגור את הסכם השכירות")
+  // ─── Understanding-pipeline provenance (calendar intelligence layer) ───
+  rawTranscript?: string       // exactly what STT / the user said
+  cleanedTranscript?: string   // Hebrew/STT-normalized text we parsed
+  confidence?: number          // 0..1 — parse completeness/certainty at save
   // Family Intelligence
   type?: 'regular' | 'birthday' | 'anniversary' | 'memory'
   personName?: string    // for birthdays: the person's name

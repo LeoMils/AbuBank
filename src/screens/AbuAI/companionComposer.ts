@@ -18,8 +18,11 @@ export const BANNED_PHRASES: string[] = [
   'על פי הנתונים', 'לפי הנתונים', 'לפי המידע', 'על סמך המידע',
   'מצאתי עבורך', 'מצאתי עבורך ש', 'חיפשתי עבורך', 'חיפשתי באינטרנט', 'על פי החיפוש',
   // customer-support register
-  'אשמח לעזור', 'איך אפשר לעזור', 'איך אוכל לעזור', 'יש עוד משהו שאוכל', 'האם תרצי שאסייע',
+  'אשמח לעזור', 'איך אפשר לעזור', 'איך אוכל לעזור', 'איך אני יכולה לעזור', 'במה אני יכולה לעזור',
+  'יש עוד משהו שאוכל', 'האם תרצי שאסייע',
   'אני כאן אם תצטרכי', 'אני כאן כדי לעזור', 'בכל שאלה אני כאן',
+  // dead-bot self-state + generic support-menu (real device failures Leo flagged)
+  'אני בסדר', 'רוצה לדבר על משהו אחר',
   // patronizing
   'שאלה מצוינת', 'שאלה טובה', 'יופי של שאלה', 'כל הכבוד',
   // AI self-reference
@@ -58,6 +61,13 @@ function planFallback(plan: CompanionPlan): string {
   }
 }
 
+// A bare, object-less "אין לי מידע" / "אין מידע" / "אין לי מושג" is the cold
+// database register Leo flagged. We rewrite the WHOLE message (only when that's
+// ALL it is) into a warm, human line. Specific honest negations that name what's
+// missing ("אין לי את שנת הלידה של נועם") are NOT matched — they stay untouched.
+const GENERIC_NOINFO_RE = /^(?:אין לי (?:מידע|נתונים|אינפורמציה)|אין מידע|אין לי מושג)\s*[.!?]*$/
+const WARM_NOINFO = 'את זה אני לא יודעת, אבל אני כאן. תשאלי אותי משהו אחר?'
+
 /**
  * Runtime guard: strip banned register from an outgoing response and tidy it.
  * Never returns a banned phrase; never returns empty (falls back per plan).
@@ -65,6 +75,7 @@ function planFallback(plan: CompanionPlan): string {
 export function enforceCompanion(textRaw: string, plan: CompanionPlan): string {
   let t = (textRaw ?? '').trim()
   if (!t) return planFallback(plan)
+  if (GENERIC_NOINFO_RE.test(t)) return WARM_NOINFO
   t = t.replace(BANNED_RE, ' ')
   // tidy: collapse whitespace, fix stray leading punctuation, single spaces.
   t = t.replace(/\s+/g, ' ')

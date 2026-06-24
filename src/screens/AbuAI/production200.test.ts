@@ -83,7 +83,7 @@ describe('CALENDAR — 20 scenarios', () => {
     ['מה יש לי מחר?', 'calendar_tomorrow'],
     ['מה יש לי השבוע?', 'calendar_upcoming'],
     ['מתי הרופא?', 'calendar_upcoming'],
-    ['מתי התור הבא שלי?', 'calendar_upcoming'],
+    ['מתי התור הבא שלי?', 'calendar_next'],
     ['יש לי משהו ביום חמישי?', 'calendar_exact_date'],
     ['מה התוכנית להיום?', 'calendar_today'],
     ['מה קורה השבוע?', 'calendar_upcoming'],

@@ -39,9 +39,17 @@ const CITY =
 // Phrases that END a captured segment (start of the NEXT field, or time/date,
 // or punctuation). Used so a location/subject capture stops at the right place.
 const NEXT_FIELD =
-  'על\\s|על-|בנושא|בקשר|לגבי|בעניין|בשעה|בבוקר|בערב|בצהריים|בלילה|אחהצ|אחה"צ|אחה״צ|מחר|מחרתיים|היום|ביום|בעוד|כי\\s|בגלל|כדי\\s'
+  'על\\s|על-|בנושא|בקשר|לגבי|בעניין|בשעה|בסביבות|בערך|בבוקר|בערב|בצהריים|בלילה|אחהצ|אחה"צ|אחה״צ|' +
+  // bare "ב + hour-word" so a time never leaks into a venue ("…ברעננה בשבע").
+  'ב(?:אחת עשרה|שתים עשרה|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|אחת|שתיים)(?![א-ת])|' +
+  'מחר|מחרתיים|היום|ביום|בעוד|כי\\s|בגלל|כדי\\s|לדבר|לדון|לשוחח|לסדר|לתאם|לבדוק|לחגוג|לאכול|לשתות|לראות'
 
-const SUBJECT_LEAD = /(?:^|\s)(?:על|בנושא|בקשר\s+ל|לגבי|בעניין)\s+/
+// Purpose-verb that may precede the subject lead ("…לדבר על הטיול"). Captured as
+// part of the subject span so it is stripped from the location AND the title —
+// otherwise "בקפה גרג רעננה לדבר" leaked "לדבר" into the location.
+const PURPOSE_VERB = '(?:לדבר|לדון|לשוחח|לסדר|לתאם|לבדוק|לחגוג|לאכול|לשתות|לראות)\\s+'
+
+const SUBJECT_LEAD = new RegExp(`(?:^|\\s)(?:${PURPOSE_VERB})?(?:על|בנושא|בקשר\\s+ל|לגבי|בעניין)\\s+`)
 
 // Words that must NOT be taken as a person name after עם/אצל (they belong to
 // another field). Keeps "עם אלכסנדרה בקפה" → person = אלכסנדרה only.
@@ -117,6 +125,44 @@ function extractLocation(text: string): { value: string; span: string } | null {
   return null
 }
 
+// Clean a topic noun-phrase into a tidy subject: drop a leading definite
+// article ("השכירות" → "שכירות") and the "של" connector ("שכירות של הבית" →
+// "שכירות הבית"). Preserves meaning; never invents.
+function cleanSubject(s: string): string {
+  let v = stripArticle(clean(s))
+  v = v.replace(/\s+של\s+/u, ' ')
+  return v.trim()
+}
+
+// ─── Purpose clause: "(אנחנו צריכים) לדבר על X" ─────────────────────────────
+// A talk/discuss clause carries BOTH the subject (the topic noun) and the
+// notes (the clean action phrase). The optional filler lead-in ("אנחנו
+// צריכים", "אני רוצה", "כדי") is dropped from notes AND stripped from the
+// residual so it never pollutes the title ("פגישה עם אלכסנדרה אנחנו צריכים").
+const TALK_VERB = 'לדבר|לדון|לשוחח|לסגור|לתאם|לבדוק|להתייעץ|לסדר|להחליט|לקבוע'
+const TALK_FILLER = '(?:אנחנו\\s+(?:צריכים|רוצים|חייבים)|אני\\s+(?:צריכ[הא]?|רוצ[הא]?|חייב[הת]?)|צריכים|צריכ[הא]?|רוצ[הא]?|כדי)\\s+'
+const TALK_LEAD = '(?:על|בנושא|בקשר\\s+ל|לגבי|בעניין)'
+
+function extractPurpose(text: string): { notes: string; subject: string; span: string } | null {
+  const re = new RegExp(
+    `(?:^|\\s)((?:${TALK_FILLER})?(${TALK_VERB})\\s+(${TALK_LEAD})\\s+(.+?))\\s*$`,
+    'u',
+  )
+  const m = re.exec(text)
+  if (!m) return null
+  const fullClause = m[1]!.trim() // incl. filler — stripped from the residual
+  const verb = m[2]!
+  const lead = m[3]!
+  const topicRaw = clean(m[4]!)
+  // "על יד X" = next-to (a place), not a topic — reject.
+  if (/^יד(?:\s|$)/.test(topicRaw)) return null
+  const subject = cleanSubject(topicRaw)
+  if (subject.length < 2) return null
+  // Notes keep the verb + topic, but NOT the filler: "לדבר על השכירות של הבית".
+  const notes = clean(`${verb} ${lead} ${topicRaw}`)
+  return { notes, subject, span: fullClause }
+}
+
 /** Extract subject: text after the LAST "על" / "בנושא" / "לגבי" / "בעניין". */
 function extractSubject(text: string): { value: string; span: string } | null {
   const m = lastMatch(new RegExp(SUBJECT_LEAD.source, 'gu'), text)
@@ -144,19 +190,36 @@ function extractNotes(text: string): { value: string; span: string } | null {
 export function extractEventDetails(text: string): ExtractedEvent {
   let residual = ` ${text} `
 
-  // Order matters: pull location and subject (and their spans) out FIRST so the
-  // residual handed to the title extractor is just "…פגישה עם אלכסנדרה…".
+  // Order matters: pull location, the purpose clause, and subject (with their
+  // spans) out FIRST so the residual handed to the title extractor is just
+  // "…פגישה עם אלכסנדרה…" — no venue, topic, or filler left to pollute it.
   const loc = extractLocation(residual)
   if (loc) residual = residual.replace(loc.span, ' ')
 
-  // Notes BEFORE subject: a "כי/בגלל/כדי" reason clause is a stronger marker than
-  // "על", and may itself contain "על" ("…כי רוצה לדבר על הילדים"). Pulling it out
-  // first keeps the whole reason in notes instead of splitting it into a subject.
-  const notes = extractNotes(residual)
-  if (notes) residual = residual.replace(notes.span, ' ')
+  let subject: string | null = null
+  let notes: string | null = null
 
-  const subj = extractSubject(residual)
-  if (subj) residual = residual.replace(subj.span, ' ')
+  // Reason clause ("כי/בגלל/כדי") FIRST — a self-contained marker that may itself
+  // contain "לדבר על" ("…כי היא רוצה לדבר על הילדים"); capturing it whole keeps
+  // the full reason in notes instead of splitting it.
+  const reason = extractNotes(residual)
+  if (reason) { notes = reason.value; residual = residual.replace(reason.span, ' ') }
+
+  // Purpose clause: "(אנחנו צריכים) לדבר על X" → subject (topic) AND notes (clean
+  // action phrase), whole clause (incl. filler) removed so it never reaches the
+  // title. notes only set when a reason clause didn't already claim it.
+  const purpose = extractPurpose(residual)
+  if (purpose) {
+    subject = purpose.subject
+    if (!notes) notes = purpose.notes
+    residual = residual.replace(purpose.span, ' ')
+  }
+
+  // Bare subject ("על X" / "בנושא X" with no talk-verb) — only if not already set.
+  if (!subject) {
+    const subj = extractSubject(residual)
+    if (subj) { subject = subj.value; residual = residual.replace(subj.span, ' ') }
+  }
 
   // Person is read from the residual (still contains "עם X") and is KEPT in the
   // residual so the title becomes "פגישה עם X".
@@ -167,8 +230,8 @@ export function extractEventDetails(text: string): ExtractedEvent {
   return {
     person,
     location: loc?.value ?? null,
-    subject: subj?.value ?? null,
-    notes: notes?.value ?? null,
+    subject,
+    notes,
     residualText: residual,
   }
 }

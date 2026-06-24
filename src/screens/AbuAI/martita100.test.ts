@@ -29,7 +29,7 @@ describe('Calendar journeys', () => {
     ['מה יש לי השבוע?', 'calendar_upcoming'],                      // 3
     ['יש לי משהו ביום שלישי?', 'calendar_exact_date'],             // 4
     ['מתי הרופא?', 'calendar_upcoming'],                           // 5
-    ['מתי התור הבא שלי?', 'calendar_upcoming'],                    // 6
+    ['מתי התור הבא שלי?', 'calendar_next'],                        // 6 — next-appointment route (more precise than upcoming)
     ['מה קורה השבוע?', 'calendar_upcoming'],                       // 7
     ['מה התוכנית להיום?', 'calendar_today'],                        // 8
     ['מה התוכנית מחר?', 'calendar_tomorrow'],                      // 9
