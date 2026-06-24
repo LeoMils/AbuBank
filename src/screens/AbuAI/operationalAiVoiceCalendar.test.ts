@@ -244,8 +244,11 @@ describe('G. voice path safety (source contract)', () => {
   })
 
   it('23. transcription failure is never swallowed silently', () => {
-    // The manual-mic catch posts a mediated error instead of an empty block.
-    expect(/catch \(err\) \{\s*\/\/ Never fail silently/.test(idx)).toBe(true)
+    // The manual-mic catch posts a mediated error (and logs STT evidence) — never
+    // an empty/swallowed block. Assert the BEHAVIOUR, not a comment position.
+    expect(idx.includes("// Never fail silently")).toBe(true)
+    expect(idx.includes("mediateVoiceCaptureError(err, 'transcription')")).toBe(true)
+    expect(/STT_SUCCESS=false/.test(idx)).toBe(true)
   })
 
   it('23b. a processing watchdog prevents an infinite stuck state', () => {

@@ -26,7 +26,10 @@ beforeAll(() => { vi.useFakeTimers(); vi.setSystemTime(FIXED) })
 afterAll(() => { vi.useRealTimers() })
 
 function fmt(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
-const D = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return fmt(d) }
+// Anchor expected dates to the fixed base the runtime is faked to (not the real
+// wall clock at module-load — a date rollover would otherwise desync them).
+const BASE_DATE = '2026-06-24T09:00:00'
+const D = (n: number) => { const d = new Date(BASE_DATE); d.setDate(d.getDate() + n); return fmt(d) }
 
 let storage: Record<string, string> = {}
 function installStorage() {

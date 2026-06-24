@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.5.8-final-nonmic',
-  buildLabel: 'AbuBank — Final non-mic production acceptance (product-behavior proven)',
+  version:    '0.5.9-final-production-gates',
+  buildLabel: 'AbuBank — Final production gates (durability + diagnostics + corpus)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

@@ -1200,8 +1200,13 @@ export function AbuAI() {
         setTranscribing(true)
         try {
           const text = await transcribeAudio(blob)
+          // Device-debuggable STT evidence (manual mic path).
+          // eslint-disable-next-line no-console
+          console.log(`[AbuAI][VOICE] STT_SUCCESS=${!!text.trim()} STT_CHARS=${text.trim().length} STT_LANG=${/[a-záéíóúñ]/i.test(text) && !/[֐-׿]/.test(text) ? 'es/en' : 'he'}`)
           if (text.trim()) setInput(prev => prev ? `${prev} ${text}` : text)
         } catch (err) {
+          // eslint-disable-next-line no-console
+          console.log(`[AbuAI][VOICE] STT_SUCCESS=false STT_ERROR=${err instanceof Error ? err.message : String(err)}`)
           // Never fail silently — show a friendly local fallback so Martita
           // knows she can simply type instead.
           setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediateVoiceCaptureError(err, 'transcription'), timestamp: Date.now() }])
@@ -2051,6 +2056,9 @@ ${fewShotText}`
     }
 
     unlockIOSAudio()
+    // Device-debuggable audio-unlock evidence (must run inside the tap gesture on iOS).
+    // eslint-disable-next-line no-console
+    console.log(`[AbuAI][VOICE] AUDIO_UNLOCK_STATUS=attempted secureContext=${typeof window !== 'undefined' && window.isSecureContext}`)
     acquireWakeLock()
     setVoiceMode(true)
     voiceModeRef.current = true
@@ -2059,6 +2067,8 @@ ${fewShotText}`
     // v25.2: SIMPLE DECISION — can we use Realtime or not?
     const quotaFlag = localStorage.getItem('abu-openai-quota-failed')
     const openaiAvailable = useRealtime && (!quotaFlag || (Date.now() - parseInt(quotaFlag, 10)) > 300_000)
+    // eslint-disable-next-line no-console
+    console.log(`[AbuAI][VOICE] REALTIME_STATUS=${openaiAvailable ? 'attempting' : 'fallback-pipeline'} useRealtime=${useRealtime}`)
 
     // Realtime disabled → use pipeline mode (STT → local-first router → LLM → TTS).
     // OpenAI is still available as LLM provider via sendMessage().
@@ -2077,6 +2087,8 @@ ${fewShotText}`
         {
           onStateChange: (state) => {
             setRealtimeState(state)
+            // eslint-disable-next-line no-console
+            console.log(`[AbuAI][VOICE] REALTIME_STATUS=${state}`)
             if (state === 'listening') setVoicePhase('listening')
             else if (state === 'speaking') { setVoicePhase('speaking'); setIsSpeaking(true) }
             else if (state === 'connecting') setVoicePhase('greeting')

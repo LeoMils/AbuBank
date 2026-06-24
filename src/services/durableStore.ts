@@ -109,17 +109,23 @@ export class DurableStore {
 
     // Migration (idempotent): for each managed key present in localStorage but
     // not yet in the backend, copy it in. Backend is authoritative once present.
+    // Writes are AWAITED (not fire-and-forget) so that once init() resolves the
+    // durable IndexedDB copy is guaranteed written — otherwise a fast app-close
+    // right after first launch could lose the backup before the queued write
+    // flushed.
+    const migrationWrites: Array<Promise<void>> = []
     if (hasLocalStorage()) {
       for (const k of this.keys) {
         if (backendData[k] === undefined) {
           const ls = safeLSGet(k)
           if (ls !== null) {
             backendData[k] = ls
-            void this.backend.set(k, ls).catch(() => {})
+            migrationWrites.push(this.backend.set(k, ls).catch(() => {}))
           }
         }
       }
     }
+    if (migrationWrites.length) { try { await Promise.all(migrationWrites) } catch { /* best-effort */ } }
 
     // Hydrate cache from the (now-migrated) backend snapshot.
     for (const [k, v] of Object.entries(backendData)) this.cache.set(k, v)

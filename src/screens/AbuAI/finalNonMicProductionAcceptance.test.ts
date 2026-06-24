@@ -28,7 +28,10 @@ const FIXED = new Date('2026-06-24T09:00:00')
 beforeAll(() => { vi.useFakeTimers(); vi.setSystemTime(FIXED) })
 afterAll(() => { vi.useRealTimers() })
 function fmt(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
-const D = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return fmt(d) }
+// Anchor expected dates to the SAME fixed base the runtime is faked to — never
+// the real wall clock at module-load (otherwise a date rollover desyncs them).
+const BASE_DATE = '2026-06-24T09:00:00'
+const D = (n: number) => { const d = new Date(BASE_DATE); d.setDate(d.getDate() + n); return fmt(d) }
 const NARRATIVE = /בוא נעשה|אז ככה|^שמעי|אני חייבת|אני צריכה|אנחנו צריכים|בא לי|יעני|כאילו/
 
 let storage: Record<string, string> = {}
