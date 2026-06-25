@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.6.0-total-closure',
-  buildLabel: 'AbuBank — Total product closure (AI Understanding Orchestrator)',
+  version:    '0.6.1-voice-war-room',
+  buildLabel: 'AbuBank — Voice war room (quiet realtime fallback + diagnostics)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

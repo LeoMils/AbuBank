@@ -205,6 +205,10 @@ export function AbuAI() {
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
   const [realtimeTranscript, setRealtimeTranscript] = useState('')
   const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
+  // True once a Realtime session actually reached a working state. Used to keep
+  // an INITIAL connect failure SILENT (the fatal-error handler falls back to the
+  // pipeline quietly) while still surfacing a mid-conversation error.
+  const realtimeEverConnectedRef = useRef(false)
   // v32: Realtime ENABLED — grounding is handled by injecting verified facts
   // into session instructions (calendar snapshot + family data + memory summary).
   // The Realtime model speaks directly — no TTS pipeline, < 2s response.
@@ -421,7 +425,7 @@ export function AbuAI() {
     // routes without first passing through orchestration.
     const orchestration = orchestrate(msgText, { messages })
     // eslint-disable-next-line no-console
-    console.log(`[AbuAI][ORCH] intent=${orchestration.intent} clarify=${orchestration.needsClarification} corrections=${orchestration.corrections.length} mem(person=${orchestration.memory.lastPerson ?? '-'},action=${orchestration.memory.lastCalendarAction ?? '-'})`)
+    console.log(`[AbuAI][ORCH] ORCH_INTENT=${orchestration.intent} clarify=${orchestration.needsClarification} corrections=${orchestration.corrections.length} mem(person=${orchestration.memory.lastPerson ?? '-'},action=${orchestration.memory.lastCalendarAction ?? '-'})`)
 
     // "תחזרי ל<name>" / "נחזור ל<name>" (go back to X) — the ל prefix on the name
     // defeats the word-boundary matcher, so rewrite to a groundable form using
@@ -1555,7 +1559,7 @@ export function AbuAI() {
         // Voice inputs flow through the SAME understanding orchestrator as text.
         const voiceOrch = orchestrate(text, { messages })
         // eslint-disable-next-line no-console
-        console.log(`[AbuAI][ORCH][voice] intent=${voiceOrch.intent} clarify=${voiceOrch.needsClarification} corrections=${voiceOrch.corrections.length}`)
+        console.log(`[AbuAI][ORCH][voice] ORCH_INTENT=${voiceOrch.intent} clarify=${voiceOrch.needsClarification} corrections=${voiceOrch.corrections.length}`)
 
         // Try grounded answer first
         const isDirectVoiceQ = /^מי |^מתי |^איפה |^כמה |^מה זה |^מה זאת |[?؟]$/.test(text.trim())
@@ -2098,12 +2102,14 @@ ${fewShotText}`
       diagReset()
       diagSet({ sttProvider: 'Realtime (WebRTC)', sttFileType: 'native', ttsProvider: 'OpenAI Realtime', ttsModel: 'gpt-4o-realtime-preview', ttsVoice: 'shimmer', responseSource: 'Realtime native audio' })
       setRealtimeTranscript('')
+      realtimeEverConnectedRef.current = false // fresh session — initial failure stays silent
       const session = new RealtimeVoiceSession(
         {
           onStateChange: (state) => {
             setRealtimeState(state)
             // eslint-disable-next-line no-console
             console.log(`[AbuAI][VOICE] REALTIME_STATUS=${state}`)
+            if (state === 'listening' || state === 'speaking') realtimeEverConnectedRef.current = true
             if (state === 'listening') setVoicePhase('listening')
             else if (state === 'speaking') { setVoicePhase('speaking'); setIsSpeaking(true) }
             else if (state === 'connecting') setVoicePhase('greeting')
@@ -2134,10 +2140,17 @@ ${fewShotText}`
           },
           onError: (error) => {
             console.error('[Realtime] Error:', error)
-            // v27: Mediate error — always Hebrew, always with action buttons
             const mediated = mediateError(error)
             if (mediated.category === 'quota' || mediated.category === 'auth' || mediated.category === 'rate-limit') {
               try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+            }
+            // QUIET initial fallback: if Realtime never connected, do NOT flash an
+            // error card — onFatalError falls back to the pipeline silently. Only
+            // surface a card for an error AFTER a working conversation began.
+            if (!realtimeEverConnectedRef.current) {
+              // eslint-disable-next-line no-console
+              console.log(`[AbuAI][VOICE] REALTIME_STATUS=error FALLBACK_REASON=${mediated.category ?? 'connect_failed'} (silent → pipeline)`)
+              return
             }
             // P0-8: Don't spam error cards — replace last error if it was also an error
             const errorMsg = { id: nextId(), role: 'assistant' as const, content: mediated.message, timestamp: Date.now(), error: mediated }
@@ -2153,6 +2166,8 @@ ${fewShotText}`
         buildRealtimeInstructions(),
         // v25: onFatalError — Realtime died, remember + fall back to free pipeline
         () => {
+          // eslint-disable-next-line no-console
+          console.log('[AbuAI][VOICE] REALTIME_STATUS=fatal FALLBACK_REASON=realtime_unavailable → pipeline')
           console.log('[AbuAI] Realtime failed, saving quota flag, falling back to free pipeline')
           try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch { /* quota */ }
           realtimeRef.current = null
