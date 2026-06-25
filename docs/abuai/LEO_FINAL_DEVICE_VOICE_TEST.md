@@ -1,9 +1,9 @@
 # Leo — Final Device Voice Test (≈5 min)
 
 URL (open in iPhone Safari → Add to Home Screen):
-**https://abu-bank-gn5z5ps70-leos-projects-d3c04c09.vercel.app**
+**https://abu-bank-ewwsco6sb-leos-projects-d3c04c09.vercel.app**
 
-Build `0.6.0-total-closure` · `OPENAI_API_KEY` present · chat + online routes live.
+Build `0.6.1-voice-war-room` · `OPENAI_API_KEY` present · chat + online routes live.
 Optional: iPhone → Mac → Safari → Develop → console to watch the diagnostic lines.
 
 > Heads-up: the OpenAI **Realtime** API is currently failing server-side
