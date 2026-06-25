@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.6.1-voice-war-room',
-  buildLabel: 'AbuBank — Voice war room (quiet realtime fallback + diagnostics)',
+  version:    '0.6.2-redteam-green',
+  buildLabel: 'AbuBank — Red-team green (title-leak fixes + 2000-case stress)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

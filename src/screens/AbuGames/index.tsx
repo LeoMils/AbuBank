@@ -180,7 +180,7 @@ function GameBubble({ g, size, index, caption }: { g: Game; size: number; index:
 
       {/* Label */}
       <span style={{
-        fontSize: 15, fontWeight: 700, color: INK, fontFamily: "'Heebo',sans-serif",
+        fontSize: 17, fontWeight: 700, color: INK, fontFamily: "'Heebo',sans-serif",
         textAlign: 'center', lineHeight: 1.25, direction: 'rtl', maxWidth: size + 28,
         textShadow: '0 1px 4px rgba(0,0,0,0.6)',
       }}>{g.labelHe}</span>

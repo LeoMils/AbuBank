@@ -454,15 +454,21 @@ const BARE_HOUR_PERIOD_NOISE = /\s*\d{1,2}\s*(?:אחהצ|אחה"צ|אחה״צ|א
 // Standalone time-of-day words (when not part of a time phrase already stripped)
 const PERIOD_NOISE = /(בבוקר|בערב|בלילה|בצהריים|אחר הצהריים|אחרי הצהריים|אחהצ|אחה"צ|אחה״צ)/gi
 // Leading scheduling verb without "לי" ("תקבע עם מור" → "עם מור").
-const SCHEDULE_VERB_LEAD = /^(?:תקבעי|תקבע|קבעי|קבע|תרשמי|תרשום|רשמי|שימי|תשימי|תוסיפי|תוסיף|תזכירי|תכניסי|תכניס|תעשי)\s+(?:לי\s+)?/
+const SCHEDULE_VERB_LEAD = /^(?:תקבעי|תקבע|קבעי|קבע|נקבע|אקבע|תרשמי|תרשום|רשמי|שימי|תשימי|תוסיפי|תוסיף|תזכירי|תכניסי|תכניס|תעשי)\s+(?:לי\s+)?/
 // Connector word leftover
 const LEADING_CONNECTOR = /^[שו]\s+/
+
+// Leading conversational connectors ("אז תקבעי…", "טוב תרשמי…") that sit BEFORE
+// the scheduling verb and would otherwise defeat the ^-anchored verb strip,
+// leaking into the title. One-or-more, stripped from the start.
+const LEADING_TALK_LEAD = /^(?:(?:אז ככה|אז|טוב|אוקיי|אוקי|בסדר|נו|הי+|תשמעי|שמעי|בקיצור|יעני|כאילו|אהה?)\s+)+/u
 
 export function extractTitle(text: string): string | null {
   let t = normalizeCreateText(text.trim())
   // 1. Strip explanation clauses first
   t = t.replace(EXPLANATION_NOISE, '')
-  // 2. Strip intent phrases and natural speech verbs
+  // 2. Strip a leading conversational lead, then intent phrases / verbs.
+  t = t.replace(LEADING_TALK_LEAD, '')
   t = t.replace(NOISE_PHRASES, ' ')
   t = t.replace(NATURAL_NOISE, ' ')
   t = t.replace(SCHEDULE_VERB_LEAD, ' ')
@@ -477,6 +483,9 @@ export function extractTitle(text: string): string | null {
   // 4. Clean up
   t = t.replace(/\s+/g, ' ').trim()
   t = t.replace(LEADING_CONNECTOR, '')
+  // Strip trailing politeness / filler words ("…בבקשה", "…תודה", "…טוב") so they
+  // never land in the saved title. One-or-more, repeated.
+  t = t.replace(/(?:\s+(?:בבקשה|תודה רבה|תודה|אוקיי|אוקי|טוב|נו|כבר|אז))+\s*$/u, '').trim()
   t = t.replace(/[.!?,;]+$/, '').trim()
   // A bare "עם <person>" is a meeting — restore the implicit noun so the
   // stored title is "פגישה עם אופיר", never just "עם אופיר".

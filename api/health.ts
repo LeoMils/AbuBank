@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.6.1-voice-war-room'
-const BUILD_LABEL = 'AbuBank — Voice war room (quiet realtime fallback + diagnostics)'
+const BUILD_VERSION = '0.6.2-redteam-green'
+const BUILD_LABEL = 'AbuBank — Red-team green (title-leak fixes + 2000-case stress)'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
