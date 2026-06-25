@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.5.9-final-production-gates',
-  buildLabel: 'AbuBank — Final production gates (durability + diagnostics + corpus)',
+  version:    '0.6.0-total-closure',
+  buildLabel: 'AbuBank — Total product closure (AI Understanding Orchestrator)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

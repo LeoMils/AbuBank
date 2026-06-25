@@ -73,6 +73,7 @@ import { createReminder, createDefaultAlertPolicy } from '../AbuCalendar/reminde
 import type { ReminderDraft } from '../AbuCalendar/reminders/types'
 import { routePersonalQuery } from './router'
 import { understandMeetingSemantic, mergedToCreateState } from './semanticUnderstanding'
+import { orchestrate } from './understandingOrchestrator'
 import { addAppointment, deleteAppointment, updateAppointment, loadAppointments, findConflicts } from '../AbuCalendar/service'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
 import { resolvePronouns } from './pronounResolver'
@@ -412,6 +413,15 @@ export function AbuAI() {
     const companionState = deriveStateFromMessages(messages)
     const companionPlan = planCompanionTurn(msgText, companionState)
     diagSet({ companionPlan: `frame=${companionPlan.step7_frame} act=${companionPlan.step7_act} suppress=${companionPlan.suppressLookups} cal=${companionPlan.step5_calendar} online=${companionPlan.step6_onlineNeeded} person=${companionPlan.step4_continuity.resolvedPerson ?? '-'}` })
+
+    // ─── AI Understanding Orchestrator (single front door) ───────────────
+    // EVERY input flows through one understanding pipeline (normalize →
+    // semantic understanding → deterministic validation → memory → shaping)
+    // before any route runs. The decision is recorded each turn so nothing
+    // routes without first passing through orchestration.
+    const orchestration = orchestrate(msgText, { messages })
+    // eslint-disable-next-line no-console
+    console.log(`[AbuAI][ORCH] intent=${orchestration.intent} clarify=${orchestration.needsClarification} corrections=${orchestration.corrections.length} mem(person=${orchestration.memory.lastPerson ?? '-'},action=${orchestration.memory.lastCalendarAction ?? '-'})`)
 
     // "תחזרי ל<name>" / "נחזור ל<name>" (go back to X) — the ל prefix on the name
     // defeats the word-boundary matcher, so rewrite to a groundable form using
@@ -1541,6 +1551,11 @@ export function AbuAI() {
         // Companion Brain (STEP 1-7): MANDATORY before every voice response.
         const voicePlan = planCompanionTurn(text, deriveStateFromMessages(messages))
         diagSet({ companionPlan: `frame=${voicePlan.step7_frame} act=${voicePlan.step7_act} suppress=${voicePlan.suppressLookups} cal=${voicePlan.step5_calendar} online=${voicePlan.step6_onlineNeeded} person=${voicePlan.step4_continuity.resolvedPerson ?? '-'}` })
+
+        // Voice inputs flow through the SAME understanding orchestrator as text.
+        const voiceOrch = orchestrate(text, { messages })
+        // eslint-disable-next-line no-console
+        console.log(`[AbuAI][ORCH][voice] intent=${voiceOrch.intent} clarify=${voiceOrch.needsClarification} corrections=${voiceOrch.corrections.length}`)
 
         // Try grounded answer first
         const isDirectVoiceQ = /^מי |^מתי |^איפה |^כמה |^מה זה |^מה זאת |[?؟]$/.test(text.trim())
