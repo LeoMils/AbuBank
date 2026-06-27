@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.6.7-voice-experience',
-  buildLabel: 'AbuBank — Voice experience (spoken persona + latency instrumentation)',
+  version:    '0.7.0-conversation-os',
+  buildLabel: 'AbuBank — Conversation OS (continuation, repair, online session memory)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

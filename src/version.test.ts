@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.6.7-voice-experience')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Voice experience (spoken persona + latency instrumentation)')
+    expect(APP_VERSION.version).toBe('0.7.0-conversation-os')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Conversation OS (continuation, repair, online session memory)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

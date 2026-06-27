@@ -10,6 +10,10 @@ import { compileHumanAnswer } from './answerCompiler'
 import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
 import { toSpokenText } from './spokenPersona'
+import {
+  IDLE_CONV, handleConversationTurn, recordAnswer, recordOnline,
+  type ConvState, type OnlineFailReason,
+} from './conversationOS'
 import { diagReset, diagSet, diagCommit, diagCopyText } from '../../services/productDiagnostics'
 import { planCompanionTurn, deriveStateFromMessages } from './companionPlanner'
 import { enforceCompanion } from './companionComposer'
@@ -132,6 +136,16 @@ const KEYFRAMES = `
 // The old "...אני כאן." was a dead end — it greeted and then nothing happened.
 // This opens the door: she knows immediately she can just talk, ask, or have me
 // put something in the calendar. One sentence, warm, adult — never a menu.
+// Map an online provider error code to a human-explainable failure reason.
+function mapOnlineFailReason(code: string | null | undefined): OnlineFailReason {
+  const c = (code ?? '').toUpperCase()
+  if (c.includes('TIMEOUT') || c.includes('TIMED')) return 'timeout'
+  if (c.includes('REALTIME')) return 'realtime_unavailable'
+  if (c.includes('INCOMPLETE') || c.includes('EMPTY') || c.includes('PARSE')) return 'incomplete_data'
+  if (c.includes('FALLBACK')) return 'fallback_used'
+  return 'provider_failed'
+}
+
 function getVoiceGreeting(): string {
   const h = new Date().getHours()
   const timeGreet = h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : h < 21 ? 'ערב טוב' : 'לילה טוב'
@@ -306,6 +320,9 @@ export function AbuAI() {
   // B1 patch: track the last proactive seed id so repeated boredom / loneliness
   // queries deterministically rotate to a different seed.
   const lastProactiveSeedIdRef = useRef<string | null>(null)
+  // Conversation Operating System — remembers the last answer (for "תמשיכי") and
+  // the last online failure (to explain "למה?"). Session-scoped.
+  const conversationOSRef = useRef<ConvState>(IDLE_CONV)
 
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
@@ -1565,13 +1582,22 @@ export function AbuAI() {
         // eslint-disable-next-line no-console
         console.log(`[AbuAI][ORCH][voice] ORCH_INTENT=${voiceOrch.intent} clarify=${voiceOrch.needsClarification} corrections=${voiceOrch.corrections.length}`)
 
+        // Conversation OS FIRST: "תמשיכי" resumes the cached answer; a challenge
+        // ("למה אין לך?", "יש לך אונליין") gets a real explanation + retry offer —
+        // instead of forgetting and looping. Only fires when there is context.
+        const convTurn = handleConversationTurn(conversationOSRef.current, text)
+
         // Try grounded answer first
         const isDirectVoiceQ = /^מי |^מתי |^איפה |^כמה |^מה זה |^מה זאת |[?؟]$/.test(text.trim())
         const voiceGrounded = tryGroundedAnswer(text)
         let response: string
-        // Companion Brain suppression: a feeling/companionship turn (not a direct
-        // question) skips the grounded data answer and flows to the warm path.
-        if (voiceGrounded !== null && !(voicePlan.suppressLookups && !isDirectVoiceQ)) {
+        if (convTurn.handled) {
+          conversationOSRef.current = convTurn.state
+          response = convTurn.speak ?? ''
+          diagSet({ responseSource: `conversation_os:${convTurn.action}`, rawResponse: response })
+          // eslint-disable-next-line no-console
+          console.log(`[AbuAI][CONV_OS] action=${convTurn.action} phase=${convTurn.state.phase}`)
+        } else if (voiceGrounded !== null && !(voicePlan.suppressLookups && !isDirectVoiceQ)) {
           const route = routePersonalQuery(text)
           const isCal = route.type.startsWith('calendar_')
           diagSet({
@@ -1628,9 +1654,11 @@ export function AbuAI() {
             if (online.ok) {
               _recordOnlineError(null)
               response = online.answer
+              conversationOSRef.current = recordOnline(conversationOSRef.current, { query: text, topic: null, source: null, ok: true, reason: null, summary: online.answer.slice(0, 120) })
             } else {
               _recordOnlineError(online.errorCode)
               response = online.userMessage
+              conversationOSRef.current = recordOnline(conversationOSRef.current, { query: text, topic: null, source: null, ok: false, reason: mapOnlineFailReason(online.errorCode), summary: null })
             }
           } else {
             // ── Streaming LLM + progressive TTS ──────────────────────
@@ -1720,6 +1748,12 @@ export function AbuAI() {
         const aiMsg: ChatMessage = { id: nextId(), role: 'assistant', content: response, timestamp: Date.now() }
         setMessages(prev => [...prev, aiMsg])
         if (!voiceModeRef.current) return
+
+        // Cache a substantial fresh answer so "תמשיכי" can resume the rest. (A
+        // continuation/repair is already cached — don't re-cache it.)
+        if (!convTurn.handled && response.trim().length > 40) {
+          conversationOSRef.current = recordAnswer(conversationOSRef.current, { question: text, intent: voiceOrch.intent, fullText: response })
+        }
 
         // Speak the full response (for grounded / proactive / content-world / online).
         // These are fast deterministic answers — serial TTS is fine.
