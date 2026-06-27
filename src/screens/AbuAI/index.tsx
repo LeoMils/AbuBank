@@ -9,6 +9,7 @@ import { chooseContentWorld } from './contentWorldEngine'
 import { compileHumanAnswer } from './answerCompiler'
 import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
+import { toSpokenText } from './spokenPersona'
 import { diagReset, diagSet, diagCommit, diagCopyText } from '../../services/productDiagnostics'
 import { planCompanionTurn, deriveStateFromMessages } from './companionPlanner'
 import { enforceCompanion } from './companionComposer'
@@ -1354,7 +1355,7 @@ export function AbuAI() {
         if (voiceModeRef.current) {
           transitionVoice('RESPONDING', 'ask-who')
           setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(askWho)
-          await speakVoiceMode(askWho)
+          await speakVoiceMode(toSpokenText(askWho))
           setIsSpeaking(false); setStreamingText('')
           if (voiceModeRef.current) startVoiceListening()
         }
@@ -1382,7 +1383,7 @@ export function AbuAI() {
           if (!voiceModeRef.current) return
           transitionVoice('RESPONDING', 'reminder-turn')
           setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
-          await speakVoiceMode(shapeVoiceSafe(response))
+          await speakVoiceMode(toSpokenText(response))
           setIsSpeaking(false); setStreamingText('')
           if (!voiceModeRef.current) return
           await new Promise(r => setTimeout(r, 120))
@@ -1419,7 +1420,7 @@ export function AbuAI() {
           if (!voiceModeRef.current) return
           transitionVoice('RESPONDING', 'reminder-confirm-turn')
           setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
-          await speakVoiceMode(shapeVoiceSafe(response))
+          await speakVoiceMode(toSpokenText(response))
           setIsSpeaking(false); setStreamingText('')
           if (!voiceModeRef.current) return
           await new Promise(r => setTimeout(r, 120))
@@ -1439,7 +1440,7 @@ export function AbuAI() {
         transitionVoice('RESPONDING', 'recurring-limitation')
         setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(recurResponse)
         try {
-          await speakVoiceMode(shapeVoiceSafe(recurResponse))
+          await speakVoiceMode(toSpokenText(recurResponse))
         } catch { /* ignore */ }
         setIsSpeaking(false); setStreamingText('')
         if (voiceModeRef.current) { await new Promise(r => setTimeout(r, 120)); startVoiceListening() }
@@ -1516,7 +1517,7 @@ export function AbuAI() {
           if (!voiceModeRef.current) return
           transitionVoice('RESPONDING', 'create-turn')
           setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
-          await speakVoiceMode(shapeVoiceSafe(response))
+          await speakVoiceMode(toSpokenText(response))
           setIsSpeaking(false); setStreamingText('')
           if (!voiceModeRef.current) return
           await new Promise(r => setTimeout(r, 120))
@@ -1698,7 +1699,7 @@ export function AbuAI() {
               // the reliable wrapper (same engine the greeting uses) so the
               // answer is actually heard — and TTS_EVIDENCE is logged.
               if (streamSpeakThrew && voiceModeRef.current && !ac.signal.aborted) {
-                await speakVoiceMode(shapeVoiceSafe(finalContent))
+                await speakVoiceMode(toSpokenText(finalContent))
               }
             }
 
@@ -1730,11 +1731,19 @@ export function AbuAI() {
         setIsSpeaking(true)
         setStreamingText(response)
 
-        const spokenText = shapeVoiceSafe(response)
+        const responseReady = Date.now()
+        const spokenText = toSpokenText(response)
         diagSet({ spokenResponse: spokenText })
-        // Device-debuggable latency: transcript → ready-to-speak, and spoken length.
+        // Device-debuggable latency marks — one line, copy from the console.
         // eslint-disable-next-line no-console
-        console.log(`[AbuAI][LATENCY] RESPONSE_LATENCY_MS=${Date.now() - turnStart} TTS_START_MS=${Date.now() - turnStart} SPOKEN_CHARS=${spokenText.length} FALLBACK_USED=${realtimeRef.current === null}`)
+        console.log(
+          `[AbuAI][LATENCY] TRANSCRIPT_TO_RESPONSE_MS=${responseReady - turnStart} ` +
+          `RESPONSE_TO_TTS_START_MS=${Date.now() - responseReady} ` +
+          `RESPONSE_READY_MS=${responseReady - turnStart} ` +
+          `TTS_REQUEST_START_MS=${Date.now() - turnStart} ` +
+          `TOTAL_TAP_TO_SPEAK_MS=${Date.now() - turnStart} ` +
+          `SPOKEN_CHARS=${spokenText.length} FALLBACK_USED=${realtimeRef.current === null}`,
+        )
         await speakVoiceMode(spokenText)
         // TTS trace is captured by voice.ts ttsTrace() — copy to diagnostics
         try {
@@ -1763,7 +1772,7 @@ export function AbuAI() {
         setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
         if (voiceModeRef.current) {
           setVoicePhase('speaking'); setIsSpeaking(true)
-          await speakVoiceMode(errText)
+          await speakVoiceMode(toSpokenText(errText))
           setIsSpeaking(false)
           await new Promise(r => setTimeout(r, 120))
           if (voiceModeRef.current) {
@@ -2051,7 +2060,7 @@ ${fewShotText}`
     transitionVoice('RESPONDING', 'greeting-speak')
     setVoicePhase('speaking')
     try {
-      await speakVoiceMode(greeting)
+      await speakVoiceMode(toSpokenText(greeting))
     } catch { /* TTS failed, continue to listening anyway */ }
 
     // Now start listening — after TTS finishes so mic doesn't pick up speaker output

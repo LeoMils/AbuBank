@@ -164,7 +164,7 @@ describe('C. voice answers go through TTS (source contract + grounded routing)',
 
   it('streaming LLM voice path falls back to serial speak if streaming TTS fails (no text-only success)', () => {
     expect(idx.includes('streamSpeakThrew')).toBe(true)
-    expect(/streamSpeakThrew && voiceModeRef\.current[\s\S]{0,80}speakVoiceMode\(shapeVoiceSafe\(finalContent\)\)/.test(idx)).toBe(true)
+    expect(/streamSpeakThrew && voiceModeRef\.current[\s\S]{0,80}speakVoiceMode\(toSpokenText\(finalContent\)\)/.test(idx)).toBe(true)
   })
 
   it('calendar/family reads do NOT fall into the streaming LLM path (they are grounded)', () => {

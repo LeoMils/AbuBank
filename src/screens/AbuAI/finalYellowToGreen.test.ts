@@ -99,7 +99,7 @@ describe('PHASE 3 — greeting quality', () => {
     expect(g.length).toBeLessThan(70) // short
   })
   it('greeting plays once then transitions to listening (no re-greet loop)', () => {
-    expect(idx).toMatch(/await speakVoiceMode\(greeting\)[\s\S]{0,600}startVoiceListening/)
+    expect(idx).toMatch(/await speakVoiceMode\(toSpokenText\(greeting\)\)[\s\S]{0,600}startVoiceListening/)
   })
 })
 

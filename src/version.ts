@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.6.6-yellow-to-green',
-  buildLabel: 'AbuBank — Yellow-to-green (notes, personality, greeting, voice shaping, sports, latency)',
+  version:    '0.6.7-voice-experience',
+  buildLabel: 'AbuBank — Voice experience (spoken persona + latency instrumentation)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

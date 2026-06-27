@@ -34,11 +34,11 @@ beforeEach(() => {
 
 // ── 1. Every voice-origin answer branch speaks ──────────────────────────────
 describe('every voice-origin answer triggers TTS', () => {
-  it('greeting is spoken', () => { expect(IDX).toMatch(/await speakVoiceMode\(greeting\)/) })
-  it('clarification (askWho) is spoken', () => { expect(IDX).toMatch(/await speakVoiceMode\(askWho\)/) })
+  it('greeting is spoken', () => { expect(IDX).toMatch(/await speakVoiceMode\(toSpokenText\(greeting\)\)/) })
+  it('clarification (askWho) is spoken', () => { expect(IDX).toMatch(/await speakVoiceMode\(toSpokenText\(askWho\)\)/) })
   it('reminder + recurring + create-confirm answers are spoken', () => {
     // multiple `speakVoiceMode(shapeVoiceSafe(response|recurResponse))` branches
-    expect((IDX.match(/await speakVoiceMode\(shapeVoiceSafe\(/g) ?? []).length).toBeGreaterThanOrEqual(4)
+    expect((IDX.match(/await speakVoiceMode\(toSpokenText\(/g) ?? []).length).toBeGreaterThanOrEqual(4)
   })
   it('grounded / family / online / general answers are spoken (serial)', () => {
     expect(IDX).toMatch(/await speakVoiceMode\(spokenText\)/)
@@ -47,7 +47,7 @@ describe('every voice-origin answer triggers TTS', () => {
     expect(IDX).toContain('_streamSpeakVoiceMode(')
   })
   it('error fallback is spoken (no silent error)', () => {
-    expect(IDX).toMatch(/await speakVoiceMode\(errText\)/)
+    expect(IDX).toMatch(/await speakVoiceMode\(toSpokenText\(errText\)\)/)
   })
 })
 
@@ -55,7 +55,7 @@ describe('every voice-origin answer triggers TTS', () => {
 describe('no text-only success state', () => {
   it('streaming TTS failure falls back to a serial speak of the final text', () => {
     expect(IDX).toContain('streamSpeakThrew')
-    expect(IDX).toMatch(/streamSpeakThrew && voiceModeRef\.current[\s\S]{0,90}speakVoiceMode\(shapeVoiceSafe\(finalContent\)\)/)
+    expect(IDX).toMatch(/streamSpeakThrew && voiceModeRef\.current[\s\S]{0,90}speakVoiceMode\(toSpokenText\(finalContent\)\)/)
   })
 })
 
@@ -89,7 +89,7 @@ describe('realtime fallback is quiet', () => {
 // ── 5. No greeting loop; voice flows through the orchestrator ────────────────
 describe('no greeting loop + orchestrated voice', () => {
   it('greeting plays once then transitions to listening (not re-greet)', () => {
-    expect(IDX).toMatch(/await speakVoiceMode\(greeting\)[\s\S]{0,600}startVoiceListening/)
+    expect(IDX).toMatch(/await speakVoiceMode\(toSpokenText\(greeting\)\)[\s\S]{0,600}startVoiceListening/)
   })
   it('voice inputs pass through the orchestrator front door', () => {
     expect(IDX).toContain('orchestrate(text, { messages })')

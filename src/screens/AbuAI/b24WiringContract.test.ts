@@ -21,8 +21,8 @@ describe('B2.4 — voice-safe shaper is wired into the voice path', () => {
   })
 
   it('voice path calls speakVoiceMode with shaped text, not raw response', () => {
-    // shapeVoiceSafe(response) must appear before speakVoiceMode(spokenText)
-    expect(INDEX).toContain('shapeVoiceSafe(response)')
+    // toSpokenText(response) must appear before speakVoiceMode(spokenText)
+    expect(INDEX).toContain('toSpokenText(response)')
     expect(INDEX).toContain('await speakVoiceMode(spokenText)')
   })
 
