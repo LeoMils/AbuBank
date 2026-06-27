@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.6.2-redteam-green',
-  buildLabel: 'AbuBank — Red-team green (title-leak fixes + 2000-case stress)',
+  version:    '0.6.3-conversation-closure',
+  buildLabel: 'AbuBank — Conversation closure (confirmation survival + tonight/place semantics)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

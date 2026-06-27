@@ -196,11 +196,33 @@ export function isCreateIntent(text: string): boolean {
 
 // ─── Confirmation / Cancel ──────────────────────────────────────────────────
 
-const CONFIRM = /^(כן|נכון|בדיוק|בסדר|סבבה|יאללה|תרשמי|כן תרשמי|אוקיי|אוקי|ok|yes|כן כן|בטח|ברור|מאשרת|תאשרי|תודה|תודה רבה|dale|sí|si)$/i
 const CANCEL = /^(לא|לא נכון|עזבי|עזבי את זה|תשכחי|ביטול|לא צריך|בטלי|לא רוצה|חבל|תעזבי|לא לא|לא לא לא|לא לא לא לא|עזבי עזבי|לא לזה התכוונתי|תמחקי|תמחקי את זה|תבטלי|תבטלי את זה|מחקי|תמחקי את הפגישה|תבטלי את הפגישה)$/i
 
+// Confirmation is recognised as (a) a whole known phrase, OR (b) a short
+// utterance whose every word is a confirm word — so "כן", "כן כן", "כן בבקשה",
+// "כן תקבעי", "בסדר גמור" all complete the pending action. This fixes the real
+// device failure where "אני רוצה את זה" / "בבקשה" / "קדימה" did not confirm (and
+// "אני רוצה את זה" was even mis-read as off-topic and SILENTLY cancelled).
+const CONFIRM_PHRASES = new Set([
+  'זה נכון', 'אני רוצה את זה', 'רוצה את זה', 'זה מה שרציתי', 'בסדר גמור',
+  'נכון מאוד', 'תרשמי לי', 'תקבעי לי', 'תזמני לי', 'תודה רבה', 'כן בבקשה',
+  'כן תקבעי', 'כן תרשמי', 'בדיוק כך', 'כן נכון', 'בדיוק זה', 'זה בדיוק',
+])
+const CONFIRM_WORDS = new Set([
+  'כן', 'נכון', 'בדיוק', 'בסדר', 'סבבה', 'יאללה', 'יאלה', 'תרשמי', 'תקבעי',
+  'תזמני', 'קבעי', 'אוקיי', 'אוקי', 'ok', 'okay', 'okey', 'yes', 'yep', 'yup',
+  'בטח', 'ברור', 'בוודאי', 'מאשרת', 'מאשר', 'תאשרי', 'אשרי', 'בבקשה', 'קדימה',
+  'מעולה', 'מושלם', 'נהדר', 'יופי', 'סגור', 'סגרנו', 'לגמרי', 'בהחלט', 'תודה',
+  'dale', 'sí', 'si', 'claro',
+])
+
 export function isConfirm(text: string): boolean {
-  return CONFIRM.test(text.trim())
+  const t = text.trim().replace(/[.!?,]+$/u, '').trim().toLowerCase()
+  if (!t) return false
+  if (CONFIRM_PHRASES.has(t)) return true
+  const words = t.split(/\s+/)
+  if (words.length === 0 || words.length > 4) return false
+  return words.every(w => CONFIRM_WORDS.has(w))
 }
 
 export function isCancel(text: string): boolean {
@@ -217,8 +239,9 @@ const HEBREW_HOUR_WORDS: Record<string, number> = {
 
 // Period hints. PM covers evening / noon / afternoon; AM covers morning.
 // "אחהצ" (no gershayim) is the common bare abbreviation Martita types.
-const PERIOD_PM = /בערב|בלילה|אחר[י]? הצהריים|אחה"צ|אחה״צ|אחהצ|בצהריים/
-const PERIOD_AM = /בבוקר|לפנות בוקר/
+// "הערב"/"הלילה" (tonight) and "אחה״צ" are PM; "הבוקר" (this morning) is AM.
+const PERIOD_PM = /בערב|הערב|בלילה|הלילה|אחר[י]? הצהריים|אחה"צ|אחה״צ|אחהצ|בצהריים|הצהריים/
+const PERIOD_AM = /בבוקר|הבוקר|לפנות בוקר/
 
 // Resolve a 1-12 hour to 24h using period hints. With no hint, hours 1-6 are
 // taken as PM (appointment convention) and 7-12 stay as the AM reading but are
@@ -226,8 +249,8 @@ const PERIOD_AM = /בבוקר|לפנות בוקר/
 // silently guessing.
 function applyPeriod(h: number, t: string): { hour: number; ambiguous: boolean } {
   if (PERIOD_AM.test(t)) return { hour: h >= 12 ? h - 12 : h, ambiguous: false }
-  // "בלילה" for hours 1-5 = after midnight (AM), not PM
-  if (/בלילה/.test(t) && h >= 1 && h <= 5) return { hour: h, ambiguous: false }
+  // "בלילה"/"הלילה" for hours 1-5 = after midnight (AM), not PM
+  if (/בלילה|הלילה/.test(t) && h >= 1 && h <= 5) return { hour: h, ambiguous: false }
   if (PERIOD_PM.test(t)) return { hour: h >= 1 && h <= 11 ? h + 12 : h, ambiguous: false }
   if (h >= 1 && h <= 6) return { hour: h + 12, ambiguous: false }
   return { hour: h, ambiguous: h >= 7 && h <= 11 }
@@ -421,6 +444,11 @@ export function parseCreateDate(text: string): string | null {
     return localDateStr(d)
   }
 
+  // FALLBACK (after all explicit dates): "הערב"/"הלילה"/"הבוקר" (this evening /
+  // tonight / this morning) imply TODAY when no other date was given. Excludes
+  // "הצהריים" — it is part of "אחר הצהריים" (afternoon, a time, any day).
+  if (/(?<![א-ת])ה(?:ערב|לילה|בוקר)(?![א-ת])/.test(t)) return todayStr()
+
   // Fall back to existing dateParser (handles "ב-15 באפריל", etc.)
   return parseHebrewDate(t)
 }
@@ -452,7 +480,7 @@ const BARE_TIME_NOISE = /\s*(?<![\d/])\d{1,2}[:.]\d{2}(?![\d/])\s*/g
 // Bare hour + period word: "4 אחהצ", "7 בערב".
 const BARE_HOUR_PERIOD_NOISE = /\s*\d{1,2}\s*(?:אחהצ|אחה"צ|אחה״צ|אחר[י]? הצהריים|בערב|בבוקר|בצהריים|בלילה)\s*/gi
 // Standalone time-of-day words (when not part of a time phrase already stripped)
-const PERIOD_NOISE = /(בבוקר|בערב|בלילה|בצהריים|אחר הצהריים|אחרי הצהריים|אחהצ|אחה"צ|אחה״צ)/gi
+const PERIOD_NOISE = /(בבוקר|בערב|בלילה|בצהריים|הערב|הלילה|הבוקר|הצהריים|אחר הצהריים|אחרי הצהריים|אחהצ|אחה"צ|אחה״צ)/gi
 // Leading scheduling verb without "לי" ("תקבע עם מור" → "עם מור").
 const SCHEDULE_VERB_LEAD = /^(?:תקבעי|תקבע|קבעי|קבע|נקבע|אקבע|תרשמי|תרשום|רשמי|שימי|תשימי|תוסיפי|תוסיף|תזכירי|תכניסי|תכניס|תעשי)\s+(?:לי\s+)?/
 // Connector word leftover

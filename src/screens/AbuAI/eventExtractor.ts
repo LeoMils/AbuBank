@@ -39,7 +39,7 @@ const CITY =
 // Phrases that END a captured segment (start of the NEXT field, or time/date,
 // or punctuation). Used so a location/subject capture stops at the right place.
 const NEXT_FIELD =
-  'על\\s|על-|בנושא|בקשר|לגבי|בעניין|בשעה|בסביבות|בערך|בבוקר|בערב|בצהריים|בלילה|אחהצ|אחה"צ|אחה״צ|' +
+  'על\\s|על-|בנושא|בקשר|לגבי|בעניין|בשעה|בסביבות|בערך|בבוקר|בערב|בצהריים|בלילה|הערב|הלילה|הבוקר|הצהריים|אחהצ|אחה"צ|אחה״צ|' +
   // bare "ב + hour-word" so a time never leaks into a venue ("…ברעננה בשבע").
   'ב(?:אחת עשרה|שתים עשרה|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|אחת|שתיים)(?![א-ת])|' +
   'מחר|מחרתיים|היום|ביום|בעוד|כי\\s|בגלל|כדי\\s|לדבר|לדון|לשוחח|לסדר|לתאם|לבדוק|לחגוג|לאכול|לשתות|לראות'
@@ -54,7 +54,7 @@ const SUBJECT_LEAD = new RegExp(`(?:^|\\s)(?:${PURPOSE_VERB})?(?:על|בנושא
 // Words that must NOT be taken as a person name after עם/אצל (they belong to
 // another field). Keeps "עם אלכסנדרה בקפה" → person = אלכסנדרה only.
 const PERSON_STOP =
-  /^(?:ב|ל|על|בנושא|לגבי|בעניין|בשעה|בבוקר|בערב|בצהריים|בלילה|מחר|מחרתיים|היום|ביום|בעוד|כי|בגלל|כדי|אחהצ)/
+  /^(?:ב|ל|על|בנושא|לגבי|בעניין|בשעה|בבוקר|בערב|בצהריים|בלילה|מחר|מחרתיים|היום|ביום|בעוד|כי|בגלל|כדי|אחהצ)|^(?:הערב|הלילה|הבוקר|הצהריים|השבוע|השבת)$/
 
 function clean(s: string): string {
   return s.trim().replace(/^[\s]+/u, '').replace(/[.,!?;:"'״׳]+$/u, '').trim()
@@ -121,6 +121,16 @@ function extractLocation(text: string): { value: string; span: string } | null {
   if (cm) {
     const value = clean(cm[1]!)
     return { value, span: `ב${cm[1]}` }
+  }
+  // Trailing-head venue: ONE proper-noun word FOLLOWED by a place head —
+  // "בלונה פארק", "בירקון פארק". One word only, so a preceding time/period word
+  // ("…בשמונה בלונה פארק") is never swallowed (the match lands on the ב nearest
+  // the head). The name must not be an hour-word.
+  const trailRe = /(?<![֐-׿])ב((?!(?:שמונה|שלוש|ארבע|חמש|שש|שבע|תשע|עשר|אחת|שתיים)\s)[א-ת]{2,}\s+(?:פארק|גן|מרכז|מגדל|קניון|מתחם|אצטדיון|כיכר|טיילת))(?![א-ת])/u
+  const tm = trailRe.exec(text)
+  if (tm) {
+    const value = clean(tm[1]!)
+    if (value.length >= 2) return { value, span: `ב${tm[1]}` }
   }
   return null
 }

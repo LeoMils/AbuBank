@@ -1,0 +1,88 @@
+/**
+ * CONVERSATION CLOSURE — the two iPhone-reported blockers, locked down.
+ *  #1 Confirmation survives: every natural "yes" completes the pending create
+ *     (and "אני רוצה את זה" no longer SILENTLY cancels).
+ *  #2 Semantic time/place: "tonight at 11 at Luna Park" → today / 23:00 / Luna
+ *     Park, clean title; proper-noun venues; "הערב"/"הלילה"/"הבוקר" → today.
+ *
+ * Time anchored to a fixed evening base (independent of the wall clock).
+ */
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
+import { startCreate, resolvePendingMessage, isConfirm } from './calendarCreate'
+import { understandMeeting } from './meetingIntelligence'
+
+const FIXED = new Date('2026-06-24T20:00:00') // Wed evening
+beforeAll(() => { vi.useFakeTimers(); vi.setSystemTime(FIXED) })
+afterAll(() => { vi.useRealTimers() })
+const TODAY = '2026-06-24'
+let storage: Record<string, string> = {}
+beforeEach(() => { storage = {}; vi.stubGlobal('localStorage', { getItem: (k: string) => storage[k] ?? null, setItem: (k: string, v: string) => { storage[k] = v }, removeItem: () => {} }) })
+
+// ── #1 Confirmation survives ────────────────────────────────────────────────
+describe('#1 confirmation completes the pending create', () => {
+  const CONFIRMS = [
+    'כן', 'כן כן', 'נכון', 'בדיוק', 'בבקשה', 'קדימה', 'זה נכון', 'אני רוצה את זה',
+    'מאשרת', 'תקבעי', 'תקבעי לי', 'אוקיי', 'בטח', 'ברור', 'כן בבקשה', 'כן תקבעי',
+    'בסדר גמור', 'מושלם', 'תזמני לי', 'יאללה', 'סבבה', 'בהחלט', 'נהדר', 'יופי', 'סגור',
+    'כן.', 'בבקשה!', 'נכון מאוד',
+  ]
+  it.each(CONFIRMS)('"%s" → save', (c) => {
+    const st = startCreate('תקבעי לי פגישה עם מור מחר בשבע בערב')
+    expect(isConfirm(c)).toBe(true)
+    expect(resolvePendingMessage(st, c, false).action).toBe('save')
+  })
+
+  it('"אני רוצה את זה" SAVES (never silently cancels — the real device bug)', () => {
+    const st = startCreate('תקבעי לי פגישה עם מור מחר בשבע בערב')
+    expect(resolvePendingMessage(st, 'אני רוצה את זה', false).action).toBe('save')
+  })
+
+  const NOT_CONFIRMS = ['לא', 'ספרי לי בדיחה', 'מי זה מור', 'תקבעי עם אופיר מחר בעשר', 'אהלן מה', 'בעשר']
+  it.each(NOT_CONFIRMS)('"%s" → NOT a blind save', (c) => {
+    const st = startCreate('תקבעי לי פגישה עם מור מחר בשבע בערב')
+    const a = resolvePendingMessage(st, c, false).action
+    expect(a).not.toBe('save')
+  })
+})
+
+// ── #2 Semantic time + place ────────────────────────────────────────────────
+describe('#2 tonight / this-morning times + proper-noun places', () => {
+  it('the flagship: "…מוריס הערב באחת עשרה בלונה פארק"', () => {
+    const m = understandMeeting('בוא ניפגש עם מוריס הערב באחת עשרה בלונה פארק')
+    expect(m.who).toBe('מוריס')
+    expect(m.date).toBe(TODAY)        // tonight = today
+    expect(m.time).toBe('23:00')      // 11 at night
+    expect(m.location).toBe('לונה פארק')
+    expect(m.title).toBe('פגישה עם מוריס')
+    expect(m.title).not.toMatch(/הערב/)
+  })
+
+  const cases: Array<[string, string, string]> = [
+    ['תקבעי עם מור הערב בשמונה', '20:00', TODAY],
+    ['נקבע עם אלכסנדרה הלילה בעשר', '22:00', TODAY],
+    ['פגישה עם אופיר הבוקר בתשע', '09:00', TODAY],
+    ['תקבעי עם מור הלילה בשלוש', '03:00', TODAY],     // 3am after midnight
+    ['תקבעי עם מור הערב באחת עשרה', '23:00', TODAY],
+  ]
+  it.each(cases)('"%s" → %s on %s, clean title', (t, time, date) => {
+    const m = understandMeeting(t)
+    expect(m.time).toBe(time)
+    expect(m.date).toBe(date)
+    expect(m.title ?? '').not.toMatch(/הערב|הלילה|הבוקר|הצהריים/)
+  })
+
+  it('an explicit date still beats the tonight fallback', () => {
+    expect(understandMeeting('תקבעי עם מור מחר בערב בשבע').date).toBe('2026-06-25')
+    expect(understandMeeting('תקבעי עם מור מחרתיים בשלוש אחר הצהריים').date).toBe('2026-06-26')
+  })
+
+  it('a time word before a venue is never swallowed into the location', () => {
+    const m = understandMeeting('תקבעי עם מור הערב בשמונה בלונה פארק')
+    expect(m.location).toBe('לונה פארק')
+    expect(m.time).toBe('20:00')
+  })
+
+  it('no place said → location empty (never invented)', () => {
+    expect(understandMeeting('תקבעי עם מור הערב בשמונה').location).toBeNull()
+  })
+})
