@@ -1551,6 +1551,7 @@ export function AbuAI() {
         }, 20000)
 
         // Product diagnostics: trace the full pipeline
+        const turnStart = Date.now() // for RESPONSE_LATENCY_MS / TTS_START_MS
         diagReset()
         diagSet({ sttProvider: 'WebSpeech', sttFileType: 'n/a', sttTranscript: text, sttStatus: '✅' })
 
@@ -1619,7 +1620,10 @@ export function AbuAI() {
           } else if (isOnlineCurrentInfoQuery(text) && !shouldBlockOnlineForPersonal(text)) {
             // B2: online current-info via server endpoint. Voice mode
             // speaks the answer concisely; sources are not read aloud.
+            const onlineStart = Date.now()
             const online = await answerOnlineCurrentInfo(text, { locationHint: 'Kfar Saba area, Israel' })
+            // eslint-disable-next-line no-console
+            console.log(`[AbuAI][LATENCY] ONLINE_FETCH_MS=${Date.now() - onlineStart} ONLINE_OK=${online.ok}`)
             if (online.ok) {
               _recordOnlineError(null)
               response = online.answer
@@ -1728,6 +1732,9 @@ export function AbuAI() {
 
         const spokenText = shapeVoiceSafe(response)
         diagSet({ spokenResponse: spokenText })
+        // Device-debuggable latency: transcript → ready-to-speak, and spoken length.
+        // eslint-disable-next-line no-console
+        console.log(`[AbuAI][LATENCY] RESPONSE_LATENCY_MS=${Date.now() - turnStart} TTS_START_MS=${Date.now() - turnStart} SPOKEN_CHARS=${spokenText.length} FALLBACK_USED=${realtimeRef.current === null}`)
         await speakVoiceMode(spokenText)
         // TTS trace is captured by voice.ts ttsTrace() — copy to diagnostics
         try {

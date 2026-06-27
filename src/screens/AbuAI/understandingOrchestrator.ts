@@ -86,6 +86,23 @@ function classify(text: string, route: RouteResult, plan: CompanionPlan, isDirec
   return 'general'
 }
 
+// Sports/current-info follow-up fragments the user adds AFTER a current-info
+// turn ("של איזה משחק" → "של המונדיאל בארצות הברית"). Short, additive, no own
+// intent on their own.
+const ONLINE_FOLLOWUP_FRAG = /^(?:של\s+|ב|על\s+)?(?:המשחק|המשחקים|המונדיאל|אליפות|הכדורגל|הכדורסל|הליגה|הגביע|הנבחרת|ארצות הברית|ארהב|אירופה|היום|אתמול|הערב|השבוע)|^של\s+\S/u
+function isOnlineFollowUp(text: string, messages: Array<{ role: string; content: string }>): boolean {
+  const t = text.trim()
+  if (t.split(/\s+/).length > 8) return false
+  if (!ONLINE_FOLLOWUP_FRAG.test(t)) return false
+  // The previous user/assistant turn must have been about current/online info.
+  for (let i = messages.length - 1; i >= 0 && i >= messages.length - 3; i--) {
+    const c = messages[i]!.content
+    if (isOnlineCurrentInfoQuery(c)) return true
+    if (/תוצאות|משחק|מונדיאל|מזג האוויר|חדשות|איזה משחק|של איזה/.test(c)) return true
+  }
+  return false
+}
+
 /**
  * Orchestrate one turn. Every input passes through here before any action.
  */
@@ -99,7 +116,12 @@ export function orchestrate(rawInput: string, ctx: OrchestratorContext): Orchest
   const route = routePersonalQuery(normalized)
   const companionPlan = planCompanionTurn(normalized, deriveStateFromMessages(messages))
   const isDirectQuestion = /^מי |^מתי |^איפה |^כמה |^מה זה |^מה זאת |[?؟]$/.test(normalized.trim())
-  const intent = classify(normalized, route, companionPlan, isDirectQuestion)
+  let intent = classify(normalized, route, companionPlan, isDirectQuestion)
+
+  // Online FOLLOW-UP context: a short fragment ("בארצות הברית", "של איזה משחק",
+  // "היום") right after an online/current-info turn continues that online intent
+  // instead of looping a generic clarification.
+  if ((intent === 'general' || intent === 'emotional') && isOnlineFollowUp(normalized, messages)) intent = 'online'
 
   let meeting: MeetingObject | undefined
   let needsClarification = false

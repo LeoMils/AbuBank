@@ -152,7 +152,11 @@ export function understandPurpose(text: string): { purpose: string | null; subje
     ? cleanSubject(beforeAfter[2]!.replace(/\s+(?:עם|ב|ל)\s.*$/u, ''))
     : null
 
-  let purpose: string | null = clause ? tidy(clause.replace(PURPOSE_FILLER, '')) : null
+  // Clean the purpose into short human notes: drop the filler lead-in AND a
+  // redundant pronoun object ("לדבר איתה על…" → "לדבר על…").
+  let purpose: string | null = clause
+    ? tidy(clause.replace(PURPOSE_FILLER, '').replace(/\s+(?:איתה|איתו|איתם|איתן|אותה|אותו|אותם|אותן)(?=\s)/gu, ''))
+    : null
   if (!purpose && beforeAfter) purpose = tidy(`${beforeAfter[1]} ${beforeAfter[2]}`)
 
   // Subject = the topic noun. Prefer an explicit topic marker ("…על הבדיקות" →

@@ -22,6 +22,9 @@ export const BANNED_PHRASES: string[] = [
   'כיצד אוכל לסייע', 'במה אוכל לסייע', 'איך אפשר לסייע', 'אני כאן לשירותך', 'לשירותך',
   'יש עוד משהו שאוכל', 'האם תרצי שאסייע', 'בחרי אחת מהאפשרויות', 'תפריט האפשרויות', 'הנה כמה אפשרויות',
   'אני כאן אם תצטרכי', 'אני כאן כדי לעזור', 'בכל שאלה אני כאן',
+  // greeting-menu / feature-list register (the robotic opening Leo flagged)
+  'אפשר לדבר איתי', 'אפשר לבקש שאקבע', 'לבקש שאקבע לך', 'או לבקש שאקבע',
+  'אפשר לשאול משהו', 'לשאול משהו, או', ', לשאול משהו',
   // dead-bot self-state + generic support-menu (real device failures Leo flagged)
   'אני בסדר', 'רוצה לדבר על משהו אחר',
   // patronizing
@@ -55,12 +58,12 @@ export function findBannedPhrase(text: string): string | null {
 
 function planFallback(plan: CompanionPlan): string {
   switch (plan.step7_act) {
-    case 'listen': return 'אני כאן איתך.'
+    case 'listen': return 'אני פה איתך.'
     case 'lead': return 'בא לך שנדבר על משהו?'
     case 'encourage': return 'איזה כיף לשמוע.'
     case 'ask': return 'תגידי לי עוד קצת?'
-    // Never a bare dead-end "אני כאן." — stay warm and present without a menu.
-    default: return 'אני כאן איתך.'
+    // Warm and present, a companion — never "אני כאן" (menu/dead-end register).
+    default: return 'אני פה איתך.'
   }
 }
 
@@ -69,7 +72,7 @@ function planFallback(plan: CompanionPlan): string {
 // ALL it is) into a warm, human line. Specific honest negations that name what's
 // missing ("אין לי את שנת הלידה של נועם") are NOT matched — they stay untouched.
 const GENERIC_NOINFO_RE = /^(?:אין לי (?:מידע|נתונים|אינפורמציה)|אין מידע|אין לי מושג)\s*[.!?]*$/
-const WARM_NOINFO = 'את זה אני לא יודעת, אבל אני כאן. תשאלי אותי משהו אחר?'
+const WARM_NOINFO = 'את זה אני לא יודעת, אבל אני פה איתך. תשאלי אותי משהו אחר?'
 
 /**
  * Runtime guard: strip banned register from an outgoing response and tidy it.

@@ -31,6 +31,16 @@ export interface VoiceProfile {
 }
 
 // Warm Israeli woman. Native accent target; pace calm but not slow.
+// The intended voice character — single source of truth, asserted by tests and
+// reflected in the TTS instructions (getTTSInstructions in voice.ts).
+export const MARTITA_VOICE_STYLE = {
+  character: 'warm, calm, adult, friendly',
+  notSlow: true,       // rate 0.95 — unhurried but alive, not "old"
+  notElderlyCare: true, // companion register, never a caregiver/clinical tone
+  accent: 'native Israeli (he) / Rioplatense (es) — never American',
+  rhythm: 'short sentences, brief natural pauses, like a relaxed phone call',
+} as const
+
 export const HE_VOICE: VoiceProfile = {
   lang: 'he',
   openaiVoice: 'shimmer',

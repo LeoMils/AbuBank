@@ -64,13 +64,13 @@ export function shapeVoiceSafe(text: string): string {
     t = t.replace(/\s+/g, ' ').trim()
   }
 
-  // Cap at ≤ 3 short sentences for natural speech.
+  // Cap at ≤ 2 short sentences — a spoken answer stays human, not a paragraph.
   const parts: string[] = []
   const re = /[^.!?]+[.!?]+/g
   let m: RegExpExecArray | null
   while ((m = re.exec(t)) !== null) {
     parts.push(m[0].trim())
-    if (parts.length >= 3) break
+    if (parts.length >= 2) break
   }
   if (parts.length === 0) return t
   return parts.join(' ').trim()

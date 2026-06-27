@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.6.5-final-green-closure')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Final green closure (long confirms, clarif-merge, clean titles, warm greeting)')
+    expect(APP_VERSION.version).toBe('0.6.6-yellow-to-green')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Yellow-to-green (notes, personality, greeting, voice shaping, sports, latency)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
