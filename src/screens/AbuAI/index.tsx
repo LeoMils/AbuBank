@@ -134,7 +134,9 @@ const KEYFRAMES = `
 function getVoiceGreeting(): string {
   const h = new Date().getHours()
   const timeGreet = h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : h < 21 ? 'ערב טוב' : 'לילה טוב'
-  return `${timeGreet}, Martita. אפשר לדבר איתי, לשאול משהו, או לבקש שאקבע לך משהו ביומן.`
+  // Warm, short, present — a companion, not a menu. The old "אפשר לדבר איתי,
+  // לשאול משהו, או לבקש…" option-list read as robotic on device.
+  return `${timeGreet}, Martita. אני פה איתך.`
 }
 
 export function AbuAI() {

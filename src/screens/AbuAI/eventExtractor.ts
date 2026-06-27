@@ -54,7 +54,7 @@ const SUBJECT_LEAD = new RegExp(`(?:^|\\s)(?:${PURPOSE_VERB})?(?:על|בנושא
 // Words that must NOT be taken as a person name after עם/אצל (they belong to
 // another field). Keeps "עם אלכסנדרה בקפה" → person = אלכסנדרה only.
 const PERSON_STOP =
-  /^(?:ב|ל|על|בנושא|לגבי|בעניין|בשעה|בבוקר|בערב|בצהריים|בלילה|מחר|מחרתיים|היום|ביום|בעוד|כי|בגלל|כדי|אחהצ)|^(?:הערב|הלילה|הבוקר|הצהריים|השבוע|השבת)$/
+  /^(?:ב|ל|על|בנושא|לגבי|בעניין|בשעה|בבוקר|בערב|בצהריים|בלילה|מחר|מחרתיים|היום|ביום|בעוד|כי|בגלל|כדי|אחהצ)|^(?:הערב|הלילה|הבוקר|הצהריים|השבוע|השבת|הולכים|הולכת|הולך|נלך|נראה|נצא|נאכל|נשתה|נפגש|נבקר|נשב|רוצה|רוצים|צריך|צריכה|כדי|בשביל)$/
 
 function clean(s: string): string {
   return s.trim().replace(/^[\s]+/u, '').replace(/[.,!?;:"'״׳]+$/u, '').trim()
@@ -126,7 +126,7 @@ function extractLocation(text: string): { value: string; span: string } | null {
   // "בלונה פארק", "בירקון פארק". One word only, so a preceding time/period word
   // ("…בשמונה בלונה פארק") is never swallowed (the match lands on the ב nearest
   // the head). The name must not be an hour-word.
-  const trailRe = /(?<![֐-׿])ב((?!(?:שמונה|שלוש|ארבע|חמש|שש|שבע|תשע|עשר|אחת|שתיים)\s)[א-ת]{2,}\s+(?:פארק|גן|מרכז|מגדל|קניון|מתחם|אצטדיון|כיכר|טיילת))(?![א-ת])/u
+  const trailRe = /(?<![֐-׿])[בל]((?!(?:שמונה|שלוש|ארבע|חמש|שש|שבע|תשע|עשר|אחת|שתיים)\s)[א-ת]{2,}\s+(?:פארק|גן|מרכז|מגדל|קניון|מתחם|אצטדיון|כיכר|טיילת))(?![א-ת])/u
   const tm = trailRe.exec(text)
   if (tm) {
     const value = clean(tm[1]!)

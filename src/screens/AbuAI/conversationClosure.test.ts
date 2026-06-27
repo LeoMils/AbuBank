@@ -25,6 +25,9 @@ describe('#1 confirmation completes the pending create', () => {
     'מאשרת', 'תקבעי', 'תקבעי לי', 'אוקיי', 'בטח', 'ברור', 'כן בבקשה', 'כן תקבעי',
     'בסדר גמור', 'מושלם', 'תזמני לי', 'יאללה', 'סבבה', 'בהחלט', 'נהדר', 'יופי', 'סגור',
     'כן.', 'בבקשה!', 'נכון מאוד',
+    // the EXACT longer phrases from the device transcript
+    'כן אני רוצה שתקבעי את זה', 'תקבעי את זה', 'כן אני רוצה', 'אני רוצה שתקבעי את זה',
+    'בסדר תקבעי את זה', 'שתקבעי את זה', 'כן אני רוצה שתקבעי',
   ]
   it.each(CONFIRMS)('"%s" → save', (c) => {
     const st = startCreate('תקבעי לי פגישה עם מור מחר בשבע בערב')
@@ -121,5 +124,36 @@ describe('#5 the dialogue manager applies corrections (does not lose the draft)'
   it('a genuinely off-topic turn still cancels (no forced scheduling)', () => {
     expect(correct('תקבעי לי פגישה עם מור מחר בשבע בערב', 'ספרי לי בדיחה').action).toBe('cancel')
     expect(correct('תקבעי לי פגישה עם מור מחר בשבע בערב', 'אני קצת משועממת').action).toBe('cancel')
+  })
+
+  it('the EXACT device chain: ask time → "ב-10 בבוקר בקפה נורדאו" merges time + location', () => {
+    const st = startCreate('תקבעי לי פגישה עם עדי מחר')   // missing time → asks
+    expect(st.phase).toBe('creating')
+    const r = resolvePendingMessage(st, 'ב-10 בבוקר בקפה נורדאו', false)
+    expect(r.action).toBe('update')
+    if (r.action !== 'update') return
+    expect(r.state.phase).toBe('confirming')
+    expect(r.state.draft.person).toBe('עדי')        // preserved
+    expect(r.state.draft.date).toBe('2026-06-25')   // preserved
+    expect(r.state.draft.time).toBe('10:00')        // new
+    expect(r.state.draft.location).toBe('קפה נורדאו') // new — the real bug
+    // then a natural confirm completes it, with the location intact
+    const r2 = resolvePendingMessage(r.state, 'כן אני רוצה שתקבעי את זה', false)
+    expect(r2.action).toBe('save')
+    if (r2.action === 'save') expect(r2.draft.location).toBe('קפה נורדאו')
+  })
+})
+
+// ── #4 Title is always clean (no verbs / filler / raw transcript) ───────────
+describe('#4 event title is the meeting, never raw transcript', () => {
+  it.each([
+    ['תקבעי פגישה עם מוריס הולכים ללונה פארק מחר בשמונה', 'פגישה עם מוריס', 'לונה פארק'],
+    ['תקבעי עם עדי מחר בעשר נראה סרט', 'פגישה עם עדי', null],
+    ['בוא ניפגש עם מוריס הערב באחת עשרה בלונה פארק', 'פגישה עם מוריס', 'לונה פארק'],
+  ] as Array<[string, string, string | null]>)('"%s" → title "%s"', (t, title, loc) => {
+    const m = understandMeeting(t)
+    expect(m.title).toBe(title)
+    expect(m.title).not.toMatch(/הולכים|נראה|בבקשה|תקבעי|נקבע|כן אני/)
+    if (loc) expect(m.location).toBe(loc); else expect(m.location).toBeNull()
   })
 })

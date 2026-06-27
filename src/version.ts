@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.6.4-dialogue-corrections',
-  buildLabel: 'AbuBank — Dialogue corrections (mid-flow time/date/person fixes survive)',
+  version:    '0.6.5-final-green-closure',
+  buildLabel: 'AbuBank — Final green closure (long confirms, clarif-merge, clean titles, warm greeting)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

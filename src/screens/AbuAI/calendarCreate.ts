@@ -216,10 +216,18 @@ const CONFIRM_WORDS = new Set([
   'dale', 'sí', 'si', 'claro',
 ])
 
+// Affirmative scheduling INTENT, even in a longer natural sentence:
+// "כן אני רוצה שתקבעי את זה", "תקבעי את זה", "כן אני רוצה", "בסדר תקבעי את זה".
+// Anchored so it cannot match a NEW create ("תקבעי עם מור מחר") which carries a
+// person/date/time — those have no "את זה" / bare-intent shape.
+const CONFIRM_INTENT =
+  /^(?:כן[\s,]+)?(?:אני\s+)?(?:רוצה|מבקשת)(?:\s+ש?(?:תקבעי|תרשמי|תזמני))?(?:\s+את\s+ז[הו])?$|^(?:כן[\s,]+|בסדר[\s,]+|אוקיי?[\s,]+)?(?:ש?תקבעי|ש?תרשמי|ש?תזמני)\s+(?:את\s+)?ז[הו]$|^כן\s+אני\s+רוצה/u
+
 export function isConfirm(text: string): boolean {
   const t = text.trim().replace(/[.!?,]+$/u, '').trim().toLowerCase()
   if (!t) return false
   if (CONFIRM_PHRASES.has(t)) return true
+  if (CONFIRM_INTENT.test(t)) return true
   const words = t.split(/\s+/)
   if (words.length === 0 || words.length > 4) return false
   return words.every(w => CONFIRM_WORDS.has(w))
@@ -723,6 +731,15 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
       draft.ambiguousTime = true
     }
   }
+
+  // Enrich location / subject / notes / person from this follow-up too — a
+  // clarification like "ב-10 בבוקר בקפה נורדאו" carries a LOCATION, not only a
+  // time. Merge only into still-empty fields (never overwrite a confirmed value).
+  const ev = extractEventDetails(t)
+  if (ev.location && !draft.location) draft.location = ev.location
+  if (ev.subject && !draft.subject) draft.subject = ev.subject
+  if (ev.notes && !draft.notes) draft.notes = ev.notes
+  if (ev.person && !draft.person) draft.person = ev.person
 
   if (stillMissing.length === 0) {
     return { phase: 'confirming', draft, missing: [] }
