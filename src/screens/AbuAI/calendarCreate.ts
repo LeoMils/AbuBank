@@ -642,10 +642,24 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
       corrected = true
     }
     const { time: newTime, ambiguous } = parseHebrewTimeDetailed(t)
-    if (newTime && !ambiguous && newTime !== correctionDraft.time) {
-      correctionDraft.time = newTime
-      correctionDraft.ambiguousTime = false
-      corrected = true
+    if (newTime) {
+      // A correction like "בעצם בשמונה" gives a bare, AM/PM-ambiguous hour. When
+      // a time is already set, inherit its period (19:00 + "שמונה" → 20:00) — what
+      // a human assistant infers — instead of re-asking. An unambiguous time wins
+      // outright.
+      let resolved = newTime
+      if (ambiguous && correctionDraft.time) {
+        const existingH = parseInt(correctionDraft.time.split(':')[0] ?? '0', 10)
+        const [nh, nm] = newTime.split(':')
+        const newH = parseInt(nh ?? '0', 10)
+        if (existingH >= 12 && newH >= 1 && newH <= 11) resolved = `${String(newH + 12).padStart(2, '0')}:${nm}`
+        else if (existingH < 12 && newH >= 13) resolved = `${String(newH - 12).padStart(2, '0')}:${nm}`
+      }
+      if ((!ambiguous || correctionDraft.time) && resolved !== correctionDraft.time) {
+        correctionDraft.time = resolved
+        correctionDraft.ambiguousTime = false
+        corrected = true
+      }
     }
     if (corrected) {
       return { phase: 'confirming', draft: correctionDraft, missing: [] }
@@ -839,7 +853,7 @@ export function resolvePendingMessage(
   // than forcing it into the create state machine.
   // Examples: "אני קצת משועממת היום", "ספרי לי בדיחה"
   // NOT off-topic: "מי זה מור?", "מה יש לי מחר?", "בעשר בבוקר"
-  const hasDateOrTime = /מחר|היום|אתמול|שבוע|ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת|בבוקר|בערב|בצהריים|בלילה|בשעה|ב[־-]?\d|אחרי|לפני|בעוד/i.test(t)
+  const hasDateOrTime = /מחר|מחרתיים|היום|אתמול|שבוע|ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת|בבוקר|בערב|בצהריים|בלילה|הערב|הלילה|הבוקר|בשעה|ב[־-]?\d|אחרי|אחר\s+הצהריים|לפני|בעוד|בעצם|[בל](?:אחת עשרה|שתים עשרה|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)(?![א-ת])/i.test(t)
   const hasScheduleWord = /תור|פגישה|רופא|בדיקה|קבוע|אחרי הפגישה|אחרי התור/i.test(t)
   const isQuestion = /^(מי|מה|מתי|איפה|איך|למה|כמה|האם)\s/i.test(t) || t.endsWith('?')
   // Off-topic: 3+ words, no scheduling context, not a question

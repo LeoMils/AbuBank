@@ -8,7 +8,7 @@
  * Time anchored to a fixed evening base (independent of the wall clock).
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
-import { startCreate, resolvePendingMessage, isConfirm } from './calendarCreate'
+import { startCreate, resolvePendingMessage, isConfirm, type CalendarCreateState } from './calendarCreate'
 import { understandMeeting } from './meetingIntelligence'
 
 const FIXED = new Date('2026-06-24T20:00:00') // Wed evening
@@ -84,5 +84,42 @@ describe('#2 tonight / this-morning times + proper-noun places', () => {
 
   it('no place said → location empty (never invented)', () => {
     expect(understandMeeting('תקבעי עם מור הערב בשמונה').location).toBeNull()
+  })
+})
+
+// ── #5 Dialogue manager — mid-flow corrections survive ──────────────────────
+describe('#5 the dialogue manager applies corrections (does not lose the draft)', () => {
+  function correct(orig: string, msg: string) {
+    const st: CalendarCreateState = startCreate(orig)
+    return resolvePendingMessage(st, msg, false)
+  }
+  const timeCorrections: Array<[string, string, string]> = [
+    ['תקבעי לי פגישה עם מור מחר בשבע בערב', 'בעצם בשמונה', '20:00'],   // inherits PM
+    ['תקבעי לי פגישה עם מור מחר בשבע בערב', 'לא, בתשע', '21:00'],
+    ['תקבעי לי פגישה עם מור מחר בעשר בבוקר', 'בעצם באחת עשרה', '11:00'],
+    ['תקבעי לי פגישה עם מור מחר בשבע בערב', 'בעצם בשלוש אחר הצהריים', '15:00'],
+    ['תקבעי לי פגישה עם מור מחר בשבע בערב', 'בשעה 21:30', '21:30'],
+  ]
+  it.each(timeCorrections)('"%s" + "%s" → updates the time, draft survives', (orig, msg, time) => {
+    const r = correct(orig, msg)
+    expect(r.action).toBe('update')
+    if (r.action === 'update') expect(r.state.draft.time).toBe(time)
+  })
+
+  it('a date correction survives', () => {
+    const r = correct('תקבעי לי פגישה עם מור מחר בשבע בערב', 'בעצם מחרתיים')
+    expect(r.action).toBe('update')
+    if (r.action === 'update') expect(r.state.draft.date).toBe('2026-06-26')
+  })
+
+  it('changing the person replaces the draft cleanly', () => {
+    const r = correct('תקבעי לי פגישה עם מור מחר בשבע בערב', 'תקבעי עם אופיר מחר בשבע בערב')
+    expect(r.action).toBe('replace')
+    if (r.action === 'replace') { expect(r.state.draft.person).toBe('אופיר'); expect(r.state.draft.title).toBe('פגישה עם אופיר') }
+  })
+
+  it('a genuinely off-topic turn still cancels (no forced scheduling)', () => {
+    expect(correct('תקבעי לי פגישה עם מור מחר בשבע בערב', 'ספרי לי בדיחה').action).toBe('cancel')
+    expect(correct('תקבעי לי פגישה עם מור מחר בשבע בערב', 'אני קצת משועממת').action).toBe('cancel')
   })
 })
