@@ -890,7 +890,7 @@ export function resolvePendingMessage(
       // "בבית" (at home) / "אצל גבי" (at Gabi's) — the extractor leaves these to
       // us; set the spoken location verbatim so the merge is never empty.
       const atSomeone = /^אצל\s+(.+)$/u.exec(t)
-      if (/^בבית\b/u.test(t)) merged.draft = { ...merged.draft, location: 'בבית' }
+      if (/^בבית(?![א-ת])/u.test(t)) merged.draft = { ...merged.draft, location: 'בבית' }
       else if (atSomeone) merged.draft = { ...merged.draft, location: `אצל ${atSomeone[1]!.trim()}` }
     }
     return { action: 'update', state: merged }
@@ -939,7 +939,7 @@ function looksLikeLocationOnly(text: string): boolean {
   const t = text.trim()
   if (!t || t.split(/\s+/).length > 5) return false
   if (/^אצל\s+\S/u.test(t)) return true
-  if (/^בבית\b/u.test(t)) return true
+  if (/^בבית(?![א-ת])/u.test(t)) return true
   const ev = extractEventDetails(t)
   // Has a recognised location and carries no date/time/new-person scheduling cue.
   return !!ev.location && !/\d|מחר|מחרתיים|היום|שבוע|בשעה|בבוקר|בערב|בלילה|בצהריים/u.test(t)
