@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.8.0-companion-breakthrough',
-  buildLabel: 'AbuBank — Companion breakthrough (calendar P0s, pending hygiene, fake-life ban, weather)',
+  version:    '0.8.1-conversation-brain',
+  buildLabel: 'AbuBank — Conversation Brain (goal/planner, sports-vs-family fix, voice profiles)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

@@ -91,8 +91,14 @@ export function getOnlineQueryKind(input: string): OnlineQueryKind | null {
  * the query to web search if it ALSO smells personal/calendar/family.
  * The runtime tries `tryGroundedAnswer` first, but this is belt-and-suspenders.
  */
+// Strong sports/match context: when present, a personal-name match is almost
+// always a country/team that happens to share a name (ירדן = Jordan, not Yarden;
+// "נגד"/"בין X ל" framing) — so the personal block must NOT fire.
+const SPORTS_CONTEXT = /מי\s+ניצח|מי\s+ניצחה|כמה\s+יצא|תוצא(?:ה|ות)|מונדיאל|אליפות\s+העולם|כדורגל|כדורסל|ליגה|גביע|נבחרת|משחק(?:ים)?\b|נגד\b|בין\s+\S+\s+ל\S/u
+
 export function shouldBlockOnlineForPersonal(input: string): boolean {
   const t = input.trim()
   if (!t) return false
+  if (SPORTS_CONTEXT.test(t)) return false
   return PERSONAL_HE.test(t) || PERSONAL_ES.test(t) || PERSONAL_EN.test(t)
 }

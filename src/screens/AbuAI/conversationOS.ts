@@ -51,6 +51,9 @@ export type OnlineFailReason =
   | 'incomplete_data'
   | 'realtime_unavailable'
   | 'fallback_used'
+  // sports: the source returned a fixture/schedule but no final score yet
+  | 'schedule_only'
+  | 'no_result'
 
 export interface OnlineSession {
   query: string
@@ -130,7 +133,7 @@ export function markInterrupted(state: ConvState, deliveredChunkIndex?: number):
 }
 
 const CONTINUE_RE =
-  /(?:^|\s)(?:תמשיכי|תמשיך|ממשיכים?|המשיכי|המשכת|ספרי\s+(?:לי\s+)?(?:את\s+)?ה?המשך|תחזרי\s+לזה|חזרי\s+לזה|איפה\s+(?:את\s+)?הפסקת|הפסקת\s+ב|נעצרת|סיימי\s+את|מה\s+ה?המשך|עוד|הלאה)/u
+  /(?:^|\s)(?:תמשיכי|תמשיך|ממשיכים?|המשיכי|המשכת|לא\s+סיימת|ספרי\s+(?:לי\s+)?(?:את\s+)?ה?המשך|תחזרי\s+לזה|חזרי\s+לזה|איפה\s+(?:את\s+)?הפסקת|הפסקת\s+ב|נעצרת|סיימי\s+את|מה\s+ה?המשך|מה\s+היה\s+(?:אחר\s+כך|אחרי|הלאה)|עוד|הלאה)/u
 
 /** "תמשיכי", "איפה הפסקת", "ספרי את ההמשך", "הפסקת בבית א" … */
 export function isContinuation(text: string): boolean {
@@ -175,6 +178,8 @@ const FAIL_EXPLANATION: Record<OnlineFailReason, string> = {
   incomplete_data: 'המקור החזיר לי מידע חלקי.',
   realtime_unavailable: 'החיבור הקולי הישיר לא זמין כרגע, אז אני עובדת במצב רגיל.',
   fallback_used: 'עברתי למצב גיבוי כי החיבור הראשי נפל.',
+  schedule_only: 'מצאתי את המשחק, אבל לא קיבלתי תוצאה סופית מהמקור.',
+  no_result: 'עוד אין תוצאה סופית מהמקור.',
 }
 
 /** The real reason the last online answer failed (not a generic refusal). */

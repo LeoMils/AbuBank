@@ -41,6 +41,31 @@ export const MARTITA_VOICE_STYLE = {
   rhythm: 'short sentences, brief natural pauses, like a relaxed phone call',
 } as const
 
+// Named voice profiles, best → emergency. The runtime logs VOICE_PROFILE_USED so a
+// bad-sounding device session is diagnosable.
+export interface NamedVoiceProfile {
+  id: string
+  provider: 'openai' | 'azure' | 'webspeech'
+  voice: string
+  rate: number
+  qualityRisk: boolean // true → log WEB_SPEECH_FALLBACK_BAD_QUALITY_RISK
+}
+export const VOICE_PROFILES: Record<string, NamedVoiceProfile> = {
+  martita_warm_hebrew_openai: { id: 'martita_warm_hebrew_openai', provider: 'openai', voice: 'shimmer', rate: 0.95, qualityRisk: false },
+  martita_calm_hebrew_azure: { id: 'martita_calm_hebrew_azure', provider: 'azure', voice: 'he-IL-HilaNeural', rate: 0.95, qualityRisk: false },
+  martita_webspeech_emergency_only: { id: 'martita_webspeech_emergency_only', provider: 'webspeech', voice: 'he-IL', rate: 0.95, qualityRisk: true },
+}
+export const DEFAULT_VOICE_PROFILE = VOICE_PROFILES.martita_warm_hebrew_openai!
+export const WEB_SPEECH_FALLBACK_DIAG = 'WEB_SPEECH_FALLBACK_BAD_QUALITY_RISK'
+
+/** Map an actual TTS provider (from the trace) to its named profile. */
+export function profileForProvider(provider: string | null | undefined): NamedVoiceProfile {
+  const p = (provider ?? '').toLowerCase()
+  if (p.includes('azure')) return VOICE_PROFILES.martita_calm_hebrew_azure!
+  if (p.includes('web') || p.includes('speech') || p.includes('synthesis')) return VOICE_PROFILES.martita_webspeech_emergency_only!
+  return VOICE_PROFILES.martita_warm_hebrew_openai!
+}
+
 export const HE_VOICE: VoiceProfile = {
   lang: 'he',
   openaiVoice: 'shimmer',

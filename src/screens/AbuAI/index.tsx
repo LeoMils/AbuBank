@@ -14,6 +14,7 @@ import {
   IDLE_CONV, handleConversationTurn, recordAnswer, recordOnline,
   type ConvState, type OnlineFailReason,
 } from './conversationOS'
+import { planTurn } from './conversationBrain'
 import { diagReset, diagSet, diagCommit, diagCopyText } from '../../services/productDiagnostics'
 import { planCompanionTurn, deriveStateFromMessages } from './companionPlanner'
 import { enforceCompanion } from './companionComposer'
@@ -1593,6 +1594,12 @@ export function AbuAI() {
         // eslint-disable-next-line no-console
         console.log(`[AbuAI][ORCH][voice] ORCH_INTENT=${voiceOrch.intent} clarify=${voiceOrch.needsClarification} corrections=${voiceOrch.corrections.length}`)
 
+        // Conversation Brain: track the GOAL + planned ACTION of this turn (the
+        // pipeline reasons about goals, it is not a bare router).
+        const brain = planTurn(text, { messages, conv: conversationOSRef.current, hasPendingCalendar: createStateRef.current.phase !== 'idle' })
+        // eslint-disable-next-line no-console
+        console.log(`[AbuAI][BRAIN] GOAL=${brain.goal} ACTION=${brain.action} DOMAIN=${brain.domain} ONLINE_KIND=${brain.onlineKind ?? '-'}`)
+
         // Conversation OS FIRST: "תמשיכי" resumes the cached answer; a challenge
         // ("למה אין לך?", "יש לך אונליין") gets a real explanation + retry offer —
         // instead of forgetting and looping. Only fires when there is context.
@@ -1794,7 +1801,13 @@ export function AbuAI() {
         try {
           const { getTTSTrace } = await import('../../services/voice')
           const lastTTS = getTTSTrace().slice(-1)[0]
-          if (lastTTS) diagSet({ ttsProvider: lastTTS.provider, ttsModel: lastTTS.model, ttsVoice: lastTTS.voice, ttsLatencyMs: lastTTS.latencyMs, ttsStatus: lastTTS.status, ttsFallback: lastTTS.fallback })
+          if (lastTTS) {
+            diagSet({ ttsProvider: lastTTS.provider, ttsModel: lastTTS.model, ttsVoice: lastTTS.voice, ttsLatencyMs: lastTTS.latencyMs, ttsStatus: lastTTS.status, ttsFallback: lastTTS.fallback })
+            const { profileForProvider, WEB_SPEECH_FALLBACK_DIAG } = await import('../../services/voiceConfig')
+            const prof = profileForProvider(lastTTS.provider)
+            // eslint-disable-next-line no-console
+            console.log(`[AbuAI][VOICE] VOICE_PROFILE_USED=${prof.id} TTS_PROVIDER_USED=${lastTTS.provider} TTS_RATE=${prof.rate} TTS_VOICE=${lastTTS.voice} TTS_FALLBACK_REASON=${lastTTS.fallback ?? '-'}${prof.qualityRisk ? ' ' + WEB_SPEECH_FALLBACK_DIAG : ''}`)
+          }
         } catch {}
         diagCommit()
 

@@ -36,6 +36,11 @@ describe('1. sports queries keep context and route online', () => {
     const hist = [{ role: 'user', content: 'מה התוצאות' }, { role: 'assistant', content: 'של איזה משחק?' }]
     expect(orchestrate('של משחקי הכדורגל באליפות העולם בארצות הברית', { messages: hist }).intent).toBe('online')
   })
+  it('FAILURE A: "מי ניצח בין ארגנטינה לירדן" routes ONLINE — ירדן(Jordan) is not Yarden(family)', () => {
+    for (const q of ['מי ניצח במשחק בין ארגנטינה לירדן', 'מי ניצח בין ארגנטינה לירדן', 'כמה יצא ארגנטינה ירדן']) {
+      expect(orchestrate(q, { messages: [] }).intent).toBe('online')
+    }
+  })
 })
 
 // 2 — Calendar: "פגישה ביומן להיום בשעה 3:00 עם גבי" + "בבית קפה מרוקו" + "מאושר"
@@ -56,7 +61,7 @@ describe('2. calendar — 3:00 PM default, location merge, "מאושר" saves', 
     expect(isConfirm('מאושר')).toBe(true)
     expect(resolvePendingMessage(r.state, 'מאושר', false).action).toBe('save')
   })
-  it.each(['מאושר', 'מאושר תקבעי', 'יש לך אישור', 'כן אני רוצה שתקבעי', 'כן', 'נכון', 'קדימה'])('confirmation "%s" saves', (c) => {
+  it.each(['מאושר', 'מאושר תקבעי', 'יש לך אישור', 'כן אני רוצה שתקבעי', 'כן', 'נכון', 'קדימה', 'רשמי', 'בבקשה תקבעי', 'תקבעי את זה'])('confirmation "%s" saves', (c) => {
     const st = startCreate('תקבעי פגישה עם גבי מחר בשלוש')
     expect(resolvePendingMessage(st, c, false).action).toBe('save')
   })
