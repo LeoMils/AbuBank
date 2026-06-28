@@ -13,6 +13,7 @@
  */
 import { shapeVoiceSafe } from './voiceShaper'
 import { BANNED_PHRASES } from './companionComposer'
+import { enforceCompanionExperience } from './companionExperience'
 
 const SOFT_CAP = 180 // spoken answers stay short; trim to the first sentence past this.
 
@@ -22,7 +23,8 @@ const BANNED_RE = new RegExp(`\\s*[,:]?\\s*(?:${BANNED_PHRASES.map(escapeRe).joi
 
 /** Convert any answer into warm, natural, spoken Hebrew. */
 export function toSpokenText(text: string): string {
-  let t = shapeVoiceSafe(text ?? '')
+  // Companion-experience pass first: no fabricated life, no Fahrenheit.
+  let t = shapeVoiceSafe(enforceCompanionExperience(text ?? ''))
   if (!t) return ''
 
   // 1. Never a dead-end "אני כאן" — a companion is "פה איתך".

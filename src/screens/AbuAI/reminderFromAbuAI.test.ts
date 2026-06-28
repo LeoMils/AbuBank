@@ -144,7 +144,7 @@ describe('AbuAI voice mode reminder routing', () => {
     // The voice path (handleText) must detect reminders BEFORE falling
     // through to the appointment create state machine
     const voiceReminderCheck = INDEX_SRC.indexOf("// ─── Voice reminder (before appointment create)")
-    const voiceAppointmentCheck = INDEX_SRC.indexOf("if (cs.phase !== 'idle' || isCreateIntent(effectiveText))")
+    const voiceAppointmentCheck = INDEX_SRC.indexOf("cs.phase !== 'idle' || isCreateIntent(effectiveText))")
     expect(voiceReminderCheck).toBeGreaterThan(0)
     expect(voiceAppointmentCheck).toBeGreaterThan(0)
     expect(voiceReminderCheck).toBeLessThan(voiceAppointmentCheck)

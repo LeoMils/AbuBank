@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.7.0-conversation-os',
-  buildLabel: 'AbuBank — Conversation OS (continuation, repair, online session memory)',
+  version:    '0.8.0-companion-breakthrough',
+  buildLabel: 'AbuBank — Companion breakthrough (calendar P0s, pending hygiene, fake-life ban, weather)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

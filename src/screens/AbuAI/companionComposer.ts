@@ -11,6 +11,7 @@
  * Pure, deterministic, no LLM. The model writes; this guarantees the floor.
  */
 import type { CompanionPlan } from './companionPlanner'
+import { enforceCompanionExperience } from './companionExperience'
 
 /** Hard-banned phrases (HE + EN). Matched case-insensitively as substrings. */
 export const BANNED_PHRASES: string[] = [
@@ -79,7 +80,9 @@ const WARM_NOINFO = 'את זה אני לא יודעת, אבל אני פה אית
  * Never returns a banned phrase; never returns empty (falls back per plan).
  */
 export function enforceCompanion(textRaw: string, plan: CompanionPlan): string {
-  let t = (textRaw ?? '').trim()
+  // Companion-experience pass first: strip any fabricated personal life /
+  // Fahrenheit before tone enforcement.
+  let t = enforceCompanionExperience((textRaw ?? '').trim()).trim()
   if (!t) return planFallback(plan)
   if (GENERIC_NOINFO_RE.test(t)) return WARM_NOINFO
   t = t.replace(BANNED_RE, ' ')

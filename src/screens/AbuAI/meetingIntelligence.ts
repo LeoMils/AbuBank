@@ -208,11 +208,13 @@ const NARRATIVE_TITLE = /להיפגש|להפגש|אני\s+צריכ|אני\s+חי
  * ("תור לרופא", "אצל אופיר", "קניות", "תור אצל התופרת").
  */
 export function synthesizeTitle(text: string, who: string | null, baseTitle: string | null): string | null {
-  // A "פגישה עם <who> …<residual>" title drops the residual ("…הולכים", "…נראה
-  // סרט") — a meeting title is just who, the activity lives in subject/notes.
+  // A person-meeting title is just "פגישה עם <who>" — drop any residual before OR
+  // after ("…הולכים", "פגישה ביומן ל עם גבי"). The activity lives in subject/notes.
   if (who && baseTitle) {
     const meetingForm = `פגישה עם ${who}`
     if (baseTitle.startsWith(meetingForm) && baseTitle.length > meetingForm.length) return meetingForm
+    // noise between "פגישה" and "עם <who>" (Hebrew names carry no regex specials)
+    if (new RegExp(`פגישה.{0,24}עם\\s+${who}(?![א-ת])`, 'u').test(baseTitle)) return meetingForm
   }
   const wordy = !!baseTitle && (baseTitle.includes(',') || baseTitle.trim().split(/\s+/).length > 5)
   const contaminated = !baseTitle || NARRATIVE_TITLE.test(baseTitle) || wordy

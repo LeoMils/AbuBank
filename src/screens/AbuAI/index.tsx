@@ -538,9 +538,14 @@ export function AbuAI() {
           pushAssistant(tryGroundedAnswer(msgText) ?? shapeCreateUnclear())
           return
         }
-        // resolution.action === 'clarify'
-        pushAssistant(shapeCreateUnclear())
-        return
+        if (resolution.action === 'clarify') {
+          pushAssistant(shapeCreateUnclear())
+          return
+        }
+        // resolution.action === 'park': an unrelated current-info question arrived
+        // mid-create. Clear the pending draft and fall through to normal routing so
+        // the sports/weather question is answered — never as a calendar confirmation.
+        setCreateState(IDLE_STATE)
       }
 
       // ─── Free Speech first-pass advisory (P04) ──────────────────────────
@@ -1464,7 +1469,13 @@ export function AbuAI() {
         return
       }
 
-      if (cs.phase !== 'idle' || isCreateIntent(effectiveText)) {
+      // Pending-state hygiene (voice): an unrelated current-info question mid-create
+      // (sports/weather/news) parks the pending draft and routes normally — never
+      // answered as a calendar confirmation.
+      const voiceParkUnrelated = cs.phase !== 'idle' && isOnlineCurrentInfoQuery(text) && !isConfirm(text) && !isCreateIntent(effectiveText)
+      if (voiceParkUnrelated) { setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE }
+
+      if (!voiceParkUnrelated && (cs.phase !== 'idle' || isCreateIntent(effectiveText))) {
         try {
           let response: string
           if (cs.phase !== 'idle') {

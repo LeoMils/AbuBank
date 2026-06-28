@@ -1,6 +1,7 @@
 import { parseHebrewDate } from './dateParser'
 import { detectEmoji } from '../AbuCalendar/service'
 import { extractEventDetails } from './eventExtractor'
+import { isOnlineCurrentInfoQuery } from './onlineIntent'
 // NOTE: meetingIntelligence imports back from this module — the cycle is safe
 // because refineMeeting is only ever called at runtime (live ES bindings), never
 // at module-eval time.
@@ -207,11 +208,12 @@ const CONFIRM_PHRASES = new Set([
   'זה נכון', 'אני רוצה את זה', 'רוצה את זה', 'זה מה שרציתי', 'בסדר גמור',
   'נכון מאוד', 'תרשמי לי', 'תקבעי לי', 'תזמני לי', 'תודה רבה', 'כן בבקשה',
   'כן תקבעי', 'כן תרשמי', 'בדיוק כך', 'כן נכון', 'בדיוק זה', 'זה בדיוק',
+  'יש לך אישור', 'יש לך את האישור', 'מאושר תקבעי', 'אישור', 'אני מאשרת', 'אני מאשר',
 ])
 const CONFIRM_WORDS = new Set([
   'כן', 'נכון', 'בדיוק', 'בסדר', 'סבבה', 'יאללה', 'יאלה', 'תרשמי', 'תקבעי',
   'תזמני', 'קבעי', 'אוקיי', 'אוקי', 'ok', 'okay', 'okey', 'yes', 'yep', 'yup',
-  'בטח', 'ברור', 'בוודאי', 'מאשרת', 'מאשר', 'תאשרי', 'אשרי', 'בבקשה', 'קדימה',
+  'בטח', 'ברור', 'בוודאי', 'מאשרת', 'מאשר', 'מאושר', 'מאושרת', 'תאשרי', 'אשרי', 'בבקשה', 'קדימה',
   'מעולה', 'מושלם', 'נהדר', 'יופי', 'סגור', 'סגרנו', 'לגמרי', 'בהחלט', 'תודה',
   'dale', 'sí', 'si', 'claro',
 ])
@@ -280,12 +282,15 @@ export function parseHebrewTimeDetailed(text: string): TimeParse {
     const h = parseInt(numericTime[1]!, 10)
     const m = parseInt(numericTime[2]!, 10)
     if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
-      // A 1-12 clock time with an explicit period word must honour the period:
-      // "3:00 אחר הצהריים" → 15:00, never literal 03:00 (the iPhone "שלוש בלילה"
-      // bug). A 13-23 clock is already unambiguous and stays literal.
-      if (h >= 1 && h <= 12 && (PERIOD_PM.test(t) || PERIOD_AM.test(t) || /בלילה/.test(t))) {
-        const { hour } = applyPeriod(h, t)
-        return { time: `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`, ambiguous: false }
+      // A 1-12 clock time goes through the SAME period logic as the word forms,
+      // so "3:00" behaves like "בשלוש" → 15:00 (meeting default = afternoon), and
+      // "3:00 בלילה"/"3:00 בבוקר" honour the explicit period. Never literal 03:00
+      // for a normal meeting (the iPhone "שלוש בלילה" bug). A daytime hour with no
+      // period that is genuinely ambiguous (e.g. 8) returns ambiguous → ask.
+      // A 13-23 clock is already unambiguous and stays literal.
+      if (h >= 1 && h <= 12) {
+        const { hour, ambiguous } = applyPeriod(h, t)
+        return { time: `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`, ambiguous }
       }
       return { time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, ambiguous: false }
     }
@@ -467,7 +472,7 @@ export function parseCreateDate(text: string): string | null {
 // Hebrew has no \b word boundary — use space/start-of-string anchor
 const EXPLANATION_NOISE = /\s+(?:כי|כיוון ש|בגלל ש|למרות ש)\s.*/gi
 // Intent prefixes to strip (anywhere, not just start)
-const NOISE_PHRASES = /(תקבעי? לי|תרשמי? לי|תוסיפי? לי|תזכירי? לי|תכניסי? לי|תעשי? לי|שימי? לי|קבעי? לי|רשמי? לי|תכניסי? ליומן|תשימי? ביומן|צריכה? לקבוע|רוצה? לקבוע|אני רוצה|יש לי)\s*/gi
+const NOISE_PHRASES = /(תקבעי? לי|תרשמי? לי|תוסיפי? לי|תזכירי? לי|תכניסי? לי|תעשי? לי|שימי? לי|קבעי? לי|רשמי? לי|תכניסי? ליומן|תשימי? ביומן|ביומן|ליומן|צריכה? לקבוע|רוצה? לקבוע|אני רוצה|יש לי)\s*/gi
 // Natural speech verbs
 const NATURAL_NOISE = /(אני צריכה? להיות|אני צריכה? להגיע|אני צריכה? ללכת|אני צריכה? לנסוע|אני צריכה?)\s*/gi
 // Time words to strip (includes אחת/שתיים and the noon period word)
@@ -839,6 +844,10 @@ export type PendingResolution =
   | { action: 'read' }
   | { action: 'clarify' }
   | { action: 'update'; state: CalendarCreateState }
+  // An unrelated current-info question (sports/weather/news) arrived mid-create.
+  // Park the pending draft and let the runtime answer the new topic fresh, so a
+  // pending calendar never gets answered as a sports/weather confirmation.
+  | { action: 'park'; query: string; parked: CalendarCreateState }
 
 export function resolvePendingMessage(
   state: CalendarCreateState,
@@ -863,6 +872,29 @@ export function resolvePendingMessage(
 
   // A calendar read query while pending → answer from local calendar.
   if (isCalendarReadQuery) return { action: 'read' }
+
+  // Pending-state hygiene: an unrelated current-info question (sports / weather /
+  // news) mid-create must NOT be forced into the calendar machine. Park the draft
+  // and let the runtime answer the new topic — never answer sports as a calendar
+  // confirmation, never silently cancel.
+  if (isOnlineCurrentInfoQuery(t) && !isConfirm(t)) {
+    return { action: 'park', query: t, parked: state }
+  }
+
+  // A bare LOCATION phrase ("בבית קפה מרוקו", "בקפה נורדאו", "אצל גבי") while a
+  // draft is pending → merge it, never cancel. Detected before the off-topic
+  // guard so a multi-word venue is not mistaken for an unrelated subject.
+  if (looksLikeLocationOnly(t)) {
+    const merged = updateCreate(state, t)
+    if (!merged.draft.location) {
+      // "בבית" (at home) / "אצל גבי" (at Gabi's) — the extractor leaves these to
+      // us; set the spoken location verbatim so the merge is never empty.
+      const atSomeone = /^אצל\s+(.+)$/u.exec(t)
+      if (/^בבית\b/u.test(t)) merged.draft = { ...merged.draft, location: 'בבית' }
+      else if (atSomeone) merged.draft = { ...merged.draft, location: `אצל ${atSomeone[1]!.trim()}` }
+    }
+    return { action: 'update', state: merged }
+  }
 
   // Off-topic detection: if the user switches to a completely different
   // subject (no date, no time, no scheduling word, not a question about
@@ -890,8 +922,25 @@ export function resolvePendingMessage(
     const draftChanged = next.draft.date !== state.draft.date
       || next.draft.time !== state.draft.time
       || next.draft.title !== state.draft.title
+      || next.draft.location !== state.draft.location
+      || next.draft.subject !== state.draft.subject
+      || next.draft.person !== state.draft.person
+      || next.draft.notes !== state.draft.notes
     if (!draftChanged) return { action: 'clarify' }
   }
 
   return { action: 'update', state: next }
+}
+
+// A short message that is purely a place — a venue/"אצל <person>"/"בבית" — with
+// no competing scheduling content, so during a pending create it is a location
+// answer to merge, not an unrelated topic to cancel.
+function looksLikeLocationOnly(text: string): boolean {
+  const t = text.trim()
+  if (!t || t.split(/\s+/).length > 5) return false
+  if (/^אצל\s+\S/u.test(t)) return true
+  if (/^בבית\b/u.test(t)) return true
+  const ev = extractEventDetails(t)
+  // Has a recognised location and carries no date/time/new-person scheduling cue.
+  return !!ev.location && !/\d|מחר|מחרתיים|היום|שבוע|בשעה|בבוקר|בערב|בלילה|בצהריים/u.test(t)
 }
