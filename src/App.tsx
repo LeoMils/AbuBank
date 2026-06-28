@@ -3,11 +3,9 @@ import { useAppStore } from './state/store'
 import { Screen, SCREEN_LABELS } from './state/types'
 import { IMMUTABLE_DEFAULTS } from './state/defaults'
 import { cancelNavigation } from './services/navigationService'
-import { openService } from './services/navigationService'
 import * as storageService from './services/storageService'
 import * as adminService from './services/adminService'
 import { Shell } from './components/Shell'
-import { MoreModal } from './components/MoreModal'
 import { UpdateToast } from './components/UpdateToast'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { DiagnosticOverlay } from './components/DiagnosticOverlay'
@@ -68,9 +66,6 @@ function renderScreen(currentScreen: Screen): JSX.Element | null {
 
 export function App() {
   const currentScreen = useAppStore(s => s.currentScreen)
-  const services = useAppStore(s => s.services)
-  const isMoreModalOpen = useAppStore(s => s.isMoreModalOpen)
-  const setMoreModalOpen = useAppStore(s => s.setMoreModalOpen)
   const setScreen = useAppStore(s => s.setScreen)
   const setOnline = useAppStore(s => s.setOnline)
   const lockAdmin = useAppStore(s => s.lockAdmin)
@@ -191,21 +186,11 @@ export function App() {
     }
   }, [lockAdmin, setAdminFirstBoot, setAdminInitComplete, setInstallDismissed, setOnline, setScreen, setServices, setStorageMode])
 
-  const ninthService = services[8] // type: ServiceConfig | undefined
-
   return (
     <>
       <Shell>
         {renderScreen(currentScreen)}
       </Shell>
-
-      {isMoreModalOpen && ninthService && (
-        <MoreModal
-          service={ninthService}
-          onClose={() => setMoreModalOpen(false)}
-          onServiceTap={(id) => { setMoreModalOpen(false); openService(id) }}
-        />
-      )}
 
       {updateReady && <UpdateToast onUpdate={applyUpdate} />}
 

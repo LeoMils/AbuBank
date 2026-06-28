@@ -16,7 +16,7 @@ export const ICONS: Record<string, IconFn> = {
     </svg>
   ),
 
-  postal: (c) => (
+  'postalbank': (c) => (
     <svg viewBox="0 0 32 32" width="30" height="30" fill="none"
       stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
       aria-hidden="true">
@@ -36,7 +36,7 @@ export const ICONS: Record<string, IconFn> = {
     </svg>
   ),
 
-  water: (c) => (
+  'water-ks': (c) => (
     <svg viewBox="0 0 32 32" width="30" height="30" fill="none"
       stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
       aria-hidden="true">
@@ -53,7 +53,7 @@ export const ICONS: Record<string, IconFn> = {
     </svg>
   ),
 
-  arnona: (c) => (
+  'arnona-ks': (c) => (
     <svg viewBox="0 0 32 32" width="30" height="30" fill="none"
       stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
       aria-hidden="true">
@@ -64,7 +64,7 @@ export const ICONS: Record<string, IconFn> = {
     </svg>
   ),
 
-  hot: (c) => (
+  'hot-mobile': (c) => (
     <svg viewBox="0 0 32 32" width="30" height="30" fill="none"
       stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
       aria-hidden="true">
