@@ -29,3 +29,6 @@ android/app/src/main/assets/public/
 openai api.txt
 tmp/
 test-results/
+
+# Eval engine regenerated state (reports are committed, baseline is local)
+docs/eval/baseline.json

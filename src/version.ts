@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.8.6-spanish-location',
-  buildLabel: 'AbuBank — Spanish location (inline + pending merge)',
+  version:    '0.8.7-eval-engine',
+  buildLabel: 'AbuBank — Evaluation Engine (10 capabilities, real pipeline, 4 reports)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

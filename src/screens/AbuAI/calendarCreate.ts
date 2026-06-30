@@ -242,12 +242,18 @@ const CONFIRM_WORDS = new Set([
 const CONFIRM_INTENT =
   /^(?:כן[\s,]+)?(?:אני\s+)?(?:רוצה|מבקשת)(?:\s+ש?(?:תקבעי|תרשמי|תזמני))?(?:\s+את\s+ז[הו])?$|^(?:כן[\s,]+|בסדר[\s,]+|אוקיי?[\s,]+)?(?:ש?תקבעי|ש?תרשמי|ש?תזמני)\s+(?:את\s+)?ז[הו]$|^כן\s+אני\s+רוצה/u
 
+// Spanish affirmative scheduling: "dale, agendalo", "sí, agendalo", "anotalo",
+// "agéndalo", "listo". Found by the eval engine (cal-es-confirm).
+const CONFIRM_INTENT_ES = /^(?:s[íi]|dale|ok|okey|listo|bueno)?[\s,]*(?:agéndalo|agendalo|agéndala|agendala|anótalo|anotalo|anótala|anotala|prográmalo|programalo)$|^(?:s[íi]|dale)[\s,]+(?:dale|agéndalo|agendalo|anotalo|listo|hacelo|hazlo)/i
+
 export function isConfirm(text: string): boolean {
   const t = text.trim().replace(/[.!?,]+$/u, '').trim().toLowerCase()
   if (!t) return false
   if (CONFIRM_PHRASES.has(t)) return true
   if (CONFIRM_INTENT.test(t)) return true
-  const words = t.split(/\s+/)
+  if (CONFIRM_INTENT_ES.test(t)) return true
+  // Internal commas count as separators ("sí, agendalo" → sí + agendalo).
+  const words = t.split(/[\s,]+/).filter(Boolean)
   if (words.length === 0 || words.length > 4) return false
   return words.every(w => CONFIRM_WORDS.has(w))
 }
