@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.8.1-conversation-brain')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Conversation Brain (goal/planner, sports-vs-family fix, voice profiles)')
+    expect(APP_VERSION.version).toBe('0.8.2-localized-failure-copy')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Localized + offline-aware chat-failure copy (he/es/en)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

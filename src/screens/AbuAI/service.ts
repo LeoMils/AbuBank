@@ -1315,6 +1315,42 @@ function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// ─── Terminal failure copy (localized + offline-aware) ───
+//
+// When EVERY chat provider failed, Martita must hear a warm message in HER
+// language that says what is actually wrong — not a hardcoded Hebrew dead-end a
+// Spanish-speaking or offline 80-year-old can't act on. Mirrors the copy already
+// used by serverChatProvider/onlineProvider. The Hebrew provider-down line is kept
+// verbatim so existing behaviour (and source-contract tests) is unchanged.
+
+function lastUserText(messages: ChatMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.role === 'user') return messages[i]!.content ?? ''
+  }
+  return ''
+}
+
+function detectOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false
+}
+
+/**
+ * The warm message shown/spoken when all chat providers fail. Localized to the
+ * user's language and aware of whether the device is offline.
+ */
+export function chatTerminalFallback(messages: ChatMessage[], opts: { offline?: boolean } = {}): string {
+  const lang = detectLanguage(lastUserText(messages)) // 'he' | 'es' | 'en' | 'mixed'
+  const offline = opts.offline ?? detectOffline()
+  if (offline) {
+    if (lang === 'es') return 'No tengo conexión ahora. Probá cuando vuelva el internet.'
+    if (lang === 'en') return 'No connection right now. Try again when the internet is back.'
+    return 'אין לי חיבור עכשיו. נסי כשהאינטרנט יחזור.'
+  }
+  if (lang === 'es') return 'No puedo responder ahora. Probá de nuevo en un momento.'
+  if (lang === 'en') return "I couldn't get it just now. Try again in a moment."
+  return 'לא הצלחתי עכשיו — תנסי שוב עוד רגע.' // Hebrew default (unchanged — back-compat)
+}
+
 // ─── Streaming chat (T3: Sub-Second Responses) ───
 
 /**
@@ -1469,8 +1505,8 @@ export async function* streamMessage(
 
   } // end streamAttempt loop
 
-  // All providers failed across all attempts — warm fallback
-  yield 'לא הצלחתי עכשיו — תנסי שוב עוד רגע.'
+  // All providers failed across all attempts — warm, localized, offline-aware fallback
+  yield chatTerminalFallback(messages)
 }
 
 export const VOICE_SUFFIX = `
@@ -1568,5 +1604,5 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
   if (lastMsg?.role === 'tool') {
     throw new Error('משהו השתבש. ננסה שוב?')
   }
-  throw new Error('לא הצלחתי עכשיו — תנסי שוב עוד רגע.')
+  throw new Error(chatTerminalFallback(messages))
 }
