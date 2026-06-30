@@ -58,6 +58,16 @@ export function findBannedPhrase(text: string): string | null {
 }
 
 function planFallback(plan: CompanionPlan): string {
+  // Answer in HER language — a Spanish loneliness turn must not get a Hebrew line.
+  if (plan.lang === 'es') {
+    switch (plan.step7_act) {
+      case 'listen': return 'Estoy con vos.'
+      case 'lead': return '¿Querés que hablemos de algo?'
+      case 'encourage': return 'Qué bueno escuchar eso.'
+      case 'ask': return 'Contame un poco más.'
+      default: return 'Estoy con vos.'
+    }
+  }
   switch (plan.step7_act) {
     case 'listen': return 'אני פה איתך.'
     case 'lead': return 'בא לך שנדבר על משהו?'

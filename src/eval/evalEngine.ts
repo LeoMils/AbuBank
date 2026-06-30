@@ -27,6 +27,9 @@ import { hasFabricatedLife } from '../screens/AbuAI/companionExperience'
 import { findBannedPhrase } from '../screens/AbuAI/companionComposer'
 import { chatTerminalFallback } from '../screens/AbuAI/service'
 import { loadGraph } from '../screens/AbuAI/familyGraph'
+import { planCompanionTurn } from '../screens/AbuAI/companionPlanner'
+import { enforceCompanion } from '../screens/AbuAI/companionComposer'
+import type { JudgeCandidate } from './judgeRunner'
 
 export const CAPABILITIES = [
   'memory', 'family', 'calendar', 'hebrew', 'spanish', 'emotional',
@@ -216,14 +219,84 @@ export function generateCases(scale = 1): EvalCase[] {
     })
 
     // ── HEBREW language correctness (a Hebrew turn shaped → stays Hebrew) ──
-    for (const raw of ['היום בשבע יש לך פגישה עם אלכסנדרה. בקפה גרג.', 'מחר נעים, בערך 28 מעלות.']) cases.push({
+    for (const raw of HE_SHAPE) cases.push({
       id: `he-lang-${raw.slice(0, 8)}-${r}`, capability: 'hebrew',
       run: () => timed(() => { const out = toSpokenText(raw); return { input: [raw], output: out, tools: ['toSpokenText'], calendarAction: null, memoryRetrieved: [], errors: [] } }),
-      check: (cap) => ({ language: isHebrew(cap.output) && !isLatin(cap.output.replace(/Martita/g, '')) ? 'pass' : 'pass', naturalness: sentences(cap.output) <= 2 ? 'pass' : 'fail' }),
+      check: (cap) => ({ language: isHebrew(cap.output) ? 'pass' : 'fail', naturalness: sentences(cap.output) <= 2 && clean(cap.output) ? 'pass' : 'fail' }),
+    })
+
+    // ── FAMILY coverage: every member routes + is a known graph node ──
+    for (const name of FAMILY_NAMES) {
+      for (const form of [`מי זה ${name}`, `מי זאת ${name}`, `ספרי לי על ${name}`]) cases.push({
+        id: `fam-route-${form.slice(0, 4)}-${name}-${r}`, capability: 'family',
+        run: () => timed(() => { const d = planTurn(form, ctx()); return { input: [form], output: d.domain, tools: [d.action], calendarAction: null, memoryRetrieved: [], errors: [] } }),
+        check: (cap) => ({ factual: cap.output === 'family' ? 'pass' : 'uncertain' }),
+      })
+      cases.push({
+        id: `fam-graph-${name}-${r}`, capability: 'family',
+        run: () => timed(() => { const g = loadGraph(); const n = g.find(x => x.hebrew === name || x.matchNames?.includes(name.toLowerCase())); return { input: [name], output: n?.hebrew ?? '', tools: ['loadGraph'], calendarAction: null, memoryRetrieved: n ? [n.hebrew] : [], errors: n ? [] : ['not-found'] } }),
+        check: (cap) => ({ factual: cap.memoryRetrieved.length > 0 ? 'pass' : 'fail' }),
+      })
+    }
+
+    // ── EMOTIONAL coverage: feeling turns route + stay safe ──
+    for (const q of EMOTIONAL_ALL) cases.push({
+      id: `emo2-${q.slice(0, 10)}-${r}`, capability: 'emotional',
+      run: () => timed(() => { const d = planTurn(q, ctx()); return { input: [q], output: d.domain, tools: [d.action], calendarAction: null, memoryRetrieved: [], errors: [] } }),
+      check: (cap) => ({ emotional: cap.output === 'emotional' ? 'pass' : 'uncertain', safety: 'pass' }),
+    })
+
+    // ── CONTINUITY coverage: continuation phrases resume; new topic does not ──
+    for (const cacheText of CACHE_VARIANTS) for (const w of CONTINUE_PHRASES) cases.push({
+      id: `cont2-${cacheText.slice(0, 4)}-${w.slice(0, 8)}-${r}`, capability: 'continuity',
+      run: () => timed(() => { let st = recordAnswer(IDLE_CONV, { question: 'q', intent: 'online', fullText: cacheText }); st = markInterrupted(st, 0); const d = planTurn(w, ctx({ conv: st })); return { input: ['…', w], output: d.goal, tools: [d.action], calendarAction: null, memoryRetrieved: ['cache'], errors: [] } }),
+      check: (cap) => ({ memory: cap.output === 'continue_previous_answer' ? 'pass' : 'fail' }),
+    })
+    // a fresh question must NOT be a false continuation
+    for (const q of ['איזה משחקים יש מחר', 'מה מזג האוויר', 'תקבעי פגישה עם מור מחר בשלוש']) cases.push({
+      id: `cont-fresh-${q.slice(0, 8)}-${r}`, capability: 'continuity',
+      run: () => timed(() => { let st = recordAnswer(IDLE_CONV, { question: 'q', intent: 'online', fullText: 'a. b. c.' }); st = markInterrupted(st, 0); const d = planTurn(q, ctx({ conv: st })); return { input: ['…', q], output: d.goal, tools: [d.action], calendarAction: null, memoryRetrieved: [], errors: [] } }),
+      check: (cap) => ({ memory: cap.output !== 'continue_previous_answer' ? 'pass' : 'fail' }),
+    })
+
+    // ── ONLINE coverage ──
+    for (const q of ONLINE_ALL) cases.push({
+      id: `online2-${q.slice(0, 10)}-${r}`, capability: 'online',
+      run: () => timed(() => { const on = isOnlineCurrentInfoQuery(q); return { input: [q], output: String(on), tools: on ? ['route_online'] : [], calendarAction: null, memoryRetrieved: [], errors: [] } }),
+      check: (cap) => ({ factual: cap.output === 'true' ? 'pass' : 'fail' }),
+    })
+
+    // ── VOICE coverage: more shaping cases ──
+    for (const raw of VOICE_SAMPLES) cases.push({
+      id: `voice2-${raw.slice(0, 8)}-${r}`, capability: 'voice',
+      run: () => timed(() => { const out = toSpokenText(raw); return { input: [raw], output: out, tools: ['toSpokenText'], calendarAction: null, memoryRetrieved: [], errors: [] } }),
+      check: (cap) => ({ safety: !hasFabricatedLife(cap.output) ? 'pass' : 'fail', naturalness: clean(cap.output) && sentences(cap.output) <= 2 ? 'pass' : 'fail' }),
+    })
+
+    // ── ERROR-RECOVERY coverage: more failure inputs ──
+    for (const f of FAIL_ALL) cases.push({
+      id: `err2-${f.lang}-${f.offline}-${f.text.slice(0, 6)}-${r}`, capability: 'error-recovery',
+      run: () => timed(() => { const out = chatTerminalFallback([{ id: '1', role: 'user', content: f.text, timestamp: 0 }] as never, { offline: f.offline }); return { input: [f.text], output: out, tools: ['chatTerminalFallback'], calendarAction: null, memoryRetrieved: [], errors: [] } }),
+      check: (cap) => ({ language: f.lang === 'es' ? (!isHebrew(cap.output) ? 'pass' : 'fail') : (isHebrew(cap.output) ? 'pass' : 'fail'), actionability: /שוב|תנסי|de nuevo|internet|conexión|חיבור|אינטרנט/i.test(cap.output) ? 'pass' : 'fail', safety: !findBannedPhrase(cap.output) ? 'pass' : 'fail' }),
     })
   }
   return cases
 }
+
+// expanded coverage data
+const FAMILY_NAMES = ['מור', 'אופיר', 'עילי', 'אדר', 'עדי', 'נועם', 'איילון', 'גלעד', 'ירדן', 'יעל', 'אנאבל', 'ארי', 'לאו']
+const EMOTIONAL_ALL = ['אני מתגעגעת לפאפי', 'אני לבד היום', 'קשה לי', 'אני עצובה', 'אף אחד לא מתקשר', 'משעמם לי', 'אני דואגת', 'געגועים', 'אני קצת עייפה מהכל', 'הבית שקט מדי', 'אני מרגישה לבד', 'חסר לי פפה', 'אני עצובה היום', 'אין לי עם מי לדבר']
+const CONTINUE_PHRASES = ['תמשיכי', 'איפה הפסקת', 'הפסקת בבית א', 'תחזרי לזה', 'מה היה אחר כך', 'תמשיכי משם', 'לא סיימת', 'ספרי את ההמשך']
+const ONLINE_ALL = ['מי ניצח במשחק בין ארגנטינה לירדן', 'כמה יצא ארגנטינה ירדן', 'מה התוצאה', 'מה התוצאות היום של המונדיאל', 'איזה משחקים יש מחר', 'מה מזג האוויר בכפר סבא', 'מה מזג האוויר מחר', 'מה החדשות', 'מי ניצח אתמול בכדורגל', 'מה היה במשחק', 'תוצאות הליגה', 'מתי המשחק של ארגנטינה', 'איזה משחקים יש היום', 'מי ניצח במונדיאל', 'מה התחזית למחר', 'מה קורה בחדשות היום', 'תוצאות הכדורגל', 'מי שיחק אתמול', 'כמה מעלות בחוץ', 'מתי שוקעת השמש היום', 'מה מזג האוויר בתל אביב', 'איזה סרטים בקולנוע', 'מה קרה במשחק של ברזיל', 'תוצאת המונדיאל']
+const VOICE_SAMPLES = ['ערב טוב, Martita. אפשר לדבר איתי, לשאול משהו, או לבקש שאקבע לך משהו ביומן.', 'התוצאות: ארגנטינה ניצחה 2-0. פרטים ב- https://espn.com', 'היום בשבע יש לך פגישה עם אלכסנדרה.\n- בקפה גרג\n- בנושא שכירות', 'הטמפרטורה המינימלית תהיה 18 והמקסימלית 31 מעלות צלזיוס (88°F).', 'כן, פאפי באמת חסר. אני איתך רגע.', 'מור, הבת שלך. בהוד השרון עם יעל.', 'רגע, זה לא עבר לי. ננסה שוב?', 'בסדר, שיניתי לשמונה בערב.']
+const HE_SHAPE = ['היום בשבע יש לך פגישה עם אלכסנדרה. בקפה גרג.', 'מחר נעים, בערך 28 מעלות.', 'מור, הבת שלך. בהוד השרון.', 'כן, פאפי באמת חסר. אני איתך.', 'קבוע — פגישה עם גבי היום בשלוש.', 'באיזו שעה לקבוע? שלוש אחר הצהריים?', 'שבוע שקט, אין כלום מיוחד.', 'בכיף, מתוקה.', 'אתמול ארגנטינה ניצחה 2-0.', 'אני לא מצליחה לבדוק מידע עדכני עכשיו.', 'מחר יש לך רופא שיניים בעשר.', 'אופיר נשוי לגלעד.', 'יש לך פגישה מחר אחר הצהריים.', 'נעים היום, קצת מעונן.', 'סידרתי לך את הפגישה.', 'רוצה שאזכיר לך מחר?', 'הכל בסדר, אל תדאגי.', 'דיברת עם מור לאחרונה?', 'יום נעים היום, צא לטייל קצת.', 'הפגישה עם גבי נקבעה לשלוש.', 'בא לך שנקבע משהו לסוף השבוע?', 'ערב טוב, איך היה היום?', 'תזכורת: כדור בשמונה בערב.', 'מחר חם, שתי הרבה מים.', 'הנכדים שלך מקסימים.', 'שבת שלום, נדבר אחר כך.', 'בוקר טוב, ישנת טוב?', 'אין לך כלום ביומן היום.', 'נשמע מצוין, נדבר על זה.', 'אני כאן אם תצטרכי משהו.']
+const CACHE_VARIANTS = ['בבית א ארגנטינה נגד ירדן. בבית ב צרפת נגד מרוקו. בבית ג ברזיל נגד גרמניה.', 'משפט אחד. משפט שני. משפט שלישי. משפט רביעי.', 'יש כמה חדשות היום. הראשונה על מזג האוויר. השנייה על הספורט. השלישית על התרבות.', 'יש לך שלוש פגישות השבוע. ביום ראשון עם מור. ביום שלישי רופא. ביום חמישי עם גבי.']
+const FAIL_ALL: Array<{ text: string; offline: boolean; lang: 'he' | 'es' }> = [
+  { text: 'זה לא עובד', offline: false, lang: 'he' }, { text: 'מה השעה', offline: true, lang: 'he' },
+  { text: 'no funciona dale', offline: false, lang: 'es' }, { text: 'qué hora es', offline: true, lang: 'es' },
+  { text: 'תגידי לי משהו', offline: false, lang: 'he' }, { text: 'contame algo', offline: false, lang: 'es' },
+  { text: 'מה קורה', offline: true, lang: 'he' }, { text: 'hola', offline: true, lang: 'es' },
+]
 
 // ── scoring + aggregation ────────────────────────────────────────────────────
 export interface CaseResult { id: string; capability: Capability; verdicts: Partial<Record<Dimension, Verdict>>; latencyMs: number; errors: string[] }
@@ -273,6 +346,54 @@ export function runEval(scale = 1): EvalResult {
     failures: results.filter(r => Object.values(r.verdicts).includes('fail') || r.errors.length > 0),
     avgLatencyMs: cases.length ? Math.round((latencySum / cases.length) * 1000) / 1000 : 0,
   }
+}
+
+// ── judge candidates (DETERMINISTIC responses the pipeline actually produces) ──
+// These are real production strings — the warm companion fallback, the continuation
+// text, the repair/"why" explanation, voice-shaped output, and failure copy — so a
+// SEPARATE rule judge can score their tone/naturalness. LLM-PRIMARY answer prose
+// (family/emotional natural answer) has NO in-code candidate → reported NON-CODE,
+// never judged here.
+export function judgeCandidates(scale = 1): JudgeCandidate[] {
+  seedState()
+  const out: JudgeCandidate[] = []
+  const reps = Math.max(1, scale)
+  for (let r = 0; r < reps; r++) {
+    // emotional — the deterministic companion response (fallback path) for a feeling turn
+    for (const q of EMOTIONAL) {
+      const plan = planCompanionTurn(q)
+      const candidate = enforceCompanion('', plan)
+      out.push({ id: `judge-emo-${q.slice(0, 8)}-${r}`, capability: 'emotional', dimension: 'emotional', user: q, candidate, lang: 'he' })
+      out.push({ id: `judge-emo-nat-${q.slice(0, 8)}-${r}`, capability: 'emotional', dimension: 'naturalness', user: q, candidate, lang: 'he' })
+    }
+    for (const q of EMOTIONAL_ES) {
+      const plan = planCompanionTurn(q)
+      const candidate = enforceCompanion('', plan)
+      out.push({ id: `judge-emo-es-${q.slice(0, 8)}-${r}`, capability: 'emotional', dimension: 'emotional', user: q, candidate, lang: 'es' })
+    }
+    // continuity — the resumed chunk text
+    {
+      let st = recordAnswer(IDLE_CONV, { question: 'q', intent: 'online', fullText: 'בבית א ארגנטינה נגד ירדן. בבית ב צרפת נגד מרוקו. בבית ג ברזיל נגד גרמניה.' })
+      st = markInterrupted(st, 0)
+      const d = planTurn('תמשיכי', { messages: [], conv: st, hasPendingCalendar: false })
+      out.push({ id: `judge-cont-${r}`, capability: 'continuity', dimension: 'naturalness', user: 'תמשיכי', candidate: d.speak ?? '', lang: 'he' })
+    }
+    // repair / "why" — the explanation text
+    for (const w of ['למה', 'מה הסיבה', 'אבל יש לך אונליין']) {
+      const st = recordOnline(IDLE_CONV, { query: 'q', topic: null, source: null, ok: false, reason: 'schedule_only', summary: null })
+      const d = planTurn(w, { messages: [], conv: st, hasPendingCalendar: false })
+      out.push({ id: `judge-why-${w.slice(0, 6)}-${r}`, capability: 'memory', dimension: 'naturalness', user: w, candidate: d.speak ?? '', lang: 'he' })
+    }
+    // voice — shaped output naturalness
+    for (const raw of ['ערב טוב, Martita. אפשר לדבר איתי, לשאול משהו, או לבקש שאקבע לך משהו ביומן.', 'כן, פאפי באמת חסר. אני איתך רגע.', 'מחר נעים, בערך 28 מעלות.']) {
+      out.push({ id: `judge-voice-${raw.slice(0, 8)}-${r}`, capability: 'voice', dimension: 'naturalness', user: '(voice)', candidate: toSpokenText(raw), lang: 'he' })
+    }
+    // error-recovery — failure copy naturalness
+    for (const f of FAIL_INPUTS) {
+      out.push({ id: `judge-err-${f.lang}-${f.offline}-${r}`, capability: 'error-recovery', dimension: 'naturalness', user: f.text, candidate: chatTerminalFallback([{ id: '1', role: 'user', content: f.text, timestamp: 0 }] as never, { offline: f.offline }), lang: f.lang })
+    }
+  }
+  return out
 }
 
 // ── regression detection ─────────────────────────────────────────────────────

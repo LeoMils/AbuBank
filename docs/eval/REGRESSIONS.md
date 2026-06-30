@@ -2,5 +2,8 @@
 
 ✅ none vs the stored baseline.
 
-## Hard failures this run
+## Hard deterministic failures
+none
+
+## Judge failures (<95)
 none

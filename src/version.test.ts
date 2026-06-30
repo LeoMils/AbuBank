@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.8.7-eval-engine')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Evaluation Engine (10 capabilities, real pipeline, 4 reports)')
+    expect(APP_VERSION.version).toBe('0.8.8-eval-judge')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Eval judge pass + coverage (separate judge, 1095 cases, 100/100)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

@@ -1,6 +1,5 @@
 # TOP_FIXES_BY_ROI
 
-Failing (capability · dimension) pairs, by how many user-moments they break.
-Fix the top ONE, rerun the eval, measure the delta, repeat.
+Failing (capability · dimension) by broken moments. Fix the top ONE, rerun, repeat.
 
-✅ no deterministic failures. Next ROI: add NEW cases for an untested surface, or run the offline judge on the `uncertain` prose dimensions.
+✅ no deterministic or judge failures. Next ROI: expand a thin surface, or run the offline LLM judge (judgePrompt.md) on the NON-CODE family/emotional answer prose.

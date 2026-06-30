@@ -50,6 +50,8 @@ export interface CompanionPlan {
   step7_act: Act
   /** The emotional suppression rule: skip family/calendar lookups this turn. */
   suppressLookups: boolean
+  /** Language of the turn, so a fallback companion line answers in HER language. */
+  lang: 'he' | 'es'
   reason: string
 }
 
@@ -212,6 +214,7 @@ export function planCompanionTurn(inputRaw: string, state: ConversationState = E
     step7_frame: frame,
     step7_act: act,
     suppressLookups: suppress,
+    lang: /[¿¡]|(?<![a-z])(?:hola|gracias|estoy|extraño|sola|solo|dale|qué|cómo|por favor|papá|mañana)(?![a-z])/i.test(text) && !/[֐-׿]/.test(text) ? 'es' : 'he',
     reason,
   }
 }
