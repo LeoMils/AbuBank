@@ -1,0 +1,45 @@
+# AbuBank — Production rules & gates (AUTHORITY: production). Do not duplicate elsewhere.
+knowledge_domain: production
+authority: true
+
+gates:
+  typecheck: "npm run typecheck"   # tsc --noEmit
+  test: "npm run test"             # vitest run
+  build: "npm run build"           # tsc && vite build (prebuild: generate:memory + validate:family)
+  combined: "npm run check"
+  e2e: "playwright mobile-chrome: e2e/abu-games-visual.spec.ts, e2e/persistence.spec.ts"
+  no_lint_gate: true               # no eslint config exists — do not claim a lint gate
+
+eval:
+  benchmark: "npx vitest run src/screens/AbuAI/benchmarkConversations.test.ts"
+  engine: "npx vitest run src/eval/evalEngine.test.ts"
+  deterministic_floor: 100         # % of deterministic dimensions must pass
+  judge_floor: 95                  # judged prose score
+  judge_rule: "A SEPARATE judge (judgeRunner.ts/judgePrompt.md) — AbuAI never judges itself."
+
+definition_of_done:
+  - The failing moment passes via an EXECUTED assertion (not a static grep).
+  - Full suite green; eval + judge green; state files updated.
+  - Version incremented + displayed (src/version.ts).
+
+evidence_rules:
+  - Evidence beats assumptions; separate "code exists" from "works".
+  - Running a function/test = HIGH evidence; static grep = MEDIUM; claim = ZERO.
+  - Never fake green; never weaken a test; never overclaim verification.
+  - Physical iPhone audio = NON-CODE unless device evidence exists.
+  - Realtime provider = NON-CODE/account unless a live token succeeds.
+
+commit_release:
+  - Never skip hooks unless asked; never merge to main without sign-off.
+  - Co-author trailer required; commit/push only when asked or under standing autonomy.
+  - HUMAN_APPROVAL_REQUIRED if package.json / package-lock / .env* / memory/* / a forbidden screen is touched.
+
+war_room_loop:
+  - NORTH_STAR -> run benchmark/eval -> pick highest user-ROI -> implement one ->
+    re-benchmark + gates -> update IMPACT_SCOREBOARD -> recommend next.
+  state_files: .claude/project_state/
+
+points_to:
+  identity: knowledge/abuai_identity.yaml
+  behavior: knowledge/behavior.yaml
+  truth_package: docs/ABUBANK_PRODUCTION_TRUTH_PACKAGE_FOR_CHATGPT.md

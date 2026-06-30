@@ -1,0 +1,18 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: children
+canonical_name: Mor
+hebrew_name: מור
+aliases:
+- מורי
+relationship: daughter
+relationship_hebrew: הבת, גרושה מרפי, בת זוג של יעל
+ex_spouse: רפי
+partner: יעל
+location: הוד השרון
+location_notes: וילה עם יעל
+birthday: 08-10
+children:
+- אופיר
+- איילון
+- עילי
+- אדר

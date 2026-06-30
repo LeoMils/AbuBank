@@ -25,6 +25,20 @@ Martita, 80+, non-technical, living in Kfar Saba. Speaks Hebrew (with characteri
 - Feminine Hebrew address (את, לחצי, תגידי).
 - Spanish = Rioplatense (vos, dale, llevar).
 
+## Knowledge System — LOAD FIRST
+Before ANY implementation or evaluation task, read `knowledge/KNOWLEDGE.md` (the
+single-source manifest) and the relevant authority file. Each domain has ONE
+authority — never duplicate facts elsewhere; point to the authority instead:
+- Family → `knowledge/family_data.json` (machine source; per-person views in
+  `knowledge/family/people/*.yaml` are GENERATED) — change via skill `add-family-member`.
+- Product → `knowledge/product.yaml` · Behavior/tone → `knowledge/behavior.yaml` ·
+  Production rules → `knowledge/production_rules.yaml` · AbuAI identity →
+  `knowledge/abuai_identity.yaml` — change via skill `update-knowledge`.
+- Personality → `knowledge/martita_personality.yaml`.
+Validate with `npm run validate:knowledge` (auto-runs in `prebuild` with
+`generate:knowledge` + `validate:family`). Never hand-edit generated files
+(`memory/*`, `knowledge/family/people/*`).
+
 ## Working Rules for Claude Code
 - Diagnosis before implementation for visual changes.
 - Do not overclaim verification.

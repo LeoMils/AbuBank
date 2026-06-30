@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: children
+canonical_name: Leo
+hebrew_name: לאו
+aliases:
+- לאון
+- ליאו
+relationship: son
+relationship_hebrew: הבן
+birthday: 08-22
+children:
+- עדי
+- נועם

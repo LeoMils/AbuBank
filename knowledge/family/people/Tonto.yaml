@@ -1,0 +1,9 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: pets
+canonical_name: Tonto
+hebrew_name: טונטו
+aliases:
+- Tuntu
+type: dog
+owner: Eili & Yarden
+notes: אחד מ-3 הכלבים של עילי וירדן.

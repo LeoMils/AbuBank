@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.8.8-eval-judge',
-  buildLabel: 'AbuBank — Eval judge pass + coverage (separate judge, 1095 cases, 100/100)',
+  version:    '0.8.9-knowledge-system',
+  buildLabel: 'AbuBank — Structured Knowledge System (single source of truth + validation)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

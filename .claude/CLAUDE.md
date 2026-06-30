@@ -3,6 +3,14 @@
 This file governs HOW work is done in the war room. Product rules live in the
 repo-root `CLAUDE.md`; this file is the production process. Both apply.
 
+## Knowledge System — LOAD FIRST (before any task)
+0. Read `knowledge/KNOWLEDGE.md` (single-source manifest) + the relevant authority
+   file (family_data.json / product / behavior / production_rules / abuai_identity).
+   Never duplicate a fact; point to its authority. Family edits → skill
+   `add-family-member`; knowledge edits → skill `update-knowledge`. Validate via
+   `npm run validate:knowledge` (auto in prebuild). Never hand-edit `memory/*` or
+   `knowledge/family/people/*` (generated).
+
 ## Every task follows this ROI loop (in order)
 1. **NORTH_STAR** — read `project_state/NORTH_STAR.md`. The goal is the user
    feeling, measured by BENCHMARK_SCORE.

@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: grandchildren_mor
+canonical_name: Ofir
+hebrew_name: אופיר
+aliases: []
+relationship: grandson
+relationship_hebrew: נכד (בן של מור ורפי)
+spouse: גלעד
+birthday: 02-15
+children:
+- אנאבל
+- ארי
+notes: אופיר וגלעד הם ההורים של אנאבל וארי.
