@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.8.5-spanish-calendar')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Spanish calendar create (her second language)')
+    expect(APP_VERSION.version).toBe('0.8.6-spanish-location')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Spanish location (inline + pending merge)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

@@ -91,6 +91,10 @@ export const SCENARIOS: Scenario[] = [
   { id: 'es-cal-confirm-si', category: 'spanish', run: () => resolvePendingMessage(startCreate('agendá una reunión con Gabi mañana a las tres'), 'sí', false).action === 'save' },
   { id: 'es-online-result', category: 'spanish', run: () => planTurn('quién ganó Argentina contra Jordania', ctx()).domain === 'online' },
   { id: 'es-emotional', category: 'spanish', run: () => planTurn('estoy un poco sola hoy', ctx()).domain === 'emotional' },
+  { id: 'es-loc-inline', category: 'spanish', run: () => understandMeeting('agendá una reunión con Gabi mañana a las tres en el café Morocco').location === 'café Morocco' },
+  { id: 'es-loc-inline-keeps-who', category: 'spanish', run: () => understandMeeting('agendá una reunión con Gabi mañana a las tres en el café Morocco').who === 'Gabi' },
+  { id: 'es-loc-merge', category: 'spanish', run: () => { const r = resolvePendingMessage(startCreate('agendá una reunión con Gabi mañana a las tres'), 'en el café Morocco', false); return r.action === 'update' && r.state.draft.location === 'café Morocco' } },
+  { id: 'es-loc-merge-casa', category: 'spanish', run: () => resolvePendingMessage(startCreate('agendá una reunión con Gabi mañana a las tres'), 'en casa', false).action === 'update' },
 ]
 
 export interface BenchmarkResult {

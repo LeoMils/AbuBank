@@ -54,7 +54,7 @@ const SUBJECT_LEAD = new RegExp(`(?:^|\\s)(?:${PURPOSE_VERB})?(?:על|בנושא
 // Words that must NOT be taken as a person name after עם/אצל (they belong to
 // another field). Keeps "עם אלכסנדרה בקפה" → person = אלכסנדרה only.
 const PERSON_STOP =
-  /^(?:ב|ל|על|בנושא|לגבי|בעניין|בשעה|בבוקר|בערב|בצהריים|בלילה|מחר|מחרתיים|היום|ביום|בעוד|כי|בגלל|כדי|אחהצ)|^(?:הערב|הלילה|הבוקר|הצהריים|השבוע|השבת|הולכים|הולכת|הולך|נלך|נראה|נצא|נאכל|נשתה|נפגש|נבקר|נשב|רוצה|רוצים|צריך|צריכה|כדי|בשביל)$|^(?:mañana|hoy|pasado|el|la|los|las|a|de|del|para|sobre|por|y|que|viene|lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|domingo)$/i
+  /^(?:ב|ל|על|בנושא|לגבי|בעניין|בשעה|בבוקר|בערב|בצהריים|בלילה|מחר|מחרתיים|היום|ביום|בעוד|כי|בגלל|כדי|אחהצ)|^(?:הערב|הלילה|הבוקר|הצהריים|השבוע|השבת|הולכים|הולכת|הולך|נלך|נראה|נצא|נאכל|נשתה|נפגש|נבקר|נשב|רוצה|רוצים|צריך|צריכה|כדי|בשביל)$|^(?:mañana|hoy|pasado|el|la|los|las|a|de|del|en|para|sobre|por|y|que|viene|lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|domingo)$/i
 
 function clean(s: string): string {
   return s.trim().replace(/^[\s]+/u, '').replace(/[.,!?;:"'״׳]+$/u, '').trim()
@@ -131,6 +131,13 @@ function extractLocation(text: string): { value: string; span: string } | null {
   if (tm) {
     const value = clean(tm[1]!)
     if (value.length >= 2) return { value, span: `ב${tm[1]}` }
+  }
+  // Spanish (Rioplatense) venue: "en el café Morocco", "en la clínica", "en casa".
+  const esRe = /(?<![a-záéíóúñ])en\s+(?:el\s+|la\s+|los\s+|las\s+)?((?:caf[ée]|cl[íi]nica|casa|parque|plaza|centro|hospital|restaurante|bar|oficina|consultorio)(?:\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñ]+){0,2})/i
+  const em = esRe.exec(text)
+  if (em) {
+    const value = clean(em[1]!)
+    if (value.length >= 2) return { value, span: em[0] }
   }
   return null
 }
