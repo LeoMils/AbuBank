@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.8.3-lazy-reminderstore'
-const BUILD_LABEL = 'AbuBank — Lazy-load reminderStore off AbuAI first-open'
+const BUILD_VERSION = '0.8.4-roi-war-room'
+const BUILD_LABEL = 'AbuBank — ROI war-room (NORTH_STAR + runnable BENCHMARK_CONVERSATIONS + IMPACT_SCOREBOARD)'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

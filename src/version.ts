@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.8.3-lazy-reminderstore',
-  buildLabel: 'AbuBank — Lazy-load reminderStore off AbuAI first-open',
+  version:    '0.8.4-roi-war-room',
+  buildLabel: 'AbuBank — ROI war-room (NORTH_STAR + runnable BENCHMARK_CONVERSATIONS + IMPACT_SCOREBOARD)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

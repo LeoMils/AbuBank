@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.8.3-lazy-reminderstore')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Lazy-load reminderStore off AbuAI first-open')
+    expect(APP_VERSION.version).toBe('0.8.4-roi-war-room')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — ROI war-room (NORTH_STAR + runnable BENCHMARK_CONVERSATIONS + IMPACT_SCOREBOARD)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
