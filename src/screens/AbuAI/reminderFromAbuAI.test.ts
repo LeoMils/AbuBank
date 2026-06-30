@@ -79,8 +79,11 @@ describe('AbuAI index.tsx reminder routing wiring', () => {
     expect(INDEX_SRC.includes("import { detectReminderIntent, parseReminder }")).toBe(true)
   })
 
-  it('imports createReminder from reminderStore', () => {
-    expect(INDEX_SRC.includes("import { createReminder, createDefaultAlertPolicy }")).toBe(true)
+  it('loads createReminder from reminderStore (lazy, on the reminder-confirm path)', () => {
+    // reminderStore is a heavy chunk → loaded on demand in the confirm branch,
+    // not eagerly at AbuAI first-open. Still wired to the same functions.
+    expect(INDEX_SRC).toMatch(/const \{ createReminder, createDefaultAlertPolicy \} = await import\('\.\.\/AbuCalendar\/reminders\/reminderStore'\)/)
+    expect(INDEX_SRC).toContain('createDefaultAlertPolicy()')
   })
 
   it('checks detectReminderIntent before appointment create', () => {

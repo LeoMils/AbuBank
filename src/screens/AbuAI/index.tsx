@@ -75,7 +75,9 @@ import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
 import { type CalendarCreateState, IDLE_STATE, isCreateIntent, isRecurringIntent, startCreate, resolvePendingMessage, isConfirm, isCancel, isSearchIntent, searchAppointments, isDeleteIntent, isModifyIntent } from './calendarCreate'
 import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateUnclear, shapeCreateClarify, timeInWords, dateLabel } from './responseShaper'
 import { detectReminderIntent, parseReminder } from '../AbuCalendar/reminders/reminderParser'
-import { createReminder, createDefaultAlertPolicy } from '../AbuCalendar/reminders/reminderStore'
+// reminderStore (delivery + durable store, a heavy chunk) is loaded ON DEMAND in
+// the two reminder-confirmation branches only — it must not weigh down AbuAI's
+// first open, since most sessions never create a reminder.
 import type { ReminderDraft } from '../AbuCalendar/reminders/types'
 import { routePersonalQuery } from './router'
 import { understandMeetingSemantic, mergedToCreateState } from './semanticUnderstanding'
@@ -595,6 +597,7 @@ export function AbuAI() {
 
         // Case 2: waiting for confirmation ("לשמור?")
         if (isConfirm(msgText)) {
+          const { createReminder, createDefaultAlertPolicy } = await import('../AbuCalendar/reminders/reminderStore')
           const { saved } = createReminder({
             category: pendingReminder.category,
             title: pendingReminder.title ?? '',
@@ -1423,6 +1426,7 @@ export function AbuAI() {
         try {
           let response: string
           if (isConfirm(effectiveText)) {
+            const { createReminder, createDefaultAlertPolicy } = await import('../AbuCalendar/reminders/reminderStore')
             const { saved } = createReminder({
               category: pendingReminder.category,
               title: pendingReminder.title ?? '',

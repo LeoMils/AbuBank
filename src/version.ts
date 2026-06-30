@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.8.2-localized-failure-copy',
-  buildLabel: 'AbuBank — Localized + offline-aware chat-failure copy (he/es/en)',
+  version:    '0.8.3-lazy-reminderstore',
+  buildLabel: 'AbuBank — Lazy-load reminderStore off AbuAI first-open',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
