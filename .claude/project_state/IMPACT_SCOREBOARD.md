@@ -7,6 +7,16 @@ A cycle is only "done" when this table has a new row.
 | Version | BENCHMARK_SCORE | Δ | Moments | Change shipped | Evidence |
 |---|---|---|---|---|---|
 | 0.8.3 (baseline) | 100.0% | — | 38/38 | benchmark established (calendar 15, online 6, conv-os 4, companion 7, failure-copy 4, routing 2) | benchmark run |
+| 0.8.5 | 100.0% | +12 moments | 50/50 | **Spanish calendar create** — was 0% (isCreateIntent=false on "agendá una reunión con Gabi mañana a las tres"); now full es create (intent/who/date/time/AM-PM/confirm). Added 12 `spanish` benchmark moments. | benchmark run + suite 5982 |
+
+## Cycle log
+- **0.8.5 (ROI cycle 1)** — NORTH_STAR → benchmark 100% (38) → probed least-covered
+  surface (Spanish, her 2nd language) → found Spanish calendar create 0% → implemented
+  es intent + person ("con X") + dates (hoy/mañana/pasado mañana/el viernes/la semana
+  que viene) + times (a las tres / y media / de la tarde·noche·mañana) → re-benchmark
+  100% (50, spanish 12/12). Regression caught + fixed: noun "Agenda de mañana" (a READ)
+  must not match the verb "agendá" (now requires a schedulable object).
+  NEXT: Spanish reminder ("recordame…") and Spanish location merge ("en el café").
 
 ## How to use
 1. Before a change: run the benchmark, note the score + failing moments.

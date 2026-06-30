@@ -177,10 +177,27 @@ function hasScheduleClue(t: string): boolean {
 // date/time/with clue, is still a create — a form-parser misses it.
 const NATURAL_MEETING = /(?:כדאי\s+ש|בא\s+לי|אני\s+רוצ[הא]?|אני\s+חושב[הת]?\s+ש|אני\s+צריכ[הא]?|נצטרך|צריך)\s*\S{0,14}(?:נקבע|אקבע|להיפגש|להפגש|לפגוש|לראות\s+את|לבקר|לשבת\s+עם|להיות\s+עם)/
 
+// ── Spanish (Rioplatense) create intent ──────────────────────────────────────
+// Martita's second language. "agendá una reunión con Gabi mañana a las tres",
+// "quiero una cita con el médico el viernes", "anotame un turno".
+// A scheduling VERB must be followed by a schedulable object (una cita / reunión /
+// turno) or "con <name>" — so the NOUN "agenda de mañana" (tomorrow's agenda, a
+// READ) is not mistaken for the imperative "agendá …". No trailing \b: JS regex
+// (non-/u) treats accented letters (á) as non-word, so "agendá\b" never matches.
+const CREATE_INTENT_ES = /(?<![a-záéíóúñ])(?:agend[áa]|anot[áa]|program[áa])r?(?:me)?\s+(?:(?:una?\s+)?(?:cita|reuni[óo]n|turno|evento)|con\s+\S)|(?<![a-záéíóúñ])(?:pon[ée]me|ponme)\s+(?:una?\s+)?(?:cita|reuni[óo]n|turno)|(?:quiero|necesito|tengo\s+que\s+(?:hacer|sacar))\s+(?:una?\s+)?(?:cita|reuni[óo]n|turno)|hac[ée]me?\s+(?:una?\s+)?(?:cita|reuni[óo]n)/i
+function hasScheduleClueES(t: string): boolean {
+  const hasDate = /\b(?:hoy|mañana|pasado\s+mañana|el\s+(?:lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|domingo)|la\s+semana\s+que\s+viene)\b/i.test(t)
+  const hasTime = /\ba\s+las?\s+(?:\d{1,2}|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)|\d{1,2}[:.]\d{2}|de\s+la\s+(?:tarde|mañana|noche)/i.test(t)
+  const hasWith = /\bcon\s+\S/i.test(t)
+  return hasDate || hasTime || hasWith
+}
+
 export function isCreateIntent(text: string): boolean {
   const t = normalizeCreateText(text.trim())
   if (READ_NOT_CREATE.test(t)) return false
   if (CREATE_INTENT.test(t)) return true
+  // Spanish scheduling verb/phrase + a date/time/con clue.
+  if (CREATE_INTENT_ES.test(t) && hasScheduleClueES(t)) return true
   // Natural speech with "צריכה להיות" etc.
   if (NATURAL_INTENT.test(t)) return true
   // Narrative meeting intent ("בא לי לשבת עם לאו מחר") + a real schedule clue.
@@ -273,6 +290,27 @@ export interface TimeParse {
 
 export function parseHebrewTimeDetailed(text: string): TimeParse {
   const t = normalizeCreateText(text.trim())
+
+  // ── Spanish (Rioplatense) clock ──
+  // "a las tres", "a la una y media", "a las 3 de la tarde", "a las ocho de la noche".
+  const ES_NUM: Record<string, number> = { una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12 }
+  const esM = t.match(/\ba\s+las?\s+(\d{1,2}|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)(?:\s+y\s+(media|cuarto))?(?:\s+de\s+la\s+(tarde|noche|mañana))?/i)
+  if (esM) {
+    let h = /^\d/.test(esM[1]!) ? parseInt(esM[1]!, 10) : (ES_NUM[esM[1]!.toLowerCase()] ?? -1)
+    const min = esM[2] === 'media' ? 30 : esM[2] === 'cuarto' ? 15 : 0
+    const period = esM[3]?.toLowerCase()
+    if (h >= 0 && h <= 23) {
+      let ambiguous = false
+      if (period === 'tarde') { if (h >= 1 && h <= 11) h += 12 }
+      else if (period === 'noche') { if (h >= 6 && h <= 11) h += 12; else if (h === 12) h = 0 }
+      else if (period === 'mañana') { if (h === 12) h = 0 }
+      else {
+        // no spoken period → meeting default (same logic as the Hebrew word forms)
+        const r = applyPeriod(h, t); h = r.hour; ambiguous = r.ambiguous
+      }
+      return { time: `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`, ambiguous }
+    }
+  }
 
   // "בשעה 15:00" / "ב-10:30" / "בשעה 9" / bare "13:22" — numeric clock.
   // The "ב"/"בשעה" prefix is optional so a clock time typed on its own
@@ -424,6 +462,19 @@ export function parseCreateDate(text: string): string | null {
     return localDateStr(d)
   }
   if (/מחר/.test(t)) return tomorrowStr()
+
+  // ── Spanish (Rioplatense) dates ──
+  // Strip "(de|por) la mañana" first so it is read as the MORNING period, never
+  // as "mañana" = tomorrow ("a las tres de la mañana" is 3am, not tomorrow).
+  const esT = t.replace(/(?:de|por)\s+la\s+mañana/gi, ' ')
+  if (/\bpasado\s+mañana\b/i.test(esT)) { const d = new Date(); d.setDate(d.getDate() + 2); return localDateStr(d) }
+  if (/\bhoy\b/i.test(esT)) return todayStr()
+  if (/\bmañana\b/i.test(esT)) return tomorrowStr()
+  if (/\bla\s+semana\s+que\s+viene\b/i.test(esT)) { const d = new Date(); d.setDate(d.getDate() + 7); return localDateStr(d) }
+  const esDays: Record<string, number> = { domingo: 0, lunes: 1, martes: 2, 'miércoles': 3, miercoles: 3, jueves: 4, viernes: 5, 'sábado': 6, sabado: 6 }
+  for (const [name, idx] of Object.entries(esDays)) {
+    if (new RegExp(`\\b(?:el\\s+)?${name}(?:\\s+que\\s+viene)?\\b`, 'i').test(esT)) return nextDayOfWeek(idx)
+  }
 
   // Day of week with natural modifiers:
   //   "ביום חמישי", "יום חמישי", "בחמישי", "חמישי הקרוב", "חמישי הבא",

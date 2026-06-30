@@ -9,7 +9,7 @@
  * Pure logic; the test harness provides the environment (fake clock anchored to
  * 2026-06-24T20:00 + localStorage stub). HIGH evidence: it runs the code, not greps.
  */
-import { startCreate, resolvePendingMessage, isConfirm } from './calendarCreate'
+import { startCreate, resolvePendingMessage, isConfirm, isCreateIntent } from './calendarCreate'
 import { understandMeeting } from './meetingIntelligence'
 import { planTurn } from './conversationBrain'
 import { IDLE_CONV, recordOnline, recordAnswer, markInterrupted, type ConvState } from './conversationOS'
@@ -77,6 +77,20 @@ export const SCENARIOS: Scenario[] = [
   // ── Routing (family / emotional) ────────────────────────────────────────────
   { id: 'route-family', category: 'routing', run: () => planTurn('מי זאת מור', ctx()).domain === 'family' },
   { id: 'route-emotional', category: 'routing', run: () => planTurn('אני מתגעגעת לפאפי', ctx()).domain === 'emotional' },
+
+  // ── Spanish (Rioplatense) — Martita's second language ───────────────────────
+  { id: 'es-cal-intent', category: 'spanish', run: () => isCreateIntent('agendá una reunión con Gabi mañana a las tres') },
+  { id: 'es-cal-who', category: 'spanish', run: () => understandMeeting('agendá una reunión con Gabi mañana a las tres').who === 'Gabi' },
+  { id: 'es-cal-date-manana', category: 'spanish', run: () => understandMeeting('agendá una reunión con Gabi mañana a las tres').date === '2026-06-25' },
+  { id: 'es-cal-time-default-pm', category: 'spanish', run: () => understandMeeting('agendá una reunión con Gabi mañana a las tres').time === '15:00' },
+  { id: 'es-cal-time-tarde', category: 'spanish', run: () => understandMeeting('agendá con Gabi mañana a las tres de la tarde').time === '15:00' },
+  { id: 'es-cal-time-noche', category: 'spanish', run: () => understandMeeting('agendá con Leo mañana a las ocho de la noche').time === '20:00' },
+  { id: 'es-cal-time-manana', category: 'spanish', run: () => understandMeeting('agendá con Gabi mañana a las nueve de la mañana').time === '09:00' },
+  { id: 'es-cal-weekday', category: 'spanish', run: () => understandMeeting('quiero una cita con Mor el viernes a las cinco').date === '2026-06-26' },
+  { id: 'es-cal-confirm-dale', category: 'spanish', run: () => resolvePendingMessage(startCreate('agendá una reunión con Gabi mañana a las tres'), 'dale', false).action === 'save' },
+  { id: 'es-cal-confirm-si', category: 'spanish', run: () => resolvePendingMessage(startCreate('agendá una reunión con Gabi mañana a las tres'), 'sí', false).action === 'save' },
+  { id: 'es-online-result', category: 'spanish', run: () => planTurn('quién ganó Argentina contra Jordania', ctx()).domain === 'online' },
+  { id: 'es-emotional', category: 'spanish', run: () => planTurn('estoy un poco sola hoy', ctx()).domain === 'emotional' },
 ]
 
 export interface BenchmarkResult {

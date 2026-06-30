@@ -54,7 +54,7 @@ const SUBJECT_LEAD = new RegExp(`(?:^|\\s)(?:${PURPOSE_VERB})?(?:על|בנושא
 // Words that must NOT be taken as a person name after עם/אצל (they belong to
 // another field). Keeps "עם אלכסנדרה בקפה" → person = אלכסנדרה only.
 const PERSON_STOP =
-  /^(?:ב|ל|על|בנושא|לגבי|בעניין|בשעה|בבוקר|בערב|בצהריים|בלילה|מחר|מחרתיים|היום|ביום|בעוד|כי|בגלל|כדי|אחהצ)|^(?:הערב|הלילה|הבוקר|הצהריים|השבוע|השבת|הולכים|הולכת|הולך|נלך|נראה|נצא|נאכל|נשתה|נפגש|נבקר|נשב|רוצה|רוצים|צריך|צריכה|כדי|בשביל)$/
+  /^(?:ב|ל|על|בנושא|לגבי|בעניין|בשעה|בבוקר|בערב|בצהריים|בלילה|מחר|מחרתיים|היום|ביום|בעוד|כי|בגלל|כדי|אחהצ)|^(?:הערב|הלילה|הבוקר|הצהריים|השבוע|השבת|הולכים|הולכת|הולך|נלך|נראה|נצא|נאכל|נשתה|נפגש|נבקר|נשב|רוצה|רוצים|צריך|צריכה|כדי|בשביל)$|^(?:mañana|hoy|pasado|el|la|los|las|a|de|del|para|sobre|por|y|que|viene|lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|domingo)$/i
 
 function clean(s: string): string {
   return s.trim().replace(/^[\s]+/u, '').replace(/[.,!?;:"'״׳]+$/u, '').trim()
@@ -88,7 +88,7 @@ function lastMatch(re: RegExp, text: string): RegExpExecArray | null {
 function extractPerson(text: string): string | null {
   // LAST occurrence: a 60-second story ("דיברתי עם השכנה …") must not steal the
   // person from the actual event ("… פגישה עם רותי").
-  const lead = lastMatch(/(?<![֐-׿])(?:עם|אצל)\s+/gu, text)
+  const lead = lastMatch(/(?:(?<![֐-׿])(?:עם|אצל)|(?<![a-záéíóúñ])con)\s+/giu, text)
   if (!lead) return null
   const words = text.slice(lead.index + lead[0].length).trim().split(/\s+/)
   const name: string[] = []
