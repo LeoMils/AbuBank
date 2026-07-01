@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.9.2-gauntlet-eval-depth'
-const BUILD_LABEL = 'AbuBank — Autonomous gauntlet: eval depth 2530 cases + reminder fix'
+const BUILD_VERSION = '0.9.3-gauntlet-reports'
+const BUILD_LABEL = 'AbuBank — Autonomous gauntlet reports (experience, routing, gateway spike, status)'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

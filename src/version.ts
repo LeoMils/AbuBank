@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.9.2-gauntlet-eval-depth',
-  buildLabel: 'AbuBank — Autonomous gauntlet: eval depth 2530 cases + reminder fix',
+  version:    '0.9.3-gauntlet-reports',
+  buildLabel: 'AbuBank — Autonomous gauntlet reports (experience, routing, gateway spike, status)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
