@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.9.0-production-closure')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Final production closure (readiness report + release plan)')
+    expect(APP_VERSION.version).toBe('0.9.1-external-review-pack')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Final external review pack (Codex/ChatGPT audit)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

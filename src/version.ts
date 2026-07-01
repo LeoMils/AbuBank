@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.9.0-production-closure',
-  buildLabel: 'AbuBank — Final production closure (readiness report + release plan)',
+  version:    '0.9.1-external-review-pack',
+  buildLabel: 'AbuBank — Final external review pack (Codex/ChatGPT audit)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
