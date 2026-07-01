@@ -1,7 +1,9 @@
 # AbuAI — Final Release Decision
 
-Version **0.9.3-gauntlet-reports** · branch `rc5/cognitive-architecture-and-acceptance`
-(NOT merged to main) · HEAD `d41d923`. Gates re-verified this decision [RUN].
+Version **0.9.4-release-decision** · branch `rc5/cognitive-architecture-and-acceptance`
+(NOT merged to main) · HEAD `01eb18e`. Gates re-verified this decision [RUN]:
+validate:family + validate:knowledge PASS · tsc clean · 5984 tests · build exit 0 ·
+deploy `0.9.4-release-decision` root/chat/online 200 · realtime REALTIME_PROVIDER_FAILED.
 
 ## Final code-side verdict
 **CODE-SIDE PRODUCTION READY.** Every code-testable capability is GREEN. No
