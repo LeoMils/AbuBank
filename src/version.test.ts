@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.9.3-gauntlet-reports')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Autonomous gauntlet reports (experience, routing, gateway spike, status)')
+    expect(APP_VERSION.version).toBe('0.9.4-release-decision')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Final release decision package')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
