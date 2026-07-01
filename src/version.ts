@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.9.5-release-confidence-audit',
-  buildLabel: 'AbuBank — Final release confidence audit',
-  buildDate:  '2026-06-24',
+  version:    '0.9.6-live-replay-version-visibility',
+  buildLabel: 'AbuBank — Live replay system + version visibility',
+  buildDate:  '2026-07-01',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
 } as const
