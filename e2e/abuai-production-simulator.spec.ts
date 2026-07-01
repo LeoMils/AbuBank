@@ -12,11 +12,13 @@
 import { test, expect, type Page } from '@playwright/test'
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import { judgeLiveAnswer, LIVE_DIMENSIONS } from '../src/eval/liveConversationReplay'
 import { CRITICAL_UI } from '../src/eval/productionSimulatorScenarios'
 import { APP_VERSION } from '../src/version'
 
-const OUT = path.resolve(__dirname, '../docs/eval')
+const HERE = path.dirname(fileURLToPath(import.meta.url))
+const OUT = path.resolve(HERE, '../docs/eval')
 const AI_TIMEOUT = 45_000
 
 async function enterAbuAI(page: Page): Promise<void> {
@@ -34,23 +36,28 @@ async function sendAndCapture(page: Page, text: string): Promise<{ answer: strin
   const t0 = Date.now()
   await ta.fill(text)
   await ta.press('Enter')
+  const strip = (raw: string) => raw.replace(/^\s*אבו AI\s*/, '').replace(/▍/g, '').replace(/\d{1,2}:\d{2}\s*$/, '').trim()
   await page.waitForFunction(
     (prev) => {
       const els = document.querySelectorAll('[data-testid="abuai-msg-assistant"]')
       if (els.length <= prev) return false
-      const last = els[els.length - 1]
-      const t = (last?.textContent ?? '').trim()
-      return t.length > 2 && !/^[●•·.\s▍]+$/.test(t) && !/בודקת|מתמללת|מקשיבה/.test(t.slice(-12))
+      const raw = (els[els.length - 1]?.textContent ?? '')
+      // stream is done only when the ▍ cursor is gone and there is real prose
+      if (raw.includes('▍')) return false
+      const t = raw.replace(/^\s*אבו AI\s*/, '').replace(/\d{1,2}:\d{2}\s*$/, '').trim()
+      return t.length > 2 && !/^[●•·.\s]+$/.test(t) && !/בודקת|מתמללת|מקשיבה/.test(t.slice(-12))
     },
     before,
     { timeout: AI_TIMEOUT },
   ).catch(() => { /* timeout → empty answer captured below */ })
+  // small settle to let the final token render
+  await page.waitForTimeout(400)
   const latencyMs = Date.now() - t0
-  const answer = await page.evaluate(() => {
+  const raw = await page.evaluate(() => {
     const els = document.querySelectorAll('[data-testid="abuai-msg-assistant"]')
-    return (els[els.length - 1]?.textContent ?? '').trim()
+    return (els[els.length - 1]?.textContent ?? '')
   })
-  return { answer, latencyMs }
+  return { answer: strip(raw), latencyMs }
 }
 
 test('AbuAI production simulator — real UI answers, judged', async ({ page }) => {

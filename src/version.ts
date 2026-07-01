@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.9.8-emotional-park-fix',
-  buildLabel: 'AbuBank — Emotional-park fix (simulator-found)',
+  version:    '0.9.9-simulator-green',
+  buildLabel: 'AbuBank — Production simulator GREEN (98/100 live UI)',
   buildDate:  '2026-07-01',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
