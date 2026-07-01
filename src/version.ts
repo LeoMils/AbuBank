@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.8.9-knowledge-system',
-  buildLabel: 'AbuBank — Structured Knowledge System (single source of truth + validation)',
+  version:    '0.9.0-production-closure',
+  buildLabel: 'AbuBank — Final production closure (readiness report + release plan)',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
