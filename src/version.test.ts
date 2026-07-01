@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.9.7-production-simulator')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Production simulator (Playwright UI + judge)')
+    expect(APP_VERSION.version).toBe('0.9.8-emotional-park-fix')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Emotional-park fix (simulator-found)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

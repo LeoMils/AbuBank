@@ -74,6 +74,12 @@ describe('3. a pending calendar does not hijack an unrelated sports/weather turn
     const r = resolvePendingMessage(st, q, false)
     expect(r.action).toBe('park')
   })
+  // Production-simulator finding: an emotional statement mid-create must PARK (warm
+  // answer), never a cold "בסדר, ביטלתי" or a mis-parse.
+  it.each(['אני מתגעגעת לפאפי', 'אני לבד היום', 'estoy sola', 'אני עצובה', 'קשה לי'])('emotional "%s" mid-create → park (warm, not cancel)', (q) => {
+    const st = startCreate('תקבעי פגישה עם גבי מחר בשלוש')
+    expect(resolvePendingMessage(st, q, false).action).toBe('park')
+  })
 })
 
 // 4 — Weather challenge: "השעה לא נכונה" → "למה" → exact explanation, no loop

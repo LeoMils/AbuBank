@@ -906,6 +906,10 @@ export type PendingResolution =
   // pending calendar never gets answered as a sports/weather confirmation.
   | { action: 'park'; query: string; parked: CalendarCreateState }
 
+// A feeling statement (he/es) — during a pending create it must park + warm-answer,
+// never cancel coldly. Kept narrow so a scheduling phrase never matches.
+const EMOTIONAL_STATEMENT = /מתגעג|התגעג|פאפי|פפה|חסר לי|בוד[דת]|(?<![א-ת])לבד(?![א-ת])|עצוב|עצבת|בוכה|בכי|דואג|געגוע|קשה לי|משעמם לי|מדוכא|(?<![a-zé])(?:sola|solo|triste|extraño|me siento|deprim)(?![a-zé])/i
+
 export function resolvePendingMessage(
   state: CalendarCreateState,
   text: string,
@@ -935,6 +939,13 @@ export function resolvePendingMessage(
   // and let the runtime answer the new topic — never answer sports as a calendar
   // confirmation, never silently cancel.
   if (isOnlineCurrentInfoQuery(t) && !isConfirm(t)) {
+    return { action: 'park', query: t, parked: state }
+  }
+
+  // An EMOTIONAL statement mid-create ("אני מתגעגעת לפאפי", "estoy sola") must NOT
+  // be answered with a cold "בסדר, ביטלתי" or mis-parsed as a date/field. Park the
+  // draft and let the runtime respond warmly (found by the production simulator).
+  if (EMOTIONAL_STATEMENT.test(t) && !isConfirm(t)) {
     return { action: 'park', query: t, parked: state }
   }
 
