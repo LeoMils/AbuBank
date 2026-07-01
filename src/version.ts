@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.9.4-release-decision',
-  buildLabel: 'AbuBank — Final release decision package',
+  version:    '0.9.5-release-confidence-audit',
+  buildLabel: 'AbuBank — Final release confidence audit',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
