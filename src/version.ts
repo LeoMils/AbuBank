@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.9.6-live-replay-version-visibility',
-  buildLabel: 'AbuBank — Live replay system + version visibility',
+  version:    '0.9.7-production-simulator',
+  buildLabel: 'AbuBank — Production simulator (Playwright UI + judge)',
   buildDate:  '2026-07-01',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

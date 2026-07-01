@@ -31,6 +31,8 @@ export function ChatBubble({ msg, isLast, onRetry, onHome, onDismiss }: ChatBubb
 
   return (
     <div
+      data-testid={isUser ? 'abuai-msg-user' : 'abuai-msg-assistant'}
+      data-role={msg.role}
       style={{
         display: 'flex',
         flexDirection: 'column',
