@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.9.1-external-review-pack',
-  buildLabel: 'AbuBank — Final external review pack (Codex/ChatGPT audit)',
+  version:    '0.9.2-gauntlet-eval-depth',
+  buildLabel: 'AbuBank — Autonomous gauntlet: eval depth 2530 cases + reminder fix',
   buildDate:  '2026-06-24',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

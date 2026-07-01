@@ -24,7 +24,7 @@ const OUT = path.resolve(__dirname, '../../docs/eval')
 const BASELINE = path.join(OUT, 'baseline.json')
 const FLOOR = 100        // deterministic dimension pass-rate
 const JUDGE_FLOOR = 95   // judged prose score
-const SCALE = 3
+const SCALE = 5
 
 function bar(p: number, f: number, u: number): string {
   const t = p + f + u || 1

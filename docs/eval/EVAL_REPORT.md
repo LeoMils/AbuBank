@@ -1,47 +1,57 @@
 # AbuAI EVAL_REPORT
 
-Deterministic cases: **1095** · scored dims: 2013 · uncertain: 33 · avg latency: 0 ms
-Judge candidates (separate rule judge, NOT AbuAI): **69** · avg score: **100** · pass(≥95): 69 · fail: 0 · uncertain: 0
+Deterministic cases: **2530** · scored dims: 4060 · uncertain: 55 · avg latency: 0 ms
+Judge candidates (separate rule judge, NOT AbuAI): **115** · avg score: **100** · pass(≥95): 115 · fail: 0 · uncertain: 0
 
 **NORTH_STAR (deterministic) = 100%** · **JUDGE = 100/100**
 
 ## By capability
 | Capability | Deterministic | Judged prose (avg, pass/n) |
 |---|---|---|
-| memory | 18/18 pass | 100 (9/9) |
-| family | 162/165 pass · 3 uncertain | — |
-| calendar | 996/996 pass | — |
-| hebrew | 180/180 pass | — |
-| spanish | 162/162 pass | — |
-| emotional | 120/147 pass · 27 uncertain | 100 (36/36) |
-| voice | 84/84 pass | 100 (9/9) |
-| error-recovery | 96/96 pass | 100 (12/12) |
-| online | 87/87 pass | — |
-| continuity | 108/111 pass · 3 uncertain | 100 (3/3) |
+| memory | 280/280 pass | 100 (15/15) |
+| family | 270/275 pass · 5 uncertain | — |
+| calendar | 1660/1660 pass | — |
+| hebrew | 300/300 pass | — |
+| spanish | 270/270 pass | — |
+| emotional | 200/245 pass · 45 uncertain | 100 (60/60) |
+| voice | 140/140 pass | 100 (15/15) |
+| error-recovery | 160/160 pass | 100 (20/20) |
+| online | 145/145 pass | — |
+| continuity | 180/185 pass · 5 uncertain | 100 (5/5) |
+| mixed | 100/100 pass | — |
+| reminders | 100/100 pass | — |
+| general-knowledge | 150/150 pass | — |
+| safety-privacy | 100/100 pass | — |
+| mobile | 5/5 pass | — |
 
 ## By dimension (deterministic)
 | Dimension | Result |
 |---|---|
-| factual | 249/249 pass |
-| memory | 117/117 pass |
-| calendar | 498/498 pass |
-| language | 450/450 pass |
-| emotional | 57/63 pass · 6 uncertain |
-| actionability | 66/66 pass |
-| naturalness | 132/159 pass · 27 uncertain |
-| safety | 444/444 pass |
+| factual | 565/565 pass |
+| memory | 445/445 pass |
+| calendar | 930/930 pass |
+| language | 850/850 pass |
+| emotional | 95/105 pass · 10 uncertain |
+| actionability | 115/115 pass |
+| naturalness | 220/265 pass · 45 uncertain |
+| safety | 840/840 pass |
 
 ## Coverage (deterministic cases per capability)
-- memory: 18
-- family: 165
-- calendar: 996
-- hebrew: 180
-- spanish: 162
-- emotional: 147
-- voice: 84
-- error-recovery: 96
-- online: 87
-- continuity: 111
+- memory: 280
+- family: 275
+- calendar: 1660
+- hebrew: 300
+- spanish: 270
+- emotional: 245
+- voice: 140
+- error-recovery: 160
+- online: 145
+- continuity: 185
+- mixed: 100
+- reminders: 100
+- general-knowledge: 150
+- safety-privacy: 100
+- mobile: 5
 
 ## Honesty
 Deterministic dims are asserted against the REAL pipeline (HIGH evidence). Prose
