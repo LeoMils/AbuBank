@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.17.0-behavioral-production-green',
-  buildLabel: 'AbuBank — Behavioral Production Green (naturalizer + guards wired live; master replay + 786 behavior gauntlet)',
+  version:    '0.18.0-executive-cognitive-controller',
+  buildLabel: 'AbuBank — Executive Cognitive Controller (single UI entry; recorded-conversation replay)',
   buildDate:  '2026-07-02',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

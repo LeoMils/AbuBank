@@ -11,7 +11,7 @@ import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
 import { toSpokenText } from './spokenPersona'
 import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState } from './cognitiveRuntime'
-import { runFullTurn } from './runtimeFullTurn'
+import { ExecutiveCognitiveController } from './executiveCognitiveController'
 import { buildFullTurnTools } from './fullTurnBridge'
 
 // Full-cutover flag: when enabled, EVERY text turn is produced by the Cognitive
@@ -505,7 +505,7 @@ export function AbuAI() {
       if (COGNITIVE_RUNTIME_FULL) {
         const tools = buildFullTurnTools(newMessages, voiceMode)
         const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
-        const result = await runFullTurn(seed, msgText, { messages: newMessages, now: new Date() }, tools)
+        const result = await ExecutiveCognitiveController.handleTurn(seed, msgText, { messages: newMessages, now: new Date() }, tools)
         cognitiveRuntimeStateRef.current = result.state
         conversationOSRef.current = result.state.conv
         cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
@@ -1487,7 +1487,7 @@ export function AbuAI() {
       if (COGNITIVE_RUNTIME_FULL) {
         const tools = buildFullTurnTools(currentMsgs, true)
         const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
-        const result = await runFullTurn(seed, effectiveText, { messages: currentMsgs, now: new Date() }, tools)
+        const result = await ExecutiveCognitiveController.handleTurn(seed, effectiveText, { messages: currentMsgs, now: new Date() }, tools)
         cognitiveRuntimeStateRef.current = result.state
         conversationOSRef.current = result.state.conv
         cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }

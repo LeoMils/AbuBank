@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.17.0-behavioral-production-green'
-const BUILD_LABEL = 'AbuBank — Behavioral Production Green (naturalizer + guards wired live; master replay + 786 behavior gauntlet)'
+const BUILD_VERSION = '0.18.0-executive-cognitive-controller'
+const BUILD_LABEL = 'AbuBank — Executive Cognitive Controller (single UI entry; recorded-conversation replay)'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

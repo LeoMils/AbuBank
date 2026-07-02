@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.17.0-behavioral-production-green')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Behavioral Production Green (naturalizer + guards wired live; master replay + 786 behavior gauntlet)')
+    expect(APP_VERSION.version).toBe('0.18.0-executive-cognitive-controller')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Executive Cognitive Controller (single UI entry; recorded-conversation replay)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
