@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.10.0-experience-1-0-repair')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Experience 1.0 repair (iPhone transcript)')
+    expect(APP_VERSION.version).toBe('0.11.0-autonomous-intelligence')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Autonomous Intelligence system')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

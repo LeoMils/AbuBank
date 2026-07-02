@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.10.0-experience-1-0-repair',
-  buildLabel: 'AbuBank — Experience 1.0 repair (iPhone transcript)',
+  version:    '0.11.0-autonomous-intelligence',
+  buildLabel: 'AbuBank — Autonomous Intelligence system',
   buildDate:  '2026-07-01',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

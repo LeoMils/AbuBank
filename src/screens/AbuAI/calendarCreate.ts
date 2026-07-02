@@ -247,20 +247,40 @@ const CONFIRM_INTENT =
 // "agéndalo", "listo". Found by the eval engine (cal-es-confirm).
 const CONFIRM_INTENT_ES = /^(?:s[íi]|dale|ok|okey|listo|bueno)?[\s,]*(?:agéndalo|agendalo|agéndala|agendala|anótalo|anotalo|anótala|anotala|prográmalo|programalo)$|^(?:s[íi]|dale)[\s,]+(?:dale|agéndalo|agendalo|anotalo|listo|hacelo|hazlo)/i
 
+// Filler words that may sit AROUND a confirmation without changing it
+// ("כן נכון תקבעי את זה", "אני מאוד רוצה את זה"). Not confirm words on their own,
+// so an all-filler utterance never counts as a confirm (guard below).
+const CONFIRM_FILLER = new Set(['את', 'זה', 'זו', 'אני', 'מאוד', 'ש', 'גם', 'כבר', 'באמת', 'ממש', 'רוצה', 'מבקשת', 'שתקבעי', 'לך'])
+
+// Strip trailing politeness / filler ("…בבקשה", "…תודה", "…כבר טוב") and collapse
+// whitespace, so a noisy real-user utterance is normalised BEFORE matching. Shared
+// by the pending-resolution intent checks — fixes the systemic "one extra word
+// defeats the matcher" class the autonomous gauntlet surfaced.
+export function normalizeUtterance(text: string): string {
+  let t = text.replace(/\s+/g, ' ').trim().replace(/[.!?,;]+$/u, '')
+  // Collapse consecutive duplicate words ("למה את את לא" → "למה את לא"), a very
+  // common STT artefact that otherwise breaks multi-token intent regexes.
+  t = t.replace(/(\S+)(?:\s+\1)+(?=\s|$)/gu, '$1')
+  t = t.replace(/(?:\s+(?:בבקשה|תודה רבה|תודה|טוב|נו|כבר|אז|אוקיי|אוקי|please))+$/giu, '')
+  return t.trim()
+}
+
 export function isConfirm(text: string): boolean {
-  const t = text.trim().replace(/[.!?,]+$/u, '').trim().toLowerCase()
+  const t = normalizeUtterance(text).toLowerCase()
   if (!t) return false
   if (CONFIRM_PHRASES.has(t)) return true
   if (CONFIRM_INTENT.test(t)) return true
   if (CONFIRM_INTENT_ES.test(t)) return true
   // Internal commas count as separators ("sí, agendalo" → sí + agendalo).
   const words = t.split(/[\s,]+/).filter(Boolean)
-  if (words.length === 0 || words.length > 4) return false
-  return words.every(w => CONFIRM_WORDS.has(w))
+  if (words.length === 0 || words.length > 6) return false
+  // Every word is a confirm or benign filler, AND at least one is a real confirm
+  // word (so a pure-filler phrase like "את זה" never counts).
+  return words.every(w => CONFIRM_WORDS.has(w) || CONFIRM_FILLER.has(w)) && words.some(w => CONFIRM_WORDS.has(w))
 }
 
 export function isCancel(text: string): boolean {
-  return CANCEL.test(text.trim())
+  return CANCEL.test(normalizeUtterance(text))
 }
 
 // ─── Time Parsing ───────────────────────────────────────────────────────────
@@ -508,8 +528,11 @@ export function parseCreateDate(text: string): string | null {
     }
   }
 
-  // "בעוד שבוע"
-  if (/בעוד שבוע/.test(t)) {
+  // "בעוד שבוע" / bare "בשבוע הבא" (next week with no weekday named) → +7 days.
+  // Checked AFTER the weekday loop so "בשבוע הבא ביום שלישי" still resolves to that
+  // weekday. Fixes the draft-stuck-in-creating bug the autonomous gauntlet found
+  // (a bare "next week" left the date missing, so a later confirm could not save).
+  if (/בעוד שבוע/.test(t) || /(?:^|\s)ב?שבוע\s+הבא(?![א-ת])/.test(t)) {
     const d = new Date()
     d.setDate(d.getDate() + 7)
     return localDateStr(d)
@@ -924,6 +947,9 @@ export function resolvePendingMessage(
   isCalendarReadQuery: boolean,
 ): PendingResolution {
   const t = text.trim()
+  // Normalised form (deduped words, stripped politeness) for the intent matchers —
+  // field extraction below still uses the raw `t`.
+  const norm = normalizeUtterance(text)
 
   // Explicit cancel always wins.
   if (isCancel(t)) return { action: 'cancel' }
@@ -935,7 +961,7 @@ export function resolvePendingMessage(
 
   // AUDIO complaint mid-create → help with audio, KEEP the draft. Never a cold
   // "בסדר, ביטלתי" or a calendar clarify (the exact iPhone failure).
-  if (AUDIO_COMPLAINT.test(t)) {
+  if (AUDIO_COMPLAINT.test(norm)) {
     return { action: 'audio_help', message: 'רגע, אני כאן. אם לא שמעת אותי, נסי להעלות את עוצמת הקול או ללחוץ שוב על הכפתור. הפגישה שלך עדיין שמורה כטיוטה — נמשיך כשתשמעי אותי.', keep: state }
   }
 
@@ -959,7 +985,7 @@ export function resolvePendingMessage(
   // An EMOTIONAL statement mid-create ("אני מתגעגעת לפאפי", "estoy sola") must NOT
   // be answered with a cold "בסדר, ביטלתי" or mis-parsed as a date/field. Park the
   // draft and let the runtime respond warmly (found by the production simulator).
-  if (EMOTIONAL_STATEMENT.test(t) && !isConfirm(t)) {
+  if (EMOTIONAL_STATEMENT.test(norm) && !isConfirm(t)) {
     return { action: 'park', query: t, parked: state }
   }
 
@@ -992,7 +1018,12 @@ export function resolvePendingMessage(
   // Off-topic: 3+ words, no scheduling context, not a question
   // OR: emotional/personal statement (starts with "אני") with no date/time
   const isPersonalStatement = /^אני\s/.test(t) && !hasDateOrTime
-  if (!hasDateOrTime && !hasScheduleWord && !isQuestion && (t.split(/\s+/).length >= 3 || isPersonalStatement)) {
+  // Guard: an affirmative/scheduling word anywhere ("כן", "תקבעי", "בסדר", "מאושר",
+  // "נכון", "קדימה") means this is a (possibly noisy) confirmation, NEVER a silent
+  // cancel. Prevents the trust-damaging "כן נכון תקבעי את זה" → cancel the autonomous
+  // gauntlet found. Only an EXPLICIT cancel (checked earlier) may cancel.
+  const hasAffirmative = /(?<![א-ת])(?:כן|תקבעי|קבעי|תרשמי|רשמי|בסדר|מאושר|מאשרת|נכון|קדימה|בטח|ברור|יאללה|סבבה|בהחלט|לגמרי)(?![א-ת])/u.test(t)
+  if (!hasDateOrTime && !hasScheduleWord && !isQuestion && !hasAffirmative && (t.split(/\s+/).length >= 3 || isPersonalStatement)) {
     return { action: 'cancel' }
   }
 

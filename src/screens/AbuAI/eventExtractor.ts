@@ -84,11 +84,14 @@ function lastMatch(re: RegExp, text: string): RegExpExecArray | null {
   return last
 }
 
-/** Extract person from the LAST "עם X" / "אצל X", taking up to 3 name words. */
+/** Extract person from the LAST "עם X" / "con X" (preferred), else "אצל X". */
 function extractPerson(text: string): string | null {
-  // LAST occurrence: a 60-second story ("דיברתי עם השכנה …") must not steal the
-  // person from the actual event ("… פגישה עם רותי").
-  const lead = lastMatch(/(?:(?<![֐-׿])(?:עם|אצל)|(?<![a-záéíóúñ])con)\s+/giu, text)
+  // Prefer "עם X" / "con X" (a real companion). "אצל X" is only a fallback person —
+  // when both are present ("פגישה עם מור אצל גבי"), מור is the person and "אצל גבי"
+  // is the LOCATION (extractLocation catches it). Fixes the person/location swap the
+  // autonomous gauntlet found.
+  let lead = lastMatch(/(?:(?<![֐-׿])עם|(?<![a-záéíóúñ])con)\s+/giu, text)
+  if (!lead) lead = lastMatch(/(?<![֐-׿])אצל\s+/giu, text)
   if (!lead) return null
   const words = text.slice(lead.index + lead[0].length).trim().split(/\s+/)
   const name: string[] = []
@@ -144,6 +147,16 @@ function extractLocation(text: string): { value: string; span: string } | null {
     const value = clean(em[1]!)
     if (value.length >= 2) return { value, span: em[0] }
   }
+  // Fallbacks (after all named venues/cities so "בבית קפה מרוקו" stays the café):
+  // "אצל <person>" (at someone's place) → location, but ONLY when a distinct
+  // companion "עם <person>" is present ("פגישה עם מור אצל גבי"). Without a "עם",
+  // "אצל X" is the meeting itself (title/person) — leave it to the title extractor.
+  const hasWith = /(?<![א-ת])עם\s+[א-ת]/u.test(text)
+  const atName = /(?<![א-ת])(אצל\s+([א-ת][א-ת'׳]+(?:\s+[א-ת][א-ת'׳]+)?))/u.exec(text)
+  if (hasWith && atName && !PERSON_STOP.test(atName[2]!)) { const value = clean(atName[1]!); if (value.length >= 4) return { value, span: atName[1]! } }
+  // Bare "בבית" (at home) — but NOT when it is really "בית קפה/חולים/…".
+  const homeM = /(?<![א-ת])בבית(?![א-ת])(?!\s+(?:קפה|חולים|מרקחת|כנסת|ספר|אבות|מלון))/u.exec(text)
+  if (homeM) return { value: 'בבית', span: 'בבית' }
   return null
 }
 
