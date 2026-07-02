@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.12.1-recall-topic-guard',
-  buildLabel: 'AbuBank — Multi-turn continuity (text-path conversationOS)',
-  buildDate:  '2026-07-01',
+  version:    '0.13.0-cognitive-runtime-v2',
+  buildLabel: 'AbuBank — Cognitive Runtime v2 (single central pipeline; date intent wired)',
+  buildDate:  '2026-07-02',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
 } as const

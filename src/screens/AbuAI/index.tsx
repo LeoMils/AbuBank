@@ -10,6 +10,7 @@ import { compileHumanAnswer } from './answerCompiler'
 import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
 import { toSpokenText } from './spokenPersona'
+import { runCognitiveTurn, IDLE_RUNTIME } from './cognitiveRuntime'
 import {
   IDLE_CONV, handleConversationTurn, recordAnswer, recordOnline,
   type ConvState, type OnlineFailReason,
@@ -653,6 +654,28 @@ export function AbuAI() {
           const topic = a?.topic || a?.question
           const recall = topic ? `דיברנו על ${topic}.` : 'עוד לא דיברנו על משהו מסוים בשיחה הזאת. על מה תרצי?'
           setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(recall, companionPlan), timestamp: Date.now() }])
+          setLoading(false); streamingMsgIdRef.current = null
+          return
+        }
+      }
+
+      // ─── Cognitive Runtime v2 (single-pipeline authority — staged cutover) ──
+      // cognitiveRuntime.ts is the central pipeline every turn will route through
+      // (proven end-to-end by src/eval/latestRealIphoneFullRuntimeReplay). It is
+      // wired here FIRST for the date/day intent, which previously had no handler
+      // and fell to the LLM — the real iPhone "date question → long unrelated text"
+      // failure. The answer is composed + verified inside the runtime, so it can
+      // never bounce "באיזה יום?" back at a date question. The remaining intents
+      // are cut over incrementally behind the full suite as the gate.
+      {
+        const decision = runCognitiveTurn(
+          { ...IDLE_RUNTIME, conv: conversationOSRef.current },
+          msgText,
+          { messages, now: new Date() },
+        )
+        if (decision.handled && decision.intent === 'date_query' && decision.display && decision.verifier.ok) {
+          conversationOSRef.current = decision.state.conv
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(decision.display!, companionPlan), timestamp: Date.now() }])
           setLoading(false); streamingMsgIdRef.current = null
           return
         }
