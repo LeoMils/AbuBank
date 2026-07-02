@@ -40,6 +40,7 @@ import {
   isCreateIntent, isDeleteIntent, isModifyIntent, isSearchIntent,
 } from './calendarCreate'
 import { understandMeeting } from './meetingIntelligence'
+import { understandMeetingSmart } from './calendarIntelligence'
 import { answerFamilyRelation } from './familyReasoning'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
 import {
@@ -505,9 +506,19 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     case 'calendar_create': {
       // Start (or restart) a create; ask/confirm — do NOT save until confirmed.
       const next = startCreate(normalized)
-      const text = next.phase === 'confirming'
+      let text = next.phase === 'confirming'
         ? shapeCreateConfirm(next.draft)
         : shapeCreateClarify(next.missing, next.draft)
+      // Smart enrichment: surface stated duration + the important context clauses
+      // ("פרטים חשובים") the person buried in a rambling request. Appended before
+      // the trailing confirmation question; absent for plain requests (no change).
+      if (next.phase === 'confirming') {
+        const smart = understandMeetingSmart(normalized)
+        const extra: string[] = []
+        if (smart.durationLabel) extra.push(`למשך ${smart.durationLabel}`)
+        if (smart.importantDetails.length) extra.push(`פרטים חשובים: ${smart.importantDetails.join('; ')}`)
+        if (extra.length) text = text.replace(/\s*נכון\?\s*$/u, `. ${extra.join('. ')}. נכון?`)
+      }
       const { display, speak } = composeHebrew(text)
       const verifier = verifyAnswer(display, { intent, dataAvailable: true })
       return {
