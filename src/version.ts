@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.20.0-domain-plugins',
-  buildLabel: 'AbuBank — Domain Plugin Architecture (generic planner; reminders/recurring/delete/modify as plugins)',
+  version:    '0.21.0-cognitive-intelligence',
+  buildLabel: 'AbuBank — Cognitive Intelligence (correction/frustration/family-unknown/date fixes; behavior acceptance 100%)',
   buildDate:  '2026-07-03',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

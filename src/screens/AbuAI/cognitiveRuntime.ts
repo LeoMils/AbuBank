@@ -212,15 +212,17 @@ export function classifyIntent(
   // A pending reminder (awaiting time/confirmation) resolves before anything else.
   if (state.pendingReminder) return 'reminder'
 
+  // Frustration / challenge ("את לא מבינה אותי", "למה אין לך?", "את לא עונה") — BEFORE
+  // the pending-draft resolution, so a frustrated turn mid-create is met with empathy
+  // and NEVER cancels the pending draft (frustration does not reset context).
+  if (isFrustration(t) || isWhyChallenge(t) || isOnlineChallenge(t) || FRUSTRATION_EXTRA_RE.test(t)) return 'frustration'
+
   // While a calendar draft is pending, the turn resolves it (save/cancel/change/park).
   if (pending) return 'confirmation'
 
   // Continuation / resume, or topic recall ("על מה דיברנו", even prefixed by
   // "יש לך זיכרון …") — both are handled inside the continuation case.
   if (isContinuation(t) || CONTINUATION_EXTRA_RE.test(t) || RECALL_TOPIC_RE.test(t)) return 'continuation'
-
-  // Frustration / challenge ("את לא מבינה אותי", "למה אין לך?", "את לא עונה").
-  if (isFrustration(t) || isWhyChallenge(t) || isOnlineChallenge(t) || FRUSTRATION_EXTRA_RE.test(t)) return 'frustration'
 
   // Date/day questions answered from the real clock — never invented, never "באיזה יום".
   if (DATE_QUERY_RE.test(t)) return 'date_query'
@@ -270,10 +272,15 @@ function localISO(d: Date): string {
 }
 export function dateReasoner(text: string, now: Date): string {
   const day = HE_DAYS[now.getDay()] ?? 'היום'
-  const heDate = safeHebrewDate(localISO(now))
+  // formatHebrewDate may already include the weekday — strip it so we never say the
+  // day twice ("היום יום שישי, 3 ביולי 2026, יום שישי").
+  const dateOnly = safeHebrewDate(localISO(now))
+    .replace(/^\s*(?:יום\s+\S+|שבת)\s*,?\s*/u, '')
+    .replace(/,?\s*(?:יום\s+\S+|שבת)\s*$/u, '')
+    .trim()
   // "מה התאריך" → lead with the date; "איזה יום" → lead with the day.
-  if (/תאריך|fecha/iu.test(text)) return `היום ${heDate}, ${day}.`
-  return `היום ${day}, ${heDate}.`
+  if (/תאריך|fecha/iu.test(text)) return `היום ${dateOnly}, ${day}.`
+  return `היום ${day}, ${dateOnly}.`
 }
 function safeHebrewDate(iso: string): string {
   try { return formatHebrewDate(iso) } catch { return iso }
@@ -283,6 +290,9 @@ function safeHebrewDate(iso: string): string {
 function looksLikeFamilyQuery(t: string): boolean {
   if (/מי\s+ה?(?:סבא|סבתא|דוד|דודה|אבא|אמא|בעל|אישה|בן\s+הזוג|בת\s+הזוג|ילדים|נכד|נכדה|אח|אחות)\s+של/u.test(t)) return true
   if (/מה\s+הקשר\s+בין|מה\s+היחס\s+בין|איך\s+קשור[הים]?|מי\s+ז[הא]\s+ל/u.test(t)) return true
+  // "מה/מי (זה)? X עבור/בשביל Y" — a directional relation question. Recognized even
+  // when X is UNKNOWN, so the runtime answers "won't guess" instead of the LLM.
+  if (/(?:מה|מי)\s+(?:ז[הא]\s+)?\S+\s+(?:עבור|בשביל)\s+\S+/u.test(t)) return true
   // "מי זה X" for a known family member.
   const m = t.match(/^מי\s+ז[הא]\s+(\S+)\s*\??$/u)
   if (m && findNode(m[1]!)) return true
@@ -477,7 +487,13 @@ function chunk(text: string): string[] {
  */
 export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeContext): CognitiveDecision {
   // Layer 1: normalize.
-  const { original, normalized, lang } = normalizeTurn(raw, ctx.messages)
+  const norm = normalizeTurn(raw, ctx.messages)
+  const original = norm.original, lang = norm.lang
+  // Correction ("לא, התכוונתי <X>") → answer the CORRECTED request X, not a generic
+  // reply. Strip the correction lead-in and process the clause that follows.
+  let normalized = norm.normalized
+  const corr = normalized.match(/^לא[,.]?\s*(?:זה[,.]?\s*)?(?:התכוונתי|התכוונת|רציתי\s+לומר)\s+(.+)/u)
+  if (corr && corr[1] && corr[1].trim().length >= 3) normalized = corr[1].trim()
   // Layer 3: classify.
   const intent = classifyIntent(normalized, state)
 

@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.20.0-domain-plugins'
-const BUILD_LABEL = 'AbuBank — Domain Plugin Architecture (generic planner; reminders/recurring/delete/modify as plugins)'
+const BUILD_VERSION = '0.21.0-cognitive-intelligence'
+const BUILD_LABEL = 'AbuBank — Cognitive Intelligence (correction/frustration/family-unknown/date fixes; behavior acceptance 100%)'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.20.0-domain-plugins')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Domain Plugin Architecture (generic planner; reminders/recurring/delete/modify as plugins)')
+    expect(APP_VERSION.version).toBe('0.21.0-cognitive-intelligence')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Cognitive Intelligence (correction/frustration/family-unknown/date fixes; behavior acceptance 100%)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
