@@ -630,6 +630,30 @@ export function AbuAI() {
         setPendingReminder(null)
       }
 
+      // ─── Conversation OS (TEXT path) ─────────────────────────────────
+      // "תמשיכי" resumes the cached answer; "על מה דיברנו" recalls the topic; a
+      // challenge ("למה אין לך?") gets a real explanation — instead of falling to
+      // the LLM which loses the thread (the real iPhone "continue → unrelated
+      // answer" / "does not remember" failures). Only fires with real context.
+      {
+        const convTurn = handleConversationTurn(conversationOSRef.current, msgText)
+        if (convTurn.handled && convTurn.speak) {
+          conversationOSRef.current = convTurn.state
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(convTurn.speak!, companionPlan), timestamp: Date.now() }])
+          setLoading(false); streamingMsgIdRef.current = null
+          return
+        }
+        // "על מה דיברנו" / "what did we talk about" → recall the last topic honestly.
+        if (/על מה דיבר(?:נו|ת)|מה דיברנו|do you remember what we|de qu[eé] hablamos|qu[eé] hablamos/i.test(msgText.trim())) {
+          const a = conversationOSRef.current.answer
+          const topic = a?.topic || a?.question
+          const recall = topic ? `דיברנו על ${topic}.` : 'עוד לא דיברנו על משהו מסוים בשיחה הזאת. על מה תרצי?'
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(recall, companionPlan), timestamp: Date.now() }])
+          setLoading(false); streamingMsgIdRef.current = null
+          return
+        }
+      }
+
       // ─── Unresolved pronoun guard ─────────────────────────────────────
       // If a create intent still has an unresolved pronoun (אליו/אליה/שלו/שלה)
       // after pronoun resolution failed, ask who instead of creating with
@@ -1167,6 +1191,14 @@ export function AbuAI() {
         }
         return updated
       })
+      // Record the general answer so "תמשיכי" continues it and "על מה דיברנו"
+      // recalls the topic (TEXT-path conversation memory).
+      if (accumulated.trim()) {
+        const topic = msgText.trim()
+          .replace(/^(?:ספרי לי על|ספר לי על|תספרי לי על|מה את יודעת על|תסבירי לי על|תסבירי על|מה זה|מה זאת|על|ספרי על)\s+/u, '')
+          .replace(/[?？]+$/u, '').trim() || null
+        conversationOSRef.current = recordAnswer(conversationOSRef.current, { question: msgText, intent: 'general', topic, fullText: accumulated.trim() })
+      }
       traceSet({ finalResponse: accumulated.trim() || null })
       traceEnd()
     } catch (err: unknown) {

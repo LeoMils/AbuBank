@@ -69,10 +69,15 @@ export function shapeFamilyAnswer(m: FamilyMember, rich = false): string {
   const partner = m.spouse ?? extractPartner(rel)
 
   let role: string
-  if (rel.includes('הבת')) role = `${m.hebrew}, הבת שלך`
-  else if (rel.includes('הבן')) role = `${m.hebrew}, הבן שלך`
-  else if (rel.includes('נכדה')) role = `${m.hebrew}, הנכדה שלך`
-  else if (rel.includes('נכד')) role = `${m.hebrew}, הנכד שלך`
+  // An ex-spouse / in-law whose DESCRIPTION mentions grandchildren ("הגרוש של מור,
+  // אבא של הנכדים") must keep its verbatim descriptor — never be mislabelled a
+  // grandchild by a substring match on "נכד". Role words are matched at the START
+  // of the description (the primary role), not anywhere inside it.
+  if (/^ה?גרוש|^ה?גרושה|^ה?חתן|^ה?כלה\b|אבא של ה?נכד|אמא של ה?נכד/.test(rel)) role = `${m.hebrew} — ${rel}`
+  else if (/^ה?בת(?!\s+זוג)/.test(rel)) role = `${m.hebrew}, הבת שלך`
+  else if (/^ה?בן/.test(rel)) role = `${m.hebrew}, הבן שלך`
+  else if (/^ה?נכדה/.test(rel)) role = `${m.hebrew}, הנכדה שלך`
+  else if (/^ה?נכד(?![ה])/.test(rel)) role = `${m.hebrew}, הנכד שלך`
   else if (rel.includes('נינה') || rel.includes('נין')) role = `${m.hebrew}, ${isFemale ? 'הנינה' : 'הנין'} שלך`
   else if (rel.includes('כלה')) role = partner ? `${m.hebrew}, אשת ${partner}` : `${m.hebrew}, הכלה שלך`
   else if (rel.includes('בת זוג') && partner) role = `${m.hebrew}, בת הזוג של ${partner}`
@@ -187,8 +192,8 @@ export function shapeLocationAnswer(name: string, location: string, notes?: stri
 // after they were captured on create.
 export function calendarEventExtras(e: Appointment): string {
   let s = ''
-  if (e.location) s += ` ב${e.location}.`
-  if (e.subject) s += ` הנושא — ${e.subject}.`
+  if (e.location) s += ` ${locPhrase(e.location)}.`
+  if (e.subject && !/^(?:פגישה|מפגש|מפגשים|אירוע)$/.test(e.subject.trim()) && !(e.title ?? '').includes(e.subject.trim())) s += ` הנושא — ${e.subject}.`
   // The WHY (purpose / notes) when it adds something beyond the bare topic, so a
   // read sounds like an assistant who understood ("הנושא — שכירות. רצית לדבר על
   // ההכנות לפני הדיירים."), not a field dump. notes already holds the synthesized
@@ -284,13 +289,23 @@ function humanTitle(title: string): string {
   return title
 }
 
+// Prepend "ב" only when the location doesn't already carry a preposition, so
+// "אצלי בבית"/"בבית"/"בקפה X" stay as-is (no "באצלי בבית") while "הוד השרון" →
+// "בהוד השרון".
+export function locPhrase(loc: string): string {
+  const t = loc.trim()
+  return /^(?:ב|ל|מ|אצל)/u.test(t) ? t : `ב${t}`
+}
+
 export function shapeCreateConfirm(draft: CreateDraft): string {
   const what = draft.title ? humanTitle(draft.title) : 'משהו'
   const when = draft.date ? ` ${dateLabel(draft.date)}` : ''
   const time = draft.time ? ` ${timeInWords(draft.time)}` : ''
   let text = `${what}${when}${time}.`
-  if (draft.location) text += ` ב${draft.location}.`
-  if (draft.subject) text += ` בנושא ${draft.subject}.`
+  if (draft.location) text += ` ${locPhrase(draft.location)}.`
+  // Skip a redundant "בנושא" when the subject is a generic meeting word or already
+  // sits in the title ("פגישה עם אורית" + subject "פגישה" → no "בנושא פגישה").
+  if (draft.subject && !/^(?:פגישה|מפגש|מפגשים|אירוע)$/.test(draft.subject.trim()) && !(draft.title ?? '').includes(draft.subject.trim())) text += ` בנושא ${draft.subject}.`
   if (draft.notes) text += ` (${draft.notes}).`
   text += ' נכון?'
   return text
@@ -330,7 +345,7 @@ export function shapeCreateConfirmReadback(draft: ReadbackDraft): string {
   }
 
   let head = `הבנתי. לקבוע ${subject} ${dateLabel(draft.date)} ${timeInWords(draft.time)}`
-  if (draft.location) head += ` ב${draft.location}`
+  if (draft.location) head += ` ${locPhrase(draft.location)}`
   head += '.'
   const parts: string[] = [head]
   if (draft.notes) parts.push(`הסיבה: ${draft.notes}.`)

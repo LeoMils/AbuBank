@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.11.0-autonomous-intelligence',
-  buildLabel: 'AbuBank — Autonomous Intelligence system',
+  version:    '0.12.0-multiturn-continuity',
+  buildLabel: 'AbuBank — Multi-turn continuity (text-path conversationOS)',
   buildDate:  '2026-07-01',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
