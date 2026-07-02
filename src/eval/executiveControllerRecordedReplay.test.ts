@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { runRecordedReplay, recordedScore } from './executiveControllerRecordedReplay'
+import { runRecordedReplay, recordedScore, byCategory, bySource } from './executiveControllerRecordedReplay'
 
 class MemoryLocalStorage {
   private store = new Map<string, string>()
@@ -18,14 +18,16 @@ describe('Executive Controller — Recorded Conversation Replay', () => {
     const rows = await runRecordedReplay()
     const score = recordedScore(rows)
     // eslint-disable-next-line no-console
-    console.log(`[RECORDED] conversations lines=${rows.length} behavior=${score.pct}% finalized=${score.finalizedPct}%`)
+    console.log(`[RECORDED] lines=${rows.length} behavior=${score.pct}% finalized=${score.finalizedPct}%\n` +
+      'sources: ' + bySource(rows).map(s => `${s.source}(${s.total})`).join(' ') + '\n' +
+      'by category:\n' + byCategory(rows).map(c => `  ${c.category}: ${c.pct}% (${c.passed}/${c.total})`).join('\n'))
     if (score.pct !== 100) {
       // eslint-disable-next-line no-console
-      console.error('[RECORDED] failures:\n' + score.failures.map(f => `  [${f.source}] "${f.input}" finalized=${f.finalized} → ${f.detail}`).join('\n'))
+      console.error('[RECORDED] failures:\n' + score.failures.slice(0, 40).map(f => `  [${f.source}] "${f.input}" cat=${f.category} finalized=${f.finalized} → ${f.detail}`).join('\n'))
     }
     expect(score.failures.map(f => `${f.source}:${f.input}`)).toEqual([])
     expect(score.pct).toBe(100)
     expect(score.finalizedPct).toBe(100)
-    expect(rows.length).toBeGreaterThanOrEqual(40)
+    expect(rows.length).toBeGreaterThanOrEqual(150)
   })
 })

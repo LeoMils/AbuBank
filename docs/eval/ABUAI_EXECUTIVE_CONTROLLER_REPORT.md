@@ -27,9 +27,30 @@ and (b) the exact lines Leo pasted across the mission prompts. The replay
 (`executiveControllerRecordedReplay`) **reads those docs and extracts the lines
 verbatim** — nothing is rephrased — plus Leo's exact mission lines.
 
-Result: **71 recorded lines, 100% pass + 100% RUNTIME_FINALIZED** through the single
-controller. Every line: finalized + supervisor-approved + non-empty + 0 broken
-Hebrew + 0 raw markdown/URL in speech + controller-stamped (no bypass).
+### Corpus expansion (all recorded sources ingested)
+
+The replay now ingests EVERY recorded conversation source in the repo, verbatim,
+through the controller only: **204 lines from 9 sources** — `rc7`(45,
+acceptance/scenarios), `hebrewHarness`(32), `RC6`(26), `leo` mission lines(25),
+`LONG_CONTEXT`(20), `docs/abuai/*.md`(18), `e2e` iphone spec(17),
+`martitaHarness`(14), `realIphoneGauntlet`(7).
+
+**Result: 204/204 (100%) pass + 100% RUNTIME_FINALIZED.** Per category:
+general 124, calendar 23, confirmation 15, family 14, online 12, continuation 9,
+frustration 3, date 2, audio 2 — all **100%**.
+
+Pass = finalized + supervisor-approved + non-empty + 0 broken Hebrew + 0 raw
+markdown/URL + **correctness guards** (no "can't check" when the tool works, no
+"באיזה יום" on a search-all, no invented event on an empty store). Each recorded
+conversation runs on an independent store; multi-turn create→read state is kept
+within a conversation.
+
+**Failure found & fixed during expansion:** the correctness guards caught cross-
+conversation store contamination (a saved "אורית" event from the e2e create-flow
+leaking into a later read) — fixed by resetting the store per conversation and
+making the invention guard store-aware. This is why the guards matter: without
+them the run was a tautology (the controller always finalizes); with them it
+catches real semantic failures.
 
 ## Gates
 
