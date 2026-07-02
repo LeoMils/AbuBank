@@ -226,6 +226,7 @@ const CONFIRM_PHRASES = new Set([
   'נכון מאוד', 'תרשמי לי', 'תקבעי לי', 'תזמני לי', 'תודה רבה', 'כן בבקשה',
   'כן תקבעי', 'כן תרשמי', 'בדיוק כך', 'כן נכון', 'בדיוק זה', 'זה בדיוק',
   'יש לך אישור', 'יש לך את האישור', 'מאושר תקבעי', 'אישור', 'אני מאשרת', 'אני מאשר',
+  'תעשי את זה', 'עשי את זה', 'תעשה את זה', 'קדימה תקבעי', 'בטח תקבעי', 'סגור תקבעי',
 ])
 const CONFIRM_WORDS = new Set([
   'כן', 'נכון', 'בדיוק', 'בסדר', 'סבבה', 'יאללה', 'יאלה', 'תרשמי', 'רשמי', 'תקבעי',
@@ -240,7 +241,7 @@ const CONFIRM_WORDS = new Set([
 // Anchored so it cannot match a NEW create ("תקבעי עם מור מחר") which carries a
 // person/date/time — those have no "את זה" / bare-intent shape.
 const CONFIRM_INTENT =
-  /^(?:כן[\s,]+)?(?:אני\s+)?(?:רוצה|מבקשת)(?:\s+ש?(?:תקבעי|תרשמי|תזמני))?(?:\s+את\s+ז[הו])?$|^(?:כן[\s,]+|בסדר[\s,]+|אוקיי?[\s,]+)?(?:ש?תקבעי|ש?תרשמי|ש?תזמני)\s+(?:את\s+)?ז[הו]$|^כן\s+אני\s+רוצה/u
+  /^(?:כן[\s,]+)?(?:אני\s+)?(?:רוצה|מבקשת)(?:\s+ש?(?:תקבעי|תרשמי|תזמני))?(?:\s+את\s+ז[הו])?$|^(?:כן[\s,]+|בסדר[\s,]+|אוקיי?[\s,]+)?(?:ש?תקבעי|ש?תרשמי|ש?תזמני)\s+(?:את\s+)?ז[הו]$|^כן\s+אני\s+רוצה|^(?:כן[\s,]+)?(?:אני\s+רוצה\s+)?(?:מאוד\s+)?(?:בבקשה\s+)?ת?עש[יה]\s+(?:את\s+)?ז[הו]$|^(?:כן[\s,]*)+(?:מאוד|בבקשה|תקבעי|אני רוצה|שתקבעי|את זה|\s)*$/u
 
 // Spanish affirmative scheduling: "dale, agendalo", "sí, agendalo", "anotalo",
 // "agéndalo", "listo". Found by the eval engine (cal-es-confirm).
@@ -905,10 +906,17 @@ export type PendingResolution =
   // Park the pending draft and let the runtime answer the new topic fresh, so a
   // pending calendar never gets answered as a sports/weather confirmation.
   | { action: 'park'; query: string; parked: CalendarCreateState }
+  // "אני לא שומע אותך" / "למה את לא מדברת" — an AUDIO complaint, never a calendar
+  // cancel. Respond about audio and KEEP the pending draft (state unchanged).
+  | { action: 'audio_help'; message: string; keep: CalendarCreateState }
 
 // A feeling statement (he/es) — during a pending create it must park + warm-answer,
 // never cancel coldly. Kept narrow so a scheduling phrase never matches.
 const EMOTIONAL_STATEMENT = /מתגעג|התגעג|פאפי|פפה|חסר לי|בוד[דת]|(?<![א-ת])לבד(?![א-ת])|עצוב|עצבת|בוכה|בכי|דואג|געגוע|קשה לי|משעמם לי|מדוכא|(?<![a-zé])(?:sola|solo|triste|extraño|me siento|deprim)(?![a-zé])/i
+
+// An AUDIO / voice complaint ("אני לא שומע אותך", "למה את לא מדברת", "נקטע",
+// "הקול נעלם") — must get an audio-help reply, never a calendar cancel/clarify.
+const AUDIO_COMPLAINT = /לא\s+שומע|לא\s+שומעת|לא\s+שומעים|למה\s+את\s+לא\s+מדברת|את\s+לא\s+מדברת|לא\s+מדברת\s+איתי|נקטע|נקטעת|מקוטע|מתקטע|הקול\s+(?:נעלם|נגמר|נחתך|לא\s+עובד)|אין\s+קול|נעלם\s+הקול|לא\s+נשמע|no\s+te\s+escucho|no\s+se\s+escucha/i
 
 export function resolvePendingMessage(
   state: CalendarCreateState,
@@ -923,6 +931,12 @@ export function resolvePendingMessage(
   // Explicit confirmation while confirming → save.
   if (state.phase === 'confirming' && isConfirm(t)) {
     return { action: 'save', draft: state.draft }
+  }
+
+  // AUDIO complaint mid-create → help with audio, KEEP the draft. Never a cold
+  // "בסדר, ביטלתי" or a calendar clarify (the exact iPhone failure).
+  if (AUDIO_COMPLAINT.test(t)) {
+    return { action: 'audio_help', message: 'רגע, אני כאן. אם לא שמעת אותי, נסי להעלות את עוצמת הקול או ללחוץ שוב על הכפתור. הפגישה שלך עדיין שמורה כטיוטה — נמשיך כשתשמעי אותי.', keep: state }
   }
 
   // A brand-new create request replaces the pending draft.

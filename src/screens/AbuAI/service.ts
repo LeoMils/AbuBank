@@ -7,6 +7,7 @@ import { parseHebrewTime } from './calendarCreate'
 import { answerFromToolResult, type ToolResult } from './groundedResponse'
 import { sendServerChat, streamServerChat, checkServerChatHealth } from './serverChatProvider'
 import { describeRelation, loadGraph, type Lang } from './familyGraph'
+import { answerFamilyRelation } from './familyReasoning'
 import { detectLanguage } from './proactive'
 import { deriveConversationMemory } from './conversationMemory'
 import { shapeFamilyAnswerES, shapeCalendarAnswerES, shapeLocationAnswerES, shapeCreateConfirmES, shapeCreateSavedES, shapeCreateCancelledES, shapeCreateClarifyES, calendarEventExtras, timeInWords, dateLabel } from './responseShaper'
@@ -366,6 +367,24 @@ RULES:
 
 export function tryGroundedAnswer(text: string): string | null {
   const lang = detectLanguage(text) // 'he' | 'es' | 'en' | 'mixed'
+
+  // Hebrew relationship-chain query ("מי הדוד של ארי", "מי סבתא של ארי") →
+  // answered deterministically from the family graph, never the LLM (the iPhone
+  // failure was a hallucinated relation). Lists ALL correct answers; falls through
+  // (null) if it is not a relation-chain query or the subject is unknown.
+  if (lang === 'he') {
+    const fam = answerFamilyRelation(text)
+    if (fam && fam.known) {
+      const LABEL: Record<string, string> = { grandmother: 'הסבתא', grandfather: 'הסבא', uncle: 'הדוד', aunt: 'הדודה', children: 'הילדים', partner: 'בן/בת הזוג' }
+      const label = LABEL[fam.relation] ?? 'הקרוב'
+      const names = fam.results.length === 1
+        ? fam.results[0]!
+        : `${fam.results.slice(0, -1).join(', ')} ו${fam.results[fam.results.length - 1]}`
+      console.log(`[AbuAI:route] "${text.slice(0, 40)}" → family_relation [LOCAL] ${fam.relation}=${fam.results.join(',')}`)
+      return `${label} של ${fam.subject}: ${names}.`
+    }
+  }
+
   const route = routePersonalQuery(text)
   if (route.type === 'non_personal') {
     console.log(`[AbuAI:route] "${text.slice(0, 40)}" → non_personal (needs LLM)`)

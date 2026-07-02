@@ -545,6 +545,11 @@ export function AbuAI() {
           pushAssistant(shapeCreateUnclear())
           return
         }
+        if (resolution.action === 'audio_help') {
+          // Audio complaint mid-create → help with sound, KEEP the pending draft.
+          pushAssistant(resolution.message)
+          return
+        }
         // resolution.action === 'park': an unrelated current-info question arrived
         // mid-create. Clear the pending draft and fall through to normal routing so
         // the sports/weather question is answered — never as a calendar confirmation.
@@ -1528,6 +1533,9 @@ export function AbuAI() {
               }
             } else if (resolution.action === 'read') {
               response = tryGroundedAnswer(text) ?? shapeCreateUnclear()
+            } else if (resolution.action === 'audio_help') {
+              // Audio complaint mid-create → help with sound, KEEP the draft.
+              response = resolution.message
             } else {
               response = shapeCreateUnclear()
             }

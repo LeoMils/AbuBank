@@ -105,6 +105,11 @@ function extractPerson(text: string): string | null {
 
 /** Extract location: a venue phrase ("בקפה גרג רעננה") or a bare city. */
 function extractLocation(text: string): { value: string; span: string } | null {
+  // Pronominal home: "אצלי בבית" (at my place), "אצלנו", "אצלה בבית" — one word
+  // "אצל+suffix" (no space) so it never collides with "אצל <person>".
+  const homeRe = /(?<![א-ת])(אצל(?:י|נו|ה|ו|ם|ן|כם|כן)(?:\s+בבית)?)(?![א-ת])/u
+  const hm = homeRe.exec(text)
+  if (hm) { const value = clean(hm[1]!); if (value.length >= 2) return { value, span: hm[1]! } }
   // Venue: ב + head-word + following proper-noun words up to a boundary.
   const venueRe = new RegExp(`(?<![֐-׿])ב(${VENUE_HEAD})((?:\\s+[^\\s]+)*)`, 'u')
   const vm = venueRe.exec(text)
