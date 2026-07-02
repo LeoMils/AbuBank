@@ -149,7 +149,10 @@ export function normalizeTurn(raw: string, messages: RuntimeContext['messages'])
 const DATE_QUERY_RE =
   /(?:איזה יום היום|מה היום|מה התאריך|איזה תאריך|באיזה תאריך אנחנו|qué día es hoy|que dia es hoy|qué fecha|que fecha)/iu
 const AUDIO_COMPLAINT_RE =
-  /(?:לא\s+שומעת?\s+אות[ךיו]|אני\s+לא\s+שומע|לא\s+מדברת|הקול\s+נעלם|אין\s+קול|למה\s+את\s+שותקת|no\s+te\s+(?:escucho|oigo))/iu
+  /(?:לא\s+שומעת?\s+אות[ךיו]|אני\s+לא\s+שומע|לא\s+שמעתי(?:\s+אות[ךיו])?|לא\s+מדברת|הקול\s+נעלם|אין\s+קול|למה\s+את\s+שותקת|no\s+te\s+(?:escucho|oigo))/iu
+// Frustration the shared regex misses — "you're not answering what I asked".
+const FRUSTRATION_EXTRA_RE =
+  /את\s+לא\s+עונה|לא\s+ענית\s+לי|לא\s+על\s+זה\s+שאלתי|לא\s+ענית\s+על|זה\s+לא\s+מה\s+ששאלתי|את\s+לא\s+עונה\s+למה\s+ששאלתי/u
 const CONTINUATION_EXTRA_RE = /תשלימי\s+את\s+המשפט|תסיימי\s+את\s+המשפט|תגמרי\s+את\s+המשפט/u
 const RECALL_TOPIC_RE = /על\s+מה\s+דיבר(?:נו|ת)|מה\s+דיברנו|de\s+qu[eé]\s+hablamos/iu
 // "מתי יש לי פגישה עם X" / "מתי הפגישה עם X" → search across ALL days (never create,
@@ -191,8 +194,8 @@ export function classifyIntent(
   // Continuation / resume of the last answer.
   if (isContinuation(t) || CONTINUATION_EXTRA_RE.test(t)) return 'continuation'
 
-  // Frustration / challenge ("את לא מבינה אותי", "למה אין לך?").
-  if (isFrustration(t) || isWhyChallenge(t) || isOnlineChallenge(t)) return 'frustration'
+  // Frustration / challenge ("את לא מבינה אותי", "למה אין לך?", "את לא עונה").
+  if (isFrustration(t) || isWhyChallenge(t) || isOnlineChallenge(t) || FRUSTRATION_EXTRA_RE.test(t)) return 'frustration'
 
   // Date/day questions answered from the real clock — never invented, never "באיזה יום".
   if (DATE_QUERY_RE.test(t)) return 'date_query'

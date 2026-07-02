@@ -175,6 +175,8 @@ export function relationOf(aName: string, bName: string): RelationResult {
     if (exSpousesOf(s).includes(aHe)) return done('ex_sibling_in_law')
   }
   for (const spHe of currentSpousesOf(B)) { const sp = get(idx, spHe); if (sp && siblingsOf(idx, sp).includes(aHe)) return done('sibling_in_law') }
+  // ex-sibling-in-law (reverse): A is a sibling of an EX-spouse of B (Leo ↔ Rafi).
+  for (const spHe of exSpousesOf(B)) { const sp = get(idx, spHe); if (sp && siblingsOf(idx, sp).includes(aHe)) return done('ex_sibling_in_law') }
 
   return done('unknown')
 }
@@ -189,9 +191,9 @@ export interface ParsedRelationQuery { subject: string | null; target: string | 
  */
 export function parseRelationQuery(text: string): ParsedRelationQuery {
   const t = text.trim()
-  // "מה/מי X עבור/בשביל/ל Y"
-  let m = t.match(/(?:מה|מי)\s+([א-ת]{2,})\s+(?:עבור|בשביל)\s+([א-ת]{2,})/u)
-  if (m) return { subject: m[1]!, target: m[2]!, ok: true }
+  // "מה/מי (זה/זאת)? X עבור/בשביל Y" — skip the filler "זה/זאת".
+  let m = t.match(/(?:מה|מי)\s+(?:ז[הא]\s+)?([א-ת]{2,})\s+(?:עבור|בשביל)\s+([א-ת]{2,})/u)
+  if (m && m[1] !== 'זה' && m[1] !== 'זאת') return { subject: m[1]!, target: m[2]!, ok: true }
   // "מה הקשר בין X ל/לבין Y" — X is subject, Y is target (order preserved).
   m = t.match(/(?:הקשר|היחס)\s+בין\s+([א-ת]{2,})\s+(?:ל|לבין)\s*([א-ת]{2,})/u)
   if (m) return { subject: m[1]!, target: m[2]!, ok: true }

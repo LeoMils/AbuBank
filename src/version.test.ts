@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.15.0-full-operational-runtime')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Full Operational Runtime (finalizer + trace + no-bypass guard; text+voice flagged cutover)')
+    expect(APP_VERSION.version).toBe('0.16.0-intelligence-high-green')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Intelligence High-Green (meta/goal/dialogue/family/calendar/online/confidence layers)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

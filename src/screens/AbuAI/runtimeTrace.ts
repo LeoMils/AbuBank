@@ -7,7 +7,7 @@
  * runtime and not a legacy emitter.
  */
 export type RuntimeStage =
-  | 'input' | 'normalize' | 'intent' | 'domain' | 'tool' | 'finalize' | 'supervise' | 'deliver'
+  | 'input' | 'normalize' | 'meta' | 'intent' | 'domain' | 'tool' | 'finalize' | 'supervise' | 'deliver'
 
 export const RUNTIME_STAMP = 'RUNTIME_FINALIZED' as const
 

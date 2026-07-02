@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.15.0-full-operational-runtime'
-const BUILD_LABEL = 'AbuBank — Full Operational Runtime (finalizer + trace + no-bypass guard; text+voice flagged cutover)'
+const BUILD_VERSION = '0.16.0-intelligence-high-green'
+const BUILD_LABEL = 'AbuBank — Intelligence High-Green (meta/goal/dialogue/family/calendar/online/confidence layers)'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

@@ -20,6 +20,7 @@ import { type SupervisorVerdict } from './cognitiveSupervisor'
 import { type DeliveryState } from './conversationDeliveryEngine'
 import { finalize } from './runtimeFinalizer'
 import { type RuntimeStage, type RuntimeTrace } from './runtimeTrace'
+import { metaReason, type MetaResult } from './metaReasoner'
 
 export interface FullTurnTools {
   /** Grounded LLM answer for general knowledge / prose. */
@@ -42,6 +43,8 @@ export interface FullTurnResult {
   source: 'deterministic' | 'llm' | 'online' | 'fallback'
   /** RUNTIME_FINALIZED trace — checked by noBypassRuntimeGuard. */
   trace: RuntimeTrace
+  /** what the Meta Reasoner understood the user actually asked. */
+  meta: MetaResult
 }
 
 const ONLINE_FAIL: Record<string, string> = {
@@ -56,6 +59,8 @@ export async function runFullTurn(
   ctx: RuntimeContext,
   tools: FullTurnTools,
 ): Promise<FullTurnResult> {
+  // Meta Reasoner FIRST — understand what was actually asked (traced every turn).
+  const meta = metaReason(input, state)
   const decision = runCognitiveTurn(state, input, ctx)
 
   let display = ''
@@ -95,10 +100,10 @@ export async function runFullTurn(
 
   // Single finalizer tail: Cognitive Supervisor (gate + repair + honest limit) →
   // Conversation Delivery Engine → RUNTIME_FINALIZED trace.
-  const priorStages: RuntimeStage[] = ['input', 'normalize', 'intent', source === 'deterministic' ? 'domain' : 'tool']
+  const priorStages: RuntimeStage[] = ['input', 'normalize', 'meta', 'intent', source === 'deterministic' ? 'domain' : 'tool']
   const fin = finalize({ display, speak, intent, source, priorStages, dataAvailable: true, forVoice: true })
   return {
     intent, display: fin.display, speak: fin.speak, delivery: fin.delivery, state: st, sideEffect,
-    supervisor: fin.supervisor, routedThroughRuntime: true, source, trace: fin.trace,
+    supervisor: fin.supervisor, routedThroughRuntime: true, source, trace: fin.trace, meta,
   }
 }

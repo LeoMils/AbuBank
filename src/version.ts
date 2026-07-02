@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.15.0-full-operational-runtime',
-  buildLabel: 'AbuBank — Full Operational Runtime (finalizer + trace + no-bypass guard; text+voice flagged cutover)',
+  version:    '0.16.0-intelligence-high-green',
+  buildLabel: 'AbuBank — Intelligence High-Green (meta/goal/dialogue/family/calendar/online/confidence layers)',
   buildDate:  '2026-07-02',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
