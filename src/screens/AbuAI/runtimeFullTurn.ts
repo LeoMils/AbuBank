@@ -21,6 +21,14 @@ import { type DeliveryState } from './conversationDeliveryEngine'
 import { finalize } from './runtimeFinalizer'
 import { type RuntimeStage, type RuntimeTrace } from './runtimeTrace'
 import { metaReason, type MetaResult } from './metaReasoner'
+import { checkCalendarContradiction } from './contradictionGuard'
+import { assessConfidence } from './confidenceGuard'
+import { getTodayEvents, getTomorrowEvents } from './tools'
+
+function calendarCountForScope(scope: 'today' | 'tomorrow'): number {
+  try { return scope === 'tomorrow' ? getTomorrowEvents().events.length : getTodayEvents().events.length }
+  catch { return 0 }
+}
 
 export interface FullTurnTools {
   /** Grounded LLM answer for general knowledge / prose. */
@@ -73,6 +81,18 @@ export async function runFullTurn(
   if (decision.handled) {
     display = decision.display ?? ''
     speak = decision.speak ?? display
+    // Contradiction Guard (live): a calendar read must agree with the real store.
+    if (intent === 'calendar_read') {
+      const scope = /מחר/u.test(input) ? 'tomorrow' : 'today'
+      const real = calendarCountForScope(scope)
+      const c = checkCalendarContradiction(display, real)
+      if (c.contradiction) { display = real === 0 ? (scope === 'tomorrow' ? 'מחר אין כלום. יום שקט.' : 'היום אין כלום ביומן.') : `יש לך ${real} דברים ביומן.`; speak = display }
+    }
+    // Confidence Guard (live): a family turn with no resolved directional pair must
+    // not assert a relation as fact.
+    if (meta.domain === 'family' && assessConfidence(meta).block && !/לא אנחש|לא בטוחה|לא יודעת/u.test(display)) {
+      display = 'אני לא בטוחה בקשר הזה, אז לא אנחש. תגידי לי מי מי ואני אזכור.'; speak = display
+    }
   } else if (decision.needsOnline && decision.online) {
     source = 'online'
     intent = 'online'
@@ -101,7 +121,8 @@ export async function runFullTurn(
   // Single finalizer tail: Cognitive Supervisor (gate + repair + honest limit) →
   // Conversation Delivery Engine → RUNTIME_FINALIZED trace.
   const priorStages: RuntimeStage[] = ['input', 'normalize', 'meta', 'intent', source === 'deterministic' ? 'domain' : 'tool']
-  const fin = finalize({ display, speak, intent, source, priorStages, dataAvailable: true, forVoice: true })
+  const recentAssistant = ctx.messages.filter(m => m.role === 'assistant').map(m => m.content).slice(-4)
+  const fin = finalize({ display, speak, intent, source, priorStages, dataAvailable: true, forVoice: true, recentAssistant })
   return {
     intent, display: fin.display, speak: fin.speak, delivery: fin.delivery, state: st, sideEffect,
     supervisor: fin.supervisor, routedThroughRuntime: true, source, trace: fin.trace, meta,

@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.16.0-intelligence-high-green',
-  buildLabel: 'AbuBank — Intelligence High-Green (meta/goal/dialogue/family/calendar/online/confidence layers)',
+  version:    '0.17.0-behavioral-production-green',
+  buildLabel: 'AbuBank — Behavioral Production Green (naturalizer + guards wired live; master replay + 786 behavior gauntlet)',
   buildDate:  '2026-07-02',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

@@ -13,6 +13,8 @@ import { type RuntimeIntent } from './cognitiveRuntime'
 import { supervise, repair, type SupervisorVerdict } from './cognitiveSupervisor'
 import { planDelivery, type DeliveryState } from './conversationDeliveryEngine'
 import { stampTrace, type RuntimeStage, type RuntimeTrace } from './runtimeTrace'
+import { naturalizeHebrew } from './hebrewNaturalizer'
+import { guardDialogue } from './dialogueManager'
 
 const HONEST_LIMIT = 'לא הצלחתי לנסח את זה כמו שצריך. תגידי לי שוב מה חשוב לך?'
 
@@ -25,6 +27,8 @@ export interface FinalizeInput {
   priorStages: RuntimeStage[]
   dataAvailable?: boolean
   forVoice?: boolean
+  /** recent assistant messages (most-recent last) for the dialogue loop guard. */
+  recentAssistant?: string[]
 }
 
 export interface FinalizeResult {
@@ -40,6 +44,16 @@ export function finalize(input: FinalizeInput): FinalizeResult {
   let speak = (input.speak ?? display).trim()
   const dataAvailable = input.dataAvailable ?? true
   const forVoice = input.forVoice ?? true
+
+  // Hebrew Naturalizer — repair fixable grammar slips before anything else.
+  display = naturalizeHebrew(display).text
+  speak = naturalizeHebrew(speak).text
+
+  // Dialogue Manager — break a repeat/clarification/apology loop.
+  if (input.recentAssistant && input.recentAssistant.length) {
+    const dlg = guardDialogue(display, input.recentAssistant)
+    if (!dlg.allow && dlg.replacement) { display = dlg.replacement; speak = dlg.replacement }
+  }
 
   let verdict = supervise(speak, { intent: input.intent, dataAvailable, forVoice })
   let repaired = false

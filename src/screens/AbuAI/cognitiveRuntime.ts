@@ -158,9 +158,10 @@ const RECALL_TOPIC_RE = /על\s+מה\s+דיבר(?:נו|ת)|מה\s+דיברנו|d
 // "מתי יש לי פגישה עם X" / "מתי הפגישה עם X" → search across ALL days (never create,
 // never ask "באיזה יום"). Must be tested BEFORE isCreateIntent, which is greedy.
 const SEARCH_WHEN_RE = /^מתי\s+.*(?:יש\s+לי|ה?פגישה|ה?תור|ה?ביקור|נפגש|פגוש)/u
-// Live/current-info that onlineIntent does not already classify (buses/trains/weather).
+// Live/current-info that onlineIntent does not already classify (buses/trains/
+// weather/local events/movies) — kept in sync with knowledgeRouter's routing.
 const ONLINE_EXTRA_RE =
-  /(?:מתי\s+ה?אוטובוס|ה?אוטובוס\s+ה?בא|מתי\s+ה?רכבת|ה?רכבת\s+ה?באה|מתי\s+ה?טיסה|מזג\s+ה?אוויר|תחזית|חדשות\s+ה?יום)/u
+  /(?:מתי\s+ה?אוטובוס|ה?אוטובוס\s+(?:ה?בא|מ)|מתי\s+ה?רכבת|ה?רכבת\s+(?:ה?באה|מ)|מתי\s+ה?טיסה|מזג\s+ה?אוויר|תחזית|חדשות\s+ה?יום|סרטים|קולנוע|הצגות|מה\s+פתוח)/u
 // A narrative event description WITHOUT an explicit create verb ("ביום שלישי אופיר
 // … בשעה שבע … אצלה שעתיים") — day + time + person/place → a calendar create, so it
 // is never mistaken for a family question just because family names appear in it.
@@ -191,8 +192,9 @@ export function classifyIntent(
   // While a calendar draft is pending, the turn resolves it (save/cancel/change/park).
   if (pending) return 'confirmation'
 
-  // Continuation / resume of the last answer.
-  if (isContinuation(t) || CONTINUATION_EXTRA_RE.test(t)) return 'continuation'
+  // Continuation / resume, or topic recall ("על מה דיברנו", even prefixed by
+  // "יש לך זיכרון …") — both are handled inside the continuation case.
+  if (isContinuation(t) || CONTINUATION_EXTRA_RE.test(t) || RECALL_TOPIC_RE.test(t)) return 'continuation'
 
   // Frustration / challenge ("את לא מבינה אותי", "למה אין לך?", "את לא עונה").
   if (isFrustration(t) || isWhyChallenge(t) || isOnlineChallenge(t) || FRUSTRATION_EXTRA_RE.test(t)) return 'frustration'
