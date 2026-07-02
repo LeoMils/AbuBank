@@ -327,6 +327,8 @@ export function AbuAI() {
   // Conversation Operating System — remembers the last answer (for "תמשיכי") and
   // the last online failure (to explain "למה?"). Session-scoped.
   const conversationOSRef = useRef<ConvState>(IDLE_CONV)
+  // Cognitive Runtime v2 frustration state (rotates empathetic replies across turns).
+  const cogFrustrationRef = useRef({ count: 0, variant: 0 })
 
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
@@ -659,22 +661,35 @@ export function AbuAI() {
         }
       }
 
-      // ─── Cognitive Runtime v2 (single-pipeline authority — staged cutover) ──
-      // cognitiveRuntime.ts is the central pipeline every turn will route through
-      // (proven end-to-end by src/eval/latestRealIphoneFullRuntimeReplay). It is
-      // wired here FIRST for the date/day intent, which previously had no handler
-      // and fell to the LLM — the real iPhone "date question → long unrelated text"
-      // failure. The answer is composed + verified inside the runtime, so it can
-      // never bounce "באיזה יום?" back at a date question. The remaining intents
-      // are cut over incrementally behind the full suite as the gate.
+      // ─── Cognitive Runtime v2 (single-pipeline authority) ─────────────────
+      // cognitiveRuntime.ts is the central pipeline every turn is routed through
+      // (proven end-to-end by src/eval/latestRealIphoneFullRuntimeReplay). It OWNS
+      // the read-only / relational / conversational intents that previously fell to
+      // the LLM or were broken: date (no more "long unrelated text"), calendar
+      // SEARCH across all days ("מתי יש לי פגישה עם מוטי" — never "באיזה יום?"),
+      // audio complaints (never cancels), and specific frustration recovery. Every
+      // answer it returns is composed + verified inside the runtime. It DEFERS
+      // (falls through) for create / reminder / delete / modify / online / general,
+      // which keep their existing handlers until they are cut over behind the suite.
       {
+        const RUNTIME_OWNED = new Set(['date_query', 'calendar_search', 'audio_complaint', 'frustration'])
         const decision = runCognitiveTurn(
-          { ...IDLE_RUNTIME, conv: conversationOSRef.current },
+          {
+            ...IDLE_RUNTIME,
+            conv: conversationOSRef.current,
+            createState,
+            frustrationCount: cogFrustrationRef.current.count,
+            frustrationVariant: cogFrustrationRef.current.variant,
+          },
           msgText,
           { messages, now: new Date() },
         )
-        if (decision.handled && decision.intent === 'date_query' && decision.display && decision.verifier.ok) {
+        if (decision.handled && decision.display && decision.verifier.ok && RUNTIME_OWNED.has(decision.intent)) {
           conversationOSRef.current = decision.state.conv
+          cogFrustrationRef.current = {
+            count: decision.state.frustrationCount,
+            variant: decision.state.frustrationVariant,
+          }
           setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(decision.display!, companionPlan), timestamp: Date.now() }])
           setLoading(false); streamingMsgIdRef.current = null
           return

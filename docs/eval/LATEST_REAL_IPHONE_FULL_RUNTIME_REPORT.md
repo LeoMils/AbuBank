@@ -36,7 +36,7 @@ modules are kept **as tools** underneath it.
 | `src/eval/latestRealIphoneFullRuntimeReplay.ts` | Multi-turn replay driven through the **same** `runCognitiveTurn`/`finalizeExternalAnswer` the UI uses. |
 | `src/eval/latestRealIphoneFullRuntimeReplay.test.ts` | Asserts the replay at **100%** (in-memory localStorage shim so the real save round-trip works in `node`). |
 | `src/eval/fullRuntimeExpected.ts` | Independent recomputation of expected day/date (so the date assertion checks the runtime, not itself). |
-| `src/screens/AbuAI/index.tsx` | **Live wire** (staged): `date_query` now routed through the runtime authority; import added. |
+| `src/screens/AbuAI/index.tsx` | **Live wire:** the text `handleSend` now routes `date_query`, `calendar_search`, `audio_complaint`, and `frustration` through the runtime as the authority (composed + verified answers). Defers create/reminder/delete/modify/online/general to their existing handlers. Frustration state persists in `cogFrustrationRef`. |
 | `src/version.ts` · `api/health.ts` · `src/version.test.ts` | Version → `0.13.0-cognitive-runtime-v2`. |
 
 The 9 layers are implemented inside `cognitiveRuntime.ts`: 1 Input Normalizer ·
@@ -118,11 +118,18 @@ and honest gaps:
 - **Deploy required first** — this build is not deployed; the live iPhone still
   runs 0.12.1.
 - **Physical iPhone mic/audio/TTS** — not exercised by a headless replay.
-- **UI cutover is STAGED, not complete.** Only `date_query` is wired live in the
-  **text** path. Calendar/family/online/continuation still run through the legacy
-  cascade in the live UI (they are proven in the runtime, but not yet the sole
-  authority in `handleSend`, and the **voice** handler is untouched). Full cutover
-  (replacing `createState`/`conversationOSRef`/the ~20 emit points + voice with the
-  single runtime authority) is the next change and must be gated by the full suite.
+- **UI cutover is PARTIAL, not complete.** The live **text** path now routes
+  `date_query`, `calendar_search`, `audio_complaint`, and `frustration` through the
+  runtime authority (0 suite regressions). Still on the legacy cascade in the live
+  UI: calendar **create/confirm/save** (uses the existing gauntlet-proven create
+  machine), **delete/modify**, **reminders/recurring**, **online**, **general
+  knowledge / emotional** (so the general LLM answer on the text path is NOT yet
+  forced through `finalizeExternalAnswer` — a direct-LLM path still exists), and the
+  entire **voice** handler. Full cutover (single runtime authority for every emit
+  point + voice, LLM output always finalized) is the next change, gated by the suite.
+- **Suite ≠ behaviour.** `handleSend`/voice have ~no direct automated coverage, so a
+  green suite does NOT prove the live wire behaves correctly end-to-end. Only the
+  deterministic replay (which drives the real runtime functions) is HIGH here; the
+  live UI wire is verified by typecheck + build + inspection, not by a render test.
 
 **Not claimed:** production readiness, deployed verification, or full UI cutover.
