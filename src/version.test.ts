@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.14.0-thinking-runtime')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Thinking Runtime (directional family engine + smart calendar; family/read wired)')
+    expect(APP_VERSION.version).toBe('0.15.0-cognitive-os')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Cognitive OS (full-turn engine + supervisor + delivery; flagged no-bypass cutover)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

@@ -10,7 +10,16 @@ import { compileHumanAnswer } from './answerCompiler'
 import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
 import { toSpokenText } from './spokenPersona'
-import { runCognitiveTurn, IDLE_RUNTIME } from './cognitiveRuntime'
+import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState } from './cognitiveRuntime'
+import { runFullTurn } from './runtimeFullTurn'
+import { buildFullTurnTools } from './fullTurnBridge'
+
+// Full-cutover flag: when enabled, EVERY text turn is produced by the Cognitive
+// Runtime (deterministic domains + LLM/online finalized through the verifier +
+// supervisor) and NO legacy path emits a final answer. Default off — flipping it
+// on for real users needs physical-device verification, which cannot be done here.
+const COGNITIVE_RUNTIME_FULL =
+  (import.meta.env.VITE_ABUAI_COGNITIVE_RUNTIME_V2_FULL as string | undefined) === 'true'
 import {
   IDLE_CONV, handleConversationTurn, recordAnswer, recordOnline,
   type ConvState, type OnlineFailReason,
@@ -329,6 +338,9 @@ export function AbuAI() {
   const conversationOSRef = useRef<ConvState>(IDLE_CONV)
   // Cognitive Runtime v2 frustration state (rotates empathetic replies across turns).
   const cogFrustrationRef = useRef({ count: 0, variant: 0 })
+  // Persisted full-runtime state (pending calendar draft + conversation memory)
+  // for the flagged full-cutover path, so multi-turn create/confirm survives.
+  const cognitiveRuntimeStateRef = useRef<RuntimeState>(IDLE_RUNTIME)
 
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
@@ -484,6 +496,24 @@ export function AbuAI() {
     let accumulated = ''
 
     try {
+      // ─── FULL CUTOVER (flagged): the Cognitive Runtime is the SOLE authority ──
+      // When ABUAI_COGNITIVE_RUNTIME_V2_FULL is on, every text turn is produced by
+      // runFullTurn — deterministic domains answered directly, LLM/online executed
+      // as TOOLS and finalized through the verifier + supervisor. NO legacy path
+      // below runs, so no final answer is emitted outside the runtime. Multi-turn
+      // create/confirm survives via cognitiveRuntimeStateRef.
+      if (COGNITIVE_RUNTIME_FULL) {
+        const tools = buildFullTurnTools(newMessages, voiceMode)
+        const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
+        const result = await runFullTurn(seed, msgText, { messages: newMessages, now: new Date() }, tools)
+        cognitiveRuntimeStateRef.current = result.state
+        conversationOSRef.current = result.state.conv
+        cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
+        setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: result.display, timestamp: Date.now() }])
+        setLoading(false); streamingMsgIdRef.current = null
+        return
+      }
+
       // ─── Calendar Create State Machine ────────────────────────────────────
       if (createState.phase !== 'idle') {
         // Forgiving recovery: cancel / confirm / replace-with-new-request /

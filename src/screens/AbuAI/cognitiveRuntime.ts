@@ -158,6 +158,16 @@ const SEARCH_WHEN_RE = /^מתי\s+.*(?:יש\s+לי|ה?פגישה|ה?תור|ה?ב
 // Live/current-info that onlineIntent does not already classify (buses/trains/weather).
 const ONLINE_EXTRA_RE =
   /(?:מתי\s+ה?אוטובוס|ה?אוטובוס\s+ה?בא|מתי\s+ה?רכבת|ה?רכבת\s+ה?באה|מתי\s+ה?טיסה|מזג\s+ה?אוויר|תחזית|חדשות\s+ה?יום)/u
+// A narrative event description WITHOUT an explicit create verb ("ביום שלישי אופיר
+// … בשעה שבע … אצלה שעתיים") — day + time + person/place → a calendar create, so it
+// is never mistaken for a family question just because family names appear in it.
+const DAY_CUE = /(?:מחר|מחרתיים|היום|הערב|ביום\s+(?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת))/u
+const TIME_CUE = /(?:בשעה|בשבע|בשמונה|בתשע|בעשר|באחת|בשתיים|בשלוש|בארבע|בחמש|בשש|בבוקר|בערב|בצהריים|וחצי)/u
+const PLACE_PERSON_CUE = /(?:אצל|עם\s+[א-ת]{2,})/u
+function looksLikeNarrativeMeeting(t: string): boolean {
+  if (/^(?:מה|מי|מתי|איפה|כמה)\b/u.test(t) || /[?؟]/.test(t)) return false
+  return DAY_CUE.test(t) && TIME_CUE.test(t) && PLACE_PERSON_CUE.test(t)
+}
 
 /**
  * Single priority ladder. Nothing bypasses it. Order matters:
@@ -204,6 +214,9 @@ export function classifyIntent(
   // so live questions like "מה יש בקולנוע היום" fall through to online, not here.
   if (/(?:מה יש לי|יש לי משהו|מה ה?תוכניות שלי|מה ביומן|מה יש ביומן)/u.test(t) &&
       /(?:היום|מחר|השבוע|הערב|יומן|תוכניות)/u.test(t)) return 'calendar_read'
+
+  // Narrative event description (day + time + person/place, no create verb).
+  if (looksLikeNarrativeMeeting(t)) return 'calendar_create'
 
   // Family relation queries: two known family names, or "מי ה<relation> של <person>".
   if (looksLikeFamilyQuery(t)) return 'family'
@@ -517,7 +530,24 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
 
     case 'calendar_create': {
       // Start (or restart) a create; ask/confirm — do NOT save until confirmed.
-      const next = startCreate(normalized)
+      let next = startCreate(normalized)
+      const smart = understandMeetingSmart(normalized)
+      // Narrative requests ("ביום שלישי אופיר … בשעה שבע … אצלה שעתיים") that the
+      // base parser can't title but the smart layer fully understood → synthesize
+      // the confirming draft from the smart understanding (who/date/time/location).
+      if (next.phase !== 'confirming' && smart.who && smart.date && smart.time) {
+        next = {
+          phase: 'confirming',
+          draft: {
+            title: smart.title ?? `פגישה עם ${smart.who}`,
+            date: smart.date, time: smart.time, person: smart.who,
+            location: smart.location ?? null,
+            subject: smart.subject ?? null, purpose: smart.purpose ?? null,
+            notes: smart.notes ?? null, emoji: '📅',
+          },
+          missing: [],
+        }
+      }
       let text = next.phase === 'confirming'
         ? shapeCreateConfirm(next.draft)
         : shapeCreateClarify(next.missing, next.draft)
@@ -525,7 +555,6 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       // ("פרטים חשובים") the person buried in a rambling request. Appended before
       // the trailing confirmation question; absent for plain requests (no change).
       if (next.phase === 'confirming') {
-        const smart = understandMeetingSmart(normalized)
         const extra: string[] = []
         if (smart.durationLabel) extra.push(`למשך ${smart.durationLabel}`)
         if (smart.importantDetails.length) extra.push(`פרטים חשובים: ${smart.importantDetails.join('; ')}`)
