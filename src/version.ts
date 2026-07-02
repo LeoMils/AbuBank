@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.19.0-single-path-runtime',
-  buildLabel: 'AbuBank — Single-Path Runtime (controller-reasoned reminders/recurring/delete/modify; flag hardcoded)',
+  version:    '0.20.0-domain-plugins',
+  buildLabel: 'AbuBank — Domain Plugin Architecture (generic planner; reminders/recurring/delete/modify as plugins)',
   buildDate:  '2026-07-03',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

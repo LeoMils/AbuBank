@@ -41,11 +41,21 @@ import {
 } from './calendarCreate'
 import { understandMeeting } from './meetingIntelligence'
 import { understandMeetingSmart } from './calendarIntelligence'
-import {
-  reminderReasoner, recurringReasoner, deleteReasoner, modifyReasoner,
-  isReminderIntent, isRecurringIntent, type MutationSideEffect,
-} from './calendarMutationReasoner'
+import { isReminderIntent, isRecurringIntent, type MutationSideEffect } from './calendarMutationReasoner'
+import { runPlan } from './domainPlanner'
+import { registerCalendarMutationPlugins } from './calendarMutationPlugins'
 import type { ReminderDraft } from '../AbuCalendar/reminders/types'
+
+// Register the domain plugins once, at module load. Adding a future domain = add a
+// plugin + register it here; the planner and controller never change.
+registerCalendarMutationPlugins()
+
+// Precedence intents the runtime owns directly — the planner does not run for these
+// (audio must never cancel; continuation/frustration/confirmation/date have fixed
+// handling). Every other intent goes through the generic domain planner first.
+const PLANNER_SKIP: ReadonlySet<RuntimeIntent> = new Set<RuntimeIntent>([
+  'audio_complaint', 'continuation', 'frustration', 'confirmation', 'date_query',
+])
 import { answerFamilyRelation } from './familyReasoning'
 import { answerRelationQuery } from './familyRelationEngine'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
@@ -493,6 +503,25 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     }
   }
 
+  // ─── Generic Domain Planner ───────────────────────────────────────────────
+  // Plugins self-select and reason; the controller finalizes the winner. Runs for
+  // every turn EXCEPT the precedence intents the runtime owns directly
+  // (audio/continuation/frustration/confirmation/date). A plugin that handles the
+  // turn produces the answer; otherwise the built-in domain cases below run.
+  if (!PLANNER_SKIP.has(intent)) {
+    const plan = runPlan({ input: normalized, now: ctx.now, messages: ctx.messages, state })
+    if (plan.primary && plan.primary.handled && plan.primary.answer) {
+      const { display, speak } = composeHebrew(plan.primary.answer)
+      const verifier = verifyAnswer(display, { intent, dataAvailable: true })
+      return {
+        ...base, handled: true, display, speak, chunks: chunk(display),
+        needsLLM: false, needsOnline: false, online: null, grounding: null,
+        sideEffect: plan.primary.sideEffect ?? null, verifier,
+        state: { ...state, ...plan.statePatch, lastIntent: intent },
+      }
+    }
+  }
+
   switch (intent) {
     case 'date_query':
       return settle(dateReasoner(normalized, ctx.now), { state, dataAvailable: true })
@@ -653,52 +682,10 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
         state: { ...state, lastIntent: intent },
       }
 
-    case 'reminder': {
-      // Controller-reasoned reminders (legacy parser/store are TOOLS). Carries a
-      // pending draft across turns for the time/confirmation follow-up.
-      const res = reminderReasoner(normalized, ctx.now, state.pendingReminder)
-      const { display, speak } = composeHebrew(res.text)
-      const verifier = verifyAnswer(display, { intent, dataAvailable: true })
-      return {
-        ...base, handled: true, display, speak, chunks: chunk(display),
-        needsLLM: false, needsOnline: false, online: null, grounding: null,
-        sideEffect: res.sideEffect, verifier,
-        state: { ...state, pendingReminder: res.pendingReminder === undefined ? state.pendingReminder : res.pendingReminder, lastIntent: intent },
-      }
-    }
-
-    case 'calendar_recurring': {
-      const res = recurringReasoner(normalized)
-      const { display, speak } = composeHebrew(res.text)
-      const verifier = verifyAnswer(display, { intent, dataAvailable: true })
-      return {
-        ...base, handled: true, display, speak, chunks: chunk(display),
-        needsLLM: false, needsOnline: false, online: null, grounding: null,
-        sideEffect: res.sideEffect, verifier, state: { ...state, lastIntent: intent },
-      }
-    }
-
-    case 'calendar_delete': {
-      const res = deleteReasoner(normalized)
-      const { display, speak } = composeHebrew(res.text)
-      const verifier = verifyAnswer(display, { intent, dataAvailable: true })
-      return {
-        ...base, handled: true, display, speak, chunks: chunk(display),
-        needsLLM: false, needsOnline: false, online: null, grounding: null,
-        sideEffect: res.sideEffect, verifier, state: { ...state, lastIntent: intent },
-      }
-    }
-
-    case 'calendar_update': {
-      const res = modifyReasoner(normalized)
-      const { display, speak } = composeHebrew(res.text)
-      const verifier = verifyAnswer(display, { intent, dataAvailable: true })
-      return {
-        ...base, handled: true, display, speak, chunks: chunk(display),
-        needsLLM: false, needsOnline: false, online: null, grounding: null,
-        sideEffect: res.sideEffect, verifier, state: { ...state, lastIntent: intent },
-      }
-    }
+    // reminder / calendar_recurring / calendar_delete / calendar_update are owned
+    // by the generic Domain Planner above (calendarMutationPlugins) — no special
+    // cases here. Any that the planner somehow does not handle fall to the general
+    // path below rather than emitting outside the runtime.
 
     case 'general':
     case 'unknown':
