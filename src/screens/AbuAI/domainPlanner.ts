@@ -10,13 +10,10 @@
  */
 import type { DomainPlugin, PluginContext, PluginResult, PluginSideEffect } from './domainPlugin'
 import type { RuntimeState } from './cognitiveRuntime'
+import { registeredPlugins } from './domainRegistry'
 
-const REGISTRY: DomainPlugin[] = []
+export { registerPlugin, registeredPlugins } from './domainRegistry'
 
-export function registerPlugin(plugin: DomainPlugin): void {
-  if (!REGISTRY.some(p => p.name === plugin.name)) REGISTRY.push(plugin)
-}
-export function registeredPlugins(): readonly DomainPlugin[] { return REGISTRY }
 /** For tests: run a plugin against a fresh registry without polluting the global one. */
 export function planWith(plugins: DomainPlugin[], ctx: PluginContext): DomainPlan {
   return execute(plugins, ctx)
@@ -66,5 +63,5 @@ function execute(plugins: DomainPlugin[], ctx: PluginContext): DomainPlan {
 
 /** Run the GLOBAL registry against this turn. */
 export function runPlan(ctx: PluginContext): DomainPlan {
-  return execute(REGISTRY, ctx)
+  return execute([...registeredPlugins()], ctx)
 }
