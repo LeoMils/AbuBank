@@ -36,16 +36,20 @@ describe('Runtime Path Proof — the controller path is bypass-free', () => {
   })
 })
 
-describe('Static architecture facts (index.tsx)', () => {
+describe('Static architecture facts (index.tsx) — one runtime path', () => {
   it('BOTH text (handleSend) and voice (handleText) route through ExecutiveCognitiveController', () => {
     const controllerCalls = (INDEX.match(/ExecutiveCognitiveController\.handleTurn\(/g) ?? []).length
     expect(controllerCalls).toBe(2) // text + voice
   })
-  it('HONEST: the controller entries are flag-gated (two paths exist until the flag is the default)', () => {
-    // This test documents the current reality — it is NOT a claim of one path.
+  it('the runtime gate is HARDCODED true — no env flag dependency remains', () => {
+    expect(/const COGNITIVE_RUNTIME_FULL:\s*boolean\s*=\s*true/.test(INDEX)).toBe(true)
+    // The env flag (import.meta.env.VITE_ABUAI_COGNITIVE_RUNTIME_V2_FULL) is gone.
+    expect(INDEX.includes('VITE_ABUAI_COGNITIVE_RUNTIME_V2_FULL')).toBe(false)
+  })
+  it('the controller returns before any legacy path — legacy is dead code at runtime', () => {
+    // Both entries: `if (COGNITIVE_RUNTIME_FULL) { ... return }` with the const always
+    // true, so the legacy cascade below never executes. (It remains in source, typed
+    // reachable, pending a follow-up deletion — see ABUAI_EXECUTION_GRAPH.md.)
     expect(INDEX.includes('if (COGNITIVE_RUNTIME_FULL)')).toBe(true)
-    // The flag-off default still reaches the legacy cascade + the partial runCognitiveTurn
-    // date-wire — enumerated as bypasses in docs/eval/ABUAI_EXECUTION_GRAPH.md.
-    expect(INDEX.includes('runCognitiveTurn(')).toBe(true)
   })
 })

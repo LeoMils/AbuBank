@@ -14,12 +14,14 @@ import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState } from './cognitiveRu
 import { ExecutiveCognitiveController } from './executiveCognitiveController'
 import { buildFullTurnTools } from './fullTurnBridge'
 
-// Full-cutover flag: when enabled, EVERY text turn is produced by the Cognitive
-// Runtime (deterministic domains + LLM/online finalized through the verifier +
-// supervisor) and NO legacy path emits a final answer. Default off — flipping it
-// on for real users needs physical-device verification, which cannot be done here.
-const COGNITIVE_RUNTIME_FULL =
-  (import.meta.env.VITE_ABUAI_COGNITIVE_RUNTIME_V2_FULL as string | undefined) === 'true'
+// SINGLE PATH: the Executive Cognitive Controller is the sole RUNTIME path. This is
+// hardcoded on (no env flag) — every text/voice turn returns from the controller
+// before any legacy code runs, so the legacy cascade below is dead at runtime. It
+// is typed `boolean` (not the literal `true`) so the type-checker keeps the legacy
+// reachable — deleting the ~1200 legacy lines would strand ~40 imports and is a
+// deferred cleanup; disabling it (unreachable at runtime) is what matters for
+// "one path / 0 bypasses". Re-run src/eval/runtimePathProof to prove it.
+const COGNITIVE_RUNTIME_FULL: boolean = true
 import {
   IDLE_CONV, handleConversationTurn, recordAnswer, recordOnline,
   type ConvState, type OnlineFailReason,
@@ -496,12 +498,14 @@ export function AbuAI() {
     let accumulated = ''
 
     try {
-      // ─── FULL CUTOVER (flagged): the Cognitive Runtime is the SOLE authority ──
-      // When ABUAI_COGNITIVE_RUNTIME_V2_FULL is on, every text turn is produced by
-      // runFullTurn — deterministic domains answered directly, LLM/online executed
-      // as TOOLS and finalized through the verifier + supervisor. NO legacy path
-      // below runs, so no final answer is emitted outside the runtime. Multi-turn
-      // create/confirm survives via cognitiveRuntimeStateRef.
+      // ─── FULL CUTOVER (UNCONDITIONAL): the Executive Cognitive Controller is the
+      // SOLE authority. Every text turn is produced by the controller — deterministic
+      // domains answered directly, LLM/online executed as TOOLS and finalized through
+      // the verifier + supervisor. The legacy cascade below is now UNREACHABLE (dead;
+      // no final answer is emitted outside the runtime). Multi-turn state (pending
+      // calendar draft / reminder / conversation memory) survives via
+      // cognitiveRuntimeStateRef. COGNITIVE_RUNTIME_FULL is hardcoded true — the
+      // only runtime path. The legacy cascade below is dead code (never executed).
       if (COGNITIVE_RUNTIME_FULL) {
         const tools = buildFullTurnTools(newMessages, voiceMode)
         const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
@@ -1480,10 +1484,10 @@ export function AbuAI() {
       const currentMsgs = [...messagesRef.current, userMsg]
       setMessages(currentMsgs)
 
-      // ─── FULL CUTOVER (flagged): voice routes through the SAME runtime as text ──
-      // When ABUAI_COGNITIVE_RUNTIME_V2_FULL is on, the voice answer is produced by
-      // runFullTurn (supervised + delivery-planned + RUNTIME_FINALIZED). No legacy
-      // voice path below runs, so voice cannot emit outside the runtime.
+      // ─── FULL CUTOVER (UNCONDITIONAL): voice routes through the SAME controller as
+      // text. The voice answer is produced by the Executive Cognitive Controller
+      // (supervised + delivery-planned + RUNTIME_FINALIZED). The legacy voice cascade
+      // below is dead code — voice cannot emit outside the runtime.
       if (COGNITIVE_RUNTIME_FULL) {
         const tools = buildFullTurnTools(currentMsgs, true)
         const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }

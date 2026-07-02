@@ -15,6 +15,7 @@
  */
 import {
   runCognitiveTurn, finalizeExternalAnswer, type RuntimeState, type RuntimeContext, type RuntimeIntent,
+  type CognitiveDecision,
 } from './cognitiveRuntime'
 import { type SupervisorVerdict } from './cognitiveSupervisor'
 import { type DeliveryState } from './conversationDeliveryEngine'
@@ -43,7 +44,7 @@ export interface FullTurnResult {
   speak: string
   delivery: DeliveryState
   state: RuntimeState
-  sideEffect: 'saved_appointment' | 'save_failed' | null
+  sideEffect: CognitiveDecision['sideEffect']
   supervisor: SupervisorVerdict & { repaired: boolean }
   /** Always true — structural proof that this answer came from the runtime. */
   routedThroughRuntime: true

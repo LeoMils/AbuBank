@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.18.0-executive-cognitive-controller',
-  buildLabel: 'AbuBank — Executive Cognitive Controller (single UI entry; recorded-conversation replay)',
-  buildDate:  '2026-07-02',
+  version:    '0.19.0-single-path-runtime',
+  buildLabel: 'AbuBank — Single-Path Runtime (controller-reasoned reminders/recurring/delete/modify; flag hardcoded)',
+  buildDate:  '2026-07-03',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
 } as const

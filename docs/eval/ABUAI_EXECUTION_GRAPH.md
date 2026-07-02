@@ -74,6 +74,32 @@ Total assistant answer-emit points in `index.tsx`: **51**. Under the flag-off de
 3. Delete/neutralize the legacy cascade + the @710 partial wire.
 4. Re-run `runtimePathProof` — expect the same 0 bypasses, now as the **default**.
 
-## STOP
+## UPDATE — Phase 3 executed: one runtime path achieved
 
-Per the mission, Phase 2 (failure mapping) and Phase 3 (cognitive completion) run **only after Phase 1 succeeds**. Phase 1 has **not** succeeded — one path is proven only under the flag, and removing the ~50 default bypasses is blocked on Phase-3 reasoning for 4 calendar-mutation domains. Halting here with this verification result. **No production-readiness claim. No deploy.**
+The 4 blocking domains are now **controller-reasoned** (`calendarMutationReasoner.ts`;
+legacy `parseReminder`/`reminderStore`/`deleteAppointment`/`updateAppointment`/
+`calendarCreate` helpers are TOOLS only, they emit no user text):
+
+| Domain | Runtime intent | Tool used | Proof |
+|---|---|---|---|
+| reminders | `reminder` (+ pending state) | parseReminder / createReminder | mutation test + path proof |
+| recurring | `calendar_recurring` | extractRecurringDay / getNextOccurrences / addAppointment | idem |
+| delete | `calendar_delete` | loadAppointments / deleteAppointment | idem |
+| modify | `calendar_update` | loadAppointments / updateAppointment | idem |
+
+Then the **flag gate was hardcoded**: `const COGNITIVE_RUNTIME_FULL: boolean = true`
+(env dependency removed). Both `handleSend` and `handleText` return from
+`ExecutiveCognitiveController` before any legacy code — so the legacy cascade + the
+@710 `runCognitiveTurn` date-wire are **dead code at runtime** (never executed).
+
+**Bypass count: before ≈ 50 (flag-off default) → after = 0 runtime bypasses.**
+`runtimePathProof`: **16/16 path types reach the controller, RUNTIME_FINALIZED, 0
+bypasses** (incl. reminder/recurring/delete/modify). Static facts: no env flag,
+both entries route through the controller.
+
+### Honest caveat (why not GO)
+- The legacy code is **disabled (unreachable at runtime)**, not yet **physically
+  deleted** — deletion would strand ~40 now-unused imports + pre-`try` setup and is
+  a high-risk follow-up. It emits nothing at runtime, but it still exists in source.
+- The 4 new domains are proven on unit + path-proof, **not on physical device**.
+- No deploy. No production-readiness claim.

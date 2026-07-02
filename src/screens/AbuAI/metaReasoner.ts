@@ -33,7 +33,8 @@ export interface MetaResult {
 const DOMAIN_OF: Record<RuntimeIntent, MetaDomain> = {
   date_query: 'date',
   calendar_read: 'calendar', calendar_search: 'calendar', calendar_create: 'calendar',
-  calendar_update: 'calendar', calendar_delete: 'calendar',
+  calendar_recurring: 'calendar', calendar_update: 'calendar', calendar_delete: 'calendar',
+  reminder: 'calendar',
   confirmation: 'confirmation', family: 'family', online: 'online',
   continuation: 'continuation', frustration: 'frustration', audio_complaint: 'audio',
   general: 'general', unknown: 'unknown',

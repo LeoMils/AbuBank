@@ -41,6 +41,11 @@ import {
 } from './calendarCreate'
 import { understandMeeting } from './meetingIntelligence'
 import { understandMeetingSmart } from './calendarIntelligence'
+import {
+  reminderReasoner, recurringReasoner, deleteReasoner, modifyReasoner,
+  isReminderIntent, isRecurringIntent, type MutationSideEffect,
+} from './calendarMutationReasoner'
+import type { ReminderDraft } from '../AbuCalendar/reminders/types'
 import { answerFamilyRelation } from './familyReasoning'
 import { answerRelationQuery } from './familyRelationEngine'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
@@ -61,8 +66,10 @@ export type RuntimeIntent =
   | 'calendar_read'
   | 'calendar_search'
   | 'calendar_create'
+  | 'calendar_recurring'
   | 'calendar_update'
   | 'calendar_delete'
+  | 'reminder'
   | 'confirmation'      // resolving a pending calendar draft (yes/no/change/audio)
   | 'family'
   | 'online'
@@ -81,6 +88,8 @@ export interface RuntimeState {
   lastIntent: RuntimeIntent | null
   /** last frustration reply index, so repeats never echo the same sentence. */
   frustrationVariant: number
+  /** a reminder draft awaiting time/confirmation (controller-reasoned). */
+  pendingReminder: ReminderDraft | null
 }
 
 export const IDLE_RUNTIME: RuntimeState = {
@@ -89,6 +98,7 @@ export const IDLE_RUNTIME: RuntimeState = {
   frustrationCount: 0,
   lastIntent: null,
   frustrationVariant: 0,
+  pendingReminder: null,
 }
 
 export interface RuntimeContext {
@@ -117,7 +127,7 @@ export interface CognitiveDecision {
   online: { query: string } | null
   /** grounded facts to hand a grounded-LLM composer when needsLLM for a domain. */
   grounding: string | null
-  sideEffect: 'saved_appointment' | 'save_failed' | null
+  sideEffect: 'saved_appointment' | 'save_failed' | MutationSideEffect
   verifier: VerifierReport
   state: RuntimeState
 }
@@ -189,6 +199,9 @@ export function classifyIntent(
   // or be answered as calendar data (real iPhone failure cluster 5).
   if (AUDIO_COMPLAINT_RE.test(t)) return 'audio_complaint'
 
+  // A pending reminder (awaiting time/confirmation) resolves before anything else.
+  if (state.pendingReminder) return 'reminder'
+
   // While a calendar draft is pending, the turn resolves it (save/cancel/change/park).
   if (pending) return 'confirmation'
 
@@ -208,6 +221,11 @@ export function classifyIntent(
 
   // "מתי יש לי פגישה עם X" is a SEARCH across all days — before the greedy create.
   if (SEARCH_WHEN_RE.test(t)) return 'calendar_search'
+
+  // Reminders ("תזכירי לי …") before calendar create — a reminder is not an event.
+  if (isReminderIntent(t)) return 'reminder'
+  // Recurring create ("כל יום שלישי …") before a single create.
+  if (isCreateIntent(t) && isRecurringIntent(t)) return 'calendar_recurring'
 
   // Calendar verbs (create/delete/modify/search) before generic reads.
   if (isCreateIntent(t)) return 'calendar_create'
@@ -635,16 +653,52 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
         state: { ...state, lastIntent: intent },
       }
 
-    case 'calendar_delete':
-    case 'calendar_update':
-      // Mutations still run in the caller against real storage, but the ANSWER is
-      // finalized through this runtime. Signal defer-with-grounding.
+    case 'reminder': {
+      // Controller-reasoned reminders (legacy parser/store are TOOLS). Carries a
+      // pending draft across turns for the time/confirmation follow-up.
+      const res = reminderReasoner(normalized, ctx.now, state.pendingReminder)
+      const { display, speak } = composeHebrew(res.text)
+      const verifier = verifyAnswer(display, { intent, dataAvailable: true })
       return {
-        ...base, handled: false, display: null, speak: null, chunks: [],
-        needsLLM: true, needsOnline: false, online: null, grounding: 'calendar_mutation',
-        sideEffect: null, verifier: { ok: true, violations: [] },
-        state: { ...state, lastIntent: intent },
+        ...base, handled: true, display, speak, chunks: chunk(display),
+        needsLLM: false, needsOnline: false, online: null, grounding: null,
+        sideEffect: res.sideEffect, verifier,
+        state: { ...state, pendingReminder: res.pendingReminder === undefined ? state.pendingReminder : res.pendingReminder, lastIntent: intent },
       }
+    }
+
+    case 'calendar_recurring': {
+      const res = recurringReasoner(normalized)
+      const { display, speak } = composeHebrew(res.text)
+      const verifier = verifyAnswer(display, { intent, dataAvailable: true })
+      return {
+        ...base, handled: true, display, speak, chunks: chunk(display),
+        needsLLM: false, needsOnline: false, online: null, grounding: null,
+        sideEffect: res.sideEffect, verifier, state: { ...state, lastIntent: intent },
+      }
+    }
+
+    case 'calendar_delete': {
+      const res = deleteReasoner(normalized)
+      const { display, speak } = composeHebrew(res.text)
+      const verifier = verifyAnswer(display, { intent, dataAvailable: true })
+      return {
+        ...base, handled: true, display, speak, chunks: chunk(display),
+        needsLLM: false, needsOnline: false, online: null, grounding: null,
+        sideEffect: res.sideEffect, verifier, state: { ...state, lastIntent: intent },
+      }
+    }
+
+    case 'calendar_update': {
+      const res = modifyReasoner(normalized)
+      const { display, speak } = composeHebrew(res.text)
+      const verifier = verifyAnswer(display, { intent, dataAvailable: true })
+      return {
+        ...base, handled: true, display, speak, chunks: chunk(display),
+        needsLLM: false, needsOnline: false, online: null, grounding: null,
+        sideEffect: res.sideEffect, verifier, state: { ...state, lastIntent: intent },
+      }
+    }
 
     case 'general':
     case 'unknown':

@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.18.0-executive-cognitive-controller')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Executive Cognitive Controller (single UI entry; recorded-conversation replay)')
+    expect(APP_VERSION.version).toBe('0.19.0-single-path-runtime')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Single-Path Runtime (controller-reasoned reminders/recurring/delete/modify; flag hardcoded)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

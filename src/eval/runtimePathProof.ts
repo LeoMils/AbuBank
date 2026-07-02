@@ -14,7 +14,7 @@ import { ExecutiveCognitiveController } from '../screens/AbuAI/executiveCognitiv
 import { IDLE_RUNTIME, type RuntimeState } from '../screens/AbuAI/cognitiveRuntime'
 import { isFinalized, REQUIRED_STAGES } from '../screens/AbuAI/runtimeTrace'
 import { isEmittable } from '../screens/AbuAI/noBypassRuntimeGuard'
-import { saveAppointments } from '../screens/AbuCalendar/service'
+import { saveAppointments, addAppointment } from '../screens/AbuCalendar/service'
 import type { FullTurnTools } from '../screens/AbuAI/runtimeFullTurn'
 
 const NOW = new Date(2026, 6, 3, 9, 0, 0)
@@ -65,6 +65,17 @@ export async function proveAllPaths(): Promise<PathTrace[]> {
   // Retry (repeat after frustration) — both turns must be finalized.
   { const f = await trace('retry', 'את לא מבינה אותי', IDLE_RUNTIME); rows.push(f.row)
     rows.push((await trace('retry-again', 'את לא עונה למה ששאלתי', f.state)).row) }
+
+  // The four newly controller-reasoned domains — reminders, recurring, delete, modify.
+  saveAppointments([])
+  { const r = await trace('reminder', 'תזכירי לי מחר בשמונה בבוקר לקחת תרופות', IDLE_RUNTIME); rows.push(r.row)
+    rows.push((await trace('reminder-confirm', 'כן', r.state)).row) }
+  saveAppointments([])
+  rows.push((await trace('recurring', 'תקבעי יוגה כל יום שלישי בעשר בבוקר', IDLE_RUNTIME)).row)
+  saveAppointments([]); addAppointment({ title: 'פגישה עם דני', date: '2026-07-05', time: '08:00', emoji: '📅' })
+  rows.push((await trace('delete', 'תמחקי את הפגישה עם דני', IDLE_RUNTIME)).row)
+  saveAppointments([]); addAppointment({ title: 'פגישה עם דני', date: '2026-07-05', time: '08:00', emoji: '📅' })
+  rows.push((await trace('modify', 'תשני את הפגישה עם דני לשעה תשע', IDLE_RUNTIME)).row)
 
   return rows
 }
