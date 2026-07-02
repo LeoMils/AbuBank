@@ -672,7 +672,11 @@ export function AbuAI() {
       // (falls through) for create / reminder / delete / modify / online / general,
       // which keep their existing handlers until they are cut over behind the suite.
       {
-        const RUNTIME_OWNED = new Set(['date_query', 'calendar_search', 'audio_complaint', 'frustration'])
+        // Live default authority. `family` is owned only when the runtime RESOLVED
+        // the relation (a "won't guess" answer defers to the legacy grounded path so
+        // birthdays/locations/unknown queries are unaffected). `calendar_read` covers
+        // the narrow "מה יש לי היום/מחר" grounded read.
+        const RUNTIME_OWNED = new Set(['date_query', 'calendar_search', 'audio_complaint', 'frustration', 'calendar_read', 'family'])
         const decision = runCognitiveTurn(
           {
             ...IDLE_RUNTIME,
@@ -684,7 +688,8 @@ export function AbuAI() {
           msgText,
           { messages, now: new Date() },
         )
-        if (decision.handled && decision.display && decision.verifier.ok && RUNTIME_OWNED.has(decision.intent)) {
+        const familyUnknown = decision.intent === 'family' && /לא אנחש|לא בטוחה בקשר/u.test(decision.display ?? '')
+        if (decision.handled && decision.display && decision.verifier.ok && RUNTIME_OWNED.has(decision.intent) && !familyUnknown) {
           conversationOSRef.current = decision.state.conv
           cogFrustrationRef.current = {
             count: decision.state.frustrationCount,

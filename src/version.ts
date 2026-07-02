@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.13.0-cognitive-runtime-v2',
-  buildLabel: 'AbuBank — Cognitive Runtime v2 (single central pipeline; date intent wired)',
+  version:    '0.14.0-thinking-runtime',
+  buildLabel: 'AbuBank — Thinking Runtime (directional family engine + smart calendar; family/read wired)',
   buildDate:  '2026-07-02',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

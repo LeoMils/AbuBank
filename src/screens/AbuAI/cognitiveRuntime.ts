@@ -42,6 +42,7 @@ import {
 import { understandMeeting } from './meetingIntelligence'
 import { understandMeetingSmart } from './calendarIntelligence'
 import { answerFamilyRelation } from './familyReasoning'
+import { answerRelationQuery } from './familyRelationEngine'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
 import {
   getTodayEvents, getTomorrowEvents, getEventsByDate, findEventsByPerson,
@@ -257,6 +258,12 @@ function knownFamilyNamesIn(t: string): GraphNode[] {
 
 export interface FamilyResult { text: string; known: boolean }
 export function familyReasoner(text: string): FamilyResult {
+  // 0) Directional pairwise "what is X for Y" / "הקשר בין X ל-Y" — the graph
+  // kinship engine (correct direction + gender + great-uncle/in-laws). Preferred
+  // over the symmetric describeRelation for these forms.
+  const pair = answerRelationQuery(text)
+  if (pair) return { text: pair.sentence, known: pair.known }
+
   // 1) "who is the <relation> of <person>" — deterministic multi-answer.
   const rel = answerFamilyRelation(text)
   if (rel) {
@@ -362,7 +369,10 @@ function executeSave(draft: {
 }
 
 // ── Layer 7: Response Verifier ─────────────────────────────────────────────────
-const PROMISE_WITHOUT_RESULT = /\b(?:אני\s+אבדוק|אבדוק|בודקת\s+עכשיו|תכף\s+אבדוק|אחזור\s+אלייך|רגע\s+אחד\s+אני\s+בודקת)\b/u
+// NOTE: no \b — it never matches Hebrew (ASCII-only), which had left this guard dead.
+const PROMISE_WITHOUT_RESULT = /(?:אני\s+אבדוק|אני\s+תבדוק|(?:^|\s)אבדוק|תכף\s+אבדוק|אחזור\s+אלייך|רגע\s+אחד\s+אני\s+בודקת)/u
+// Known broken-Hebrew forms (Phase 9) — wrong conjugation / garbled register.
+const BROKEN_HEBREW = /אני\s+תבדוק|תקבילי|אחורה\s+צהריים|(?:^|\s)לך\s+היום\?|(?:^|\s)אני\s+כאן\?/u
 const CANT_CHECK = /לא\s+מצליחה\s+לבדוק|אני\s+לא\s+יכולה\s+לבדוק|אין\s+לי\s+גישה/u
 const GENERIC_FALLBACK = /מה\s+היה\s+הנושא|אני\s+לא\s+מצליחה\s+לזכור|לא\s+הבנתי\s+כלום/u
 const ASK_WHICH_DAY = /באיזה\s+יום|באיזו\s+שעה|מתי\s+בדיוק/u
@@ -381,6 +391,7 @@ export function verifyAnswer(
   const a = answer ?? ''
   if (!a.trim()) violations.push('empty_answer')
   if (PROMISE_WITHOUT_RESULT.test(a)) violations.push('promise_without_result')
+  if (BROKEN_HEBREW.test(a)) violations.push('broken_hebrew')
   if (ctx.dataAvailable && CANT_CHECK.test(a)) violations.push('cant_check_with_data')
   if (GENERIC_FALLBACK.test(a)) violations.push('generic_fallback')
   // A date query must ANSWER the date, never bounce it back as a question.
@@ -451,6 +462,14 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       return settle(dateReasoner(normalized, ctx.now), { state, dataAvailable: true })
 
     case 'continuation': {
+      // "על מה דיברנו" is a RECALL of the topic, not a resume — answer it first so
+      // it never falls into "זהו, סיימתי".
+      if (RECALL_TOPIC_RE.test(normalized)) {
+        const a = state.conv.answer
+        const topic = a?.topic || a?.question
+        return settle(topic ? `דיברנו על ${topic}.` : 'עוד לא דיברנו על משהו מסוים. על מה תרצי?',
+          { state, dataAvailable: !!topic })
+      }
       const { text, state: convState } = continueAnswer(state.conv)
       if (text) {
         const { display, speak } = composeHebrew(text)
@@ -461,13 +480,6 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
           sideEffect: null, verifier,
           state: { ...state, conv: convState, lastIntent: intent },
         }
-      }
-      // Nothing to continue — recall the topic honestly instead of a robotic bounce.
-      if (RECALL_TOPIC_RE.test(normalized)) {
-        const a = state.conv.answer
-        const topic = a?.topic || a?.question
-        return settle(topic ? `דיברנו על ${topic}.` : 'עוד לא דיברנו על משהו מסוים. על מה תרצי?',
-          { state, dataAvailable: !!topic })
       }
       return settle('אין לי משהו להמשיך כרגע. על מה נדבר?', { state, dataAvailable: false })
     }
