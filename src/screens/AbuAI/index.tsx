@@ -467,7 +467,11 @@ export function AbuAI() {
       !companionPlan.step3_familyEntity &&
       !companionPlan.suppressLookups &&
       companionPlan.step5_calendar === 'none' &&
-      !companionPlan.step6_onlineNeeded
+      !companionPlan.step6_onlineNeeded &&
+      // A conversation-meta phrase ("תמשיכי", "על מה דיברנו") must NOT be rewritten
+      // into a person query — it belongs to the conversation-OS intercept below.
+      // (The real iPhone "continue"/"what did we talk about" → unrelated person bug.)
+      !/תמשיכי|תמשיך|המשיכי|מאיפה\s+ש?(?:עצרת|הפסקת)|על\s+מה\s+דיבר|מה\s+דיברנו/.test(msgText)
     ) {
       msgText = `ספרי לי על ${companionPlan.step4_continuity.resolvedPerson}`
     }

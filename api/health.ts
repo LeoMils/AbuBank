@@ -37,7 +37,7 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.12.0-multiturn-continuity'
+const BUILD_VERSION = '0.12.1-recall-topic-guard'
 const BUILD_LABEL = 'AbuBank — Multi-turn continuity (text-path conversationOS)'
 
 export default function handler(_req: Request): Response {

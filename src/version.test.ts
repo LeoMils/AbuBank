@@ -34,7 +34,7 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.12.0-multiturn-continuity')
+    expect(APP_VERSION.version).toBe('0.12.1-recall-topic-guard')
     expect(APP_VERSION.buildLabel).toBe('AbuBank — Multi-turn continuity (text-path conversationOS)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
