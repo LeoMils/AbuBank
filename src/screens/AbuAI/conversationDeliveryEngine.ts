@@ -28,10 +28,19 @@ export interface DeliveryState {
   index: number
 }
 
-const URL_OR_MD = /\bhttps?:\/\/|\]\(|[*_`#]/
+// Strip markdown links → their text, bare URLs, and emphasis marks — thoroughly.
+function stripForSpeech(c: string): string {
+  return c
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')  // [text](url) → text
+    .replace(/https?:\/\/\S+/g, '')            // bare URLs
+    .replace(/[*_`#]/g, '')                    // md emphasis / code / heading marks
+    .replace(/\]\(/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
 
 export function planDelivery(fullText: string): DeliveryState {
-  const chunks = planSpokenChunks(fullText).map(c => c.replace(URL_OR_MD, '').trim()).filter(Boolean)
+  const chunks = planSpokenChunks(fullText).map(stripForSpeech).filter(Boolean)
   return { fullText: fullText ?? '', chunks, index: -1 }
 }
 

@@ -16,8 +16,10 @@
 import {
   runCognitiveTurn, finalizeExternalAnswer, type RuntimeState, type RuntimeContext, type RuntimeIntent,
 } from './cognitiveRuntime'
-import { supervise, repair, type SupervisorVerdict } from './cognitiveSupervisor'
-import { planDelivery, type DeliveryState } from './conversationDeliveryEngine'
+import { type SupervisorVerdict } from './cognitiveSupervisor'
+import { type DeliveryState } from './conversationDeliveryEngine'
+import { finalize } from './runtimeFinalizer'
+import { type RuntimeStage, type RuntimeTrace } from './runtimeTrace'
 
 export interface FullTurnTools {
   /** Grounded LLM answer for general knowledge / prose. */
@@ -38,6 +40,8 @@ export interface FullTurnResult {
   routedThroughRuntime: true
   /** 'deterministic' | 'llm' | 'online' | 'fallback' — how the answer was produced. */
   source: 'deterministic' | 'llm' | 'online' | 'fallback'
+  /** RUNTIME_FINALIZED trace — checked by noBypassRuntimeGuard. */
+  trace: RuntimeTrace
 }
 
 const ONLINE_FAIL: Record<string, string> = {
@@ -89,32 +93,12 @@ export async function runFullTurn(
     display = fin.display ?? ''; speak = fin.speak ?? display; st = fin.state
   }
 
-  // Cognitive Supervisor — gate + one repair, then re-check.
-  let verdict = supervise(speak, { intent, dataAvailable: true, forVoice: true, question: input })
-  let repaired = false
-  if (!verdict.approved) {
-    const fixed = repair(speak, verdict)
-    if (fixed && fixed !== speak) {
-      speak = fixed
-      // keep display in sync when the repair shortened a voice-too-long answer
-      if (verdict.reasons.includes('robotic') || verdict.reasons.includes('apology_loop')) display = repair(display, verdict)
-      repaired = true
-      verdict = supervise(speak, { intent, dataAvailable: true, forVoice: true, question: input })
-    }
-  }
-  // If STILL unsafe (e.g. an LLM produced broken Hebrew the repair can't salvage),
-  // NEVER emit the flagged text — answer honestly with the limitation (Phase 9).
-  if (!verdict.approved) {
-    const honest = 'לא הצלחתי לנסח את זה כמו שצריך. תגידי לי שוב מה חשוב לך?'
-    const fin = finalizeExternalAnswer(st, honest, { intent })
-    display = fin.display ?? honest; speak = fin.speak ?? honest; st = fin.state
-    source = 'fallback'; repaired = true
-    verdict = supervise(speak, { intent, dataAvailable: true, forVoice: true, question: input })
-  }
-
-  const delivery = planDelivery(display || speak)
+  // Single finalizer tail: Cognitive Supervisor (gate + repair + honest limit) →
+  // Conversation Delivery Engine → RUNTIME_FINALIZED trace.
+  const priorStages: RuntimeStage[] = ['input', 'normalize', 'intent', source === 'deterministic' ? 'domain' : 'tool']
+  const fin = finalize({ display, speak, intent, source, priorStages, dataAvailable: true, forVoice: true })
   return {
-    intent, display: display || speak, speak, delivery, state: st, sideEffect,
-    supervisor: { ...verdict, repaired }, routedThroughRuntime: true, source,
+    intent, display: fin.display, speak: fin.speak, delivery: fin.delivery, state: st, sideEffect,
+    supervisor: fin.supervisor, routedThroughRuntime: true, source, trace: fin.trace,
   }
 }

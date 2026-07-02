@@ -1480,6 +1480,28 @@ export function AbuAI() {
       const currentMsgs = [...messagesRef.current, userMsg]
       setMessages(currentMsgs)
 
+      // ─── FULL CUTOVER (flagged): voice routes through the SAME runtime as text ──
+      // When ABUAI_COGNITIVE_RUNTIME_V2_FULL is on, the voice answer is produced by
+      // runFullTurn (supervised + delivery-planned + RUNTIME_FINALIZED). No legacy
+      // voice path below runs, so voice cannot emit outside the runtime.
+      if (COGNITIVE_RUNTIME_FULL) {
+        const tools = buildFullTurnTools(currentMsgs, true)
+        const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
+        const result = await runFullTurn(seed, effectiveText, { messages: currentMsgs, now: new Date() }, tools)
+        cognitiveRuntimeStateRef.current = result.state
+        conversationOSRef.current = result.state.conv
+        cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: result.display, timestamp: Date.now() }])
+        if (voiceModeRef.current) {
+          transitionVoice('RESPONDING', 'runtime-full')
+          setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(result.display)
+          await speakVoiceMode(result.speak)
+          setIsSpeaking(false); setStreamingText('')
+          if (voiceModeRef.current) startVoiceListening()
+        }
+        return
+      }
+
       // ─── Calendar create (voice) — SAME rules as typed text ──────────────
       // Voice create/confirmation must be confirmation-gated and local-first,
       // exactly like the text path. We reuse the identical state-machine

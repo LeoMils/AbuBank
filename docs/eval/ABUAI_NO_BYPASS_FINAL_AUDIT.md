@@ -1,6 +1,13 @@
 # AbuAI No-Bypass Final Audit
 
-**Build:** `0.15.0-cognitive-os` · **Date:** 2026-07-02 · **Verdict: HOLD** (default path still legacy; flag not device-verified).
+**Build:** `0.15.0-full-operational-runtime` · **Date:** 2026-07-02 · **Verdict: HOLD** (flag default-off; not device-verified).
+
+> UPDATE (this build): the **voice** handler is now wired behind the flag too, and a
+> `runtimeFinalizer` + `runtimeTrace` + `noBypassRuntimeGuard` prove every runtime
+> answer carries a `RUNTIME_FINALIZED` stamp. Under the flag, BOTH text and voice
+> emit only finalized answers. Remaining bypass reasons for HOLD: the flag is OFF by
+> default, and reminders/recurring/delete/update are not yet runtime-reasoned (they
+> route through the finalizer under the flag, so no raw bypass, but are mis-domained).
 
 ## The mechanism
 

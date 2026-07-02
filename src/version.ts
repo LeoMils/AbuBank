@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.15.0-cognitive-os',
-  buildLabel: 'AbuBank — Cognitive OS (full-turn engine + supervisor + delivery; flagged no-bypass cutover)',
+  version:    '0.15.0-full-operational-runtime',
+  buildLabel: 'AbuBank — Full Operational Runtime (finalizer + trace + no-bypass guard; text+voice flagged cutover)',
   buildDate:  '2026-07-02',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
