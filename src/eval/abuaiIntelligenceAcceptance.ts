@@ -15,11 +15,11 @@ import { planDelivery, advance, resume } from '../screens/AbuAI/conversationDeli
 import type { FullTurnTools } from '../screens/AbuAI/runtimeFullTurn'
 
 export type Layer =
-  | 'meta' | 'goal' | 'dialogue' | 'family' | 'calendar' | 'online' | 'confidence' | 'speech'
+  | 'meta' | 'goal' | 'dialogue' | 'family' | 'calendar' | 'online' | 'confidence' | 'speech' | 'hebrew'
 
-const NOW = new Date(2026, 6, 3, 9, 0, 0)
-const OK: FullTurnTools = { llm: async () => 'תשובה כללית קצרה ונכונה על הנושא.', online: async () => ({ ok: true, answer: 'יש הקרנה בשבע וחצי בערב.' }) }
-const FAIL_ONLINE: FullTurnTools = { llm: async () => 'x', online: async () => ({ ok: false, answer: '', reason: 'provider_failed' }) }
+export const NOW = new Date(2026, 6, 3, 9, 0, 0)
+export const OK: FullTurnTools = { llm: async () => 'תשובה כללית קצרה ונכונה על הנושא.', online: async () => ({ ok: true, answer: 'יש הקרנה בשבע וחצי בערב.' }) }
+export const FAIL_ONLINE: FullTurnTools = { llm: async () => 'x', online: async () => ({ ok: false, answer: '', reason: 'provider_failed' }) }
 
 export interface AcceptanceCase {
   id: string
@@ -36,7 +36,7 @@ interface TurnLite { intent: string; source: string; sideEffect: string | null; 
 
 export interface CaseResult { id: string; layer: Layer; pass: boolean; detail: string }
 
-async function runCase(c: AcceptanceCase): Promise<CaseResult> {
+export async function runCase(c: AcceptanceCase): Promise<CaseResult> {
   saveAppointments([])
   c.seed?.()
   const tools = c.tools ?? OK
@@ -57,7 +57,7 @@ async function runCase(c: AcceptanceCase): Promise<CaseResult> {
   return { id: c.id, layer: c.layer, pass: expectOk && !forbiddenHit && finalized, detail: `intent=${last.intent} final="${final.slice(0, 48)}"${forbiddenHit ? ' [FORBIDDEN]' : ''}${finalized ? '' : ' [UNFINALIZED]'}` }
 }
 
-const has = (s: string, ...w: string[]) => w.some(x => s.includes(x))
+export const has = (s: string, ...w: string[]) => w.some(x => s.includes(x))
 
 export const ACCEPTANCE_CASES: AcceptanceCase[] = [
   // ── Meta Reasoner ──

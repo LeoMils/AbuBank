@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.21.0-cognitive-intelligence',
-  buildLabel: 'AbuBank — Cognitive Intelligence (correction/frustration/family-unknown/date fixes; behavior acceptance 100%)',
+  version:    '0.22.0-final-code-green',
+  buildLabel: 'AbuBank — Final Code Green (all code-testable layers high-green; 152-case behavior acceptance)',
   buildDate:  '2026-07-03',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

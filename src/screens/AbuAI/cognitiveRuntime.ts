@@ -205,6 +205,10 @@ export function classifyIntent(
   const t = text.trim()
   const pending = state.createState.phase !== 'idle'
 
+  // "לא שמעתי תמשיכי" — an audio complaint that ALSO asks to continue means "I
+  // didn't hear you, say it again" → resume the answer, not an audio-help reply.
+  if (AUDIO_COMPLAINT_RE.test(t) && (isContinuation(t) || CONTINUATION_EXTRA_RE.test(t))) return 'continuation'
+
   // An audio complaint is ALWAYS an audio complaint — it must never cancel a draft
   // or be answered as calendar data (real iPhone failure cluster 5).
   if (AUDIO_COMPLAINT_RE.test(t)) return 'audio_complaint'
