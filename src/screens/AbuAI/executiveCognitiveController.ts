@@ -17,6 +17,8 @@
 import { runFullTurn, type FullTurnTools, type FullTurnResult } from './runtimeFullTurn'
 import { type RuntimeState, type RuntimeContext } from './cognitiveRuntime'
 import { assertNoBypass } from './noBypassRuntimeGuard'
+import { recordTurn } from './liveTurnDiagnostics'
+import { APP_VERSION } from '../../version'
 
 export interface ExecutiveDecision extends FullTurnResult {
   controller: 'executive-cognitive-controller'
@@ -36,6 +38,17 @@ export async function executiveHandleTurn(
   const result = await runFullTurn(state, input, ctx, tools)
   // The executive never emits an unstamped answer.
   assertNoBypass(result, `executive:${result.intent}`)
+  // Diagnostics: record the turn for the "Copy Last 20 AbuAI Turns" debug dump.
+  try {
+    recordTurn({
+      ts: ctx.now.getTime(), version: APP_VERSION.version, input,
+      normalized: result.meta.actualQuestion, intent: result.intent, source: result.source,
+      entities: result.meta.entities, missingFields: result.meta.missingFields,
+      draftFields: { pendingCreate: result.state.createState.phase, pendingReminder: !!result.state.pendingReminder },
+      toolResult: result.sideEffect ?? null, finalAnswer: result.display,
+      speechChunks: result.delivery.chunks, error: null,
+    })
+  } catch { /* diagnostics must never break a turn */ }
   return { ...result, controller: 'executive-cognitive-controller' }
 }
 

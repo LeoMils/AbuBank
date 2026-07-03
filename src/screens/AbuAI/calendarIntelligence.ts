@@ -88,9 +88,16 @@ export function extractImportantDetails(text: string): string[] {
   const absent = text.matchAll(/([א-ת]{2,})\s+לא\s+(?:יוכל|תוכל|יכול|יכולה|מגיע[ה]?|יגיע|תגיע)\s*(?:להגיע|לבוא|להיות)?/gu)
   for (const m of absent) add(`${m[1]} לא יוכל/תוכל להגיע`.replace('יוכל/תוכל', /ה$/.test(m[1]!) ? 'תוכל' : 'יוכל'))
 
-  // 2) A time change / correction ("בשעה שבע ולא שבע וחצי", "במקום").
-  const timeFix = text.match(/(?:בשעה\s+)?(\S+(?:\s+\S+)?)\s+(?:ולא|במקום)\s+(\S+(?:\s+\S+)?)/u)
+  // 2) A time change / correction ("בשעה שבע ולא שבע וחצי", "במקום") — BOTH sides
+  // must be time-like, so "התקשר אליי ולא נעים לי" is never mistaken for a time fix.
+  const HOURW = '(?:\\d{1,2}(?::\\d{2})?|אחת עשרה|שתים עשרה|אחת|שתיים|שתים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)(?:\\s+(?:וחצי|ורבע))?'
+  const timeFix = text.match(new RegExp(`(?:בשעה\\s+)?(${HOURW})\\s+(?:ולא|במקום)\\s+(${HOURW})`, 'u'))
   if (timeFix) add(`להגיע ב${tidy(timeFix[1]!)} במקום ${tidy(timeFix[2]!)}`)
+
+  // 2b) Someone SAID they'll arrive / might be late ("גלעד אמר שהוא יגיע בחמש,
+  // אבל אולי הוא יכול לאחר קצת") — a real detail to remember.
+  const said = text.match(/([א-ת]{2,})\s+אמר[הת]?\s+ש([^.?!]+)/u)
+  if (said) add(`${said[1]} ${tidy(said[2]!)}`)
 
   // 3) Running late / returning late ("תחזור קצת יותר מאוחר", "מאוחר מהעבודה").
   const late = text.match(/(?:([א-ת]{2,})\s+)?(?:תחזור|יחזור|מגיע[ה]?|חוזר[ת]?)\s+[^.?!,]*מאוחר[^.?!,]*/u)
@@ -142,10 +149,13 @@ export function understandMeetingSmart(raw: string): SmartMeeting {
   let who = base.who
   if (!who) { const p = knownPersonIn(text); if (p) who = p }
 
-  // Contextual location for a pronoun venue ("אצלה" → "אצל אופיר"), whether the
-  // base parser left it null OR captured the bare pronoun.
+  // Contextual location for a pronoun venue: "אצלה" → "אצל אופיר", AND "אצלה בבית"
+  // → "אצל אופיר בבית" (resolve the pronoun in place, preserving trailing text).
   let location = base.location
-  if (!location || /^אצל[הוםן]$/u.test(location.trim())) {
+  const locPerson = who ?? knownPersonIn(text)
+  if (location && /(?<![א-ת])אצל[הוםן](?![א-ת])/u.test(location) && locPerson) {
+    location = location.replace(/(?<![א-ת])אצל[הוםן](?![א-ת])/u, `אצל ${locPerson}`)
+  } else if (!location) {
     location = resolveContextualLocation(text, who) ?? location
   }
 

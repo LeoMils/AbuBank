@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.22.0-final-code-green',
-  buildLabel: 'AbuBank — Final Code Green (all code-testable layers high-green; 152-case behavior acceptance)',
+  version:    '0.23.0-real-iphone-failure-fix',
+  buildLabel: 'AbuBank — Real iPhone Failure Fix (calendar semantic extraction + diagnostics)',
   buildDate:  '2026-07-03',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

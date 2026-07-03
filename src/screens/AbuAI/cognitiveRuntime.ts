@@ -620,6 +620,12 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
           missing: [],
         }
       }
+      // Prefer the smart-resolved location (pronoun venues like "אצלה בבית" →
+      // "אצל אופיר בבית") over the base parser's unresolved one.
+      if (next.phase === 'confirming' && smart.location) next.draft.location = smart.location
+      // When we have a semantic "פרטים חשובים" summary, DROP the raw notes clause so
+      // the confirm never dumps the raw sentence in "(...)" alongside the summary.
+      if (next.phase === 'confirming' && smart.importantDetails.length) next.draft.notes = null
       let text = next.phase === 'confirming'
         ? shapeCreateConfirm(next.draft)
         : shapeCreateClarify(next.missing, next.draft)
@@ -631,6 +637,7 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
         if (smart.durationLabel) extra.push(`למשך ${smart.durationLabel}`)
         if (smart.importantDetails.length) extra.push(`פרטים חשובים: ${smart.importantDetails.join('; ')}`)
         if (extra.length) text = text.replace(/\s*נכון\?\s*$/u, `. ${extra.join('. ')}. נכון?`)
+        text = text.replace(/\.\s*\.+/g, '.').replace(/\s{2,}/g, ' ')  // no double periods
       }
       const { display, speak } = composeHebrew(text)
       const verifier = verifyAnswer(display, { intent, dataAvailable: true })
