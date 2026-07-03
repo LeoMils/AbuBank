@@ -58,6 +58,7 @@ const PLANNER_SKIP: ReadonlySet<RuntimeIntent> = new Set<RuntimeIntent>([
 ])
 import { answerFamilyRelation } from './familyReasoning'
 import { answerRelationQuery } from './familyRelationEngine'
+import { explainRelation } from './familyPathReasoner'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
 import {
   getTodayEvents, getTomorrowEvents, getEventsByDate, findEventsByPerson, getWeekEvents,
@@ -100,6 +101,8 @@ export interface RuntimeState {
   frustrationVariant: number
   /** a reminder draft awaiting time/confirmation (controller-reasoned). */
   pendingReminder: ReminderDraft | null
+  /** last family pair answered, so "איך בדיוק / דרך מי / למה" can explain the path. */
+  lastFamilyPair: { a: string; b: string } | null
 }
 
 export const IDLE_RUNTIME: RuntimeState = {
@@ -109,6 +112,7 @@ export const IDLE_RUNTIME: RuntimeState = {
   lastIntent: null,
   frustrationVariant: 0,
   pendingReminder: null,
+  lastFamilyPair: null,
 }
 
 export interface RuntimeContext {
@@ -140,6 +144,9 @@ export interface CognitiveDecision {
   sideEffect: 'saved_appointment' | 'save_failed' | MutationSideEffect
   verifier: VerifierReport
   state: RuntimeState
+  /** a grounded family answer (resolved pair or BFS explanation) — the Confidence
+   *  Guard must not overwrite it with the honest-unknown fallback. */
+  familyGrounded?: boolean
 }
 
 // ── Layer 1: Input Normalizer ─────────────────────────────────────────────────
@@ -180,6 +187,8 @@ const RECALL_TOPIC_RE = /על\s+מה\s+דיבר(?:נו|ת)|מה\s+דיברנו|d
 const SEARCH_WHEN_RE = /^מתי\s+.*(?:יש\s+לי|ה?פגישה|ה?תור|ה?ביקור|נפגש|פגוש)/u
 // Casual search: "יש לי משהו עם X" / bare "פגישה ב/עם/אצל X" (no create verb).
 const SEARCH_CASUAL_RE = /(?:יש\s+לי\s+(?:משהו|פגיש\S*|תור|ביקור|מפגש|דבר|אירוע)[^?]*?(?:עם|אצל|ב)\s*[א-ת])|(?:^(?:ה?פגיש\S*|ה?תור|ה?מפגש|ה?ביקור)\s+(?:עם|אצל|ב)[א-ת])/u
+// Family explanation follow-up: "איך בדיוק", "דרך מי", "תסבירי", "למה", "את בטוחה".
+const FAMILY_EXPLAIN_RE = /^(?:איך\s+בדיוק|איך\s+זה|דרך\s+מי|תסביר\S*|למה\??|את\s+בטוח\S*|בטוחה\??)\s*\??$/u
 // Live/current-info that onlineIntent does not already classify (buses/trains/
 // weather/local events/movies) — kept in sync with knowledgeRouter's routing.
 const ONLINE_EXTRA_RE =
@@ -225,6 +234,10 @@ export function classifyIntent(
 
   // While a calendar draft is pending, the turn resolves it (save/cancel/change/park).
   if (pending) return 'confirmation'
+
+  // "איך בדיוק / דרך מי / תסבירי / למה / את בטוחה" right after a family answer →
+  // explain the graph path for the last pair (multi-turn family reasoning).
+  if (state.lastFamilyPair && FAMILY_EXPLAIN_RE.test(t)) return 'family'
 
   // Continuation / resume, or topic recall ("על מה דיברנו", even prefixed by
   // "יש לך זיכרון …") — both are handled inside the continuation case.
@@ -323,13 +336,13 @@ function knownFamilyNamesIn(t: string): GraphNode[] {
   return found
 }
 
-export interface FamilyResult { text: string; known: boolean }
+export interface FamilyResult { text: string; known: boolean; pair?: { a: string; b: string } }
 export function familyReasoner(text: string): FamilyResult {
   // 0) Directional pairwise "what is X for Y" / "הקשר בין X ל-Y" — the graph
   // kinship engine (correct direction + gender + great-uncle/in-laws). Preferred
   // over the symmetric describeRelation for these forms.
   const pair = answerRelationQuery(text)
-  if (pair) return { text: pair.sentence, known: pair.known }
+  if (pair) return { text: pair.sentence, known: pair.known, pair: { a: pair.subject, b: pair.target } }
 
   // 1) "who is the <relation> of <person>" — deterministic multi-answer.
   const rel = answerFamilyRelation(text)
@@ -612,11 +625,19 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
         { state, dataAvailable: true })
 
     case 'family': {
+      // Explanation follow-up ("איך בדיוק / דרך מי / למה") for the last pair — the
+      // BFS path reasoner renders the edge-by-edge graph path (never memorized).
+      // `familyGrounded` tells the Confidence Guard this is a resolved answer.
+      if (state.lastFamilyPair && FAMILY_EXPLAIN_RE.test(normalized.trim())) {
+        const { a, b } = state.lastFamilyPair
+        return { ...settle(explainRelation(a, b), { state, dataAvailable: true }), familyGrounded: true }
+      }
       const fam = familyReasoner(normalized)
-      if (fam.known) return settle(fam.text, { state, dataAvailable: true })
+      const nextState = fam.pair ? { ...state, lastFamilyPair: fam.pair } : state
+      if (fam.known) return { ...settle(fam.text, { state: nextState, dataAvailable: true }), familyGrounded: true }
       // Unknown relation — say so, never guess.
       return settle('אני לא בטוחה בקשר הזה, אז לא אנחש. תגידי לי מי מי ואני אזכור.',
-        { state, dataAvailable: false })
+        { state: nextState, dataAvailable: false })
     }
 
     case 'calendar_read':

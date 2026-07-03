@@ -22,7 +22,7 @@ export type RelationKind =
   | 'great_grandparent' | 'great_grandchild'
   | 'great_uncle_aunt' | 'great_nephew_niece'
   | 'cousin'
-  | 'parent_in_law' | 'child_in_law' | 'ex_child_in_law'
+  | 'parent_in_law' | 'child_in_law' | 'ex_child_in_law' | 'ex_parent_in_law'
   | 'sibling_in_law' | 'ex_sibling_in_law'
   | 'unknown'
 
@@ -59,6 +59,7 @@ const LABEL: Record<Exclude<RelationKind, 'self' | 'unknown'>, [string, string]>
   parent_in_law:     ['החמות', 'החם'],
   child_in_law:      ['הכלה', 'החתן'],
   ex_child_in_law:   ['הכלה לשעבר', 'החתן לשעבר'],
+  ex_parent_in_law:  ['החמות לשעבר', 'החם לשעבר'],
   sibling_in_law:    ['הגיסה', 'הגיס'],
   ex_sibling_in_law: ['הגיסה לשעבר', 'הגיס לשעבר'],
 }
@@ -141,8 +142,10 @@ export function relationOf(aName: string, bName: string): RelationResult {
     if (siblingsOf(idx, p).includes(aHe)) return done('uncle_aunt')
     for (const s of sibs(p)) if (currentSpousesOf(s).includes(aHe)) return done('uncle_aunt_in_law')
   }
-  // 5) nephew/niece (child of a sibling)
+  // 5) nephew/niece: child of a sibling of B (blood), OR child of a sibling of a
+  // (current) spouse of B (by marriage) — the inverse of uncle_aunt_in_law.
   if (sibs(B).some(s => childrenOf(s).includes(aHe))) return done('nephew_niece')
+  for (const spHe of currentSpousesOf(B)) { const sp = get(idx, spHe); if (sp && sibs(sp).some(s => childrenOf(s).includes(aHe))) return done('nephew_niece') }
 
   // 6) great-grandparent / great-grandchild
   if (parents(B).some(p => parents(p).some(gp => parentsOf(gp).includes(aHe)))) return done('great_grandparent')
@@ -164,6 +167,8 @@ export function relationOf(aName: string, bName: string): RelationResult {
   // 10) in-laws
   // parent-in-law: A is a parent of B's (current) spouse
   for (const spHe of currentSpousesOf(B)) { const sp = get(idx, spHe); if (sp && parentsOf(sp).includes(aHe)) return done('parent_in_law') }
+  // ex-parent-in-law: A is a parent of an EX-spouse of B (Martita ↔ Rafi).
+  for (const exHe of exSpousesOf(B)) { const ex = get(idx, exHe); if (ex && parentsOf(ex).includes(aHe)) return done('ex_parent_in_law') }
   // child-in-law: A is (ex-)spouse of a child of B
   for (const c of children(B)) {
     if (currentSpousesOf(c).includes(aHe)) return done('child_in_law')

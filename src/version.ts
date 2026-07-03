@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.26.0-calendar-zero-repro',
-  buildLabel: 'AbuBank — Calendar Zero-Repro (semantic search by person/place + week read)',
+  version:    '0.27.0-family-graph-reasoner',
+  buildLabel: 'AbuBank — Family Graph Reasoner (BFS path + explanation, property+fuzz proven, symmetry fixed)',
   buildDate:  '2026-07-03',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

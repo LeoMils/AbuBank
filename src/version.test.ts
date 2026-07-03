@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.26.0-calendar-zero-repro')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Calendar Zero-Repro (semantic search by person/place + week read)')
+    expect(APP_VERSION.version).toBe('0.27.0-family-graph-reasoner')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Family Graph Reasoner (BFS path + explanation, property+fuzz proven, symmetry fixed)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

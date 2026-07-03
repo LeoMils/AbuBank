@@ -106,6 +106,12 @@ export const GOLDEN_CASES: GoldenCase[] = [
   fam('gf-ari-rafi', 'ארי', 'רפי', /נכד/, /לא אנחש/),
   fam('gf-ayalon-noam', 'איילון', 'נועם', /דוד/, /לא אנחש/),
   chat('gf-relation-not-identity', 'Family', 'metaReasoner', 'לאו הבן שלך (identity, not relation)', ['מי ליאו עבור אופיר'], l => has(l.display, 'דוד'), /הבן שלך|הבת שלך/),
+  // Symmetric relations the reasoner used to "forget" (property test caught these).
+  fam('gf-anabel-yarden', 'אנאבל', 'ירדן', /אחיי[נן]/, /לא אנחש/),
+  fam('gf-martita-rafi', 'מרטיטה', 'רפי', /חמות|חם/, /לא אנחש/),
+  // Multi-turn explanation: "איך בדיוק" → the BFS graph path, edge by edge.
+  chat('gf-explain-path', 'Family', 'familyPathReasoner', 'cannot explain / forgets the pair', ['מה ארי עבור ירדן', 'איך בדיוק'],
+    (l, all) => l.intent === 'family' && /עילי|מור|אופיר|דרך/.test(all[all.length - 1] ?? ''), /לא אנחש|לא בטוחה/),
 
   // ── Online ──
   chat('go-movies', 'Online', 'knowledgeRouter', 'generic no-check / hallucinated', ['מה הסרטים בכפר סבא'], l => l.source === 'online', /אין לי אפשרות/),

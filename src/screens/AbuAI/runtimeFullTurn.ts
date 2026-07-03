@@ -91,7 +91,7 @@ export async function runFullTurn(
     }
     // Confidence Guard (live): a family turn with no resolved directional pair must
     // not assert a relation as fact.
-    if (meta.domain === 'family' && assessConfidence(meta).block && !/לא אנחש|לא בטוחה|לא יודעת/u.test(display)) {
+    if (meta.domain === 'family' && !decision.familyGrounded && assessConfidence(meta).block && !/לא אנחש|לא בטוחה|לא יודעת/u.test(display)) {
       display = 'אני לא בטוחה בקשר הזה, אז לא אנחש. תגידי לי מי מי ואני אזכור.'; speak = display
     }
   } else if (decision.needsOnline && decision.online) {
