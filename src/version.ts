@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.27.0-family-graph-reasoner',
-  buildLabel: 'AbuBank — Family Graph Reasoner (BFS path + explanation, property+fuzz proven, symmetry fixed)',
+  version:    '0.28.0-editable-family-knowledge',
+  buildLabel: 'AbuBank — Editable Family Knowledge (structured graph + soft notes, validated, alias-aware)',
   buildDate:  '2026-07-03',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
