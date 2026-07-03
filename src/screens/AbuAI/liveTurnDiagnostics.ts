@@ -44,3 +44,21 @@ export function clearTurns(): void { BUFFER.length = 0 }
 export function dumpTurns(): string {
   return JSON.stringify({ count: BUFFER.length, turns: lastTurns() }, null, 2)
 }
+
+/** Copy the last 20 turns to the clipboard (falls back to a returned string). */
+export async function copyLastTurns(): Promise<string> {
+  const dump = dumpTurns()
+  try {
+    const nav = (globalThis as unknown as { navigator?: { clipboard?: { writeText(s: string): Promise<void> } } }).navigator
+    if (nav?.clipboard?.writeText) await nav.clipboard.writeText(dump)
+  } catch { /* clipboard unavailable — caller still gets the string */ }
+  return dump
+}
+
+// Expose a console-accessible debug hook so Leo can run `__abuaiDumpTurns()` in
+// Safari on the iPhone and paste the last 20 turns, even without a visible button.
+try {
+  const g = globalThis as unknown as { __abuaiDumpTurns?: () => string; __abuaiCopyTurns?: () => Promise<string> }
+  g.__abuaiDumpTurns = dumpTurns
+  g.__abuaiCopyTurns = copyLastTurns
+} catch { /* non-browser */ }

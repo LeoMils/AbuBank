@@ -241,6 +241,26 @@ function detectFamilyType(text: string): Pick<Appointment, 'type' | 'isRecurring
   return {}
 }
 
+// Unify the calendar-UI extractor with the AI runtime's strong semantic builder:
+// never a raw-transcript title, PM-inferred meeting times, resolved pronoun venues,
+// and summarized "important details". Dynamic import avoids a top-level cycle.
+async function enhanceWithSmart<B extends { title: string; date: string | null; time: string | null; location: string | null; notes: string | null; personName: string | null }>(base: B, text: string): Promise<B> {
+  try {
+    const { understandMeetingSmart } = await import('../AbuAI/calendarIntelligence')
+    const m = understandMeetingSmart(text)
+    const who = m.who ?? base.personName ?? null
+    return {
+      ...base,
+      title: who ? `פגישה עם ${who}` : base.title,
+      personName: who,
+      date: base.date ?? m.date,
+      time: m.time ?? base.time,
+      location: m.location ?? base.location,
+      notes: m.importantDetails.length ? m.importantDetails.join('; ') : base.notes,
+    }
+  } catch { return base }
+}
+
 export async function parseAppointmentText(text: string): Promise<{ title: string; date: string | null; time: string | null; emoji: string; confidence: number; personName: string | null; location: string | null; notes: string | null; ambiguousTime: boolean; source: 'local' | 'llm' | 'fallback' } & Pick<Appointment, 'type' | 'isRecurring'>> {
   const today = new Date().toISOString().split('T')[0]!
   const { parseLocally } = await import('./localParser')
@@ -316,7 +336,7 @@ confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very 
           const confidence = Math.max(local.confidence, llmConfidence)
           const personName = parsed.personName || null
           const familyType = detectFamilyType(text)
-          return { title, date, time, emoji, confidence, personName, location, notes, ambiguousTime: local.ambiguousTime, source: 'llm', ...familyType }
+          return await enhanceWithSmart({ title, date, time, emoji, confidence, personName, location, notes, ambiguousTime: local.ambiguousTime, source: 'llm' as const, ...familyType }, text)
         }
       }
     } catch {
@@ -324,19 +344,19 @@ confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very 
     }
   }
 
-  return {
+  return await enhanceWithSmart({
     title: local.title || text,
     date: local.date,
     time: local.time,
     emoji: local.emoji,
     confidence: local.confidence,
-    personName: null,
+    personName: null as string | null,
     location: local.location,
     notes: local.notes,
     ambiguousTime: local.ambiguousTime,
-    source: groqKey ? 'fallback' : 'local',
+    source: (groqKey ? 'fallback' : 'local') as 'fallback' | 'local',
     ...detectFamilyType(text),
-  }
+  }, text)
 }
 
 const HEBREW_MONTHS = [

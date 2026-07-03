@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.23.0-real-iphone-failure-fix')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Real iPhone Failure Fix (calendar semantic extraction + diagnostics)')
+    expect(APP_VERSION.version).toBe('0.24.0-real-product-green')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Real Product (unified calendar extractor; save-path matches AI runtime)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
