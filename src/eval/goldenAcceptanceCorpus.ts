@@ -85,6 +85,15 @@ export const GOLDEN_CASES: GoldenCase[] = [
   chat('gc-read-tomorrow', 'CalendarRead', 'cognitiveRuntime', 'invented events', ['מה יש לי מחר'], l => has(l.display, 'אין', 'שקט'), /רופא|תור|\d{1,2}:\d{2}/),
   chat('gc-read-week', 'CalendarRead', 'cognitiveRuntime', 'stale/other-day events', ['מה יש לי השבוע'], l => l.finalized && l.display.length > 0, /רופא|תור/),
   chat('gc-delete', 'CalendarUpdateDelete', 'plugins', 'not deleted', ['תמחקי את הפגישה עם דני'], () => loadAppointments().length === 0, /אין פגישה כזו/, OK, () => addAppointment({ title: 'פגישה עם דני', date: '2026-07-06', time: '08:00', emoji: '📅' })),
+  // Casual / semantic search phrasings that fell to the LLM on the iPhone.
+  chat('gc-search-casual-person', 'CalendarSearch', 'cognitiveRuntime', 'answered by LLM, not calendar', ['יש לי משהו עם מור'],
+    l => l.intent === 'calendar_search' && has(l.display, 'מור'), /^x$/, OK, () => addAppointment({ title: 'פגישה עם מור', date: '2026-07-05', time: '10:00', emoji: '📅', location: 'קפה מורנו' } as never)),
+  chat('gc-search-casual-empty', 'CalendarSearch', 'cognitiveRuntime', 'answered by LLM, not calendar', ['יש לי משהו עם מוטי'],
+    l => l.intent === 'calendar_search' && has(l.display, 'אין', 'אין לך'), /^x$/),
+  chat('gc-search-by-place', 'CalendarSearch', 'cognitiveRuntime', 'answered by LLM, not calendar', ['פגישה בקפה מורנו'],
+    l => l.intent === 'calendar_search' && l.source === 'deterministic', /^x$/, OK, () => addAppointment({ title: 'פגישה עם מור', date: '2026-07-05', time: '10:00', emoji: '📅', location: 'קפה מורנו' } as never)),
+  chat('gc-read-week', 'CalendarRead', 'cognitiveRuntime', '"אין כלום ליום הזה" though a week event exists', ['מה יש לי השבוע'],
+    l => l.finalized && !/ליום הזה/.test(l.display) && has(l.display, 'מור'), /אין כלום/, OK, () => addAppointment({ title: 'פגישה עם מור', date: '2026-07-05', time: '10:00', emoji: '📅' } as never)),
 
   // ── Family (directional, from the graph) ──
   fam('gf-leo-ofir', 'לאו', 'אופיר', /דוד/, /הבן שלך|אחיין/),

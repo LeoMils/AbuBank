@@ -60,7 +60,7 @@ import { answerFamilyRelation } from './familyReasoning'
 import { answerRelationQuery } from './familyRelationEngine'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
 import {
-  getTodayEvents, getTomorrowEvents, getEventsByDate, findEventsByPerson,
+  getTodayEvents, getTomorrowEvents, getEventsByDate, findEventsByPerson, getWeekEvents,
 } from './tools'
 import { loadAppointments, createAppointmentSafe, formatHebrewDate } from '../AbuCalendar/service'
 import { isOnlineCurrentInfoQuery, shouldBlockOnlineForPersonal } from './onlineIntent'
@@ -178,6 +178,8 @@ const RECALL_TOPIC_RE = /על\s+מה\s+דיבר(?:נו|ת)|מה\s+דיברנו|d
 // "מתי יש לי פגישה עם X" / "מתי הפגישה עם X" → search across ALL days (never create,
 // never ask "באיזה יום"). Must be tested BEFORE isCreateIntent, which is greedy.
 const SEARCH_WHEN_RE = /^מתי\s+.*(?:יש\s+לי|ה?פגישה|ה?תור|ה?ביקור|נפגש|פגוש)/u
+// Casual search: "יש לי משהו עם X" / bare "פגישה ב/עם/אצל X" (no create verb).
+const SEARCH_CASUAL_RE = /(?:יש\s+לי\s+(?:משהו|פגיש\S*|תור|ביקור|מפגש|דבר|אירוע)[^?]*?(?:עם|אצל|ב)\s*[א-ת])|(?:^(?:ה?פגיש\S*|ה?תור|ה?מפגש|ה?ביקור)\s+(?:עם|אצל|ב)[א-ת])/u
 // Live/current-info that onlineIntent does not already classify (buses/trains/
 // weather/local events/movies) — kept in sync with knowledgeRouter's routing.
 const ONLINE_EXTRA_RE =
@@ -237,6 +239,11 @@ export function classifyIntent(
 
   // "מתי יש לי פגישה עם X" is a SEARCH across all days — before the greedy create.
   if (SEARCH_WHEN_RE.test(t)) return 'calendar_search'
+
+  // Casual / semantic search: "יש לי משהו עם מור", "פגישה בקפה מורנו" — a QUESTION
+  // about existing events (no create verb), searched by person or place. Guarded by
+  // !isCreateIntent so real creates ("תקבעי פגישה עם דני מחר") still create.
+  if (SEARCH_CASUAL_RE.test(t) && !isCreateIntent(t)) return 'calendar_search'
 
   // Reminders ("תזכירי לי …") before calendar create — a reminder is not an event.
   if (isReminderIntent(t)) return 'reminder'
@@ -351,11 +358,16 @@ export function familyReasoner(text: string): FamilyResult {
 
 // CalendarReasoner (reads) — grounded on real storage; empty store never invents.
 export function calendarReadReasoner(text: string, now: Date): string {
-  if (/\bמחר\b/u.test(text)) {
+  // "מה יש לי השבוע" reads the whole week — never collapse to a single day.
+  if (/(?<![א-ת])השבוע(?![א-ת])/u.test(text)) {
+    const r = getWeekEvents()
+    return r.events.length === 0 ? 'השבוע אין כלום ביומן. שבוע שקט.' : r.summary
+  }
+  if (/(?<![א-ת])מחר(?![א-ת])/u.test(text)) {
     const r = getTomorrowEvents()
     return r.events.length === 0 ? 'מחר אין כלום. יום שקט.' : r.summary
   }
-  if (/\bהיום\b/u.test(text)) {
+  if (/(?<![א-ת])היום(?![א-ת])/u.test(text)) {
     const r = getTodayEvents()
     return r.events.length === 0 ? 'היום אין כלום ביומן.' : r.summary
   }
@@ -374,6 +386,19 @@ export function calendarSearchReasoner(text: string): string {
     return r.summary
   }
   const all = loadAppointments()
+  // Search by PLACE ("פגישה בקפה מורנו") — match the venue phrase against stored
+  // locations. Never invents; grounded only in what is saved.
+  const placePhrase = (text.match(/(?<![א-ת])ב(?:קפה\s+|בית\s+קפה\s+|מסעד[הת]\s+|משרד\s+)?([֐-׿][֐-׿ ]{1,})/u)?.[1] ?? '').trim()
+  const placeWords = placePhrase.split(/\s+/).filter(w => w.length >= 3)
+  if (placeWords.length) {
+    const hits = all.filter(a => a.location && placeWords.some(w => a.location!.includes(w)))
+    if (hits.length === 1) {
+      const h = hits[0]!
+      return `יש לך ${h.title}${h.time ? ` בשעה ${h.time}` : ''}${h.location ? `, ${h.location}` : ''}.`
+    }
+    if (hits.length > 1) return `יש לך ${hits.length} פגישות שם ביומן.`
+    return 'לא מצאתי פגישה במקום הזה ביומן.'
+  }
   if (all.length === 0) return 'היומן ריק.'
   return `יש לך ${all.length} דברים ביומן.`
 }
