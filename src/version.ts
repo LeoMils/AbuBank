@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.24.0-real-product-green',
-  buildLabel: 'AbuBank — Real Product (unified calendar extractor; save-path matches AI runtime)',
+  version:    '0.25.0-golden-corpus-product-fix',
+  buildLabel: 'AbuBank — Golden Corpus (39 real iPhone failures made impossible to reproduce)',
   buildDate:  '2026-07-03',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
