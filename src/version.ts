@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.28.0-editable-family-knowledge',
-  buildLabel: 'AbuBank — Editable Family Knowledge (structured graph + soft notes, validated, alias-aware)',
+  version:    '0.29.0-family-runtime-cutover',
+  buildLabel: 'AbuBank — Family Runtime Cutover (live answers from editable family_graph.json)',
   buildDate:  '2026-07-03',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

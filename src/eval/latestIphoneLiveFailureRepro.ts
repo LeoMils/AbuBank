@@ -17,7 +17,10 @@ const tomorrow = (now: Date) => { const d = new Date(now); d.setDate(d.getDate()
 export function checkExtraction(now: Date): ExtractionCheck[] {
   const out: ExtractionCheck[] = []
   const add = (id: string, pass: boolean, detail: string) => out.push({ id, pass, detail })
-  const tmr = tomorrow(now)
+  // "מחר" is resolved by the extractor against the REAL system date, so derive the
+  // expected tomorrow the same way (date-rollover-robust, not a hardcoded NOW).
+  void now
+  const tmr = tomorrow(new Date())
 
   const m1: SmartMeeting = understandMeetingSmart(EX1)
   const d1 = m1.importantDetails.join(' | ')

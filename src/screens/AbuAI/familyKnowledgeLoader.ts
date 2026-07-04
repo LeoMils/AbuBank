@@ -17,6 +17,7 @@ import type { RelNode } from './familyPathReasoner'
 
 export interface LoadedPerson extends RelNode {
   id: string
+  canonical: string
   aliases: string[]
   noteRefs: string[]
 }
@@ -43,7 +44,7 @@ function build(raw: RawFamilyGraph, notesText: string): LoadedFamilyKnowledge {
   const heb = (id: string): string | null => byId.get(id)?.hebrew ?? null
   const toHeb = (arr?: string[]) => uniq((arr ?? []).map(heb).filter((x): x is string => !!x))
   const people: LoadedPerson[] = raw.people.map(p => ({
-    hebrew: p.hebrew, id: p.id, aliases: p.aliases ?? [], gender: p.gender ?? 'unknown',
+    hebrew: p.hebrew, id: p.id, canonical: p.canonical ?? p.id, aliases: p.aliases ?? [], gender: p.gender ?? 'unknown',
     parentsHe: toHeb(p.parents), childrenHe: toHeb(p.children),
     spousesHe: toHeb(p.spouses), exSpousesHe: toHeb(p.exSpouses), partnersHe: toHeb(p.partners),
     noteRefs: p.noteRefs ?? [p.id],
@@ -61,9 +62,9 @@ function build(raw: RawFamilyGraph, notesText: string): LoadedFamilyKnowledge {
     for (const pt of p.partnersHe) link(pt, 'partnersHe', p.hebrew)
   }
 
-  // alias / id / hebrew (lowercased) → canonical hebrew graph key.
+  // id / hebrew / canonical / alias (lowercased) → canonical hebrew graph key.
   const aliasIndex = new Map<string, string>()
-  for (const p of raw.people) for (const a of [p.id, p.hebrew, ...(p.aliases ?? [])]) if (a) aliasIndex.set(a.toLowerCase(), p.hebrew)
+  for (const p of raw.people) for (const a of [p.id, p.hebrew, p.canonical, ...(p.aliases ?? [])]) if (a) aliasIndex.set(a.toLowerCase(), p.hebrew)
 
   return { people, aliasIndex, notes: parseNotes(notesText, byId), valid: v.ok, errors: v.errors, warnings: v.warnings }
 }
@@ -73,7 +74,7 @@ function parseNotes(md: string, byId: Map<string, RawPerson>): Map<string, strin
   const out = new Map<string, string>()
   // section heading (name/alias/id) → canonical hebrew, matching aliasIndex.
   const hebByAny = new Map<string, string>()
-  for (const [id, p] of byId) for (const a of [id, p.hebrew, ...(p.aliases ?? [])]) if (a) hebByAny.set(a.toLowerCase(), p.hebrew)
+  for (const [id, p] of byId) for (const a of [id, p.hebrew, p.canonical, ...(p.aliases ?? [])]) if (a) hebByAny.set(a.toLowerCase(), p.hebrew)
   const sections = md.split(/^##\s+/m).slice(1)
   for (const sec of sections) {
     const nl = sec.indexOf('\n')

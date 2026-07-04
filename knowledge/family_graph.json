@@ -5,11 +5,11 @@
     {
       "id": "מרטיטה",
       "hebrew": "מרטיטה",
+      "canonical": "Martita",
       "aliases": [
-        "martita",
         "אבו",
-        "abu",
-        "abuela"
+        "Abu",
+        "Abuela"
       ],
       "gender": "female",
       "parents": [],
@@ -27,9 +27,9 @@
     {
       "id": "פפי",
       "hebrew": "פפי",
+      "canonical": "Papi",
       "aliases": [
-        "papi",
-        "pepe",
+        "Pepe",
         "פאפי"
       ],
       "gender": "male",
@@ -45,8 +45,8 @@
     {
       "id": "מור",
       "hebrew": "מור",
+      "canonical": "Mor",
       "aliases": [
-        "mor",
         "מורי"
       ],
       "gender": "female",
@@ -73,8 +73,8 @@
     {
       "id": "לאו",
       "hebrew": "לאו",
+      "canonical": "Leo",
       "aliases": [
-        "leo",
         "לאון",
         "ליאו"
       ],
@@ -96,9 +96,9 @@
     {
       "id": "רפי",
       "hebrew": "רפי",
+      "canonical": "Raphi",
       "aliases": [
-        "raphi",
-        "rafi"
+        "Rafi"
       ],
       "gender": "male",
       "parents": [],
@@ -120,9 +120,8 @@
     {
       "id": "יעל",
       "hebrew": "יעל",
-      "aliases": [
-        "yael"
-      ],
+      "canonical": "Yael",
+      "aliases": [],
       "gender": "female",
       "parents": [],
       "children": [],
@@ -138,17 +137,14 @@
     {
       "id": "אופיר",
       "hebrew": "אופיר",
-      "aliases": [
-        "ofir"
-      ],
+      "canonical": "Ofir",
+      "aliases": [],
       "gender": "male",
       "parents": [
         "מור",
         "רפי"
       ],
       "children": [
-        "אנאבל",
-        "ארי",
         "אנאבל",
         "ארי"
       ],
@@ -164,9 +160,9 @@
     {
       "id": "איילון",
       "hebrew": "איילון",
+      "canonical": "Ayalon",
       "aliases": [
-        "ayalon",
-        "eylon",
+        "Eylon",
         "אילון"
       ],
       "gender": "male",
@@ -185,9 +181,9 @@
     {
       "id": "עילי",
       "hebrew": "עילי",
+      "canonical": "Eili",
       "aliases": [
-        "eili",
-        "ilai",
+        "Ilai",
         "עילאי"
       ],
       "gender": "male",
@@ -208,9 +204,8 @@
     {
       "id": "אדר",
       "hebrew": "אדר",
-      "aliases": [
-        "adar"
-      ],
+      "canonical": "Adar",
+      "aliases": [],
       "gender": "male",
       "parents": [
         "מור",
@@ -227,8 +222,8 @@
     {
       "id": "עדי",
       "hebrew": "עדי",
+      "canonical": "Adi",
       "aliases": [
-        "adi",
         "אדי"
       ],
       "gender": "male",
@@ -246,9 +241,8 @@
     {
       "id": "נועם",
       "hebrew": "נועם",
-      "aliases": [
-        "noam"
-      ],
+      "canonical": "Noam",
+      "aliases": [],
       "gender": "male",
       "parents": [
         "לאו"
@@ -264,9 +258,8 @@
     {
       "id": "ירדן",
       "hebrew": "ירדן",
-      "aliases": [
-        "yarden"
-      ],
+      "canonical": "Yarden",
+      "aliases": [],
       "gender": "female",
       "parents": [],
       "children": [],
@@ -282,9 +275,8 @@
     {
       "id": "גלעד",
       "hebrew": "גלעד",
-      "aliases": [
-        "gilad"
-      ],
+      "canonical": "Gilad",
+      "aliases": [],
       "gender": "male",
       "parents": [],
       "children": [
@@ -303,9 +295,9 @@
     {
       "id": "אנאבל",
       "hebrew": "אנאבל",
+      "canonical": "Anabel",
       "aliases": [
-        "anabel",
-        "annabel"
+        "Annabel"
       ],
       "gender": "female",
       "parents": [
@@ -323,9 +315,8 @@
     {
       "id": "ארי",
       "hebrew": "ארי",
-      "aliases": [
-        "ari"
-      ],
+      "canonical": "Ari",
+      "aliases": [],
       "gender": "female",
       "parents": [
         "אופיר",

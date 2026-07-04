@@ -16,39 +16,10 @@
  * Pure module — no React, no fetch, no LLM, no env vars.
  */
 
-import familyRaw from '../../../knowledge/family_data.json'
+import { loadFamilyKnowledge, type LoadedFamilyKnowledge } from './familyKnowledgeLoader'
 
-interface RawMember {
-  canonical_name: string
-  hebrew_name: string
-  aliases?: string[]
-  relationship?: string
-  partner?: string
-  spouse?: string
-  ex_spouse?: string
-  children?: string[]
-  notes?: string
-}
-
-/** Inferred gender from the `relationship` field; "unknown" when neither
- *  list matches. Used to pick the right kinship label (גיס vs גיסה /
- *  cuñado vs cuñada / brother-in-law vs sister-in-law). */
+/** Gender picks the right gendered kinship label (גיס vs גיסה / cuñado vs cuñada). */
 export type Gender = 'female' | 'male' | 'unknown'
-
-const FEMALE_ROLES = new Set([
-  'matriarch', 'daughter', 'granddaughter', 'great_granddaughter',
-  'daughter_partner', 'daughter-partner', 'granddaughter_in_law',
-])
-const MALE_ROLES = new Set([
-  'son', 'grandson', 'husband_deceased',
-  'son_in_law', 'ex_son_in_law', 'grandson_in_law',
-])
-
-function inferGender(role: string): Gender {
-  if (FEMALE_ROLES.has(role)) return 'female'
-  if (MALE_ROLES.has(role)) return 'male'
-  return 'unknown'
-}
 
 export interface GraphNode {
   canonical: string
@@ -71,112 +42,39 @@ export interface GraphNode {
   gender: Gender
 }
 
-function collectRaw(): RawMember[] {
-  const out: RawMember[] = []
-  const f = familyRaw.family as Record<string, unknown>
-  if (f['matriarch']) out.push(f['matriarch'] as RawMember)
-  if (f['deceased']) out.push(f['deceased'] as RawMember)
-  for (const key of ['children', 'children_related', 'grandchildren_mor',
-                     'grandchildren_leo', 'grandchildren_spouses',
-                     'great_grandchildren']) {
-    const arr = f[key]
-    if (Array.isArray(arr)) for (const m of arr) out.push(m as RawMember)
-  }
-  return out
-}
-
 let _nodes: GraphNode[] | null = null
 let _byHebrew: Map<string, GraphNode> | null = null
+let _cacheKey: LoadedFamilyKnowledge | null = null
 
-function buildGraph(): GraphNode[] {
-  const raw = collectRaw()
-  const nodes: GraphNode[] = raw.map((m) => {
-    const aliases = m.aliases ?? []
-    const matchNames = [
-      m.canonical_name.toLowerCase(),
-      m.hebrew_name.toLowerCase(),
-      ...aliases.map((a) => a.toLowerCase()),
-    ]
-    const role = m.relationship ?? ''
-    return {
-      canonical: m.canonical_name,
-      hebrew: m.hebrew_name,
-      aliases,
-      matchNames,
-      childrenHe: [...(m.children ?? [])],
-      parentsHe: [],
-      spousesHe: m.spouse ? [m.spouse] : [],
-      partnersHe: m.partner ? [m.partner] : [],
-      exSpousesHe: m.ex_spouse ? [m.ex_spouse] : [],
-      role,
-      gender: inferGender(role),
-    }
-  })
-
-  const byHe = new Map<string, GraphNode>()
-  for (const n of nodes) byHe.set(n.hebrew, n)
-
-  // ── Backfill family-level parent edges that the JSON only encodes
-  //    structurally (i.e., "children" arrays under matriarch / parents).
-  //
-  // The JSON places Mor and Leo under family.children[] (their parent
-  // is the matriarch). It also places grandchildren under
-  // family.grandchildren_mor / _leo (their parents are Mor / Leo and,
-  // for Mor's side, Rafi as the ex-husband/father). great_grandchildren
-  // are children of Ofir + Gilad. Make every relation explicit so the
-  // resolver can walk parents-of and siblings.
-  const f = familyRaw.family as Record<string, unknown>
-  const matriarchRaw = f['matriarch'] as RawMember | undefined
-  if (matriarchRaw) {
-    const matriarch = byHe.get(matriarchRaw.hebrew_name)
-    const matriarchKids = (f['children'] as RawMember[] | undefined ?? []).map((c) => c.hebrew_name)
-    if (matriarch) matriarch.childrenHe.push(...matriarchKids)
-  }
-
-  // Rafi is the father of Mor's children (per his notes), even though
-  // his record does not enumerate them. Add the edge so siblings-via-
-  // common-parent resolves correctly for grandchild ↔ grandchild and
-  // for in-law detection.
-  const rafi = nodes.find((n) => n.canonical === 'Raphi')
-  if (rafi) {
-    const morKids = (f['grandchildren_mor'] as RawMember[] | undefined ?? []).map((g) => g.hebrew_name)
-    rafi.childrenHe.push(...morKids)
-  }
-
-  // Ofir + Gilad are parents of every great-grandchild.
-  const greatGrandKids = (f['great_grandchildren'] as RawMember[] | undefined ?? []).map((g) => g.hebrew_name)
-  for (const parentCanonical of ['Ofir', 'Gilad']) {
-    const p = nodes.find((n) => n.canonical === parentCanonical)
-    if (p) p.childrenHe.push(...greatGrandKids)
-  }
-
-  // ── Make every relational edge symmetric.
-  for (const n of nodes) {
-    for (const childHe of n.childrenHe) {
-      const child = byHe.get(childHe)
-      if (child && !child.parentsHe.includes(n.hebrew)) child.parentsHe.push(n.hebrew)
-    }
-    for (const sp of n.spousesHe) {
-      const other = byHe.get(sp)
-      if (other && !other.spousesHe.includes(n.hebrew)) other.spousesHe.push(n.hebrew)
-    }
-    for (const pa of n.partnersHe) {
-      const other = byHe.get(pa)
-      if (other && !other.partnersHe.includes(n.hebrew)) other.partnersHe.push(n.hebrew)
-    }
-    for (const ex of n.exSpousesHe) {
-      const other = byHe.get(ex)
-      if (other && !other.exSpousesHe.includes(n.hebrew)) other.exSpousesHe.push(n.hebrew)
-    }
-  }
-
-  _byHebrew = byHe
+/** Project GraphNode[] from the editable Family Knowledge System (family_graph.json,
+ *  via familyKnowledgeLoader). The loader already backfills edge symmetry, so this is
+ *  a straight projection — no more reads from family_data.json for relationships. */
+function buildGraphFromKnowledge(k: LoadedFamilyKnowledge): GraphNode[] {
+  const nodes: GraphNode[] = k.people.map((p) => ({
+    canonical: p.canonical,
+    hebrew: p.hebrew,
+    aliases: p.aliases,
+    matchNames: [p.canonical.toLowerCase(), p.id.toLowerCase(), p.hebrew.toLowerCase(), ...p.aliases.map((a) => a.toLowerCase())],
+    childrenHe: [...p.childrenHe],
+    parentsHe: [...p.parentsHe],
+    spousesHe: [...p.spousesHe],
+    partnersHe: [...p.partnersHe],
+    exSpousesHe: [...p.exSpousesHe],
+    role: '',
+    gender: p.gender ?? 'unknown',
+  }))
+  _byHebrew = new Map(nodes.map((n) => [n.hebrew, n]))
   return nodes
 }
 
+/** The family graph — SINGLE SOURCE: the editable knowledge system. Rebuilds when the
+ *  knowledge is reloaded (reloadFamilyKnowledge), so editing family_graph.json changes
+ *  live relationship answers. */
 export function loadGraph(): GraphNode[] {
-  if (_nodes) return _nodes
-  _nodes = buildGraph()
+  const k = loadFamilyKnowledge()
+  if (_nodes && _cacheKey === k) return _nodes
+  _cacheKey = k
+  _nodes = buildGraphFromKnowledge(k)
   return _nodes
 }
 
@@ -197,7 +95,7 @@ export function findNode(name: string): GraphNode | null {
 }
 
 function nodeByHebrew(he: string): GraphNode | null {
-  if (!_byHebrew) loadGraph()
+  loadGraph() // ensures _byHebrew reflects the current (possibly reloaded) knowledge
   return _byHebrew!.get(he) ?? null
 }
 

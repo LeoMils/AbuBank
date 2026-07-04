@@ -13,6 +13,7 @@ export type RawGender = 'male' | 'female' | 'unknown'
 export interface RawPerson {
   id: string
   hebrew: string
+  canonical?: string
   aliases?: string[]
   gender?: RawGender
   parents?: string[]
@@ -50,7 +51,7 @@ export function validateFamilyGraph(raw: unknown): ValidationResult {
   }
   // alias collisions (an alias or hebrew that resolves to two different people).
   for (const p of people) {
-    for (const a of [p.hebrew, ...(p.aliases ?? [])]) {
+    for (const a of [p.hebrew, p.canonical, ...(p.aliases ?? [])].filter((x): x is string => !!x)) {
       if (!a) continue
       const key = a.toLowerCase()
       const owner = aliasOwner.get(key)

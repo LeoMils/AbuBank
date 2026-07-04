@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.28.0-editable-family-knowledge'
-const BUILD_LABEL = 'AbuBank — Editable Family Knowledge (structured graph + soft notes, validated, alias-aware)'
+const BUILD_VERSION = '0.29.0-family-runtime-cutover'
+const BUILD_LABEL = 'AbuBank — Family Runtime Cutover (live answers from editable family_graph.json)'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
