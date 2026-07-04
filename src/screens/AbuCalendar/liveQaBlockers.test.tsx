@@ -216,12 +216,16 @@ describe('BLOCKER 2 — family relation phrases', () => {
     expect(extractPersonPhrase('פגישה עם אבא של אנאבל')).toBe('אבא של אנאבל')
   })
 
-  it('"אבא של אנאבל" is ambiguous — both parents (אופיר, גלעד) are male', () => {
+  it('"אבא של אנאבל" resolves to גלעד — Gilad is the male parent (Ofir is female)', () => {
     const r = resolvePersonPhrase('אבא של אנאבל')
-    expect(r.status).toBe('ambiguous')
-    if (r.status === 'ambiguous') {
-      expect(r.candidates.sort()).toEqual(['אופיר', 'גלעד'].sort())
-    }
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('גלעד')
+  })
+
+  it('"אמא של אנאבל" resolves to אופיר — Ofir is the female parent', () => {
+    const r = resolvePersonPhrase('אמא של אנאבל')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('אופיר')
   })
 
   it('extracts "הגרוש של מור" as a person phrase', () => {

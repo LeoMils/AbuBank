@@ -15,7 +15,7 @@ describe('Gender Matrix — every family member', () => {
     'פפי': 'male',         // Pepe — deceased husband
     'מור': 'female',       // daughter
     'לאו': 'male',         // son (Leo)
-    'אופיר': 'male',      // grandson
+    'אופיר': 'female',     // granddaughter
     'איילון': 'male',     // grandson
     'עילי': 'male',        // grandson
     'אדר': 'male',         // grandson

@@ -194,13 +194,13 @@ describe('end-to-end semantic trace — four live-QA sentences', () => {
     expect(t.saveAllowed).toBe(true)
   })
 
-  it('"מחר בשמונה בבוקר אני רוצה להיפגש עם אבא של אנאבל" — appointment_create, tomorrow, 08:00, ambiguous parent', () => {
-    const t = simulateAppointmentTrace('מחר בשמונה בבוקר אני רוצה להיפגש עם אבא של אנאבל')
+  it('"מחר בשמונה בבוקר אני רוצה להיפגש עם הבן של מור" — appointment_create, tomorrow, 08:00, ambiguous parent', () => {
+    const t = simulateAppointmentTrace('מחר בשמונה בבוקר אני רוצה להיפגש עם הבן של מור')
     expect(t.semanticRoute).toBe('appointment_create')
     expect(t.extractedDate).toBe(TOMORROW_E2E)
     expect(t.extractedStartTime).toBe('08:00')
-    expect(t.relationPhrase).toBe('אבא של אנאבל')
-    // Both Ofir and Gilad are Anabel's parents and both are male → ambiguous.
+    expect(t.relationPhrase).toBe('הבן של מור')
+    // Mor has three sons (Ayalon, Eili, Adar) → ambiguous which one.
     expect(t.resolvedPersonStatus).toBe('ambiguous')
     expect(t.resolvedPersonName).toBeNull()
     // Save must be blocked while family is ambiguous — operator must pick.
@@ -247,14 +247,14 @@ describe('QA panel renders the same semantic values as the trace', () => {
   })
 
   it('panel saveAllowed=no with reason="family ambiguous" matches trace decision', () => {
-    const trace = simulateAppointmentTrace('מחר בשמונה בבוקר אני רוצה להיפגש עם אבא של אנאבל')
+    const trace = simulateAppointmentTrace('מחר בשמונה בבוקר אני רוצה להיפגש עם הבן של מור')
     const html = flatten(renderToString(
       React.createElement(VoiceDebugPanel, { trace, reminderDraft: null }),
     ))
     expect(html).toContain('saveAllowed: no')
     expect(html).toContain('reason: family ambiguous')
     // relation is shown even though person could not be resolved.
-    expect(html).toContain('relation: אבא של אנאבל')
+    expect(html).toContain('relation: הבן של מור')
     expect(html).toContain('person: —')
   })
 

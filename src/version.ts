@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.29.0-family-runtime-cutover',
-  buildLabel: 'AbuBank — Family Runtime Cutover (live answers from editable family_graph.json)',
-  buildDate:  '2026-07-03',
+  version:    '0.29.1-ofir-gender-fix',
+  buildLabel: 'AbuBank — Ofir gender DATA FIX (granddaughter/female across graph + reasoning)',
+  buildDate:  '2026-07-05',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
 } as const

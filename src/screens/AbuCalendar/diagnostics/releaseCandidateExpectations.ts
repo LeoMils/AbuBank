@@ -61,9 +61,9 @@ export const RELEASE_CANDIDATE_EXPECTATIONS: QaExpectation[] = [
     expectedSaveAllowed: true, expectedCardPolicy: 'confirm', criticality: 'P0',
   },
   {
-    id: 'rc-08', utterance: 'מחר בשמונה בבוקר אני רוצה להיפגש עם אבא של אנאבל',
+    id: 'rc-08', utterance: 'מחר בשמונה בבוקר אני רוצה להיפגש עם הבן של מור',
     expectedRoute: 'appointment_create', expectedDatePolicy: 'tomorrow', expectedTime: '08:00',
-    expectedRelationPolicy: 'אבא של אנאבל', expectedPersonPolicy: 'ambiguous',
+    expectedRelationPolicy: 'הבן של מור', expectedPersonPolicy: 'ambiguous',
     expectedSaveAllowed: false, expectedCardPolicy: 'blocked', criticality: 'P0',
   },
   {

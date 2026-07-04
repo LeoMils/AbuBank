@@ -74,6 +74,14 @@ export const GOLDEN_CASES: GoldenCase[] = [
   } },
   chat('gc-create-chat-ex1', 'CalendarCreate', 'cognitiveRuntime', 'raw title / missing location', ['אני צריך להיפגש מחר עם מוטי כי הוא התקשר אליי ולא נעים לי ממנו, אז אמרתי לו שכן. אני צריך להיפגש איתו מחר בשעה שלוש בקפה מורנו.'],
     l => l.intent === 'calendar_create' && has(l.display, 'פגישה עם מוטי') && has(l.display, 'קפה מורנו') && has(l.display, 'פרטים חשובים'), /\.\s*\.|חסר מקום/),
+  // Phase 4 narrative ("<Name> ביקשה שאבוא … אליה הביתה. <other> יגיע…") — used to
+  // MISROUTE to family ("מרטיטה הסבתא של אופיר") + who=מרטיטה + no location/detail.
+  { id: 'gc-create-ui-p4', cat: 'CalendarUI', layer: 'parseAppointmentText', badWas: 'title=מרטיטה; loc=null; no גלעד', evaluate: async () => {
+    saveAppointments([]); const r = await parseAppointmentText('אופיר ביקשה שאבוא מחר בשלוש אליה הביתה. גלעד יגיע כנראה רק בחמש.')
+    return { pass: r.title === 'פגישה עם אופיר' && r.time === '15:00' && !!r.location && r.location.includes('אופיר') && !!r.notes && /גלעד/.test(r.notes), detail: `title=${r.title} time=${r.time} loc=${r.location} notes=${r.notes}` }
+  } },
+  chat('gc-create-p4-conv', 'CalendarCreate', 'cognitiveRuntime', 'misrouted to family / raw title', ['אופיר ביקשה שאבוא מחר בשלוש אליה הביתה. גלעד יגיע כנראה רק בחמש.'],
+    l => l.intent === 'calendar_create' && has(l.display, 'פגישה עם אופיר') && has(l.display, 'אצל אופיר') && has(l.display, 'גלעד'), /הסבתא|הסבא|ביקשה שאבוא/),
   chat('gc-create-save', 'CalendarCreate', 'plugins', 'confirm cancelled / not saved', ['תקבעי פגישה עם דני מחר בשבע בערב', 'כן'], () => loadAppointments().length === 1, /ביטלתי/),
   chat('gc-create-repeated-yes', 'CalendarCreate', 'goalManager', 'repeated yes loops / double-save', ['תקבעי פגישה עם אורית היום בשמונה בערב', 'כן כן כן תקבעי', 'כן'], () => loadAppointments().length === 1),
   chat('gc-create-missing-time', 'CalendarCreate', 'cognitiveRuntime', 'wrong missing field', ['תקבעי פגישה עם דני מחר'], l => has(l.display, 'שעה', 'מתי', 'באיזו שעה'), /חסר יום|באיזה יום/),

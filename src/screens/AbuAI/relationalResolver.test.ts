@@ -10,8 +10,8 @@ describe('L-2 Spanish relational routing', () => {
     expect(resolveRelationalQuery('la tía de Adi', 'es')).toContain('Mor')
   })
   it('never invents a relation that does not exist (honest)', () => {
-    // Mor has only sons → no daughter; Ofir's parents have no female sibling → no aunt.
-    expect(resolveRelationalQuery('la hija de Mor', 'es')).toMatch(/no tiene/)
+    // Leo has only sons (Adi, Noam) → no daughter; Ofir's parents have no female sibling → no aunt.
+    expect(resolveRelationalQuery('la hija de Leo', 'es')).toMatch(/no tiene/)
     expect(resolveRelationalQuery('la tía de Ofir', 'es')).toMatch(/no tiene/)
   })
   it('uses Latin names, not Hebrew script', () => {
@@ -29,7 +29,7 @@ describe('L-2 English relational routing', () => {
     expect(resolveRelationalQuery('mother of Mor', 'en')).toBeTruthy()
   })
   it('honest when no such relative', () => {
-    expect(resolveRelationalQuery("Mor's daughter", 'en')).toMatch(/has no/)
+    expect(resolveRelationalQuery("Leo's daughter", 'en')).toMatch(/has no/)
   })
 })
 

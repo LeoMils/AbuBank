@@ -228,12 +228,12 @@ describe('30-minute Martita simulation — minute by minute', () => {
     assistantSays(answer!)
   })
 
-  it('T21: "תזכירי לי להתקשר אליו מחר" — pronoun resolved', () => {
-    const text = 'תזכירי לי להתקשר אליו מחר'
+  it('T21: "תזכירי לי להתקשר אליה מחר" — pronoun resolved (Ofir is female)', () => {
+    const text = 'תזכירי לי להתקשר אליה מחר'
     const { resolved, personName } = resolvePronouns(text, conversation)
     expect(personName).toBe('אופיר')
     expect(resolved).toContain('אופיר')
-    expect(resolved).not.toContain('אליו')
+    expect(resolved).not.toContain('אליה')
     userSays(text)
     assistantSays('להתקשר לאופיר מחר. לשמור?')
   })

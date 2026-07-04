@@ -411,9 +411,9 @@ describe('voice pipeline — release-candidate gauntlet (30 scenarios)', () => {
     expect(r.saveAllowed.allowed).toBe(true)
   })
 
-  // RC-9: ambiguous parent
-  it('RC-9 "מחר בשמונה בבוקר אני רוצה להיפגש עם אבא של אנאבל" → appointment, tomorrow, 08:00, ambiguous', () => {
-    const r = runVoicePipelineDiagnostic('מחר בשמונה בבוקר אני רוצה להיפגש עם אבא של אנאבל', TODAY_ISO)
+  // RC-9: ambiguous parent (Mor has 3 sons → ambiguous, save blocked)
+  it('RC-9 "מחר בשמונה בבוקר אני רוצה להיפגש עם הבן של מור" → appointment, tomorrow, 08:00, ambiguous', () => {
+    const r = runVoicePipelineDiagnostic('מחר בשמונה בבוקר אני רוצה להיפגש עם הבן של מור', TODAY_ISO)
     expect(r.intent).toBe('appointment')
     expect(r.dateParse.date).toBe(TOMORROW_ISO)
     expect(r.timeParse.time).toBe('08:00')

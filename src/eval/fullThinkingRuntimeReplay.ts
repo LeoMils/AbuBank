@@ -70,7 +70,7 @@ export async function runFullThinkingReplay(opts: { now?: Date; resetStore?: boo
     push('ofir', 'calendar_create', 'complex Ofir request', supervised(r) && /שעתיים/.test(r.display) && /פרטים חשובים|גלעד/.test(r.display), `say="${r.display}"`)
   }
   // family directional
-  for (const [q, want] of [['מה הקשר בין לאו לאנאבל', 'דוד רבא'], ['מה הקשר בין אופיר ללאו', 'אחיין']] as const) {
+  for (const [q, want] of [['מה הקשר בין לאו לאנאבל', 'דוד רבא'], ['מה הקשר בין אופיר ללאו', 'אחיינית']] as const) {
     const r = await runFullTurn(IDLE_RUNTIME, q, ctx, T)
     push(`fam:${q.slice(-6)}`, 'family', q, supervised(r) && r.display.includes(want), `want=${want} say="${r.display}"`)
   }

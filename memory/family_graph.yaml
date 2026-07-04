@@ -1,7 +1,7 @@
 # ⚠️ 100% GENERATED FILE — DO NOT EDIT
 # Source of truth: knowledge/family_data.json + knowledge/martita_personality.yaml
 # Regenerate with: npm run generate:memory
-# Generated: 2026-06-21
+# Generated: 2026-07-04
 
 
 matriarch:
@@ -22,7 +22,7 @@ children:
     children:
       - canonical_name: "Ofir"
         hebrew: "אופיר"
-        relationship: "grandson"
+        relationship: "granddaughter"
         spouse: "גלעד"
         notes: "אופיר וגלעד הם ההורים של אנאבל וארי."
         children:

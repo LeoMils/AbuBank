@@ -71,15 +71,15 @@ describe('Family Runtime Cutover — live answers come from the editable graph',
   })
 })
 
-describe('DATA HOLD — Ofir gender/data mismatch (do not guess; needs Leo)', () => {
-  it('pins the CURRENT unconfirmed state so a silent change is caught', () => {
+describe('DATA RESOLVED — Ofir is female (confirmed by Leo)', () => {
+  it('Ofir is female — the granddaughter/mother-of-Anabel-&-Ari data hold is resolved', () => {
     reloadFamilyKnowledge()
     const ofir = findNode('אופיר')
     expect(ofir).not.toBeNull()
-    // family_graph.json currently derives gender=male from family_data role "grandson",
-    // while the notes describe Ofir as a parent of Anabel/Ari. This is UNCONFIRMED.
-    // Leaving it pinned here documents the DATA HOLD; when Leo confirms, update
-    // family_graph.json + this expectation together.
-    expect(ofir!.gender).toBe('male') // ⚠️ DATA HOLD — awaiting Leo's confirmation
+    // Previously a DATA HOLD: family_graph.json derived gender=male from role "grandson"
+    // while the notes described Ofir as a parent of Anabel/Ari. Leo confirmed Ofir is
+    // Martita's GRANDDAUGHTER (female), married to Gilad. Source + expectation updated
+    // together. See ofirGenderRegression.test.ts for the full cross-layer guard.
+    expect(ofir!.gender).toBe('female')
   })
 })

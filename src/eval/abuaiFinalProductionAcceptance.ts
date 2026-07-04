@@ -19,7 +19,7 @@ const brokenLLM = (bad: string): FullTurnTools => ({ llm: async () => bad, onlin
 // [a, b, expected, forbidden]
 const FAM: Array<[string, string, RegExp, RegExp | undefined]> = [
   ['לאו', 'אופיר', /דוד/, /הבן שלך|אחיין/],
-  ['אופיר', 'לאו', /אחיין/, /דוד\b|הבן/],
+  ['אופיר', 'לאו', /אחיינית/, /דוד\b|הבן/],
   ['מור', 'לאו', /אח/, /דוד/],
   ['לאו', 'מור', /אח/, /דוד/],
   ['אופיר', 'אנאבל', /אבא|אמא|הורה/, /דוד|לא אנחש/],

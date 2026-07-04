@@ -198,7 +198,7 @@ const ONLINE_EXTRA_RE =
 // is never mistaken for a family question just because family names appear in it.
 const DAY_CUE = /(?:מחר|מחרתיים|היום|הערב|ביום\s+(?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת))/u
 const TIME_CUE = /(?:בשעה|בשבע|בשמונה|בתשע|בעשר|באחת|בשתיים|בשלוש|בארבע|בחמש|בשש|בבוקר|בערב|בצהריים|וחצי)/u
-const PLACE_PERSON_CUE = /(?:אצל|עם\s+[א-ת]{2,})/u
+const PLACE_PERSON_CUE = /(?:אצל|עם\s+[א-ת]{2,}|אלי[הו]|הביתה|לבית[הו]?)/u
 function looksLikeNarrativeMeeting(t: string): boolean {
   if (/^(?:מה|מי|מתי|איפה|כמה)\b/u.test(t) || /[?؟]/.test(t)) return false
   return DAY_CUE.test(t) && TIME_CUE.test(t) && PLACE_PERSON_CUE.test(t)
@@ -320,6 +320,10 @@ function looksLikeFamilyQuery(t: string): boolean {
   // "מי זה X" for a known family member.
   const m = t.match(/^מי\s+ז[הא]\s+(\S+)\s*\??$/u)
   if (m && findNode(m[1]!)) return true
+  // Guard the WEAK 2-names heuristic: a sentence carrying day+time (a scheduling
+  // request that merely mentions two relatives, e.g. "אופיר … מחר בשלוש … גלעד …")
+  // is a calendar meeting, NOT a relation question — never misroute it to family.
+  if (DAY_CUE.test(t) && TIME_CUE.test(t)) return false
   return knownFamilyNamesIn(t).length >= 2
 }
 function knownFamilyNamesIn(t: string): GraphNode[] {
@@ -666,8 +670,9 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
           missing: [],
         }
       }
-      // Prefer the smart-resolved location (pronoun venues like "אצלה בבית" →
-      // "אצל אופיר בבית") over the base parser's unresolved one.
+      // A person-meeting title is always "פגישה עם <who>" — never the raw narrative
+      // ("אופיר ביקשה שאבוא אליה הביתה. גלעד…"). Prefer the smart-resolved location.
+      if (next.phase === 'confirming' && smart.who) next.draft.title = `פגישה עם ${smart.who}`
       if (next.phase === 'confirming' && smart.location) next.draft.location = smart.location
       // When we have a semantic "פרטים חשובים" summary, DROP the raw notes clause so
       // the confirm never dumps the raw sentence in "(...)" alongside the summary.

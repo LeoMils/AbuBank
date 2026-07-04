@@ -63,9 +63,10 @@ describe('family role resolver: siblings / cousins / uncle / spouse (ה-prefix +
     const a = tryGroundedAnswer('מי האחים של אופיר?')
     expect(a).toContain('איילון'); expect(a).toContain('אדר')
   })
-  it('"מי בן הדוד של עדי" → cousins (Mor\'s children)', () => {
+  it('"מי בן הדוד של עדי" → male cousins (Mor\'s sons; Ofir is a female cousin)', () => {
     const a = tryGroundedAnswer('מי בן הדוד של עדי?')
-    expect(a).toBeTruthy(); expect(a).toContain('אופיר')
+    expect(a).toBeTruthy(); expect(a).toContain('איילון')
+    expect(a).not.toContain('אופיר')  // Ofir is בת דודה (female), not בן דוד
   })
   it('"מי הדוד של אופיר" → uncle Leo', () => {
     expect(tryGroundedAnswer('מי הדוד של אופיר?')).toContain('לאו')

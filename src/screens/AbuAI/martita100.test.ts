@@ -194,9 +194,9 @@ describe('Pronoun journeys', () => {
     expect(personName).toBe('יעל')
   })
 
-  it('45: "איתו" after אופיר', () => {
-    const h = [msg('user', 'מי זה אופיר?'), msg('assistant', 'אופיר — הנכד.')]
-    const { resolved } = resolvePronouns('תקבעי לי פגישה איתו', h)
+  it('45: "איתה" after אופיר (Ofir is female)', () => {
+    const h = [msg('user', 'מי זה אופיר?'), msg('assistant', 'אופיר — הנכדה.')]
+    const { resolved } = resolvePronouns('תקבעי לי פגישה איתה', h)
     expect(resolved).toContain('אופיר')
   })
 
@@ -213,10 +213,10 @@ describe('Pronoun journeys', () => {
   it('47: pronoun after multiple user messages picks most recent', () => {
     const h = [
       msg('user', 'מי זה נועם?'), msg('assistant', 'נועם — הנכד.'),
-      msg('user', 'מי זה אופיר?'), msg('assistant', 'אופיר — הנכד.'),
+      msg('user', 'מי זה עילי?'), msg('assistant', 'עילי — הנכד.'),
     ]
     const { personName } = resolvePronouns('תזכירי לי להתקשר אליו', h)
-    expect(personName).toBe('אופיר') // most recent user mention
+    expect(personName).toBe('עילי') // most recent user mention (male → אליו)
   })
 
   it('48: no pronoun in text → no change', () => {

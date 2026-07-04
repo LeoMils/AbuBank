@@ -158,9 +158,9 @@ describe('FOLLOW-UPS — 20 scenarios', () => {
     expect(resolvePronouns('מתי יום ההולדת שלה?', h).resolved).toContain('מור')
   })
   it('60. "אליו" pronoun after male', () => {
-    const h = [msg('user', 'מי זה אופיר?'), msg('assistant', 'נכד.')]
+    const h = [msg('user', 'מי זה עילי?'), msg('assistant', 'נכד.')]
     const r = resolvePronouns('תזכירי לי להתקשר אליו', h)
-    expect(r.resolved).toContain('אופיר')
+    expect(r.resolved).toContain('עילי')
   })
   it('61. "אליה" pronoun after female', () => {
     const h = [msg('user', 'מי זאת יעל?'), msg('assistant', 'בת זוג.')]
@@ -176,9 +176,9 @@ describe('FOLLOW-UPS — 20 scenarios', () => {
   it('63. most recent user mention wins', () => {
     const h = [
       msg('user', 'מי זה נועם?'), msg('assistant', 'נכד.'),
-      msg('user', 'מי זה אופיר?'), msg('assistant', 'נכד.'),
+      msg('user', 'מי זה עילי?'), msg('assistant', 'נכד.'),
     ]
-    expect(resolvePronouns('תזכירי לי להתקשר אליו', h).personName).toBe('אופיר')
+    expect(resolvePronouns('תזכירי לי להתקשר אליו', h).personName).toBe('עילי')
   })
   it('64. gender filter — אליה skips males', () => {
     const h = [

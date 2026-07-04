@@ -49,7 +49,7 @@ export async function runFullOperationalReplay(opts: { resetStore?: boolean } = 
     const r = await runFullTurn(IDLE_RUNTIME, ofir, ctx, OK)
     check('ofir', 'calendar_create', 'complex Ofir', r, /שעתיים/.test(r.display) && /פרטים חשובים|גלעד/.test(r.display), r.display)
   }
-  for (const [q, want] of [['מה הקשר בין לאו לאנאבל', 'דוד רבא'], ['מה הקשר בין אופיר ללאו', 'אחיין'], ['מה הקשר בין רפי ללאו', 'גיס']] as const) {
+  for (const [q, want] of [['מה הקשר בין לאו לאנאבל', 'דוד רבא'], ['מה הקשר בין אופיר ללאו', 'אחיינית'], ['מה הקשר בין רפי ללאו', 'גיס']] as const) {
     const r = await runFullTurn(IDLE_RUNTIME, q, ctx, OK)
     check(`fam:${want}`, 'family', q, r, r.display.includes(want), r.display)
   }

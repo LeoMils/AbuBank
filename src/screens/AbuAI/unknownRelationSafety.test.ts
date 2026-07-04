@@ -22,9 +22,9 @@ describe('unknown-relation safety (no invention)', () => {
   })
 
   it('Spanish relational: honest negative instead of an invented daughter', () => {
-    // Mor's children are all sons (Ofir/Ayalon/Eili/Adar). The honest answer is
+    // Leo's children are all sons (Adi, Noam). The honest answer is
     // "no tiene hija" — NOT a fabricated daughter name.
-    const r = resolveRelationalQuery('¿quién es la hija de Mor?', 'es')
+    const r = resolveRelationalQuery('¿quién es la hija de Leo?', 'es')
     expect(r).toBeTruthy()
     expect(r!.toLowerCase()).toContain('no tiene')
   })

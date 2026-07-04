@@ -99,6 +99,11 @@ export function extractImportantDetails(text: string): string[] {
   const said = text.match(/([א-ת]{2,})\s+אמר[הת]?\s+ש([^.?!]+)/u)
   if (said) add(`${said[1]} ${tidy(said[2]!)}`)
 
+  // 2c) Someone will ARRIVE at/around a time ("גלעד יגיע כנראה רק בחמש") — keep the
+  // whole clause so the arrival time and hedge ("כנראה רק") are preserved.
+  const arrives = text.match(/(?<![א-ת])([א-ת]{2,})\s+(?:כנראה\s+|אולי\s+)?(?:יגיע|תגיע|יבוא|תבוא|מגיע[ה]?)[^.?!]*/u)
+  if (arrives) add(tidy(arrives[0]))
+
   // 3) Running late / returning late ("תחזור קצת יותר מאוחר", "מאוחר מהעבודה").
   const late = text.match(/(?:([א-ת]{2,})\s+)?(?:תחזור|יחזור|מגיע[ה]?|חוזר[ת]?)\s+[^.?!,]*מאוחר[^.?!,]*/u)
     ?? (/(?:מאוחר\s+מהעבודה|מאוחר\s+יותר|יותר\s+מאוחר)/u.test(text) ? [text.match(/[^.?!,]*מאוחר[^.?!,]*/u)?.[0] ?? 'מאוחר'] as unknown as RegExpMatchArray : null)
@@ -148,6 +153,12 @@ export function understandMeetingSmart(raw: string): SmartMeeting {
   // ("אופיר אמרה לי") that the base parser missed (no עם/אצל cue).
   let who = base.who
   if (!who) { const p = knownPersonIn(text); if (p) who = p }
+  // Initiator override: the SENTENCE-INITIAL "<Name> ביקשה/ביקש/אמרה/אמר ש…" is the
+  // person the meeting is WITH ("אופיר ביקשה שאבוא" → who = אופיר). Only replaces a
+  // missing who or the speaker herself (מרטיטה) — never a real "עם X" participant,
+  // so "…עם אופיר… גלעד אמר ש…" keeps who = אופיר.
+  const initiator = text.match(/^\s*([א-ת]{2,})\s+(?:ביקש[הת]?|אמר[הת]?)\s+ש/u)?.[1]
+  if (initiator && (!base.who || base.who === 'מרטיטה')) { const p = knownPersonIn(initiator); if (p) who = p }
 
   // Contextual location for a pronoun venue: "אצלה" → "אצל אופיר", AND "אצלה בבית"
   // → "אצל אופיר בבית" (resolve the pronoun in place, preserving trailing text).
@@ -158,6 +169,8 @@ export function understandMeetingSmart(raw: string): SmartMeeting {
   } else if (!location) {
     location = resolveContextualLocation(text, who) ?? location
   }
+  // "אליה/אליו הביתה" / "אליה לבית" (to her/his home) → that person's home.
+  if (!location && who && /(?<![א-ת])אלי[הו]\s+(?:ה?ביתה|לבית)/u.test(text)) location = `אצל ${who} הביתה`
 
   // Evening inference: an ambiguous hour + a late/return/evening cue → PM.
   let time = base.time

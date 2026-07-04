@@ -25,8 +25,8 @@ describe('TRUST — family: all languages converge to the same graph truth', () 
     expect(en).toContain('Mor')
   })
   it('unknown / non-existent relation is never invented', () => {
-    expect(resolveRelationalQuery('la hija de Mor', 'es')).toMatch(/no tiene/) // Mor has only sons
-    expect(resolveRelationalQuery("Mor's daughter", 'en')).toMatch(/has no/)
+    expect(resolveRelationalQuery('la hija de Leo', 'es')).toMatch(/no tiene/) // Leo has only sons
+    expect(resolveRelationalQuery("Leo's daughter", 'en')).toMatch(/has no/)
     expect(resolveRelationalQuery('la mamá de Pedro', 'es')).toBeNull()        // unknown person
   })
 })

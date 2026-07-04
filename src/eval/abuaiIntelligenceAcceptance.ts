@@ -79,7 +79,7 @@ export const ACCEPTANCE_CASES: AcceptanceCase[] = [
 
   // ── Family Graph Reasoner (directional, all listed names) ──
   { id: 'fam-leo-ofir', layer: 'family', turns: ['מה לאו עבור אופיר'], expect: f => has(f, 'דוד'), forbidden: /לא אנחש|לא יודעת/ },
-  { id: 'fam-ofir-leo', layer: 'family', turns: ['מה אופיר עבור לאו'], expect: f => has(f, 'אחיין'), forbidden: /לא אנחש/ },
+  { id: 'fam-ofir-leo', layer: 'family', turns: ['מה אופיר עבור לאו'], expect: f => has(f, 'אחיינית'), forbidden: /לא אנחש/ },
   { id: 'fam-mor-leo', layer: 'family', turns: ['מה מור עבור לאו'], expect: f => has(f, 'אח'), forbidden: /לא אנחש/ },
   { id: 'fam-ofir-anabel', layer: 'family', turns: ['מה אופיר עבור אנאבל'], expect: f => has(f, 'אבא', 'אמא', 'הורה'), forbidden: /לא אנחש/ },
   { id: 'fam-rafi-leo', layer: 'family', turns: ['מה רפי עבור לאו'], expect: f => has(f, 'גיס'), forbidden: /לא אנחש/ },

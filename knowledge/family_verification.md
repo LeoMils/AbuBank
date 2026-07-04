@@ -19,7 +19,7 @@ order is actually wrong.
 | rafi.location | ראש העין | U+05E8 U+05D0 U+05E9 U+0020 U+05D4 U+05E2 U+05D9 U+05DF | "Rosh HaAyin" — Rafi's city |
 | adi.location | תל אביב | U+05EA U+05DC U+0020 U+05D0 U+05D1 U+05D9 U+05D1 | "Tel Aviv" — Adi's city |
 | noam.location | הרצליה | U+05D4 U+05E8 U+05E6 U+05DC U+05D9 U+05D4 | "Herzliya" — Noam's city |
-| yarden.hebrew_name | ירדן | U+05D9 U+05E8 U+05D3 U+05DF | "Yarden" — Ofir's wife |
+| yarden.hebrew_name | ירדן | U+05D9 U+05E8 U+05D3 U+05DF | "Yarden" — Eili's wife |
 | eili.hebrew_name | עילי | U+05E2 U+05D9 U+05DC U+05D9 | "Eili" (Ilai) — grandson of Mor & Rafi |
 | ayalon.hebrew_name | איילון | U+05D0 U+05D9 U+05D9 U+05DC U+05D5 U+05DF | "Ayalon" (Eylon) — grandson of Mor & Rafi |
 

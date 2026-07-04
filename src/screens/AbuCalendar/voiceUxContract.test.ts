@@ -162,11 +162,11 @@ describe('P4 — family relationship display', () => {
     if (r.status === 'resolved') expect(r.name).toBe('גלעד')
   })
 
-  it('"הבת של מור" is missing — never invented', async () => {
+  it('"הבת של מור" resolves to Ofir — Mor\'s only daughter', async () => {
     const { resolvePersonPhrase } = await import('./familyResolve')
     const r = resolvePersonPhrase('הבת של מור')
-    expect(r.status).toBe('missing')
-    if (r.status === 'missing') expect(r.phrase).toBe('הבת של מור')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('אופיר')
   })
 
   it('"הבן של מור" is ambiguous — 4+ candidates, never auto-selected', async () => {
