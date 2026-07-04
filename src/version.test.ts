@@ -34,7 +34,7 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.29.1-ofir-gender-fix')
+    expect(APP_VERSION.version).toBe('0.30.0-stress-hardening')
     expect(APP_VERSION.buildLabel).toBe('AbuBank — Ofir gender DATA FIX (granddaughter/female across graph + reasoning)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)

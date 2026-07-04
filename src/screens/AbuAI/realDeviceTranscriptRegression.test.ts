@@ -69,16 +69,17 @@ describe('2. calendar — 3:00 PM default, location merge, "מאושר" saves', 
 
 // 3 — Pending pollution: sports during a pending create must NOT confirm calendar
 describe('3. a pending calendar does not hijack an unrelated sports/weather turn', () => {
-  it.each(['מי ניצח במשחק בין ארגנטינה לירדן', 'מה מזג האוויר בכפר סבא'])('"%s" → park (not clarify/save)', (q) => {
+  it.each(['מי ניצח במשחק בין ארגנטינה לירדן', 'מה מזג האוויר בכפר סבא'])('"%s" → park_keep (answer + keep draft, not clarify/save)', (q) => {
     const st = startCreate('תקבעי פגישה עם גבי מחר בשלוש')
     const r = resolvePendingMessage(st, q, false)
-    expect(r.action).toBe('park')
+    // Answer the side query but KEEP the pending draft (conversation state survives).
+    expect(r.action).toBe('park_keep')
   })
-  // Production-simulator finding: an emotional statement mid-create must PARK (warm
-  // answer), never a cold "בסדר, ביטלתי" or a mis-parse.
-  it.each(['אני מתגעגעת לפאפי', 'אני לבד היום', 'estoy sola', 'אני עצובה', 'קשה לי'])('emotional "%s" mid-create → park (warm, not cancel)', (q) => {
+  // Production-simulator + stress-harness finding: an emotional statement mid-create
+  // is answered warmly while the draft is KEPT, never a cold "בסדר, ביטלתי".
+  it.each(['אני מתגעגעת לפאפי', 'אני לבד היום', 'estoy sola', 'אני עצובה', 'קשה לי'])('emotional "%s" mid-create → park_keep (warm, draft kept, not cancel)', (q) => {
     const st = startCreate('תקבעי פגישה עם גבי מחר בשלוש')
-    expect(resolvePendingMessage(st, q, false).action).toBe('park')
+    expect(resolvePendingMessage(st, q, false).action).toBe('park_keep')
   })
 })
 

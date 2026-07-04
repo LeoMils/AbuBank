@@ -366,34 +366,35 @@ describe('Emotional journeys', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('Topic switch + recovery journeys', () => {
-  it('86: off-topic "אני רעבה" during draft → cancel', () => {
+  it('86: off-topic "אני רעבה" during draft → park_keep (answer warmly, keep draft)', () => {
     const state = {
       phase: 'creating' as const,
       draft: { title: 'פגישה', date: '2026-06-11', time: null, emoji: '📅' },
       missing: ['time'] as Array<'title' | 'date' | 'time'>,
     }
+    // Never a false "בסדר, ביטלתי" — answer the side statement and KEEP the draft.
     const r = resolvePendingMessage(state, 'אני רעבה', false)
-    expect(r.action).toBe('cancel')
+    expect(r.action).toBe('park_keep')
   })
 
-  it('87: off-topic "ספרי לי בדיחה" during draft → cancel', () => {
+  it('87: off-topic "ספרי לי בדיחה" during draft → park_keep (answer, keep draft)', () => {
     const state = {
       phase: 'creating' as const,
       draft: { title: 'רופא', date: '2026-06-11', time: null, emoji: '🏥' },
       missing: ['time'] as Array<'title' | 'date' | 'time'>,
     }
     const r = resolvePendingMessage(state, 'ספרי לי בדיחה', false)
-    expect(r.action).toBe('cancel')
+    expect(r.action).toBe('park_keep')
   })
 
-  it('88: question "מי זה נועם?" during draft → preserve draft (read or clarify)', () => {
+  it('88: question "מי זה נועם?" during draft → park_keep (answer, preserve draft)', () => {
     const state = {
       phase: 'confirming' as const,
       draft: { title: 'רופא', date: '2026-06-11', time: '10:00', emoji: '🏥' },
       missing: [] as Array<'title' | 'date' | 'time'>,
     }
     const r = resolvePendingMessage(state, 'מי זה נועם?', false)
-    expect(['update', 'clarify']).toContain(r.action)
+    expect(r.action).toBe('park_keep')
   })
 
   it('89: calendar read during draft → read action', () => {

@@ -57,7 +57,8 @@ describe('pending-state hygiene', () => {
   it('a pending calendar does NOT hijack an unrelated sports/weather/news turn', () => {
     for (const q of ['מי ניצח במשחק', 'מה מזג האוויר בכפר סבא', 'מה החדשות']) {
       const st = startCreate('תקבעי פגישה עם גבי מחר בשלוש')
-      expect(resolvePendingMessage(st, q, false).action).toBe('park')
+      // Answer the side query but KEEP the draft (park_keep), never hijack/confirm it.
+      expect(resolvePendingMessage(st, q, false).action).toBe('park_keep')
     }
   })
   it('a confirmation during pending still saves (not parked)', () => {

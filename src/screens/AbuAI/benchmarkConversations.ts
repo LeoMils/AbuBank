@@ -40,8 +40,8 @@ export const SCENARIOS: Scenario[] = [
   { id: 'cal-loc-merge-cafe', category: 'calendar', run: () => { const r = resolvePendingMessage(startCreate('תקבעי פגישה עם גבי מחר בשלוש'), 'בבית קפה מרוקו', false); return r.action === 'update' && !!r.state.draft.location?.includes('מרוקו') } },
   { id: 'cal-loc-merge-home', category: 'calendar', run: () => resolvePendingMessage(startCreate('תקבעי פגישה עם גבי מחר בשלוש'), 'בבית', false).action === 'update' },
   { id: 'cal-loc-merge-atzel', category: 'calendar', run: () => resolvePendingMessage(startCreate('תקבעי פגישה עם גבי מחר בשלוש'), 'אצל גבי', false).action === 'update' },
-  { id: 'cal-no-pollution-sports', category: 'calendar', run: () => resolvePendingMessage(startCreate('תקבעי פגישה עם גבי מחר בשלוש'), 'מי ניצח במשחק בין ארגנטינה לירדן', false).action === 'park' },
-  { id: 'cal-no-pollution-weather', category: 'calendar', run: () => resolvePendingMessage(startCreate('תקבעי פגישה עם גבי מחר בשלוש'), 'מה מזג האוויר בכפר סבא', false).action === 'park' },
+  { id: 'cal-no-pollution-sports', category: 'calendar', run: () => resolvePendingMessage(startCreate('תקבעי פגישה עם גבי מחר בשלוש'), 'מי ניצח במשחק בין ארגנטינה לירדן', false).action === 'park_keep' },
+  { id: 'cal-no-pollution-weather', category: 'calendar', run: () => resolvePendingMessage(startCreate('תקבעי פגישה עם גבי מחר בשלוש'), 'מה מזג האוויר בכפר סבא', false).action === 'park_keep' },
   { id: 'cal-no-false-cancel', category: 'calendar', run: () => resolvePendingMessage(startCreate('תקבעי פגישה עם גבי מחר בשלוש'), 'לא', false).action !== 'save' },
   { id: 'cal-tomorrow-evening', category: 'calendar', run: () => understandMeeting('תקבעי עם מור מחר בערב בשבע').date === '2026-06-25' },
 

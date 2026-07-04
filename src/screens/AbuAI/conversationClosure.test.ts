@@ -121,9 +121,12 @@ describe('#5 the dialogue manager applies corrections (does not lose the draft)'
     if (r.action === 'replace') { expect(r.state.draft.person).toBe('אופיר'); expect(r.state.draft.title).toBe('פגישה עם אופיר') }
   })
 
-  it('a genuinely off-topic turn still cancels (no forced scheduling)', () => {
-    expect(correct('תקבעי לי פגישה עם מור מחר בשבע בערב', 'ספרי לי בדיחה').action).toBe('cancel')
-    expect(correct('תקבעי לי פגישה עם מור מחר בשבע בערב', 'אני קצת משועממת').action).toBe('cancel')
+  it('a genuinely off-topic turn is answered while the draft is KEPT (never a false cancel)', () => {
+    // Conversation state survives: the off-topic turn is park_keep'd (answered, draft
+    // preserved so "כן" still confirms), NEVER a cold "בסדר, ביטלתי" and never forced
+    // into the create machine.
+    expect(correct('תקבעי לי פגישה עם מור מחר בשבע בערב', 'ספרי לי בדיחה').action).toBe('park_keep')
+    expect(correct('תקבעי לי פגישה עם מור מחר בשבע בערב', 'אני קצת משועממת').action).toBe('park_keep')
   })
 
   it('the EXACT device chain: ask time → "ב-10 בבוקר בקפה נורדאו" merges time + location', () => {

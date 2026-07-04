@@ -929,6 +929,9 @@ export type PendingResolution =
   // Park the pending draft and let the runtime answer the new topic fresh, so a
   // pending calendar never gets answered as a sports/weather confirmation.
   | { action: 'park'; query: string; parked: CalendarCreateState }
+  // A side question/topic mid-create (family/date/greeting/off-topic) — ANSWER it
+  // but KEEP the pending draft so conversation state survives ("כן" still confirms).
+  | { action: 'park_keep'; query: string; parked: CalendarCreateState }
   // "אני לא שומע אותך" / "למה את לא מדברת" — an AUDIO complaint, never a calendar
   // cancel. Respond about audio and KEEP the pending draft (state unchanged).
   | { action: 'audio_help'; message: string; keep: CalendarCreateState }
@@ -965,6 +968,15 @@ export function resolvePendingMessage(
     return { action: 'audio_help', message: 'רגע, אני כאן. אם לא שמעת אותי, נסי להעלות את עוצמת הקול או ללחוץ שוב על הכפתור. הפגישה שלך עדיין שמורה כטיוטה — נמשיך כשתשמעי אותי.', keep: state }
   }
 
+  // A calendar SEARCH mid-create ("מתי יש לי פגישה עם מוטי", "יש לי משהו עם מור")
+  // must be ANSWERED, never forced into the create machine (the stress harness
+  // reproduced a robotic "באיזה יום?" loop). Checked BEFORE the create heuristic,
+  // which greedily matches "פגישה". Answer + KEEP the draft. NOTE: "תשני את הפגישה
+  // ל…" edits the DRAFT (handled as an update below), so it is NOT parked here.
+  if (/^מתי\s+.*(?:יש\s+לי|פגיש|תור|ביקור)/u.test(t) || /(?:^|\s)יש\s+לי\s+(?:משהו|פגיש\S*|תור)\s+(?:עם|אצל|ב)/u.test(t)) {
+    return { action: 'park_keep', query: t, parked: state }
+  }
+
   // A brand-new create request replaces the pending draft.
   if (isCreateIntent(t)) {
     const next = startCreate(t)
@@ -979,14 +991,23 @@ export function resolvePendingMessage(
   // and let the runtime answer the new topic — never answer sports as a calendar
   // confirmation, never silently cancel.
   if (isOnlineCurrentInfoQuery(t) && !isConfirm(t)) {
-    return { action: 'park', query: t, parked: state }
+    return { action: 'park_keep', query: t, parked: state }
   }
 
   // An EMOTIONAL statement mid-create ("אני מתגעגעת לפאפי", "estoy sola") must NOT
-  // be answered with a cold "בסדר, ביטלתי" or mis-parsed as a date/field. Park the
-  // draft and let the runtime respond warmly (found by the production simulator).
+  // be answered with a cold "בסדר, ביטלתי" or mis-parsed as a date/field. Answer
+  // warmly and KEEP the draft (found by the production simulator).
   if (EMOTIONAL_STATEMENT.test(norm) && !isConfirm(t)) {
-    return { action: 'park', query: t, parked: state }
+    return { action: 'park_keep', query: t, parked: state }
+  }
+
+  // A QUESTION or GREETING mid-create ("מה הקשר בין רפי ללאו", "מה השעה", "מה שלומך",
+  // "איך בדיוק", "מה הסרטים בכפר סבא", "בוקר טוב") is NOT a calendar field — ANSWER it
+  // and KEEP the draft, never a "רגע, את רוצה שאקבע?" loop or a mis-merged venue
+  // ("בכפר סבא"). Checked BEFORE the location merge. Reads/searches were handled above.
+  if (/^(?:מי|מה|מתי|איפה|איך|למה|כמה|האם)(?:\s|$)/u.test(t) || /\?\s*$/u.test(t)
+      || /^(?:בוקר טוב|ערב טוב|צהריים טובים|לילה טוב|מה שלומך|מה נשמע|היי|שלום|הא?לו)(?![א-ת])/u.test(t)) {
+    return { action: 'park_keep', query: t, parked: state }
   }
 
   // A bare LOCATION phrase ("בבית קפה מרוקו", "בקפה נורדאו", "אצל גבי") while a
@@ -1006,10 +1027,22 @@ export function resolvePendingMessage(
     return { action: 'update', state: merged }
   }
 
+  // A full NEW-meeting narrative mid-create ("אופיר ביקשה שאבוא מחר בשלוש אליה
+  // הביתה") — day + time + a place/person cue + several words — REPLACES the pending
+  // draft: park + re-run so the fresh create path builds it (never a clarify loop).
+  // Short field answers ("מחר בשלוש") lack the place/person cue + length and are kept.
+  if (/(?:מחר|מחרתיים|היום|הערב|ביום\s+\S+)/u.test(t)
+      && /(?:בשעה|ב\d|בבוקר|בערב|בצהריים|וחצי|ב(?:שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|אחת|שתיים))/u.test(t)
+      && /(?:אצל|אלי[הו]|הביתה|ביקש[הת]?|אמר[הת]?\s+ש|עם\s+[א-ת]{2,})/u.test(t)
+      && t.split(/\s+/).length >= 5) {
+    return { action: 'park', query: t, parked: state }
+  }
+
   // Off-topic detection: if the user switches to a completely different
   // subject (no date, no time, no scheduling word, not a question about
-  // a person or the calendar), cancel the pending draft silently rather
-  // than forcing it into the create state machine.
+  // a person or the calendar), PARK the pending draft and answer the new
+  // topic — NEVER a cold "בסדר, ביטלתי" (a false cancellation the stress
+  // harness reproduced for "ספרי לי על המהפכה", "לא התכוונתי לזה, מה …").
   // Examples: "אני קצת משועממת היום", "ספרי לי בדיחה"
   // NOT off-topic: "מי זה מור?", "מה יש לי מחר?", "בעשר בבוקר"
   const hasDateOrTime = /מחר|מחרתיים|היום|אתמול|שבוע|ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת|בבוקר|בערב|בצהריים|בלילה|הערב|הלילה|הבוקר|בשעה|ב[־-]?\d|אחרי|אחר\s+הצהריים|לפני|בעוד|בעצם|[בל](?:אחת עשרה|שתים עשרה|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)(?![א-ת])/i.test(t)
@@ -1024,7 +1057,7 @@ export function resolvePendingMessage(
   // gauntlet found. Only an EXPLICIT cancel (checked earlier) may cancel.
   const hasAffirmative = /(?<![א-ת])(?:כן|תקבעי|קבעי|תרשמי|רשמי|בסדר|מאושר|מאשרת|נכון|קדימה|בטח|ברור|יאללה|סבבה|בהחלט|לגמרי)(?![א-ת])/u.test(t)
   if (!hasDateOrTime && !hasScheduleWord && !isQuestion && !hasAffirmative && (t.split(/\s+/).length >= 3 || isPersonalStatement)) {
-    return { action: 'cancel' }
+    return { action: 'park_keep', query: t, parked: state }
   }
 
   // Otherwise try to fill missing fields from this message.

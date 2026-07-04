@@ -320,16 +320,17 @@ describe('30-minute Martita simulation — minute by minute', () => {
     assistantSays('פגישה מחר. באיזו שעה?')
   })
 
-  it('T30: "אני רעבה" — off-topic cancels draft', () => {
+  it('T30: "אני רעבה" mid-create → park_keep (answer warmly, keep the draft)', () => {
     const state = {
       phase: 'creating' as const,
       draft: { title: 'פגישה', date: '2026-06-11', time: null, emoji: '📅' },
       missing: ['time'] as Array<'title' | 'date' | 'time'>,
     }
+    // The draft SURVIVES a side statement — never a false "בסדר, ביטלתי".
     const r = resolvePendingMessage(state, 'אני רעבה', false)
-    expect(r.action).toBe('cancel')
+    expect(r.action).toBe('park_keep')
     userSays('אני רעבה')
-    assistantSays('בסדר, ביטלתי.')
+    assistantSays('בתיאבון! 🙂')
   })
 
   it('T31: "לא לא לא" — emphatic cancel', () => {

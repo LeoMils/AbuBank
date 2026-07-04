@@ -741,8 +741,14 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
             // preserve the pending draft so a following "כן" still confirms it.
             state: { ...state, lastIntent: intent } }
         case 'park':
-          // Unrelated question mid-create → drop the draft and re-run as a fresh turn.
+          // A new-meeting narrative mid-create → drop the old draft, re-run fresh.
           return runCognitiveTurn({ ...state, createState: IDLE_STATE }, res.query, ctx)
+        case 'park_keep': {
+          // A side question/topic mid-create → ANSWER it but KEEP the pending draft so
+          // conversation state survives ("כן" still confirms; no false "ביטלתי").
+          const answered = runCognitiveTurn({ ...state, createState: IDLE_STATE }, res.query, ctx)
+          return { ...answered, state: { ...answered.state, createState: state.createState } }
+        }
         case 'clarify':
         default:
           return { ...settle(shapeCreateUnclear(), { state, dataAvailable: true }),

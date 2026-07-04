@@ -140,12 +140,12 @@ export function generateCases(scale = 1): EvalCase[] {
         check: (cap) => ({ calendar: cap.calendarAction === 'save' ? 'pass' : 'fail', actionability: cap.calendarAction === 'save' ? 'pass' : 'fail' }),
       })
     }
-    // pending hygiene: sports during pending → park
+    // pending hygiene: sports during pending → park_keep (answer + keep draft)
     for (const q of ONLINE_RESULT) {
       cases.push({
         id: `cal-park-${q.slice(0, 8)}-${r}`, capability: 'calendar',
         run: () => timed(() => { const st = startCreate('תקבעי פגישה עם גבי מחר בשלוש'); const res = resolvePendingMessage(st, q, false); return { input: ['…', q], output: res.action, tools: ['resolvePendingMessage'], calendarAction: res.action, memoryRetrieved: [], errors: [] } }),
-        check: (cap) => ({ calendar: cap.calendarAction === 'park' ? 'pass' : 'fail' }),
+        check: (cap) => ({ calendar: cap.calendarAction === 'park_keep' ? 'pass' : 'fail' }),
       })
     }
 

@@ -172,16 +172,13 @@ describe('E. confirmation state machine', () => {
     // existing state, so the pending confirmation survives.
   })
 
-  it('19. pending create + family question → does not corrupt draft', () => {
+  it('19. pending create + family question → answers it, keeps the draft (park_keep)', () => {
     const s = startCreate('תקבע עם מור ברביעי 4 אחהצ')
     const r = resolvePendingMessage(s, 'מי זה מור?', false)
-    // Not a confirm/cancel/create/read → falls through to update; the field
-    // values stay intact (no save, no cancel).
-    expect(['update', 'clarify']).toContain(r.action)
-    if (r.action === 'update') {
-      expect(r.state.draft.title).toBe('פגישה עם מור')
-      expect(r.state.draft.time).toBe('16:00')
-    }
+    // A question mid-create is ANSWERED while the pending draft is preserved by the
+    // confirmation case (park_keep) — no save, no cancel, no corruption.
+    expect(r.action).toBe('park_keep')
+    if (r.action === 'park_keep') expect(r.parked.draft.title).toBe('פגישה עם מור')
   })
 })
 

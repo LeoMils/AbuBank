@@ -50,11 +50,11 @@ export function runGauntlet(): ClusterResult[] {
       res.action === 'audio_help', `action=${res.action}`))
   }
 
-  // emotional mid-create → park (warm), never cold cancel
+  // emotional mid-create → park_keep (warm answer + draft KEPT), never cold cancel
   for (const emo of ['אני מתגעגעת לפאפי', 'estoy sola']) {
     const st = startCreate('תקבעי פגישה עם אורית היום בשמונה בערב')
     const res = resolvePendingMessage(st, emo, false)
-    r.push(ok('C5b', `emotional "${emo}" → park`, res.action === 'park', `action=${res.action}`))
+    r.push(ok('C5b', `emotional "${emo}" → park_keep (answer + keep draft)`, res.action === 'park_keep', `action=${res.action}`))
   }
 
   // ── Cluster 3: calendar read grounded — empty calendar must not invent ──

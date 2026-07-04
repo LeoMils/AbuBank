@@ -36,11 +36,12 @@ function checkBeat(
       if (res.action !== 'audio_help') add('audio_complaint_mishandled', `expected audio_help, got ${res.action}`)
       // draft must survive (state unchanged)
     }
-    // Strict rule: emotional interruption parks (warm), never cancels.
+    // Strict rule: emotional interruption is answered warmly and the draft is KEPT
+    // (park_keep), never cancels. A plain 'park' (replace/drop) is also acceptable.
     else if (beat.kind === 'emotional') {
       if (res.action === 'cancel') add('wrong_cancel_emotional', `emotional "${beat.text}" → cancel`)
-      else if (res.action !== 'park') add('emotional_not_parked', `expected park, got ${res.action}`)
-      if (res.action === 'park') ctx.create = IDLE_STATE
+      else if (res.action !== 'park' && res.action !== 'park_keep') add('emotional_not_parked', `expected park_keep, got ${res.action}`)
+      if (res.action === 'park') ctx.create = IDLE_STATE // park_keep preserves the draft
     }
     // Strict rule: confirm variant while confirming → SAVE (never unclear/cancel).
     else if (beat.kind === 'confirm') {
@@ -52,10 +53,11 @@ function checkBeat(
       if (res.action !== 'cancel') add('explicit_cancel_ignored', `"${beat.text}" → ${res.action}`)
       else ctx.create = IDLE_STATE
     }
-    // Family question mid-pending: must not silently cancel; parked/handled.
+    // Family question mid-pending: must not silently cancel; answered + draft kept
+    // (park_keep). A 'park' (drop) or 'read' also clears the draft in this model.
     else if (beat.kind === 'family') {
       if (res.action === 'cancel') add('wrong_cancel_family', `family q mid-pending → cancel`)
-      if (res.action === 'park' || res.action === 'read') ctx.create = IDLE_STATE
+      if (res.action === 'park' || res.action === 'read') ctx.create = IDLE_STATE // park_keep preserves the draft
     }
     return
   }
