@@ -4,6 +4,27 @@ import { Screen } from '../../state/types'
 import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { APP_VERSION } from '../../version'
+import { copyLastTurns } from '../AbuAI/liveTurnDiagnostics'
+
+/** Visible, senior-discreet debug access: copies the last 20 AbuAI turns for support. */
+export function CopyTurnsButton() {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      type="button"
+      data-testid="copy-last-turns"
+      onClick={() => { void copyLastTurns().then(() => setCopied(true)) }}
+      style={{
+        marginTop: 8, padding: '8px 16px', borderRadius: 10,
+        background: 'transparent', border: '1px solid rgba(255,255,255,0.14)',
+        color: 'rgba(255,255,255,0.45)', fontSize: 13,
+        fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 40,
+      }}
+    >
+      {copied ? 'הועתק ✓ — שלחי ללאו' : 'העתקת 20 השיחות האחרונות (לתמיכה)'}
+    </button>
+  )
+}
 import { downloadBackup, importBackup } from '../../services/backup'
 import { durable } from '../../services/durableStore'
 
@@ -639,6 +660,7 @@ export function Settings() {
             <br />
             {APP_VERSION.branchHint} · {APP_VERSION.buildDate}
           </div>
+          <CopyTurnsButton />
           {/* P0.3 — the diagnostic panel moved to a top-level button +
               full-screen overlay (impossible to miss). Tap "אבחון מערכת"
               at the top of Settings, the pill on Home, or visit
