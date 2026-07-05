@@ -40,6 +40,7 @@ import {
   isCreateIntent, isDeleteIntent, isModifyIntent, isSearchIntent,
 } from './calendarCreate'
 import { classifySignalV2, reduceV2, conversationV2Enabled } from './conversationEngineV2'
+import { recoverTranscript } from './semanticIntelligenceEngine'
 import { understandMeeting } from './meetingIntelligence'
 import { buildSmartMeetingV2 as understandMeetingSmart } from './calendarEventBuilderV2'
 import { isReminderIntent, isRecurringIntent, type MutationSideEffect } from './calendarMutationReasoner'
@@ -536,9 +537,12 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   // Layer 1: normalize.
   const norm = normalizeTurn(raw, ctx.messages)
   const original = norm.original, lang = norm.lang
+  // Layer 1.5: Semantic Intelligence Engine — recover an imperfect STT transcript into
+  // a canonical utterance BEFORE any downstream engine sees it ("קלי פגישה" →
+  // "קבעי לי פגישה"; "מי זאת אופיר" → "מי זה אופיר"). Never trusts the raw transcript.
+  let normalized = recoverTranscript(norm.normalized).text
   // Correction ("לא, התכוונתי <X>") → answer the CORRECTED request X, not a generic
   // reply. Strip the correction lead-in and process the clause that follows.
-  let normalized = norm.normalized
   const corr = normalized.match(/^לא[,.]?\s*(?:זה[,.]?\s*)?(?:התכוונתי|התכוונת|רציתי\s+לומר)\s+(.+)/u)
   if (corr && corr[1] && corr[1].trim().length >= 3) normalized = corr[1].trim()
   // Layer 3: classify.

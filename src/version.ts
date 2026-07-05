@@ -12,7 +12,7 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.34.0-calendar-intelligence-v2',
+  version:    '0.35.0-semantic-intelligence-v2',
   buildLabel: 'AbuBank — Ofir gender DATA FIX (granddaughter/female across graph + reasoning)',
   buildDate:  '2026-07-05',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
