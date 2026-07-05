@@ -41,7 +41,7 @@ import {
 } from './calendarCreate'
 import { classifySignalV2, reduceV2, conversationV2Enabled } from './conversationEngineV2'
 import { understandMeeting } from './meetingIntelligence'
-import { understandMeetingSmart } from './calendarIntelligence'
+import { buildSmartMeetingV2 as understandMeetingSmart } from './calendarEventBuilderV2'
 import { isReminderIntent, isRecurringIntent, type MutationSideEffect } from './calendarMutationReasoner'
 import { runPlan } from './domainPlanner'
 import { registerCalendarMutationPlugins } from './calendarMutationPlugins'

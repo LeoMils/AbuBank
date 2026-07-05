@@ -101,7 +101,7 @@ export const GOLDEN_CASES: GoldenCase[] = [
   chat('gc-search-by-place', 'CalendarSearch', 'cognitiveRuntime', 'answered by LLM, not calendar', ['פגישה בקפה מורנו'],
     l => l.intent === 'calendar_search' && l.source === 'deterministic', /^x$/, OK, () => addAppointment({ title: 'פגישה עם מור', date: '2026-07-05', time: '10:00', emoji: '📅', location: 'קפה מורנו' } as never)),
   chat('gc-read-week', 'CalendarRead', 'cognitiveRuntime', '"אין כלום ליום הזה" though a week event exists', ['מה יש לי השבוע'],
-    l => l.finalized && !/ליום הזה/.test(l.display) && has(l.display, 'מור'), /אין כלום/, OK, () => addAppointment({ title: 'פגישה עם מור', date: '2026-07-05', time: '10:00', emoji: '📅' } as never)),
+    l => l.finalized && !/ליום הזה/.test(l.display) && has(l.display, 'מור'), /אין כלום/, OK, () => addAppointment({ title: 'פגישה עם מור', date: (() => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10) })(), time: '10:00', emoji: '📅' } as never)),
 
   // ── Family (directional, from the graph) ──
   fam('gf-leo-ofir', 'לאו', 'אופיר', /דוד/, /הבן שלך|אחיין/),

@@ -37,7 +37,7 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.33.0-conversation-engine-v2'
+const BUILD_VERSION = '0.34.0-calendar-intelligence-v22'
 const BUILD_LABEL = 'AbuBank — Ofir gender DATA FIX (granddaughter/female across graph + reasoning)'
 
 export default function handler(_req: Request): Response {
