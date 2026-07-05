@@ -56,6 +56,19 @@ export interface FullTurnResult {
   meta: MetaResult
 }
 
+// Transient reasons worth ONE retry (network blips / timeouts). A definitive
+// "no_such_data" is not retried. Never hallucinates — only the provider's answer.
+const RETRYABLE = new Set(['timeout', 'provider_failed', 'network', 'default', ''])
+export async function callOnlineWithRetry(
+  online: (q: string) => Promise<{ ok: boolean; answer: string; reason?: string | null }>,
+  query: string,
+): Promise<{ ok: boolean; answer: string; reason?: string | null; attempts: number }> {
+  const first = await online(query)
+  if (first.ok || !RETRYABLE.has(first.reason ?? '')) return { ...first, attempts: 1 }
+  const second = await online(query)                        // retry once
+  return { ...second, attempts: 2 }
+}
+
 const ONLINE_FAIL: Record<string, string> = {
   provider_failed: 'ניסיתי לבדוק אונליין וזה נפל לי. שננסה שוב?',
   timeout: 'לקח לזה יותר מדי זמן ונקטע. שננסה שוב?',
@@ -97,7 +110,7 @@ export async function runFullTurn(
   } else if (decision.needsOnline && decision.online) {
     source = 'online'
     intent = 'online'
-    const o = await tools.online(decision.online.query)
+    const o = await callOnlineWithRetry(tools.online, decision.online.query)
     const raw = o.ok ? o.answer : (ONLINE_FAIL[o.reason ?? 'default'] ?? ONLINE_FAIL.default!)
     const fin = finalizeExternalAnswer(decision.state, raw, {
       intent: 'online', topic: decision.online.query,
