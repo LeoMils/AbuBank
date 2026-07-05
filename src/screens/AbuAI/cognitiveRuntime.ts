@@ -36,9 +36,10 @@ import {
   planSpokenChunks,
 } from './conversationOS'
 import {
-  type CalendarCreateState, IDLE_STATE, startCreate, resolvePendingMessage,
+  type CalendarCreateState, IDLE_STATE, startCreate, resolvePendingMessage, updateCreate,
   isCreateIntent, isDeleteIntent, isModifyIntent, isSearchIntent,
 } from './calendarCreate'
+import { classifySignalV2, reduceV2, conversationV2Enabled } from './conversationEngineV2'
 import { understandMeeting } from './meetingIntelligence'
 import { understandMeetingSmart } from './calendarIntelligence'
 import { isReminderIntent, isRecurringIntent, type MutationSideEffect } from './calendarMutationReasoner'
@@ -562,6 +563,61 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       needsLLM: false, needsOnline: false, online: null, grounding: null,
       sideEffect: null, verifier,
       state: { ...opts.state, conv, lastIntent: intent },
+    }
+  }
+
+  // ─── Conversation Engine v2 (flagged) — the FORMAL dialogue state machine owns the
+  // pending / confirmation / side-question / why control + the search-vs-create
+  // precedence (C/D). Everything else defers to the intent path below. No competing
+  // logic runs when enabled: v2 returns terminal decisions or `defer`.
+  if (conversationV2Enabled()) {
+    const phase = state.createState.phase
+    const { action, keepsPending } = reduceV2(phase, classifySignalV2(normalized, phase))
+    const keptState = { ...state, createState: keepsPending ? state.createState : IDLE_STATE }
+    switch (action) {
+      case 'execute_save': {
+        const out = executeSave(state.createState.draft)
+        const { display, speak } = composeHebrew(out.text)
+        return {
+          ...base, intent: 'confirmation', handled: true, display, speak, chunks: chunk(display),
+          needsLLM: false, needsOnline: false, online: null, grounding: null,
+          sideEffect: out.ok ? 'saved_appointment' : 'save_failed',
+          verifier: verifyAnswer(display, { intent: 'confirmation', dataAvailable: true }),
+          state: { ...state, createState: IDLE_STATE, lastIntent: 'confirmation' },
+        }
+      }
+      case 'cancel':
+        return { ...settle(shapeCreateCancelled(), { state: { ...state, createState: IDLE_STATE }, dataAvailable: true }), intent: 'confirmation' }
+      case 'audio_help':
+        return { ...settle('רגע, אני פה. אם לא שמעת אותי, נסי להעלות את עוצמת הקול או ללחוץ שוב על הכפתור. מה שביקשת עדיין שמור.', { state: keptState, dataAvailable: true }), intent: 'audio_complaint' }
+      case 'frustration_keep':
+        return { ...settle('את צודקת. הפגישה עדיין שמורה כטיוטה — נמשיך ממנה כשתרצי.', { state: keptState, dataAvailable: true }), intent: 'frustration' }
+      case 'why_explain': {
+        const who = (state.createState.draft.title ?? '').replace(/^פגישה עם\s+/u, '').trim()
+        const msg = who ? `עוד לא קבעתי — הפגישה עם ${who} מחכה לאישור שלך. תגידי "כן" ואני קובעת מיד.` : 'עוד לא קבעתי — הפגישה מחכה לאישור שלך. תגידי "כן" ואני קובעת.'
+        return { ...settle(msg, { state: keptState, dataAvailable: true }), intent: 'confirmation' }
+      }
+      case 'search':
+        return { ...settle(calendarSearchReasoner(normalized), { state: keptState, dataAvailable: true }), intent: 'calendar_search' }
+      case 'read_keep':
+        return { ...settle(calendarReadReasoner(normalized, ctx.now), { state: keptState, dataAvailable: true }), intent: 'calendar_read' }
+      case 'side_keep': {
+        const answered = runCognitiveTurn({ ...state, createState: IDLE_STATE }, normalized, ctx)
+        return { ...answered, state: { ...answered.state, createState: state.createState } }
+      }
+      case 'replace': {
+        const next = startCreate(normalized)
+        const text = next.phase === 'confirming' ? shapeCreateConfirm(next.draft) : shapeCreateClarify(next.missing, next.draft)
+        return { ...settle(text, { state: { ...state, createState: next }, dataAvailable: true }), intent: 'calendar_create' }
+      }
+      case 'update': {
+        const next = updateCreate(state.createState, normalized)
+        const text = next.phase === 'confirming' ? shapeCreateConfirm(next.draft) : shapeCreateClarify(next.missing, next.draft)
+        return { ...settle(text, { state: { ...state, createState: next }, dataAvailable: true }), intent: 'calendar_create' }
+      }
+      case 'defer':
+      default:
+        break // hand off to the intent path below (v1 unchanged)
     }
   }
 
