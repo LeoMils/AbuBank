@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.35.0-semantic-intelligence-v2')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Ofir gender DATA FIX (granddaughter/female across graph + reasoning)')
+    expect(APP_VERSION.version).toBe('0.36.0-abugames-terrace')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — AbuGames terrace lobby (bright redesign + Solitaire/Mahjong category pages)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.35.0-semantic-intelligence-v2')
+    expect(APP_VERSION.version).toBe('0.36.0-abugames-terrace')
   })
 })

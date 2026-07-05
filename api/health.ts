@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.35.0-semantic-intelligence-v2'
-const BUILD_LABEL = 'AbuBank — Ofir gender DATA FIX (granddaughter/female across graph + reasoning)'
+const BUILD_VERSION = '0.36.0-abugames-terrace'
+const BUILD_LABEL = 'AbuBank — AbuGames terrace lobby (bright redesign + Solitaire/Mahjong category pages)'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
