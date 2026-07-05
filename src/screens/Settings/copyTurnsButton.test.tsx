@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.34.0-calendar-intelligence-v22')
+    expect(APP_VERSION.version).toBe('0.34.0-calendar-intelligence-v2')
   })
 })
