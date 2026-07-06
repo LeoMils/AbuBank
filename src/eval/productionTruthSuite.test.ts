@@ -35,7 +35,9 @@ const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 describe('production truth: the entry executes only the in-path modules', () => {
   const ENTRY = ['src/screens/AbuAI/cognitiveRuntime.ts', 'src/screens/AbuAI/runtimeFullTurn.ts', 'src/screens/AbuAI/runtimeFinalizer.ts', 'src/screens/AbuAI/executiveCognitiveController.ts', 'src/screens/AbuCalendar/service.ts']
   const src = ENTRY.map(read).join('\n')
-  const NOT_EXECUTED = ['memoryEngineV2', 'memoryRuntimeAdapter', 'speechDeliveryRuntimeV2', 'onlineRuntimeV2', 'intentRouterV2']
+  // memoryRuntimeAdapter + intentRouterV2 were deleted (mirror/agreement layers). The
+  // remaining not-executed cluster is queued for inlining ("the good ones").
+  const NOT_EXECUTED = ['memoryEngineV2', 'speechDeliveryRuntimeV2', 'onlineRuntimeV2']
   const EXECUTED = ['semanticIntelligenceEngine', 'conversationEngineV2', 'calendarEventBuilderV2', 'hebrewNaturalConversationV2']
   for (const m of NOT_EXECUTED) it(`production does NOT import ${m} (NOT EXECUTED IN PRODUCTION)`, () => { expect(src).not.toContain(`/${m}'`) })
   for (const m of EXECUTED) it(`production DOES import ${m} (EXECUTED IN PRODUCTION)`, () => { expect(src).toContain(`/${m}'`) })
