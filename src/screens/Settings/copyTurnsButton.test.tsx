@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.42.0-runtime-convergence')
+    expect(APP_VERSION.version).toBe('0.43.0-production-truth')
   })
 })
