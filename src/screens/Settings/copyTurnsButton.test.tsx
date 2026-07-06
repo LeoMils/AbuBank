@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.36.0-abugames-terrace')
+    expect(APP_VERSION.version).toBe('0.37.0-memory-runtime-cutover')
   })
 })
