@@ -46,6 +46,7 @@ export class MemoryEngineV2 {
   private sideStack: string[] = []
   private topicStack: string[] = []
   private topic: string | null = null
+  private speechState: unknown = null
 
   constructor(sessionId = 'session') { this.sessionId = sessionId }
 
@@ -120,6 +121,10 @@ export class MemoryEngineV2 {
   getLastCorrection(): string | null { return this.correction }
   handleSideQuestion(input: string): void { this.sideStack.push(input) } // goal preserved
   getSideStack(): string[] { return [...this.sideStack] }
+
+  // ── speech delivery state (memory-backed; appears in Copy-Last-20 diagnostics) ──
+  rememberSpeechState(snapshot: unknown): void { this.speechState = snapshot }
+  getSpeechState<T = unknown>(): T | null { return (this.speechState as T) ?? null }
 
   // ── greeting (once per real session) ──
   shouldGreet(): boolean { return !this.greeted }
