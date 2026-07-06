@@ -34,7 +34,7 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.40.0-hebrew-natural-conversation-v2')
+    expect(APP_VERSION.version).toBe('0.41.0-intent-router-v2')
     expect(APP_VERSION.buildLabel).toBe('AbuBank — AbuGames terrace lobby (bright redesign + Solitaire/Mahjong category pages)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
