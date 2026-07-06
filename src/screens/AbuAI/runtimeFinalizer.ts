@@ -15,6 +15,7 @@ import { planDelivery, type DeliveryState } from './conversationDeliveryEngine'
 import { stampTrace, type RuntimeStage, type RuntimeTrace } from './runtimeTrace'
 import { naturalizeHebrew } from './hebrewNaturalizer'
 import { guardDialogue } from './dialogueManager'
+import { rewriteHebrewAnswer } from './hebrewNaturalConversationV2'
 
 const HONEST_LIMIT = 'לא הצלחתי לנסח את זה כמו שצריך. תגידי לי שוב מה חשוב לך?'
 
@@ -48,6 +49,10 @@ export function finalize(input: FinalizeInput): FinalizeResult {
   // Hebrew Naturalizer — repair fixable grammar slips before anything else.
   display = naturalizeHebrew(display).text
   speak = naturalizeHebrew(speak).text
+  // Hebrew Natural Conversation v2 — final quality guard: block robotic filler + repair
+  // known broken forms. A no-op on already-clean text (facts preserved).
+  display = rewriteHebrewAnswer(display)
+  speak = rewriteHebrewAnswer(speak)
 
   // Dialogue Manager — break a repeat/clarification/apology loop.
   if (input.recentAssistant && input.recentAssistant.length) {

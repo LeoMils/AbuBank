@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.39.0-online-runtime-v2')
+    expect(APP_VERSION.version).toBe('0.40.0-hebrew-natural-conversation-v2')
   })
 })
