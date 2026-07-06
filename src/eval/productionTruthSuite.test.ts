@@ -33,13 +33,14 @@ const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 
 // ── A) STRUCTURAL TRUTH — what production actually imports (measured, encoded) ──
 describe('production truth: the entry executes only the in-path modules', () => {
-  const ENTRY = ['src/screens/AbuAI/cognitiveRuntime.ts', 'src/screens/AbuAI/runtimeFullTurn.ts', 'src/screens/AbuAI/runtimeFinalizer.ts', 'src/screens/AbuAI/executiveCognitiveController.ts', 'src/screens/AbuCalendar/service.ts']
+  const ENTRY = ['src/screens/AbuAI/cognitiveRuntime.ts', 'src/screens/AbuAI/runtimeFullTurn.ts', 'src/screens/AbuAI/runtimeFinalizer.ts', 'src/screens/AbuAI/executiveCognitiveController.ts', 'src/screens/AbuAI/liveTurnDiagnostics.ts', 'src/screens/AbuCalendar/service.ts']
   const src = ENTRY.map(read).join('\n')
-  // memoryRuntimeAdapter + intentRouterV2 were deleted (mirror/agreement layers). The
-  // remaining not-executed cluster is queued for inlining ("the good ones").
-  const NOT_EXECUTED = ['memoryEngineV2', 'speechDeliveryRuntimeV2', 'onlineRuntimeV2']
-  const EXECUTED = ['semanticIntelligenceEngine', 'conversationEngineV2', 'calendarEventBuilderV2', 'hebrewNaturalConversationV2']
-  for (const m of NOT_EXECUTED) it(`production does NOT import ${m} (NOT EXECUTED IN PRODUCTION)`, () => { expect(src).not.toContain(`/${m}'`) })
+  // mirror/agreement layers (memoryRuntimeAdapter, intentRouterV2) were deleted; the last
+  // three V2 modules are now inlined → all EXECUTED, NOT_EXECUTED is empty.
+  const NOT_EXECUTED: string[] = []
+  const EXECUTED = ['semanticIntelligenceEngine', 'conversationEngineV2', 'calendarEventBuilderV2', 'hebrewNaturalConversationV2', 'onlineRuntimeV2', 'speechDeliveryRuntimeV2', 'memoryEngineV2']
+  it('no V2 module remains NOT EXECUTED IN PRODUCTION', () => { expect(NOT_EXECUTED).toEqual([]) })
+  for (const m of NOT_EXECUTED) it(`production does NOT import ${m}`, () => { expect(src).not.toContain(`/${m}'`) })
   for (const m of EXECUTED) it(`production DOES import ${m} (EXECUTED IN PRODUCTION)`, () => { expect(src).toContain(`/${m}'`) })
 })
 

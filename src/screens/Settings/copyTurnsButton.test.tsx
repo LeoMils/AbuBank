@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.43.1-inline-step1-delete-mirrors')
+    expect(APP_VERSION.version).toBe('0.44.0-final-production-truth')
   })
 })

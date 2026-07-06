@@ -5,7 +5,8 @@
  * used verbatim (no hallucination).
  */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { callOnlineWithRetry } from '../screens/AbuAI/runtimeFullTurn'
+import { createOnlineRuntime } from '../screens/AbuAI/onlineRuntimeV2'
+const callOnlineWithRetry = (provider: (q: string) => Promise<{ ok: boolean; answer: string; reason?: string | null }>, query: string) => createOnlineRuntime().runQuery(query, provider)
 import { ExecutiveCognitiveController } from '../screens/AbuAI/executiveCognitiveController'
 import { IDLE_RUNTIME } from '../screens/AbuAI/cognitiveRuntime'
 import type { FullTurnTools } from '../screens/AbuAI/runtimeFullTurn'

@@ -25,6 +25,7 @@ import { metaReason, type MetaResult } from './metaReasoner'
 import { checkCalendarContradiction } from './contradictionGuard'
 import { assessConfidence } from './confidenceGuard'
 import { getTodayEvents, getTomorrowEvents } from './tools'
+import { createOnlineRuntime, type OnlineRuntimeV2 } from './onlineRuntimeV2'
 
 function calendarCountForScope(scope: 'today' | 'tomorrow'): number {
   try { return scope === 'tomorrow' ? getTomorrowEvents().events.length : getTodayEvents().events.length }
@@ -54,21 +55,12 @@ export interface FullTurnResult {
   trace: RuntimeTrace
   /** what the Meta Reasoner understood the user actually asked. */
   meta: MetaResult
+  /** Online Runtime v2 provider trace (null for non-online turns) — for Copy Last 20. */
+  onlineTrace: ReturnType<OnlineRuntimeV2['exportOnlineTrace']>
 }
 
-// Transient reasons worth ONE retry (network blips / timeouts). A definitive
-// "no_such_data" is not retried. Never hallucinates — only the provider's answer.
-const RETRYABLE = new Set(['timeout', 'provider_failed', 'network', 'default', ''])
-export async function callOnlineWithRetry(
-  online: (q: string) => Promise<{ ok: boolean; answer: string; reason?: string | null }>,
-  query: string,
-): Promise<{ ok: boolean; answer: string; reason?: string | null; attempts: number }> {
-  const first = await online(query)
-  if (first.ok || !RETRYABLE.has(first.reason ?? '')) return { ...first, attempts: 1 }
-  const second = await online(query)                        // retry once
-  return { ...second, attempts: 2 }
-}
-
+// Online retry/failover now lives in Online Runtime v2 (onlineRuntimeV2.runQuery), the
+// single production online owner. This module only maps a failure reason to Martita's line.
 const ONLINE_FAIL: Record<string, string> = {
   provider_failed: 'ניסיתי לבדוק אונליין וזה נפל לי. שננסה שוב?',
   timeout: 'לקח לזה יותר מדי זמן ונקטע. שננסה שוב?',
@@ -91,6 +83,7 @@ export async function runFullTurn(
   let intent = decision.intent
   const sideEffect = decision.sideEffect
   let source: FullTurnResult['source'] = 'deterministic'
+  let onlineTrace: ReturnType<OnlineRuntimeV2['exportOnlineTrace']> = null
 
   if (decision.handled) {
     display = decision.display ?? ''
@@ -110,7 +103,11 @@ export async function runFullTurn(
   } else if (decision.needsOnline && decision.online) {
     source = 'online'
     intent = 'online'
-    const o = await callOnlineWithRetry(tools.online, decision.online.query)
+    // Online Runtime v2 is the production online owner: provider + retry + freshness +
+    // trace + honest failure. The trace is recorded for diagnostics (Copy Last 20).
+    const onlineRuntime = createOnlineRuntime()
+    const o = await onlineRuntime.runQuery(decision.online.query, tools.online)
+    onlineTrace = onlineRuntime.exportOnlineTrace()
     const raw = o.ok ? o.answer : (ONLINE_FAIL[o.reason ?? 'default'] ?? ONLINE_FAIL.default!)
     const fin = finalizeExternalAnswer(decision.state, raw, {
       intent: 'online', topic: decision.online.query,
@@ -139,6 +136,6 @@ export async function runFullTurn(
   const fin = finalize({ display, speak, intent, source, priorStages, dataAvailable: true, forVoice: true, recentAssistant })
   return {
     intent, display: fin.display, speak: fin.speak, delivery: fin.delivery, state: st, sideEffect,
-    supervisor: fin.supervisor, routedThroughRuntime: true, source, trace: fin.trace, meta,
+    supervisor: fin.supervisor, routedThroughRuntime: true, source, trace: fin.trace, meta, onlineTrace,
   }
 }

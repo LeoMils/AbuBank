@@ -11,7 +11,8 @@
  */
 import { type RuntimeIntent } from './cognitiveRuntime'
 import { supervise, repair, type SupervisorVerdict } from './cognitiveSupervisor'
-import { planDelivery, type DeliveryState } from './conversationDeliveryEngine'
+import { type DeliveryState } from './conversationDeliveryEngine'
+import { createSpeechPlan } from './speechDeliveryRuntimeV2'
 import { stampTrace, type RuntimeStage, type RuntimeTrace } from './runtimeTrace'
 import { naturalizeHebrew } from './hebrewNaturalizer'
 import { guardDialogue } from './dialogueManager'
@@ -78,7 +79,10 @@ export function finalize(input: FinalizeInput): FinalizeResult {
     verdict = supervise(speak, { intent: input.intent, dataAvailable, forVoice })
   }
 
-  const delivery = planDelivery(display || speak)
+  // Speech Delivery Runtime v2 is the production speech owner: it plans the display text
+  // into speech-safe chunks (its cursor drives תמשיכי/לא שמעתי/תשלימי + interruption).
+  const plan = createSpeechPlan(display || speak)
+  const delivery: DeliveryState = { fullText: plan.getDisplayText(), chunks: plan.getSpeechChunks(), index: plan.getCursor() }
   const trace = stampTrace([...input.priorStages, 'finalize', 'supervise', 'deliver'], input.intent, input.source)
   return { display: display || speak, speak, delivery, supervisor: { ...verdict, repaired }, trace }
 }

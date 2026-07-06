@@ -119,6 +119,25 @@ export class OnlineRuntimeV2 {
     return { ok: r.ok, answer: r.answer, reason: r.reason, provider: prov, attempts, cached: false, category: need.category }
   }
 
+  /** Execute an ALREADY-decided live query (the runtime classified it upstream): provider
+   *  + retry-once on transient failure + cache + trace. Never re-classifies to not_live. */
+  async runQuery(query: string, provider: OnlineProvider, now = 0): Promise<OnlineResult> {
+    const prov = selectProvider(classifyOnlineNeed(query)) === 'none' ? 'web-search' : selectProvider(classifyOnlineNeed(query))
+    const category = classifyOnlineNeed(query).category
+    this.lastQuery = query
+    const key = `${prov}:${query.trim()}`
+    const hit = this.cache.get(key)
+    if (hit && now && this.validateFreshness(hit.at, now)) {
+      this.trace = { query, provider: prov, category, ok: true, reason: null, attempts: 0, cached: true }
+      return { ok: true, answer: hit.answer, provider: prov, attempts: 0, cached: true, category }
+    }
+    let r = normalizeOnlineResult(await provider(query)); let attempts = 1
+    if (!r.ok && retryIfTransient(r.reason)) { r = normalizeOnlineResult(await provider(query)); attempts = 2 }
+    if (r.ok && now) this.cache.set(key, { answer: r.answer, at: now })
+    this.trace = { query, provider: prov, category, ok: r.ok, reason: r.reason, attempts, cached: false }
+    return { ok: r.ok, answer: r.answer, reason: r.reason, provider: prov, attempts, cached: false, category }
+  }
+
   validateFreshness(at: number, now: number): boolean { return now - at < TTL_MS }
 
   /** Records the successful live result into Memory Engine v2 (last tool result). */
