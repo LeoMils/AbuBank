@@ -82,8 +82,8 @@ describe('final truth: memoryEngineV2 executes (Copy-Last-20 = its turns)', () =
       clearTurns()
       await run(IDLE_RUNTIME, POOL[rep % POOL.length]!)
       const dump = JSON.parse(dumpTurns())
-      expect(Array.isArray(dump.memoryTurns)).toBe(true)
-      expect(dump.memoryTurns.length).toBeGreaterThan(0)   // memory populated in production
+      expect(Array.isArray(dump.turns)).toBe(true)
+      expect(dump.turns.length).toBeGreaterThan(0)   // memory populated in production
     })
   }
   it('online result is remembered in Memory Engine v2 (Copy-Last-20 lastTool)', async () => {
@@ -94,7 +94,7 @@ describe('final truth: memoryEngineV2 executes (Copy-Last-20 = its turns)', () =
   it('memory turns cap at 20 across a long production session', async () => {
     clearTurns(); let st = IDLE_RUNTIME
     for (let i = 0; i < 25; i++) { const r = await run(st, 'מה יש לי היום'); st = r.state }
-    expect(JSON.parse(dumpTurns()).memoryTurns.length).toBe(20)
+    expect(JSON.parse(dumpTurns()).turns.length).toBe(20)
   })
 })
 
@@ -165,7 +165,7 @@ describe('final truth: production stress invariants', () => {
         if (res.source === 'online') expect(res.onlineTrace).not.toBeNull() // live answer has a trace
       }
       // Copy-Last-20 reflects Memory Engine v2 for the whole conversation
-      expect(JSON.parse(dumpTurns()).memoryTurns.length).toBe(Math.min(turns, 20))
+      expect(JSON.parse(dumpTurns()).turns.length).toBe(Math.min(turns, 20))
     }
   }, 120000)
 })

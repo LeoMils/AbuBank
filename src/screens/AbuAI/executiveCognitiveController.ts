@@ -47,6 +47,7 @@ export async function executiveHandleTurn(
       draftFields: { pendingCreate: result.state.createState.phase, pendingReminder: !!result.state.pendingReminder },
       toolResult: result.sideEffect ?? null, finalAnswer: result.display,
       speechChunks: result.delivery.chunks, error: null,
+      onlineTrace: result.onlineTrace, finalizerStages: result.trace.stages, finalizerStamp: result.trace.stamp,
     })
   } catch { /* diagnostics must never break a turn */ }
   return { ...result, controller: 'executive-cognitive-controller' }

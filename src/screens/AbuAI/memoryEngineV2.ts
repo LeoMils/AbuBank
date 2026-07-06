@@ -12,7 +12,7 @@
  */
 import { planDelivery } from './conversationDeliveryEngine'
 
-export interface TurnRecord { seq: number; user: string; assistant: string; intent: string }
+export interface TurnRecord { seq: number; user: string; assistant: string; intent: string; diag?: unknown }
 export interface PendingAction { kind: string; phase: string; label: string | null }
 export interface Goal { kind: string; label: string | null }
 export interface ToolResult { tool: string; result: string }
@@ -51,8 +51,10 @@ export class MemoryEngineV2 {
   constructor(sessionId = 'session') { this.sessionId = sessionId }
 
   // ── ingest ──
-  rememberTurn(userInput: string, assistantOutput: string, decision: TurnDecision): void {
-    this.turns.push({ seq: this.seq++, user: userInput, assistant: assistantOutput, intent: decision.intent })
+  /** `diag` (optional) carries the rich diagnostic record + traces for this turn, so the
+   *  engine is the SINGLE turn store behind Copy-Last-20 (no separate diagnostics buffer). */
+  rememberTurn(userInput: string, assistantOutput: string, decision: TurnDecision, diag?: unknown): void {
+    this.turns.push({ seq: this.seq++, user: userInput, assistant: assistantOutput, intent: decision.intent, ...(diag !== undefined ? { diag } : {}) })
     while (this.turns.length > 20) this.turns.shift()
 
     // pending action / active goal — a pending calendar draft is the active goal.
@@ -132,6 +134,8 @@ export class MemoryEngineV2 {
 
   // ── diagnostics ──
   exportLastTurns(count = 20): TurnRecord[] { return this.turns.slice(-count) }
+  /** The rich diagnostic records (with traces) — the single source for Copy-Last-20. */
+  exportDiagnostics<T = unknown>(count = 20): T[] { return this.turns.slice(-count).map(t => t.diag).filter((d): d is T => d !== undefined) }
 }
 
 /** Fresh, isolated engine per session (no module-global state → no cross-test leak). */

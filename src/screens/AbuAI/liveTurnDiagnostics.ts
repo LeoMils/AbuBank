@@ -24,42 +24,39 @@ export interface LiveTurnRecord {
   finalAnswer: string
   speechChunks?: string[]
   error?: string | null
+  /** provider trace (Online Runtime v2), finalizer stages + stamp — stored in memory. */
+  onlineTrace?: unknown
+  finalizerStages?: string[]
+  finalizerStamp?: string
 }
 
 import { createMemoryEngine } from './memoryEngineV2'
 
 const MAX = 20
-const BUFFER: LiveTurnRecord[] = []
-// Memory Engine v2 is the EXECUTED session-memory store behind the diagnostics: every
-// production turn (the Executive Controller calls recordTurn) writes here, and Copy Last
-// 20 reads its canonical turn history + last tool result.
+// SINGLE canonical turn store: Memory Engine v2 owns every turn (rich diagnostic record +
+// provider/speech/finalizer/error traces). There is NO separate ring buffer. The Executive
+// Controller calls recordTurn each production turn; Copy Last 20 reads only from here.
 let memory = createMemoryEngine('diagnostics')
 
 export function recordTurn(r: LiveTurnRecord): void {
-  BUFFER.push(r)
-  while (BUFFER.length > MAX) BUFFER.shift()
   memory.rememberTurn(r.input, r.finalAnswer, {
     intent: r.intent, display: r.finalAnswer, source: r.source,
     ...(r.speechChunks ? { chunks: r.speechChunks } : {}),
     state: { createState: { phase: 'idle' }, lastFamilyPair: null },
-  })
+  }, r)                                              // the whole record is the turn's diag
   if (r.toolResult) memory.rememberToolResult(r.source, r.toolResult)
 }
 
-export function lastTurns(n = MAX): LiveTurnRecord[] {
-  return BUFFER.slice(-n)
-}
+/** The last N turns — read ONLY from Memory Engine v2 (the single store). */
+export function lastTurns(n = MAX): LiveTurnRecord[] { return memory.exportDiagnostics<LiveTurnRecord>(n) }
 
-/** The canonical Memory Engine v2 turn history behind Copy Last 20 (executed in prod). */
-export function memoryTurns(n = MAX): ReturnType<typeof memory.exportLastTurns> { return memory.exportLastTurns(n) }
-export function memoryLastTool(): ReturnType<typeof memory.getLastToolResult> { return memory.getLastToolResult() }
+export function clearTurns(): void { memory = createMemoryEngine('diagnostics') }
 
-export function clearTurns(): void { BUFFER.length = 0; memory = createMemoryEngine('diagnostics') }
-
-/** JSON dump for the hidden "Copy Last 20 AbuAI Turns" debug action — includes the
- *  Memory Engine v2 canonical turns + last tool result so traces are consistent. */
+/** JSON dump for the hidden "Copy Last 20 AbuAI Turns" debug action — sourced solely from
+ *  Memory Engine v2 (turns carry provider/speech/finalizer/error traces + last tool). */
 export function dumpTurns(): string {
-  return JSON.stringify({ count: BUFFER.length, turns: lastTurns(), memoryTurns: memoryTurns(), lastTool: memoryLastTool() }, null, 2)
+  const turns = lastTurns()
+  return JSON.stringify({ count: turns.length, turns, lastTool: memory.getLastToolResult() }, null, 2)
 }
 
 /** Copy the last 20 turns to the clipboard (falls back to a returned string). */
