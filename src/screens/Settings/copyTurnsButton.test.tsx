@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.44.1-single-turn-store')
+    expect(APP_VERSION.version).toBe('0.45.0-ai-task-interpreter')
   })
 })

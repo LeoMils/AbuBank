@@ -28,6 +28,8 @@ export interface LiveTurnRecord {
   onlineTrace?: unknown
   finalizerStages?: string[]
   finalizerStamp?: string
+  /** AI Task Interpreter decision for this turn (taskType/reason/slots/forbiddenRoutes). */
+  aiTask?: { taskType: string; reason: string; slots: unknown; forbiddenRoutes: string[] }
 }
 
 import { createMemoryEngine } from './memoryEngineV2'

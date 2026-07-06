@@ -400,7 +400,9 @@ export function calendarSearchReasoner(text: string): string {
   const nameMatch = text.match(/עם\s+([֐-׿]{2,})|אצל\s+([֐-׿]{2,})/u)
   const person = nameMatch?.[1] ?? nameMatch?.[2] ?? null
   if (person) {
-    const r = findEventsByPerson(person)
+    // A meeting query ("מתי הפגישה עם X") excludes birthdays; a birthday query keeps them.
+    const meetingOnly = /פגישה|תור|נפגש|נפגשת/u.test(text) && !/יום\s+הולדת|הולדת|יומולדת/u.test(text)
+    const r = findEventsByPerson(person, meetingOnly)
     if (r.events.length === 0) return `אין לך פגישה עם ${person} ביומן.`
     return r.summary
   }

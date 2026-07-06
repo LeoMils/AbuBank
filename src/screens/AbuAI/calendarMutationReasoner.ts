@@ -16,6 +16,7 @@ import { resolveMeetingTime } from './meetingIntelligence'
 import { detectReminderIntent, parseReminder } from '../AbuCalendar/reminders/reminderParser'
 import { createReminder, createDefaultAlertPolicy } from '../AbuCalendar/reminders/reminderStore'
 import type { ReminderDraft } from '../AbuCalendar/reminders/types'
+import { isExitCurrentFlow } from './aiTaskInterpreter'
 import {
   loadAppointments, addAppointment, deleteAppointment, updateAppointment,
 } from '../AbuCalendar/service'
@@ -41,6 +42,9 @@ export function reminderReasoner(text: string, now: Date, pending: ReminderDraft
   const today = isoDay(now)
 
   if (pending) {
+    // AI Task Interpreter: the user can ALWAYS leave a stuck reminder flow — "זאת שאלה,
+    // לא תזכורת" / "תצאי רגע מזה" clears the pending reminder instead of trapping them.
+    if (isExitCurrentFlow(text)) return { text: 'בסדר, יצאתי מזה. מה רצית לשאול?', sideEffect: null, pendingReminder: null }
     // Waiting for the time.
     if (!pending.dueAt) {
       if (isCancel(text)) return { text: 'בסדר, ביטלתי.', sideEffect: null, pendingReminder: null }

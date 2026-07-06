@@ -17,6 +17,7 @@
 import { runFullTurn, type FullTurnTools, type FullTurnResult } from './runtimeFullTurn'
 import { type RuntimeState, type RuntimeContext } from './cognitiveRuntime'
 import { assertNoBypass } from './noBypassRuntimeGuard'
+import { interpretTask } from './aiTaskInterpreter'
 import { recordTurn } from './liveTurnDiagnostics'
 import { APP_VERSION } from '../../version'
 
@@ -38,9 +39,12 @@ export async function executiveHandleTurn(
   const result = await runFullTurn(state, input, ctx, tools)
   // The executive never emits an unstamped answer.
   assertNoBypass(result, `executive:${result.intent}`)
+  // AI Task Interpreter — the inferred task for this turn (pre-turn context), traced.
+  const task = interpretTask(input, { pendingReminder: !!state.pendingReminder, pendingCreate: state.createState.phase !== 'idle' })
   // Diagnostics: record the turn for the "Copy Last 20 AbuAI Turns" debug dump.
   try {
     recordTurn({
+      aiTask: { taskType: task.taskType, reason: task.reason, slots: task.slots, forbiddenRoutes: task.forbiddenRoutes },
       ts: ctx.now.getTime(), version: APP_VERSION.version, input,
       normalized: result.meta.actualQuestion, intent: result.intent, source: result.source,
       entities: result.meta.entities, missingFields: result.meta.missingFields,

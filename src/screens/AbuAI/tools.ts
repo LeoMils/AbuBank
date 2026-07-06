@@ -184,13 +184,16 @@ export function getUpcomingEvents(limit = 5): { events: Appointment[]; summary: 
   return { events, summary: shapeCalendarAnswer(events, 'upcoming') }
 }
 
-export function findEventsByPerson(personName: string): { events: Appointment[]; summary: string } {
+const BIRTHDAY_EVENT_RE = /יום\s+הולדת|🎂|🕯️/u
+export function findEventsByPerson(personName: string, meetingOnly = false): { events: Appointment[]; summary: string } {
   const all = loadAppointmentsWithFamily(new Date().getFullYear())
   const today = todayStr()
   const q = personName.trim().toLowerCase()
   const events = all.filter(a =>
     a.date >= today &&
-    ((a.personName?.toLowerCase().includes(q)) || a.title.toLowerCase().includes(q) || (a.notes?.toLowerCase().includes(q)))
+    ((a.personName?.toLowerCase().includes(q)) || a.title.toLowerCase().includes(q) || (a.notes?.toLowerCase().includes(q))) &&
+    // Birthdays must NOT satisfy a meeting query (only when the user asked about a meeting).
+    (!meetingOnly || !BIRTHDAY_EVENT_RE.test(a.title))
   )
   if (events.length === 0) return { events, summary: `אין כלום ביומן עם ${personName}.` }
   return { events, summary: `מה שיש לך עם ${personName}:\n${formatEventList(events)}` }
