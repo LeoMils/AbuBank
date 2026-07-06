@@ -12,7 +12,7 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.38.0-speech-delivery-runtime-v2',
+  version:    '0.39.0-online-runtime-v2',
   buildLabel: 'AbuBank — AbuGames terrace lobby (bright redesign + Solitaire/Mahjong category pages)',
   buildDate:  '2026-07-06',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
