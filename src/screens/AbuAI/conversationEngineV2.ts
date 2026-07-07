@@ -40,6 +40,11 @@ const READ_RE = /(?:מה\s+יש\s+לי(?![א-ת]))|(?:^\s*יומן\s*$)|(?:מה\
 // Explicit DRAFT cancel ("בטלי את זה"). Deliberately excludes "תמחקי את הפגישה עם X",
 // which deletes a NAMED stored event (a side action) and must never cancel the draft.
 const CANCEL_PHRASE_RE = /^(?:בטלי|תבטלי|בטל|תבטל|עזבי|תעזבי)\s+(?:את\s+)?(?:זה|הפגישה|הכל|התור)(?![א-ת])/u
+// Natural EXIT of the active object (EXIT DETECTION): a bare "עזוב" / "לא משנה" /
+// "תצא מזה" / "נעבור לנושא אחר" while a draft is pending must TERMINATE the draft,
+// not leak as a side-question that leaves it half-open (pending pollution). This
+// is exit-of-the-object, distinct from the "תמחקי את הפגישה עם X" stored-event delete.
+const SOFT_EXIT_RE = /^(?:עזוב(?:י|ו)?|לא\s+משנה|תצא\s+מזה|צא\s+מזה|נעבור\s+לנושא\s+אחר|עזבי\s+את\s+זה|שכח[יי]?\s+מזה|די\s+עם\s+זה)[\s.,!?]*$/u
 const FIELD_RE = /^(?:ב|ל)?(?:שעה\s+\S+|שמונה|תשע|עשר|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע)(?:\s+(?:בבוקר|בערב|בצהריים|וחצי|ורבע))?$|^ביום\s+\S+$|^(?:מחר|מחרתיים|היום|הערב)$|^ב\d{1,2}(?::\d{2})?$/u
 const QUESTION_RE = /^(?:מי|מה|מתי|איפה|איך|למה|כמה|האם)(?:\s|$)|\?\s*$/u
 const GREETING_RE = /^(?:בוקר טוב|ערב טוב|צהריים טובים|לילה טוב|מה שלומך|מה נשמע|היי|שלום|הא?לו)(?![א-ת])/u
@@ -70,7 +75,7 @@ export function classifySignalV2(rawInput: string, phase: Phase): V2Signal {
     // "לא שמעתי תמשיכי" is a resume, not an audio complaint — defer to the resume path.
     if (AUDIO_RE.test(t) && !RESUME_RE.test(t)) return 'audio'
     if (phase === 'confirming' && isConfirm(t)) return 'confirm'   // rule 1/2
-    if (isCancel(t) || CANCEL_PHRASE_RE.test(t)) return 'explicit_cancel' // rule 6 (explicit only)
+    if (isCancel(t) || CANCEL_PHRASE_RE.test(t) || SOFT_EXIT_RE.test(t)) return 'explicit_cancel' // rule 6 + EXIT DETECTION
     if (WHY_NOT_RE.test(t)) return 'why'
     if (FRUSTRATION_RE.test(t)) return 'frustration'
     if (SEARCH_RE.test(t)) return 'search'                          // rule 5/8

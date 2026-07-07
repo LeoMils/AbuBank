@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.47.0-conversation-continuity-tier1')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — AbuAI conversation-continuity Tier-1: topic recall no longer echoes trivial closers, past-tense calendar read-back, pending-draft edits/corrections update (not stale-save)')
+    expect(APP_VERSION.version).toBe('0.48.0-conversation-object-focus')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — AbuAI Conversation-Object focus layer: online follow-up ("ומחר?") stays online, natural exit ("לא משנה") closes the draft, voice interruption no longer clobbers state (single-flight)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

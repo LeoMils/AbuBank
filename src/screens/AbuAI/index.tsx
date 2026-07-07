@@ -241,6 +241,13 @@ export function AbuAI() {
   const createStateRef = useRef<CalendarCreateState>(IDLE_STATE)
   useEffect(() => { createStateRef.current = createState }, [createState])
 
+  // Voice single-flight token. A voice turn awaits the controller; if the user
+  // interrupts, a phone call returns, or she speaks again mid-await, we bump this
+  // so the SUPERSEDED turn does not speak over her or clobber the runtime state
+  // (the "it forgot what I just said after I interrupted" race). Only affects a
+  // turn that was overtaken — the normal single-turn flow is untouched.
+  const voiceTurnSeqRef = useRef(0)
+
   // v20.2: OpenAI Realtime API (WebRTC) — true real-time conversation
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
   const [realtimeTranscript, setRealtimeTranscript] = useState('')
@@ -396,7 +403,9 @@ export function AbuAI() {
   useEffect(() => {
     const handleVisibility = () => {
       if (document.hidden && voiceModeRef.current) {
-        // Page hidden (phone call, tab switch) — clean up voice resources
+        // Page hidden (phone call, tab switch) — invalidate any in-flight voice
+        // turn so it can't speak/clobber state when she returns, then clean up.
+        voiceTurnSeqRef.current++
         cleanupIndividualRefs({ recorderRef, streamRef, silenceRef, levelRef })
         stopSpeaking()
         if (recognitionRef.current) {
@@ -1424,6 +1433,9 @@ export function AbuAI() {
     if (!voiceModeRef.current) return
     transitionVoice('INTERRUPTED', 'user-tap')
 
+    // Invalidate any in-flight voice turn so it can't speak/clobber state on return.
+    voiceTurnSeqRef.current++
+
     // Abort any in-flight LLM request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -1500,9 +1512,13 @@ export function AbuAI() {
       // (supervised + delivery-planned + RUNTIME_FINALIZED). The legacy voice cascade
       // below is dead code — voice cannot emit outside the runtime.
       if (COGNITIVE_RUNTIME_FULL) {
+        const myTurn = ++voiceTurnSeqRef.current
         const tools = buildFullTurnTools(currentMsgs, true)
         const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
         const result = await ExecutiveCognitiveController.handleTurn(seed, effectiveText, { messages: currentMsgs, now: new Date() }, tools)
+        // Superseded by an interruption / phone-call return / a newer utterance?
+        // Drop this stale turn: do NOT speak over her or overwrite runtime state.
+        if (myTurn !== voiceTurnSeqRef.current || !voiceModeRef.current) return
         cognitiveRuntimeStateRef.current = result.state
         conversationOSRef.current = result.state.conv
         cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }

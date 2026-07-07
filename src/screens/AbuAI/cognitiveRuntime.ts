@@ -95,6 +95,20 @@ export type RuntimeIntent =
 
 export type Lang = 'he' | 'es' | 'mixed'
 
+/**
+ * The ACTIVE conversation object (minimal "Conversation Object"): what topic we
+ * are currently inside, so a bare follow-up continues it instead of re-routing as
+ * a fresh intent. Set when a live-info turn commits a topic; cleared when a
+ * deterministic non-online turn commits (so a follow-up can never bind to a stale
+ * object). Currently used for ONLINE continuity ("ומחר?" after weather stays
+ * weather, never flips to the calendar on the מחר token).
+ */
+export interface ConversationFocus {
+  kind: 'online'
+  /** the query to continue (e.g. "מה מזג האוויר בכפר סבא"). */
+  label: string
+}
+
 export interface RuntimeState {
   conv: ConvState
   createState: CalendarCreateState
@@ -106,6 +120,8 @@ export interface RuntimeState {
   pendingReminder: ReminderDraft | null
   /** last family pair answered, so "איך בדיוק / דרך מי / למה" can explain the path. */
   lastFamilyPair: { a: string; b: string } | null
+  /** the active conversation object for follow-up continuity (optional/back-compat). */
+  focus?: ConversationFocus | null
 }
 
 export const IDLE_RUNTIME: RuntimeState = {
@@ -116,6 +132,7 @@ export const IDLE_RUNTIME: RuntimeState = {
   frustrationVariant: 0,
   pendingReminder: null,
   lastFamilyPair: null,
+  focus: null,
 }
 
 export interface RuntimeContext {
@@ -202,6 +219,11 @@ const FAMILY_EXPLAIN_RE = /^(?:איך\s+בדיוק|איך\s+זה|דרך\s+מי|�
 // weather/local events/movies) — kept in sync with knowledgeRouter's routing.
 const ONLINE_EXTRA_RE =
   /(?:מתי\s+ה?אוטובוס|ה?אוטובוס\s+(?:ה?בא|מ)|מתי\s+ה?רכבת|ה?רכבת\s+(?:ה?באה|מ)|מתי\s+ה?טיסה|מזג\s+ה?אוויר|תחזית|חדשות\s+ה?יום|סרטים|קולנוע|הצגות|מה\s+פתוח)/u
+// A BARE temporal follow-up ("ומחר?", "והיום?", "ומחרתיים?"). After a live-info
+// (online) answer this must CONTINUE that topic — e.g. weather-tomorrow — not let
+// the מחר token flip it to the calendar. Deliberately narrow (temporal only) so a
+// real context switch (a full family/calendar question) is never hijacked.
+const ONLINE_TEMPORAL_FOLLOWUP_RE = /^(?:ו|בעצם\s+)?(?:מחר|היום|מחרתיים|הערב|אתמול|השבוע|בסופ״?ש|בסוף\s+השבוע)\s*\??$/u
 // A narrative event description WITHOUT an explicit create verb ("ביום שלישי אופיר
 // … בשעה שבע … אצלה שעתיים") — day + time + person/place → a calendar create, so it
 // is never mistaken for a family question just because family names appear in it.
@@ -566,6 +588,19 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   // reply. Strip the correction lead-in and process the clause that follows.
   const corr = normalized.match(/^לא[,.]?\s*(?:זה[,.]?\s*)?(?:התכוונתי|התכוונת|רציתי\s+לומר)\s+(.+)/u)
   if (corr && corr[1] && corr[1].trim().length >= 3) normalized = corr[1].trim()
+  // ── STEP ZERO — Conversation continuity (before intent) ─────────────────────
+  // If we are INSIDE an online topic (active focus) and this turn is a bare temporal
+  // follow-up ("ומחר?"), continue that topic by re-querying online with the day
+  // merged in — instead of the bare מחר token flipping to the calendar. Only fires
+  // when there is NO pending draft (a draft's own field-answers win) and the focus
+  // is fresh online. This is the "continue the current object, don't re-route" rule.
+  // Test the ORIGINAL raw fragment — normalizeInput otherwise expands "ומחר?" into
+  // a calendar query ("מה יש לי מחר") before we get here, which is the very hijack
+  // we are undoing.
+  if (state.createState.phase === 'idle' && state.focus?.kind === 'online' && ONLINE_TEMPORAL_FOLLOWUP_RE.test(original.trim())) {
+    const day = original.trim().replace(/^(?:ו|בעצם\s+)/u, '').replace(/[?？]$/u, '').trim()
+    normalized = `${state.focus.label} ${day}`.replace(/\s+/g, ' ').trim()
+  }
   // Layer 3: classify.
   const intent = classifyIntent(normalized, state)
 
@@ -587,7 +622,9 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       ...base, handled: true, display, speak, chunks: chunk(display),
       needsLLM: false, needsOnline: false, online: null, grounding: null,
       sideEffect: null, verifier,
-      state: { ...opts.state, conv, lastIntent: intent },
+      // A deterministic (non-online) answer ends any active online topic, so the
+      // next bare "ומחר?" can't bind to a stale weather focus.
+      state: { ...opts.state, conv, focus: null, lastIntent: intent },
     }
   }
 
@@ -904,12 +941,18 @@ export function finalizeExternalAnswer(
       question: '', intent: meta.intent, topic: meta.topic ?? null, fullText: display,
     })
   }
+  // Conversation focus: a successful ONLINE answer becomes the active object so a
+  // bare "ומחר?" next turn continues it; any non-online finalize clears it so a
+  // follow-up can never bind to a stale online topic.
+  const focus: ConversationFocus | null = meta.online && meta.online.ok
+    ? { kind: 'online', label: (meta.online.query ?? meta.topic ?? '').replace(/[?？]+$/u, '').trim() }
+    : null
   return {
     handled: true, intent: meta.intent, lang: detectLang(rawAnswer),
     original: rawAnswer, normalized: rawAnswer,
     display, speak, chunks: chunk(display),
     needsLLM: false, needsOnline: false, online: null, grounding: null,
     sideEffect: null, verifier,
-    state: { ...state, conv, lastIntent: meta.intent },
+    state: { ...state, conv, focus, lastIntent: meta.intent },
   }
 }

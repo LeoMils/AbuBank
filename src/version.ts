@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.47.0-conversation-continuity-tier1',
-  buildLabel: 'AbuBank — AbuAI conversation-continuity Tier-1: topic recall no longer echoes trivial closers, past-tense calendar read-back, pending-draft edits/corrections update (not stale-save)',
+  version:    '0.48.0-conversation-object-focus',
+  buildLabel: 'AbuBank — AbuAI Conversation-Object focus layer: online follow-up ("ומחר?") stays online, natural exit ("לא משנה") closes the draft, voice interruption no longer clobbers state (single-flight)',
   buildDate:  '2026-07-07',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

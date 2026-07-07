@@ -131,9 +131,20 @@ describe('CONTINUITY — evolving 20-turn thread (real runtime)', () => {
     expect(T(16).display).not.toMatch(/דיברנו על (?:עזוב|תודה|ביי|שלום|לא משנה)/)
   })
 
-  // ── The Conversation-Object focus layer — documented NEXT slice (not yet done) ──
-  it.todo('T6/T7: edits AFTER save ("תשנה לארבע"/"בקפה אסתר") bind to the just-saved event (needs RuntimeState.focus)')
-  it.todo('T10: weather follow-up "ומחר?" stays weather instead of flipping to calendar on the מחר token')
-  it.todo('T18: an exit ("לא משנה") closes an open draft — no pending-draft pollution across later turns')
+  // ── Conversation-Object focus layer (this change) ──
+  it('T10 [FIX]: weather follow-up "ומחר?" stays online, never flips to the calendar on the מחר token', () => {
+    expect(T(10).intent).not.toBe('calendar_read')
+    expect(T(10).display).not.toMatch(/פגיש|יומן|קבע/)
+    expect(T(10).source).toBe('online')
+  })
+  it('T18 [FIX]: an exit ("לא משנה") closes the open draft — no pending-draft pollution', () => {
+    expect(T(18).createPhase).toBe('idle')
+    expect(T(19).createPhase).toBe('idle')
+    expect(T(20).createPhase).toBe('idle')
+  })
+
+  // ── Documented NEXT slice (deliberately NOT shipped: stored-event mutation is a
+  //    data-loss risk that cannot be verified without a device) ──
+  it.todo('T6/T7: edits AFTER save ("תשנה לארבע"/"בקפה אסתר") mutate the stored event (needs safe stored-event update flow)')
   it.todo('T13: spelling variant "אנבל" resolves deterministically like canonical "אנאבל"')
 })
