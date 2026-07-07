@@ -185,6 +185,12 @@ const FRUSTRATION_EXTRA_RE =
   /את\s+לא\s+עונה|לא\s+ענית\s+לי|לא\s+על\s+זה\s+שאלתי|לא\s+ענית\s+על|זה\s+לא\s+מה\s+ששאלתי|את\s+לא\s+עונה\s+למה\s+ששאלתי/u
 const CONTINUATION_EXTRA_RE = /תשלימי\s+את\s+המשפט|תסיימי\s+את\s+המשפט|תגמרי\s+את\s+המשפט/u
 const RECALL_TOPIC_RE = /על\s+מה\s+דיבר(?:נו|ת)|מה\s+דיברנו|de\s+qu[eé]\s+hablamos/iu
+// A trivial social/closing turn (greeting, thanks, goodbye, "never mind", exit).
+// These must NOT become the remembered conversation topic — otherwise
+// "מה דיברנו קודם?" echoes the last throwaway word ("דיברנו על עזוב"). We skip
+// recording them, so the prior SUBSTANTIVE topic stays as what we "talked about".
+const TRIVIAL_TURN_RE = /^(?:שלום|היי|הא?לו|בוקר טוב|ערב טוב|צהריים טובים|לילה טוב|מה שלומך|מה נשמע|תודה(?:\s+רבה)?(?:\s+לך)?|ביי|יאללה\s+ביי|להתראות|עזוב(?:י|ו)?|לא\s+משנה|שכח[יי]?\s+מזה|תעזב[יי]|סבבה|אוקיי?|בסדר|טוב)[\s.,!?]*$/u
+function isTrivialTurn(t: string): boolean { return TRIVIAL_TURN_RE.test((t ?? '').trim()) }
 // "מתי יש לי פגישה עם X" / "מתי הפגישה עם X" → search across ALL days (never create,
 // never ask "באיזה יום"). Must be tested BEFORE isCreateIntent, which is greedy.
 const SEARCH_WHEN_RE = /^מתי\s+.*(?:יש\s+לי|ה?פגישה|ה?תור|ה?ביקור|נפגש|פגוש)/u
@@ -293,7 +299,7 @@ export function legacyDomainClassify(t: string): RuntimeIntent {
   if (isDeleteIntent(t)) return 'calendar_delete'
   if (isModifyIntent(t)) return 'calendar_update'
   if (isSearchIntent(t)) return 'calendar_search'
-  if (/(?:מה יש לי|יש לי משהו|מה ה?תוכניות שלי|מה ביומן|מה יש ביומן)/u.test(t) &&
+  if (/(?:מה יש לי|יש לי משהו|מה ה?תוכניות שלי|מה ביומן|מה יש ביומן|מה קבעתי|מה קבענו|מה קבעת לי)/u.test(t) &&
       /(?:היום|מחר|השבוע|הערב|יומן|תוכניות)/u.test(t)) return 'calendar_read'
   if (looksLikeNarrativeMeeting(t)) return 'calendar_create'
   if (looksLikeFamilyQuery(t)) return 'family'
@@ -572,7 +578,7 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     const verifier = verifyAnswer(display, { intent, dataAvailable: opts.dataAvailable })
     // Record the answer into conversation memory so "תמשיכי" / recall work next turn.
     let conv = opts.state.conv
-    if (intent !== 'continuation' && intent !== 'frustration' && display) {
+    if (intent !== 'continuation' && intent !== 'frustration' && display && !isTrivialTurn(normalized)) {
       conv = recordAnswer(conv, {
         question: normalized, intent, topic: opts.recordTopic ?? null, fullText: display,
       })
@@ -668,7 +674,9 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       // it never falls into "זהו, סיימתי".
       if (RECALL_TOPIC_RE.test(normalized)) {
         const a = state.conv.answer
-        const topic = a?.topic || a?.question
+        // Belt-and-suspenders: never recall a trivial closer/greeting as the topic.
+        const cand = a?.topic || a?.question || ''
+        const topic = cand && !isTrivialTurn(cand) ? cand : null
         return settle(topic ? `דיברנו על ${topic}.` : 'עוד לא דיברנו על משהו מסוים. על מה תרצי?',
           { state, dataAvailable: !!topic })
       }
@@ -889,7 +897,9 @@ export function finalizeExternalAnswer(
       summary: meta.online.summary ?? (meta.online.ok ? display : null),
     })
   }
-  if (display) {
+  // Skip recording a trivial closer/greeting/ack (topic-derived from the input)
+  // so it can't overwrite the last SUBSTANTIVE topic used by "מה דיברנו קודם?".
+  if (display && !isTrivialTurn(meta.topic ?? '')) {
     conv = recordAnswer(conv, {
       question: '', intent: meta.intent, topic: meta.topic ?? null, fullText: display,
     })

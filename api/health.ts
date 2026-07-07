@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.46.0-product-truth-dashboard'
-const BUILD_LABEL = 'AbuBank — AbuAI Product Truth Dashboard (Team 9): live honest voice/realtime/fallback/gender/calendar truth + Copy Product Truth Report'
+const BUILD_VERSION = '0.47.0-conversation-continuity-tier1'
+const BUILD_LABEL = 'AbuBank — AbuAI conversation-continuity Tier-1: topic recall no longer echoes trivial closers, past-tense calendar read-back, pending-draft edits/corrections update (not stale-save)'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.46.0-product-truth-dashboard',
-  buildLabel: 'AbuBank — AbuAI Product Truth Dashboard (Team 9): live honest voice/realtime/fallback/gender/calendar truth + Copy Product Truth Report',
+  version:    '0.47.0-conversation-continuity-tier1',
+  buildLabel: 'AbuBank — AbuAI conversation-continuity Tier-1: topic recall no longer echoes trivial closers, past-tense calendar read-back, pending-draft edits/corrections update (not stale-save)',
   buildDate:  '2026-07-07',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

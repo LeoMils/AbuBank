@@ -46,6 +46,14 @@ const GREETING_RE = /^(?:בוקר טוב|ערב טוב|צהריים טובים|�
 const NEW_MEETING_RE = /(?:מחר|מחרתיים|היום|הערב|ביום\s+\S+)/u
 const NEW_TIME_RE = /(?:בשעה|ב\d|בבוקר|בערב|בצהריים|וחצי|ב(?:שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|אחת|שתיים))/u
 const NEW_PLACE_RE = /(?:אצל|אלי[הו]|הביתה|עם\s+[א-ת]{2,}|ביקש[הת]?|אמר[הת]?\s+ש)/u
+// Imperative draft edits ("תשנה לעשר", "תעדכני", "תוסיפי", "תכתבי …") and
+// "לא, <value>" corrections ("לא, מחר", "לא, בשבוע הבא", "לא, בעשר"). During a
+// pending draft these MUST update it via updateCreate — never fall through to the
+// general LLM as a side-question, or a later "כן" saves the STALE value (a
+// data-integrity bug). Genuine side-questions are QUESTIONS and never match this.
+const EDIT_VERB_RE = /^(?:ל?תשנ[יה]|שנ[יה]|ל?תעדכנ[יי]?|עדכנ[יי]?|ל?תוסיפ[יי]?|הוסיפ[יי]?|ל?תכת[בו][יי]?|ל?תרשמ[יי]?)(?![א-ת])/u
+const CORRECTION_VALUE_RE = /^לא[,\s]+(?=.*(?:מחר|מחרתיים|היום|הערב|ביום|שבוע|בשעה|ב\d|בבוקר|בערב|בצהריים|וחצי|ורבע|בשלוש|בארבע|בחמש|בשש|בשבע|בשמונה|בתשע|בעשר|באחת|בשתיים))/u
+function isDraftEdit(t: string): boolean { return EDIT_VERB_RE.test(t) || CORRECTION_VALUE_RE.test(t) }
 
 /** phase from the calendar create state. */
 export type Phase = 'idle' | 'collecting' | 'confirming' | string
@@ -69,6 +77,7 @@ export function classifySignalV2(rawInput: string, phase: Phase): V2Signal {
     if (READ_RE.test(t)) return 'read'                             // rule 5
     if (NEW_MEETING_RE.test(t) && NEW_TIME_RE.test(t) && NEW_PLACE_RE.test(t) && t.split(/\s+/).length >= 5) return 'new_create'
     if (FIELD_RE.test(t)) return 'field_answer'
+    if (isDraftEdit(t)) return 'field_answer'                       // edit/correction → updateCreate, never LLM
     return 'side_question'                                          // rule 5 (answer + keep)
   }
   // IDLE — v2 owns ONLY the search-vs-create precedence fix (C/D); everything else
