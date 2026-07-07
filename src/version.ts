@@ -12,7 +12,7 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.45.0-ai-task-interpreter',
+  version:    '0.45.1-ai-task-authority',
   buildLabel: 'AbuBank — AbuGames terrace lobby (bright redesign + Solitaire/Mahjong category pages)',
   buildDate:  '2026-07-06',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',

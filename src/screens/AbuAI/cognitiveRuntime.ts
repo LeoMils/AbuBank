@@ -47,6 +47,7 @@ import { isReminderIntent, isRecurringIntent, type MutationSideEffect } from './
 import { runPlan } from './domainPlanner'
 import { registerCalendarMutationPlugins } from './calendarMutationPlugins'
 import type { ReminderDraft } from '../AbuCalendar/reminders/types'
+import { interpretTask, type TaskType } from './aiTaskInterpreter'
 
 // Register the domain plugins once, at module load. Adding a future domain = add a
 // plugin + register it here; the planner and controller never change.
@@ -252,39 +253,51 @@ export function classifyIntent(
   // calendar verbs so "מתי האוטובוס" is never mistaken for a calendar create.
   if (ONLINE_EXTRA_RE.test(t) && !shouldBlockOnlineForPersonal(t)) return 'online'
 
-  // "מתי יש לי פגישה עם X" is a SEARCH across all days — before the greedy create.
+  // ── AI Task Interpreter — AUTHORITATIVE domain decision ──────────────────────
+  // When the interpreter is confident, its task OVERRIDES the legacy cues below (now the
+  // fallback). It never overrides the structural guards above (audio/pending/frustration/
+  // continuation/date). This is where the interpreter wins on disagreement.
+  const auth = authorityIntent(text, state)
+  if (auth) return auth
+
+  return legacyDomainClassify(t)
+}
+
+/** Interpreter task → runtime intent. Only decisive tasks map; unknown/low-confidence and
+ *  family (already well-routed) fall through to the legacy cues. */
+const INTERPRETER_TO_INTENT: Partial<Record<TaskType, RuntimeIntent>> = {
+  online_live: 'online', calendar_search: 'calendar_search', calendar_read: 'calendar_read',
+  calendar_create: 'calendar_create', calendar_delete: 'calendar_delete', calendar_update: 'calendar_update',
+  reminder_create: 'reminder',
+}
+const AUTH_THRESHOLD = 0.85
+
+/** The AI Task Interpreter's authoritative intent for this turn, or null if not decisive. */
+export function authorityIntent(text: string, state: RuntimeState): RuntimeIntent | null {
+  const task = interpretTask(text.trim(), { pendingReminder: !!state.pendingReminder, pendingCreate: state.createState.phase !== 'idle' })
+  const mapped = INTERPRETER_TO_INTENT[task.taskType]
+  if (!mapped || task.confidence < AUTH_THRESHOLD) return null
+  // The interpreter has no recurring task — defer "כל יום/שבוע" creates to the legacy
+  // recurring path so multi-event creation is not lost.
+  if (mapped === 'calendar_create' && isRecurringIntent(text)) return null
+  return mapped
+}
+
+/** Legacy domain cues — fallback ONLY when the interpreter is not confident/decisive. */
+export function legacyDomainClassify(t: string): RuntimeIntent {
   if (SEARCH_WHEN_RE.test(t)) return 'calendar_search'
-
-  // Casual / semantic search: "יש לי משהו עם מור", "פגישה בקפה מורנו" — a QUESTION
-  // about existing events (no create verb), searched by person or place. Guarded by
-  // !isCreateIntent so real creates ("תקבעי פגישה עם דני מחר") still create.
   if (SEARCH_CASUAL_RE.test(t) && !isCreateIntent(t)) return 'calendar_search'
-
-  // Reminders ("תזכירי לי …") before calendar create — a reminder is not an event.
   if (isReminderIntent(t)) return 'reminder'
-  // Recurring create ("כל יום שלישי …") before a single create.
   if (isCreateIntent(t) && isRecurringIntent(t)) return 'calendar_recurring'
-
-  // Calendar verbs (create/delete/modify/search) before generic reads.
   if (isCreateIntent(t)) return 'calendar_create'
   if (isDeleteIntent(t)) return 'calendar_delete'
   if (isModifyIntent(t)) return 'calendar_update'
   if (isSearchIntent(t)) return 'calendar_search'
-
-  // Calendar read ("מה יש לי היום/מחר"). Must stay personal ("מה יש לי", "ביומן")
-  // so live questions like "מה יש בקולנוע היום" fall through to online, not here.
   if (/(?:מה יש לי|יש לי משהו|מה ה?תוכניות שלי|מה ביומן|מה יש ביומן)/u.test(t) &&
       /(?:היום|מחר|השבוע|הערב|יומן|תוכניות)/u.test(t)) return 'calendar_read'
-
-  // Narrative event description (day + time + person/place, no create verb).
   if (looksLikeNarrativeMeeting(t)) return 'calendar_create'
-
-  // Family relation queries: two known family names, or "מי ה<relation> של <person>".
   if (looksLikeFamilyQuery(t)) return 'family'
-
-  // Online / current-info (blocked for personal/family/calendar).
   if (isOnlineCurrentInfoQuery(t) && !shouldBlockOnlineForPersonal(t)) return 'online'
-
   return 'general'
 }
 

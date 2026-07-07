@@ -26,6 +26,8 @@ import { checkCalendarContradiction } from './contradictionGuard'
 import { assessConfidence } from './confidenceGuard'
 import { getTodayEvents, getTomorrowEvents } from './tools'
 import { createOnlineRuntime, type OnlineRuntimeV2 } from './onlineRuntimeV2'
+import { interpretTask } from './aiTaskInterpreter'
+import { authorityIntent, legacyDomainClassify } from './cognitiveRuntime'
 
 function calendarCountForScope(scope: 'today' | 'tomorrow'): number {
   try { return scope === 'tomorrow' ? getTomorrowEvents().events.length : getTodayEvents().events.length }
@@ -57,6 +59,10 @@ export interface FullTurnResult {
   meta: MetaResult
   /** Online Runtime v2 provider trace (null for non-online turns) — for Copy Last 20. */
   onlineTrace: ReturnType<OnlineRuntimeV2['exportOnlineTrace']>
+  /** AI Task Interpreter decision + whether it overrode the legacy runtime router. */
+  aiTask: { taskType: string; confidence: number; reason: string; slots: unknown }
+  runtimeExecutedTask: RuntimeIntent
+  interpreterOverrodeRuntime: boolean
 }
 
 // Online retry/failover now lives in Online Runtime v2 (onlineRuntimeV2.runQuery), the
@@ -134,8 +140,16 @@ export async function runFullTurn(
   const priorStages: RuntimeStage[] = ['input', 'normalize', 'meta', 'intent', source === 'deterministic' ? 'domain' : 'tool']
   const recentAssistant = ctx.messages.filter(m => m.role === 'assistant').map(m => m.content).slice(-4)
   const fin = finalize({ display, speak, intent, source, priorStages, dataAvailable: true, forVoice: true, recentAssistant })
+  // AI Task Interpreter authority trace: the inferred task + whether it overrode the
+  // legacy router (i.e. its confident decision drove the executed route, differing from
+  // what the legacy cues alone would have picked).
+  const task = interpretTask(input, { pendingReminder: !!state.pendingReminder, pendingCreate: state.createState.phase !== 'idle' })
+  const auth = authorityIntent(input, state)
+  const interpreterOverrodeRuntime = auth !== null && auth === intent && auth !== legacyDomainClassify(input.trim())
   return {
     intent, display: fin.display, speak: fin.speak, delivery: fin.delivery, state: st, sideEffect,
     supervisor: fin.supervisor, routedThroughRuntime: true, source, trace: fin.trace, meta, onlineTrace,
+    aiTask: { taskType: task.taskType, confidence: task.confidence, reason: task.reason, slots: task.slots },
+    runtimeExecutedTask: intent, interpreterOverrodeRuntime,
   }
 }

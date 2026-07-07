@@ -37,7 +37,7 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.45.0-ai-task-interpreter'
+const BUILD_VERSION = '0.45.1-ai-task-authority'
 const BUILD_LABEL = 'AbuBank — AbuGames terrace lobby (bright redesign + Solitaire/Mahjong category pages)'
 
 export default function handler(_req: Request): Response {
