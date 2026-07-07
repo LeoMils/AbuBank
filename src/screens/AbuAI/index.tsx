@@ -28,6 +28,7 @@ import {
 } from './conversationOS'
 import { planTurn } from './conversationBrain'
 import { diagReset, diagSet, diagCommit, diagCopyText } from '../../services/productDiagnostics'
+import { setProductTruth, recordLastPerson, getProductTruth, formatProductTruthReport } from '../../services/productTruth'
 import { planCompanionTurn, deriveStateFromMessages } from './companionPlanner'
 import { enforceCompanion } from './companionComposer'
 import { durable } from '../../services/durableStore'
@@ -97,6 +98,7 @@ import { orchestrate } from './understandingOrchestrator'
 import { addAppointment, deleteAppointment, updateAppointment, loadAppointments, findConflicts } from '../AbuCalendar/service'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
 import { resolvePronouns } from './pronounResolver'
+import { loadGraph } from './familyGraph'
 import { resolveFollowUp } from './contextResolver'
 
 let msgCounter = 0
@@ -151,6 +153,12 @@ const KEYFRAMES = `
 // The old "...אני כאן." was a dead end — it greeted and then nothing happened.
 // This opens the door: she knows immediately she can just talk, ask, or have me
 // put something in the calendar. One sentence, warm, adult — never a menu.
+// Product Truth: the Realtime path dropped to the free Web-Speech pipeline.
+// Silent to Martita, but NEVER hidden from the truth report / dashboard.
+function stampFallbackTruth(reason: string): void {
+  setProductTruth({ voiceMode: 'pipeline', realtimeStatus: 'fallback', fallbackUsed: true, sttProvider: 'Web Speech (fallback)', ttsProvider: 'pipeline TTS', lastError: reason })
+}
+
 // Map an online provider error code to a human-explainable failure reason.
 function mapOnlineFailReason(code: string | null | undefined): OnlineFailReason {
   const c = (code ?? '').toUpperCase()
@@ -466,6 +474,9 @@ export function AbuAI() {
     const orchestration = orchestrate(msgText, { messages })
     // eslint-disable-next-line no-console
     console.log(`[AbuAI][ORCH] ORCH_INTENT=${orchestration.intent} clarify=${orchestration.needsClarification} corrections=${orchestration.corrections.length} mem(person=${orchestration.memory.lastPerson ?? '-'},action=${orchestration.memory.lastCalendarAction ?? '-'})`)
+    // Product Truth: record the last person + deterministically-resolved gender/pronoun.
+    setProductTruth({ voiceMode: 'text' })
+    recordLastPerson(orchestration.memory.lastPerson ?? _resolvedPerson ?? null, loadGraph())
 
     // "תחזרי ל<name>" / "נחזור ל<name>" (go back to X) — the ל prefix on the name
     // defeats the word-boundary matcher, so rewrite to a groundable form using
@@ -2311,6 +2322,9 @@ ${fewShotText}`
     const openaiAvailable = useRealtime && (!quotaFlag || (Date.now() - parseInt(quotaFlag, 10)) > 300_000)
     // eslint-disable-next-line no-console
     console.log(`[AbuAI][VOICE] REALTIME_STATUS=${openaiAvailable ? 'attempting' : 'fallback-pipeline'} useRealtime=${useRealtime}`)
+    setProductTruth(openaiAvailable
+      ? { voiceMode: 'realtime', realtimeStatus: 'attempting', fallbackUsed: false, sttProvider: 'Realtime (WebRTC)', ttsProvider: 'OpenAI Realtime' }
+      : { voiceMode: 'pipeline', realtimeStatus: 'unavailable', fallbackUsed: true, sttProvider: 'Web Speech (fallback)', ttsProvider: 'pipeline TTS', lastError: 'Realtime unavailable (OpenAI key/quota) — using Web Speech pipeline' })
 
     // Realtime disabled → use pipeline mode (STT → local-first router → LLM → TTS).
     // OpenAI is still available as LLM provider via sendMessage().
@@ -2323,7 +2337,7 @@ ${fewShotText}`
     // Use OpenAI Realtime API (WebRTC) — native audio, < 2s response
     if (useRealtime) {
       diagReset()
-      diagSet({ sttProvider: 'Realtime (WebRTC)', sttFileType: 'native', ttsProvider: 'OpenAI Realtime', ttsModel: 'gpt-4o-realtime-preview', ttsVoice: 'shimmer', responseSource: 'Realtime native audio' })
+      diagSet({ sttProvider: 'Realtime (WebRTC)', sttFileType: 'native', ttsProvider: 'OpenAI Realtime', ttsModel: 'gpt-realtime', ttsVoice: 'shimmer', responseSource: 'Realtime native audio' })
       setRealtimeTranscript('')
       realtimeEverConnectedRef.current = false // fresh session — initial failure stays silent
       const session = new RealtimeVoiceSession(
@@ -2332,6 +2346,7 @@ ${fewShotText}`
             setRealtimeState(state)
             // eslint-disable-next-line no-console
             console.log(`[AbuAI][VOICE] REALTIME_STATUS=${state}`)
+            setProductTruth({ voiceMode: 'realtime', realtimeStatus: state === 'connecting' ? 'attempting' : (state as any), fallbackUsed: false })
             if (state === 'listening' || state === 'speaking') realtimeEverConnectedRef.current = true
             if (state === 'listening') setVoicePhase('listening')
             else if (state === 'speaking') { setVoicePhase('speaking'); setIsSpeaking(true) }
@@ -2373,6 +2388,7 @@ ${fewShotText}`
             if (!realtimeEverConnectedRef.current) {
               // eslint-disable-next-line no-console
               console.log(`[AbuAI][VOICE] REALTIME_STATUS=error FALLBACK_REASON=${mediated.category ?? 'connect_failed'} (silent → pipeline)`)
+              stampFallbackTruth(`Realtime ${mediated.category ?? 'connect_failed'} → Web Speech pipeline`)
               return
             }
             // P0-8: Don't spam error cards — replace last error if it was also an error
@@ -2391,6 +2407,7 @@ ${fewShotText}`
         () => {
           // eslint-disable-next-line no-console
           console.log('[AbuAI][VOICE] REALTIME_STATUS=fatal FALLBACK_REASON=realtime_unavailable → pipeline')
+          stampFallbackTruth('Realtime unavailable → Web Speech pipeline')
           console.log('[AbuAI] Realtime failed, saving quota flag, falling back to free pipeline')
           try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch { /* quota */ }
           realtimeRef.current = null
@@ -3285,7 +3302,77 @@ ${fewShotText}`
                 cursor: 'pointer',
               }}
             >📋 Copy Diagnostics</button>
+            <button
+              type="button"
+              onClick={() => {
+                let now = ''
+                try { now = new Date().toISOString() } catch { /* no clock */ }
+                const text = formatProductTruthReport(now)
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(text).then(() => alert('דוח האמת הועתק! שלחי ללאו.')).catch(() => {
+                    const ta = document.createElement('textarea')
+                    ta.value = text
+                    ta.style.position = 'fixed'
+                    ta.style.left = '-9999px'
+                    document.body.appendChild(ta)
+                    ta.select()
+                    document.execCommand('copy')
+                    document.body.removeChild(ta)
+                    alert('דוח האמת הועתק! שלחי ללאו.')
+                  })
+                } else {
+                  prompt('העתיקי ידנית:', text)
+                }
+              }}
+              style={{
+                marginRight: 8,
+                padding: '10px 16px',
+                borderRadius: 20,
+                background: 'rgba(20,184,166,0.10)',
+                border: '1px solid rgba(20,184,166,0.35)',
+                color: 'rgba(20,184,166,0.9)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >📋 Copy Product Truth Report</button>
           </div>
+          {/* Team 9 — PRODUCT TRUTH panel. Live, honest snapshot. Reads module
+              state + real diagnostic stores; the Web-Speech fallback is never
+              hidden here. Recomputed each render. */}
+          {(() => {
+            const p = getProductTruth()
+            const row = (k: string, v: string, warn = false) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0' }}>
+                <span style={{ color: 'rgba(255,255,255,0.45)' }}>{k}</span>
+                <span style={{ color: warn ? '#f6b26b' : 'rgba(255,255,255,0.85)', fontWeight: warn ? 700 : 400, textAlign: 'right', direction: 'ltr' }}>{v}</span>
+              </div>
+            )
+            return (
+              <div style={{
+                margin: '10px 0 4px',
+                padding: '10px 14px',
+                borderRadius: 12,
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.10)',
+                fontSize: 12,
+                fontFamily: 'ui-monospace, Menlo, monospace',
+                direction: 'ltr',
+                textAlign: 'left',
+              }}>
+                <div style={{ color: 'rgba(20,184,166,0.9)', fontWeight: 700, marginBottom: 6, letterSpacing: 0.5 }}>PRODUCT TRUTH</div>
+                {row('BUILD_ID', p.buildId)}
+                {row('VOICE_MODE', p.voiceMode)}
+                {row('REALTIME_STATUS', p.realtimeStatus, p.realtimeStatus === 'fallback' || p.realtimeStatus === 'unavailable' || p.realtimeStatus === 'error')}
+                {row('FALLBACK_USED', p.fallbackUsed ? 'YES' : 'NO', p.fallbackUsed)}
+                {row('STT', p.sttProvider, /web ?speech/i.test(p.sttProvider))}
+                {row('TTS', p.ttsProvider)}
+                {row('CALENDAR', p.calendarSource)}
+                {row('LAST_PERSON', `${p.lastPerson ?? 'n/a'}${p.lastGender ? ' (' + p.lastGender + ')' : ''}`)}
+                {p.lastError ? row('LAST_ERROR', p.lastError, true) : null}
+              </div>
+            )
+          })()}
         </div>
       )}
     </div>

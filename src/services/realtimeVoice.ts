@@ -1,17 +1,22 @@
 // ─── OpenAI Realtime API — WebRTC Voice Client ─────────────────────
-// v24.3: Reverted to gpt-4o-realtime-preview (gpt-realtime may not be available on all accounts)
-// Keep coral voice (marin may be gpt-realtime exclusive)
+// v46 (2026): the Realtime API evolved. The old /v1/realtime/sessions minter
+// and gpt-4o-realtime-preview model now 404. Current, SERVER-PROVEN contract
+// (api/realtime-token.ts mints ok=true against this account):
+//   - ephemeral secret: POST /v1/realtime/client_secrets (body { session:{...} })
+//   - model family:     gpt-realtime  (confirmed available on this account)
+//   - SDP exchange:      POST /v1/realtime/calls  (was /v1/realtime?model=)
+//   - no OpenAI-Beta header required any more
+// The actual mint happens SERVER-SIDE; the constants below mirror the real
+// contract and are asserted by a guard test so an edit can't silently regress.
 
 import { HE_VOICE } from './voiceConfig'
 
-const REALTIME_MODEL = 'gpt-4o-realtime-preview'
+const REALTIME_MODEL = 'gpt-realtime'
+const REALTIME_CALLS_URL = 'https://api.openai.com/v1/realtime/calls'
 
-// The ephemeral-session endpoint. It is a BETA route — it requires the
-// `OpenAI-Beta: realtime=v1` header, without which it returns 404 ("Invalid
-// URL"). Exported + asserted by a guard test so a future edit can't silently
-// drop the header or path.
-export const REALTIME_SESSION_URL = 'https://api.openai.com/v1/realtime/sessions'
-export const REALTIME_BETA_HEADER = { 'OpenAI-Beta': 'realtime=v1' }
+// The ephemeral-secret endpoint (server-side minter target). Exported +
+// asserted by a guard test so a future edit can't silently regress the path.
+export const REALTIME_SESSION_URL = 'https://api.openai.com/v1/realtime/client_secrets'
 
 /** Reject the docs placeholder / obvious stubs before any network call. */
 export function isPlaceholderKey(k: string | undefined): boolean {
@@ -188,7 +193,7 @@ export class RealtimeVoiceSession {
       await this.pc.setLocalDescription(offer)
 
       const sdpRes = await fetch(
-        `https://api.openai.com/v1/realtime?model=${REALTIME_MODEL}`,
+        `${REALTIME_CALLS_URL}?model=${REALTIME_MODEL}`,
         {
           method: 'POST',
           headers: {

@@ -77,6 +77,18 @@ export function traceEnd(): void {
   _current = {}
 }
 
+/** Get the last persisted voice trace object (or null). Used by productTruth. */
+export function getLastVoiceTrace(): VoiceTrace | null {
+  try {
+    const raw = localStorage.getItem(DIAG_KEY)
+    if (!raw) return null
+    const entries: VoiceTrace[] = JSON.parse(raw)
+    return entries.length ? entries[entries.length - 1]! : null
+  } catch {
+    return null
+  }
+}
+
 /** Get last trace as copyable text. */
 export function getLastTraceText(): string {
   try {

@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.45.1-ai-task-authority',
-  buildLabel: 'AbuBank — AbuGames terrace lobby (bright redesign + Solitaire/Mahjong category pages)',
-  buildDate:  '2026-07-06',
+  version:    '0.46.0-product-truth-dashboard',
+  buildLabel: 'AbuBank — AbuAI Product Truth Dashboard (Team 9): live honest voice/realtime/fallback/gender/calendar truth + Copy Product Truth Report',
+  buildDate:  '2026-07-07',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
 } as const

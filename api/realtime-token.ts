@@ -9,16 +9,23 @@
  */
 export const config = { runtime: 'edge' }
 
-const REALTIME_SESSION_URL = 'https://api.openai.com/v1/realtime/sessions'
-const REALTIME_MODEL = 'gpt-4o-realtime-preview'
+// 2026 Realtime API: the ephemeral-secret minter moved from the deprecated
+// /v1/realtime/sessions (now 404) to /v1/realtime/client_secrets, the model
+// family is gpt-realtime* (gpt-4o-realtime-preview is gone), the OpenAI-Beta
+// header is no longer required, and the token is returned at data.value.
+const REALTIME_SESSION_URL = 'https://api.openai.com/v1/realtime/client_secrets'
+const REALTIME_MODEL = 'gpt-realtime'
 const REQUEST_TIMEOUT_MS = 10_000
 
 function isPlaceholderKey(k: string | undefined): boolean {
   return !k || k.length < 20 || /^(sk-\.\.\.|sk-xxx|your_|placeholder|example|<)/i.test(k)
 }
 
-function jsonError(error: string, status = 200): Response {
-  return new Response(JSON.stringify({ ok: false, error }), {
+function jsonError(error: string, status = 200, detail?: string): Response {
+  // `detail` carries a NON-SENSITIVE diagnostic hint (upstream HTTP status /
+  // reason) so the Product Truth report can say WHY Realtime is blocked — never
+  // the long-lived key, never the raw provider body.
+  return new Response(JSON.stringify(detail ? { ok: false, error, detail } : { ok: false, error }), {
     status,
     headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
   })
@@ -47,14 +54,17 @@ export default async function handler(req: Request): Promise<Response> {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'OpenAI-Beta': 'realtime=v1', // required — without it the endpoint 404s
       },
+      // 2026 shape: config is wrapped in a `session` object with an explicit
+      // type. Fine-grained turn detection / transcription are configured
+      // client-side via session.update over the data channel after connect.
       body: JSON.stringify({
-        model: REALTIME_MODEL,
-        voice: typeof payload.voice === 'string' ? payload.voice : 'shimmer',
-        instructions: typeof payload.instructions === 'string' ? payload.instructions : '',
-        input_audio_transcription: { model: 'whisper-1' },
-        turn_detection: payload.turnDetection ?? null,
+        session: {
+          type: 'realtime',
+          model: REALTIME_MODEL,
+          instructions: typeof payload.instructions === 'string' ? payload.instructions : '',
+          audio: { output: { voice: typeof payload.voice === 'string' ? payload.voice : 'shimmer' } },
+        },
       }),
       signal: controller.signal,
     })
@@ -67,13 +77,32 @@ export default async function handler(req: Request): Promise<Response> {
   if (!upstream.ok) {
     const isAuth = upstream.status === 401 || upstream.status === 403
     const isQuota = upstream.status === 429
-    return jsonError(isAuth ? 'OPENAI_API_KEY_INVALID' : isQuota ? 'REALTIME_QUOTA' : 'REALTIME_PROVIDER_FAILED')
+    // A 400/404 here means the request shape/model is outdated (the Realtime
+    // API evolved) rather than an account problem — the status tells Leo which
+    // fix path applies. For a 4xx we include a SHORT sanitized snippet of the
+    // provider's validation message (never a secret) to pinpoint the shape bug.
+    let hint = `upstream_http_${upstream.status}`
+    if (upstream.status >= 400 && upstream.status < 500) {
+      try {
+        const body = await upstream.text()
+        const msg = (JSON.parse(body) as { error?: { message?: string } })?.error?.message
+        if (msg) hint += `: ${msg.slice(0, 160)}`
+      } catch { /* non-JSON body — status alone */ }
+    }
+    return jsonError(
+      isAuth ? 'OPENAI_API_KEY_INVALID' : isQuota ? 'REALTIME_QUOTA' : 'REALTIME_PROVIDER_FAILED',
+      200,
+      hint,
+    )
   }
 
   let data: unknown
   try { data = await upstream.json() } catch { return jsonError('REALTIME_PROVIDER_FAILED') }
-  const clientSecret = (data as { client_secret?: { value?: string } } | null)?.client_secret?.value
-  if (!clientSecret) return jsonError('REALTIME_PROVIDER_FAILED')
+  // 2026: token is at top-level `value`. Keep the legacy nested read as a
+  // fallback so an older provider response still works.
+  const d = data as { value?: string; client_secret?: { value?: string } } | null
+  const clientSecret = d?.value ?? d?.client_secret?.value
+  if (!clientSecret) return jsonError('REALTIME_PROVIDER_FAILED', 200, 'no_secret_in_response')
 
   // Return ONLY the ephemeral secret (safe for browser use) — never the long-lived key.
   return new Response(JSON.stringify({ ok: true, client_secret: clientSecret }), {

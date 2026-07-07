@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.45.1-ai-task-authority')
+    expect(APP_VERSION.version).toBe('0.46.0-product-truth-dashboard')
   })
 })

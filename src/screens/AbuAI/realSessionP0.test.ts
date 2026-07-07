@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { resolveFollowUp } from './contextResolver'
 import { searchFamilyGroup, getFamilyContext, searchFamily } from './tools'
 import { isPlaceholderKey as sttPlaceholder } from '../../../api/abuai-stt'
-import { isPlaceholderKey as rtPlaceholder, REALTIME_SESSION_URL, REALTIME_BETA_HEADER } from '../../services/realtimeVoice'
+import { isPlaceholderKey as rtPlaceholder, REALTIME_SESSION_URL } from '../../services/realtimeVoice'
 
 type Msg = { id: string; role: 'user' | 'assistant'; content: string; timestamp: number }
 const m = (role: 'user' | 'assistant', content: string): Msg => ({ id: '1', role, content, timestamp: 0 })
@@ -63,9 +63,9 @@ describe('P0-5 STT — placeholder key rejected before any call', () => {
 
 // ── P0-4: Realtime — endpoint/header/key guard ──
 describe('P0-4 Realtime — endpoint + beta header + key guard', () => {
-  it('uses the documented sessions endpoint with the required beta header', () => {
-    expect(REALTIME_SESSION_URL).toBe('https://api.openai.com/v1/realtime/sessions')
-    expect(REALTIME_BETA_HEADER).toMatchObject({ 'OpenAI-Beta': 'realtime=v1' })
+  it('uses the CURRENT client_secrets minter endpoint (2026; sessions endpoint now 404s)', () => {
+    // Server-proven: api/realtime-token.ts mints ok=true against this endpoint.
+    expect(REALTIME_SESSION_URL).toBe('https://api.openai.com/v1/realtime/client_secrets')
   })
   it('rejects placeholder keys (graceful fallback, no 401/404 noise)', () => {
     expect(rtPlaceholder('sk-...')).toBe(true)

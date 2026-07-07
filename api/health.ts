@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.45.1-ai-task-authority'
-const BUILD_LABEL = 'AbuBank — AbuGames terrace lobby (bright redesign + Solitaire/Mahjong category pages)'
+const BUILD_VERSION = '0.46.0-product-truth-dashboard'
+const BUILD_LABEL = 'AbuBank — AbuAI Product Truth Dashboard (Team 9): live honest voice/realtime/fallback/gender/calendar truth + Copy Product Truth Report'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
