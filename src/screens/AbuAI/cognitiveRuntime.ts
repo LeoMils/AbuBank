@@ -104,8 +104,8 @@ export type Lang = 'he' | 'es' | 'mixed'
  * weather, never flips to the calendar on the מחר token).
  */
 export interface ConversationFocus {
-  kind: 'online'
-  /** the query to continue (e.g. "מה מזג האוויר בכפר סבא"). */
+  kind: 'online' | 'calendar_event'
+  /** the topic to continue: an online query, or the person of the found event. */
   label: string
 }
 
@@ -465,6 +465,25 @@ export function calendarSearchReasoner(text: string): string {
   return `יש לך ${all.length} דברים ביומן.`
 }
 
+// Bare property questions about the calendar event currently IN FOCUS (after a
+// person-search). These continue the object — answered from the found event,
+// never re-searched, never punted to the LLM ("Never search again").
+const CAL_PROPERTY_RE = /^(?:ב?איזה\s+שעה|באיזו\s+שעה|מתי\s+היא|מתי\s+זה|איפה(?:\s+זה|\s+זה\s+יהיה)?|באיזה\s+מקום|מה\s+הכתובת|איפה\s+זה|עם\s+מי|כמה\s+זמן|כמה\s+שעות|כמה\s+זמן\s+זה)\s*\??$/u
+export function extractSearchPerson(text: string): string | null {
+  const m = text.match(/עם\s+([֐-׿]{2,})|אצל\s+([֐-׿]{2,})/u)
+  return m?.[1] ?? m?.[2] ?? null
+}
+export function answerCalendarProperty(text: string, person: string): string | null {
+  const r = findEventsByPerson(person, true)
+  if (r.events.length === 0) return null
+  const ev = r.events[0]!
+  if (/שעה/u.test(text)) return ev.time ? `הפגישה עם ${person} בשעה ${ev.time}.` : `עוד לא רשמתי שעה לפגישה עם ${person}.`
+  if (/איפה|מקום|כתובת/u.test(text)) return ev.location ? `הפגישה עם ${person} ${/^ב/u.test(ev.location) ? ev.location : 'ב' + ev.location}.` : `עוד לא רשמתי מקום לפגישה עם ${person}.`
+  if (/עם\s+מי/u.test(text)) return `הפגישה היא עם ${ev.personName ?? person}.`
+  if (/כמה\s+זמן|כמה\s+שעות/u.test(text)) return `עוד לא רשמתי כמה זמן תימשך הפגישה עם ${person}.`
+  return null
+}
+
 // FrustrationRecoveryReasoner — address the frustration specifically, never a
 // template apology, never the same sentence twice.
 const FRUSTRATION_REPLIES = [
@@ -628,6 +647,19 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     }
   }
 
+  // ─── CALENDAR CONTINUITY — property query on the event IN FOCUS ──────────────
+  // After "מתי הפגישה עם מור?", a bare "באיזה שעה?/איפה?/עם מי?" answers FROM that
+  // event (re-reading the store for the focused person), never re-searching and
+  // never punting to the LLM. Runs only with a calendar focus + no pending draft.
+  if (state.createState.phase === 'idle' && state.focus?.kind === 'calendar_event' && CAL_PROPERTY_RE.test(original.trim())) {
+    const ans = answerCalendarProperty(original.trim(), state.focus.label)
+    if (ans) {
+      const res = settle(ans, { state, dataAvailable: true })
+      // Keep the calendar focus so chained property questions continue to work.
+      return { ...res, intent: 'calendar_read', state: { ...res.state, focus: state.focus } }
+    }
+  }
+
   // ─── Conversation Engine v2 (flagged) — the FORMAL dialogue state machine owns the
   // pending / confirmation / side-question / why control + the search-vs-create
   // precedence (C/D). Everything else defers to the intent path below. No competing
@@ -659,8 +691,13 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
         const msg = who ? `עוד לא קבעתי — הפגישה עם ${who} מחכה לאישור שלך. תגידי "כן" ואני קובעת מיד.` : 'עוד לא קבעתי — הפגישה מחכה לאישור שלך. תגידי "כן" ואני קובעת.'
         return { ...settle(msg, { state: keptState, dataAvailable: true }), intent: 'confirmation' }
       }
-      case 'search':
-        return { ...settle(calendarSearchReasoner(normalized), { state: keptState, dataAvailable: true }), intent: 'calendar_search' }
+      case 'search': {
+        const res = settle(calendarSearchReasoner(normalized), { state: keptState, dataAvailable: true })
+        // Remember the searched person as the active calendar object so a bare
+        // "באיזה שעה?" next turn continues it instead of re-searching.
+        const per = extractSearchPerson(normalized)
+        return { ...res, intent: 'calendar_search', state: per ? { ...res.state, focus: { kind: 'calendar_event', label: per } } : res.state }
+      }
       case 'read_keep':
         return { ...settle(calendarReadReasoner(normalized, ctx.now), { state: keptState, dataAvailable: true }), intent: 'calendar_read' }
       case 'side_keep': {

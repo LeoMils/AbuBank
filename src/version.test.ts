@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.48.0-conversation-object-focus')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — AbuAI Conversation-Object focus layer: online follow-up ("ומחר?") stays online, natural exit ("לא משנה") closes the draft, voice interruption no longer clobbers state (single-flight)')
+    expect(APP_VERSION.version).toBe('0.49.0-destruction-lab')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — AbuAI Product Destruction Lab (670 real-runtime conversations): fixed online follow-up→calendar hijack and calendar property "באיזה שעה?" continuity')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

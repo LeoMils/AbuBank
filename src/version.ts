@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.48.0-conversation-object-focus',
-  buildLabel: 'AbuBank — AbuAI Conversation-Object focus layer: online follow-up ("ומחר?") stays online, natural exit ("לא משנה") closes the draft, voice interruption no longer clobbers state (single-flight)',
+  version:    '0.49.0-destruction-lab',
+  buildLabel: 'AbuBank — AbuAI Product Destruction Lab (670 real-runtime conversations): fixed online follow-up→calendar hijack and calendar property "באיזה שעה?" continuity',
   buildDate:  '2026-07-07',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

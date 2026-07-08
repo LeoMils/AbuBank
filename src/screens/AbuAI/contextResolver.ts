@@ -54,6 +54,20 @@ function findLastContext(messages: ChatMessage[]): RouteType | null {
   return null
 }
 
+// Live/online context cues. If the PREVIOUS user turn was one of these, a bare
+// temporal follow-up ("ומחר?") must continue the ONLINE topic (weather-tomorrow),
+// NOT be hijacked to the calendar by the מחר token. We leave it unexpanded here so
+// the runtime's online-focus layer continues it.
+const ONLINE_CTX_RE = /מזג\s+ה?אוויר|תחזית|חדשות|סרטים|קולנוע|הצגות|משחק|כדורגל|מונדיאל|ליגה|אוטובוס|רכבת|טיסה|בורסה|מני[יה]ה|דולר|שער|clima|weather|noticias|pron[oó]stico/u
+function lastUserWasOnline(messages: ChatMessage[]): boolean {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]!
+    if (m.role !== 'user') continue
+    return ONLINE_CTX_RE.test(m.content)
+  }
+  return false
+}
+
 /** Like findLastContext but also returns the user message text, for follow-up extraction. */
 function findLastContextWithMsg(messages: ChatMessage[], routeSet: Set<RouteType>): { type: RouteType; userMsg: string } | null {
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -177,6 +191,10 @@ export function resolveFollowUp(
 
   // Check for temporal follow-up: "ומחר?", "ובשלישי?", "¿Y mañana?"
   if (TEMPORAL_FRAGMENT.test(trimmed) || TEMPORAL_FRAGMENT_ES.test(trimmed)) {
+    // If the prior turn was a live/online topic (weather/sports/news), do NOT
+    // hijack this to the calendar — leave it for the runtime online-focus layer
+    // to continue the online topic (weather-tomorrow).
+    if (lastUserWasOnline(recentMessages)) return { resolved: text, wasFollowUp: false }
     const lastContext = findLastContext(recentMessages)
     if (lastContext && CALENDAR_ROUTES.has(lastContext)) {
       return { resolved: expandTemporal(trimmed), wasFollowUp: true }
