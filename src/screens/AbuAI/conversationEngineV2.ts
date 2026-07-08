@@ -44,7 +44,7 @@ const CANCEL_PHRASE_RE = /^(?:בטלי|תבטלי|בטל|תבטל|עזבי|תע�
 // "תצא מזה" / "נעבור לנושא אחר" while a draft is pending must TERMINATE the draft,
 // not leak as a side-question that leaves it half-open (pending pollution). This
 // is exit-of-the-object, distinct from the "תמחקי את הפגישה עם X" stored-event delete.
-const SOFT_EXIT_RE = /^(?:עזוב(?:י|ו)?|לא\s+משנה|תצא\s+מזה|צא\s+מזה|נעבור\s+לנושא\s+אחר|עזבי\s+את\s+זה|שכח[יי]?\s+מזה|די\s+עם\s+זה)[\s.,!?]*$/u
+const SOFT_EXIT_RE = /^(?:עזוב(?:י|ו)?|תעזב[יו]?(?:\s+את\s+זה)?|תעזוב(?:\s+את\s+זה)?|עזבי(?:\s+את\s+זה)?|לא\s+משנה|תצא\s+מזה|תצאי\s+מזה|צא[יי]?\s+מזה|נעבור\s+לנושא\s+אחר|נושא\s+אחר|משהו\s+אחר|שכח[יי]?\s+מזה|די(?:\s+עם\s+זה)?|מספיק|עצרי|תעצרי)[\s.,!?]*$/u
 // An EXPLICIT topic switch ("בעצם בואי נדבר על משהו אחר", "בא לי לדבר על משהו אחר")
 // abandons the pending draft — otherwise it lingers and a later unrelated "כן"
 // silently saves it (a data-integrity bug). Un-anchored: it can appear in a phrase.
@@ -84,6 +84,9 @@ export function classifySignalV2(rawInput: string, phase: Phase): V2Signal {
     if (phase === 'confirming' && isConfirm(t)) return 'confirm'   // rule 1/2
     if (isCancel(t) || CANCEL_PHRASE_RE.test(t) || SOFT_EXIT_RE.test(t) || CONTEXT_SWITCH_RE.test(t)) return 'explicit_cancel' // rule 6 + EXIT DETECTION + explicit context switch
     if (WHY_NOT_RE.test(t)) return 'why'
+    // Resume of an interrupted draft ("תמשיכי") → re-surface the pending confirm
+    // (the 'why' action explains the pending draft + how to save), never a dead-end.
+    if (RESUME_RE.test(t)) return 'why'
     if (FRUSTRATION_RE.test(t)) return 'frustration'
     if (SEARCH_RE.test(t)) return 'search'                          // rule 5/8
     if (READ_RE.test(t)) return 'read'                             // rule 5

@@ -764,6 +764,19 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
   const draft = { ...state.draft }
   const stillMissing = [...state.missing]
 
+  // "עם X" (or a bare person) during an incremental build is the PERSON slot, not a
+  // literal title — capture the person and default a natural title "פגישה עם X" so
+  // the create isn't stuck re-asking "מה לרשום?" (which then trips the loop-breaker).
+  const personOnly = t.match(/^עם\s+([֐-׿]{2,}(?:\s+[֐-׿]{2,})?)\s*[?.!]*$/u)
+  if (stillMissing.includes('title') && personOnly && personOnly[1]) {
+    const per = personOnly[1].trim()
+    draft.person = draft.person ?? per
+    draft.title = `פגישה עם ${per}`
+    draft.emoji = draft.emoji || '📅'
+    const idx = stillMissing.indexOf('title')
+    if (idx !== -1) stillMissing.splice(idx, 1)
+  }
+
   // Title — but not if the text is a confirmation/cancel word
   // If user confirms with only title missing, use default "פגישה"
   if (stillMissing.includes('title') && isConfirm(t)) {

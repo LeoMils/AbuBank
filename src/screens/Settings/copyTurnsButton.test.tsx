@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.51.0-non-green-to-green-war-room')
+    expect(APP_VERSION.version).toBe('0.52.0-final-iphone-gate')
   })
 })

@@ -279,7 +279,9 @@ export function resolveFollowUp(
   // keeps the thread instead of losing it. (Family/calendar already handled above.)
   const CONTINUE_FRAG = /^(?:עוד|תמשיכי|תמשיך|המשיכי|הלאה|על זה|ועל זה|ומה עם זה)\??$/i
   const aboutMatch = trimmed.match(/^ו?על\s+(.{2,40}?)\??$/)
-  if (CONTINUE_FRAG.test(trimmed) || aboutMatch) {
+  // While a create draft is pending, "תמשיכי" means RESUME the draft — don't rewrite
+  // it into a family/topic continuation; let the runtime re-surface the pending draft.
+  if ((CONTINUE_FRAG.test(trimmed) || aboutMatch) && !opts?.pendingCreate) {
     const lastCtx = findLastContext(recentMessages)
     // Family context: a bare "תמשיכי" / "עוד" continues on the PERSON,
     // deterministically (graph), instead of cold-starting the LLM.

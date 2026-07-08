@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.51.0-non-green-to-green-war-room',
-  buildLabel: 'AbuBank — AbuAI non-green to green war room: 2730-conversation destruction lab + quality judge; fixed forced menu, incremental create, reminder title, family gender, time/currency/transport routing, online-focus continuity',
+  version:    '0.52.0-final-iphone-gate',
+  buildLabel: 'AbuBank — AbuAI final iPhone gate: fragmented calendar create, cancel/exit lexicon, stored-event honest block, resume, calendar property follow-up, final reality gate + quality judge',
   buildDate:  '2026-07-08',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

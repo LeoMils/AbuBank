@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.51.0-non-green-to-green-war-room'
-const BUILD_LABEL = 'AbuBank — AbuAI non-green to green war room: 2730-conversation destruction lab + quality judge; fixed forced menu, incremental create, reminder title, family gender, time/currency/transport routing, online-focus continuity'
+const BUILD_VERSION = '0.52.0-final-iphone-gate'
+const BUILD_LABEL = 'AbuBank — AbuAI final iPhone gate: fragmented calendar create, cancel/exit lexicon, stored-event honest block, resume, calendar property follow-up, final reality gate + quality judge'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

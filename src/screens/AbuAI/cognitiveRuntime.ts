@@ -487,6 +487,10 @@ export function calendarSearchReasoner(text: string): string {
 // person-search). These continue the object — answered from the found event,
 // never re-searched, never punted to the LLM ("Never search again").
 const CAL_PROPERTY_RE = /^(?:ב?איזה\s+שעה|באיזו\s+שעה|מתי\s+היא|מתי\s+זה|איפה(?:\s+זה|\s+זה\s+יהיה)?|באיזה\s+מקום|מה\s+הכתובת|איפה\s+זה|עם\s+מי|כמה\s+זמן|כמה\s+שעות|כמה\s+זמן\s+זה)\s*\??$/u
+// An imperative edit of a STORED event ("תשני לארבע", "עדכני את הפגישה") when NO
+// draft is pending. We never silently mutate a saved event and never punt to the
+// LLM — we answer honestly and ask her to confirm which event + what to change.
+const STORED_EDIT_RE = /^(?:תשנ[יה]|שנ[יה]|ל?שנות|תעדכנ[יי]?|עדכנ[יי]?|תזיז[יי]?|להזיז|תדחה|תדחי|לדחות|תקדימ[יי]?)(?![א-ת])/u
 export function extractSearchPerson(text: string): string | null {
   const m = text.match(/עם\s+([֐-׿]{2,})|אצל\s+([֐-׿]{2,})/u)
   return m?.[1] ?? m?.[2] ?? null
@@ -643,6 +647,12 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     const day = original.trim().replace(/^(?:ו|בעצם\s+)/u, '').replace(/[?？]$/u, '').trim()
     normalized = `${state.focus.label} ${day}`.replace(/\s+/g, ' ').trim()
   }
+  // Resume of an interrupted DRAFT ("תמשיכי") — normalizeInput may otherwise rewrite
+  // it into a family/topic continuation using message context. While a draft is
+  // pending, keep the raw resume word so V2 re-surfaces the pending confirm.
+  if (state.createState.phase !== 'idle' && /^(?:ו?תמשיכי|תמשיך|המשיכי|נמשיך|בואי\s+נמשיך|נחזור\s+לפגישה)\s*[?.!]*$/u.test(original.trim())) {
+    normalized = original.trim().replace(/^ו/, '')
+  }
   // Layer 3: classify.
   const intent = classifyIntent(normalized, state)
 
@@ -687,6 +697,13 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       // Keep the calendar focus so chained property questions continue to work.
       return { ...res, intent: 'calendar_read', state: { ...res.state, focus: state.focus } }
     }
+  }
+
+  // ─── Stored-event edit that the modify reasoner CANNOT handle (would punt to the
+  // LLM) — answer honestly instead of a silent mutation or an LLM punt. The safe,
+  // handled edits (feminine "תשני …") route to calendar_update below and are untouched.
+  if (state.createState.phase === 'idle' && intent === 'general' && STORED_EDIT_RE.test(original.trim()) && loadAppointments().length > 0) {
+    return settle('אני לא משנה אירוע שמור בלי שתאשרי לי בדיוק איזה אירוע ומה לשנות. תגידי לי איזו פגישה ומה השינוי ואני אטפל בזה.', { state, dataAvailable: true })
   }
 
   // ─── Conversation Engine v2 (flagged) — the FORMAL dialogue state machine owns the
