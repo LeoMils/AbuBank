@@ -12,8 +12,25 @@
 
 import { isValidPhoneE164, normalizeIsraeliPhone } from './familyQuickFaces'
 import { FAMILY_QUICK_FACES } from './familyContacts.private'
+import { durable } from '../../services/durableStore'
 
 export const LOCAL_FAMILY_CONTACTS_STORAGE_KEY = 'abubank.familyContacts.v1'
+
+/**
+ * On-disk schema version for the contacts payload.
+ *  - v1 (legacy): a bare JSON array of LocalFamilyContact.
+ *  - v2 (current): an envelope `{ v: 2, contacts: LocalFamilyContact[] }`.
+ * Reads accept BOTH shapes (back-compat); writes always emit the current
+ * envelope. `migrateContactsFormat()` upgrades a legacy value in place. The
+ * localStorage KEY name is deliberately unchanged so existing devices keep
+ * their data and every privacy/scaffold contract still points at the same key.
+ */
+export const CONTACTS_SCHEMA_VERSION = 2
+
+export interface ContactsEnvelope {
+  v: number
+  contacts: LocalFamilyContact[]
+}
 
 /**
  * The only contact ids the operator may save/import — every scaffold person
@@ -70,25 +87,104 @@ export function isLocalFamilyContactShape(value: unknown): value is LocalFamilyC
   return true
 }
 
+/** Diagnostics for a single read — used by recovery, migration, and tests. */
+export interface ContactsReadDiagnostics {
+  contacts: LocalFamilyContact[]
+  /** 2 = current envelope, 1 = legacy bare array, 0 = empty/corrupt. */
+  version: number
+  /** true if some entries were dropped as invalid (partial salvage). */
+  recovered: boolean
+  /** number of invalid entries dropped. */
+  dropped: number
+  /** true if the raw value could not be parsed at all (unsalvageable). */
+  corrupt: boolean
+}
+
+/**
+ * Parse a raw storage string into contacts, tolerating BOTH the legacy bare
+ * array (v1) and the current envelope (v2). Never throws: corruption yields an
+ * empty, flagged result so callers can recover instead of losing everything.
+ */
+export function parseContactsPayload(raw: string | null): ContactsReadDiagnostics {
+  if (raw === null || raw === '') return { contacts: [], version: 0, recovered: false, dropped: 0, corrupt: false }
+  let parsed: unknown
+  try { parsed = JSON.parse(raw) } catch { return { contacts: [], version: 0, recovered: false, dropped: 0, corrupt: true } }
+  // Legacy v1: bare array of contacts.
+  if (Array.isArray(parsed)) {
+    const contacts = parsed.filter(isLocalFamilyContactShape)
+    const dropped = parsed.length - contacts.length
+    return { contacts, version: 1, recovered: dropped > 0, dropped, corrupt: false }
+  }
+  // v2+: { v, contacts: [...] }.
+  if (parsed && typeof parsed === 'object' && Array.isArray((parsed as ContactsEnvelope).contacts)) {
+    const env = parsed as ContactsEnvelope
+    const arr = env.contacts as unknown[]
+    const contacts = arr.filter(isLocalFamilyContactShape)
+    const dropped = arr.length - contacts.length
+    const version = typeof env.v === 'number' && env.v > 0 ? env.v : CONTACTS_SCHEMA_VERSION
+    return { contacts, version, recovered: dropped > 0, dropped, corrupt: false }
+  }
+  // Some other object shape — nothing salvageable.
+  return { contacts: [], version: 0, recovered: false, dropped: 0, corrupt: true }
+}
+
+/**
+ * Read the raw storage string, preferring the durable IndexedDB mirror when it
+ * holds data the (possibly evicted) localStorage no longer does. This is the
+ * recovery path: Safari ITP can wipe localStorage, but `durable.init()` at app
+ * start rehydrates it from IndexedDB — and even mid-session the durable cache
+ * is a second copy. Only consulted for the real browser storage; injected test
+ * storage stays hermetic.
+ */
+function readRawWithDurableFallback(storage: StorageLike): string | null {
+  let raw: string | null = null
+  try { raw = storage.getItem(LOCAL_FAMILY_CONTACTS_STORAGE_KEY) } catch { raw = null }
+  if (raw !== null && raw !== '') return raw
+  if (isDefaultBrowserStorage(storage)) {
+    const durableRaw = durable.getString(LOCAL_FAMILY_CONTACTS_STORAGE_KEY)
+    if (durableRaw !== null && durableRaw !== '') return durableRaw
+  }
+  return raw
+}
+
+export function readContactsWithDiagnostics(storage: StorageLike | null = defaultStorage()): ContactsReadDiagnostics {
+  if (!storage) return { contacts: [], version: 0, recovered: false, dropped: 0, corrupt: false }
+  return parseContactsPayload(readRawWithDurableFallback(storage))
+}
+
 export function getLocalContacts(storage: StorageLike | null = defaultStorage()): LocalFamilyContact[] {
   if (!storage) return []
-  let raw: string | null = null
-  try { raw = storage.getItem(LOCAL_FAMILY_CONTACTS_STORAGE_KEY) } catch { return [] }
-  if (!raw) return []
-  let parsed: unknown
-  try { parsed = JSON.parse(raw) } catch { return [] }
-  if (!Array.isArray(parsed)) return []
-  return parsed.filter(isLocalFamilyContactShape)
+  return parseContactsPayload(readRawWithDurableFallback(storage)).contacts
 }
 
 export function setLocalContacts(contacts: LocalFamilyContact[], storage: StorageLike | null = defaultStorage()): void {
   if (!storage) return
-  try { storage.setItem(LOCAL_FAMILY_CONTACTS_STORAGE_KEY, JSON.stringify(contacts)) } catch { /* quota / private mode */ }
+  const envelope: ContactsEnvelope = { v: CONTACTS_SCHEMA_VERSION, contacts }
+  const json = JSON.stringify(envelope)
+  try { storage.setItem(LOCAL_FAMILY_CONTACTS_STORAGE_KEY, json) } catch { /* quota / private mode */ }
+  // Keep the durable IndexedDB backend current so contacts survive localStorage
+  // eviction AND so `durable.init()` never clobbers a fresh edit with a stale
+  // backend copy on the next app start.
+  if (isDefaultBrowserStorage(storage)) {
+    try { durable.setString(LOCAL_FAMILY_CONTACTS_STORAGE_KEY, json) } catch { /* best-effort */ }
+  }
 }
 
 export function clearLocalContacts(storage: StorageLike | null = defaultStorage()): void {
   if (!storage) return
   try { storage.removeItem(LOCAL_FAMILY_CONTACTS_STORAGE_KEY) } catch { /* private mode */ }
+  if (isDefaultBrowserStorage(storage)) {
+    try { durable.remove(LOCAL_FAMILY_CONTACTS_STORAGE_KEY) } catch { /* best-effort */ }
+  }
+}
+
+/**
+ * True when `storage` is the real browser localStorage (the default runtime
+ * path), NOT an injected fake. Guards the durable-backend mirror so unit tests
+ * that pass their own StorageLike stay hermetic and local-only.
+ */
+function isDefaultBrowserStorage(storage: StorageLike): boolean {
+  try { return typeof window !== 'undefined' && storage === window.localStorage } catch { return false }
 }
 
 /**
@@ -165,4 +261,50 @@ export function maskPhonePreview(phone: string | undefined): string {
   if (digits.length === 0) return '(ריק)'
   if (digits.length <= 3) return '*'.repeat(digits.length)
   return '+' + digits.slice(0, 3) + '*'.repeat(digits.length - 3)
+}
+
+/**
+ * Validate an arbitrary value as a contacts array. Returns the entries that
+ * pass BOTH the shape check and the known-id allowlist, plus a per-item error
+ * list. Pure — no storage side effects. Used by recovery and by the report.
+ */
+export function validateContacts(input: unknown): { valid: LocalFamilyContact[]; errors: string[] } {
+  if (!Array.isArray(input)) return { valid: [], errors: ['not an array'] }
+  const errors: string[] = []
+  const valid: LocalFamilyContact[] = []
+  input.forEach((item, i) => {
+    if (!isLocalFamilyContactShape(item)) { errors.push(`item ${i}: invalid shape`); return }
+    if (!isKnownContactId(item.id)) { errors.push(`item ${i}: unknown id "${item.id}"`); return }
+    valid.push(item)
+  })
+  return { valid, errors }
+}
+
+export interface MigrationResult {
+  migrated: boolean
+  from: number
+  to: number
+  dropped: number
+}
+
+/**
+ * Opportunistically upgrade stored contacts to the current schema version and
+ * salvage any partially-corrupt payload. Safe + reversible:
+ *  - Reads via the durable fallback (so an evicted localStorage is recovered).
+ *  - Rewrites ONLY the valid entries in the current envelope.
+ *  - No-op when already current and clean, or when there is nothing to salvage
+ *    (an unparseable blob is left untouched so a good durable copy can win on
+ *    the next app start rather than being overwritten with empty).
+ * Returns what changed so the caller can refresh its view.
+ */
+export function migrateContactsFormat(storage: StorageLike | null = defaultStorage()): MigrationResult {
+  if (!storage) return { migrated: false, from: 0, to: CONTACTS_SCHEMA_VERSION, dropped: 0 }
+  const diag = readContactsWithDiagnostics(storage)
+  const alreadyCurrent = diag.version === CONTACTS_SCHEMA_VERSION && !diag.recovered
+  const nothingToSalvage = diag.contacts.length === 0
+  if (alreadyCurrent || nothingToSalvage) {
+    return { migrated: false, from: diag.version, to: CONTACTS_SCHEMA_VERSION, dropped: diag.dropped }
+  }
+  setLocalContacts(diag.contacts, storage)
+  return { migrated: true, from: diag.version, to: CONTACTS_SCHEMA_VERSION, dropped: diag.dropped }
 }

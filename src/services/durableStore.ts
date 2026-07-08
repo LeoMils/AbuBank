@@ -82,12 +82,22 @@ export const CRITICAL_KEYS = [
   'abuai-conversation-history',    // conversation memory
   'abuai-conversation-summary',    // rolling summary
   'abutime-memory',                // learned time preferences
-  'martita-contacts-v1',           // saved contacts
-  'martita-loc-contacts-v1',       // local contacts
+  'martita-contacts-v1',           // saved contacts (legacy)
+  'martita-loc-contacts-v1',       // local contacts (legacy)
+  'abubank.familyContacts.v1',     // AbuWhatsApp per-person phone/photo (SAFETY-CRITICAL: Martita's family)
 ] as const
 
 const SCHEMA_KEY = '__abu_schema_version__'
 const SCHEMA_VERSION = '1'
+
+/**
+ * Where the automatic pre-migration snapshot is stored in the backend. Captured
+ * once, the first time a given schema version boots, BEFORE any localStorage →
+ * backend migration copies data in — so a future migration/transform is always
+ * reversible from this blob. It is NOT a managed key (excluded from exportAll,
+ * mirror-restore, and migration) so it never leaks into user backups or loops.
+ */
+export const PRE_MIGRATION_BACKUP_KEY = '__abu_pre_migration_backup__'
 
 function hasLocalStorage(): boolean {
   try { return typeof localStorage !== 'undefined' && localStorage !== null } catch { return false }
@@ -106,6 +116,27 @@ export class DurableStore {
   async init(): Promise<void> {
     let backendData: Record<string, string> = {}
     try { backendData = await this.backend.getAll() } catch { backendData = {} }
+
+    // Automatic pre-migration backup (once per schema version). BEFORE we copy
+    // any localStorage data into the backend or stamp the new schema version,
+    // snapshot the current durable + mirror state of every managed key so a
+    // future migration/transform is reversible. Idempotent: only written when
+    // no backup exists yet for this boot, and only when there is real data to
+    // protect (fresh installs skip it — nothing to back up).
+    const prevSchema = backendData[SCHEMA_KEY]
+    if (prevSchema !== SCHEMA_VERSION && backendData[PRE_MIGRATION_BACKUP_KEY] === undefined) {
+      const snapshot: Record<string, string> = {}
+      for (const k of this.keys) {
+        const v = backendData[k] ?? safeLSGet(k)
+        if (v !== null && v !== undefined) snapshot[k] = v
+      }
+      if (Object.keys(snapshot).length > 0) {
+        const blob = JSON.stringify({ fromSchema: prevSchema ?? null, toSchema: SCHEMA_VERSION, data: snapshot })
+        backendData[PRE_MIGRATION_BACKUP_KEY] = blob
+        this.cache.set(PRE_MIGRATION_BACKUP_KEY, blob)
+        try { await this.backend.set(PRE_MIGRATION_BACKUP_KEY, blob) } catch { /* best-effort */ }
+      }
+    }
 
     // Migration (idempotent): for each managed key present in localStorage but
     // not yet in the backend, copy it in. Backend is authoritative once present.
@@ -150,6 +181,13 @@ export class DurableStore {
   }
 
   isReady(): boolean { return this.ready }
+
+  /**
+   * The automatic snapshot captured before the last schema migration, or null
+   * if none was taken (fresh install). Parsed shape: { fromSchema, toSchema,
+   * data: Record<key, value> }. Used for manual recovery / audit.
+   */
+  getPreMigrationBackup(): string | null { return this.getString(PRE_MIGRATION_BACKUP_KEY) }
 
   /** Synchronous read: cache (durable, post-init) → localStorage mirror fallback. */
   getString(key: string): string | null {

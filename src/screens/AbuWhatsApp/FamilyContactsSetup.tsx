@@ -16,6 +16,7 @@ import {
   getLocalContacts,
   importContactsJSON,
   maskPhonePreview,
+  migrateContactsFormat,
   removeLocalContact,
   setLocalContacts,
   upsertLocalContact,
@@ -64,6 +65,15 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
   useEffect(() => {
     setDrafts(initialDrafts(stored))
   }, [stored])
+
+  // On open, opportunistically upgrade any legacy-format or partially-corrupt
+  // storage to the current schema (and salvage recoverable entries). Runs once,
+  // operator-only, and only refreshes the view if something actually changed.
+  useEffect(() => {
+    const r = migrateContactsFormat()
+    if (r.migrated) setStored(getLocalContacts())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const storedById = useMemo(() => {
     const m = new Map<string, LocalFamilyContact>()
