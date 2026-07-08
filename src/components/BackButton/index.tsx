@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { GOLD_BORDER, GOLD_BORDER_HOVER, TEXT_MEDIUM } from '../../design/colors'
+import { soundNavigate } from '../../services/sounds'
 
 interface BackButtonProps {
   onPress?: () => void
@@ -12,6 +13,7 @@ export function BackButton({ onPress }: BackButtonProps) {
   const [pressed, setPressed] = useState(false)
 
   const handleClick = () => {
+    soundNavigate()
     if (onPress) {
       onPress()
     } else {

@@ -27,6 +27,70 @@ export function CopyTurnsButton() {
 }
 import { downloadBackup, importBackup } from '../../services/backup'
 import { durable } from '../../services/durableStore'
+import { getSoundMuted, setSoundMuted, soundTap } from '../../services/sounds'
+
+/** One-tap toggle for the whole app's UI sound system. Senior-first: large,
+ *  clearly labelled in plain Hebrew, immediate visual state. */
+function SoundToggle() {
+  const [muted, setMuted] = useState(() => getSoundMuted())
+  const on = !muted
+  return (
+    <div style={{ padding: '4px 14px 0' }}>
+      <button
+        type="button"
+        data-testid="sound-toggle"
+        aria-pressed={on}
+        onClick={() => {
+          const next = !muted
+          setSoundMuted(next)
+          setMuted(next)
+          // Play a confirming tap only when turning sound ON (setSoundMuted
+          // already updated the gate, so a tap while muting stays silent).
+          if (!next) soundTap()
+        }}
+        style={{
+          width: '100%', minHeight: 64, padding: '14px 18px', borderRadius: 16,
+          border: `1px solid rgba(201,168,76,${on ? 0.45 : 0.22})`,
+          background: on
+            ? 'linear-gradient(135deg, rgba(201,168,76,0.16), rgba(201,168,76,0.04))'
+            : 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
+          display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
+          direction: 'rtl', textAlign: 'right',
+        }}
+      >
+        <div style={{
+          width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+          background: `linear-gradient(135deg, rgba(201,168,76,0.20), rgba(201,168,76,0.07))`,
+          border: `1.5px solid rgba(201,168,76,0.28)`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+        }}>
+          {on ? '🔊' : '🔕'}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 17, fontWeight: 600, color: 'rgba(255,255,255,0.94)', fontFamily: "'Heebo',sans-serif" }}>
+            צלילים
+          </div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.58)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
+            {on ? 'צלילים עדינים מופעלים' : 'הצלילים כבויים'}
+          </div>
+        </div>
+        {/* Track + knob */}
+        <div style={{
+          width: 52, height: 30, borderRadius: 15, flexShrink: 0, position: 'relative',
+          background: on ? `rgba(201,168,76,0.55)` : 'rgba(255,255,255,0.14)',
+          transition: 'background 0.2s ease',
+        }}>
+          <div style={{
+            position: 'absolute', top: 3, width: 24, height: 24, borderRadius: '50%',
+            background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            left: on ? 3 : 25, transition: 'left 0.2s ease',
+          }} />
+        </div>
+      </button>
+    </div>
+  )
+}
+
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -767,6 +831,9 @@ export function Settings() {
           <span style={{ fontSize: 22, lineHeight: 1, color: 'rgba(201,168,76,0.85)' }}>›</span>
         </button>
       </div>
+
+      {/* ─── SOUND TOGGLE (global UI sound system) ─── */}
+      <SoundToggle />
 
       {/* ─── SECTIONS ─── */}
       <div style={{ padding: '14px 14px 40px', display: 'flex', flexDirection: 'column', gap: 10 }}>

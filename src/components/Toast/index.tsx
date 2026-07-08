@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { GOLD_BORDER, TEXT_MEDIUM, TEXT_STRONG, SUCCESS } from '../../design/colors'
+import { soundToast, soundError, soundSuccess } from '../../services/sounds'
 
 interface ToastProps {
   message: string
@@ -17,12 +18,17 @@ export function Toast({ message, visible, onDismiss, duration = 3000, undoLabel,
   useEffect(() => {
     if (!visible) { setShow(false); return }
     setShow(true)
+    // One gentle cue as the toast appears, matched to its variant. Self-gated:
+    // silent when muted or while AbuAI is speaking.
+    if (variant === 'error') soundError()
+    else if (variant === 'success') soundSuccess()
+    else soundToast()
     const timer = setTimeout(() => {
       setShow(false)
       setTimeout(onDismiss, 200)
     }, duration)
     return () => clearTimeout(timer)
-  }, [visible, duration, onDismiss])
+  }, [visible, duration, onDismiss, variant])
 
   if (!visible && !show) return null
 

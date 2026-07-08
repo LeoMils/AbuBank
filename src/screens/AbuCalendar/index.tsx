@@ -35,7 +35,7 @@ import { createSilenceDetector } from '../../services/voice'
 import { buildQaRunFromTrace, appendQaRun, QaRecorderPanel, GuidedMicQaPanel, MicSelfTest, isVoiceDebugEnabled, VoiceDebugPanel, VoiceDebugToggle } from './VoiceDebugPanel'
 import { traceStart as _calTraceStart, traceSet as _calTraceSet, traceEnd as _calTraceEnd } from '../../services/voiceDiagLog'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
-import { soundTap, soundSuccess, soundOpen, soundAlert } from '../../services/sounds'
+import { soundTap, soundSuccess, soundOpen, soundAlert, soundSaveCalendar } from '../../services/sounds'
 import { injectSharedKeyframes } from '../../design/animations'
 import { InfoButton } from '../../components/InfoButton'
 import { ApptCard } from './ApptCard'
@@ -286,7 +286,7 @@ export function AbuCalendar() {
       setShowManual(false)
       setEditingAppt(null)
       playChime()
-      soundSuccess()
+      soundSaveCalendar()
       showToast()
       return
     }
@@ -304,7 +304,7 @@ export function AbuCalendar() {
     setShowManual(false)
     setEditingAppt(null)
     playChime()
-    soundSuccess()
+    soundSaveCalendar()
     const lang = detectConfirmationLang(appt.title)
     showSuccessToast(formatCreatedConfirmation(
       { title: result.appointment.title, date: result.appointment.date, time: result.appointment.time },
