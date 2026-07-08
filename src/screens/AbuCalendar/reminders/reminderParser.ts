@@ -247,8 +247,9 @@ const REMINDER_COMMAND_PATTERNS = [
   /^תזכיר\s+לי\s*/i,
   /^תזכורת[:\s]*/i,
   /^להזכיר\s+לי\s*/i,
-  // secondary: strip leading "לי" if left after stripping command
-  /^לי\s+/,
+  // secondary: strip a leading OR standalone "לי" left after stripping the command
+  // (a bare "תזכירי לי" must not keep "לי" — "me" — as the reminder title).
+  /^לי(?=\s|$)/,
 ]
 
 function stripReminderCommand(text: string): string {

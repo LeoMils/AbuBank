@@ -58,7 +58,7 @@ function findLastContext(messages: ChatMessage[]): RouteType | null {
 // temporal follow-up ("ומחר?") must continue the ONLINE topic (weather-tomorrow),
 // NOT be hijacked to the calendar by the מחר token. We leave it unexpanded here so
 // the runtime's online-focus layer continues it.
-const ONLINE_CTX_RE = /מזג\s+ה?אוויר|תחזית|חדשות|סרטים|קולנוע|הצגות|משחק|כדורגל|מונדיאל|ליגה|אוטובוס|רכבת|טיסה|בורסה|מני[יה]ה|דולר|שער|clima|weather|noticias|pron[oó]stico/u
+const ONLINE_CTX_RE = /מזג\s+ה?אוויר|תחזית|חדשות|סרטים|קולנוע|הצגות|משחק|כדורגל|כדורסל|מונדיאל|ליגה|גביע|נבחרת|מי\s+ניצח|תוצא|אוטובוס|רכבת|טיסה|בורסה|מני[יה]ה|דולר|שער|מחיר|כמה\s+עולה|clima|weather|noticias|pron[oó]stico|f[uú]tbol|partido/u
 function lastUserWasOnline(messages: ChatMessage[]): boolean {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i]!
@@ -167,6 +167,7 @@ function findLastUserTopic(messages: ChatMessage[]): string | null {
 export function resolveFollowUp(
   text: string,
   recentMessages: ChatMessage[],
+  opts?: { pendingCreate?: boolean },
 ): { resolved: string; wasFollowUp: boolean } {
   const trimmed = text.trim()
 
@@ -191,6 +192,10 @@ export function resolveFollowUp(
 
   // Check for temporal follow-up: "ומחר?", "ובשלישי?", "¿Y mañana?"
   if (TEMPORAL_FRAGMENT.test(trimmed) || TEMPORAL_FRAGMENT_ES.test(trimmed)) {
+    // While collecting a calendar draft, a bare "מחר"/"בשלישי" is the DAY SLOT
+    // answer, not a "what's on my calendar" follow-up — pass it through raw so the
+    // draft folds it (otherwise it's stolen into a calendar read).
+    if (opts?.pendingCreate) return { resolved: text, wasFollowUp: false }
     // If the prior turn was a live/online topic (weather/sports/news), do NOT
     // hijack this to the calendar — leave it for the runtime online-focus layer
     // to continue the online topic (weather-tomorrow).

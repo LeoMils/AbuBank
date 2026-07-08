@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.49.0-destruction-lab')
+    expect(APP_VERSION.version).toBe('0.51.0-non-green-to-green-war-room')
   })
 })

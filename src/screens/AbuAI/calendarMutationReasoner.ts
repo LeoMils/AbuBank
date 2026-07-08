@@ -37,6 +37,13 @@ export function isReminderIntent(text: string): boolean {
   return detectReminderIntent(text) === 'reminder'
 }
 
+// A reminder title is real only if it isn't empty and isn't a bare pronoun
+// ("לי"/"לך"/"לו"/"לה") — "תזכירי לי" alone must never become a reminder titled "לי".
+function reminderTitleOk(title?: string | null): boolean {
+  const s = (title ?? '').trim()
+  return s.length >= 2 && !/^(?:לי|לך|לו|לה|אותי|אותך)$/u.test(s)
+}
+
 // ── Reminders (multi-turn: fresh → confirm/time-followup) ──
 export function reminderReasoner(text: string, now: Date, pending: ReminderDraft | null): MutationResult {
   const today = isoDay(now)
@@ -54,6 +61,10 @@ export function reminderReasoner(text: string, now: Date, pending: ReminderDraft
     }
     // Waiting for confirmation.
     if (isConfirm(text)) {
+      // Never save a garbage/pronoun title ("לי") — ask what to remind instead.
+      if (!reminderTitleOk(pending.title)) {
+        return { text: 'רגע — מה להזכיר לך בדיוק?', sideEffect: null, pendingReminder: null }
+      }
       const { saved } = createReminder({
         category: pending.category,
         title: pending.title ?? '',
@@ -72,6 +83,12 @@ export function reminderReasoner(text: string, now: Date, pending: ReminderDraft
   }
 
   const draft = parseReminder(text, today)
+  // A bare "תזכירי לי" with NO content at all → ask WHAT to remind (never accept the
+  // pronoun "לי" as the title). Narrow to the pure command so a reminder that carries
+  // a day/time ("תזכירי לי מחר") keeps its normal multi-turn flow.
+  if (/^(?:תזכירי|תזכרי|תזכיר|להזכיר|תזכורת)\s+לי\s*[.,!?]*$/u.test(text.trim())) {
+    return { text: 'מה להזכיר לך? אפשר להגיד למשל: "תזכירי לי לשתות מים בשמונה בערב".', sideEffect: null, pendingReminder: null }
+  }
   if (draft.dueAt && draft.title && !draft.ambiguity && draft.missingFields.length === 0) {
     return { text: `${draft.readbackText}. לשמור?`, sideEffect: null, pendingReminder: draft }
   }

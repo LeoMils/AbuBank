@@ -440,22 +440,25 @@ function phraseParentOfSpouse(hit: ParentOfSpouseHit, lang: Lang): string {
   const isFormer = edgeType === 'ex_spouse'
 
   if (lang === 'he') {
-    const childRole = child.gender === 'female' ? 'הבת' : 'הבן'
+    // The verb agrees with the SUBJECT of the clause (the child C), not the spouse.
+    // Mor (female) → "הייתה נשואה", never "היה נשוי". Partner label is gendered too.
+    const cf = child.gender === 'female'
     const verb = edgeType === 'partner'
-      ? 'בת/בן הזוג של'
-      : (spouse.gender === 'female'
-          ? (isFormer ? 'הייתה נשואה ל' : 'נשואה ל')
-          : (isFormer ? 'היה נשוי ל' : 'נשוי ל'))
-    return `${P} ${parent.gender === 'female' ? 'אמא' : parent.gender === 'male' ? 'אבא' : 'הורה'} של ${C}, ו${C} ${verb}${S}.`
+      ? (cf ? 'בת הזוג של' : 'בן הזוג של')
+      : (cf ? (isFormer ? 'הייתה נשואה ל' : 'נשואה ל')
+            : (isFormer ? 'היה נשוי ל' : 'נשוי ל'))
+    // Marriage verbs already end in ל (prefix onto the name); partner verb needs a space.
+    const sep = edgeType === 'partner' ? ' ' : ''
+    return `${P} ${parent.gender === 'female' ? 'אמא' : parent.gender === 'male' ? 'אבא' : 'הורה'} של ${C}, ו${C} ${verb}${sep}${S}.`
   }
 
   if (lang === 'es') {
     const parentLabel = parent.gender === 'female' ? 'madre' : parent.gender === 'male' ? 'padre' : 'progenitor/a'
+    const cf = child.gender === 'female'
     const verb = edgeType === 'partner'
       ? 'es pareja de'
-      : (spouse.gender === 'female'
-          ? (isFormer ? 'estuvo casada con' : 'está casada con')
-          : (isFormer ? 'estuvo casado con' : 'está casado con'))
+      : (cf ? (isFormer ? 'estuvo casada con' : 'está casada con')
+            : (isFormer ? 'estuvo casado con' : 'está casado con'))
     return `${P} es ${parentLabel} de ${C}, y ${C} ${verb} ${S}.`
   }
 

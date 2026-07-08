@@ -199,7 +199,7 @@ const AUDIO_COMPLAINT_RE =
   /(?:לא\s+שומעת?\s+אות[ךיו]|אני\s+לא\s+שומע|לא\s+שמעתי(?:\s+אות[ךיו])?|לא\s+מדברת|הקול\s+נעלם|אין\s+קול|למה\s+את\s+שותקת|no\s+te\s+(?:escucho|oigo))/iu
 // Frustration the shared regex misses — "you're not answering what I asked".
 const FRUSTRATION_EXTRA_RE =
-  /את\s+לא\s+עונה|לא\s+ענית\s+לי|לא\s+על\s+זה\s+שאלתי|לא\s+ענית\s+על|זה\s+לא\s+מה\s+ששאלתי|את\s+לא\s+עונה\s+למה\s+ששאלתי/u
+  /את\s+לא\s+עונה|לא\s+ענית\s+לי|לא\s+על\s+זה\s+שאלתי|לא\s+ענית\s+על|זה\s+לא\s+מה\s+ששאלתי|את\s+לא\s+עונה\s+למה\s+ששאלתי|לא\s+הבנת\s+אותי|לא\s+זה\s+מה\s+ששאלתי/u
 const CONTINUATION_EXTRA_RE = /תשלימי\s+את\s+המשפט|תסיימי\s+את\s+המשפט|תגמרי\s+את\s+המשפט/u
 const RECALL_TOPIC_RE = /על\s+מה\s+דיבר(?:נו|ת)|מה\s+דיברנו|de\s+qu[eé]\s+hablamos/iu
 // A trivial social/closing turn (greeting, thanks, goodbye, "never mind", exit).
@@ -208,6 +208,11 @@ const RECALL_TOPIC_RE = /על\s+מה\s+דיבר(?:נו|ת)|מה\s+דיברנו|d
 // recording them, so the prior SUBSTANTIVE topic stays as what we "talked about".
 const TRIVIAL_TURN_RE = /^(?:שלום|היי|הא?לו|בוקר טוב|ערב טוב|צהריים טובים|לילה טוב|מה שלומך|מה נשמע|תודה(?:\s+רבה)?(?:\s+לך)?|ביי|יאללה\s+ביי|להתראות|עזוב(?:י|ו)?|לא\s+משנה|שכח[יי]?\s+מזה|תעזב[יי]|סבבה|אוקיי?|בסדר|טוב)[\s.,!?]*$/u
 function isTrivialTurn(t: string): boolean { return TRIVIAL_TURN_RE.test((t ?? '').trim()) }
+// A meta / recall question ("מה דיברנו קודם?", "מה אמרת על מור?") must ALSO never
+// become the remembered topic — otherwise a later "על מה דיברנו בהתחלה?" echoes the
+// previous recall question instead of the real subject.
+const META_RECALL_RE = /על\s+מה\s+דיבר|מה\s+דיברנו|מה\s+אמרת\s+על|מה\s+סיפרת|מה\s+שאלתי|de\s+qu[eé]\s+hablamos/iu
+function isNonTopicTurn(t: string): boolean { const s = (t ?? '').trim(); return isTrivialTurn(s) || META_RECALL_RE.test(s) }
 // "מתי יש לי פגישה עם X" / "מתי הפגישה עם X" → search across ALL days (never create,
 // never ask "באיזה יום"). Must be tested BEFORE isCreateIntent, which is greedy.
 const SEARCH_WHEN_RE = /^מתי\s+.*(?:יש\s+לי|ה?פגישה|ה?תור|ה?ביקור|נפגש|פגוש)/u
@@ -274,8 +279,9 @@ export function classifyIntent(
   // "יש לך זיכרון …") — both are handled inside the continuation case.
   if (isContinuation(t) || CONTINUATION_EXTRA_RE.test(t) || RECALL_TOPIC_RE.test(t)) return 'continuation'
 
-  // Date/day questions answered from the real clock — never invented, never "באיזה יום".
-  if (DATE_QUERY_RE.test(t)) return 'date_query'
+  // Date/day/TIME questions answered from the real clock — never invented, never
+  // "באיזה יום", never a fabricated "03:00".
+  if (DATE_QUERY_RE.test(t) || TIME_QUERY_RE.test(t)) return 'date_query'
 
   // Live/current-info that onlineIntent misses (buses/trains/weather) — before the
   // calendar verbs so "מתי האוטובוס" is never mistaken for a calendar create.
@@ -337,7 +343,14 @@ function localISO(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
+// A time question is answered from the SYSTEM CLOCK, never the LLM (which has no
+// clock and would fabricate a time — the "03:00 default" hallucination class).
+const TIME_QUERY_RE = /מה\s+ה?שעה|ה?שעה\s+עכשיו|באיזו\s+שעה\s+אנחנו|qu[eé]\s+hora/iu
 export function dateReasoner(text: string, now: Date): string {
+  if (TIME_QUERY_RE.test(text)) {
+    const hh = String(now.getHours()).padStart(2, '0'); const mm = String(now.getMinutes()).padStart(2, '0')
+    return `השעה עכשיו ${hh}:${mm}.`
+  }
   const day = HE_DAYS[now.getDay()] ?? 'היום'
   // formatHebrewDate may already include the weekday — strip it so we never say the
   // day twice ("היום יום שישי, 3 ביולי 2026, יום שישי").
@@ -422,6 +435,11 @@ export function calendarReadReasoner(text: string, now: Date): string {
   if (/(?<![א-ת])השבוע(?![א-ת])/u.test(text)) {
     const r = getWeekEvents()
     return r.events.length === 0 ? 'השבוע אין כלום ביומן. שבוע שקט.' : r.summary
+  }
+  if (/(?<![א-ת])מחרתיים(?![א-ת])/u.test(text) || /בעוד\s+יומיים/u.test(text)) {
+    const d = new Date(now); d.setDate(d.getDate() + 2)
+    const r = getEventsByDate(localISO(d))
+    return r.events.length === 0 ? 'מחרתיים אין כלום ביומן.' : r.summary
   }
   if (/(?<![א-ת])מחר(?![א-ת])/u.test(text)) {
     const r = getTomorrowEvents()
@@ -531,7 +549,12 @@ function executeSave(draft: {
   if (!verified) return { ok: false, text: 'משהו לא עבד — הפגישה לא נשמרה. תנסי שוב.' }
   const heDate = safeHebrewDate(verified.date)
   const loc = verified.location ? ` ${/^(?:ב|ל|מ|אצל)/u.test(verified.location) ? verified.location : 'ב' + verified.location}` : ''
-  return { ok: true, text: `קבוע — ${verified.title} ${heDate} בשעה ${verified.time}.${loc}` }
+  // Conflict awareness: the event is still saved (additive, never destructive), but
+  // warn warmly if she already has something at the same date+time — so she isn't
+  // silently double-booked.
+  const clash = loadAppointments().find(a => a.id !== verified.id && a.date === verified.date && a.time === verified.time)
+  const warn = clash ? `שימי לב — כבר יש לך ${clash.title} באותו זמן. ` : ''
+  return { ok: true, text: `${warn}קבוע — ${verified.title} ${heDate} בשעה ${verified.time}.${loc}` }
 }
 
 // ── Layer 7: Response Verifier ─────────────────────────────────────────────────
@@ -632,7 +655,7 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     const verifier = verifyAnswer(display, { intent, dataAvailable: opts.dataAvailable })
     // Record the answer into conversation memory so "תמשיכי" / recall work next turn.
     let conv = opts.state.conv
-    if (intent !== 'continuation' && intent !== 'frustration' && display && !isTrivialTurn(normalized)) {
+    if (intent !== 'continuation' && intent !== 'frustration' && display && !isNonTopicTurn(normalized)) {
       conv = recordAnswer(conv, {
         question: normalized, intent, topic: opts.recordTopic ?? null, fullText: display,
       })
@@ -645,6 +668,12 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       // next bare "ומחר?" can't bind to a stale weather focus.
       state: { ...opts.state, conv, focus: null, lastIntent: intent },
     }
+  }
+
+  // ─── Degenerate input guard — never hand an empty/punctuation-only turn to the
+  // LLM (garbled STT / mis-taps are common for an 80+ user). Answer warmly instead.
+  if (!normalized.trim() || /^[\s\p{P}\p{S}]+$/u.test(normalized)) {
+    return settle('לא שמעתי טוב. תגידי לי שוב?', { state, dataAvailable: false })
   }
 
   // ─── CALENDAR CONTINUITY — property query on the event IN FOCUS ──────────────
@@ -973,7 +1002,7 @@ export function finalizeExternalAnswer(
   }
   // Skip recording a trivial closer/greeting/ack (topic-derived from the input)
   // so it can't overwrite the last SUBSTANTIVE topic used by "מה דיברנו קודם?".
-  if (display && !isTrivialTurn(meta.topic ?? '')) {
+  if (display && !isNonTopicTurn(meta.topic ?? '')) {
     conv = recordAnswer(conv, {
       question: '', intent: meta.intent, topic: meta.topic ?? null, fullText: display,
     })
@@ -981,7 +1010,10 @@ export function finalizeExternalAnswer(
   // Conversation focus: a successful ONLINE answer becomes the active object so a
   // bare "ומחר?" next turn continues it; any non-online finalize clears it so a
   // follow-up can never bind to a stale online topic.
-  const focus: ConversationFocus | null = meta.online && meta.online.ok
+  // Keep an online focus even when the lookup FAILED — so "ומחר?" retries the live
+  // topic instead of being reclassified to the calendar. Only a non-online answer
+  // clears it.
+  const focus: ConversationFocus | null = meta.online
     ? { kind: 'online', label: (meta.online.query ?? meta.topic ?? '').replace(/[?？]+$/u, '').trim() }
     : null
   return {

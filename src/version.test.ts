@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.49.0-destruction-lab')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — AbuAI Product Destruction Lab (670 real-runtime conversations): fixed online follow-up→calendar hijack and calendar property "באיזה שעה?" continuity')
+    expect(APP_VERSION.version).toBe('0.51.0-non-green-to-green-war-room')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — AbuAI non-green to green war room: 2730-conversation destruction lab + quality judge; fixed forced menu, incremental create, reminder title, family gender, time/currency/transport routing, online-focus continuity')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

@@ -45,8 +45,15 @@ const CANCEL_PHRASE_RE = /^(?:בטלי|תבטלי|בטל|תבטל|עזבי|תע�
 // not leak as a side-question that leaves it half-open (pending pollution). This
 // is exit-of-the-object, distinct from the "תמחקי את הפגישה עם X" stored-event delete.
 const SOFT_EXIT_RE = /^(?:עזוב(?:י|ו)?|לא\s+משנה|תצא\s+מזה|צא\s+מזה|נעבור\s+לנושא\s+אחר|עזבי\s+את\s+זה|שכח[יי]?\s+מזה|די\s+עם\s+זה)[\s.,!?]*$/u
+// An EXPLICIT topic switch ("בעצם בואי נדבר על משהו אחר", "בא לי לדבר על משהו אחר")
+// abandons the pending draft — otherwise it lingers and a later unrelated "כן"
+// silently saves it (a data-integrity bug). Un-anchored: it can appear in a phrase.
+const CONTEXT_SWITCH_RE = /(?:בעצם\s+)?(?:בואי\s+)?(?:בא\s+לי\s+)?(?:נדבר|לדבר|נעבור|לעבור)\s+על\s+(?:משהו|נושא)\s+אחר|עזבי,?\s+בא\s+לי\s+לדבר/u
 const FIELD_RE = /^(?:ב|ל)?(?:שעה\s+\S+|שמונה|תשע|עשר|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע)(?:\s+(?:בבוקר|בערב|בצהריים|וחצי|ורבע))?$|^ביום\s+\S+$|^(?:מחר|מחרתיים|היום|הערב)$|^ב\d{1,2}(?::\d{2})?$/u
 const QUESTION_RE = /^(?:מי|מה|מתי|איפה|איך|למה|כמה|האם)(?:\s|$)|\?\s*$/u
+// An emotional aside mid-create ("אני מתגעגעת", "קצת עצובה") must be answered warmly
+// with the draft KEPT — never mistaken for a slot answer to fold into the draft.
+const EMOTIONAL_RE = /מתגעגע|געגוע|עצוב|בוד[דה]|לבד|קשה\s+לי|אין\s+לי\s+כוח|מדוכא|בוכ|מפחד|דואג/u
 const GREETING_RE = /^(?:בוקר טוב|ערב טוב|צהריים טובים|לילה טוב|מה שלומך|מה נשמע|היי|שלום|הא?לו)(?![א-ת])/u
 const NEW_MEETING_RE = /(?:מחר|מחרתיים|היום|הערב|ביום\s+\S+)/u
 const NEW_TIME_RE = /(?:בשעה|ב\d|בבוקר|בערב|בצהריים|וחצי|ב(?:שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|אחת|שתיים))/u
@@ -75,7 +82,7 @@ export function classifySignalV2(rawInput: string, phase: Phase): V2Signal {
     // "לא שמעתי תמשיכי" is a resume, not an audio complaint — defer to the resume path.
     if (AUDIO_RE.test(t) && !RESUME_RE.test(t)) return 'audio'
     if (phase === 'confirming' && isConfirm(t)) return 'confirm'   // rule 1/2
-    if (isCancel(t) || CANCEL_PHRASE_RE.test(t) || SOFT_EXIT_RE.test(t)) return 'explicit_cancel' // rule 6 + EXIT DETECTION
+    if (isCancel(t) || CANCEL_PHRASE_RE.test(t) || SOFT_EXIT_RE.test(t) || CONTEXT_SWITCH_RE.test(t)) return 'explicit_cancel' // rule 6 + EXIT DETECTION + explicit context switch
     if (WHY_NOT_RE.test(t)) return 'why'
     if (FRUSTRATION_RE.test(t)) return 'frustration'
     if (SEARCH_RE.test(t)) return 'search'                          // rule 5/8
@@ -83,6 +90,11 @@ export function classifySignalV2(rawInput: string, phase: Phase): V2Signal {
     if (NEW_MEETING_RE.test(t) && NEW_TIME_RE.test(t) && NEW_PLACE_RE.test(t) && t.split(/\s+/).length >= 5) return 'new_create'
     if (FIELD_RE.test(t)) return 'field_answer'
     if (isDraftEdit(t)) return 'field_answer'                       // edit/correction → updateCreate, never LLM
+    // Incremental create: while COLLECTING (not yet confirming), a non-question,
+    // non-emotional turn is a SLOT ANSWER ("מחר", "עם מור", "מחר בשלוש עם מור") —
+    // fold it into the draft via updateCreate instead of punting to the LLM. Genuine
+    // side-questions are QUESTIONS; emotional asides are excluded and kept as side_keep.
+    if (phase !== 'confirming' && !QUESTION_RE.test(t) && !EMOTIONAL_RE.test(t)) return 'field_answer'
     return 'side_question'                                          // rule 5 (answer + keep)
   }
   // IDLE — v2 owns ONLY the search-vs-create precedence fix (C/D); everything else

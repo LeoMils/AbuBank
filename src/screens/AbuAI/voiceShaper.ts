@@ -65,13 +65,17 @@ export function shapeVoiceSafe(text: string): string {
   }
 
   // Cap at ≤ 2 short sentences — a spoken answer stays human, not a paragraph.
+  // Protect a decimal point ("3.65", "36.5°") so the sentence splitter doesn't
+  // read it as "3. 65". Mask with a private placeholder, split, then restore.
+  const DOT = '' // Unicode private-use area — never appears in real text
+  const masked = t.replace(/(\d)\.(\d)/g, `$1${DOT}$2`)
   const parts: string[] = []
   const re = /[^.!?]+[.!?]+/g
   let m: RegExpExecArray | null
-  while ((m = re.exec(t)) !== null) {
+  while ((m = re.exec(masked)) !== null) {
     parts.push(m[0].trim())
     if (parts.length >= 2) break
   }
-  if (parts.length === 0) return t
-  return parts.join(' ').trim()
+  const capped = parts.length === 0 ? masked : parts.join(' ')
+  return capped.trim().split(DOT).join('.')
 }

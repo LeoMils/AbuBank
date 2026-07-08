@@ -458,7 +458,7 @@ export function AbuAI() {
     // ─── Cross-turn follow-up resolution ─────────────────────────────────
     // "ומחר?" after "מה יש לי היום?" → expands to "מה יש לי מחר?"
     // "ומור?" after "מי זה נועם?" → expands to "ספרי לי על מור"
-    const followUp = resolveFollowUp(msgText, messages)
+    const followUp = resolveFollowUp(msgText, messages, { pendingCreate: createStateRef.current.phase !== 'idle' })
     if (followUp.wasFollowUp) msgText = followUp.resolved
 
     const userMsg: ChatMessage = { id: nextId(), role: 'user', content: msgText, timestamp: Date.now() }
@@ -1500,7 +1500,7 @@ export function AbuAI() {
       let effectiveText = resolvedText !== text ? resolvedText : text
 
       // Cross-turn follow-up resolution (voice path)
-      const voiceFollowUp = resolveFollowUp(effectiveText, messagesRef.current)
+      const voiceFollowUp = resolveFollowUp(effectiveText, messagesRef.current, { pendingCreate: createStateRef.current.phase !== 'idle' })
       if (voiceFollowUp.wasFollowUp) effectiveText = voiceFollowUp.resolved
 
       const userMsg: ChatMessage = { id: nextId(), role: 'user', content: effectiveText, timestamp: Date.now() }

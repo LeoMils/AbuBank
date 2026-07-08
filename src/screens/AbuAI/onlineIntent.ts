@@ -35,7 +35,10 @@ const ONLINE_HE_NEWS = /חדשות (היום|עכשיו|אחרונות)|מה ב?
 const ONLINE_HE_OPEN_NOW = /מה פתוח עכשיו|פתוח עכשיו|מה פתוח (היום|בשעה)/
 const ONLINE_HE_LATEST = /מה ה?חדש|מה האחרון|מה התחזית/
 const ONLINE_HE_SPORTS = /כדורגל|כדורסל|מכבי|הפועל|תוצא(?:ה|ות)|מי ניצח|מי ניצחה|מי שיחק|מי משחק|מי שיחקה|כמה\s+יצא|מה\s+התוצאה|משחק(?:ים|י)?\s+(?:אתמול|היום|מחר|הערב|של|ה?יום)|איזה משחקים|מונדיאל|אליפות|ליגה|גביע|נבחרת|של\s+המשחק|מה\s+היה\s+במשחק|תוצאת\s+המשחק/
-const ONLINE_HE_CURRENT = /שער ה?דולר|שער ה?יורו|מטבע|בורסה|מניות|bitcoin|ביטקוין|מחיר ה?(זהב|נפט|גז)|מה (ה?מחיר|העלות) של/
+const ONLINE_HE_CURRENT = /שער ה?דולר|שער ה?יורו|מטבע|בורסה|מניות|bitcoin|ביטקוין|מחיר ה?(זהב|נפט|גז|בנזין|דלק)|מה (ה?מחיר|העלות) של|כמה\s+עולה|כמה\s+שווה/
+// Live public-transport / flight times — live info the runtime already routes online
+// via ONLINE_EXTRA_RE; keep the tool gate in sync so it isn't a permanent dead-end.
+const ONLINE_HE_TRANSPORT = /מתי\s+ה?אוטובוס|ה?אוטובוס\s+ה?בא|מתי\s+ה?רכבת|ה?רכבת\s+ה?באה|מתי\s+ה?טיסה|תחבורה\s+ציבורית/
 const ONLINE_HE_HOLIDAYS = /מתי\s+(חג\s+)?(פסח|סוכות|ראש השנה|יום כיפור|חנוכה|פורים|שבועות|ט[וּ]?\s*בשבט|ל[״"]ג\s*בעומר|יום העצמאות|יום הזיכרון|יום השואה)/i
 
 // ─── Spanish patterns ──────────────────────────────────────────────────────
@@ -82,6 +85,7 @@ export function getOnlineQueryKind(input: string): OnlineQueryKind | null {
   if (ONLINE_HE_LATEST.test(t) || ONLINE_ES_LATEST.test(t) || ONLINE_EN_LATEST.test(t)) return 'latest'
   if (ONLINE_HE_SPORTS.test(t) || ONLINE_ES_SPORTS.test(t) || ONLINE_EN_SPORTS.test(t)) return 'sports'
   if (ONLINE_HE_CURRENT.test(t)) return 'general_current'
+  if (ONLINE_HE_TRANSPORT.test(t)) return 'general_current' // transport = live info
   if (ONLINE_HE_HOLIDAYS.test(t)) return 'holidays'
   return null
 }

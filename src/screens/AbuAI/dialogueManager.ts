@@ -42,7 +42,9 @@ export function guardDialogue(candidate: string, recentAssistant: string[]): Dia
 }
 
 function escalate(_c: string): string {
-  return 'רגע — אני לא רוצה לנחש שוב. תגידי לי במילה אחת: פגישה, יומן, משפחה, או משהו אחר?'
+  // NEVER a forced menu ("פגישה, יומן, משפחה") — that reads like a phone-tree to an
+  // 80-year-old. Break the loop with a warm, open re-prompt in her own words.
+  return 'רגע, אני רוצה להבין אותך נכון. תגידי לי שוב במילים שלך — אני מקשיבה.'
 }
 
 /** When the user corrects AbuAI, acknowledge the specific correction (never a generic apology). */
