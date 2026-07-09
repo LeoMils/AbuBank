@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.52.0-final-iphone-gate')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — AbuAI final iPhone gate: fragmented calendar create, cancel/exit lexicon, stored-event honest block, resume, calendar property follow-up, final reality gate + quality judge')
+    expect(APP_VERSION.version).toBe('0.53.0-full-duplex-realtime')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — AbuAI full-duplex Realtime voice (ChatGPT Advanced-Voice engine): semantic-VAD hands-free turn-taking + barge-in over WebRTC, input transcription; config regression-locked')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

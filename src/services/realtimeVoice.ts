@@ -1,4 +1,10 @@
-// ─── OpenAI Realtime API — WebRTC Voice Client ─────────────────────
+// ─── OpenAI Realtime API — WebRTC Voice Client (FULL DUPLEX) ─────────
+// v47 (2026): true ChatGPT-Advanced-Voice behavior. The live session is configured
+// over the data channel with `session.update` → semantic_vad (natural hands-free
+// turn-taking) + interrupt_response (barge-in: the user can cut the AI off mid-
+// sentence; on WebRTC the server auto-truncates the unplayed assistant audio) +
+// input transcription. Same engine as ChatGPT live; native audio in/out, sub-2s.
+//
 // v46 (2026): the Realtime API evolved. The old /v1/realtime/sessions minter
 // and gpt-4o-realtime-preview model now 404. Current, SERVER-PROVEN contract
 // (api/realtime-token.ts mints ok=true against this account):
@@ -21,6 +27,38 @@ export const REALTIME_SESSION_URL = 'https://api.openai.com/v1/realtime/client_s
 /** Reject the docs placeholder / obvious stubs before any network call. */
 export function isPlaceholderKey(k: string | undefined): boolean {
   return !k || k.length < 20 || /^(sk-\.\.\.|sk-xxx|your_|placeholder|example|<)/i.test(k)
+}
+
+export interface SessionMode { pushToTalk: boolean; listenMode: boolean; instructions: string; voice: string }
+
+/**
+ * The FULL-DUPLEX session config sent over the data channel on connect. Pure +
+ * exported so it can be regression-locked: hands-free semantic VAD, barge-in
+ * (interrupt_response), and input transcription — ChatGPT Advanced-Voice behavior.
+ * - default (quiet):  semantic_vad, create_response+interrupt_response → true duplex
+ * - noisy (PTT):      turn_detection null (manual commit)
+ * - listen:           semantic_vad but create_response false (transcribe only)
+ */
+export function buildRealtimeSessionUpdate(m: SessionMode): Record<string, unknown> {
+  return {
+    type: 'session.update',
+    session: {
+      type: 'realtime',
+      instructions: m.instructions,
+      audio: {
+        input: {
+          transcription: { model: 'gpt-4o-mini-transcribe' },
+          turn_detection: m.pushToTalk ? null : {
+            type: 'semantic_vad',
+            eagerness: 'auto',
+            create_response: !m.listenMode,
+            interrupt_response: true,
+          },
+        },
+        output: { voice: m.voice },
+      },
+    },
+  }
 }
 
 export type RealtimeState = 'idle' | 'connecting' | 'listening' | 'speaking' | 'error'
@@ -157,6 +195,19 @@ export class RealtimeVoiceSession {
         this.retryCount = 0
 
         this.setState('listening')
+
+        // ── FULL-DUPLEX session config (ChatGPT Advanced-Voice behavior) ──────
+        // Configure the live session over the data channel (the reliable path; the
+        // ephemeral mint no longer carries VAD). semantic_vad = natural, hands-free
+        // turn-taking; interrupt_response = true → the user can BARGE IN mid-sentence.
+        // On WebRTC the server auto-truncates unplayed assistant audio on a barge-in,
+        // so no client-side audio stopping is needed — this is true full duplex.
+        this.sendEvent(buildRealtimeSessionUpdate({
+          pushToTalk: this.pushToTalk,
+          listenMode: this._listenMode,
+          instructions: this.instructions,
+          voice: HE_VOICE.realtimeVoice,
+        }))
 
         // Send greeting (skip in listen mode — passive)
         if (!this._listenMode) {

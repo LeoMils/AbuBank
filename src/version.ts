@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.52.0-final-iphone-gate',
-  buildLabel: 'AbuBank — AbuAI final iPhone gate: fragmented calendar create, cancel/exit lexicon, stored-event honest block, resume, calendar property follow-up, final reality gate + quality judge',
-  buildDate:  '2026-07-08',
+  version:    '0.53.0-full-duplex-realtime',
+  buildLabel: 'AbuBank — AbuAI full-duplex Realtime voice (ChatGPT Advanced-Voice engine): semantic-VAD hands-free turn-taking + barge-in over WebRTC, input transcription; config regression-locked',
+  buildDate:  '2026-07-09',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
 } as const

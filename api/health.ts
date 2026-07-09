@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.52.0-final-iphone-gate'
-const BUILD_LABEL = 'AbuBank — AbuAI final iPhone gate: fragmented calendar create, cancel/exit lexicon, stored-event honest block, resume, calendar property follow-up, final reality gate + quality judge'
+const BUILD_VERSION = '0.53.0-full-duplex-realtime'
+const BUILD_LABEL = 'AbuBank — AbuAI full-duplex Realtime voice (ChatGPT Advanced-Voice engine): semantic-VAD hands-free turn-taking + barge-in over WebRTC, input transcription; config regression-locked'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
