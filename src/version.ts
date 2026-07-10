@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.53.0-full-duplex-realtime',
-  buildLabel: 'AbuBank — AbuAI full-duplex Realtime voice (ChatGPT Advanced-Voice engine): semantic-VAD hands-free turn-taking + barge-in over WebRTC, input transcription; config regression-locked',
-  buildDate:  '2026-07-09',
+  version:    '0.54.0-voice-text-brain-unification',
+  buildLabel: 'AbuBank — AbuAI voice=text brain unification: the mic transcript routes through the SAME ExecutiveCognitiveController as typed text (family/calendar/online/memory); Realtime = STT+TTS transport, brain answers; Product Truth proves BRAIN_PIPELINE_USED',
+  buildDate:  '2026-07-10',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
 } as const

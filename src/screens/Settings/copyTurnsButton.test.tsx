@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.53.0-full-duplex-realtime')
+    expect(APP_VERSION.version).toBe('0.54.0-voice-text-brain-unification')
   })
 })

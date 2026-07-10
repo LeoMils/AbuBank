@@ -50,6 +50,15 @@ export interface ProductTruth {
   lastPronoun: string | null
   lastError: string | null
   updatedAt: string | null
+  // ── Voice-path proof (path-unification): a voice turn must use the SAME brain ──
+  inputSource: 'text' | 'voice_realtime' | 'voice_fallback' | null
+  rawTranscript: string | null
+  normalizedTranscript: string | null
+  brainPipelineUsed: boolean       // did the ExecutiveCognitiveController produce the answer?
+  executiveControllerUsed: boolean
+  toolUsed: string | null          // deterministic | online | calendar | family | llm
+  vadType: string | null           // semantic_vad | server_vad | push_to_talk
+  bargeInEnabled: boolean
 }
 
 /**
@@ -159,6 +168,14 @@ export function getProductTruth(): ProductTruth {
     lastPronoun: _live.lastPronoun ?? null,
     lastError: _live.lastError ?? t?.error ?? t?.llmError ?? t?.sttError ?? null,
     updatedAt: _live.updatedAt ?? d?.ts ?? t?.ts ?? null,
+    inputSource: _live.inputSource ?? null,
+    rawTranscript: _live.rawTranscript ?? t?.rawTranscript ?? null,
+    normalizedTranscript: _live.normalizedTranscript ?? null,
+    brainPipelineUsed: _live.brainPipelineUsed ?? (route !== 'n/a'),
+    executiveControllerUsed: _live.executiveControllerUsed ?? (route !== 'n/a'),
+    toolUsed: _live.toolUsed ?? (onlineUsed ? 'online' : d?.responseSource ?? null),
+    vadType: _live.vadType ?? (voiceMode === 'realtime' ? 'semantic_vad' : voiceMode === 'pipeline' ? 'web_speech' : null),
+    bargeInEnabled: _live.bargeInEnabled ?? (voiceMode === 'realtime'),
   }
 }
 
@@ -180,6 +197,15 @@ export function formatProductTruthReport(now?: string): string {
     `TTS_PROVIDER:    ${p.ttsProvider}`,
     `FALLBACK_USED:   ${yn(p.fallbackUsed)}`,
     `LATENCY_MS:      ${p.latencyMs ?? 'n/a'}`,
+    '--- VOICE BRAIN ---',
+    `INPUT_SOURCE:    ${p.inputSource ?? 'n/a'}`,
+    `RAW_TRANSCRIPT:  ${p.rawTranscript ?? 'n/a'}`,
+    `NORM_TRANSCRIPT: ${p.normalizedTranscript ?? 'n/a'}`,
+    `BRAIN_PIPELINE_USED:      ${yn(p.brainPipelineUsed)}`,
+    `EXECUTIVE_CONTROLLER_USED:${yn(p.executiveControllerUsed)}`,
+    `TOOL_USED:       ${p.toolUsed ?? 'n/a'}`,
+    `VAD_TYPE:        ${p.vadType ?? 'n/a'}`,
+    `BARGE_IN_ENABLED:${yn(p.bargeInEnabled)}`,
     '--- LAST TURN ---',
     `ROUTE:           ${p.route}`,
     `CALENDAR_SOURCE: ${p.calendarSource}`,

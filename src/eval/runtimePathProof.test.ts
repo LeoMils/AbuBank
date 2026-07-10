@@ -37,9 +37,11 @@ describe('Runtime Path Proof — the controller path is bypass-free', () => {
 })
 
 describe('Static architecture facts (index.tsx) — one runtime path', () => {
-  it('BOTH text (handleSend) and voice (handleText) route through ExecutiveCognitiveController', () => {
+  it('text + voice-pipeline + voice-realtime ALL route through ExecutiveCognitiveController', () => {
     const controllerCalls = (INDEX.match(/ExecutiveCognitiveController\.handleTurn\(/g) ?? []).length
-    expect(controllerCalls).toBe(2) // text + voice
+    // 3 entries: handleSend (text), handleText (voice fallback pipeline), and the
+    // Realtime onUserTranscript (voice must NOT bypass the brain — path unification).
+    expect(controllerCalls).toBe(3)
   })
   it('the runtime gate is HARDCODED true — no env flag dependency remains', () => {
     expect(/const COGNITIVE_RUNTIME_FULL:\s*boolean\s*=\s*true/.test(INDEX)).toBe(true)

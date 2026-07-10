@@ -247,6 +247,10 @@ export function AbuAI() {
   // (the "it forgot what I just said after I interrupted" race). Only affects a
   // turn that was overtaken — the normal single-turn flow is untouched.
   const voiceTurnSeqRef = useRef(0)
+  // When the Realtime path voices the BRAIN's answer via session.speak(), the model's
+  // own transcript of that reply comes back — suppress it so the chat isn't doubled
+  // (the brain's display text is already appended). The greeting is not suppressed.
+  const suppressRealtimeAssistantMsgRef = useRef(false)
 
   // v20.2: OpenAI Realtime API (WebRTC) — true real-time conversation
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
@@ -2383,10 +2387,40 @@ ${fewShotText}`
           },
           onUserTranscript: (text) => {
             setLastHeardText(text)
-            setMessages(prev => [...prev, { id: nextId(), role: 'user', content: text, timestamp: Date.now() }])
+            // Faithful entry pipeline — IDENTICAL to typed text: pronoun + follow-up
+            // resolution, then route the transcript through the SAME AbuAI brain
+            // (ExecutiveCognitiveController). Voice must not bypass the brain.
+            const prior = messagesRef.current
+            const { resolved: pr } = resolvePronouns(text, prior)
+            let eff = pr !== text ? pr : text
+            const fu = resolveFollowUp(eff, prior, { pendingCreate: createStateRef.current.phase !== 'idle' })
+            if (fu.wasFollowUp) eff = fu.resolved
+            const userMsg: ChatMessage = { id: nextId(), role: 'user', content: eff, timestamp: Date.now() }
+            const currentMsgs = [...messagesRef.current, userMsg]
+            setMessages(currentMsgs)
+            setProductTruth({ voiceMode: 'realtime', inputSource: 'voice_realtime', rawTranscript: text, normalizedTranscript: eff, vadType: 'semantic_vad', bargeInEnabled: true, fallbackUsed: false })
+            void (async () => {
+              const myTurn = ++voiceTurnSeqRef.current
+              const tools = buildFullTurnTools(currentMsgs, true)
+              const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
+              const result = await ExecutiveCognitiveController.handleTurn(seed, eff, { messages: currentMsgs, now: new Date() }, tools)
+              // Superseded by a barge-in / newer utterance? Drop this stale turn.
+              if (myTurn !== voiceTurnSeqRef.current || !voiceModeRef.current) return
+              cognitiveRuntimeStateRef.current = result.state
+              conversationOSRef.current = result.state.conv
+              cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
+              setProductTruth({ brainPipelineUsed: true, executiveControllerUsed: true, route: result.intent, toolUsed: result.source, memoryUsed: /conversation_os|memory/.test(result.source) })
+              setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: result.display, timestamp: Date.now() }])
+              // Voice the BRAIN's answer through Realtime (model runs create_response:false,
+              // so it never self-answers — it only reads AbuAI's reply). Suppress the echo.
+              suppressRealtimeAssistantMsgRef.current = true
+              realtimeRef.current?.speak(result.speak)
+            })()
           },
           onAssistantTranscript: (text) => {
             setRealtimeTranscript('')
+            // The greeting is added; a voiced BRAIN reply is suppressed (already appended).
+            if (suppressRealtimeAssistantMsgRef.current) { suppressRealtimeAssistantMsgRef.current = false; return }
             setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: text, timestamp: Date.now() }])
           },
           onAssistantDelta: (delta) => {
@@ -3381,6 +3415,9 @@ ${fewShotText}`
                 {row('VOICE_MODE', p.voiceMode)}
                 {row('REALTIME_STATUS', p.realtimeStatus, p.realtimeStatus === 'fallback' || p.realtimeStatus === 'unavailable' || p.realtimeStatus === 'error')}
                 {row('FALLBACK_USED', p.fallbackUsed ? 'YES' : 'NO', p.fallbackUsed)}
+                {row('INPUT_SOURCE', p.inputSource ?? 'n/a')}
+                {row('BRAIN_PIPELINE_USED', p.brainPipelineUsed ? 'YES' : 'NO', !p.brainPipelineUsed)}
+                {row('VAD_TYPE', p.vadType ?? 'n/a')}
                 {row('STT', p.sttProvider, /web ?speech/i.test(p.sttProvider))}
                 {row('TTS', p.ttsProvider)}
                 {row('CALENDAR', p.calendarSource)}

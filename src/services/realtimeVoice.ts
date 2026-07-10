@@ -51,8 +51,12 @@ export function buildRealtimeSessionUpdate(m: SessionMode): Record<string, unkno
           turn_detection: m.pushToTalk ? null : {
             type: 'semantic_vad',
             eagerness: 'auto',
-            create_response: !m.listenMode,
-            interrupt_response: true,
+            // create_response FALSE: the model does NOT answer on its own — it
+            // transcribes, and AbuAI's BRAIN produces the answer (family/calendar/
+            // online/memory), voiced via session.speak(). Path-unification rule:
+            // voice must not bypass the brain.
+            create_response: false,
+            interrupt_response: true, // barge-in still cuts off a brain reply mid-voice
           },
         },
         output: { voice: m.voice },
@@ -398,6 +402,23 @@ export class RealtimeVoiceSession {
     if (!this.pushToTalk) return
     this.sendEvent({ type: 'input_audio_buffer.commit' })
     this.sendEvent({ type: 'response.create' })
+  }
+
+  /**
+   * Voice the ABUAI BRAIN's answer. Since the session runs create_response:false,
+   * the model never answers on its own — this is the only way it speaks a reply.
+   * We hand it AbuAI's exact reply and instruct it to read it verbatim (no invention).
+   */
+  speak(brainReply: string): void {
+    const text = (brainReply ?? '').trim()
+    if (!text) return
+    this.sendEvent({
+      type: 'response.create',
+      response: {
+        modalities: ['audio', 'text'],
+        instructions: `Read this reply to Martita out loud in Hebrew, warmly and naturally, EXACTLY as written — do not add, remove, translate, or invent anything:\n"${text}"`,
+      },
+    })
   }
 
   /** Cancel current AI response (barge-in via tap) */

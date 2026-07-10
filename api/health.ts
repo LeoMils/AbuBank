@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.53.0-full-duplex-realtime'
-const BUILD_LABEL = 'AbuBank — AbuAI full-duplex Realtime voice (ChatGPT Advanced-Voice engine): semantic-VAD hands-free turn-taking + barge-in over WebRTC, input transcription; config regression-locked'
+const BUILD_VERSION = '0.54.0-voice-text-brain-unification'
+const BUILD_LABEL = 'AbuBank — AbuAI voice=text brain unification: the mic transcript routes through the SAME ExecutiveCognitiveController as typed text (family/calendar/online/memory); Realtime = STT+TTS transport, brain answers; Product Truth proves BRAIN_PIPELINE_USED'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

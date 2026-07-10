@@ -14,13 +14,15 @@ function td(cfg: Record<string, unknown>): TD {
 describe('REALTIME full-duplex session config', () => {
   const base = { instructions: 'שלום', voice: 'shimmer' }
 
-  it('default (quiet) → semantic_vad, hands-free, BARGE-IN enabled', () => {
+  it('default (quiet) → semantic_vad, hands-free, BARGE-IN enabled, brain answers', () => {
     const cfg = buildRealtimeSessionUpdate({ ...base, pushToTalk: false, listenMode: false })
     expect(cfg.type).toBe('session.update')
     const t = td(cfg)
     expect(t?.type).toBe('semantic_vad')      // natural turn-taking (like ChatGPT live)
-    expect(t?.create_response).toBe(true)      // auto-respond when she finishes
-    expect(t?.interrupt_response).toBe(true)   // she can cut the AI off mid-sentence
+    // create_response FALSE: the AbuAI brain answers (family/calendar/online/memory),
+    // not the raw model — the model transcribes + voices the brain reply.
+    expect(t?.create_response).toBe(false)
+    expect(t?.interrupt_response).toBe(true)   // she can still cut the reply off mid-sentence
   })
 
   it('input transcription is enabled (user words are captured)', () => {

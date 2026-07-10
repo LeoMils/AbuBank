@@ -237,7 +237,8 @@ export function resolveFollowUp(
   // Bare "עליה" / "עליו" / "עליהם" — "(tell me) about her/him/them". A
   // continuation that must STAY on the last-mentioned person via the family
   // graph (deterministic), never cold-start the LLM. Resolves to a family lookup.
-  const ABOUT_PERSON_FRAG = /^(?:ו)?(עליה|עליו|עליהם|עליהן)\??$/
+  // "עליה" / "ספרי לי עליה" / "תספרי לי עליו" — "(tell me) about her/him".
+  const ABOUT_PERSON_FRAG = /^(?:(?:ו?תספרי|ספרי|ספר|תספר)\s+לי\s+(?:עוד\s+)?)?(?:ו)?(עליה|עליו|עליהם|עליהן)\??$/
   const aboutPerson = trimmed.match(ABOUT_PERSON_FRAG)
   if (aboutPerson) {
     const tok = aboutPerson[1]!

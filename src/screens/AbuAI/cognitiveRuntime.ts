@@ -329,6 +329,9 @@ export function legacyDomainClassify(t: string): RuntimeIntent {
   if (isSearchIntent(t)) return 'calendar_search'
   if (/(?:מה יש לי|יש לי משהו|מה ה?תוכניות שלי|מה ביומן|מה יש ביומן|מה קבעתי|מה קבענו|מה קבעת לי)/u.test(t) &&
       /(?:היום|מחר|השבוע|הערב|יומן|תוכניות)/u.test(t)) return 'calendar_read'
+  // Bare past-tense read-back ("מה קבענו?", "מה קבעתי?") — after a save/plan she asks
+  // what was set; read it, never punt to the LLM.
+  if (/^מה\s+קבע(?:תי|נו|ת|ת\s+לי)\s*[?.!]*$/u.test(t)) return 'calendar_read'
   if (looksLikeNarrativeMeeting(t)) return 'calendar_create'
   if (looksLikeFamilyQuery(t)) return 'family'
   if (isOnlineCurrentInfoQuery(t) && !shouldBlockOnlineForPersonal(t)) return 'online'
@@ -716,14 +719,18 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     const keptState = { ...state, createState: keepsPending ? state.createState : IDLE_STATE }
     switch (action) {
       case 'execute_save': {
-        const out = executeSave(state.createState.draft)
+        const d = state.createState.draft
+        const out = executeSave(d)
         const { display, speak } = composeHebrew(out.text)
+        // Focus the just-saved event's person so a follow-up "מה קבענו?/באיזה שעה?/
+        // איפה?" answers from it (property continuity) instead of punting to the LLM.
+        const savedPerson = d.person ?? ((d.title ?? '').replace(/^פגישה עם\s+/u, '').trim() || null)
         return {
           ...base, intent: 'confirmation', handled: true, display, speak, chunks: chunk(display),
           needsLLM: false, needsOnline: false, online: null, grounding: null,
           sideEffect: out.ok ? 'saved_appointment' : 'save_failed',
           verifier: verifyAnswer(display, { intent: 'confirmation', dataAvailable: true }),
-          state: { ...state, createState: IDLE_STATE, lastIntent: 'confirmation' },
+          state: { ...state, createState: IDLE_STATE, lastIntent: 'confirmation', focus: (out.ok && savedPerson) ? { kind: 'calendar_event', label: savedPerson } : null },
         }
       }
       case 'cancel':
