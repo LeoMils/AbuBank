@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.54.0-voice-text-brain-unification'
-const BUILD_LABEL = 'AbuBank — AbuAI voice=text brain unification: the mic transcript routes through the SAME ExecutiveCognitiveController as typed text (family/calendar/online/memory); Realtime = STT+TTS transport, brain answers; Product Truth proves BRAIN_PIPELINE_USED'
+const BUILD_VERSION = '0.55.0-hide-eng-text-from-martita'
+const BUILD_LABEL = 'AbuBank — Martita-facing hardening: Product Truth panel + Copy diagnostics are operator-only (?operator=1), never shown to Martita; raw browser/HTTP error strings no longer leak into voice/weather error copy (plain Hebrew only)'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

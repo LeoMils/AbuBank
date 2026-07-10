@@ -407,17 +407,18 @@ export function AbuCalendar() {
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       const reason = !window.isSecureContext
-        ? 'המיקרופון דורש HTTPS. פתח את הכתובת עם https:// או השתמש ב-localhost.'
-        : 'הדפדפן לא תומך בגישה למיקרופון.'
+        ? 'אני צריכה חיבור מאובטח כדי לשמוע אותך. אפשר לכתוב לי כאן במקום.'
+        : 'הדפדפן הזה לא נותן לי גישה למיקרופון. אפשר לכתוב לי כאן.'
       dlog(`BLOCKED: mediaDevices unavailable. secureContext=${window.isSecureContext}`)
+      // Technical detail goes ONLY to the trace — never into Martita's message.
       updateTrace({ error: `mic_blocked: ${micDiag.join(' | ')}` }, 'mic_startup_blocked')
-      setVoiceFailure(`${reason}\n\n${micDiag.join('\n')}`, 'media_devices_unavailable')
+      setVoiceFailure(reason, 'media_devices_unavailable')
       return
     }
 
     if (typeof MediaRecorder === 'undefined') {
       dlog('BLOCKED: MediaRecorder undefined')
-      setVoiceFailure(`הקלטה קולית לא נתמכת בדפדפן הזה.\n\n${micDiag.join('\n')}`, 'media_recorder_unsupported')
+      setVoiceFailure('הקלטה קולית לא נתמכת בדפדפן הזה. אפשר לכתוב לי כאן.', 'media_recorder_unsupported')
       return
     }
     try {
@@ -447,7 +448,7 @@ export function AbuCalendar() {
           dlog(`stack: ${stack}`)
           updateTrace({ error: `getUserMedia_failed: ${name}: ${message}\n${micDiag.join('\n')}` }, `getusermedia_failed:${name}`)
           const friendly = mediateVoiceCaptureError(bareErr, 'permission_or_device')
-          setVoiceFailure(`${friendly}\n(${name}: ${message})\n\n${micDiag.join('\n')}`, `getusermedia_failed:${name}:${message.slice(0, 40)}`)
+          setVoiceFailure(friendly, `getusermedia_failed:${name}:${message.slice(0, 40)}`)
           return
         }
       }
@@ -481,7 +482,7 @@ export function AbuCalendar() {
           const name = mrErr2 instanceof Error ? mrErr2.name : 'unknown'
           const message = mrErr2 instanceof Error ? mrErr2.message : String(mrErr2)
           dlog(`MediaRecorder(bare) FAIL: ${name}: ${message}`)
-          setVoiceFailure(`לא הצלחתי להתחיל הקלטה.\n(${name}: ${message.slice(0, 50)})\n\n${micDiag.join('\n')}`, `mediarecorder_failed:${name}`)
+          setVoiceFailure('לא הצלחתי להתחיל הקלטה. נסי שוב.', `mediarecorder_failed:${name}`)
           return
         }
       }

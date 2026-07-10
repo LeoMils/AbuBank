@@ -431,7 +431,8 @@ export function AbuWeather() {
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     try   { setData(await fetchWeather()) }
-    catch (e: unknown) { setError(e instanceof Error ? e.message : 'שגיאה בטעינת מזג האוויר') }
+    // Never surface the raw browser/HTTP error to Martita — always plain Hebrew.
+    catch (e: unknown) { if (import.meta.env.DEV) console.warn('[AbuWeather] load failed:', e); setError('לא הצלחתי לבדוק את מזג האוויר כרגע. ננסה שוב עוד רגע.') }
     finally { setLoading(false) }
   }, [])
 

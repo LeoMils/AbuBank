@@ -153,6 +153,17 @@ const KEYFRAMES = `
 // The old "...אני כאן." was a dead end — it greeted and then nothing happened.
 // This opens the door: she knows immediately she can just talk, ask, or have me
 // put something in the calendar. One sentence, warm, adult — never a menu.
+// Operator-only diagnostics gate. The Product Truth panel + Copy Diagnostics /
+// Copy Product Truth Report are for LEO (dev, or the preview via ?operator=1) —
+// they show English engineering text and must NEVER appear to Martita.
+function isOperatorView(): boolean {
+  try {
+    if (import.meta.env.DEV) return true
+    if (typeof window === 'undefined' || !window.location) return false
+    return new URLSearchParams(window.location.search || '').get('operator') === '1'
+  } catch { return false }
+}
+
 // Product Truth: the Realtime path dropped to the free Web-Speech pipeline.
 // Silent to Martita, but NEVER hidden from the truth report / dashboard.
 function stampFallbackTruth(reason: string): void {
@@ -3319,6 +3330,7 @@ ${fewShotText}`
                 cursor: 'pointer',
               }}
             >ניקוי שיחה</button>
+            {isOperatorView() && (<>
             <button
               type="button"
               onClick={() => {
@@ -3386,11 +3398,12 @@ ${fewShotText}`
                 cursor: 'pointer',
               }}
             >📋 Copy Product Truth Report</button>
+            </>)}
           </div>
-          {/* Team 9 — PRODUCT TRUTH panel. Live, honest snapshot. Reads module
-              state + real diagnostic stores; the Web-Speech fallback is never
-              hidden here. Recomputed each render. */}
-          {(() => {
+          {/* Team 9 — PRODUCT TRUTH panel (OPERATOR-ONLY: dev or ?operator=1).
+              Live, honest snapshot; the Web-Speech fallback is never hidden here.
+              Recomputed each render. Never shown to Martita (English eng text). */}
+          {isOperatorView() && (() => {
             const p = getProductTruth()
             const row = (k: string, v: string, warn = false) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0' }}>

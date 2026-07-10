@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.54.0-voice-text-brain-unification')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — AbuAI voice=text brain unification: the mic transcript routes through the SAME ExecutiveCognitiveController as typed text (family/calendar/online/memory); Realtime = STT+TTS transport, brain answers; Product Truth proves BRAIN_PIPELINE_USED')
+    expect(APP_VERSION.version).toBe('0.55.0-hide-eng-text-from-martita')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Martita-facing hardening: Product Truth panel + Copy diagnostics are operator-only (?operator=1), never shown to Martita; raw browser/HTTP error strings no longer leak into voice/weather error copy (plain Hebrew only)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
