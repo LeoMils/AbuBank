@@ -22,6 +22,15 @@ import { recordTurn } from './liveTurnDiagnostics'
 import { APP_VERSION } from '../../version'
 import { observeTurn } from '../../evolution/observer'
 import { resolveConfig } from '../../evolution/config'
+import type { InputModality, LanguageChainTrace } from '../../evolution/traceEnvelope'
+
+/** Optional per-turn observation metadata from the calling surface (§7). Lets the
+ *  voice paths record the REAL input modality + language chain instead of the old
+ *  hard-coded 'text'. Absent → defaults to a typed turn (backward compatible). */
+export interface TurnObservation {
+  inputModality?: InputModality
+  language?: LanguageChainTrace
+}
 
 // Evolution OS config, resolved once. Env can only ever make it SAFER (kill switch),
 // never escalate past OBSERVE_ONLY — that is a code + human-approval change by design.
@@ -41,6 +50,7 @@ export async function executiveHandleTurn(
   input: string,
   ctx: RuntimeContext,
   tools: FullTurnTools,
+  obs?: TurnObservation,
 ): Promise<ExecutiveDecision> {
   const result = await runFullTurn(state, input, ctx, tools)
   // The executive never emits an unstamped answer.
@@ -80,7 +90,10 @@ export async function executiveHandleTurn(
       supervisorApproved: result.supervisor.approved,
       supervisorReasons: result.supervisor.reasons,
       appVersion: APP_VERSION.version,
-      modality: 'text', // controller is modality-agnostic today; threading voice is a documented next step
+      // Real input modality + language chain from the calling surface (§7); the
+      // coarse text/voice modality is DERIVED from this, no longer hard-coded.
+      inputModality: obs?.inputModality ?? 'typed',
+      ...(obs?.language ? { language: obs.language } : {}),
       ...(result.sideEffect ? { committedStateChanges: [result.sideEffect] } : {}),
     }, EVOLUTION_CFG)
   } catch { /* OBSERVE_ONLY must never break a turn */ }

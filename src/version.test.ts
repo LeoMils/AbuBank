@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.58.0-evolution-os-observe-slice')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Evolution OS (OBSERVE_ONLY): per-turn redacted trace envelope → durable append-only evidence queue → explicit/implicit/automatic signal detection → append-only case state machine. Structurally cannot change the served answer; global + per-domain kill switches. Beneath AbuAI, never rewriting it from raw feedback.')
+    expect(APP_VERSION.version).toBe('0.59.0-multilingual-voice-language-policy')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — P0 multilingual voice fix: one canonical LanguagePolicyResolver across typed/pipeline-mic/Realtime. STT AUTO-DETECTS per utterance (no more sticky-preference pin that transcribed Hebrew as Spanish); response and TTS follow the detected utterance; Realtime speaks the reply language. Voice state machine adds explicit failure states (no indefinite silent listening). Evolution trace records real input modality and full language chain.')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

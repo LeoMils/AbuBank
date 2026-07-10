@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.58.0-evolution-os-observe-slice'
-const BUILD_LABEL = 'AbuBank — Evolution OS (OBSERVE_ONLY): per-turn redacted trace envelope → durable append-only evidence queue → explicit/implicit/automatic signal detection → append-only case state machine. Structurally cannot change the served answer; global + per-domain kill switches. Beneath AbuAI, never rewriting it from raw feedback.'
+const BUILD_VERSION = '0.59.0-multilingual-voice-language-policy'
+const BUILD_LABEL = 'AbuBank — P0 multilingual voice fix: one canonical LanguagePolicyResolver across typed/pipeline-mic/Realtime. STT AUTO-DETECTS per utterance (no more sticky-preference pin that transcribed Hebrew as Spanish); response and TTS follow the detected utterance; Realtime speaks the reply language. Voice state machine adds explicit failure states (no indefinite silent listening). Evolution trace records real input modality and full language chain.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

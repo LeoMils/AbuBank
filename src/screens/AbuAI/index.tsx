@@ -76,6 +76,21 @@ import type { SilenceDetector } from '../../services/voice'
 import { injectSharedKeyframes } from '../../design/animations'
 import { soundProcessing, soundSuccess } from '../../services/sounds'
 import { RealtimeVoiceSession } from '../../services/realtimeVoice'
+import { detectUtteranceLanguage, resolveSttLanguage, preferenceFrom, resolveLanguageChain, type Lang as PolicyLang } from '../../services/languagePolicy'
+
+/** Build the Evolution language-chain trace (§7) for a voice turn. */
+function voiceLangTrace(utteranceText: string, voicePath: 'pipeline_microphone' | 'realtime_voice') {
+  const c = resolveLanguageChain({ utteranceText, preference: preferenceFrom(localStorage.getItem('abu-voice-lang')) })
+  return {
+    preferredLanguage: c.preferredLanguage,
+    detectedUtteranceLanguage: c.detectedUtteranceLanguage,
+    sttConfiguredLanguage: c.sttPlan.whisperLanguage, // null = auto-detect
+    responseLanguage: c.responseLanguage,
+    ttsLanguage: c.ttsLanguage,
+    voicePath,
+    transcriptProduced: true,
+  }
+}
 import type { RealtimeState } from '../../services/realtimeVoice'
 import { mediateError } from '../../services/errorMediation'
 import { mediateVoiceCaptureError } from '../../services/errorMediation'
@@ -1536,7 +1551,7 @@ export function AbuAI() {
         const myTurn = ++voiceTurnSeqRef.current
         const tools = buildFullTurnTools(currentMsgs, true)
         const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
-        const result = await ExecutiveCognitiveController.handleTurn(seed, effectiveText, { messages: currentMsgs, now: new Date() }, tools)
+        const result = await ExecutiveCognitiveController.handleTurn(seed, effectiveText, { messages: currentMsgs, now: new Date() }, tools, { inputModality: 'pipeline_microphone', language: voiceLangTrace(effectiveText, 'pipeline_microphone') })
         // Superseded by an interruption / phone-call return / a newer utterance?
         // Drop this stale turn: do NOT speak over her or overwrite runtime state.
         if (myTurn !== voiceTurnSeqRef.current || !voiceModeRef.current) return
@@ -2040,9 +2055,15 @@ export function AbuAI() {
     const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (WSR) {
       const rec = new WSR() as any
-      // v20: Respect language setting from Settings
-      const voiceLangSetting = localStorage.getItem('abu-voice-lang') || 'auto'
-      rec.lang = voiceLangSetting === 'es' ? 'es-AR' : 'he-IL'
+      // P0 fix (Hebrew-heard-as-Spanish): the browser recognizer needs ONE language
+      // and cannot auto-detect. Default to Hebrew (Martita's primary); use Spanish
+      // ONLY when the ACTIVE conversation is Spanish — a stale 'es' preference alone
+      // must never pin Spanish and make Hebrew unrecognizable. (Whisper, the primary
+      // STT, now auto-detects; WebSpeech is the fallback.)
+      const lastUser = [...messagesRef.current].reverse().find(m => m.role === 'user')
+      const det = lastUser ? detectUtteranceLanguage(lastUser.content) : 'unknown'
+      const convLang: PolicyLang | null = det === 'es' ? 'es' : det === 'he' ? 'he' : null
+      rec.lang = resolveSttLanguage({ preference: preferenceFrom(localStorage.getItem('abu-voice-lang')), conversationLanguage: convLang }).webSpeechLang
       rec.continuous = false
       rec.interimResults = true
       rec.maxAlternatives = 1
@@ -2420,7 +2441,7 @@ ${fewShotText}`
               const myTurn = ++voiceTurnSeqRef.current
               const tools = buildFullTurnTools(currentMsgs, true)
               const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
-              const result = await ExecutiveCognitiveController.handleTurn(seed, eff, { messages: currentMsgs, now: new Date() }, tools)
+              const result = await ExecutiveCognitiveController.handleTurn(seed, eff, { messages: currentMsgs, now: new Date() }, tools, { inputModality: 'realtime_voice', language: voiceLangTrace(eff, 'realtime_voice') })
               // Superseded by a barge-in / newer utterance? Drop this stale turn.
               if (myTurn !== voiceTurnSeqRef.current || !voiceModeRef.current) return
               cognitiveRuntimeStateRef.current = result.state

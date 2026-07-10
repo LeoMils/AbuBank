@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.58.0-evolution-os-observe-slice')
+    expect(APP_VERSION.version).toBe('0.59.0-multilingual-voice-language-policy')
   })
 })

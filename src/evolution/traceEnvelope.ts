@@ -13,9 +13,38 @@
  */
 import { redactText, redactDeep, assertInert, type PiiClass } from './redaction'
 
-export const TRACE_SCHEMA_VERSION = '1.0.0'
+export const TRACE_SCHEMA_VERSION = '1.1.0'
 
 export type Modality = 'text' | 'voice' | 'mixed'
+
+/** Precise input path (§7). 'typed' → coarse modality 'text'; the rest → 'voice'. */
+export type InputModality = 'typed' | 'pipeline_microphone' | 'realtime_voice' | 'mixed'
+
+/** The full language chain for a voice/text turn (§7) — proves the resolution path. */
+export interface LanguageChainTrace {
+  preferredLanguage?: string
+  detectedUtteranceLanguage?: string
+  sttConfiguredLanguage?: string | null   // null = auto-detect
+  sttDetectedLanguage?: string
+  responseLanguage?: string | null        // null = clarification requested
+  ttsLanguage?: string | null
+  voicePath?: 'realtime_voice' | 'pipeline_microphone' | 'typed' | 'fallback'
+  fallbackFrom?: string
+  fallbackTo?: string
+  fallbackReason?: string
+  transcriptProduced?: boolean
+  responseTextProduced?: boolean
+  responseAudioProduced?: boolean
+  audioPlaybackStarted?: boolean
+  audioPlaybackCompleted?: boolean
+  firstDivergence?: string
+}
+
+export function inputModalityToCoarse(m?: InputModality): Modality {
+  if (!m || m === 'typed') return 'text'
+  if (m === 'mixed') return 'mixed'
+  return 'voice'
+}
 
 export interface AbuTraceEnvelope {
   schemaVersion: string
@@ -30,6 +59,10 @@ export interface AbuTraceEnvelope {
   locale: string
   timezone: string
   modality: Modality
+  /** Precise input path (§7) — replaces the old hard-coded 'text' assumption. */
+  inputModality?: InputModality
+  /** The full language-resolution chain (§7) — proves mic → language → output. */
+  language?: LanguageChainTrace
   deviceClass?: string
   networkState?: string
 
@@ -115,6 +148,8 @@ export interface TurnFacts {
   locale?: string
   timezone?: string
   modality?: Modality
+  inputModality?: InputModality
+  language?: LanguageChainTrace
   deviceClass?: string
   networkState?: string
   input: string
@@ -187,7 +222,11 @@ export function buildEnvelope(facts: TurnFacts): AbuTraceEnvelope {
     completedAt: startedAt,
     locale: facts.locale ?? 'he-IL',
     timezone: facts.timezone ?? 'Asia/Jerusalem',
-    modality: facts.modality ?? 'text',
+    // Coarse modality is DERIVED from the precise input path (§7) — no longer a
+    // hard-coded 'text' assumption that mislabeled every voice turn.
+    modality: facts.inputModality ? inputModalityToCoarse(facts.inputModality) : (facts.modality ?? 'text'),
+    ...(facts.inputModality ? { inputModality: facts.inputModality } : {}),
+    ...(facts.language ? { language: facts.language } : {}),
     ...(facts.deviceClass ? { deviceClass: facts.deviceClass } : {}),
     ...(facts.networkState ? { networkState: facts.networkState } : {}),
     normalizedInput: inputR.text || undefined,

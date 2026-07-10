@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.58.0-evolution-os-observe-slice',
-  buildLabel: 'AbuBank — Evolution OS (OBSERVE_ONLY): per-turn redacted trace envelope → durable append-only evidence queue → explicit/implicit/automatic signal detection → append-only case state machine. Structurally cannot change the served answer; global + per-domain kill switches. Beneath AbuAI, never rewriting it from raw feedback.',
+  version:    '0.59.0-multilingual-voice-language-policy',
+  buildLabel: 'AbuBank — P0 multilingual voice fix: one canonical LanguagePolicyResolver across typed/pipeline-mic/Realtime. STT AUTO-DETECTS per utterance (no more sticky-preference pin that transcribed Hebrew as Spanish); response and TTS follow the detected utterance; Realtime speaks the reply language. Voice state machine adds explicit failure states (no indefinite silent listening). Evolution trace records real input modality and full language chain.',
   buildDate:  '2026-07-10',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

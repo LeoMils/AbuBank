@@ -13,6 +13,7 @@ import { deriveConversationMemory } from './conversationMemory'
 import { shapeFamilyAnswerES, shapeCalendarAnswerES, shapeLocationAnswerES, shapeCreateConfirmES, shapeCreateSavedES, shapeCreateCancelledES, shapeCreateClarifyES, calendarEventExtras, timeInWords, dateLabel } from './responseShaper'
 import { durable } from '../../services/durableStore'
 import { resolveRelationalQuery } from './relationalResolver'
+import { preferenceFrom, resolveSttLanguage } from '../../services/languagePolicy'
 
 // ─── Boundary-time parser for READ queries ("אחרי 5" / "לפני 10" / "אחרי שבע
 // בערב" / "לפני הצהריים"). More permissive than parseHebrewTime (which needs a
@@ -1141,14 +1142,20 @@ function buildSttFormData(audioBlob: Blob, model: string): FormData {
     : 'webm'
   formData.append('file', audioBlob, `recording.${ext}`)
   formData.append('model', model)
-  const voiceLang = localStorage.getItem('abu-voice-lang') || 'auto'
-  if (voiceLang === 'he' || voiceLang === 'auto') {
-    formData.append('language', 'he')
-    formData.append('prompt', 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.')
-  } else if (voiceLang === 'es') {
-    formData.append('language', 'es')
-    formData.append('prompt', 'Hola Martita, cómo estás, dale, bueno, familia, receta, empanadas, asado, Buenos Aires.')
-  }
+  // ── P0 FIX (Hebrew heard as Spanish): AUTO-DETECT per utterance. ──────────────
+  // Previously the Whisper `language` param was hard-pinned from the sticky
+  // `abu-voice-lang` preference, so a stale 'es' forced Hebrew audio to be
+  // transcribed as Spanish → no valid turn → silence. The canonical resolver now
+  // returns whisperLanguage=null (auto-detect); the preference only BIASES the
+  // prompt vocabulary (a soft spelling hint), never the audio's detected language.
+  const plan = resolveSttLanguage({ preference: preferenceFrom(localStorage.getItem('abu-voice-lang')) })
+  if (plan.whisperLanguage) formData.append('language', plan.whisperLanguage) // null → omitted → Whisper auto-detects
+  const HE_PROMPT = 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.'
+  const ES_PROMPT = 'Hola Martita, cómo estás, dale, bueno, familia, receta, empanadas, asado, Buenos Aires.'
+  // Only send a single-language prompt when the user EXPLICITLY chose a language;
+  // for 'auto' send no prompt so the audio alone drives detection (unbiased).
+  if (plan.promptBias === 'he') formData.append('prompt', HE_PROMPT)
+  else if (plan.promptBias === 'es') formData.append('prompt', ES_PROMPT)
   return formData
 }
 

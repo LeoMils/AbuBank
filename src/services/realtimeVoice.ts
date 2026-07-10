@@ -16,6 +16,7 @@
 // contract and are asserted by a guard test so an edit can't silently regress.
 
 import { HE_VOICE } from './voiceConfig'
+import { detectUtteranceLanguage } from './languagePolicy'
 
 const REALTIME_MODEL = 'gpt-realtime'
 const REALTIME_CALLS_URL = 'https://api.openai.com/v1/realtime/calls'
@@ -412,11 +413,16 @@ export class RealtimeVoiceSession {
   speak(brainReply: string): void {
     const text = (brainReply ?? '').trim()
     if (!text) return
+    // P0 fix (law #5): the spoken language follows the REPLY's language, not a
+    // hard-coded Hebrew — so a Spanish reply after a Hebrew turn (or vice-versa) is
+    // voiced correctly. Unknown/mixed → Hebrew (Martita's primary).
+    const lang = detectUtteranceLanguage(text)
+    const langWord = lang === 'es' ? 'Rioplatense (Argentine) Spanish' : 'Hebrew'
     this.sendEvent({
       type: 'response.create',
       response: {
         modalities: ['audio', 'text'],
-        instructions: `Read this reply to Martita out loud in Hebrew, warmly and naturally, EXACTLY as written — do not add, remove, translate, or invent anything:\n"${text}"`,
+        instructions: `Read this reply to Martita out loud in ${langWord}, warmly and naturally, EXACTLY as written — do not add, remove, translate, or invent anything:\n"${text}"`,
       },
     })
   }
