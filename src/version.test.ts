@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.57.0-family-alias-resolution')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — family name variants resolve to the grounded graph: אנבל→אנאבל, איליי→עילי, הדר→אדר (aliases added to family_graph.json + family_data.json, gender preserved)')
+    expect(APP_VERSION.version).toBe('0.58.0-evolution-os-observe-slice')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Evolution OS (OBSERVE_ONLY): per-turn redacted trace envelope → durable append-only evidence queue → explicit/implicit/automatic signal detection → append-only case state machine. Structurally cannot change the served answer; global + per-domain kill switches. Beneath AbuAI, never rewriting it from raw feedback.')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.57.0-family-alias-resolution',
-  buildLabel: 'AbuBank — family name variants resolve to the grounded graph: אנבל→אנאבל, איליי→עילי, הדר→אדר (aliases added to family_graph.json + family_data.json, gender preserved)',
+  version:    '0.58.0-evolution-os-observe-slice',
+  buildLabel: 'AbuBank — Evolution OS (OBSERVE_ONLY): per-turn redacted trace envelope → durable append-only evidence queue → explicit/implicit/automatic signal detection → append-only case state machine. Structurally cannot change the served answer; global + per-domain kill switches. Beneath AbuAI, never rewriting it from raw feedback.',
   buildDate:  '2026-07-10',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
