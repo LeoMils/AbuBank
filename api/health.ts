@@ -16,6 +16,8 @@
  * booleans plus the public build identity — nothing sensitive.
  */
 
+import { REALTIME_MODEL } from '../src/services/realtimeModel'
+
 export const config = { runtime: 'edge' }
 
 interface HealthResponse {
@@ -23,6 +25,7 @@ interface HealthResponse {
   buildVersion: string
   buildLabel: string
   serverTime: string
+  realtimeModel: string
   env: {
     OPENAI_API_KEY: 'present' | 'missing'
   }
@@ -37,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.59.0-multilingual-voice-language-policy'
-const BUILD_LABEL = 'AbuBank — P0 multilingual voice fix: one canonical LanguagePolicyResolver across typed/pipeline-mic/Realtime. STT AUTO-DETECTS per utterance (no more sticky-preference pin that transcribed Hebrew as Spanish); response and TTS follow the detected utterance; Realtime speaks the reply language. Voice state machine adds explicit failure states (no indefinite silent listening). Evolution trace records real input modality and full language chain.'
+const BUILD_VERSION = '0.59.1-iphone-voice-runtime-repair'
+const BUILD_LABEL = 'AbuBank — iPhone voice runtime repair: Realtime event contract updated to current OpenAI names (response.output_audio.*) with legacy fallback + unknown-event recording; transcription failure becomes explicit (no silent listening); shared realtime model constant (no drift); output audio play() awaited with a tap-to-play recovery; mic-track liveness checked. On-device Voice Flight Recorder (28 stages) + "העתקת אבחון קול" button makes the next iPhone test observable. NOT device-proven yet.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
@@ -48,6 +51,7 @@ export default function handler(_req: Request): Response {
     buildVersion: BUILD_VERSION,
     buildLabel: BUILD_LABEL,
     serverTime: new Date().toISOString(),
+    realtimeModel: REALTIME_MODEL,
     env: {
       OPENAI_API_KEY: openaiPresent ? 'present' : 'missing',
     },

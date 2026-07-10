@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.59.0-multilingual-voice-language-policy')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — P0 multilingual voice fix: one canonical LanguagePolicyResolver across typed/pipeline-mic/Realtime. STT AUTO-DETECTS per utterance (no more sticky-preference pin that transcribed Hebrew as Spanish); response and TTS follow the detected utterance; Realtime speaks the reply language. Voice state machine adds explicit failure states (no indefinite silent listening). Evolution trace records real input modality and full language chain.')
+    expect(APP_VERSION.version).toBe('0.59.1-iphone-voice-runtime-repair')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — iPhone voice runtime repair: Realtime event contract updated to current OpenAI names (response.output_audio.*) with legacy fallback + unknown-event recording; transcription failure becomes explicit (no silent listening); shared realtime model constant (no drift); output audio play() awaited with a tap-to-play recovery; mic-track liveness checked. On-device Voice Flight Recorder (28 stages) + "העתקת אבחון קול" button makes the next iPhone test observable. NOT device-proven yet.')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

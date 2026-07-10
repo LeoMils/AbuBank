@@ -7,14 +7,17 @@
  * key/provider problem we return a JSON error so the client falls back to the
  * free pipeline — never a raw provider error, never the long-lived key.
  */
+import { REALTIME_MODEL } from '../src/services/realtimeModel'
+
 export const config = { runtime: 'edge' }
 
 // 2026 Realtime API: the ephemeral-secret minter moved from the deprecated
 // /v1/realtime/sessions (now 404) to /v1/realtime/client_secrets, the model
 // family is gpt-realtime* (gpt-4o-realtime-preview is gone), the OpenAI-Beta
 // header is no longer required, and the token is returned at data.value.
+// REALTIME_MODEL is imported from the ONE shared source so the mint and the
+// client SDP call can never drift (Defect 3).
 const REALTIME_SESSION_URL = 'https://api.openai.com/v1/realtime/client_secrets'
-const REALTIME_MODEL = 'gpt-realtime'
 const REQUEST_TIMEOUT_MS = 10_000
 
 function isPlaceholderKey(k: string | undefined): boolean {
@@ -104,8 +107,9 @@ export default async function handler(req: Request): Promise<Response> {
   const clientSecret = d?.value ?? d?.client_secret?.value
   if (!clientSecret) return jsonError('REALTIME_PROVIDER_FAILED', 200, 'no_secret_in_response')
 
-  // Return ONLY the ephemeral secret (safe for browser use) — never the long-lived key.
-  return new Response(JSON.stringify({ ok: true, client_secret: clientSecret }), {
+  // Return ONLY the ephemeral secret (safe for browser use) — never the long-lived
+  // key. `model` lets the client assert the SDP call uses the SAME model (no drift).
+  return new Response(JSON.stringify({ ok: true, client_secret: clientSecret, model: REALTIME_MODEL }), {
     status: 200,
     headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
   })

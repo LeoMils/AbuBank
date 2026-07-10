@@ -17,8 +17,13 @@
 
 import { HE_VOICE } from './voiceConfig'
 import { detectUtteranceLanguage } from './languagePolicy'
+import { REALTIME_MODEL, assertNoModelDrift } from './realtimeModel'
+import { normalizeRealtimeEvent } from './realtimeEvents'
+import { currentVoiceFlight, type VoiceStage } from './voiceFlightRecorder'
 
-const REALTIME_MODEL = 'gpt-realtime'
+// Model comes from the ONE shared source (realtimeModel.ts) so the client secret,
+// SDP call, health, and diagnostics can never drift (Defect 3).
+export { REALTIME_MODEL }
 const REALTIME_CALLS_URL = 'https://api.openai.com/v1/realtime/calls'
 
 // The ephemeral-secret endpoint (server-side minter target). Exported +
@@ -74,6 +79,12 @@ export interface RealtimeCallbacks {
   onAssistantTranscript: (text: string) => void
   onAssistantDelta: (delta: string) => void
   onError: (error: string) => void
+  /** Server reported the user's speech could not be transcribed → the UI must show
+   *  TRANSCRIPTION_FAILED, never keep listening silently. */
+  onTranscriptFailed?: (code: string) => void
+  /** Remote audio arrived but the browser blocked play() (iOS autoplay) → the UI
+   *  must show the text + a "tap to play" recovery button. */
+  onAudioBlocked?: () => void
 }
 
 export class RealtimeVoiceSession {
@@ -91,6 +102,10 @@ export class RealtimeVoiceSession {
   private vadSilenceMs: number
   private pushToTalk: boolean    // noisy mode = push-to-talk (no server VAD)
   private _listenMode: boolean   // v23: passive listening — transcribe but don't respond
+  private unknownEvents: string[] = [] // unrecognized server event names (Defect 2 safety)
+
+  /** Server event names we did not recognize this session — surfaced for diagnostics. */
+  get unrecognizedEvents(): string[] { return [...this.unknownEvents] }
 
   constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void, noiseMode: 'quiet' | 'noisy' | 'listen' = 'quiet') {
     this.cb = callbacks
@@ -110,6 +125,14 @@ export class RealtimeVoiceSession {
     console.log(`[Realtime] ${this._state} → ${s}`)
     this._state = s
     this.cb.onStateChange(s)
+  }
+
+  /** Mark a Voice Flight Recorder stage (safe no-op if no active flight). */
+  private stage(s: VoiceStage, status: 'ok' | 'warn' | 'fail', opts?: { errorCode?: string; detail?: string }): void {
+    try { currentVoiceFlight()?.mark(s, status, Date.now(), opts) } catch { /* diag must never break voice */ }
+  }
+  private setFlightCtx(patch: Parameters<NonNullable<ReturnType<typeof currentVoiceFlight>>['setContext']>[0]): void {
+    try { currentVoiceFlight()?.setContext(patch) } catch { /* */ }
   }
 
   async connect(): Promise<void> {
@@ -138,7 +161,10 @@ export class RealtimeVoiceSession {
         }),
       })
 
-      const sessionData = await tokenRes.json().catch(() => null) as { ok?: boolean; client_secret?: string; error?: string } | null
+      const sessionData = await tokenRes.json().catch(() => null) as { ok?: boolean; client_secret?: string; error?: string; model?: string } | null
+      // Reject model drift between the mint and the SDP call (Defect 3) — a mismatch
+      // silently breaks the session.
+      if (sessionData?.model) { try { assertNoModelDrift(sessionData.model, REALTIME_MODEL) } catch (e) { console.error('[Realtime]', (e as Error).message) } }
       if (!tokenRes.ok || !sessionData?.ok || !sessionData.client_secret) {
         const code = sessionData?.error ?? String(tokenRes.status)
         const isQuota = code === 'REALTIME_QUOTA'
@@ -152,9 +178,12 @@ export class RealtimeVoiceSession {
       }
 
       const ephemeralKey = sessionData.client_secret
+      this.stage('REALTIME_TOKEN_RECEIVED', 'ok')
+      this.setFlightCtx({ path: 'realtime_voice', model: REALTIME_MODEL })
 
       // 2. Create WebRTC peer connection
       this.pc = new RTCPeerConnection()
+      this.stage('PEER_CONNECTION_CREATED', 'ok')
 
       // v24.3: 10-second connection timeout — if data channel doesn't open, fail fast
       let connected = false
@@ -166,12 +195,28 @@ export class RealtimeVoiceSession {
         }
       }, 10_000)
 
-      // 3. Audio output — play AI voice through speaker
+      // 3. Audio output — play AI voice through speaker. iOS Safari needs BOTH
+      // autoplay AND playsInline, and it may STILL reject play() outside a gesture;
+      // we await/catch the play() Promise and surface an explicit recovery path
+      // rather than assuming the user heard audio.
       this.audioEl = document.createElement('audio')
       this.audioEl.autoplay = true
+      ;(this.audioEl as unknown as { playsInline: boolean }).playsInline = true
       this.pc.ontrack = (event) => {
         if (this.audioEl && event.streams[0]) {
           this.audioEl.srcObject = event.streams[0]
+          this.stage('REMOTE_AUDIO_TRACK_RECEIVED', 'ok')
+          this.setFlightCtx({ audioEl: { paused: this.audioEl.paused, muted: this.audioEl.muted, volume: this.audioEl.volume } })
+          this.stage('AUDIO_PLAY_REQUESTED', 'ok')
+          const played = this.audioEl.play()
+          if (played && typeof played.then === 'function') {
+            played.then(() => this.stage('AUDIO_PLAY_STARTED', 'ok'))
+              .catch((e: unknown) => {
+                // Playback blocked (iOS autoplay policy) — NOT proof the user heard audio.
+                this.stage('AUDIO_PLAY_STARTED', 'fail', { errorCode: 'play_rejected', detail: String((e as Error)?.name ?? e).slice(0, 40) })
+                this.cb.onAudioBlocked?.()
+              })
+          }
         }
       }
 
@@ -179,7 +224,10 @@ export class RealtimeVoiceSession {
       this.pc.oniceconnectionstatechange = () => {
         const iceState = this.pc?.iceConnectionState
         console.log(`[Realtime] ICE state: ${iceState}`)
+        this.setFlightCtx({ iceState: iceState ?? '?', pcState: this.pc?.connectionState ?? '?' })
+        if (iceState === 'connected' || iceState === 'completed') this.stage('ICE_CONNECTED', 'ok')
         if (iceState === 'failed' || iceState === 'disconnected') {
+          this.stage('ICE_CONNECTED', 'fail', { errorCode: `ice_${iceState}` })
           clearTimeout(connectionTimeout)
           if (this._state !== 'idle') this.attemptReconnect()
         }
@@ -189,6 +237,17 @@ export class RealtimeVoiceSession {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
       })
+      this.stage('MEDIA_STREAM_CREATED', 'ok')
+      // Mic acceptance: a returned stream is NOT proof of a live audio track.
+      const micTrack = this.stream.getAudioTracks()[0]
+      this.setFlightCtx({ micTrack: micTrack ? { readyState: micTrack.readyState, enabled: micTrack.enabled, muted: micTrack.muted } : { readyState: 'none' } })
+      if (micTrack && micTrack.readyState === 'live') {
+        this.stage('AUDIO_TRACK_LIVE', 'ok')
+        micTrack.onended = () => this.stage('AUDIO_TRACK_LIVE', 'fail', { errorCode: 'track_ended' })
+        micTrack.onmute = () => this.setFlightCtx({ micTrack: { readyState: micTrack.readyState, enabled: micTrack.enabled, muted: true } })
+      } else {
+        this.stage('AUDIO_TRACK_LIVE', 'fail', { errorCode: `track_${micTrack?.readyState ?? 'none'}` })
+      }
       this.pc.addTrack(this.stream.getTracks()[0]!, this.stream)
 
       // 5. Data channel for events
@@ -198,6 +257,8 @@ export class RealtimeVoiceSession {
         clearTimeout(connectionTimeout)
         console.log('[Realtime] Data channel open')
         this.retryCount = 0
+        this.stage('DATA_CHANNEL_OPEN', 'ok')
+        this.setFlightCtx({ dcState: this.dc?.readyState ?? '?' })
 
         this.setState('listening')
 
@@ -213,6 +274,7 @@ export class RealtimeVoiceSession {
           instructions: this.instructions,
           voice: HE_VOICE.realtimeVoice,
         }))
+        this.stage('SESSION_UPDATE_SENT', 'ok')
 
         // Send greeting (skip in listen mode — passive)
         if (!this._listenMode) {
@@ -247,6 +309,7 @@ export class RealtimeVoiceSession {
       // 6. SDP exchange
       const offer = await this.pc.createOffer()
       await this.pc.setLocalDescription(offer)
+      this.stage('SDP_OFFER_CREATED', 'ok')
 
       const sdpRes = await fetch(
         `${REALTIME_CALLS_URL}?model=${REALTIME_MODEL}`,
@@ -260,7 +323,11 @@ export class RealtimeVoiceSession {
         },
       )
 
-      if (!sdpRes.ok) throw new Error(`SDP exchange failed (${sdpRes.status})`)
+      if (!sdpRes.ok) {
+        this.stage('SDP_ANSWER_RECEIVED', 'fail', { errorCode: `sdp_http_${sdpRes.status}` })
+        throw new Error(`SDP exchange failed (${sdpRes.status})`)
+      }
+      this.stage('SDP_ANSWER_RECEIVED', 'ok')
 
       const answerSdp = await sdpRes.text()
       await this.pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
@@ -282,53 +349,72 @@ export class RealtimeVoiceSession {
   }
 
   private handleEvent(event: any): void {
-    switch (event.type) {
+    // Normalize CURRENT + legacy server event names into one internal contract
+    // (Defect 2). A renamed output/transcription event is no longer silently dropped.
+    const { internal, raw, isBenign } = normalizeRealtimeEvent(event?.type ?? '')
+    switch (internal) {
+      case 'session_created':
+        break
+      case 'session_updated':
+        this.stage('SESSION_UPDATED_CONFIRMED', 'ok')
+        break
+
       // VAD detected speech start → user is talking
-      case 'input_audio_buffer.speech_started':
+      case 'speech_started':
+        this.stage('SPEECH_STARTED', 'ok')
         this.setState('listening')
         break
-
-      // VAD detected speech stop → AI will respond (unless listen mode)
-      case 'input_audio_buffer.speech_stopped':
+      case 'speech_stopped':
+        this.stage('SPEECH_STOPPED', 'ok')
+        break
+      case 'audio_committed':
+        this.stage('AUDIO_BUFFER_COMMITTED', 'ok')
         break
 
-      // AI auto-created a response — cancel it in listen mode
-      case 'response.created':
-        if (this._listenMode) {
-          // v23: Listen mode — cancel AI response, just keep transcribing
-          this.sendEvent({ type: 'response.cancel' })
+      // Streaming user transcription (current API)
+      case 'user_transcript_delta':
+        this.stage('TRANSCRIPTION_STARTED', 'ok')
+        break
+      case 'user_transcript_done':
+        this.stage('TRANSCRIPTION_COMPLETED', 'ok')
+        if (event.transcript) {
+          try { currentVoiceFlight()?.noteTranscript(event.transcript) } catch { /* */ }
+          this.cb.onUserTranscript(event.transcript)
         }
         break
+      // A transcription FAILURE must become explicit — never indefinite listening.
+      case 'user_transcript_failed': {
+        const code = String(event.error?.code ?? event.error?.type ?? 'transcription_failed').slice(0, 40)
+        this.stage('TRANSCRIPTION_COMPLETED', 'fail', { errorCode: code })
+        this.cb.onTranscriptFailed?.(code)
+        break
+      }
 
-      // AI started generating audio response
-      case 'response.audio.delta':
-        if (this._listenMode) break // suppress in listen mode
+      case 'response_created':
+        if (this._listenMode) this.sendEvent({ type: 'response.cancel' }) // listen mode: transcribe only
+        break
+
+      // AI audio output flowing (current: response.output_audio.delta; legacy mapped too)
+      case 'assistant_audio_delta':
+        if (this._listenMode) break
+        this.stage('OUTPUT_AUDIO_EVENT_RECEIVED', 'ok')
         if (this._state !== 'speaking') this.setState('speaking')
         break
-
-      // Streaming text transcript of AI speech
-      case 'response.audio_transcript.delta':
-        if (this._listenMode) break // v24: silent in meeting mode
+      case 'assistant_audio_done':
+        break
+      case 'assistant_transcript_delta':
+        if (this._listenMode) break
         if (event.delta) this.cb.onAssistantDelta(event.delta)
         break
-
-      // AI speech transcript complete
-      case 'response.audio_transcript.done':
-        if (this._listenMode) break // v24: silent in meeting mode
+      case 'assistant_transcript_done':
+        if (this._listenMode) break
         if (event.transcript) this.cb.onAssistantTranscript(event.transcript)
         break
 
-      // User speech transcript complete
-      case 'conversation.item.input_audio_transcription.completed':
-        if (event.transcript) this.cb.onUserTranscript(event.transcript)
-        break
-
-      // AI finished responding → back to listening
-      case 'response.done':
+      case 'response_done':
         this.setState('listening')
         break
 
-      // Error
       case 'error':
         console.error('[Realtime] Server error:', event.error)
         if (event.error?.code === 'session_expired' || event.error?.code === 'invalid_session') {
@@ -338,18 +424,15 @@ export class RealtimeVoiceSession {
         }
         break
 
-      // Rate limit
-      case 'rate_limits.updated':
+      case 'rate_limits':
         break
 
       default:
-        if (!['session.created', 'session.updated',
-             'response.output_item.added', 'response.output_item.done',
-             'response.content_part.added', 'response.content_part.done',
-             'conversation.item.created', 'response.audio.done',
-             'input_audio_buffer.committed', 'input_audio_buffer.cleared',
-        ].includes(event.type)) {
-          console.log('[Realtime] Event:', event.type)
+        // 'unknown' — a non-benign name we don't recognize. Record it (never ignore
+        // a real server event silently). Benign lifecycle chatter is skipped.
+        if (!isBenign && raw) {
+          console.log('[Realtime] Unknown server event:', raw)
+          this.unknownEvents.push(raw)
         }
     }
   }

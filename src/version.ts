@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.59.0-multilingual-voice-language-policy',
-  buildLabel: 'AbuBank — P0 multilingual voice fix: one canonical LanguagePolicyResolver across typed/pipeline-mic/Realtime. STT AUTO-DETECTS per utterance (no more sticky-preference pin that transcribed Hebrew as Spanish); response and TTS follow the detected utterance; Realtime speaks the reply language. Voice state machine adds explicit failure states (no indefinite silent listening). Evolution trace records real input modality and full language chain.',
+  version:    '0.59.1-iphone-voice-runtime-repair',
+  buildLabel: 'AbuBank — iPhone voice runtime repair: Realtime event contract updated to current OpenAI names (response.output_audio.*) with legacy fallback + unknown-event recording; transcription failure becomes explicit (no silent listening); shared realtime model constant (no drift); output audio play() awaited with a tap-to-play recovery; mic-track liveness checked. On-device Voice Flight Recorder (28 stages) + "העתקת אבחון קול" button makes the next iPhone test observable. NOT device-proven yet.',
   buildDate:  '2026-07-10',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

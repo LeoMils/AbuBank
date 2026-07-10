@@ -77,6 +77,10 @@ import { injectSharedKeyframes } from '../../design/animations'
 import { soundProcessing, soundSuccess } from '../../services/sounds'
 import { RealtimeVoiceSession } from '../../services/realtimeVoice'
 import { detectUtteranceLanguage, resolveSttLanguage, preferenceFrom, resolveLanguageChain, type Lang as PolicyLang } from '../../services/languagePolicy'
+import { nextVoiceState, failureLine, type VoiceState as CanonicalVoiceState } from '../../services/voiceStateMachine'
+import { startVoiceFlight, currentVoiceFlight, copyVoiceReport } from '../../services/voiceFlightRecorder'
+import { REALTIME_MODEL } from '../../services/realtimeModel'
+import { APP_VERSION } from '../../version'
 
 /** Build the Evolution language-chain trace (§7) for a voice turn. */
 function voiceLangTrace(utteranceText: string, voicePath: 'pipeline_microphone' | 'realtime_voice') {
@@ -123,11 +127,14 @@ function nextId(): string {
 
 // ─── Voice State Machine ─────────────────────────────────────────────────────
 // Explicit states with instrumented transitions
-type VoiceState = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'RESPONDING' | 'INTERRUPTED' | 'RECOVERING' | 'ERROR'
+// Coarse UI phase (distinct from the canonical detailed machine in
+// services/voiceStateMachine.ts, which owns the fine-grained + failure states).
+// Renamed from the old `VoiceState` so there is no second competing `VoiceState`.
+type VoiceUIPhase = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'RESPONDING' | 'INTERRUPTED' | 'RECOVERING' | 'ERROR'
 
-const VOICE_STATE_LOG: Array<{ from: VoiceState; to: VoiceState; ts: number; reason: string }> = []
+const VOICE_STATE_LOG: Array<{ from: VoiceUIPhase; to: VoiceUIPhase; ts: number; reason: string }> = []
 
-function logVoiceTransition(from: VoiceState, to: VoiceState, reason: string) {
+function logVoiceTransition(from: VoiceUIPhase, to: VoiceUIPhase, reason: string) {
   const entry = { from, to, ts: Date.now(), reason }
   VOICE_STATE_LOG.push(entry)
   if (VOICE_STATE_LOG.length > 100) VOICE_STATE_LOG.shift()
@@ -224,7 +231,11 @@ export function AbuAI() {
   // Voice conversation mode — explicit state machine (v20)
   const [voiceMode, setVoiceMode] = useState(false)
   const [voicePhase, setVoicePhase] = useState<'greeting' | 'listening' | 'processing' | 'speaking' | null>(null)
-  const [voiceState, setVoiceState] = useState<VoiceState>('IDLE')
+  const [voiceState, setVoiceState] = useState<VoiceUIPhase>('IDLE')
+  // Canonical detailed voice state (services/voiceStateMachine.ts) — drives explicit
+  // failure states so the mic never waits silently after a completed utterance.
+  const canonicalVoiceRef = useRef<CanonicalVoiceState>('IDLE')
+  const [audioBlocked, setAudioBlocked] = useState(false) // Realtime audio play() rejected → show tap-to-play
   const [audioLevel, setAudioLevel] = useState(0)
   const [listenCountdown, setListenCountdown] = useState<number | null>(null)
   const [lastHeardText, setLastHeardText] = useState('')  // v20: transcript feedback
@@ -376,7 +387,7 @@ export function AbuAI() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const messagesRef = useRef<ChatMessage[]>([])
   const voiceModeRef = useRef(false)
-  const voiceStateRef = useRef<VoiceState>('IDLE')
+  const voiceStateRef = useRef<VoiceUIPhase>('IDLE')
   const silenceRef = useRef<SilenceDetector | null>(null)
   const levelRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recognitionRef = useRef<any>(null)
@@ -399,7 +410,7 @@ export function AbuAI() {
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
 
   // Sync voice state ref
-  const transitionVoice = useCallback((to: VoiceState, reason: string) => {
+  const transitionVoice = useCallback((to: VoiceUIPhase, reason: string) => {
     const from = voiceStateRef.current
     if (from === to) return
     logVoiceTransition(from, to, reason)
@@ -2367,9 +2378,22 @@ ${fewShotText}`
     }
 
     unlockIOSAudio()
+    // ── Voice Flight Recorder: begin a fresh turn recording INSIDE the user gesture.
+    // This is what makes the next iPhone test observable (first missing/failed stage).
+    const secure = typeof window !== 'undefined' && window.isSecureContext
+    const rec = startVoiceFlight(`turn-${Date.now()}`, Date.now())
+    rec.setContext({
+      appVersion: APP_VERSION.version, commit: APP_VERSION.commitHint, model: REALTIME_MODEL,
+      secureContext: secure, ua: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+    })
+    rec.mark('USER_GESTURE_RECEIVED', 'ok', Date.now())
+    rec.mark('SECURE_CONTEXT', secure ? 'ok' : 'fail', Date.now(), secure ? undefined : { errorCode: 'insecure_context' })
+    rec.mark('MICROPHONE_PERMISSION_REQUESTED', 'ok', Date.now())
+    canonicalVoiceRef.current = nextVoiceState('IDLE', 'enter') // → REQUESTING_PERMISSION
+    setAudioBlocked(false)
     // Device-debuggable audio-unlock evidence (must run inside the tap gesture on iOS).
     // eslint-disable-next-line no-console
-    console.log(`[AbuAI][VOICE] AUDIO_UNLOCK_STATUS=attempted secureContext=${typeof window !== 'undefined' && window.isSecureContext}`)
+    console.log(`[AbuAI][VOICE] AUDIO_UNLOCK_STATUS=attempted secureContext=${secure}`)
     acquireWakeLock()
     setVoiceMode(true)
     voiceModeRef.current = true
@@ -2395,7 +2419,7 @@ ${fewShotText}`
     // Use OpenAI Realtime API (WebRTC) — native audio, < 2s response
     if (useRealtime) {
       diagReset()
-      diagSet({ sttProvider: 'Realtime (WebRTC)', sttFileType: 'native', ttsProvider: 'OpenAI Realtime', ttsModel: 'gpt-realtime', ttsVoice: 'shimmer', responseSource: 'Realtime native audio' })
+      diagSet({ sttProvider: 'Realtime (WebRTC)', sttFileType: 'native', ttsProvider: 'OpenAI Realtime', ttsModel: REALTIME_MODEL, ttsVoice: 'shimmer', responseSource: 'Realtime native audio' })
       setRealtimeTranscript('')
       realtimeEverConnectedRef.current = false // fresh session — initial failure stays silent
       const session = new RealtimeVoiceSession(
@@ -2441,7 +2465,10 @@ ${fewShotText}`
               const myTurn = ++voiceTurnSeqRef.current
               const tools = buildFullTurnTools(currentMsgs, true)
               const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
+              currentVoiceFlight()?.mark('TRANSCRIPT_LANGUAGE_RESOLVED', 'ok', Date.now(), { detail: detectUtteranceLanguage(eff) })
+              currentVoiceFlight()?.mark('ABUAI_BRAIN_STARTED', 'ok', Date.now())
               const result = await ExecutiveCognitiveController.handleTurn(seed, eff, { messages: currentMsgs, now: new Date() }, tools, { inputModality: 'realtime_voice', language: voiceLangTrace(eff, 'realtime_voice') })
+              currentVoiceFlight()?.mark('ABUAI_BRAIN_COMPLETED', 'ok', Date.now())
               // Superseded by a barge-in / newer utterance? Drop this stale turn.
               if (myTurn !== voiceTurnSeqRef.current || !voiceModeRef.current) return
               cognitiveRuntimeStateRef.current = result.state
@@ -2453,6 +2480,7 @@ ${fewShotText}`
               // so it never self-answers — it only reads AbuAI's reply). Suppress the echo.
               suppressRealtimeAssistantMsgRef.current = true
               realtimeRef.current?.speak(result.speak)
+              currentVoiceFlight()?.mark('RESPONSE_CREATE_SENT', 'ok', Date.now())
             })()
           },
           onAssistantTranscript: (text) => {
@@ -2488,6 +2516,23 @@ ${fewShotText}`
               }
               return [...prev, errorMsg]
             })
+          },
+          // A server transcription FAILURE becomes an explicit state — never silent
+          // indefinite listening (drives the canonical voiceStateMachine).
+          onTranscriptFailed: (code) => {
+            canonicalVoiceRef.current = nextVoiceState('TRANSCRIBING', 'transcript_failed') // → TRANSCRIPTION_FAILED
+            const line = failureLine('TRANSCRIPTION_FAILED')
+            if (line) setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: line, timestamp: Date.now() }])
+            // eslint-disable-next-line no-console
+            console.log(`[AbuAI][VOICE] TRANSCRIPTION_FAILED code=${code}`)
+          },
+          // Remote audio arrived but the browser blocked play() → show the reply text
+          // AND a visible "tap to play" recovery button. Never assume she heard audio.
+          onAudioBlocked: () => {
+            canonicalVoiceRef.current = nextVoiceState('SPEAKING', 'audio_failed') // → AUDIO_PLAYBACK_FAILED
+            setAudioBlocked(true)
+            const line = failureLine('AUDIO_PLAYBACK_FAILED')
+            if (line) setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: line, timestamp: Date.now() }])
           },
         },
         buildRealtimeInstructions(),
@@ -2917,6 +2962,25 @@ ${fewShotText}`
             gap: 0,
             cursor: 'pointer',
           }}>
+
+          {/* Recovery: iOS blocked audio playback → a visible gesture button to enable sound. */}
+          {audioBlocked && (
+            <button
+              onClick={(e) => { e.stopPropagation(); unlockIOSAudio(); setAudioBlocked(false); canonicalVoiceRef.current = 'LISTENING' }}
+              style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 20,
+                padding: '12px 20px', minHeight: 48, borderRadius: 14, border: 'none', background: GOLD, color: '#0b1020',
+                fontSize: 18, fontFamily: "'Heebo',sans-serif", fontWeight: 700, cursor: 'pointer' }}
+            >לחצי כאן כדי להפעיל קול</button>
+          )}
+          {/* Voice Flight Recorder — copy a compact diagnostic Leo can paste (no Safari devtools). */}
+          <button
+            onClick={async (e) => { e.stopPropagation(); const txt = await copyVoiceReport(); setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'אבחון הקול הועתק. אפשר להדביק ללאו.', timestamp: Date.now() }]); console.log(txt) }}
+            aria-label="העתקת אבחון קול"
+            style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 20,
+              padding: '10px 16px', minHeight: 44, borderRadius: 12, border: '1px solid rgba(201,168,76,0.4)',
+              background: 'rgba(255,250,240,0.06)', color: 'rgba(245,240,232,0.8)', fontSize: 15,
+              fontFamily: "'Heebo',sans-serif", cursor: 'pointer' }}
+          >העתקת אבחון קול</button>
 
           {/* Large gold ring — 192px — v20: tappable for interruption */}
           <div
