@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.56.0-code-health-async-guards',
-  buildLabel: 'AbuBank — code-health hardening: STT route no longer leaks raw errors (typed code), Home geolocation callback no longer orphans a promise, AbuAI summary effect guards setState-after-unmount',
+  version:    '0.57.0-family-alias-resolution',
+  buildLabel: 'AbuBank — family name variants resolve to the grounded graph: אנבל→אנאבל, איליי→עילי, הדר→אדר (aliases added to family_graph.json + family_data.json, gender preserved)',
   buildDate:  '2026-07-10',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

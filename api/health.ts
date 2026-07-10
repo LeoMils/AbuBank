@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.56.0-code-health-async-guards'
-const BUILD_LABEL = 'AbuBank — code-health hardening: STT route no longer leaks raw errors (typed code), Home geolocation callback no longer orphans a promise, AbuAI summary effect guards setState-after-unmount'
+const BUILD_VERSION = '0.57.0-family-alias-resolution'
+const BUILD_LABEL = 'AbuBank — family name variants resolve to the grounded graph: אנבל→אנאבל, איליי→עילי, הדר→אדר (aliases added to family_graph.json + family_data.json, gender preserved)'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

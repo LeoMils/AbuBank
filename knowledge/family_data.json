@@ -93,7 +93,7 @@
       {
         "canonical_name": "Eili",
         "hebrew_name": "עילי",
-        "aliases": ["Ilai", "עילאי"],
+        "aliases": ["Ilai", "עילאי", "איליי"],
         "relationship": "grandson",
         "relationship_hebrew": "נכד (בן של מור ורפי), נשוי לירדן",
         "birthday": "04-08",
@@ -103,7 +103,7 @@
       {
         "canonical_name": "Adar",
         "hebrew_name": "אדר",
-        "aliases": [],
+        "aliases": ["הדר"],
         "relationship": "grandson",
         "relationship_hebrew": "נכד (הצעיר של מור ורפי)",
         "birthday": "02-28",
@@ -156,7 +156,7 @@
       {
         "canonical_name": "Anabel",
         "hebrew_name": "אנאבל",
-        "aliases": ["Annabel"],
+        "aliases": ["Annabel", "אנבל"],
         "relationship": "great_granddaughter",
         "relationship_hebrew": "נינה (בת של אופיר וגלעד)",
         "birthday": "10-01"

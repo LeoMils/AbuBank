@@ -184,7 +184,8 @@
       "canonical": "Eili",
       "aliases": [
         "Ilai",
-        "עילאי"
+        "עילאי",
+        "איליי"
       ],
       "gender": "male",
       "parents": [
@@ -205,7 +206,9 @@
       "id": "אדר",
       "hebrew": "אדר",
       "canonical": "Adar",
-      "aliases": [],
+      "aliases": [
+        "הדר"
+      ],
       "gender": "male",
       "parents": [
         "מור",
@@ -297,7 +300,8 @@
       "hebrew": "אנאבל",
       "canonical": "Anabel",
       "aliases": [
-        "Annabel"
+        "Annabel",
+        "אנבל"
       ],
       "gender": "female",
       "parents": [

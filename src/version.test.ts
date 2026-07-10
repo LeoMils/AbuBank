@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.56.0-code-health-async-guards')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — code-health hardening: STT route no longer leaks raw errors (typed code), Home geolocation callback no longer orphans a promise, AbuAI summary effect guards setState-after-unmount')
+    expect(APP_VERSION.version).toBe('0.57.0-family-alias-resolution')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — family name variants resolve to the grounded graph: אנבל→אנאבל, איליי→עילי, הדר→אדר (aliases added to family_graph.json + family_data.json, gender preserved)')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
