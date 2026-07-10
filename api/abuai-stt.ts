@@ -80,7 +80,10 @@ export default async function handler(req: Request): Promise<Response> {
       headers: { 'Content-Type': 'application/json' },
     })
   } catch (err) {
-    return new Response(JSON.stringify({ ok: false, error: String(err) }), {
+    // Never leak the raw provider/internal error to the client (matches the other
+    // routes). Log server-side only; return a fixed typed code.
+    console.error('[abuai-stt] failed:', err instanceof Error ? err.message : String(err))
+    return new Response(JSON.stringify({ ok: false, error: 'STT_PROVIDER_FAILED' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })

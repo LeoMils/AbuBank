@@ -223,16 +223,21 @@ export function AbuAI() {
     if (messages.length > 0 && messages.length % 10 === 0) {
       const msgData = messages.map(m => ({ role: m.role, content: m.content }))
       if (messages.length % 20 === 0) {
-        // Every 20 messages: generate LLM summary (async, non-blocking)
+        // Every 20 messages: generate LLM summary (async, non-blocking). Guard the
+        // late setState so it never fires after the component unmounts.
+        let cancelled = false
         generateLLMSummary(msgData, conversationSummary).then(updated => {
+          if (cancelled) return
           setConversationSummary(updated)
           saveSummary(updated)
         }).catch(() => {
+          if (cancelled) return
           // Fallback to pattern summary
           const updated = updateSummaryFromMessages(msgData, conversationSummary)
           setConversationSummary(updated)
           saveSummary(updated)
         })
+        return () => { cancelled = true }
       } else {
         // Every 10 messages: pattern-matching summary (instant)
         const updated = updateSummaryFromMessages(msgData, conversationSummary)
@@ -240,6 +245,7 @@ export function AbuAI() {
         saveSummary(updated)
       }
     }
+    return undefined
   }, [messages.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Calendar create conversation state machine

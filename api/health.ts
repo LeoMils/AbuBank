@@ -37,8 +37,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.55.0-hide-eng-text-from-martita'
-const BUILD_LABEL = 'AbuBank — Martita-facing hardening: Product Truth panel + Copy diagnostics are operator-only (?operator=1), never shown to Martita; raw browser/HTTP error strings no longer leak into voice/weather error copy (plain Hebrew only)'
+const BUILD_VERSION = '0.56.0-code-health-async-guards'
+const BUILD_LABEL = 'AbuBank — code-health hardening: STT route no longer leaks raw errors (typed code), Home geolocation callback no longer orphans a promise, AbuAI summary effect guards setState-after-unmount'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

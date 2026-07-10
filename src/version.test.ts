@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.55.0-hide-eng-text-from-martita')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Martita-facing hardening: Product Truth panel + Copy diagnostics are operator-only (?operator=1), never shown to Martita; raw browser/HTTP error strings no longer leak into voice/weather error copy (plain Hebrew only)')
+    expect(APP_VERSION.version).toBe('0.56.0-code-health-async-guards')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — code-health hardening: STT route no longer leaks raw errors (typed code), Home geolocation callback no longer orphans a promise, AbuAI summary effect guards setState-after-unmount')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

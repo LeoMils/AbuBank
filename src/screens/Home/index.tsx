@@ -98,10 +98,11 @@ export function Home() {
     }
     if (contacts.length === 0) {
       // No contacts — copy location to clipboard then open the family WhatsApp group
-      getCoords(async (lat, lng) => {
+      getCoords((lat, lng) => {
         const link = lat && lng ? `https://maps.google.com/maps?q=${lat},${lng}` : 'https://maps.google.com'
         const msg  = `📍 המיקום שלי:\n${link}`
-        try { await navigator.clipboard.writeText(msg) } catch { /* ignore */ }
+        // Fire-and-forget, but never orphan the promise (no unhandled rejection).
+        try { void navigator.clipboard?.writeText(msg).catch(() => {}) } catch { /* ignore */ }
         setLocToast(true)
         setTimeout(() => setLocToast(false), 4500)
         setTimeout(() => {

@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.55.0-hide-eng-text-from-martita',
-  buildLabel: 'AbuBank — Martita-facing hardening: Product Truth panel + Copy diagnostics are operator-only (?operator=1), never shown to Martita; raw browser/HTTP error strings no longer leak into voice/weather error copy (plain Hebrew only)',
+  version:    '0.56.0-code-health-async-guards',
+  buildLabel: 'AbuBank — code-health hardening: STT route no longer leaks raw errors (typed code), Home geolocation callback no longer orphans a promise, AbuAI summary effect guards setState-after-unmount',
   buildDate:  '2026-07-10',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

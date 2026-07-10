@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.55.0-hide-eng-text-from-martita')
+    expect(APP_VERSION.version).toBe('0.56.0-code-health-async-guards')
   })
 })
