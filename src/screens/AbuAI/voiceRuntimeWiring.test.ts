@@ -31,6 +31,17 @@ describe('Defect 1 — canonical voiceStateMachine is imported and USED by the r
     expect(index).toContain('onAudioBlocked')
     expect(index).toContain("failureLine('TRANSCRIPTION_FAILED')")
   })
+  it('REALTIME_AUDIO_TIMEOUT is wired: watchdog fires onAudioTimeout, recorded in Evolution, pipeline fallback', () => {
+    // Session side: watchdog + classification + cancel.
+    expect(realtime).toContain('REALTIME_AUDIO_TIMEOUT')
+    expect(realtime).toContain('onAudioTimeout')
+    expect(realtime).toContain('startAudioWatchdog')
+    expect(realtime).toContain("this.sendEvent({ type: 'response.cancel' })")
+    // Screen side: the timeout is recorded in Evolution and voiced via pipeline TTS.
+    expect(index).toContain('onAudioTimeout')
+    expect(index).toContain('observeTurn')
+    expect(index).toContain('handleRealtimeAudioFailure')
+  })
 })
 
 describe('Defect 2 — Realtime client uses the normalized (current + legacy) event contract', () => {

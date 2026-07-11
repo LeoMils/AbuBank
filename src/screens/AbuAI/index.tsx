@@ -89,6 +89,7 @@ import { detectUtteranceLanguage, resolveSttLanguage, preferenceFrom, resolveLan
 import { nextVoiceState, failureLine, type VoiceState as CanonicalVoiceState } from '../../services/voiceStateMachine'
 import { startVoiceFlight, currentVoiceFlight, copyVoiceReport } from '../../services/voiceFlightRecorder'
 import { decideRealtimeAudioFallback } from '../../services/ttsFallbackPolicy'
+import { observeTurn } from '../../evolution/observer'
 import { REALTIME_MODEL } from '../../services/realtimeModel'
 import { APP_VERSION } from '../../version'
 
@@ -2453,6 +2454,23 @@ ${fewShotText}`
         preference: preferenceFrom(localStorage.getItem('abu-voice-lang')),
         conversationLanguage: detForStt === 'es' ? 'es' : detForStt === 'he' ? 'he' : null,
       }).whisperLanguage
+      // Shared handler for BOTH realtime audio failure modes (play() blocked AND
+      // no-audio-event timeout): auto-voice the reply via pipeline TTS exactly once,
+      // else raise the visible tap-to-hear recovery. Never wait silently.
+      const handleRealtimeAudioFailure = (code: string) => {
+        canonicalVoiceRef.current = nextVoiceState('SPEAKING', 'audio_failed')
+        const dec = decideRealtimeAudioFallback(lastRealtimeReplyRef.current || null, realtimeTtsFallbackUsedRef.current)
+        if (dec.useFallback && dec.reply) {
+          realtimeTtsFallbackUsedRef.current = true
+          // eslint-disable-next-line no-console
+          console.log(`[AbuAI][VOICE] ${code} → pipeline TTS fallback (once)`)
+          void speakVoiceMode(toSpokenText(dec.reply))
+        } else {
+          setAudioBlocked(true)
+          const line = failureLine('AUDIO_PLAYBACK_FAILED')
+          if (line) setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: line, timestamp: Date.now() }])
+        }
+      }
       const session = new RealtimeVoiceSession(
         {
           onStateChange: (state) => {
@@ -2561,23 +2579,29 @@ ${fewShotText}`
             // eslint-disable-next-line no-console
             console.log(`[AbuAI][VOICE] TRANSCRIPTION_FAILED code=${code}`)
           },
-          // Realtime audio playback failed → auto-voice the SAME reply via the
-          // pipeline TTS chain (OpenAI → Gemini → Web Speech) EXACTLY ONCE. If that
-          // also fails to play, speakVoiceMode's recovery hook raises tap-to-hear.
-          // Never assume she heard audio; never fail silently.
-          onAudioBlocked: () => {
-            canonicalVoiceRef.current = nextVoiceState('SPEAKING', 'audio_failed') // → AUDIO_PLAYBACK_FAILED
-            const dec = decideRealtimeAudioFallback(lastRealtimeReplyRef.current || null, realtimeTtsFallbackUsedRef.current)
-            if (dec.useFallback && dec.reply) {
-              realtimeTtsFallbackUsedRef.current = true
-              // eslint-disable-next-line no-console
-              console.log('[AbuAI][VOICE] REALTIME_AUDIO_BLOCKED → pipeline TTS fallback (once)')
-              void speakVoiceMode(toSpokenText(dec.reply))
-            } else {
-              setAudioBlocked(true)
-              const line = failureLine('AUDIO_PLAYBACK_FAILED')
-              if (line) setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: line, timestamp: Date.now() }])
-            }
+          // Realtime audio playback failed (play() blocked) → auto-voice via pipeline
+          // TTS exactly once, else tap-to-hear. Never fail silently.
+          onAudioBlocked: () => handleRealtimeAudioFailure('REALTIME_AUDIO_BLOCKED'),
+          // A response.create succeeded but NO output-audio event arrived in time.
+          // Classify REALTIME_AUDIO_TIMEOUT, record it in Evolution (OBSERVE_ONLY),
+          // and fall back to pipeline TTS — never leave her waiting silently.
+          onAudioTimeout: (code) => {
+            try {
+              observeTurn({
+                ts: Date.now(),
+                sessionId: 'voice', turnId: `voice-audio-timeout-${Date.now()}`,
+                input: '', intent: 'voice', source: 'realtime_voice',
+                finalAnswer: lastRealtimeReplyRef.current || '',
+                inputModality: 'realtime_voice',
+                language: {
+                  voicePath: 'realtime_voice', responseTextProduced: true,
+                  responseAudioProduced: false, audioPlaybackStarted: false, audioPlaybackCompleted: false,
+                  fallbackFrom: 'realtime_voice', fallbackTo: 'pipeline_microphone',
+                  fallbackReason: code, firstDivergence: 'voice_synthesis',
+                },
+              })
+            } catch { /* OBSERVE_ONLY must never break the turn */ }
+            handleRealtimeAudioFailure(code)
           },
         },
         buildRealtimeInstructions(),

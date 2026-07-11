@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.62.0-audible-voice-recovery'
-const BUILD_LABEL = 'AbuBank — Audible-voice recovery (Phase A): pipeline TTS now has a Web Speech last-resort tier and returns a truthful played result; a failed playback raises a visible tap-to-hear button that re-speaks the reply; a Realtime per-turn audio failure auto-falls back to pipeline TTS exactly once; playback start is proven by a runtime counter (window.__abuTTSPlayed). No silent text-only success. STT Hebrew language pin + Family Phones import preserved. Voice-runtime repairs from 0.59.1 preserved.'
+const BUILD_VERSION = '0.63.0-realtime-audio-timeout'
+const BUILD_LABEL = 'AbuBank — REALTIME_AUDIO_TIMEOUT watchdog: if a Realtime response.create receives NO output-audio event within 5s, the attempt is cancelled, classified REALTIME_AUDIO_TIMEOUT, recorded in Evolution (voice_synthesis / fallbackReason), and voiced via pipeline TTS exactly once — never a silent wait. Builds on 0.62.0 audible-voice recovery (Web Speech tier + truthful played + tap-to-hear + playback-proof counter). Voice-runtime repairs from 0.59.1 preserved.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

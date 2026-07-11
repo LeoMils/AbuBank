@@ -88,7 +88,17 @@ export interface RealtimeCallbacks {
   /** Remote audio arrived but the browser blocked play() (iOS autoplay) → the UI
    *  must show the text + a "tap to play" recovery button. */
   onAudioBlocked?: () => void
+  /** A response.create succeeded but NO output-audio event arrived within the
+   *  watchdog window (REALTIME_AUDIO_TIMEOUT). The realtime audio attempt was
+   *  cancelled — the caller must voice the reply via pipeline TTS, never wait
+   *  silently. `code` is the classified reason for diagnostics/Evolution. */
+  onAudioTimeout?: (code: string) => void
 }
+
+// After a response.create that asks for audio, the first output-audio event should
+// arrive well within this window (target latency is sub-2s). If it does not, we
+// classify REALTIME_AUDIO_TIMEOUT and fall back to pipeline TTS.
+const AUDIO_EVENT_TIMEOUT_MS = 5000
 
 export class RealtimeVoiceSession {
   private pc: RTCPeerConnection | null = null
@@ -106,6 +116,7 @@ export class RealtimeVoiceSession {
   private pushToTalk: boolean    // noisy mode = push-to-talk (no server VAD)
   private _listenMode: boolean   // v23: passive listening — transcribe but don't respond
   private transcriptionLanguage: string // STT language pinned in session.update (Hebrew default)
+  private audioWatchdog: ReturnType<typeof setTimeout> | null = null // REALTIME_AUDIO_TIMEOUT guard
   private unknownEvents: string[] = [] // unrecognized server event names (Defect 2 safety)
 
   /** Server event names we did not recognize this session — surfaced for diagnostics. */
@@ -138,6 +149,28 @@ export class RealtimeVoiceSession {
   }
   private setFlightCtx(patch: Parameters<NonNullable<ReturnType<typeof currentVoiceFlight>>['setContext']>[0]): void {
     try { currentVoiceFlight()?.setContext(patch) } catch { /* */ }
+  }
+
+  /** Arm the REALTIME_AUDIO_TIMEOUT watchdog after a response.create that asks for
+   *  audio. Cleared the instant the first output-audio event arrives. */
+  private startAudioWatchdog(): void {
+    this.clearAudioWatchdog()
+    this.audioWatchdog = setTimeout(() => this.handleAudioTimeout(), AUDIO_EVENT_TIMEOUT_MS)
+  }
+  private clearAudioWatchdog(): void {
+    if (this.audioWatchdog) { clearTimeout(this.audioWatchdog); this.audioWatchdog = null }
+  }
+  /** No output-audio event arrived in time: classify it, CANCEL the realtime audio
+   *  attempt, and hand off to the caller (pipeline TTS) — never wait silently. */
+  private handleAudioTimeout(): void {
+    this.audioWatchdog = null
+    if (this._listenMode) return // passive mode never voices a reply
+    const code = 'REALTIME_AUDIO_TIMEOUT'
+    console.warn('[Realtime] no output-audio event within timeout → ' + code + ' (cancel + pipeline TTS)')
+    this.stage('OUTPUT_AUDIO_EVENT_RECEIVED', 'fail', { errorCode: code, detail: `no audio in ${AUDIO_EVENT_TIMEOUT_MS}ms` })
+    this.sendEvent({ type: 'response.cancel' }) // cancel the stalled realtime audio attempt
+    if (this._state === 'speaking') this.setState('listening')
+    this.cb.onAudioTimeout?.(code)
   }
 
   async connect(): Promise<void> {
@@ -367,6 +400,7 @@ export class RealtimeVoiceSession {
 
       // VAD detected speech start → user is talking
       case 'speech_started':
+        this.clearAudioWatchdog() // barge-in: user is speaking again, drop any pending voicing guard
         this.stage('SPEECH_STARTED', 'ok')
         this.setState('listening')
         break
@@ -403,6 +437,7 @@ export class RealtimeVoiceSession {
       // AI audio output flowing (current: response.output_audio.delta; legacy mapped too)
       case 'assistant_audio_delta':
         if (this._listenMode) break
+        this.clearAudioWatchdog() // output-audio arrived → the REALTIME_AUDIO_TIMEOUT guard is satisfied
         this.stage('OUTPUT_AUDIO_EVENT_RECEIVED', 'ok')
         if (this._state !== 'speaking') this.setState('speaking')
         break
@@ -514,10 +549,14 @@ export class RealtimeVoiceSession {
         instructions: `Read this reply to Martita out loud in ${langWord}, warmly and naturally, EXACTLY as written — do not add, remove, translate, or invent anything:\n"${text}"`,
       },
     })
+    // Arm the REALTIME_AUDIO_TIMEOUT watchdog: if no output-audio event arrives, we
+    // cancel this attempt and voice via pipeline TTS instead of waiting silently.
+    this.startAudioWatchdog()
   }
 
   /** Cancel current AI response (barge-in via tap) */
   interrupt(): void {
+    this.clearAudioWatchdog()
     this.sendEvent({ type: 'response.cancel' })
     this.setState('listening')
   }
@@ -529,6 +568,7 @@ export class RealtimeVoiceSession {
   }
 
   private cleanup(): void {
+    this.clearAudioWatchdog()
     if (this.dc) { try { this.dc.close() } catch {} this.dc = null }
     if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null }
     if (this.pc) { try { this.pc.close() } catch {} this.pc = null }

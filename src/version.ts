@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.62.0-audible-voice-recovery',
-  buildLabel: 'AbuBank — Audible-voice recovery (Phase A): pipeline TTS now has a Web Speech last-resort tier and returns a truthful played result; a failed playback raises a visible tap-to-hear button that re-speaks the reply; a Realtime per-turn audio failure auto-falls back to pipeline TTS exactly once; playback start is proven by a runtime counter (window.__abuTTSPlayed). No silent text-only success. STT Hebrew language pin + Family Phones import preserved. Voice-runtime repairs from 0.59.1 preserved.',
+  version:    '0.63.0-realtime-audio-timeout',
+  buildLabel: 'AbuBank — REALTIME_AUDIO_TIMEOUT watchdog: if a Realtime response.create receives NO output-audio event within 5s, the attempt is cancelled, classified REALTIME_AUDIO_TIMEOUT, recorded in Evolution (voice_synthesis / fallbackReason), and voiced via pipeline TTS exactly once — never a silent wait. Builds on 0.62.0 audible-voice recovery (Web Speech tier + truthful played + tap-to-hear + playback-proof counter). Voice-runtime repairs from 0.59.1 preserved.',
   buildDate:  '2026-07-12',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
