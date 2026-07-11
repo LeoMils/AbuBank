@@ -745,6 +745,22 @@ export function Settings() {
               cursor: 'pointer',
             }}
           >אבחון מערכת</button>
+          <button
+            type="button"
+            data-testid="settings-family-phones-link"
+            onClick={() => {
+              const w = window as unknown as { __abubankOpenFamilyPhones?: () => void }
+              if (typeof w.__abubankOpenFamilyPhones === 'function') w.__abubankOpenFamilyPhones()
+              else window.location.href = '/settings/family-phones'
+            }}
+            style={{
+              marginTop: 10, padding: '10px 16px', borderRadius: 12,
+              border: '1px solid rgba(37,211,102,0.45)',
+              background: 'rgba(37,211,102,0.10)',
+              color: '#bff5d3', fontSize: 14, fontWeight: 700,
+              fontFamily: "'Heebo','DM Sans',sans-serif", cursor: 'pointer',
+            }}
+          >מספרי טלפון משפחתיים</button>
         </div>
       ),
     },

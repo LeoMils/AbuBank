@@ -26,6 +26,8 @@ const AbuGames = lazy(() => import('./screens/AbuGames').then(m => ({ default: m
 const AbuWeather = lazy(() => import('./screens/AbuWeather').then(m => ({ default: m.AbuWeather })))
 const AbuCalendar = lazy(() => import('./screens/AbuCalendar').then(m => ({ default: m.AbuCalendar })))
 const FamilyGallery = lazy(() => import('./screens/FamilyGallery').then(m => ({ default: m.FamilyGallery })))
+const FamilyPhones = lazy(() => import('./screens/FamilyPhones').then(m => ({ default: m.FamilyPhones })))
+import { matchFamilyPhonesRoute, FAMILY_PHONES_PATH } from './screens/FamilyPhones/familyPhonesImport'
 import styles from './App.module.css'
 
 // T7.1: Loading fallback for lazy screens
@@ -80,6 +82,34 @@ export function App() {
   const setAdminInitComplete = useAppStore(s => s.setAdminInitComplete)
   const setInstallDismissed = useAppStore(s => s.setInstallDismissed)
   const { updateReady, applyUpdate } = useSWUpdate()
+
+  // Private Family Phones page (/settings/family-phones). Path-based so it opens
+  // DIRECTLY in iPhone Safari (Vercel SPA rewrite serves index.html; this detects
+  // the path on mount). Rendered as a top-level overlay to avoid touching the Shell
+  // and the Screen enum — zero risk to existing screens (incl. the voice work).
+  const [familyPhonesOpen, setFamilyPhonesOpen] = useState<boolean>(() => {
+    try { return matchFamilyPhonesRoute(window.location.pathname, window.location.hash) } catch { return false }
+  })
+  useEffect(() => {
+    const check = () => {
+      try { setFamilyPhonesOpen(matchFamilyPhonesRoute(window.location.pathname, window.location.hash)) } catch { /* */ }
+    }
+    window.addEventListener('popstate', check)
+    window.addEventListener('hashchange', check)
+    ;(window as unknown as { __abubankOpenFamilyPhones?: () => void }).__abubankOpenFamilyPhones = () => {
+      try { window.history.pushState({}, '', FAMILY_PHONES_PATH) } catch { /* */ }
+      setFamilyPhonesOpen(true)
+    }
+    return () => {
+      window.removeEventListener('popstate', check)
+      window.removeEventListener('hashchange', check)
+      delete (window as unknown as { __abubankOpenFamilyPhones?: () => void }).__abubankOpenFamilyPhones
+    }
+  }, [])
+  const closeFamilyPhones = () => {
+    try { if (window.location.pathname === FAMILY_PHONES_PATH) window.history.pushState({}, '', '/') } catch { /* */ }
+    setFamilyPhonesOpen(false)
+  }
 
   // P0.3 — app-wide diagnostic overlay. Visible whenever the user
   // navigates to ?diagnostics=1 / ?diagnostic=1 / #diagnostics, or when
@@ -210,6 +240,12 @@ export function App() {
       {updateReady && <UpdateToast onUpdate={applyUpdate} />}
 
       {diagOpen && <DiagnosticOverlay onClose={() => setDiagOpen(false)} />}
+
+      {familyPhonesOpen && (
+        <Suspense fallback={<ScreenLoader />}>
+          <ErrorBoundary><FamilyPhones onClose={closeFamilyPhones} /></ErrorBoundary>
+        </Suspense>
+      )}
 
       <div aria-live="polite" aria-atomic="true" className={styles.srOnly}>
         {SCREEN_LABELS[currentScreen]}

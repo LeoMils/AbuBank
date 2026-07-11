@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.59.1-iphone-voice-runtime-repair',
-  buildLabel: 'AbuBank — iPhone voice runtime repair: Realtime event contract updated to current OpenAI names (response.output_audio.*) with legacy fallback + unknown-event recording; transcription failure becomes explicit (no silent listening); shared realtime model constant (no drift); output audio play() awaited with a tap-to-play recovery; mic-track liveness checked. On-device Voice Flight Recorder (28 stages) + "העתקת אבחון קול" button makes the next iPhone test observable. NOT device-proven yet.',
+  version:    '0.60.0-private-family-phones-import',
+  buildLabel: 'AbuBank — Private Family Phones import at /settings/family-phones: select a .json file or paste the JSON array of { id, enabled, phoneE164 }; Israeli local + E.164 accepted and normalized; validated and matched to family by stable id; masked preview; explicit confirmation; stored ONLY in device-local IndexedDB. Import/replace/export/delete. Real numbers never touch Git, source, tests, logs, diagnostics, Evolution, Vercel, prompts, or SW cache. Voice-runtime repairs from 0.59.1 preserved.',
   buildDate:  '2026-07-10',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
