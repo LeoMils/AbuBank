@@ -34,8 +34,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.60.0-private-family-phones-import')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — Private Family Phones import at /settings/family-phones: select a .json file or paste the JSON array of { id, enabled, phoneE164 }; Israeli local + E.164 accepted and normalized; validated and matched to family by stable id; masked preview; explicit confirmation; stored ONLY in device-local IndexedDB. Import/replace/export/delete. Real numbers never touch Git, source, tests, logs, diagnostics, Evolution, Vercel, prompts, or SW cache. Voice-runtime repairs from 0.59.1 preserved.')
+    expect(APP_VERSION.version).toBe('0.60.1-family-phones-id-alias')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — Private Family Phones import at /settings/family-phones: select a .json file or paste the JSON array of { id, enabled, phoneE164 }; Israeli local + E.164 accepted and normalized; validated and matched to family by stable id; masked preview; explicit confirmation; stored ONLY in device-local IndexedDB. Import/replace/export/delete. Importer now resolves spelling aliases to the canonical family id (e.g. "rafi" → "raphi", per knowledge/family_data.json aliases) so the JSON stays the contract — no manual mapping. Real numbers never touch Git, source, tests, logs, diagnostics, Evolution, Vercel, prompts, or SW cache. Voice-runtime repairs from 0.59.1 preserved.')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

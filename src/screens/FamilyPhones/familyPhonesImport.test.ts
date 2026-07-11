@@ -33,6 +33,21 @@ describe('importContactsJSON — the exact record format, Israeli + E.164', () =
     expect(r.ok).toBe(true)
     expect(r.contacts[0]!.phoneE164).toBe('+972500000001')
   })
+  it('resolves the "rafi" spelling alias to canonical "raphi" (JSON is the contract)', () => {
+    const r = importContactsJSON(JSON.stringify([{ id: 'rafi', enabled: true, phoneE164: FAKE_E164 }]))
+    expect(r.ok).toBe(true)
+    expect(r.errors).toEqual([])
+    expect(r.contacts[0]!.id).toBe('raphi') // stored canonical, not the alias
+  })
+  it('validates a 12-record set that uses "rafi" — zero unknown ids', () => {
+    const ids = ['mor', 'leo', 'yael', 'rafi', 'ofir', 'ayalon', 'eili', 'adar', 'adi', 'noam', 'yarden', 'gilad']
+    const json = JSON.stringify(ids.map((id) => ({ id, enabled: false, phoneE164: '' })))
+    const r = importContactsJSON(json)
+    expect(r.errors).toEqual([])
+    expect(r.ok).toBe(true)
+    expect(r.contacts).toHaveLength(12)
+    expect(r.contacts.map((c) => c.id)).toContain('raphi')
+  })
   it('rejects an unknown id and a bad number', () => {
     expect(importContactsJSON(JSON.stringify([{ id: 'nobody', enabled: true, phoneE164: FAKE_E164 }])).ok).toBe(false)
     expect(importContactsJSON(JSON.stringify([{ id: 'mor', enabled: true, phoneE164: '12' }])).ok).toBe(false)

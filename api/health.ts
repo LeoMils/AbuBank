@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.59.1-iphone-voice-runtime-repair'
-const BUILD_LABEL = 'AbuBank — iPhone voice runtime repair: Realtime event contract updated to current OpenAI names (response.output_audio.*) with legacy fallback + unknown-event recording; transcription failure becomes explicit (no silent listening); shared realtime model constant (no drift); output audio play() awaited with a tap-to-play recovery; mic-track liveness checked. On-device Voice Flight Recorder (28 stages) + "העתקת אבחון קול" button makes the next iPhone test observable. NOT device-proven yet.'
+const BUILD_VERSION = '0.60.1-family-phones-id-alias'
+const BUILD_LABEL = 'AbuBank — Private Family Phones import at /settings/family-phones: select a .json file or paste the JSON array of { id, enabled, phoneE164 }; Israeli local + E.164 accepted and normalized; validated and matched to family by stable id; masked preview; explicit confirmation; stored ONLY in device-local IndexedDB. Import/replace/export/delete. Importer now resolves spelling aliases to the canonical family id (e.g. "rafi" → "raphi", per knowledge/family_data.json aliases) so the JSON stays the contract — no manual mapping. Real numbers never touch Git, source, tests, logs, diagnostics, Evolution, Vercel, prompts, or SW cache. Voice-runtime repairs from 0.59.1 preserved.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

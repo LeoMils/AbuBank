@@ -47,6 +47,29 @@ export function isKnownContactId(id: string): boolean {
   return KNOWN_CONTACT_IDS.has(id)
 }
 
+/**
+ * Accepted id aliases → canonical scaffold id. The JSON import is a stable
+ * contract: the operator writes the family's own spelling, not our internal
+ * romanization. These mirror the `aliases` field of the canonical family graph
+ * (knowledge/family_data.json) — e.g. "Rafi" is a documented alias of canonical
+ * "Raphi". Resolution happens at the import/save boundary so the STORED id is
+ * always canonical and the runtime bubble merge (which iterates scaffold ids)
+ * still renders the person.
+ */
+export const CONTACT_ID_ALIASES: Readonly<Record<string, string>> = {
+  rafi: 'raphi', // רפי — ex-son-in-law; canonical scaffold id is "raphi"
+}
+
+/**
+ * Canonicalize an incoming contact id: trim + lower-case for tolerance, then map
+ * a known alias to its stable scaffold id. Unknown ids pass through unchanged so
+ * the caller still reports them as unknown.
+ */
+export function resolveContactId(id: string): string {
+  const key = String(id ?? '').trim().toLowerCase()
+  return CONTACT_ID_ALIASES[key] ?? key
+}
+
 export interface LocalFamilyContact {
   id: string
   enabled: boolean
@@ -199,8 +222,8 @@ export interface SaveResult {
 
 export function upsertLocalContact(contact: LocalFamilyContact, storage: StorageLike | null = defaultStorage()): SaveResult {
   const errors: string[] = []
-  // Normalize Israeli local numbers before validation
-  contact = { ...contact, phoneE164: normalizeIsraeliPhone(contact.phoneE164) }
+  // Canonicalize the id (alias → stable id) and normalize Israeli numbers.
+  contact = { ...contact, id: resolveContactId(contact.id), phoneE164: normalizeIsraeliPhone(contact.phoneE164) }
   if (contact.whatsappE164) contact = { ...contact, whatsappE164: normalizeIsraeliPhone(contact.whatsappE164) }
   if (!isLocalFamilyContactShape(contact)) errors.push('invalid contact shape')
   if (!isKnownContactId(contact.id)) errors.push(`unknown contact id "${contact.id}"`)
@@ -233,9 +256,13 @@ export function importContactsJSON(jsonText: string): ImportResult {
   const out: LocalFamilyContact[] = []
   parsed.forEach((raw, i) => {
     if (!isLocalFamilyContactShape(raw)) { errors.push(`item ${i}: invalid shape`); return }
-    if (!isKnownContactId(raw.id)) { errors.push(`item ${i}: unknown id "${raw.id}"`); return }
-    if (seen.has(raw.id)) { errors.push(`item ${i}: duplicate id "${raw.id}"`); return }
-    seen.add(raw.id)
+    // Resolve spelling aliases (e.g. "rafi" → canonical "raphi") before the
+    // known-id gate, then store the canonical id so the runtime merge renders it.
+    const id = resolveContactId(raw.id)
+    if (!isKnownContactId(id)) { errors.push(`item ${i}: unknown id "${raw.id}"`); return }
+    if (seen.has(id)) { errors.push(`item ${i}: duplicate id "${raw.id}"`); return }
+    seen.add(id)
+    raw.id = id
     // Normalize Israeli local numbers before validation
     raw.phoneE164 = normalizeIsraeliPhone(raw.phoneE164)
     if (raw.whatsappE164) raw.whatsappE164 = normalizeIsraeliPhone(raw.whatsappE164)
@@ -274,8 +301,9 @@ export function validateContacts(input: unknown): { valid: LocalFamilyContact[];
   const valid: LocalFamilyContact[] = []
   input.forEach((item, i) => {
     if (!isLocalFamilyContactShape(item)) { errors.push(`item ${i}: invalid shape`); return }
-    if (!isKnownContactId(item.id)) { errors.push(`item ${i}: unknown id "${item.id}"`); return }
-    valid.push(item)
+    const id = resolveContactId(item.id)
+    if (!isKnownContactId(id)) { errors.push(`item ${i}: unknown id "${item.id}"`); return }
+    valid.push({ ...item, id })
   })
   return { valid, errors }
 }
