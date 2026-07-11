@@ -21,6 +21,19 @@ function getVoiceSpeed(lang: VoiceLang = 'he'): number {
 let currentAudio: HTMLAudioElement | null = null
 let _currentAudioSource: AudioBufferSourceNode | null = null // v20.1: track for stopSpeaking
 
+// ── Playback proof (P0-1) ────────────────────────────────────────────────────
+// Incremented ONLY when real TTS audio actually started playing (an <audio>
+// element or an AudioContext BufferSource fired). This is the automated
+// "voice was audible" signal a Preview/browser test can assert — a visible-text
+// answer with this counter unchanged is a SILENT FAILURE, never allowed.
+let _ttsPlayedCount = 0
+function notePlaybackStarted(): void {
+  _ttsPlayedCount++
+  try { (globalThis as unknown as { __abuTTSPlayed?: number }).__abuTTSPlayed = _ttsPlayedCount } catch { /* non-browser */ }
+}
+/** Number of times real TTS audio has started playing this session (playback proof). */
+export function getTTSPlayedCount(): number { return _ttsPlayedCount }
+
 // Shared AudioContext — created once, reused across all unlock calls.
 // iOS Safari: once an AudioContext is resumed inside a user gesture, it stays
 // "running" for the tab's lifetime, allowing async audio.play() to work even
@@ -134,7 +147,7 @@ function playBlob(blob: Blob): Promise<boolean> {
     currentAudio = audio
     audio.onended = () => { currentAudio = null; URL.revokeObjectURL(url); resolve(true) }
     audio.onerror = () => { currentAudio = null; URL.revokeObjectURL(url); resolve(false) }
-    audio.play().catch(() => { currentAudio = null; URL.revokeObjectURL(url); resolve(false) })
+    audio.play().then(() => notePlaybackStarted()).catch(() => { currentAudio = null; URL.revokeObjectURL(url); resolve(false) })
   })
 }
 
@@ -160,6 +173,7 @@ async function playBlobViaAudioCtx(blob: Blob): Promise<boolean> {
       _currentAudioSource = src // v20.1: store ref so stopSpeaking can kill it
       src.onended = () => { _currentAudioSource = null; resolve(true) }
       src.start(0)
+      notePlaybackStarted()
     })
   } catch (e) {
     console.log('[TTS] AudioContext playback error:', e)
@@ -471,8 +485,8 @@ export function getVoiceDebug(): { config: string; lastEngine: string; lastVoice
   }
 }
 
-export async function speakVoiceMode(text: string): Promise<void> {
-  if (!text.trim()) return
+export async function speakVoiceMode(text: string): Promise<boolean> {
+  if (!text.trim()) return false
   const ttsStart = Date.now()
 
   // 1) OpenAI TTS (paid — server-proxied; key never in client) — skip only if TTS-specific quota exhausted
@@ -488,8 +502,8 @@ export async function speakVoiceMode(text: string): Promise<void> {
     if (error === 'TTS_QUOTA') { try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {} }
     if (blob && blob.size > 100) {
       const ok = await playBlobViaAudioCtx(blob)
-      if (ok) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via AudioCtx' }); return }
-      if (await playBlob(blob)) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via HTMLAudio' }); return }
+      if (ok) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via AudioCtx' }); return true }
+      if (await playBlob(blob)) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via HTMLAudio' }); return true }
     }
     ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: Date.now() - ttsStart, fallback: true, status: `❌ ${error ?? 'no audio'}` })
   } else {
@@ -499,11 +513,24 @@ export async function speakVoiceMode(text: string): Promise<void> {
   // 2) Gemini TTS (FREE with existing key)
   if (await speakGeminiViaAudioCtx(text)) {
     ttsTrace({ provider: 'Gemini', model: 'gemini-2.5-flash-preview-tts', voice: 'Kore', latencyMs: Date.now() - ttsStart, fallback: true, status: '✅ Gemini TTS' })
-    return
+    return true
   }
 
-  // All quality TTS failed — NO robot voice
-  ttsTrace({ provider: 'NONE', model: '-', voice: '-', latencyMs: Date.now() - ttsStart, fallback: true, status: '⚠️ ALL FAILED — text only' })
+  // 3) Web Speech API (FREE, last audible resort). Voice mode PREVIOUSLY skipped
+  //    this and returned "text only" — a SILENT failure (visible text, no voice).
+  //    Now we degrade gracefully to the system voice before giving up.
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      await speakWebAPI(text)
+      ttsTrace({ provider: 'WebSpeech', model: 'system', voice: '-', latencyMs: Date.now() - ttsStart, fallback: true, status: '✅ Web Speech (fallback)' })
+      return true
+    } catch { /* fall through to explicit failure */ }
+  }
+
+  // NO SILENT FAILURE: nothing could speak → the caller MUST surface a visible
+  // recovery ("tap to hear") + a precise failure state. Returns false to force it.
+  ttsTrace({ provider: 'NONE', model: '-', voice: '-', latencyMs: Date.now() - ttsStart, fallback: true, status: '⚠️ ALL FAILED — no audio (recovery required)' })
+  return false
 }
 
 // Gemini TTS via AudioContext for voice mode (bypasses iOS audio restrictions)
@@ -954,3 +981,15 @@ export function createSilenceDetector(
 
   return { stop: cleanup, getLevel: () => level }
 }
+
+// On-device / e2e voice diagnostics hook (mirrors voiceFlightRecorder's
+// __abuVoiceDiag): lets a browser/Preview test drive the REAL pipeline TTS and
+// read the playback-proof counter, so "audio actually played" is verifiable
+// without a human. Harmless (only speaks text); never exposes keys or data.
+try {
+  ;(globalThis as unknown as { __abuTTS?: Record<string, unknown> }).__abuTTS = {
+    speakVoiceMode,
+    getTTSPlayedCount,
+    getTTSTrace,
+  }
+} catch { /* non-browser */ }

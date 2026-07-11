@@ -56,7 +56,10 @@ describe('on-device diagnostics UI', () => {
     expect(index).toContain('העתקת אבחון קול')
     expect(index).toContain('copyVoiceReport')
   })
-  it('the "לחצי כאן כדי להפעיל קול" recovery button exists', () => {
-    expect(index).toContain('לחצי כאן כדי להפעיל קול')
+  it('the tap-to-hear recovery button exists and re-speaks (no silent failure)', () => {
+    expect(index).toContain('לחצי כאן כדי לשמוע שוב')
+    expect(index).toContain('data-testid="tap-to-hear"')
+    // The button must actually re-voice the last reply, not merely dismiss.
+    expect(index).toContain('lastSpokenTextRef')
   })
 })

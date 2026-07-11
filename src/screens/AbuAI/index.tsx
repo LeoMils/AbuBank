@@ -45,13 +45,19 @@ import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeak
  * so a "text shows but nothing spoke" report can be traced to the real engine
  * that ran (or failed) on the phone instead of guessing.
  */
-async function speakVoiceMode(text: string): Promise<void> {
-  const timeout = new Promise<void>((_, reject) =>
+// Registered by the AbuAI component so a TTS PLAYBACK failure can raise the
+// visible tap-to-hear recovery. The module-scope wrapper cannot touch React
+// state directly, so it calls this hook when nothing actually played.
+let _ttsRecoveryHandler: ((text: string) => void) | null = null
+
+async function speakVoiceMode(text: string): Promise<boolean> {
+  const timeout = new Promise<boolean>((_, reject) =>
     setTimeout(() => reject(new Error('TTS_TIMEOUT')), 15000)
   )
   let failed = false
+  let played = false
   try {
-    await Promise.race([_speakVoiceMode(text), timeout])
+    played = (await Promise.race([_speakVoiceMode(text), timeout])) === true
   } catch (err) {
     failed = true
     stopSpeaking()
@@ -61,14 +67,17 @@ async function speakVoiceMode(text: string): Promise<void> {
       const last = getTTSTrace().slice(-1)[0]
       const engine = last?.provider ?? 'UNKNOWN'
       const voice = last?.voice ?? '-'
-      const ok = !failed && !!last && !/❌|⚠️|FAIL/i.test(last.status) && engine !== 'NONE'
+      const ok = !failed && played && !!last && !/❌|⚠️|FAIL/i.test(last.status) && engine !== 'NONE'
       console.log(
         `[VOICE][TTS_EVIDENCE] TTS_ENGINE_USED=${engine} VOICE_NAME=${voice} ` +
-        `SPOKEN_TEXT_LENGTH=${(text ?? '').length} TTS_${ok ? 'SUCCESS' : 'FAIL'}` +
+        `SPOKEN_TEXT_LENGTH=${(text ?? '').length} TTS_${ok ? 'SUCCESS' : 'FAIL'} PLAYED=${played}` +
         (last ? ` status="${last.status}"` : '')
       )
     } catch { /* logging must never throw into the voice flow */ }
   }
+  // NO SILENT FAILURE: if no audio actually played, raise the visible recovery.
+  if (!played && _ttsRecoveryHandler) { try { _ttsRecoveryHandler(text) } catch { /* never break the flow */ } }
+  return played
 }
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
@@ -79,6 +88,7 @@ import { RealtimeVoiceSession } from '../../services/realtimeVoice'
 import { detectUtteranceLanguage, resolveSttLanguage, preferenceFrom, resolveLanguageChain, type Lang as PolicyLang } from '../../services/languagePolicy'
 import { nextVoiceState, failureLine, type VoiceState as CanonicalVoiceState } from '../../services/voiceStateMachine'
 import { startVoiceFlight, currentVoiceFlight, copyVoiceReport } from '../../services/voiceFlightRecorder'
+import { decideRealtimeAudioFallback } from '../../services/ttsFallbackPolicy'
 import { REALTIME_MODEL } from '../../services/realtimeModel'
 import { APP_VERSION } from '../../version'
 
@@ -235,7 +245,19 @@ export function AbuAI() {
   // Canonical detailed voice state (services/voiceStateMachine.ts) — drives explicit
   // failure states so the mic never waits silently after a completed utterance.
   const canonicalVoiceRef = useRef<CanonicalVoiceState>('IDLE')
-  const [audioBlocked, setAudioBlocked] = useState(false) // Realtime audio play() rejected → show tap-to-play
+  const [audioBlocked, setAudioBlocked] = useState(false) // playback did not start → show tap-to-hear
+  // P0-1: the last reply that SHOULD have been voiced (for tap-to-hear re-speak),
+  // the last reply handed to Realtime speak(), and a once-per-turn guard so a
+  // Realtime audio failure falls back to pipeline TTS exactly once.
+  const lastSpokenTextRef = useRef<string>('')
+  const lastRealtimeReplyRef = useRef<string>('')
+  const realtimeTtsFallbackUsedRef = useRef<boolean>(false)
+  // Register the module-scope TTS recovery hook: when nothing played, remember the
+  // text and raise the visible tap-to-hear recovery. No silent text-only success.
+  useEffect(() => {
+    _ttsRecoveryHandler = (t: string) => { lastSpokenTextRef.current = t; setAudioBlocked(true) }
+    return () => { _ttsRecoveryHandler = null }
+  }, [])
   const [audioLevel, setAudioLevel] = useState(0)
   const [listenCountdown, setListenCountdown] = useState<number | null>(null)
   const [lastHeardText, setLastHeardText] = useState('')  // v20: transcript feedback
@@ -2488,6 +2510,10 @@ ${fewShotText}`
               // Voice the BRAIN's answer through Realtime (model runs create_response:false,
               // so it never self-answers — it only reads AbuAI's reply). Suppress the echo.
               suppressRealtimeAssistantMsgRef.current = true
+              // Remember this reply so a Realtime audio-playback failure can auto-voice
+              // it via the pipeline TTS chain (exactly once — reset per turn).
+              lastRealtimeReplyRef.current = result.speak
+              realtimeTtsFallbackUsedRef.current = false
               realtimeRef.current?.speak(result.speak)
               currentVoiceFlight()?.mark('RESPONSE_CREATE_SENT', 'ok', Date.now())
             })()
@@ -2535,13 +2561,23 @@ ${fewShotText}`
             // eslint-disable-next-line no-console
             console.log(`[AbuAI][VOICE] TRANSCRIPTION_FAILED code=${code}`)
           },
-          // Remote audio arrived but the browser blocked play() → show the reply text
-          // AND a visible "tap to play" recovery button. Never assume she heard audio.
+          // Realtime audio playback failed → auto-voice the SAME reply via the
+          // pipeline TTS chain (OpenAI → Gemini → Web Speech) EXACTLY ONCE. If that
+          // also fails to play, speakVoiceMode's recovery hook raises tap-to-hear.
+          // Never assume she heard audio; never fail silently.
           onAudioBlocked: () => {
             canonicalVoiceRef.current = nextVoiceState('SPEAKING', 'audio_failed') // → AUDIO_PLAYBACK_FAILED
-            setAudioBlocked(true)
-            const line = failureLine('AUDIO_PLAYBACK_FAILED')
-            if (line) setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: line, timestamp: Date.now() }])
+            const dec = decideRealtimeAudioFallback(lastRealtimeReplyRef.current || null, realtimeTtsFallbackUsedRef.current)
+            if (dec.useFallback && dec.reply) {
+              realtimeTtsFallbackUsedRef.current = true
+              // eslint-disable-next-line no-console
+              console.log('[AbuAI][VOICE] REALTIME_AUDIO_BLOCKED → pipeline TTS fallback (once)')
+              void speakVoiceMode(toSpokenText(dec.reply))
+            } else {
+              setAudioBlocked(true)
+              const line = failureLine('AUDIO_PLAYBACK_FAILED')
+              if (line) setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: line, timestamp: Date.now() }])
+            }
           },
         },
         buildRealtimeInstructions(),
@@ -2973,14 +3009,23 @@ ${fewShotText}`
             cursor: 'pointer',
           }}>
 
-          {/* Recovery: iOS blocked audio playback → a visible gesture button to enable sound. */}
+          {/* Recovery: playback did not start → a visible gesture button that unlocks
+              audio AND RE-SPEAKS the last reply (tap-to-hear). No silent failure. */}
           {audioBlocked && (
             <button
-              onClick={(e) => { e.stopPropagation(); unlockIOSAudio(); setAudioBlocked(false); canonicalVoiceRef.current = 'LISTENING' }}
+              data-testid="tap-to-hear"
+              onClick={async (e) => {
+                e.stopPropagation()
+                unlockIOSAudio()
+                setAudioBlocked(false)
+                const t = lastSpokenTextRef.current
+                if (t) { canonicalVoiceRef.current = 'SPEAKING'; await speakVoiceMode(t) }
+                canonicalVoiceRef.current = 'LISTENING'
+              }}
               style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 20,
                 padding: '12px 20px', minHeight: 48, borderRadius: 14, border: 'none', background: GOLD, color: '#0b1020',
                 fontSize: 18, fontFamily: "'Heebo',sans-serif", fontWeight: 700, cursor: 'pointer' }}
-            >לחצי כאן כדי להפעיל קול</button>
+            >לחצי כאן כדי לשמוע שוב</button>
           )}
           {/* Voice Flight Recorder — copy a compact diagnostic Leo can paste (no Safari devtools). */}
           <button

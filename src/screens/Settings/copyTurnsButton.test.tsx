@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.61.0-stt-hebrew-language')
+    expect(APP_VERSION.version).toBe('0.62.0-audible-voice-recovery')
   })
 })

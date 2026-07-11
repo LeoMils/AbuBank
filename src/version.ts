@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.61.0-stt-hebrew-language',
-  buildLabel: 'AbuBank — Voice STT language fix: all three STT engines (Realtime gpt-4o-mini-transcribe, pipeline Groq Whisper, browser Web Speech) now pin an explicit language via the canonical resolveSttLanguage — Hebrew (her primary) by default, Spanish only for an ACTIVE Spanish conversation. Ends the blanket auto-detect that misheard short Hebrew ("בוקר טוב") as Russian/Cyrillic, without reintroducing the stale-preference Hebrew→Spanish bug. Family Phones import + "rafi"→"raphi" alias preserved. Voice-runtime repairs from 0.59.1 preserved.',
-  buildDate:  '2026-07-11',
+  version:    '0.62.0-audible-voice-recovery',
+  buildLabel: 'AbuBank — Audible-voice recovery (Phase A): pipeline TTS now has a Web Speech last-resort tier and returns a truthful played result; a failed playback raises a visible tap-to-hear button that re-speaks the reply; a Realtime per-turn audio failure auto-falls back to pipeline TTS exactly once; playback start is proven by a runtime counter (window.__abuTTSPlayed). No silent text-only success. STT Hebrew language pin + Family Phones import preserved. Voice-runtime repairs from 0.59.1 preserved.',
+  buildDate:  '2026-07-12',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
 } as const
