@@ -1142,14 +1142,13 @@ function buildSttFormData(audioBlob: Blob, model: string): FormData {
     : 'webm'
   formData.append('file', audioBlob, `recording.${ext}`)
   formData.append('model', model)
-  // ── P0 FIX (Hebrew heard as Spanish): AUTO-DETECT per utterance. ──────────────
-  // Previously the Whisper `language` param was hard-pinned from the sticky
-  // `abu-voice-lang` preference, so a stale 'es' forced Hebrew audio to be
-  // transcribed as Spanish → no valid turn → silence. The canonical resolver now
-  // returns whisperLanguage=null (auto-detect); the preference only BIASES the
-  // prompt vocabulary (a soft spelling hint), never the audio's detected language.
+  // ── STT language (Hebrew-biased). ─────────────────────────────────────────────
+  // The canonical resolver pins Hebrew (Martita's primary) and NEVER pins Spanish
+  // from a stale preference (the old Hebrew→Spanish bug) nor blanket auto-detects
+  // (that misheard short Hebrew like "בוקר טוב" as Russian/Cyrillic). The preference
+  // only BIASES the prompt vocabulary (a soft spelling hint).
   const plan = resolveSttLanguage({ preference: preferenceFrom(localStorage.getItem('abu-voice-lang')) })
-  if (plan.whisperLanguage) formData.append('language', plan.whisperLanguage) // null → omitted → Whisper auto-detects
+  if (plan.whisperLanguage) formData.append('language', plan.whisperLanguage)
   const HE_PROMPT = 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.'
   const ES_PROMPT = 'Hola Martita, cómo estás, dale, bueno, familia, receta, empanadas, asado, Buenos Aires.'
   // Only send a single-language prompt when the user EXPLICITLY chose a language;

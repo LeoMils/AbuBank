@@ -88,7 +88,7 @@ function voiceLangTrace(utteranceText: string, voicePath: 'pipeline_microphone' 
   return {
     preferredLanguage: c.preferredLanguage,
     detectedUtteranceLanguage: c.detectedUtteranceLanguage,
-    sttConfiguredLanguage: c.sttPlan.whisperLanguage, // null = auto-detect
+    sttConfiguredLanguage: c.sttPlan.whisperLanguage, // Hebrew default; Spanish for an active Spanish conversation
     responseLanguage: c.responseLanguage,
     ttsLanguage: c.ttsLanguage,
     voicePath,
@@ -2422,6 +2422,15 @@ ${fewShotText}`
       diagSet({ sttProvider: 'Realtime (WebRTC)', sttFileType: 'native', ttsProvider: 'OpenAI Realtime', ttsModel: REALTIME_MODEL, ttsVoice: 'shimmer', responseSource: 'Realtime native audio' })
       setRealtimeTranscript('')
       realtimeEverConnectedRef.current = false // fresh session — initial failure stays silent
+      // Pin the Realtime STT language from the active conversation (Hebrew default,
+      // Spanish only for an active Spanish conversation) — never auto-detect, which
+      // misheard short Hebrew ("בוקר טוב") as Russian/Cyrillic.
+      const lastUserForStt = [...messagesRef.current].reverse().find(m => m.role === 'user')
+      const detForStt = lastUserForStt ? detectUtteranceLanguage(lastUserForStt.content) : 'unknown'
+      const realtimeSttLang = resolveSttLanguage({
+        preference: preferenceFrom(localStorage.getItem('abu-voice-lang')),
+        conversationLanguage: detForStt === 'es' ? 'es' : detForStt === 'he' ? 'he' : null,
+      }).whisperLanguage
       const session = new RealtimeVoiceSession(
         {
           onStateChange: (state) => {
@@ -2550,6 +2559,7 @@ ${fewShotText}`
           setTimeout(() => startPipelineVoiceMode(), 100) // small delay to let state settle
         },
         noiseMode as 'quiet' | 'noisy',
+        realtimeSttLang,
       )
       realtimeRef.current = session
       session.connect()

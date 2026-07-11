@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.60.1-family-phones-id-alias'
-const BUILD_LABEL = 'AbuBank — Private Family Phones import at /settings/family-phones: select a .json file or paste the JSON array of { id, enabled, phoneE164 }; Israeli local + E.164 accepted and normalized; validated and matched to family by stable id; masked preview; explicit confirmation; stored ONLY in device-local IndexedDB. Import/replace/export/delete. Importer now resolves spelling aliases to the canonical family id (e.g. "rafi" → "raphi", per knowledge/family_data.json aliases) so the JSON stays the contract — no manual mapping. Real numbers never touch Git, source, tests, logs, diagnostics, Evolution, Vercel, prompts, or SW cache. Voice-runtime repairs from 0.59.1 preserved.'
+const BUILD_VERSION = '0.61.0-stt-hebrew-language'
+const BUILD_LABEL = 'AbuBank — Voice STT language fix: all three STT engines (Realtime gpt-4o-mini-transcribe, pipeline Groq Whisper, browser Web Speech) now pin an explicit language via the canonical resolveSttLanguage — Hebrew (her primary) by default, Spanish only for an ACTIVE Spanish conversation. Ends the blanket auto-detect that misheard short Hebrew ("בוקר טוב") as Russian/Cyrillic, without reintroducing the stale-preference Hebrew→Spanish bug. Family Phones import + "rafi"→"raphi" alias preserved. Voice-runtime repairs from 0.59.1 preserved.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

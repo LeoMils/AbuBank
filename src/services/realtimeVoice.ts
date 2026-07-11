@@ -35,7 +35,7 @@ export function isPlaceholderKey(k: string | undefined): boolean {
   return !k || k.length < 20 || /^(sk-\.\.\.|sk-xxx|your_|placeholder|example|<)/i.test(k)
 }
 
-export interface SessionMode { pushToTalk: boolean; listenMode: boolean; instructions: string; voice: string }
+export interface SessionMode { pushToTalk: boolean; listenMode: boolean; instructions: string; voice: string; transcriptionLanguage?: string }
 
 /**
  * The FULL-DUPLEX session config sent over the data channel on connect. Pure +
@@ -53,7 +53,10 @@ export function buildRealtimeSessionUpdate(m: SessionMode): Record<string, unkno
       instructions: m.instructions,
       audio: {
         input: {
-          transcription: { model: 'gpt-4o-mini-transcribe' },
+          // Pin the STT language (Hebrew, Martita's primary, unless caller overrides
+          // for an active Spanish conversation). Auto-detect misheard short Hebrew
+          // like "בוקר טוב" as Russian/Cyrillic — never leave this unset.
+          transcription: { model: 'gpt-4o-mini-transcribe', language: m.transcriptionLanguage ?? 'he' },
           turn_detection: m.pushToTalk ? null : {
             type: 'semantic_vad',
             eagerness: 'auto',
@@ -102,18 +105,20 @@ export class RealtimeVoiceSession {
   private vadSilenceMs: number
   private pushToTalk: boolean    // noisy mode = push-to-talk (no server VAD)
   private _listenMode: boolean   // v23: passive listening — transcribe but don't respond
+  private transcriptionLanguage: string // STT language pinned in session.update (Hebrew default)
   private unknownEvents: string[] = [] // unrecognized server event names (Defect 2 safety)
 
   /** Server event names we did not recognize this session — surfaced for diagnostics. */
   get unrecognizedEvents(): string[] { return [...this.unknownEvents] }
 
-  constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void, noiseMode: 'quiet' | 'noisy' | 'listen' = 'quiet') {
+  constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void, noiseMode: 'quiet' | 'noisy' | 'listen' = 'quiet', transcriptionLanguage: string = 'he') {
     this.cb = callbacks
     this.instructions = instructions
     this.onFatalError = onFatalError ?? null
     // v23: Three modes
     this.pushToTalk = noiseMode === 'noisy'
     this._listenMode = noiseMode === 'listen'
+    this.transcriptionLanguage = transcriptionLanguage
     this.vadThreshold = 0.75
     this.vadSilenceMs = 900
   }
@@ -273,6 +278,7 @@ export class RealtimeVoiceSession {
           listenMode: this._listenMode,
           instructions: this.instructions,
           voice: HE_VOICE.realtimeVoice,
+          transcriptionLanguage: this.transcriptionLanguage,
         }))
         this.stage('SESSION_UPDATE_SENT', 'ok')
 

@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.59.1-iphone-voice-runtime-repair')
+    expect(APP_VERSION.version).toBe('0.61.0-stt-hebrew-language')
   })
 })

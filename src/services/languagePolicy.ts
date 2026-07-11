@@ -63,9 +63,11 @@ export function preferenceFrom(stored: string | null | undefined): LangPreferenc
 
 // ── STT resolution ───────────────────────────────────────────────────────────
 export interface SttLanguagePlan {
-  /** Hard `language` param for Whisper. null = AUTO-DETECT (the fix). We NEVER hard-
-   *  pin from a mere preference, so a stale 'es' can't force Hebrew→Spanish. */
-  whisperLanguage: Lang | null
+  /** Hard `language` param for Whisper-family STT. Hebrew (Martita's primary) by
+   *  default; Spanish ONLY for an active Spanish conversation. Never null/auto-detect
+   *  — that misheard short Hebrew ("בוקר טוב") as Russian/Cyrillic — and never pinned
+   *  from a stale preference — that forced Hebrew→Spanish. */
+  whisperLanguage: Lang
   /** Soft bias only: which prompt vocabulary to send. Never overrides audio. */
   promptBias: Lang | 'bilingual'
   /** BCP-47 tag for the browser SpeechRecognition fallback (needs one language). */
@@ -84,16 +86,20 @@ export function resolveSttLanguage(opts: {
   conversationLanguage?: Lang | null
 }): SttLanguagePlan {
   const { preference, conversationLanguage } = opts
-  // Whisper: always auto-detect. The preference only biases the prompt vocabulary.
+  // The preference only biases the prompt vocabulary (a soft spelling hint).
   const promptBias: SttLanguagePlan['promptBias'] = preference === 'auto' ? 'bilingual' : preference
-  // Browser WebSpeech needs a hard language and cannot detect: prefer an ACTIVE
-  // Spanish conversation; otherwise Hebrew. A stale 'es' PREFERENCE alone does NOT
-  // pin Spanish (that was the bug) — only an active Spanish conversation does.
-  const webLang = conversationLanguage === 'es' ? 'es-AR'
-    : conversationLanguage === 'he' ? 'he-IL'
-    : preference === 'es' ? 'es-AR'   // explicit user choice, still overridable by detected speech downstream
-    : 'he-IL'
-  return { whisperLanguage: null, promptBias, webSpeechLang: webLang, autoDetect: true }
+  // STT language: Hebrew is Martita's primary and the safe default. Spanish is used
+  // ONLY for an ACTIVE Spanish conversation — a stale 'es' PREFERENCE never pins
+  // Spanish (the original Hebrew→Spanish bug), and we NEVER blanket auto-detect
+  // (that misheard short Hebrew like "בוקר טוב" as Russian/Cyrillic). Both the
+  // Whisper-family models and the browser recognizer follow this one resolution.
+  const sttLang: Lang = conversationLanguage === 'es' ? 'es' : 'he'
+  return {
+    whisperLanguage: sttLang,
+    promptBias,
+    webSpeechLang: sttLang === 'es' ? 'es-AR' : 'he-IL',
+    autoDetect: false,
+  }
 }
 
 // ── Response / TTS resolution ────────────────────────────────────────────────

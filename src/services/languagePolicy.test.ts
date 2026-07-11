@@ -60,11 +60,19 @@ describe('behavioral law — current utterance wins over sticky preference', () 
   })
 })
 
-describe('STT plan — auto-detect, never hard-pinned by a stale preference', () => {
-  it('Whisper auto-detects regardless of preference (the core fix)', () => {
-    expect(resolveSttLanguage({ preference: 'auto' }).whisperLanguage).toBeNull()
-    expect(resolveSttLanguage({ preference: 'es' }).whisperLanguage).toBeNull()
-    expect(resolveSttLanguage({ preference: 'he' }).whisperLanguage).toBeNull()
+describe('STT plan — Hebrew-biased; active Spanish overrides; never blanket auto-detect', () => {
+  it('Whisper defaults to Hebrew; a stale es PREFERENCE never pins Spanish (the fix)', () => {
+    expect(resolveSttLanguage({ preference: 'auto' }).whisperLanguage).toBe('he')
+    expect(resolveSttLanguage({ preference: 'es' }).whisperLanguage).toBe('he')
+    expect(resolveSttLanguage({ preference: 'he' }).whisperLanguage).toBe('he')
+  })
+  it('Whisper uses Spanish ONLY for an active Spanish conversation', () => {
+    expect(resolveSttLanguage({ preference: 'auto', conversationLanguage: 'es' }).whisperLanguage).toBe('es')
+    expect(resolveSttLanguage({ preference: 'auto', conversationLanguage: 'he' }).whisperLanguage).toBe('he')
+  })
+  it('never blanket auto-detects (short Hebrew was misheard as Cyrillic)', () => {
+    expect(resolveSttLanguage({ preference: 'auto' }).autoDetect).toBe(false)
+    expect(resolveSttLanguage({ preference: 'es', conversationLanguage: 'es' }).autoDetect).toBe(false)
   })
   it('browser WebSpeech: stale es PREFERENCE does not pin Spanish; active Spanish convo does', () => {
     // No active conversation → Hebrew (Martita primary), even with es preference downstream-overridable.
@@ -96,6 +104,6 @@ describe('preference parsing + TTS mirror', () => {
     expect(chain.detectedUtteranceLanguage).toBe('he')
     expect(chain.responseLanguage).toBe('he') // utterance wins over both preference and conversation
     expect(chain.ttsLanguage).toBe('he')
-    expect(chain.sttPlan.autoDetect).toBe(true)
+    expect(chain.sttPlan.autoDetect).toBe(false)
   })
 })

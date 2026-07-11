@@ -30,6 +30,13 @@ describe('REALTIME full-duplex session config', () => {
     expect(((cfg.session as any).audio.input.transcription.model)).toMatch(/transcribe|whisper/)
   })
 
+  it('input transcription pins a language so short Hebrew is not auto-detected as Cyrillic', () => {
+    const he = buildRealtimeSessionUpdate({ ...base, pushToTalk: false, listenMode: false })
+    expect(((he.session as any).audio.input.transcription.language)).toBe('he') // Hebrew default (Martita primary)
+    const es = buildRealtimeSessionUpdate({ ...base, pushToTalk: false, listenMode: false, transcriptionLanguage: 'es' })
+    expect(((es.session as any).audio.input.transcription.language)).toBe('es') // active Spanish override
+  })
+
   it('spoken voice is carried through', () => {
     const cfg = buildRealtimeSessionUpdate({ ...base, pushToTalk: false, listenMode: false, voice: 'marin' })
     expect(((cfg.session as any).audio.output.voice)).toBe('marin')
