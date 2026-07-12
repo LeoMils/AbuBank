@@ -150,7 +150,9 @@ RELEASE_TEST_STRATEGY,FOUNDATION_RELEASE_1_REPORT}.md` (+ pre-existing `PHASE_0_
   release gate). This is stated honestly, not claimed as green.
 
 ## 14. Commit SHA
-See below (filled after commit) — `chore(engineering-os): bootstrap evidence-driven foundation`.
+`c95954a` (`c95954a4339aa68e35b08f781c5a5c7386146853`) —
+`chore(engineering-os): bootstrap evidence-driven foundation`. (This SHA-recording note is a
+follow-up commit on top of it.)
 
 ## 15. Branch
 `rc5/cognitive-architecture-and-acceptance` (not merged to main; not deployed).
