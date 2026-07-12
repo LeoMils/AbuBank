@@ -31,6 +31,17 @@ if ((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
 // any failure degrades gracefully to the localStorage-only path.
 async function boot() {
   try { await durable.init() } catch { /* best-effort; degrade to localStorage */ }
+  // Flush pending durable (IndexedDB) writes before the app is backgrounded or
+  // killed. On iOS a PWA can be frozen at any time and localStorage may later be
+  // evicted, so an un-flushed async write could lose a just-created appointment.
+  // `pagehide` + `visibilitychange`→hidden are the reliable iOS lifecycle hooks.
+  if (typeof window !== 'undefined') {
+    const flushDurable = () => { void durable.flush() }
+    window.addEventListener('pagehide', flushDurable)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushDurable()
+    })
+  }
   const root = document.getElementById('root')
   if (root) {
     createRoot(root).render(

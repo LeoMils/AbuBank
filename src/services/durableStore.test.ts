@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { DurableStore, MemoryBackend } from './durableStore'
+import { DurableStore, MemoryBackend, type KVBackend } from './durableStore'
 
 // Minimal localStorage mock (node test env has none).
 function installLS(seed: Record<string, string> = {}) {
@@ -140,5 +140,60 @@ describe('DurableStore — export / import backup', () => {
     installLS()
     const s = new DurableStore(new MemoryBackend())
     expect(s.importAll('garbage').ok).toBe(false)
+  })
+})
+
+// A backend whose set()/remove() are ISSUED synchronously but only COMMIT on a
+// later macrotask — models a real IndexedDB write that has been dispatched but
+// not yet settled at the moment the PWA is backgrounded/killed on iOS.
+class SettleLaterBackend implements KVBackend {
+  private m = new Map<string, string>()
+  async getAll() { return Object.fromEntries(this.m) }
+  set(k: string, v: string): Promise<void> {
+    return new Promise<void>((resolve) => setTimeout(() => { this.m.set(k, v); resolve() }, 0))
+  }
+  remove(k: string): Promise<void> {
+    return new Promise<void>((resolve) => setTimeout(() => { this.m.delete(k); resolve() }, 0))
+  }
+  snapshot(): Record<string, string> { return Object.fromEntries(this.m) }
+}
+
+describe('DurableStore — flush() closes the iOS app-close data-loss gap', () => {
+  afterEach(() => { delete (globalThis as { localStorage?: unknown }).localStorage })
+
+  it('documents the BUG: an un-settled write is lost on a fast app-close with an evicted mirror', async () => {
+    installLS()
+    const backend = new SettleLaterBackend()
+    const s1 = new DurableStore(backend)
+    await s1.init()
+
+    s1.setJSON(KEY, [{ id: 'doctor', time: '16:00' }]) // IndexedDB write ISSUED, not yet settled
+    // App is backgrounded/killed immediately — no flush, no settle tick — and the
+    // localStorage mirror is later evicted by iOS:
+    installLS() // wipe mirror
+    const s2 = new DurableStore(backend)
+    await s2.init()
+    expect(s2.getJSON<unknown[]>(KEY, [])).toEqual([]) // ← the appointment was LOST (this is the gap)
+  })
+
+  it('THE FIX: flush() awaits the in-flight write so the just-created event survives', async () => {
+    installLS()
+    const backend = new SettleLaterBackend()
+    const s1 = new DurableStore(backend)
+    await s1.init()
+
+    s1.setJSON(KEY, [{ id: 'doctor', time: '16:00' }]) // IndexedDB write ISSUED
+    await s1.flush()                                    // ← flush on pagehide/visibility-hidden
+
+    installLS() // mirror evicted after close
+    const s2 = new DurableStore(backend)
+    await s2.init()
+    expect(s2.getJSON<{ id: string }[]>(KEY, [])).toEqual([{ id: 'doctor', time: '16:00' }]) // survives
+  })
+
+  it('flush() resolves immediately when nothing is pending (safe to call any time)', async () => {
+    installLS()
+    const s = new DurableStore(new MemoryBackend())
+    await expect(s.flush()).resolves.toBeUndefined()
   })
 })

@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.63.0-realtime-audio-timeout')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — REALTIME_AUDIO_TIMEOUT watchdog: if a Realtime response.create receives NO output-audio event within 5s, the attempt is cancelled, classified REALTIME_AUDIO_TIMEOUT, recorded in Evolution (voice_synthesis / fallbackReason), and voiced via pipeline TTS exactly once — never a silent wait. Builds on 0.62.0 audible-voice recovery (Web Speech tier + truthful played + tap-to-hear + playback-proof counter). Voice-runtime repairs from 0.59.1 preserved.')
+    expect(APP_VERSION.version).toBe('0.64.0-durable-flush-on-hide')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — DURABLE_FLUSH_ON_HIDE: in-flight durable (IndexedDB) writes are now tracked and flushed on pagehide / visibilitychange-hidden, so a just-created appointment, reminder, or family contact cannot be lost if the PWA is backgrounded or killed before the async write settled and the localStorage mirror is later evicted (iOS data-loss gap closed). Builds on 0.63.0 REALTIME_AUDIO_TIMEOUT watchdog.')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

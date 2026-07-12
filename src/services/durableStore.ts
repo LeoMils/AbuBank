@@ -106,6 +106,7 @@ function hasLocalStorage(): boolean {
 export class DurableStore {
   private cache = new Map<string, string>()
   private ready = false
+  private inflight = new Set<Promise<void>>()
   constructor(private backend: KVBackend, private keys: readonly string[] = CRITICAL_KEYS) {}
 
   /**
@@ -195,17 +196,34 @@ export class DurableStore {
     return safeLSGet(key)
   }
 
-  /** Write-through: cache + localStorage mirror (sync) + durable backend (async). */
+  /** Write-through: cache + localStorage mirror (sync) + durable backend (async, tracked for flush). */
   setString(key: string, value: string): void {
     this.cache.set(key, value)
     safeLSSet(key, value)
-    void this.backend.set(key, value).catch(() => {})
+    this.track(this.backend.set(key, value))
   }
 
   remove(key: string): void {
     this.cache.delete(key)
     safeLSRemove(key)
-    void this.backend.remove(key).catch(() => {})
+    this.track(this.backend.remove(key))
+  }
+
+  /**
+   * Await all in-flight durable backend writes. Call on `pagehide` and on
+   * `visibilitychange`→hidden so a fast app-close or background on iOS cannot
+   * lose a just-created appointment / reminder / family contact whose async
+   * IndexedDB write had not yet settled (the localStorage mirror alone is not
+   * enough — iOS evicts it under storage pressure). Never rejects: individual
+   * write errors are already swallowed, so flush() only ever resolves.
+   */
+  async flush(): Promise<void> { await Promise.all([...this.inflight]) }
+
+  /** Track a fire-and-forget backend write so flush() can await it; never rejects. */
+  private track(p: Promise<void>): void {
+    const wrapped = p.catch(() => {})
+    this.inflight.add(wrapped)
+    void wrapped.then(() => { this.inflight.delete(wrapped) })
   }
 
   /** JSON read with corruption recovery: bad value → mirror → caller default. */
