@@ -2,9 +2,11 @@
  * Version-truth contract.
  *
  * Single visible-version source: src/version.ts → APP_VERSION.version.
- * Package.json carries the npm semver (currently 30.10.0); that string must
- * NOT appear in any UI surface — Leo must always see the build label, not
- * the legacy npm version.
+ * Package.json carries the npm semver (a separate release lane); that string
+ * must NOT appear in any UI surface — Leo must always see the build label, not
+ * the legacy npm version. The npm semver is read DYNAMICALLY from package.json
+ * below so this guard can never drift as the package version is bumped.
+ * See docs/engineering-os/VERSION_CONTRACT.md for the two-lane contract.
  */
 
 import fs from 'fs'
@@ -62,11 +64,20 @@ describe('canonical version identity is single-sourced and health stays in sync'
   })
 })
 
-describe('no visible UI source hardcodes the npm semver "30.10.0"', () => {
+// The npm semver is read live from package.json so this guard tracks the
+// current value (e.g. 30.14.0) instead of a hardcoded literal that goes stale.
+const NPM_SEMVER = (JSON.parse(readSrc('package.json')) as { version: string }).version
+
+describe('no visible UI source hardcodes the npm semver', () => {
+  it('the npm semver is a real semver string and differs from the visible build version', () => {
+    expect(/^\d+\.\d+\.\d+/.test(NPM_SEMVER)).toBe(true)
+    // The two version lanes are intentionally distinct (see VERSION_CONTRACT.md).
+    expect(NPM_SEMVER).not.toBe(APP_VERSION.version)
+  })
   for (const rel of VISIBLE_UI_FILES) {
-    it(`${rel} does not include "30.10.0"`, () => {
+    it(`${rel} does not include the npm semver "${NPM_SEMVER}"`, () => {
       const src = readSrc(rel)
-      expect(src.includes('30.10.0')).toBe(false)
+      expect(src.includes(NPM_SEMVER)).toBe(false)
     })
   }
 })

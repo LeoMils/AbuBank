@@ -1,34 +1,13 @@
 #!/bin/sh
 #
-# Pre-commit hook: validates family data + runs tests before every commit.
-# If either fails, the commit is blocked.
+# Fast pre-commit (fast commits, strict releases).
+# Delegates to scripts/precommit-guard.cjs: staged-file inventory, privacy/secret
+# scan, version-contract consistency, and family validation ONLY when family data
+# is staged. The FULL test suite is a RELEASE/CI gate, NOT a per-commit gate —
+# see docs/engineering-os/RELEASE_TEST_STRATEGY.md.
 #
-# Setup: git config core.hooksPath .githooks
-# Or:    npm run prepare
+# Setup: git config core.hooksPath .githooks   (or `npm run prepare`)
+# Bypass (rare, intentional): git commit --no-verify   |   ABU_HOOKS_DISABLE=1
 #
-
-echo "🔍 Pre-commit: validating family data..."
-npm run validate:family --silent
-VALIDATE_EXIT=$?
-
-if [ $VALIDATE_EXIT -ne 0 ]; then
-  echo ""
-  echo "❌ COMMIT BLOCKED: family data validation failed."
-  echo "   Fix knowledge/family_data.json then try again."
-  echo ""
-  exit 1
-fi
-
-echo "🧪 Pre-commit: running tests..."
-npm test --silent
-TEST_EXIT=$?
-
-if [ $TEST_EXIT -ne 0 ]; then
-  echo ""
-  echo "❌ COMMIT BLOCKED: tests failed."
-  echo "   Fix failing tests then try again."
-  echo ""
-  exit 1
-fi
-
-echo "✅ Pre-commit: all checks passed."
+node scripts/precommit-guard.cjs
+exit $?
