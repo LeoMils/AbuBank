@@ -4,8 +4,9 @@
 evidence class for the experience Martita actually has. Passing unit tests are `CODE` evidence —
 they do NOT turn a row green. Real device/production evidence overrides any number of mocks.
 
-**Stamp:** build `0.63.0-realtime-audio-timeout` · branch `rc5/cognitive-architecture-and-acceptance`
-· commit `090b54b` (pre-Foundation-Release-1) · updated Foundation Release 1 (2026-07-12).
+**Stamp:** build `0.65.0-current-info-grounding` · branch `rc5/cognitive-architecture-and-acceptance`
+· updated 2026-07-13 (recovery cycles: 0.64.0 durable-flush-on-hide, 0.65.0 current-info-grounding).
+Earlier baseline: `0.63.0` / commit `090b54b` (pre-Foundation-Release-1, 2026-07-12).
 Schema: `src/engineering-os/evidence.ts`. Classes: `CODE < MOCK < BROWSER < PREVIEW < PHYSICAL_DEVICE < PRODUCTION`.
 
 > ⚠️ This board is intentionally NOT optimistic. Most rows are RED/YELLOW because physical
@@ -47,8 +48,15 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
 - **TTS 🟡** — Browser playback green; audible warmth on device unproven. *Next:* device audibility test.
 - **Online 🔴** — Failed physical acceptance: current World Cup question returned a stale/false
   historical answer. *First divergence:* time-sensitive query answered from model memory instead of a
-  retrieval tool. *Blocker:* grounding on real retrieval on device. *Next:* device test of "who won /
-  latest" questions with sources shown (see `.claude/rules/online.md`).
+  retrieval tool. **CODE progress (0.65.0):** the routing half of that first divergence is now closed —
+  volatile world-fact questions (current office holders, election results, winners) that the narrow
+  category regexes missed used to fall to the offline `general`/LLM path; a semantic `requiresCurrentInfo()`
+  detector now routes the whole class to the online provider (or an honest refusal on failure). Regression:
+  `src/screens/AbuAI/currentInfoGrounding.test.ts` (17 cases, incl. negative guards vs calendar/evergreen).
+  *Still RED because:* the real provider is mocked in every test — no PREVIEW/DEVICE proof that a live
+  "who won / latest" query actually returns a grounded, sourced answer on device. *Blocker:* grounding on
+  real retrieval on device. *Next:* PREVIEW/device test of "who won / latest" with sources shown
+  (see `.claude/rules/online.md`).
 - **Calendar 🔴** — Write→read→modify continuity failed on device. *First divergence:* a just-created
   event not reliably readable/modifiable in the same session. *Next:* device transactional test; a
   gold replay of the failing session (`gold-replay`).

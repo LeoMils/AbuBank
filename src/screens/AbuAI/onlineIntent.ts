@@ -41,6 +41,34 @@ const ONLINE_HE_CURRENT = /שער ה?דולר|שער ה?יורו|מטבע|בור
 const ONLINE_HE_TRANSPORT = /מתי\s+ה?אוטובוס|ה?אוטובוס\s+ה?בא|מתי\s+ה?רכבת|ה?רכבת\s+ה?באה|מתי\s+ה?טיסה|תחבורה\s+ציבורית/
 const ONLINE_HE_HOLIDAYS = /מתי\s+(חג\s+)?(פסח|סוכות|ראש השנה|יום כיפור|חנוכה|פורים|שבועות|ט[וּ]?\s*בשבט|ל[״"]ג\s*בעומר|יום העצמאות|יום הזיכרון|יום השואה)/i
 
+// ─── Current-world-fact forms (volatile answers) ─────────────────────────────
+//
+// Questions whose CORRECT answer CHANGES over time — current office holders,
+// election outcomes, championship winners. The offline model answers these from
+// stale memory (the canonical "2022 World Cup for a 2026 question" incident).
+// Detected SEMANTICALLY (question FORM), not by a per-entity list, so the whole
+// CLASS routes to live retrieval — or, on provider failure, to an honest "I can't
+// check that right now" — and is NEVER answered from memory. Present-tense forms
+// only: historical "מי היה" / "who was" must stay evergreen (offline-answerable).
+// NB: no `\b` after Hebrew/accented letters — JS `\b` is ASCII-only and never
+// matches a boundary next to non-word chars (א-ת, é, ó), so it would silently
+// defeat the match (the module rule at the top of this file).
+const CURRENT_FACT_HE = /מי\s+ה?(?:נשיא|נשיאה|ראש\s+ה?ממשלה|רה"?מ|מנהיג|קנצלר|אלופ[הת]?|מנצח[ת]?)|מי\s+ניצח|מי\s+ניצחה|מי\s+זכת?[ה]?\s+ב|מי\s+נבחר|תוצאות\s+ה?בחירות|מי\s+ראש\s+ה?עיר/u
+const CURRENT_FACT_ES = /qui[eé]n\s+es\s+(?:el|la)\s+(?:presidente|presidenta|primer\s+ministro|campe[oó]n|campeona)|qui[eé]n\s+gan[oó]/i
+const CURRENT_FACT_EN = /\bwho\s+is\s+(?:the\s+)?(?:president|prime\s+minister|current\s+\w+|champion)\b|\bwho\s+won\b|\bwho'?s\s+the\s+(?:president|champion)\b/i
+
+/**
+ * True when the query asks for a WORLD FACT whose correct answer changes over
+ * time (office holders / election results / winners). These must reach the online
+ * provider (or an honest refusal), never the offline general/LLM path — that is
+ * the root cause of the stale-answer failure. Pure; no fetch/LLM.
+ */
+export function requiresCurrentInfo(input: string): boolean {
+  const t = input.trim()
+  if (!t) return false
+  return CURRENT_FACT_HE.test(t) || CURRENT_FACT_ES.test(t) || CURRENT_FACT_EN.test(t)
+}
+
 // ─── Spanish patterns ──────────────────────────────────────────────────────
 const ONLINE_ES_MOVIES = /(?:^|[^a-záéíóúñ])(?:qu[eé]\s+)?pel[ií]culas?\s+(?:hay|nuevas|de\s+ahora|de\s+esta\s+semana|en\s+(?:el\s+)?cine|nuevas)|cartelera|cine\s+(?:cerca|hoy|ahora)|qu[eé]\s+(?:hay\s+)?en\s+(?:el\s+)?cine/i
 const ONLINE_ES_WEATHER = /(?:^|[^a-záéíóúñ])(?:c[oó]mo\s+est[aá]\s+el\s+)?(?:clima|tiempo)\s+(?:hoy|ahora|de\s+hoy|esta\s+semana|ma[nñ]ana)|qu[eé]\s+tiempo\s+hace/i
@@ -87,6 +115,9 @@ export function getOnlineQueryKind(input: string): OnlineQueryKind | null {
   if (ONLINE_HE_CURRENT.test(t)) return 'general_current'
   if (ONLINE_HE_TRANSPORT.test(t)) return 'general_current' // transport = live info
   if (ONLINE_HE_HOLIDAYS.test(t)) return 'holidays'
+  // Volatile world facts (office holders / elections / winners) the narrow
+  // category regexes miss — route online instead of answering from stale memory.
+  if (requiresCurrentInfo(t)) return 'general_current'
   return null
 }
 
@@ -104,5 +135,9 @@ export function shouldBlockOnlineForPersonal(input: string): boolean {
   const t = input.trim()
   if (!t) return false
   if (SPORTS_CONTEXT.test(t)) return false
+  // A current-world-fact question (office holder / election / winner) is never
+  // "personal" — don't let an over-broad personal pattern (e.g. ES "quién es")
+  // block it from the live provider and push it back to stale memory.
+  if (requiresCurrentInfo(t)) return false
   return PERSONAL_HE.test(t) || PERSONAL_ES.test(t) || PERSONAL_EN.test(t)
 }

@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.64.0-durable-flush-on-hide')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — DURABLE_FLUSH_ON_HIDE: in-flight durable (IndexedDB) writes are now tracked and flushed on pagehide / visibilitychange-hidden, so a just-created appointment, reminder, or family contact cannot be lost if the PWA is backgrounded or killed before the async write settled and the localStorage mirror is later evicted (iOS data-loss gap closed). Builds on 0.63.0 REALTIME_AUDIO_TIMEOUT watchdog.')
+    expect(APP_VERSION.version).toBe('0.65.0-current-info-grounding')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — CURRENT_INFO_GROUNDING: volatile world-fact questions (current office holders, election results, championship winners) now route to the live online provider — or an honest "cannot check" on failure — instead of leaking to the offline general path and being answered from stale model memory (the 2022-World-Cup-for-2026 class). Root fix: a semantic requiresCurrentInfo() detector + a current-fact carve-out in the personal block. Builds on 0.64.0 DURABLE_FLUSH_ON_HIDE.')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

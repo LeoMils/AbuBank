@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.64.0-durable-flush-on-hide'
-const BUILD_LABEL = 'AbuBank — DURABLE_FLUSH_ON_HIDE: in-flight durable (IndexedDB) writes are now tracked and flushed on pagehide / visibilitychange-hidden, so a just-created appointment, reminder, or family contact cannot be lost if the PWA is backgrounded or killed before the async write settled and the localStorage mirror is later evicted (iOS data-loss gap closed). Builds on 0.63.0 REALTIME_AUDIO_TIMEOUT watchdog.'
+const BUILD_VERSION = '0.65.0-current-info-grounding'
+const BUILD_LABEL = 'AbuBank — CURRENT_INFO_GROUNDING: volatile world-fact questions (current office holders, election results, championship winners) now route to the live online provider — or an honest "cannot check" on failure — instead of leaking to the offline general path and being answered from stale model memory (the 2022-World-Cup-for-2026 class). Root fix: a semantic requiresCurrentInfo() detector + a current-fact carve-out in the personal block. Builds on 0.64.0 DURABLE_FLUSH_ON_HIDE.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

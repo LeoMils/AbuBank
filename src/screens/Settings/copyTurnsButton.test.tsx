@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.64.0-durable-flush-on-hide')
+    expect(APP_VERSION.version).toBe('0.65.0-current-info-grounding')
   })
 })
