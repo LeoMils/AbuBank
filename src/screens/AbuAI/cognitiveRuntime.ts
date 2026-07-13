@@ -36,7 +36,7 @@ import {
   planSpokenChunks,
 } from './conversationOS'
 import {
-  type CalendarCreateState, IDLE_STATE, startCreate, resolvePendingMessage, updateCreate,
+  type CalendarCreateState, IDLE_STATE, startCreate, resolvePendingMessage, updateCreate, isBareCreateOpener,
   isCreateIntent, isDeleteIntent, isModifyIntent, isSearchIntent,
 } from './calendarCreate'
 import { classifySignalV2, reduceV2, conversationV2Enabled } from './conversationEngineV2'
@@ -863,6 +863,16 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     case 'calendar_create': {
       // Start (or restart) a create; ask/confirm — do NOT save until confirmed.
       let next = startCreate(normalized)
+      // Bare create opener ("תקבעי" with no details yet): startCreate returns idle,
+      // but the user DID ask to schedule. Open an EMPTY pending draft so the
+      // following fragments ("עם מור", "מחר בשלוש", "כן") are absorbed by the
+      // pending-create path (updateCreate) instead of being orphaned to the LLM.
+      // Root fix for the red-team's #1 failure class, "fragmented-create-lost".
+      // Guarded to a genuine bare opener so a benign/misclassified turn never opens
+      // a stray draft that would then absorb the next unrelated turn.
+      if (next.phase === 'idle' && isBareCreateOpener(normalized)) {
+        next = { phase: 'creating', draft: { title: null, date: null, time: null, emoji: '📅' }, missing: ['title', 'date', 'time'] }
+      }
       const smart = understandMeetingSmart(normalized)
       // Narrative requests ("ביום שלישי אופיר … בשעה שבע … אצלה שעתיים") that the
       // base parser can't title but the smart layer fully understood → synthesize

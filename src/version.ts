@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.65.0-current-info-grounding',
-  buildLabel: 'AbuBank — CURRENT_INFO_GROUNDING: volatile world-fact questions (current office holders, election results, championship winners) now route to the live online provider — or an honest "cannot check" on failure — instead of leaking to the offline general path and being answered from stale model memory (the 2022-World-Cup-for-2026 class). Root fix: a semantic requiresCurrentInfo() detector + a current-fact carve-out in the personal block. Builds on 0.64.0 DURABLE_FLUSH_ON_HIDE.',
+  version:    '0.66.0-fragmented-create-continuity',
+  buildLabel: 'AbuBank — FRAGMENTED_CREATE_CONTINUITY: when Martita builds an appointment across separate turns — "תקבעי" → "עם מור" → "מחר בשלוש" → "כן" — a bare create opener now opens a pending draft that ABSORBS the following fragments instead of orphaning each to the LLM (the red-team #1 failure "fragmented-create-lost" drops 60→24 conversations; remaining = an ambiguous bare-hour AM/PM parity gap). Guarded to a genuine opener (starts with a scheduling verb, no clue) so no benign turn opens a stray draft. Builds on 0.65.0 CURRENT_INFO_GROUNDING.',
   buildDate:  '2026-07-13',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

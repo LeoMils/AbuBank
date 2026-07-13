@@ -212,6 +212,28 @@ export function isCreateIntent(text: string): boolean {
   return false
 }
 
+/**
+ * A bare create OPENER: a scheduling verb with NO schedulable content yet
+ * ("תקבעי", "תקבעי לי", "קבעי פגישה"). The runtime opens an empty pending-create
+ * draft for these so the following fragments ("עם מור", "מחר בשלוש", "כן") are
+ * absorbed instead of orphaned to the LLM (fragmented-create-lost). Narrow by
+ * construction — a scheduling verb, NO date/time/with clue, and a short utterance —
+ * so a greeting, a statement, or a richer create (which startCreate already opens
+ * with real fields) never matches, and a benign turn never opens a stray draft.
+ */
+export function isBareCreateOpener(text: string): boolean {
+  const t = normalizeCreateText(text.trim())
+  if (!t) return false
+  const words = t.split(/\s+/).filter(Boolean)
+  if (words.length === 0 || words.length > 3) return false
+  // Must START with the scheduling verb. This excludes a confirm-prefixed utterance
+  // like "כן תקבעי" (yes, schedule it) — where "תקבעי" is a CONFIRM word, not an
+  // opener — while still matching a bare "תקבעי" / "תקבעי לי" / "קבעי פגישה".
+  if (!SCHEDULE_VERB.test(words[0]!)) return false
+  if (hasScheduleClue(t)) return false
+  return true
+}
+
 // ─── Confirmation / Cancel ──────────────────────────────────────────────────
 
 const CANCEL = /^(לא|לא נכון|עזבי|עזבי את זה|תשכחי|ביטול|לא צריך|בטלי|לא רוצה|חבל|תעזבי|לא לא|לא לא לא|לא לא לא לא|עזבי עזבי|לא לזה התכוונתי|תמחקי|תמחקי את זה|תבטלי|תבטלי את זה|מחקי|תמחקי את הפגישה|תבטלי את הפגישה)$/i

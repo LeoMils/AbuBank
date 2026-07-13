@@ -16,6 +16,6 @@ describe('Device debug access', () => {
   })
 
   it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.65.0-current-info-grounding')
+    expect(APP_VERSION.version).toBe('0.66.0-fragmented-create-continuity')
   })
 })
