@@ -1,5 +1,26 @@
 # WAR_ROOM_LOG
 
+## 2026-07-14 — parity program · recovery cycle 0.69.0 (Spanish transcript locale integrity)
+- SINGLE-WRITER: re-acquired lock (HEAD==origin 2d32f08, 0/0, prior lock released). v2.1.190 foreground-only;
+  deny rules (Agent/Task/worktree) persisted. Pushed clean at end.
+- SELECTED DIVERGENCE: probed the 3 §40 hypotheses via the real runtime. Findings — (c) filler-led create
+  already WORKS; (a) family ex-spouse directionality is RED (מי הגרוש של מור / ממי מור גרושה / רפי הוא הגרוש
+  של מי all punt to LLM while מי בת הזוג של מור→יעל works) — deferred to next cycle; (b) locale contamination
+  is RED and the HIGHEST severity: the MANDATORY §20.2 sentence "agendá una reunión con Gabi mañana a las
+  tres" fails end-to-end (asks "באיזו שעה?" in Hebrew, "dale" dead-ends, nothing created).
+- FIRST DIVERGENCE (isolated it precisely): startCreate() works on the raw sentence (confirming, 15:00), but
+  the runtime feeds it recoverTranscript()'s output which corrupts "mañana a las tres" → "mañana las tres".
+  Root cause: the dedup LEXICON rule used a HEBREW-ONLY boundary (?<![א-ת]), so on Latin text it captured the
+  trailing "a" of "mañana" + the standalone preposition "a" as a false "a a" duplicate.
+- FIX (smallest): dedup boundary → script-agnostic \p{L}\p{M}. Whole-word dedup in any script; Spanish safe.
+- REGRESSION FIRST → then fix: src/eval/spanishCalendarGoldReplay.test.ts (recoverTranscript locale-integrity
+  unit incl. Hebrew+Latin dedup still works, + §20.2 end-to-end create-once-at-15:00 + "dale" saves).
+- VALIDATION: gold replay 5/5; AbuAI+AbuCalendar+eval 9918 pass/2 todo (zero regressions); version 22; tsc
+  clean; vite build clean. Version 0.68.0→0.69.0 (version.ts+health.ts+version.test.ts).
+- EVIDENCE CLASS: CODE / AUTOMATED_TEST (LLM/online stubbed). NOT device-proven. Remaining locale gap
+  (separate divergence, documented): Spanish create clarify/confirm text still Hebrew. Next cycle candidate:
+  family ex-spouse directionality (a) OR Spanish confirm/clarify localization.
+
 ## 2026-07-13 — ChatGPT-Live parity program · recovery cycle 0.68.0 (fragment ambiguous-hour parity)
 - SINGLE-WRITER: acquired `.abuai/ACTIVE_EXECUTION_LOCK.json` (gitignored); Claude Code 2.1.190
   (subagents run in background by default → NO subagent dispatch used, foreground-only). Added deny

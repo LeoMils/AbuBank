@@ -39,8 +39,12 @@ const LEXICON: LexRow[] = [
   { re: /(?<![א-ת])תיקבע(י)?(?![א-ת])/u, to: 'תקבעי', kind: 'morphology' },
   // "who is" morphology: זאת / זו → זה, so "מי זאת אופיר" reads as "מי זה אופיר".
   { re: /(?<![א-ת])מי\s+ז(?:את|ו)(?=\s)/u, to: 'מי זה', kind: 'morphology' },
-  // duplicated word ("פגישה פגישה") — collapse.
-  { re: /(?<![א-ת])(\S+)\s+\1(?![א-ת])/u, to: '$1', kind: 'dedup' },
+  // duplicated word ("פגישה פגישה") — collapse. The boundaries must be SCRIPT-AGNOSTIC
+  // whole-word guards (any Unicode letter/mark), not Hebrew-only: a Hebrew-only lookbehind
+  // let the capture start mid-word in Latin text, so "mañana a las" matched a false "a a"
+  // duplicate (trailing "a" of "mañana" + the Spanish preposition "a") and dropped the
+  // preposition → "mañana las", breaking Spanish time parsing (the mandatory §20.2 scenario).
+  { re: /(?<![\p{L}\p{M}])(\S+)\s+\1(?![\p{L}\p{M}])/u, to: '$1', kind: 'dedup' },
 ]
 
 /** Repair an imperfect transcript into a canonical utterance. Deterministic + pure. */
