@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.66.0-fragmented-create-continuity'
-const BUILD_LABEL = 'AbuBank — FRAGMENTED_CREATE_CONTINUITY: when Martita builds an appointment across separate turns — "תקבעי" → "עם מור" → "מחר בשלוש" → "כן" — a bare create opener now opens a pending draft that ABSORBS the following fragments instead of orphaning each to the LLM (the red-team #1 failure "fragmented-create-lost" drops 60→24 conversations; remaining = an ambiguous bare-hour AM/PM parity gap). Guarded to a genuine opener (starts with a scheduling verb, no clue) so no benign turn opens a stray draft. Builds on 0.65.0 CURRENT_INFO_GROUNDING.'
+const BUILD_VERSION = '0.67.0-natural-slotfill-clarify'
+const BUILD_LABEL = 'AbuBank — NATURAL_SLOTFILL_CLARIFY: during a fragmented ("drip") create, once the person is given AbuAI now asks a warm, context-aware next question ("לאיזה יום ושעה לקבוע עם מור?") instead of the bald "באיזה יום?" — which the dialogue loop-breaker used to escalate into a dead-end "say it again" reprompt. Removes the robotic mid-create reprompt on EVERY fragmented create (priority-1 natural conversation); non-ambiguous drips now flow title→day/time→confirm→save cleanly. Builds on 0.66.0 FRAGMENTED_CREATE_CONTINUITY.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

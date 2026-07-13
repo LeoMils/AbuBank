@@ -96,4 +96,18 @@ describe('GOLD REPLAY — fragmented create is never lost to the LLM', () => {
     const finalPhase = log[log.length - 1]!.phase
     expect(finalPhase).not.toBe('idle')
   })
+
+  it('after the person fragment, AbuAI asks a NATURAL next question (not a "say it again" loop-break, not "באיזה יום?")', async () => {
+    const log = await replay(['תקבעי', 'עם מור'])
+    const t2 = log[1]!.display
+    // The generic dialogue loop-breaker ("say it again in your words") is a
+    // dead-end mid-create — the natural progression (title -> day/time) must not
+    // be mistaken for a repeated-clarification loop.
+    expect(t2).not.toContain('תגידי לי שוב במילים שלך')
+    // The bald phone-tree phrase is banned product-wide.
+    expect(t2).not.toMatch(/באיזה יום\?/)
+    // It should feel like a companion continuing the thread — reference the
+    // person she just named.
+    expect(t2).toContain('מור')
+  })
 })

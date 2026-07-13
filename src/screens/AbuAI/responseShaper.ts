@@ -418,7 +418,16 @@ export function shapeCreateClarify(
 ): string {
   const first = missing[0]
   if (first === 'title') return 'מה לרשום?'
-  if (first === 'date') return 'באיזה יום?'
+  if (first === 'date') {
+    // Never the bald phone-tree "באיזה יום?" (banned product-wide). When a person
+    // is already captured (an incremental "drip" create), continue the thread like
+    // a companion — reference her and ask for the day + time together. This also
+    // keeps the wording OFF the CLARIFY_MARKERS list, so a progressing create is
+    // not mistaken for a repeated-clarification loop and dead-ended.
+    const who = draft?.person?.trim()
+    if (who) return `לאיזה יום ושעה לקבוע עם ${who}?`
+    return 'לאיזה יום ושעה?'
+  }
   if (first === 'time') {
     // Understood the hour but not AM/PM — ask the specific question instead
     // of a generic "באיזו שעה?".

@@ -4,9 +4,10 @@
 evidence class for the experience Martita actually has. Passing unit tests are `CODE` evidence —
 they do NOT turn a row green. Real device/production evidence overrides any number of mocks.
 
-**Stamp:** build `0.66.0-fragmented-create-continuity` · branch `rc5/cognitive-architecture-and-acceptance`
+**Stamp:** build `0.67.0-natural-slotfill-clarify` · branch `rc5/cognitive-architecture-and-acceptance`
 · updated 2026-07-13 (recovery cycles: 0.64.0 durable-flush-on-hide, 0.65.0 current-info-grounding,
-0.66.0 fragmented-create-continuity). Earlier baseline: `0.63.0` / commit `090b54b` (pre-FR1, 2026-07-12).
+0.66.0 fragmented-create-continuity, 0.67.0 natural-slotfill-clarify). Earlier baseline: `0.63.0` /
+commit `090b54b` (pre-FR1, 2026-07-12).
 Schema: `src/engineering-os/evidence.ts`. Classes: `CODE < MOCK < BROWSER < PREVIEW < PHYSICAL_DEVICE < PRODUCTION`.
 
 > ⚠️ This board is intentionally NOT optimistic. Most rows are RED/YELLOW because physical
@@ -72,6 +73,10 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
   `src/eval/fragmentedCreateGoldReplay.test.ts`. *Remaining (separate divergence):* an ambiguous bare hour
   ("בשמונה", 7–11) in the fragment path stays AM/PM-ambiguous so a bare "כן" does not complete — the
   single-utterance path resolves it via the smart layer; the fragment path needs the same parity.
+  **CODE progress (0.67.0):** the mid-create robotic reprompt is fixed — after the person fragment,
+  `shapeCreateClarify` used to emit the bald "באיזה יום?" which the dialogue loop-breaker escalated into a
+  dead-end "say it again"; it now asks a warm, person-aware "לאיזה יום ושעה לקבוע עם <who>?" so every
+  fragmented create flows naturally (title→day/time→confirm→save). Gold replay asserts T2 naturalness.
   *Still RED because:* device felt-quality is unproven at CODE — *Next:* natural-conversation judge
   (`conversationQualityJudge`) on real transcripts + device re-test.
 - **Latency 🔴** — ~20s observed on device. *Next:* per-stage latency budget (`latency-budget`), device timing.
