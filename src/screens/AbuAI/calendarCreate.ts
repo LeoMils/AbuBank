@@ -776,6 +776,17 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
         correctionDraft.ambiguousTime = false
         corrected = true
       }
+    } else if (correctionDraft.time) {
+      // A BARE period correction with no new hour ("לא בערב" / "בערב" / "בבוקר") after a
+      // defaulted ambiguous hour ("...בשמונה בבוקר. נכון?"). Flip the AM/PM of the time
+      // already set. Tie-break #1: never lose a correction — this used to fall through
+      // to the "unclear" loop-breaker so a following "כן" silently saved the wrong time.
+      const flipped = resolvePeriodFollowup(correctionDraft.time, t)
+      if (flipped && flipped !== correctionDraft.time) {
+        correctionDraft.time = flipped
+        correctionDraft.ambiguousTime = false
+        corrected = true
+      }
     }
     if (corrected) {
       return { phase: 'confirming', draft: correctionDraft, missing: [] }
@@ -847,9 +858,18 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
         removeTime()
       }
     } else if (time && ambiguous) {
-      // A fresh but still-ambiguous hour — keep asking.
+      // A fresh bare hour that is AM/PM-ambiguous (7–11). PARITY with the single-utterance
+      // smart layer (understandMeetingSmart / cognitiveRuntime calendar_create), which
+      // resolves such an hour to its stated reading and moves straight to confirming.
+      // The fragment path must behave IDENTICALLY: accept the default reading, move to
+      // confirming, and let Martita correct it there ("בשמונה בבוקר. נכון?" → "לא, בערב").
+      // Keeping it ambiguous forever meant a following "כן" could never complete the
+      // create and dead-ended in the loop-breaker (fragment ≠ single-utterance = a
+      // typed/voice parity bug). Correction after confirm is still fully supported
+      // (updateCreate's confirming branch re-parses a period follow-up).
       draft.time = time
-      draft.ambiguousTime = true
+      draft.ambiguousTime = false
+      removeTime()
     }
   }
 

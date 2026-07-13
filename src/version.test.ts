@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.67.0-natural-slotfill-clarify')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — NATURAL_SLOTFILL_CLARIFY: during a fragmented ("drip") create, once the person is given AbuAI now asks a warm, context-aware next question ("לאיזה יום ושעה לקבוע עם מור?") instead of the bald "באיזה יום?" — which the dialogue loop-breaker used to escalate into a dead-end "say it again" reprompt. Removes the robotic mid-create reprompt on EVERY fragmented create (priority-1 natural conversation); non-ambiguous drips now flow title→day/time→confirm→save cleanly. Builds on 0.66.0 FRAGMENTED_CREATE_CONTINUITY.')
+    expect(APP_VERSION.version).toBe('0.68.0-fragment-ambiguous-hour-parity')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — FRAGMENT_AMBIGUOUS_HOUR_PARITY: a fragmented ("drip") create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") now completes IDENTICALLY to the single-utterance path — the smart layer resolves "בשמונה" to the same default reading and moves to confirm, so a following "כן" SAVES exactly once instead of dead-ending forever in the loop-breaker (typed/voice parity). And a bare period correction ("לא בערב") at confirm now flips AM→PM instead of being lost — tie-break #1, never lose a correction. Builds on 0.67.0 NATURAL_SLOTFILL_CLARIFY.')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

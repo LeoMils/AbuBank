@@ -32,3 +32,6 @@ test-results/
 
 # Eval engine regenerated state (reports are committed, baseline is local)
 docs/eval/baseline.json
+
+# AbuAI parity program single-writer execution lock (local lease, never committed)
+.abuai/ACTIVE_EXECUTION_LOCK.json

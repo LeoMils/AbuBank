@@ -88,13 +88,52 @@ describe('GOLD REPLAY — fragmented create is never lost to the LLM', () => {
     expect(log[0]!.phase).not.toBe('idle') // draft opened, ready to absorb fragments
   })
 
-  it('drip create with an AMBIGUOUS hour stays a live create (retained, asks AM/PM), never lost', async () => {
+  it('drip create with an AMBIGUOUS hour completes on "כן" — PARITY with the single-utterance smart layer', async () => {
+    // Typed/voice PARITY (mandatory): a bare ambiguous hour ("בשמונה", 7–11) arriving
+    // as a FRAGMENT must resolve the SAME way the single-utterance smart layer resolves
+    // it — default to the stated reading and move to confirming — so a following "כן"
+    // completes and SAVES. It used to stay AM/PM-ambiguous forever, so "כן" dead-ended in
+    // the loop-breaker and nothing was saved (fragment ≠ single-utterance = a parity bug).
     const log = await replay(['תקבעי', 'עם מור', 'מחר בשמונה', 'כן'])
     // Every fragment turn is handled by the runtime, never punted to the LLM.
     for (const t of log.slice(1)) expect(t.source).not.toBe('llm')
-    // The person was absorbed into a retained draft (not orphaned).
-    const finalPhase = log[log.length - 1]!.phase
-    expect(finalPhase).not.toBe('idle')
+    // The final "כן" SAVES (the create completes, exactly once).
+    expect(log[log.length - 1]!.sideEffect).toBe('saved_appointment')
+    const appts: Appointment[] = loadAppointments()
+    expect(appts).toHaveLength(1)
+    // Same resolution as the single-utterance path: bare "שמונה" defaults to the AM reading.
+    expect(appts[0]!.time).toBe('08:00')
+    expect(appts[0]!.title).toContain('מור')
+  })
+
+  it('a bare period correction ("לא בערב") after the AM default flips the time to PM — never lost', async () => {
+    // The ambiguous-hour default surfaces its assumption ("...בשמונה בבוקר. נכון?").
+    // When Martita corrects it with a bare period ("לא בערב"), that correction must be
+    // absorbed (tie-break #1: never lose a correction) — not dead-ended into the
+    // loop-breaker so a following "כן" silently saves the WRONG (morning) time.
+    // Single-utterance path:
+    const single = await replay(['תקבעי פגישה עם מור מחר בשמונה', 'לא בערב', 'כן'])
+    expect(single[single.length - 1]!.sideEffect).toBe('saved_appointment')
+    expect(loadAppointments()[0]!.time).toBe('20:00')
+    // Fragment path — must behave identically (parity):
+    const frag = await replay(['תקבעי', 'עם מור', 'מחר בשמונה', 'לא בערב', 'כן'])
+    expect(frag[frag.length - 1]!.sideEffect).toBe('saved_appointment')
+    expect(loadAppointments()[0]!.time).toBe('20:00')
+  })
+
+  it('PARITY: fragment ambiguous-hour create === single-utterance ambiguous-hour create', async () => {
+    // The SAME appointment must result whether Martita says it all at once or drips it
+    // across turns. This is the typed/voice-parity invariant at the calendar layer.
+    const single = await replay(['תקבעי פגישה עם מור מחר בשמונה', 'כן'])
+    const singleAppts = loadAppointments().map(a => ({ time: a.time, date: a.date }))
+    expect(single[single.length - 1]!.sideEffect).toBe('saved_appointment')
+
+    const frag = await replay(['תקבעי', 'עם מור', 'מחר בשמונה', 'כן'])
+    const fragAppts = loadAppointments().map(a => ({ time: a.time, date: a.date }))
+    expect(frag[frag.length - 1]!.sideEffect).toBe('saved_appointment')
+
+    // Identical resolved time + date across both input modalities.
+    expect(fragAppts).toEqual(singleAppts)
   })
 
   it('after the person fragment, AbuAI asks a NATURAL next question (not a "say it again" loop-break, not "באיזה יום?")', async () => {

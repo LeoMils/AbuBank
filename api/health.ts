@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.67.0-natural-slotfill-clarify'
-const BUILD_LABEL = 'AbuBank — NATURAL_SLOTFILL_CLARIFY: during a fragmented ("drip") create, once the person is given AbuAI now asks a warm, context-aware next question ("לאיזה יום ושעה לקבוע עם מור?") instead of the bald "באיזה יום?" — which the dialogue loop-breaker used to escalate into a dead-end "say it again" reprompt. Removes the robotic mid-create reprompt on EVERY fragmented create (priority-1 natural conversation); non-ambiguous drips now flow title→day/time→confirm→save cleanly. Builds on 0.66.0 FRAGMENTED_CREATE_CONTINUITY.'
+const BUILD_VERSION = '0.68.0-fragment-ambiguous-hour-parity'
+const BUILD_LABEL = 'AbuBank — FRAGMENT_AMBIGUOUS_HOUR_PARITY: a fragmented ("drip") create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") now completes IDENTICALLY to the single-utterance path — the smart layer resolves "בשמונה" to the same default reading and moves to confirm, so a following "כן" SAVES exactly once instead of dead-ending forever in the loop-breaker (typed/voice parity). And a bare period correction ("לא בערב") at confirm now flips AM→PM instead of being lost — tie-break #1, never lose a correction. Builds on 0.67.0 NATURAL_SLOTFILL_CLARIFY.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
