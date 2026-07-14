@@ -386,6 +386,16 @@ function titleES(title: string | null | undefined, person?: string | null): stri
   if (person && person.trim()) return `una reunión con ${person.trim()}`
   const m = (title ?? '').match(/^פגישה עם\s+(.+)$/u)
   if (m) return `una reunión con ${m[1]!.trim()}`
+  // A person-less es create ("anotá una cita el viernes…") leaves a raw-ish Hebrew-path
+  // title (often the whole utterance). Prefer the schedulable Spanish noun so the confirm
+  // never echoes the raw request ("Te agendo una cita" not "Te agendo anotá una cita…").
+  const noun = (title ?? '').match(/(?<![a-záéíóúñ])(cita|reuni[óo]n|turno|evento)(?![a-záéíóúñ])/i)
+  if (noun) {
+    const n = noun[1]!.toLowerCase()
+    // Grammatical gender: cita / reunión are feminine (una); turno / evento masculine (un).
+    const article = /^(?:turno|evento)$/.test(n) ? 'un' : 'una'
+    return `${article} ${n}`
+  }
   return title && title.trim() ? title.trim() : 'algo'
 }
 

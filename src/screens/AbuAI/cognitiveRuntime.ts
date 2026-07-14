@@ -937,6 +937,16 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       if (next.phase === 'confirming' && smart.importantDetails.length) next.draft.notes = null
       // Remember the create's language (§20.2) and shape the prompt in it.
       const clang = createLangOf(state, lang)
+      // Spanish ambiguous-hour fallback (parity with the 0.68.0 fragment path and the
+      // Hebrew smart layer, which resolves this for Hebrew): a single-utterance es create
+      // with an AM/PM-ambiguous bare hour ("anotá una cita a las diez") would otherwise
+      // stay "creating", ask "¿A qué hora?", and dead-end on "dale". understandMeetingSmart
+      // is Hebrew-only, so nothing resolved it. Accept the default reading (the value
+      // already parsed) and move to confirming; Martita can correct AM/PM at confirm.
+      if (clang === 'es' && next.phase !== 'confirming' && next.missing.length === 1
+        && next.missing[0] === 'time' && next.draft.time && next.draft.ambiguousTime) {
+        next = { phase: 'confirming', draft: { ...next.draft, ambiguousTime: false }, missing: [] }
+      }
       next = withLang(next, clang)
       let text = shapeCreatePrompt(next, clang)
       // Smart enrichment (Hebrew-only): surface stated duration + the important context

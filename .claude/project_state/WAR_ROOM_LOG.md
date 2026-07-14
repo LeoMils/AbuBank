@@ -1,5 +1,32 @@
 # WAR_ROOM_LOG
 
+## 2026-07-14 — parity program · recovery cycle 0.73.0 (Spanish create completes)
+- SINGLE-WRITER: re-acquired lock (HEAD==origin 800d4e8, 0/0, prior lock released). v2.1.190 foreground-only.
+- SELECTED DIVERGENCE (user-directed): complete the es create — ambiguous-hour resolution + Spanish no=cancel.
+- REPRODUCED at runtime (RED-first): `anotá una cita el viernes a las diez` (parse=10:00 ambiguous) → phase
+  stuck "creating", "¿A qué hora?", "dale" → Hebrew loop-breaker, nothing saved. `agendá … a las tres` + `no`
+  → "[LLM] no" (punted). Confirmed via probe.
+- FIRST DIVERGENCE: (1) understandMeetingSmart is Hebrew-only, so a single-utterance es ambiguous hour is
+  never resolved (fresh startCreate path); (2) isCancel/CANCEL is Hebrew-only, so v2 classifySignalV2 (which
+  calls isCancel) never sees "no" as explicit_cancel.
+- FIX (smallest): (1) in the calendar_create case, after the smart block, when clang==='es' and the ONLY
+  missing field is an already-parsed ambiguous time, resolve to the default reading + confirm (scoped to es
+  → ZERO Hebrew risk; Hebrew already resolves via smart). (2) Added CANCEL_ES to isCancel (bare "no" /
+  cancelá / dejá / olvidate / mejor no / nada, anchored so "no, a las cuatro" stays a correction).
+  ALSO fixed a title bug this flow exposed: person-less es title echoed the raw request ("anotá una cita…")
+  → now the schedulable noun with correct gender ("una cita" / "un turno") in shapeCreateConfirmES/SavedES.
+- REGRESSION FIRST → then fix (stash-verified RED→GREEN): src/eval/spanishCreateCompletion.test.ts (isCancel
+  es bare-only + he-unaffected + "no,…"≠cancel; ambiguous-hour save-once at 10:00, clean title no "anotá",
+  gender un turno/una cita; ocho/nueve/once; Spanish "no" cancels in Spanish, nothing saved).
+- VALIDATION: spanishCreateCompletion 8/8; spanish/fragmented(0.68.0) non-regression; benchmark floor 100%;
+  full suite 10799 pass/2 todo/0 fail (305 files); tsc clean; vite build clean. Version 0.72.0→0.73.0 (no
+  apostrophes in the label — they break the health BUILD_LABEL regex, caught in 0.72.0).
+- OPERATOR PROTOCOL: diagnostics/operator-protocols/OP-002-spanish-voice-create.md (Spanish VOICE create on
+  device — STT accuracy + audible Spanish TTS; my fix is typed/CODE only, voice is device-gated).
+- EVIDENCE: CODE / AUTOMATED_TEST (deterministic, LLM/online stubbed). NOT device-proven. Residual es:
+  mid-create meta replies (audio-help/frustration/why) still Hebrew. Next candidate: relation-between from
+  subject's perspective, OR mid-create es meta replies, OR device evidence via OP-001/OP-002.
+
 ## 2026-07-14 — parity program · recovery cycle 0.72.0 (relation-between-Martita alias)
 - SINGLE-WRITER: re-acquired lock (HEAD==origin 3fe95c3, 0/0, prior lock released). v2.1.190 foreground-only.
 - SELECTED DIVERGENCE (user-directed): `מה הקשר בין אופיר למרתה` returned "לא יודעת" — should answer the

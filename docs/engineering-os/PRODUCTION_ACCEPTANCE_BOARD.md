@@ -77,11 +77,16 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
   answer ("a las cuatro") detects as Hebrew (`composeCreate` bypasses Hebrew persona shaping for es). Hebrew
   creates unchanged. Gold replay `src/eval/spanishCreateLocale.test.ts` (confirm/clarify/save language +
   cross-turn continuity + Hebrew-unaffected). Evidence: CODE / AUTOMATED_TEST — NOT device-proven.
-  *Remaining es gaps (separate divergences, documented):* (1) a bare AM/PM-ambiguous Spanish hour 7–11
-  ("a las diez") is not resolved for a single-utterance es create (the Hebrew smart layer resolves this;
-  Spanish does not route through it) so "dale" dead-ends — the Spanish analog of 0.68.0's ambiguous-hour
-  work; (2) Spanish "no" is not recognized as cancel (punts to the LLM); (3) mid-create meta replies
-  (audio-help / frustration / why-explain) are still Hebrew.
+  **CODE progress (0.73.0):** the Spanish create now COMPLETES end-to-end. (1) An AM/PM-ambiguous bare hour
+  ("anotá una cita el viernes a las diez") is resolved to the default reading for a single-utterance es
+  create (es analog of 0.68.0) → confirm → "dale" saves once at 10:00, instead of dead-ending. (2) A Spanish
+  "no" (and cancelá/dejá/olvidate/mejor no/nada) now cancels in Spanish ("Dale, lo cancelé…"); a correction
+  that merely starts with "no" ("no, a las cuatro") is NOT a cancel. (3) The person-less es title is the
+  schedulable noun with correct gender ("una cita"/"un turno"), not the raw request echoed back. Regression
+  `src/eval/spanishCreateCompletion.test.ts` (8 cases). Evidence: CODE / AUTOMATED_TEST (typed, deterministic
+  runtime, LLM/online stubbed) — NOT device-proven; the VOICE path (Spanish STT/TTS) is device-only →
+  Operator Protocol `diagnostics/operator-protocols/OP-002-spanish-voice-create.md`.
+  *Remaining es gap (separate):* mid-create meta replies (audio-help / frustration / why-explain) still Hebrew.
 - **Working Memory / Follow-up / Correction 🔴** — Follow-up understanding and explicit transcript
   correction failed on device. *Next:* `failure-to-regression` red tests from the real transcripts, then fix.
 - **Grounding 🔴** — Residence (Kfar Saba) was presented as live location. *First divergence:* a static

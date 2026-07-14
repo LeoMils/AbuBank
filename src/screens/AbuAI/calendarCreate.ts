@@ -241,6 +241,12 @@ export function isBareCreateOpener(text: string): boolean {
 
 const CANCEL = /^(לא|לא נכון|עזבי|עזבי את זה|תשכחי|ביטול|לא צריך|בטלי|לא רוצה|חבל|תעזבי|לא לא|לא לא לא|לא לא לא לא|עזבי עזבי|לא לזה התכוונתי|תמחקי|תמחקי את זה|תבטלי|תבטלי את זה|מחקי|תמחקי את הפגישה|תבטלי את הפגישה)$/i
 
+// Spanish (Rioplatense) cancel — a BARE rejection during a pending create. Anchored
+// (^…$) so a correction that merely STARTS with "no" ("no, a las cuatro") is NOT a
+// cancel (it re-parses as a time correction). Covers "no", "mejor no", "no importa",
+// "cancelá(lo)", "dejá(lo)", "olvidate/olvidalo", "nada", "así no", "no gracias".
+const CANCEL_ES = /^(?:no|no,?\s*gracias|mejor\s+no|no\s+importa|as[íi]\s+no|cancel[áa](?:lo)?|dej[áa](?:lo)?|olvidat?e|olvidalo|nada)$/i
+
 // Confirmation is recognised as (a) a whole known phrase, OR (b) a short
 // utterance whose every word is a confirm word — so "כן", "כן כן", "כן בבקשה",
 // "כן תקבעי", "בסדר גמור" all complete the pending action. This fixes the real
@@ -305,7 +311,8 @@ export function isConfirm(text: string): boolean {
 }
 
 export function isCancel(text: string): boolean {
-  return CANCEL.test(normalizeUtterance(text))
+  const t = normalizeUtterance(text)
+  return CANCEL.test(t) || CANCEL_ES.test(t)
 }
 
 // ─── Time Parsing ───────────────────────────────────────────────────────────
