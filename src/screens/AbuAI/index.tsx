@@ -13,6 +13,7 @@ import { toSpokenText } from './spokenPersona'
 import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState } from './cognitiveRuntime'
 import { ExecutiveCognitiveController } from './executiveCognitiveController'
 import { buildFullTurnTools } from './fullTurnBridge'
+import { shouldUseWebSpeechPrimary, LISTEN_WATCHDOG_MS } from '../../services/sttStrategy'
 
 // SINGLE PATH: the Executive Cognitive Controller is the sole RUNTIME path. This is
 // hardcoded on (no env flag) — every text/voice turn returns from the controller
@@ -2085,9 +2086,15 @@ export function AbuAI() {
       }
     }
 
-    // v17.3: Web Speech API as PRIMARY (fastest turn detection), Whisper as FALLBACK
+    // v17.3: Web Speech API as PRIMARY (fastest turn detection), Whisper as FALLBACK.
+    // DEVICE FIX (docs/DEVICE_P0_ROOT_CAUSE.md): on iOS Safari / installed PWA,
+    // webkitSpeechRecognition is unreliable — it can start and then fire NO events,
+    // hanging "מקשיבה..." forever. So on iOS we SKIP Web Speech and go straight to the
+    // Whisper (MediaRecorder→Groq) path below. Non-iOS keeps Web Speech primary.
     const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (WSR) {
+    const nav = typeof navigator !== 'undefined' ? navigator : ({} as Navigator)
+    const useWebSpeech = shouldUseWebSpeechPrimary(nav.userAgent ?? '', (nav as { platform?: string }).platform ?? '', nav.maxTouchPoints ?? 0)
+    if (WSR && useWebSpeech) {
       const rec = new WSR() as any
       // P0 fix (Hebrew-heard-as-Spanish): the browser recognizer needs ONE language
       // and cannot auto-detect. Default to Hebrew (Martita's primary); use Spanish
@@ -2105,7 +2112,14 @@ export function AbuAI() {
       let gotResult = false
       let finalTranscript = ''
 
+      // LISTENING WATCHDOG (bounded fallback per .claude/rules/voice.md): if the recognizer
+      // fires NO terminal event within the window (the iOS "no events" hang), abort and fall
+      // to Whisper so "מקשיבה..." can never last forever. Cleared by any result/end/error.
+      let watchdog: ReturnType<typeof setTimeout> | null = null
+      const clearWatchdog = () => { if (watchdog) { clearTimeout(watchdog); watchdog = null } }
+
       rec.onresult = (e: any) => {
+        clearWatchdog()
         let interim = ''
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const result = e.results[i]
@@ -2129,6 +2143,7 @@ export function AbuAI() {
       }
 
       rec.onerror = (e: any) => {
+        clearWatchdog()
         recognitionRef.current = null
         if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
           // Permission denied — never exit silently. Show + speak a friendly
@@ -2144,6 +2159,7 @@ export function AbuAI() {
       }
 
       rec.onend = () => {
+        clearWatchdog()
         recognitionRef.current = null
         if (!gotResult && voiceModeRef.current) {
           // No result from Web Speech — restart with backoff, max 5 empty rounds
@@ -2161,8 +2177,19 @@ export function AbuAI() {
       try {
         rec.start()
         recognitionRef.current = rec
+        // Arm the watchdog: if NO onresult/onend/onerror fires within the window, the
+        // recognizer has hung (the iOS failure) — abort and fall to Whisper.
+        watchdog = setTimeout(() => {
+          watchdog = null
+          if (recognitionRef.current === rec) {
+            try { rec.abort() } catch { /* best-effort */ }
+            recognitionRef.current = null
+            if (voiceModeRef.current) startWhisperFallback()
+          }
+        }, LISTEN_WATCHDOG_MS)
         return
       } catch {
+        clearWatchdog()
         recognitionRef.current = null
         // Fall through to Whisper
       }

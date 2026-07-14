@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.75.0-online-grounding-gate',
-  buildLabel: 'AbuBank — ONLINE_GROUNDING_GATE: a real device test on 0.74.0 (iPhone) exposed broken foundations; see docs/DEVICE_P0_ROOT_CAUSE.md for the 4-way root-cause report (voice, memory, online, calendar). First fix: the online endpoint no longer returns a confident current-info answer without evidence of retrieval. It used to return ok:true with the model free text whenever an answer existed (attaching sources only when present), so an ungrounded/hallucinated answer with ZERO sources — the fabricated World Cup fixtures — was surfaced as fact. Now zero sources ⇒ honest failure (ONLINE_NO_RESULTS: "I could not find current info, I would rather tell you that than make something up"). §47 / NO TOOL RESULT = NO CLAIM. web_search itself is functional (weather returns sources, PREVIEW-verified). Voice/mic remains device-gated (root-caused; Operator Protocol). Builds on 0.74.0 FAMILY_POSSESSIVE_SPOUSE.',
+  version:    '0.76.0-ios-whisper-stt-watchdog',
+  buildLabel: 'AbuBank — IOS_WHISPER_STT_WATCHDOG: the P0 voice fix (device-gated, PENDING on-device verification via OP-003). Device root cause (docs/DEVICE_P0_ROOT_CAUSE.md): on iOS the primary STT webkitSpeechRecognition could start and fire NO events, hanging "מקשיבה..." forever. Fix: (1) on iOS, skip the flaky Web Speech and use the Whisper (MediaRecorder→Groq, audio/mp4) path as primary; (2) a listening WATCHDOG (LISTEN_WATCHDOG_MS) so any stall aborts and falls back instead of hanging forever — a bounded fallback per .claude/rules/voice.md. Pure decision layer in src/services/sttStrategy.ts (unit-tested); the actual iOS mic capture + audible TTS is still DEVICE-GATED (not proven in code). Builds on 0.75.0 ONLINE_GROUNDING_GATE.',
   buildDate:  '2026-07-14',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

@@ -49,8 +49,14 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
   forever, zero audio in/out. Code audit: primary STT is `webkitSpeechRecognition` (unreliable in iOS
   PWA standalone) and the Web Speech listening path has **no watchdog** — if `onend` never fires it hangs
   forever (a bounded-fallback defect per `.claude/rules/voice.md`). Recorder mime is iOS-aware and
-  `VITE_GROQ_API_KEY` is present, so the Whisper fallback path is viable. *Fix (next code cycle):*
-  listening watchdog + honest state + iOS→Whisper primary; the actual capture stays DEVICE-GATED (OP-003).
+  `VITE_GROQ_API_KEY` is present, so the Whisper fallback path is viable.
+  **CODE progress (0.76.0):** the fix is LANDED — on iOS the flaky `webkitSpeechRecognition` is skipped
+  and the Whisper (MediaRecorder→Groq, audio/mp4) path is primary; a listening WATCHDOG
+  (`LISTEN_WATCHDOG_MS`) aborts + falls back if the recognizer fires no events, so "מקשיבה..." can never
+  hang forever (bounded fallback per `.claude/rules/voice.md`). Pure decision layer
+  `src/services/sttStrategy.ts` (unit-tested 5/5). **Still 🔴 / PENDING:** actual iOS mic capture +
+  audible TTS is DEVICE-GATED — run `diagnostics/operator-protocols/OP-003-ios-voice-capture.md` on the
+  phone (build ≥ 0.76.0) to upgrade CODE→DEVICE. Not overclaimed.
 - **STT 🔴** — Hebrew-biased language pin across all 3 engines (CODE). *Blocker:* no device transcript
   accepted. *Next:* device capture → verify Hebrew/Spanish transcription accuracy.
 - **TTS 🟡** — Browser playback green; audible warmth on device unproven. *Next:* device audibility test.

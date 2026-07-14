@@ -1,5 +1,21 @@
 # WAR_ROOM_LOG
 
+## 2026-07-14 — overnight cycle 1 (0.76.0): VOICE P0 — iOS Whisper primary + listening watchdog
+- MANDATE: autonomous overnight, priority VOICE→MEMORY→CALENDAR→gap map. Single-writer/foreground/rc5-only.
+- SINGLE-WRITER: re-acquired lock (HEAD==origin f8ad7a0, 0/0). v2.1.190 foreground-only.
+- ROOT CAUSE (from DEVICE_P0_ROOT_CAUSE): iOS webkitSpeechRecognition can start then fire NO events →
+  "מקשיבה..." hangs forever; no watchdog on the Web Speech listening path.
+- FIX (smallest, well-scoped in the 3,500-line component): new PURE module src/services/sttStrategy.ts
+  (isIOS / shouldUseWebSpeechPrimary / LISTEN_WATCHDOG_MS) — unit-tested 5/5. Wired into index.tsx:
+  (1) gate the WSR primary block with shouldUseWebSpeechPrimary(nav.*) → iOS skips Web Speech → Whisper
+  (MediaRecorder→Groq, audio/mp4) primary; (2) a watchdog armed after rec.start(), cleared by any
+  result/end/error, that aborts + startWhisperFallback if no event within LISTEN_WATCHDOG_MS.
+- EVIDENCE: sttStrategy 5/5; voice-wiring source-contract tests 52 (index.tsx contracts intact); full
+  suite 10811 pass/2 todo/0 fail (308 files); tsc clean; vite build clean. DEVICE-GATED: actual iOS mic
+  capture + audible TTS NOT proven in code → OP-003 emitted (diagnostics/operator-protocols/). NOT
+  overclaimed — landed CODE, marked PENDING device verification.
+- Version 0.75.0→0.76.0. Fresh preview deployed for device re-test.
+
 ## 2026-07-14 — DEVICE P0 triage (0.75.0): 4-way root-cause + online grounding gate
 - TRIGGER: real iPhone test on the deployed 0.74.0 preview (QA marker confirmed) — FOUNDATIONS broken:
   (1) mic/voice dead, (2) no memory continuity + dishonest "miss things", (3) online hallucinated
