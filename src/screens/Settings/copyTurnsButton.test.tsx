@@ -15,7 +15,10 @@ describe('Device debug access', () => {
     expect(html).toContain('העתקת 20 השיחות האחרונות')
   })
 
-  it('version badge exposes the acceptance build', () => {
-    expect(APP_VERSION.version).toBe('0.67.0-natural-slotfill-clarify')
+  it('version badge exposes a real acceptance build (single-sourced, not a frozen literal)', () => {
+    // Track the single source (src/version.ts) instead of pinning an exact
+    // string — a hardcoded literal here silently goes stale on every bump.
+    // The canonical version-truth contract lives in src/version.test.ts.
+    expect(APP_VERSION.version).toMatch(/^\d+\.\d+\.\d+-[a-z0-9-]+$/)
   })
 })

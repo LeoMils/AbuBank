@@ -29,6 +29,9 @@ function childrenOf(ix: FamilyIndex, name: string): string[] {
 function spousesOf(ix: FamilyIndex, name: string): string[] {
   const n = node(ix, name); return n ? uniq([...(n.spousesHe ?? []), ...(n.partnersHe ?? [])]) : []
 }
+function exSpousesOf(ix: FamilyIndex, name: string): string[] {
+  const n = node(ix, name); return n ? uniq(n.exSpousesHe ?? []) : []
+}
 function genderOf(ix: FamilyIndex, name: string): string | undefined { return node(ix, name)?.gender }
 
 /** All ancestors up the parent chain (grandparents, great-grandparents, …). */
@@ -78,6 +81,9 @@ export function unclesAuntsOf(name: string, gender?: 'female' | 'male'): string[
 
 export function childrenOfPublic(name: string): string[] { return childrenOf(index(), name) }
 export function partnerOf(name: string): string[] { return spousesOf(index(), name) }
+/** Ex-spouse(s). The graph edge is SYMMETRIC, so this answers both directions
+ *  ("Mor's ex-husband" and "whose ex-husband is Rafi"). */
+export function exSpouseOf(name: string): string[] { return exSpousesOf(index(), name) }
 
 export interface FamilyAnswer { relation: string; subject: string; results: string[]; ambiguous: boolean; known: boolean }
 
@@ -88,6 +94,13 @@ const REL = [
   { re: /(?:מי\s+ה?)?דוד(?:ים)?\s+של\s+(\S+)/u, rel: 'uncle', fn: (n: string) => unclesAuntsOf(n, 'male') },
   { re: /(?:ה?ילדים|ה?בנים|ה?ילדות)\s+של\s+(\S+)|מי\s+ה?ילדים\s+של\s+(\S+)/u, rel: 'children', fn: (n: string) => childrenOfPublic(n) },
   { re: /(?:בן|בת|בני)\s+ה?זוג\s+של\s+(\S+)|ה?בעל\s+של\s+(\S+)|ה?אישה\s+של\s+(\S+)|פרטנר.*של\s+(\S+)/u, rel: 'partner', fn: (n: string) => partnerOf(n) },
+  // Ex-spouse — symmetric edge, so all shapes resolve to exSpouseOf(the named person):
+  //   reverse  "רפי (הוא) הגרוש של מי"  → capture רפי  (Rafi is whose ex-husband)
+  { re: /([֐-׿]+)\s+(?:הוא\s+|היא\s+)?ה?גרוש(?:ה)?\s+של\s+מי/u, rel: 'ex_spouse', fn: (n: string) => exSpouseOf(n) },
+  //   from-whom "ממי מור גרושה" / "מור גרושה ממי" → capture מור
+  { re: /ממי\s+([֐-׿]+)\s+גרוש(?:ה)?|([֐-׿]+)\s+גרוש(?:ה)?\s+ממי/u, rel: 'ex_spouse', fn: (n: string) => exSpouseOf(n) },
+  //   forward  "(מי) הגרוש/הגרושה של מור" → capture מור (never the interrogative מי)
+  { re: /(?:מי\s+)?ה?גרוש(?:ה)?\s+של\s+(?!מי(?![֐-׿]))([֐-׿]+)/u, rel: 'ex_spouse', fn: (n: string) => exSpouseOf(n) },
 ]
 
 /** Resolve a Hebrew relationship question deterministically from the graph.

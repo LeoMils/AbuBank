@@ -1,5 +1,33 @@
 # WAR_ROOM_LOG
 
+## 2026-07-14 — parity program · recovery cycle 0.71.0 (family ex-spouse directionality)
+- SELECTED DIVERGENCE (user-directed): option 2 from the 0.69.0/0.70.0 release notes — family ex-spouse
+  directionality, a release-gate for family correctness. Martita must get the right answer in BOTH directions.
+- GROUND TRUTH (knowledge/family_data.json, verified before writing assertions): Mor (מור, female) ex_spouse=רפי,
+  partner=יעל; Raphi (רפי, male) = ex_son_in_law "הגרוש של מור". Ex-spouse is a SYMMETRIC graph edge (exSpousesHe).
+- REPRODUCED at runtime (RED-first, via tryGroundedAnswer + answerFamilyRelation): `מי הגרוש של מור` routed to
+  family_lookup → returned Mor's profile blurb ("מור, הבת שלך…"), NOT the ex-spouse; `answerFamilyRelation`
+  returned null (REL table had grandmother/grandfather/aunt/uncle/children/partner but NO ex-spouse rule) → LLM
+  fallback. Reverse `רפי הוא הגרוש של מי` only "passed" by coincidence (Rafi's profile text mentions מור).
+- FIRST DIVERGENCE: missing `ex_spouse` rule in `familyReasoning.ts` REL. `tryGroundedAnswer` consults
+  `answerFamilyRelation` BEFORE the profile-lookup route, so one rule set fixes forward correctly AND upgrades the
+  reverse from coincidental-blurb to deterministic relational answer.
+- FIX (smallest): added `exSpouseOf()` (symmetric `exSpousesHe`) + 3 REL regexes each capturing the real person
+  name (forward `מי הגרוש/הגרושה של X`, from-whom `ממי X גרושה`/`X גרושה ממי`, reverse `X (הוא/היא) הגרוש של מי`;
+  forward excludes the interrogative מי via lookahead). Added `ex_spouse: 'הגרוש/ה'` render label in service.ts
+  (gender-neutral like partner's `בן/בת הזוג` — correct in both directions since the edge is symmetric).
+- REGRESSION FIRST → then fix: src/screens/AbuAI/exSpouseDirectionality.test.ts (forward/from-whom/reverse/reverse-
+  no-copula, resolver known+relation=ex_spouse, never-invent-for-Leo, and partner non-regression מור→יעל).
+- ALSO fixed pre-existing drift surfaced by the full suite: copyTurnsButton.test.tsx hardcoded the version at
+  0.67.0 (stale since 0.68.0; prior cycles only ran the AbuAI subset). Rewrote it to track the single source
+  (shape match) instead of a frozen literal — the canonical contract stays in version.test.ts. NOT a weakening.
+- VALIDATION: exSpouseDirectionality 7/7; genderMatrix/rc3/familyReasonerProperties/ofirGenderRegression 56 (Ofir
+  feminine forms intact); benchmark floor 100%; FULL suite 10788 pass/2 todo/0 fail (303 files); tsc clean; build
+  clean. Version 0.70.0→0.71.0 (version.ts + health.ts + version.test.ts in sync).
+- EVIDENCE: CODE / AUTOMATED_TEST (deterministic function run = HIGH; LLM/online not involved — this path is
+  pure-local by design). NOT device-proven. Residual es divergences from 0.70.0 still open (ambiguous es hour
+  "a las diez"; Spanish "no"=cancel; mid-create meta replies Hebrew). Next candidate: es ambiguous-hour resolution.
+
 ## 2026-07-14 — parity program · recovery cycle 0.70.0 (Spanish create stays Spanish, §20.2)
 - SINGLE-WRITER: re-acquired lock (HEAD==origin 338b8a0, 0/0, prior lock released). v2.1.190 foreground-only;
   deny rules persisted. Pushed clean at end.

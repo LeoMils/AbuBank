@@ -376,7 +376,7 @@ export function tryGroundedAnswer(text: string): string | null {
   if (lang === 'he') {
     const fam = answerFamilyRelation(text)
     if (fam && fam.known) {
-      const LABEL: Record<string, string> = { grandmother: 'הסבתא', grandfather: 'הסבא', uncle: 'הדוד', aunt: 'הדודה', children: 'הילדים', partner: 'בן/בת הזוג' }
+      const LABEL: Record<string, string> = { grandmother: 'הסבתא', grandfather: 'הסבא', uncle: 'הדוד', aunt: 'הדודה', children: 'הילדים', partner: 'בן/בת הזוג', ex_spouse: 'הגרוש/ה' }
       const label = LABEL[fam.relation] ?? 'הקרוב'
       const names = fam.results.length === 1
         ? fam.results[0]!

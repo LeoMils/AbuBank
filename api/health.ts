@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.70.0-spanish-create-stays-spanish'
-const BUILD_LABEL = 'AbuBank — SPANISH_CREATE_STAYS_SPANISH: a Spanish calendar create now speaks Spanish end-to-end (§20.2 "remain in Spanish"). The clarify ("¿A qué hora?"), the confirm ("Te agendo una reunión con Gabi mañana a las 15:00. ¿Está bien?"), the save ("Listo, te agendé…") and the cancel are all Spanish instead of Hebrew, and the Hebrew "פגישה עם X" title is rendered "una reunión con X". The create remembers its language on the draft so it stays Spanish across turns even when a bare answer ("a las cuatro") detects as Hebrew. Hebrew creates are unchanged. Builds on 0.69.0 SPANISH_TRANSCRIPT_LOCALE_INTEGRITY.'
+const BUILD_VERSION = '0.71.0-family-ex-spouse-directionality'
+const BUILD_LABEL = 'AbuBank — FAMILY_EX_SPOUSE_DIRECTIONALITY: Martita can now ask about an ex-spouse in BOTH directions and get a deterministic graph answer instead of an LLM guess. "מי הגרוש של מור" → רפי, "ממי מור גרושה" → רפי, and the reverse "רפי הוא הגרוש של מי" → מור. Before, these fell through to a profile-blurb lookup (or the LLM); now answerFamilyRelation resolves the symmetric ex-spouse edge from knowledge/family_data.json (Mor↔Rafi), rendered "הגרוש/ה של X". Current-partner ("מי בת הזוג של מור" → יעל) and Ofir feminine forms are unchanged. Builds on 0.70.0 SPANISH_CREATE_STAYS_SPANISH.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
