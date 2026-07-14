@@ -117,7 +117,13 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
   → no fabricated ex-spouse); current-partner (`מי בת הזוג של מור`→יעל) and Ofir feminine forms ("הנכדה")
   unchanged. Regression `src/screens/AbuAI/exSpouseDirectionality.test.ts` (7/7). Evidence: CODE /
   AUTOMATED_TEST (deterministic function run = HIGH; pure-local path, no LLM) — NOT device-proven.
-  *Remaining (separate):* relation-between-X-and-Martita (`מה הקשר בין אופיר למרתה`) still returns "don't know".
+  **CODE progress (0.72.0):** relation-between-X-and-Martita now resolves when she is named "מרתה" (Marta,
+  the everyday spelling of canonical "מרטיטה"). `מה הקשר בין אופיר למרתה` → "מרטיטה הסבתא של אופיר (דרך מור)"
+  (was "לא יודעת"). First divergence was name resolution, not the handler: `findNode("מרתה")` was null because
+  "מרתה" was not an alias. Added it to Martita's aliases in `knowledge/family_graph.json` (runtime source) +
+  `knowledge/family_data.json` (source of truth); `validate:family` + `validate:knowledge` pass. Feminine
+  forms (הסבתא / הנכדה) intact; canonical/אבו spellings + ex-spouse directionality unchanged. Regression
+  `src/screens/AbuAI/relationBetweenMartita.test.ts` (4/4). Evidence: CODE / AUTOMATED_TEST — NOT device-proven.
 - **Mobile/PWA 🟡** — Installs + stale-bundle detection (`versionSync`) proven at CODE/BROWSER; device
   audio permission path is the open risk. *Next:* device install + mic-permission walkthrough.
 - **Privacy 🟢 (CODE)** — Billable keys server-only, enforced by `clientProviderKeyContract.test.ts`;

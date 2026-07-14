@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.71.0-family-ex-spouse-directionality'
-const BUILD_LABEL = 'AbuBank — FAMILY_EX_SPOUSE_DIRECTIONALITY: Martita can now ask about an ex-spouse in BOTH directions and get a deterministic graph answer instead of an LLM guess. "מי הגרוש של מור" → רפי, "ממי מור גרושה" → רפי, and the reverse "רפי הוא הגרוש של מי" → מור. Before, these fell through to a profile-blurb lookup (or the LLM); now answerFamilyRelation resolves the symmetric ex-spouse edge from knowledge/family_data.json (Mor↔Rafi), rendered "הגרוש/ה של X". Current-partner ("מי בת הזוג של מור" → יעל) and Ofir feminine forms are unchanged. Builds on 0.70.0 SPANISH_CREATE_STAYS_SPANISH.'
+const BUILD_VERSION = '0.72.0-relation-between-martita-alias'
+const BUILD_LABEL = 'AbuBank — RELATION_BETWEEN_MARTITA_ALIAS: "מה הקשר בין אופיר למרתה" used to answer "לא יודעת" because "מרתה" (Marta, the everyday spelling of the canonical "מרטיטה") was not a recognized alias, so findNode() returned null and the relation-between handler bailed. Added "מרתה" to the Martita aliases in knowledge/family_graph.json (runtime source) + knowledge/family_data.json (source of truth); the existing handler now resolves it → "מרטיטה הסבתא של אופיר (דרך מור)". Feminine forms (הסבתא / הנכדה) intact; canonical/אבו spellings and ex-spouse directionality unchanged. Builds on 0.71.0 FAMILY_EX_SPOUSE_DIRECTIONALITY.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
