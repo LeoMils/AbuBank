@@ -110,6 +110,14 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
 - **Latency 🔴** — ~20s observed on device. *Next:* per-stage latency budget (`latency-budget`), device timing.
 - **Persistent Memory / Family Graph 🟡** — Generated from `knowledge/*`; `validate:family` + gender
   regression green at CODE. Device conversation continuity unproven. *Next:* device continuity test.
+  **CODE progress (0.71.0):** ex-spouse directionality (release-gate) fixed — `מי הגרוש של מור`→רפי,
+  `ממי מור גרושה`→רפי, and the reverse `רפי הוא הגרוש של מי`→מור now resolve deterministically over the
+  symmetric ex-spouse edge (`answerFamilyRelation`), instead of a profile-blurb lookup / LLM guess. Verified
+  against `knowledge/family_data.json` (Mor↔Rafi) at runtime, both directions. Never-invent holds (Leo/Ofir
+  → no fabricated ex-spouse); current-partner (`מי בת הזוג של מור`→יעל) and Ofir feminine forms ("הנכדה")
+  unchanged. Regression `src/screens/AbuAI/exSpouseDirectionality.test.ts` (7/7). Evidence: CODE /
+  AUTOMATED_TEST (deterministic function run = HIGH; pure-local path, no LLM) — NOT device-proven.
+  *Remaining (separate):* relation-between-X-and-Martita (`מה הקשר בין אופיר למרתה`) still returns "don't know".
 - **Mobile/PWA 🟡** — Installs + stale-bundle detection (`versionSync`) proven at CODE/BROWSER; device
   audio permission path is the open risk. *Next:* device install + mic-permission walkthrough.
 - **Privacy 🟢 (CODE)** — Billable keys server-only, enforced by `clientProviderKeyContract.test.ts`;
