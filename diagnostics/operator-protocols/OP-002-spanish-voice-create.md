@@ -12,7 +12,8 @@ Spanish **speech** is transcribed correctly and that the Spanish reply is **audi
 ## Preconditions (record exactly)
 - Device model + OS version (target: Martita's actual phone; else closest iPhone).
 - App surface: installed PWA (home-screen), not desktop browser.
-- Build shown in Settings/About: must read `0.73.0-spanish-create-completes`.
+- Build shown in Settings/About: `0.74.0-family-possessive-spouse` **or later** (the Spanish-create
+  work ships in every build from `0.73.0-spanish-create-completes` on — just confirm it is not older).
 - Input mode: VOICE (microphone). Speak Rioplatense Spanish.
 - App language/voice: whatever Martita actually uses.
 - Network: note wifi / cellular.
@@ -37,7 +38,7 @@ Speak each line as a separate turn; wait for AbuAI to respond and LISTEN to the 
 ## Response template (fill and return verbatim)
 ```
 OP-002 result
-device: <model / OS>       build shown: <e.g. 0.73.0-spanish-create-completes>   [must match]
+device: <model / OS>       build shown: <e.g. 0.74.0-family-possessive-spouse or later>   [must be >= 0.73.0]
 input mode: voice          network: <wifi | cellular>
 
 Scenario A (a las tres, accept):

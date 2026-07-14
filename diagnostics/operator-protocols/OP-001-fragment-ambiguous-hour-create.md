@@ -12,7 +12,8 @@ complete exactly like one said all at once.
 ## Preconditions (record exactly)
 - Device model + OS version (target: Martita's actual phone; else closest iPhone).
 - App surface: installed PWA (home-screen) — not a desktop browser.
-- Build/version shown in Settings/About: must read `0.68.0-fragment-ambiguous-hour-parity`.
+- Build/version shown in Settings/About: `0.74.0-family-possessive-spouse` **or later** (the fix
+  ships in every build from `0.68.0-fragment-ambiguous-hour-parity` on — just confirm it is not older).
 - Input mode: run the protocol **twice** — once TYPED, once by VOICE (mic).
 - Language: Hebrew, feminine address.
 - Network: normal Wi-Fi or cellular (note which).
@@ -41,7 +42,7 @@ Say/type each line as a SEPARATE turn, waiting for AbuAI to respond before the n
 ```
 OP-001 result
 device: <model / OS>
-build shown: <e.g. 0.68.0-fragment-ambiguous-hour-parity>   [must match]
+build shown: <e.g. 0.74.0-family-possessive-spouse or later>   [must be >= 0.68.0]
 input mode: <typed | voice>   (run once each)
 network: <wifi | cellular>
 
