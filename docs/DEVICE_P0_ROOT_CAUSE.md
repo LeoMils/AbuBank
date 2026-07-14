@@ -75,7 +75,15 @@ likely downstream of voice)**.
 
 ---
 
-## P0-MEMORY — no continuity; dishonestly implies it has memory  ·  PARTIAL root cause (needs device repro)
+## P0-MEMORY — no continuity; dishonestly implies it has memory  ·  DISHONEST-PHRASING FIXED (0.77.0); continuity needs device repro
+
+> **Update (0.77.0):** the *dishonest phrasing* half is fixed at CODE. The SYSTEM_PROMPT now forbids
+> implying a persistent/fallible memory ("שכחתי" / "לפעמים אני מפספסת") — anything not said in the
+> current conversation → honest "לא יודעת / לא סיפרת לי"; what WAS said this conversation → remember
+> and continue. Regression `src/screens/AbuAI/memoryHonesty.test.ts` (source-contract on the prompt).
+> The *continuity* half (does the model reliably get + use the last turn on device) still needs a
+> device repro — see below.
+
 
 - **Symptom:** forgets the previous turn within one conversation; and *verbally implies* it has
   memory ("sometimes I miss things") instead of being honest it has none.

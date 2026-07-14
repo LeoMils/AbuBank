@@ -1,5 +1,22 @@
 # WAR_ROOM_LOG
 
+## 2026-07-14 — overnight cycle 2 (0.77.0): MEMORY P0 — honest about memory
+- SINGLE-WRITER: continued under the same lock (HEAD 03676b1). foreground-only.
+- ROOT CAUSE: device showed AbuAI implying it has memory ("sometimes I miss things"). Investigation:
+  the LLM DOES receive the current conversation (fullTurnBridge:19 sendMessage(messages)) — so the
+  dishonest claim is LLM PERSONA, not a wiring-lost-history bug. The prompt had no honesty boundary
+  about memory.
+- FIX (smallest, honest): SYSTEM_PROMPT (service.ts) — added an explicit rule: no cross-session memory,
+  only THIS conversation is visible; never "שכחתי"/"לפעמים אני מפספסת"; anything not said this
+  conversation → "לא יודעת / לא סיפרת לי"; what WAS said → remember + continue.
+- REGRESSION FIRST → then fix (RED 2→GREEN): src/screens/AbuAI/memoryHonesty.test.ts (source-contract on
+  SYSTEM_PROMPT: states no cross-session memory + forbids the dishonest phrasings + requires honest "לא יודעת").
+- VALIDATION: memoryHonesty 2/2; full suite 10813 pass/2 todo/0 fail (309 files); tsc clean; build clean.
+  Version 0.76.0→0.77.0.
+- EVIDENCE: CODE (source-contract). The felt honest behavior is LLM/DEVICE-observable — NOT overclaimed.
+  Residual: the CONTINUITY half (does the model reliably get+use the last turn on device) needs a device
+  repro to localize (state-reset vs truncation); documented in DEVICE_P0_ROOT_CAUSE.
+
 ## 2026-07-14 — overnight cycle 1 (0.76.0): VOICE P0 — iOS Whisper primary + listening watchdog
 - MANDATE: autonomous overnight, priority VOICE→MEMORY→CALENDAR→gap map. Single-writer/foreground/rc5-only.
 - SINGLE-WRITER: re-acquired lock (HEAD==origin f8ad7a0, 0/0). v2.1.190 foreground-only.

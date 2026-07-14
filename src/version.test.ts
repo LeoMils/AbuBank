@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.76.0-ios-whisper-stt-watchdog')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank — IOS_WHISPER_STT_WATCHDOG: the P0 voice fix (device-gated, PENDING on-device verification via OP-003). Device root cause (docs/DEVICE_P0_ROOT_CAUSE.md): on iOS the primary STT webkitSpeechRecognition could start and fire NO events, hanging "מקשיבה..." forever. Fix: (1) on iOS, skip the flaky Web Speech and use the Whisper (MediaRecorder→Groq, audio/mp4) path as primary; (2) a listening WATCHDOG (LISTEN_WATCHDOG_MS) so any stall aborts and falls back instead of hanging forever — a bounded fallback per .claude/rules/voice.md. Pure decision layer in src/services/sttStrategy.ts (unit-tested); the actual iOS mic capture + audible TTS is still DEVICE-GATED (not proven in code). Builds on 0.75.0 ONLINE_GROUNDING_GATE.')
+    expect(APP_VERSION.version).toBe('0.77.0-memory-honesty')
+    expect(APP_VERSION.buildLabel).toBe('AbuBank — MEMORY_HONESTY: P0 #2 (trust). On device AbuAI verbally implied it has memory it lacks ("sometimes I miss things"). Truth of the wiring: the current conversation IS passed to the model (fullTurnBridge → sendMessage(messages)) so it can reference what was just said, but there is NO cross-session memory. The system prompt now forbids implying a persistent/fallible memory: it must never say "שכחתי" / "לפעמים אני מפספסת"; anything not said in THIS conversation → honest "לא יודעת / לא סיפרת לי"; what WAS said this conversation → remember and continue. Regression memoryHonesty (source-contract on SYSTEM_PROMPT). Evidence: CODE; the felt honest behavior is LLM/DEVICE-observable. Builds on 0.76.0 IOS_WHISPER_STT_WATCHDOG.')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
