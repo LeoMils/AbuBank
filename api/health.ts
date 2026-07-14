@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.74.0-family-possessive-spouse'
-const BUILD_LABEL = 'AbuBank — FAMILY_POSSESSIVE_SPOUSE: a common family question in the POSSESSIVE spouse form ("מי בעלה של אופיר" — who is Ofir’s husband, "מי אשתו של עילי" — Eili’s wife) used to punt to the LLM (risking an invented family fact), because the family reasoner + classifier matched only "הבעל של" / "האישה של", not the suffix forms "בעלה" / "אשתו". Both now recognize the possessive forms → answered from the family graph (גלעד / ירדן), never the model. Part of the CONVERSATION_GAP_MAP effort (docs/CONVERSATION_GAP_MAP.md): the controller is the sole runtime path and its grounded family coverage was weaker than the deprecated tryGroundedAnswer. Ofir feminine forms + ex-spouse directionality unchanged. Builds on 0.73.0 SPANISH_CREATE_COMPLETES.'
+const BUILD_VERSION = '0.75.0-online-grounding-gate'
+const BUILD_LABEL = 'AbuBank — ONLINE_GROUNDING_GATE: a real device test on 0.74.0 (iPhone) exposed broken foundations; see docs/DEVICE_P0_ROOT_CAUSE.md for the 4-way root-cause report (voice, memory, online, calendar). First fix: the online endpoint no longer returns a confident current-info answer without evidence of retrieval. It used to return ok:true with the model free text whenever an answer existed (attaching sources only when present), so an ungrounded/hallucinated answer with ZERO sources — the fabricated World Cup fixtures — was surfaced as fact. Now zero sources ⇒ honest failure (ONLINE_NO_RESULTS: "I could not find current info, I would rather tell you that than make something up"). §47 / NO TOOL RESULT = NO CLAIM. web_search itself is functional (weather returns sources, PREVIEW-verified). Voice/mic remains device-gated (root-caused; Operator Protocol). Builds on 0.74.0 FAMILY_POSSESSIVE_SPOUSE.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

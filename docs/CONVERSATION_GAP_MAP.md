@@ -168,3 +168,25 @@ parity + truthfulness goal (§14.11, §19, §47 "no wrong/invented family relati
 
 G2 (Spanish family) is higher raw value but a larger, additive change (recognition + Spanish
 rendering); G3 (referent-carry) needs family-focus tracking. Both are the strongest next candidates.
+
+---
+
+## Real DEVICE findings (0.74.0, iPhone Safari PWA) — supersede the CODE gaps above
+
+A physical device test overrides the text-layer analysis for these foundations. Full root-cause in
+`docs/DEVICE_P0_ROOT_CAUSE.md`. Summary:
+
+- **P0-VOICE (device-gated):** mic tap → "מקשיבה..." forever, zero audio in/out. Primary STT is the
+  iOS-unreliable `webkitSpeechRecognition` with **no listening watchdog** → infinite hang. Fix: bounded
+  watchdog + honest state + iOS→Whisper primary; capture proof needs the phone (OP-003).
+- **P0-ONLINE (fixed 0.75.0):** `/api/abuai-online` returned `ok:true` with **0 sources** → hallucinated
+  current info. web_search itself works. Now zero sources ⇒ honest failure. PREVIEW re-verify pending.
+- **P0-MEMORY (needs device repro):** LLM fallback *does* get history (`fullTurnBridge.ts:19`); the
+  "sometimes I miss things" is LLM persona, not a hardcoded line. Localize state-reset vs truncation on
+  device, then fix the dishonest persona + guarantee last-N-turns (relates to G3 continuity).
+- **P0-CALENDAR (likely voice-downstream):** the controller is the sole path and 0.68–0.73 creates are
+  green in 10,806 tests; a spoken create with dead STT looks like "ignored everything". One typed-create
+  device datapoint decides voice-downstream vs a real separate defect.
+
+These device P0s outrank the CODE gaps G1–G8 for release: voice blocks the entire product, online is a
+safety/hallucination gate. Fix order: online (done) → voice → memory → calendar.

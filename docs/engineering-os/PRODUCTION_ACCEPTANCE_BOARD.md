@@ -45,6 +45,12 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
   added (0.63.0). *First divergence:* physical iPhone mic capture / audible warmth / on-device
   latency unproven. *Blocker:* P0-DEVICE + P0-REALTIME (device-only). *Next:* run
   `docs/abuai/LEO_COMPANION_BREAKTHROUGH_RETEST.md` on a physical iPhone; record `PHYSICAL_DEVICE` evidence.
+  **DEVICE finding (0.74.0, root-caused in `docs/DEVICE_P0_ROOT_CAUSE.md`):** mic tap → "מקשיבה..."
+  forever, zero audio in/out. Code audit: primary STT is `webkitSpeechRecognition` (unreliable in iOS
+  PWA standalone) and the Web Speech listening path has **no watchdog** — if `onend` never fires it hangs
+  forever (a bounded-fallback defect per `.claude/rules/voice.md`). Recorder mime is iOS-aware and
+  `VITE_GROQ_API_KEY` is present, so the Whisper fallback path is viable. *Fix (next code cycle):*
+  listening watchdog + honest state + iOS→Whisper primary; the actual capture stays DEVICE-GATED (OP-003).
 - **STT 🔴** — Hebrew-biased language pin across all 3 engines (CODE). *Blocker:* no device transcript
   accepted. *Next:* device capture → verify Hebrew/Spanish transcription accuracy.
 - **TTS 🟡** — Browser playback green; audible warmth on device unproven. *Next:* device audibility test.
@@ -59,6 +65,14 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
   "who won / latest" query actually returns a grounded, sourced answer on device. *Blocker:* grounding on
   real retrieval on device. *Next:* PREVIEW/device test of "who won / latest" with sources shown
   (see `.claude/rules/online.md`).
+  **DEVICE finding + PREVIEW-verified (0.75.0):** a real iPhone test on 0.74.0 returned fabricated World
+  Cup fixtures as fact. Root-caused (see `docs/DEVICE_P0_ROOT_CAUSE.md`): probing the deployed
+  `/api/abuai-online` showed web_search IS functional (weather → 1 source) but the endpoint returned
+  `ok:true` with the model's free text even when web_search returned **0 sources** — surfacing an
+  ungrounded/hallucinated answer as fact. **Fix (0.75.0):** zero sources ⇒ honest failure
+  (`ONLINE_NO_RESULTS`), the fabricated text is discarded. §47 / NO TOOL RESULT = NO CLAIM. Regression
+  `src/eval/onlineGroundingGate.test.ts`. Evidence: **CODE / AUTOMATED_TEST** now; PREVIEW re-verify on
+  redeploy. *Residual (queued):* the personal-guard over-blocks "who is the current PM of Israel".
 - **Calendar 🔴** — Write→read→modify continuity failed on device. *First divergence:* a just-created
   event not reliably readable/modifiable in the same session. *Next:* device transactional test; a
   gold replay of the failing session (`gold-replay`).

@@ -1,5 +1,32 @@
 # WAR_ROOM_LOG
 
+## 2026-07-14 — DEVICE P0 triage (0.75.0): 4-way root-cause + online grounding gate
+- TRIGGER: real iPhone test on the deployed 0.74.0 preview (QA marker confirmed) — FOUNDATIONS broken:
+  (1) mic/voice dead, (2) no memory continuity + dishonest "miss things", (3) online hallucinated
+  (impossible World Cup fixtures), (4) calendar create ignored fields/didn't save. Device evidence
+  OVERRIDES the 10,806 green CODE tests.
+- SINGLE-WRITER: re-acquired lock (HEAD==origin 1400b65, 0/0). v2.1.190 foreground-only.
+- INVESTIGATION (honest evidence classes): server config healthy (/api/health: OPENAI_API_KEY present,
+  routes configured, web_search functional). Client fresh (QA 0.74.0). → 4 INDEPENDENT root causes, not
+  one common cause. Full report: docs/DEVICE_P0_ROOT_CAUSE.md.
+  - ONLINE: PREVIEW-probed the deployed endpoint — web_search WORKS (weather→1 source) but returns
+    ok:true with 0 sources for a no-results query → surfaces ungrounded/hallucinated text as fact.
+  - VOICE: DEVICE-GATED. Code audit: primary STT = webkitSpeechRecognition (iOS-unreliable), no watchdog
+    on the Web Speech listening path → infinite "מקשיבה". Recorder mime iOS-aware; VITE_GROQ_API_KEY present.
+  - MEMORY: LLM fallback DOES get history (fullTurnBridge:19); dishonest line is LLM persona (honest line
+    exists at index.tsx:1170). Needs device repro to localize state-reset vs truncation.
+  - CALENDAR: controller is sole path + 0.68–0.73 creates green in 10,806 tests → most likely downstream
+    of dead STT (spoken create). One typed-create device datapoint decides.
+- FIXED (highest-severity PROVABLE): ONLINE grounding gate. api/abuai-online.ts: zero sources ⇒ honest
+  failure ONLINE_NO_RESULTS (was ok:true + model free text). §47 / NO TOOL RESULT = NO CLAIM.
+- REGRESSION FIRST → then fix (stash-verified RED→GREEN): src/eval/onlineGroundingGate.test.ts (grounded
+  ⇒ ok+sources; ungrounded ⇒ honest fail, fabricated text NOT leaked).
+- VALIDATION: onlineGroundingGate 2/2; online suite 65; benchmark floor 100%; full suite 10806 pass/2
+  todo/0 fail (307 files); tsc clean; build clean. Version 0.74.0→0.75.0.
+- EVIDENCE: online fix = CODE/AUTOMATED_TEST (PREVIEW re-verify on redeploy). Voice/memory/calendar remain
+  device-gated / need device repro. NOT overclaimed. Next: voice watchdog + iOS→Whisper (+OP-003);
+  online Defect B (over-block); memory device repro; calendar typed-create datapoint.
+
 ## 2026-07-14 — parity program · recovery cycle 0.74.0 (CONVERSATION_GAP_MAP + G1: possessive spouse)
 - SINGLE-WRITER: re-acquired lock (HEAD==origin d54b275, 0/0, prior lock released). v2.1.190 foreground-only.
 - FOCUS SHIFT (user-directed): from small calendar/locale fixes to the free conversation itself. Built a

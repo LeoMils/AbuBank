@@ -34,6 +34,7 @@ type OnlineErrorCode =
   | 'ONLINE_PROVIDER_FAILED'
   | 'ONLINE_QUERY_BLOCKED_PERSONAL'
   | 'ONLINE_TIMEOUT'
+  | 'ONLINE_NO_RESULTS'
   | 'BAD_REQUEST'
 
 interface OnlineSuccess {
@@ -69,6 +70,7 @@ function userMessageFor(code: OnlineErrorCode, lang: OnlinePayload['lang'] = 'he
     ONLINE_PROVIDER_FAILED: 'No puedo comprobar información online ahora. Probá de nuevo en un momento.',
     ONLINE_QUERY_BLOCKED_PERSONAL: 'Para preguntas sobre tu familia o tu calendario, mejor usar la información local — no busco eso online.',
     ONLINE_TIMEOUT: 'La búsqueda online tardó demasiado. Probá de nuevo en un momento.',
+    ONLINE_NO_RESULTS: 'No encontré información actual sobre eso ahora mismo. Prefiero decírtelo a inventar algo.',
     BAD_REQUEST: 'No entendí la consulta. Probá con otra pregunta.',
   }
   const HE: Record<OnlineErrorCode, string> = {
@@ -76,6 +78,7 @@ function userMessageFor(code: OnlineErrorCode, lang: OnlinePayload['lang'] = 'he
     ONLINE_PROVIDER_FAILED: 'אני לא מצליחה לבדוק מידע אונליין כרגע. נסי שוב בעוד רגע.',
     ONLINE_QUERY_BLOCKED_PERSONAL: 'לשאלות על המשפחה או היומן אני משתמשת במידע המקומי — לא מחפשת את זה אונליין.',
     ONLINE_TIMEOUT: 'החיפוש האונליין לקח יותר מדי זמן. נסי שוב.',
+    ONLINE_NO_RESULTS: 'לא מצאתי מידע עדכני על זה כרגע. אני מעדיפה להגיד לך את זה מאשר להמציא.',
     BAD_REQUEST: 'לא הבנתי את השאלה. נסי לנסח אחרת.',
   }
   const EN: Record<OnlineErrorCode, string> = {
@@ -83,6 +86,7 @@ function userMessageFor(code: OnlineErrorCode, lang: OnlinePayload['lang'] = 'he
     ONLINE_PROVIDER_FAILED: 'I cannot check online information right now. Please try again in a moment.',
     ONLINE_QUERY_BLOCKED_PERSONAL: 'For family or calendar questions I use local information — I do not search the web for those.',
     ONLINE_TIMEOUT: 'The online lookup took too long. Please try again.',
+    ONLINE_NO_RESULTS: 'I could not find current information about that right now. I would rather tell you that than make something up.',
     BAD_REQUEST: 'I did not understand the question. Try rephrasing.',
   }
   switch (lang) {
@@ -227,10 +231,24 @@ export default async function handler(req: Request): Promise<Response> {
   }
   const sources = extractSources(data)
 
+  // GROUNDING GATE (§47 / "NO TOOL RESULT = NO CLAIM"): a current-info answer must
+  // carry evidence it came from web_search. If ZERO sources came back, we have no proof
+  // the model actually retrieved anything — it may be answering from stale memory (the
+  // real device incident: fabricated World Cup fixtures returned as ok:true). Never
+  // surface that free text as a confident answer; return an honest failure instead so the
+  // client shows a fixed "I could not find current info" line, not a possible hallucination.
+  if (sources.length === 0) {
+    return jsonResponse({
+      ok: false,
+      errorCode: 'ONLINE_NO_RESULTS',
+      userMessage: userMessageFor('ONLINE_NO_RESULTS', lang),
+    }, 200)
+  }
+
   return jsonResponse({
     ok: true,
     answer,
-    ...(sources.length > 0 ? { sources } : {}),
+    sources,
   })
 }
 
