@@ -93,7 +93,10 @@ const REL = [
   { re: /(?:מי\s+ה?)?דוד(?:ות|ה)\s+של\s+(\S+)/u, rel: 'aunt', fn: (n: string) => unclesAuntsOf(n, 'female') },
   { re: /(?:מי\s+ה?)?דוד(?:ים)?\s+של\s+(\S+)/u, rel: 'uncle', fn: (n: string) => unclesAuntsOf(n, 'male') },
   { re: /(?:ה?ילדים|ה?בנים|ה?ילדות)\s+של\s+(\S+)|מי\s+ה?ילדים\s+של\s+(\S+)/u, rel: 'children', fn: (n: string) => childrenOfPublic(n) },
-  { re: /(?:בן|בת|בני)\s+ה?זוג\s+של\s+(\S+)|ה?בעל\s+של\s+(\S+)|ה?אישה\s+של\s+(\S+)|פרטנר.*של\s+(\S+)/u, rel: 'partner', fn: (n: string) => partnerOf(n) },
+  // Partner/spouse — includes the POSSESSIVE suffix forms "בעלה" (her husband) and
+  // "אשתו"/"אשתה" (his/her wife), not only "הבעל של" / "האישה של". A common family
+  // question ("מי בעלה של אופיר") must resolve from the graph, never punt to the LLM.
+  { re: /(?:בן|בת|בני)\s+ה?זוג\s+של\s+(\S+)|ה?בעל[הוהּ]?\s+של\s+(\S+)|ה?איש[הת][הו]?\s+של\s+(\S+)|אשת[הו]\s+של\s+(\S+)|פרטנר.*של\s+(\S+)/u, rel: 'partner', fn: (n: string) => partnerOf(n) },
   // Ex-spouse — symmetric edge, so all shapes resolve to exSpouseOf(the named person):
   //   reverse  "רפי (הוא) הגרוש של מי"  → capture רפי  (Rafi is whose ex-husband)
   { re: /([֐-׿]+)\s+(?:הוא\s+|היא\s+)?ה?גרוש(?:ה)?\s+של\s+מי/u, rel: 'ex_spouse', fn: (n: string) => exSpouseOf(n) },

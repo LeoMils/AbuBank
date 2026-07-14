@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.73.0-spanish-create-completes',
-  buildLabel: 'AbuBank — SPANISH_CREATE_COMPLETES: the Spanish calendar create now finishes end-to-end. (1) An AM/PM-ambiguous bare hour ("anotá una cita el viernes a las diez") no longer dead-ends — a single-utterance es create resolves it to the default reading and moves to confirm (es analog of 0.68.0), so "dale" saves once at 10:00. (2) A Spanish "no" (and cancelá / dejá / olvidate / mejor no / nada) now cancels in Spanish ("Dale, lo cancelé…") instead of punting to the LLM; a correction that merely starts with "no" ("no, a las cuatro") is NOT a cancel. (3) The person-less es title is the schedulable noun with correct gender ("una cita" / "un turno") instead of the raw request echoed back. Builds on 0.72.0 RELATION_BETWEEN_MARTITA_ALIAS.',
+  version:    '0.74.0-family-possessive-spouse',
+  buildLabel: 'AbuBank — FAMILY_POSSESSIVE_SPOUSE: a common family question in the POSSESSIVE spouse form ("מי בעלה של אופיר" — who is Ofir’s husband, "מי אשתו של עילי" — Eili’s wife) used to punt to the LLM (risking an invented family fact), because the family reasoner + classifier matched only "הבעל של" / "האישה של", not the suffix forms "בעלה" / "אשתו". Both now recognize the possessive forms → answered from the family graph (גלעד / ירדן), never the model. Part of the CONVERSATION_GAP_MAP effort (docs/CONVERSATION_GAP_MAP.md): the controller is the sole runtime path and its grounded family coverage was weaker than the deprecated tryGroundedAnswer. Ofir feminine forms + ex-spouse directionality unchanged. Builds on 0.73.0 SPANISH_CREATE_COMPLETES.',
   buildDate:  '2026-07-14',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

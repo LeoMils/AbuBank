@@ -372,7 +372,9 @@ function safeHebrewDate(iso: string): string {
 
 // FamilyRelationReasoner
 function looksLikeFamilyQuery(t: string): boolean {
-  if (/מי\s+ה?(?:סבא|סבתא|דוד|דודה|אבא|אמא|בעל|אישה|בן\s+הזוג|בת\s+הזוג|ילדים|נכד|נכדה|אח|אחות)\s+של/u.test(t)) return true
+  // Base + POSSESSIVE spouse forms ("בעלה" her-husband, "אשתו"/"אשתה" his/her-wife) so a
+  // common family question routes to the graph instead of punting to the LLM.
+  if (/מי\s+ה?(?:סבא|סבתא|דוד|דודה|אבא|אמא|בעל[הוהּ]?|איש[הת][הו]?|אשת[הו]|בן\s+הזוג|בת\s+הזוג|ילדים|נכד|נכדה|אח|אחות)\s+של/u.test(t)) return true
   if (/מה\s+הקשר\s+בין|מה\s+היחס\s+בין|איך\s+קשור[הים]?|מי\s+ז[הא]\s+ל/u.test(t)) return true
   // "מה/מי (זה)? X עבור/בשביל Y" — a directional relation question. Recognized even
   // when X is UNKNOWN, so the runtime answers "won't guess" instead of the LLM.

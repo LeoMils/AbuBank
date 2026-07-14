@@ -129,6 +129,19 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
   `knowledge/family_data.json` (source of truth); `validate:family` + `validate:knowledge` pass. Feminine
   forms (הסבתא / הנכדה) intact; canonical/אבו spellings + ex-spouse directionality unchanged. Regression
   `src/screens/AbuAI/relationBetweenMartita.test.ts` (4/4). Evidence: CODE / AUTOMATED_TEST — NOT device-proven.
+  **CODE progress (0.74.0):** possessive spouse queries now grounded. `מי בעלה של אופיר` (Ofir's husband) /
+  `מי אשתו של עילי` (Eili's wife) used to punt to the LLM (risking an invented family fact) — the family
+  reasoner + classifier matched only "הבעל של"/"האישה של", not the suffix forms "בעלה"/"אשתו". Both now
+  recognize the possessive forms → answered from the graph (גלעד / ירדן), never the model. Verified through
+  the real controller (`intent=family`, `src≠llm`). Part of the CONVERSATION_GAP_MAP effort
+  (`docs/CONVERSATION_GAP_MAP.md`, G1). Regression `src/screens/AbuAI/spouseQueryForms.test.ts` (5/5).
+  Evidence: CODE / AUTOMATED_TEST — NOT device-proven. *Related gaps mapped, not yet fixed:* Spanish family
+  identity queries still punt (G2); a bare family follow-up ("ומי בעלה") loses the referent (G3).
+- **Natural Conversation 🔴** — see `docs/CONVERSATION_GAP_MAP.md`: the controller is the SOLE runtime path
+  (`COGNITIVE_RUNTIME_FULL=true`) and its grounded/family coverage is weaker than the deprecated
+  `tryGroundedAnswer`, so several grounded-answerable turns punt to the LLM (Spanish family, family
+  follow-ups, "who is X" framing, pet recall). 8 gaps severity-ranked with reproducible transcripts +
+  first-divergence + smallest fix; device/audio items marked device-gated. G1 fixed (0.74.0).
 - **Mobile/PWA 🟡** — Installs + stale-bundle detection (`versionSync`) proven at CODE/BROWSER; device
   audio permission path is the open risk. *Next:* device install + mic-permission walkthrough.
 - **Privacy 🟢 (CODE)** — Billable keys server-only, enforced by `clientProviderKeyContract.test.ts`;

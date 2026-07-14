@@ -1,5 +1,33 @@
 # WAR_ROOM_LOG
 
+## 2026-07-14 — parity program · recovery cycle 0.74.0 (CONVERSATION_GAP_MAP + G1: possessive spouse)
+- SINGLE-WRITER: re-acquired lock (HEAD==origin d54b275, 0/0, prior lock released). v2.1.190 foreground-only.
+- FOCUS SHIFT (user-directed): from small calendar/locale fixes to the free conversation itself. Built a
+  broad corpus harness over the REAL controller (ExecutiveCognitiveController.handleTurn, LLM/online stubbed
+  so punts are visible) across greetings/follow-ups/corrections/reference/topic-shifts/hesitations/ambiguous/
+  emotional/memory/mixed-language. Produced docs/CONVERSATION_GAP_MAP.md (8 gaps severity-ranked, each with
+  transcript + first divergence + smallest fix; device/audio items device-gated w/ OP references).
+- KEY ARCHITECTURAL FINDING: the controller is the SOLE runtime path (index.tsx COGNITIVE_RUNTIME_FULL=true,
+  enforced by runtimePathProof.test.ts; the tryGroundedAnswer cascade is DEAD CODE), yet its grounded family
+  coverage is WEAKER than that dead tryGroundedAnswer — so grounded-answerable turns punt to the LLM
+  (Spanish family "quién es Mor", family follow-ups, "who is X" framing, pet). Proven at CODE via a side-by-side
+  table (tryGroundedAnswer answers vs controller punts).
+- SELECTED (highest-value machine-provable, smallest-safe): G1 — possessive spouse form. `מי בעלה של אופיר`
+  (Ofir's husband) / `מי אשתו של עילי` (Eili's wife) punted; `מי הבעל של אופיר` worked. First divergence:
+  familyReasoning REL partner pattern + cognitiveRuntime looksLikeFamilyQuery matched "ה?בעל של"/"ה?אישה של"
+  but not the suffix forms "בעלה"/"אשתו". Two coordinated matches needed (reasoner recognizes it AND classifier
+  routes to family).
+- REGRESSION FIRST → then fix (RED 4→GREEN): src/screens/AbuAI/spouseQueryForms.test.ts (direct
+  answerFamilyRelation + THROUGH the controller intent=family src≠llm; non-regression "הבעל של").
+- FIX (smallest): added possessive alternatives to the partner REL (familyReasoning.ts) and to
+  looksLikeFamilyQuery (cognitiveRuntime.ts). Ground truth verified in family_graph.json (Ofir↔גלעד, Eili↔ירדן).
+- VALIDATION: spouseQueryForms 5/5; family/gender non-regression 56 (ex-spouse/relation-between/ofir-gender/
+  closure/alias); benchmark floor 100%; full suite 10804 pass/2 todo/0 fail (306 files); tsc clean; build clean.
+  Version 0.73.0→0.74.0.
+- EVIDENCE: CODE / AUTOMATED_TEST (deterministic, no LLM on this path). NOT device-proven. Next candidates
+  (mapped): G2 Spanish family identity queries, G3 bare family follow-up referent-carry, G4 "who is X" framing.
+  Device/audio conversation quality remains device-gated (OP for a conversation-quality listening protocol).
+
 ## 2026-07-14 — parity program · recovery cycle 0.73.0 (Spanish create completes)
 - SINGLE-WRITER: re-acquired lock (HEAD==origin 800d4e8, 0/0, prior lock released). v2.1.190 foreground-only.
 - SELECTED DIVERGENCE (user-directed): complete the es create — ambiguous-hour resolution + Spanish no=cancel.
