@@ -71,6 +71,7 @@ import { isOnlineCurrentInfoQuery, shouldBlockOnlineForPersonal } from './online
 import { toSpokenText } from './spokenPersona'
 import {
   shapeCreateConfirm, shapeCreateClarify, shapeCreateCancelled, shapeCreateUnclear,
+  shapeCreateConfirmES, shapeCreateClarifyES, shapeCreateCancelledES, shapeCreateSavedES,
 } from './responseShaper'
 import { normalizeInput } from './understandingOrchestrator'
 
@@ -535,10 +536,12 @@ export interface SaveOutcome { ok: boolean; text: string }
 function executeSave(draft: {
   title?: string | null; date?: string | null; time?: string | null; emoji?: string
   location?: string | null; subject?: string | null; purpose?: string | null
-  notes?: string | null; person?: string | null
-}): SaveOutcome {
+  notes?: string | null; person?: string | null; lang?: 'he' | 'es'
+}, lang: 'he' | 'es' = 'he'): SaveOutcome {
+  const es = lang === 'es'
+  const saveFailed = es ? 'Algo se trabó — no se guardó. Probá de nuevo.' : 'משהו לא עבד — הפגישה לא נשמרה. תנסי שוב.'
   if (!draft.title || !draft.date || !draft.time) {
-    return { ok: false, text: 'חסר לי פרט כדי לשמור — מה, מתי ובאיזו שעה?' }
+    return { ok: false, text: es ? 'Me falta un dato para agendar — ¿qué, qué día y a qué hora?' : 'חסר לי פרט כדי לשמור — מה, מתי ובאיזו שעה?' }
   }
   const res = createAppointmentSafe({
     title: draft.title, date: draft.date, time: draft.time, emoji: draft.emoji ?? '📅',
@@ -548,18 +551,22 @@ function executeSave(draft: {
     ...(draft.notes ? { notes: draft.notes } : {}),
     ...(draft.person ? { personName: draft.person } : {}),
   })
-  if (!res.ok) return { ok: false, text: 'משהו לא עבד — הפגישה לא נשמרה. תנסי שוב.' }
+  if (!res.ok) return { ok: false, text: saveFailed }
   // Verify the write actually persisted (no fake-save).
   const verified = loadAppointments().find(a =>
     a.id === res.appointment.id ||
     (a.title === draft.title && a.date === draft.date && (a.time ?? null) === (draft.time ?? null)))
-  if (!verified) return { ok: false, text: 'משהו לא עבד — הפגישה לא נשמרה. תנסי שוב.' }
-  const heDate = safeHebrewDate(verified.date)
-  const loc = verified.location ? ` ${/^(?:ב|ל|מ|אצל)/u.test(verified.location) ? verified.location : 'ב' + verified.location}` : ''
+  if (!verified) return { ok: false, text: saveFailed }
   // Conflict awareness: the event is still saved (additive, never destructive), but
   // warn warmly if she already has something at the same date+time — so she isn't
   // silently double-booked.
   const clash = loadAppointments().find(a => a.id !== verified.id && a.date === verified.date && a.time === verified.time)
+  if (es) {
+    const esWarn = clash ? `Ojo — ya tenés ${clash.title} a esa hora. ` : ''
+    return { ok: true, text: `${esWarn}${shapeCreateSavedES({ title: verified.title, date: verified.date, time: verified.time, person: draft.person ?? null })}` }
+  }
+  const heDate = safeHebrewDate(verified.date)
+  const loc = verified.location ? ` ${/^(?:ב|ל|מ|אצל)/u.test(verified.location) ? verified.location : 'ב' + verified.location}` : ''
   const warn = clash ? `שימי לב — כבר יש לך ${clash.title} באותו זמן. ` : ''
   return { ok: true, text: `${warn}קבוע — ${verified.title} ${heDate} בשעה ${verified.time}.${loc}` }
 }
@@ -612,6 +619,33 @@ export function composeHebrew(text: string): { display: string; speak: string } 
   return { display: display || text.trim(), speak: speak || text.trim() }
 }
 
+// ── Create-flow locale (§20.2 "remain in Spanish") ─────────────────────────────
+// The create's language is REMEMBERED on the draft so it stays Spanish across turns —
+// a bare answer like "a las cuatro" detects as Hebrew on its own, so re-detecting per
+// turn would flip locale mid-create.
+type CreateLang = 'he' | 'es'
+function createLangOf(state: RuntimeState, turnLang: Lang): CreateLang {
+  const dl = state.createState.draft.lang
+  if (dl === 'es' || dl === 'he') return dl
+  return turnLang === 'es' ? 'es' : 'he'
+}
+/** Confirm/clarify text for a create draft in the create's language. */
+function shapeCreatePrompt(cs: CalendarCreateState, lang: CreateLang): string {
+  if (lang === 'es') {
+    return cs.phase === 'confirming' ? shapeCreateConfirmES(cs.draft) : shapeCreateClarifyES(cs.missing)
+  }
+  return cs.phase === 'confirming' ? shapeCreateConfirm(cs.draft) : shapeCreateClarify(cs.missing, cs.draft)
+}
+/** Compose display/speak for create text — Spanish bypasses Hebrew persona shaping. */
+function composeCreate(text: string, lang: CreateLang): { display: string; speak: string } {
+  if (lang === 'es') { const t = text.trim(); return { display: t, speak: t } }
+  return composeHebrew(text)
+}
+/** Stamp the create language onto a draft so it persists across turns. */
+function withLang(cs: CalendarCreateState, lang: CreateLang): CalendarCreateState {
+  return cs.draft.lang ? cs : { ...cs, draft: { ...cs.draft, lang } }
+}
+
 // ── Layer 9: TTS-safe output ───────────────────────────────────────────────────
 function chunk(text: string): string[] {
   const c = planSpokenChunks(text)
@@ -662,9 +696,9 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   const base = { intent, lang, original, normalized }
   const settle = (
     rawAnswer: string,
-    opts: { state: RuntimeState; dataAvailable: boolean; recordTopic?: string | null },
+    opts: { state: RuntimeState; dataAvailable: boolean; recordTopic?: string | null; lang?: CreateLang },
   ): CognitiveDecision => {
-    const { display, speak } = composeHebrew(rawAnswer)
+    const { display, speak } = opts.lang ? composeCreate(rawAnswer, opts.lang) : composeHebrew(rawAnswer)
     const verifier = verifyAnswer(display, { intent, dataAvailable: opts.dataAvailable })
     // Record the answer into conversation memory so "תמשיכי" / recall work next turn.
     let conv = opts.state.conv
@@ -717,11 +751,13 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     const phase = state.createState.phase
     const { action, keepsPending } = reduceV2(phase, classifySignalV2(normalized, phase))
     const keptState = { ...state, createState: keepsPending ? state.createState : IDLE_STATE }
+    // Language the pending create was started in — respond in it across turns (§20.2).
+    const clang = createLangOf(state, lang)
     switch (action) {
       case 'execute_save': {
         const d = state.createState.draft
-        const out = executeSave(d)
-        const { display, speak } = composeHebrew(out.text)
+        const out = executeSave(d, d.lang ?? clang)
+        const { display, speak } = composeCreate(out.text, d.lang ?? clang)
         // Focus the just-saved event's person so a follow-up "מה קבענו?/באיזה שעה?/
         // איפה?" answers from it (property continuity) instead of punting to the LLM.
         const savedPerson = d.person ?? ((d.title ?? '').replace(/^פגישה עם\s+/u, '').trim() || null)
@@ -734,7 +770,7 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
         }
       }
       case 'cancel':
-        return { ...settle(shapeCreateCancelled(), { state: { ...state, createState: IDLE_STATE }, dataAvailable: true }), intent: 'confirmation' }
+        return { ...settle(clang === 'es' ? shapeCreateCancelledES() : shapeCreateCancelled(), { state: { ...state, createState: IDLE_STATE }, dataAvailable: true, lang: clang }), intent: 'confirmation' }
       case 'audio_help':
         return { ...settle('רגע, אני פה. אם לא שמעת אותי, נסי להעלות את עוצמת הקול או ללחוץ שוב על הכפתור. מה שביקשת עדיין שמור.', { state: keptState, dataAvailable: true }), intent: 'audio_complaint' }
       case 'frustration_keep':
@@ -758,14 +794,16 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
         return { ...answered, state: { ...answered.state, createState: state.createState } }
       }
       case 'replace': {
-        const next = startCreate(normalized)
-        const text = next.phase === 'confirming' ? shapeCreateConfirm(next.draft) : shapeCreateClarify(next.missing, next.draft)
-        return { ...settle(text, { state: { ...state, createState: next }, dataAvailable: true }), intent: 'calendar_create' }
+        // A brand-new create replaces the pending draft → its language is THIS turn's.
+        const rlang: CreateLang = lang === 'es' ? 'es' : 'he'
+        const next = withLang(startCreate(normalized), rlang)
+        const text = shapeCreatePrompt(next, rlang)
+        return { ...settle(text, { state: { ...state, createState: next }, dataAvailable: true, lang: rlang }), intent: 'calendar_create' }
       }
       case 'update': {
-        const next = updateCreate(state.createState, normalized)
-        const text = next.phase === 'confirming' ? shapeCreateConfirm(next.draft) : shapeCreateClarify(next.missing, next.draft)
-        return { ...settle(text, { state: { ...state, createState: next }, dataAvailable: true }), intent: 'calendar_create' }
+        const next = withLang(updateCreate(state.createState, normalized), clang)
+        const text = shapeCreatePrompt(next, clang)
+        return { ...settle(text, { state: { ...state, createState: next }, dataAvailable: true, lang: clang }), intent: 'calendar_create' }
       }
       case 'defer':
       default:
@@ -897,20 +935,21 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       // When we have a semantic "פרטים חשובים" summary, DROP the raw notes clause so
       // the confirm never dumps the raw sentence in "(...)" alongside the summary.
       if (next.phase === 'confirming' && smart.importantDetails.length) next.draft.notes = null
-      let text = next.phase === 'confirming'
-        ? shapeCreateConfirm(next.draft)
-        : shapeCreateClarify(next.missing, next.draft)
-      // Smart enrichment: surface stated duration + the important context clauses
-      // ("פרטים חשובים") the person buried in a rambling request. Appended before
+      // Remember the create's language (§20.2) and shape the prompt in it.
+      const clang = createLangOf(state, lang)
+      next = withLang(next, clang)
+      let text = shapeCreatePrompt(next, clang)
+      // Smart enrichment (Hebrew-only): surface stated duration + the important context
+      // clauses ("פרטים חשובים") the person buried in a rambling request. Appended before
       // the trailing confirmation question; absent for plain requests (no change).
-      if (next.phase === 'confirming') {
+      if (next.phase === 'confirming' && clang === 'he') {
         const extra: string[] = []
         if (smart.durationLabel) extra.push(`למשך ${smart.durationLabel}`)
         if (smart.importantDetails.length) extra.push(`פרטים חשובים: ${smart.importantDetails.join('; ')}`)
         if (extra.length) text = text.replace(/\s*נכון\?\s*$/u, `. ${extra.join('. ')}. נכון?`)
         text = text.replace(/\.\s*\.+/g, '.').replace(/\s{2,}/g, ' ')  // no double periods
       }
-      const { display, speak } = composeHebrew(text)
+      const { display, speak } = composeCreate(text, clang)
       const verifier = verifyAnswer(display, { intent, dataAvailable: true })
       return {
         ...base, handled: true, display, speak, chunks: chunk(display),
@@ -924,10 +963,12 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       // Resolve the pending draft. resolvePendingMessage owns save/cancel/audio/park/change.
       const isRead = /מה יש לי|מה ה?תוכניות|יומן/u.test(normalized)
       const res = resolvePendingMessage(state.createState, normalized, isRead)
+      // Language the pending create was started in — keep responding in it (§20.2).
+      const clang = createLangOf(state, lang)
       switch (res.action) {
         case 'save': {
-          const out = executeSave(res.draft)
-          const { display, speak } = composeHebrew(out.text)
+          const out = executeSave(res.draft, res.draft.lang ?? clang)
+          const { display, speak } = composeCreate(out.text, clang)
           const verifier = verifyAnswer(display, { intent, dataAvailable: true })
           return {
             ...base, handled: true, display, speak, chunks: chunk(display),
@@ -937,23 +978,22 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
           }
         }
         case 'cancel':
-          return { ...settle(shapeCreateCancelled(), { state, dataAvailable: true }),
+          return { ...settle(clang === 'es' ? shapeCreateCancelledES() : shapeCreateCancelled(), { state, dataAvailable: true, lang: clang }),
             state: { ...state, createState: IDLE_STATE, conv: state.conv, lastIntent: intent } }
         case 'audio_help':
           return { ...settle(res.message, { state, dataAvailable: true }),
             state: { ...state, createState: res.keep, conv: state.conv, lastIntent: 'audio_complaint' } }
         case 'replace':
         case 'update': {
-          const text = res.state.phase === 'confirming'
-            ? shapeCreateConfirm(res.state.draft)
-            : shapeCreateClarify(res.state.missing, res.state.draft)
-          const { display, speak } = composeHebrew(text)
+          const next = withLang(res.state, clang)
+          const text = shapeCreatePrompt(next, clang)
+          const { display, speak } = composeCreate(text, clang)
           const verifier = verifyAnswer(display, { intent, dataAvailable: true })
           return {
             ...base, handled: true, display, speak, chunks: chunk(display),
             needsLLM: false, needsOnline: false, online: null, grounding: null,
             sideEffect: null, verifier,
-            state: { ...state, createState: res.state, lastIntent: intent },
+            state: { ...state, createState: next, lastIntent: intent },
           }
         }
         case 'read':

@@ -4,10 +4,11 @@
 evidence class for the experience Martita actually has. Passing unit tests are `CODE` evidence —
 they do NOT turn a row green. Real device/production evidence overrides any number of mocks.
 
-**Stamp:** build `0.69.0-spanish-transcript-locale-integrity` · branch `rc5/cognitive-architecture-and-acceptance`
+**Stamp:** build `0.70.0-spanish-create-stays-spanish` · branch `rc5/cognitive-architecture-and-acceptance`
 · updated 2026-07-14 (recovery cycles: 0.64.0 durable-flush-on-hide, 0.65.0 current-info-grounding,
 0.66.0 fragmented-create-continuity, 0.67.0 natural-slotfill-clarify, 0.68.0 fragment-ambiguous-hour-parity,
-0.69.0 spanish-transcript-locale-integrity). Earlier baseline: `0.63.0` / commit `090b54b` (pre-FR1, 2026-07-12).
+0.69.0 spanish-transcript-locale-integrity, 0.70.0 spanish-create-stays-spanish). Earlier baseline: `0.63.0`
+/ commit `090b54b` (pre-FR1, 2026-07-12).
 Schema: `src/engineering-os/evidence.ts`. Classes: `CODE < MOCK < BROWSER < PREVIEW < PHYSICAL_DEVICE < PRODUCTION`.
 
 > ⚠️ This board is intentionally NOT optimistic. Most rows are RED/YELLOW because physical
@@ -68,9 +69,19 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
   runtime asked "באיזו שעה?" in Hebrew, and "dale" dead-ended (nothing created). Fixed at first divergence:
   the dedup boundary is now script-agnostic (`\p{L}\p{M}`). The scenario now creates exactly once at 15:00
   and "dale" saves. Gold replay `src/eval/spanishCalendarGoldReplay.test.ts` (locale-integrity unit +
-  end-to-end §20.2). Evidence: CODE / AUTOMATED_TEST (LLM/online stubbed) — NOT device-proven. *Remaining
-  locale gap (separate divergence):* the Spanish create's clarify/confirm text is still Hebrew
-  ("נכון?") — the event is correct but the question should be Spanish (§20.2 "remain in Spanish").
+  end-to-end §20.2). Evidence: CODE / AUTOMATED_TEST (LLM/online stubbed) — NOT device-proven.
+  **CODE progress (0.70.0):** the Spanish create now speaks Spanish end-to-end (§20.2 "remain in Spanish").
+  The clarify ("¿A qué hora?"), confirm ("Te agendo una reunión con Gabi mañana a las 15:00. ¿Está bien?"),
+  save ("Listo, te agendé…") and cancel are all Spanish; the Hebrew "פגישה עם X" title renders "una reunión
+  con X"; the create remembers its language on the draft so it stays Spanish across turns even when a bare
+  answer ("a las cuatro") detects as Hebrew (`composeCreate` bypasses Hebrew persona shaping for es). Hebrew
+  creates unchanged. Gold replay `src/eval/spanishCreateLocale.test.ts` (confirm/clarify/save language +
+  cross-turn continuity + Hebrew-unaffected). Evidence: CODE / AUTOMATED_TEST — NOT device-proven.
+  *Remaining es gaps (separate divergences, documented):* (1) a bare AM/PM-ambiguous Spanish hour 7–11
+  ("a las diez") is not resolved for a single-utterance es create (the Hebrew smart layer resolves this;
+  Spanish does not route through it) so "dale" dead-ends — the Spanish analog of 0.68.0's ambiguous-hour
+  work; (2) Spanish "no" is not recognized as cancel (punts to the LLM); (3) mid-create meta replies
+  (audio-help / frustration / why-explain) are still Hebrew.
 - **Working Memory / Follow-up / Correction 🔴** — Follow-up understanding and explicit transcript
   correction failed on device. *Next:* `failure-to-regression` red tests from the real transcripts, then fix.
 - **Grounding 🔴** — Residence (Kfar Saba) was presented as live location. *First divergence:* a static

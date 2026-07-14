@@ -1,5 +1,28 @@
 # WAR_ROOM_LOG
 
+## 2026-07-14 — parity program · recovery cycle 0.70.0 (Spanish create stays Spanish, §20.2)
+- SINGLE-WRITER: re-acquired lock (HEAD==origin 338b8a0, 0/0, prior lock released). v2.1.190 foreground-only;
+  deny rules persisted. Pushed clean at end.
+- SELECTED DIVERGENCE (user-directed): after 0.69.0 the mandatory es create SAVES but every AbuAI turn was
+  Hebrew — clarify "באיזו שעה?", confirm "…נכון?", save "קבוע —". §20.2 requires "remain in Spanish".
+- REPRODUCED at runtime: confirmed all three flows Hebrew. Key insight: detectLang("a las cuatro")='he',
+  so per-turn detection flips locale mid-create → the create's language must be REMEMBERED on the draft.
+  Also found the draft TITLE is Hebrew ("פגישה עם Gabi") even for es, and composeHebrew/toSpokenText would
+  mangle Spanish text.
+- FIX: added CreateDraft.lang (persisted across turns); helpers createLangOf/shapeCreatePrompt/composeCreate
+  (es bypasses Hebrew persona shaping)/withLang; localized executeSave (es save + conflict warn); rendered
+  "פגישה עם X"→"una reunión con X" in shapeCreateConfirmES/shapeCreateSavedES (titleES); added optional lang
+  to `settle`. Threaded through the v2 branch (execute_save/cancel/replace/update) AND the intent-path
+  calendar_create + confirmation cases (save/cancel/replace/update). ES shapers already existed (reused).
+- REGRESSION FIRST → then fix: src/eval/spanishCreateLocale.test.ts (confirm/clarify/save all Spanish, no
+  Hebrew chars; cross-turn continuity via "a las cuatro"; Hebrew create unaffected).
+- VALIDATION: spanishCreateLocale 5/5; benchmark floor 100%; AbuAI+AbuCalendar+eval 9923 pass/2 todo (zero
+  regressions); version 22; tsc clean; vite build clean. Version 0.69.0→0.70.0.
+- EVIDENCE: CODE / AUTOMATED_TEST (LLM/online stubbed). NOT device-proven. Residual es divergences documented
+  on the Board: (1) bare ambiguous es hour 7–11 ("a las diez") not resolved single-utterance (es analog of
+  0.68.0) → "dale" dead-ends; (2) Spanish "no" not recognized as cancel; (3) mid-create meta replies still
+  Hebrew. Next cycle candidate: es ambiguous-hour resolution OR family ex-spouse directionality (still open).
+
 ## 2026-07-14 — parity program · recovery cycle 0.69.0 (Spanish transcript locale integrity)
 - SINGLE-WRITER: re-acquired lock (HEAD==origin 2d32f08, 0/0, prior lock released). v2.1.190 foreground-only;
   deny rules (Agent/Task/worktree) persisted. Pushed clean at end.

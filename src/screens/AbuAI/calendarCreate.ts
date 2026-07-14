@@ -29,6 +29,9 @@ export interface CreateDraft {
   rawTranscript?: string | null      // exactly what STT / the user gave us
   cleanedTranscript?: string | null  // Hebrew/STT-normalized text we parsed
   confidence?: number                // 0..1 — how complete/sure the parse is
+  // Language the create was STARTED in — remembered across turns so a Spanish create
+  // stays Spanish (§20.2), even when a bare answer like "a las cuatro" detects as Hebrew.
+  lang?: 'he' | 'es'
 }
 
 export interface CalendarCreateState {

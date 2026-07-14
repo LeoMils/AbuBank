@@ -380,18 +380,27 @@ function dateLabelES(date: string): string {
   return `el ${dayName} ${day} de ${monthName}`
 }
 
+// A create title is synthesized in Hebrew ("פגישה עם Gabi") even for a Spanish create.
+// For a first-class Spanish experience, render it in Spanish: "reunión con <who>".
+function titleES(title: string | null | undefined, person?: string | null): string {
+  if (person && person.trim()) return `una reunión con ${person.trim()}`
+  const m = (title ?? '').match(/^פגישה עם\s+(.+)$/u)
+  if (m) return `una reunión con ${m[1]!.trim()}`
+  return title && title.trim() ? title.trim() : 'algo'
+}
+
 export function shapeCreateConfirmES(draft: CreateDraft): string {
-  const what = draft.title ?? 'algo'
+  const what = titleES(draft.title, draft.person)
   const when = draft.date ? ` ${dateLabelES(draft.date)}` : ''
   const time = draft.time ? ` a las ${draft.time}` : ''
   return `Te agendo ${what}${when}${time}.\n¿Está bien?`
 }
 
-export function shapeCreateSavedES(draft?: { title?: string | null; date?: string | null; time?: string | null }): string {
+export function shapeCreateSavedES(draft?: { title?: string | null; date?: string | null; time?: string | null; person?: string | null }): string {
   if (draft?.title) {
     const when = draft.date ? ` ${dateLabelES(draft.date)}` : ''
     const time = draft.time ? ` a las ${draft.time}` : ''
-    return `Listo, te agendé ${draft.title}${when}${time}.`
+    return `Listo, te agendé ${titleES(draft.title, draft.person)}${when}${time}.`
   }
   return 'Listo, quedó agendado.'
 }

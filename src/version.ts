@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.69.0-spanish-transcript-locale-integrity',
-  buildLabel: 'AbuBank — SPANISH_TRANSCRIPT_LOCALE_INTEGRITY: the mandatory Spanish scenario "Agendá una reunión con Gabi mañana a las tres" is fixed end-to-end. The Hebrew STT-recovery dedup rule used a Hebrew-only word boundary, so on Spanish text it matched the trailing "a" of "mañana" + the preposition "a" as a false "a a" duplicate and dropped the preposition → "mañana las tres"; the ES clock regex ("a las") then failed, the runtime asked "באיזו שעה?" in Hebrew, and "dale" dead-ended — nothing was created. The dedup boundary is now script-agnostic (any Unicode letter/mark), so Spanish parses correctly and the event is created exactly once at 15:00. Builds on 0.68.0 FRAGMENT_AMBIGUOUS_HOUR_PARITY.',
+  version:    '0.70.0-spanish-create-stays-spanish',
+  buildLabel: 'AbuBank — SPANISH_CREATE_STAYS_SPANISH: a Spanish calendar create now speaks Spanish end-to-end (§20.2 "remain in Spanish"). The clarify ("¿A qué hora?"), the confirm ("Te agendo una reunión con Gabi mañana a las 15:00. ¿Está bien?"), the save ("Listo, te agendé…") and the cancel are all Spanish instead of Hebrew, and the Hebrew "פגישה עם X" title is rendered "una reunión con X". The create remembers its language on the draft so it stays Spanish across turns even when a bare answer ("a las cuatro") detects as Hebrew. Hebrew creates are unchanged. Builds on 0.69.0 SPANISH_TRANSCRIPT_LOCALE_INTEGRITY.',
   buildDate:  '2026-07-13',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
