@@ -25,6 +25,17 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.91.0 (Intelligence Parity — Cycle 12: calendar midnight / device failure)** — Built a
+  device-failures triage (deviceFailuresTriage.test.ts) reproducing Leo's exact observed
+  failures. Confirmed FIXED: "פגישה עם אופיר מחר בחצות בקפה אילנה" asked "באיזו שעה" even
+  though "בחצות" was said, and the no-verb form fell to the LLM. parseHebrewTimeDetailed did
+  not resolve בחצות + it was not a narrative time-cue. Added בחצות/חצות/חצות הלילה → 00:00,
+  חצות היום → 12:00, and בחצות to TIME_CUE. Now → calendar_create with person=אופיר,
+  place=קפה אילנה, time=00:00, no re-ask (± create verb). Evidence: calendarMidnight.test.ts
+  4/4 green; calendar suites 130 green; full suite 10872 green; typecheck + build clean.
+  Triage ranked the remaining device-failure backlog: 13 Spanish relation-between, 14 online
+  follow-up continuity, 15 Independence/memorial deterministic dates, 16 memory honesty +
+  last-question recall.
 - **0.90.0 (Intelligence Parity — Cycle 11: mid-create person correction)** — After
   "תקבעי פגישה עם דני …", "לא, לא עם דני, עם מור" fell to the LLM — the pending-create engines
   had no PERSON-correction path (only date/time), so a companion swap with no date/time hit

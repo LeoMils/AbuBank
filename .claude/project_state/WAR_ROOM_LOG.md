@@ -428,3 +428,15 @@
 - EVIDENCE: createPersonCorrection.test.ts 2/2 green; calendar + V2 suites 329 green; full
   suite 10867 passed / 0 failed; typecheck + build clean.
 - NEXT (probe-2 backlog): Spanish family-relation + Spanish create; next-weekday.
+
+## Intelligence Parity — Cycle 12: calendar midnight / device failure (v0.91.0)
+- Built deviceFailuresTriage.test.ts reproducing Leo device failures. Confirmed + FIXED:
+  "pgisha im Ofir machar be-chatzot be-cafe Ilana" asked "be-eizo shaa" though "be-chatzot"
+  (midnight) was said; the no-verb form fell to the LLM. parseHebrewTimeDetailed did not
+  resolve be-chatzot + it was not a narrative TIME_CUE.
+- FIX: be-chatzot/chatzot/chatzot ha-layla -> 00:00, chatzot ha-yom -> 12:00, and be-chatzot
+  added to TIME_CUE. Now -> calendar_create person=Ofir place=cafe Ilana time=00:00, no re-ask.
+- EVIDENCE: calendarMidnight.test.ts 4/4 green; calendar suites 130 green; full suite 10872
+  passed / 0 failed; typecheck + build clean.
+- RANKED device-failure backlog: 13 Spanish relation-between, 14 online follow-up continuity,
+  15 Independence/memorial deterministic dates, 16 memory honesty + last-question recall.

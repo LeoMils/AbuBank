@@ -14,6 +14,27 @@ deterministic · 🟡 partial/quality · ✅ verified working in text.
 
 ---
 
+## DEVICE-OBSERVED FAILURES — triage (`src/eval/deviceFailuresTriage.test.ts`)
+
+Reproduced the specific failures Leo saw on device. Status after cycle 12:
+
+| id | case | status |
+|----|------|--------|
+| ONL-YDAY/SCORE | "מי ניצח אתמול" / "מה התוצאה אתמול" | ✅ routes online, query keeps "אתמול" |
+| ONL-TOP | "מי מלך השערים במונדיאל" | ✅ routes online |
+| DAT-INDEP/ZIKARON | "מתי יום העצמאות/הזיכרון הבא" | 🟡 routes ONLINE (honest, not LLM) — could be deterministic; **Cycle 15** |
+| CAL-MIDNIGHT(±verb) | "פגישה עם אופיר מחר בחצות בקפה אילנה" | ✅ **FIXED (0.91.0)** person+place+00:00, no re-ask |
+| MEM-YDAY | "את זוכרת מה אמרתי אתמול" | 🟠 → LLM (honesty is the LLM's job; consider deterministic honest reply) — **Cycle 14/16** |
+| CONV-LASTQ | "מה שאלתי אותך קודם" | 🟠 → LLM (no last-question recall) — **Cycle 16** |
+| FAM-BETWEEN | "מה הקשר בין אנבל ללאו" | ✅ deterministic |
+| FAM-ES-BETWEEN | "¿qué relación hay entre Anabel y Leo?" | 🟠 → LLM (Spanish relation-between) — **Cycle 13** |
+| ONL-FOLLOWUP | "…אתמול" then "ומי מלך השערים?" | 🟠 follow-up → LLM (online continuity) — **Cycle 14** |
+
+Ranked RED backlog: **13** Spanish relation-between · **14** online follow-up continuity ·
+**15** Independence/memorial deterministic dates · **16** memory honesty + last-question recall.
+
+---
+
 ## Cycle 1 — DATE / TIME REASONING (mission #1) — ✅ FIXED (0.80.0)
 
 Fixed in `dateReasoner` + classifier (cognitiveRuntime.ts). Regression:

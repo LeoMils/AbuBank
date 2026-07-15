@@ -459,6 +459,11 @@ export function parseHebrewTimeDetailed(text: string): TimeParse {
   // "בשתיים בצהריים" resolves to 14:00, not noon.
   if (/בצהריים/.test(t)) return { time: '12:00', ambiguous: false }
 
+  // "חצות היום" = noon (12:00); bare "חצות" / "בחצות" / "חצות הלילה" = midnight (00:00).
+  // A real time — never re-ask "באיזו שעה" after the user already said "בחצות".
+  if (/חצות\s+היום/.test(t)) return { time: '12:00', ambiguous: false }
+  if (/(?<![א-ת])ב?חצות(?![א-ת])/.test(t)) return { time: '00:00', ambiguous: false }
+
   return { time: null, ambiguous: false }
 }
 

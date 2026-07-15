@@ -251,7 +251,7 @@ const ONLINE_TEMPORAL_FOLLOWUP_RE = /^(?:ו|בעצם\s+)?(?:מחר|היום|מח
 // … בשעה שבע … אצלה שעתיים") — day + time + person/place → a calendar create, so it
 // is never mistaken for a family question just because family names appear in it.
 const DAY_CUE = /(?:מחר|מחרתיים|היום|הערב|ביום\s+(?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת))/u
-const TIME_CUE = /(?:בשעה|בשבע|בשמונה|בתשע|בעשר|באחת|בשתיים|בשלוש|בארבע|בחמש|בשש|בבוקר|בערב|בצהריים|וחצי)/u
+const TIME_CUE = /(?:בשעה|בשבע|בשמונה|בתשע|בעשר|באחת|בשתיים|בשלוש|בארבע|בחמש|בשש|בבוקר|בערב|בצהריים|בחצות|וחצי)/u
 const PLACE_PERSON_CUE = /(?:אצל|עם\s+[א-ת]{2,}|אלי[הו]|הביתה|לבית[הו]?)/u
 function looksLikeNarrativeMeeting(t: string): boolean {
   if (/^(?:מה|מי|מתי|איפה|כמה)\b/u.test(t) || /[?؟]/.test(t)) return false
