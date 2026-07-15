@@ -25,6 +25,18 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.98.0 (Intelligence Parity — Cycle 19: math calculator + wide-probe triage)** — Ran a
+  FAR wider adversarial probe (all of life). Fixed the highest-value deterministic gap: everyday
+  arithmetic ("כמה זה 15 כפול 4", "20 אחוז מ-200", "15 אחוז טיפ על 240 שקל") fell to the LLM
+  (unreliable at math). Added deterministic mathReasoner (×÷+− word/× ÷ symbols, percent-of,
+  percent-tip w/ total, He+Es) + new `math` intent routed before online; isMathQuery matches
+  only real expressions (price "כמה עולה חלב" still online), ASCII +-*/ excluded so times/ratios
+  are never mis-read. Evidence: mathReasoner.test.ts 8/8 green; math+calendar+online suites 333
+  green; full suite 10905 green; typecheck + build clean. TRIAGED BACKLOG (in gap map): timezone
+  "מה השעה בניו יורק" (wrong), backward date "לפני שבוע", days-until-end-of-month, unit
+  conversions, family grandchildren/in-law, Spanish reminder "recordame", recurring reminder,
+  "בעצם לא" misroute, zmanim/parsha→online. LLM-legit: translations/definitions/emotional/chitchat.
+  NEXT: timezone or unit conversions or backward-date.
 - **0.97.0 (Intelligence Parity — Cycle 18: Spanish meal-create)** — "agendá una cena con
   Anabel el viernes a las ocho" fell to the LLM while "anotá una cita …" works —
   CREATE_INTENT_ES recognized cita/reunión/turno/evento but not meal nouns; and a bare "a las

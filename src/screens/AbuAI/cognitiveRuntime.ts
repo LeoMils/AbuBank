@@ -91,6 +91,7 @@ export type RuntimeIntent =
   | 'continuation'
   | 'frustration'
   | 'audio_complaint'
+  | 'math'
   | 'general'
   | 'unknown'
 
@@ -328,6 +329,10 @@ export function classifyIntent(
       RELATIVE_DATE_QUERY_RE.test(t) || HOLIDAY_QUERY_RE.test(t) ||
       NEXT_WEEKDAY_QUERY_RE.test(t)) return 'date_query'
 
+  // Deterministic math/percent/tip ("כמה זה 15 כפול 4", "20 אחוז מ-200") — computed, never
+  // the LLM. isMathQuery only matches a real expression, so a price ("כמה עולה חלב") is NOT math.
+  if (isMathQuery(t)) return 'math'
+
   // Live/current-info that onlineIntent misses (buses/trains/weather) — before the
   // calendar verbs so "מתי האוטובוס" is never mistaken for a calendar create.
   if (ONLINE_EXTRA_RE.test(t) && !shouldBlockOnlineForPersonal(t)) return 'online'
@@ -551,6 +556,48 @@ export function dateReasoner(text: string, now: Date): string {
 function safeHebrewDate(iso: string): string {
   try { return formatHebrewDate(iso) } catch { return iso }
 }
+
+// ── Math / percent / tip reasoner — deterministic arithmetic (the LLM is unreliable at
+// math). Returns a formatted answer or null when the text is not a computable expression
+// (so "כמה עולה חלב" — a price — still routes online). Hebrew + Rioplatense operator words.
+const NUM = '(\\d+(?:[.,]\\d+)?)'
+const fmtNum = (n: number) => Number.isInteger(n) ? String(n) : parseFloat(n.toFixed(2)).toString()
+function toNum(s: string): number { return parseFloat(s.replace(',', '.')) }
+export function mathReasoner(text: string): string | null {
+  const t = text.trim()
+  const es = /[¿ñ]|cu[aá]nto\s+es|por\s+ciento|de\s+propina/iu.test(t)
+  // 1) Percent TIP: "N אחוז טיפ על M (שקל)" / "N% de propina sobre M".
+  let m = t.match(new RegExp(`${NUM}\\s*(?:%|אחוז|por\\s*ciento)\\s*(?:טיפ|tip|propina)\\s*(?:על|de|sobre)\\s*${NUM}`, 'iu'))
+  if (m) {
+    const p = toNum(m[1]!), base = toNum(m[2]!); const tip = base * p / 100; const total = base + tip
+    const cur = /שקל|₪/.test(t) ? ' שקל' : (/\$|דולר/.test(t) ? ' דולר' : '')
+    return es
+      ? `Una propina del ${fmtNum(p)}% sobre ${fmtNum(base)} es ${fmtNum(tip)}, y en total ${fmtNum(total)}.`
+      : `טיפ של ${fmtNum(p)}% על ${fmtNum(base)}${cur} הוא ${fmtNum(tip)}${cur}, ובסך הכל ${fmtNum(total)}${cur}.`
+  }
+  // 2) Percent OF: "N אחוז מ(-)M" / "N% de M".
+  m = t.match(new RegExp(`${NUM}\\s*(?:%|אחוז|por\\s*ciento)\\s*(?:מ[־-]?|de)\\s*${NUM}`, 'iu'))
+  if (m) {
+    const p = toNum(m[1]!), base = toNum(m[2]!); const res = base * p / 100
+    return es ? `El ${fmtNum(p)}% de ${fmtNum(base)} es ${fmtNum(res)}.` : `${fmtNum(p)}% מ-${fmtNum(base)} זה ${fmtNum(res)}.`
+  }
+  // 3) Binary op: "A <op> B" (×, ÷, +, −) — Hebrew/Spanish words or symbols.
+  // Word operators (unambiguous) + true math symbols (× ÷). ASCII + - * / are DELIBERATELY
+  // excluded — they collide with times/dates/ratios ("3-5", "ב-3"), which are not math.
+  m = t.match(new RegExp(`${NUM}\\s*(כפול|פעמים|חלקי|לחלק\\s+ב|ועוד|פלוס|מינוס|פחות|por|dividido(?:\\s+por)?|m[áa]s|menos|[×÷])\\s*${NUM}`, 'iu'))
+  if (m) {
+    const a = toNum(m[1]!), op = m[2]!, b = toNum(m[3]!)
+    let res: number | null = null
+    if (/כפול|פעמים|por|×/i.test(op)) res = a * b
+    else if (/חלקי|לחלק|dividido|÷/i.test(op)) res = b === 0 ? null : a / b
+    else if (/ועוד|פלוס|m[áa]s/i.test(op)) res = a + b
+    else if (/פחות|מינוס|menos/.test(op)) res = a - b
+    if (res === null) return es ? 'No se puede dividir por cero.' : 'אי אפשר לחלק באפס.'
+    return es ? `Son ${fmtNum(res)}.` : `זה יוצא ${fmtNum(res)}.`
+  }
+  return null
+}
+export function isMathQuery(text: string): boolean { return mathReasoner(text) !== null }
 
 // FamilyRelationReasoner
 function looksLikeFamilyQuery(t: string): boolean {
@@ -1071,6 +1118,11 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   switch (intent) {
     case 'date_query':
       return settle(dateReasoner(normalized, ctx.now), { state, dataAvailable: true })
+
+    case 'math': {
+      const ans = mathReasoner(normalized)
+      return settle(ans ?? 'לא הצלחתי לחשב את זה. תנסי לנסח אחרת?', { state, dataAvailable: !!ans })
+    }
 
     case 'continuation': {
       // Cross-session memory question ("את זוכרת מה אמרתי אתמול?") — AbuAI keeps NO

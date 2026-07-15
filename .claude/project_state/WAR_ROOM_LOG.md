@@ -517,3 +517,19 @@
   suite 10897 passed / 0 failed; typecheck + build clean.
 - NEXT (backlog): deterministic math/units calculator; age queries; else re-probe. Cannot
   close in text: LIVE online grounding.
+
+## Intelligence Parity — Cycle 19: math calculator + wide-probe triage (v0.98.0)
+- Ran a FAR wider adversarial probe (math/money/units, calendar CRUD, family, dates, current-
+  info, definitions, translations, letter/bill, emotional, chitchat, ambiguous, mixed).
+- FIXED (highest value, deterministic): everyday arithmetic fell to the LLM. Added mathReasoner
+  (multiply/divide/add/subtract via He+Es operator words + true x-div symbols; percent-of;
+  percent-tip with total; He+Es output) + new math intent routed before online. isMathQuery
+  matches only real expressions (price "kama ole chalav" still online); ASCII +-*/ excluded so
+  times/dates/ratios are never mis-read.
+- EVIDENCE: mathReasoner.test.ts 8/8 green; math+calendar+online suites 333 green; full suite
+  10905 passed / 0 failed; typecheck + build clean.
+- TRIAGED BACKLOG (gap map): timezone "ma hashaa be-New York" (WRONG-gives Israel), backward
+  date "lifnei shavua", days-until-end-of-month, unit conversions, family grandchildren/in-law,
+  Spanish reminder "recordame", recurring reminder, "beetzem lo" misroute, zmanim/parsha->online.
+- LLM-LEGIT (leave): translations, definitions, letter/bill help, emotional, chitchat.
+- CANNOT CLOSE IN TEXT: currency FX rate, end-to-end LIVE online grounding.

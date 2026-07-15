@@ -188,4 +188,32 @@ ASCII word-boundary bug in the frame regex. Regression: `nextWeekday.test.ts` 5/
 - ✅ LLM-legitimate (no fix needed): general knowledge, translations, definitions, emotional
   turns — these are the LLM's job with the persona prompt.
 
+## Cycle 19 — MATH CALCULATOR + wide-probe triage — ✅ math FIXED (0.98.0)
+
+Ran a FAR wider adversarial probe (all of life: math/money/units, calendar CRUD+recurrence,
+family, dates, current-info, definitions, translations, letter/bill help, emotional, chit-chat,
+ambiguous, mixed-language). Fixed the highest-value deterministic gap: **math**.
+Deterministic `mathReasoner` (×÷+− word/symbol ops, percent-of, percent-tip, He+Es) + a new
+`math` intent. Regression: `mathReasoner.test.ts` 8/8.
+
+### Wide-probe triage — remaining backlog (ranked)
+
+**(a) Genuine deterministic bugs — TO FIX next cycles:**
+- 🔴 "מה השעה בניו יורק?" → returns Israel time (10:00) — confidently wrong timezone.
+- 🟠 backward date arithmetic "לפני שבוע" / "לפני N ימים" → LLM (mirror of the "בעוד" fix).
+- 🟠 "כמה זמן עד סוף החודש?" / "כמה ימים עד יום ההולדת של מור?" → LLM (deterministic).
+- 🟠 family: "מי הנכדים של לאו?" (grandchildren-of-X), "מי הגיס של מור?" (in-law), verify
+  "מי אשתו של לאו?" vs "מי בן הזוג של מור? → יעל" (possible wrong-person — CHECK the data).
+- 🟠 unit conversions "3 קילומטר במטרים", "חצי קילו בגרם", "30 צלזיוס בפרנהייט" → LLM (deterministic).
+- 🟠 Spanish reminder "recordame tomar la pastilla a las nueve" → LLM (Spanish reminder verb).
+- 🟠 recurring reminder "כל בוקר לקחת כדור" → LLM.
+- 🟡 "בעצם לא" → mis-routed to calendar_update ("אין כלום לשנות") when no draft pending.
+- 🟡 "מתי שבת נכנסת" / "מה הפרשה השבוע" → LLM; should route online (zmanim/current).
+
+**(b) LLM-legitimate (leave):** translations, definitions, letter/bill help, emotional turns,
+chit-chat (מה שלומך / בדיחה / את אמיתית / איך קוראים לך) — persona-LLM territory.
+
+**(c) Cannot close in text (device / live provider):** currency FX rate ("100 דולר בשקלים"),
+end-to-end LIVE online grounding correctness.
+
 Voice/audio dimensions: **DEFERRED, not done.**
