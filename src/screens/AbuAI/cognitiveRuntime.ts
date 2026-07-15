@@ -379,9 +379,11 @@ function looksLikeFamilyQuery(t: string): boolean {
   // "מה/מי (זה)? X עבור/בשביל Y" — a directional relation question. Recognized even
   // when X is UNKNOWN, so the runtime answers "won't guess" instead of the LLM.
   if (/(?:מה|מי)\s+(?:ז[הא]\s+)?\S+\s+(?:עבור|בשביל)\s+\S+/u.test(t)) return true
-  // "מי זה X" for a known family member.
+  // "מי זה X" / Spanish "quién es X" for a known family member (G2).
   const m = t.match(/^מי\s+ז[הא]\s+(\S+)\s*\??$/u)
   if (m && findNode(m[1]!)) return true
+  const esm = t.match(/qui[eé]n\s+es\s+(?:la\s+|el\s+)?([a-záéíóúñ]+)/i)
+  if (esm && findNode(esm[1]!)) return true
   // Guard the WEAK 2-names heuristic: a sentence carrying day+time (a scheduling
   // request that merely mentions two relatives, e.g. "אופיר … מחר בשלוש … גלעד …")
   // is a calendar meeting, NOT a relation question — never misroute it to family.
@@ -403,7 +405,7 @@ function knownFamilyNamesIn(t: string): GraphNode[] {
 }
 
 export interface FamilyResult { text: string; known: boolean; pair?: { a: string; b: string } }
-export function familyReasoner(text: string): FamilyResult {
+export function familyReasoner(text: string, lang: Lang = 'he'): FamilyResult {
   // 0) Directional pairwise "what is X for Y" / "הקשר בין X ל-Y" — the graph
   // kinship engine (correct direction + gender + great-uncle/in-laws). Preferred
   // over the symmetric describeRelation for these forms.
@@ -423,12 +425,15 @@ export function familyReasoner(text: string): FamilyResult {
     if (desc) return { text: desc, known: true }
     return { text: '', known: false }
   }
-  // 3) "מי זה X" — describe the single member's role from the graph.
+  // 3) "מי זה X" / Spanish "quién es X" — describe the single member's role from the
+  // graph, in the query's language (describeRelation renders 'es' too → "Abu es madre
+  // de Mor"). G2: a Spanish identity query must be grounded, never punted to the LLM.
   const m = text.match(/^מי\s+ז[הא]\s+(\S+)\s*\??$/u)
+    ?? text.match(/^qui[eé]n\s+es\s+(?:la\s+|el\s+)?([a-záéíóúñ]+)\s*\??$/i)
   if (m) {
     const node = findNode(m[1]!)
     if (node) {
-      const self = describeRelation('מרטיטה', node.hebrew, 'he')
+      const self = describeRelation('מרטיטה', node.hebrew, lang === 'es' ? 'es' : 'he')
       if (self) return { text: self, known: true }
     }
   }
@@ -886,12 +891,16 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
         const { a, b } = state.lastFamilyPair
         return { ...settle(explainRelation(a, b), { state, dataAvailable: true }), familyGrounded: true }
       }
-      const fam = familyReasoner(normalized)
+      const isEs = lang === 'es'
+      const esLang = isEs ? { lang: 'es' as const } : {}
+      const fam = familyReasoner(normalized, lang)
       const nextState = fam.pair ? { ...state, lastFamilyPair: fam.pair } : state
-      if (fam.known) return { ...settle(fam.text, { state: nextState, dataAvailable: true }), familyGrounded: true }
-      // Unknown relation — say so, never guess.
-      return settle('אני לא בטוחה בקשר הזה, אז לא אנחש. תגידי לי מי מי ואני אזכור.',
-        { state: nextState, dataAvailable: false })
+      if (fam.known) return { ...settle(fam.text, { state: nextState, dataAvailable: true, ...esLang }), familyGrounded: true }
+      // Unknown relation — say so, never guess (in the query's language).
+      return settle(
+        isEs ? 'No estoy segura de ese parentesco, así que no lo adivino. Decime quién es quién y lo recuerdo.'
+          : 'אני לא בטוחה בקשר הזה, אז לא אנחש. תגידי לי מי מי ואני אזכור.',
+        { state: nextState, dataAvailable: false, ...esLang })
     }
 
     case 'calendar_read':

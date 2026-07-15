@@ -70,7 +70,14 @@ free-conversation capability · **P2** naturalness/coverage · **P3** polish.
   contained, proven-safe shape as the 0.71.0 ex-spouse REL addition). No new reasoner.
 - **Evidence:** CODE / AUTOMATED_TEST (deterministic function run).
 
-### G2 — P1 — Spanish family identity queries punt to the LLM
+### G2 — P1 — Spanish family identity queries punt to the LLM  ·  FIXED (0.78.0)
+> **Fixed (0.78.0):** `quién es Mor` / `quién es Ofir` now route to `family` and answer from the graph
+> in Spanish — `familyReasoner` gained a `lang` param + a `quién es X` identity branch calling
+> `describeRelation(...,'es')` ("Abu es madre de Mor" / "Abu es abuela de Ofir (a través de Mor)"), and
+> `looksLikeFamilyQuery` recognizes `quién es <known name>`; `lang` is threaded through the family case
+> (es compose + es unknown-fallback). Regression `src/screens/AbuAI/spanishFamilyIdentity.test.ts`
+> (through the controller, `source!==llm`). Follow-up "y su pareja" is still G3 (referent-carry).
+
 - **Transcript:** `quién es Mor` · `quién es Ofir` · `y su pareja` (Spanish "who is X" / "and her partner").
 - **Expected:** grounded Spanish identity ("Mor, tu hija. …con Yael."), never the model guessing.
 - **Actual:** `intent=general → [LLM]`. The grounded Spanish answer EXISTS in `tryGroundedAnswer`

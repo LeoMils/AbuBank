@@ -1,5 +1,20 @@
 # WAR_ROOM_LOG
 
+## 2026-07-15 — overnight cycle 3 (0.78.0): CONVERSATION_GAP_MAP G2 — Spanish family identity
+- SINGLE-WRITER: re-acquired lock (HEAD==origin 8e3d48b, 0/0). v2.1.190 foreground-only.
+- REPRODUCED through the controller: "quién es Mor" → intent=general → [LLM] punt (invented-fact risk),
+  while Hebrew "מי זאת אופיר" already answered from the graph. describeRelation already renders Spanish
+  ("Abu es madre de Mor") — so it was a routing + language-threading gap, not a missing reasoner.
+- FIX (smallest): (1) looksLikeFamilyQuery recognizes "quién es <known name>"; (2) familyReasoner got a
+  `lang` param + a "quién es X" identity branch → describeRelation('מרטיטה', node, lang); (3) family case
+  threads lang → settle es-compose + es unknown-fallback ("No estoy segura de ese parentesco…").
+- REGRESSION FIRST → then fix (RED 2→GREEN): src/screens/AbuAI/spanishFamilyIdentity.test.ts (through the
+  real controller: source≠llm, Spanish answer no Hebrew; + Hebrew non-regression).
+- VALIDATION: spanishFamilyIdentity 3/3; family/gender/spanish non-regression 36; full suite 10816 pass/2
+  todo/0 fail (310 files); tsc clean; build clean. Version 0.77.0→0.78.0.
+- EVIDENCE: CODE / AUTOMATED_TEST (deterministic, pure-local family path, no LLM). Ofir feminine + ex-spouse
+  + possessive-spouse unchanged. Next: G3 (bare family follow-up referent-carry — "y su pareja" / "ומי בעלה").
+
 ## 2026-07-14 — overnight cycle 2 (0.77.0): MEMORY P0 — honest about memory
 - SINGLE-WRITER: continued under the same lock (HEAD 03676b1). foreground-only.
 - ROOT CAUSE: device showed AbuAI implying it has memory ("sometimes I miss things"). Investigation:

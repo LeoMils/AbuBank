@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.77.0-memory-honesty'
-const BUILD_LABEL = 'AbuBank — MEMORY_HONESTY: P0 #2 (trust). On device AbuAI verbally implied it has memory it lacks ("sometimes I miss things"). Truth of the wiring: the current conversation IS passed to the model (fullTurnBridge → sendMessage(messages)) so it can reference what was just said, but there is NO cross-session memory. The system prompt now forbids implying a persistent/fallible memory: it must never say "שכחתי" / "לפעמים אני מפספסת"; anything not said in THIS conversation → honest "לא יודעת / לא סיפרת לי"; what WAS said this conversation → remember and continue. Regression memoryHonesty (source-contract on SYSTEM_PROMPT). Evidence: CODE; the felt honest behavior is LLM/DEVICE-observable. Builds on 0.76.0 IOS_WHISPER_STT_WATCHDOG.'
+const BUILD_VERSION = '0.78.0-spanish-family-identity'
+const BUILD_LABEL = 'AbuBank — SPANISH_FAMILY_IDENTITY: CONVERSATION_GAP_MAP G2. A Spanish family identity question ("quién es Mor" / "quién es Ofir") used to be classified general and PUNTED to the LLM (risking an invented family fact), even though the graph could answer it in Spanish. Now the classifier recognizes "quién es <known family name>" as family and familyReasoner answers from the graph in the query language via describeRelation(...,"es") → "Abu es madre de Mor" / "Abu es abuela de Ofir (a través de Mor)". Threaded lang through the family case (settle es-compose, es unknown-fallback). Hebrew "מי זאת אופיר" + ex-spouse/possessive/Ofir feminine unchanged. Asserted through the real controller (source!==llm). Builds on 0.77.0 MEMORY_HONESTY.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
