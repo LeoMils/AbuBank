@@ -225,6 +225,9 @@ const CIVIC_HOLIDAY_RE =
 // calendar create ("תקבעי פגישה ביום שלישי הבא") is NEVER hijacked to a date query.
 const NEXT_WEEKDAY_QUERY_RE =
   /(?:מתי|איזה\s+תאריך|באיזה\s+תאריך|איזה\s+יום|באיזה\s+יום)[^?]*?(?:ביום\s+|יום\s+)?(?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)\s+ה?בא(?:ה)?/u
+// "כמה ימים/זמן (נשאר) עד <סוף החודש|סוף השבוע|holiday>" — a deterministic days-until count.
+const DAYS_UNTIL_QUERY_RE =
+  /כמה\s+(?:זמן|ימים|עוד\s+זמן|עוד\s+ימים)[^?]*?עד\s+(?:סוף\s+ה?חודש|סוף\s+ה?שבוע|ראש\s+השנה|פסח|חנוכה|פורים|סוכות|שבועות|יום\s+כיפור|שמחת\s+תורה)/u
 const AUDIO_COMPLAINT_RE =
   /(?:לא\s+שומעת?\s+אות[ךיו]|אני\s+לא\s+שומע|לא\s+שמעתי(?:\s+אות[ךיו])?|לא\s+מדברת|הקול\s+נעלם|אין\s+קול|למה\s+את\s+שותקת|no\s+te\s+(?:escucho|oigo))/iu
 // Frustration the shared regex misses — "you're not answering what I asked".
@@ -327,7 +330,7 @@ export function classifyIntent(
   if (CIVIC_HOLIDAY_RE.test(t) && !shouldBlockOnlineForPersonal(t)) return 'online'
   if (DATE_QUERY_RE.test(t) || TIME_QUERY_RE.test(t) ||
       RELATIVE_DATE_QUERY_RE.test(t) || HOLIDAY_QUERY_RE.test(t) ||
-      NEXT_WEEKDAY_QUERY_RE.test(t)) return 'date_query'
+      NEXT_WEEKDAY_QUERY_RE.test(t) || DAYS_UNTIL_QUERY_RE.test(t)) return 'date_query'
 
   // Deterministic math/percent/tip ("כמה זה 15 כפול 4", "20 אחוז מ-200") — computed, never
   // the LLM. isMathQuery only matches a real expression, so a price ("כמה עולה חלב") is NOT math.
@@ -493,6 +496,34 @@ function askedHoliday(t: string): string | undefined {
   return HOLIDAY_NAMES_HE.find(h => t.includes(h))
 }
 
+/** Deterministic "how many days until <end of month | end of week | holiday>". */
+function daysUntilAnswer(text: string, now: Date): string | null {
+  if (!DAYS_UNTIL_QUERY_RE.test(text)) return null
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const phrase = (n: number, label: string, extra = '') => {
+    if (n <= 0) return `${label} זה היום.`
+    if (n === 1) return `עד ${label} נשאר יום אחד${extra}.`
+    return `עד ${label} נשארו ${n} ימים${extra}.`
+  }
+  if (/סוף\s+ה?חודש/.test(text)) {
+    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+    return phrase(last - now.getDate(), 'סוף החודש')
+  }
+  if (/סוף\s+ה?שבוע/.test(text)) {
+    const toSat = (6 - now.getDay() + 7) % 7 // Israel week ends on Saturday
+    return phrase(toSat, 'סוף השבוע')
+  }
+  const specific = askedHoliday(text)
+  if (specific) {
+    const nh = nextHoliday(now, specific)
+    if (!nh) return `אין לי כרגע את התאריך של ${specific} הבא.`
+    const target = new Date(`${nh.iso}T00:00:00`)
+    const n = Math.round((target.getTime() - base.getTime()) / 86400000)
+    return phrase(n, nh.name, ` (${dateWithoutDay(nh.iso)})`)
+  }
+  return null
+}
+
 /** Strip a leading/trailing weekday from formatHebrewDate output → "22 בספטמבר 2026". */
 function dateWithoutDay(iso: string): string {
   return safeHebrewDate(iso)
@@ -545,6 +576,10 @@ export function dateReasoner(text: string, now: Date): string {
     const hh = String(now.getHours()).padStart(2, '0'); const mm = String(now.getMinutes()).padStart(2, '0')
     return `השעה עכשיו ${hh}:${mm}.`
   }
+
+  // "כמה ימים עד סוף החודש / סוף השבוע / <holiday>" — deterministic days-until count.
+  const du = daysUntilAnswer(text, now)
+  if (du) return du
 
   // "יום <weekday> הבא" — next occurrence of a weekday, deterministic from ctx.now.
   const nw = nextWeekdayAnswer(text, now)

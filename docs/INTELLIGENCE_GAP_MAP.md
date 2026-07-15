@@ -203,7 +203,11 @@ Deterministic `mathReasoner` (×÷+− word/symbol ops, percent-of, percent-tip,
   Regression: `timeInCity.test.ts` 5/5.
 - ✅ backward date arithmetic "לפני שבוע" / "לפני N ימים" — FIXED (0.100.0): lifneiDaysOffset.
   "איזה יום היה לפני שבוע" → יום רביעי, 8 ביולי. Regression: `backwardDate.test.ts` 5/5.
-- 🟠 "כמה זמן עד סוף החודש?" / "כמה ימים עד יום ההולדת של מור?" → LLM (deterministic).
+- ✅ "כמה זמן/ימים עד סוף החודש / סוף השבוע / <holiday>" — FIXED (0.103.0): daysUntilAnswer
+  (deterministic from ctx.now + the Hebrew-holiday table). now Wed 2026-07-15: עד סוף החודש 16,
+  עד סוף השבוע 3 (week ends Saturday), עד ראש השנה 69 (22 בספטמבר 2026). `DAYS_UNTIL_QUERY_RE`
+  routes to date_query. Regression: `daysUntil.test.ts` 4/4. Still open: 🟠 "כמה ימים עד יום
+  ההולדת של מור?" (needs the birthday lookup wired in); civic days (יום העצמאות) stay online (nidche).
 - ✅ family "מי הנכדים של X" (grandchildren-of-X) — FIXED (0.102.0): plural routing + REL rule.
   "מי הנכדים של מור" → אנאבל, ארי. VERIFIED "בן הזוג של מור → יעל" is CORRECT (Yael is Mor's
   partner, per family_data.json) — not a bug. Regression: `grandchildrenOfX.test.ts` 3/3.
