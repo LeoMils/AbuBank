@@ -66,7 +66,7 @@ import { loadGraph, findNode, describeRelation, type GraphNode } from './familyG
 import {
   getTodayEvents, getTomorrowEvents, getEventsByDate, findEventsByPerson, getWeekEvents,
 } from './tools'
-import { loadAppointments, createAppointmentSafe, formatHebrewDate } from '../AbuCalendar/service'
+import { loadAppointments, createAppointmentSafe, formatHebrewDate, getHebrewHoliday } from '../AbuCalendar/service'
 import { isOnlineCurrentInfoQuery, shouldBlockOnlineForPersonal } from './onlineIntent'
 import { toSpokenText } from './spokenPersona'
 import {
@@ -196,6 +196,19 @@ export function normalizeTurn(raw: string, messages: RuntimeContext['messages'])
 // Hebrew/space boundary, so it would silently break every Hebrew intent regex.
 const DATE_QUERY_RE =
   /(?:איזה יום היום|מה היום|מה התאריך|איזה תאריך|באיזה תאריך אנחנו|qué día es hoy|que dia es hoy|qué fecha|que fecha)/iu
+// A RELATIVE day/date question ("איזה יום היה אתמול", "מה התאריך מחר", "שלשום",
+// "¿qué día fue ayer?"). Answered deterministically from ctx.now — the LLM has no
+// clock, and returning TODAY for a yesterday/tomorrow question is confidently wrong.
+// Requires an explicit day/date-asking frame so calendar reads ("מה יש לי מחר") are
+// never hijacked — those have no "איזה יום"/"תאריך" frame.
+const RELATIVE_DATE_QUERY_RE =
+  /(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך|מה\s+היום|באיזה\s+תאריך)[^?]*?(?:אתמול|שלשום|מחרתיים|מחר)|(?:אתמול|שלשום|מחרתיים|מחר)[^?]*?(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך)|qu[eé]\s+(?:d[ií]a|fecha)[^?]*?(?:anteayer|pasado\s+ma[ñn]ana|ayer|ma[ñn]ana)/iu
+// A "when is the next holiday" / "when is <holiday>" question. Jewish-holiday dates
+// are a fixed table (deterministic) — answering from the table avoids the stale
+// "Independence Day 2024" hallucination. Requires a holiday noun so "מתי הפגישה"
+// (calendar) is never captured.
+const HOLIDAY_QUERY_RE =
+  /מתי\s+(?:ה?חג\s+ה?בא|ה?חג\b|פסח|חנוכה|פורים|סוכות|שבועות|ראש\s+השנה|יום\s+כיפור|שמחת\s+תורה)|(?:פסח|חנוכה|פורים|סוכות|שבועות|ראש\s+השנה|יום\s+כיפור|שמחת\s+תורה)\s+ה?בא/u
 const AUDIO_COMPLAINT_RE =
   /(?:לא\s+שומעת?\s+אות[ךיו]|אני\s+לא\s+שומע|לא\s+שמעתי(?:\s+אות[ךיו])?|לא\s+מדברת|הקול\s+נעלם|אין\s+קול|למה\s+את\s+שותקת|no\s+te\s+(?:escucho|oigo))/iu
 // Frustration the shared regex misses — "you're not answering what I asked".
@@ -282,7 +295,8 @@ export function classifyIntent(
 
   // Date/day/TIME questions answered from the real clock — never invented, never
   // "באיזה יום", never a fabricated "03:00".
-  if (DATE_QUERY_RE.test(t) || TIME_QUERY_RE.test(t)) return 'date_query'
+  if (DATE_QUERY_RE.test(t) || TIME_QUERY_RE.test(t) ||
+      RELATIVE_DATE_QUERY_RE.test(t) || HOLIDAY_QUERY_RE.test(t)) return 'date_query'
 
   // Live/current-info that onlineIntent misses (buses/trains/weather) — before the
   // calendar verbs so "מתי האוטובוס" is never mistaken for a calendar create.
@@ -350,18 +364,94 @@ function localISO(d: Date): string {
 // A time question is answered from the SYSTEM CLOCK, never the LLM (which has no
 // clock and would fabricate a time — the "03:00 default" hallucination class).
 const TIME_QUERY_RE = /מה\s+ה?שעה|ה?שעה\s+עכשיו|באיזו\s+שעה\s+אנחנו|qu[eé]\s+hora/iu
+// Spanish weekday / month names for relative-date replies to a Spanish question.
+const SP_DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+const SP_MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+const HOLIDAY_NAMES_HE = ['פסח', 'חנוכה', 'פורים', 'סוכות', 'שבועות', 'ראש השנה', 'יום כיפור', 'שמחת תורה']
+
+function looksSpanishDate(t: string): boolean {
+  return /[¿ñ]|qu[eé]\s+(?:d[ií]a|fecha|hora)|(?<![a-z])(?:ayer|anteayer|hoy|ma[ñn]ana|pr[oó]ximo|cu[aá]ndo)(?![a-z])/iu.test(t)
+}
+
+/** A relative day offset from a date word, or null (= today / not relative). */
+function relativeDayOffset(t: string): { off: number; he: string; esPast: string; esFut: string } | null {
+  if (/שלשום|anteayer/iu.test(t)) return { off: -2, he: 'שלשום', esPast: 'anteayer fue', esFut: 'anteayer fue' }
+  if (/מחרתיים|pasado\s+ma[ñn]ana/iu.test(t)) return { off: 2, he: 'מחרתיים', esPast: 'pasado mañana será', esFut: 'pasado mañana será' }
+  if (/אתמול|(?<![a-z])ayer(?![a-z])/iu.test(t)) return { off: -1, he: 'אתמול', esPast: 'ayer fue', esFut: 'ayer fue' }
+  if (/(?<![א-ת])מחר(?![א-ת])|(?<![a-z])ma[ñn]ana(?![a-z])/iu.test(t)) return { off: 1, he: 'מחר', esPast: 'mañana será', esFut: 'mañana será' }
+  return null
+}
+
+/** Next holiday strictly AFTER `now` (from the fixed Hebrew-holiday table), optionally
+ *  a specific one. Deterministic; returns null when the table has no answer (we then
+ *  say so honestly rather than invent a date). */
+function nextHoliday(now: Date, specific?: string): { name: string; iso: string } | null {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  let last: string | null = null
+  for (let i = 1; i <= 800; i++) {
+    const d = new Date(start); d.setDate(d.getDate() + i)
+    const iso = localISO(d)
+    const h = getHebrewHoliday(iso)
+    // Collapse multi-day holidays: only report the FIRST day of a run.
+    if (h && h !== last && (!specific || h === specific)) return { name: h, iso }
+    last = h
+  }
+  return null
+}
+
+function askedHoliday(t: string): string | undefined {
+  return HOLIDAY_NAMES_HE.find(h => t.includes(h))
+}
+
+/** Strip a leading/trailing weekday from formatHebrewDate output → "22 בספטמבר 2026". */
+function dateWithoutDay(iso: string): string {
+  return safeHebrewDate(iso)
+    .replace(/^\s*(?:יום\s+\S+|שבת)\s*,?\s*/u, '')
+    .replace(/,?\s*(?:יום\s+\S+|שבת)\s*$/u, '')
+    .trim()
+}
+
 export function dateReasoner(text: string, now: Date): string {
   if (TIME_QUERY_RE.test(text)) {
     const hh = String(now.getHours()).padStart(2, '0'); const mm = String(now.getMinutes()).padStart(2, '0')
     return `השעה עכשיו ${hh}:${mm}.`
   }
+
+  // Next-holiday question — deterministic table, never the LLM (no hallucinated date).
+  if (HOLIDAY_QUERY_RE.test(text)) {
+    const specific = askedHoliday(text)
+    const nh = nextHoliday(now, specific)
+    if (!nh) {
+      return specific
+        ? `אין לי כרגע את התאריך המדויק של ${specific} הבא.`
+        : 'אין לי כרגע את התאריך של החג הבא.'
+    }
+    const dateOnly = dateWithoutDay(nh.iso)
+    return specific
+      ? `${nh.name} הבא — ${dateOnly}.`
+      : `החג הבא הוא ${nh.name} — ${dateOnly}.`
+  }
+
+  // Relative day/date ("אתמול"/"שלשום"/"מחר"/"מחרתיים") — computed from ctx.now, never
+  // the LLM. Returning TODAY for a yesterday/tomorrow question is confidently wrong.
+  const rel = relativeDayOffset(text)
+  if (rel) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    d.setDate(d.getDate() + rel.off)
+    if (looksSpanishDate(text)) {
+      const lead = rel.off < 0 ? rel.esPast : rel.esFut
+      return `${lead} ${SP_DAYS[d.getDay()]}, ${d.getDate()} de ${SP_MONTHS[d.getMonth()]} de ${d.getFullYear()}.`
+    }
+    const day = HE_DAYS[d.getDay()] ?? ''
+    const dateOnly = dateWithoutDay(localISO(d))
+    const verb = rel.off < 0 ? 'היה' : 'יהיה'
+    return `${rel.he} ${verb} ${day}, ${dateOnly}.`
+  }
+
   const day = HE_DAYS[now.getDay()] ?? 'היום'
   // formatHebrewDate may already include the weekday — strip it so we never say the
   // day twice ("היום יום שישי, 3 ביולי 2026, יום שישי").
-  const dateOnly = safeHebrewDate(localISO(now))
-    .replace(/^\s*(?:יום\s+\S+|שבת)\s*,?\s*/u, '')
-    .replace(/,?\s*(?:יום\s+\S+|שבת)\s*$/u, '')
-    .trim()
+  const dateOnly = dateWithoutDay(localISO(now))
   // "מה התאריך" → lead with the date; "איזה יום" → lead with the day.
   if (/תאריך|fecha/iu.test(text)) return `היום ${dateOnly}, ${day}.`
   return `היום ${day}, ${dateOnly}.`

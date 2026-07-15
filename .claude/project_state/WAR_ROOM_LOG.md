@@ -300,3 +300,19 @@
   Hebrew UI is by design — do NOT mass-localize).
 - Real runtime assertions to replace remaining static-grep "tests" (evidence upgrade).
 - Re-run production-commander for the next biggest improvement with fresh evidence.
+
+## Intelligence Parity Program (text-only, no mic) — Cycle 1: DATE/TIME (v0.80.0)
+- MISSION: fix ALL of AbuAI intelligence in TEXT via the real ExecutiveCognitiveController
+  (machine-provable, no device). Voice/Realtime DEFERRED to the end, untouched.
+- METHOD: drove the real controller over a broad He+Es+mixed corpus
+  (src/eval/intelligenceGapProbe.test.ts) -> docs/INTELLIGENCE_GAP_MAP.md.
+- FIRST DIVERGENCE: dateReasoner always answered with now; DATE_QUERY_RE only matched
+  today/date phrasings. "airze tarich haya etmol" -> TODAY (confidently WRONG);
+  relative-day -> LLM (no clock); "matai hachag haba" -> LLM hallucination.
+- FIX: relative-offset (etmol/shilshom/machar/machratayim + es ayer/manana) + next-holiday
+  reasoner (fixed table) resolved deterministically from ctx.now; new RELATIVE_DATE_QUERY_RE
+  + HOLIDAY_QUERY_RE route to date_query; calendar read path untouched.
+- EVIDENCE: relativeDateReasoning.test.ts 8/8 green (CODE); full suite 10831 passed / 0
+  failed; typecheck + build clean. Calendar create->confirm->save->readback->correction
+  re-verified working in text (prior save-fail was a node-env localStorage artifact).
+- NEXT: Cycle 2 - "lama hashamayim kchulim" misrouted to frustration (why-challenge hijack).

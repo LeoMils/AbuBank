@@ -25,6 +25,21 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.80.0 (Intelligence Parity — Cycle 1: DATE/TIME)** — Drove the real
+  ExecutiveCognitiveController.handleTurn over a broad He+Es+mixed corpus
+  (`src/eval/intelligenceGapProbe.test.ts`, text-only, no mic) → built
+  `docs/INTELLIGENCE_GAP_MAP.md`. First divergence: `dateReasoner` always answered
+  with `now`, and `DATE_QUERY_RE` only matched today/date phrasings — so
+  "איזה תאריך היה אתמול" returned TODAY (confidently WRONG), relative-day questions
+  fell to the LLM (no clock), and "מתי החג הבא" hallucinated (Independence-Day
+  incident class). FIX: relative-offset (אתמול/שלשום/מחר/מחרתיים + Spanish ayer/mañana)
+  + next-holiday reasoner (fixed table) resolved DETERMINISTICALLY from ctx.now; new
+  RELATIVE_DATE_QUERY_RE + HOLIDAY_QUERY_RE route to date_query without touching the
+  calendar read path. Evidence: `relativeDateReasoning.test.ts` 8/8 green (CODE);
+  full suite 10831 green (was 10823 pre-probe/regression), typecheck + build clean.
+  Calendar core create→confirm→save→readback→correction re-verified working in text
+  (a prior "לא נשמרה" was a node-env artifact, not a bug). NEXT: Cycle 2 — "למה השמיים
+  כחולים" misrouted to frustration (knowledge Q hijacked by the why-challenge classifier).
 - **0.8.5 (ROI cycle 1)** — NORTH_STAR → benchmark 100% (38) → probed least-covered
   surface (Spanish, her 2nd language) → found Spanish calendar create 0% → implemented
   es intent + person ("con X") + dates (hoy/mañana/pasado mañana/el viernes/la semana
