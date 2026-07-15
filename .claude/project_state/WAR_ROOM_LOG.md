@@ -478,3 +478,17 @@
   10885 passed / 0 failed; typecheck + build clean.
 - DECISION: exact date left to the LIVE provider (PREVIEW-class); nidche computation intentionally
   NOT hardcoded (avoid inventing dates). NEXT: Cycle 16 memory honesty + last-question recall.
+
+## Intelligence Parity — Cycle 16: memory honesty + last-question recall (v0.95.0)
+- Two device failures. (1) "implied it had memory while having none": a CROSS-SESSION memory
+  question ("at zocheret ma amarti lach etmol" / "te acordas ... ayer") now gets a deterministic
+  HONEST reply that never implies past-session memory. CROSS_SESSION_MEMORY_RE requires a
+  past-session time marker so within-session "ma amarti kodem" is untouched.
+- (2) "what was my last question": "ma shaalti otcha kodem" / "que te pregunte" now recalls the
+  prior user question from THIS session (raw message history -> last recorded question ->
+  honest nothing-yet), never the LLM.
+- Both handled in the continuation case; RECALL_TOPIC + resume unaffected.
+- EVIDENCE: memoryHonestyRecall.test.ts 4/4 green; continuation suites 515 green; full suite
+  10889 passed / 0 failed; typecheck + build clean.
+- The device-failures triage backlog is now cleared in text. Remaining: LIVE online grounding
+  (PREVIEW-class). NEXT: widen the probe corpus for new gaps.

@@ -25,8 +25,8 @@ Reproduced the specific failures Leo saw on device. Status after cycle 12:
 | ONL-FOLLOWUP | "…אתמול" then "ומי מלך השערים?" | ✅ **FIXED (0.93.0)** follow-up top-scorer → online |
 | DAT-INDEP/ZIKARON | "מתי יום העצמאות/הזיכרון/השואה/ירושלים", "באיזה תאריך יום העצמאות", Spanish | ✅ **FIXED (0.94.0)** all civic days route online BEFORE date_query — never today, never LLM. Exact date = LIVE provider (nidche not hardcoded, to avoid inventing dates) |
 | CAL-MIDNIGHT(±verb) | "פגישה עם אופיר מחר בחצות בקפה אילנה" | ✅ **FIXED (0.91.0)** person+place+00:00, no re-ask |
-| MEM-YDAY | "את זוכרת מה אמרתי אתמול" | 🟠 → LLM (honesty is the LLM's job; consider deterministic honest reply) — **Cycle 14/16** |
-| CONV-LASTQ | "מה שאלתי אותך קודם" | 🟠 → LLM (no last-question recall) — **Cycle 16** |
+| MEM-YDAY | "את זוכרת מה אמרתי אתמול" | ✅ **FIXED (0.95.0)** deterministic honest reply ("לא שומרת שיחות קודמות…"), never implies memory; Spanish too |
+| CONV-LASTQ | "מה שאלתי אותך קודם" | ✅ **FIXED (0.95.0)** recalls the prior user question from this session; honest "nothing yet" when none |
 | FAM-BETWEEN | "מה הקשר בין אנבל ללאו" | ✅ deterministic |
 | FAM-ES-BETWEEN | "¿qué relación hay entre Anabel y Leo?" | ✅ **FIXED (0.92.0)** bilingual relationOf (LABEL_ES) → "Mor es madre de Ofir" |
 

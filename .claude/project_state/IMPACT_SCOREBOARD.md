@@ -25,6 +25,17 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.95.0 (Intelligence Parity — Cycle 16: memory honesty + last-question recall)** — Two
+  device failures. (1) "implied it had memory while having none": a CROSS-SESSION memory
+  question ("את זוכרת מה אמרתי לך אתמול?" / "¿te acordás … ayer?") now gets a deterministic
+  HONEST reply that never implies past-session memory (CROSS_SESSION_MEMORY_RE requires a
+  past-session time marker, so within-session "מה אמרתי קודם" is untouched). (2) "what was my
+  last question": "מה שאלתי אותך קודם?" / "¿qué te pregunté?" recalls the prior user question
+  from this session (raw message history → last recorded question → honest nothing-yet), never
+  the LLM. Both handled in the continuation case; RECALL_TOPIC + resume unaffected. Evidence:
+  memoryHonestyRecall.test.ts 4/4 green; continuation suites 515 green; full suite 10889 green;
+  typecheck + build clean. The device-failures triage backlog is now cleared in text — remaining
+  is LIVE online grounding (PREVIEW-class). NEXT: widen the probe corpus for new gaps.
 - **0.94.0 (Intelligence Parity — Cycle 15: civic-holiday online)** — Device failure: wrong
   Independence Day (gave 2024 / a past date). National/civic days (יום העצמאות/חג העצמאות,
   יום הזיכרון, יום השואה, יום ירושלים, Spanish día de la independencia) are NOT in the

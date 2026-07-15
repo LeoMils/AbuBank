@@ -226,6 +226,16 @@ const FRUSTRATION_EXTRA_RE =
   /את\s+לא\s+עונה|לא\s+ענית\s+לי|לא\s+על\s+זה\s+שאלתי|לא\s+ענית\s+על|זה\s+לא\s+מה\s+ששאלתי|את\s+לא\s+עונה\s+למה\s+ששאלתי|לא\s+הבנת\s+אותי|לא\s+זה\s+מה\s+ששאלתי/u
 const CONTINUATION_EXTRA_RE = /תשלימי\s+את\s+המשפט|תסיימי\s+את\s+המשפט|תגמרי\s+את\s+המשפט/u
 const RECALL_TOPIC_RE = /על\s+מה\s+דיבר(?:נו|ת)|מה\s+דיברנו|de\s+qu[eé]\s+hablamos/iu
+// A CROSS-SESSION memory question ("את זוכרת מה אמרתי לך אתמול?", "¿te acordás de lo que
+// te dije ayer?") — AbuAI has NO cross-session memory. Answer HONESTLY; never imply it
+// remembers past conversations (the "sometimes I miss things" device failure). Requires a
+// past-session time marker so a within-session "מה אמרתי קודם" is NOT captured here.
+const CROSS_SESSION_MEMORY_RE =
+  /(?:את\s+)?זוכרת\b[^?]*(?:אתמול|שלשום|שלשם|בשבוע\s+שעבר|בפעם\s+ה?קודמת|בשיחה\s+ה?קודמת|בשיחה\s+שעברה|פעם\s+שעברה|לפני\s+כמה\s+ימים|לפני\s+שבוע|לפני\s+יומיים)|מה\s+(?:אמרתי|סיפרתי)\s+ל[ךיו][^?]*(?:אתמול|שלשום|בשבוע\s+שעבר|בפעם\s+ה?קודמת|בשיחה\s+ה?קודמת|פעם\s+שעברה)|(?:te\s+acord[aá]s|recuerdas)[^?]*(?:ayer|anteayer|la\s+semana\s+pasada|la\s+vez\s+pasada)/iu
+// A LAST-QUESTION recall ("מה שאלתי אותך קודם?", "מה הייתה השאלה שלי", "¿qué te pregunté?")
+// — recall the prior user question from THIS session's working memory, never the LLM.
+const LAST_QUESTION_RE =
+  /מה\s+שאלתי(?:\s+אות[ךיו])?(?:\s+(?:קודם|עכשיו|לפני|אותך))?|מה\s+הי[יה]ת[הה]?\s+ה?שאלה(?:\s+ה?קודמת)?\s+שלי|ה?שאלה\s+ה?קודמת\s+שלי|qu[eé]\s+te\s+pregunt[eé]/iu
 // A trivial social/closing turn (greeting, thanks, goodbye, "never mind", exit).
 // These must NOT become the remembered conversation topic — otherwise
 // "מה דיברנו קודם?" echoes the last throwaway word ("דיברנו על עזוב"). We skip
@@ -301,7 +311,8 @@ export function classifyIntent(
 
   // Continuation / resume, or topic recall ("על מה דיברנו", even prefixed by
   // "יש לך זיכרון …") — both are handled inside the continuation case.
-  if (isContinuation(t) || CONTINUATION_EXTRA_RE.test(t) || RECALL_TOPIC_RE.test(t)) return 'continuation'
+  if (isContinuation(t) || CONTINUATION_EXTRA_RE.test(t) || RECALL_TOPIC_RE.test(t)
+      || CROSS_SESSION_MEMORY_RE.test(t) || LAST_QUESTION_RE.test(t)) return 'continuation'
 
   // Date/day/TIME questions answered from the real clock — never invented, never
   // "באיזה יום", never a fabricated "03:00".
@@ -1036,6 +1047,30 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       return settle(dateReasoner(normalized, ctx.now), { state, dataAvailable: true })
 
     case 'continuation': {
+      // Cross-session memory question ("את זוכרת מה אמרתי אתמול?") — AbuAI keeps NO
+      // past-session memory. Answer honestly; NEVER imply it remembers (device failure).
+      if (CROSS_SESSION_MEMORY_RE.test(normalized)) {
+        const es = lang === 'es'
+        return settle(es
+          ? 'No guardo las conversaciones anteriores, así que no recuerdo lo que me dijiste antes. Pero estoy acá ahora — contame de nuevo.'
+          : 'אני לא שומרת שיחות קודמות, אז אני לא זוכרת מה אמרת אז. אבל אני כאן עכשיו — תספרי לי שוב.',
+          { state, dataAvailable: false, ...(es ? { lang: 'es' as const } : {}) })
+      }
+      // Last-question recall ("מה שאלתי אותך קודם?") — from THIS session's working memory
+      // (the raw message history), else the last recorded question, else honest.
+      if (LAST_QUESTION_RE.test(normalized)) {
+        const es = lang === 'es'
+        const prior = [...(ctx.messages ?? [])].reverse()
+          .filter(m => m.role === 'user')
+          .map(m => (m.content ?? '').trim())
+          .find(c => c && c.length >= 2 && !LAST_QUESTION_RE.test(c) && !CROSS_SESSION_MEMORY_RE.test(c) && !isNonTopicTurn(c))
+        const recalled = prior || (state.conv.answer?.question && !isNonTopicTurn(state.conv.answer.question) ? state.conv.answer.question : '')
+        if (recalled) {
+          return settle(es ? `Me preguntaste: "${recalled}".` : `שאלת: "${recalled}".`, { state, dataAvailable: true, ...(es ? { lang: 'es' as const } : {}) })
+        }
+        return settle(es ? 'Todavía no me preguntaste nada en esta charla.' : 'עוד לא שאלת אותי כלום בשיחה הזאת.',
+          { state, dataAvailable: false, ...(es ? { lang: 'es' as const } : {}) })
+      }
       // "על מה דיברנו" is a RECALL of the topic, not a resume — answer it first so
       // it never falls into "זהו, סיימתי".
       if (RECALL_TOPIC_RE.test(normalized)) {
