@@ -25,6 +25,15 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.88.0 (Intelligence Parity — Cycle 9: relative date/time arithmetic)** — Expanded the
+  probe corpus (intelligenceGapProbe2, harder scenarios) to surface new gaps once the ranked
+  list was exhausted. Found: dateReasoner did fixed offset WORDS but not ARITHMETIC —
+  "בעוד שלושה ימים" → TODAY (confidently wrong), "בעוד שבוע" → LLM, "מה השעה בעוד שעתיים" →
+  10:00 (not 12:00). Added beodDaysOffset + beodHoursOffset (deterministic from ctx.now) +
+  routing. "בעוד שלושה ימים" → 18 ביולי; "מה השעה בעוד שעתיים" → 12:00. Evidence:
+  relativeDateArithmetic.test.ts 6/6 green; date suites 31 green; full suite 10862 green;
+  typecheck + build clean. NEXT (from probe 2): siblings ("מי אח של מור"), mid-create PERSON
+  change, Spanish family-relation/create. LIVE online grounding remains PREVIEW-class.
 - **0.87.0 (Intelligence Parity — Cycle 8: clinic location capture / C5)** — "תקבעי פגישה
   עם הרופא מחר בבוקר בקופת חולים בכפר סבא בתשע" captured the location as only "כפר סבא" —
   "קופת חולים" (the HMO clinic, the real venue) was dropped because it was not a venue

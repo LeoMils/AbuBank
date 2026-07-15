@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.87.0-clinic-location-capture'
-const BUILD_LABEL = 'AbuBank — CLINIC_LOCATION_CAPTURE (Intelligence Parity Cycle 8, text-only via the real ExecutiveCognitiveController): closes gap C5. תקבעי פגישה עם הרופא מחר בבוקר בקופת חולים בכפר סבא בתשע captured the location as only כפר סבא — קופת חולים (the HMO clinic, the real venue) was dropped because it was not in the venue head-word list, so the extractor fell through to the bare-city match. Added קופת חולים (+ קופ"ח/קופ״ח) to VENUE_HEAD, so the venue matcher captures קופת חולים בכפר סבא and stops before the time (בתשע never leaks in). Evidence: clinicLocationCapture.test.ts 2/2 green (extractor + real controller); extractor + calendar regression suites 125 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.86.0.'
+const BUILD_VERSION = '0.88.0-relative-date-time-arithmetic'
+const BUILD_LABEL = 'AbuBank — RELATIVE_DATE_TIME_ARITHMETIC (Intelligence Parity Cycle 9, text-only via the real ExecutiveCognitiveController): an expanded probe (intelligenceGapProbe2) surfaced that dateReasoner handled fixed offset WORDS (אתמול/מחר/שלשום/מחרתיים) but not ARITHMETIC — בעוד שלושה ימים returned TODAY (confidently wrong), בעוד שבוע fell to the LLM, and מה השעה בעוד שעתיים returned the current time (10:00, not 12:00). Added beodDaysOffset (בעוד N ימים/יומיים/שבוע/שבועיים/N שבועות → forward date) + beodHoursOffset (בעוד N שעות/שעה/שעתיים → clock + N hours), both deterministic from ctx.now, and extended RELATIVE_DATE_QUERY_RE to route בעוד questions to date_query. Evidence: relativeDateArithmetic.test.ts 6/6 green (CODE); date regression suites 31 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.87.0.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

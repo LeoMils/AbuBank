@@ -206,7 +206,7 @@ const DATE_QUERY_RE =
 // Requires an explicit day/date-asking frame so calendar reads ("מה יש לי מחר") are
 // never hijacked — those have no "איזה יום"/"תאריך" frame.
 const RELATIVE_DATE_QUERY_RE =
-  /(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך|מה\s+היום|באיזה\s+תאריך)[^?]*?(?:אתמול|שלשום|מחרתיים|מחר)|(?:אתמול|שלשום|מחרתיים|מחר)[^?]*?(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך)|qu[eé]\s+(?:d[ií]a|fecha)[^?]*?(?:anteayer|pasado\s+ma[ñn]ana|ayer|ma[ñn]ana)/iu
+  /(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך|מה\s+היום|באיזה\s+תאריך)[^?]*?(?:אתמול|שלשום|מחרתיים|מחר|בעוד\s+\S)|(?:אתמול|שלשום|מחרתיים|מחר)[^?]*?(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך)|qu[eé]\s+(?:d[ií]a|fecha)[^?]*?(?:anteayer|pasado\s+ma[ñn]ana|ayer|ma[ñn]ana)/iu
 // A "when is the next holiday" / "when is <holiday>" question. Jewish-holiday dates
 // are a fixed table (deterministic) — answering from the table avoids the stale
 // "Independence Day 2024" hallucination. Requires a holiday noun so "מתי הפגישה"
@@ -386,6 +386,33 @@ function relativeDayOffset(t: string): { off: number; he: string; esPast: string
   return null
 }
 
+// Hebrew number words (1-10) for "בעוד N ..." arithmetic.
+const HE_NUM: Record<string, number> = {
+  אחד: 1, אחת: 1, שני: 2, שניים: 2, שתיים: 2, שלושה: 3, שלוש: 3, ארבעה: 4, ארבע: 4,
+  חמישה: 5, חמש: 5, שישה: 6, שש: 6, שבעה: 7, שבע: 7, שמונה: 8, תשעה: 9, תשע: 9, עשרה: 10, עשר: 10,
+}
+
+/** "בעוד N ימים/יומיים/שבוע/שבועיים/N שבועות" → a forward day offset, or null. */
+function beodDaysOffset(t: string): { days: number; label: string } | null {
+  if (/בעוד\s+יומיים/u.test(t)) return { days: 2, label: 'יומיים' }
+  if (/בעוד\s+שבועיים/u.test(t)) return { days: 14, label: 'שבועיים' }
+  let m = t.match(/בעוד\s+(\d+)\s+ימים/u); if (m) return { days: parseInt(m[1]!, 10), label: `${m[1]} ימים` }
+  m = t.match(/בעוד\s+([א-ת]+)\s+ימים/u); if (m && HE_NUM[m[1]!]) return { days: HE_NUM[m[1]!]!, label: `${m[1]} ימים` }
+  m = t.match(/בעוד\s+(\d+)\s+שבועות/u); if (m) return { days: parseInt(m[1]!, 10) * 7, label: `${m[1]} שבועות` }
+  m = t.match(/בעוד\s+([א-ת]+)\s+שבועות/u); if (m && HE_NUM[m[1]!]) return { days: HE_NUM[m[1]!]! * 7, label: `${m[1]} שבועות` }
+  if (/בעוד\s+שבוע(?![יו])/u.test(t)) return { days: 7, label: 'שבוע' }
+  return null
+}
+
+/** "בעוד N שעות/שעה/שעתיים" → a forward hour offset, or null. */
+function beodHoursOffset(t: string): { hours: number; label: string } | null {
+  if (/בעוד\s+שעתיים/u.test(t)) return { hours: 2, label: 'שעתיים' }
+  let m = t.match(/בעוד\s+(\d+)\s+שעות/u); if (m) return { hours: parseInt(m[1]!, 10), label: `${m[1]} שעות` }
+  m = t.match(/בעוד\s+([א-ת]+)\s+שעות/u); if (m && HE_NUM[m[1]!]) return { hours: HE_NUM[m[1]!]!, label: `${m[1]} שעות` }
+  if (/בעוד\s+שעה(?![ת])/u.test(t)) return { hours: 1, label: 'שעה' }
+  return null
+}
+
 /** Next holiday strictly AFTER `now` (from the fixed Hebrew-holiday table), optionally
  *  a specific one. Deterministic; returns null when the table has no answer (we then
  *  say so honestly rather than invent a date). */
@@ -417,8 +444,23 @@ function dateWithoutDay(iso: string): string {
 
 export function dateReasoner(text: string, now: Date): string {
   if (TIME_QUERY_RE.test(text)) {
+    // "מה השעה בעוד שעתיים" — clock arithmetic, never the current time.
+    const addH = beodHoursOffset(text)
+    if (addH) {
+      const d = new Date(now); d.setHours(d.getHours() + addH.hours)
+      const hh = String(d.getHours()).padStart(2, '0'); const mm = String(d.getMinutes()).padStart(2, '0')
+      return `בעוד ${addH.label} השעה תהיה ${hh}:${mm}.`
+    }
     const hh = String(now.getHours()).padStart(2, '0'); const mm = String(now.getMinutes()).padStart(2, '0')
     return `השעה עכשיו ${hh}:${mm}.`
+  }
+
+  // "בעוד N ימים/שבוע/שבועיים" — forward date arithmetic from ctx.now (deterministic).
+  const addD = beodDaysOffset(text)
+  if (addD) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate()); d.setDate(d.getDate() + addD.days)
+    const day = HE_DAYS[d.getDay()] ?? ''
+    return `בעוד ${addD.label} יהיה ${day}, ${dateWithoutDay(localISO(d))}.`
   }
 
   // Next-holiday question — deterministic table, never the LLM (no hallucinated date).

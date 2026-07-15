@@ -132,4 +132,19 @@ provider. Needs a real deployed call; do not upgrade the evidence class from COD
 4. **CALENDAR** C4/C5 (title + dinner-time + location) — Cycle 4.
 5. **ONLINE** provider-boundary stale-answer reproduction (PREVIEW class) — Cycle 5.
 
+## Cycle 9 — DATE/TIME ARITHMETIC (from expanded probe 2) — ✅ FIXED (0.88.0)
+
+`src/eval/intelligenceGapProbe2.test.ts` (harder corpus) surfaced that dateReasoner did
+fixed offset WORDS but not ARITHMETIC. Fixed: `בעוד N ימים/יומיים/שבוע/שבועיים/N שבועות`
+→ forward date; `בעוד N שעות/שעה/שעתיים` → clock + N hours. "בעוד שלושה ימים" → 18 ביולי
+(was TODAY); "מה השעה בעוד שעתיים" → 12:00 (was 10:00). Regression:
+`relativeDateArithmetic.test.ts` 6/6.
+
+### Still-open gaps found by probe 2 (ranked for next cycles)
+- 🟠 **FAM-SIB** "מי אח/אחות של X" (siblings) → unknown fallback. No sibling REL rule
+  (Leo is Mor's brother). Clean graph fix.
+- 🟠 **mid-create person change** "לא, לא עם דני, עם מור" → falls to the LLM (day change works).
+- 🟠 **ES-FAM/ES-CREATE** Spanish "la hija de X" relation + "agendá una cena …" create → LLM.
+- 🟡 **next-weekday** "מתי יום ראשון הבא?" → LLM. **AGE** "בן כמה עדי?" → LLM (age may be absent).
+
 Voice/audio dimensions: **DEFERRED, not done.**

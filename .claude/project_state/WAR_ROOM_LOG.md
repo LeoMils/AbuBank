@@ -393,3 +393,15 @@
   calendar suites 125 green; full suite 10855 passed / 0 failed; typecheck + build clean.
 - Calendar drafting gaps C1-C5 closed. Remaining (low sev): meal-noun TITLE. Big remaining
   item is LIVE online grounding (PREVIEW-class, needs a real provider call).
+
+## Intelligence Parity Program — Cycle 9: relative date/time arithmetic (v0.88.0)
+- Expanded probe corpus (intelligenceGapProbe2) surfaced new gaps: dateReasoner did fixed
+  offset WORDS but not ARITHMETIC. "beod shlosha yamim" (in 3 days) -> TODAY (confidently
+  wrong); "beod shavua" -> LLM; "ma hashaa beod shaatayim" -> 10:00 (not 12:00).
+- FIX: beodDaysOffset (beod N yamim/yomayim/shavua/shvuayim/N shavuot -> forward date) +
+  beodHoursOffset (beod N shaot/shaa/shaatayim -> clock + N hours), deterministic from
+  ctx.now; RELATIVE_DATE_QUERY_RE extended to route "beod" questions to date_query.
+- EVIDENCE: relativeDateArithmetic.test.ts 6/6 green; date suites 31 green; full suite 10862
+  passed / 0 failed; typecheck + build clean.
+- NEXT (probe 2 backlog): siblings ("mi ach shel Mor"), mid-create PERSON change, Spanish
+  family-relation/create. LIVE online grounding remains PREVIEW-class.
