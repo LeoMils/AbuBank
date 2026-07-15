@@ -179,8 +179,9 @@ Added `nextWeekdayAnswer` (next occurrence of a weekday, strictly after today) +
 ASCII word-boundary bug in the frame regex. Regression: `nextWeekday.test.ts` 5/5.
 
 ### Widened-probe backlog (ranked, still open — mostly LLM-legitimate)
-- 🟠 **Spanish create "cena"** "agendá una cena con Anabel el viernes a las ocho" → LLM
-  (while "anotá una cita …" works). Spanish create verb recognizes cita, not cena (dinner).
+- ✅ **Spanish create "cena"** — FIXED (0.97.0): meal nouns (cena/almuerzo/desayuno/café/
+  merienda) added to CREATE_INTENT_ES + meal-context PM/AM period; "agendá una cena con
+  Anabel el viernes a las ocho" → create, Anabel, 20:00. Regression: `spanishDinnerCreate.test.ts` 3/3.
 - 🟡 **math/units** "כמה זה 15 כפול 4", "20 אחוז מ-200", "30 צלזיוס בפרנהייט", tip calc → LLM
   (an LLM can do it but a deterministic calculator is more reliable — optional).
 - 🟡 **age** "בן כמה עדי?" → LLM (needs birth-year data; may be honest-absent).

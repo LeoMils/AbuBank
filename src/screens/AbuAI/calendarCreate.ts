@@ -187,7 +187,9 @@ const NATURAL_MEETING = /(?:כדאי\s+ש|בא\s+לי|אני\s+רוצ[הא]?|א�
 // turno) or "con <name>" — so the NOUN "agenda de mañana" (tomorrow's agenda, a
 // READ) is not mistaken for the imperative "agendá …". No trailing \b: JS regex
 // (non-/u) treats accented letters (á) as non-word, so "agendá\b" never matches.
-const CREATE_INTENT_ES = /(?<![a-záéíóúñ])(?:agend[áa]|anot[áa]|program[áa])r?(?:me)?\s+(?:(?:una?\s+)?(?:cita|reuni[óo]n|turno|evento)|con\s+\S)|(?<![a-záéíóúñ])(?:pon[ée]me|ponme)\s+(?:una?\s+)?(?:cita|reuni[óo]n|turno)|(?:quiero|necesito|tengo\s+que\s+(?:hacer|sacar))\s+(?:una?\s+)?(?:cita|reuni[óo]n|turno)|hac[ée]me?\s+(?:una?\s+)?(?:cita|reuni[óo]n)/i
+// Schedulable objects include MEAL nouns (cena/almuerzo/desayuno/café/merienda) so a
+// Rioplatense "agendá una cena con Anabel" is a create, not an LLM fallthrough.
+const CREATE_INTENT_ES = /(?<![a-záéíóúñ])(?:agend[áa]|anot[áa]|program[áa])r?(?:me)?\s+(?:(?:una?\s+)?(?:cita|reuni[óo]n|turno|evento|cena|almuerzo|comida|desayuno|caf[ée]|merienda)|con\s+\S)|(?<![a-záéíóúñ])(?:pon[ée]me|ponme)\s+(?:una?\s+)?(?:cita|reuni[óo]n|turno|cena|almuerzo|caf[ée])|(?:quiero|necesito|tengo\s+que\s+(?:hacer|sacar))\s+(?:una?\s+)?(?:cita|reuni[óo]n|turno|cena|almuerzo|caf[ée])|hac[ée]me?\s+(?:una?\s+)?(?:cita|reuni[óo]n|cena|almuerzo)/i
 function hasScheduleClueES(t: string): boolean {
   const hasDate = /\b(?:hoy|mañana|pasado\s+mañana|el\s+(?:lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|domingo)|la\s+semana\s+que\s+viene)\b/i.test(t)
   const hasTime = /\ba\s+las?\s+(?:\d{1,2}|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)|\d{1,2}[:.]\d{2}|de\s+la\s+(?:tarde|mañana|noche)/i.test(t)
@@ -330,8 +332,8 @@ const HEBREW_HOUR_WORDS: Record<string, number> = {
 // dinner ("ארוחת ערב") = evening, lunch ("ארוחת צהריים") = midday/afternoon, so a bare
 // hour ("ארוחת ערב … בשמונה") resolves to 20:00, not an 8 AM dinner. Breakfast
 // ("ארוחת בוקר") is morning — also stops a low hour ("ארוחת בוקר בשש") flipping to PM.
-const PERIOD_PM = /בערב|הערב|בלילה|הלילה|אחר[י]? הצהריים|אחה"צ|אחה״צ|אחהצ|בצהריים|הצהריים|ארוחת\s+ערב|ארוחת\s+צהריים|דינר/
-const PERIOD_AM = /בבוקר|הבוקר|לפנות בוקר|ארוחת\s+בוקר/
+const PERIOD_PM = /בערב|הערב|בלילה|הלילה|אחר[י]? הצהריים|אחה"צ|אחה״צ|אחהצ|בצהריים|הצהריים|ארוחת\s+ערב|ארוחת\s+צהריים|דינר|cena|almuerzo|merienda/i
+const PERIOD_AM = /בבוקר|הבוקר|לפנות בוקר|ארוחת\s+בוקר|desayuno/i
 
 // Resolve a 1-12 hour to 24h using period hints. With no hint, hours 1-6 are
 // taken as PM (appointment convention) and 7-12 stay as the AM reading but are

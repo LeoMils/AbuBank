@@ -505,3 +505,15 @@
 - Widened-probe backlog (mostly LLM-legitimate): Spanish create "cena" (dinner) -> LLM;
   math/units; age. General knowledge/translations/emotional = LLM job (no fix).
 - NEXT: Spanish create "cena", or a deterministic calculator for math/units.
+
+## Intelligence Parity — Cycle 18: Spanish meal-create (v0.97.0)
+- "agenda una cena con Anabel el viernes a las ocho" fell to the LLM while "anota una cita"
+  works — CREATE_INTENT_ES recognized cita/reunion/turno/evento but not meal nouns; and a
+  bare "a las ocho" for a cena defaulted to 08:00 (an 8 AM dinner, the Spanish twin of C4).
+- FIX: added cena/almuerzo/comida/desayuno/cafe/merienda to the Spanish schedulable objects
+  + cena/almuerzo/merienda -> PM (desayuno -> AM) meal-context period. Now -> calendar_create
+  with Anabel, viernes, 20:00.
+- EVIDENCE: spanishDinnerCreate.test.ts 3/3 green; Spanish + calendar suites 111 green; full
+  suite 10897 passed / 0 failed; typecheck + build clean.
+- NEXT (backlog): deterministic math/units calculator; age queries; else re-probe. Cannot
+  close in text: LIVE online grounding.

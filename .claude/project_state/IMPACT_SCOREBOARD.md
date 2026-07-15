@@ -25,6 +25,15 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.97.0 (Intelligence Parity — Cycle 18: Spanish meal-create)** — "agendá una cena con
+  Anabel el viernes a las ocho" fell to the LLM while "anotá una cita …" works —
+  CREATE_INTENT_ES recognized cita/reunión/turno/evento but not meal nouns; and a bare "a las
+  ocho" for a cena defaulted to 08:00 (an 8 AM dinner, the Spanish twin of the C4 bug). Added
+  cena/almuerzo/comida/desayuno/café/merienda to the Spanish schedulable objects + cena/
+  almuerzo/merienda → PM (desayuno → AM) meal-context period. Now → calendar_create with
+  Anabel, viernes, 20:00. Evidence: spanishDinnerCreate.test.ts 3/3 green; Spanish + calendar
+  suites 111 green; full suite 10897 green; typecheck + build clean. NEXT (backlog): deterministic
+  math/units calculator; age queries; else re-probe. Cannot close in text: LIVE online grounding.
 - **0.96.0 (Intelligence Parity — Cycle 17: next-weekday)** — Widened the probe corpus
   (Spanish create, next-weekday, age, math/units, translations, emotional). Confidently-wrong
   gap: "איזה תאריך יום שלישי הבא?" matched date_query → returned TODAY; "מתי יום ראשון הבא?"
