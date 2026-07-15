@@ -615,8 +615,53 @@ function safeHebrewDate(iso: string): string {
 const NUM = '(\\d+(?:[.,]\\d+)?)'
 const fmtNum = (n: number) => Number.isInteger(n) ? String(n) : parseFloat(n.toFixed(2)).toString()
 function toNum(s: string): number { return parseFloat(s.replace(',', '.')) }
+
+// Deterministic unit conversions ("3 קילומטר במטרים" → 3000, "30 מעלות צלזיוס בפרנהייט" → 86).
+// Same-dimension only; a price or mismatched units returns null (still routes online/LLM).
+type UnitDef = { re: RegExp; dim: string; factor: number }
+const UNIT_DEFS: UnitDef[] = [
+  { re: /קילומטר|ק"מ|kil[óo]metros?/iu, dim: 'len', factor: 1000 },
+  { re: /סנטימטר|ס"מ|cent[íi]metros?/iu, dim: 'len', factor: 0.01 },
+  { re: /מטר(?:ים)?|metros?/iu, dim: 'len', factor: 1 },
+  { re: /קילוגרם|קילו(?!מטר)|ק"ג|kilos?/iu, dim: 'mass', factor: 1000 },
+  { re: /גרם|gramos?/iu, dim: 'mass', factor: 1 },
+  { re: /ליטר|litros?/iu, dim: 'vol', factor: 1000 },
+  { re: /מיליליטר|מ"ל/iu, dim: 'vol', factor: 1 },
+]
+const QTY_RE = /(-?\d+(?:[.,]\d+)?|שלושת\s+רבעי|חצי|רבע)/u
+function parseQty(s: string): number {
+  if (/^שלושת/.test(s)) return 0.75
+  if (s === 'חצי') return 0.5
+  if (s === 'רבע') return 0.25
+  return toNum(s)
+}
+function convertUnits(t: string): string | null {
+  // Temperature (special formula, not a linear factor).
+  const hasC = /צלזיוס|celsius/iu.test(t), hasF = /פרנהייט|fahrenheit/iu.test(t)
+  if (hasC && hasF) {
+    const qm = t.match(/(-?\d+(?:[.,]\d+)?)/u); if (!qm) return null
+    const q = toNum(qm[1]!)
+    const cFirst = t.search(/צלזיוס|celsius/iu) < t.search(/פרנהייט|fahrenheit/iu)
+    return cFirst
+      ? `${fmtNum(q)} מעלות צלזיוס זה ${fmtNum(q * 9 / 5 + 32)} מעלות פרנהייט.`
+      : `${fmtNum(q)} מעלות פרנהייט זה ${fmtNum((q - 32) * 5 / 9)} מעלות צלזיוס.`
+  }
+  // Linear conversions: qty + FROM unit + ב/ל + TO unit (same dimension).
+  const qm = t.match(QTY_RE); if (!qm) return null
+  const qty = parseQty(qm[1]!)
+  const found = UNIT_DEFS.map(u => ({ u, idx: t.search(u.re) })).filter(x => x.idx >= 0).sort((a, b) => a.idx - b.idx)
+  if (found.length < 2) return null
+  const from = found[0]!.u, to = found[1]!.u
+  if (from.dim !== to.dim) return null
+  const res = qty * from.factor / to.factor
+  const toWord = (t.match(to.re) ?? [''])[0]
+  return `זה יוצא ${fmtNum(res)} ${toWord}.`
+}
+
 export function mathReasoner(text: string): string | null {
   const t = text.trim()
+  const conv = convertUnits(t)
+  if (conv) return conv
   const es = /[¿ñ]|cu[aá]nto\s+es|por\s+ciento|de\s+propina/iu.test(t)
   // 1) Percent TIP: "N אחוז טיפ על M (שקל)" / "N% de propina sobre M".
   let m = t.match(new RegExp(`${NUM}\\s*(?:%|אחוז|por\\s*ciento)\\s*(?:טיפ|tip|propina)\\s*(?:על|de|sobre)\\s*${NUM}`, 'iu'))

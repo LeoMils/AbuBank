@@ -206,7 +206,8 @@ Deterministic `mathReasoner` (×÷+− word/symbol ops, percent-of, percent-tip,
 - 🟠 "כמה זמן עד סוף החודש?" / "כמה ימים עד יום ההולדת של מור?" → LLM (deterministic).
 - 🟠 family: "מי הנכדים של לאו?" (grandchildren-of-X), "מי הגיס של מור?" (in-law), verify
   "מי אשתו של לאו?" vs "מי בן הזוג של מור? → יעל" (possible wrong-person — CHECK the data).
-- 🟠 unit conversions "3 קילומטר במטרים", "חצי קילו בגרם", "30 צלזיוס בפרנהייט" → LLM (deterministic).
+- ✅ unit conversions "3 קילומטר במטרים", "חצי קילו בגרם", "30 צלזיוס בפרנהייט" — FIXED (0.101.0):
+  convertUnits (length/mass/volume factors + C↔F) in mathReasoner. Regression: `unitConversion.test.ts` 7/7.
 - 🟠 Spanish reminder "recordame tomar la pastilla a las nueve" → LLM (Spanish reminder verb).
 - 🟠 recurring reminder "כל בוקר לקחת כדור" → LLM.
 - 🟡 "בעצם לא" → mis-routed to calendar_update ("אין כלום לשנות") when no draft pending.

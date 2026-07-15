@@ -25,6 +25,16 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.101.0 (Intelligence Parity — Cycle 22: unit conversions)** — Everyday unit conversions
+  ("3 קילומטר במטרים", "חצי קילו בגרם", "30 מעלות צלזיוס בפרנהייט") fell to the LLM. Extended
+  mathReasoner with convertUnits: length (km/m/cm), mass (kg/g), volume (l/ml) via fixed
+  factors + same-dimension check, temp C↔F via the real formula, He word quantities
+  (חצי/רבע/שלושת רבעי). Fixed a substring collision — "קילו" inside "קילומטר" matched the kg
+  unit (kg now uses קילו(?!מטר)) so "3 קילומטר במטרים" → 3000, not a km→kg dimension error.
+  Price/mismatched-units → null → still online. Evidence: unitConversion.test.ts 7/7 +
+  mathReasoner.test.ts 8/8 green; calendar+online suites 309 green; full suite 10922 green;
+  typecheck + build clean. NEXT (backlog): days-until-end-of-month; family grandchildren/in-law
+  + verify "בן הזוג של מור→יעל"; Spanish "recordame"; recurring reminder; "בעצם לא" misroute.
 - **0.100.0 (Intelligence Parity — Cycle 21: backward date arithmetic)** — "איזה יום היה
   לפני שבוע?" fell to the LLM; dateReasoner did FORWARD ("בעוד") but not BACKWARD arithmetic.
   Added lifneiDaysOffset (לפני N ימים/יומיים/שבוע/שבועיים/N שבועות) + extended

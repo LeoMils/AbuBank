@@ -557,3 +557,16 @@
   0 failed; typecheck + build clean. (0.100 = 0.x foundation sequence, not a 1.0 GA.)
 - NEXT (backlog): days-until-end-of-month; unit conversions; family grandchildren/in-law +
   verify "ben hazug shel Mor->Yael"; Spanish "recordame".
+
+## Intelligence Parity — Cycle 22: unit conversions (v0.101.0)
+- Everyday unit conversions ("3 km be-metrim", "chatzi kilo be-gram", "30 celsius be-fahrenheit")
+  fell to the LLM.
+- FIX: extended mathReasoner with convertUnits — length (km/m/cm), mass (kg/g), volume (l/ml)
+  via fixed factors + same-dimension check, temp C<->F via the real formula, He word quantities
+  (chatzi=0.5, reva=0.25, shloshet-revei=0.75). Fixed a substring collision: "kilo" inside
+  "kilometr" matched the kg unit (kg now uses kilo(?!metr)) so "3 km be-metrim" -> 3000, not a
+  km->kg dimension error. Price/mismatched-units -> null -> still online.
+- EVIDENCE: unitConversion.test.ts 7/7 + mathReasoner.test.ts 8/8 green; calendar+online suites
+  309 green; full suite 10922 passed / 0 failed; typecheck + build clean.
+- NEXT (backlog): days-until-end-of-month; family grandchildren/in-law + verify ben-hazug-Mor;
+  Spanish "recordame"; recurring reminder; "beetzem lo" misroute.
