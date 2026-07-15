@@ -25,6 +25,15 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.102.0 (Intelligence Parity — Cycle 23: grandchildren-of-X + family-data verify)** — First
+  VERIFIED against knowledge/family_data.json that "בן הזוג של מור → יעל" is CORRECT (Yael is
+  Mor's partner) — NOT a wrong-person bug. Then fixed the real gap: "מי הנכדים של X" fell to the
+  LLM (routing matched singular נכד/נכדה, not plural נכדים/נכדות; no grandchildren-of-X rule).
+  Added grandchildren REL rule (grandchildrenOfPublic) + plural routing. "מי הנכדים של מור" →
+  אנאבל, ארי; "מי הנכדים של לאו" → honest (none), never fabricated. Evidence:
+  grandchildrenOfX.test.ts 3/3 green; family suites 256 green; full suite 10925 green; typecheck
+  + build clean. NEXT (backlog): days-until-end-of-month; Spanish "recordame"; recurring reminder;
+  "בעצם לא" misroute; (low) gis/sibling-in-law.
 - **0.101.0 (Intelligence Parity — Cycle 22: unit conversions)** — Everyday unit conversions
   ("3 קילומטר במטרים", "חצי קילו בגרם", "30 מעלות צלזיוס בפרנהייט") fell to the LLM. Extended
   mathReasoner with convertUnits: length (km/m/cm), mass (kg/g), volume (l/ml) via fixed

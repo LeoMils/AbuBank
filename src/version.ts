@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.101.0-unit-conversions',
-  buildLabel: 'AbuBank — UNIT_CONVERSIONS (Intelligence Parity Cycle 22, text-only via the real ExecutiveCognitiveController): wide-probe gap — everyday unit conversions (3 קילומטר במטרים, חצי קילו בגרם, 30 מעלות צלזיוס בפרנהייט) fell to the LLM. Extended the deterministic mathReasoner with convertUnits: length (km/m/cm), mass (kg/g), volume (l/ml) via fixed factors + same-dimension check, temperature C↔F via the real formula, and Hebrew word quantities (חצי=0.5, רבע=0.25, שלושת רבעי=0.75). Fixed a substring collision where קילו inside קילומטר matched the kg unit (kg now uses קילו(?!מטר)), so 3 קילומטר במטרים → 3000 (not a km→kg dimension error). A price (כמה עולה חלב) or mismatched units returns null and still routes online. Evidence: unitConversion.test.ts 7/7 + mathReasoner.test.ts 8/8 green (CODE); calendar+online regression suites 309 green; full suite green. NOTE: currency FX (live rate) is still online/PREVIEW-class, not deterministic. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.100.0.',
+  version:    '0.102.0-grandchildren-of-x',
+  buildLabel: 'AbuBank — GRANDCHILDREN_OF_X (Intelligence Parity Cycle 23, text-only via the real ExecutiveCognitiveController): first VERIFIED against knowledge/family_data.json that בן הזוג של מור → יעל is CORRECT (Yael is Mor partner) — not a wrong-person bug. Then fixed the real gap: מי הנכדים של X fell to the LLM because the family routing matched singular נכד/נכדה but not PLURAL נכדים/נכדות, and there was no grandchildren-of-X relation rule (though the graph computes children-of-children). Added a grandchildren REL rule (grandchildrenOfPublic, singular+plural) + routing. מי הנכדים של מור → אנאבל, ארי; מי הנכדים של לאו → honest (Leo has none), never fabricated. Evidence: grandchildrenOfX.test.ts 3/3 green (CODE); family regression suites 256 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.101.0.',
   buildDate:  '2026-07-15',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

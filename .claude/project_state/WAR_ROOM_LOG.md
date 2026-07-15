@@ -570,3 +570,15 @@
   309 green; full suite 10922 passed / 0 failed; typecheck + build clean.
 - NEXT (backlog): days-until-end-of-month; family grandchildren/in-law + verify ben-hazug-Mor;
   Spanish "recordame"; recurring reminder; "beetzem lo" misroute.
+
+## Intelligence Parity — Cycle 23: grandchildren-of-X + family-data verify (v0.102.0)
+- VERIFIED against knowledge/family_data.json: "ben hazug shel Mor -> Yael" is CORRECT (Yael
+  is Mor partner) — NOT a wrong-person bug. Honest verification before assuming a bug.
+- Real gap fixed: "mi hanechadim shel X" fell to the LLM (routing matched singular nechad/
+  nechada, not plural nechadim/nechadot; no grandchildren-of-X rule).
+- FIX: grandchildren REL rule (grandchildrenOfPublic) + plural routing. "mi hanechadim shel Mor"
+  -> Anabel, Ari; "mi hanechadim shel Leo" -> honest (none), never fabricated.
+- EVIDENCE: grandchildrenOfX.test.ts 3/3 green; family suites 256 green; full suite 10925
+  passed / 0 failed; typecheck + build clean.
+- NEXT (backlog): days-until-end-of-month; Spanish "recordame"; recurring reminder; "beetzem lo"
+  misroute; (low) gis/sibling-in-law.

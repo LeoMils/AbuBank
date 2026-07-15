@@ -125,6 +125,9 @@ const REL = [
   { re: /(?:מי\s+ה?)?דוד(?:ות|ה)\s+של\s+(\S+)/u, rel: 'aunt', fn: (n: string) => unclesAuntsOf(n, 'female') },
   { re: /(?:מי\s+ה?)?דוד(?:ים)?\s+של\s+(\S+)/u, rel: 'uncle', fn: (n: string) => unclesAuntsOf(n, 'male') },
   { re: /(?:ה?ילדים|ה?בנים|ה?ילדות)\s+של\s+(\S+)|מי\s+ה?ילדים\s+של\s+(\S+)/u, rel: 'children', fn: (n: string) => childrenOfPublic(n) },
+  // Grandchildren of X (children-of-children). Handles singular + plural (נכד/נכדים/נכדות).
+  // Placed BEFORE grandparent rules so "נכד של" (grandchild) is not confused with "סבא של".
+  { re: /(?:מי\s+ה?)?נכד(?:ים|ות)?\s+של\s+(\S+)/u, rel: 'grandchildren', fn: (n: string) => grandchildrenOfPublic(n) },
   // Partner/spouse — includes the POSSESSIVE suffix forms "בעלה" (her husband) and
   // "אשתו"/"אשתה" (his/her wife), not only "הבעל של" / "האישה של". A common family
   // question ("מי בעלה של אופיר") must resolve from the graph, never punt to the LLM.

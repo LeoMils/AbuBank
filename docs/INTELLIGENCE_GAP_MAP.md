@@ -204,8 +204,10 @@ Deterministic `mathReasoner` (×÷+− word/symbol ops, percent-of, percent-tip,
 - ✅ backward date arithmetic "לפני שבוע" / "לפני N ימים" — FIXED (0.100.0): lifneiDaysOffset.
   "איזה יום היה לפני שבוע" → יום רביעי, 8 ביולי. Regression: `backwardDate.test.ts` 5/5.
 - 🟠 "כמה זמן עד סוף החודש?" / "כמה ימים עד יום ההולדת של מור?" → LLM (deterministic).
-- 🟠 family: "מי הנכדים של לאו?" (grandchildren-of-X), "מי הגיס של מור?" (in-law), verify
-  "מי אשתו של לאו?" vs "מי בן הזוג של מור? → יעל" (possible wrong-person — CHECK the data).
+- ✅ family "מי הנכדים של X" (grandchildren-of-X) — FIXED (0.102.0): plural routing + REL rule.
+  "מי הנכדים של מור" → אנאבל, ארי. VERIFIED "בן הזוג של מור → יעל" is CORRECT (Yael is Mor's
+  partner, per family_data.json) — not a bug. Regression: `grandchildrenOfX.test.ts` 3/3.
+  Still open: 🟡 "מי הגיס של X" (sibling-in-law) — likely empty for our data (low value).
 - ✅ unit conversions "3 קילומטר במטרים", "חצי קילו בגרם", "30 צלזיוס בפרנהייט" — FIXED (0.101.0):
   convertUnits (length/mass/volume factors + C↔F) in mathReasoner. Regression: `unitConversion.test.ts` 7/7.
 - 🟠 Spanish reminder "recordame tomar la pastilla a las nueve" → LLM (Spanish reminder verb).
