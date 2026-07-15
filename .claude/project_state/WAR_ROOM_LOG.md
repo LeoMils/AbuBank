@@ -382,3 +382,14 @@
 - EVIDENCE: mealTimeOfDay.test.ts 4/4 green; calendar suites 150 green; full suite 10853
   passed / 0 failed; typecheck + build clean.
 - REMAINING (low sev): meal-noun TITLE ("aruchat erev im Anabel" vs "pgisha im Anabel").
+
+## Intelligence Parity Program — Cycle 8: clinic location capture / C5 (v0.87.0)
+- "tikbei pgisha im harofe machar baboker be-kupat cholim be-Kfar Saba be-tesha" captured the
+  location as only "Kfar Saba" — "kupat cholim" (HMO clinic, the real venue) was dropped
+  because it was not a venue head-word, so the extractor fell to the bare-city match.
+- FIX: added kupat-cholim (+ abbreviations) to VENUE_HEAD -> location "kupat cholim be-Kfar
+  Saba"; the time (be-tesha) never leaks in.
+- EVIDENCE: clinicLocationCapture.test.ts 2/2 green (extractor + real controller); extractor +
+  calendar suites 125 green; full suite 10855 passed / 0 failed; typecheck + build clean.
+- Calendar drafting gaps C1-C5 closed. Remaining (low sev): meal-noun TITLE. Big remaining
+  item is LIVE online grounding (PREVIEW-class, needs a real provider call).

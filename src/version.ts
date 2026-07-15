@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.86.0-meal-time-of-day',
-  buildLabel: 'AbuBank — MEAL_TIME_OF_DAY (Intelligence Parity Cycle 7, text-only via the real ExecutiveCognitiveController): closes gap C4. קבעי ארוחת ערב עם אנבל ביום שישי בשמונה scheduled an 8 AM dinner — the bare hour בשמונה was flagged ambiguous and defaulted to the morning reading because ארוחת ערב (dinner) was not a recognized period hint (PERIOD_PM matched only בערב/הערב, not the bare meal noun). Added meal-context period hints: ארוחת ערב/ארוחת צהריים/דינר → PM, ארוחת בוקר → AM, so a bare hour resolves from the meal (dinner → 20:00). A truly bare hour with no meal/period context stays ambiguous (asks בבוקר או בערב), unchanged. Evidence: mealTimeOfDay.test.ts 4/4 green (CODE); calendar regression suites 150 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.85.0.',
+  version:    '0.87.0-clinic-location-capture',
+  buildLabel: 'AbuBank — CLINIC_LOCATION_CAPTURE (Intelligence Parity Cycle 8, text-only via the real ExecutiveCognitiveController): closes gap C5. תקבעי פגישה עם הרופא מחר בבוקר בקופת חולים בכפר סבא בתשע captured the location as only כפר סבא — קופת חולים (the HMO clinic, the real venue) was dropped because it was not in the venue head-word list, so the extractor fell through to the bare-city match. Added קופת חולים (+ קופ"ח/קופ״ח) to VENUE_HEAD, so the venue matcher captures קופת חולים בכפר סבא and stops before the time (בתשע never leaks in). Evidence: clinicLocationCapture.test.ts 2/2 green (extractor + real controller); extractor + calendar regression suites 125 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.86.0.',
   buildDate:  '2026-07-15',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

@@ -25,6 +25,15 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.87.0 (Intelligence Parity — Cycle 8: clinic location capture / C5)** — "תקבעי פגישה
+  עם הרופא מחר בבוקר בקופת חולים בכפר סבא בתשע" captured the location as only "כפר סבא" —
+  "קופת חולים" (the HMO clinic, the real venue) was dropped because it was not a venue
+  head-word, so the extractor fell to the bare-city match. Added קופת חולים (+ קופ"ח/קופ״ח)
+  to VENUE_HEAD → location "קופת חולים בכפר סבא", and the time (בתשע) never leaks in.
+  Evidence: clinicLocationCapture.test.ts 2/2 green (extractor + real controller); extractor
+  + calendar suites 125 green; full suite 10855 green; typecheck + build clean. Calendar
+  drafting gaps (C1–C5) now closed; meal-noun TITLE remains (low sev). NEXT: re-probe for
+  new gaps / add fresh scenarios; the remaining big item (LIVE online grounding) is PREVIEW-class.
 - **0.86.0 (Intelligence Parity — Cycle 7: meal time-of-day / C4)** — "קבעי ארוחת ערב עם
   אנבל ביום שישי בשמונה" scheduled an 8 AM dinner: the bare hour "בשמונה" was ambiguous and
   defaulted to the morning reading because "ארוחת ערב" (dinner) was not a period hint
