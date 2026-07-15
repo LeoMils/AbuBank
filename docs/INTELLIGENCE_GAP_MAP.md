@@ -42,7 +42,12 @@ through to the LLM (which has no clock). No next-holiday reasoner exists.
 
 ---
 
-## Cycle 2 — CONVERSATION QUALITY
+## Cycle 2 — CONVERSATION QUALITY — ✅ Q2 FIXED (0.81.0)
+
+Q2 fixed: narrowed `WHY_RE` (conversationOS.ts) so "why is X" knowledge questions
+reach the general/LLM path instead of a frustration apology; bare "למה?" and specific
+challenge phrasings stay challenges. Regression: `whyKnowledgeVsChallenge.test.ts` 5/5.
+
 
 | id | input | observed | expected | sev |
 |----|-------|----------|----------|-----|

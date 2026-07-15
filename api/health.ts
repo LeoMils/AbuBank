@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.80.0-relative-date-and-holiday-reasoning'
-const BUILD_LABEL = 'AbuBank — RELATIVE_DATE_HOLIDAY_REASONING (Intelligence Parity Cycle 1, text-only via the real ExecutiveCognitiveController, no microphone): dateReasoner now answers relative day/date questions (אתמול/שלשום/מחר/מחרתיים, Hebrew + Spanish ayer/mañana) and next-holiday questions (מתי החג הבא / מתי פסח הבא) DETERMINISTICALLY from ctx.now + the fixed Hebrew-holiday table. Previously it returned TODAY for a yesterday/tomorrow question (confidently wrong) or punted relative-day and holiday questions to the LLM, which has no clock and produced the stale Independence-Day hallucination. New RELATIVE_DATE_QUERY_RE + HOLIDAY_QUERY_RE route these to date_query; the calendar read path (מה יש לי מחר) is untouched. Evidence: relativeDateReasoning.test.ts 8/8 green (CODE). Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime unchanged and deferred. Builds on 0.79.0.'
+const BUILD_VERSION = '0.81.0-why-knowledge-not-frustration'
+const BUILD_LABEL = 'AbuBank — WHY_KNOWLEDGE_NOT_FRUSTRATION (Intelligence Parity Cycle 2, text-only via the real ExecutiveCognitiveController): a general why-is-X knowledge question (למה השמיים כחולים) was mis-routed to a frustration CHALLENGE reply (an apology, לא הייתי מספיק ברורה) because WHY_RE began with ^למה(?![א-ת]) — matching ANY input starting with למה. Narrowed WHY_RE so bare למה? and the specific challenge phrasings (למה לא קבעת / למה אין לך / למה אצלך) stay challenges, while why-topic questions fall to the general/LLM path and are actually answered. Evidence: whyKnowledgeVsChallenge.test.ts 5/5 green (CODE); targeted challenge suites 318 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.80.0.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

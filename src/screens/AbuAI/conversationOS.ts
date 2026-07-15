@@ -163,7 +163,11 @@ export function recordOnline(state: ConvState, s: Omit<OnlineSession, 'ts'>): Co
 }
 
 // ── 4. Repair engine + failure explanation ──────────────────────────────────
-const WHY_RE = /^למה(?![א-ת])|למה\s+(?:את\s+)?לא|למה\s+אין\s+לך|מה\s+אין\s+לך|למה\s+לא\s+(?:בדקת|הצלחת)|מה\s+הבעיה|מה\s+הסיבה|למה\?|מה\s+זאת\s+אומרת|למה\s+אצלך/u
+// A "why …" CHALLENGE to a prior (failed) answer — NOT a general "why is X" knowledge
+// question. The bare-"למה?" case is matched explicitly (`^למה\s*\??$`); every other arm
+// is a specific challenge phrasing. The old broad `^למה(?![א-ת])` caught ANY "למה <x>"
+// and mis-routed innocent knowledge questions ("למה השמיים כחולים") to a frustration reply.
+const WHY_RE = /^למה\s*\??$|למה\s+(?:את\s+)?לא|למה\s+אין\s+לך|מה\s+אין\s+לך|למה\s+לא\s+(?:בדקת|הצלחת)|מה\s+הבעיה|מה\s+הסיבה|מה\s+זאת\s+אומרת|למה\s+אצלך/u
 const ONLINE_CLAIM_RE = /יש\s+לך\s+(?:יכולת\s+)?(?:אונליין|אינטרנט|חיבור|גישה\s+לרשת)|את\s+(?:יכולה|מחוברת)\s+(?:לבדוק|לאינטרנט)|אבל\s+יש\s+לך/u
 const FRUSTRATION_RE = /אבל\s+(?:כבר\s+)?התחלת|את\s+לא\s+מבינה|כבר\s+התחלת\s+לענות|אבל\s+ענית|התחלת\s+ואז/u
 

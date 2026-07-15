@@ -25,6 +25,15 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.81.0 (Intelligence Parity — Cycle 2: CONVERSATION QUALITY / Q2)** — First
+  divergence: `WHY_RE` began with `^למה(?![א-ת])`, matching ANY "למה <x>" — so an
+  innocent knowledge question ("למה השמיים כחולים", why is the sky blue) was routed to a
+  frustration CHALLENGE reply (apology "לא הייתי מספיק ברורה") instead of being answered.
+  FIX: narrowed WHY_RE to bare "למה?" + specific challenge phrasings (למה לא קבעת /
+  למה אין לך / למה אצלך); "why <topic>" now reaches general/LLM. Evidence:
+  `whyKnowledgeVsChallenge.test.ts` 5/5 green (real controller + predicate); targeted
+  challenge suites 318 green; full suite 10836 green; typecheck + build clean. NEXT:
+  Cycle 3 — FAMILY (Spanish "¿quién es Ofir?" fails, "her mother" continuity, graph counts).
 - **0.80.0 (Intelligence Parity — Cycle 1: DATE/TIME)** — Drove the real
   ExecutiveCognitiveController.handleTurn over a broad He+Es+mixed corpus
   (`src/eval/intelligenceGapProbe.test.ts`, text-only, no mic) → built

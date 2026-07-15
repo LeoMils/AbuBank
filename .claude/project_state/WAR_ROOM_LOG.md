@@ -316,3 +316,13 @@
   failed; typecheck + build clean. Calendar create->confirm->save->readback->correction
   re-verified working in text (prior save-fail was a node-env localStorage artifact).
 - NEXT: Cycle 2 - "lama hashamayim kchulim" misrouted to frustration (why-challenge hijack).
+
+## Intelligence Parity Program — Cycle 2: CONVERSATION QUALITY / Q2 (v0.81.0)
+- FIRST DIVERGENCE: WHY_RE began with ^lamah(no-hebrew) matching ANY "lamah <x>" — an
+  innocent knowledge question ("lamah hashamayim kchulim" = why is the sky blue) was
+  routed to a frustration CHALLENGE (apology) instead of being answered.
+- FIX (conversationOS.ts): narrowed WHY_RE to bare "lamah?" + specific challenge phrasings
+  (lamah lo kavat / lamah ein lecha / lamah etzlech); "why <topic>" now reaches general/LLM.
+- EVIDENCE: whyKnowledgeVsChallenge.test.ts 5/5 green (real controller + predicate);
+  targeted challenge suites 318 green; full suite 10836 passed / 0 failed; typecheck + build clean.
+- NEXT: Cycle 3 - FAMILY (Spanish "quien es Ofir" fails, "her mother" continuity, graph counts).
