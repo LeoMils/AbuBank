@@ -80,6 +80,17 @@ export function unclesAuntsOf(name: string, gender?: 'female' | 'male'): string[
 }
 
 export function childrenOfPublic(name: string): string[] { return childrenOf(index(), name) }
+/** Grandchildren: children of the person's children. Deterministic count/list source. */
+export function grandchildrenOfPublic(name: string): string[] {
+  const ix = index()
+  return uniq(childrenOf(ix, name).flatMap(c => childrenOf(ix, c)))
+}
+/** Great-grandchildren: children of the grandchildren. */
+export function greatGrandchildrenOfPublic(name: string): string[] {
+  const ix = index()
+  const gc = uniq(childrenOf(ix, name).flatMap(c => childrenOf(ix, c)))
+  return uniq(gc.flatMap(g => childrenOf(ix, g)))
+}
 /** Daughters/sons: the person's children filtered by the child's gender. Lets a
  *  singular "מי הבת/הבן של X" resolve from the graph instead of punting to the LLM. */
 export function childrenByGenderPublic(name: string, gender: 'female' | 'male'): string[] {

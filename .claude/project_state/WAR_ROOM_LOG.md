@@ -348,3 +348,13 @@
 - EVIDENCE: familyPronounContinuity.test.ts 2/2 green; family + continuity suites 66 green;
   full suite 10842 passed / 0 failed; typecheck + build clean.
 - NEXT: Cycle 5 - F6 grandchild-count; then ONLINE provider-boundary stale-answer repro.
+
+## Intelligence Parity Program — Cycle 5: FAMILY count queries / F6 (v0.84.0)
+- "kama nechadim/yeladim/ninim yesh le-<X>" (how many grandchildren/children/great-grandchildren)
+  punted to the LLM (no count reasoner; single family name so routing never reached the graph).
+- FIX: familyCountReasoner (grandchildrenOfPublic / greatGrandchildrenOfPublic / childrenOfPublic)
+  + routing. "kama nechadim yesh le-Martita" -> "yesh le-Martita 6 nechadim: Ofir, Aylon, Eili,
+  Adar, Adi ve-Noam"; "kama nechadim yesh li" (self) -> "lach". Deterministic count + grounded list.
+- EVIDENCE: familyCountQueries.test.ts 4/4 green; family suites 246 green; full suite 10846
+  passed / 0 failed; typecheck + build clean. Family cycle complete in text (F1-F6, M2 closed).
+- NEXT: Cycle 6 - ONLINE provider-boundary stale-answer reproduction (PREVIEW class, live provider).

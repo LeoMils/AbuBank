@@ -72,7 +72,10 @@ F3 → "מור" (daughter) / "לאו" (son).
 last-discussed person. "מי זה אופיר?" then "ומי אמא שלה?" → מור. Regression:
 `familyPronounContinuity.test.ts` 2/2.
 
-Still open: **F6** count queries ("כמה נכדים יש למרטיטה?" → count from the graph).
+**F6 count queries — ✅ FIXED (0.84.0):** added `familyCountReasoner` + routing;
+"כמה נכדים יש למרטיטה?" → "יש למרטיטה 6 נכדים: אופיר, איילון, עילי, אדר, עדי ונועם."
+(children/great-grandchildren too; "כמה נכדים יש לי" → "לך"). Regression:
+`familyCountQueries.test.ts` 4/4. Family cycle (F1–F6, M2) now complete in text.
 
 
 | id | input | observed | expected | sev |

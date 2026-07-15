@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.83.0-family-parent-and-pronoun-continuity',
-  buildLabel: 'AbuBank — FAMILY_PARENT_AND_PRONOUN_CONTINUITY (Intelligence Parity Cycle 4, text-only via the real ExecutiveCognitiveController): closes gap M2. (1) Singular מי אמא/אבא של X (who is the mother/father of X) punted to the LLM — the relation engine had no parent rule; added gender-filtered mother/father rules (parentsByGenderPublic) so מי אמא של אופיר → מור. (2) A follow-up pronoun had no antecedent: after מי זה אופיר, the question ומי אמא שלה (and who is her mother) returned the unknown fallback. Added working-memory antecedent tracking (lastFamilySubject) + resolveFamilyPronoun, which rewrites שלה/שלו/שלהם to the last-discussed person before reasoning, so ומי אמא שלה → מי אמא של אופיר → מור. Evidence: familyPronounContinuity.test.ts 2/2 green (CODE); family + continuity regression suites 66 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.82.0.',
+  version:    '0.84.0-family-count-queries',
+  buildLabel: 'AbuBank — FAMILY_COUNT_QUERIES (Intelligence Parity Cycle 5, text-only via the real ExecutiveCognitiveController): closes gap F6. כמה נכדים/ילדים/נינים יש ל<X> (how many grandchildren/children/great-grandchildren) punted to the LLM — there was no count reasoner and the query carries only one family name, so routing never reached the graph. Added familyCountReasoner (grandchildrenOfPublic / greatGrandchildrenOfPublic / childrenOfPublic) + routing, so כמה נכדים יש למרטיטה → יש למרטיטה 6 נכדים: אופיר, איילון, עילי, אדר, עדי ונועם; כמה נכדים יש לי (Martita self) → לך; deterministic count + grounded list, never guessed. Evidence: familyCountQueries.test.ts 4/4 green (CODE); family regression suites 246 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.83.0.',
   buildDate:  '2026-07-15',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

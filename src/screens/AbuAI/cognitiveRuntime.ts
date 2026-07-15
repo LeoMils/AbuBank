@@ -59,7 +59,7 @@ registerCalendarMutationPlugins()
 const PLANNER_SKIP: ReadonlySet<RuntimeIntent> = new Set<RuntimeIntent>([
   'audio_complaint', 'continuation', 'frustration', 'confirmation', 'date_query',
 ])
-import { answerFamilyRelation } from './familyReasoning'
+import { answerFamilyRelation, childrenOfPublic, grandchildrenOfPublic, greatGrandchildrenOfPublic } from './familyReasoning'
 import { answerRelationQuery } from './familyRelationEngine'
 import { explainRelation } from './familyPathReasoner'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
@@ -469,6 +469,8 @@ function looksLikeFamilyQuery(t: string): boolean {
   // Base + POSSESSIVE spouse forms ("בעלה" her-husband, "אשתו"/"אשתה" his/her-wife) so a
   // common family question routes to the graph instead of punting to the LLM.
   if (/מי\s+ה?(?:סבא|סבתא|דוד|דודה|אבא|אמא|בעל[הוהּ]?|איש[הת][הו]?|אשת[הו]|בן\s+הזוג|בת\s+הזוג|בת|בן|ילדים|נכד|נכדה|אח|אחות)\s+של/u.test(t)) return true
+  // "כמה נכדים/ילדים/נינים יש ל…" — a family COUNT question, answered from the graph.
+  if (/כמה\s+(?:נכד|ילד|בנ|נינ)/u.test(t)) return true
   if (/מה\s+הקשר\s+בין|מה\s+היחס\s+בין|איך\s+קשור[הים]?|מי\s+ז[הא]\s+ל/u.test(t)) return true
   // "מה/מי (זה)? X עבור/בשביל Y" — a directional relation question. Recognized even
   // when X is UNKNOWN, so the runtime answers "won't guess" instead of the LLM.
@@ -508,10 +510,36 @@ export function resolveFamilyPronoun(text: string, antecedent: string | null): s
   return text.replace(/שלהם(?![א-ת])/u, `של ${antecedent}`).replace(/של[הו](?![א-ת])/u, `של ${antecedent}`)
 }
 
+// "כמה נכדים/ילדים/נינים יש ל<X>" — a COUNT from the graph (deterministic, never guessed).
+// The subject is the named person, or Martita ("כמה נכדים יש לי" — she is the user).
+const FAMILY_COUNT_RE = /כמה\s+(נכד(?:ים|ות)?|ילד(?:ים|ות)?|בנ(?:ים|ות)|נינ(?:ים|ות)?)/u
+function joinHe(list: string[]): string {
+  if (list.length <= 1) return list[0] ?? ''
+  return `${list.slice(0, -1).join(', ')} ו${list[list.length - 1]}`
+}
+export function familyCountReasoner(text: string): FamilyResult | null {
+  const m = text.match(FAMILY_COUNT_RE)
+  if (!m) return null
+  const names = knownFamilyNamesIn(text)
+  const explicit = names.length > 0
+  const subject = names[0]?.hebrew ?? 'מרטיטה'
+  const kind = m[1]!
+  let list: string[]; let noun: string
+  if (/^נכד/.test(kind)) { list = grandchildrenOfPublic(subject); noun = 'נכדים' }
+  else if (/^נינ/.test(kind)) { list = greatGrandchildrenOfPublic(subject); noun = 'נינים' }
+  else { list = childrenOfPublic(subject); noun = 'ילדים' }
+  if (list.length === 0) return { text: '', known: false, subject }
+  const poss = explicit ? `ל${subject}` : 'לך'
+  return { text: `יש ${poss} ${list.length} ${noun}: ${joinHe(list)}.`, known: true, subject }
+}
+
 // `subject` = the person the question was ABOUT (the named X), so the runtime can
 // remember it as the antecedent for a later pronoun ("ומי אמא שלה?" → her = that person).
 export interface FamilyResult { text: string; known: boolean; pair?: { a: string; b: string }; subject?: string }
 export function familyReasoner(text: string, lang: Lang = 'he'): FamilyResult {
+  // Count query ("כמה נכדים יש למרטיטה") — answered from the graph before anything else.
+  const count = familyCountReasoner(text)
+  if (count && count.known) return count
   // 0) Directional pairwise "what is X for Y" / "הקשר בין X ל-Y" — the graph
   // kinship engine (correct direction + gender + great-uncle/in-laws). Preferred
   // over the symmetric describeRelation for these forms.
