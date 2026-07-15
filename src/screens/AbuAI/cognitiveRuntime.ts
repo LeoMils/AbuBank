@@ -213,6 +213,12 @@ const RELATIVE_DATE_QUERY_RE =
 // (calendar) is never captured.
 const HOLIDAY_QUERY_RE =
   /מתי\s+(?:ה?חג\s+ה?בא|ה?חג\b|פסח|חנוכה|פורים|סוכות|שבועות|ראש\s+השנה|יום\s+כיפור|שמחת\s+תורה)|(?:פסח|חנוכה|פורים|סוכות|שבועות|ראש\s+השנה|יום\s+כיפור|שמחת\s+תורה)\s+ה?בא/u
+// National/CIVIC days (Independence, Memorial, Holocaust, Jerusalem Day). Their Gregorian
+// date is nidche-adjusted (postponement rules) and NOT in the deterministic religious-holiday
+// table — so a date question about them must go to LIVE retrieval, never model memory and
+// never the today-returning date_query ("באיזה תאריך יום העצמאות" must not answer TODAY).
+const CIVIC_HOLIDAY_RE =
+  /יום\s+ה?עצמאות|חג\s+ה?עצמאות|יום\s+ה?זיכרון|יום\s+ה?שואה|יום\s+ירושלים|d[ií]a\s+de\s+la\s+independencia|independencia|d[ií]a\s+de\s+los?\s+ca[íi]dos/iu
 const AUDIO_COMPLAINT_RE =
   /(?:לא\s+שומעת?\s+אות[ךיו]|אני\s+לא\s+שומע|לא\s+שמעתי(?:\s+אות[ךיו])?|לא\s+מדברת|הקול\s+נעלם|אין\s+קול|למה\s+את\s+שותקת|no\s+te\s+(?:escucho|oigo))/iu
 // Frustration the shared regex misses — "you're not answering what I asked".
@@ -299,6 +305,9 @@ export function classifyIntent(
 
   // Date/day/TIME questions answered from the real clock — never invented, never
   // "באיזה יום", never a fabricated "03:00".
+  // Civic/national days need LIVE retrieval — checked BEFORE date_query so
+  // "באיזה תאריך יום העצמאות" is never answered with TODAY, and before the LLM fallback.
+  if (CIVIC_HOLIDAY_RE.test(t) && !shouldBlockOnlineForPersonal(t)) return 'online'
   if (DATE_QUERY_RE.test(t) || TIME_QUERY_RE.test(t) ||
       RELATIVE_DATE_QUERY_RE.test(t) || HOLIDAY_QUERY_RE.test(t)) return 'date_query'
 

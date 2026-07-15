@@ -23,7 +23,7 @@ Reproduced the specific failures Leo saw on device. Status after cycle 12:
 | ONL-YDAY/SCORE | "מי ניצח אתמול" / "מה התוצאה אתמול" | ✅ routes online, query keeps "אתמול" |
 | ONL-TOP | "מי מלך השערים במונדיאל" / "מי מלך השערים" | ✅ **FIXED (0.93.0)** top-scorer routes online even without a sport word |
 | ONL-FOLLOWUP | "…אתמול" then "ומי מלך השערים?" | ✅ **FIXED (0.93.0)** follow-up top-scorer → online |
-| DAT-INDEP/ZIKARON | "מתי יום העצמאות/הזיכרון הבא" | 🟡 routes ONLINE (honest, not LLM) — could be deterministic; **Cycle 15** |
+| DAT-INDEP/ZIKARON | "מתי יום העצמאות/הזיכרון/השואה/ירושלים", "באיזה תאריך יום העצמאות", Spanish | ✅ **FIXED (0.94.0)** all civic days route online BEFORE date_query — never today, never LLM. Exact date = LIVE provider (nidche not hardcoded, to avoid inventing dates) |
 | CAL-MIDNIGHT(±verb) | "פגישה עם אופיר מחר בחצות בקפה אילנה" | ✅ **FIXED (0.91.0)** person+place+00:00, no re-ask |
 | MEM-YDAY | "את זוכרת מה אמרתי אתמול" | 🟠 → LLM (honesty is the LLM's job; consider deterministic honest reply) — **Cycle 14/16** |
 | CONV-LASTQ | "מה שאלתי אותך קודם" | 🟠 → LLM (no last-question recall) — **Cycle 16** |

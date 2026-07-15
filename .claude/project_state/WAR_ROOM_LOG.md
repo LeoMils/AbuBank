@@ -464,3 +464,17 @@
   passed / 0 failed; typecheck + build clean. LIVE provider correctness is PREVIEW-class.
 - NEXT (device backlog): 15 Independence/memorial deterministic dates, 16 memory honesty +
   last-question recall.
+
+## Intelligence Parity — Cycle 15: civic-holiday online (v0.94.0)
+- Device failure: wrong Independence Day (gave 2024 / past date). National/civic days
+  (yom haatzmaut/chag haatzmaut, yom hazikaron, yom hashoah, yom yerushalayim, es "dia de la
+  independencia") are NOT in the deterministic religious-holiday table and their Gregorian
+  date is nidche-adjusted (postponement) -> hardcoding/computing would risk INVENTING a wrong date.
+- Two RED cases: "be-eize tarich yom haatzmaut" matched date_query -> returned TODAY (confidently
+  wrong); "matai chag haatzmaut" / the Spanish form -> LLM.
+- FIX: CIVIC_HOLIDAY_RE routed to LIVE retrieval BEFORE date_query and before the LLM fallback.
+  Religious holidays (rosh hashana/pesach) + relative dates (etmol) are NOT hijacked.
+- EVIDENCE: civicHolidayOnline.test.ts 7/7 green; date+online suites 70 green; full suite
+  10885 passed / 0 failed; typecheck + build clean.
+- DECISION: exact date left to the LIVE provider (PREVIEW-class); nidche computation intentionally
+  NOT hardcoded (avoid inventing dates). NEXT: Cycle 16 memory honesty + last-question recall.

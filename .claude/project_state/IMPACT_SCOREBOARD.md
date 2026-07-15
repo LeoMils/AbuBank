@@ -25,6 +25,18 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.94.0 (Intelligence Parity — Cycle 15: civic-holiday online)** — Device failure: wrong
+  Independence Day (gave 2024 / a past date). National/civic days (יום העצמאות/חג העצמאות,
+  יום הזיכרון, יום השואה, יום ירושלים, Spanish día de la independencia) are NOT in the
+  deterministic religious-holiday table and their Gregorian date is nidche-adjusted — so
+  hardcoding/computing would risk INVENTING a wrong date. Two RED cases: "באיזה תאריך יום
+  העצמאות" matched date_query → returned TODAY (confidently wrong); "מתי חג העצמאות" / Spanish
+  → LLM. Added CIVIC_HOLIDAY_RE routed to LIVE retrieval BEFORE date_query + before the LLM
+  fallback; religious holidays (ראש השנה/פסח) + relative dates (אתמול) not hijacked. Evidence:
+  civicHolidayOnline.test.ts 7/7 green; date+online suites 70 green; full suite 10885 green;
+  typecheck + build clean. DECISION: exact date left to the LIVE provider (PREVIEW-class);
+  nidche computation intentionally NOT hardcoded to avoid inventing dates. NEXT: Cycle 16 —
+  memory honesty (never imply cross-session memory) + last-question recall.
 - **0.93.0 (Intelligence Parity — Cycle 14: top-scorer online)** — Device failures: "who is
   the top scorer" not answered, and "ומי מלך השערים?" after a sports answer fell to the LLM.
   The sports online detector required explicit context (מונדיאל/כדורגל) and didn't recognize
