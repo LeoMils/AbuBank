@@ -371,3 +371,14 @@
 - EVIDENCE: onlineCacheCollapse.test.ts 2/2 + onlineProvider.test.ts + probe green; full
   suite 10849 passed / 0 failed; typecheck + build clean.
 - REMAINING (PREVIEW-class, NOT CODE): end-to-end live grounding needs a real provider call.
+
+## Intelligence Parity Program — Cycle 7: meal time-of-day / C4 (v0.86.0)
+- "kabei aruchat erev im Anabel be-yom shishi be-shmone" scheduled an 8 AM dinner: the bare
+  hour "be-shmone" was ambiguous and defaulted to morning because "aruchat erev" (dinner) was
+  not a period hint (PERIOD_PM matched only "be-erev", not the bare meal noun).
+- FIX: meal-context hints (aruchat erev/tzohorayim/dinner -> PM, aruchat boker -> AM). Dinner
+  -> 20:00. A truly bare hour with no meal/period context stays ambiguous (unchanged). Also
+  fixes a latent bug: "aruchat boker be-shesh" no longer flips to 18:00.
+- EVIDENCE: mealTimeOfDay.test.ts 4/4 green; calendar suites 150 green; full suite 10853
+  passed / 0 failed; typecheck + build clean.
+- REMAINING (low sev): meal-noun TITLE ("aruchat erev im Anabel" vs "pgisha im Anabel").

@@ -94,7 +94,7 @@ last-discussed person. "מי זה אופיר?" then "ומי אמא שלה?" → 
 
 | id | input | observed | expected | sev |
 |----|-------|----------|----------|-----|
-| C4 | קבעי ארוחת ערב עם אנבל ביום שישי בשמונה | title→"פגישה עם אנבל" (lost "ארוחת ערב"); time→08:00 בבוקר | title "ארוחת ערב עם אנבל"; dinner ⇒ 20:00 | 🟠 |
+| C4 | קבעי ארוחת ערב עם אנבל ביום שישי בשמונה | ✅ time FIXED (0.86.0): dinner ⇒ 20:00 (was 08:00). Title "פגישה עם אנבל" (meal-noun title still open, low sev) | 🟡 |
 | C5 | ...בקופת חולים בכפר סבא בתשע | location→"כפר סבא" (dropped "קופת חולים") | full location | 🟡 |
 | C1,C2,C3 | person+relday+time / place+relday+time / **בחצות→00:00** | ✅ correct | — | ✅ |
 | MT | create→"כן"→readback→correction "לא בארבע" | ✅ saves 19:00, recallable, correction→16:00 | — | ✅ |

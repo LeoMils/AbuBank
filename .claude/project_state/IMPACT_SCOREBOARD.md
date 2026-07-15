@@ -25,6 +25,15 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.86.0 (Intelligence Parity — Cycle 7: meal time-of-day / C4)** — "קבעי ארוחת ערב עם
+  אנבל ביום שישי בשמונה" scheduled an 8 AM dinner: the bare hour "בשמונה" was ambiguous and
+  defaulted to the morning reading because "ארוחת ערב" (dinner) was not a period hint
+  (PERIOD_PM matched only "בערב", not the bare meal noun). Added meal-context hints
+  (ארוחת ערב/צהריים/דינר → PM, ארוחת בוקר → AM), so dinner → 20:00; a truly bare hour with
+  no meal/period context stays ambiguous (unchanged). Also fixes a latent bug: "ארוחת בוקר
+  בשש" no longer flips to 18:00. Evidence: mealTimeOfDay.test.ts 4/4 green; calendar suites
+  150 green; full suite 10853 green; typecheck + build clean. Remaining (low sev): meal-noun
+  TITLE ("ארוחת ערב עם אנבל" vs "פגישה עם אנבל"). NEXT: title polish, or re-probe for new gaps.
 - **0.85.0 (Intelligence Parity — Cycle 6: ONLINE cache-collapse)** — Root cause of the
   "repeated identical answers to different questions" symptom, FOUND + FIXED in CODE. The
   provider cache (answerOnlineCurrentInfo) keyed by the COARSE queryKind (general_current /

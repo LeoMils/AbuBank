@@ -326,8 +326,12 @@ const HEBREW_HOUR_WORDS: Record<string, number> = {
 // Period hints. PM covers evening / noon / afternoon; AM covers morning.
 // "אחהצ" (no gershayim) is the common bare abbreviation Martita types.
 // "הערב"/"הלילה" (tonight) and "אחה״צ" are PM; "הבוקר" (this morning) is AM.
-const PERIOD_PM = /בערב|הערב|בלילה|הלילה|אחר[י]? הצהריים|אחה"צ|אחה״צ|אחהצ|בצהריים|הצהריים/
-const PERIOD_AM = /בבוקר|הבוקר|לפנות בוקר/
+// A meal noun carries the time of day even without a "ב"-prefixed period word:
+// dinner ("ארוחת ערב") = evening, lunch ("ארוחת צהריים") = midday/afternoon, so a bare
+// hour ("ארוחת ערב … בשמונה") resolves to 20:00, not an 8 AM dinner. Breakfast
+// ("ארוחת בוקר") is morning — also stops a low hour ("ארוחת בוקר בשש") flipping to PM.
+const PERIOD_PM = /בערב|הערב|בלילה|הלילה|אחר[י]? הצהריים|אחה"צ|אחה״צ|אחהצ|בצהריים|הצהריים|ארוחת\s+ערב|ארוחת\s+צהריים|דינר/
+const PERIOD_AM = /בבוקר|הבוקר|לפנות בוקר|ארוחת\s+בוקר/
 
 // Resolve a 1-12 hour to 24h using period hints. With no hint, hours 1-6 are
 // taken as PM (appointment convention) and 7-12 stay as the AM reading but are
