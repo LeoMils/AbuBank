@@ -489,8 +489,40 @@ function dateWithoutDay(iso: string): string {
     .trim()
 }
 
+// City / country → IANA timezone, with He + Es labels, so "מה השעה בניו יורק" answers the
+// city's real time (via Intl) instead of the local Israel clock (the confidently-wrong bug).
+const CITY_TZ: Array<{ re: RegExp; tz: string; he: string; es: string }> = [
+  { re: /ניו[\s-]?יורק|new\s*york|nueva\s+york/iu, tz: 'America/New_York', he: 'ניו יורק', es: 'Nueva York' },
+  { re: /בואנוס[\s-]?איירס|buenos\s+aires|ארגנטינה|argentina/iu, tz: 'America/Argentina/Buenos_Aires', he: 'בואנוס איירס', es: 'Buenos Aires' },
+  { re: /לונדון|london|londres/iu, tz: 'Europe/London', he: 'לונדון', es: 'Londres' },
+  { re: /פריז|paris|par[íi]s/iu, tz: 'Europe/Paris', he: 'פריז', es: 'París' },
+  { re: /מדריד|madrid/iu, tz: 'Europe/Madrid', he: 'מדריד', es: 'Madrid' },
+  { re: /ברצלונה|barcelona/iu, tz: 'Europe/Madrid', he: 'ברצלונה', es: 'Barcelona' },
+  { re: /לוס[\s-]?אנג[׳'ג]?לס|los\s+angeles/iu, tz: 'America/Los_Angeles', he: 'לוס אנג׳לס', es: 'Los Ángeles' },
+  { re: /מיאמי|miami/iu, tz: 'America/New_York', he: 'מיאמי', es: 'Miami' },
+  { re: /מוסקבה|moscow|mosc[úu]/iu, tz: 'Europe/Moscow', he: 'מוסקבה', es: 'Moscú' },
+  { re: /ברלין|berlin|berl[íi]n/iu, tz: 'Europe/Berlin', he: 'ברלין', es: 'Berlín' },
+  { re: /רומא|rome|roma/iu, tz: 'Europe/Rome', he: 'רומא', es: 'Roma' },
+  { re: /טוקיו|tokyo|tokio/iu, tz: 'Asia/Tokyo', he: 'טוקיו', es: 'Tokio' },
+  { re: /סידני|sydney/iu, tz: 'Australia/Sydney', he: 'סידני', es: 'Sídney' },
+  { re: /דובאי|dubai|dub[áa]i/iu, tz: 'Asia/Dubai', he: 'דובאי', es: 'Dubái' },
+]
+function timeInCity(text: string, now: Date): string | null {
+  for (const c of CITY_TZ) {
+    if (!c.re.test(text)) continue
+    let hhmm: string
+    try { hhmm = new Intl.DateTimeFormat('en-GB', { timeZone: c.tz, hour: '2-digit', minute: '2-digit', hour12: false }).format(now) }
+    catch { return null }
+    return looksSpanishDate(text) ? `En ${c.es} son las ${hhmm}.` : `ב${c.he} השעה עכשיו ${hhmm}.`
+  }
+  return null
+}
+
 export function dateReasoner(text: string, now: Date): string {
   if (TIME_QUERY_RE.test(text)) {
+    // "מה השעה בניו יורק" — the time in another city's timezone (never the local clock).
+    const city = timeInCity(text, now)
+    if (city) return city
     // "מה השעה בעוד שעתיים" — clock arithmetic, never the current time.
     const addH = beodHoursOffset(text)
     if (addH) {

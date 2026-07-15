@@ -533,3 +533,16 @@
   Spanish reminder "recordame", recurring reminder, "beetzem lo" misroute, zmanim/parsha->online.
 - LLM-LEGIT (leave): translations, definitions, letter/bill help, emotional, chitchat.
 - CANNOT CLOSE IN TEXT: currency FX rate, end-to-end LIVE online grounding.
+
+## Intelligence Parity — Cycle 20: time-in-city / timezone (v0.99.0)
+- Wide-probe confidently-wrong bug: "ma hashaa be-New York" returned the LOCAL Israel clock
+  (10:00) instead of New York time — the TIME branch ignored the city.
+- FIX: CITY_TZ map (NY, Buenos Aires/Argentina, London, Paris, Madrid, Barcelona, LA, Miami,
+  Moscow, Berlin, Rome, Tokyo, Sydney, Dubai; He+Es names) + timeInCity via
+  Intl.DateTimeFormat(timeZone) — deterministic regardless of runner TZ. Unknown cities fall
+  through to local honestly; bare "ma hashaa" unchanged.
+- EVIDENCE: timeInCity.test.ts 5/5 green; date+time suites 50 green; full suite 10910 passed /
+  0 failed; typecheck + build clean.
+- NEXT (backlog): backward date "lifnei shavua"; days-until-end-of-month; unit conversions;
+  family grandchildren/in-law + verify "ben hazug shel Mor->Yael"; Spanish "recordame";
+  recurring reminder; "beetzem lo" misroute.

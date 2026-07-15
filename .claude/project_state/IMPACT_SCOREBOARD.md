@@ -25,6 +25,16 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.99.0 (Intelligence Parity — Cycle 20: time-in-city / timezone)** — Wide-probe
+  confidently-wrong bug: "מה השעה בניו יורק?" returned the LOCAL Israel clock (10:00) instead
+  of New York time — the TIME branch ignored the city. Added CITY_TZ (NY, Buenos Aires/
+  Argentina, London, Paris, Madrid, Barcelona, LA, Miami, Moscow, Berlin, Rome, Tokyo, Sydney,
+  Dubai; He+Es names) + timeInCity via Intl.DateTimeFormat({timeZone}) — deterministic
+  regardless of runner TZ. Unknown cities fall through to local honestly; bare "מה השעה"
+  unchanged. Evidence: timeInCity.test.ts 5/5 green; date+time suites 50 green; full suite
+  10910 green; typecheck + build clean. NEXT (backlog): backward date "לפני שבוע"; days-until-
+  end-of-month; unit conversions; family grandchildren/in-law + verify "בן הזוג של מור→יעל";
+  Spanish "recordame"; recurring reminder; "בעצם לא" misroute.
 - **0.98.0 (Intelligence Parity — Cycle 19: math calculator + wide-probe triage)** — Ran a
   FAR wider adversarial probe (all of life). Fixed the highest-value deterministic gap: everyday
   arithmetic ("כמה זה 15 כפול 4", "20 אחוז מ-200", "15 אחוז טיפ על 240 שקל") fell to the LLM

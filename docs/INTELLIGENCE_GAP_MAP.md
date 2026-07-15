@@ -199,7 +199,8 @@ Deterministic `mathReasoner` (×÷+− word/symbol ops, percent-of, percent-tip,
 ### Wide-probe triage — remaining backlog (ranked)
 
 **(a) Genuine deterministic bugs — TO FIX next cycles:**
-- 🔴 "מה השעה בניו יורק?" → returns Israel time (10:00) — confidently wrong timezone.
+- ✅ "מה השעה בניו יורק?" — FIXED (0.99.0): CITY_TZ + timeInCity via Intl timeZone; He+Es.
+  Regression: `timeInCity.test.ts` 5/5.
 - 🟠 backward date arithmetic "לפני שבוע" / "לפני N ימים" → LLM (mirror of the "בעוד" fix).
 - 🟠 "כמה זמן עד סוף החודש?" / "כמה ימים עד יום ההולדת של מור?" → LLM (deterministic).
 - 🟠 family: "מי הנכדים של לאו?" (grandchildren-of-X), "מי הגיס של מור?" (in-law), verify
