@@ -17,6 +17,19 @@ the live deployment), `DEVICE` (only Leo can supply). Nothing here is `DEVICE`-p
 > (AudioContext + gesture unlock + server audio). What still needs device proof: (a) does the default
 > pipeline actually make audible sound end-to-end on Leo's phone (STT capture is the open risk — 0.76
 > iOS→Whisper), and (b) does the Realtime beta now play audio when opted in. Both → OP-003.
+>
+> **UPDATE (0.104.0): Realtime beta audio strengthened to MUTED-THEN-UNMUTE — voice is the whole mission.**
+> The 0.79.0 DOM-append alone was NOT enough: `pc.ontrack` fires AFTER the `/api/realtime-token` await, so
+> its first `.play()` is OUTSIDE the tap gesture and iOS autoplay-blocks it (connected + streaming, but
+> silent). Now the REAL remote-audio `<audio>` element is PRIMED inside the tap gesture (`enterVoiceMode`):
+> created + `play()`ed **muted** with a silent primer + appended to the DOM; `RealtimeVoiceSession` takes it
+> via the new `primedAudioEl` arg, attaches the WebRTC stream in `ontrack`, and sets `muted = false` after
+> `play()` resolves — unmuting a playing, user-activated element requires no gesture. Also: date grounding
+> (Hebrew day/date/time-of-day, Israel TZ) is now injected into the Realtime session instructions alongside
+> family/calendar/memory. Bounded/honest failures unchanged (REALTIME_AUDIO_TIMEOUT watchdog, onAudioBlocked
+> tap-to-hear, onFatalError→pipeline). Evidence: 23 green source-contract tests (CODE) + full suite green;
+> **audibility is PENDING-DEVICE** (jsdom can't run WebRTC/iOS-autoplay). Device verification: **OP-004**
+> (`diagnostics/operator-protocols/OP-004-realtime-beta-audible.md`), flag `abu-voice-realtime-beta=1`.
 
 ---
 

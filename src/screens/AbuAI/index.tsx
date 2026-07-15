@@ -14,7 +14,12 @@ import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState } from './cognitiveRu
 import { ExecutiveCognitiveController } from './executiveCognitiveController'
 import { buildFullTurnTools } from './fullTurnBridge'
 import { shouldUseWebSpeechPrimary, LISTEN_WATCHDOG_MS } from '../../services/sttStrategy'
-import { isRealtimeBetaEnabled } from '../../services/voiceModePreference'
+import { isRealtimeBetaEnabled, syncRealtimeBetaFromUrl } from '../../services/voiceModePreference'
+
+// Honor a `?voice=realtime|pipeline` URL override at module load and PERSIST it, so the
+// Realtime beta can be enabled from a link on a phone with no JS console (installed iOS PWA).
+// Runs before any component reads isRealtimeBetaEnabled(), so the first render sees the choice.
+syncRealtimeBetaFromUrl()
 
 // SINGLE PATH: the Executive Cognitive Controller is the sole RUNTIME path. This is
 // hardcoded on (no env flag) — every text/voice turn returns from the controller
@@ -2309,6 +2314,17 @@ export function AbuAI() {
 
   // v30.2: Recompute on each voice session entry, not once at mount
   const buildRealtimeInstructions = useCallback(() => {
+    // Date grounding: the model side (greeting + any self-generated line) must know
+    // the real day/date/time-of-day — never guess "בוקר טוב" at night or the wrong day.
+    let dateGrounding = ''
+    try {
+      const now = new Date()
+      const heDate = now.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      const hour = now.getHours()
+      const partOfDay = hour < 5 ? 'לילה' : hour < 12 ? 'בוקר' : hour < 17 ? 'צהריים' : hour < 21 ? 'ערב' : 'לילה'
+      dateGrounding = `\n═══ תאריך ושעה (עכשיו, אזור זמן ישראל) ═══\nהיום: ${heDate}. חלק היום: ${partOfDay}.\nהשתמשי בזה לברכה לפי שעת היום ולכל שאלה על "היום", "מחר", או "איזה יום היום".\n`
+    } catch { dateGrounding = '' }
+
     let calendarSnapshot = ''
     try {
       const todayResult = getTodayEvents()
@@ -2359,7 +2375,7 @@ export function AbuAI() {
     } catch {}
 
     return `${SYSTEM_PROMPT}${VOICE_SUFFIX}
-${calendarSnapshot}${familyFacts}${memorySummary}
+${dateGrounding}${calendarSnapshot}${familyFacts}${memorySummary}
 ═══ כלל ברזל — יומן ═══
 יש לך מידע אמיתי מהיומן למעלה. תשתמשי רק בו.
 אם שואלים על יום שאין לך מידע עליו — תגידי:
@@ -2487,6 +2503,28 @@ ${fewShotText}`
       // Shared handler for BOTH realtime audio failure modes (play() blocked AND
       // no-audio-event timeout): auto-voice the reply via pipeline TTS exactly once,
       // else raise the visible tap-to-hear recovery. Never wait silently.
+      // iOS AUTOPLAY (muted-then-unmute): create the REAL remote-audio element NOW —
+      // synchronously inside this tap gesture — and start it playing muted with a silent
+      // primer. The Realtime session attaches the WebRTC remote stream to THIS element
+      // later (post-await, outside the gesture) and unmutes it. This is the only reliable
+      // way to make the model's voice audible on iOS Safari PWA, where an element first
+      // played outside a user gesture is autoplay-blocked ("connected but hears nothing").
+      let primedRealtimeAudioEl: HTMLAudioElement | null = null
+      try {
+        const el = document.createElement('audio')
+        el.autoplay = true
+        ;(el as unknown as { playsInline: boolean }).playsInline = true
+        el.muted = true
+        el.setAttribute('aria-hidden', 'true')
+        el.style.display = 'none'
+        // Tiny silent WAV so the muted play() actually starts and USER-ACTIVATES the element.
+        el.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+        document.body.appendChild(el)
+        el.play().catch(() => { /* primer may reject on some browsers; unmute path still best-effort */ })
+        primedRealtimeAudioEl = el
+        // eslint-disable-next-line no-console
+        console.log('[AbuAI][VOICE] REMOTE_AUDIO_PRIMED=muted (in-gesture, awaiting WebRTC track to unmute)')
+      } catch { /* non-DOM env */ }
       const handleRealtimeAudioFailure = (code: string) => {
         canonicalVoiceRef.current = nextVoiceState('SPEAKING', 'audio_failed')
         const dec = decideRealtimeAudioFallback(lastRealtimeReplyRef.current || null, realtimeTtsFallbackUsedRef.current)
@@ -2650,6 +2688,7 @@ ${fewShotText}`
         },
         noiseMode as 'quiet' | 'noisy',
         realtimeSttLang,
+        primedRealtimeAudioEl, // gesture-primed remote-audio element (muted-then-unmute, iOS)
       )
       realtimeRef.current = session
       session.connect()

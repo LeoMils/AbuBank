@@ -64,6 +64,20 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
   the **Realtime (Option A) beta path** — the only route to ChatGPT-Live latency/naturalness/barge-in —
   now that baseline audio works; make the Realtime beta audible + device-verified on iPhone (the 0.79.0
   audio-out DOM fix is landed but unproven). Pipeline stays as the reliable fallback.
+  **CODE progress (0.104.0, voice-realtime-audible):** the Realtime beta remote-audio path now uses the
+  reliable iOS **muted-then-unmute** pattern. The 0.79.0 DOM-append fix alone was insufficient: `ontrack`
+  still runs AFTER the `/api/realtime-token` await, i.e. OUTSIDE the tap gesture, so a first `.play()`
+  there is autoplay-blocked. Now the REAL remote-audio `<audio>` element is PRIMED inside the tap gesture
+  (`enterVoiceMode`): created + `play()`ed muted with a silent primer, appended to the DOM; the session
+  reuses that element (`primedAudioEl`), attaches the WebRTC stream in `ontrack`, and UNMUTES it after
+  `play()` resolves (unmuting a playing, user-activated element needs no gesture). Grounding: the Realtime
+  session instructions now also inject date grounding (Hebrew day/date/time-of-day, Israel TZ) alongside
+  the existing family/calendar/memory facts. Bounded/honest failures kept (REALTIME_AUDIO_TIMEOUT watchdog,
+  onAudioBlocked tap-to-hear, onFatalError→pipeline). Evidence: `realtimeAudioOut.test.ts` +
+  full-duplex + watchdog **23 green (CODE)**; typecheck + full suite green. **NOT device-proven** — WebRTC
+  + iOS autoplay cannot run in jsdom; audibility is `PENDING-DEVICE` via
+  `diagnostics/operator-protocols/OP-004-realtime-beta-audible.md`. Enable on device with
+  `localStorage['abu-voice-realtime-beta']='1'`.
 - **STT 🔴** — Hebrew-biased language pin across all 3 engines (CODE). *Blocker:* no device transcript
   accepted. *Next:* device capture → verify Hebrew/Spanish transcription accuracy.
 - **TTS 🟡** — Browser playback green; audible warmth on device unproven. *Next:* device audibility test.

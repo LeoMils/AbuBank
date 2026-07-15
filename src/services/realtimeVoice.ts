@@ -118,11 +118,17 @@ export class RealtimeVoiceSession {
   private transcriptionLanguage: string // STT language pinned in session.update (Hebrew default)
   private audioWatchdog: ReturnType<typeof setTimeout> | null = null // REALTIME_AUDIO_TIMEOUT guard
   private unknownEvents: string[] = [] // unrecognized server event names (Defect 2 safety)
+  // iOS AUTOPLAY: the actual remote-audio <audio> element, PRIMED (created + play()ed
+  // muted) inside the user tap gesture by the caller. The remote MediaStream is
+  // attached to THIS element and then unmuted — the only reliable way to make the
+  // model's voice audible on iOS Safari PWA, where the element created post-await
+  // (outside the gesture) is autoplay-blocked. Null = non-iOS/test path (created here).
+  private primedAudioEl: HTMLAudioElement | null
 
   /** Server event names we did not recognize this session — surfaced for diagnostics. */
   get unrecognizedEvents(): string[] { return [...this.unknownEvents] }
 
-  constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void, noiseMode: 'quiet' | 'noisy' | 'listen' = 'quiet', transcriptionLanguage: string = 'he') {
+  constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void, noiseMode: 'quiet' | 'noisy' | 'listen' = 'quiet', transcriptionLanguage: string = 'he', primedAudioEl: HTMLAudioElement | null = null) {
     this.cb = callbacks
     this.instructions = instructions
     this.onFatalError = onFatalError ?? null
@@ -130,6 +136,7 @@ export class RealtimeVoiceSession {
     this.pushToTalk = noiseMode === 'noisy'
     this._listenMode = noiseMode === 'listen'
     this.transcriptionLanguage = transcriptionLanguage
+    this.primedAudioEl = primedAudioEl
     this.vadThreshold = 0.75
     this.vadSilenceMs = 900
   }
@@ -237,25 +244,37 @@ export class RealtimeVoiceSession {
       // autoplay AND playsInline, and it may STILL reject play() outside a gesture;
       // we await/catch the play() Promise and surface an explicit recovery path
       // rather than assuming the user heard audio.
-      this.audioEl = document.createElement('audio')
+      //
+      // iOS AUTOPLAY FIX (docs/VOICE_ARCHITECTURE_VERDICT.md, Q4 → muted-then-unmute):
+      // this ontrack handler runs AFTER the /api/realtime-token await, i.e. OUTSIDE the
+      // original tap gesture — so a freshly-created element's .play() is autoplay-blocked
+      // and Martita "hears nothing". The caller therefore PRIMES the real element inside
+      // the tap gesture (created + play()ed muted); we reuse THAT element, attach the
+      // remote stream, and UNMUTE it (unmuting a playing, user-activated element needs no
+      // gesture). If no primed element was passed (test/non-iOS), fall back to creating
+      // one here (still appended to the DOM so it is not autoplay-blocked by not-in-DOM).
+      this.audioEl = this.primedAudioEl ?? document.createElement('audio')
       this.audioEl.autoplay = true
       ;(this.audioEl as unknown as { playsInline: boolean }).playsInline = true
-      // AUTOPLAY FIX (docs/VOICE_ARCHITECTURE_VERDICT.md, Q4): a media element that is NOT in
-      // the DOM is blocked by iOS/Android autoplay policy — the Realtime session could connect
-      // and stream the model's audio while the element silently refused to play ("hears
-      // nothing"). Append it (hidden) so .play() from ontrack can actually start on device.
       this.audioEl.setAttribute('aria-hidden', 'true')
       this.audioEl.style.display = 'none'
-      try { document.body.appendChild(this.audioEl) } catch { /* non-DOM env: best-effort */ }
+      // Append only if it is not already in the DOM (a primed element was appended in the gesture).
+      if (!this.audioEl.isConnected) { try { document.body.appendChild(this.audioEl) } catch { /* non-DOM env: best-effort */ } }
       this.pc.ontrack = (event) => {
         if (this.audioEl && event.streams[0]) {
+          // Drop the silent primer source so the WebRTC stream takes over cleanly.
+          try { this.audioEl.removeAttribute('src') } catch { /* */ }
           this.audioEl.srcObject = event.streams[0]
           this.stage('REMOTE_AUDIO_TRACK_RECEIVED', 'ok')
           this.setFlightCtx({ audioEl: { paused: this.audioEl.paused, muted: this.audioEl.muted, volume: this.audioEl.volume } })
           this.stage('AUDIO_PLAY_REQUESTED', 'ok')
           const played = this.audioEl.play()
           if (played && typeof played.then === 'function') {
-            played.then(() => this.stage('AUDIO_PLAY_STARTED', 'ok'))
+            played.then(() => {
+              // Unmute the now-playing, user-activated element → Martita actually HEARS it.
+              if (this.audioEl) this.audioEl.muted = false
+              this.stage('AUDIO_PLAY_STARTED', 'ok')
+            })
               .catch((e: unknown) => {
                 // Playback blocked (iOS autoplay policy) — NOT proof the user heard audio.
                 this.stage('AUDIO_PLAY_STARTED', 'fail', { errorCode: 'play_rejected', detail: String((e as Error)?.name ?? e).slice(0, 40) })
