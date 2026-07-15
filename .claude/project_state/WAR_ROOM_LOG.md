@@ -452,3 +452,15 @@
   10875 passed / 0 failed; typecheck + build clean.
 - NEXT (device backlog): 14 online follow-up continuity, 15 Independence/memorial dates,
   16 memory honesty + last-question recall.
+
+## Intelligence Parity — Cycle 14: top-scorer online (v0.93.0)
+- Device failures: "who is the top scorer" not answered; "u-mi melech ha-shearim" after a
+  sports answer fell to the LLM. The sports online detector required explicit context
+  (mundial/kaduregel) and did not recognize "melech ha-shearim" (top scorer) / "mi hivkia"
+  (who scored) on their own -> answered from model memory instead of retrieval.
+- FIX: added melech/malkat ha-shearim, mi hivkia, ha-koveesh ha-movil to ONLINE_HE_SPORTS.
+  Standalone AND follow-up top-scorer now route online.
+- EVIDENCE: topScorerOnline.test.ts 3/3 green; online suites 116 green; full suite 10878
+  passed / 0 failed; typecheck + build clean. LIVE provider correctness is PREVIEW-class.
+- NEXT (device backlog): 15 Independence/memorial deterministic dates, 16 memory honesty +
+  last-question recall.

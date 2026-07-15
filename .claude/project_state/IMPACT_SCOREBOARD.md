@@ -25,6 +25,15 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.93.0 (Intelligence Parity — Cycle 14: top-scorer online)** — Device failures: "who is
+  the top scorer" not answered, and "ומי מלך השערים?" after a sports answer fell to the LLM.
+  The sports online detector required explicit context (מונדיאל/כדורגל) and didn't recognize
+  "מלך השערים"/"מי הבקיע" on their own. Added them to ONLINE_HE_SPORTS → standalone AND
+  follow-up top-scorer routes online (live retrieval, not model memory). Evidence:
+  topScorerOnline.test.ts 3/3 green; online suites 116 green; full suite 10878 green;
+  typecheck + build clean. NOTE: whether the LIVE provider returns a correct scorer is
+  PREVIEW-class. NEXT (device backlog): 15 Independence/memorial deterministic dates, 16
+  memory honesty + last-question recall.
 - **0.92.0 (Intelligence Parity — Cycle 13: Spanish relation-between)** — "¿qué relación hay
   entre Anabel y Leo?" fell to the LLM though the Hebrew resolves deterministically. Made the
   directional kinship engine bilingual: Spanish label map (LABEL_ES, every RelationKind),
