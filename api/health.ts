@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.88.0-relative-date-time-arithmetic'
-const BUILD_LABEL = 'AbuBank — RELATIVE_DATE_TIME_ARITHMETIC (Intelligence Parity Cycle 9, text-only via the real ExecutiveCognitiveController): an expanded probe (intelligenceGapProbe2) surfaced that dateReasoner handled fixed offset WORDS (אתמול/מחר/שלשום/מחרתיים) but not ARITHMETIC — בעוד שלושה ימים returned TODAY (confidently wrong), בעוד שבוע fell to the LLM, and מה השעה בעוד שעתיים returned the current time (10:00, not 12:00). Added beodDaysOffset (בעוד N ימים/יומיים/שבוע/שבועיים/N שבועות → forward date) + beodHoursOffset (בעוד N שעות/שעה/שעתיים → clock + N hours), both deterministic from ctx.now, and extended RELATIVE_DATE_QUERY_RE to route בעוד questions to date_query. Evidence: relativeDateArithmetic.test.ts 6/6 green (CODE); date regression suites 31 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.87.0.'
+const BUILD_VERSION = '0.89.0-family-siblings'
+const BUILD_LABEL = 'AbuBank — FAMILY_SIBLINGS (Intelligence Parity Cycle 10, text-only via the real ExecutiveCognitiveController): probe-2 gap FAM-SIB. מי אח/אחות של X (who is the brother/sister of X) returned the unknown fallback — the relation engine had no sibling rule, though לאו is the brother of מור in the graph. Added siblingsByGenderPublic (the OTHER children of the parents, gender-filtered) + brother/sister/plural REL rules, so מי אח של מור → לאו and מי אחות של לאו → מור; a person with no sibling of that gender stays honest (never fabricates). Evidence: familySiblings.test.ts 3/3 green (CODE); family regression suites 56 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.88.0.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

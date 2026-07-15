@@ -405,3 +405,13 @@
   passed / 0 failed; typecheck + build clean.
 - NEXT (probe 2 backlog): siblings ("mi ach shel Mor"), mid-create PERSON change, Spanish
   family-relation/create. LIVE online grounding remains PREVIEW-class.
+
+## Intelligence Parity Program — Cycle 10: family siblings (v0.89.0)
+- Probe-2 gap FAM-SIB: "mi ach/achot shel X" (brother/sister of X) returned the unknown
+  fallback (no sibling rule), though Leo is Mor brother in the graph.
+- FIX: siblingsByGenderPublic (the OTHER children of the parents, gender-filtered) +
+  brother/sister/plural REL rules: "mi ach shel Mor" -> Leo; "mi achot shel Leo" -> Mor.
+  No fabrication when there is no sibling of that gender (stays honest).
+- EVIDENCE: familySiblings.test.ts 3/3 green; family suites 56 green; full suite 10865
+  passed / 0 failed; typecheck + build clean.
+- NEXT (probe-2 backlog): mid-create PERSON change, Spanish family-relation/create, next-weekday.

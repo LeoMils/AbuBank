@@ -141,8 +141,8 @@ fixed offset WORDS but not ARITHMETIC. Fixed: `בעוד N ימים/יומיים/
 `relativeDateArithmetic.test.ts` 6/6.
 
 ### Still-open gaps found by probe 2 (ranked for next cycles)
-- 🟠 **FAM-SIB** "מי אח/אחות של X" (siblings) → unknown fallback. No sibling REL rule
-  (Leo is Mor's brother). Clean graph fix.
+- ✅ **FAM-SIB** "מי אח/אחות של X" (siblings) — FIXED (0.89.0): `siblingsByGenderPublic` +
+  brother/sister/plural rules. "מי אח של מור" → לאו. Regression: `familySiblings.test.ts` 3/3.
 - 🟠 **mid-create person change** "לא, לא עם דני, עם מור" → falls to the LLM (day change works).
 - 🟠 **ES-FAM/ES-CREATE** Spanish "la hija de X" relation + "agendá una cena …" create → LLM.
 - 🟡 **next-weekday** "מתי יום ראשון הבא?" → LLM. **AGE** "בן כמה עדי?" → LLM (age may be absent).

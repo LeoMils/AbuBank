@@ -103,6 +103,15 @@ export function parentsByGenderPublic(name: string, gender: 'female' | 'male'): 
   const ix = index()
   return uniq(parentsOf(ix, name).filter(p => genderOf(ix, p) === gender))
 }
+/** Siblings: the OTHER children of the person's parents, optionally by gender.
+ *  Lets "מי אח/אחות של X" resolve from the graph instead of the LLM. */
+export function siblingsByGenderPublic(name: string, gender?: 'female' | 'male'): string[] {
+  const ix = index()
+  const self = node(ix, name)
+  const sibs = uniq(parentsOf(ix, name).flatMap(p => childrenOf(ix, p)))
+    .filter(c => (self ? node(ix, c)?.hebrew !== self.hebrew : c !== name))
+  return gender ? sibs.filter(s => genderOf(ix, s) === gender) : sibs
+}
 export function partnerOf(name: string): string[] { return spousesOf(index(), name) }
 /** Ex-spouse(s). The graph edge is SYMMETRIC, so this answers both directions
  *  ("Mor's ex-husband" and "whose ex-husband is Rafi"). */
@@ -127,6 +136,11 @@ const REL = [
   // SINGULAR mother/father — gender-filtered parents. "מי אמא של אופיר" → מור.
   { re: /(?:מי\s+)?ה?(?:אמא|אימא|אם)\s+של\s+(\S+)/u, rel: 'mother', fn: (n: string) => parentsByGenderPublic(n, 'female') },
   { re: /(?:מי\s+)?ה?(?:אבא|אב)\s+של\s+(\S+)/u, rel: 'father', fn: (n: string) => parentsByGenderPublic(n, 'male') },
+  // Siblings — brother/sister/(plural). "מי אח של מור" → לאו. Plural forms first so
+  // "אחים/אחיות" are not shadowed by the bare "אח" rule (which needs "אח" + space).
+  { re: /(?:מי\s+ה?)?אח(?:ים|יות)\s+של\s+(\S+)/u, rel: 'siblings', fn: (n: string) => siblingsByGenderPublic(n) },
+  { re: /(?:מי\s+ה?)?אחות\s+של\s+(\S+)/u, rel: 'sister', fn: (n: string) => siblingsByGenderPublic(n, 'female') },
+  { re: /(?:מי\s+ה?)?אח\s+של\s+(\S+)/u, rel: 'brother', fn: (n: string) => siblingsByGenderPublic(n, 'male') },
   // Ex-spouse — symmetric edge, so all shapes resolve to exSpouseOf(the named person):
   //   reverse  "רפי (הוא) הגרוש של מי"  → capture רפי  (Rafi is whose ex-husband)
   { re: /([֐-׿]+)\s+(?:הוא\s+|היא\s+)?ה?גרוש(?:ה)?\s+של\s+מי/u, rel: 'ex_spouse', fn: (n: string) => exSpouseOf(n) },

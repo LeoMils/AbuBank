@@ -25,6 +25,13 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.89.0 (Intelligence Parity — Cycle 10: family siblings)** — Probe-2 gap FAM-SIB:
+  "מי אח/אחות של X" returned the unknown fallback (no sibling rule), though לאו is מור's
+  brother. Added siblingsByGenderPublic (other children of the parents, gender-filtered) +
+  brother/sister/plural REL rules: "מי אח של מור" → לאו, "מי אחות של לאו" → מור; no
+  fabrication when there is no sibling of that gender. Evidence: familySiblings.test.ts 3/3
+  green; family suites 56 green; full suite 10865 green; typecheck + build clean. NEXT
+  (probe-2 backlog): mid-create PERSON change, Spanish family-relation/create, next-weekday.
 - **0.88.0 (Intelligence Parity — Cycle 9: relative date/time arithmetic)** — Expanded the
   probe corpus (intelligenceGapProbe2, harder scenarios) to surface new gaps once the ranked
   list was exhausted. Found: dateReasoner did fixed offset WORDS but not ARITHMETIC —
