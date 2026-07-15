@@ -219,6 +219,11 @@ const HOLIDAY_QUERY_RE =
 // never the today-returning date_query ("באיזה תאריך יום העצמאות" must not answer TODAY).
 const CIVIC_HOLIDAY_RE =
   /יום\s+ה?עצמאות|חג\s+ה?עצמאות|יום\s+ה?זיכרון|יום\s+ה?שואה|יום\s+ירושלים|d[ií]a\s+de\s+la\s+independencia|independencia|d[ií]a\s+de\s+los?\s+ca[íi]dos/iu
+// "מתי יום ראשון הבא?" / "איזה תאריך יום שלישי הבא?" — the NEXT occurrence of a weekday,
+// computed from ctx.now. Requires a date-asking frame (מתי/איזה תאריך/איזה יום/באיזה) so a
+// calendar create ("תקבעי פגישה ביום שלישי הבא") is NEVER hijacked to a date query.
+const NEXT_WEEKDAY_QUERY_RE =
+  /(?:מתי|איזה\s+תאריך|באיזה\s+תאריך|איזה\s+יום|באיזה\s+יום)[^?]*?(?:ביום\s+|יום\s+)?(?:ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)\s+ה?בא(?:ה)?/u
 const AUDIO_COMPLAINT_RE =
   /(?:לא\s+שומעת?\s+אות[ךיו]|אני\s+לא\s+שומע|לא\s+שמעתי(?:\s+אות[ךיו])?|לא\s+מדברת|הקול\s+נעלם|אין\s+קול|למה\s+את\s+שותקת|no\s+te\s+(?:escucho|oigo))/iu
 // Frustration the shared regex misses — "you're not answering what I asked".
@@ -320,7 +325,8 @@ export function classifyIntent(
   // "באיזה תאריך יום העצמאות" is never answered with TODAY, and before the LLM fallback.
   if (CIVIC_HOLIDAY_RE.test(t) && !shouldBlockOnlineForPersonal(t)) return 'online'
   if (DATE_QUERY_RE.test(t) || TIME_QUERY_RE.test(t) ||
-      RELATIVE_DATE_QUERY_RE.test(t) || HOLIDAY_QUERY_RE.test(t)) return 'date_query'
+      RELATIVE_DATE_QUERY_RE.test(t) || HOLIDAY_QUERY_RE.test(t) ||
+      NEXT_WEEKDAY_QUERY_RE.test(t)) return 'date_query'
 
   // Live/current-info that onlineIntent misses (buses/trains/weather) — before the
   // calendar verbs so "מתי האוטובוס" is never mistaken for a calendar create.
@@ -433,6 +439,22 @@ function beodHoursOffset(t: string): { hours: number; label: string } | null {
   return null
 }
 
+// Weekday name → getDay() index (0=Sunday … 6=Saturday).
+const HE_WEEKDAY_IDX: Record<string, number> = { ראשון: 0, שני: 1, שלישי: 2, רביעי: 3, חמישי: 4, שישי: 5, שבת: 6 }
+/** "יום <weekday> הבא" → the NEXT occurrence of that weekday strictly after today
+ *  (if today IS that weekday, next week's), or null. Deterministic from `now`. */
+function nextWeekdayAnswer(text: string, now: Date): string | null {
+  const m = text.match(/(?:ביום\s+|יום\s+)?(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)\s+ה?בא(?:ה)?/u)
+  if (!m) return null
+  const target = HE_WEEKDAY_IDX[m[1]!]
+  if (target === undefined) return null
+  let add = (target - now.getDay() + 7) % 7
+  if (add === 0) add = 7 // "next" — today does not count
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate()); d.setDate(d.getDate() + add)
+  const label = m[1] === 'שבת' ? 'שבת הבאה' : `יום ${m[1]} הבא`
+  return `${label} — ${dateWithoutDay(localISO(d))}.`
+}
+
 /** Next holiday strictly AFTER `now` (from the fixed Hebrew-holiday table), optionally
  *  a specific one. Deterministic; returns null when the table has no answer (we then
  *  say so honestly rather than invent a date). */
@@ -474,6 +496,10 @@ export function dateReasoner(text: string, now: Date): string {
     const hh = String(now.getHours()).padStart(2, '0'); const mm = String(now.getMinutes()).padStart(2, '0')
     return `השעה עכשיו ${hh}:${mm}.`
   }
+
+  // "יום <weekday> הבא" — next occurrence of a weekday, deterministic from ctx.now.
+  const nw = nextWeekdayAnswer(text, now)
+  if (nw) return nw
 
   // "בעוד N ימים/שבוע/שבועיים" — forward date arithmetic from ctx.now (deterministic).
   const addD = beodDaysOffset(text)

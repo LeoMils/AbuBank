@@ -492,3 +492,16 @@
   10889 passed / 0 failed; typecheck + build clean.
 - The device-failures triage backlog is now cleared in text. Remaining: LIVE online grounding
   (PREVIEW-class). NEXT: widen the probe corpus for new gaps.
+
+## Intelligence Parity — Cycle 17: next-weekday (v0.96.0)
+- Widened the probe corpus (Spanish create, next-weekday, age, math/units, translations,
+  emotional). Confidently-wrong gap: "eize tarich yom shlishi haba" matched date_query ->
+  returned TODAY; "matai yom rishon haba" -> LLM.
+- FIX: nextWeekdayAnswer (next occurrence of a weekday, strictly after today) +
+  NEXT_WEEKDAY_QUERY_RE (date-asking frame so a create is not hijacked). Fixed a latent ASCII
+  word-boundary bug in the frame regex (the matai forms had silently gone to the LLM).
+- EVIDENCE: nextWeekday.test.ts 5/5 green; date+calendar suites 117 green; full suite 10894
+  passed / 0 failed; typecheck + build clean.
+- Widened-probe backlog (mostly LLM-legitimate): Spanish create "cena" (dinner) -> LLM;
+  math/units; age. General knowledge/translations/emotional = LLM job (no fix).
+- NEXT: Spanish create "cena", or a deterministic calculator for math/units.

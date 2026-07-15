@@ -25,6 +25,16 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.96.0 (Intelligence Parity — Cycle 17: next-weekday)** — Widened the probe corpus
+  (Spanish create, next-weekday, age, math/units, translations, emotional). Confidently-wrong
+  gap: "איזה תאריך יום שלישי הבא?" matched date_query → returned TODAY; "מתי יום ראשון הבא?"
+  → LLM. Added nextWeekdayAnswer (next occurrence of a weekday, strictly after today) +
+  NEXT_WEEKDAY_QUERY_RE (date-asking frame so a create is not hijacked). Fixed a latent ASCII
+  word-boundary bug in the frame regex (the מתי forms had silently gone to the LLM). Evidence:
+  nextWeekday.test.ts 5/5 green; date+calendar suites 117 green; full suite 10894 green;
+  typecheck + build clean. Widened-probe backlog (mostly LLM-legitimate): Spanish create
+  "cena" (dinner) → LLM; math/units; age. General knowledge/translations/emotional = LLM's
+  job (no fix). NEXT: Spanish create "cena", or a deterministic calculator for math/units.
 - **0.95.0 (Intelligence Parity — Cycle 16: memory honesty + last-question recall)** — Two
   device failures. (1) "implied it had memory while having none": a CROSS-SESSION memory
   question ("את זוכרת מה אמרתי לך אתמול?" / "¿te acordás … ayer?") now gets a deterministic

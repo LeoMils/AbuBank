@@ -170,4 +170,21 @@ fixed offset WORDS but not ARITHMETIC. Fixed: `בעוד N ימים/יומיים/
 - 🟠 **ES-FAM/ES-CREATE** Spanish "la hija de X" relation + "agendá una cena …" create → LLM.
 - 🟡 **next-weekday** "מתי יום ראשון הבא?" → LLM. **AGE** "בן כמה עדי?" → LLM (age may be absent).
 
+## Cycle 17 — NEXT-WEEKDAY (widened probe) — ✅ FIXED (0.96.0)
+
+Widened probe (Spanish create, next-weekday, age, math/units, translations, emotional):
+"איזה תאריך יום שלישי הבא?" returned TODAY (confidently wrong); "מתי יום ראשון הבא?" → LLM.
+Added `nextWeekdayAnswer` (next occurrence of a weekday, strictly after today) +
+`NEXT_WEEKDAY_QUERY_RE` (date-asking frame so a create is not hijacked). Fixed a latent
+ASCII word-boundary bug in the frame regex. Regression: `nextWeekday.test.ts` 5/5.
+
+### Widened-probe backlog (ranked, still open — mostly LLM-legitimate)
+- 🟠 **Spanish create "cena"** "agendá una cena con Anabel el viernes a las ocho" → LLM
+  (while "anotá una cita …" works). Spanish create verb recognizes cita, not cena (dinner).
+- 🟡 **math/units** "כמה זה 15 כפול 4", "20 אחוז מ-200", "30 צלזיוס בפרנהייט", tip calc → LLM
+  (an LLM can do it but a deterministic calculator is more reliable — optional).
+- 🟡 **age** "בן כמה עדי?" → LLM (needs birth-year data; may be honest-absent).
+- ✅ LLM-legitimate (no fix needed): general knowledge, translations, definitions, emotional
+  turns — these are the LLM's job with the persona prompt.
+
 Voice/audio dimensions: **DEFERRED, not done.**
