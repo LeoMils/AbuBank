@@ -64,9 +64,38 @@ const LABEL: Record<Exclude<RelationKind, 'self' | 'unknown'>, [string, string]>
   ex_sibling_in_law: ['הגיסה לשעבר', 'הגיס לשעבר'],
 }
 
-function labelFor(kind: RelationKind, g: G): string {
+// Spanish gendered relation nouns — parity with LABEL so relationOf can answer a
+// Spanish "¿qué relación hay entre X y Y?" in Spanish (Rioplatense), covering every
+// RelationKind (describeRelation does not cover the deeper ones like grand-niece).
+const LABEL_ES: Record<Exclude<RelationKind, 'self' | 'unknown'>, [string, string]> = {
+  //                    female,              male
+  spouse:            ['esposa', 'esposo'],
+  ex_spouse:         ['ex esposa', 'ex esposo'],
+  partner:           ['pareja', 'pareja'],
+  parent:            ['madre', 'padre'],
+  child:             ['hija', 'hijo'],
+  sibling:           ['hermana', 'hermano'],
+  grandparent:       ['abuela', 'abuelo'],
+  grandchild:        ['nieta', 'nieto'],
+  uncle_aunt:        ['tía', 'tío'],
+  uncle_aunt_in_law: ['tía política', 'tío político'],
+  nephew_niece:      ['sobrina', 'sobrino'],
+  great_grandparent: ['bisabuela', 'bisabuelo'],
+  great_grandchild:  ['bisnieta', 'bisnieto'],
+  great_uncle_aunt:  ['tía abuela', 'tío abuelo'],
+  great_nephew_niece:['sobrina nieta', 'sobrino nieto'],
+  cousin:            ['prima', 'primo'],
+  parent_in_law:     ['suegra', 'suegro'],
+  child_in_law:      ['nuera', 'yerno'],
+  ex_child_in_law:   ['ex nuera', 'ex yerno'],
+  ex_parent_in_law:  ['ex suegra', 'ex suegro'],
+  sibling_in_law:    ['cuñada', 'cuñado'],
+  ex_sibling_in_law: ['ex cuñada', 'ex cuñado'],
+}
+
+function labelFor(kind: RelationKind, g: G, lang: 'he' | 'es' = 'he'): string {
   if (kind === 'self' || kind === 'unknown') return ''
-  const pair = LABEL[kind]
+  const pair = (lang === 'es' ? LABEL_ES : LABEL)[kind]
   return g === 'female' ? pair[0] : pair[1]
 }
 
@@ -101,16 +130,23 @@ function siblingsOf(idx: Index, n: GraphNode): string[] {
 /**
  * Compute what A is for B (directional). Returns the most specific relation.
  */
-export function relationOf(aName: string, bName: string): RelationResult {
+export function relationOf(aName: string, bName: string, lang: 'he' | 'es' = 'he'): RelationResult {
   const idx = buildIndex()
-  const A = get(idx, aName), B = get(idx, bName)
+  // Resolve Latin/alias names (e.g. "Mor", "Anabel") to their graph node via findNode
+  // (richer than the local matchNames index), then look up by Hebrew in idx.
+  const A = get(idx, findNode(aName)?.hebrew ?? aName), B = get(idx, findNode(bName)?.hebrew ?? bName)
+  const es = lang === 'es'
   const subject = A?.hebrew ?? aName, target = B?.hebrew ?? bName
+  // Spanish output uses the Latin/canonical name, Hebrew uses the Hebrew name.
+  const subjEs = A?.canonical ?? aName, targEs = B?.canonical ?? bName
   const done = (kind: RelationKind): RelationResult => {
-    if (kind === 'unknown') return { subject, target, kind, known: false, sentence: `אני לא יודעת מה ${subject} עבור ${target}. אני לא אנחש.` }
-    if (kind === 'self') return { subject, target, kind, known: true, sentence: `${subject} ${target}.` }
+    if (kind === 'unknown') return { subject, target, kind, known: false,
+      sentence: es ? `No sé qué es ${subjEs} para ${targEs}. No lo adivino.` : `אני לא יודעת מה ${subject} עבור ${target}. אני לא אנחש.` }
+    if (kind === 'self') return { subject, target, kind, known: true, sentence: es ? `${subjEs} y ${targEs} son la misma persona.` : `${subject} ${target}.` }
     const g = (A?.gender ?? 'unknown') as G
-    const lbl = labelFor(kind, g)
-    return { subject, target, kind, known: true, sentence: `${subject} ${lbl} של ${target}.` }
+    const lbl = labelFor(kind, g, lang)
+    return { subject, target, kind, known: true,
+      sentence: es ? `${subjEs} es ${lbl} de ${targEs}.` : `${subject} ${lbl} של ${target}.` }
   }
   if (!A || !B) return done('unknown')
   if (A.hebrew === B.hebrew) return done('self')
@@ -202,16 +238,23 @@ export function parseRelationQuery(text: string): ParsedRelationQuery {
   // "מה הקשר בין X ל/לבין Y" — X is subject, Y is target (order preserved).
   m = t.match(/(?:הקשר|היחס)\s+בין\s+([א-ת]{2,})\s+(?:ל|לבין)\s*([א-ת]{2,})/u)
   if (m) return { subject: m[1]!, target: m[2]!, ok: true }
+  // Spanish "¿qué relación hay entre X y Y?" / "relación entre X y Y".
+  m = t.match(/relaci[óo]n\s+(?:hay\s+)?entre\s+([a-záéíóúñ]{2,})\s+y\s+([a-záéíóúñ]{2,})/i)
+  if (m) return { subject: m[1]!, target: m[2]!, ok: true }
+  // Spanish "¿qué es X para Y?" (directional).
+  m = t.match(/qu[eé]\s+es\s+([a-záéíóúñ]{2,})\s+para\s+([a-záéíóúñ]{2,})/i)
+  if (m) return { subject: m[1]!, target: m[2]!, ok: true }
   // "מי X של Y" → X is the relation word (ignore), Y target; not directional pair.
   return { subject: null, target: null, ok: false }
 }
 
 /** Answer a directional relation question, or null if it isn't one. */
-export function answerRelationQuery(text: string): RelationResult | null {
+export function answerRelationQuery(text: string, lang: 'he' | 'es' = 'he'): RelationResult | null {
   const p = parseRelationQuery(text)
   if (!p.ok || !p.subject || !p.target) return null
   if (!findNode(p.subject) || !findNode(p.target)) {
-    return { subject: p.subject, target: p.target, kind: 'unknown', known: false, sentence: `אני לא מכירה את הקשר הזה, אז לא אנחש.` }
+    return { subject: p.subject, target: p.target, kind: 'unknown', known: false,
+      sentence: lang === 'es' ? `No conozco esa relación, así que no la adivino.` : `אני לא מכירה את הקשר הזה, אז לא אנחש.` }
   }
-  return relationOf(p.subject, p.target)
+  return relationOf(p.subject, p.target, lang)
 }

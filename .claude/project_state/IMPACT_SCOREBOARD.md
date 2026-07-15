@@ -25,6 +25,16 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.92.0 (Intelligence Parity — Cycle 13: Spanish relation-between)** — "¿qué relación hay
+  entre Anabel y Leo?" fell to the LLM though the Hebrew resolves deterministically. Made the
+  directional kinship engine bilingual: Spanish label map (LABEL_ES, every RelationKind),
+  lang param on relationOf rendering es with the canonical Latin name ("Mor es madre de
+  Ofir"), Spanish parsing (relación entre X y Y / qué es X para Y), + routing. Also fixed a
+  latent bug: relationOf now resolves Latin/alias names via findNode (its local matchNames
+  index lacked them). Evidence: spanishRelationBetween.test.ts 3/3 green; family suites 66
+  green; full suite 10875 green; typecheck + build clean. NEXT (device backlog): 14 online
+  follow-up continuity, 15 Independence/memorial deterministic dates, 16 memory honesty +
+  last-question recall.
 - **0.91.0 (Intelligence Parity — Cycle 12: calendar midnight / device failure)** — Built a
   device-failures triage (deviceFailuresTriage.test.ts) reproducing Leo's exact observed
   failures. Confirmed FIXED: "פגישה עם אופיר מחר בחצות בקפה אילנה" asked "באיזו שעה" even

@@ -27,7 +27,7 @@ Reproduced the specific failures Leo saw on device. Status after cycle 12:
 | MEM-YDAY | "את זוכרת מה אמרתי אתמול" | 🟠 → LLM (honesty is the LLM's job; consider deterministic honest reply) — **Cycle 14/16** |
 | CONV-LASTQ | "מה שאלתי אותך קודם" | 🟠 → LLM (no last-question recall) — **Cycle 16** |
 | FAM-BETWEEN | "מה הקשר בין אנבל ללאו" | ✅ deterministic |
-| FAM-ES-BETWEEN | "¿qué relación hay entre Anabel y Leo?" | 🟠 → LLM (Spanish relation-between) — **Cycle 13** |
+| FAM-ES-BETWEEN | "¿qué relación hay entre Anabel y Leo?" | ✅ **FIXED (0.92.0)** bilingual relationOf (LABEL_ES) → "Mor es madre de Ofir" |
 | ONL-FOLLOWUP | "…אתמול" then "ומי מלך השערים?" | 🟠 follow-up → LLM (online continuity) — **Cycle 14** |
 
 Ranked RED backlog: **13** Spanish relation-between · **14** online follow-up continuity ·

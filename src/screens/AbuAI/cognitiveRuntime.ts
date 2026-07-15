@@ -514,6 +514,8 @@ function looksLikeFamilyQuery(t: string): boolean {
   // "כמה נכדים/ילדים/נינים יש ל…" — a family COUNT question, answered from the graph.
   if (/כמה\s+(?:נכד|ילד|בנ|נינ)/u.test(t)) return true
   if (/מה\s+הקשר\s+בין|מה\s+היחס\s+בין|איך\s+קשור[הים]?|מי\s+ז[הא]\s+ל/u.test(t)) return true
+  // Spanish "¿qué relación hay entre X y Y?" / "relación entre X y Y" — a relation question.
+  if (/relaci[óo]n\s+(?:hay\s+)?entre\s+/iu.test(t)) return true
   // "מה/מי (זה)? X עבור/בשביל Y" — a directional relation question. Recognized even
   // when X is UNKNOWN, so the runtime answers "won't guess" instead of the LLM.
   if (/(?:מה|מי)\s+(?:ז[הא]\s+)?\S+\s+(?:עבור|בשביל)\s+\S+/u.test(t)) return true
@@ -582,10 +584,11 @@ export function familyReasoner(text: string, lang: Lang = 'he'): FamilyResult {
   // Count query ("כמה נכדים יש למרטיטה") — answered from the graph before anything else.
   const count = familyCountReasoner(text)
   if (count && count.known) return count
-  // 0) Directional pairwise "what is X for Y" / "הקשר בין X ל-Y" — the graph
-  // kinship engine (correct direction + gender + great-uncle/in-laws). Preferred
-  // over the symmetric describeRelation for these forms.
-  const pair = answerRelationQuery(text)
+  // 0) Directional pairwise "what is X for Y" / "הקשר בין X ל-Y" / Spanish "relación entre
+  // X y Y" — the graph kinship engine (correct direction + gender + great-uncle/in-laws),
+  // rendered in the query's language. Preferred over the symmetric describeRelation.
+  const relLang: 'he' | 'es' = /relaci[óo]n\s+(?:hay\s+)?entre|qu[eé]\s+es\s+\S+\s+para/i.test(text) || lang === 'es' ? 'es' : 'he'
+  const pair = answerRelationQuery(text, relLang)
   if (pair) return { text: pair.sentence, known: pair.known, pair: { a: pair.subject, b: pair.target } }
 
   // 1) "who is the <relation> of <person>" — deterministic multi-answer.

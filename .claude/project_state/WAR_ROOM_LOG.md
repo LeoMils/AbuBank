@@ -440,3 +440,15 @@
   passed / 0 failed; typecheck + build clean.
 - RANKED device-failure backlog: 13 Spanish relation-between, 14 online follow-up continuity,
   15 Independence/memorial deterministic dates, 16 memory honesty + last-question recall.
+
+## Intelligence Parity — Cycle 13: Spanish relation-between (v0.92.0)
+- "que relacion hay entre Anabel y Leo" fell to the LLM though the Hebrew "ma hakesher bein
+  Anabel le-Leo" resolves deterministically. The directional kinship engine was Hebrew-only.
+- FIX: bilingual relationOf — LABEL_ES (every RelationKind), lang param rendering es with the
+  canonical Latin name ("Mor es madre de Ofir"), Spanish parsing (relacion entre X y Y /
+  que es X para Y), + routing. Latent bug also fixed: relationOf now resolves Latin/alias
+  names via findNode (its local matchNames index lacked them).
+- EVIDENCE: spanishRelationBetween.test.ts 3/3 green; family suites 66 green; full suite
+  10875 passed / 0 failed; typecheck + build clean.
+- NEXT (device backlog): 14 online follow-up continuity, 15 Independence/memorial dates,
+  16 memory honesty + last-question recall.
