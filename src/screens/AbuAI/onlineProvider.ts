@@ -143,6 +143,11 @@ export async function answerOnlineCurrentInfo(
 ): Promise<OnlineResult> {
   const lang: OnlineLang = options.lang ?? 'he'
   const queryKind = getOnlineQueryKind(query)
+  // Cache key = kind + the SPECIFIC query. Keying by kind alone collapsed different
+  // questions of the same kind ("who is the PM" vs "who is the president" → both
+  // general_current) into one cached answer — the "repeated identical answers to
+  // different questions" bug. An identical repeat still hits the cache.
+  const cacheKey = queryKind ? `${queryKind}::${query.trim().replace(/\s+/g, ' ').toLowerCase()}` : null
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const f = options.fetchImpl ?? (typeof fetch !== 'undefined' ? fetch : null)
   if (!f) {
@@ -162,9 +167,9 @@ export async function answerOnlineCurrentInfo(
       userMessage: userMessageFor('ONLINE_QUERY_BLOCKED_PERSONAL', lang),
     }
   }
-  // Stale-while-revalidate: return cached answer if fresh (weather, etc.)
-  if (queryKind) {
-    const cached = getCachedAnswer(queryKind)
+  // Stale-while-revalidate: return cached answer if fresh (same kind AND same query).
+  if (cacheKey) {
+    const cached = getCachedAnswer(cacheKey)
     if (cached) {
       return { ok: true, answer: cached.answer, userMessage: cached.answer, sources: cached.sources }
     }
@@ -222,8 +227,8 @@ export async function answerOnlineCurrentInfo(
         userMessage: body.answer.trim(),
         ...(sources && sources.length > 0 ? { sources } : {}),
       }
-      // Cache successful answer for stale-while-revalidate
-      if (queryKind) setCachedAnswer(queryKind, success.answer, sources ?? [])
+      // Cache successful answer for stale-while-revalidate (keyed by kind + query)
+      if (cacheKey) setCachedAnswer(cacheKey, success.answer, sources ?? [])
       return success
     }
   }

@@ -105,13 +105,22 @@ NOT a product bug.
 
 ---
 
-## Cycle 5 — ONLINE / current-info (routing ✅ with mock; grounding needs live)
+## Cycle 5/6 — ONLINE / current-info — ✅ cache-collapse FIXED (0.85.0); live grounding PREVIEW
 
-Routing is correct: O1–O4 all classify `online` and pass the ACTUAL question to the tool
-(no cross-question collapse observed at the controller boundary). The reported
-"repeated identical answers / stale" symptom lives in the REAL provider path and is a
-`PREVIEW`-class reproduction (needs a live provider call) — it cannot be reproduced with a
-mock at the controller. Deferred to a provider-boundary cycle; not falsely closed here.
+Controller routing is clean: O1–O4 classify `online` and pass the ACTUAL question; a
+2-turn probe (`onlineStaleAnswerProbe.test.ts`) confirms consecutive DIFFERENT online
+turns each get their own answer.
+
+**Root cause of "repeated identical answers" — FOUND + FIXED in CODE:** the provider's
+stale-while-revalidate cache (`answerOnlineCurrentInfo`) was keyed by the COARSE
+`queryKind` (general_current / news / sports / …), so two different questions of the same
+kind within the 30-min TTL returned the SAME cached answer. Now keyed by
+**kind + the specific query** — identical repeats still hit the cache; different questions
+never share an answer. Regression: `onlineCacheCollapse.test.ts` 2/2.
+
+**Still PREVIEW-class (cannot be proven with a mock):** end-to-end LIVE grounding — that a
+real "current/latest/today" question returns a correct, sourced answer from the live
+provider. Needs a real deployed call; do not upgrade the evidence class from CODE.
 
 ---
 

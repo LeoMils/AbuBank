@@ -358,3 +358,16 @@
 - EVIDENCE: familyCountQueries.test.ts 4/4 green; family suites 246 green; full suite 10846
   passed / 0 failed; typecheck + build clean. Family cycle complete in text (F1-F6, M2 closed).
 - NEXT: Cycle 6 - ONLINE provider-boundary stale-answer reproduction (PREVIEW class, live provider).
+
+## Intelligence Parity Program — Cycle 6: ONLINE cache-collapse (v0.85.0)
+- ROOT CAUSE of "repeated identical answers to different questions": the provider
+  stale-while-revalidate cache (answerOnlineCurrentInfo) keyed by the COARSE queryKind
+  (general_current / news / sports), so two different same-kind questions within the 30-min
+  TTL returned the SAME cached answer.
+- FIX: key the cache by kind + the specific normalized query. Identical repeats still hit
+  the cache; different questions never share an answer.
+- Separately PROVED the controller online ROUTING is already clean (onlineStaleAnswerProbe:
+  2 consecutive different online turns each call the tool with their own query + get own answer).
+- EVIDENCE: onlineCacheCollapse.test.ts 2/2 + onlineProvider.test.ts + probe green; full
+  suite 10849 passed / 0 failed; typecheck + build clean.
+- REMAINING (PREVIEW-class, NOT CODE): end-to-end live grounding needs a real provider call.

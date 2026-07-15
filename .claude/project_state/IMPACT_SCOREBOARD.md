@@ -25,6 +25,18 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.85.0 (Intelligence Parity — Cycle 6: ONLINE cache-collapse)** — Root cause of the
+  "repeated identical answers to different questions" symptom, FOUND + FIXED in CODE. The
+  provider cache (answerOnlineCurrentInfo) keyed by the COARSE queryKind (general_current /
+  news / sports), so two different same-kind questions within the 30-min TTL returned the
+  same cached answer ("מי ראש הממשלה" vs "מי נשיא ארה\"ב" both → general_current). Fixed to
+  key by kind + specific query — identical repeats still cached, different questions never
+  share. Separately proved the ExecutiveCognitiveController online ROUTING is already clean
+  (onlineStaleAnswerProbe: 2 consecutive different online turns each get their own answer).
+  Evidence: onlineCacheCollapse.test.ts 2/2 + onlineProvider.test.ts + probe green; full
+  suite 10849 green; typecheck + build clean. REMAINING (PREVIEW-class, not CODE): end-to-end
+  live grounding needs a real provider call. NEXT: re-run the broad probe for any new gaps;
+  otherwise the text-provable intelligence set is substantially covered.
 - **0.84.0 (Intelligence Parity — Cycle 5: FAMILY count queries / F6)** — "כמה נכדים/
   ילדים/נינים יש ל<X>" punted to the LLM (no count reasoner; single family name so routing
   never reached the graph). Added familyCountReasoner (grandchildrenOfPublic /
