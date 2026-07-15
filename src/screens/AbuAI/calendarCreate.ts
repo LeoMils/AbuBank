@@ -802,6 +802,22 @@ export function updateCreate(state: CalendarCreateState, text: string): Calendar
         corrected = true
       }
     }
+    // PERSON correction ("לא, לא עם דני, עם מור") — swap the companion + rewrite the title.
+    // Requires a negation + a NEW "עם/אצל <name>" different from the current person, so a
+    // bare "לא" (handled as cancel earlier) is never mis-read as a person change.
+    if (/(?<![א-ת])לא(?![א-ת])/u.test(t)) {
+      const names = [...t.matchAll(/(?:עם|אצל)\s+([֐-׿][֐-׿'׳]+(?:\s+[֐-׿][֐-׿'׳]+)?)/gu)]
+      if (names.length > 0) {
+        const newPerson = names[names.length - 1]![1]!.trim()
+        if (newPerson && newPerson !== (correctionDraft.person ?? '').trim()) {
+          correctionDraft.person = newPerson
+          correctionDraft.title = /עם\s+/u.test(correctionDraft.title ?? '')
+            ? (correctionDraft.title ?? '').replace(/עם\s+.*$/u, `עם ${newPerson}`)
+            : `פגישה עם ${newPerson}`
+          corrected = true
+        }
+      }
+    }
     if (corrected) {
       return { phase: 'confirming', draft: correctionDraft, missing: [] }
     }
@@ -1094,6 +1110,14 @@ export function resolvePendingMessage(
       else if (enSomewhere) merged.draft = { ...merged.draft, location: enSomewhere[1]!.trim() }
     }
     return { action: 'update', state: merged }
+  }
+
+  // A PERSON correction while pending ("לא, לא עם דני, עם מור") — a negation + a NEW
+  // "עם/אצל <name>". Hand it to updateCreate (which swaps the companion + rewrites the
+  // title), never park it as an off-topic side question. Checked before the off-topic guard.
+  if (/(?<![א-ת])לא(?![א-ת])/u.test(t) && /(?:עם|אצל)\s+[֐-׿]{2,}/u.test(t)) {
+    const merged = updateCreate(state, t)
+    if (merged.draft.person !== state.draft.person) return { action: 'update', state: merged }
   }
 
   // A full NEW-meeting narrative mid-create ("אופיר ביקשה שאבוא מחר בשלוש אליה

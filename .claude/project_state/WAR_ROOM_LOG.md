@@ -415,3 +415,16 @@
 - EVIDENCE: familySiblings.test.ts 3/3 green; family suites 56 green; full suite 10865
   passed / 0 failed; typecheck + build clean.
 - NEXT (probe-2 backlog): mid-create PERSON change, Spanish family-relation/create, next-weekday.
+
+## Intelligence Parity Program — Cycle 11: mid-create person correction (v0.90.0)
+- After "tikbei pgisha im Dani...", "lo, lo im Dani, im Mor" fell to the LLM — the pending-
+  create engines had no PERSON-correction path (only date/time), so a companion swap with no
+  date/time hit the off-topic guard and parked as a side question (a later "ken" would save
+  the STALE person). Traced the live path to conversationV2 (classifySignalV2/reduceV2),
+  NOT resolvePendingMessage.
+- FIX: PERSON_CORRECTION_RE in V2 (negation + new im/etzel <name>) -> field_answer -> update;
+  shared updateCreate now swaps the companion + rewrites the title while confirming.
+  "lo, lo im Dani, im Mor" -> "pgisha im Mor"; "ken" saves Mor (not Dani).
+- EVIDENCE: createPersonCorrection.test.ts 2/2 green; calendar + V2 suites 329 green; full
+  suite 10867 passed / 0 failed; typecheck + build clean.
+- NEXT (probe-2 backlog): Spanish family-relation + Spanish create; next-weekday.

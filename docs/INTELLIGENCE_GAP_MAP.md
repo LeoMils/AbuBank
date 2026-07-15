@@ -143,7 +143,9 @@ fixed offset WORDS but not ARITHMETIC. Fixed: `בעוד N ימים/יומיים/
 ### Still-open gaps found by probe 2 (ranked for next cycles)
 - ✅ **FAM-SIB** "מי אח/אחות של X" (siblings) — FIXED (0.89.0): `siblingsByGenderPublic` +
   brother/sister/plural rules. "מי אח של מור" → לאו. Regression: `familySiblings.test.ts` 3/3.
-- 🟠 **mid-create person change** "לא, לא עם דני, עם מור" → falls to the LLM (day change works).
+- ✅ **mid-create person change** "לא, לא עם דני, עם מור" — FIXED (0.90.0): PERSON_CORRECTION_RE
+  in the V2 engine + a person-swap in the shared updateCreate → "פגישה עם מור", saves מור.
+  Regression: `createPersonCorrection.test.ts` 2/2. (Found the live path is conversationV2.)
 - 🟠 **ES-FAM/ES-CREATE** Spanish "la hija de X" relation + "agendá una cena …" create → LLM.
 - 🟡 **next-weekday** "מתי יום ראשון הבא?" → LLM. **AGE** "בן כמה עדי?" → LLM (age may be absent).
 

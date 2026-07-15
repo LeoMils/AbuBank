@@ -65,7 +65,10 @@ const NEW_PLACE_RE = /(?:אצל|אלי[הו]|הביתה|עם\s+[א-ת]{2,}|בי�
 // data-integrity bug). Genuine side-questions are QUESTIONS and never match this.
 const EDIT_VERB_RE = /^(?:ל?תשנ[יה]|שנ[יה]|ל?תעדכנ[יי]?|עדכנ[יי]?|ל?תוסיפ[יי]?|הוסיפ[יי]?|ל?תכת[בו][יי]?|ל?תרשמ[יי]?)(?![א-ת])/u
 const CORRECTION_VALUE_RE = /^לא[,\s]+(?=.*(?:מחר|מחרתיים|היום|הערב|ביום|שבוע|בשעה|ב\d|בבוקר|בערב|בצהריים|וחצי|ורבע|בשלוש|בארבע|בחמש|בשש|בשבע|בשמונה|בתשע|בעשר|באחת|בשתיים))/u
-function isDraftEdit(t: string): boolean { return EDIT_VERB_RE.test(t) || CORRECTION_VALUE_RE.test(t) }
+// A PERSON correction ("לא, לא עם דני, עם מור" / "לא אצל X, אצל Y") — a negation + a NEW
+// companion. Must be a draft edit (→ updateCreate swaps the person), never a side-question.
+const PERSON_CORRECTION_RE = /^לא[,\s].*(?:עם|אצל)\s+[א-ת]{2,}/u
+function isDraftEdit(t: string): boolean { return EDIT_VERB_RE.test(t) || CORRECTION_VALUE_RE.test(t) || PERSON_CORRECTION_RE.test(t) }
 
 /** phase from the calendar create state. */
 export type Phase = 'idle' | 'collecting' | 'confirming' | string

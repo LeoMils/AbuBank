@@ -25,6 +25,16 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.90.0 (Intelligence Parity — Cycle 11: mid-create person correction)** — After
+  "תקבעי פגישה עם דני …", "לא, לא עם דני, עם מור" fell to the LLM — the pending-create engines
+  had no PERSON-correction path (only date/time), so a companion swap with no date/time hit
+  the off-topic guard and parked as a side question (a later "כן" would save the STALE person).
+  Traced the live path to conversationV2 (classifySignalV2/reduceV2 — NOT resolvePendingMessage).
+  Fixed there (PERSON_CORRECTION_RE → field_answer → update) AND in the shared updateCreate
+  (swap companion + rewrite title while confirming). "לא, לא עם דני, עם מור" → פגישה עם מור;
+  "כן" saves מור. Evidence: createPersonCorrection.test.ts 2/2 green; calendar + V2 suites 329
+  green; full suite 10867 green; typecheck + build clean. NEXT (probe-2 backlog): Spanish
+  family-relation ("la hija de X") + Spanish create ("agendá una cena…"); next-weekday.
 - **0.89.0 (Intelligence Parity — Cycle 10: family siblings)** — Probe-2 gap FAM-SIB:
   "מי אח/אחות של X" returned the unknown fallback (no sibling rule), though לאו is מור's
   brother. Added siblingsByGenderPublic (other children of the parents, gender-filtered) +
