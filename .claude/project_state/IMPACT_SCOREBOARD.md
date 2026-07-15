@@ -25,6 +25,16 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.83.0 (Intelligence Parity — Cycle 4: FAMILY parent + pronoun continuity / M2)** —
+  Closes M2. (1) Singular "מי אמא/אבא של X" punted to the LLM (no parent rule) → added
+  gender-filtered mother/father rules (parentsByGenderPublic); "מי אמא של אופיר" → מור.
+  (2) A follow-up pronoun had no antecedent: after "מי זה אופיר", "ומי אמא שלה?" returned
+  the unknown fallback → added working-memory antecedent (lastFamilySubject) +
+  resolveFamilyPronoun, rewriting שלה/שלו/שלהם to the last-discussed person, so
+  "ומי אמא שלה" → "מי אמא של אופיר" → מור. Evidence: `familyPronounContinuity.test.ts`
+  2/2 green (real 2-turn conversation); family + continuity suites 66 green; full suite
+  10842 green; typecheck + build clean. NEXT: Cycle 5 — F6 grandchild-count queries, then
+  ONLINE provider-boundary stale-answer repro (PREVIEW class).
 - **0.82.0 (Intelligence Parity — Cycle 3: FAMILY parity)** — Two family-graph
   parity gaps. (1) Singular "מי הבת/הבן של X" punted to the LLM (engine knew only PLURAL
   children) → added gender-filtered daughter/son rules; "מי הבת של מרטיטה" → מור, "מי הבן

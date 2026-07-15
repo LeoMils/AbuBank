@@ -86,6 +86,12 @@ export function childrenByGenderPublic(name: string, gender: 'female' | 'male'):
   const ix = index()
   return uniq(childrenOf(ix, name).filter(c => genderOf(ix, c) === gender))
 }
+/** Mother/father: the person's parents filtered by the parent's gender. Lets a
+ *  singular "מי אמא/אבא של X" resolve from the graph instead of punting to the LLM. */
+export function parentsByGenderPublic(name: string, gender: 'female' | 'male'): string[] {
+  const ix = index()
+  return uniq(parentsOf(ix, name).filter(p => genderOf(ix, p) === gender))
+}
 export function partnerOf(name: string): string[] { return spousesOf(index(), name) }
 /** Ex-spouse(s). The graph edge is SYMMETRIC, so this answers both directions
  *  ("Mor's ex-husband" and "whose ex-husband is Rafi"). */
@@ -107,6 +113,9 @@ const REL = [
   // a child. Gender-filtered so "מי הבת של מרטיטה" → מור (not Leo), never the LLM.
   { re: /(?:מי\s+)?ה?בת\s+של\s+(\S+)/u, rel: 'daughter', fn: (n: string) => childrenByGenderPublic(n, 'female') },
   { re: /(?:מי\s+)?ה?בן\s+של\s+(\S+)/u, rel: 'son', fn: (n: string) => childrenByGenderPublic(n, 'male') },
+  // SINGULAR mother/father — gender-filtered parents. "מי אמא של אופיר" → מור.
+  { re: /(?:מי\s+)?ה?(?:אמא|אימא|אם)\s+של\s+(\S+)/u, rel: 'mother', fn: (n: string) => parentsByGenderPublic(n, 'female') },
+  { re: /(?:מי\s+)?ה?(?:אבא|אב)\s+של\s+(\S+)/u, rel: 'father', fn: (n: string) => parentsByGenderPublic(n, 'male') },
   // Ex-spouse — symmetric edge, so all shapes resolve to exSpouseOf(the named person):
   //   reverse  "רפי (הוא) הגרוש של מי"  → capture רפי  (Rafi is whose ex-husband)
   { re: /([֐-׿]+)\s+(?:הוא\s+|היא\s+)?ה?גרוש(?:ה)?\s+של\s+מי/u, rel: 'ex_spouse', fn: (n: string) => exSpouseOf(n) },

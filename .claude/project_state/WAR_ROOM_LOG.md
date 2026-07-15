@@ -338,3 +338,13 @@
   full suite 10840 passed / 0 failed; typecheck + build clean.
 - DEFERRED (each its own mechanism): F6 grandchild-count queries; M2 pronoun continuity.
 - NEXT: Cycle 4 - M2 continuity ("u-mi ima shela") or F6 counts.
+
+## Intelligence Parity Program — Cycle 4: FAMILY parent + pronoun continuity / M2 (v0.83.0)
+- (1) Singular "mi ima/aba shel X" (mother/father of X) punted to the LLM (no parent rule).
+  FIX: gender-filtered mother/father rules (parentsByGenderPublic); "mi ima shel Ofir" -> Mor.
+- (2) Follow-up pronoun had no antecedent: after "mi ze Ofir", "u-mi ima shela" returned the
+  unknown fallback. FIX: working-memory antecedent (lastFamilySubject) + resolveFamilyPronoun
+  rewrites shela/shelo/shelahem to the last-discussed person -> "mi ima shel Ofir" -> Mor.
+- EVIDENCE: familyPronounContinuity.test.ts 2/2 green; family + continuity suites 66 green;
+  full suite 10842 passed / 0 failed; typecheck + build clean.
+- NEXT: Cycle 5 - F6 grandchild-count; then ONLINE provider-boundary stale-answer repro.

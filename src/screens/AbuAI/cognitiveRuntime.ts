@@ -121,6 +121,9 @@ export interface RuntimeState {
   pendingReminder: ReminderDraft | null
   /** last family pair answered, so "איך בדיוק / דרך מי / למה" can explain the path. */
   lastFamilyPair: { a: string; b: string } | null
+  /** last person a family question was ABOUT — the antecedent for a follow-up pronoun
+   *  ("מי זה אופיר?" then "ומי אמא שלה?" → her = אופיר). Canonical Hebrew name. */
+  lastFamilySubject: string | null
   /** the active conversation object for follow-up continuity (optional/back-compat). */
   focus?: ConversationFocus | null
 }
@@ -133,6 +136,7 @@ export const IDLE_RUNTIME: RuntimeState = {
   frustrationVariant: 0,
   pendingReminder: null,
   lastFamilyPair: null,
+  lastFamilySubject: null,
   focus: null,
 }
 
@@ -494,7 +498,19 @@ function knownFamilyNamesIn(t: string): GraphNode[] {
   return found
 }
 
-export interface FamilyResult { text: string; known: boolean; pair?: { a: string; b: string } }
+// Resolve a possessive pronoun ("... שלה/שלו/שלהם") to the last family subject, so a
+// follow-up ("ומי אמא שלה?") reuses the person just discussed. Only fires when there is
+// an antecedent AND no explicit known family name in the turn (an explicit name wins).
+export function resolveFamilyPronoun(text: string, antecedent: string | null): string {
+  if (!antecedent) return text
+  if (knownFamilyNamesIn(text).length > 0) return text
+  if (!/של[הו](?![א-ת])|שלהם(?![א-ת])/u.test(text)) return text
+  return text.replace(/שלהם(?![א-ת])/u, `של ${antecedent}`).replace(/של[הו](?![א-ת])/u, `של ${antecedent}`)
+}
+
+// `subject` = the person the question was ABOUT (the named X), so the runtime can
+// remember it as the antecedent for a later pronoun ("ומי אמא שלה?" → her = that person).
+export interface FamilyResult { text: string; known: boolean; pair?: { a: string; b: string }; subject?: string }
 export function familyReasoner(text: string, lang: Lang = 'he'): FamilyResult {
   // 0) Directional pairwise "what is X for Y" / "הקשר בין X ל-Y" — the graph
   // kinship engine (correct direction + gender + great-uncle/in-laws). Preferred
@@ -505,8 +521,9 @@ export function familyReasoner(text: string, lang: Lang = 'he'): FamilyResult {
   // 1) "who is the <relation> of <person>" — deterministic multi-answer.
   const rel = answerFamilyRelation(text)
   if (rel) {
-    if (!rel.known || rel.results.length === 0) return { text: '', known: false }
-    return { text: rel.results.join(', '), known: true }
+    const subject = findNode(rel.subject)?.hebrew ?? rel.subject
+    if (!rel.known || rel.results.length === 0) return { text: '', known: false, subject }
+    return { text: rel.results.join(', '), known: true, subject }
   }
   // 2) pairwise relation between two known names.
   const names = knownFamilyNamesIn(text)
@@ -529,7 +546,7 @@ export function familyReasoner(text: string, lang: Lang = 'he'): FamilyResult {
     if (node) {
       const renderLang = esMatch ? 'es' : (lang === 'es' ? 'es' : 'he')
       const self = describeRelation('מרטיטה', node.hebrew, renderLang)
-      if (self) return { text: self, known: true }
+      if (self) return { text: self, known: true, subject: node.hebrew }
     }
   }
   return { text: '', known: false }
@@ -988,8 +1005,11 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       }
       const isEs = lang === 'es'
       const esLang = isEs ? { lang: 'es' as const } : {}
-      const fam = familyReasoner(normalized, lang)
-      const nextState = fam.pair ? { ...state, lastFamilyPair: fam.pair } : state
+      // Continuity: rewrite a follow-up pronoun ("אמא שלה") to the last subject before reasoning.
+      const resolvedText = resolveFamilyPronoun(normalized, state.lastFamilySubject)
+      const fam = familyReasoner(resolvedText, lang)
+      const withPair = fam.pair ? { ...state, lastFamilyPair: fam.pair } : state
+      const nextState = fam.subject ? { ...withPair, lastFamilySubject: fam.subject } : withPair
       if (fam.known) return { ...settle(fam.text, { state: nextState, dataAvailable: true, ...esLang }), familyGrounded: true }
       // Unknown relation — say so, never guess (in the query's language).
       return settle(
