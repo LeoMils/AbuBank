@@ -54,9 +54,16 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
   and the Whisper (MediaRecorder→Groq, audio/mp4) path is primary; a listening WATCHDOG
   (`LISTEN_WATCHDOG_MS`) aborts + falls back if the recognizer fires no events, so "מקשיבה..." can never
   hang forever (bounded fallback per `.claude/rules/voice.md`). Pure decision layer
-  `src/services/sttStrategy.ts` (unit-tested 5/5). **Still 🔴 / PENDING:** actual iOS mic capture +
-  audible TTS is DEVICE-GATED — run `diagnostics/operator-protocols/OP-003-ios-voice-capture.md` on the
-  phone (build ≥ 0.76.0) to upgrade CODE→DEVICE. Not overclaimed.
+  `src/services/sttStrategy.ts` (unit-tested 5/5).
+  **DEVICE_VERIFIED (0.79.0, Leo iPhone, 2026-07-15) — FIRST real audio:** with the pipeline as default
+  (Option C), **voice audio DOES play — Martita heard AbuAI speak.** Hebrew STT + basic memory PARTIALLY
+  work. So TTS playback + basic STT are now DEVICE-proven on the pipeline path (no longer just CODE). ✅
+  *But the pipeline path is NOT acceptable as the product:* far too SLOW, ROBOTIC, and CANNOT barge-in
+  (structural — the chained pipeline is turn-based, not full-duplex), and it had a **date-reasoning bug:
+  answered "today" for a "yesterday" question.** These are the standing DEVICE findings. Next priority is
+  the **Realtime (Option A) beta path** — the only route to ChatGPT-Live latency/naturalness/barge-in —
+  now that baseline audio works; make the Realtime beta audible + device-verified on iPhone (the 0.79.0
+  audio-out DOM fix is landed but unproven). Pipeline stays as the reliable fallback.
 - **STT 🔴** — Hebrew-biased language pin across all 3 engines (CODE). *Blocker:* no device transcript
   accepted. *Next:* device capture → verify Hebrew/Spanish transcription accuracy.
 - **TTS 🟡** — Browser playback green; audible warmth on device unproven. *Next:* device audibility test.
