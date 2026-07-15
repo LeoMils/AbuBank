@@ -1,5 +1,26 @@
 # WAR_ROOM_LOG
 
+## 2026-07-15 — 0.79.0: Option C (Leo's decision) — pipeline default, Realtime opt-in beta
+- DECISION: after the voice architecture verdict, Leo chose Option C. SINGLE-WRITER re-acquired (HEAD 553a5be).
+- PART B (ship win, verified): default voice flipped from the unproven Realtime WebRTC path to the reliable
+  pipeline. New pure src/services/voiceModePreference.ts (isRealtimeBetaEnabled: default false → pipeline;
+  true only when localStorage abu-voice-realtime-beta=1). index.tsx: `const useRealtime = true` →
+  `= isRealtimeBetaEnabled()`. The pipeline TTS (server audio + gesture-unlocked AudioContext + tap-to-hear)
+  is the proven-audible path.
+- PART A (device-gated fix behind the flag): realtimeVoice.ts remote <audio> element was created but never
+  appended to the DOM → iOS/Android autoplay blocked it (the "hears nothing" prime suspect). Now appended
+  (hidden) on connect + removed on teardown. Source-contract test realtimeAudioOut. Actual audibility = OP-003.
+- TEST TRUTH: 11 source-contract tests asserted `const useRealtime = true` (old default). Updated ALL to the
+  Option C contract (`= isRealtimeBetaEnabled()`) — fixing-the-truth per Leo's decision, NOT weakening.
+  (Note: a PowerShell Set-Content -Encoding utf8 pass corrupted UTF-8/Hebrew in 10 files → reverted via git
+  and redone with Node fs writeFileSync (no BOM). Lesson: never bulk-edit UTF-8 files with PS 5.1 Set-Content.)
+- REGRESSION FIRST: voiceModePreference.test (pipeline default) + realtimeAudioOut.test (DOM attach/remove).
+- VALIDATION: voiceModePreference 3/3; realtimeAudioOut 3/3; full suite 10822 pass/2 todo/0 fail (312 files);
+  tsc clean; build clean. Version 0.78.0→0.79.0. Fresh preview deployed.
+- EVIDENCE: Part B = CODE (decision helper verified; pipeline TTS proven at PREVIEW earlier). Part A = CODE
+  source-contract; actual iOS audibility DEVICE-GATED (OP-003). NOT overclaimed. Open device question: does
+  the default pipeline make audible sound end-to-end on Leo's phone (STT capture is the risk).
+
 ## 2026-07-15 — overnight cycle 3 (0.78.0): CONVERSATION_GAP_MAP G2 — Spanish family identity
 - SINGLE-WRITER: re-acquired lock (HEAD==origin 8e3d48b, 0/0). v2.1.190 foreground-only.
 - REPRODUCED through the controller: "quién es Mor" → intent=general → [LLM] punt (invented-fact risk),

@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.78.0-spanish-family-identity'
-const BUILD_LABEL = 'AbuBank — SPANISH_FAMILY_IDENTITY: CONVERSATION_GAP_MAP G2. A Spanish family identity question ("quién es Mor" / "quién es Ofir") used to be classified general and PUNTED to the LLM (risking an invented family fact), even though the graph could answer it in Spanish. Now the classifier recognizes "quién es <known family name>" as family and familyReasoner answers from the graph in the query language via describeRelation(...,"es") → "Abu es madre de Mor" / "Abu es abuela de Ofir (a través de Mor)". Threaded lang through the family case (settle es-compose, es unknown-fallback). Hebrew "מי זאת אופיר" + ex-spouse/possessive/Ofir feminine unchanged. Asserted through the real controller (source!==llm). Builds on 0.77.0 MEMORY_HONESTY.'
+const BUILD_VERSION = '0.79.0-pipeline-default-realtime-beta'
+const BUILD_LABEL = 'AbuBank — PIPELINE_DEFAULT_REALTIME_BETA: Option C from docs/VOICE_ARCHITECTURE_VERDICT.md. The default voice path was the OpenAI Realtime (WebRTC) path (useRealtime=true), which was never proven on device and whose remote audio element was autoplay-blocked → the real user heard NOTHING. Now the DEFAULT is the reliable pipeline (push-to-talk STT → controller → server TTS via a gesture-unlocked AudioContext, which is proven to produce audio); Realtime is OPT-IN beta (localStorage abu-voice-realtime-beta=1). Also fixed the Realtime audio-out for when beta is on: the <audio> element is now appended to the DOM (not-in-DOM elements are autoplay-blocked) + removed on teardown — DEVICE-GATED (OP-003). Regression voiceModePreference (pipeline is default) + realtimeAudioOut (DOM attach) + updated 11 source-contracts. Builds on 0.78.0 SPANISH_FAMILY_IDENTITY.'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

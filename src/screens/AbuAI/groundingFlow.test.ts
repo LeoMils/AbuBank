@@ -101,7 +101,7 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
     const source = await import('fs').then(fs =>
       fs.readFileSync(path.join(process.cwd(), 'src/screens/AbuAI/index.tsx'), 'utf-8')
     )
-    expect(source).toContain('const useRealtime = true')
+    expect(source).toContain('const useRealtime = isRealtimeBetaEnabled()')
     expect(source).not.toMatch(/const useRealtime = !![^f]/)
   })
 

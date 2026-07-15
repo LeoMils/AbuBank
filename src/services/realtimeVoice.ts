@@ -240,6 +240,13 @@ export class RealtimeVoiceSession {
       this.audioEl = document.createElement('audio')
       this.audioEl.autoplay = true
       ;(this.audioEl as unknown as { playsInline: boolean }).playsInline = true
+      // AUTOPLAY FIX (docs/VOICE_ARCHITECTURE_VERDICT.md, Q4): a media element that is NOT in
+      // the DOM is blocked by iOS/Android autoplay policy — the Realtime session could connect
+      // and stream the model's audio while the element silently refused to play ("hears
+      // nothing"). Append it (hidden) so .play() from ontrack can actually start on device.
+      this.audioEl.setAttribute('aria-hidden', 'true')
+      this.audioEl.style.display = 'none'
+      try { document.body.appendChild(this.audioEl) } catch { /* non-DOM env: best-effort */ }
       this.pc.ontrack = (event) => {
         if (this.audioEl && event.streams[0]) {
           this.audioEl.srcObject = event.streams[0]
@@ -572,6 +579,6 @@ export class RealtimeVoiceSession {
     if (this.dc) { try { this.dc.close() } catch {} this.dc = null }
     if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null }
     if (this.pc) { try { this.pc.close() } catch {} this.pc = null }
-    if (this.audioEl) { this.audioEl.pause(); this.audioEl.srcObject = null; this.audioEl = null }
+    if (this.audioEl) { this.audioEl.pause(); this.audioEl.srcObject = null; try { this.audioEl.remove() } catch { /* not in DOM */ } this.audioEl = null }
   }
 }

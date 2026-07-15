@@ -229,7 +229,7 @@ describe('P0.1 — index.tsx wiring contract', () => {
 describe('P0.1 — hard rules still preserved', () => {
   it('AbuAI useRealtime is enabled with grounding', () => {
     const src = fs.readFileSync(path.resolve(__dirname, '..', 'AbuAI', 'index.tsx'), 'utf8')
-    expect(src.includes('const useRealtime = true')).toBe(true)
+    expect(src.includes('const useRealtime = isRealtimeBetaEnabled()')).toBe(true)
   })
 
   it('no production AbuAI source reads VITE_OPENAI_API_KEY', () => {

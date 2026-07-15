@@ -14,6 +14,7 @@ import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState } from './cognitiveRu
 import { ExecutiveCognitiveController } from './executiveCognitiveController'
 import { buildFullTurnTools } from './fullTurnBridge'
 import { shouldUseWebSpeechPrimary, LISTEN_WATCHDOG_MS } from '../../services/sttStrategy'
+import { isRealtimeBetaEnabled } from '../../services/voiceModePreference'
 
 // SINGLE PATH: the Executive Cognitive Controller is the sole RUNTIME path. This is
 // hardcoded on (no env flag) — every text/voice turn returns from the controller
@@ -327,10 +328,12 @@ export function AbuAI() {
   // an INITIAL connect failure SILENT (the fatal-error handler falls back to the
   // pipeline quietly) while still surfacing a mid-conversation error.
   const realtimeEverConnectedRef = useRef(false)
-  // v32: Realtime ENABLED — grounding is handled by injecting verified facts
-  // into session instructions (calendar snapshot + family data + memory summary).
-  // The Realtime model speaks directly — no TTS pipeline, < 2s response.
-  const useRealtime = true
+  // Option C (docs/VOICE_ARCHITECTURE_VERDICT.md): the reliable pipeline is the DEFAULT
+  // (push-to-talk STT → controller → server TTS via a gesture-unlocked AudioContext, which
+  // is proven to produce audio). The Realtime (WebRTC) path — Live-like but never proven on a
+  // real device and prone to autoplay-blocked remote audio — is now OPT-IN beta. This makes
+  // audible voice the default for the real user; Realtime can be device-iterated behind the flag.
+  const useRealtime = isRealtimeBetaEnabled()
 
   // Auto-clear stale cooldowns on mount — ensures fresh state
   useEffect(() => {

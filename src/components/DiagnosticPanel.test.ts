@@ -218,7 +218,7 @@ describe('P0.3 — secret hygiene + scope envelope', () => {
 
   it('AbuAI useRealtime is enabled with grounding', () => {
     const src = fs.readFileSync(path.resolve(ROOT, 'screens', 'AbuAI', 'index.tsx'), 'utf8')
-    expect(src.includes('const useRealtime = true')).toBe(true)
+    expect(src.includes('const useRealtime = isRealtimeBetaEnabled()')).toBe(true)
   })
 
   it('AbuWhatsApp / AbuGames screens do not import DiagnosticPanel or DiagnosticOverlay', () => {

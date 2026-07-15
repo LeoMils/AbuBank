@@ -131,8 +131,12 @@ describe('B2.3 — runtime classification still routes correctly (Truth Contract
 })
 
 describe('B2.3 — hard rules preserved on this branch', () => {
-  it('useRealtime is enabled with grounding', () => {
-    expect(INDEX.includes('const useRealtime = true')).toBe(true)
+  it('voice mode defaults to the reliable pipeline; Realtime is opt-in beta (Option C)', () => {
+    // docs/VOICE_ARCHITECTURE_VERDICT.md: the reliable pipeline is now the DEFAULT and the
+    // Realtime (WebRTC) path is opt-in — so useRealtime is gated on the beta flag, never a
+    // hardcoded `true` (which shipped an autoplay-blocked path as the default).
+    expect(INDEX.includes('const useRealtime = isRealtimeBetaEnabled()')).toBe(true)
+    expect(INDEX.includes('const useRealtime = true')).toBe(false)
   })
 
   it('no AbuAI production source reads VITE_OPENAI_API_KEY', () => {

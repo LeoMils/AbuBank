@@ -9,6 +9,15 @@ the live deployment), `DEVICE` (only Leo can supply). Nothing here is `DEVICE`-p
 
 **Stamp:** deployed preview `0.78.0-spanish-family-identity` · branch `rc5` · 2026-07-15. Read-only.
 
+> **DECISION (0.79.0): Leo chose Option C.** SHIPPED: the reliable pipeline is now the DEFAULT
+> (`useRealtime = isRealtimeBetaEnabled()`, default false → pipeline); Realtime is opt-in beta
+> (`localStorage['abu-voice-realtime-beta'] = '1'`). The Realtime remote-`<audio>` autoplay bug (Q4)
+> is fixed behind the flag (element appended to the DOM + removed on teardown) — **DEVICE-GATED**,
+> verify via OP-003. So the real user now gets the pipeline path whose TTS playback is proven
+> (AudioContext + gesture unlock + server audio). What still needs device proof: (a) does the default
+> pipeline actually make audible sound end-to-end on Leo's phone (STT capture is the open risk — 0.76
+> iOS→Whisper), and (b) does the Realtime beta now play audio when opted in. Both → OP-003.
+
 ---
 
 ## Executive verdict (the surprising, honest headline)

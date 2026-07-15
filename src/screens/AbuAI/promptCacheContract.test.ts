@@ -94,7 +94,7 @@ describe('No new env vars', () => {
 describe('Realtime enabled with grounding', () => {
   it('AbuAI/index.tsx enables useRealtime with grounded context', () => {
     const src = fs.readFileSync(path.join(ROOT, 'src/screens/AbuAI/index.tsx'), 'utf8')
-    expect(src.includes('const useRealtime = true')).toBe(true)
+    expect(src.includes('const useRealtime = isRealtimeBetaEnabled()')).toBe(true)
   })
 })
 
