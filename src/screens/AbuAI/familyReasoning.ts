@@ -80,6 +80,12 @@ export function unclesAuntsOf(name: string, gender?: 'female' | 'male'): string[
 }
 
 export function childrenOfPublic(name: string): string[] { return childrenOf(index(), name) }
+/** Daughters/sons: the person's children filtered by the child's gender. Lets a
+ *  singular "מי הבת/הבן של X" resolve from the graph instead of punting to the LLM. */
+export function childrenByGenderPublic(name: string, gender: 'female' | 'male'): string[] {
+  const ix = index()
+  return uniq(childrenOf(ix, name).filter(c => genderOf(ix, c) === gender))
+}
 export function partnerOf(name: string): string[] { return spousesOf(index(), name) }
 /** Ex-spouse(s). The graph edge is SYMMETRIC, so this answers both directions
  *  ("Mor's ex-husband" and "whose ex-husband is Rafi"). */
@@ -97,6 +103,10 @@ const REL = [
   // "אשתו"/"אשתה" (his/her wife), not only "הבעל של" / "האישה של". A common family
   // question ("מי בעלה של אופיר") must resolve from the graph, never punt to the LLM.
   { re: /(?:בן|בת|בני)\s+ה?זוג\s+של\s+(\S+)|ה?בעל[הוהּ]?\s+של\s+(\S+)|ה?איש[הת][הו]?\s+של\s+(\S+)|אשת[הו]\s+של\s+(\S+)|פרטנר.*של\s+(\S+)/u, rel: 'partner', fn: (n: string) => partnerOf(n) },
+  // SINGULAR daughter/son — AFTER the partner rule so "בת/בן הזוג של" is a spouse, not
+  // a child. Gender-filtered so "מי הבת של מרטיטה" → מור (not Leo), never the LLM.
+  { re: /(?:מי\s+)?ה?בת\s+של\s+(\S+)/u, rel: 'daughter', fn: (n: string) => childrenByGenderPublic(n, 'female') },
+  { re: /(?:מי\s+)?ה?בן\s+של\s+(\S+)/u, rel: 'son', fn: (n: string) => childrenByGenderPublic(n, 'male') },
   // Ex-spouse — symmetric edge, so all shapes resolve to exSpouseOf(the named person):
   //   reverse  "רפי (הוא) הגרוש של מי"  → capture רפי  (Rafi is whose ex-husband)
   { re: /([֐-׿]+)\s+(?:הוא\s+|היא\s+)?ה?גרוש(?:ה)?\s+של\s+מי/u, rel: 'ex_spouse', fn: (n: string) => exSpouseOf(n) },

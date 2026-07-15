@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.81.0-why-knowledge-not-frustration',
-  buildLabel: 'AbuBank — WHY_KNOWLEDGE_NOT_FRUSTRATION (Intelligence Parity Cycle 2, text-only via the real ExecutiveCognitiveController): a general why-is-X knowledge question (למה השמיים כחולים) was mis-routed to a frustration CHALLENGE reply (an apology, לא הייתי מספיק ברורה) because WHY_RE began with ^למה(?![א-ת]) — matching ANY input starting with למה. Narrowed WHY_RE so bare למה? and the specific challenge phrasings (למה לא קבעת / למה אין לך / למה אצלך) stay challenges, while why-topic questions fall to the general/LLM path and are actually answered. Evidence: whyKnowledgeVsChallenge.test.ts 5/5 green (CODE); targeted challenge suites 318 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.80.0.',
+  version:    '0.82.0-family-daughter-son-spanish-identity',
+  buildLabel: 'AbuBank — FAMILY_DAUGHTER_SON_SPANISH_IDENTITY (Intelligence Parity Cycle 3, text-only via the real ExecutiveCognitiveController): two family-graph parity gaps. (1) Singular מי הבת/הבן של X (who is the daughter/son of X) punted to the LLM — the relation engine only knew PLURAL children; added gender-filtered daughter/son rules (childrenByGenderPublic) so מי הבת של מרטיטה → מור, מי הבן של מרטיטה → לאו, deterministically. (2) Spanish ¿quién es X? returned the unknown fallback because the resolver regex was ^-anchored and the leading ¿ broke it (Hebrew מי זה X worked); tolerated the ¿/? punctuation and render the identity in Spanish (Abu es abuela de Ofir a través de Mor). Evidence: familyDaughterSonSpanish.test.ts 4/4 green (CODE); family regression suites 62 green; full suite green. Deferred (noted in gap map): grandchild-count queries (F6) + pronoun continuity her-mother (M2). Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.81.0.',
   buildDate:  '2026-07-15',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

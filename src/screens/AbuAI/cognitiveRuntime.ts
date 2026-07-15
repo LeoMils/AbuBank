@@ -464,7 +464,7 @@ function safeHebrewDate(iso: string): string {
 function looksLikeFamilyQuery(t: string): boolean {
   // Base + POSSESSIVE spouse forms ("בעלה" her-husband, "אשתו"/"אשתה" his/her-wife) so a
   // common family question routes to the graph instead of punting to the LLM.
-  if (/מי\s+ה?(?:סבא|סבתא|דוד|דודה|אבא|אמא|בעל[הוהּ]?|איש[הת][הו]?|אשת[הו]|בן\s+הזוג|בת\s+הזוג|ילדים|נכד|נכדה|אח|אחות)\s+של/u.test(t)) return true
+  if (/מי\s+ה?(?:סבא|סבתא|דוד|דודה|אבא|אמא|בעל[הוהּ]?|איש[הת][הו]?|אשת[הו]|בן\s+הזוג|בת\s+הזוג|בת|בן|ילדים|נכד|נכדה|אח|אחות)\s+של/u.test(t)) return true
   if (/מה\s+הקשר\s+בין|מה\s+היחס\s+בין|איך\s+קשור[הים]?|מי\s+ז[הא]\s+ל/u.test(t)) return true
   // "מה/מי (זה)? X עבור/בשביל Y" — a directional relation question. Recognized even
   // when X is UNKNOWN, so the runtime answers "won't guess" instead of the LLM.
@@ -518,12 +518,17 @@ export function familyReasoner(text: string, lang: Lang = 'he'): FamilyResult {
   // 3) "מי זה X" / Spanish "quién es X" — describe the single member's role from the
   // graph, in the query's language (describeRelation renders 'es' too → "Abu es madre
   // de Mor"). G2: a Spanish identity query must be grounded, never punted to the LLM.
-  const m = text.match(/^מי\s+ז[הא]\s+(\S+)\s*\??$/u)
-    ?? text.match(/^qui[eé]n\s+es\s+(?:la\s+|el\s+)?([a-záéíóúñ]+)\s*\??$/i)
+  const heMatch = text.match(/^מי\s+ז[הא]\s+(\S+)\s*\??$/u)
+  // Spanish "¿quién es X?" — tolerate a leading "¿" and trailing "?"/"¿" that the ^
+  // anchor previously rejected, and render the answer in Spanish regardless of the
+  // coarse lang flag (the query itself is unambiguously Spanish).
+  const esMatch = text.match(/^\s*¿?\s*qui[eé]n\s+es\s+(?:la\s+|el\s+)?([a-záéíóúñ]+)\s*[?¿]*$/i)
+  const m = heMatch ?? esMatch
   if (m) {
     const node = findNode(m[1]!)
     if (node) {
-      const self = describeRelation('מרטיטה', node.hebrew, lang === 'es' ? 'es' : 'he')
+      const renderLang = esMatch ? 'es' : (lang === 'es' ? 'es' : 'he')
+      const self = describeRelation('מרטיטה', node.hebrew, renderLang)
       if (self) return { text: self, known: true }
     }
   }

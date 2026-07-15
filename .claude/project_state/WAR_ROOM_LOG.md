@@ -326,3 +326,15 @@
 - EVIDENCE: whyKnowledgeVsChallenge.test.ts 5/5 green (real controller + predicate);
   targeted challenge suites 318 green; full suite 10836 passed / 0 failed; typecheck + build clean.
 - NEXT: Cycle 3 - FAMILY (Spanish "quien es Ofir" fails, "her mother" continuity, graph counts).
+
+## Intelligence Parity Program — Cycle 3: FAMILY parity (v0.82.0)
+- (1) Singular "mi habat/haben shel X" (daughter/son of X) punted to the LLM (engine knew
+  only PLURAL children). FIX: gender-filtered daughter/son rules (childrenByGenderPublic);
+  "mi habat shel Martita" -> Mor, "mi haben shel Martita" -> Leo, deterministic.
+- (2) Spanish "quien es X" returned the unknown fallback because the resolver regex was
+  ^-anchored and the leading inverted-? broke it (Hebrew "mi ze X" worked). FIX: tolerate
+  the inverted-?/? punctuation + render Spanish ("Abu es abuela de Ofir a traves de Mor").
+- EVIDENCE: familyDaughterSonSpanish.test.ts 4/4 green; family regression suites 62 green;
+  full suite 10840 passed / 0 failed; typecheck + build clean.
+- DEFERRED (each its own mechanism): F6 grandchild-count queries; M2 pronoun continuity.
+- NEXT: Cycle 4 - M2 continuity ("u-mi ima shela") or F6 counts.

@@ -60,7 +60,14 @@ innocent "why is the sky blue" — an over-broad frustration classifier hijacks 
 
 ---
 
-## Cycle 3 — FAMILY reasoning
+## Cycle 3 — FAMILY reasoning — ✅ F4/F3 FIXED (0.82.0); M2/F6 DEFERRED
+
+F4 (Spanish "¿quién es Ofir?") + F3 (singular "מי הבת/הבן של X") fixed:
+`familyDaughterSonSpanish.test.ts` 4/4. F4 → "Abu es abuela de Ofir (a través de Mor).";
+F3 → "מור" (daughter) / "לאו" (son). Still open (each its own mechanism, next cycles):
+**M2** pronoun continuity ("ומי אמא שלה?" → resolve "her" to the prior subject) and
+**F6** count queries ("כמה נכדים יש למרטיטה?" → count from the graph).
+
 
 | id | input | observed | expected | sev |
 |----|-------|----------|----------|-----|
