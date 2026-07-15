@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.99.0-time-in-city',
-  buildLabel: 'AbuBank — TIME_IN_CITY (Intelligence Parity Cycle 20, text-only via the real ExecutiveCognitiveController): wide-probe confidently-wrong bug — מה השעה בניו יורק returned the LOCAL Israel clock (10:00) instead of New York time. The TIME branch ignored the city. Added a CITY_TZ map (New York, Buenos Aires/Argentina, London, Paris, Madrid, Barcelona, Los Angeles, Miami, Moscow, Berlin, Rome, Tokyo, Sydney, Dubai; He + Es names) and timeInCity, which formats ctx.now with Intl.DateTimeFormat({timeZone}) — deterministic regardless of the runner TZ. He: בניו יורק השעה עכשיו HH:MM; Es: En Nueva York son las HH:MM. Unknown cities fall through to the local clock honestly; a bare מה השעה is unchanged. Evidence: timeInCity.test.ts 5/5 green (CODE); date + time regression suites 50 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.98.0.',
+  version:    '0.100.0-backward-date',
+  buildLabel: 'AbuBank — BACKWARD_DATE (Intelligence Parity Cycle 21, text-only via the real ExecutiveCognitiveController): wide-probe gap — איזה יום היה לפני שבוע fell to the LLM. dateReasoner did FORWARD arithmetic (בעוד N ימים/שבוע) but not BACKWARD. Added lifneiDaysOffset (לפני N ימים/יומיים/שבוע/שבועיים/N שבועות → a backward day offset) + extended RELATIVE_DATE_QUERY_RE to route לפני questions to date_query. now Wed 2026-07-15: איזה יום היה לפני שבוע → יום רביעי, 8 ביולי; לפני יומיים → יום שני, 13 ביולי; לפני 3 ימים → 12 ביולי. Forward בעוד arithmetic is unchanged. Evidence: backwardDate.test.ts 5/5 green (CODE); date regression suites 122 green; full suite green. Gap map: docs/INTELLIGENCE_GAP_MAP.md. Voice/Realtime deferred. Builds on 0.99.0. (0.100 continues the 0.x foundation sequence — not a 1.0 GA.)',
   buildDate:  '2026-07-15',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

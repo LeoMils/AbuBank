@@ -201,7 +201,8 @@ Deterministic `mathReasoner` (×÷+− word/symbol ops, percent-of, percent-tip,
 **(a) Genuine deterministic bugs — TO FIX next cycles:**
 - ✅ "מה השעה בניו יורק?" — FIXED (0.99.0): CITY_TZ + timeInCity via Intl timeZone; He+Es.
   Regression: `timeInCity.test.ts` 5/5.
-- 🟠 backward date arithmetic "לפני שבוע" / "לפני N ימים" → LLM (mirror of the "בעוד" fix).
+- ✅ backward date arithmetic "לפני שבוע" / "לפני N ימים" — FIXED (0.100.0): lifneiDaysOffset.
+  "איזה יום היה לפני שבוע" → יום רביעי, 8 ביולי. Regression: `backwardDate.test.ts` 5/5.
 - 🟠 "כמה זמן עד סוף החודש?" / "כמה ימים עד יום ההולדת של מור?" → LLM (deterministic).
 - 🟠 family: "מי הנכדים של לאו?" (grandchildren-of-X), "מי הגיס של מור?" (in-law), verify
   "מי אשתו של לאו?" vs "מי בן הזוג של מור? → יעל" (possible wrong-person — CHECK the data).

@@ -207,7 +207,7 @@ const DATE_QUERY_RE =
 // Requires an explicit day/date-asking frame so calendar reads ("מה יש לי מחר") are
 // never hijacked — those have no "איזה יום"/"תאריך" frame.
 const RELATIVE_DATE_QUERY_RE =
-  /(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך|מה\s+היום|באיזה\s+תאריך)[^?]*?(?:אתמול|שלשום|מחרתיים|מחר|בעוד\s+\S)|(?:אתמול|שלשום|מחרתיים|מחר)[^?]*?(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך)|qu[eé]\s+(?:d[ií]a|fecha)[^?]*?(?:anteayer|pasado\s+ma[ñn]ana|ayer|ma[ñn]ana)/iu
+  /(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך|מה\s+היום|באיזה\s+תאריך)[^?]*?(?:אתמול|שלשום|מחרתיים|מחר|בעוד\s+\S|לפני\s+\S)|(?:אתמול|שלשום|מחרתיים|מחר)[^?]*?(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך)|qu[eé]\s+(?:d[ií]a|fecha)[^?]*?(?:anteayer|pasado\s+ma[ñn]ana|ayer|ma[ñn]ana)/iu
 // A "when is the next holiday" / "when is <holiday>" question. Jewish-holiday dates
 // are a fixed table (deterministic) — answering from the table avoids the stale
 // "Independence Day 2024" hallucination. Requires a holiday noun so "מתי הפגישה"
@@ -435,6 +435,18 @@ function beodDaysOffset(t: string): { days: number; label: string } | null {
   return null
 }
 
+/** "לפני N ימים/יומיים/שבוע/שבועיים/N שבועות" → a BACKWARD day offset, or null. */
+function lifneiDaysOffset(t: string): { days: number; label: string } | null {
+  if (/לפני\s+יומיים/u.test(t)) return { days: 2, label: 'לפני יומיים' }
+  if (/לפני\s+שבועיים/u.test(t)) return { days: 14, label: 'לפני שבועיים' }
+  let m = t.match(/לפני\s+(\d+)\s+ימים/u); if (m) return { days: parseInt(m[1]!, 10), label: `לפני ${m[1]} ימים` }
+  m = t.match(/לפני\s+([א-ת]+)\s+ימים/u); if (m && HE_NUM[m[1]!]) return { days: HE_NUM[m[1]!]!, label: `לפני ${m[1]} ימים` }
+  m = t.match(/לפני\s+(\d+)\s+שבועות/u); if (m) return { days: parseInt(m[1]!, 10) * 7, label: `לפני ${m[1]} שבועות` }
+  m = t.match(/לפני\s+([א-ת]+)\s+שבועות/u); if (m && HE_NUM[m[1]!]) return { days: HE_NUM[m[1]!]! * 7, label: `לפני ${m[1]} שבועות` }
+  if (/לפני\s+שבוע(?![יו])/u.test(t)) return { days: 7, label: 'לפני שבוע' }
+  return null
+}
+
 /** "בעוד N שעות/שעה/שעתיים" → a forward hour offset, or null. */
 function beodHoursOffset(t: string): { hours: number; label: string } | null {
   if (/בעוד\s+שעתיים/u.test(t)) return { hours: 2, label: 'שעתיים' }
@@ -544,6 +556,14 @@ export function dateReasoner(text: string, now: Date): string {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate()); d.setDate(d.getDate() + addD.days)
     const day = HE_DAYS[d.getDay()] ?? ''
     return `בעוד ${addD.label} יהיה ${day}, ${dateWithoutDay(localISO(d))}.`
+  }
+
+  // "לפני N ימים/שבוע/שבועיים" — backward date arithmetic from ctx.now (deterministic).
+  const subD = lifneiDaysOffset(text)
+  if (subD) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate()); d.setDate(d.getDate() - subD.days)
+    const day = HE_DAYS[d.getDay()] ?? ''
+    return `${subD.label} היה ${day}, ${dateWithoutDay(localISO(d))}.`
   }
 
   // Next-holiday question — deterministic table, never the LLM (no hallucinated date).

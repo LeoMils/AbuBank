@@ -546,3 +546,14 @@
 - NEXT (backlog): backward date "lifnei shavua"; days-until-end-of-month; unit conversions;
   family grandchildren/in-law + verify "ben hazug shel Mor->Yael"; Spanish "recordame";
   recurring reminder; "beetzem lo" misroute.
+
+## Intelligence Parity — Cycle 21: backward date arithmetic (v0.100.0)
+- "eize yom haya lifnei shavua" fell to the LLM; dateReasoner did FORWARD ("beod") but not
+  BACKWARD arithmetic.
+- FIX: lifneiDaysOffset (lifnei N yamim/yomayim/shavua/shvuayim/N shavuot -> backward day
+  offset) + extended RELATIVE_DATE_QUERY_RE to route "lifnei" to date_query. "lifnei shavua"
+  -> yom revii 8 be-yuli; "lifnei yomayim" -> yom sheni 13 be-yuli. Forward unchanged.
+- EVIDENCE: backwardDate.test.ts 5/5 green; date suites 122 green; full suite 10915 passed /
+  0 failed; typecheck + build clean. (0.100 = 0.x foundation sequence, not a 1.0 GA.)
+- NEXT (backlog): days-until-end-of-month; unit conversions; family grandchildren/in-law +
+  verify "ben hazug shel Mor->Yael"; Spanish "recordame".

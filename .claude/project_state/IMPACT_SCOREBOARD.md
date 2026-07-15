@@ -25,6 +25,14 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.100.0 (Intelligence Parity — Cycle 21: backward date arithmetic)** — "איזה יום היה
+  לפני שבוע?" fell to the LLM; dateReasoner did FORWARD ("בעוד") but not BACKWARD arithmetic.
+  Added lifneiDaysOffset (לפני N ימים/יומיים/שבוע/שבועיים/N שבועות) + extended
+  RELATIVE_DATE_QUERY_RE to route "לפני" to date_query. "לפני שבוע" → יום רביעי 8 ביולי;
+  "לפני יומיים" → יום שני 13 ביולי. Forward unchanged. Evidence: backwardDate.test.ts 5/5
+  green; date suites 122 green; full suite 10915 green; typecheck + build clean. (0.100 =
+  0.x foundation sequence, not a 1.0 GA.) NEXT (backlog): days-until-end-of-month; unit
+  conversions; family grandchildren/in-law + verify "בן הזוג של מור→יעל"; Spanish "recordame".
 - **0.99.0 (Intelligence Parity — Cycle 20: time-in-city / timezone)** — Wide-probe
   confidently-wrong bug: "מה השעה בניו יורק?" returned the LOCAL Israel clock (10:00) instead
   of New York time — the TIME branch ignored the city. Added CITY_TZ (NY, Buenos Aires/
