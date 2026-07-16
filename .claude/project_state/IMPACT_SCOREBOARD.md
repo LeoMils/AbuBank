@@ -25,6 +25,23 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.108.0 (General Intelligence — Cycle 28: referable MUTATION — "cancel it" / friendly date)** —
+  RC5 mandate cycle 4, completes the referable-CRUD flow. Two real bugs found by driving a TWO-event
+  store through `runCognitiveTurn`: (1) "**תבטלי אותה**" / "cancel it" (a pronoun cancel with NO noun)
+  classified as `general` → needsLLM → DISPLAY=null, event NOT deleted — the mandate's exact "cancel
+  it" dead-ended to the LLM (`isDeleteIntent` only matches noun forms). (2) the UPDATE readback printed
+  raw ISO ("ל-2026-06-28"). Fixes: `isReferentialDelete` (cancel/delete verb + pronoun/bare, anchored),
+  gated on a live `calendar_event` FOCUS, routes to `calendar_delete` in classifyIntent AND broadens
+  `deletePlugin.match` (else the plugin re-check would still drop it); delete/modify now resolve the
+  target via the focused event (person) with last-appointment fallback; `modifyReasoner` readback uses
+  `formatHebrewDate` → "28 ביוני 2026, יום ראשון". Additive/guarded — the referential path only fires
+  with a focus; explicit-name and last-event paths unchanged. Evidence (CODE):
+  `calendarReferableMutation.test.ts` 4/4 (red→green: cancel-it single, move→friendly-date + right
+  referent, cancel-it after move keeps רפי, cancel-the-last-meeting) through the runtime + real store;
+  benchmark floor **100%**; FULL suite **10972 pass / 2 todo**; typecheck + build clean. Voice/Realtime
+  untouched. The referable-CRUD flow (create→where→move→read→cancel, He) is now GREEN end-to-end at
+  CODE level. NEXT: take a fresh PREVIEW and spot-check the flow (mandate: preview parity at
+  milestones); then persistent memory (saved facts + cross-session summaries).
 - **0.107.0 (General Intelligence — Cycle 27: named-weekday calendar READ)** — RC5 mandate cycle 3,
   same referable-CRUD flow, divergence #3. "מה יש לי ביום חמישי?" answered "אין כלום ביומן ליום הזה"
   — confidently WRONG, because `calendarReadReasoner` parsed only היום/מחר/מחרתיים/השבוע and otherwise

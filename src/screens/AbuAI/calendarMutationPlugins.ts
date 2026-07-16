@@ -9,12 +9,16 @@
 import type { DomainPlugin, PluginResult } from './domainPlugin'
 import {
   reminderReasoner, recurringReasoner, deleteReasoner, modifyReasoner,
-  isReminderIntent, isRecurringIntent, isDeleteIntent, isModifyIntent,
+  isReminderIntent, isRecurringIntent, isDeleteIntent, isModifyIntent, isReferentialDelete,
 } from './calendarMutationReasoner'
 import { isCreateIntent } from './calendarCreate'
 import { registerPlugin } from './domainPlanner'
+import type { RuntimeState } from './cognitiveRuntime'
 
 const AUDIO = /(?:לא\s+שומע|לא\s+שמעתי|הקול\s+נעלם|אין\s+קול)/u
+/** The person of the event currently in focus, for "cancel it" / "move it" targeting. */
+const focusPersonOf = (state: RuntimeState): string | null =>
+  state.focus?.kind === 'calendar_event' ? state.focus.label : null
 
 export const reminderPlugin: DomainPlugin = {
   name: 'reminder',
@@ -44,15 +48,17 @@ export const recurringPlugin: DomainPlugin = {
 export const deletePlugin: DomainPlugin = {
   name: 'delete',
   domains: ['calendar_delete'],
-  match(ctx) { return isDeleteIntent(ctx.input) ? 0.9 : 0 },
-  reason(ctx): PluginResult { const r = deleteReasoner(ctx.input); return { handled: true, answer: r.text, sideEffect: r.sideEffect, confidence: 0.9 } },
+  // Explicit delete phrasing, OR a referential "cancel it" when an event is in focus
+  // (the pronoun form isDeleteIntent misses — otherwise it dead-ends to the LLM).
+  match(ctx) { return (isDeleteIntent(ctx.input) || (!!focusPersonOf(ctx.state) && isReferentialDelete(ctx.input))) ? 0.9 : 0 },
+  reason(ctx): PluginResult { const r = deleteReasoner(ctx.input, { focusPerson: focusPersonOf(ctx.state) }); return { handled: true, answer: r.text, sideEffect: r.sideEffect, confidence: 0.9 } },
 }
 
 export const modifyPlugin: DomainPlugin = {
   name: 'modify',
   domains: ['calendar_update'],
   match(ctx) { return isModifyIntent(ctx.input) ? 0.9 : 0 },
-  reason(ctx): PluginResult { const r = modifyReasoner(ctx.input); return { handled: true, answer: r.text, sideEffect: r.sideEffect, confidence: 0.9 } },
+  reason(ctx): PluginResult { const r = modifyReasoner(ctx.input, { focusPerson: focusPersonOf(ctx.state) }); return { handled: true, answer: r.text, sideEffect: r.sideEffect, confidence: 0.9 } },
 }
 
 export const CALENDAR_MUTATION_PLUGINS: readonly DomainPlugin[] = [reminderPlugin, recurringPlugin, deletePlugin, modifyPlugin]

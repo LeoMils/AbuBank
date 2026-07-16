@@ -1,5 +1,21 @@
 # WAR_ROOM_LOG
 
+## 2026-07-16 — 0.108.0: RC5 General-Intelligence cycle 4 — referable MUTATION (text-only)
+- Completes the referable-CRUD flow. Drove a TWO-event store through `runCognitiveTurn`; two real bugs:
+  (1) "תבטלי אותה" (cancel IT — pronoun, no noun) → intent=general, needsLLM, DISPLAY=null, event NOT
+  deleted (the mandate's exact "cancel it" dead-ended to the LLM). (2) UPDATE readback printed raw ISO.
+- RED-first: `calendarReferableMutation.test.ts` — 3/4 red (both cancel-it cases + the friendly-date).
+- FIX (general, gated): `isReferentialDelete` = cancel/delete verb + pronoun/bare, anchored; when a
+  `calendar_event` is in FOCUS it routes to `calendar_delete` in classifyIntent AND broadens
+  `deletePlugin.match` (the plugin re-checks intent, so classification alone was not enough). delete/
+  modify resolve the target via the focused event (person) with last-appointment fallback;
+  `modifyReasoner` readback now uses `formatHebrewDate`. Explicit-name + last-event paths unchanged.
+- VALIDATION: calendarReferableMutation 4/4 (red→green); benchmark **100%**; FULL suite **10972 pass /
+  2 todo / 0 fail** (345 files); typecheck + build clean. Version 0.107.0→0.108.0 synced across
+  version.ts/health.ts/version.test.ts.
+- STATUS: create→where→move→read→cancel (Hebrew) is GREEN end-to-end at CODE level. NEXT: fresh PREVIEW
+  spot-check (preview parity milestone); then persistent memory.
+
 ## 2026-07-16 — 0.107.0: RC5 General-Intelligence cycle 3 — named-weekday READ (text-only)
 - Same referable-CRUD flow, divergence #3 (found in cycle 2's mechanism dump): "מה יש לי ביום חמישי?"
   → "אין כלום ביומן ליום הזה" while the event IS on Thursday. Root: `calendarReadReasoner` handled only

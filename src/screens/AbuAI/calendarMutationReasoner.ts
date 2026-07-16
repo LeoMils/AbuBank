@@ -18,7 +18,7 @@ import { createReminder, createDefaultAlertPolicy } from '../AbuCalendar/reminde
 import type { ReminderDraft } from '../AbuCalendar/reminders/types'
 import { isExitCurrentFlow } from './aiTaskInterpreter'
 import {
-  loadAppointments, addAppointment, deleteAppointment, updateAppointment,
+  loadAppointments, addAppointment, deleteAppointment, updateAppointment, formatHebrewDate,
 } from '../AbuCalendar/service'
 
 export type MutationSideEffect =
@@ -122,12 +122,37 @@ export function recurringReasoner(text: string): MutationResult {
   return { text: 'לא הצליח להישמר. ננסה שוב?', sideEffect: 'save_failed' }
 }
 
+// A bare cancel/delete verb that REFERS to the event in focus by a pronoun
+// ("תבטלי אותה", "תבטלי את זה") or by the bare noun ("תבטלי את הפגישה") — no explicit
+// person. isDeleteIntent misses the pronoun form, so "cancel it" would dead-end to the
+// LLM; the controller uses this (gated on a calendar focus) to route it to delete.
+const REFERENTIAL_DELETE_RE =
+  /^(?:תבטל[יי]?|בטל[יי]?|לבטל|תמחק[יי]?|מחק[יי]?|למחוק|תסיר[יי]?|הסיר[יי]?|תוריד[יי]?)\s*(?:את\s+)?(?:אות[הו]|ז[הו]את?|ה?פגיש\S*|ה?תור|ה?מפגש|ה?ביקור|ה?אירוע)?\s*[?.!]*$/u
+export function isReferentialDelete(text: string): boolean {
+  return REFERENTIAL_DELETE_RE.test(text.trim())
+}
+
+/** Friendly Hebrew date for a readback ("28 ביוני 2026, יום ראשון"), never raw ISO. */
+function friendlyDate(iso: string): string {
+  try { return formatHebrewDate(iso) } catch { return iso }
+}
+
 // ── Delete ──
-export function deleteReasoner(text: string): MutationResult {
+export function deleteReasoner(text: string, opts?: { focusPerson?: string | null }): MutationResult {
   const appts = loadAppointments()
   const nameMatch = text.match(/עם\s+(\S+)|אצל\s+(\S+)/u)
   const term = nameMatch?.[1] ?? nameMatch?.[2] ?? ''
-  const matches = term ? appts.filter(a => a.title.toLowerCase().includes(term.toLowerCase())) : appts.slice(-1)
+  // Explicit person named in the turn wins; else the event in FOCUS ("cancel it" —
+  // the one just created/discussed); else the last appointment.
+  let matches: typeof appts
+  if (term) {
+    matches = appts.filter(a => a.title.toLowerCase().includes(term.toLowerCase()))
+  } else if (opts?.focusPerson) {
+    const focused = appts.filter(a => a.personName === opts.focusPerson || a.title.includes(opts.focusPerson!))
+    matches = focused.length ? focused.slice(-1) : appts.slice(-1)
+  } else {
+    matches = appts.slice(-1)
+  }
   if (matches.length === 0) return { text: 'אין פגישה כזו ביומן.', sideEffect: null }
   if (matches.length === 1) {
     deleteAppointment(matches[0]!.id)
@@ -139,12 +164,17 @@ export function deleteReasoner(text: string): MutationResult {
 }
 
 // ── Modify / update ──
-export function modifyReasoner(text: string): MutationResult {
+export function modifyReasoner(text: string, opts?: { focusPerson?: string | null }): MutationResult {
   const appts = loadAppointments()
   if (appts.length === 0) return { text: 'אין כלום ביומן לשנות.', sideEffect: null }
   const nameMatch = text.match(/את\s+(?:ה?(?:פגישה|תור|ביקור)\s+)?(?:עם\s+)?(\S+)/iu)
   const searchName = nameMatch?.[1] ?? ''
-  let target = searchName ? appts.find(a => a.title.toLowerCase().includes(searchName.toLowerCase())) : appts[appts.length - 1]
+  // Explicit named event wins; else the event in FOCUS ("move it"); else the last one.
+  let target = searchName ? appts.find(a => a.title.toLowerCase().includes(searchName.toLowerCase())) : undefined
+  if (!target && opts?.focusPerson) {
+    const focused = appts.filter(a => a.personName === opts.focusPerson || a.title.includes(opts.focusPerson!))
+    target = focused[focused.length - 1]
+  }
   if (!target) target = appts[appts.length - 1]!
   const newDate = parseCreateDate(text)
   // Natural modify phrasing uses ל ("לשעה תשע", "לתשע"); the time parsers expect ב.
@@ -159,7 +189,7 @@ export function modifyReasoner(text: string): MutationResult {
   if (Object.keys(updates).length === 0) return { text: 'לא הבנתי מה לשנות. תגידי לאיזה יום או שעה להזיז.', sideEffect: null }
   updateAppointment(target.id, updates)
   const timeStr = updates.time ? ` בשעה ${updates.time}` : ''
-  const dateStr = updates.date ? ` ל-${updates.date}` : ''
+  const dateStr = updates.date ? ` ל-${friendlyDate(updates.date)}` : ''
   return { text: `עדכנתי: ${target.title}${dateStr}${timeStr}.`, sideEffect: 'updated' }
 }
 

@@ -43,7 +43,7 @@ import { classifySignalV2, reduceV2, conversationV2Enabled } from './conversatio
 import { recoverTranscript } from './semanticIntelligenceEngine'
 import { understandMeeting } from './meetingIntelligence'
 import { buildSmartMeetingV2 as understandMeetingSmart } from './calendarEventBuilderV2'
-import { isReminderIntent, isRecurringIntent, type MutationSideEffect } from './calendarMutationReasoner'
+import { isReminderIntent, isRecurringIntent, isReferentialDelete, type MutationSideEffect } from './calendarMutationReasoner'
 import { runPlan } from './domainPlanner'
 import { registerCalendarMutationPlugins } from './calendarMutationPlugins'
 import type { ReminderDraft } from '../AbuCalendar/reminders/types'
@@ -339,6 +339,11 @@ export function classifyIntent(
   // Live/current-info that onlineIntent misses (buses/trains/weather) — before the
   // calendar verbs so "מתי האוטובוס" is never mistaken for a calendar create.
   if (ONLINE_EXTRA_RE.test(t) && !shouldBlockOnlineForPersonal(t)) return 'online'
+
+  // "תבטלי אותה" / "cancel it" — a bare cancel/delete verb referring (pronoun or bare)
+  // to the calendar event in FOCUS, with NO pending draft. isDeleteIntent misses the
+  // pronoun form, so without this it dead-ends to the LLM instead of deleting.
+  if (state.focus?.kind === 'calendar_event' && isReferentialDelete(t)) return 'calendar_delete'
 
   // ── AI Task Interpreter — AUTHORITATIVE domain decision ──────────────────────
   // When the interpreter is confident, its task OVERRIDES the legacy cues below (now the
