@@ -74,6 +74,9 @@ import {
   shapeCreateConfirmES, shapeCreateClarifyES, shapeCreateCancelledES, shapeCreateSavedES,
 } from './responseShaper'
 import { normalizeInput } from './understandingOrchestrator'
+import {
+  memoryCommandType, parseRememberFact, parseForgetQuery, saveMemory, forgetMemories, loadMemories,
+} from './savedMemory'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export type RuntimeIntent =
@@ -86,6 +89,7 @@ export type RuntimeIntent =
   | 'calendar_delete'
   | 'reminder'
   | 'confirmation'      // resolving a pending calendar draft (yes/no/change/audio)
+  | 'memory'            // durable saved-memory command (remember / recall / forget)
   | 'family'
   | 'online'
   | 'continuation'
@@ -339,6 +343,10 @@ export function classifyIntent(
   // Live/current-info that onlineIntent misses (buses/trains/weather) — before the
   // calendar verbs so "מתי האוטובוס" is never mistaken for a calendar create.
   if (ONLINE_EXTRA_RE.test(t) && !shouldBlockOnlineForPersonal(t)) return 'online'
+
+  // Durable saved-memory command ("תזכרי ש…" / "מה את זוכרת עליי" / "תשכחי ש…") — handled
+  // deterministically + persistently, never punted to the LLM (which has no store).
+  if (memoryCommandType(t)) return 'memory'
 
   // "תבטלי אותה" / "cancel it" — a bare cancel/delete verb referring (pronoun or bare)
   // to the calendar event in FOCUS, with NO pending draft. isDeleteIntent misses the
@@ -1351,6 +1359,39 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
         needsLLM: false, needsOnline: false, online: null, grounding: null,
         sideEffect: null, verifier, state: { ...s2, lastIntent: intent },
       }
+    }
+
+    case 'memory': {
+      // Durable saved memories — persisted across sessions (not in RuntimeState).
+      const es = lang === 'es'
+      const esOpt = es ? { lang: 'es' as const } : {}
+      const cmd = memoryCommandType(normalized)
+      if (cmd === 'save') {
+        const fact = parseRememberFact(normalized) ?? ''
+        const r = saveMemory(fact)
+        if (r.ok) return settle(es ? `Listo, me acuerdo: ${fact}.` : `בסדר, אני אזכור את זה: ${fact}.`, { state, dataAvailable: true, ...esOpt })
+        if (r.reason === 'sensitive') return settle(es ? 'Eso mejor no lo guardo, pero acá estoy con vos.' : 'את זה אני מעדיפה לא לשמור, אבל אני כאן איתך.', { state, dataAvailable: true, ...esOpt })
+        if (r.reason === 'duplicate') return settle(es ? 'Eso ya me lo acuerdo.' : 'את זה אני כבר זוכרת.', { state, dataAvailable: true, ...esOpt })
+        return settle(es ? '¿Qué querés que recuerde?' : 'מה תרצי שאזכור?', { state, dataAvailable: false, ...esOpt })
+      }
+      if (cmd === 'forget') {
+        const removed = forgetMemories(parseForgetQuery(normalized) ?? '')
+        return settle(removed.length
+          ? (es ? 'Listo, me lo olvido.' : 'בסדר, שכחתי את זה.')
+          : (es ? 'No tengo eso guardado.' : 'לא מצאתי דבר כזה בזיכרון שלי.'),
+          { state, dataAvailable: removed.length > 0, ...esOpt })
+      }
+      // recall
+      const list = loadMemories()
+      if (list.length === 0) {
+        return settle(es
+          ? 'Todavía no me contaste nada para recordar. Decime qué es importante para vos y lo guardo.'
+          : 'עוד לא סיפרת לי משהו שאזכור. תגידי לי מה חשוב לך ואני אשמור.',
+          { state, dataAvailable: false, ...esOpt })
+      }
+      const items = list.map((m) => m.text).join('; ')
+      return settle(es ? `Me acuerdo de esto sobre vos: ${items}.` : `הנה מה שאני זוכרת עלייך: ${items}.`,
+        { state, dataAvailable: true, ...esOpt })
     }
 
     case 'audio_complaint':

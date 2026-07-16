@@ -1,5 +1,24 @@
 # WAR_ROOM_LOG
 
+## 2026-07-16 — 0.109.0: RC5 General-Intelligence cycle 5 — SAVED MEMORY (text-only)
+- MANDATE part B (memory, ChatGPT-style). DISCOVERY first (mandate: reuse, don't rebuild): the
+  passive rolling `ConversationSummary` (service.ts) already persists (durable) + injects into the
+  LLM; `durableStore` is the IndexedDB-backed persistence layer with reserved keys. GAP: no explicit
+  user-COMMANDED memory — "תזכרי ש…" fell to the LLM, which the SYSTEM_PROMPT tells has no cross-
+  session store, so nothing was ever truly saved.
+- BUILT `savedMemory.ts` (durable-backed, reuses `durable`): saveMemory / loadMemories /
+  forgetMemories + command detection (SAVE requires the "ש"/"que" complementizer so a reminder is
+  never captured) + a PRIVACY filter at the write boundary (phone/medical/financial/street refused).
+  New runtime intent `memory` handles save/recall/forget deterministically BEFORE the LLM.
+- RED-first (new capability: pre-wiring these were `general`→needsLLM): `savedMemory.test.ts` asserts
+  `intent==='memory'` and durable persistence across FRESH sessions.
+- VALIDATION: savedMemory 7/7 (A stores → fresh B recalls → C forgets; privacy refusal; multi-fact;
+  Spanish; reminder-not-captured); benchmark **100%**; FULL suite **10980 pass / 2 todo / 0 fail**
+  (346 files); typecheck + build clean (also added the `memory` case to metaReasoner's exhaustive
+  DOMAIN_OF map). Version 0.108.0→0.109.0 synced across version.ts/health.ts/version.test.ts.
+- NEXT: inject saved memories into the general-chat LLM context (source-contract test); then a fresh
+  PREVIEW parity milestone across the calendar + memory flows.
+
 ## 2026-07-16 — 0.108.0: RC5 General-Intelligence cycle 4 — referable MUTATION (text-only)
 - Completes the referable-CRUD flow. Drove a TWO-event store through `runCognitiveTurn`; two real bugs:
   (1) "תבטלי אותה" (cancel IT — pronoun, no noun) → intent=general, needsLLM, DISPLAY=null, event NOT

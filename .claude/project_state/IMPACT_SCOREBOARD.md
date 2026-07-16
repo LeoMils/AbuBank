@@ -25,6 +25,22 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.109.0 (General Intelligence — Cycle 29: SAVED MEMORY — durable user-commanded facts)** — RC5
+  mandate part B (memory). Discovery first (reuse, don't rebuild): the passive rolling
+  `ConversationSummary` (service.ts) already persists + injects into the LLM, and `durableStore`
+  (IndexedDB + mirror) is the persistence layer — but there was NO explicit user-COMMANDED memory:
+  "תזכרי ש…" fell to the LLM, which is told it has no store, so nothing was ever truly saved. New
+  `savedMemory.ts` (durable-backed) + a `memory` runtime intent: "תזכרי ש<fact>" persists, "מה את
+  זוכרת עליי?" recalls, "תשכחי ש…" forgets — He + Es (recordá que / qué te acordás de mí / olvidate).
+  PRIVACY enforced at the write boundary (phone/medical/financial/street refused, never stored). The
+  "ש"/"que" complementizer is required so a reminder ("תזכירי לי לקנות חלב") is NOT captured. Proven
+  by MULTI-SESSION replays through the single runtime: session A stores → a FRESH IDLE_RUNTIME session
+  B recalls (the fact lives in durable, not RuntimeState) → C forgets; + privacy refusal + multi-fact
+  + Spanish + reminder-not-captured. Evidence (CODE): `savedMemory.test.ts` 7/7; benchmark floor
+  **100%**; FULL suite **10980 pass / 2 todo**; typecheck + build clean. Voice/Realtime untouched.
+  NEXT: inject saved memories into the general-chat LLM system context (so open questions use them,
+  like the summary does) with a source-contract test; consider "what do you remember" surfacing in
+  the UI. Then: preview parity milestone.
 - **0.108.0 (General Intelligence — Cycle 28: referable MUTATION — "cancel it" / friendly date)** —
   RC5 mandate cycle 4, completes the referable-CRUD flow. Two real bugs found by driving a TWO-event
   store through `runCognitiveTurn`: (1) "**תבטלי אותה**" / "cancel it" (a pronoun cancel with NO noun)

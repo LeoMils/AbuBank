@@ -37,7 +37,7 @@ const DOMAIN_OF: Record<RuntimeIntent, MetaDomain> = {
   reminder: 'calendar',
   confirmation: 'confirmation', family: 'family', online: 'online',
   continuation: 'continuation', frustration: 'frustration', audio_complaint: 'audio',
-  math: 'general', general: 'general', unknown: 'unknown',
+  memory: 'general', math: 'general', general: 'general', unknown: 'unknown',
 }
 
 export function metaReason(text: string, state: RuntimeState = IDLE_RUNTIME): MetaResult {
