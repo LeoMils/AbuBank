@@ -25,6 +25,25 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.112.0 (General Intelligence — Cycle 32: UI CUTOVER — delete/modify + focus to the runtime)** —
+  Closed the wiring gap found in 0.111.0. `index.tsx` now (a) adds `calendar_delete` + `calendar_update`
+  to `RUNTIME_OWNED`, (b) persists the conversation `focus` across turns via a new `cogFocusRef` —
+  threaded INTO the runtime state each turn, carried back OUT of every runtime-owned decision, and SET
+  after a legacy save to the saved event's person — and (c) REMOVES the duplicate delete/modify handlers
+  (and their now-unused imports). Result: referable reads ("איפה אני פוגשת אותו?") and pronoun mutations
+  ("תבטלי אותה" / "תעבירי אותה ליום ראשון") now reach Martita in the app, with a human Hebrew date
+  readback — one runtime path per capability (the mandate rule). Ordering verified safe: these turns
+  already passed the free-speech advisory (they previously reached the duplicate handlers / the LLM), so
+  routing them through the earlier runtime block does not newly intercept anything. Create/confirm stay
+  on the legacy path (deliberate — the elaborate voice/pronoun/birthday-fusion flow is a later cutover).
+  Also lowered a stale sanity bound in companionRuntimeGuard (fewer inline literals is the intended
+  outcome of removing the duplicates; the real banned-phrase assertion is unchanged). Evidence
+  (CODE + source-contract): calendarReferableMutation 7/7 (runtime behaviour + a cutover wiring
+  contract on index.tsx); benchmark **100%**; FULL suite **10986 pass / 2 todo**; typecheck + build
+  clean. **Live-app behaviour is PREVIEW-pending** (source-contract proves the wiring, not the
+  end-to-end render). Updated docs/LEO_TYPED_TEST_SCRIPT.md (items 23a–23c moved from the gap to ✅
+  RUNTIME). Voice/Realtime untouched. NEXT: fresh PREVIEW to confirm the flow end-to-end (needs a
+  deploy trigger); optionally cut create/confirm over too.
 - **0.111.0 (General Intelligence — Cycle 31: memory UI-wired + LEO typed test script + HONESTY finding)**
   — While preparing `docs/LEO_TYPED_TEST_SCRIPT.md` (~30 numbered bilingual typed checks, expected
   answers captured from the REAL runtime), a truth-audit of `index.tsx` surfaced a **wiring gap**: the

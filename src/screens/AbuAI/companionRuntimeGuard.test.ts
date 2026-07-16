@@ -22,7 +22,10 @@ describe('runtime answer-path guard', () => {
   it('no hardcoded assistant string literal contains a banned phrase', () => {
     // Extract content: '...' / "..." / `...` literals.
     const literals = [...SRC.matchAll(/content:\s*(['"`])((?:\\.|(?!\1).)*)\1/g)].map(m => m[2] ?? '')
-    expect(literals.length).toBeGreaterThan(10) // sanity: we found the emissions
+    // Sanity: we found the emissions. (Lowered after the delete/modify cutover to the
+    // runtime removed several duplicate hardcoded strings from index.tsx — fewer inline
+    // literals is the intended outcome of collapsing to one runtime path.)
+    expect(literals.length).toBeGreaterThanOrEqual(8)
     for (const lit of literals) {
       const low = lit.toLowerCase()
       for (const banned of BANNED_PHRASES) {

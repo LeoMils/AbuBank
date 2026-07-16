@@ -12,6 +12,8 @@
  * Evidence class: CODE (drives the real single runtime + real store round-trip).
  */
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
+import fs from 'fs'
+import path from 'path'
 import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState } from './cognitiveRuntime'
 import { loadAppointments } from '../AbuCalendar/service'
 
@@ -87,5 +89,29 @@ describe('CALENDAR REFERABLE MUTATION — "move it" / "cancel it"', () => {
     expect(last.sideEffect).toBe('deleted')
     expect(titles().some(t => t.includes('גבי'))).toBe(false)
     expect(titles().some(t => t.includes('רפי'))).toBe(true)
+  })
+})
+
+describe('UI CUTOVER — index.tsx routes delete/modify through the runtime (one path)', () => {
+  const idx = fs.readFileSync(path.resolve(__dirname, '../../..', 'src/screens/AbuAI/index.tsx'), 'utf8')
+
+  it('RUNTIME_OWNED now includes calendar_delete + calendar_update', () => {
+    const m = idx.match(/const RUNTIME_OWNED = new Set\(\[([^\]]*)\]\)/)
+    expect(m).not.toBeNull()
+    expect(m![1]).toContain("'calendar_delete'")
+    expect(m![1]).toContain("'calendar_update'")
+  })
+
+  it('the conversation focus is persisted across turns and passed into the runtime', () => {
+    expect(idx).toContain('cogFocusRef')
+    expect(idx).toContain('focus: cogFocusRef.current')
+    // set after a save so a follow-up "cancel it" / "where do I meet him" resolves.
+    expect(/cogFocusRef\.current = .*kind: 'calendar_event'/.test(idx)).toBe(true)
+  })
+
+  it('the DUPLICATE delete/modify handlers are gone (no second path)', () => {
+    // The legacy handlers emitted these exact strings; the runtime path does not.
+    expect(idx).not.toContain('אין כלום ביומן לשנות.')
+    expect(idx).not.toContain('last created if no name specified')
   })
 })

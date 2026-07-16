@@ -1,6 +1,6 @@
 # LEO TYPED TEST SCRIPT — AbuAI (text layer)
 
-**Build:** 0.111.0-memory-ui-wired · branch `rc5/cognitive-architecture-and-acceptance`
+**Build:** 0.112.0-ui-cutover · branch `rc5/cognitive-architecture-and-acceptance`
 **Scope:** TYPED input only (voice/Realtime is a later mission).
 **How to use:** type each line into AbuAI and compare to *Expected*. Answers were
 captured from the **actual runtime** (`runCognitiveTurn`) with the clock pinned to
@@ -58,13 +58,16 @@ captured from the **actual runtime** (`runCognitiveTurn`) with the clock pinned 
 20. `מתי הפגישה עם רפי` → **✅ RUNTIME** — searches all days; `אין לך פגישה עם רפי ביומן.`
     when none.
 
-### Calendar — create & confirm (deployed UI path)
+### Calendar — create, confirm, referable read & mutation
 21. `תקבעי פגישה עם רפי מחר בשלוש בבית קפה מרוקו` → **✅ LEGACY-UI** — a confirm card:
     `פגישה עם רפי מחר בשלוש אחר הצהריים. בית קפה מרוקו. נכון?`
 22. `כן` → **✅ LEGACY-UI** — saves and reads back, e.g.
     `קבוע — פגישה עם רפי 17 ביולי 2026, יום שישי בשעה 15:00. בית קפה מרוקו`
-23. `תבטלי את הפגישה עם רפי` → **✅ LEGACY-UI** — `מחקתי את פגישה עם רפי בשלוש אחר הצהריים.`
-    *(explicit-name delete works; the pronoun form “cancel it” is a GAP — see Part B.)*
+    *(this now also sets the conversation FOCUS to that event.)*
+23a. …then `איפה אני פוגשת אותו?` → **✅ RUNTIME** — `הפגישה עם רפי בית קפה מרוקו.`
+23b. …then `תעבירי אותה ליום ראשון` → **✅ RUNTIME** — `עדכנתי: פגישה עם רפי ל-19 ביולי 2026, יום ראשון.` *(next-Sunday date reflects run-day)*
+23c. …then `תבטלי אותה` → **✅ RUNTIME** — `מחקתי את פגישה עם רפי בשעה 15:00.`
+    *(pronoun “cancel it” now resolves to the focused event — was Part B, now wired in 0.112.0.)*
 
 ### Memory (durable, user-commanded — now wired to the UI)
 24. `תזכרי שאני אוהבת יין אדום` → **✅ RUNTIME** — `בסדר, אני אזכור את זה: אני אוהבת יין אדום.`
@@ -82,31 +85,31 @@ captured from the **actual runtime** (`runCognitiveTurn`) with the clock pinned 
 
 ---
 
-## Part B — known wiring gap (runtime-proven, NOT yet reaching the deployed UI)
+## Part B — remaining wiring status (honest)
 
-These behave correctly in the cognitive runtime (covered by
-`calendarReferability.test.ts` + `calendarReferableMutation.test.ts`), but the
-deployed `index.tsx` still uses its **own** calendar handlers for these turns and
-does **not thread the conversation `focus`** across turns — so they will currently
-fall to the LLM/legacy path in the app. Re-run these after the UI cutover.
+The referable-calendar gap that used to be here was **closed in 0.112.0** (the
+UI cutover): `index.tsx` now routes `calendar_delete` / `calendar_update` through
+the runtime, **persists the conversation `focus`** across turns (set after a save),
+and the duplicate delete/modify handlers were removed — one runtime path. Those
+turns are items 23a–23c above.
 
-- After creating a meeting: `איפה אני פוגשת אותו?` → *(runtime)* `הפגישה עם רפי בית קפה מרוקו.`
-- After creating a meeting: `מתי אני נפגשת איתו?` → *(runtime)* `הפגישה עם רפי … בשעה 15:00.`
-- `תעבירי אותה ליום ראשון` → *(runtime)* `עדכנתי: פגישה עם רפי ל-19 ביולי 2026, יום ראשון.`
-  *(friendly Hebrew date; the legacy UI handler shows a rawer form.)*
-- `תבטלי אותה` (cancel **it**, pronoun) → *(runtime)* deletes the focused event; the
-  legacy UI does not recognise the pronoun form and sends it to the LLM.
+Still on their existing paths (works, but not the runtime), by deliberate scope:
+- **Create / confirm** (items 21–22) — the elaborate legacy create flow (voice,
+  pronoun guard, birthday-reminder fusion) is intentionally left for a later,
+  separate cutover.
+- **Math** (items 15–17) — currently answered by the model (correct, non-deterministic).
+- **General / online** (items 29–30) — model / live retrieval by design.
 
-**Root cause / next work:** `index.tsx` defers only 6 intents to `runCognitiveTurn`
-(`RUNTIME_OWNED`) and keeps duplicate create/delete/modify handlers — a violation of
-the “one runtime path per capability” rule. The fix is to cut the UI’s create/confirm/
-delete/modify over to the runtime **and persist `focus`** across turns, so referable
-reads and pronoun mutations work for Martita. This is a medium-risk UI change and is
-tracked as the next cycle.
+**Important honesty note:** items marked **✅ RUNTIME** are proven at **CODE** level
+(runtime behaviour + a source-contract that the UI wiring exists), NOT yet at
+**PREVIEW**. The wiring is verified statically; the live end-to-end behaviour must
+still be confirmed on a deployed preview.
 
 ---
 
 ## Evidence classes (honest)
-- Parts A/B *Expected* strings: **CODE** (captured from the real runtime, deterministic).
+- *Expected* strings: **CODE** (captured from the real runtime, deterministic).
+- ✅ RUNTIME wiring: **CODE + source-contract** (the UI routes these to the runtime);
+  live end-to-end is **PREVIEW-pending**.
 - Live-app behaviour on the preview: **PREVIEW** once verified there (not yet done).
 - Physical device / voice: **not covered here** (later mission).

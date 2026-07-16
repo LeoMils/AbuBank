@@ -10,7 +10,7 @@ import { compileHumanAnswer } from './answerCompiler'
 import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
 import { toSpokenText } from './spokenPersona'
-import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState } from './cognitiveRuntime'
+import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState, type ConversationFocus } from './cognitiveRuntime'
 import { ExecutiveCognitiveController } from './executiveCognitiveController'
 import { buildFullTurnTools } from './fullTurnBridge'
 import { shouldUseWebSpeechPrimary, LISTEN_WATCHDOG_MS } from '../../services/sttStrategy'
@@ -122,7 +122,7 @@ import { ChatBubble } from './ChatBubble'
 import { BackButton } from '../../components/BackButton'
 import { ScreenHeader } from '../../components/ScreenHeader'
 import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
-import { type CalendarCreateState, IDLE_STATE, isCreateIntent, isRecurringIntent, startCreate, resolvePendingMessage, isConfirm, isCancel, isSearchIntent, searchAppointments, isDeleteIntent, isModifyIntent } from './calendarCreate'
+import { type CalendarCreateState, IDLE_STATE, isCreateIntent, isRecurringIntent, startCreate, resolvePendingMessage, isConfirm, isCancel, isSearchIntent, searchAppointments } from './calendarCreate'
 import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateUnclear, shapeCreateClarify, timeInWords, dateLabel } from './responseShaper'
 import { detectReminderIntent, parseReminder } from '../AbuCalendar/reminders/reminderParser'
 // reminderStore (delivery + durable store, a heavy chunk) is loaded ON DEMAND in
@@ -132,7 +132,7 @@ import type { ReminderDraft } from '../AbuCalendar/reminders/types'
 import { routePersonalQuery } from './router'
 import { understandMeetingSemantic, mergedToCreateState } from './semanticUnderstanding'
 import { orchestrate } from './understandingOrchestrator'
-import { addAppointment, deleteAppointment, updateAppointment, loadAppointments, findConflicts } from '../AbuCalendar/service'
+import { addAppointment, loadAppointments, findConflicts } from '../AbuCalendar/service'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
 import { resolvePronouns } from './pronounResolver'
 import { loadGraph } from './familyGraph'
@@ -313,6 +313,10 @@ export function AbuAI() {
   // capture a stale state value otherwise).
   const createStateRef = useRef<CalendarCreateState>(IDLE_STATE)
   useEffect(() => { createStateRef.current = createState }, [createState])
+  // The calendar event currently in FOCUS, persisted ACROSS turns so the runtime can
+  // answer referable reads ("איפה אני פוגשת אותו?") and pronoun mutations ("תבטלי אותה")
+  // about the just-created/discussed event. Set after a save; updated by the runtime.
+  const cogFocusRef = useRef<ConversationFocus | null>(null)
 
   // Voice single-flight token. A voice turn awaits the controller; if the user
   // interrupts, a phone call returns, or she speaks again mid-await, we bump this
@@ -652,6 +656,10 @@ export function AbuAI() {
           })
           soundSuccess()
           setCreateState(IDLE_STATE)
+          // Focus the just-saved event so a follow-up ("איפה אני פוגשת אותו?", "תבטלי
+          // אותה") is answered by the runtime from THIS event, not the LLM.
+          const savedPerson = d.person ?? ((d.title ?? '').replace(/^פגישה עם\s+/u, '').trim() || null)
+          cogFocusRef.current = savedPerson ? { kind: 'calendar_event', label: savedPerson } : null
           // P0-4: Deterministic readback — verify appointment was saved
           const verified = loadAppointments().find(a => a.title === d.title && a.date === d.date && (a.time ?? null) === (d.time ?? null))
           let savedText: string
@@ -811,7 +819,10 @@ export function AbuAI() {
         // the narrow "מה יש לי היום/מחר" grounded read.
         // `memory` is a NEW intent with NO duplicate legacy handler below, so the
         // runtime owns it outright (durable saved facts: remember / recall / forget).
-        const RUNTIME_OWNED = new Set(['date_query', 'calendar_search', 'audio_complaint', 'frustration', 'calendar_read', 'family', 'memory'])
+        // `calendar_delete` / `calendar_update` are now the runtime's (referable
+        // "cancel it"/"move it" via the persisted focus + a human date readback),
+        // replacing the duplicate handlers that used to live below.
+        const RUNTIME_OWNED = new Set(['date_query', 'calendar_search', 'audio_complaint', 'frustration', 'calendar_read', 'family', 'memory', 'calendar_delete', 'calendar_update'])
         const decision = runCognitiveTurn(
           {
             ...IDLE_RUNTIME,
@@ -819,6 +830,7 @@ export function AbuAI() {
             createState,
             frustrationCount: cogFrustrationRef.current.count,
             frustrationVariant: cogFrustrationRef.current.variant,
+            focus: cogFocusRef.current, // referable reads + pronoun mutations
           },
           msgText,
           { messages, now: new Date() },
@@ -830,6 +842,7 @@ export function AbuAI() {
             count: decision.state.frustrationCount,
             variant: decision.state.frustrationVariant,
           }
+          cogFocusRef.current = decision.state.focus ?? null // carry the focused event forward
           setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(decision.display!, companionPlan), timestamp: Date.now() }])
           setLoading(false); streamingMsgIdRef.current = null
           return
@@ -916,82 +929,12 @@ export function AbuAI() {
         return
       }
 
-      // ─── Calendar Delete ──────────────────────────────────────────────────
-      if (isDeleteIntent(msgText)) {
-        const appts = loadAppointments()
-        const nameMatch = msgText.match(/עם\s+(\S+)|אצל\s+(\S+)/)
-        const searchTerm = nameMatch?.[1] ?? nameMatch?.[2] ?? ''
-
-        const matches = searchTerm
-          ? appts.filter(a => a.title.toLowerCase().includes(searchTerm.toLowerCase()))
-          : appts.slice(-1) // last created if no name specified
-
-        if (matches.length === 0) {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'אין פגישה כזו ביומן.', timestamp: Date.now() }])
-        } else if (matches.length === 1) {
-          deleteAppointment(matches[0]!.id)
-          const time = matches[0]!.time ? ` ${timeInWords(matches[0]!.time)}` : ''
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `מחקתי את ${matches[0]!.title}${time}.`, timestamp: Date.now() }])
-        } else {
-          const lines = matches.map((m, i) => `${i + 1}. ${m.title} — ${m.date}`)
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `יש כמה אפשרויות:\n${lines.join('\n')}\nאיזו למחוק?`, timestamp: Date.now() }])
-        }
-        setLoading(false)
-        streamingMsgIdRef.current = null
-        return
-      }
-
-      // ─── Calendar Modify ─────────────────────────────────────────────────
-      if (isModifyIntent(msgText)) {
-        const appts = loadAppointments()
-        if (appts.length === 0) {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'אין כלום ביומן לשנות.', timestamp: Date.now() }])
-          setLoading(false)
-          streamingMsgIdRef.current = null
-          return
-        }
-
-        // Find target appointment (by name or last created)
-        const nameMatch = msgText.match(/את\s+(ה?(פגישה|תור|ביקור)\s+)?(?:עם\s+)?(\S+)/i)
-        const searchName = nameMatch?.[3] ?? ''
-        let target = searchName
-          ? appts.find(a => a.title.toLowerCase().includes(searchName.toLowerCase()))
-          : appts[appts.length - 1]
-
-        if (!target) target = appts[appts.length - 1]!
-
-        // Parse new date/time from the modify request
-        const { parseCreateDate, parseHebrewTimeDetailed } = await import('./calendarCreate')
-
-        const newDate = parseCreateDate(msgText)
-        const newTimeResult = parseHebrewTimeDetailed ? parseHebrewTimeDetailed(msgText) : null
-        const newTime = newTimeResult?.time ?? null
-
-        // Apply changes
-        const updates: Partial<typeof target> = {}
-        if (newDate) updates.date = newDate
-        if (newTime) updates.time = newTime
-
-        if (Object.keys(updates).length === 0) {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'לא הבנתי מה לשנות. תגידי לאיזה יום או שעה להזיז.', timestamp: Date.now() }])
-        } else {
-          updateAppointment(target.id, updates)
-          // Use friendly date label (מחר, ביום רביעי) instead of raw YYYY-MM-DD
-          const today = new Date().toISOString().split('T')[0]!
-          const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
-          let dateStr = ''
-          if (updates.date) {
-            if (updates.date === today) dateStr = ' להיום'
-            else if (updates.date === tmrw) dateStr = ' למחר'
-            else dateStr = ` ל${updates.date}`
-          }
-          const timeStr = updates.time ? ` ${timeInWords(updates.time)}` : ''
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `עדכנתי: ${target!.title}${dateStr}${timeStr}.`, timestamp: Date.now() }])
-        }
-        setLoading(false)
-        streamingMsgIdRef.current = null
-        return
-      }
+      // ─── Calendar Delete / Modify — cut over to the cognitive runtime ─────
+      // These used to be duplicate handlers here. They are now owned by
+      // runCognitiveTurn (RUNTIME_OWNED includes calendar_delete/calendar_update),
+      // which resolves the target via the persisted `focus` (so "תבטלי אותה" /
+      // "תעבירי אותה" work), reads back a human Hebrew date, and shares the single
+      // deleteReasoner/modifyReasoner. One runtime path per capability.
 
       // Check for new create intent (appointments only — reminders handled above)
       if (isCreateIntent(msgText) && isRecurringIntent(msgText)) {

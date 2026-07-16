@@ -1,5 +1,22 @@
 # WAR_ROOM_LOG
 
+## 2026-07-17 — 0.112.0: RC5 — UI CUTOVER (delete/modify + focus → runtime; one path)
+- Closed the 0.111.0 wiring gap. index.tsx: RUNTIME_OWNED += calendar_delete/calendar_update; new
+  `cogFocusRef` persists the conversation focus across turns (threaded IN to the runtime state, carried
+  OUT of every runtime-owned decision, SET after a legacy save); removed the DUPLICATE delete/modify
+  handlers + their unused imports. Referable reads + pronoun mutations now reach the app with a human
+  Hebrew date. One runtime path per capability.
+- Safety: ordering checked — these turns already cleared the free-speech advisory (they used to reach
+  the duplicate handlers / LLM), so the earlier runtime block does not newly intercept them. Create/
+  confirm intentionally left on the legacy path (bigger, higher-risk cutover for later).
+- Test truth: lowered a STALE sanity bound in companionRuntimeGuard (literal count 11→9 because the
+  duplicates were removed — the intended outcome; the banned-phrase assertion itself is unchanged, not
+  weakened).
+- VALIDATION: calendarReferableMutation 7/7 (runtime + cutover source-contract); benchmark **100%**;
+  FULL suite **10986 pass / 2 todo / 0 fail** (346 files); typecheck + build clean. Version
+  0.111.0→0.112.0 synced. **PREVIEW-pending**: source-contract proves the wiring, not the live render.
+- NEXT: fresh PREVIEW to confirm end-to-end (needs deploy trigger); optional create/confirm cutover.
+
 ## 2026-07-17 — 0.111.0: RC5 — LEO typed test script + a HONESTY finding (UI wiring gap)
 - While building `docs/LEO_TYPED_TEST_SCRIPT.md` (expected answers captured from the REAL runtime), a
   truth-audit of `index.tsx` found that the deployed UI defers only 6 intents to `runCognitiveTurn`
