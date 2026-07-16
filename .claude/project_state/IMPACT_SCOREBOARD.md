@@ -25,6 +25,19 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.107.0 (General Intelligence — Cycle 27: named-weekday calendar READ)** — RC5 mandate cycle 3,
+  same referable-CRUD flow, divergence #3. "מה יש לי ביום חמישי?" answered "אין כלום ביומן ליום הזה"
+  — confidently WRONG, because `calendarReadReasoner` parsed only היום/מחר/מחרתיים/השבוע and otherwise
+  read TODAY; the event sat on Thursday. A read that HIDES a real event is a dead-end (mandate
+  principle B). Fix: resolve a named weekday ("ביום חמישי", "בשבת") to its NEXT occurrence (today if
+  today is that weekday) via the existing `HE_WEEKDAY_IDX` and read THAT day; honest empty
+  ("ביום שישי אין כלום") preserved. Scoped to the read reasoner; other reads unchanged. Evidence
+  (CODE): `calendarNamedWeekdayRead.test.ts` 2/2 (red→green) + calendarReferability 6/6, both
+  multi-turn through `runCognitiveTurn` + real store; benchmark floor **100%**; FULL suite **10968
+  pass / 2 todo**; typecheck + build clean. Voice/Realtime untouched. NEXT (last divergence in this
+  flow): update readback prints raw ISO ("ל-2026-06-25") — compose a friendly Hebrew date — and
+  "move it" should resolve the target via FOCUS, not the last-appointment heuristic (matters once >1
+  event exists). Then: persistent memory (saved facts + cross-session summaries).
 - **0.106.0 (General Intelligence — Cycle 26: calendar REFERABILITY, pronoun→focus)** — RC5 mandate
   cycle 2 (Leo picked calendar CRUD referability). Drove the mandate's exact flow through the single
   runtime (`runCognitiveTurn`, mechanism-first) — create "פגישה עם רפי מחר בשלוש בבית קפה מרוקו" → "כן"

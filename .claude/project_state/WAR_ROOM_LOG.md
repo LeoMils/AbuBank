@@ -1,5 +1,18 @@
 # WAR_ROOM_LOG
 
+## 2026-07-16 — 0.107.0: RC5 General-Intelligence cycle 3 — named-weekday READ (text-only)
+- Same referable-CRUD flow, divergence #3 (found in cycle 2's mechanism dump): "מה יש לי ביום חמישי?"
+  → "אין כלום ביומן ליום הזה" while the event IS on Thursday. Root: `calendarReadReasoner` handled only
+  היום/מחר/מחרתיים/השבוע, else read TODAY — a read that hides a real event is a dead-end.
+- RED-first: `calendarNamedWeekdayRead.test.ts` — create+save on Thursday, then "מה יש לי ביום חמישי?"
+  expects the event; 1/2 red.
+- FIX: resolve a named weekday ("ביום חמישי"/"בשבת") to its NEXT occurrence (today if today is that
+  weekday) via `HE_WEEKDAY_IDX`, read that day; honest empty preserved. Scoped to the read reasoner.
+- VALIDATION: calendarNamedWeekdayRead 2/2 + calendarReferability 6/6 (red→green); benchmark **100%**;
+  FULL suite **10968 pass / 2 todo / 0 fail** (344 files); typecheck + build clean. Version
+  0.106.0→0.107.0 synced across version.ts/health.ts/version.test.ts.
+- NEXT: friendly update readback + focus-based "move it" targeting (last divergence); then memory.
+
 ## 2026-07-16 — 0.106.0: RC5 General-Intelligence cycle 2 — calendar REFERABILITY (text-only)
 - MANDATE (RC5 v4, option c): FULL calendar CRUD with the assistant's own actions REFERABLE
   ("where do I meet him", "move it", "cancel the last meeting"). Text-only; voice untouched.

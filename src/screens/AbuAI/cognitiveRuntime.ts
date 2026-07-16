@@ -870,6 +870,17 @@ export function calendarReadReasoner(text: string, now: Date): string {
     const r = getTodayEvents()
     return r.events.length === 0 ? 'היום אין כלום ביומן.' : r.summary
   }
+  // Named weekday ("מה יש לי ביום חמישי", "בשבת") → its NEXT occurrence (today if
+  // today is that weekday). Reading TODAY for a named-day question hides real events.
+  const wd = text.match(/(?:ביום\s+|יום\s+|ב)?(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?![א-ת])/u)
+  if (wd && HE_WEEKDAY_IDX[wd[1]!] !== undefined) {
+    const target = HE_WEEKDAY_IDX[wd[1]!]!
+    const add = (target - now.getDay() + 7) % 7
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate()); d.setDate(d.getDate() + add)
+    const r = getEventsByDate(localISO(d))
+    const label = wd[1] === 'שבת' ? 'בשבת' : `ביום ${wd[1]}`
+    return r.events.length === 0 ? `${label} אין כלום ביומן.` : r.summary
+  }
   // otherwise read the specific day if we can, else today.
   const r = getEventsByDate(localISO(now))
   return r.events.length === 0 ? 'אין כלום ביומן ליום הזה.' : r.summary
