@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.105.0-inlaw-composition',
-  buildLabel: 'AbuBank — INLAW_COMPOSITION (Intelligence, text-layer): the directional family relation engine now DERIVES any in-law by composing ONE marriage edge with the existing blood-relation algebra at ANY depth (spouse-of-a-blood-relative OR blood-relative-of-a-spouse), replacing the marriage+one-hop-only ladder. Fixes the false "לא יודעת" dead-end on graph-derivable in-laws — Yarden↔Noam (wife of a cousin), Gilad↔Leo (husband of a niece), Yarden↔Martita (wife of a grandson) — He+Es, symmetric. Additive: runs only after the named ladder falls through, so no named relation regresses. Adds a property-based generalization proof over ALL real person-pairs (240): no false dead-ends, correct gender, He/Es/En parity. Evidence (CODE): family/relation + inverse-consistency + benchmark(100%) green; typecheck clean. Voice/Realtime untouched. Builds on 0.104.0.',
+  version:    '0.106.0-calendar-referability',
+  buildLabel: 'AbuBank — CALENDAR_REFERABILITY (Intelligence, text-layer): after AbuAI creates + saves an event it becomes REFERABLE — a property question that points at it with a PRONOUN or the noun "פגישה" ("איפה אני פוגשת אותו?", "עם מי הפגישה?", "מתי אני נפגשת איתו?") is now answered from the store (the event in FOCUS), not dead-ended to the LLM. Fixes the FIRST divergence in the create→"where do I meet him"→move→cancel flow (found by driving runCognitiveTurn, mechanism-first). General gate: property-cue + focus-reference + NO other named person (a differently-named person still re-searches); leading "ו" handled for chained follow-ups; answerCalendarProperty now also answers "מתי" (date+time). Additive — only fires with a live calendar focus. Evidence (CODE): calendarReferability 6/6 (red→green, multi-turn through the single runtime); full suite 10966 pass/2 todo; typecheck + build clean. Voice/Realtime untouched. Builds on 0.105.0.',
   buildDate:  '2026-07-16',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

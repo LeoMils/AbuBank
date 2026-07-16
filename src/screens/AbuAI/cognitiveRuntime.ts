@@ -912,6 +912,20 @@ const CAL_PROPERTY_RE = /^(?:ב?איזה\s+שעה|באיזו\s+שעה|מתי\s+�
 // draft is pending. We never silently mutate a saved event and never punt to the
 // LLM — we answer honestly and ask her to confirm which event + what to change.
 const STORED_EDIT_RE = /^(?:תשנ[יה]|שנ[יה]|ל?שנות|תעדכנ[יי]?|עדכנ[יי]?|תזיז[יי]?|להזיז|תדחה|תדחי|לדחות|תקדימ[יי]?)(?![א-ת])/u
+// A property question that REFERS to the focused event via a PRONOUN or the noun
+// "פגישה" — even wrapped in filler ("איפה אני פוגשת אותו?", "עם מי הפגישה?",
+// "מתי אני נפגשת איתו?"). General (not a phrase list): a property CUE + a reference
+// to the focus + NO other explicit person (a named "עם/אצל <someone-else>" is a fresh
+// search, handled downstream). The bare forms ("איפה?", "באיזו שעה?") are already
+// covered by CAL_PROPERTY_RE; this adds the referring-pronoun phrasings.
+const CAL_PROP_CUE = /(?:איפה|באיז[הו]\s+שעה|מה\s+ה?שעה|(?<![א-ת])מתי(?![א-ת])|באיזה\s+מקום|מה\s+ה?כתובת|עם\s+מי|כמה\s+זמן|כמה\s+שעות)/u
+const CAL_FOCUS_REF = /(?:אות[הו]|אית[הו]|(?<![א-ת])ז[הו]א?(?![א-ת])|ה?פגיש\S*|ה?תור(?![א-ת])|ה?מפגש|ה?ביקור)/u
+const CAL_OTHER_PERSON = /(?:עם|אצל)\s+(?!מי(?![א-ת]))[א-ת]{2,}/u
+export function isFocusPropertyQuery(t: string): boolean {
+  if (!CAL_PROP_CUE.test(t)) return false
+  if (CAL_OTHER_PERSON.test(t)) return false // a different named person → re-search, not focus-read
+  return CAL_FOCUS_REF.test(t)
+}
 export function extractSearchPerson(text: string): string | null {
   const m = text.match(/עם\s+([֐-׿]{2,})|אצל\s+([֐-׿]{2,})/u)
   return m?.[1] ?? m?.[2] ?? null
@@ -920,7 +934,12 @@ export function answerCalendarProperty(text: string, person: string): string | n
   const r = findEventsByPerson(person, true)
   if (r.events.length === 0) return null
   const ev = r.events[0]!
-  if (/שעה/u.test(text)) return ev.time ? `הפגישה עם ${person} בשעה ${ev.time}.` : `עוד לא רשמתי שעה לפגישה עם ${person}.`
+  // WHEN / what-time — "מתי" adds the (friendly) date, "שעה" answers the hour.
+  if (/שעה|(?<![א-ת])מתי(?![א-ת])/u.test(text)) {
+    if (!ev.time) return `עוד לא רשמתי שעה לפגישה עם ${person}.`
+    const whenDate = /(?<![א-ת])מתי(?![א-ת])/u.test(text) && ev.date ? ` ${dateWithoutDay(ev.date)}` : ''
+    return `הפגישה עם ${person}${whenDate} בשעה ${ev.time}.`
+  }
   if (/איפה|מקום|כתובת/u.test(text)) return ev.location ? `הפגישה עם ${person} ${/^ב/u.test(ev.location) ? ev.location : 'ב' + ev.location}.` : `עוד לא רשמתי מקום לפגישה עם ${person}.`
   if (/עם\s+מי/u.test(text)) return `הפגישה היא עם ${ev.personName ?? person}.`
   if (/כמה\s+זמן|כמה\s+שעות/u.test(text)) return `עוד לא רשמתי כמה זמן תימשך הפגישה עם ${person}.`
@@ -1144,8 +1163,10 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   // After "מתי הפגישה עם מור?", a bare "באיזה שעה?/איפה?/עם מי?" answers FROM that
   // event (re-reading the store for the focused person), never re-searching and
   // never punting to the LLM. Runs only with a calendar focus + no pending draft.
-  if (state.createState.phase === 'idle' && state.focus?.kind === 'calendar_event' && CAL_PROPERTY_RE.test(original.trim())) {
-    const ans = answerCalendarProperty(original.trim(), state.focus.label)
+  const propText = original.trim().replace(/^ו(?=[א-ת])/u, '') // "ובאיזו שעה?" → "באיזו שעה?"
+  if (state.createState.phase === 'idle' && state.focus?.kind === 'calendar_event'
+      && (CAL_PROPERTY_RE.test(propText) || isFocusPropertyQuery(propText))) {
+    const ans = answerCalendarProperty(propText, state.focus.label)
     if (ans) {
       const res = settle(ans, { state, dataAvailable: true })
       // Keep the calendar focus so chained property questions continue to work.

@@ -25,6 +25,24 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.106.0 (General Intelligence — Cycle 26: calendar REFERABILITY, pronoun→focus)** — RC5 mandate
+  cycle 2 (Leo picked calendar CRUD referability). Drove the mandate's exact flow through the single
+  runtime (`runCognitiveTurn`, mechanism-first) — create "פגישה עם רפי מחר בשלוש בבית קפה מרוקו" → "כן"
+  (saved, focus=רפי) → "**איפה אני פוגשת אותו?**" → the FIRST divergence: the pronoun property
+  question classified as `general` → needsLLM, DISPLAY=null, even with the event in focus — a FALSE
+  dead-end (the store CAN answer). ROOT fix (general, not a phrase list): a focus-property detector
+  `isFocusPropertyQuery` = property-CUE + focus-REFERENCE (pronoun אותו/אותה/איתו/זה or the noun
+  "פגישה") + NO other named person; it broadens the bare-form `CAL_PROPERTY_RE` gate so "איפה אני
+  פוגשת אותו?"/"עם מי הפגישה?"/"מתי אני נפגשת איתו?" read from the focused event. Leading "ו" stripped
+  for chained follow-ups ("ובאיזו שעה?"); `answerCalendarProperty` now also answers "מתי" (date+time).
+  Additive — fires only with a live `calendar_event` focus; a DIFFERENTLY-named person still
+  re-searches (guard test). Evidence (CODE): `calendarReferability.test.ts` 6/6 (red→green, multi-turn
+  through the runtime + real store round-trip); benchmark floor **100%**; FULL suite **10966 pass /
+  2 todo**; typecheck + build clean. Voice/Realtime untouched (text-only). NEXT (same flow, remaining
+  divergences): (2) named-weekday READ — "מה יש לי ביום חמישי?" says "אין כלום" though the event is
+  on Thursday (`calendarReadReasoner` parses only היום/מחר/מחרתיים/השבוע); (3) update readback shows
+  raw ISO "ל-2026-06-25" instead of a friendly Hebrew date, and "move it" should resolve the target
+  via FOCUS, not the last-appointment heuristic. Then: persistent memory.
 - **0.105.0 (General Intelligence — Cycle 25: in-law by COMPOSITION, not patterns)** — RC5 mandate
   cycle 1. Built a property-based GENERALIZATION proof for the family relation engine
   (`familyRelationGeneralization.test.ts`): generates ALL 240 real person-pairs from

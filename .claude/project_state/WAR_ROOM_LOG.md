@@ -1,5 +1,28 @@
 # WAR_ROOM_LOG
 
+## 2026-07-16 — 0.106.0: RC5 General-Intelligence cycle 2 — calendar REFERABILITY (text-only)
+- MANDATE (RC5 v4, option c): FULL calendar CRUD with the assistant's own actions REFERABLE
+  ("where do I meet him", "move it", "cancel the last meeting"). Text-only; voice untouched.
+- MECHANISM-FIRST: drove the exact flow through the single runtime (`runCognitiveTurn`) and dumped
+  every turn. Create + "כן" saved correctly (focus=רפי, store round-trips). FIRST divergence at
+  turn 3 — "**איפה אני פוגשת אותו?**" classified `general` → needsLLM, DISPLAY=null: the pronoun
+  property question did NOT resolve against the focused event → false dead-end (the store CAN answer).
+  (Also logged, for later cycles: named-weekday read "מה יש לי ביום חמישי?" wrongly says "אין כלום";
+  update readback prints raw ISO; "move it" targets via last-appointment heuristic, not focus.)
+- RED-first: `calendarReferability.test.ts` — multi-turn through the runtime, real store; 3/6 red
+  (WHERE, WHO, chained follow-up dead-ended to the LLM).
+- ROOT FIX (general, not a phrase list): `isFocusPropertyQuery` = property-CUE + focus-REFERENCE
+  (pronoun אותו/אותה/איתו/זה OR the noun "פגישה") + NO other named person → broadens the bare-form
+  `CAL_PROPERTY_RE` gate so referring-pronoun property questions read from the focused event. Leading
+  "ו" stripped for chained follow-ups; `answerCalendarProperty` extended to answer "מתי" (date+time).
+  Additive: only with a live `calendar_event` focus; a differently-named person still re-searches
+  (guard test proves no data leak).
+- VALIDATION: calendarReferability 6/6 (red→green); benchmark floor **100%**; FULL suite **10966
+  pass / 2 todo / 0 fail** (343 files); typecheck clean; build clean. Version 0.105.0→0.106.0 synced
+  across version.ts/health.ts/version.test.ts.
+- NEXT: same flow's remaining divergences — named-weekday read; friendly update readback + focus-based
+  "move it" targeting; then persistent memory.
+
 ## 2026-07-16 — 0.105.0: RC5 General-Intelligence cycle 1 — in-law by COMPOSITION (text-only)
 - MANDATE (RC5 v4): know the relation ALGEBRA, not memorized pairs; never dead-end; prove by
   GENERATED novel cases. This is cycle 1, text-layer only (voice/Realtime untouched).
