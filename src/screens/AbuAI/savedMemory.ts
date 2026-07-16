@@ -63,6 +63,18 @@ export function forgetMemories(query: string): SavedMemory[] {
 
 export function clearMemories(): void { persist([]) }
 
+/**
+ * A system-message block of Martita's saved facts, for the general-chat LLM —
+ * loaded every session alongside the rolling ConversationSummary. Empty when
+ * nothing is stored. These are things she EXPLICITLY asked AbuAI to remember, so
+ * they are real grounding the model may use — NOT license to invent more.
+ */
+export function formatSavedMemoriesForLLM(memories: SavedMemory[] = loadMemories()): string {
+  if (!memories.length) return ''
+  const lines = memories.map((m) => `- ${m.text}`).join('\n')
+  return `═══ דברים ש-Martita ביקשה שתזכרי ═══\n${lines}\nאלה עובדות אמיתיות שהיא אמרה לך לזכור — מותר להשתמש בהן. אל תמציאי עובדות נוספות עליה.`
+}
+
 // ── Command detection (deterministic; runs before the LLM) ──
 export type MemoryCommand = 'save' | 'recall' | 'forget'
 

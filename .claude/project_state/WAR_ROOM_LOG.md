@@ -1,5 +1,17 @@
 # WAR_ROOM_LOG
 
+## 2026-07-16 — 0.110.0: RC5 General-Intelligence cycle 6 — saved memories INJECTED into the LLM
+- Completes mandate part B. 0.109.0 stored + recalled saved facts deterministically; this makes them
+  available to OPEN chat. `formatSavedMemoriesForLLM(loadMemories())` → a labelled system block pushed
+  into the general-chat LLM context at BOTH service.ts sites (streaming `chatMessages` + tool-call
+  `conversationMessages`), right after the existing ConversationSummary injection. Empty when nothing
+  stored; real grounding, honesty rules unchanged.
+- VALIDATION: savedMemory 9/9 (formatter unit + BOTH-site source-contract on service.ts); benchmark
+  **100%**; FULL suite **10982 pass / 2 todo / 0 fail** (346 files); typecheck + build clean. Version
+  0.109.0→0.110.0 synced across version.ts/health.ts/version.test.ts.
+- STATUS: memory (part B) complete at CODE level — saved facts (store/recall/forget, privacy-filtered,
+  He+Es, LLM-injected) + the pre-existing cross-session summary. NEXT: fresh PREVIEW parity milestone.
+
 ## 2026-07-16 — 0.109.0: RC5 General-Intelligence cycle 5 — SAVED MEMORY (text-only)
 - MANDATE part B (memory, ChatGPT-style). DISCOVERY first (mandate: reuse, don't rebuild): the
   passive rolling `ConversationSummary` (service.ts) already persists (durable) + injects into the

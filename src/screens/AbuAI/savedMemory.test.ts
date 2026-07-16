@@ -10,8 +10,10 @@
  * Evidence class: CODE (drives the single runtime + the real durable store).
  */
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
+import fs from 'fs'
+import path from 'path'
 import { runCognitiveTurn, IDLE_RUNTIME } from './cognitiveRuntime'
-import { loadMemories, clearMemories } from './savedMemory'
+import { loadMemories, clearMemories, saveMemory, formatSavedMemoriesForLLM } from './savedMemory'
 
 const FIXED = new Date('2026-06-24T09:00:00')
 beforeAll(() => { vi.useFakeTimers(); vi.setSystemTime(FIXED) })
@@ -93,5 +95,27 @@ describe('SAVED MEMORY — multi-session store → recall → forget', () => {
     const r = freshTurn('תזכירי לי לקנות חלב מחר בבוקר')
     expect(r.intent).not.toBe('memory')
     expect(loadMemories().length).toBe(0)
+  })
+})
+
+describe('SAVED MEMORY — injected into the general-chat LLM context (loaded every session)', () => {
+  it('formatSavedMemoriesForLLM: empty when nothing stored, lists facts otherwise', () => {
+    expect(formatSavedMemoriesForLLM()).toBe('')
+    saveMemory('אני אוהבת יין אדום')
+    saveMemory('יום שישי הכי חשוב לי')
+    const block = formatSavedMemoriesForLLM()
+    expect(block).toContain('יין אדום')
+    expect(block).toContain('יום שישי')
+    expect(block).toContain('Martita')          // it is labelled as her saved facts
+  })
+
+  it('service.ts injects saved memories as a system message at BOTH LLM build sites', () => {
+    const PROJECT_ROOT = path.resolve(__dirname, '../../..')
+    const src = fs.readFileSync(path.join(PROJECT_ROOT, 'src/screens/AbuAI/service.ts'), 'utf8')
+    // Imported and used.
+    expect(src).toContain("from './savedMemory'")
+    // Pushed to BOTH the streaming (chatMessages) and tool (conversationMessages) paths.
+    expect(/chatMessages\.push\(\{\s*role:\s*'system',\s*content:\s*savedMemText\s*\}\)/.test(src)).toBe(true)
+    expect(/conversationMessages\.push\(\{\s*role:\s*'system',\s*content:\s*sendSavedMemText\s*\}\)/.test(src)).toBe(true)
   })
 })

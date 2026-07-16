@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.109.0-saved-memory',
-  buildLabel: 'AbuBank — SAVED_MEMORY (Intelligence, text-layer): ChatGPT-style user-COMMANDED durable memory. "תזכרי ש…" (remember that) persists a fact to the PWA (durableStore: IndexedDB + localStorage mirror), loaded every session; "מה את זוכרת עליי?" recalls the saved facts; "תשכחי ש…" forgets on request — He + Es (recordá que / qué te acordás de mí / olvidate). Distinct from the passive rolling ConversationSummary. PRIVACY enforced at the write boundary: phone / medical / financial / street are refused, never stored. Handled deterministically in the runtime (new intent "memory") BEFORE the LLM, so it never punts to a model that has no store. Proven by MULTI-SESSION replays through the single runtime: session A stores → a FRESH session B recalls (the fact lives in durable, not RuntimeState) → C forgets. Evidence (CODE): savedMemory 7/7; full suite 10980 pass/2 todo; typecheck + build clean. Voice/Realtime untouched. Builds on 0.108.0.',
+  version:    '0.110.0-memory-injection',
+  buildLabel: 'AbuBank — MEMORY_INJECTION (Intelligence, text-layer): durable saved memories are now loaded into the general-chat LLM system context every session (BOTH the streaming and tool-call build sites in service.ts), alongside the existing ConversationSummary — so an open question can use a remembered fact ("she loves red wine") instead of only the deterministic recall. formatSavedMemoriesForLLM builds a labelled system block from loadMemories(); empty when nothing is stored. Real grounding, not fabrication — the honesty rules are unchanged. Evidence (CODE): savedMemory 9/9 (formatter + BOTH-site source-contract); full suite 10982 pass/2 todo; typecheck + build clean. Voice/Realtime untouched. Builds on 0.109.0.',
   buildDate:  '2026-07-16',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

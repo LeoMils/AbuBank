@@ -25,6 +25,19 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.110.0 (General Intelligence — Cycle 30: saved memories INJECTED into the LLM)** — RC5 mandate
+  part B, completion. The durable saved memories (0.109.0) were answered deterministically but not yet
+  available to open-ended chat. Now `formatSavedMemoriesForLLM(loadMemories())` builds a labelled
+  system block that is pushed into the general-chat LLM context at BOTH `service.ts` build sites (the
+  streaming `chatMessages` and the tool-call `conversationMessages`), right after the existing
+  `ConversationSummary` injection — so an open question ("what would be a good gift for me?") can use
+  "she loves red wine". Empty block when nothing is stored; it is real grounding (things she asked to
+  remember), so the honesty/no-fabrication rules are unchanged. Evidence (CODE): savedMemory 9/9
+  (formatter unit + a BOTH-site source-contract on service.ts); benchmark floor **100%**; FULL suite
+  **10982 pass / 2 todo**; typecheck + build clean. Voice/Realtime untouched. Memory (mandate part B)
+  is now complete at CODE level: saved facts (store/recall/forget, privacy-filtered, He+Es, injected)
+  + the pre-existing cross-session summary. NEXT: fresh PREVIEW parity milestone across the calendar +
+  memory flows (needs a deploy trigger).
 - **0.109.0 (General Intelligence — Cycle 29: SAVED MEMORY — durable user-commanded facts)** — RC5
   mandate part B (memory). Discovery first (reuse, don't rebuild): the passive rolling
   `ConversationSummary` (service.ts) already persists + injects into the LLM, and `durableStore`

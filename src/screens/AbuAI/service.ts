@@ -10,6 +10,7 @@ import { describeRelation, loadGraph, type Lang } from './familyGraph'
 import { answerFamilyRelation } from './familyReasoning'
 import { detectLanguage } from './proactive'
 import { deriveConversationMemory } from './conversationMemory'
+import { formatSavedMemoriesForLLM } from './savedMemory'
 import { shapeFamilyAnswerES, shapeCalendarAnswerES, shapeLocationAnswerES, shapeCreateConfirmES, shapeCreateSavedES, shapeCreateCancelledES, shapeCreateClarifyES, calendarEventExtras, timeInWords, dateLabel } from './responseShaper'
 import { durable } from '../../services/durableStore'
 import { resolveRelationalQuery } from './relationalResolver'
@@ -1408,6 +1409,10 @@ export async function* streamMessage(
       chatMessages.push({ role: 'system', content: summaryText })
     }
   }
+  // Inject durable saved memories (facts Martita asked AbuAI to remember) — real
+  // grounding loaded every session, so open questions can use "she loves red wine".
+  const savedMemText = formatSavedMemoriesForLLM()
+  if (savedMemText) chatMessages.push({ role: 'system', content: savedMemText })
 
   chatMessages.push(
     ...(voiceMode ? FEW_SHOT.slice(-4) : FEW_SHOT).map(m => ({ role: m.role as string, content: m.content })),
@@ -1565,6 +1570,9 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
       conversationMessages.push({ role: 'system', content: sendSummaryText })
     }
   }
+  // Inject durable saved memories (facts Martita asked AbuAI to remember).
+  const sendSavedMemText = formatSavedMemoriesForLLM()
+  if (sendSavedMemText) conversationMessages.push({ role: 'system', content: sendSavedMemText })
 
   conversationMessages.push(
     ...FEW_SHOT.map(m => ({ role: m.role as string, content: m.content })),
