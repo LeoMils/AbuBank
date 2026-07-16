@@ -109,6 +109,14 @@ describe('SAVED MEMORY — injected into the general-chat LLM context (loaded ev
     expect(block).toContain('Martita')          // it is labelled as her saved facts
   })
 
+  it('the deployed UI (index.tsx) routes the "memory" intent through the runtime (RUNTIME_OWNED)', () => {
+    const PROJECT_ROOT = path.resolve(__dirname, '../../..')
+    const idx = fs.readFileSync(path.join(PROJECT_ROOT, 'src/screens/AbuAI/index.tsx'), 'utf8')
+    const m = idx.match(/const RUNTIME_OWNED = new Set\(\[([^\]]*)\]\)/)
+    expect(m).not.toBeNull()
+    expect(m![1]).toContain("'memory'") // saved-memory turns reach the runtime handler, not the LLM
+  })
+
   it('service.ts injects saved memories as a system message at BOTH LLM build sites', () => {
     const PROJECT_ROOT = path.resolve(__dirname, '../../..')
     const src = fs.readFileSync(path.join(PROJECT_ROOT, 'src/screens/AbuAI/service.ts'), 'utf8')

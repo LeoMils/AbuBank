@@ -809,7 +809,9 @@ export function AbuAI() {
         // the relation (a "won't guess" answer defers to the legacy grounded path so
         // birthdays/locations/unknown queries are unaffected). `calendar_read` covers
         // the narrow "מה יש לי היום/מחר" grounded read.
-        const RUNTIME_OWNED = new Set(['date_query', 'calendar_search', 'audio_complaint', 'frustration', 'calendar_read', 'family'])
+        // `memory` is a NEW intent with NO duplicate legacy handler below, so the
+        // runtime owns it outright (durable saved facts: remember / recall / forget).
+        const RUNTIME_OWNED = new Set(['date_query', 'calendar_search', 'audio_complaint', 'frustration', 'calendar_read', 'family', 'memory'])
         const decision = runCognitiveTurn(
           {
             ...IDLE_RUNTIME,

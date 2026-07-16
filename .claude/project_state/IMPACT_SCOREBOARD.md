@@ -25,6 +25,23 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.111.0 (General Intelligence — Cycle 31: memory UI-wired + LEO typed test script + HONESTY finding)**
+  — While preparing `docs/LEO_TYPED_TEST_SCRIPT.md` (~30 numbered bilingual typed checks, expected
+  answers captured from the REAL runtime), a truth-audit of `index.tsx` surfaced a **wiring gap**: the
+  deployed UI defers only 6 intents to `runCognitiveTurn` (`RUNTIME_OWNED`) and keeps DUPLICATE
+  create/delete/modify handlers, and it rebuilds the runtime state each turn WITHOUT threading
+  `focus`. Consequence (stated honestly, not hidden): cycles 26/28 (focus-dependent referable reads +
+  pronoun "cancel it"/"move it") and — until now — 29/30 (memory) were CODE-proven but NOT reachable
+  in the app; only cycle 27 (named-weekday read, calendar_read ∈ RUNTIME_OWNED) reached users. This
+  is exactly the mandate's "one runtime path per capability" violation. LOW-RISK fix shipped now:
+  added `memory` to `RUNTIME_OWNED` (a NEW intent with no duplicate handler, intercepted before the
+  legacy path) → saved-memory turns now reach the runtime in the deployed UI (source-contract test).
+  The typed-test doc labels every item by SOURCE (runtime / legacy-UI / LLM / online) and has a
+  dedicated "Known wiring gap" section for the referable calendar turns. Evidence (CODE): savedMemory
+  10/10; benchmark **100%**; FULL suite **10983 pass / 2 todo**; typecheck + build clean.
+  NEXT (medium-risk, needs go-ahead): the UI CUTOVER — replace index.tsx's duplicate create/confirm/
+  delete/modify handlers with `runCognitiveTurn` and PERSIST `focus` across turns, so referable reads
+  + pronoun mutations reach Martita; then a fresh PREVIEW parity pass over the typed script.
 - **0.110.0 (General Intelligence — Cycle 30: saved memories INJECTED into the LLM)** — RC5 mandate
   part B, completion. The durable saved memories (0.109.0) were answered deterministically but not yet
   available to open-ended chat. Now `formatSavedMemoriesForLLM(loadMemories())` builds a labelled

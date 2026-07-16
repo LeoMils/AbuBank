@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.110.0-memory-injection',
-  buildLabel: 'AbuBank — MEMORY_INJECTION (Intelligence, text-layer): durable saved memories are now loaded into the general-chat LLM system context every session (BOTH the streaming and tool-call build sites in service.ts), alongside the existing ConversationSummary — so an open question can use a remembered fact ("she loves red wine") instead of only the deterministic recall. formatSavedMemoriesForLLM builds a labelled system block from loadMemories(); empty when nothing is stored. Real grounding, not fabrication — the honesty rules are unchanged. Evidence (CODE): savedMemory 9/9 (formatter + BOTH-site source-contract); full suite 10982 pass/2 todo; typecheck + build clean. Voice/Realtime untouched. Builds on 0.109.0.',
+  version:    '0.111.0-memory-ui-wired',
+  buildLabel: 'AbuBank — MEMORY_UI_WIRED + typed test script (Intelligence, text-layer): the deployed UI (index.tsx) now routes the "memory" intent through the cognitive runtime (added to RUNTIME_OWNED), so durable saved-memory turns ("תזכרי ש…" / "מה את זוכרת עליי" / "תשכחי") actually reach the handler in the app instead of falling to the LLM. Ships docs/LEO_TYPED_TEST_SCRIPT.md — ~30 numbered bilingual typed checks with verified expected answers, each labelled by SOURCE (runtime / legacy-UI / LLM / online). HONESTLY documents a wiring gap: focus-dependent referable calendar reads + pronoun mutations (cycles 26/28) are runtime-proven but index.tsx still uses duplicate handlers and does not thread focus, so they are NOT yet reachable in the app — the next cycle is the UI cutover to one runtime path. Evidence (CODE): savedMemory 10/10 (incl. an index.tsx RUNTIME_OWNED source-contract); full suite 10983 pass/2 todo; typecheck + build clean. Voice/Realtime untouched. Builds on 0.110.0.',
   buildDate:  '2026-07-16',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',

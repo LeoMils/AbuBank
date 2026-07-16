@@ -1,5 +1,21 @@
 # WAR_ROOM_LOG
 
+## 2026-07-17 — 0.111.0: RC5 — LEO typed test script + a HONESTY finding (UI wiring gap)
+- While building `docs/LEO_TYPED_TEST_SCRIPT.md` (expected answers captured from the REAL runtime), a
+  truth-audit of `index.tsx` found that the deployed UI defers only 6 intents to `runCognitiveTurn`
+  (`RUNTIME_OWNED`) + keeps DUPLICATE create/delete/modify handlers + never threads `focus`. So
+  cycles 26/28 (referable reads, pronoun "cancel it"/"move it") and 29/30 (memory) were CODE-proven
+  but NOT reaching the app — only cycle 27 did. Reported honestly rather than papered over (mandate:
+  real evidence overrides passing mocks; one runtime path per capability).
+- SHIPPED (low-risk): added `memory` to `RUNTIME_OWNED` (new intent, no duplicate handler, checked
+  before the legacy path) → saved-memory turns now reach the runtime in the deployed UI. Source-
+  contract test on index.tsx. Wrote the typed-test doc with a SOURCE label per item + a "Known wiring
+  gap" section for referable calendar turns.
+- VALIDATION: savedMemory 10/10; benchmark **100%**; FULL suite **10983 pass / 2 todo / 0 fail** (346
+  files); typecheck + build clean. Version 0.110.0→0.111.0 synced across the three files.
+- NEXT (medium-risk, needs go-ahead): UI CUTOVER — replace index.tsx duplicate calendar handlers with
+  runCognitiveTurn + persist `focus` across turns; then fresh PREVIEW parity over the typed script.
+
 ## 2026-07-16 — 0.110.0: RC5 General-Intelligence cycle 6 — saved memories INJECTED into the LLM
 - Completes mandate part B. 0.109.0 stored + recalled saved facts deterministically; this makes them
   available to OPEN chat. `formatSavedMemoriesForLLM(loadMemories())` → a labelled system block pushed
