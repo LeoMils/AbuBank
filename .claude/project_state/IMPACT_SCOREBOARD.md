@@ -25,6 +25,29 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.105.0 (General Intelligence — Cycle 25: in-law by COMPOSITION, not patterns)** — RC5 mandate
+  cycle 1. Built a property-based GENERALIZATION proof for the family relation engine
+  (`familyRelationGeneralization.test.ts`): generates ALL 240 real person-pairs from
+  `family_graph.json` edges and asserts, via an INDEPENDENT in-test edge oracle, that
+  `describeRelation` resolves every graph-derivable pair with no false dead-end, correct gender,
+  and He/Es/En parity + symmetry — it passed (family engine genuinely generalizes for its supported
+  classes). Probing the mandate's named flows then found the honest RED: the DIRECTIONAL engine
+  (`relationOf`) dead-ended ("לא יודעת") on in-laws needing marriage + a MULTI-hop blood relation —
+  Yarden↔Noam (wife of a cousin), Gilad↔Leo (husband of a niece), Yarden↔Martita (wife of a
+  grandson) — even though the chain IS in the graph (a false dead-end, mandate principle B). ROOT
+  fix is GENERAL, not a pattern list: added ONE composition rule — an in-law = the spouse of any
+  blood relative OR the blood relative of any spouse, at ANY depth — built on the existing blood
+  algebra (`bloodRelationKind`), both marriage directions, He+Es, gender-correct. Additive: runs
+  only after the named ladder falls through, so no named relation regresses. Evidence (CODE):
+  RED-first `familyInLawComposition.test.ts` 11/11 (red→green, stash-implied by additive guard);
+  generalization proof 6/6; inverse-consistency property 4/4 (in_law is self-inverse, BFS path
+  exists); benchmark floor **100%** held; FULL suite **10960 pass / 2 todo**; typecheck + build
+  clean. Voice/Realtime untouched (text-only per mandate). NEXT (backlog): (a) unify the three
+  family engines onto ONE path (`answerFamilyRelation`/`relationOf`/`describeRelation` overlap —
+  mandate "one runtime path per capability"); (b) mirror composition into `describeRelation` +
+  extend the generalization proof to assert composed pairs; (c) calendar CRUD referability
+  ("cancel the last meeting" / "move it to Thursday"); (d) persistent memory (saved facts +
+  cross-session summaries) — currently absent by design.
 - **0.102.0 (Intelligence Parity — Cycle 23: grandchildren-of-X + family-data verify)** — First
   VERIFIED against knowledge/family_data.json that "בן הזוג של מור → יעל" is CORRECT (Yael is
   Mor's partner) — NOT a wrong-person bug. Then fixed the real gap: "מי הנכדים של X" fell to the

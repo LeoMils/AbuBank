@@ -24,6 +24,7 @@ export type RelationKind =
   | 'cousin'
   | 'parent_in_law' | 'child_in_law' | 'ex_child_in_law' | 'ex_parent_in_law'
   | 'sibling_in_law' | 'ex_sibling_in_law'
+  | 'in_law'
   | 'unknown'
 
 export interface RelationResult {
@@ -62,6 +63,9 @@ const LABEL: Record<Exclude<RelationKind, 'self' | 'unknown'>, [string, string]>
   ex_parent_in_law:  ['החמות לשעבר', 'החם לשעבר'],
   sibling_in_law:    ['הגיסה', 'הגיס'],
   ex_sibling_in_law: ['הגיסה לשעבר', 'הגיס לשעבר'],
+  // Composed in-law: the sentence is built inline (a composition, not a single
+  // word), so this placeholder is never surfaced via labelFor.
+  in_law:            ['בת משפחה בנישואין', 'בן משפחה בנישואין'],
 }
 
 // Spanish gendered relation nouns — parity with LABEL so relationOf can answer a
@@ -91,6 +95,7 @@ const LABEL_ES: Record<Exclude<RelationKind, 'self' | 'unknown'>, [string, strin
   ex_parent_in_law:  ['ex suegra', 'ex suegro'],
   sibling_in_law:    ['cuñada', 'cuñado'],
   ex_sibling_in_law: ['ex cuñada', 'ex cuñado'],
+  in_law:            ['familiar política', 'familiar político'],
 }
 
 function labelFor(kind: RelationKind, g: G, lang: 'he' | 'es' = 'he'): string {
@@ -125,6 +130,99 @@ function siblingsOf(idx: Index, n: GraphNode): string[] {
     for (const cHe of childrenOf(p)) if (cHe !== n.hebrew) out.add(cHe)
   }
   return [...out]
+}
+
+// The BLOOD relations (no marriage edge) the algebra can name — the building
+// blocks the general in-law composition is allowed to compose a marriage onto.
+const BLOOD_KINDS: ReadonlySet<RelationKind> = new Set<RelationKind>([
+  'parent', 'child', 'sibling', 'grandparent', 'grandchild', 'uncle_aunt', 'nephew_niece',
+  'great_grandparent', 'great_grandchild', 'great_uncle_aunt', 'great_nephew_niece', 'cousin',
+])
+
+/**
+ * The BLOOD relation A is for B (directional), or 'unknown'. Pure consanguinity —
+ * no spouse/partner edges are followed. This is the shared algebra the in-law
+ * composition rides on, so "cousin-in-law / grandchild-in-law / niece's-husband"
+ * are DERIVED, not enumerated. Non-recursive (never calls relationOf).
+ */
+function bloodRelationKind(idx: Index, aHe: string, bHe: string): RelationKind {
+  const A = get(idx, aHe), B = get(idx, bHe)
+  if (!A || !B || aHe === bHe) return 'unknown'
+  const nodesOf = (arr: string[]) => arr.map((x) => get(idx, x)).filter(Boolean) as GraphNode[]
+  const parents = (n: GraphNode) => nodesOf(n.parentsHe)
+  const children = (n: GraphNode) => nodesOf(n.childrenHe)
+  const sibNodes = (n: GraphNode) => nodesOf(siblingsOf(idx, n))
+  if (B.parentsHe.includes(aHe)) return 'parent'
+  if (B.childrenHe.includes(aHe)) return 'child'
+  if (siblingsOf(idx, B).includes(aHe)) return 'sibling'
+  if (parents(B).some((p) => p.parentsHe.includes(aHe))) return 'grandparent'
+  if (children(B).some((c) => c.childrenHe.includes(aHe))) return 'grandchild'
+  for (const p of parents(B)) if (siblingsOf(idx, p).includes(aHe)) return 'uncle_aunt'
+  if (sibNodes(B).some((s) => s.childrenHe.includes(aHe))) return 'nephew_niece'
+  if (parents(B).some((p) => parents(p).some((gp) => gp.parentsHe.includes(aHe)))) return 'great_grandparent'
+  if (children(B).some((c) => children(c).some((gc) => gc.childrenHe.includes(aHe)))) return 'great_grandchild'
+  for (const p of parents(B)) for (const gp of parents(p)) if (siblingsOf(idx, gp).includes(aHe)) return 'great_uncle_aunt'
+  if (sibNodes(B).some((s) => children(s).some((c) => c.childrenHe.includes(aHe)))) return 'great_nephew_niece'
+  for (const p of parents(B)) for (const s of sibNodes(p)) if (s.childrenHe.includes(aHe)) return 'cousin'
+  return 'unknown'
+}
+
+type Marriage = [string, 'spouse' | 'ex' | 'partner']
+const marriagesOf = (n: GraphNode): Marriage[] => [
+  ...n.spousesHe.map((s) => [s, 'spouse'] as Marriage),
+  ...n.partnersHe.map((s) => [s, 'partner'] as Marriage),
+  ...n.exSpousesHe.map((s) => [s, 'ex'] as Marriage),
+]
+
+/** "<person> is married to <name>" clause, gender + marriage-type + language correct. */
+function marriedClause(person: GraphNode, m: 'spouse' | 'ex' | 'partner', name: string, lang: 'he' | 'es'): string {
+  const f = person.gender === 'female'
+  if (lang === 'es') {
+    if (m === 'partner') return `es pareja de ${name}`
+    if (m === 'ex') return `${f ? 'estuvo casada con' : 'estuvo casado con'} ${name}`
+    return `${f ? 'está casada con' : 'está casado con'} ${name}`
+  }
+  if (m === 'partner') return `${f ? 'בת הזוג של' : 'בן הזוג של'} ${name}`
+  if (m === 'ex') return `${f ? 'הייתה נשואה ל' : 'היה נשוי ל'}${name}`
+  return `${f ? 'נשואה ל' : 'נשוי ל'}${name}`
+}
+
+/**
+ * GENERAL in-law composition: an in-law is the spouse of a blood relative, or the
+ * blood relative of a spouse — at ANY blood depth. One rule replaces a growing
+ * list of named kinds (cousin-in-law, grandchild-in-law, nephew's-husband, …).
+ * Runs ONLY after the direct ladder fails, so it never overrides a more specific
+ * named relation. Returns null when no marriage+blood chain exists (honest unknown).
+ */
+function composeInLaw(idx: Index, A: GraphNode, B: GraphNode, lang: 'he' | 'es'): RelationResult | null {
+  const es = lang === 'es'
+  const nameOf = (n: GraphNode) => (es ? (n.canonical ?? n.hebrew) : n.hebrew)
+  const result = (sentence: string): RelationResult => ({
+    subject: A.hebrew, target: B.hebrew, kind: 'in_law', known: true, sentence,
+  })
+  // (a) A married to S, and S is a blood relative of B → A is B's <rel> by marriage.
+  for (const [sHe, m] of marriagesOf(A)) {
+    const S = get(idx, sHe)
+    if (!S || S.hebrew === B.hebrew) continue
+    const bk = bloodRelationKind(idx, S.hebrew, B.hebrew)
+    if (!BLOOD_KINDS.has(bk)) continue
+    const lbl = labelFor(bk, (S.gender ?? 'unknown') as G, lang)
+    return result(es
+      ? `${nameOf(A)} ${marriedClause(A, m, nameOf(S), 'es')}, y ${nameOf(S)} es ${lbl} de ${nameOf(B)}.`
+      : `${nameOf(A)} ${marriedClause(A, m, nameOf(S), 'he')}, ו${nameOf(S)} ${lbl} של ${nameOf(B)}.`)
+  }
+  // (b) A is a blood relative of T, and T is married to B → A is the <rel> of B's spouse.
+  for (const [tHe, m] of marriagesOf(B)) {
+    const T = get(idx, tHe)
+    if (!T || T.hebrew === A.hebrew) continue
+    const bk = bloodRelationKind(idx, A.hebrew, T.hebrew)
+    if (!BLOOD_KINDS.has(bk)) continue
+    const lbl = labelFor(bk, (A.gender ?? 'unknown') as G, lang)
+    return result(es
+      ? `${nameOf(A)} es ${lbl} de ${nameOf(T)}, y ${nameOf(T)} ${marriedClause(T, m, nameOf(B), 'es')}.`
+      : `${nameOf(A)} ${lbl} של ${nameOf(T)}, ו${nameOf(T)} ${marriedClause(T, m, nameOf(B), 'he')}.`)
+  }
+  return null
 }
 
 /**
@@ -218,6 +316,14 @@ export function relationOf(aName: string, bName: string, lang: 'he' | 'es' = 'he
   for (const spHe of currentSpousesOf(B)) { const sp = get(idx, spHe); if (sp && siblingsOf(idx, sp).includes(aHe)) return done('sibling_in_law') }
   // ex-sibling-in-law (reverse): A is a sibling of an EX-spouse of B (Leo ↔ Rafi).
   for (const spHe of exSpousesOf(B)) { const sp = get(idx, spHe); if (sp && siblingsOf(idx, sp).includes(aHe)) return done('ex_sibling_in_law') }
+
+  // 11) GENERAL in-law composition — the spouse of a blood relative at ANY depth,
+  // or the blood relative of a spouse. Derives cousin-in-law / grandchild-in-law /
+  // niece's-husband from the blood algebra instead of enumerating each (mandate:
+  // a general mechanism, never a growing pattern list). Runs last, so it only ever
+  // fills a gap the named rules above left as a FALSE "unknown".
+  const composed = composeInLaw(idx, A, B, lang)
+  if (composed) return composed
 
   return done('unknown')
 }

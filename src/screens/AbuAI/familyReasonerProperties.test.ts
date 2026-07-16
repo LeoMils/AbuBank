@@ -23,6 +23,8 @@ const INVERSE: Record<RelationKind, RelationKind[]> = {
   parent_in_law: ['child_in_law'], child_in_law: ['parent_in_law'],
   ex_child_in_law: ['ex_parent_in_law'], ex_parent_in_law: ['ex_child_in_law'],
   sibling_in_law: ['sibling_in_law'], ex_sibling_in_law: ['ex_sibling_in_law'],
+  // A composed in-law (spouse of a blood relative) is an in-law in both directions.
+  in_law: ['in_law'],
 }
 
 describe('Family reasoner — PROPERTY (real graph)', () => {

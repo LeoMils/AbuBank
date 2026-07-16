@@ -1,5 +1,30 @@
 # WAR_ROOM_LOG
 
+## 2026-07-16 — 0.105.0: RC5 General-Intelligence cycle 1 — in-law by COMPOSITION (text-only)
+- MANDATE (RC5 v4): know the relation ALGEBRA, not memorized pairs; never dead-end; prove by
+  GENERATED novel cases. This is cycle 1, text-layer only (voice/Realtime untouched).
+- PROOF FIRST: built `familyRelationGeneralization.test.ts` — generates ALL 240 real person-pairs
+  from `family_graph.json` and, via an INDEPENDENT in-test edge oracle, asserts `describeRelation`
+  never dead-ends on a graph-derivable pair, is gender-correct, and has He/Es/En parity + symmetry.
+  It PASSED → the family engine genuinely generalizes for its supported classes (honest GREEN).
+- HONEST RED (found by probing the mandate's named flows): the directional engine `relationOf`
+  answered "לא יודעת" for in-laws needing marriage + a MULTI-hop blood relation — Yarden↔Noam
+  (wife of a cousin), Gilad↔Leo (husband of a niece), Yarden↔Martita (wife of a grandson). The
+  chain is IN the graph, so this was a FALSE dead-end (principle B). RED-first regression:
+  `familyInLawComposition.test.ts` (10 fail / 1 pass — the pre-existing one-hop guard).
+- ROOT FIX (general, not a pattern list): one composition rule in `relationOf` — an in-law = the
+  spouse of any blood relative OR the blood relative of any spouse, at ANY depth — built on a shared
+  `bloodRelationKind` algebra, both marriage directions, He+Es, gender-correct. ADDITIVE: fires only
+  after the named ladder falls through → cannot regress a named relation. New kind `in_law`
+  (self-inverse) added to the inverse-consistency property map.
+- VALIDATION: familyInLawComposition 11/11 (red→green); generalization proof 6/6; familyReasoner
+  inverse/BFS property 4/4; family+relation+benchmark sweep 87/87 (benchmark floor **100%**);
+  FULL suite **10960 pass / 2 todo / 0 fail** (342 files); typecheck clean; build clean (prebuild
+  validate:knowledge + validate:family passed). Version bumped 0.104.0→0.105.0 across
+  version.ts/health.ts/version.test.ts.
+- NEXT: unify the 3 family engines to one path; mirror composition into describeRelation + extend
+  the generalization proof to composed pairs; then calendar CRUD referability; then persistent memory.
+
 ## 2026-07-15 — 0.79.0: Option C (Leo's decision) — pipeline default, Realtime opt-in beta
 - DECISION: after the voice architecture verdict, Leo chose Option C. SINGLE-WRITER re-acquired (HEAD 553a5be).
 - PART B (ship win, verified): default voice flipped from the unproven Realtime WebRTC path to the reliable
