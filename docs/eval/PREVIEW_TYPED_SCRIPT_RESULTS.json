@@ -1,13 +1,11 @@
 {
-  "version": "0.112.0-ui-cutover",
+  "version": "0.113.0-referable-fix",
   "versionBadgeOk": true,
-  "badgeText": "QA: v0.112.0-ui-cutover",
-  "previewUrl": "http://localhost:4173",
+  "badgeText": "QA: v0.113.0-referable-fix",
+  "previewUrl": "https://abu-bank-i717xq55g-leos-projects-d3c04c09.vercel.app",
   "ran": 13,
   "passed": 13,
-  "consoleErrors": [
-    "Failed to load resource: the server responded with a status of 404 (Not Found)"
-  ],
+  "consoleErrors": [],
   "results": [
     {
       "id": "fam-mor",
@@ -17,7 +15,7 @@
         "מור"
       ],
       "answer": "מרטיטה האמא של מור.",
-      "latencyMs": 426,
+      "latencyMs": 419,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -31,7 +29,7 @@
         "דוד"
       ],
       "answer": "ירדן נשואה לעילי, ועילי בן דוד של נועם.",
-      "latencyMs": 324,
+      "latencyMs": 330,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -44,7 +42,7 @@
         "אופיר"
       ],
       "answer": "גלעד נשוי לאופיר, ואופיר אחיינית של לאו.",
-      "latencyMs": 325,
+      "latencyMs": 331,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -58,7 +56,7 @@
         "ארי"
       ],
       "answer": "יש למור 2 נכדים: אנאבל וארי.",
-      "latencyMs": 331,
+      "latencyMs": 324,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -71,7 +69,7 @@
         "2026"
       ],
       "answer": "היום 17 ביולי 2026, יום שישי.",
-      "latencyMs": 335,
+      "latencyMs": 342,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -84,7 +82,7 @@
         "2026"
       ],
       "answer": "מחר יהיה שבת, 18 ביולי 2026.",
-      "latencyMs": 337,
+      "latencyMs": 325,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -97,7 +95,7 @@
         "יין אדום"
       ],
       "answer": "בסדר, אני אזכור את זה: אני אוהבת יין אדום.",
-      "latencyMs": 332,
+      "latencyMs": 329,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -110,7 +108,7 @@
         "יין אדום"
       ],
       "answer": "הנה מה שאני זוכרת עלייך: אני אוהבת יין אדום.",
-      "latencyMs": 323,
+      "latencyMs": 331,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -123,7 +121,7 @@
         "שכחתי"
       ],
       "answer": "בסדר, שכחתי את זה.",
-      "latencyMs": 327,
+      "latencyMs": 344,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -137,7 +135,7 @@
         "נכון"
       ],
       "answer": "פגישה עם רפי מחר בשלוש אחר הצהריים. בית קפה מרוקו. נכון?",
-      "latencyMs": 384,
+      "latencyMs": 357,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -151,7 +149,7 @@
         "רפי"
       ],
       "answer": "קבוע — פגישה עם רפי 18 ביולי 2026, שבת בשעה 15:00. בית קפה מרוקו",
-      "latencyMs": 332,
+      "latencyMs": 337,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -164,7 +162,7 @@
         "מרוקו"
       ],
       "answer": "הפגישה עם רפי בית קפה מרוקו.",
-      "latencyMs": 326,
+      "latencyMs": 343,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -177,7 +175,7 @@
         "מחקתי"
       ],
       "answer": "מחקתי את פגישה עם רפי בשעה 15:00.",
-      "latencyMs": 326,
+      "latencyMs": 321,
       "pass": true,
       "missing": [],
       "critical": true,
