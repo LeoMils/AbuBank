@@ -742,3 +742,30 @@
   passed / 0 failed; typecheck + build clean.
 - NEXT (backlog): days-until-end-of-month; Spanish "recordame"; recurring reminder; "beetzem lo"
   misroute; (low) gis/sibling-in-law.
+
+## Generative Marathon — Cycle 39: widen to 1200×8 + 3 general fixes (v0.119.0)
+- Widened the P4 marathon 400→1200 sessions, 4→8 scenario classes: relation-phrase
+  creates (save the RESOLVED person), "the last one" referable-cancel chains, mid-flow
+  person corrections, Spanish (Rioplatense) calendar sessions. Wide batch → 910 breaks
+  in 4 classes; 2 were marathon oracle-accumulation bugs (made store-aware), 3 real
+  general product mechanisms fixed:
+  1. ES REFERABLE DELETE — "cancelalo/borrá/eliminala" on a SAVED event dead-ended to
+     the LLM (Hebrew-only referable gate). Added Rioplatense mirror (REFERENTIAL_DELETE_ES_RE).
+  2. FOCUS-PROPERTY PRECISION — "איפה אני פוגשת אותו?" read the OLDEST same-person event;
+     now the most-recently-created match (the referent just set up).
+  3. PERSON-NAME TRUNCATION — extractPerson's bare ב/ל/על prefix-stop truncated any name
+     starting with ל/ב (לאו, לאה, לירון) + genitive target after "של"; split hard vs prefix
+     stops, exempt first person word + post-"של".
+- EVIDENCE: generativeMarathon 1200/1200 clean; full suite 11017 pass/2 todo; typecheck+build clean.
+
+## Generative Marathon — Cycle 40: cross-language referability + ordinal delete (v0.120.0)
+- Added cross-language referable-cancel (He create → ES "cancelalo"; ES create → He
+  "תבטלי אותה") — came out CLEAN (referable gate is language-agnostic once focus is set).
+- New bug: ORDINAL DELETE — "תבטלי את הפגישה הראשונה" (cancel the FIRST) deleted the
+  FOCUSED/last event; deleteReasoner had no ordinal handling. Added ORDINAL_FIRST_RE →
+  chronologically-earliest. "last/האחרונה" left on its working focus path (no regression).
+- EVIDENCE: generativeMarathon 1200/1200 clean across 10 scenario classes; full suite
+  11017 pass/2 todo; typecheck+build clean. Voice/Realtime untouched.
+- NEXT (highest-ROI): PARITY JUDGE (mandate #2) — the direct "identical to ChatGPT-class"
+  benchmark. Needs a decision on reference/judge model access (live vs authored refs +
+  deterministic per-dimension scoring). Then P2 LLM semantic calendar extraction; BEHAVIOR_SPEC.
