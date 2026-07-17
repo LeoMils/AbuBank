@@ -212,7 +212,7 @@ const DATE_QUERY_RE =
 // Requires an explicit day/date-asking frame so calendar reads ("מה יש לי מחר") are
 // never hijacked — those have no "איזה יום"/"תאריך" frame.
 const RELATIVE_DATE_QUERY_RE =
-  /(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך|מה\s+היום|באיזה\s+תאריך)[^?]*?(?:אתמול|שלשום|מחרתיים|מחר|בעוד\s+\S|לפני\s+\S)|(?:אתמול|שלשום|מחרתיים|מחר)[^?]*?(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך)|qu[eé]\s+(?:d[ií]a|fecha)[^?]*?(?:anteayer|pasado\s+ma[ñn]ana|ayer|ma[ñn]ana)/iu
+  /(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך|מה\s+היום|באיזה\s+תאריך)[^?]*?(?:אתמול|שלשום|מחרתיים|מחר|בעוד\s+\S|לפני\s+\S)|(?:אתמול|שלשום|מחרתיים|מחר|בעוד\s+\S+|לפני\s+\S+)[^?]*?(?:איזה\s+יום|איזה\s+תאריך|מה\s+ה?תאריך)|qu[eé]\s+(?:d[ií]a|fecha)[^?]*?(?:anteayer|pasado\s+ma[ñn]ana|ayer|ma[ñn]ana)/iu
 // A "when is the next holiday" / "when is <holiday>" question. Jewish-holiday dates
 // are a fixed table (deterministic) — answering from the table avoids the stale
 // "Independence Day 2024" hallucination. Requires a holiday noun so "מתי הפגישה"

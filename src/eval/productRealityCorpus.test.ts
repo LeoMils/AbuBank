@@ -20,12 +20,21 @@ beforeEach(() => {
 })
 
 describe('REALITY CORPUS — forced menu is dead (mission: never a phone-tree)', () => {
-  it('the loop-breaker never emits "פגישה, יומן, משפחה" / "במילה אחת"', () => {
-    // Two identical answers in a row used to escalate to a forced menu.
-    const dec = guardDialogue('מרטיטה אמא של מור.', ['מרטיטה אמא של מור.'])
+  it('a repeated STUCK line escalates, and the loop-breaker is never a forced menu', () => {
+    // A repeated CLARIFICATION (a real dead-end loop) escalates — but never to a
+    // phone-tree menu.
+    const dec = guardDialogue('לא הבנתי. באיזה יום?', ['לא הבנתי. באיזה יום?'])
     expect(dec.allow).toBe(false)
     expect(dec.replacement).not.toMatch(/פגישה,?\s*יומן,?\s*משפחה|במילה אחת/)
     expect(dec.replacement).toMatch(/במילים שלך|מקשיבה/)
+  })
+
+  it('a repeated FACTUAL answer is ALLOWED (not a loop — two questions can share an answer)', () => {
+    // Marathon truth: "מי אמא של אופיר?"→מור then "מי אמא של אדר?"→מור must NOT be
+    // suppressed as a loop. Only stuck/non-answer repeats are loops.
+    const dec = guardDialogue('מרטיטה אמא של מור.', ['מרטיטה אמא של מור.'])
+    expect(dec.allow).toBe(true)
+    expect(dec.replacement).toBeNull()
   })
 })
 

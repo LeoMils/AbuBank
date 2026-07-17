@@ -25,6 +25,23 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.118.0 (MASTER MANDATE — Cycle 38: P4 GENERATIVE MARATHON + 2 divergence fixes)** — Built the P4
+  marathon: a seeded generator composing multi-turn sessions (family "who" × calendar CRUD with
+  pronoun referability × date arithmetic × memory store/recall/forget) driven through the REAL app
+  entry — index.tsx-faithful guarded pronoun/follow-up preprocessing + `ExecutiveCognitiveController`
+  with mocked llm/online tools (fast, free, deterministic; NOT runCognitiveTurn directly). First batch
+  (120 sessions) → 117 breaks in TWO general classes, both LAB-vs-APP divergences (P0 per the governing
+  rule): (1) DATE ROUTING — `dateReasoner` handles "בעוד N ימים" (proven in the generalization suite)
+  but `classifyIntent` only routed the "איזה יום … בעוד" ordering, so "בעוד … איזה יום" fell to the
+  LLM; fixed `RELATIVE_DATE_QUERY_RE` to accept both orderings (117→9). (2) DIALOGUE GUARD — a repeated
+  FACTUAL answer (two questions sharing "מור"; two dates on the same day) was suppressed as a loop and
+  replaced with a clarification; now `guardDialogue` only escalates a repeated STUCK/non-answer line
+  (9→0). Corrected a `productRealityCorpus` test that ENCODED the bug (testing rule: fix the truth,
+  never weaken). A **400-session batch passes CLEAN**. Both fixes are general mechanisms, not phrase
+  lists. Evidence (CODE at app-entry level): generativeMarathon 400/400; benchmark **100%**; FULL
+  suite **11017 pass / 2 todo**; typecheck + build clean. NEXT: widen the generator (relation-phrase
+  creates, "the last one", mid-flow corrections, He/Es/mixed, style rules) + raise batch toward
+  thousands; then P2 LLM semantic extraction; update LEO_TYPED_TEST_SCRIPT + latency table.
 - **0.117.0 (MASTER MANDATE — Cycle 37: reality-driven — ramble DATE proximity)** — Closes the second
   half of Leo's rambling-story failure. On the 0.116.0 preview (isolated per-scenario repro): #1 create
   resolved to גלעד ✓, story person+location ✓, but the DATE was still "היום" (grabbed from "דיברתי

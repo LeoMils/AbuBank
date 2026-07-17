@@ -12,6 +12,13 @@ const APOLOGY = /סליחה|מצטערת/u
 const GENERIC_PRESENCE = /^אני\s+(?:כאן|פה)(?:\s+איתך)?\.?$/u
 
 function normalize(s: string): string { return (s ?? '').replace(/\s+/g, ' ').trim() }
+// A "stuck"/non-answer line (a loop signal): clarification, apology, generic presence,
+// or an honest can't/limitation. A repeat of one of these is a dead-end to break; a
+// repeat of a substantive factual answer is fine.
+const HONEST_LIMIT = /לא\s+הצלחתי|אין\s+לי|לא\s+יודעת|לא\s+בטוחה|לא\s+מצליחה/u
+function isStuckLine(s: string): boolean {
+  return CLARIFY_MARKERS.test(s) || APOLOGY.test(s) || GENERIC_PRESENCE.test(s) || HONEST_LIMIT.test(s)
+}
 
 /**
  * @param candidate the answer the runtime is about to emit
@@ -22,9 +29,13 @@ export function guardDialogue(candidate: string, recentAssistant: string[]): Dia
   const last = recentAssistant.map(normalize)
   const prev = last[last.length - 1] ?? ''
 
-  // Exact repeat of the immediately-previous answer → break the loop.
-  if (prev && c === prev) {
-    return { allow: false, replacement: escalate(c), reason: 'exact repeat of previous turn' }
+  // Exact repeat of the immediately-previous answer → break the loop, but ONLY when
+  // the repeated line is a STUCK/non-answer (clarification / apology / filler / honest
+  // limitation). A repeated FACTUAL answer is NOT a loop — two different questions can
+  // share the same true answer ("מי אמא של אופיר?"→מור, then "מי אמא של אדר?"→מור; two
+  // date questions landing on the same day). Suppressing those was a real marathon bug.
+  if (prev && c === prev && isStuckLine(c)) {
+    return { allow: false, replacement: escalate(c), reason: 'exact repeat of a stuck line' }
   }
   // Two clarifications in a row → stop guessing, escalate.
   if (CLARIFY_MARKERS.test(c) && CLARIFY_MARKERS.test(prev)) {
