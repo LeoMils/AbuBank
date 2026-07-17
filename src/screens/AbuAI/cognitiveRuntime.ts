@@ -63,6 +63,7 @@ import { answerFamilyRelation, childrenOfPublic, grandchildrenOfPublic, greatGra
 import { answerRelationQuery } from './familyRelationEngine'
 import { explainRelation } from './familyPathReasoner'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
+import { resolvePersonPhrase } from './personPhraseResolver'
 import {
   getTodayEvents, getTomorrowEvents, getEventsByDate, findEventsByPerson, getWeekEvents,
 } from './tools'
@@ -1487,6 +1488,14 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       // ("אופיר ביקשה שאבוא אליה הביתה. גלעד…"). Prefer the smart-resolved location.
       if (next.phase === 'confirming' && smart.who) next.draft.title = `פגישה עם ${smart.who}`
       if (next.phase === 'confirming' && smart.location) next.draft.location = smart.location
+      // Resolve a RELATION-PHRASE person ("החתן של רפי") to the real person (גלעד) via
+      // the family engine — schedule with the person, not the literal phrase (Leo
+      // device failure #1). Composes graph edges (incl. in-laws); unambiguous only.
+      if (next.phase === 'confirming') {
+        const who = (next.draft.person ?? (next.draft.title ?? '').replace(/^פגישה עם\s+/u, '')).trim()
+        const resolved = who ? resolvePersonPhrase(who) : null
+        if (resolved) { next.draft.person = resolved; next.draft.title = `פגישה עם ${resolved}` }
+      }
       // When we have a semantic "פרטים חשובים" summary, DROP the raw notes clause so
       // the confirm never dumps the raw sentence in "(...)" alongside the summary.
       if (next.phase === 'confirming' && smart.importantDetails.length) next.draft.notes = null

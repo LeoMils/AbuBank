@@ -25,6 +25,20 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.116.0 (MASTER MANDATE — Cycle 36: reality-driven — relation-phrase person in create)** — New
+  governing rule: only DEPLOYED-PREVIEW-through-the-app evidence counts. Reproduced Leo's 0.113.0
+  device failures at APP level (Playwright on the live preview, `LEO_DEVICE_FAILURES_REPRO.json`):
+  (#3 "מי גלעד עבור רפי" → "גלעד החתן של רפי." already WORKS at 0.115.0); (#1 create "עם החתן של רפי"
+  → saved LITERALLY, RED); (#2 rambling story → location extracted OK, no verbatim dump, but person
+  literal + date grabbed "היום" from "דיברתי היום" instead of the meeting's "מחר"). Fixed #1 + the
+  person half of #2 with a GENERAL mechanism: new `personPhraseResolver` composes family-graph edges
+  to resolve any relation phrase — blood AND in-laws (חתן/כלה/חם/חמות/גיס/גיסה) — to the real person
+  ("החתן של רפי" → גלעד), unambiguous only, honest null on unknown/ambiguous. Wired into
+  runCognitiveTurn's calendar_create (smart + base + story paths). Evidence: CODE (personPhraseResolver
+  9/9 + calendarRelationPhrase 3/3, driven through the runtime) + APP-level RED repro; benchmark
+  **100%**; FULL suite **11015 pass / 2 todo**; typecheck + build clean. NEXT: (a) re-verify #1 on a
+  fresh preview through the app; (b) fix the story DATE bug (ramble grabs the wrong temporal cue —
+  needs the meeting-verb-nearest cue or LLM extraction per P2); then the P4 generative marathon.
 - **0.115.0 (Voice mission — Cycle 35: voice ↔ typed CONTROLLER PARITY for referability)** — First
   voice-mission cycle (text-layer-shared, no device claims). Mapped the voice handlers: both the
   pipeline-STT path and the Realtime path ALREADY route through the SAME
