@@ -145,16 +145,25 @@ function friendlyDate(iso: string): string {
   try { return formatHebrewDate(iso) } catch { return iso }
 }
 
+// An ORDINAL reference to "the FIRST meeting" ("תבטלי את הפגישה הראשונה"). "First"
+// means the chronologically-earliest event, NOT the one in focus (the last-created) —
+// without this, "cancel the first meeting" wrongly deletes the focused/last one.
+// ("last / האחרונה" already resolves correctly via the focus path, so it is left as-is.)
+const ORDINAL_FIRST_RE = /(?<![א-ת])(?:ה?ראשונה|ה?ראשון)(?![א-ת])/u
+
 // ── Delete ──
 export function deleteReasoner(text: string, opts?: { focusPerson?: string | null }): MutationResult {
   const appts = loadAppointments()
   const nameMatch = text.match(/עם\s+(\S+)|אצל\s+(\S+)/u)
   const term = nameMatch?.[1] ?? nameMatch?.[2] ?? ''
-  // Explicit person named in the turn wins; else the event in FOCUS ("cancel it" —
-  // the one just created/discussed); else the last appointment.
+  // Explicit person named in the turn wins; else an explicit ordinal ("the first meeting");
+  // else the event in FOCUS ("cancel it" — the one just created/discussed); else the last.
   let matches: typeof appts
   if (term) {
     matches = appts.filter(a => a.title.toLowerCase().includes(term.toLowerCase()))
+  } else if (ORDINAL_FIRST_RE.test(text) && appts.length) {
+    const chrono = [...appts].sort((a, b) => (a.date + (a.time ?? '')).localeCompare(b.date + (b.time ?? '')))
+    matches = [chrono[0]!]
   } else if (opts?.focusPerson) {
     const focused = appts.filter(a => a.personName === opts.focusPerson || a.title.includes(opts.focusPerson!))
     matches = focused.length ? focused.slice(-1) : appts.slice(-1)

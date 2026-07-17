@@ -195,6 +195,50 @@ function spanishCalendarScenario(r: () => number): { name: string; steps: Step[]
   }
 }
 
+// (E) CROSS-LANGUAGE referability — Martita mixes languages: a Hebrew create, then a
+// Spanish "cancelalo" must still resolve to the focused event and delete it (the referable
+// gate is language-agnostic once focus is set). The inverse (ES create → Hebrew cancel) too.
+function mixedCancelScenario(r: () => number): { name: string; steps: Step[] } {
+  if (r() < 0.5) {
+    const p = pick(r, CAL_PEOPLE)
+    return { name: 'mixed:he-create-es-cancel', steps: [
+      { text: `תקבעי פגישה עם ${p} מחר בשלוש`, check: (d) => d.includes(p) ? null : `card missing ${p}` },
+      { text: 'כן', check: (_d, side) => side === 'saved_appointment' ? null : `save side=${side}` },
+      { text: 'cancelalo', check: (_d, side) => side === 'deleted' ? null : `es-cancel-of-he side=${side}` },
+    ] }
+  }
+  const p = pick(r, ES_NAMES)
+  return { name: 'mixed:es-create-he-cancel', steps: [
+    { text: `agendá una reunión con ${p} mañana a las tres`, check: (d) => d && d !== 'LLM_STUB' ? null : `es-create fell to LLM: "${d}"` },
+    { text: 'dale, agendalo', check: (_d, side) => side === 'saved_appointment' ? null : `es-save side=${side}` },
+    { text: 'תבטלי אותה', check: (_d, side) => side === 'deleted' ? null : `he-cancel-of-es side=${side}` },
+  ] }
+}
+
+// (F) "the FIRST one" referent — distinct from "the last one": after two creates, cancelling
+// "הפגישה הראשונה" must delete the EARLIER-created event and leave the later one alive.
+function firstOneChainScenario(r: () => number): { name: string; steps: Step[] } {
+  let p1 = pick(r, CAL_PEOPLE), p2 = pick(r, CAL_PEOPLE)
+  while (p2 === p1) p2 = pick(r, CAL_PEOPLE)
+  let before: ReturnType<typeof loadAppointments> = []
+  return {
+    name: 'firstOneChain',
+    steps: [
+      { text: `תקבעי פגישה עם ${p1} מחר בשלוש`, check: (d) => d.includes(p1) ? null : `card1 missing ${p1}` },
+      { text: 'כן', check: (_d, side) => side === 'saved_appointment' ? null : `save1 side=${side}` },
+      { text: `תקבעי פגישה עם ${p2} ביום ראשון בארבע`, check: (d) => d.includes(p2) ? null : `card2 missing ${p2}` },
+      { text: 'כן', check: (_d, side) => { if (side !== 'saved_appointment') return `save2 side=${side}`; before = loadAppointments(); return null } },
+      { text: 'תבטלי את הפגישה הראשונה', check: (_d, side) => {
+        if (side !== 'deleted') return `firstOne side=${side}`
+        const after = loadAppointments()
+        if (after.length !== before.length - 1) return `count ${before.length}->${after.length}`
+        // The p2 event (created later, in focus) must SURVIVE; a p1 event must be the victim.
+        return after.some((a) => (a.title ?? '').includes(p2)) ? null : `later event ${p2} was wrongly deleted`
+      } },
+    ],
+  }
+}
+
 describe('GENERATIVE MARATHON — app-entry sessions', () => {
   it('a fresh batch of generated multi-turn sessions passes clean', async () => {
     const SESSIONS = 1200
@@ -207,6 +251,7 @@ describe('GENERATIVE MARATHON — app-entry sessions', () => {
       const builders = [
         familyWhoScenario, calendarScenario, memoryScenario, dateScenario,
         relationCreateScenario, lastOneChainScenario, correctionScenario, spanishCalendarScenario,
+        mixedCancelScenario, firstOneChainScenario,
       ]
       const nScen = 3 + Math.floor(r() * 3) // 3..5 scenarios per session
       for (let i = 0; i < nScen; i++) {
