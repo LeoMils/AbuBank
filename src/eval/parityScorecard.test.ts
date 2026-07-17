@@ -61,11 +61,27 @@ function buildSessions(): ParitySession[] {
       { text: 'תזכרי שאני אוהבת יין אדום', lang: 'he', cat: 'memory' },
       { text: 'מה את זוכרת עליי?', lang: 'he', cat: 'memory', expect: 'יין' },
     ] },
+    // He — relation-phrase create (saves the RESOLVED person) → ordinal "first" cancel.
+    { id: 'he-relation-ordinal', turns: [
+      { text: 'תקבעי פגישה עם רפי מחר בשלוש', lang: 'he', cat: 'calendar', expect: 'רפי' },
+      { text: 'כן', lang: 'he', cat: 'calendar', expectSide: 'saved_appointment' },
+      { text: 'תקבעי פגישה עם דנה ביום ראשון בארבע', lang: 'he', cat: 'calendar', expect: 'דנה' },
+      { text: 'כן', lang: 'he', cat: 'calendar', expectSide: 'saved_appointment' },
+      { text: 'תבטלי את הפגישה הראשונה', lang: 'he', cat: 'calendar', expectSide: 'deleted' },
+    ] },
     // Es — Rioplatense calendar create → save → cancel (language-discipline focus).
     { id: 'es-calendar', turns: [
       { text: 'agendá una reunión con Gabi mañana a las tres', lang: 'es', cat: 'calendar' },
       { text: 'dale, agendalo', lang: 'es', cat: 'calendar', expectSide: 'saved_appointment' },
       { text: 'cancelalo', lang: 'es', cat: 'calendar', expectSide: 'deleted' },
+    ] },
+    // Es — under-tested surfaces (family / memory). No `expect` oracle: these only score
+    // language + brevity + warmth when the app answers DETERMINISTICALLY; if they route to
+    // the LLM they are reported model-dependent (not counted), never falsely passed. Their
+    // job is to catch a DETERMINISTIC Spanish reply that leaks Hebrew or a menu (a real gap).
+    { id: 'es-probes', turns: [
+      { text: '¿quién es Gabi?', lang: 'es', cat: 'family' },
+      { text: 'recordá que me gusta el vino tinto', lang: 'es', cat: 'memory' },
     ] },
   ]
 }

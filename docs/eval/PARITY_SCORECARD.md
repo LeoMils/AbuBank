@@ -35,21 +35,25 @@ runtime uses (family graph + fixed clock) so they cannot drift.
 
 | dimension | pass | rate |
 | --- | --- | --- |
-| correctness | 9/9 | 100% |
-| warmth | 11/11 | 100% |
-| brevity | 11/11 | 100% |
-| answered | 11/11 | 100% |
-| language | 11/11 | 100% |
-| naturalness | 11/11 | 100% |
+| correctness | 14/14 | 100% |
+| warmth | 17/17 | 100% |
+| brevity | 17/17 | 100% |
+| answered | 17/17 | 100% |
+| language | 17/17 | 100% |
+| naturalness | 17/17 | 100% |
 
-_Scored turns (deterministic app replies): 11 · model-dependent (LLM-routed, not
-deterministically scored): 0._
+_Scored turns (deterministic app replies): 17 · model-dependent (LLM-routed, not
+deterministically scored): 1._
 
 **Turn set (grounded in proven capabilities):**
 - `he-calendar` — create → save → referable "where do I meet him?" → "cancel it".
 - `he-knowledge` — "מי אמא של X" (unique-mother oracle) + "בעוד 5 ימים איזה יום".
 - `he-memory` — store a preference → recall it.
+- `he-relation-ordinal` — two creates → "תבטלי את הפגישה הראשונה" (ordinal-first cancel).
 - `es-calendar` — Rioplatense create → "dale, agendalo" → "cancelalo".
+- `es-probes` — "¿quién es Gabi?" (answers deterministically IN SPANISH) + "recordá que…"
+  (ES memory store currently routes to the LLM → reported **model-dependent**, matching the
+  known "Spanish recordame" backlog gap; surfaced honestly, never falsely passed).
 
 ## Bug this scorecard caught on its first run (fixed in v0.121.0)
 
