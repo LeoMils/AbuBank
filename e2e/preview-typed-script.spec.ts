@@ -77,6 +77,9 @@ const CHECKS: Array<[string, string, string[], boolean]> = [
   ['cal-confirm', 'כן', ['קבוע', 'רפי'], true],
   ['cal-referable-where', 'איפה אני פוגשת אותו?', ['מרוקו'], true],   // 0.112.0 cutover
   ['cal-referable-cancel', 'תבטלי אותה', ['מחקתי'], true],            // 0.112.0 cutover
+  ['math-mult', 'כמה זה 15 כפול 4', ['60'], false],
+  ['math-pct', '20 אחוז מ-200', ['40'], false],
+  ['math-es', 'cuánto es 12 por 8', ['96'], false],
 ]
 
 test('PREVIEW typed-script — deterministic checks on the deployed build', async ({ page }) => {

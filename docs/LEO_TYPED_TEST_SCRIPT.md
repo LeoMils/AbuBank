@@ -46,11 +46,10 @@ reflect the day you run it.
 13. `כמה ימים עד סוף החודש` → **✅ RUNTIME** — `עד סוף החודש נשארו 15 ימים.` *(reflects run-day)*
 14. `מה השעה בניו יורק` → **✅ RUNTIME** — `בניו יורק השעה עכשיו 03:00.` *(reflects real time; NY is 7h behind Israel in July)*
 
-### Math (deterministic arithmetic)
-15. `כמה זה 15 כפול 4` → **🤖 LLM** — expect `60`. *(the runtime computes `זה יוצא 60.`
-    but the UI currently sends math to the model; still should be correct.)*
-16. `20 אחוז מ-200` → **🤖 LLM** — expect `40`. *(runtime: `20% מ-200 זה 40.`)*
-17. `cuánto es 12 por 8` → **🤖 LLM** — expect `96`. *(runtime: `Son 96.`)*
+### Math (deterministic arithmetic — PREVIEW-verified)
+15. `כמה זה 15 כפול 4` → **✅ RUNTIME** — `זה יוצא 60.`
+16. `20 אחוז מ-200` → **✅ RUNTIME** — `20% מ-200 זה 40.`
+17. `cuánto es 12 por 8` → **✅ RUNTIME** — `Son 96.`
 
 ### Calendar — read & search (deterministic, grounded in the store)
 18. First create an event (see 22), then: `מה יש לי מחר` → **✅ RUNTIME** — lists the
@@ -99,8 +98,9 @@ Still on their existing paths (works, but not the runtime), by deliberate scope:
 - **Create / confirm** (items 21–22) — the elaborate legacy create flow (voice,
   pronoun guard, birthday-reminder fusion) is intentionally left for a later,
   separate cutover.
-- **Math** (items 15–17) — currently answered by the model (correct, non-deterministic).
 - **General / online** (items 29–30) — model / live retrieval by design.
+
+(Math, items 15–17, IS deterministic in-app — PREVIEW-verified 3/3.)
 
 **Update (0.113.0):** the referable items (23a–23c) are now **PREVIEW-verified** — a
 real-browser Playwright run against the deployed preview passes 13/13, with the

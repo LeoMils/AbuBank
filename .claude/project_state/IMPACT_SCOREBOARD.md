@@ -25,6 +25,19 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.114.0 (General Intelligence — Cycle 34: principle-C generated suites for dates + calendar)** —
+  Backlog: closed the mandate's principle-C gap beyond family. `dateEngineGeneralization.test.ts` —
+  ~1100 GENERATED date-arithmetic cases (בעוד/לפני N ימים·שבועות, relative-day words, +N hours,
+  next-weekday) each checked against an INDEPENDENT JS-Date oracle: 6/6 green. `calendarCrud
+  Generalization.test.ts` — ~440 GENERATED create/cancel/move sequences through the REAL runtime
+  (`runCognitiveTurn`), asserting store state + referability incl. the pronoun forms "תבטלי אותה"/
+  "תעבירי אותה": 4/4 green. Both are non-circular property proofs (parity with the 0.105.0 family
+  generalization). Also PREVIEW-verified that math is DETERMINISTIC in-app (16/16 on the preview,
+  incl. 3 math checks) and corrected the typed-test doc (math was mislabelled LLM from the old
+  dead-code analysis). Evidence: CODE (2 new suites, ~1540 generated cases) + PREVIEW (math 3/3);
+  benchmark **100%**; FULL suite **10998 pass / 2 todo**; typecheck + build clean. Voice/Realtime
+  untouched. Backlog remaining: dead-code cleanup in index.tsx (0.112.0 no-op additions in the
+  unreachable RUNTIME_OWNED block); create/confirm cutover; voice pass (deferred).
 - **0.113.0 (General Intelligence — Cycle 33: PREVIEW-verified referability fix + real deploy proof)** —
   Ran the typed-test script against the DEPLOYED preview with Playwright (real browser, real build):
   12/13 at PREVIEW class — family (incl. in-law composition), dates, memory (save/recall/forget),
