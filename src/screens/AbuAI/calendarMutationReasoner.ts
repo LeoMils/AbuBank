@@ -170,9 +170,18 @@ export function deleteReasoner(text: string, opts?: { focusPerson?: string | nul
   } else {
     matches = appts.slice(-1)
   }
-  if (matches.length === 0) return { text: 'אין פגישה כזו ביומן.', sideEffect: null }
+  // Language discipline: a Rioplatense delete command ("cancelalo"/"borrá la reunión")
+  // must confirm in Spanish, never Hebrew — the reply follows the command's language, not
+  // the event's stored Hebrew title. (The parity scorecard caught the He-reply-to-Es-cancel.)
+  const es = REFERENTIAL_DELETE_ES_RE.test(text.trim()) || /(?<![a-záéíóúñ])(?:cancel|borr|elimin|sac)[áa]/i.test(text)
+  const esWho = (a: typeof matches[number]) => a.personName || a.title.replace(/^פגישה עם\s+/u, '')
+  if (matches.length === 0) return { text: es ? 'No tenés esa reunión en la agenda.' : 'אין פגישה כזו ביומן.', sideEffect: null }
   if (matches.length === 1) {
     deleteAppointment(matches[0]!.id)
+    if (es) {
+      const t = matches[0]!.time ? ` a las ${matches[0]!.time}` : ''
+      return { text: `Listo, cancelé la reunión con ${esWho(matches[0]!)}${t}.`, sideEffect: 'deleted' }
+    }
     const t = matches[0]!.time ? ` בשעה ${matches[0]!.time}` : ''
     return { text: `מחקתי את ${matches[0]!.title}${t}.`, sideEffect: 'deleted' }
   }
