@@ -47,22 +47,25 @@ async function send(page: Page, text: string): Promise<string> {
 }
 
 test('Leo device failures — reproduce at app level', async ({ page }) => {
-  await enterAbuAI(page)
   const rec: Array<Record<string, unknown>> = []
 
   // #3 — relation question "מי גלעד עבור רפי" (who is Gilad for Rafi → son-in-law)
+  await enterAbuAI(page)
   const rel = await send(page, 'מי גלעד עבור רפי')
   rec.push({ id: 'relation-gilad-rafi', input: 'מי גלעד עבור רפי', answer: rel, resolves: /חתן|גיס|קשר|נשוי|אופיר/.test(rel), deadEnd: /לא יודעת|לא הצלחתי|אין לי/.test(rel) })
 
-  // #1 — create with a RELATION PHRASE as the person ("החתן של רפי" → Gilad)
+  // #1 — create with a RELATION PHRASE as the person ("החתן של רפי" → Gilad). Fresh session.
+  await enterAbuAI(page)
   const card = await send(page, 'תקבעי פגישה עם החתן של רפי מחר בשלוש')
   rec.push({ id: 'create-relation-phrase', input: 'תקבעי פגישה עם החתן של רפי מחר בשלוש', answer: card, resolvedToGilad: card.includes('גלעד'), literalPhrase: card.includes('החתן של רפי') })
 
-  // #2 — rambling spoken-style story: place (cafe Toledano / New York), relation phrase,
-  // date/time, buried context. Expect a MEANINGFUL title + extracted location, not a verbatim dump.
+  // #2 — rambling spoken-style story, FRESH session (no pending draft carryover):
+  // place (cafe Toledano / New York), relation phrase, date/time, buried context.
+  // Expect a MEANINGFUL title + resolved person + extracted location, correct date.
+  await enterAbuAI(page)
   const story = 'אז תשמעי, דיברתי היום עם החתן של רפי, והוא סיפר לי שהוא טס לניו יורק בשבוע הבא, ואנחנו רוצים להיפגש מחר בשלוש אחר הצהריים בבית קפה טולדנו כדי לדבר על הטיול המשפחתי'
   const storyCard = await send(page, story)
-  rec.push({ id: 'create-rambling-story', input: story, answer: storyCard, hasLocation: /טולדנו|ניו יורק/.test(storyCard), verbatimDump: storyCard.includes('אז תשמעי') || storyCard.includes('סיפר לי') })
+  rec.push({ id: 'create-rambling-story', input: story, answer: storyCard, resolvedToGilad: storyCard.includes('גלעד'), literalPhrase: storyCard.includes('החתן של רפי'), hasLocation: /טולדנו|ניו יורק/.test(storyCard), dateTomorrow: storyCard.includes('מחר'), dateToday: storyCard.includes('היום'), verbatimDump: storyCard.includes('אז תשמעי') || storyCard.includes('סיפר לי') })
 
   fs.mkdirSync(OUT, { recursive: true })
   fs.writeFileSync(path.join(OUT, 'LEO_DEVICE_FAILURES_REPRO.json'), JSON.stringify({ previewUrl: process.env.PREVIEW_URL ?? null, rec }, null, 2))
