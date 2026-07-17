@@ -944,10 +944,20 @@ const STORED_EDIT_RE = /^(?:תשנ[יה]|שנ[יה]|ל?שנות|תעדכנ[יי]
 // covered by CAL_PROPERTY_RE; this adds the referring-pronoun phrasings.
 const CAL_PROP_CUE = /(?:איפה|באיז[הו]\s+שעה|מה\s+ה?שעה|(?<![א-ת])מתי(?![א-ת])|באיזה\s+מקום|מה\s+ה?כתובת|עם\s+מי|כמה\s+זמן|כמה\s+שעות)/u
 const CAL_FOCUS_REF = /(?:אות[הו]|אית[הו]|(?<![א-ת])ז[הו]א?(?![א-ת])|ה?פגיש\S*|ה?תור(?![א-ת])|ה?מפגש|ה?ביקור)/u
-const CAL_OTHER_PERSON = /(?:עם|אצל)\s+(?!מי(?![א-ת]))[א-ת]{2,}/u
-export function isFocusPropertyQuery(t: string): boolean {
+// A person named via עם/אצל/את (NOT the interrogative "מי"). The UI may resolve a
+// pronoun ("אותו") to the person's NAME before the runtime, so "איפה אני פוגשת את
+// רפי?" must still bind to the focused event when רפי IS the focus.
+const CAL_NAMED_PERSON = /(?:עם|אצל|את)\s+(?!מי(?![א-ת]))([א-ת]{2,})/u
+export function isFocusPropertyQuery(t: string, focusLabel?: string | null): boolean {
   if (!CAL_PROP_CUE.test(t)) return false
-  if (CAL_OTHER_PERSON.test(t)) return false // a different named person → re-search, not focus-read
+  const personM = t.match(CAL_NAMED_PERSON)
+  if (personM) {
+    // Same person as the focus → a property of the focused event; a DIFFERENT named
+    // person → re-search, not focus-read.
+    const named = personM[1]!
+    if (focusLabel && (named === focusLabel || named.includes(focusLabel) || focusLabel.includes(named))) return true
+    return false
+  }
   return CAL_FOCUS_REF.test(t)
 }
 export function extractSearchPerson(text: string): string | null {
@@ -1131,6 +1141,18 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   // reply. Strip the correction lead-in and process the clause that follows.
   const corr = normalized.match(/^לא[,.]?\s*(?:זה[,.]?\s*)?(?:התכוונתי|התכוונת|רציתי\s+לומר)\s+(.+)/u)
   if (corr && corr[1] && corr[1].trim().length >= 3) normalized = corr[1].trim()
+  // While a calendar EVENT is in focus, a referential-pronoun turn ("תבטלי אותה" /
+  // "תעבירי אותה" / "איפה אני פוגשת אותו") must stay RAW: normalizeInput resolves the
+  // pronoun by GENDER to the last-mentioned person ("אותה"→"ארי"), which is the wrong
+  // target and breaks referable cancel/move. The focus logic below resolves it correctly.
+  {
+    const rawT = original.trim()
+    const hasEventPronoun = /(?<![א-ת])א(?:ות|ית)[הו](?![א-ת])/u.test(rawT)
+    if (state.createState.phase === 'idle' && state.focus?.kind === 'calendar_event' && hasEventPronoun
+        && (isReferentialDelete(rawT) || isModifyIntent(rawT) || CAL_PROP_CUE.test(rawT))) {
+      normalized = rawT
+    }
+  }
   // ── STEP ZERO — Conversation continuity (before intent) ─────────────────────
   // If we are INSIDE an online topic (active focus) and this turn is a bare temporal
   // follow-up ("ומחר?"), continue that topic by re-querying online with the day
@@ -1188,8 +1210,10 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   // event (re-reading the store for the focused person), never re-searching and
   // never punting to the LLM. Runs only with a calendar focus + no pending draft.
   const propText = original.trim().replace(/^ו(?=[א-ת])/u, '') // "ובאיזו שעה?" → "באיזו שעה?"
+  // Pass the focus label so a UI-resolved pronoun ("אותו"→"את רפי") still binds to the
+  // focused event when it names the focus person (see isFocusPropertyQuery).
   if (state.createState.phase === 'idle' && state.focus?.kind === 'calendar_event'
-      && (CAL_PROPERTY_RE.test(propText) || isFocusPropertyQuery(propText))) {
+      && (CAL_PROPERTY_RE.test(propText) || isFocusPropertyQuery(propText, state.focus.label))) {
     const ans = answerCalendarProperty(propText, state.focus.label)
     if (ans) {
       const res = settle(ans, { state, dataAvailable: true })

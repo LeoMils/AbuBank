@@ -87,4 +87,21 @@ describe('CALENDAR REFERABILITY — pronoun resolves to the focused event', () =
     expect(last.display ?? '').toContain('גבי')
     expect(last.display ?? '').not.toContain('מרוקו')
   })
+
+  // The deployed UI resolves a pronoun to the person NAME before the runtime
+  // ("איפה אני פוגשת אותו?" → "איפה אני פוגשת את רפי?"). This form must STILL bind to
+  // the focused event — the divergence that only showed on the preview.
+  it('UI-RESOLVED pronoun ("...את רפי?") still reads from the focused event', () => {
+    const { last } = session([...CREATE, 'איפה אני פוגשת את רפי?'])
+    expect(last.needsLLM).toBe(false)
+    expect(last.intent).toBe('calendar_read')
+    expect(last.display ?? '').toContain('מרוקו')
+  })
+
+  it('after a resolved-name read, focus persists so "תבטלי אותה" still cancels it', () => {
+    const { last, st } = session([...CREATE, 'איפה אני פוגשת את רפי?', 'תבטלי אותה'])
+    expect(last.needsLLM).toBe(false)
+    expect(last.intent).toBe('calendar_delete')
+    expect(st.focus === null || st.focus?.kind === 'calendar_event').toBe(true)
+  })
 })

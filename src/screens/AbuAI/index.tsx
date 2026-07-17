@@ -535,14 +535,20 @@ export function AbuAI() {
     // "תזכירי לי להתקשר אליו" after talking about נועם → resolves to
     // "תזכירי לי להתקשר לנועם". Scans recent messages for last mentioned
     // family member. Must run before intent detection.
+    // When a calendar EVENT is in focus, a pronoun ("אותו"/"אותה") refers to THAT
+    // event — not to a gendered last-mentioned person. Resolving it to a name here
+    // (e.g. feminine "אותה" → "ארי") corrupts referable reads/mutations; let the
+    // runtime resolve the pronoun against `focus` instead. So skip the UI pronoun/
+    // follow-up rewrite while a calendar event is focused.
+    const hasCalFocus = cognitiveRuntimeStateRef.current.focus?.kind === 'calendar_event'
     const { resolved, personName: _resolvedPerson } = resolvePronouns(msgText, messages)
-    if (resolved !== msgText) msgText = resolved
+    if (resolved !== msgText && !hasCalFocus) msgText = resolved
 
     // ─── Cross-turn follow-up resolution ─────────────────────────────────
     // "ומחר?" after "מה יש לי היום?" → expands to "מה יש לי מחר?"
     // "ומור?" after "מי זה נועם?" → expands to "ספרי לי על מור"
     const followUp = resolveFollowUp(msgText, messages, { pendingCreate: createStateRef.current.phase !== 'idle' })
-    if (followUp.wasFollowUp) msgText = followUp.resolved
+    if (followUp.wasFollowUp && !hasCalFocus) msgText = followUp.resolved
 
     const userMsg: ChatMessage = { id: nextId(), role: 'user', content: msgText, timestamp: Date.now() }
     const newMessages = [...messages, userMsg]
@@ -581,7 +587,9 @@ export function AbuAI() {
       // pronoun/topic-continuation ("ספרי לי עליה/עליו", "תמשיכי", "ועוד?") to a
       // known person and the message itself names no one, rewrite to a grounded
       // query so the deterministic family engine answers — not a raw LLM
-      // fallthrough. Skipped during emotion (suppress) and for task/online turns.
+      // fallthrough. Skipped during emotion (suppress), task/online turns, and while
+      // a calendar event is focused (the runtime resolves the pronoun via focus).
+      !hasCalFocus &&
       companionPlan.step4_continuity.continuesTopic &&
       companionPlan.step4_continuity.resolvedPerson &&
       !companionPlan.step3_familyEntity &&

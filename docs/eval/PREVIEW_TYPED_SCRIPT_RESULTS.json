@@ -1,0 +1,187 @@
+{
+  "version": "0.112.0-ui-cutover",
+  "versionBadgeOk": true,
+  "badgeText": "QA: v0.112.0-ui-cutover",
+  "previewUrl": "http://localhost:4173",
+  "ran": 13,
+  "passed": 13,
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "results": [
+    {
+      "id": "fam-mor",
+      "input": "מי זאת מור",
+      "expected": [
+        "מרטיטה",
+        "מור"
+      ],
+      "answer": "מרטיטה האמא של מור.",
+      "latencyMs": 426,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "fam-inlaw-yarden-noam",
+      "input": "מה הקשר בין ירדן לנועם",
+      "expected": [
+        "עילי",
+        "דוד"
+      ],
+      "answer": "ירדן נשואה לעילי, ועילי בן דוד של נועם.",
+      "latencyMs": 324,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "fam-inlaw-gilad-leo",
+      "input": "מה הקשר בין גלעד ללאו",
+      "expected": [
+        "אופיר"
+      ],
+      "answer": "גלעד נשוי לאופיר, ואופיר אחיינית של לאו.",
+      "latencyMs": 325,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "fam-count",
+      "input": "כמה נכדים יש למור",
+      "expected": [
+        "אנאבל",
+        "ארי"
+      ],
+      "answer": "יש למור 2 נכדים: אנאבל וארי.",
+      "latencyMs": 331,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "date-today",
+      "input": "מה התאריך היום",
+      "expected": [
+        "2026"
+      ],
+      "answer": "היום 17 ביולי 2026, יום שישי.",
+      "latencyMs": 335,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "date-tomorrow",
+      "input": "איזה יום מחר",
+      "expected": [
+        "2026"
+      ],
+      "answer": "מחר יהיה שבת, 18 ביולי 2026.",
+      "latencyMs": 337,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "mem-save",
+      "input": "תזכרי שאני אוהבת יין אדום",
+      "expected": [
+        "יין אדום"
+      ],
+      "answer": "בסדר, אני אזכור את זה: אני אוהבת יין אדום.",
+      "latencyMs": 332,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "mem-recall",
+      "input": "מה את זוכרת עליי",
+      "expected": [
+        "יין אדום"
+      ],
+      "answer": "הנה מה שאני זוכרת עלייך: אני אוהבת יין אדום.",
+      "latencyMs": 323,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "mem-forget",
+      "input": "תשכחי שאני אוהבת יין אדום",
+      "expected": [
+        "שכחתי"
+      ],
+      "answer": "בסדר, שכחתי את זה.",
+      "latencyMs": 327,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "cal-create",
+      "input": "תקבעי פגישה עם רפי מחר בשלוש בבית קפה מרוקו",
+      "expected": [
+        "רפי",
+        "נכון"
+      ],
+      "answer": "פגישה עם רפי מחר בשלוש אחר הצהריים. בית קפה מרוקו. נכון?",
+      "latencyMs": 384,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "cal-confirm",
+      "input": "כן",
+      "expected": [
+        "קבוע",
+        "רפי"
+      ],
+      "answer": "קבוע — פגישה עם רפי 18 ביולי 2026, שבת בשעה 15:00. בית קפה מרוקו",
+      "latencyMs": 332,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "cal-referable-where",
+      "input": "איפה אני פוגשת אותו?",
+      "expected": [
+        "מרוקו"
+      ],
+      "answer": "הפגישה עם רפי בית קפה מרוקו.",
+      "latencyMs": 326,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "cal-referable-cancel",
+      "input": "תבטלי אותה",
+      "expected": [
+        "מחקתי"
+      ],
+      "answer": "מחקתי את פגישה עם רפי בשעה 15:00.",
+      "latencyMs": 326,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    }
+  ]
+}

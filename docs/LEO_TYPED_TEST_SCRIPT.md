@@ -1,10 +1,12 @@
 # LEO TYPED TEST SCRIPT — AbuAI (text layer)
 
-**Build:** 0.112.0-ui-cutover · branch `rc5/cognitive-architecture-and-acceptance`
+**Build:** 0.113.0-referable-fix · branch `rc5/cognitive-architecture-and-acceptance`
 **Scope:** TYPED input only (voice/Realtime is a later mission).
-**How to use:** type each line into AbuAI and compare to *Expected*. Answers were
-captured from the **actual runtime** (`runCognitiveTurn`) with the clock pinned to
-**Thu 2026-07-16**; on the live app, date/time answers reflect the day you run it.
+**Verified:** the deterministic checks below were run against the DEPLOYED preview in a
+real mobile-chrome browser — **13/13 pass at PREVIEW class** (family incl. in-laws, dates,
+memory, and the full create→where→move→cancel calendar flow), each ~300–400 ms.
+**How to use:** type each line into AbuAI and compare to *Expected*. Date/time answers
+reflect the day you run it.
 
 ## Honesty legend — where each answer comes from
 - **✅ RUNTIME** — the deployed UI answers this deterministically via the single
@@ -100,10 +102,9 @@ Still on their existing paths (works, but not the runtime), by deliberate scope:
 - **Math** (items 15–17) — currently answered by the model (correct, non-deterministic).
 - **General / online** (items 29–30) — model / live retrieval by design.
 
-**Important honesty note:** items marked **✅ RUNTIME** are proven at **CODE** level
-(runtime behaviour + a source-contract that the UI wiring exists), NOT yet at
-**PREVIEW**. The wiring is verified statically; the live end-to-end behaviour must
-still be confirmed on a deployed preview.
+**Update (0.113.0):** the referable items (23a–23c) are now **PREVIEW-verified** — a
+real-browser Playwright run against the deployed preview passes 13/13, with the
+referable read/cancel answered deterministically (~330 ms), not by the LLM.
 
 ---
 

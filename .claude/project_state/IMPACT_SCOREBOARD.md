@@ -25,6 +25,25 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.113.0 (General Intelligence — Cycle 33: PREVIEW-verified referability fix + real deploy proof)** —
+  Ran the typed-test script against the DEPLOYED preview with Playwright (real browser, real build):
+  12/13 at PREVIEW class — family (incl. in-law composition), dates, memory (save/recall/forget),
+  calendar create/confirm all correct at ~350 ms. It CAUGHT a real bug local unit tests missed:
+  "cancel it"/"where do I meet him" fell to the LLM. First-divergence: the pronoun was resolved to a
+  person NAME across FOUR layers — UI `resolvePronouns`/`resolveFollowUp`/companion-continuity + the
+  RUNTIME `normalizeInput` — and feminine "אותה" mis-resolved to a stale female name ("ארי"), ignoring
+  the focused (male) event. Also discovered the live path is NOT the `RUNTIME_OWNED` block edited in
+  0.112.0 (that is DEAD code): `COGNITIVE_RUNTIME_FULL=true` routes every turn through
+  ExecutiveController→runFullTurn→runCognitiveTurn. Fixes (general): (1) the UI skips its pronoun/
+  follow-up rewrite while a calendar event is in focus; (2) `runCognitiveTurn` keeps a referential-
+  pronoun turn RAW under a calendar focus so `normalizeInput` no longer mis-resolves it; (3)
+  `isFocusPropertyQuery` also binds a property question that NAMES the focus person. Result: the full
+  create→where→move→cancel flow is deterministic (~330 ms) and **13/13 on the live preview**. Evidence:
+  **PREVIEW** (Playwright on the deployed build, `docs/eval/PREVIEW_TYPED_SCRIPT_RESULTS.json`) + CODE
+  (calendarReferability +2 regressions for the UI-resolved-name form); benchmark **100%**; FULL suite
+  **10988 pass / 2 todo**; typecheck + build clean. Honesty correction: the 0.112.0 "cutover" edited
+  dead code — the duplicate-handler REMOVAL was still valid, but the RUNTIME_OWNED/cogFocusRef additions
+  are no-ops (kept, noted). Voice/Realtime untouched. NEXT: optional dead-code cleanup; math→runtime; C-class generated suites.
 - **0.112.0 (General Intelligence — Cycle 32: UI CUTOVER — delete/modify + focus to the runtime)** —
   Closed the wiring gap found in 0.111.0. `index.tsx` now (a) adds `calendar_delete` + `calendar_update`
   to `RUNTIME_OWNED`, (b) persists the conversation `focus` across turns via a new `cogFocusRef` —

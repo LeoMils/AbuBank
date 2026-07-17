@@ -1,5 +1,24 @@
 # WAR_ROOM_LOG
 
+## 2026-07-17 — 0.113.0: RC5 — PREVIEW-verified referability fix (real browser caught a real bug)
+- Discovered Vercel Git integration auto-deploys a preview on every push; queried the unauthenticated
+  GitHub deployments API to get the URL. /api/health confirmed 0.112.0 live (PREVIEW class).
+- Wrote e2e/preview-typed-script.spec.ts (Playwright, mobile-chrome) driving the REAL deployed UI with
+  exact typed-script assertions. 12/13 at PREVIEW; it CAUGHT "cancel it"/"where" falling to the LLM —
+  a bug local unit tests (which drive runCognitiveTurn directly) could not see.
+- MECHANISM (DOM-exposed diagnostics on the real build): the pronoun is resolved to a NAME by FOUR
+  layers (UI resolvePronouns/resolveFollowUp/companion-continuity + runtime normalizeInput); feminine
+  "אותה" mis-resolved to a stale female name ("ארי"), ignoring focus=רפי (male). Also found the live
+  path is ExecutiveController→runFullTurn→runCognitiveTurn (COGNITIVE_RUNTIME_FULL=true) — the
+  RUNTIME_OWNED block edited in 0.112.0 is DEAD code.
+- FIX (general, one runtime path): (1) UI skips its pronoun/follow-up rewrite under a calendar focus;
+  (2) runCognitiveTurn keeps a referential-pronoun turn RAW under a calendar focus (normalizeInput no
+  longer mis-resolves); (3) isFocusPropertyQuery binds a property question naming the focus person.
+- VALIDATION: 13/13 on the LIVE preview (deterministic ~330ms); calendarReferability +2 regressions;
+  benchmark 100%; FULL suite **10988 pass / 2 todo / 0 fail**; typecheck + build clean. Version
+  0.112.0→0.113.0 synced. Honesty: 0.112.0 edited dead code (removal valid, additions no-ops; kept+noted).
+- NEXT: optional dead-code cleanup in index.tsx; route math to the runtime; C-class generated suites.
+
 ## 2026-07-17 — 0.112.0: RC5 — UI CUTOVER (delete/modify + focus → runtime; one path)
 - Closed the 0.111.0 wiring gap. index.tsx: RUNTIME_OWNED += calendar_delete/calendar_update; new
   `cogFocusRef` persists the conversation focus across turns (threaded IN to the runtime state, carried
