@@ -68,7 +68,42 @@ turn sample. Avoid creating a parallel judge; extend the existing eval judges.
 Priorities (3) P2 LLM semantic calendar extraction and (4) BEHAVIOR_SPEC also depend on
 live-LLM/preview proof — same model-access decision gates their end-to-end evidence.
 
+## Segment-2 update — Cycle 41 done (parity scorecard shipped)
+
+HEAD now `docs(parity): correct model-dependent finding` on top of
+`feat …Cycle 41 (0.121.0-parity-scorecard)`. Delivered the **deterministic half of the
+parity judge** (option b above):
+- `src/eval/parityScorecard.ts` + `parityScorecard.test.ts` — a standing suite scoring the
+  ACTUAL app-path reply on all 6 dimensions over a curated He+Es turn set, REUSING
+  `judgeTurn` + `judgeResponse` (no parallel judge), with a pluggable live `reference`/`judge`
+  seam. `docs/eval/PARITY_SCORECARD.md` holds the scorecard (currently **6/6 dimensions at
+  100%, 17 scored turns, 1 model-dependent**).
+- It caught a REAL bug on first run: a Rioplatense "cancelalo" deleted correctly but
+  confirmed in HEBREW → fixed `deleteReasoner` to confirm in Spanish via `personName`.
+- Verified (evidence over assumption): ES memory store+recall have Spanish parity; the one
+  model-dependent turn ("¿quién es Gabi?") is correctly LLM-routed because Gabi is not a
+  known family member (`findNode` → null) — no fabrication.
+
+Remaining for Priority (2): the **LIVE** ChatGPT-class reference+judge (the seam) — still
+gated on the model-access decision below. Priorities (3) P2 LLM semantic calendar extraction
+and (4) BEHAVIOR_SPEC are next and also want live-LLM/preview proof.
+
 ## Continuation prompt (paste to resume)
+
+> Continue the MASTER MANDATE on rc5 from HEAD (0.121.0-parity-scorecard). Verify git state
+> first. The deterministic parity scorecard is shipped (src/eval/parityScorecard.*,
+> docs/eval/PARITY_SCORECARD.md, 6/6 @ 100%). Next, EITHER (2b) grow the parity turn set with
+> more REAL Leo flows mined from src/eval/*iphone*, deviceFailuresTriage, leoRetestAcceptance,
+> realDeviceTranscriptRegression — each new turn that reds a dimension names a real gap to fix
+> via a general mechanism — OR (2a) wire the LIVE reference/judge seam (needs a provider +
+> key decision: OpenAI vs Claude as the ChatGPT-class reference; run out-of-band, NOT in the
+> unit suite) OR (3) build P2 LLM semantic calendar extraction for the rambling-story class,
+> proven on the deployed preview. Reuse existing judges/engines; never build a parallel judge.
+> Increment version + keep src/version.ts ⇄ api/health.ts ⇄ src/version.test.ts in sync (avoid
+> apostrophes in the buildLabel — the health drift regex breaks on them); run typecheck + full
+> vitest + build; commit. Evidence discipline: verify, never assume; label CODE vs live-model.
+
+## Superseded continuation prompt (segment-1, kept for history)
 
 > Continue the MASTER MANDATE on rc5 from HEAD (0.120.0-marathon-ordinal). Verify git state
 > first. Build Priority (2) the PARITY JUDGE, option (b) first: a deterministic parity
