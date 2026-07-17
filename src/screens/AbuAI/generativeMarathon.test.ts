@@ -18,6 +18,7 @@ import { IDLE_RUNTIME, type RuntimeState } from './cognitiveRuntime'
 import { resolvePronouns } from './pronounResolver'
 import { resolveFollowUp } from './contextResolver'
 import { loadGraph, type GraphNode } from './familyGraph'
+import { resolvePersonPhrase } from './personPhraseResolver'
 import { loadAppointments, deleteAppointment } from '../AbuCalendar/service'
 import { clearMemories } from './savedMemory'
 
@@ -111,16 +112,102 @@ function dateScenario(r: () => number): { name: string; steps: Step[] } {
   return { name: 'date', steps: [{ text: `בעוד ${n} ימים איזה יום`, check: (d) => d.includes(HE_DAYS[t.getDay()]!) ? null : `want ${HE_DAYS[t.getDay()]}: "${d}"` }] }
 }
 
+// ── WIDENING (Cycle 39) ──────────────────────────────────────────────────────
+// (A) Relation-phrase create: "פגישה עם ה<rel> של <person>" must save the RESOLVED
+// person, not the literal phrase. Precompute (target,rel)→person pairs that resolve
+// UNIQUELY via the same authority the runtime uses, so the oracle can never drift.
+const REL_WORDS = ['אמא', 'אבא', 'בת', 'בן', 'אח', 'אחות', 'חתן', 'כלה', 'בעל', 'אישה', 'נכד', 'נכדה', 'סבא', 'סבתא']
+const REL_PAIRS: Array<{ target: string; rel: string; person: string }> = []
+for (const target of G) for (const rel of REL_WORDS) {
+  const person = resolvePersonPhrase(`ה${rel} של ${target.hebrew}`)
+  if (person && person !== target.hebrew) REL_PAIRS.push({ target: target.hebrew, rel, person })
+}
+function relationCreateScenario(r: () => number): { name: string; steps: Step[] } | null {
+  if (!REL_PAIRS.length) return null
+  const { target, rel, person } = pick(r, REL_PAIRS)
+  return {
+    name: `relCreate:${rel}`,
+    steps: [
+      { text: `תקבעי פגישה עם ה${rel} של ${target} מחר בשלוש`, check: (d) => d.includes(person) ? null : `create wants resolved ${person}: "${d}"` },
+      { text: 'כן', check: (_d, side) => side === 'saved_appointment' ? null : `save side=${side}` },
+      { text: 'תבטלי אותה', check: (_d, side) => side === 'deleted' ? null : `cancel-pronoun side=${side}` },
+    ],
+  }
+}
+
+// (B) "the last one" referable chain: two meetings, then cancel THE LAST — the second
+// person's event dies, the first survives (referent = most-recent, not a reset).
+function lastOneChainScenario(r: () => number): { name: string; steps: Step[] } {
+  let p1 = pick(r, CAL_PEOPLE), p2 = pick(r, CAL_PEOPLE)
+  while (p2 === p1) p2 = pick(r, CAL_PEOPLE)
+  // Store may already hold events from earlier scenarios in this session (realistic).
+  // Capture the pre-cancel store in the save2 check so the oracle computes the true
+  // expected victim (the just-created p2 event in focus) instead of assuming a clean store.
+  let before: ReturnType<typeof loadAppointments> = []
+  return {
+    name: 'lastOneChain',
+    steps: [
+      { text: `תקבעי פגישה עם ${p1} מחר בשלוש`, check: (d) => d.includes(p1) ? null : `card1 missing ${p1}` },
+      { text: 'כן', check: (_d, side) => side === 'saved_appointment' ? null : `save1 side=${side}` },
+      { text: `תקבעי פגישה עם ${p2} ביום ראשון בארבע`, check: (d) => d.includes(p2) ? null : `card2 missing ${p2}` },
+      { text: 'כן', check: (_d, side) => { if (side !== 'saved_appointment') return `save2 side=${side}`; before = loadAppointments(); return null } },
+      { text: 'תבטלי את הפגישה האחרונה', check: (d, side) => {
+        if (side !== 'deleted') return `lastOne side=${side}`
+        const after = loadAppointments()
+        if (after.length !== before.length - 1) return `count ${before.length}->${after.length}`
+        // The victim is the just-created p2 event (the referent in focus); it must be gone,
+        // and the deleted-confirmation names p2. A p1 event from this scenario must survive.
+        const victim = before.find((b) => !after.some((a) => a.id === b.id))
+        if (!victim || !(victim.title ?? '').includes(p2)) return `victim not ${p2}: "${d}"`
+        return null
+      } },
+    ],
+  }
+}
+
+// (C) Mid-flow person correction: "…עם p1…" then "לא, לא עם p1, עם p2" swaps the DRAFT
+// (not a cancel, not the LLM), and "כן" saves the corrected person.
+function correctionScenario(r: () => number): { name: string; steps: Step[] } {
+  let p1 = pick(r, CAL_PEOPLE), p2 = pick(r, CAL_PEOPLE)
+  while (p2 === p1) p2 = pick(r, CAL_PEOPLE)
+  return {
+    name: 'correction',
+    steps: [
+      { text: `תקבעי פגישה עם ${p1} מחר בשבע בערב`, check: (d) => d.includes(p1) ? null : `card missing ${p1}` },
+      { text: `לא, לא עם ${p1}, עם ${p2}`, check: (d) => d.includes(p2) && !d.includes(p1) ? null : `swap wants ${p2} not ${p1}: "${d}"` },
+      { text: 'כן', check: (d, side) => side === 'saved_appointment' && d.includes(p2) ? null : `save side=${side} d="${d}"` },
+    ],
+  }
+}
+
+// (D) Spanish (Rioplatense) calendar session — the deterministic ES create/confirm/cancel
+// route must hold identically to Hebrew. Side effects are the language-agnostic oracle.
+const ES_NAMES = ['Gabi', 'Mor', 'Anabel', 'Dana', 'Rafi']
+function spanishCalendarScenario(r: () => number): { name: string; steps: Step[] } {
+  const p = pick(r, ES_NAMES)
+  return {
+    name: 'es:calendar',
+    steps: [
+      { text: `agendá una reunión con ${p} mañana a las tres`, check: (d) => d && d !== 'LLM_STUB' ? null : `es-create fell to LLM: "${d}"` },
+      { text: 'dale, agendalo', check: (_d, side) => side === 'saved_appointment' ? null : `es-save side=${side}` },
+      { text: 'cancelalo', check: (_d, side) => side === 'deleted' ? null : `es-cancel side=${side}` },
+    ],
+  }
+}
+
 describe('GENERATIVE MARATHON — app-entry sessions', () => {
   it('a fresh batch of generated multi-turn sessions passes clean', async () => {
-    const SESSIONS = 400
+    const SESSIONS = 1200
     const breaks: Break[] = []
     for (let seed = 1; seed <= SESSIONS; seed++) {
       clearStore(); clearMemories()
       const r = rng(seed * 7 + 3)
       let state: RuntimeState = IDLE_RUNTIME
       const msgs: Array<{ role: string; content: string }> = []
-      const builders = [familyWhoScenario, calendarScenario, memoryScenario, dateScenario]
+      const builders = [
+        familyWhoScenario, calendarScenario, memoryScenario, dateScenario,
+        relationCreateScenario, lastOneChainScenario, correctionScenario, spanishCalendarScenario,
+      ]
       const nScen = 3 + Math.floor(r() * 3) // 3..5 scenarios per session
       for (let i = 0; i < nScen; i++) {
         const scen = pick(r, builders)(r)

@@ -53,8 +53,14 @@ const SUBJECT_LEAD = new RegExp(`(?:^|\\s)(?:${PURPOSE_VERB})?(?:על|בנושא
 
 // Words that must NOT be taken as a person name after עם/אצל (they belong to
 // another field). Keeps "עם אלכסנדרה בקפה" → person = אלכסנדרה only.
-const PERSON_STOP =
-  /^(?:ב|ל|על|בנושא|לגבי|בעניין|בשעה|בבוקר|בערב|בצהריים|בלילה|מחר|מחרתיים|היום|ביום|בעוד|כי|בגלל|כדי|אחהצ)|^(?:הערב|הלילה|הבוקר|הצהריים|השבוע|השבת|הולכים|הולכת|הולך|נלך|נראה|נצא|נאכל|נשתה|נפגש|נבקר|נשב|רוצה|רוצים|צריך|צריכה|כדי|בשביל)$|^(?:mañana|hoy|pasado|el|la|los|las|a|de|del|en|para|sobre|por|y|que|viene|lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|domingo)$/i
+// HARD: whole-word non-names (time/place/verb markers) — always end the person span.
+const PERSON_STOP_HARD =
+  /^(?:בנושא|לגבי|בעניין|בשעה|בבוקר|בערב|בצהריים|בלילה|מחר|מחרתיים|היום|ביום|בעוד|כי|בגלל|כדי|אחהצ|הערב|הלילה|הבוקר|הצהריים|השבוע|השבת|הולכים|הולכת|הולך|נלך|נראה|נצא|נאכל|נשתה|נפגש|נבקר|נשב|רוצה|רוצים|צריך|צריכה|בשביל)$|^(?:mañana|hoy|pasado|el|la|los|las|a|de|del|en|para|sobre|por|y|que|viene|lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|domingo)$/i
+// PREFIX: a bare preposition prefix (ב/ל/על + attached word, e.g. "בקפה", "לרופא")
+// starts a NEW field, so it ends the person span — EXCEPT for the first person word
+// (a name may itself start with ל/ב: לאו, לאה, בני) and a genitive target right after
+// "של" ("האמא של לאו" — לאו is the person, not a preposition). Applied only mid-span.
+const PERSON_STOP_PREFIX = /^(?:ב|ל|על)/u
 
 function clean(s: string): string {
   return s.trim().replace(/^[\s]+/u, '').replace(/[.,!?;:"'״׳]+$/u, '').trim()
@@ -97,7 +103,11 @@ function extractPerson(text: string): string | null {
   const name: string[] = []
   for (const w of words) {
     if (name.length >= 3) break
-    if (PERSON_STOP.test(w)) break
+    if (PERSON_STOP_HARD.test(w)) break
+    // The bare ב/ל/על prefix only ends the span mid-name — never on the first word
+    // (names can start with ל/ב) nor on a genitive target immediately after "של".
+    const afterShel = name[name.length - 1] === 'של'
+    if (name.length > 0 && !afterShel && PERSON_STOP_PREFIX.test(w)) break
     const cw = w.replace(/[.,!?;:"'״׳]+$/u, '')
     if (!cw || cw.length < 2) break
     name.push(cw)
@@ -153,7 +163,7 @@ function extractLocation(text: string): { value: string; span: string } | null {
   // "אצל X" is the meeting itself (title/person) — leave it to the title extractor.
   const hasWith = /(?<![א-ת])עם\s+[א-ת]/u.test(text)
   const atName = /(?<![א-ת])(אצל\s+([א-ת][א-ת'׳]+(?:\s+[א-ת][א-ת'׳]+)?))/u.exec(text)
-  if (hasWith && atName && !PERSON_STOP.test(atName[2]!)) { const value = clean(atName[1]!); if (value.length >= 4) return { value, span: atName[1]! } }
+  if (hasWith && atName && !PERSON_STOP_HARD.test(atName[2]!)) { const value = clean(atName[1]!); if (value.length >= 4) return { value, span: atName[1]! } }
   // Bare "בבית" (at home) — but NOT when it is really "בית קפה/חולים/…".
   const homeM = /(?<![א-ת])בבית(?![א-ת])(?!\s+(?:קפה|חולים|מרקחת|כנסת|ספר|אבות|מלון))/u.exec(text)
   if (homeM) return { value: 'בבית', span: 'בבית' }

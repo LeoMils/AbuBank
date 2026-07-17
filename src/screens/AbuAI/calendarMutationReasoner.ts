@@ -128,8 +128,16 @@ export function recurringReasoner(text: string): MutationResult {
 // LLM; the controller uses this (gated on a calendar focus) to route it to delete.
 const REFERENTIAL_DELETE_RE =
   /^(?:תבטל[יי]?|בטל[יי]?|לבטל|תמחק[יי]?|מחק[יי]?|למחוק|תסיר[יי]?|הסיר[יי]?|תוריד[יי]?)\s*(?:את\s+)?(?:אות[הו]|ז[הו]את?|ה?פגיש\S*|ה?תור|ה?מפגש|ה?ביקור|ה?אירוע)?\s*[?.!]*$/u
+// Rioplatense referable delete of a SAVED event ("cancelalo", "borrá la reunión",
+// "eliminala") — the mirror of the Hebrew form. Without this a Spanish "cancel it"
+// dead-ends to the LLM instead of the deterministic delete (marathon es:calendar class).
+// The pending-draft cancel (CANCEL_INTENT_ES in calendarCreate) covers phase!==idle;
+// this covers an already-saved event in focus.
+const REFERENTIAL_DELETE_ES_RE =
+  /^(?:cancel[áa]|cancel[áa]l[oa]|cancelal[oa]|borr[áa]|borr[áa]l[oa]|borral[oa]|elimin[áa]|elimin[áa]l[oa]|eliminal[oa]|sac[áa]|sac[áa]l[oa]|sacal[oa]|quit[áa]l[oa]|quital[oa])(?:\s+(?:la\s+|el\s+)?(?:reuni[óo]n|cita|turno|evento|comida|cena))?\s*[?!.¿¡]*$/iu
 export function isReferentialDelete(text: string): boolean {
-  return REFERENTIAL_DELETE_RE.test(text.trim())
+  const t = text.trim()
+  return REFERENTIAL_DELETE_RE.test(t) || REFERENTIAL_DELETE_ES_RE.test(t)
 }
 
 /** Friendly Hebrew date for a readback ("28 ביוני 2026, יום ראשון"), never raw ISO. */

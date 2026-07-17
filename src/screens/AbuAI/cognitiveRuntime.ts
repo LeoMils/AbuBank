@@ -968,7 +968,11 @@ export function extractSearchPerson(text: string): string | null {
 export function answerCalendarProperty(text: string, person: string): string | null {
   const r = findEventsByPerson(person, true)
   if (r.events.length === 0) return null
-  const ev = r.events[0]!
+  // The referent of a focus property query ("איפה אני פוגשת אותו?") right after a create
+  // is the event JUST set up — the most-recently-created match, not the oldest. Insertion
+  // order is creation order, so take the last match (older same-person events must not
+  // shadow the fresh one with the location/time the user is asking about).
+  const ev = r.events[r.events.length - 1]!
   // WHEN / what-time — "מתי" adds the (friendly) date, "שעה" answers the hour.
   if (/שעה|(?<![א-ת])מתי(?![א-ת])/u.test(text)) {
     if (!ev.time) return `עוד לא רשמתי שעה לפגישה עם ${person}.`
