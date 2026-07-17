@@ -25,6 +25,19 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.117.0 (MASTER MANDATE — Cycle 37: reality-driven — ramble DATE proximity)** — Closes the second
+  half of Leo's rambling-story failure. On the 0.116.0 preview (isolated per-scenario repro): #1 create
+  resolved to גלעד ✓, story person+location ✓, but the DATE was still "היום" (grabbed from "דיברתי
+  היום") instead of the meeting's "מחר בשלוש". Fix: `parseCreateDate` now, when MULTIPLE Hebrew day
+  cues appear, picks the one NEAREST a time expression (a meeting's date + time are stated together) —
+  a structural proximity rule, not a phrase list; a single cue is unchanged. Fixed a lookbehind bug
+  (the ל/ב prefix in "להיום" is a Hebrew letter) that the device-transcript regression caught. Now the
+  story resolves person=גלעד, location=בית קפה טולדנו, date=מחר — end-to-end. Evidence: CODE
+  (calendarRelationPhrase story asserts date=מחר; realDeviceTranscriptRegression 32/32;
+  calendarCrudGeneralization 4/4) + APP re-verify on a fresh preview; benchmark **100%**; FULL suite
+  **11015 pass / 2 todo**; typecheck + build clean. NEXT: P4 generative marathon (thousands of full
+  sessions through the app path); P2 full LLM semantic-extraction path (this proximity rule is a
+  structural stopgap — the general answer is schema extraction of the full utterance).
 - **0.116.0 (MASTER MANDATE — Cycle 36: reality-driven — relation-phrase person in create)** — New
   governing rule: only DEPLOYED-PREVIEW-through-the-app evidence counts. Reproduced Leo's 0.113.0
   device failures at APP level (Playwright on the live preview, `LEO_DEVICE_FAILURES_REPRO.json`):

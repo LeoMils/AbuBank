@@ -525,13 +525,31 @@ function weekdayInNextWeek(dayIndex: number): string {
 export function parseCreateDate(text: string): string | null {
   const t = text.trim()
 
-  if (/היום/.test(t)) return todayStr()
-  if (/מחרתיים/.test(t)) {
-    const d = new Date()
-    d.setDate(d.getDate() + 2)
-    return localDateStr(d)
+  // Hebrew relative-day cues (היום/מחר/מחרתיים). When MORE THAN ONE appears — a
+  // rambling story with a CONTEXT "היום" ("דיברתי היום…") AND a meeting "מחר"
+  // ("להיפגש מחר בשלוש") — pick the cue NEAREST a time expression: a meeting's date
+  // and time are stated together. Structural (date↔time proximity), not a phrase list.
+  // A single cue keeps the original behaviour exactly.
+  // Forward-only guards (no lookbehind — the ל/ב prefixes in "להיום"/"במחר" are
+  // Hebrew letters). "מחר(?![תי])" excludes "מחרתיים"; "מחרתיים" is collected on its own.
+  const heDay: Array<{ re: RegExp; resolve: () => string }> = [
+    { re: /מחרתיים/gu, resolve: () => { const d = new Date(); d.setDate(d.getDate() + 2); return localDateStr(d) } },
+    { re: /מחר(?![תי])/gu, resolve: () => tomorrowStr() },
+    { re: /היום/gu, resolve: () => todayStr() },
+  ]
+  const hits: Array<{ idx: number; resolve: () => string }> = []
+  for (const { re, resolve } of heDay) { let m: RegExpExecArray | null; while ((m = re.exec(t))) hits.push({ idx: m.index, resolve }) }
+  if (hits.length === 1) return hits[0]!.resolve()
+  if (hits.length > 1) {
+    const timeM = t.match(/בשעה|(?<![א-ת])ב?(?:אחת עשרה|שתים עשרה|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)(?![א-ת])|ב[־-]?\d{1,2}(?::\d{2})?/u)
+    if (timeM && typeof timeM.index === 'number') {
+      const ti = timeM.index
+      hits.sort((a, b) => Math.abs(a.idx - ti) - Math.abs(b.idx - ti))
+    } else {
+      hits.sort((a, b) => b.idx - a.idx) // no time cue → the LAST date word (meeting details follow context)
+    }
+    return hits[0]!.resolve()
   }
-  if (/מחר/.test(t)) return tomorrowStr()
 
   // ── Spanish (Rioplatense) dates ──
   // Strip "(de|por) la mañana" first so it is read as the MORNING period, never

@@ -27,12 +27,16 @@ describe('CREATE resolves a relation-phrase person', () => {
     expect(d.state.createState.draft.person).toBe('גלעד')
   })
 
-  it('a rambling story resolves the person AND keeps the real meeting location', () => {
+  it('a rambling story resolves person + location + the MEETING date (מחר), not the context "היום"', () => {
     const story = 'אז תשמעי, דיברתי היום עם החתן של רפי, והוא סיפר לי שהוא טס לניו יורק בשבוע הבא, ואנחנו רוצים להיפגש מחר בשלוש אחר הצהריים בבית קפה טולדנו כדי לדבר על הטיול המשפחתי'
     const d = first(story)
     expect(d.state.createState.draft.person).toBe('גלעד')
     expect(d.display ?? '').toContain('גלעד')
     expect(d.display ?? '').toContain('טולדנו')
+    // The meeting is "מחר בשלוש" — not "היום" from "דיברתי היום".
+    expect(d.state.createState.draft.date).toBe('2026-06-25') // tomorrow (fixed 2026-06-24)
+    expect(d.display ?? '').toContain('מחר')
+    expect(d.display ?? '').not.toContain('היום')
   })
 
   it('an ordinary name is unaffected', () => {

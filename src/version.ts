@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.116.0-relation-phrase-create',
-  buildLabel: 'AbuBank — RELATION_PHRASE_CREATE (Reality-driven — Leo device #1): a calendar create that names a person by a RELATION PHRASE ("פגישה עם החתן של רפי") now resolves it to the REAL person (גלעד) via the family engine BEFORE scheduling — not saved literally. New personPhraseResolver composes graph edges for any relation incl. in-laws (חתן/כלה/חם/חמות/גיס/גיסה); unambiguous only, honest null on unknown/ambiguous. Wired into runCognitiveTurn calendar_create (covers the smart + base parser paths + rambling stories, which also keep the real location e.g. בית קפה טולדנו). RED-first reproduced at APP level on the deployed preview (Playwright); fix proven at runtime + re-verified on a fresh preview. Evidence: CODE (personPhraseResolver 9/9 + calendarRelationPhrase 3/3) + PREVIEW; full suite 11015 green; typecheck+build clean. Remaining from the story: date grabbed from ramble context ("היום" vs "מחר" for the meeting) — next cycle. Voice/Realtime untouched. Builds on 0.115.0.',
+  version:    '0.117.0-ramble-date',
+  buildLabel: 'AbuBank — RAMBLE_DATE (Reality-driven — Leo device #2): a rambling create with a CONTEXT date and a MEETING date ("דיברתי היום… להיפגש מחר בשלוש") now picks the MEETING date — parseCreateDate chooses the day cue NEAREST the time expression (a meeting date + time are stated together), instead of the first "היום". Structural proximity rule, NOT a phrase list; a single date cue is unchanged. Together with 0.116.0 (relation-phrase person → גלעד) this closes the rambling-story failure end-to-end: person, location, AND date correct. Also fixed a lookbehind bug (prefix ל/ב in "להיום") surfaced by the device-transcript regression. Evidence: CODE (calendarRelationPhrase story asserts date=מחר; realDeviceTranscriptRegression 32/32; calendarCrudGeneralization 4/4) + APP-level re-verify on a fresh preview; full suite 11015 green; typecheck+build clean. Voice/Realtime untouched. Builds on 0.116.0.',
   buildDate:  '2026-07-16',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
