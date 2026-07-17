@@ -80,6 +80,8 @@ const CHECKS: Array<[string, string, string[], boolean]> = [
   ['math-mult', 'כמה זה 15 כפול 4', ['60'], false],
   ['math-pct', '20 אחוז מ-200', ['40'], false],
   ['math-es', 'cuánto es 12 por 8', ['96'], false],
+  // 0.118.0 — date routing for the "בעוד N … איזה יום" ordering (was falling to the LLM).
+  ['date-beod-ordering', 'בעוד 5 ימים איזה יום', ['יהיה'], true],
 ]
 
 test('PREVIEW typed-script — deterministic checks on the deployed build', async ({ page }) => {

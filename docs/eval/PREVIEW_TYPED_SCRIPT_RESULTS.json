@@ -1,11 +1,13 @@
 {
-  "version": "0.113.0-referable-fix",
+  "version": "0.118.0-marathon-p4",
   "versionBadgeOk": true,
-  "badgeText": "QA: v0.113.0-referable-fix",
-  "previewUrl": "https://abu-bank-i717xq55g-leos-projects-d3c04c09.vercel.app",
-  "ran": 13,
-  "passed": 13,
-  "consoleErrors": [],
+  "badgeText": "QA: v0.118.0-marathon-p4",
+  "previewUrl": "https://abu-bank-68qruujv1-leos-projects-d3c04c09.vercel.app",
+  "ran": 17,
+  "passed": 17,
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 500 ()"
+  ],
   "results": [
     {
       "id": "fam-mor",
@@ -15,7 +17,7 @@
         "מור"
       ],
       "answer": "מרטיטה האמא של מור.",
-      "latencyMs": 419,
+      "latencyMs": 379,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -29,7 +31,7 @@
         "דוד"
       ],
       "answer": "ירדן נשואה לעילי, ועילי בן דוד של נועם.",
-      "latencyMs": 330,
+      "latencyMs": 294,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -42,7 +44,7 @@
         "אופיר"
       ],
       "answer": "גלעד נשוי לאופיר, ואופיר אחיינית של לאו.",
-      "latencyMs": 331,
+      "latencyMs": 342,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -56,7 +58,7 @@
         "ארי"
       ],
       "answer": "יש למור 2 נכדים: אנאבל וארי.",
-      "latencyMs": 324,
+      "latencyMs": 359,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -69,7 +71,7 @@
         "2026"
       ],
       "answer": "היום 17 ביולי 2026, יום שישי.",
-      "latencyMs": 342,
+      "latencyMs": 317,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -82,7 +84,7 @@
         "2026"
       ],
       "answer": "מחר יהיה שבת, 18 ביולי 2026.",
-      "latencyMs": 325,
+      "latencyMs": 313,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -95,7 +97,7 @@
         "יין אדום"
       ],
       "answer": "בסדר, אני אזכור את זה: אני אוהבת יין אדום.",
-      "latencyMs": 329,
+      "latencyMs": 398,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -108,7 +110,7 @@
         "יין אדום"
       ],
       "answer": "הנה מה שאני זוכרת עלייך: אני אוהבת יין אדום.",
-      "latencyMs": 331,
+      "latencyMs": 309,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -121,7 +123,7 @@
         "שכחתי"
       ],
       "answer": "בסדר, שכחתי את זה.",
-      "latencyMs": 344,
+      "latencyMs": 302,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -135,7 +137,7 @@
         "נכון"
       ],
       "answer": "פגישה עם רפי מחר בשלוש אחר הצהריים. בית קפה מרוקו. נכון?",
-      "latencyMs": 357,
+      "latencyMs": 328,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -149,7 +151,7 @@
         "רפי"
       ],
       "answer": "קבוע — פגישה עם רפי 18 ביולי 2026, שבת בשעה 15:00. בית קפה מרוקו",
-      "latencyMs": 337,
+      "latencyMs": 303,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -162,7 +164,7 @@
         "מרוקו"
       ],
       "answer": "הפגישה עם רפי בית קפה מרוקו.",
-      "latencyMs": 343,
+      "latencyMs": 300,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -175,7 +177,59 @@
         "מחקתי"
       ],
       "answer": "מחקתי את פגישה עם רפי בשעה 15:00.",
-      "latencyMs": 321,
+      "latencyMs": 310,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "math-mult",
+      "input": "כמה זה 15 כפול 4",
+      "expected": [
+        "60"
+      ],
+      "answer": "זה יוצא 60.",
+      "latencyMs": 303,
+      "pass": true,
+      "missing": [],
+      "critical": false,
+      "error": null
+    },
+    {
+      "id": "math-pct",
+      "input": "20 אחוז מ-200",
+      "expected": [
+        "40"
+      ],
+      "answer": "20% מ-200 זה 40.",
+      "latencyMs": 334,
+      "pass": true,
+      "missing": [],
+      "critical": false,
+      "error": null
+    },
+    {
+      "id": "math-es",
+      "input": "cuánto es 12 por 8",
+      "expected": [
+        "96"
+      ],
+      "answer": "Son 96.",
+      "latencyMs": 305,
+      "pass": true,
+      "missing": [],
+      "critical": false,
+      "error": null
+    },
+    {
+      "id": "date-beod-ordering",
+      "input": "בעוד 5 ימים איזה יום",
+      "expected": [
+        "יהיה"
+      ],
+      "answer": "בעוד 5 ימים יהיה יום רביעי, 22 ביולי 2026.",
+      "latencyMs": 300,
       "pass": true,
       "missing": [],
       "critical": true,
