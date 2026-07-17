@@ -1527,13 +1527,16 @@ export function AbuAI() {
 
       setLastHeardText(text) // v20: Show what was heard
 
-      // Cross-turn pronoun resolution (voice path)
+      // Cross-turn pronoun resolution (voice path). PARITY with typed: while a calendar
+      // EVENT is in focus, keep the pronoun RAW ("תבטלי אותה" must bind to the focused
+      // event, not a gendered last-person) — the runtime resolves it via `focus`.
+      const vHasCalFocus = cognitiveRuntimeStateRef.current.focus?.kind === 'calendar_event'
       const { resolved: resolvedText } = resolvePronouns(text, messagesRef.current)
-      let effectiveText = resolvedText !== text ? resolvedText : text
+      let effectiveText = (resolvedText !== text && !vHasCalFocus) ? resolvedText : text
 
       // Cross-turn follow-up resolution (voice path)
       const voiceFollowUp = resolveFollowUp(effectiveText, messagesRef.current, { pendingCreate: createStateRef.current.phase !== 'idle' })
-      if (voiceFollowUp.wasFollowUp) effectiveText = voiceFollowUp.resolved
+      if (voiceFollowUp.wasFollowUp && !vHasCalFocus) effectiveText = voiceFollowUp.resolved
 
       const userMsg: ChatMessage = { id: nextId(), role: 'user', content: effectiveText, timestamp: Date.now() }
       const currentMsgs = [...messagesRef.current, userMsg]
@@ -2523,10 +2526,13 @@ ${fewShotText}`
             // resolution, then route the transcript through the SAME AbuAI brain
             // (ExecutiveCognitiveController). Voice must not bypass the brain.
             const prior = messagesRef.current
+            // PARITY with typed/pipeline: keep a pronoun RAW while a calendar event is
+            // focused so the runtime resolves it via `focus` (referable cancel/move).
+            const rtHasCalFocus = cognitiveRuntimeStateRef.current.focus?.kind === 'calendar_event'
             const { resolved: pr } = resolvePronouns(text, prior)
-            let eff = pr !== text ? pr : text
+            let eff = (pr !== text && !rtHasCalFocus) ? pr : text
             const fu = resolveFollowUp(eff, prior, { pendingCreate: createStateRef.current.phase !== 'idle' })
-            if (fu.wasFollowUp) eff = fu.resolved
+            if (fu.wasFollowUp && !rtHasCalFocus) eff = fu.resolved
             const userMsg: ChatMessage = { id: nextId(), role: 'user', content: eff, timestamp: Date.now() }
             const currentMsgs = [...messagesRef.current, userMsg]
             setMessages(currentMsgs)

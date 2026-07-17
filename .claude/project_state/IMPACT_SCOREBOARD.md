@@ -25,6 +25,22 @@ A cycle is only "done" when this table has a new row.
 | 0.68.0 | 100.0% (floor held) | +2 parity moments (gold replay) | — | **Fragment ambiguous-hour PARITY** (parity-program cycle). Fragment "drip" create with an AM/PM-ambiguous bare hour ("תקבעי"→"עם מור"→"מחר בשמונה"→"כן") used to stay ambiguous forever and dead-end on "כן" (nothing saved); now the fragment slot-fill resolves it to the SAME default the single-utterance smart layer uses → confirm → "כן" saves exactly once. Fragment create === single-utterance create. Also: bare period correction ("לא בערב") at confirm now flips AM→PM (never-lose-a-correction). | gold replay 6/6 + AbuAI 4302 + AbuCalendar/eval 5611 + tsc + build |
 
 ## Cycle log
+- **0.115.0 (Voice mission — Cycle 35: voice ↔ typed CONTROLLER PARITY for referability)** — First
+  voice-mission cycle (text-layer-shared, no device claims). Mapped the voice handlers: both the
+  pipeline-STT path and the Realtime path ALREADY route through the SAME
+  ExecutiveCognitiveController + shared `cognitiveRuntimeStateRef` as typed (controller parity was
+  in place). GAP: both voice paths pre-resolved pronouns via `resolvePronouns`/`resolveFollowUp`
+  WITHOUT the calendar-focus guard added for text in 0.113.0 — so "תבטלי אותה"/"תעבירי אותה" spoken
+  in voice would mis-resolve the pronoun to a gendered last-person (the exact referability bug fixed
+  for typed). Applied the identical `hasCalFocus` guard to BOTH voice handlers (`vHasCalFocus`,
+  `rtHasCalFocus`), so a referential pronoun stays RAW under a calendar focus and the runtime resolves
+  it via `focus` — a fix in one modality now holds in the other (mandate rule). New
+  `voiceReferabilityParity.test.ts` source-contract: all 3 input paths route through the controller,
+  seed from the shared state, and guard the pronoun rewrite (4/4). Runtime behaviour already proven by
+  calendarReferability + calendarCrudGeneralization (CODE). Physical voice audibility/latency stays
+  PHYSICAL_DEVICE-only — NOT claimed. Evidence (CODE): voiceReferabilityParity 4/4; benchmark **100%**;
+  FULL suite **11002 pass / 2 todo**; typecheck + build clean. NEXT (voice): device-gated audibility/
+  latency pass (needs a real iPhone); barge-in/watchdog review.
 - **0.114.0 (General Intelligence — Cycle 34: principle-C generated suites for dates + calendar)** —
   Backlog: closed the mandate's principle-C gap beyond family. `dateEngineGeneralization.test.ts` —
   ~1100 GENERATED date-arithmetic cases (בעוד/לפני N ימים·שבועות, relative-day words, +N hours,

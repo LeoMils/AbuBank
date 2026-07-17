@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.114.0-generalization-proofs',
-  buildLabel: 'AbuBank — GENERALIZATION_PROOFS (Intelligence, text-layer): principle-C property-based proofs for the DATE engine (~1100 generated arithmetic cases — בעוד/לפני N ימים·שבועות, relative-day words, +N hours, next-weekday — each vs an independent JS-Date oracle) and CALENDAR CRUD (~440 generated create/cancel/move sequences through the real runtime, asserting store state + referability incl. pronoun "תבטלי אותה"/"תעבירי אותה"). Both GREEN — parity with the family relation generalization proof. Also corrects the typed-test doc: math ("15 כפול 4" etc.) is deterministic in-app (PREVIEW-verified 3/3), not LLM. Evidence (CODE): dateEngineGeneralization 6/6 + calendarCrudGeneralization 4/4; full suite 10998 green; typecheck+build clean. Voice/Realtime untouched. Builds on 0.113.0.',
+  version:    '0.115.0-voice-parity',
+  buildLabel: 'AbuBank — VOICE_PARITY (Voice mission — controller parity): voice ↔ typed parity for calendar referability. Both voice input paths (pipeline STT + Realtime) already route through the SAME ExecutiveCognitiveController + shared cognitiveRuntimeStateRef as typed, but they pre-resolved pronouns WITHOUT the calendar-focus guard added in 0.113.0 — so "תבטלי אותה"/"תעבירי אותה" in voice would mis-resolve the pronoun to a gendered last-person (the exact bug fixed for text). Applied the identical hasCalFocus guard to BOTH voice handlers so a pronoun stays RAW under a calendar focus and the runtime resolves it via focus. New voiceReferabilityParity source-contract: all 3 input paths route through the controller, seed from the shared state, and guard the pronoun rewrite. Runtime behaviour proven by calendarReferability + generalization (CODE). Physical voice audibility/latency remains PHYSICAL_DEVICE-only (NOT claimed here). Evidence (CODE): voiceReferabilityParity 4/4; full suite 11002 green; typecheck+build clean. Builds on 0.114.0.',
   buildDate:  '2026-07-16',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   commitHint: 'local',
