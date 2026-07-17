@@ -51,9 +51,12 @@ deterministically scored): 1._
 - `he-memory` — store a preference → recall it.
 - `he-relation-ordinal` — two creates → "תבטלי את הפגישה הראשונה" (ordinal-first cancel).
 - `es-calendar` — Rioplatense create → "dale, agendalo" → "cancelalo".
-- `es-probes` — "¿quién es Gabi?" (answers deterministically IN SPANISH) + "recordá que…"
-  (ES memory store currently routes to the LLM → reported **model-dependent**, matching the
-  known "Spanish recordame" backlog gap; surfaced honestly, never falsely passed).
+- `es-probes` — "recordá que me gusta el vino tinto" + "qué te acordás de mí": ES memory
+  store AND recall both answer **deterministically in Spanish** ("Listo, me acuerdo: …" /
+  "Me acuerdo de esto sobre vos: …") — Spanish memory has parity, NOT a gap. "¿quién es
+  Gabi?" is **model-dependent** (routes to the LLM) because Gabi is not a known family
+  member (`findNode` → null); that is CORRECT — AbuAI must not fabricate an identity for an
+  unknown name — and the scorecard reports it honestly rather than scoring a guess.
 
 ## Bug this scorecard caught on its first run (fixed in v0.121.0)
 
