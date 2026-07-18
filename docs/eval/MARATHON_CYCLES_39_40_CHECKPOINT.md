@@ -68,6 +68,25 @@ turn sample. Avoid creating a parallel judge; extend the existing eval judges.
 Priorities (3) P2 LLM semantic calendar extraction and (4) BEHAVIOR_SPEC also depend on
 live-LLM/preview proof — same model-access decision gates their end-to-end evidence.
 
+## Segment-3 update — Cycle 42 done (live cross-check parity judge)
+
+HEAD now `feat …Cycle 42 (0.122.0-parity-live-crosscheck)`. Implemented the pluggable LIVE
+reference/judge seam as a **cross-check panel** (user choice): reference from BOTH
+`claude-opus-4-8` and an OpenAI GPT model under one persona brief; judge panel with **AND
+across judges** then **OR across references**. `src/eval/parityLiveJudge.ts` (raw fetch — no
+package.json change; Anthropic per the claude-api contract) + `makeCrossCheckReference` /
+`makeCrossCheckSeamJudge` fit the `ParityOptions` seam exactly, so a keyed run is
+`runParityScorecard(sessions, { reference, judge })`. The **KEYED run is OUT-OF-BAND** (needs
+`ANTHROPIC_API_KEY` + `OPENAI_API_KEY`; PREVIEW/PRODUCTION evidence); wiring + aggregation are
+proven with mocked fetch — `parityLiveJudge.test.ts` 7/7 (CODE). Runner snippet is in
+`docs/eval/PARITY_SCORECARD.md` → *Live cross-check judge*.
+
+**Open for the next segment:** (a) execute the KEYED live cross-check once keys are provided
+and record the PREVIEW-class scorecard; (b) Priority (3) P2 LLM semantic calendar extraction
+for the rambling-story class, proven on the deployed preview; (c) Priority (4)
+`docs/BEHAVIOR_SPEC.md` informed by the parity results. All three need an external resource
+(provider keys or the deployed preview) the sandbox lacks.
+
 ## Segment-2 update — Cycle 41 done (parity scorecard shipped)
 
 HEAD now `docs(parity): correct model-dependent finding` on top of
