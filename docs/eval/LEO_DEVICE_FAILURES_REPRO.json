@@ -1,5 +1,5 @@
 {
-  "previewUrl": "https://abu-bank-5mr443p86-leos-projects-d3c04c09.vercel.app",
+  "previewUrl": "https://abu-bank-9vwvg4c29-leos-projects-d3c04c09.vercel.app",
   "rec": [
     {
       "id": "relation-gilad-rafi",
@@ -18,7 +18,7 @@
     {
       "id": "create-rambling-story",
       "input": "אז תשמעי, דיברתי היום עם החתן של רפי, והוא סיפר לי שהוא טס לניו יורק בשבוע הבא, ואנחנו רוצים להיפגש מחר בשלוש אחר הצהריים בבית קפה טולדנו כדי לדבר על הטיול המשפחתי",
-      "answer": "פגישה עם גלעד מחר בשלוש אחר הצהריים. בית קפה טולדנו. בנושא טיול המשפחתי. (לדבר על הטיול המשפחתי). נכון?",
+      "answer": "פגישה עם גלעד מחר בשלוש אחר הצהריים. בית קפה טולדנו. בנושא טיול המשפחתי. נכון?",
       "resolvedToGilad": true,
       "literalPhrase": false,
       "hasLocation": true,

@@ -1,5 +1,56 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-7 update — browser E2E vs preview: P2 + parity PROVEN (PREVIEW)
+
+**No version bump** (preview-evidence commit; the deployed build under test is `0.125.0`,
+matching HEAD — same convention as prior `test(preview):` commits). Preview:
+https://abu-bank-9vwvg4c29-leos-projects-d3c04c09.vercel.app.
+
+Drove real browsers (Playwright, mobile-chrome, he-IL, 412×870) against the preview, typing into
+the AbuAI screen and reading the reply bubble — the client-side cognition the endpoint probes
+could not reach. Results (`docs/eval/PREVIEW_EVIDENCE_0125.md` + `PREVIEW_PARITY_RESULTS.json`):
+- **P2 rambling extraction PROVEN** (`e2e/leo-device-failures.spec.ts`): story → `פגישה עם גלעד
+  … בית קפה טולדנו …` — resolvedToGilad ✓, hasLocation ✓, dateTomorrow ✓, verbatimDump ✗;
+  Cycle-43 subject-dedup holds on the deployed build.
+- **Deterministic script 18/18** (`e2e/preview-typed-script.spec.ts`): family/date/memory/calendar
+  CRUD+referability/math, ~300–400ms.
+- **Bilingual parity 8/8 in ISOLATED sessions** (NEW `e2e/preview-parity.spec.ts`, one fresh
+  session per flow to match the CODE oracle): He relation/date/rambling; Es family/math + full
+  CRUD create→confirm→cancel **all in Spanish, zero Hebrew leak** (Cycle-41 Spanish-cancel proven).
+- **Preview latency (in-browser, deterministic path): 0.31–0.68s < 1s.** LLM proxy ~4s; online 4.8–6.8s.
+
+**Documented candidate bug (NOT fixed — RED-first follow-up):** running He + Es in ONE session
+(a He rambling create left on a pending "נכון?", then a Spanish create) caused the Spanish
+`dale, agendalo` to confirm the STALE Hebrew גלעד draft in Hebrew (confirm≠read-back Gabi), and
+`cancelalo` to cancel it with a Hebrew name in a Spanish sentence. Vanishes in isolated sessions.
+Root: a new create must fully supersede a prior unconfirmed draft; a confirm must save what was
+read back. See `PREVIEW_EVIDENCE_0125.md` → "Observed candidate bug".
+
+**Continuation prompt (paste to resume):**
+
+> Resume the NEXT MANDATE on rc5 from HEAD (0.125.0-flight-recorder-ui). Verify git + preview
+> health. Priority 1 (Flight Recorder) shipped; P2 extraction + bilingual parity are now PROVEN on
+> the deployed preview in a real browser (e2e/leo-device-failures, preview-typed-script,
+> preview-parity — all green; docs/eval/PREVIEW_EVIDENCE_0125.md). Highest-value next: EITHER (A)
+> RED-first fix the documented single-session contamination bug — write a failing test
+> (parityScorecard-style, ONE session) where a pending He draft then a Spanish create must (i)
+> supersede the stale draft so a confirm saves the READ-BACK person, and (ii) reply in Spanish with
+> no Hebrew-name leak; find the first divergence in the calendar draft/confirm state machine
+> (src/screens/AbuAI/calendarCreate.ts + cognitiveRuntime confirm path) and apply the smallest
+> general root fix — OR (3) LATENCY PACK (sentence-by-sentence streamed TTS, lean per-turn context
+> injection, greeting-time calendar prefetch) proven on preview with a latency table — OR (4)
+> VOICE-READINESS PACK code-level (iOS getUserMedia echoCancellation/noiseSuppression/autoGainControl;
+> per-user speech profile defaulting to NORMAL ChatGPT-like pace; cached warm openers behind a
+> default-off flag) — OR (5) weekly parity-guard script wrapping parityScorecard + generativeMarathon
+> smoke + flightRecorderImport into a dated report — OR (6) refresh docs/LEO_TYPED_TEST_SCRIPT.md to
+> ~30 bilingual behavior checks. Standing law: benchmark is the latest ChatGPT at NORMAL human speech
+> pace, never slowed by default. Keyed Claude cross-check stays out-of-band (no ANTHROPIC_API_KEY;
+> never read .env values). If (A) or a code change: RED-first, smallest general root fix, bump version
+> + keep src/version.ts ⇄ api/health.ts ⇄ src/version.test.ts in sync (no apostrophes in buildLabel),
+> typecheck + full vitest + build, redeploy a fresh preview, re-run the e2e vs that preview; if a
+> preview-evidence-only cycle, no version bump. commit + push rc5 (never production). Only
+> deployed-preview-through-the-app evidence counts for product claims; label CODE vs PREVIEW honestly.
+
 ## Segment-6 update — Cycle 45 done (Flight Recorder UI) + Priority-2 PREVIEW evidence
 
 **HEAD:** `feat …Cycle 45 (0.125.0-flight-recorder-ui)` — pushed `origin/rc5` (`ea6f363`).

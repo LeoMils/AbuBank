@@ -1,13 +1,11 @@
 {
-  "version": "0.118.0-marathon-p4",
+  "version": "0.125.0-flight-recorder-ui",
   "versionBadgeOk": true,
-  "badgeText": "QA: v0.118.0-marathon-p4",
-  "previewUrl": "https://abu-bank-68qruujv1-leos-projects-d3c04c09.vercel.app",
+  "badgeText": "QA: v0.125.0-flight-recorder-ui",
+  "previewUrl": "https://abu-bank-9vwvg4c29-leos-projects-d3c04c09.vercel.app",
   "ran": 17,
   "passed": 17,
-  "consoleErrors": [
-    "Failed to load resource: the server responded with a status of 500 ()"
-  ],
+  "consoleErrors": [],
   "results": [
     {
       "id": "fam-mor",
@@ -17,7 +15,7 @@
         "מור"
       ],
       "answer": "מרטיטה האמא של מור.",
-      "latencyMs": 379,
+      "latencyMs": 426,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -31,7 +29,7 @@
         "דוד"
       ],
       "answer": "ירדן נשואה לעילי, ועילי בן דוד של נועם.",
-      "latencyMs": 294,
+      "latencyMs": 383,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -44,7 +42,7 @@
         "אופיר"
       ],
       "answer": "גלעד נשוי לאופיר, ואופיר אחיינית של לאו.",
-      "latencyMs": 342,
+      "latencyMs": 322,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -58,7 +56,7 @@
         "ארי"
       ],
       "answer": "יש למור 2 נכדים: אנאבל וארי.",
-      "latencyMs": 359,
+      "latencyMs": 329,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -70,8 +68,8 @@
       "expected": [
         "2026"
       ],
-      "answer": "היום 17 ביולי 2026, יום שישי.",
-      "latencyMs": 317,
+      "answer": "היום 18 ביולי 2026, שבת.",
+      "latencyMs": 333,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -83,8 +81,8 @@
       "expected": [
         "2026"
       ],
-      "answer": "מחר יהיה שבת, 18 ביולי 2026.",
-      "latencyMs": 313,
+      "answer": "מחר יהיה יום ראשון, 19 ביולי 2026.",
+      "latencyMs": 317,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -97,7 +95,7 @@
         "יין אדום"
       ],
       "answer": "בסדר, אני אזכור את זה: אני אוהבת יין אדום.",
-      "latencyMs": 398,
+      "latencyMs": 340,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -110,7 +108,7 @@
         "יין אדום"
       ],
       "answer": "הנה מה שאני זוכרת עלייך: אני אוהבת יין אדום.",
-      "latencyMs": 309,
+      "latencyMs": 341,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -123,7 +121,7 @@
         "שכחתי"
       ],
       "answer": "בסדר, שכחתי את זה.",
-      "latencyMs": 302,
+      "latencyMs": 378,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -137,7 +135,7 @@
         "נכון"
       ],
       "answer": "פגישה עם רפי מחר בשלוש אחר הצהריים. בית קפה מרוקו. נכון?",
-      "latencyMs": 328,
+      "latencyMs": 357,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -150,8 +148,8 @@
         "קבוע",
         "רפי"
       ],
-      "answer": "קבוע — פגישה עם רפי 18 ביולי 2026, שבת בשעה 15:00. בית קפה מרוקו",
-      "latencyMs": 303,
+      "answer": "קבוע — פגישה עם רפי 19 ביולי 2026, יום ראשון בשעה 15:00. בית קפה מרוקו",
+      "latencyMs": 343,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -164,7 +162,7 @@
         "מרוקו"
       ],
       "answer": "הפגישה עם רפי בית קפה מרוקו.",
-      "latencyMs": 300,
+      "latencyMs": 321,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -177,7 +175,7 @@
         "מחקתי"
       ],
       "answer": "מחקתי את פגישה עם רפי בשעה 15:00.",
-      "latencyMs": 310,
+      "latencyMs": 330,
       "pass": true,
       "missing": [],
       "critical": true,
@@ -190,7 +188,7 @@
         "60"
       ],
       "answer": "זה יוצא 60.",
-      "latencyMs": 303,
+      "latencyMs": 325,
       "pass": true,
       "missing": [],
       "critical": false,
@@ -203,7 +201,7 @@
         "40"
       ],
       "answer": "20% מ-200 זה 40.",
-      "latencyMs": 334,
+      "latencyMs": 342,
       "pass": true,
       "missing": [],
       "critical": false,
@@ -216,7 +214,7 @@
         "96"
       ],
       "answer": "Son 96.",
-      "latencyMs": 305,
+      "latencyMs": 391,
       "pass": true,
       "missing": [],
       "critical": false,
@@ -228,8 +226,8 @@
       "expected": [
         "יהיה"
       ],
-      "answer": "בעוד 5 ימים יהיה יום רביעי, 22 ביולי 2026.",
-      "latencyMs": 300,
+      "answer": "בעוד 5 ימים יהיה יום חמישי, 23 ביולי 2026.",
+      "latencyMs": 330,
       "pass": true,
       "missing": [],
       "critical": true,

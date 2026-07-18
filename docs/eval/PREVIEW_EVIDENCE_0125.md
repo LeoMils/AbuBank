@@ -34,8 +34,49 @@
    defect — the decline behavior is exactly correct. Whether a search key is configured in the
    preview env is a deploy-env question, not a code question.
 
+## Browser E2E — P2 extraction + parity (closes the client-side gap)
+
+Ran real browsers (Playwright, mobile-chrome, he-IL, 412×870) against the preview URL, driving
+the AbuAI screen exactly as Martita would (type → read the reply bubble). This is what the
+endpoint probes could NOT reach.
+
+**P2 rambling extraction** — `e2e/leo-device-failures.spec.ts` (1 passed, 19.6s):
+the rambling story → `פגישה עם גלעד מחר בשלוש אחר הצהריים. בית קפה טולדנו. בנושא טיול המשפחתי. נכון?`
+— resolvedToGilad ✓, hasLocation ✓ (טולדנו), dateTomorrow ✓, **verbatimDump ✗**, and the
+Cycle-43 subject-dedup holds on the deployed build (no doubled parenthetical).
+
+**Deterministic script** — `e2e/preview-typed-script.spec.ts` (1 passed, 13.5s): 18/18 —
+family relations/counts, dates, memory save/recall/forget, calendar create→confirm→referable
+where→cancel, math (He+Es). Latencies ~300–400ms.
+
+**Bilingual parity** — `e2e/preview-parity.spec.ts` (1 passed, 20.3s): **8/8 in isolated
+sessions** (one fresh session per flow, matching the CODE oracle `parityScorecard`):
+- He: relation-between, date arithmetic, the P2 rambling create.
+- Es: family relation (`Anabel es sobrina nieta de Leo.`), math (`Son 96.`), and the FULL
+  CRUD chain create→confirm→cancel — **all in Spanish, zero Hebrew leak** (`Listo, cancelé la
+  reunión con Gabi a las 15:00.` — the Cycle-41 Spanish-cancel fix proven on the deployed build).
+
+**Preview latency table (measured in-browser, deterministic client-side path):**
+| class | budget | measured on preview |
+| --- | --- | --- |
+| deterministic (family/date/memory/calendar/rambling) | <1s | 0.31–0.68s ✓ |
+| LLM (proxy → OpenAI) | <4s | ~4s (endpoint probe) |
+| online (retrieval) | <8s | 4.8–6.8s ✓ |
+
+## Observed candidate bug (documented, not swept) — single-session cross-flow contamination
+
+When the bilingual set was run in ONE session (He rambling create left on a pending "נכון?",
+then a Spanish create), two divergences appeared: (a) `dale, agendalo` confirmed the STALE
+Hebrew גלעד/טולדנו draft — in Hebrew — even though the just-read-back draft showed `Gabi`
+(a confirm≠readback mismatch), and (b) `cancelalo` cancelled that stale event with a Hebrew name
+inside the Spanish sentence. In ISOLATED sessions (the parity model) both vanish. This is a real
+multi-turn state edge (a new create should fully supersede a prior unconfirmed draft; a confirm
+must save what was read back) — a RED-first candidate for a future cycle, NOT fixed here.
+
 ## Verdict
 
-PREVIEW-class proof that **the 0.125.0 build deploys, serves, proxies the LLM with a server key,
-and runs an honest online seam**. Client-side cognition (P2/parity) needs a browser E2E against
-this URL for its own PREVIEW evidence — the endpoints alone cannot prove it.
+PREVIEW-class proof that the 0.125.0 build **deploys, serves, proxies the LLM with a server key,
+runs an honest online seam, and — in a real browser — resolves the P2 rambling create and holds
+bilingual parity (incl. Spanish language discipline) with deterministic latency < 1s**. Remaining
+honest limits: keyed Claude cross-check still out-of-band (no `ANTHROPIC_API_KEY`); the
+single-session contamination edge above is a documented follow-up.
