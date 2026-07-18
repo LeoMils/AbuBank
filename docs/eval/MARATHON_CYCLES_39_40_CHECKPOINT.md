@@ -1,5 +1,71 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-5 update — Cycle 44 done (FLIGHT RECORDER importer) + fresh preview
+
+**HEAD:** `feat …Cycle 44 (0.124.0-flight-recorder-import)` — pushed to `origin/rc5`
+(commit `47ade71`). **Deployed PREVIEW:**
+`https://abu-bank-lragg3t0i-leos-projects-d3c04c09.vercel.app` — `/api/health`
+`buildVersion` = `0.124.0-flight-recorder-import` (matches HEAD), root `/` = HTTP 200.
+**PREVIEW-class** evidence that the build deploys + serves with the correct version; the
+importer itself is CODE (a test harness, not a runtime path).
+
+**Priority 1 (FLIGHT RECORDER) — the flagship, delivered as an importer.** Discovery first:
+the CAPTURE side already exists and was REUSED, not rebuilt — `observeTurn` (OBSERVE_ONLY) is
+wired inside `ExecutiveCognitiveController` so BOTH typed and voice are captured on the one
+runtime path; `buildEnvelope` redacts + minimizes (text-only, no audio, PII stripped, dedup);
+durable IndexedDB is the local store; `VITE_EVOLUTION_KILL` / `EvolutionConfig.enabled` is the
+off switch. The missing link, now built (`src/eval/flightRecorderImport.ts`):
+- `envelopesToExport` — redacted envelopes → stable text-only JSON (`serializeExport` /
+  `parseExport` round-trip, asserted no-audio).
+- `importLeoRepro` — `LEO_DEVICE_FAILURES_REPRO.json` → replay sessions whose per-turn
+  expectations come from STRUCTURED truth fields (`resolvedToGilad`, `hasLocation`,
+  `dateTomorrow`, `verbatimDump`) NOT the stale recorded wording → truth is permanent,
+  phrasing is free to improve.
+- `replayExport` — runs every recorded turn back through the SAME app entry the
+  marathon/scorecard use; asserts `expectContains`/`expectAbsent`/`expectSide`; returns the
+  failing turns so a divergence names a real regression (proven to CATCH a false-expectation
+  probe — no green-washing).
+
+Leo's 3 real device transcripts now replay green as PERMANENT tests. RED-first (standing
+suite written before the module). Evidence (CODE): flightRecorderImport 3/3, evolution +
+recorded-replay 71/71; full suite 11030 pass / 2 todo; typecheck + build clean. Docs:
+`docs/eval/FLIGHT_RECORDER.md`.
+
+**Remaining mandate priorities (honest status, all still open):**
+- (1) tail — user-facing **export button + off-switch toggle** wiring into a screen (the data
+  layer `serializeExport` + config kill switch exist; only the UI control remains).
+- (2) P2 end-to-end on preview + **keyed parity judge** — BLOCKED locally: no
+  `ANTHROPIC_API_KEY` (cross-check needs it) and reading `.env` values is a hard stop. Must be
+  run against the deployed preview (drive the app's own API) or with keys provided out-of-band.
+- (3) LATENCY PACK (streamed sentence TTS, lean context injection, greeting prefetch, preview
+  latency table) — not started.
+- (4) VOICE-READINESS PACK (iOS getUserMedia constraints, per-user speech profile, cached warm
+  openers behind a default-off flag) — not started.
+- (5) WEEKLY PARITY GUARD (scheduled rerun of scorecard + marathon smoke → dated report) — not
+  started; the parity + flight-recorder + marathon suites it would wrap all exist.
+- (6) `docs/LEO_TYPED_TEST_SCRIPT.md` (~30 bilingual checks) — not refreshed this cycle; a
+  fresh preview URL now exists to run it against.
+
+**Continuation prompt (paste to resume):**
+
+> Continue the NEXT MANDATE on rc5 from HEAD (0.124.0-flight-recorder-import; pushed;
+> preview https://abu-bank-lragg3t0i-leos-projects-d3c04c09.vercel.app health-verified).
+> Verify git + preview health first. Flight Recorder capture+redact+store+off-switch exist and
+> the importer→standing-replay is built (src/eval/flightRecorderImport.*, Leo transcripts are
+> permanent tests). Pick the next highest-value in-sandbox step: EITHER (1-tail) wire a
+> senior-safe export button + off-switch TOGGLE into a diagnostics/settings surface calling
+> serializeExport(envelopesToExport(...)) and EvolutionConfig — RED-first component test — OR
+> (6) refresh docs/LEO_TYPED_TEST_SCRIPT.md to ~30 bilingual checks and RUN it against the
+> deployed preview's app API to capture PREVIEW evidence + a latency table (deterministic <1s,
+> LLM <4s, online <8s) — OR (3) LATENCY PACK (streamed sentence TTS + lean context injection +
+> greeting prefetch) proven on preview. Priority (2) keyed parity + P2 end-to-end stays
+> out-of-band until ANTHROPIC_API_KEY is provided or driven via the deployed app (never read
+> .env values — hard stop). Reuse existing engines/judges; never a parallel path. RED-first,
+> smallest general root fix; bump version + keep src/version.ts ⇄ api/health.ts ⇄
+> src/version.test.ts in sync (no apostrophes in buildLabel); typecheck + full vitest + build;
+> commit + push rc5 (never production). Only deployed-preview-through-the-app evidence counts
+> for product claims; label CODE vs PREVIEW honestly.
+
 **Branch:** `rc5/cognitive-architecture-and-acceptance`
 **HEAD after this segment:** `docs(war-room): log Cycles 39-40` (on top of `feat …Cycle 40 (0.120.0)`)
 **Version:** `0.120.0-marathon-ordinal` (src/version.ts ⇄ api/health.ts ⇄ src/version.test.ts in sync)
