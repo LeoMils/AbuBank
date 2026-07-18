@@ -1,5 +1,52 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-10 update — Cycle 48: voice-readiness pack + parity guard + typed script (brain-phase close-out)
+
+**HEAD:** `feat …Cycle 48 (0.128.0-voice-readiness)` — pushed `origin/rc5` (`e6d19af`).
+**Fresh PREVIEW for Leo's verification round:**
+`https://abu-bank-hshx2ngc2-leos-projects-d3c04c09.vercel.app` — health `0.128.0-voice-readiness`;
+`e2e/preview-parity.spec.ts` 2/2 (no regression).
+
+Closed the four requested items in one run (all CODE, no device claims):
+1. **Voice-readiness pack** — (a) iOS mic constraints centralized to one source
+   (`services/audioConstraints` `MIC_GETUSERMEDIA`) at every primary capture site, bare
+   `{audio:true}` only as the iOS fallback; (b) per-user speech profile
+   (`services/speechProfile`) — NORMAL 1.0 by default, explicit-change-only, single source for
+   `voice.ts` + Settings; (c) cached warm openers (`services/warmOpeners`) wired into
+   `getVoiceGreeting` behind a DEFAULT-OFF flag (`abu-warm-openers`) pending Leo's blind listening.
+   RED-first `voiceReadiness.test` 7/7; `micCapture.test` updated to the refactor (21/21).
+2. **Weekly parity guard** — `src/eval/parityGuard.*` (parity scorecard + marathon smoke +
+   flight-recorder replay → `docs/eval/PARITY_GUARD_LATEST.md`). Run:
+   `PARITY_GUARD_WRITE=1 npx vitest run src/eval/parityGuard.test.ts` (GREEN, no drift).
+3. **Typed script** — `docs/LEO_TYPED_TEST_SCRIPT.md` refreshed to 31 numbered bilingual checks
+   with exact expected answers from the preview E2E + good/failing examples.
+4. **Fresh preview** deployed + health-verified (above).
+
+Evidence: CODE — full suite 11049 pass / 2 todo, typecheck + build clean. package.json untouched.
+
+**FOR LEO'S BIG VERIFICATION ROUND:**
+- Preview URL: `https://abu-bank-hshx2ngc2-leos-projects-d3c04c09.vercel.app`
+- Version to see (Settings → About / Home QA badge): `0.128.0-voice-readiness`
+- Typed test script: `docs/LEO_TYPED_TEST_SCRIPT.md` (31 checks).
+
+**Continuation prompt (paste to resume):**
+
+> Resume on rc5 from HEAD (0.128.0-voice-readiness; pushed; preview
+> https://abu-bank-hshx2ngc2-leos-projects-d3c04c09.vercel.app health-verified). Verify git +
+> preview health. The brain-phase items are closed: Flight Recorder, P2+parity PROVEN on preview,
+> cross-language contamination fixed, normal speech pace, voice-readiness pack (mic constraints /
+> speech profile / warm openers behind default-off flag), weekly parity guard, and a 31-check typed
+> script for Leo. Next depends on Leo's verification-round results: triage any typed-script check he
+> reports failing (RED-first regression → smallest general root fix → redeploy → re-run e2e), OR if
+> all green, move to the VOICE (device) phase — turn on warm openers for his blind listening
+> (localStorage abu-warm-openers=1), gather PHYSICAL_DEVICE evidence for audio pace / time-to-first-
+> audio / STT quality (the one thing CODE/PREVIEW cannot prove). Keyed Claude cross-check stays
+> out-of-band (no ANTHROPIC_API_KEY; never read .env — hard stop). RED-first; smallest general root
+> fix; bump version + keep src/version.ts ⇄ api/health.ts ⇄ src/version.test.ts in sync (no
+> apostrophes in buildLabel); typecheck + full vitest + build; redeploy + re-run e2e for any app
+> change; commit + push rc5 (never production). Only deployed-preview-through-the-app evidence counts;
+> label CODE vs PREVIEW vs DEVICE honestly.
+
 ## Segment-9 update — Cycle 47: latency pack — NORMAL speech pace by default
 
 **HEAD:** `fix …Cycle 47 (0.127.0-normal-speech-pace)` — pushed `origin/rc5` (`034714a`).
