@@ -36,9 +36,13 @@ type TurnLang = 'he' | 'es'
 // Intent categories drive the brevity budget (sentences / chars). Companion/chit-chat is
 // allowed to be a little longer; a calendar confirmation must be tight.
 type Cat = 'chitchat' | 'calendar' | 'family' | 'date' | 'memory'
+// Sentence budgets follow the product rule (root CLAUDE.md: "Voice responses:
+// 2-4 sentences max"); the char cap is the real anti-ramble guard. A full calendar
+// confirm legitimately carries four terse clauses (who+when · where · subject ·
+// "נכון?"), so calendar's budget is 4 — the char cap still catches actual rambling.
 const BREVITY: Record<Cat, { sent: number; chars: number }> = {
   chitchat: { sent: 4, chars: 320 },
-  calendar: { sent: 3, chars: 220 },
+  calendar: { sent: 4, chars: 220 },
   family: { sent: 3, chars: 200 },
   date: { sent: 2, chars: 160 },
   memory: { sent: 2, chars: 160 },

@@ -68,6 +68,49 @@ turn sample. Avoid creating a parallel judge; extend the existing eval judges.
 Priorities (3) P2 LLM semantic calendar extraction and (4) BEHAVIOR_SPEC also depend on
 live-LLM/preview proof — same model-access decision gates their end-to-end evidence.
 
+## Segment-4 update — Cycle 43 done (grow parity set w/ real Leo flows + rambling dedup fix)
+
+HEAD now `feat …Cycle 43 (0.123.0-parity-rambling-dedup)`. Took the "grow the parity turn
+set with real device-failure flows" branch of the continuation. **Diagnosis-first:** ran 5
+grounded Leo flows (`docs/eval/LEO_DEVICE_FAILURES_REPRO.json` + `deviceFailuresTriage.test.ts`)
+through the SAME parity harness before touching anything. Four were clean
+(midnight+person+place extraction, He/Es relation-BETWEEN, relation-FOR); **one red** — the P2
+`create-rambling-story` confirm restated the subject TWICE (`בנושא טיול המשפחתי` +
+redundant `(לדבר על הטיול המשפחתי)`), blowing brevity.
+
+- **General fix** (`shapeCreateConfirm`, `responseShaper.ts`): a subject/notes redundancy
+  guard — `coreWords` (strip definite article + purpose/function words) + `saysTheSame`
+  (content-word containment) — drops the notes parenthetical when it merely restates the
+  already-shown subject; a genuinely distinct note is kept (guarded against over-suppression).
+- **Regression test FIRST** (`responseShaper.test.ts`, red→green, exact device string) +
+  a no-over-suppression companion test.
+- Promoted all 5 flows into the standing scorecard: **6/6 dimensions @100% over 22 scored
+  turns** (was 17), 1 correctly LLM-routed. Calendar brevity budget aligned to the product
+  rule (root CLAUDE.md: "voice responses 2-4 sentences max"; the 220-char cap stays as the
+  anti-ramble guard) — correcting an over-strict oracle, not hiding a bug.
+
+Evidence (CODE): responseShaper 61/61; parityScorecard 22/22 @100%; full suite
+**11027 pass / 2 todo**; typecheck + build clean. Voice/Realtime untouched. Live cross-check
+seam still unkeyed (out-of-band). Builds on 0.122.0.
+
+**Continuation prompt (paste to resume):**
+
+> Continue the MASTER MANDATE on rc5 from HEAD (0.123.0-parity-rambling-dedup). Verify git
+> state first. The deterministic parity scorecard is now 6/6 @100% over 22 turns incl. 5 real
+> Leo device flows; the rambling-story subject-duplication is fixed generally in
+> shapeCreateConfirm. Pick the next highest-ROI in-sandbox step: EITHER keep mining real Leo
+> flows (src/eval/deviceFailuresTriage, leoRetestAcceptance, realDeviceTranscriptRegression,
+> LEO_DEVICE_FAILURES_REPRO.json) into the parity set — each new red dimension names a real
+> gap to fix with a GENERAL mechanism, regression test FIRST — OR build (3) P2 LLM semantic
+> calendar extraction for the rambling-story class behind the EXISTING controller (reuse
+> engines, no parallel path), with the live-LLM end-to-end proof deferred to a keyed
+> preview run. Reuse existing judges/engines; never build a parallel judge. Increment version
+> + keep src/version.ts ⇄ api/health.ts ⇄ src/version.test.ts in sync (no apostrophes in
+> buildLabel — the health drift regex breaks on them); run typecheck + full vitest + build;
+> commit. Label CODE vs live-model honestly; the live cross-check seam + P2 end-to-end remain
+> out-of-band until provider keys / a deployed preview exist. Do not claim preview/device
+> without proof.
+
 ## Segment-3 update — Cycle 42 done (live cross-check parity judge)
 
 HEAD now `feat …Cycle 42 (0.122.0-parity-live-crosscheck)`. Implemented the pluggable LIVE

@@ -247,6 +247,34 @@ describe('shapeCreateConfirm', () => {
     expect(msg).not.toContain('הבנתי')
     expect(msg).not.toContain('לקבוע?')
   })
+
+  // ── Regression: rambling-story confirm restated the subject twice ──────────
+  // Real Leo flow (docs/eval/LEO_DEVICE_FAILURES_REPRO.json → create-rambling-story):
+  // "…רוצים להיפגש מחר בשלוש … כדי לדבר על הטיול המשפחתי" extracted subject
+  // "טיול המשפחתי" AND notes "לדבר על הטיול המשפחתי" — the confirm rendered BOTH
+  // ("בנושא טיול המשפחתי. (לדבר על הטיול המשפחתי).") which is a duplicate that
+  // blows the brevity budget. The subject clause wins; the redundant notes drop.
+  it('drops the notes parenthetical when it merely restates the subject', () => {
+    const tmrw = new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
+    const msg = shapeCreateConfirm({
+      title: 'פגישה עם גלעד', date: tmrw, time: '15:00', emoji: '📅',
+      subject: 'טיול המשפחתי', notes: 'לדבר על הטיול המשפחתי',
+    })
+    expect(msg).toContain('בנושא טיול המשפחתי')      // subject clause kept
+    expect(msg).not.toContain('(לדבר על הטיול המשפחתי)') // redundant notes dropped
+    expect(msg).not.toContain('הטיול המשפחתי)')          // no restated parenthetical at all
+    expect(msg.trim().endsWith('נכון?')).toBe(true)
+  })
+
+  it('keeps a genuinely distinct notes parenthetical (no over-suppression)', () => {
+    const tmrw = new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
+    const msg = shapeCreateConfirm({
+      title: 'פגישה עם דנה', date: tmrw, time: '16:00', emoji: '📅',
+      subject: 'הטיול לאיטליה', notes: 'להביא את הדרכונים',
+    })
+    expect(msg).toContain('בנושא הטיול לאיטליה')
+    expect(msg).toContain('(להביא את הדרכונים)') // unrelated note stays
+  })
 })
 
 // ─── Calendar Create Read-back ──────────────────────────────────────────────

@@ -83,6 +83,33 @@ function buildSessions(): ParitySession[] {
       { text: '¿quién es Gabi?', lang: 'es', cat: 'family' },
       { text: 'recordá que me gusta el vino tinto', lang: 'es', cat: 'memory' },
     ] },
+
+    // ── REAL Leo device flows (docs/eval/LEO_DEVICE_FAILURES_REPRO.json +
+    //    deviceFailuresTriage.test.ts). Each turn is grounded in something Leo
+    //    actually typed on device; the `expect` oracle asserts the answer names
+    //    the right person/place so a silent drift reds correctness. ──
+    // Midnight + person + place extraction (title must not be the whole sentence).
+    { id: 'he-cal-midnight', turns: [
+      { text: 'תקבעי פגישה עם אופיר מחר בחצות בקפה אילנה', lang: 'he', cat: 'calendar', expect: 'אופיר' },
+    ] },
+    // Relation-BETWEEN two family members (He) — reply must name the queried person.
+    { id: 'he-fam-between', turns: [
+      { text: 'מה הקשר בין אנבל ללאו', lang: 'he', cat: 'family', expect: 'לאו' },
+    ] },
+    // Same relation in Rioplatense — the deterministic Spanish reply must not leak Hebrew.
+    { id: 'es-fam-between', turns: [
+      { text: '¿qué relación hay entre Anabel y Leo?', lang: 'es', cat: 'family', expect: 'Leo' },
+    ] },
+    // Relation-FOR ("מי X עבור Y") — the in-law edge resolves deterministically.
+    { id: 'he-relation-for', turns: [
+      { text: 'מי גלעד עבור רפי', lang: 'he', cat: 'family', expect: 'רפי' },
+    ] },
+    // P2 rambling-story create: buried in narrative, the confirm must resolve the
+    // relation-phrase person (גלעד), keep the real place, and NOT restate the subject
+    // twice (the "בנושא … (…)" duplication fixed in shapeCreateConfirm) — so brevity holds.
+    { id: 'he-rambling-create', turns: [
+      { text: 'אז תשמעי, דיברתי היום עם החתן של רפי, והוא סיפר לי שהוא טס לניו יורק בשבוע הבא, ואנחנו רוצים להיפגש מחר בשלוש אחר הצהריים בבית קפה טולדנו כדי לדבר על הטיול המשפחתי', lang: 'he', cat: 'calendar', expect: 'גלעד' },
+    ] },
   ]
 }
 

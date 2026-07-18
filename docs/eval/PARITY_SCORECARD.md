@@ -33,16 +33,18 @@ runtime uses (family graph + fixed clock) so they cannot drift.
 
 ## Latest run (v0.121.0)
 
+## Latest run (v0.123.0)
+
 | dimension | pass | rate |
 | --- | --- | --- |
-| correctness | 14/14 | 100% |
-| warmth | 17/17 | 100% |
-| brevity | 17/17 | 100% |
-| answered | 17/17 | 100% |
-| language | 17/17 | 100% |
-| naturalness | 17/17 | 100% |
+| correctness | 19/19 | 100% |
+| warmth | 22/22 | 100% |
+| brevity | 22/22 | 100% |
+| answered | 22/22 | 100% |
+| language | 22/22 | 100% |
+| naturalness | 22/22 | 100% |
 
-_Scored turns (deterministic app replies): 17 · model-dependent (LLM-routed, not
+_Scored turns (deterministic app replies): 22 · model-dependent (LLM-routed, not
 deterministically scored): 1._
 
 **Turn set (grounded in proven capabilities):**
@@ -58,6 +60,17 @@ deterministically scored): 1._
   member (`findNode` → null); that is CORRECT — AbuAI must not fabricate an identity for an
   unknown name — and the scorecard reports it honestly rather than scoring a guess.
 
+**Real Leo device flows (added v0.123.0 — each grounded in `LEO_DEVICE_FAILURES_REPRO.json`
++ `deviceFailuresTriage.test.ts`):**
+- `he-cal-midnight` — "פגישה עם אופיר מחר בחצות בקפה אילנה" → person + place + 00:00
+  extracted; the title is not the whole sentence.
+- `he-fam-between` / `es-fam-between` — relation-BETWEEN two family members in Hebrew AND
+  Rioplatense; the Spanish reply carries no Hebrew (language discipline).
+- `he-relation-for` — "מי גלעד עבור רפי" (in-law edge resolves deterministically).
+- `he-rambling-create` — the **P2 rambling-story create**: the meeting is buried in a
+  narrative; the confirm resolves the relation-phrase person (גלעד), keeps the real place,
+  and no longer restates the subject twice (see the bug below) so brevity holds.
+
 ## Bug this scorecard caught on its first run (fixed in v0.121.0)
 
 **Language discipline — Spanish cancel replied in Hebrew.** A Rioplatense "cancelalo" on a
@@ -68,6 +81,20 @@ saved event deleted correctly but confirmed in Hebrew ("מחקתי את פגיש
 ("Listo, cancelé la reunión con Gabi a las 15:00."), using `personName`. This is exactly the
 class of gap the parity judge exists to surface: the deterministic engine did the right ACTION
 but violated the language dimension.
+
+## Bug this scorecard caught (fixed in v0.123.0)
+
+**Brevity — the rambling-story confirm restated the subject twice.** Adding the real Leo
+`create-rambling-story` flow reded `brevity`: "…כדי לדבר על הטיול המשפחתי" extracted BOTH a
+subject (`טיול המשפחתי`) and notes (`לדבר על הטיול המשפחתי`), and `shapeCreateConfirm`
+rendered each independently → "בנושא טיול המשפחתי. (לדבר על הטיול המשפחתי)." — one subject,
+stated twice, blowing the sentence budget. **General fix:** a subject/notes redundancy guard
+(`coreWords` strips the definite article + purpose/function words; `saysTheSame` checks
+content-word containment) drops the notes parenthetical when it merely restates the
+already-shown subject; a genuinely distinct note is kept (regression test guards against
+over-suppression). Same class as the v0.121.0 catch: the engine did the right ACTION
+(resolved גלעד, kept the place) but violated a quality dimension. Regression test written
+FIRST in `responseShaper.test.ts`, reproducing the exact device string.
 
 ## Live cross-check judge (ChatGPT-class parity) — `src/eval/parityLiveJudge.ts`
 

@@ -297,6 +297,24 @@ export function locPhrase(loc: string): string {
   return /^(?:ב|ל|מ|אצל)/u.test(t) ? t : `ב${t}`
 }
 
+// Content words of a clause, for subject/notes redundancy: strip punctuation, a
+// leading definite article (ה) per token, and drop function/purpose words so
+// "לדבר על הטיול המשפחתי" and "טיול המשפחתי" reduce to the same {טיול, משפחתי}.
+const SUBJECT_STOPWORD = /^(?:על|לדבר|לגבי|בנושא|בעניין|בקשר|את|של|כדי|עם|לגמור|לסגור|להחליט)$/
+function coreWords(s: string): string[] {
+  return s.replace(/[.,()]/gu, ' ').split(/\s+/u)
+    .map((w) => w.replace(/^ה/u, '').trim())
+    .filter((w) => w.length > 1 && !SUBJECT_STOPWORD.test(w))
+}
+// True when the shorter clause's content words are all contained in the longer's —
+// i.e. the notes merely restate the subject (or vice-versa).
+function saysTheSame(a: string, b: string): boolean {
+  const wa = coreWords(a), wb = coreWords(b)
+  if (!wa.length || !wb.length) return false
+  const [small, big] = wa.length <= wb.length ? [wa, new Set(wb)] : [wb, new Set(wa)]
+  return small.every((w) => big.has(w))
+}
+
 export function shapeCreateConfirm(draft: CreateDraft): string {
   const what = draft.title ? humanTitle(draft.title) : 'משהו'
   const when = draft.date ? ` ${dateLabel(draft.date)}` : ''
@@ -305,8 +323,12 @@ export function shapeCreateConfirm(draft: CreateDraft): string {
   if (draft.location) text += ` ${locPhrase(draft.location)}.`
   // Skip a redundant "בנושא" when the subject is a generic meeting word or already
   // sits in the title ("פגישה עם אורית" + subject "פגישה" → no "בנושא פגישה").
-  if (draft.subject && !/^(?:פגישה|מפגש|מפגשים|אירוע)$/.test(draft.subject.trim()) && !(draft.title ?? '').includes(draft.subject.trim())) text += ` בנושא ${draft.subject}.`
-  if (draft.notes) text += ` (${draft.notes}).`
+  const subjectShown = !!draft.subject && !/^(?:פגישה|מפגש|מפגשים|אירוע)$/.test(draft.subject.trim()) && !(draft.title ?? '').includes(draft.subject.trim())
+  if (subjectShown) text += ` בנושא ${draft.subject}.`
+  // Drop the notes parenthetical when it merely restates the already-shown subject
+  // (rambling-story confirm said "בנושא טיול המשפחתי. (לדבר על הטיול המשפחתי)." —
+  // one subject, stated twice, blowing brevity). The tidy "בנושא" clause wins.
+  if (draft.notes && !(subjectShown && saysTheSame(draft.subject!, draft.notes))) text += ` (${draft.notes}).`
   text += ' נכון?'
   return text
 }
