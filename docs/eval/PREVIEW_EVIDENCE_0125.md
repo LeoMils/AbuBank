@@ -63,7 +63,17 @@ sessions** (one fresh session per flow, matching the CODE oracle `parityScorecar
 | LLM (proxy → OpenAI) | <4s | ~4s (endpoint probe) |
 | online (retrieval) | <8s | 4.8–6.8s ✓ |
 
-## Observed candidate bug (documented, not swept) — single-session cross-flow contamination
+## Observed candidate bug — single-session cross-flow contamination — FIXED in 0.126.0
+
+> **RESOLVED (Cycle 46, 0.126.0-crosslang-supersede).** Root cause: `classifySignalV2`'s
+> new-create detector was Hebrew-only, so a Spanish create mid-confirm was misread as a
+> side-question and the stale Hebrew draft was restored. Fix: a non-Hebrew genuine create now
+> classifies as `new_create → replace`. Proven on the fresh preview
+> (`abu-bank-fguzpk5us…`, health `0.126.0`): `e2e/preview-parity.spec.ts` single-session
+> supersession → es-confirm `Listo, te agendé una reunión con Gabi…` (saves Gabi in Spanish,
+> not גלעד in Hebrew). Regression: `crossLanguageDraftSupersession.test.ts` 2/2.
+
+
 
 When the bilingual set was run in ONE session (He rambling create left on a pending "נכון?",
 then a Spanish create), two divergences appeared: (a) `dale, agendalo` confirmed the STALE

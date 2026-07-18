@@ -1,5 +1,46 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-8 update — Cycle 46: cross-language contamination FIXED (CODE + PREVIEW)
+
+**HEAD:** `fix …Cycle 46 (0.126.0-crosslang-supersede)` — pushed `origin/rc5` (`fd8ef9f`).
+**Fresh PREVIEW:** https://abu-bank-fguzpk5us-leos-projects-d3c04c09.vercel.app — health
+`0.126.0-crosslang-supersede`.
+
+Fixed the single-session contamination the Segment-7 browser E2E surfaced. **First divergence**
+(mechanism-first): with a Hebrew create on a pending "נכון?", a Spanish create rendered a
+Spanish confirm for Gabi but `createState.draft` stayed on the stale Hebrew גלעד —
+`classifySignalV2`'s new-create detector was Hebrew-only → the Spanish create was misread as
+`side_question` → `side_keep` restored the stale draft → the next `dale, agendalo` SAVED גלעד in
+Hebrew. **Root fix** (`conversationEngineV2.ts`): a NON-Hebrew genuine create (`isCreateIntent`,
+not a draft-edit) now classifies `new_create → replace`; scoped to non-Hebrew input so Hebrew
+incremental collecting is untouched. **RED-first** `crossLanguageDraftSupersession.test.ts` (2/2).
+
+Evidence: CODE — full suite 11041 pass / 2 todo; typecheck + build clean. **PREVIEW** —
+`e2e/preview-parity.spec.ts` (2/2 vs the fresh 0.126.0 preview): the single-session supersession
+now yields `Listo, te agendé una reunión con Gabi…` (saves Gabi in Spanish, not גלעד in Hebrew).
+
+**Continuation prompt (paste to resume):**
+
+> Resume the NEXT MANDATE on rc5 from HEAD (0.126.0-crosslang-supersede; pushed; preview
+> https://abu-bank-fguzpk5us-leos-projects-d3c04c09.vercel.app health-verified). Verify git +
+> preview health. Priority 1 (Flight Recorder) shipped; P2 + bilingual parity PROVEN on preview;
+> the single-session cross-language contamination is FIXED (Cycle 46) and proven on preview. Pick
+> the next highest-value remaining priority: (3) LATENCY PACK — sentence-by-sentence streamed TTS,
+> lean per-turn context injection (only turn-relevant facts into the voice session), greeting-time
+> calendar prefetch; record a preview latency table (deterministic <1s already shown 0.31–0.68s;
+> LLM <4s; online <8s) — OR (4) VOICE-READINESS PACK code-level (iOS getUserMedia
+> echoCancellation/noiseSuppression/autoGainControl; per-user speech profile defaulting to NORMAL
+> ChatGPT-like pace; cached warm openers behind a default-off flag) — OR (5) a weekly parity-guard
+> script wrapping parityScorecard + generativeMarathon smoke + flightRecorderImport into a dated
+> report — OR (6) refresh docs/LEO_TYPED_TEST_SCRIPT.md to ~30 bilingual behavior checks and run
+> vs the preview. Standing law: benchmark is the latest ChatGPT at NORMAL human speech pace, never
+> slowed by default. Keyed Claude cross-check stays out-of-band (no ANTHROPIC_API_KEY; never read
+> .env values — hard stop). RED-first; smallest general root fix; bump version + keep src/version.ts
+> ⇄ api/health.ts ⇄ src/version.test.ts in sync (no apostrophes in buildLabel); typecheck + full
+> vitest + build; for any app-code change redeploy a fresh preview and re-run the e2e vs it; commit
+> + push rc5 (never production). Only deployed-preview-through-the-app evidence counts for product
+> claims; label CODE vs PREVIEW honestly.
+
 ## Segment-7 update — browser E2E vs preview: P2 + parity PROVEN (PREVIEW)
 
 **No version bump** (preview-evidence commit; the deployed build under test is `0.125.0`,
