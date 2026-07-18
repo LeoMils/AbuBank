@@ -5,6 +5,8 @@ import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { APP_VERSION } from '../../version'
 import { copyLastTurns } from '../AbuAI/liveTurnDiagnostics'
+import { exportStoredTranscript, serializeExport } from '../../evolution/recorderExport'
+import { isRecorderOff, setRecorderOff } from '../../evolution/recorderSwitch'
 
 /** Visible, senior-discreet debug access: copies the last 20 AbuAI turns for support. */
 export function CopyTurnsButton() {
@@ -23,6 +25,79 @@ export function CopyTurnsButton() {
     >
       {copied ? 'הועתק ✓ — שלחי ללאו' : 'העתקת 20 השיחות האחרונות (לתמיכה)'}
     </button>
+  )
+}
+
+/**
+ * Flight Recorder controls: an OFF switch for local conversation capture + an EXPORT
+ * button that downloads the redacted, text-only transcript. Senior-first: large,
+ * plain-Hebrew, immediate state. Capture is local + privacy-safe (no audio, PII
+ * stripped) and can be turned off at any time here.
+ */
+export function FlightRecorderControls() {
+  const [off, setOff] = useState(() => isRecorderOff())
+  const [exported, setExported] = useState(false)
+  const on = !off
+
+  function doExport() {
+    try {
+      const exp = exportStoredTranscript({ appVersion: APP_VERSION.version, exportedAt: new Date().toISOString() })
+      const json = serializeExport(exp)
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `abu-flight-recorder-${APP_VERSION.version}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      setExported(true)
+    } catch { /* export must never break settings */ }
+  }
+
+  return (
+    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <button
+        type="button"
+        data-testid="flight-recorder-toggle"
+        aria-pressed={on}
+        onClick={() => { const next = !off; setRecorderOff(next); setOff(next) }}
+        style={{
+          width: '100%', minHeight: 56, padding: '12px 16px', borderRadius: 14,
+          border: `1px solid rgba(201,168,76,${on ? 0.40 : 0.20})`,
+          background: on
+            ? 'linear-gradient(135deg, rgba(201,168,76,0.14), rgba(201,168,76,0.03))'
+            : 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
+          display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
+          direction: 'rtl', textAlign: 'right',
+        }}
+      >
+        <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.06))', border: '1.5px solid rgba(201,168,76,0.26)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+          {on ? '🎙️' : '⏹️'}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: 'rgba(255,255,255,0.92)', fontFamily: "'Heebo',sans-serif" }}>
+            שמירת שיחות (למעקב איכות)
+          </div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.56)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
+            {on ? 'נשמר מקומית בלבד — טקסט, בלי הקלטות קול' : 'כבוי — שום שיחה לא נשמרת'}
+          </div>
+        </div>
+      </button>
+      <button
+        type="button"
+        data-testid="flight-recorder-export"
+        onClick={doExport}
+        style={{
+          padding: '9px 16px', borderRadius: 10, background: 'transparent',
+          border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.55)',
+          fontSize: 13, fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 40,
+        }}
+      >
+        {exported ? 'יוצא ✓' : 'ייצוא השיחות שנשמרו (קובץ)'}
+      </button>
+    </div>
   )
 }
 import { downloadBackup, importBackup } from '../../services/backup'
@@ -725,6 +800,7 @@ export function Settings() {
             {APP_VERSION.branchHint} · {APP_VERSION.buildDate}
           </div>
           <CopyTurnsButton />
+          <FlightRecorderControls />
           {/* P0.3 — the diagnostic panel moved to a top-level button +
               full-screen overlay (impossible to miss). Tap "אבחון מערכת"
               at the top of Settings, the pill on Home, or visit

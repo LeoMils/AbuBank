@@ -16,6 +16,7 @@ import { EvidenceQueue, createMemoryQueue, createDurableQueue } from './evidence
 import { detectSignals, mayDriveLearning, type Signal } from './signals'
 import { createCase, transition, type EvolutionCase, type Actor } from './stateMachine'
 import { DEFAULT_EVOLUTION_CONFIG, isObservationAllowed, isDomainEnabled, type EvolutionConfig, type EvolutionDomain } from './config'
+import { isRecorderOff } from './recorderSwitch'
 
 const AUTOMATION: Actor = { kind: 'automation', name: 'evolution-observer' }
 
@@ -136,6 +137,9 @@ export function getObserver(cfg: EvolutionConfig = DEFAULT_EVOLUTION_CONFIG): Ev
 export function observeTurn(facts: TurnFacts, cfg: EvolutionConfig = DEFAULT_EVOLUTION_CONFIG): void {
   try {
     if (!isObservationAllowed(cfg)) return
+    // User off switch (Settings → Flight Recorder). Read per-turn so toggling takes
+    // effect immediately; can only make capture SAFER, never escalate it.
+    if (isRecorderOff()) return
     getObserver(cfg).observe(facts)
   } catch { /* OBSERVE_ONLY must never break a turn */ }
 }

@@ -11,8 +11,9 @@ as a standing regression, so every real-world failure becomes a permanent test.
 | Capture | `src/evolution/observer.ts` → `observeTurn` | Wired INSIDE `ExecutiveCognitiveController.handleTurn`, so **both typed and voice** are captured on the one runtime path. OBSERVE_ONLY — can never change a served answer. |
 | Redact + minimize | `src/evolution/traceEnvelope.ts` → `buildEnvelope` | Strips PII/secrets, **no audio ever** (only text), dedups by idempotency key. |
 | Store (local) | `src/evolution/evidenceQueue.ts` (durable IndexedDB) | Ring buffer, `maxEvents: 500`, `retentionDays: 30`. |
-| **Off switch** | `src/evolution/config.ts` | `VITE_EVOLUTION_KILL=1` (or `EvolutionConfig.enabled=false`) silences ALL capture instantly. Default is OBSERVE_ONLY, globally enabled. |
-| **Export** | `src/eval/flightRecorderImport.ts` → `envelopesToExport` + `serializeExport` | Maps redacted envelopes → a stable, text-only JSON transcript (the bytes an export button downloads). Round-trips via `parseExport`. |
+| **Off switch (config)** | `src/evolution/config.ts` | `VITE_EVOLUTION_KILL=1` (or `EvolutionConfig.enabled=false`) silences ALL capture instantly. Default is OBSERVE_ONLY, globally enabled. |
+| **Off switch (user)** | `src/evolution/recorderSwitch.ts` → Settings toggle | A user-facing toggle (Settings → About). Persists in localStorage, read PER-TURN at `observeTurn`, so it takes effect immediately and can only make capture SAFER — never escalate. |
+| **Export (runtime)** | `src/evolution/recorderExport.ts` → `exportStoredTranscript` / `envelopesToExport` / `serializeExport` | Reads the durable queue → a stable, text-only JSON transcript (the bytes the Settings export button downloads). Round-trips via `parseExport`. Runtime-safe (no controller import). `src/eval/flightRecorderImport.ts` re-exports these so the shape has ONE source. |
 | **Import → replay** | `flightRecorderImport.ts` → `replayExport` | Runs every recorded turn back through the SAME app entry the marathon/scorecard use; asserts each recorded truth (`expectContains` / `expectAbsent` / `expectSide`) still holds. Returns the failing turns — it **catches divergence**, never green-washes. |
 
 ## Leo's real device transcripts are now a standing test
@@ -38,8 +39,11 @@ the recorded TRUTH permanent while phrasing is free to improve. All 3 Leo flows 
 capture path is also CODE. A PREVIEW/PHYSICAL claim is a deployed-app / device claim and is
 **not** made here.
 
-## Not yet built (next increment)
+## User controls (Settings → About) — built in 0.125.0
 
-- A user-facing **export button** and **off-switch toggle** in a settings/diagnostics surface
-  (the DATA layer — `serializeExport` + the config kill switch — exists; the button/toggle
-  wiring into a screen is the remaining UI step).
+- **Off-switch toggle** (`data-testid="flight-recorder-toggle"`): "שמירת שיחות (למעקב איכות)".
+  On = "נשמר מקומית בלבד — טקסט, בלי הקלטות קול"; Off = "כבוי — שום שיחה לא נשמרת". Persists via
+  `recorderSwitch.setRecorderOff`; `observeTurn` honors it per-turn.
+- **Export button** (`data-testid="flight-recorder-export"`): "ייצוא השיחות שנשמרו (קובץ)" —
+  downloads `abu-flight-recorder-<version>.json` (redacted, text-only) via
+  `exportStoredTranscript`.

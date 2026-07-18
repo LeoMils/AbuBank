@@ -27,83 +27,23 @@ import { ExecutiveCognitiveController } from '../screens/AbuAI/executiveCognitiv
 import { IDLE_RUNTIME, type RuntimeState } from '../screens/AbuAI/cognitiveRuntime'
 import { saveAppointments } from '../screens/AbuCalendar/service'
 import type { FullTurnTools } from '../screens/AbuAI/runtimeFullTurn'
-import type { AbuTraceEnvelope } from '../evolution/traceEnvelope'
+// The export shape + serializers live in the RUNTIME module (src/evolution) so the
+// app bundle never pulls this eval/replay harness. Re-exported here so the shape has
+// ONE source and existing importers of './flightRecorderImport' keep working.
+import {
+  FLIGHT_RECORDER_EXPORT_VERSION,
+  envelopesToExport, serializeExport, parseExport,
+  type FlightRecorderTurn, type FlightRecorderSession, type FlightRecorderExport,
+} from '../evolution/recorderExport'
 
-export const FLIGHT_RECORDER_EXPORT_VERSION = '1.0.0'
+export {
+  FLIGHT_RECORDER_EXPORT_VERSION,
+  envelopesToExport, serializeExport, parseExport,
+}
+export type { FlightRecorderTurn, FlightRecorderSession, FlightRecorderExport }
 
 const HE_RE = /[֐-׿]/
-
-/** One recorded turn in an exported transcript. All text is already redacted. */
-export interface FlightRecorderTurn {
-  /** Redacted user text (from envelope.normalizedInput). */
-  input: string
-  lang?: 'he' | 'es'
-  /** The assistant reply as recorded — kept for reference/diff (not asserted verbatim). */
-  recordedReply?: string
-  /** Substrings the live reply MUST still contain (recorded truth). */
-  expectContains?: string[]
-  /** Substrings the live reply must NOT contain (e.g. a raw transcript dump). */
-  expectAbsent?: string[]
-  /** The committed side effect this turn must still produce. */
-  expectSide?: string
-  note?: string
-}
-export interface FlightRecorderSession { id: string; turns: FlightRecorderTurn[] }
-export interface FlightRecorderExport {
-  version: string
-  exportedAt?: string
-  appVersion?: string
-  sessions: FlightRecorderSession[]
-}
-
 const inferLang = (s: string): 'he' | 'es' => (HE_RE.test(s) ? 'he' : 'es')
-
-/**
- * Map redacted trace envelopes → the export shape. Groups by session, orders turns
- * by capture time, carries only text (no audio ever existed in an envelope). The
- * recorded reply + committed side effect become the regression baseline.
- */
-export function envelopesToExport(envelopes: AbuTraceEnvelope[], meta?: { exportedAt?: string; appVersion?: string }): FlightRecorderExport {
-  const bySession = new Map<string, AbuTraceEnvelope[]>()
-  for (const e of envelopes) {
-    const arr = bySession.get(e.sessionId) ?? []
-    arr.push(e)
-    bySession.set(e.sessionId, arr)
-  }
-  const sessions: FlightRecorderSession[] = []
-  for (const [id, arr] of bySession) {
-    const ordered = [...arr].sort((a, b) => (a.startedAt < b.startedAt ? -1 : a.startedAt > b.startedAt ? 1 : a.turnId < b.turnId ? -1 : 1))
-    const turns: FlightRecorderTurn[] = ordered.map((e) => {
-      const input = e.normalizedInput ?? ''
-      const side = Array.isArray(e.committedStateChanges) && e.committedStateChanges.length
-        ? String(e.committedStateChanges[0]) : undefined
-      return {
-        input,
-        lang: inferLang(input),
-        ...(e.assistantText ? { recordedReply: e.assistantText } : {}),
-        ...(side ? { expectSide: side } : {}),
-      }
-    })
-    sessions.push({ id, turns })
-  }
-  return {
-    version: FLIGHT_RECORDER_EXPORT_VERSION,
-    ...(meta?.exportedAt ? { exportedAt: meta.exportedAt } : {}),
-    ...(meta?.appVersion ? { appVersion: meta.appVersion } : {}),
-    sessions,
-  }
-}
-
-/** The data an export button downloads: a text-only JSON transcript. */
-export function serializeExport(exp: FlightRecorderExport): string {
-  return JSON.stringify(exp, null, 2)
-}
-
-export function parseExport(json: string): FlightRecorderExport {
-  const data = JSON.parse(json) as FlightRecorderExport
-  if (!data || !Array.isArray(data.sessions)) throw new Error('flight-recorder: not a valid export (missing sessions[])')
-  return data
-}
 
 // ── Leo real-device record importer ──────────────────────────────────────────
 interface LeoRec {
