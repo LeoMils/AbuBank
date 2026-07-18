@@ -152,3 +152,32 @@ test('PREVIEW parity — bilingual language discipline + P2 extraction on the de
   const failures = results.filter((r) => !r.pass)
   expect(failures, `parity divergences: ${failures.map(f => f.id).join(', ')}`).toHaveLength(0)
 })
+
+// SINGLE-SESSION cross-language supersession (the contamination bug fixed in 0.126.0):
+// a Hebrew rambling create left on a pending "נכון?", then a Spanish create, then a
+// Spanish confirm. Before the fix the Spanish create was misread as a side-question,
+// so "dale, agendalo" SAVED the stale Hebrew גלעד draft (in Hebrew). After the fix the
+// Spanish create REPLACES the draft and the confirm saves Gabi, in Spanish.
+test('PREVIEW supersession — a Spanish create replaces a pending Hebrew draft (single session)', async ({ page }) => {
+  await enterAbuAI(page)
+  const r1 = await send(page, RAMBLE)                                   // He create → pending confirm (גלעד)
+  const r2 = await send(page, 'agendá una reunión con Gabi mañana a las tres') // Es create → must replace
+  const r3 = await send(page, 'dale, agendalo')                         // Es confirm → must save Gabi
+
+  fs.mkdirSync(OUT, { recursive: true })
+  fs.writeFileSync(path.join(OUT, 'PREVIEW_SUPERSESSION_RESULTS.json'), JSON.stringify({
+    version: APP_VERSION.version, previewUrl: process.env.PREVIEW_URL ?? null,
+    rambling: r1.answer, esCreate: r2.answer, esConfirm: r3.answer,
+  }, null, 2))
+  // eslint-disable-next-line no-console
+  console.log(`\n[PREVIEW SUPERSESSION]\n  ramble → ${r1.answer.slice(0, 60)}\n  es-create → ${r2.answer.slice(0, 60)}\n  es-confirm → ${r3.answer.slice(0, 70)}`)
+
+  // The Spanish create read-back is Gabi, in Spanish (no stale גלעד, no Hebrew).
+  expect(r2.answer).toContain('Gabi')
+  expect(r2.answer).not.toContain('גלעד')
+  expect(HE.test(r2.answer)).toBe(false)
+  // The confirm SAVES what was read back (Gabi), in Spanish — not the stale Hebrew draft.
+  expect(r3.answer).toContain('Gabi')
+  expect(r3.answer).not.toContain('גלעד')
+  expect(HE.test(r3.answer)).toBe(false)
+})

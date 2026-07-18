@@ -15,6 +15,10 @@
  */
 import { isConfirm, isCancel, isCreateIntent } from './calendarCreate'
 
+// Any Hebrew letter — used to scope the cross-language new-create rule to NON-Hebrew
+// (Rioplatense) input, so Hebrew incremental collecting is left exactly as-is.
+const HE_CHAR = /[֐-׿]/
+
 export type V2Mode =
   | 'IDLE' | 'ASKING' | 'PENDING_ACTION' | 'PENDING_CONFIRMATION'
   | 'SIDE_QUESTION' | 'CORRECTION' | 'EXECUTING' | 'DONE'
@@ -94,6 +98,13 @@ export function classifySignalV2(rawInput: string, phase: Phase): V2Signal {
     if (SEARCH_RE.test(t)) return 'search'                          // rule 5/8
     if (READ_RE.test(t)) return 'read'                             // rule 5
     if (NEW_MEETING_RE.test(t) && NEW_TIME_RE.test(t) && NEW_PLACE_RE.test(t) && t.split(/\s+/).length >= 5) return 'new_create'
+    // Cross-language supersession: a genuine NEW create in a NON-Hebrew (Rioplatense)
+    // utterance — "agendá una reunión con Gabi mañana a las tres" — also replaces the
+    // pending draft. The Hebrew full-create is already caught above; this closes the
+    // Spanish gap where such a turn was misread as a side-question, so a later
+    // "dale, agendalo" saved the STALE Hebrew draft instead of the read-back person.
+    // Guarded by !isDraftEdit so a "no, con Mor" style correction still updates.
+    if (!HE_CHAR.test(t) && !isDraftEdit(t) && isCreateIntent(t)) return 'new_create'
     if (FIELD_RE.test(t)) return 'field_answer'
     if (isDraftEdit(t)) return 'field_answer'                       // edit/correction → updateCreate, never LLM
     // Incremental create: while COLLECTING (not yet confirming), a non-question,
