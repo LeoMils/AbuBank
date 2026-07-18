@@ -7,6 +7,7 @@ import { APP_VERSION } from '../../version'
 import { copyLastTurns } from '../AbuAI/liveTurnDiagnostics'
 import { exportStoredTranscript, serializeExport } from '../../evolution/recorderExport'
 import { isRecorderOff, setRecorderOff } from '../../evolution/recorderSwitch'
+import { setSpeechRate } from '../../services/speechProfile'
 
 /** Visible, senior-discreet debug access: copies the last 20 AbuAI turns for support. */
 export function CopyTurnsButton() {
@@ -746,7 +747,7 @@ export function Settings() {
                 const isActive = Math.abs(voiceSpeed - speed) < 0.05
                 const label = speed === 0.90 ? 'איטי' : speed === 1.0 ? 'רגיל' : 'מהיר'
                 return (
-                  <button key={speed} onClick={() => { localStorage.setItem('abu-voice-speed', String(speed)); setVoiceSpeed(speed) }}
+                  <button key={speed} onClick={() => { setSpeechRate(speed); setVoiceSpeed(speed) }}
                     style={{
                       flex: 1, padding: '10px 0', borderRadius: 10,
                       background: isActive ? 'rgba(20,184,166,0.20)' : 'rgba(255,255,255,0.05)',

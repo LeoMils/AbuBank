@@ -4,18 +4,16 @@
 //           3) Gemini TTS (Aoede — human but not Israeli/Argentine)
 //           4) Google Translate TTS  5) Web Speech API
 
-import { getVoiceProfile, getEffectiveRate, describeVoiceConfig, type VoiceLang } from './voiceConfig'
+import { getVoiceProfile, describeVoiceConfig, type VoiceLang } from './voiceConfig'
+import { getSpeechRate } from './speechProfile'
 
 // v20: Read user voice settings from Settings screen.
 // Rate is language-tuned in voiceConfig (warm but not "old"); a saved user
 // override still wins, clamped to a non-robotic range.
+// The spoken pace lives in ONE place now — the per-user speech profile (NORMAL by
+// default; changes only by explicit user action). See services/speechProfile.
 function getVoiceSpeed(lang: VoiceLang = 'he'): number {
-  let override: number | null = null
-  try {
-    const saved = localStorage.getItem('abu-voice-speed')
-    if (saved) override = parseFloat(saved)
-  } catch {}
-  return getEffectiveRate(lang, override)
+  return getSpeechRate(lang)
 }
 
 let currentAudio: HTMLAudioElement | null = null

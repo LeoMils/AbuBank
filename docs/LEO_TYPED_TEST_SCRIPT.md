@@ -1,116 +1,91 @@
 # LEO TYPED TEST SCRIPT — AbuAI (text layer)
 
-**Build:** 0.113.0-referable-fix · branch `rc5/cognitive-architecture-and-acceptance`
-**Scope:** TYPED input only (voice/Realtime is a later mission).
-**Verified:** the deterministic checks below were run against the DEPLOYED preview in a
-real mobile-chrome browser — **13/13 pass at PREVIEW class** (family incl. in-laws, dates,
-memory, and the full create→where→move→cancel calendar flow), each ~300–400 ms.
-**How to use:** type each line into AbuAI and compare to *Expected*. Date/time answers
-reflect the day you run it.
+**Build to look for:** `0.128.0-voice-readiness` (Settings → About shows the build; the Home
+QA badge shows `QA: v0.128.0-voice-readiness`). Branch `rc5/cognitive-architecture-and-acceptance`.
+**Scope:** TYPED input. Every check below was proven through the DEPLOYED preview in a real
+mobile browser (Playwright) across cycles 39–47 — `e2e/preview-typed-script.spec.ts`,
+`e2e/leo-device-failures.spec.ts`, `e2e/preview-parity.spec.ts`.
+**How to use:** type each numbered line into AbuAI and compare to **Expected**. Date/time answers
+reflect the day you run it (examples below were captured on **Sat 18 Jul 2026**). Deterministic
+checks answer in **~0.3–0.7s**.
 
-## Honesty legend — where each answer comes from
-- **✅ RUNTIME** — the deployed UI answers this deterministically via the single
-  cognitive runtime (exact wording below).
-- **✅ LEGACY-UI** — the deployed UI answers it via its own (older) handler; content
-  is right, wording may differ slightly from the runtime capture.
-- **🤖 LLM** — answered by the language model (content should be correct via injected
-  family/date/memory grounding; wording varies, not deterministic).
-- **🌐 ONLINE** — requires live web retrieval; the answer varies and must carry sources,
-  or AbuAI must say honestly it cannot check (never fabricate).
-- **⚠️ GAP** — the *runtime* produces the correct answer (proven by tests) but the
-  deployed UI does **not yet route this turn through the runtime** (see “Known wiring
-  gap” at the bottom). Listed so it can be verified after the UI cutover.
+## Legend
+- **RUNTIME** — answered deterministically by the single cognitive runtime (exact wording).
+- **LLM** — answered by the model (content correct via grounding; wording varies).
+- **ONLINE** — needs live retrieval; must carry the answer honestly or say it cannot check —
+  **never fabricate** (`NO TOOL RESULT = NO CLAIM`).
+- ✅ good example · ❌ failing example (what a regression would look like).
 
 ---
 
-## Part A — should work on the preview today
+## A · Family relations (deterministic graph)
+1. `מי זאת מור` → RUNTIME — `מרטיטה האמא של מור.`
+2. `מה הקשר בין ירדן לנועם` → RUNTIME — names `עילי` + `דוד` (Yarden is married to Eili, Eili is Noam's cousin).
+3. `מה הקשר בין גלעד ללאו` → RUNTIME — names `אופיר` (Gilad is married to Ofir, Leo's niece).
+4. `כמה נכדים יש למור` → RUNTIME — `יש למור 2 נכדים: אנאבל וארי.`
+5. `מה הקשר בין אנבל ללאו` → RUNTIME — `אנאבל נכדת-אחיין של לאו.`
+6. `מי גלעד עבור רפי` → RUNTIME — `גלעד החתן של רפי.`
+   - ❌ regression: `לא הצלחתי / אין לי גישה` (dead-end) or the literal phrase echoed back.
 
-### Family relations (deterministic graph — no dates)
-1. `מי זאת מור` → **✅ RUNTIME** — `מרטיטה האמא של מור.`
-2. `מי אמא של אופיר` → **✅ RUNTIME** — `מור`
-3. `מי הבן של מרטיטה` → **✅ RUNTIME** — `לאו`
-4. `מה הקשר בין רפי ללאו` → **✅ RUNTIME** — `רפי הגיס לשעבר של לאו.`
-5. `מה הקשר בין ירדן לנועם` → **✅ RUNTIME** — `ירדן נשואה לעילי, ועילי בן דוד של נועם.`
-   *(in-law by composition: wife of Noam’s cousin)*
-6. `מה הקשר בין גלעד ללאו` → **✅ RUNTIME** — `גלעד נשוי לאופיר, ואופיר אחיינית של לאו.`
-   *(husband of Leo’s niece)*
-7. `כמה נכדים יש למור` → **✅ RUNTIME** — `יש למור 2 נכדים: אנאבל וארי.`
-8. `quién es Ofir` → **✅ RUNTIME** — `Abu es abuela de Ofir (a través de Mor).`
-9. `qué relación hay entre Rafi y Leo` → **✅ RUNTIME** — `Raphi es ex cuñado de Leo.`
-10. `la hija de Mor` → **🤖 LLM** — should answer *Ofir* (the runtime doesn’t own this
-    bare Spanish shorthand; the model answers from the injected family facts).
+## B · Dates & math
+7. `מה התאריך היום` → RUNTIME — today's date incl. `2026`, e.g. `היום 18 ביולי 2026, שבת.`
+8. `איזה יום מחר` → RUNTIME — tomorrow's weekday + date, e.g. `מחר יהיה יום ראשון, 19 ביולי 2026.`
+9. `בעוד 5 ימים איזה יום` → RUNTIME — e.g. `בעוד 5 ימים יהיה יום חמישי, 23 ביולי 2026.`
+10. `כמה זה 15 כפול 4` → RUNTIME — `זה יוצא 60.`
+11. `20 אחוז מ-200` → RUNTIME — `20% מ-200 זה 40.`
+12. `cuánto es 12 por 8` → RUNTIME — `Son 96.` (Spanish, no Hebrew).
 
-### Dates & time (deterministic from the real clock)
-11. `מה התאריך היום` → **✅ RUNTIME** — `היום 16 ביולי 2026, יום חמישי.` *(reflects run-day)*
-12. `איזה יום מחר` → **✅ RUNTIME** — `מחר יהיה יום שישי, 17 ביולי 2026.` *(reflects run-day)*
-13. `כמה ימים עד סוף החודש` → **✅ RUNTIME** — `עד סוף החודש נשארו 15 ימים.` *(reflects run-day)*
-14. `מה השעה בניו יורק` → **✅ RUNTIME** — `בניו יורק השעה עכשיו 03:00.` *(reflects real time; NY is 7h behind Israel in July)*
+## C · Calendar create → confirm → referable → cancel
+13. `תקבעי פגישה עם רפי מחר בשלוש בבית קפה מרוקו` → RUNTIME — `פגישה עם רפי מחר בשלוש אחר הצהריים. בית קפה מרוקו. נכון?`
+14. `כן` → RUNTIME — `קבוע — פגישה עם רפי …19 ביולי 2026… בשעה 15:00. בית קפה מרוקו`
+15. `איפה אני פוגשת אותו?` → RUNTIME — `הפגישה עם רפי בית קפה מרוקו.` (referable — reads the just-saved event).
+16. `תבטלי אותה` → RUNTIME — `מחקתי את פגישה עם רפי בשעה 15:00.`
+    - ❌ regression: `באיזה יום?` / invents a different event / can't find it.
 
-### Math (deterministic arithmetic — PREVIEW-verified)
-15. `כמה זה 15 כפול 4` → **✅ RUNTIME** — `זה יוצא 60.`
-16. `20 אחוז מ-200` → **✅ RUNTIME** — `20% מ-200 זה 40.`
-17. `cuánto es 12 por 8` → **✅ RUNTIME** — `Son 96.`
+## D · Corrections mid-create (draft must update, not restart)
+17. `תקבעי פגישה עם דני מחר בשבע` → RUNTIME — confirm for `דני` … `בשבע` … `נכון?`
+18. `לא, בארבע` → RUNTIME — same `דני` draft, time now **four** (`בארבע`), asks `נכון?` again.
+    - ✅ good: person kept, only the time changed. ❌ failing: starts a brand-new empty create, or a later `כן` saves seven.
 
-### Calendar — read & search (deterministic, grounded in the store)
-18. First create an event (see 22), then: `מה יש לי מחר` → **✅ RUNTIME** — lists the
-    event, or `מחר אין כלום. יום שקט.` when empty.
-19. `מה יש לי ביום ראשון` → **✅ RUNTIME** — reads the **next Sunday** (not today);
-    `ביום ראשון אין כלום ביומן.` when empty. *(named-weekday read)*
-20. `מתי הפגישה עם רפי` → **✅ RUNTIME** — searches all days; `אין לך פגישה עם רפי ביומן.`
-    when none.
+## E · Rambling story → clean extraction (P2)
+19. Type the whole story:
+    `אז תשמעי, דיברתי היום עם החתן של רפי, והוא סיפר לי שהוא טס לניו יורק בשבוע הבא, ואנחנו רוצים להיפגש מחר בשלוש אחר הצהריים בבית קפה טולדנו כדי לדבר על הטיול המשפחתי`
+    → RUNTIME — `פגישה עם גלעד מחר בשלוש אחר הצהריים. בית קפה טולדנו. בנושא טיול המשפחתי. נכון?`
+    - ✅ good: resolves `החתן של רפי`→`גלעד`, keeps `טולדנו` + `מחר`, subject stated **once**.
+    - ❌ failing: dumps the raw story (`ניו יורק`, `סיפר לי`), or repeats the subject twice.
 
-### Calendar — create, confirm, referable read & mutation
-21. `תקבעי פגישה עם רפי מחר בשלוש בבית קפה מרוקו` → **✅ LEGACY-UI** — a confirm card:
-    `פגישה עם רפי מחר בשלוש אחר הצהריים. בית קפה מרוקו. נכון?`
-22. `כן` → **✅ LEGACY-UI** — saves and reads back, e.g.
-    `קבוע — פגישה עם רפי 17 ביולי 2026, יום שישי בשעה 15:00. בית קפה מרוקו`
-    *(this now also sets the conversation FOCUS to that event.)*
-23a. …then `איפה אני פוגשת אותו?` → **✅ RUNTIME** — `הפגישה עם רפי בית קפה מרוקו.`
-23b. …then `תעבירי אותה ליום ראשון` → **✅ RUNTIME** — `עדכנתי: פגישה עם רפי ל-19 ביולי 2026, יום ראשון.` *(next-Sunday date reflects run-day)*
-23c. …then `תבטלי אותה` → **✅ RUNTIME** — `מחקתי את פגישה עם רפי בשעה 15:00.`
-    *(pronoun “cancel it” now resolves to the focused event — was Part B, now wired in 0.112.0.)*
+## F · Spanish end-to-end (Rioplatense) — language discipline: NO Hebrew may leak
+20. `agendá una reunión con Gabi mañana a las tres` → RUNTIME — `Te agendo una reunión con Gabi mañana a las 15:00. ¿Está bien?`
+21. `dale, agendalo` → RUNTIME — `Listo, te agendé una reunión con Gabi mañana a las 15:00.`
+22. `cancelalo` → RUNTIME — `Listo, cancelé la reunión con Gabi a las 15:00.` (Spanish confirm, not Hebrew).
+23. `¿qué relación hay entre Anabel y Leo?` → RUNTIME — `Anabel es sobrina nieta de Leo.`
+    - ❌ regression on 20–23: any Hebrew word in the reply.
 
-### Memory (durable, user-commanded — now wired to the UI)
-24. `תזכרי שאני אוהבת יין אדום` → **✅ RUNTIME** — `בסדר, אני אזכור את זה: אני אוהבת יין אדום.`
-25. `מה את זוכרת עליי?` → **✅ RUNTIME** — `הנה מה שאני זוכרת עלייך: אני אוהבת יין אדום.`
-26. `תשכחי שאני אוהבת יין אדום` → **✅ RUNTIME** — `בסדר, שכחתי את זה.`
-27. `recordá que me gusta el mate` → **✅ RUNTIME** — `Listo, me acuerdo: me gusta el mate.`
-    then `qué te acordás de mí` → `Me acuerdo de esto sobre vos: me gusta el mate.`
-28. `תזכרי שמספר הטלפון שלי 0521234567` → **✅ RUNTIME** (privacy) —
-    `את זה אני מעדיפה לא לשמור, אבל אני כאן איתך.` *(never stores phone/medical/financial/street.)*
+## G · Cross-language supersession (the 0.126 fix) — do these IN ORDER, one session
+24. `תקבעי פגישה עם החתן של רפי מחר בשלוש` → RUNTIME — confirm for `גלעד` … `נכון?`
+25. `agendá una reunión con Gabi mañana a las tres` → RUNTIME — Spanish confirm for **Gabi** (`¿Está bien?`).
+26. `dale, agendalo` → RUNTIME — `Listo, te agendé una reunión con **Gabi** …` (saves **Gabi**, in Spanish).
+    - ❌ failing (the old bug): saves `גלעד` in Hebrew — the new create didn't supersede the old draft.
 
-### General knowledge & current-info
-29. `כמה זמן לוקח לאור מהשמש להגיע לכדור הארץ` → **🤖 LLM** — a real answer (~8 minutes 20 seconds); a general-knowledge question always gets an answer.
-30. `מה מזג האוויר בכפר סבא עכשיו` → **🌐 ONLINE** — a live answer **with sources**, or an
-    honest “I can’t check right now” — never an invented temperature.
+## H · Memory store / recall / forget (this session)
+27. `תזכרי שאני אוהבת יין אדום` → RUNTIME — `בסדר, אני אזכור את זה: אני אוהבת יין אדום.`
+28. `מה את זוכרת עליי?` → RUNTIME — `הנה מה שאני זוכרת עלייך: אני אוהבת יין אדום.`
+29. `תשכחי שאני אוהבת יין אדום` → RUNTIME — `בסדר, שכחתי את זה.` (recall after this must NOT mention red wine).
 
----
-
-## Part B — remaining wiring status (honest)
-
-The referable-calendar gap that used to be here was **closed in 0.112.0** (the
-UI cutover): `index.tsx` now routes `calendar_delete` / `calendar_update` through
-the runtime, **persists the conversation `focus`** across turns (set after a save),
-and the duplicate delete/modify handlers were removed — one runtime path. Those
-turns are items 23a–23c above.
-
-Still on their existing paths (works, but not the runtime), by deliberate scope:
-- **Create / confirm** (items 21–22) — the elaborate legacy create flow (voice,
-  pronoun guard, birthday-reminder fusion) is intentionally left for a later,
-  separate cutover.
-- **General / online** (items 29–30) — model / live retrieval by design.
-
-(Math, items 15–17, IS deterministic in-app — PREVIEW-verified 3/3.)
-
-**Update (0.113.0):** the referable items (23a–23c) are now **PREVIEW-verified** — a
-real-browser Playwright run against the deployed preview passes 13/13, with the
-referable read/cancel answered deterministically (~330 ms), not by the LLM.
+## I · Online honesty & style
+30. `מי ניצח אתמול במשחק` → ONLINE — either a real, current answer **with a source**, or an honest
+    decline: `לא מצאתי מידע עדכני על זה כרגע. אני מעדיפה להגיד לך את זה מאשר להמציא.`
+    - ✅ good: honest decline when it can't retrieve. ❌ failing: confidently states a made-up score/winner.
+31. Style check (applies to every answer): warm + feminine address (`את`, `תגידי`), **never a menu**
+    (`אפשרות 1… אפשרות 2…`), never robotic, `Martita` always in Latin letters, the `Ja ja ja` laugh
+    (never `חחח`). ❌ failing: an option-list opener, English UI text, or a cold/clipped reply.
 
 ---
 
-## Evidence classes (honest)
-- *Expected* strings: **CODE** (captured from the real runtime, deterministic).
-- ✅ RUNTIME wiring: **CODE + source-contract** (the UI routes these to the runtime);
-  live end-to-end is **PREVIEW-pending**.
-- Live-app behaviour on the preview: **PREVIEW** once verified there (not yet done).
-- Physical device / voice: **not covered here** (later mission).
+## Notes for this round
+- **Build:** confirm Settings → About reads `0.128.0-voice-readiness` before starting.
+- **Speech pace:** replies are spoken at NORMAL pace by default now (Settings → מהירות דיבור:
+  איטי / רגיל / מהיר centred on normal). This script is the TYPED layer; voice audibility is a
+  separate on-device round.
+- **Weekly drift check (operator):** `PARITY_GUARD_WRITE=1 npx vitest run src/eval/parityGuard.test.ts`
+  writes `docs/eval/PARITY_GUARD_LATEST.md`.

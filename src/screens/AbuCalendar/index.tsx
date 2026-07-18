@@ -16,6 +16,7 @@ import {
   type Appointment,
 } from './service'
 import { processVoiceTranscript } from './voiceAutoCreate'
+import { MIC_GETUSERMEDIA } from '../../services/audioConstraints'
 import { extractPersonPhrase, resolvePersonPhrase } from './familyResolve'
 import { userFacingError } from '../../services/platformHealth'
 import { mediateVoiceCaptureError } from '../../services/errorMediation'
@@ -427,9 +428,7 @@ export function AbuCalendar() {
       let constraintsFallback = false
       dlog('getUserMedia(constraints) starting...')
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        })
+        stream = await navigator.mediaDevices.getUserMedia(MIC_GETUSERMEDIA)
         dlog(`getUserMedia(constraints) OK, tracks=${stream.getTracks().length}`)
       } catch (constraintErr) {
         const cName = constraintErr instanceof Error ? constraintErr.name : 'unknown'

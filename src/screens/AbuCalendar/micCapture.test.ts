@@ -13,22 +13,23 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import { createInitialTrace, type VoiceTrace } from './voiceTrace'
+import { MIC_AUDIO_CONSTRAINTS } from '../../services/audioConstraints'
 
 const INDEX = fs.readFileSync(path.resolve(__dirname, 'index.tsx'), 'utf8')
 
 // ─── 1) Audio constraints ──────────────────────────────────────────────
+// The constraints now live in ONE source (services/audioConstraints) and every
+// primary capture site requests them via MIC_GETUSERMEDIA (0.128.0 centralization).
 describe('mic capture — AbuAI-grade audio constraints', () => {
-  it('getUserMedia uses echoCancellation + noiseSuppression + autoGainControl', () => {
-    expect(INDEX.includes('echoCancellation: true')).toBe(true)
-    expect(INDEX.includes('noiseSuppression: true')).toBe(true)
-    expect(INDEX.includes('autoGainControl: true')).toBe(true)
+  it('the shared constraints carry echoCancellation + noiseSuppression + autoGainControl', () => {
+    expect(MIC_AUDIO_CONSTRAINTS.echoCancellation).toBe(true)
+    expect(MIC_AUDIO_CONSTRAINTS.noiseSuppression).toBe(true)
+    expect(MIC_AUDIO_CONSTRAINTS.autoGainControl).toBe(true)
   })
 
-  it('bare { audio: true } is only used as a fallback, never as the primary path', () => {
-    // Primary path uses constraints; bare audio is the fallback for iOS.
-    // The fallback is inside a catch block labeled "constraintsFallback".
-    expect(INDEX.includes('constraintsFallback = true')).toBe(true)
-    expect(INDEX.includes('echoCancellation: true')).toBe(true)
+  it('the primary capture path uses the shared MIC_GETUSERMEDIA constraints, with bare {audio:true} only as the iOS fallback', () => {
+    expect(INDEX.includes('MIC_GETUSERMEDIA')).toBe(true)          // primary = shared constraints
+    expect(INDEX.includes('constraintsFallback = true')).toBe(true) // bare audio stays the fallback
   })
 })
 

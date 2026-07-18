@@ -16,6 +16,7 @@
 // contract and are asserted by a guard test so an edit can't silently regress.
 
 import { HE_VOICE } from './voiceConfig'
+import { MIC_GETUSERMEDIA } from './audioConstraints'
 import { detectUtteranceLanguage } from './languagePolicy'
 import { REALTIME_MODEL, assertNoModelDrift } from './realtimeModel'
 import { normalizeRealtimeEvent } from './realtimeEvents'
@@ -297,10 +298,8 @@ export class RealtimeVoiceSession {
         }
       }
 
-      // 4. Audio input — mic → OpenAI
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-      })
+      // 4. Audio input — mic → OpenAI (shared iOS-tuned constraints)
+      this.stream = await navigator.mediaDevices.getUserMedia(MIC_GETUSERMEDIA)
       this.stage('MEDIA_STREAM_CREATED', 'ok')
       // Mic acceptance: a returned stream is NOT proof of a live audio track.
       const micTrack = this.stream.getAudioTracks()[0]

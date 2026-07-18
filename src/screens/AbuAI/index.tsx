@@ -43,6 +43,7 @@ import { getTodayEvents, getTomorrowEvents, getBirthdayFor } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
 import { checkMicPreflight } from '../../services/micPreflight'
 import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector, getTTSTrace } from '../../services/voice'
+import { warmOpenersEnabled, getInstantOpener } from '../../services/warmOpeners'
 
 /**
  * speakVoiceMode with 15s safety timeout — prevents stuck speaking state.
@@ -222,6 +223,13 @@ function mapOnlineFailReason(code: string | null | undefined): OnlineFailReason 
 
 function getVoiceGreeting(): string {
   const h = new Date().getHours()
+  // Cached instant warm openers (varied, no LLM) — behind a DEFAULT-OFF flag pending
+  // Leo's blind listening. Off (default) → the existing single line, so no behavior
+  // change. The variant rotates per calendar day so it isn't identical every session.
+  if (warmOpenersEnabled()) {
+    const dayIndex = Math.floor(Date.now() / 86_400_000)
+    return getInstantOpener('he', h, dayIndex)
+  }
   const timeGreet = h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : h < 21 ? 'ערב טוב' : 'לילה טוב'
   // Warm, short, present — a companion, not a menu. The old "אפשר לדבר איתי,
   // לשאול משהו, או לבקש…" option-list read as robotic on device.
