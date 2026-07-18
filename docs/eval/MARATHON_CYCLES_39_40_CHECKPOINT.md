@@ -1,5 +1,48 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-9 update — Cycle 47: latency pack — NORMAL speech pace by default
+
+**HEAD:** `fix …Cycle 47 (0.127.0-normal-speech-pace)` — pushed `origin/rc5` (`034714a`).
+**Fresh PREVIEW:** https://abu-bank-3p20sg2r8-leos-projects-d3c04c09.vercel.app — health
+`0.127.0`; `e2e/preview-parity.spec.ts` 2/2 (no regression from the pace change).
+
+Latency pack, highest-value provable slice. The standing law (benchmark = latest ChatGPT at
+NORMAL human speech pace, never slowed by default) was VIOLATED: the applied TTS speed
+(`voice.ts` → `getEffectiveRate` → `getVoiceProfile(lang).rate`) defaulted to 0.95 (He) / 0.97
+(Es) and the Settings scale maxed at 0.95 — nothing played at normal 1.0. FIX: HE/ES rate → 1.0;
+Settings scale re-centered (איטי 0.9 / רגיל 1.0 / מהיר 1.1), default 1.0; overrides still honored
+(clamped 0.8–1.15). RED-first: the old voiceConfig test ENCODED the slowed default — rewritten to
+assert the law (default === 1.0), red before the fix. Realtime path model-voiced (unchanged).
+**Latency table** recorded `docs/eval/LATENCY_TABLE.md`: deterministic 0.31–0.68s < 1s
+(PREVIEW-measured), LLM ~4s, online 4.8–6.8s. CODE: voiceConfig 6/6, full suite 11041 pass / 2
+todo, typecheck + build.
+
+**Honest deferral:** true sentence-by-sentence AUDIO streaming (time-to-first-audio) is
+DEVICE evidence — the reply is still handed to TTS as one `speak()` blob; not done here. Lean
+context injection is already lean at the runtime (grounding mostly null). Greeting-time calendar
+prefetch is marginal (calendar is local <1s).
+
+**Continuation prompt (paste to resume):**
+
+> Resume the NEXT MANDATE on rc5 from HEAD (0.127.0-normal-speech-pace; pushed; preview
+> https://abu-bank-3p20sg2r8-leos-projects-d3c04c09.vercel.app health-verified). Verify git +
+> preview health. Done: Flight Recorder (P1), P2+parity PROVEN on preview, cross-language
+> contamination fixed (Cycle 46), normal speech pace by default + latency table (Cycle 47). Pick
+> the next highest-value remaining: (4) VOICE-READINESS PACK code-level — iOS getUserMedia
+> constraints (echoCancellation, noiseSuppression, autoGainControl) in the mic-capture path
+> (src/services/ mic/realtime), a per-user speech profile (the rate override already exists —
+> extend to a small profile object read from settings), cached warm openers behind a DEFAULT-OFF
+> flag; all CODE-level, NO device claims — OR (5) a weekly parity-guard script wrapping
+> parityScorecard + generativeMarathon smoke + flightRecorderImport into a dated report (drift
+> detection) — OR (6) refresh docs/LEO_TYPED_TEST_SCRIPT.md to ~30 bilingual behavior checks and
+> run vs preview. Standing law: NORMAL ChatGPT pace, never slowed by default. Keyed Claude
+> cross-check stays out-of-band (no ANTHROPIC_API_KEY; never read .env values — hard stop).
+> RED-first; smallest general root fix; bump version + keep src/version.ts ⇄ api/health.ts ⇄
+> src/version.test.ts in sync (no apostrophes in buildLabel); typecheck + full vitest + build; for
+> any app-code change redeploy a fresh preview + re-run e2e vs it; commit + push rc5 (never
+> production). Only deployed-preview-through-the-app evidence counts for product claims; label
+> CODE vs PREVIEW vs DEVICE honestly.
+
 ## Segment-8 update — Cycle 46: cross-language contamination FIXED (CODE + PREVIEW)
 
 **HEAD:** `fix …Cycle 46 (0.126.0-crosslang-supersede)` — pushed `origin/rc5` (`fd8ef9f`).
