@@ -69,6 +69,40 @@ saved event deleted correctly but confirmed in Hebrew ("מחקתי את פגיש
 class of gap the parity judge exists to surface: the deterministic engine did the right ACTION
 but violated the language dimension.
 
+## Live cross-check judge (ChatGPT-class parity) — `src/eval/parityLiveJudge.ts`
+
+The pluggable seam is now IMPLEMENTED as a **cross-check** panel (the user's choice): the
+reference reply is taken from BOTH a Claude model (`claude-opus-4-8`) and an OpenAI (GPT)
+model under the same warm-elderly-companion persona brief, and each AbuAI reply is scored by
+a judge panel. Aggregation: **AND across judges** (a dimension passes only if every judge
+agrees AbuAI matched the reference) then **OR across references** (compare against the
+stronger of the two references). Divergence = a flagged parity gap.
+
+- No new dependencies — raw `fetch` (adding an SDK would touch `package.json`, a
+  human-approval gate here). Anthropic calls follow the claude-api contract
+  (`claude-opus-4-8`, `output_config.effort: 'high'`, structured-output judge schema).
+- **Runs OUT-OF-BAND, not in the unit suite** — it needs `ANTHROPIC_API_KEY` +
+  `OPENAI_API_KEY`, which this env does not have. A keyed run is PREVIEW/PRODUCTION-class
+  evidence. The wiring (request shapes) and the cross-check aggregation are proven
+  deterministically with mocked `fetch` in `parityLiveJudge.test.ts` (CODE) — 7/7 green.
+
+**To run the live cross-check (out-of-band, with keys):**
+
+```ts
+import { runParityScorecard } from './parityScorecard'
+import { makeClaudeReference, makeOpenAIReference, makeClaudeJudge, makeOpenAIJudge,
+  makeCrossCheckReference, makeCrossCheckSeamJudge } from './parityLiveJudge'
+
+const claude = { apiKey: process.env.ANTHROPIC_API_KEY!, model: 'claude-opus-4-8' }
+const openai = { apiKey: process.env.OPENAI_API_KEY!, model: '<a current GPT model>' }
+const reference = makeCrossCheckReference(
+  makeClaudeReference(claude, fetch), makeOpenAIReference(openai, fetch))
+const judge = makeCrossCheckSeamJudge([
+  makeClaudeJudge(claude, fetch), makeOpenAIJudge(openai, fetch)])
+const res = await runParityScorecard(buildSessions(), { reference, judge })
+// Record res here as a separate, higher-evidence-class section.
+```
+
 ## How to extend
 
 - Add real turns (especially from `src/eval/*iphone*`, `deviceFailuresTriage`,
