@@ -8,11 +8,16 @@ describe('voiceConfig — warmer, non-robotic voice targets', () => {
     expect(ES_VOICE.openaiVoice).toBe('shimmer')
   })
 
-  it('lifts the pace above the old "old-sounding" 0.88 but keeps it calm', () => {
-    expect(HE_VOICE.rate).toBeGreaterThan(0.88)
-    expect(HE_VOICE.rate).toBeLessThanOrEqual(1.0)
-    expect(ES_VOICE.rate).toBeGreaterThan(0.88)
-    expect(ES_VOICE.rate).toBeLessThanOrEqual(1.0)
+  // Standing law: the benchmark is the latest ChatGPT at NORMAL human speech pace —
+  // never slowed by DEFAULT. The applied default (no user override) must be 1.0, not
+  // the old slowed 0.88/0.95. A user can still choose slower via the Settings profile.
+  it('defaults to NORMAL human speech pace (1.0) — never slowed by default', () => {
+    expect(HE_VOICE.rate).toBe(1.0)
+    expect(ES_VOICE.rate).toBe(1.0)
+    expect(getEffectiveRate('he', null)).toBe(1.0)
+    expect(getEffectiveRate('es', null)).toBe(1.0)
+    // A user override still wins (slower for those who want it), clamped sane.
+    expect(getEffectiveRate('he', 0.9)).toBe(0.9)
   })
 
   it('keeps pitch neutral (no robotic shift)', () => {

@@ -70,7 +70,9 @@ export const HE_VOICE: VoiceProfile = {
   lang: 'he',
   openaiVoice: 'shimmer',
   realtimeVoice: 'shimmer',
-  rate: 0.95,
+  // NORMAL human speech pace by default (standing law: benchmark is the latest ChatGPT
+  // — never slowed by default). A user who wants slower can pick it in Settings.
+  rate: 1.0,
   pitch: 1.0,
   volume: 1.0,
   webSpeechLang: 'he-IL',
@@ -83,7 +85,7 @@ export const ES_VOICE: VoiceProfile = {
   lang: 'es',
   openaiVoice: 'shimmer',
   realtimeVoice: 'shimmer',
-  rate: 0.97,
+  rate: 1.0, // normal pace by default (standing law) — user can slow it in Settings
   pitch: 1.0,
   volume: 1.0,
   webSpeechLang: 'es-AR',

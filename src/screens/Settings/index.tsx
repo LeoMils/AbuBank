@@ -398,7 +398,7 @@ export function Settings() {
 
   // Voice settings (v20: reactive state instead of raw localStorage reads)
   const [voiceLang, setVoiceLang] = useState(() => localStorage.getItem('abu-voice-lang') || 'auto')
-  const [voiceSpeed, setVoiceSpeed] = useState(() => parseFloat(localStorage.getItem('abu-voice-speed') || '0.88'))
+  const [voiceSpeed, setVoiceSpeed] = useState(() => parseFloat(localStorage.getItem('abu-voice-speed') || '1.0'))
 
   // Backup / restore
   const [backupStatus, setBackupStatus] = useState<string | null>(null)
@@ -742,9 +742,9 @@ export function Settings() {
           <div style={{ direction: 'rtl' }}>
             <div style={sectionLabel}>מהירות דיבור</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              {([0.80, 0.88, 0.95] as const).map(speed => {
-                const isActive = Math.abs(voiceSpeed - speed) < 0.02
-                const label = speed === 0.80 ? 'איטי' : speed === 0.88 ? 'רגיל' : 'מהיר'
+              {([0.90, 1.0, 1.1] as const).map(speed => {
+                const isActive = Math.abs(voiceSpeed - speed) < 0.05
+                const label = speed === 0.90 ? 'איטי' : speed === 1.0 ? 'רגיל' : 'מהיר'
                 return (
                   <button key={speed} onClick={() => { localStorage.setItem('abu-voice-speed', String(speed)); setVoiceSpeed(speed) }}
                     style={{
