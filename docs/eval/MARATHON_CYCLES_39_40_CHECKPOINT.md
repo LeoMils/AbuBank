@@ -1,5 +1,61 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-6 update — Cycle 45 done (Flight Recorder UI) + Priority-2 PREVIEW evidence
+
+**HEAD:** `feat …Cycle 45 (0.125.0-flight-recorder-ui)` — pushed `origin/rc5` (`ea6f363`).
+**Fresh PREVIEW:** https://abu-bank-9vwvg4c29-leos-projects-d3c04c09.vercel.app — health
+`0.125.0-flight-recorder-ui` (matches HEAD).
+
+**Priority 1 tail — DONE.** Settings (About/diagnostics) now has a senior-first Flight
+Recorder control: an OFF-SWITCH toggle (`flight-recorder-toggle`) + an EXPORT button
+(`flight-recorder-export`) that downloads the redacted text-only transcript. Architecture:
+pure export shape + serializers moved to a RUNTIME module (`src/evolution/recorderExport.ts`,
+`exportStoredTranscript` reads the durable queue) so the bundle never pulls the eval harness;
+`src/eval/flightRecorderImport.ts` re-exports them (one source). Off switch
+(`src/evolution/recorderSwitch.ts`) persists in localStorage, read PER-TURN at the single
+`observeTurn` seam → live, safer-only. RED-first (the switch test proved capture continued
+when off before the guard). CODE: recorderSwitch 3/3, recorderExport 3/3, controls 3/3,
+importer 3/3; full suite 11039 pass / 2 todo; typecheck + build.
+
+**Priority 2 — PREVIEW evidence captured + limits documented** (`docs/eval/PREVIEW_EVIDENCE_0125.md`):
+LLM proxy `abuai-chat` live with server key (`ok:true`, real OpenAI, ~4s); online seam wired +
+HONEST (`NO TOOL RESULT = NO CLAIM` verified live, 4.8–6.8s < 8s). KEY LIMITS: (a) the keyed
+Claude cross-check needs `ANTHROPIC_API_KEY` — absent from the app's provider set even
+server-side → out-of-band; (b) P2 extraction + parity are CLIENT-SIDE cognition (the endpoint is
+a bare proxy), so true PREVIEW proof needs a **browser E2E (Playwright) against the preview**,
+not curl; (c) online search returned no results in preview (provider/config, not a code defect —
+the decline is correct).
+
+**Remaining:** (2-tail) browser E2E vs preview for P2/parity; (3) LATENCY PACK (streamed
+sentence TTS, lean context injection, greeting prefetch, preview latency table); (4) VOICE-READINESS
+PACK (iOS getUserMedia constraints, per-user speech profile defaulting to NORMAL pace, cached warm
+openers behind default-off flag); (5) WEEKLY PARITY GUARD script + dated report; (6)
+`docs/LEO_TYPED_TEST_SCRIPT.md` ~30 bilingual checks.
+
+**Continuation prompt (paste to resume):**
+
+> Resume the NEXT MANDATE on rc5 from HEAD (0.125.0-flight-recorder-ui; pushed; preview
+> https://abu-bank-9vwvg4c29-leos-projects-d3c04c09.vercel.app health-verified). Verify git +
+> preview health first. Priority 1 (Flight Recorder) is fully done incl. the Settings export
+> button + off-switch toggle. Pick the next highest-value: EITHER (2-tail) write/point a Playwright
+> E2E at the DEPLOYED preview URL to drive AbuAI's client-side cognition (rambling create → resolves
+> the person, keeps place/date, no verbatim dump; a parity turn set) and record PREVIEW evidence +
+> a real latency table — this is the ONLY way to prove P2/parity end-to-end since the endpoints are
+> bare proxies — OR (3) LATENCY PACK (sentence-by-sentence streamed TTS + lean per-turn context
+> injection + greeting-time calendar prefetch), RED-first, proven on preview, latency table
+> (deterministic <1s, LLM <4s, online <8s) — OR (4) VOICE-READINESS PACK code-level (iOS
+> getUserMedia echoCancellation/noiseSuppression/autoGainControl; per-user speech profile defaulting
+> to NORMAL ChatGPT-like pace; cached warm openers behind a default-off flag) — OR (5) a weekly
+> parity-guard script wrapping parityScorecard + generativeMarathon smoke + flightRecorderImport into
+> a dated report — OR (6) refresh docs/LEO_TYPED_TEST_SCRIPT.md to ~30 bilingual behavior checks and
+> run them against the preview. Standing law: the benchmark is the latest ChatGPT at NORMAL human
+> speech pace — never slowed by default. Keyed Claude cross-check stays out-of-band (no
+> ANTHROPIC_API_KEY; never read .env values — hard stop). Reuse existing engines/judges; RED-first;
+> smallest general root fix; bump version + keep src/version.ts ⇄ api/health.ts ⇄ src/version.test.ts
+> in sync (no apostrophes in buildLabel); typecheck + full vitest + build; commit + push rc5 (never
+> production). Only deployed-preview-through-the-app evidence counts for product claims; label CODE
+> vs PREVIEW honestly.
+
 ## Segment-5 update — Cycle 44 done (FLIGHT RECORDER importer) + fresh preview
 
 **HEAD:** `feat …Cycle 44 (0.124.0-flight-recorder-import)` — pushed to `origin/rc5`
