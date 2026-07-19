@@ -64,6 +64,7 @@ import { answerRelationQuery } from './familyRelationEngine'
 import { explainRelation } from './familyPathReasoner'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
 import { resolvePersonPhrase } from './personPhraseResolver'
+import { ledgerWriteFromText, ledgerFamilyAnswer } from '../../truth/ledgerRuntime'
 import {
   getTodayEvents, getTomorrowEvents, getEventsByDate, findEventsByPerson, getWeekEvents,
 } from './tools'
@@ -1437,6 +1438,10 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       const esOpt = es ? { lang: 'es' as const } : {}
       const cmd = memoryCommandType(normalized)
       if (cmd === 'save') {
+        // A FAMILY fact ("תזכרי שדני נשוי לרותי") is written to the LEDGER through THE LAWS
+        // gate (a contradiction is refused), not stored as a free-text preference.
+        const lw = ledgerWriteFromText(normalized, ctx.now.getTime())
+        if (lw) return settle(lw.reply, { state, dataAvailable: lw.ok })
         const fact = parseRememberFact(normalized) ?? ''
         const r = saveMemory(fact)
         if (r.ok) return settle(es ? `Listo, me acuerdo: ${fact}.` : `בסדר, אני אזכור את זה: ${fact}.`, { state, dataAvailable: true, ...esOpt })
@@ -1486,6 +1491,12 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       const withPair = fam.pair ? { ...state, lastFamilyPair: fam.pair } : state
       const nextState = fam.subject ? { ...withPair, lastFamilySubject: fam.subject } : withPair
       if (fam.known) return { ...settle(fam.text, { state: nextState, dataAvailable: true, ...esLang }), familyGrounded: true }
+      // LEDGER read (§ family engine reads from the ledger) — a conversation-added relation
+      // the static graph is silent about ("תזכרי שדני נשוי לרותי" → "מי אשתו של דני"). Use the
+      // RAW input (pre-pronoun-resolution) so "אשתו" is not rewritten. The LAWS gate guarantees
+      // a ledger fact can never contradict the graph, so ledger-fills-the-gap is safe.
+      const ledgerAns = ledgerFamilyAnswer(original.trim()) ?? ledgerFamilyAnswer(normalized)
+      if (ledgerAns) return { ...settle(ledgerAns, { state: nextState, dataAvailable: true }), familyGrounded: true }
       // Unknown relation — say so, never guess (in the query's language).
       return settle(
         isEs ? 'No estoy segura de ese parentesco, así que no lo adivino. Decime quién es quién y lo recuerdo.'

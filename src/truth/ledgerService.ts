@@ -7,9 +7,21 @@
  * function of (seed, change-log): file-as-view. Every change is one log line and is
  * UNDOABLE (pop the log, replay from the seed). Reuses familyLaws — no parallel path.
  */
-import { type Ledger, type Change, applyChange, describeChange } from './familyLaws'
+import { type Ledger, type LedgerPerson, type Change, applyChange, describeChange } from './familyLaws'
 import { seedLedgerFromGraph } from './ledgerSeed'
 import { renderLedgerHebrew } from './ledgerView'
+
+/** The person ids a change references (for auto-creating unknown relatives). */
+function referencedIds(c: Change): string[] {
+  switch (c.op) {
+    case 'addPerson': return [c.person.id]
+    case 'addParent': return [c.child, c.parent]
+    case 'addSpouse': case 'addSibling': return [c.a, c.b]
+    case 'divorce': return [c.a, c.b]
+    case 'setBirthdate': return [c.id]
+  }
+}
+const newPerson = (id: string): LedgerPerson => ({ id, name: id, gender: 'unknown', parents: [], spouses: [], exSpouses: [], aliases: [] })
 
 export interface LogEntry { at: number; line: string; change: Change; source: string }
 export interface LedgerStore { load(): string | null; save(json: string): void }
@@ -62,6 +74,29 @@ export class LedgerService {
       const o = this.write(c, at, source)
       return o.ok ? { line: o.line!, accepted: true, reason: o.line! } : { line: describeChange(c), accepted: false, reason: o.reason! }
     })
+  }
+
+  /**
+   * Write a FACT, auto-creating any UNKNOWN person the fact names (a new relative Leo
+   * introduces), then the relation — ATOMICALLY through THE LAWS gate. If the relation is
+   * refused (a contradiction), NOTHING is committed (not even the new people). One log line.
+   */
+  writeFact(change: Change, at: number, source = 'conversation'): WriteOutcome {
+    const unknown = referencedIds(change).filter((id) => !this.cache.has(id))
+    const batch: Change[] = [...unknown.map((id) => ({ op: 'addPerson' as const, person: newPerson(id) })), change]
+    // Simulate the whole batch first; only if the KEY (last) change is accepted do we commit.
+    let sim: Ledger = this.cache
+    const accepted: Change[] = []
+    for (const c of batch) {
+      const r = applyChange(sim, c)
+      if (r.ok) { sim = r.ledger; accepted.push(c) }
+      else if (c === change) return { ok: false, line: null, reason: r.violations.map((v) => v.message).join(' ') }
+    }
+    // Commit every accepted change to the log (so replay/undo can reconstruct the people).
+    this.cache = sim
+    for (const c of accepted) this.log.push({ at, line: describeChange(c), change: c, source })
+    this.persist()
+    return { ok: true, line: describeChange(change), reason: null }
   }
 
   /** Undo the last change (§ every change undoable). Rebuilds the ledger from the seed. */
