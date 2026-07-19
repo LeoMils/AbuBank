@@ -1,5 +1,56 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-14 update — Cycle 53: REVOLUTION session 3 — Weakness Map (proof c) — ALL PROOFS DONE
+
+**HEAD:** `feat …Cycle 53 (0.133.0-weakness-map)` — pushed `origin/rc5` (`120faf9`).
+**Fresh PREVIEW:** `https://abu-bank-gkxd1683k-leos-projects-d3c04c09.vercel.app` — health
+`0.133.0-weakness-map`.
+
+Built the weakness map (Constitution §5) — `src/truth/weaknessMap.ts`:
+- Auto-classifies every real miss (flight-recorder reality) into a failure ARCHETYPE
+  (answer-not-the-question / phrase-not-resolved / fabricated-fact / capability-denial /
+  repeated / rejected), tagged by domain + language. Detectors are domain-AGNOSTIC.
+  `mineTranscript` over Leo's real stale-round turns yields the archetype map.
+- **Cross-domain proof (c):** the phrase-not-resolved archetype was closed in CALENDAR (Cycle
+  50) but the cross-domain probe caught it still OPEN in FAMILY (`מי החתן של רפי` punted to the
+  LLM). **ONE general fix** closes it in both domains: `looksLikeFamilyQuery` recognizes in-law
+  words (חתן/כלה/גיס/נין) → routes to the family engine; `familyReasoner` resolves via the SAME
+  `resolvePersonPhrase` the calendar uses (`מי החתן של רפי` → `החתן של רפי הוא גלעד`). Locked by
+  the cross-domain probe suite. **PREVIEW-proven** on 0.133.0.
+
+Evidence: CODE — weaknessMap 3/3, full suite 11083 pass / 2 todo, typecheck + build; no
+family/parity regressions. PREVIEW — family in-law who-is resolves on the deployed build.
+
+**REVOLUTION PROOFS — ALL SIX DELIVERED:** (a) contradiction rejected at gate ✓ · (b) 1000+
+mirrors pass + planted asymmetry caught ✓ · (c) cross-domain archetype fix ✓ · (d) regressed
+challenger blocked ✓ · (e) poison never stores ✓ · (f) upload one-line diff ✓.
+
+**Remaining (product-facing Truth-Loop wiring — not a "proof" but the user-visible half):** the
+canonical Hebrew ledger FILE + conversation write path (one soft confirmation / explicit תזכרי /
+never vague) + Leo's manual upload with one-tap diff approval; birthdays→calendar auto-entries;
+pre-emission ledger check with one corrective retry; per-reply source tagging.
+
+**Continuation prompt (paste to resume):**
+
+> Resume the REVOLUTION mandate on rc5 from HEAD (0.133.0-weakness-map; pushed; preview
+> https://abu-bank-gkxd1683k-leos-projects-d3c04c09.vercel.app health-verified). Verify git +
+> preview health. ALL SIX revolution PROOFS (a–f) are delivered (LAWS gate, 1380 mirrors,
+> weakness-map cross-domain, champion/challenger duel). What remains is the PRODUCT-FACING
+> Truth-Loop wiring — turn familyLaws.applyChange into a persisted, user-visible LEDGER: (1) a
+> canonical human-readable Hebrew ledger file regenerated from state (file-as-view) that the family
+> engine reads FROM; (2) a conversation write path — one soft in-flow confirmation for a stated
+> fact, explicit "תזכרי ש…" writes immediately, vague hints never write — all through
+> familyLaws.applyChange so THE LAWS gate every write; (3) Leo's manual upload/edit → extraction +
+> one-tap diff approval (reuse applyBatch's one-line diff); (4) birthdays/life-events entering the
+> ledger auto-create yearly calendar entries on approval; (5) every change logged one line +
+> undoable; (6) pre-emission ledger check with one corrective retry + per-reply source tagging.
+> Reuse familyLaws/mirrorSuite/duel/weaknessMap; never a parallel path. RED-first; smallest general
+> mechanism; bump version + keep src/version.ts ⇄ api/health.ts ⇄ src/version.test.ts in sync (no
+> apostrophes in buildLabel); typecheck + full vitest + build; redeploy + re-run e2e for any app
+> change; commit + push rc5. NEVER merge to main (hard stop — explicit joint decision only). Only
+> deployed-preview evidence counts for product claims; label CODE vs PREVIEW vs DEVICE honestly.
+> Checkpoint honestly.
+
 ## Segment-13 update — Cycle 52: REVOLUTION session 2 — Champion vs Challenger duel (proof d)
 
 **HEAD:** `feat …Cycle 52 (0.132.0-champion-challenger-duel)` — pushed `origin/rc5` (`68d6bcf`).
