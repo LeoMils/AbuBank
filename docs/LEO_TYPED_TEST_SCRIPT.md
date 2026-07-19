@@ -115,6 +115,11 @@ them as an operator:
 - **METAMORPHIC MIRRORS:** `npx vitest run src/truth/mirrorSuite.test.ts` — 1380 oracle-free
   consistency checks over the real family engine pass, and a planted asymmetry is caught by
   mirrors alone.
-- **Still to come (next sessions):** the ledger FILE + one-tap diff approval for conversation
-  facts & Leo's uploads, birthdays→calendar auto-entries, the weakness-map archetypes with
-  cross-domain probes, and the champion/challenger promotion duel.
+- **CHAMPION vs CHALLENGER duel (promotion gate):** `npx vitest run src/eval/duel.test.ts` — a
+  build promotes only if it beats the prior on the ENTIRE corpus (parity + marathon + flight
+  recorder + 1380 mirrors) with NO dimension regressing; a deliberately regressed build is
+  BLOCKED. The weekly line for Leo lands in `docs/eval/DUEL_LATEST.md`, e.g.
+  `השבוע: 0 נתפסו, 0 תוקנו, 0 חזרו (חובה: 0 חזרו) — עבר ✓`.
+- **Still to come (final session):** the ledger FILE + one-tap diff approval for conversation
+  facts & Leo's uploads, birthdays→calendar auto-entries, and the weakness-map archetypes with
+  cross-domain probes.

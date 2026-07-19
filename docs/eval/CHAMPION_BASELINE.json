@@ -1,0 +1,49 @@
+{
+  "dimensions": [
+    {
+      "name": "parity:correctness",
+      "pass": 7,
+      "total": 7
+    },
+    {
+      "name": "parity:warmth",
+      "pass": 9,
+      "total": 9
+    },
+    {
+      "name": "parity:brevity",
+      "pass": 9,
+      "total": 9
+    },
+    {
+      "name": "parity:answered",
+      "pass": 9,
+      "total": 9
+    },
+    {
+      "name": "parity:language",
+      "pass": 9,
+      "total": 9
+    },
+    {
+      "name": "parity:naturalness",
+      "pass": 9,
+      "total": 9
+    },
+    {
+      "name": "marathonSmoke",
+      "pass": 7,
+      "total": 7
+    },
+    {
+      "name": "flightRecorder",
+      "pass": 3,
+      "total": 3
+    },
+    {
+      "name": "mirrors",
+      "pass": 1380,
+      "total": 1380
+    }
+  ]
+}
