@@ -1,5 +1,56 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-13 update — Cycle 52: REVOLUTION session 2 — Champion vs Challenger duel (proof d)
+
+**HEAD:** `feat …Cycle 52 (0.132.0-champion-challenger-duel)` — pushed `origin/rc5` (`68d6bcf`).
+**Fresh PREVIEW:** `https://abu-bank-diord29g0-leos-projects-d3c04c09.vercel.app` — health
+`0.132.0-champion-challenger-duel`.
+
+Built the Learning-Loop safety capstone (Constitution §6) — the promotion gate:
+- **corpusScore** (`src/eval/duel.ts`) REUSES existing engines (runParityGuard: parity 6 dims +
+  marathon smoke + flight-recorder reality; + the 1380-mirror suite) into one per-dimension
+  scorecard. No parallel path.
+- **duel()** is pure: a single regressed dimension OR lost coverage BLOCKS promotion and names it.
+- **runWeeklyDuel** duels the current build vs the stored champion baseline
+  (`docs/eval/CHAMPION_BASELINE.json`), advances the baseline only on a pass, and writes Leo one
+  plain-Hebrew line to `docs/eval/DUEL_LATEST.md`:
+  `השבוע: 0 נתפסו, 0 תוקנו, 0 חזרו (חובה: 0 חזרו) — עבר ✓`.
+
+**Proof (d) delivered:** a deliberately regressed challenger (mirror breaks) and a coverage-loss
+challenger are both BLOCKED + named; an equal/improved build passes. Evidence: CODE — duel 7/7
+(corpus mirrors 1380, all dims green), full suite 11080 pass / 2 todo, typecheck + build.
+
+**Revolution proof status:** (a) ✓ (b) ✓ (d) ✓ (e) ✓ (f) ✓ — only **(c)** remains.
+
+**Remaining (final session):** (c) WEAKNESS MAP — auto-mine flight-recorder reality
+(corrected/repeated/abandoned/rejected/capability-denial) into failure ARCHETYPES; prove an
+archetype fixed in calendar is caught by a cross-domain probe when planted in family. Plus the
+product-facing Truth-Loop wiring: the canonical Hebrew ledger FILE + conversation write path (one
+soft confirmation / explicit תזכרי / never vague) + Leo's manual upload with one-tap diff approval;
+birthdays→calendar auto-entries; pre-emission ledger check with one corrective retry; per-reply
+source tagging.
+
+**Continuation prompt (paste to resume):**
+
+> Resume the REVOLUTION mandate on rc5 from HEAD (0.132.0-champion-challenger-duel; pushed; preview
+> https://abu-bank-diord29g0-leos-projects-d3c04c09.vercel.app health-verified). Verify git +
+> preview health. Sessions 1–2 shipped the LAWS write gate, the 1380-mirror suite, and the
+> champion/challenger duel (proofs a,b,d,e,f). Deliver the LAST proof (c) WEAKNESS MAP: build a
+> failure-archetype miner over the flight-recorder reality (reuse flightRecorderImport +
+> leoStaleRoundRegression + the recordTurn export shape) that classifies each real miss into an
+> ARCHETYPE (answer-not-the-question, phrase-not-resolved, fabricated-fact, only-partial-answer,
+> capability-denial, repeated/abandoned) tagged by domain+language; then prove an archetype fixed
+> in CALENDAR (e.g. answer-the-whole-question / resolve-the-phrase) is caught by a CROSS-DOMAIN
+> probe when the same archetype is planted in FAMILY — i.e. one general fix must close the archetype
+> across ALL domains + BOTH languages, with new mirrors generated around it and locked forever.
+> Reuse familyLaws/mirrorSuite/duel; never a parallel path. Then (product) start the ledger FILE +
+> conversation write path via familyLaws.applyChange (persisted canonical Hebrew ledger, one-tap
+> diff approval, birthdays→calendar). RED-first; smallest general mechanism; bump version + keep
+> src/version.ts ⇄ api/health.ts ⇄ src/version.test.ts in sync (no apostrophes in buildLabel);
+> typecheck + full vitest + build; redeploy + re-run e2e for any app change; commit + push rc5.
+> NEVER merge to main (hard stop — explicit joint decision only). Only deployed-preview evidence
+> counts for product claims; label CODE vs PREVIEW vs DEVICE honestly. Checkpoint honestly.
+
 ## Segment-12 update — Cycle 51: REVOLUTION mandate session 1 — the Constitution foundation
 
 **HEAD:** `feat …Cycle 51 (0.131.0-constitution-foundation)` — pushed `origin/rc5` (`dad5ba6`).
