@@ -902,14 +902,33 @@ export function calendarReadReasoner(text: string, now: Date): string {
 
 // CalendarSearchReasoner — search ALL calendar for a person/type, never ask "באיזה יום".
 export function calendarSearchReasoner(text: string): string {
-  const nameMatch = text.match(/עם\s+([֐-׿]{2,})|אצל\s+([֐-׿]{2,})/u)
-  const person = nameMatch?.[1] ?? nameMatch?.[2] ?? null
-  if (person) {
+  // Capture the person PHRASE after עם/אצל (up to a question word / temporal cue) so a
+  // relation phrase ("החתן של רפי") is kept WHOLE, then resolve it to the real person
+  // (→ גלעד). Root of Leo's catastrophe: the search grabbed only "החתן" and never resolved
+  // it, so it could not find the event she had just created by that same phrase.
+  const nameMatch = text.match(/(?:עם|אצל)\s+([֐-׿][֐-׿ ]*?)(?=\s*[?.!]|\s+(?:איזה|מתי|באיז|כמה|זה)|\s+ב?(?:יום|מחר|היום|מחרתיים|השבוע|שעה)|\s*$)/u)
+  const phrase = nameMatch?.[1]?.trim() ?? null
+  if (phrase) {
     // A meeting query ("מתי הפגישה עם X") excludes birthdays; a birthday query keeps them.
     const meetingOnly = /פגישה|תור|נפגש|נפגשת/u.test(text) && !/יום\s+הולדת|הולדת|יומולדת/u.test(text)
-    const r = findEventsByPerson(person, meetingOnly)
-    if (r.events.length === 0) return `אין לך פגישה עם ${person} ביומן.`
-    return r.summary
+    const resolved = resolvePersonPhrase(phrase)
+    const displayName = resolved ?? phrase
+    // Try the resolved person, the whole phrase, then its first word (robust to save form).
+    const candidates = [resolved, phrase, phrase.split(/\s+/)[0]!].filter((c): c is string => !!c)
+    let events: ReturnType<typeof findEventsByPerson>['events'] = []
+    for (const cand of candidates) {
+      const r = findEventsByPerson(cand, meetingOnly)
+      if (r.events.length) { events = r.events; break }
+    }
+    if (events.length === 0) return `אין לך פגישה עם ${displayName} ביומן.`
+    // Leo's rule: a "when / which-day" search answers DAY + DATE + TIME, never only the hour.
+    const fmtEv = (ev: typeof events[number]) => {
+      const dayDate = ev.date ? `ב${safeHebrewDate(ev.date)}` : ''
+      const t = ev.time ? ` בשעה ${ev.time}` : ''
+      return `${ev.title} ${dayDate}${t}`.replace(/\s{2,}/g, ' ').trim()
+    }
+    if (events.length === 1) return `${fmtEv(events[0]!)}.`
+    return `מה שיש לך עם ${displayName}:\n${events.map((e) => `📌 ${fmtEv(e)}`).join('\n')}`
   }
   const all = loadAppointments()
   // Search by PLACE ("פגישה בקפה מורנו") — match the venue phrase against stored
