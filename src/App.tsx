@@ -9,6 +9,7 @@ import * as adminService from './services/adminService'
 import { Shell } from './components/Shell'
 import { MoreModal } from './components/MoreModal'
 import { UpdateToast } from './components/UpdateToast'
+import { StaleBuildBanner } from './components/StaleBuildBanner'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { DiagnosticOverlay } from './components/DiagnosticOverlay'
 import { useSWUpdate } from './hooks/useSWUpdate'
@@ -225,6 +226,7 @@ export function App() {
 
   return (
     <>
+      <StaleBuildBanner />
       <Shell>
         {renderScreen(currentScreen)}
       </Shell>

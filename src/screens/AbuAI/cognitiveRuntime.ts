@@ -932,7 +932,7 @@ export function calendarSearchReasoner(text: string): string {
 // Bare property questions about the calendar event currently IN FOCUS (after a
 // person-search). These continue the object — answered from the found event,
 // never re-searched, never punted to the LLM ("Never search again").
-const CAL_PROPERTY_RE = /^(?:ב?איזה\s+שעה|באיזו\s+שעה|מתי\s+היא|מתי\s+זה|איפה(?:\s+זה|\s+זה\s+יהיה)?|באיזה\s+מקום|מה\s+הכתובת|איפה\s+זה|עם\s+מי|כמה\s+זמן|כמה\s+שעות|כמה\s+זמן\s+זה)\s*\??$/u
+const CAL_PROPERTY_RE = /^(?:ב?איזה\s+שעה|באיזו\s+שעה|ב?איזה\s+יום(?:\s+ה?פגישה|\s+ה?תור)?|מתי\s+היא|מתי\s+זה|מתי\s+ה?פגישה|מתי\s+ה?תור|איפה(?:\s+זה|\s+זה\s+יהיה)?|באיזה\s+מקום|מה\s+הכתובת|איפה\s+זה|עם\s+מי|כמה\s+זמן|כמה\s+שעות|כמה\s+זמן\s+זה)\s*\??$/u
 // An imperative edit of a STORED event ("תשני לארבע", "עדכני את הפגישה") when NO
 // draft is pending. We never silently mutate a saved event and never punt to the
 // LLM — we answer honestly and ask her to confirm which event + what to change.
@@ -943,7 +943,7 @@ const STORED_EDIT_RE = /^(?:תשנ[יה]|שנ[יה]|ל?שנות|תעדכנ[יי]
 // to the focus + NO other explicit person (a named "עם/אצל <someone-else>" is a fresh
 // search, handled downstream). The bare forms ("איפה?", "באיזו שעה?") are already
 // covered by CAL_PROPERTY_RE; this adds the referring-pronoun phrasings.
-const CAL_PROP_CUE = /(?:איפה|באיז[הו]\s+שעה|מה\s+ה?שעה|(?<![א-ת])מתי(?![א-ת])|באיזה\s+מקום|מה\s+ה?כתובת|עם\s+מי|כמה\s+זמן|כמה\s+שעות)/u
+const CAL_PROP_CUE = /(?:איפה|באיז[הו]\s+שעה|באיז[הו]\s+יום|מה\s+ה?שעה|(?<![א-ת])מתי(?![א-ת])|באיזה\s+מקום|מה\s+ה?כתובת|עם\s+מי|כמה\s+זמן|כמה\s+שעות)/u
 const CAL_FOCUS_REF = /(?:אות[הו]|אית[הו]|(?<![א-ת])ז[הו]א?(?![א-ת])|ה?פגיש\S*|ה?תור(?![א-ת])|ה?מפגש|ה?ביקור)/u
 // A person named via עם/אצל/את (NOT the interrogative "מי"). The UI may resolve a
 // pronoun ("אותו") to the person's NAME before the runtime, so "איפה אני פוגשת את
@@ -973,11 +973,19 @@ export function answerCalendarProperty(text: string, person: string): string | n
   // order is creation order, so take the last match (older same-person events must not
   // shadow the fresh one with the location/time the user is asking about).
   const ev = r.events[r.events.length - 1]!
-  // WHEN / what-time — "מתי" adds the (friendly) date, "שעה" answers the hour.
-  if (/שעה|(?<![א-ת])מתי(?![א-ת])/u.test(text)) {
+  // WHEN / DAY — Leo's rule: a day/when answer ALWAYS carries DAY + DATE + TIME, never
+  // only the hour (the stale-round failure: "באיזה יום" answered three times with just
+  // the hour). safeHebrewDate → "יום שני, 20 ביולי 2026".
+  if (/באיזה\s+יום|איזה\s+יום|(?<![א-ת])מתי(?![א-ת])/u.test(text)) {
+    const dayDate = ev.date ? `ב${safeHebrewDate(ev.date)}` : ''
+    const timePart = ev.time ? ` בשעה ${ev.time}` : ''
+    if (!dayDate && !timePart) return `עוד לא רשמתי מתי הפגישה עם ${person}.`
+    return `הפגישה עם ${person} ${dayDate}${timePart}.`.replace(/\s{2,}/g, ' ').trim()
+  }
+  // Hour specifically ("באיזה שעה") — answer the hour.
+  if (/שעה/u.test(text)) {
     if (!ev.time) return `עוד לא רשמתי שעה לפגישה עם ${person}.`
-    const whenDate = /(?<![א-ת])מתי(?![א-ת])/u.test(text) && ev.date ? ` ${dateWithoutDay(ev.date)}` : ''
-    return `הפגישה עם ${person}${whenDate} בשעה ${ev.time}.`
+    return `הפגישה עם ${person} בשעה ${ev.time}.`
   }
   if (/איפה|מקום|כתובת/u.test(text)) return ev.location ? `הפגישה עם ${person} ${/^ב/u.test(ev.location) ? ev.location : 'ב' + ev.location}.` : `עוד לא רשמתי מקום לפגישה עם ${person}.`
   if (/עם\s+מי/u.test(text)) return `הפגישה היא עם ${ev.personName ?? person}.`

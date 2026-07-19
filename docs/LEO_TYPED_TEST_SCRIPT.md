@@ -1,7 +1,18 @@
 # LEO TYPED TEST SCRIPT — AbuAI (text layer)
 
-**Build to look for:** `0.128.0-voice-readiness` (Settings → About shows the build; the Home
-QA badge shows `QA: v0.128.0-voice-readiness`). Branch `rc5/cognitive-architecture-and-acceptance`.
+## ⛔ STEP 0 — VERIFY THE BUILD FIRST (else STOP)
+The previous round was invalidated because it ran on a **49-versions-stale cached build**.
+Before typing anything:
+1. On the **Home** screen, read the small **`QA: v…`** badge (bottom). It MUST read
+   **`QA: v0.129.0-day-and-stale-guard`**.
+2. If it shows any other version → you are on a **stale/cached build**. A gold banner
+   **"יש גרסה חדשה של האפליקציה — לחצי לרענון"** should appear at the top; tap **רענון**.
+   If not, hard-refresh (iOS: close the PWA/tab fully and reopen from the CURRENT preview URL
+   given with this script), then re-check the badge.
+3. **Do NOT start the checks until the badge matches.** A wrong version = STOP.
+
+**Build to look for:** `0.129.0-day-and-stale-guard` (Settings → About shows the build; the Home
+QA badge shows `QA: v0.129.0-day-and-stale-guard`). Branch `rc5/cognitive-architecture-and-acceptance`.
 **Scope:** TYPED input. Every check below was proven through the DEPLOYED preview in a real
 mobile browser (Playwright) across cycles 39–47 — `e2e/preview-typed-script.spec.ts`,
 `e2e/leo-device-failures.spec.ts`, `e2e/preview-parity.spec.ts`.
@@ -39,7 +50,9 @@ checks answer in **~0.3–0.7s**.
 13. `תקבעי פגישה עם רפי מחר בשלוש בבית קפה מרוקו` → RUNTIME — `פגישה עם רפי מחר בשלוש אחר הצהריים. בית קפה מרוקו. נכון?`
 14. `כן` → RUNTIME — `קבוע — פגישה עם רפי …19 ביולי 2026… בשעה 15:00. בית קפה מרוקו`
 15. `איפה אני פוגשת אותו?` → RUNTIME — `הפגישה עם רפי בית קפה מרוקו.` (referable — reads the just-saved event).
-16. `תבטלי אותה` → RUNTIME — `מחקתי את פגישה עם רפי בשעה 15:00.`
+16. `באיזה יום הפגישה` → RUNTIME — the **day + date + time**, e.g. `הפגישה עם רפי ביום שני, 20 ביולי 2026 בשעה 15:00.`
+    - ✅ good: names the DAY (weekday) + date + time. ❌ failing (the 0.79 bug): gives only the hour, "לא מצאתי במקום הזה", or an LLM guess.
+17. `תבטלי אותה` → RUNTIME — `מחקתי את פגישה עם רפי בשעה 15:00.`
     - ❌ regression: `באיזה יום?` / invents a different event / can't find it.
 
 ## D · Corrections mid-create (draft must update, not restart)
@@ -83,7 +96,7 @@ checks answer in **~0.3–0.7s**.
 ---
 
 ## Notes for this round
-- **Build:** confirm Settings → About reads `0.128.0-voice-readiness` before starting.
+- **Build:** confirm Settings → About reads `0.129.0-day-and-stale-guard` before starting (see Step 0).
 - **Speech pace:** replies are spoken at NORMAL pace by default now (Settings → מהירות דיבור:
   איטי / רגיל / מהיר centred on normal). This script is the TYPED layer; voice audibility is a
   separate on-device round.
