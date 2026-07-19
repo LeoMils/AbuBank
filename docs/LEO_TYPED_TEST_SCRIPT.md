@@ -4,15 +4,15 @@
 The previous round was invalidated because it ran on a **49-versions-stale cached build**.
 Before typing anything:
 1. On the **Home** screen, read the small **`QA: v…`** badge (bottom). It MUST read
-   **`QA: v0.129.0-day-and-stale-guard`**.
+   **`QA: v0.131.0-constitution-foundation`**.
 2. If it shows any other version → you are on a **stale/cached build**. A gold banner
    **"יש גרסה חדשה של האפליקציה — לחצי לרענון"** should appear at the top; tap **רענון**.
    If not, hard-refresh (iOS: close the PWA/tab fully and reopen from the CURRENT preview URL
    given with this script), then re-check the badge.
 3. **Do NOT start the checks until the badge matches.** A wrong version = STOP.
 
-**Build to look for:** `0.129.0-day-and-stale-guard` (Settings → About shows the build; the Home
-QA badge shows `QA: v0.129.0-day-and-stale-guard`). Branch `rc5/cognitive-architecture-and-acceptance`.
+**Build to look for:** `0.131.0-constitution-foundation` (Settings → About shows the build; the Home
+QA badge shows `QA: v0.131.0-constitution-foundation`). Branch `rc5/cognitive-architecture-and-acceptance`.
 **Scope:** TYPED input. Every check below was proven through the DEPLOYED preview in a real
 mobile browser (Playwright) across cycles 39–47 — `e2e/preview-typed-script.spec.ts`,
 `e2e/leo-device-failures.spec.ts`, `e2e/preview-parity.spec.ts`.
@@ -96,9 +96,25 @@ checks answer in **~0.3–0.7s**.
 ---
 
 ## Notes for this round
-- **Build:** confirm Settings → About reads `0.129.0-day-and-stale-guard` before starting (see Step 0).
+- **Build:** confirm Settings → About reads `0.131.0-constitution-foundation` before starting (see Step 0).
 - **Speech pace:** replies are spoken at NORMAL pace by default now (Settings → מהירות דיבור:
   איטי / רגיל / מהיר centred on normal). This script is the TYPED layer; voice audibility is a
   separate on-device round.
 - **Weekly drift check (operator):** `PARITY_GUARD_WRITE=1 npx vitest run src/eval/parityGuard.test.ts`
   writes `docs/eval/PARITY_GUARD_LATEST.md`.
+
+## Constitution foundation (under the hood — operator, not typed checks yet)
+The Truth-Loop and Learning-Loop keystones landed in 0.131.0. They are internal machinery
+(no conversation→ledger write path is wired yet), so they are NOT typed AbuAI checks — verify
+them as an operator:
+- **THE LAWS (write gate):** `npx vitest run src/truth/familyLaws.test.ts` — a planted
+  contradiction (parenthood cycle, parent-younger-than-child, bigamy, siblings-without-shared-
+  parent, duplicate identity) is REJECTED at the gate with a one-line Hebrew reason, and a
+  rejected write leaves the ledger unchanged (poisoning never stores). A manual upload with a
+  planted conflict returns a one-line diff per fact.
+- **METAMORPHIC MIRRORS:** `npx vitest run src/truth/mirrorSuite.test.ts` — 1380 oracle-free
+  consistency checks over the real family engine pass, and a planted asymmetry is caught by
+  mirrors alone.
+- **Still to come (next sessions):** the ledger FILE + one-tap diff approval for conversation
+  facts & Leo's uploads, birthdays→calendar auto-entries, the weakness-map archetypes with
+  cross-domain probes, and the champion/challenger promotion duel.
