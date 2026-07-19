@@ -4,15 +4,15 @@
 The previous round was invalidated because it ran on a **49-versions-stale cached build**.
 Before typing anything:
 1. On the **Home** screen, read the small **`QA: v…`** badge (bottom). It MUST read
-   **`QA: v0.131.0-constitution-foundation`**.
+   **`QA: v0.139.0-family-record-screen`**.
 2. If it shows any other version → you are on a **stale/cached build**. A gold banner
    **"יש גרסה חדשה של האפליקציה — לחצי לרענון"** should appear at the top; tap **רענון**.
    If not, hard-refresh (iOS: close the PWA/tab fully and reopen from the CURRENT preview URL
    given with this script), then re-check the badge.
 3. **Do NOT start the checks until the badge matches.** A wrong version = STOP.
 
-**Build to look for:** `0.131.0-constitution-foundation` (Settings → About shows the build; the Home
-QA badge shows `QA: v0.131.0-constitution-foundation`). Branch `rc5/cognitive-architecture-and-acceptance`.
+**Build to look for:** `0.139.0-family-record-screen` (Settings → About shows the build; the Home
+QA badge shows `QA: v0.139.0-family-record-screen`). Branch `rc5/cognitive-architecture-and-acceptance`.
 **Scope:** TYPED input. Every check below was proven through the DEPLOYED preview in a real
 mobile browser (Playwright) across cycles 39–47 — `e2e/preview-typed-script.spec.ts`,
 `e2e/leo-device-failures.spec.ts`, `e2e/preview-parity.spec.ts`.
@@ -93,10 +93,46 @@ checks answer in **~0.3–0.7s**.
     (`אפשרות 1… אפשרות 2…`), never robotic, `Martita` always in Latin letters, the `Ja ja ja` laugh
     (never `חחח`). ❌ failing: an option-list opener, English UI text, or a cold/clipped reply.
 
+## J · Family LEDGER round-trips (the write path — new in 0.132→0.139)
+Type these in ONE session, in order. A written fact must pass **THE LAWS gate** and then be
+answerable in the SAME session.
+32. `תזכרי שדני גר בתל אביב` → RUNTIME — a warm confirmation that it was written, e.g.
+    `רשמתי — דני גר בתל אביב.` (explicit "תזכרי ש…" writes immediately, through the gate).
+33. `איפה גר דני` → RUNTIME — reads the chapter back: `דני גר בתל אביב.`
+    - ❌ regression: `לא יודעת` / an LLM guess / treated as a reminder ("תזכורת").
+34. `רותי היא אשתו של דני` → RUNTIME — a **soft-confirm** prompt (the fact is only *stated*, not
+    ordered), e.g. `שאשמור שרותי היא אשתו של דני? תגידי כן ואשמור.`
+35. `כן` → RUNTIME — commits it: `רשמתי — רותי אשתו של דני.` (a `לא` here must DISCARD it).
+36. `מה הקשר בין דני לרותי` → RUNTIME — names the marriage (`דני` + `רותי`, בני זוג).
+37. **Poison (must be REFUSED):** `אופיר היא אשתו של רפי` → RUNTIME — a soft-confirm; answer `כן`.
+    The write must be **REJECTED at the gate** with a plain-Hebrew reason (Ofir is already placed /
+    would break monogamy) and **nothing is stored** — a follow-up `מי אשתו של רפי` must NOT say Ofir.
+    - ✅ good: gentle Hebrew refusal, ledger unchanged. ❌ failing: silently accepts the contradiction.
+
+## K · Personal chapters (facts about people, with provenance)
+38. `תזכרי שמור אוהבת לצייר` → RUNTIME — `רשמתי — מור אוהבת לצייר.`
+39. `מה מור אוהבת` → RUNTIME — `מור אוהבת לצייר.`
+40. `מה את יודעת על דני` → RUNTIME — reads back the whole chapter gathered above (גר בתל אביב, בן זוג של רותי).
+
+## L · תעודת המשפחה screen (Settings → 📜 תעודת המשפחה)
+41. Open **Settings** (⚙︎) → tap **📜 תעודת המשפחה**. The screen shows the full family record in
+    Hebrew (people, relations, and any facts you added above, each with its source), a paste box,
+    and three buttons: **בדקי**, **ייצוא גיבוי**, **ביטול שינוי אחרון**.
+42. In the paste box type two lines and tap **בדקי**:
+    `גבי גר בחיפה`
+    `אופיר היא אשתו של רפי`
+    → the first line shows a **green accept** row with a **רשמי** button; tap it → it commits and
+    the record above updates. The second (poison) line, on **רשמי**, is **refused** with a Hebrew
+    reason and the record does NOT change.
+43. Tap **ביטול שינוי אחרון** → the last thing you added is removed from the record (undo works).
+44. Tap **ייצוא גיבוי** → a JSON backup file downloads (the full change-log + rendered record).
+    - ✅ good: what you type in conversation and what you add here land in the SAME record.
+    - ❌ failing: the screen is empty, a clean line won't commit, or the poison line stores.
+
 ---
 
 ## Notes for this round
-- **Build:** confirm Settings → About reads `0.131.0-constitution-foundation` before starting (see Step 0).
+- **Build:** confirm Settings → About reads `0.139.0-family-record-screen` before starting (see Step 0).
 - **Speech pace:** replies are spoken at NORMAL pace by default now (Settings → מהירות דיבור:
   איטי / רגיל / מהיר centred on normal). This script is the TYPED layer; voice audibility is a
   separate on-device round.
@@ -120,6 +156,8 @@ them as an operator:
   recorder + 1380 mirrors) with NO dimension regressing; a deliberately regressed build is
   BLOCKED. The weekly line for Leo lands in `docs/eval/DUEL_LATEST.md`, e.g.
   `השבוע: 0 נתפסו, 0 תוקנו, 0 חזרו (חובה: 0 חזרו) — עבר ✓`.
-- **Still to come (final session):** the ledger FILE + one-tap diff approval for conversation
-  facts & Leo's uploads, birthdays→calendar auto-entries, and the weakness-map archetypes with
-  cross-domain probes.
+- **Now shipped (0.132→0.139):** the conversation→ledger WRITE path (sections J–K above), the
+  full-person chapters with provenance, and the **תעודת המשפחה** file screen with one-tap diff
+  approval for pasted facts + export-backup + undo (section L). Verify these as TYPED/tap checks now.
+- **Still to come (after Leo's round):** cloud-canonical persistence + real email/cron
+  notification (infra-gated), birthdays→calendar auto-entries, and the on-device VOICE phase.

@@ -27,6 +27,7 @@ const AbuGames = lazy(() => import('./screens/AbuGames').then(m => ({ default: m
 const AbuWeather = lazy(() => import('./screens/AbuWeather').then(m => ({ default: m.AbuWeather })))
 const AbuCalendar = lazy(() => import('./screens/AbuCalendar').then(m => ({ default: m.AbuCalendar })))
 const FamilyGallery = lazy(() => import('./screens/FamilyGallery').then(m => ({ default: m.FamilyGallery })))
+const FamilyRecord = lazy(() => import('./screens/FamilyRecord').then(m => ({ default: m.FamilyRecord })))
 const FamilyPhones = lazy(() => import('./screens/FamilyPhones').then(m => ({ default: m.FamilyPhones })))
 import { matchFamilyPhonesRoute, FAMILY_PHONES_PATH } from './screens/FamilyPhones/familyPhonesImport'
 import styles from './App.module.css'
@@ -65,6 +66,7 @@ function renderScreen(currentScreen: Screen): JSX.Element | null {
     case Screen.AbuWeather:  return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuWeather /></ErrorBoundary></Suspense>
     case Screen.AbuCalendar: return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuCalendar /></ErrorBoundary></Suspense>
     case Screen.FamilyGallery: return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><FamilyGallery /></ErrorBoundary></Suspense>
+    case Screen.FamilyRecord: return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><FamilyRecord /></ErrorBoundary></Suspense>
     default:              return null
   }
 }

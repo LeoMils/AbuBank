@@ -802,6 +802,16 @@ export function Settings() {
           </div>
           <CopyTurnsButton />
           <FlightRecorderControls />
+          <button
+            type="button"
+            data-testid="open-family-record"
+            onClick={() => setScreen(Screen.FamilyRecord)}
+            style={{
+              marginTop: 10, width: '100%', minHeight: 52, padding: '12px 16px', borderRadius: 14,
+              border: '1px solid rgba(201,168,76,0.40)', background: 'linear-gradient(135deg, rgba(201,168,76,0.14), rgba(201,168,76,0.03))',
+              color: '#FFE9B3', fontSize: 16, fontWeight: 700, fontFamily: "'Heebo',sans-serif", cursor: 'pointer', direction: 'rtl',
+            }}
+          >📜 תעודת המשפחה — לצפייה ולהוספת פרטים</button>
           {/* P0.3 — the diagnostic panel moved to a top-level button +
               full-screen overlay (impossible to miss). Tap "אבחון מערכת"
               at the top of Settings, the pill on Home, or visit
