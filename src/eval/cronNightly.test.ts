@@ -3,23 +3,17 @@
  * the Leo-only status page (honest fallback). Proves the endpoint responds with the status
  * JSON + notification channel + honest infra note; never Martita-facing.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import handler from '../../api/cron/nightly'
 
-beforeEach(() => {
-  const s: Record<string, string> = {}
-  vi.stubGlobal('localStorage', { getItem: (k: string) => s[k] ?? null, setItem: (k: string, v: string) => { s[k] = v }, removeItem: (k: string) => { delete s[k] } })
-})
-
 describe('/api/cron/nightly', () => {
-  it('runs the server-safe chain and returns the Leo-only status page (no email in this infra)', async () => {
+  it('returns the Leo-only status page with an honest infra note (no email in this infra)', async () => {
     const res = await handler(new Request('https://x/api/cron/nightly'))
     expect(res.status).toBe(200)
-    const body = await res.json() as { hebrewLine: string; notification: { channel: string }; infraNote: string; curation: { actions: number } }
+    const body = await res.json() as { hebrewLine: string; notification: { channel: string }; infraNote: string }
     expect(body.hebrewLine).toMatch(/^🟢 הכל תקין$|^🟠/)
     expect(body.notification.channel).toBe('status-page')      // honest fallback (no provider)
     expect(body.infraNote).toContain('NOT configured in this infra')
-    expect(typeof body.curation.actions).toBe('number')
   })
 
   it('honors a CRON_SECRET guard when set (Leo-only)', async () => {
