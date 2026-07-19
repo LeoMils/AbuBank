@@ -1,5 +1,49 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-17 update — Cycle 56: REVOLUTION session 6 — the soft-confirm door (three doors complete)
+
+**HEAD:** `feat …Cycle 56 (0.136.0-ledger-soft-confirm)` — pushed `origin/rc5` (`8188d2f`).
+**Fresh PREVIEW:** `https://abu-bank-qu436onp2-leos-projects-d3c04c09.vercel.app` — health
+`0.136.0-ledger-soft-confirm`.
+
+Completed the three-door conversation intake (explicit ✓ Cycle 55, ignore ✓, **soft-confirm ✓**):
+- A plainly-stated family fact with NO "תזכרי" is caught ONLY in the general path (real domains
+  win first), replies ONE Hebrew confirm prompt, and sets `pendingLedgerChange` WITHOUT writing.
+- The next "כן" commits it through THE LAWS gate; "לא" abandons it; any other turn drops it.
+- The pending-confirm resolver runs before the conversation engine, guarded (createState idle +
+  no pendingReminder + pendingLedgerChange), so it can NEVER hijack the calendar "כן".
+
+**PREVIEW-PROVEN round-trip on 0.136.0:** `רותי היא אשתו של דני` → `לרשום שזה נכון?` · `כן` →
+`רשמתי: רותי ודני נשואים` · `מי אשתו של דני` → `דני נשוי לרותי`. Evidence: CODE — ledgerSoftConfirm
+3/3, truth + AbuAI 4545 pass, full suite 11101 pass / 2 todo, typecheck + build; no regressions.
+
+**Conversation write path is now COMPLETE** (explicit write, soft-confirm, vague-never, family
+reads from ledger, all gated by THE LAWS — every piece PREVIEW-proven).
+
+**Remaining (product tail):** (1) birthdays→calendar — on an approved birthdate write, create the
+yearly entry via the AbuCalendar service (`proposeBirthdayEvent` exists); (2) a senior-safe one-tap
+upload diff approval surface (reuse `applyBatch` one-line diff); (3) a ledger view surface for Leo
+(`renderLedgerHebrew`); (4) pre-emission ledger check + per-reply source tagging.
+
+**Continuation prompt (paste to resume):**
+
+> Resume the REVOLUTION mandate on rc5 from HEAD (0.136.0-ledger-soft-confirm; pushed; preview
+> https://abu-bank-qu436onp2-leos-projects-d3c04c09.vercel.app health-verified). Verify git +
+> preview health. The conversation write path is COMPLETE (explicit + soft-confirm + vague-never +
+> family-reads-from-ledger, all gated, PREVIEW-proven). Next, pick ONE: (1) BIRTHDAYS→CALENDAR — when
+> a birthdate is written to the ledger (explicit or confirmed), create the recurring yearly entry via
+> the existing AbuCalendar service (proposeBirthdayEvent already returns the shape) — RED-first
+> controller/integration test (write a birthdate → the yearly יום-הולדת event exists + is
+> readable), proven on preview — OR (2) a senior-safe one-tap UPLOAD DIFF surface (Settings or a card)
+> that runs applyBatch on Leo's pasted facts and shows the one-line accept/reject diff, each fact
+> committed only on tap — OR (3) a LEDGER VIEW surface (operator/Settings) rendering
+> renderLedgerHebrew. Reuse familyLaws/ledgerService/ledgerRuntime/conversationIntake; never a
+> parallel path. RED-first; smallest general mechanism; bump version + keep src/version.ts ⇄
+> api/health.ts ⇄ src/version.test.ts in sync (no apostrophes in buildLabel); typecheck + full vitest
+> + build; redeploy + re-run e2e for any app change; commit + push rc5. NEVER merge to main (hard stop
+> — explicit joint decision only). Only deployed-preview evidence counts for product claims; label
+> CODE vs PREVIEW vs DEVICE honestly. Checkpoint honestly.
+
 ## Segment-16 update — Cycle 55: REVOLUTION session 5 — the ledger goes LIVE in conversation
 
 **HEAD:** `feat …Cycle 55 (0.135.0-ledger-wiring)` — pushed `origin/rc5` (`741e414`).
