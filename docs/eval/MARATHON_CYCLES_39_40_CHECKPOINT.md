@@ -1,5 +1,54 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-20 update — Cycle 59: LEDGER EXPANSION v3 — the תעודת המשפחה screen (FINAL pre-verification)
+
+**HEAD:** `feat(ledger): Cycle 59 … (0.139.0-family-record-screen)` — pushed `origin/rc5` (`7cf978d`).
+**Fresh PREVIEW:** `https://abu-bank-rd7wec9cr-leos-projects-d3c04c09.vercel.app` — health
+`0.139.0-family-record-screen`.
+
+Shipped the senior-safe **Family Record screen** (Settings → 📜 תעודת המשפחה) — pure UI over
+the existing ledger engine, **no parallel path**:
+- renders the canonical Hebrew ledger (`renderLedgerHebrew`) with per-fact provenance + change log;
+- paste-free-text box → `parseFreeText` (`extractChange`) → one-line accept/reject DIFF, each
+  recognised fact **committed on tap** via `LedgerService.writeFact` (THE LAWS gate — a poison
+  line `אופיר היא אשתו של רפי` is refused with a Hebrew reason and **nothing stored**);
+- **export-backup** (change-log + rendered ledger as JSON) + **undo-last-change**;
+- wired `Screen.FamilyRecord` (enum + label + App lazy route + Settings link).
+
+**Evidence:**
+- CODE — `familyRecordLogic` (parseFreeText + commitProposal, poison-refused) 2/2, screen render
+  1/1; full suite **11123 pass / 2 todo**; typecheck + build green.
+- **PREVIEW** — `e2e/family-record-screen.spec.ts` on the deployed build (mobile-chrome, 1 passed):
+  Home → Settings → תעודה renders the ledger; paste `דני גר בתל אביב` → **רשמי** → the record now
+  shows `תל אביב`; the poison line on **רשמי** returns `לא רשמתי` and the record is byte-unchanged.
+
+Also refreshed `docs/LEO_TYPED_TEST_SCRIPT.md` — Step 0 version → `0.139.0-family-record-screen`,
+plus new sections **J** (ledger round-trips: תזכרי / soft-confirm כן·לא / poison refusal), **K**
+(personal chapters), **L** (the תעודה screen: paste→diff→commit, undo, export).
+
+**LEDGER EXPANSION v3 status:** ✓ autopilot core (Cycle 57) · ✓ full-person chapters (Cycle 58) ·
+✓ the תעודת המשפחה screen (Cycle 59). This is the **FINAL pre-verification cycle** — STOP here for
+Leo's verification round + the voice phase. **Deliberately NOT started** (per mandate): cloud-
+canonical store + `/api/ledger`, real email/cron notification — all infra-gated (no KV/Postgres/
+Blob/email provider provisioned; `package.json` is human-approval-gated so no deps can be added).
+
+**Continuation prompt (paste to resume AFTER Leo's round):**
+
+> Leo's verification round on `0.139.0-family-record-screen` (preview
+> https://abu-bank-rd7wec9cr-leos-projects-d3c04c09.vercel.app) is complete. Verify git + preview
+> health first. LEDGER EXPANSION v3 UI is done (chapters + write path + תעודה screen, all gated by
+> THE LAWS, PREVIEW-proven). Next phase is EITHER (a) the on-device VOICE phase (STT → same
+> cognitive controller → TTS/Realtime parity; physical-device evidence only — never claim audible
+> from CODE/MOCK/BROWSER; run `voice-runtime-audit`), OR (b) — only once an operator provisions a
+> store/email provider and approves a package.json/env change — cloud-canonical persistence
+> (`/api/ledger`) + real email/cron notification (until then these stay DEFERRED, documented, never
+> fabricated). Reuse familyLaws/ledgerService/ledgerRuntime/conversationIntake/ledgerCurator/
+> ledgerView; never a parallel path. RED-first; smallest general mechanism; bump version + keep
+> src/version.ts ⇄ api/health.ts ⇄ src/version.test.ts in sync (no apostrophes in buildLabel);
+> typecheck + full vitest + build; redeploy + re-run e2e for any app change; commit + push rc5.
+> NEVER merge to main (hard stop). Only deployed-preview/device evidence counts for product claims;
+> label CODE vs PREVIEW vs DEVICE honestly. Checkpoint honestly.
+
 ## Segment-19 update — Cycle 58: LEDGER EXPANSION v3 — full-person chapters
 
 **HEAD:** `feat …Cycle 58 (0.138.0-person-chapters)` — pushed `origin/rc5` (`3186aab`).
