@@ -1,5 +1,52 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-16 update — Cycle 55: REVOLUTION session 5 — the ledger goes LIVE in conversation
+
+**HEAD:** `feat …Cycle 55 (0.135.0-ledger-wiring)` — pushed `origin/rc5` (`741e414`).
+**Fresh PREVIEW:** `https://abu-bank-49feiyx2f-leos-projects-d3c04c09.vercel.app` — health
+`0.135.0-ledger-wiring`.
+
+Wired the ledger core into the AbuAI runtime through THE LAWS gate (RED-first, controller-level):
+- **WRITE:** an explicit "תזכרי ש<family fact>" is intercepted in the memory-save path and
+  written via `LedgerService.writeFact` (auto-creates a new relative, atomically). A
+  contradiction is REFUSED at the gate and never stores; a normal preference "תזכרי ש…" is
+  untouched (still preference-memory).
+- **READ:** the family engine reads FROM the ledger — a conversation-added relation the static
+  graph is silent about is answered from the ledger (raw input, so possessive pronouns aren't
+  rewritten). Safe because the LAWS gate guarantees a ledger fact can't contradict the graph.
+
+**PREVIEW-PROVEN round-trip on 0.135.0:** `תזכרי שדני נשוי לרותי` → `רשמתי: דני ורותי נשואים` ·
+`מי אשתו של דני` → `דני נשוי לרותי` · `תזכרי שאופיר נשואה לרפי` → `לא רשמתי — אופיר כבר נשוי/ה
+לגלעד … הורה־צאצא …` (the LAWS gate refusing, live). Evidence: CODE — ledgerWiring 3/3, AbuAI
+4511 pass, full suite 11098 pass / 2 todo, typecheck + build; no regressions. PLUS deployed
+PREVIEW round-trip above.
+
+**Remaining (product tail):** (1) the soft-confirm flow — a plainly-stated fact (no "תזכרי")
+sets a pending change + prompt, and the next "כן" commits (needs a `pendingLedgerChange` on
+RuntimeState, guarded against the calendar "כן"); (2) a senior-safe one-tap upload diff approval
+UI (reuse `applyBatch` one-line diff); (3) birthdays→calendar actually creating the yearly entry
+on approval via the calendar service; (4) a ledger view surface for Leo (`renderLedgerHebrew`).
+
+**Continuation prompt (paste to resume):**
+
+> Resume the REVOLUTION mandate on rc5 from HEAD (0.135.0-ledger-wiring; pushed; preview
+> https://abu-bank-49feiyx2f-leos-projects-d3c04c09.vercel.app health-verified). Verify git +
+> preview health. The ledger is LIVE in conversation (explicit write gated + family reads from it,
+> PREVIEW-proven). Next, pick ONE: (1) the SOFT-CONFIRM flow — add pendingLedgerChange to
+> RuntimeState; a plainly-stated family fact (classifyIntake → soft-confirm, NO "תזכרי") replies the
+> Hebrew confirm prompt and the NEXT "כן" commits via LedgerService.writeFact — RED-first controller
+> test (state fact → "כן" → in ledger AND answerable), guarded so it never hijacks the calendar
+> "כן" (only when createState idle + no pendingReminder + pendingLedgerChange set) — OR (2)
+> birthdays→calendar: on an approved birthdate write, create the yearly entry via the existing
+> AbuCalendar service (proposeBirthdayEvent already exists), proven on preview — OR (3) a
+> senior-safe one-tap upload diff surface reusing applyBatch's one-line diff. Reuse
+> familyLaws/ledgerService/ledgerRuntime/conversationIntake; never a parallel path. RED-first;
+> smallest general mechanism; bump version + keep src/version.ts ⇄ api/health.ts ⇄
+> src/version.test.ts in sync (no apostrophes in buildLabel); typecheck + full vitest + build;
+> redeploy + re-run e2e for any app change; commit + push rc5. NEVER merge to main (hard stop —
+> explicit joint decision only). Only deployed-preview evidence counts for product claims; label
+> CODE vs PREVIEW vs DEVICE honestly. Checkpoint honestly.
+
 ## Segment-15 update — Cycle 54: REVOLUTION session 4 — the living ledger core
 
 **HEAD:** `feat …Cycle 54 (0.134.0-family-ledger)` — pushed `origin/rc5` (`c26cd61`).
