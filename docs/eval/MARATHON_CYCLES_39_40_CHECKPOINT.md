@@ -1,5 +1,51 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-19 update — Cycle 58: LEDGER EXPANSION v3 — full-person chapters
+
+**HEAD:** `feat …Cycle 58 (0.138.0-person-chapters)` — pushed `origin/rc5` (`3186aab`).
+**Fresh PREVIEW:** `https://abu-bank-a27m9pa2y-leos-projects-d3c04c09.vercel.app` — health
+`0.138.0-person-chapters`.
+
+Extended the ledger from relations to a full CHAPTER per person (reuses the existing engines):
+- **familyLaws**: `PersonFact { kind, value, source, at }` (residence/work/hobby/health/event/
+  story/preference — every fact carries PROVENANCE + DATE) + `addFact` op gated by THE LAWS;
+  the curator supersedes a single-valued fact (a moved residence — latest wins, no fact deleted).
+- **Conversation**: `extractChange` parses residence/work/preference; first-person
+  ("אני אוהבת יין") stays Martita's own preference-memory. The explicit "תזכרי ש<fact>" write
+  moved BEFORE the memory/reminder split so a chapter fact is never mis-read as a reminder.
+- **Read**: `ledgerChapterAnswer` answers "איפה גר X" / "איפה עובד X" / "מה X אוהב" / "מה את
+  יודעת על X" from the chapter before the LLM; renders into the Hebrew view with provenance.
+
+**PREVIEW-PROVEN round-trip on 0.138.0:** `תזכרי שדני גר בתל אביב` → `רשמתי…` · `איפה גר דני` →
+`דני גר/ה בתל אביב` · `תזכרי שדני עובד בגוגל` → `איפה עובד דני` → `דני עובד/ת בגוגל`. Evidence:
+CODE — personChapter 5/5, truth 42, AbuAI+eval 8921, full suite 11120 pass / 2 todo, typecheck
++ build; no regressions. PLUS the deployed round-trip above.
+
+**LEDGER EXPANSION v3 status:** ✓ autopilot core (curator/nightly/notify/cron, Cycle 57) · ✓
+full-person chapters (Cycle 58). Remaining: (a) CLOUD-CANONICAL store + /api/ledger — infra-gated
+(no KV/Postgres/Blob provisioned); (b) תעודת המשפחה view + one-tap upload diff UI (credential-free,
+provable); (c) email/cron firing — infra-gated.
+
+**Continuation prompt (paste to resume):**
+
+> Resume LEDGER EXPANSION v3 on rc5 from HEAD (0.138.0-person-chapters; pushed; preview
+> https://abu-bank-a27m9pa2y-leos-projects-d3c04c09.vercel.app health-verified). Verify git +
+> preview health. The autopilot core + full-person chapters are built + PREVIEW-proven (write a
+> personal fact → Abu answers from the chapter, all gated by THE LAWS). Next credential-free,
+> provable piece: the תעודת המשפחה (family-record) SCREEN — a senior/operator surface that renders
+> renderLedgerHebrew (the full chapter view), lets Leo paste free text that runs through
+> extractChange + applyBatch and shows the one-line accept/reject DIFF (each fact committed on tap
+> via LedgerService.writeFact), export a backup (serializeExport-style), and UNDO the last change
+> (LedgerService.undo/undoCuration). RED-first component/controller tests + proven on preview
+> (render + a paste→diff→approve→answerable round-trip). Cloud-canonical storage + email stay
+> DEFERRED until a store/provider is provisioned (never fabricate; document honestly). Reuse
+> familyLaws/ledgerService/ledgerRuntime/conversationIntake/ledgerCurator/ledgerView; never a
+> parallel path. RED-first; smallest general mechanism; bump version + keep src/version.ts ⇄
+> api/health.ts ⇄ src/version.test.ts in sync (no apostrophes in buildLabel); typecheck + full
+> vitest + build; redeploy + re-run e2e for any app change; commit + push rc5. NEVER merge to main
+> (hard stop). Only deployed-preview evidence counts for product claims; label CODE vs PREVIEW vs
+> DEVICE honestly. Checkpoint honestly.
+
 ## Segment-18 update — Cycle 57: LEDGER EXPANSION v3 — nightly autopilot core + honest infra limits
 
 **HEAD:** `fix …edge-safe cron (0.137.0-nightly-autopilot)` — pushed `origin/rc5` (`e0e98fe`).
