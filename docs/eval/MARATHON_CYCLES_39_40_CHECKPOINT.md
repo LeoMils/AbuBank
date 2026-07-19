@@ -1,5 +1,64 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-18 update — Cycle 57: LEDGER EXPANSION v3 — nightly autopilot core + honest infra limits
+
+**HEAD:** `fix …edge-safe cron (0.137.0-nightly-autopilot)` — pushed `origin/rc5` (`e0e98fe`).
+**Fresh PREVIEW:** `https://abu-bank-582kg5kit-leos-projects-d3c04c09.vercel.app` — health
+`0.137.0`; **`/api/cron/nightly` LIVE** → `🟢 הכל תקין`, channel `status-page`, honest infra note.
+
+Built the invisible maintenance chain (all CODE-provable, reusing existing engines):
+- **LEDGER CURATOR** (`ledgerCurator.ts` + `LedgerService.curate/undoCuration`): dedupe /
+  supersede (latest wins, in place) / reorder — NEVER deletes a fact; one Hebrew line per
+  change; whole curation UNDOABLE. **PROOF: a planted duplicate + superseded fact are cleaned,
+  facts survive, undoable** (3/3).
+- **NIGHTLY CHAIN** (`nightlyAutopilot.ts`): duel corpus + flight-recorder analyzer + curator →
+  ONE Hebrew line (🟢/🟠 N) + a ready-made fix-the-queue prompt when items exist (5/5).
+- **LEO-ONLY NOTIFICATION** (`notify.ts`): Resend email when key+recipient exist, else the honest
+  Leo-only status page; never Martita-facing (4/4).
+- **SERVER CRON** (`api/cron/nightly.ts` edge + `vercel.json` crons 03:00): the Leo-only status
+  page, **PREVIEW-verified live** (cronNightly 2/2).
+
+**HONEST INFRA LIMITS (verified by name, not hidden):** NO storage backend (KV/Postgres/Blob),
+NO email provider (Resend/SendGrid/SMTP), NO deps addable (package.json is approval-gated) are
+provisioned here. So **cloud-canonical persistence, real email, and guaranteed cron firing are
+DEFERRED** — the endpoint + fallbacks are built + documented. Evidence: CODE — full suite 11115
+pass / 2 todo, typecheck + build; PREVIEW — cron endpoint responds with the status page.
+
+**Mandate proofs status:** ✓ curator cleans duplicate+superseded (undoable) · ✓ scheduled
+endpoint responds + notification emits (honest status-page fallback documented) · ⬜ ledger write
+cross-client (needs cloud store) · ⬜ person-chapter question (needs item 2) · ⬜ free-text
+add→diff→approve UI (applyBatch diff is CODE-proven; UI not built).
+
+**Remaining (needs infra creds or bigger work):** (1) CLOUD-CANONICAL ledger — a provisioned
+KV/Postgres/Blob store + a /api/ledger read/write endpoint (gated by THE LAWS server-side) +
+offline-tolerant sync; prove a write from one client is visible from another. (2) FULL-PERSON
+CHAPTERS — expand LedgerPerson to a chapter (residence/work/hobbies/health/events/stories/prefs
+with provenance+date); Abu answers any personal question from it. (3) a תעודת המשפחה screen +
+one-tap upload diff approval (reuse applyBatch) + ledger view (renderLedgerHebrew). (4) email +
+cron once a provider/store is provisioned.
+
+**Continuation prompt (paste to resume):**
+
+> Resume LEDGER EXPANSION v3 on rc5 from HEAD (0.137.0-nightly-autopilot; pushed; preview
+> https://abu-bank-582kg5kit-leos-projects-d3c04c09.vercel.app health-verified; /api/cron/nightly
+> live). Verify git + preview health. The autopilot core (curator + nightly chain + Leo-only
+> notification + cron status page) is built + CODE-proven, with honest infra limits documented (no
+> cloud store / email / addable deps). Next, pick the highest-value PROVABLE-WITHOUT-CREDENTIALS
+> piece: (2) FULL-PERSON CHAPTERS — extend LedgerPerson to a full chapter (relations already exist;
+> add residence/work/hobbies/health/events/stories/preferences, each fact with provenance + date),
+> wire a chapter-read into the family engine so Abu answers a personal question ("איפה גר X", "מה
+> X אוהב") from the ledger chapter — RED-first controller round-trip, proven on preview — OR (3) a
+> senior-safe one-tap UPLOAD DIFF surface (a card/screen) that runs applyBatch on pasted facts and
+> shows the one-line accept/reject diff, each committed on tap, + a תעודת המשפחה view rendering
+> renderLedgerHebrew — proven on preview. Cloud-canonical storage + email stay DEFERRED until a
+> store/provider is provisioned (never fabricate them; document honestly). Reuse
+> familyLaws/ledgerService/ledgerRuntime/conversationIntake/ledgerCurator; never a parallel path.
+> RED-first; smallest general mechanism; bump version + keep src/version.ts ⇄ api/health.ts ⇄
+> src/version.test.ts in sync (no apostrophes in buildLabel); typecheck + full vitest + build;
+> redeploy + re-run e2e for any app change; commit + push rc5. NEVER merge to main (hard stop —
+> explicit joint decision only). Only deployed-preview evidence counts for product claims; label
+> CODE vs PREVIEW vs DEVICE honestly. Checkpoint honestly.
+
 ## Segment-17 update — Cycle 56: REVOLUTION session 6 — the soft-confirm door (three doors complete)
 
 **HEAD:** `feat …Cycle 56 (0.136.0-ledger-soft-confirm)` — pushed `origin/rc5` (`8188d2f`).
