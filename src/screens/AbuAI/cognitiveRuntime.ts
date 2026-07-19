@@ -64,7 +64,9 @@ import { answerRelationQuery } from './familyRelationEngine'
 import { explainRelation } from './familyPathReasoner'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
 import { resolvePersonPhrase } from './personPhraseResolver'
-import { ledgerWriteFromText, ledgerFamilyAnswer } from '../../truth/ledgerRuntime'
+import { ledgerWriteFromText, ledgerFamilyAnswer, ledgerCommit } from '../../truth/ledgerRuntime'
+import { classifyIntake } from '../../truth/conversationIntake'
+import type { Change as LedgerChange } from '../../truth/familyLaws'
 import {
   getTodayEvents, getTomorrowEvents, getEventsByDate, findEventsByPerson, getWeekEvents,
 } from './tools'
@@ -133,6 +135,9 @@ export interface RuntimeState {
   lastFamilySubject: string | null
   /** the active conversation object for follow-up continuity (optional/back-compat). */
   focus?: ConversationFocus | null
+  /** a family fact stated plainly (no "תזכרי"), awaiting ONE soft "כן" before it is
+   *  written to the ledger through THE LAWS gate. Cleared on any non-confirm. */
+  pendingLedgerChange?: LedgerChange | null
 }
 
 export const IDLE_RUNTIME: RuntimeState = {
@@ -1276,6 +1281,21 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     return settle('אני לא משנה אירוע שמור בלי שתאשרי לי בדיוק איזה אירוע ומה לשנות. תגידי לי איזו פגישה ומה השינוי ואני אטפל בזה.', { state, dataAvailable: true })
   }
 
+  // ─── Ledger soft-confirm — a plainly-stated family fact is awaiting ONE "כן" (the
+  // "one soft in-flow confirmation" door). Runs ONLY with a ledger fact pending, no
+  // calendar draft, and no pending reminder — so it can never hijack the calendar "כן".
+  if (state.pendingLedgerChange && state.createState.phase === 'idle' && !state.pendingReminder) {
+    const t = original.trim()
+    if (/^(?:כן|נכון|בסדר|אישור|כן\s+בבקשה|כן\s+תרשמי|תרשמי|רשמי|בהחלט|נכון\s+מאוד|אוקיי?)\s*[.!]*$/u.test(t)) {
+      const o = ledgerCommit(state.pendingLedgerChange, ctx.now.getTime())
+      return settle(o.reply, { state: { ...state, pendingLedgerChange: null }, dataAvailable: o.ok })
+    }
+    if (/^(?:לא|לא\s+נכון|עזבי|תעזבי|לא\s+צריך|בטלי|תבטלי)\s*[.!]*$/u.test(t)) {
+      return settle('בסדר, לא רשמתי.', { state: { ...state, pendingLedgerChange: null }, dataAvailable: true })
+    }
+    state = { ...state, pendingLedgerChange: null } // any other turn abandons the pending fact
+  }
+
   // ─── Conversation Engine v2 (flagged) — the FORMAL dialogue state machine owns the
   // pending / confirmation / side-question / why control + the search-vs-create
   // precedence (C/D). Everything else defers to the intent path below. No competing
@@ -1663,7 +1683,16 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
 
     case 'general':
     case 'unknown':
-    default:
+    default: {
+      // A plainly-stated family fact with NO "תזכרי" ("רותי היא אשתו של דני") → ONE soft
+      // confirmation before writing (never writes a stated fact without a "כן"). Only here
+      // in the general path, so every real domain (calendar/family/…) takes precedence.
+      if (state.createState.phase === 'idle' && !state.pendingReminder && !state.pendingLedgerChange) {
+        const intake = classifyIntake(original.trim())
+        if (intake.kind === 'soft-confirm' && intake.change) {
+          return settle(intake.confirmPrompt!, { state: { ...state, pendingLedgerChange: intake.change }, dataAvailable: true })
+        }
+      }
       // General knowledge / open chat → LLM, but the answer MUST return through
       // finalizeExternalAnswer so it is verified + composed (no direct bypass).
       return {
@@ -1672,6 +1701,7 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
         sideEffect: null, verifier: { ok: true, violations: [] },
         state: { ...state, lastIntent: intent },
       }
+    }
   }
 }
 

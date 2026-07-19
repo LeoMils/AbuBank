@@ -10,8 +10,15 @@
  */
 import { LedgerService, localLedgerStore } from './ledgerService'
 import { classifyIntake } from './conversationIntake'
+import type { Change } from './familyLaws'
 
 export function familyLedger(): LedgerService { return new LedgerService(localLedgerStore()) }
+
+/** Commit an already-parsed Change (e.g. a soft-confirmed pending fact) through the gate. */
+export function ledgerCommit(change: Change, nowMs: number): LedgerWrite {
+  const o = familyLedger().writeFact(change, nowMs, 'conversation')
+  return o.ok ? { reply: `רשמתי: ${o.line}.`, ok: true } : { reply: `לא רשמתי — ${o.reason}`, ok: false }
+}
 
 export interface LedgerWrite { reply: string; ok: boolean }
 /** If the text is an explicit family-fact "תזכרי ש…", write it (gated) and return the
