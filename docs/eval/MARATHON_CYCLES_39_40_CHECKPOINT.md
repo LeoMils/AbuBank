@@ -1,5 +1,57 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-11 update — Cycle 49: Leo stale-round triage + which-day fix + stale-build guard
+
+**HEAD:** `fix …Cycle 49 (0.129.0-day-and-stale-guard)` — pushed `origin/rc5` (`5fdc0fb`).
+**Fresh PREVIEW:** `https://abu-bank-ec2dnxqxt-leos-projects-d3c04c09.vercel.app` — health
+`0.129.0-day-and-stale-guard`.
+
+**Root cause of Leo's "catastrophic" round:** it ran on a **49-versions-stale cached build
+(0.79.0)**, not 0.128. Replayed the observed turns against the CURRENT app entry and imported
+them as PERMANENT regressions (`leoStaleRoundRegression.test`, 5/5).
+
+**Triage table:**
+- *Already fixed 0.79→0.128 (locked green):* family contradiction (עדי/נועם = BROTHERS,
+  deterministic, no invented בן דוד); relation-phrase create (אח של נועם → עדי); in-law chain
+  (מה הקשר בין ירדן לנועם → via עילי).
+- *STILL reproduced → NOW FIXED (RED-first):* calendar which-day/when. `באיזה יום` / `מתי הפגישה`
+  returned only the hour / a location dead-end / the LLM. Fix (cognitiveRuntime.ts): route those
+  phrasings to the property path + answer DAY+DATE+TIME via safeHebrewDate. **PREVIEW-proven:**
+  `באיזה יום הפגישה` → `הפגישה עם רפי ב20 ביולי 2026, יום שני בשעה 15:00.`
+
+**Stale-build guard (Bug 5):** `services/versionSync` existed but was wired NOWHERE (dead code —
+why Leo ran stale silently). Mounted as a calm `StaleBuildBanner` in App (fetches /api/health,
+offers one-tap refresh on version mismatch). Typed-script gained **Step 0** (verify QA badge ==
+expected version, else STOP) + a which-day check.
+
+Evidence: CODE — leoStaleRoundRegression 5/5, StaleBuildBanner 3/3, full suite 11057 pass / 2
+todo, typecheck + build; which-day PREVIEW-proven.
+
+**FOR LEO'S RE-RUN (the round that was invalidated):**
+- Preview URL: `https://abu-bank-ec2dnxqxt-leos-projects-d3c04c09.vercel.app`
+- Version to see (Home QA badge / Settings→About): `0.129.0-day-and-stale-guard`
+- Typed script: `docs/LEO_TYPED_TEST_SCRIPT.md` — **START AT STEP 0** (verify the badge first).
+
+**Note — his stale-round export:** still awaiting the paste to replay the FULL set through the
+importer; the 4 prioritized bugs are triaged + fixed/locked above. When the export JSON arrives,
+import via `importLeoRepro`-style → `replayExport` and fold any NEW failing turns into
+`leoStaleRoundRegression.test`.
+
+**Continuation prompt (paste to resume):**
+
+> Resume on rc5 from HEAD (0.129.0-day-and-stale-guard; pushed; preview
+> https://abu-bank-ec2dnxqxt-leos-projects-d3c04c09.vercel.app health-verified). Verify git +
+> preview health. Leo's stale-round is triaged: which-day fixed + PREVIEW-proven, stale-build guard
+> live (StaleBuildBanner + typed-script Step 0), regressions locked. If Leo pastes his full export
+> JSON, replay EVERY turn via the flight-recorder importer (replayExport) and fold new failures into
+> leoStaleRoundRegression.test (RED-first). Otherwise await his re-run on 0.129.0 and triage what he
+> reports. Standing law: latest ChatGPT, NORMAL pace by default. Keyed Claude cross-check stays
+> out-of-band (no ANTHROPIC_API_KEY; never read .env — hard stop). RED-first; smallest general root
+> fix; bump version + keep src/version.ts ⇄ api/health.ts ⇄ src/version.test.ts in sync (no
+> apostrophes in buildLabel); typecheck + full vitest + build; redeploy + re-run e2e for any app
+> change; commit + push rc5. NEVER merge to main (hard stop — explicit joint decision only). Only
+> deployed-preview-through-the-app evidence counts; label CODE vs PREVIEW vs DEVICE honestly.
+
 ## Segment-10 update — Cycle 48: voice-readiness pack + parity guard + typed script (brain-phase close-out)
 
 **HEAD:** `feat …Cycle 48 (0.128.0-voice-readiness)` — pushed `origin/rc5` (`e6d19af`).
