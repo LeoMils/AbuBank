@@ -1,5 +1,54 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-12 update — Cycle 51: REVOLUTION mandate session 1 — the Constitution foundation
+
+**HEAD:** `feat …Cycle 51 (0.131.0-constitution-foundation)` — pushed `origin/rc5` (`dad5ba6`).
+**Fresh PREVIEW:** `https://abu-bank-f47q6svky-leos-projects-d3c04c09.vercel.app` — health
+`0.131.0-constitution-foundation`. (Cycle 50 = calendar-search which-day fix, 0.130.0, prior.)
+
+Built the two constitutional keystones as pure, CODE-provable mechanisms under `src/truth/`:
+- **THE LAWS (`familyLaws.ts`) — the write gate.** `applyChange` runs the invariant suite on
+  the simulated post-change state and REJECTS at the gate with a one-line Hebrew reason;
+  symmetry is maintained BY CONSTRUCTION. Laws: no-cycle (L2), parent-older (L4),
+  monogamy+incest (L7), siblings-share-parents (L3), one-identity/alias-quarantine (L5),
+  age-from-birthdate (L6), no-self (L8). `applyBatch` → one-line diff per fact. Seeded from the
+  real graph (`ledgerSeed`).
+- **METAMORPHIC MIRROR SUITE (`mirrorSuite.ts`).** 1380 oracle-free checks (inverse-existence +
+  paraphrase-alias, He+Es) over the real relation engine + a spouse-symmetry mirror.
+
+**Proofs delivered this session:** (a) contradiction rejected at gate; (b) 1000+ mirrors pass +
+planted asymmetry caught by mirrors alone; (e) poison never stores; (f) upload one-line diff.
+Evidence: CODE — familyLaws 10/10, mirrorSuite 3/3 (1380 mirrors, 0 breaks), full suite 11073
+pass / 2 todo, typecheck + build. Operator-runnable (not typed AbuAI checks yet — no
+conversation→ledger write path is wired).
+
+**Deferred (remaining revolution work):** (c) weakness-map archetypes + cross-domain probes;
+(d) champion/challenger promotion duel + weekly-guard one-line Hebrew summary; the canonical
+Hebrew ledger FILE + conversation-fact write path (one soft confirmation / explicit תזכרי /
+never vague) + Leo's manual upload with one-tap diff approval; birthdays→calendar auto-entries;
+pre-emission ledger check with one corrective retry; per-reply source tagging.
+
+**Continuation prompt (paste to resume):**
+
+> Resume the REVOLUTION mandate on rc5 from HEAD (0.131.0-constitution-foundation; pushed;
+> preview https://abu-bank-f47q6svky-leos-projects-d3c04c09.vercel.app health-verified). Verify
+> git + preview health. Session 1 shipped the two keystones (src/truth/familyLaws.ts write gate
+> + src/truth/mirrorSuite.ts 1380 mirrors; proofs a,b,e,f). Next highest-value, pick ONE and
+> prove it: (c) WEAKNESS MAP — auto-mine the flight-recorder reality (user corrected/repeated/
+> abandoned/rejected/capability-denial) into failure ARCHETYPES; prove an archetype fixed in
+> calendar is caught by a cross-domain probe when planted in family (reuse leoStaleRoundRegression
+> + flightRecorderImport) — OR (d) CHAMPION vs CHALLENGER — a duel harness that promotes a build
+> only if it beats the previous on the ENTIRE corpus (recorded history + notebook + mirror suite +
+> parity scorecard) with NO dimension regressing; prove a deliberately regressed challenger is
+> BLOCKED; wire the weekly guard to write Leo one plain-Hebrew line — OR the LEDGER FILE +
+> conversation write path (extend familyLaws.applyChange into a persisted canonical Hebrew ledger
+> with one-tap diff approval + birthdays→calendar). Reuse familyLaws/mirrorSuite; never a parallel
+> path. RED-first; smallest general mechanism; bump version + keep src/version.ts ⇄ api/health.ts ⇄
+> src/version.test.ts in sync (no apostrophes in buildLabel); typecheck + full vitest + build;
+> redeploy + re-run e2e for any app change; commit + push rc5. NEVER merge to main (hard stop —
+> explicit joint decision only). Only deployed-preview-through-the-app evidence counts for product
+> claims; label CODE vs PREVIEW vs DEVICE honestly. Checkpoint honestly per session.
+
 ## Segment-11 update — Cycle 49: Leo stale-round triage + which-day fix + stale-build guard
 
 **HEAD:** `fix …Cycle 49 (0.129.0-day-and-stale-guard)` — pushed `origin/rc5` (`5fdc0fb`).
