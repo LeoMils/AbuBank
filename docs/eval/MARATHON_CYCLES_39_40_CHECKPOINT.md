@@ -1,5 +1,52 @@
 # MASTER Checkpoint — Cycles 39–40 (Generative Marathon widening) + next: Parity Judge
 
+## Segment-15 update — Cycle 54: REVOLUTION session 4 — the living ledger core
+
+**HEAD:** `feat …Cycle 54 (0.134.0-family-ledger)` — pushed `origin/rc5` (`c26cd61`).
+**Fresh PREVIEW:** `https://abu-bank-rby9vqccl-leos-projects-d3c04c09.vercel.app` — health
+`0.134.0-family-ledger`.
+
+Built the product-facing Truth-Loop foundation on top of THE LAWS (all pure, CODE-proven):
+- **`LedgerService`** (`src/truth/ledgerService.ts`) — ONE canonical state; the ledger IS a
+  pure function of (seed, change-log) → file-as-view. EVERY write goes through
+  `familyLaws.applyChange` (THE LAWS gate): a contradiction can't enter, a rejected fact leaves
+  NO log entry (poison never stores). Every change is one log line + UNDOABLE (replay from
+  seed); persists across reload (`localLedgerStore`).
+- **`renderLedgerHebrew`** (`ledgerView.ts`) — regenerates the canonical human-readable Hebrew
+  ledger from state.
+- **Conversation intake** (`conversationIntake.ts`) — three doors: explicit "תזכרי ש…" writes
+  now; a plainly-stated fact gets ONE soft confirmation; a vague hint NEVER writes.
+  `extractChange` parses spouse/parent/sibling/birthdate → a gated Change (an explicit
+  poisoning fact is still refused at the gate). Upload → one-line diff per fact.
+- **Birthdays → calendar** — a birthdate proposes a yearly entry on approval.
+
+Evidence: CODE — ledgerService 12/12, truth suite 28, full suite 11095 pass / 2 todo,
+typecheck + build. HONEST LIMIT: the ledger core is **not yet wired into the live conversation
+runtime or a one-tap approval UI** — that is the remaining integration (next session), so this
+is CODE + deploy/health PREVIEW only, no product-behavior claim.
+
+**Continuation prompt (paste to resume):**
+
+> Resume the REVOLUTION mandate on rc5 from HEAD (0.134.0-family-ledger; pushed; preview
+> https://abu-bank-rby9vqccl-leos-projects-d3c04c09.vercel.app health-verified). Verify git +
+> preview health. The ledger CORE is built + CODE-proven (src/truth/ledgerService.ts +
+> ledgerView + conversationIntake, all through familyLaws.applyChange). What remains is the
+> live WIRING: (1) call classifyIntake in the AbuAI conversation path so an explicit "תזכרי ש…"
+> writes via LedgerService.write and a stated fact surfaces the soft-confirm prompt (the next
+> "כן" commits the pending change) — RED-first via a controller-level test proving the round-trip
+> (state a fact → confirm → it is in the ledger AND answerable) and that the LAWS gate still
+> refuses a poisoning fact end-to-end; (2) make the family engine READ from the ledger where it
+> has an override (ledger fact wins over the static graph) — smallest safe seam, prove a
+> ledger-added relation is answered by the family reasoner; (3) a senior-safe one-tap diff
+> approval surface (reuse applyBatch's one-line diff) for Leo's manual upload; (4) birthdays→
+> calendar actually creating the yearly entry on approval via the existing calendar service. Reuse
+> familyLaws/ledgerService/mirrorSuite/duel/weaknessMap; never a parallel path. RED-first; smallest
+> general mechanism; bump version + keep src/version.ts ⇄ api/health.ts ⇄ src/version.test.ts in
+> sync (no apostrophes in buildLabel); typecheck + full vitest + build; redeploy + re-run e2e for
+> any app change; commit + push rc5. NEVER merge to main (hard stop — explicit joint decision
+> only). Only deployed-preview-through-the-app evidence counts for product claims; label CODE vs
+> PREVIEW vs DEVICE honestly. Checkpoint honestly.
+
 ## Segment-14 update — Cycle 53: REVOLUTION session 3 — Weakness Map (proof c) — ALL PROOFS DONE
 
 **HEAD:** `feat …Cycle 53 (0.133.0-weakness-map)` — pushed `origin/rc5` (`120faf9`).
