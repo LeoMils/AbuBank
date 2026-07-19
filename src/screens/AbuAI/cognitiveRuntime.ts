@@ -749,7 +749,7 @@ export function isMathQuery(text: string): boolean { return mathReasoner(text) !
 function looksLikeFamilyQuery(t: string): boolean {
   // Base + POSSESSIVE spouse forms ("בעלה" her-husband, "אשתו"/"אשתה" his/her-wife) so a
   // common family question routes to the graph instead of punting to the LLM.
-  if (/מי\s+ה?(?:סבא|סבתא|דוד|דודה|אבא|אמא|בעל[הוהּ]?|איש[הת][הו]?|אשת[הו]|בן\s+הזוג|בת\s+הזוג|בת|בן|ילדים|נכדים|נכדות|נכד|נכדה|אח|אחות)\s+של/u.test(t)) return true
+  if (/מי\s+ה?(?:סבא|סבתא|דוד|דודה|אבא|אמא|בעל[הוהּ]?|איש[הת][הו]?|אשת[הו]|חתן|כלה|גיס|גיסה|נין|נינה|בן\s+הזוג|בת\s+הזוג|בת|בן|ילדים|נכדים|נכדות|נכד|נכדה|אח|אחות)\s+של/u.test(t)) return true
   // "כמה נכדים/ילדים/נינים יש ל…" — a family COUNT question, answered from the graph.
   if (/כמה\s+(?:נכד|ילד|בנ|נינ)/u.test(t)) return true
   if (/מה\s+הקשר\s+בין|מה\s+היחס\s+בין|איך\s+קשור[הים]?|מי\s+ז[הא]\s+ל/u.test(t)) return true
@@ -859,6 +859,20 @@ export function familyReasoner(text: string, lang: Lang = 'he'): FamilyResult {
       const renderLang = esMatch ? 'es' : (lang === 'es' ? 'es' : 'he')
       const self = describeRelation('מרטיטה', node.hebrew, renderLang)
       if (self) return { text: self, known: true, subject: node.hebrew }
+    }
+  }
+  // 4) "מי <relation-phrase>" — close the phrase-not-resolved archetype in the FAMILY
+  // domain with the SAME resolver the calendar uses ("החתן של רפי" → גלעד), so a relation
+  // phrase resolves to the person here too instead of punting to the LLM (Leo's stale
+  // round: "מי החתן של רפי" / "מי הכלה של רפי" fell to the model). Fallback only — the
+  // direct relation/identity lookups above already own their cases.
+  const whoPhrase = text.match(/^\s*מי\s+(?:ז[הא]\s+)?(.+?)\s*\??$/u)
+  if (whoPhrase) {
+    const resolved = resolvePersonPhrase(whoPhrase[1]!.trim())
+    if (resolved) {
+      const g = findNode(resolved)?.gender
+      const verb = g === 'female' ? 'היא' : 'הוא'
+      return { text: `${whoPhrase[1]!.trim()} ${verb} ${resolved}.`, known: true, subject: resolved }
     }
   }
   return { text: '', known: false }
