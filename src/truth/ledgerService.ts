@@ -20,6 +20,7 @@ function referencedIds(c: Change): string[] {
     case 'addSpouse': case 'addSibling': return [c.a, c.b]
     case 'divorce': return [c.a, c.b]
     case 'setBirthdate': return [c.id]
+    case 'addFact': return [c.id]
   }
 }
 const newPerson = (id: string): LedgerPerson => ({ id, name: id, gender: 'unknown', parents: [], spouses: [], exSpouses: [], aliases: [] })

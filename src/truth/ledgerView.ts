@@ -2,7 +2,7 @@
  * LEDGER VIEW — the canonical human-readable Hebrew file, regenerated from state.
  * "File-as-view": never hand-edited; always a projection of the ledger + change log.
  */
-import type { Ledger } from './familyLaws'
+import { type Ledger, FACT_LABEL_HE } from './familyLaws'
 import type { LogEntry } from './ledgerService'
 
 const GENDER_HE: Record<string, string> = { male: 'זכר', female: 'נקבה', unknown: '' }
@@ -18,6 +18,7 @@ export function renderLedgerHebrew(ledger: Ledger, log: LogEntry[] = []): string
     if (p.exSpouses.length) lines.push(`- לשעבר: ${p.exSpouses.join(', ')}`)
     const alias = p.aliases.filter((a) => a && a !== p.name)
     if (alias.length) lines.push(`- ידועה גם כ: ${alias.join(', ')}`)
+    for (const f of p.facts ?? []) lines.push(`- ${FACT_LABEL_HE[f.kind]} ${f.value}  _(${f.source})_`)
   }
   lines.push('', '## יומן שינויים')
   if (!log.length) lines.push('- (אין שינויים עדיין)')

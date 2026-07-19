@@ -12,6 +12,11 @@
  */
 export type Gender = 'male' | 'female' | 'unknown'
 
+/** A chapter fact about a person — the FULL-PERSON chapter (residence/work/hobbies/health/
+ *  events/stories/preferences). Every fact carries its PROVENANCE (source) and DATE (at). */
+export type FactKind = 'residence' | 'work' | 'hobby' | 'health' | 'event' | 'story' | 'preference'
+export interface PersonFact { kind: FactKind; value: string; source: string; at: number }
+
 export interface LedgerPerson {
   id: string
   name: string
@@ -22,6 +27,8 @@ export interface LedgerPerson {
   spouses: string[]
   exSpouses: string[]
   aliases: string[]
+  /** The person's chapter — free-form facts with provenance + date. */
+  facts?: PersonFact[]
 }
 export type Ledger = Map<string, LedgerPerson>
 
@@ -32,12 +39,13 @@ export type Change =
   | { op: 'divorce'; a: string; b: string }
   | { op: 'addSibling'; a: string; b: string }
   | { op: 'setBirthdate'; id: string; birthdate: string }
+  | { op: 'addFact'; id: string; fact: PersonFact }
 
 export interface Violation { law: string; message: string }
 export interface LawResult { ok: boolean; violations: Violation[] }
 export interface WriteResult { ok: boolean; ledger: Ledger; violations: Violation[]; log: string | null }
 
-const clone = (l: Ledger): Ledger => new Map([...l].map(([k, v]) => [k, { ...v, parents: [...v.parents], spouses: [...v.spouses], exSpouses: [...v.exSpouses], aliases: [...v.aliases] }]))
+const clone = (l: Ledger): Ledger => new Map([...l].map(([k, v]) => [k, { ...v, parents: [...v.parents], spouses: [...v.spouses], exSpouses: [...v.exSpouses], aliases: [...v.aliases], ...(v.facts ? { facts: [...v.facts] } : {}) }]))
 const has = (l: Ledger, id: string) => l.has(id)
 const person = (l: Ledger, id: string) => l.get(id)
 const uniq = (a: string[]) => [...new Set(a)]
@@ -119,6 +127,11 @@ export function checkLaws(ledger: Ledger, change: Change): LawResult {
       for (const par of p.parents) { const pp = person(ledger, par)!; if (pp.birthdate && cmpDate(pp.birthdate, birthdate) >= 0) add('L4:parent-older', `${id} לא יכול להיוולד לפני ${par}.`) }
       break
     }
+    case 'addFact': {
+      if (!has(ledger, change.id)) add('L0:unknown', `${change.id} לא קיים בקובץ.`)
+      if (!change.fact.value.trim()) add('L9:empty-fact', `אי אפשר לרשום עובדה ריקה.`)
+      break
+    }
     case 'divorce': break // always allowed structurally
   }
   return { ok: v.length === 0, violations: v }
@@ -159,8 +172,14 @@ export function applyChange(ledger: Ledger, change: Change): WriteResult {
       break
     }
     case 'setBirthdate': { const p = next.get(change.id); if (p) p.birthdate = change.birthdate; break }
+    case 'addFact': { const p = next.get(change.id); if (p) p.facts = [...(p.facts ?? []), change.fact]; break }
   }
   return { ok: true, ledger: next, violations: [], log: describeChange(change) }
+}
+
+/** Hebrew label for a chapter fact category. */
+export const FACT_LABEL_HE: Record<FactKind, string> = {
+  residence: 'גר/ה ב', work: 'עובד/ת ב', hobby: 'תחביב', health: 'בריאות', event: 'אירוע', story: 'סיפור', preference: 'אוהב/ת',
 }
 
 /** One-line human log for the ledger's change history (§1: every change logged + undoable). */
@@ -172,6 +191,7 @@ export function describeChange(c: Change): string {
     case 'divorce': return `${c.a} ו${c.b} התגרשו`
     case 'addSibling': return `${c.a} ו${c.b} אחים`
     case 'setBirthdate': return `תאריך לידה של ${c.id}: ${c.birthdate}`
+    case 'addFact': return `${c.id} — ${FACT_LABEL_HE[c.fact.kind]} ${c.fact.value}`
   }
 }
 

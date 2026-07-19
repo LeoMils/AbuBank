@@ -24,12 +24,15 @@ function changeKey(c: Change): string {
     case 'addSibling': return `addSibling|${[c.a, c.b].sort().join('~')}`
     case 'divorce': return `divorce|${[c.a, c.b].sort().join('~')}`
     case 'setBirthdate': return `setBirthdate|${c.id}|${c.birthdate}`
+    case 'addFact': return `addFact|${c.id}|${c.fact.kind}|${c.fact.value}`
   }
 }
-/** The target whose LATEST value supersedes earlier ones (birthdate, a person record). */
+/** The target whose LATEST value supersedes earlier ones (birthdate, a person record, and a
+ *  single-valued chapter fact like residence/work — the newest residence supersedes the old). */
 function supersedeKey(c: Change): string | null {
   if (c.op === 'setBirthdate') return `setBirthdate:${c.id}`
   if (c.op === 'addPerson') return `addPerson:${c.person.id}`
+  if (c.op === 'addFact' && (c.fact.kind === 'residence' || c.fact.kind === 'work')) return `fact:${c.id}:${c.fact.kind}`
   return null
 }
 

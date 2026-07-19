@@ -64,7 +64,7 @@ import { answerRelationQuery } from './familyRelationEngine'
 import { explainRelation } from './familyPathReasoner'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
 import { resolvePersonPhrase } from './personPhraseResolver'
-import { ledgerWriteFromText, ledgerFamilyAnswer, ledgerCommit } from '../../truth/ledgerRuntime'
+import { ledgerWriteFromText, ledgerFamilyAnswer, ledgerCommit, ledgerChapterAnswer } from '../../truth/ledgerRuntime'
 import { classifyIntake } from '../../truth/conversationIntake'
 import type { Change as LedgerChange } from '../../truth/familyLaws'
 import {
@@ -1296,6 +1296,15 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     state = { ...state, pendingLedgerChange: null } // any other turn abandons the pending fact
   }
 
+  // ─── Ledger EXPLICIT write — "תזכרי ש<family/chapter fact>" writes through THE LAWS gate
+  // BEFORE the memory/reminder split (so "תזכרי שדני אוהב כדורגל" is not mis-read as a
+  // reminder). Fires ONLY for a parseable family/chapter fact (returns null otherwise), so a
+  // real reminder / preference-memory / anything else is untouched.
+  if (state.createState.phase === 'idle' && !state.pendingReminder) {
+    const lw = ledgerWriteFromText(original.trim(), ctx.now.getTime())
+    if (lw) return settle(lw.reply, { state, dataAvailable: lw.ok })
+  }
+
   // ─── Conversation Engine v2 (flagged) — the FORMAL dialogue state machine owns the
   // pending / confirmation / side-question / why control + the search-vs-create
   // precedence (C/D). Everything else defers to the intent path below. No competing
@@ -1458,10 +1467,7 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       const esOpt = es ? { lang: 'es' as const } : {}
       const cmd = memoryCommandType(normalized)
       if (cmd === 'save') {
-        // A FAMILY fact ("תזכרי שדני נשוי לרותי") is written to the LEDGER through THE LAWS
-        // gate (a contradiction is refused), not stored as a free-text preference.
-        const lw = ledgerWriteFromText(normalized, ctx.now.getTime())
-        if (lw) return settle(lw.reply, { state, dataAvailable: lw.ok })
+        // (Family/chapter facts are intercepted earlier, before the memory/reminder split.)
         const fact = parseRememberFact(normalized) ?? ''
         const r = saveMemory(fact)
         if (r.ok) return settle(es ? `Listo, me acuerdo: ${fact}.` : `בסדר, אני אזכור את זה: ${fact}.`, { state, dataAvailable: true, ...esOpt })
@@ -1684,6 +1690,10 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     case 'general':
     case 'unknown':
     default: {
+      // LEDGER CHAPTER read — a personal question ("איפה גר X", "מה X אוהב", "מה את יודעת
+      // על X") answered from the person's ledger chapter before punting to the LLM.
+      const chapter = ledgerChapterAnswer(original.trim())
+      if (chapter) return settle(chapter, { state, dataAvailable: true })
       // A plainly-stated family fact with NO "תזכרי" ("רותי היא אשתו של דני") → ONE soft
       // confirmation before writing (never writes a stated fact without a "כן"). Only here
       // in the general path, so every real domain (calendar/family/…) takes precedence.

@@ -19,6 +19,9 @@ const N = '([א-ת]{2,})' // a Hebrew name token
 /** Try to parse a plainly-stated family fact into a gated Change. Returns null if none. */
 export function extractChange(text: string): Change | null {
   const t = text.trim()
+  // First-person ("אני אוהבת יין") is Martita's OWN preference — not a person chapter fact;
+  // leave it to the existing preference-memory path.
+  if (/^(?:אני|אנחנו|אנו)(?![א-ת])/u.test(t)) return null
   // spouse
   let m = t.match(new RegExp(`${N}\\s+(?:היא|הוא)?\\s*(?:אשתו|בעלה|אשת|בעל)\\s+של\\s+${N}`, 'u'))
   if (m) return { op: 'addSpouse', a: m[1]!, b: m[2]! }
@@ -38,6 +41,13 @@ export function extractChange(text: string): Change | null {
   // birthdate: "<name> נולד/ה ב-YYYY-MM-DD" or "בתאריך …"
   m = t.match(new RegExp(`${N}\\s+נולד[הת]?\\s+ב?-?\\s*(\\d{4}-\\d{2}-\\d{2}|\\d{2}-\\d{2})`, 'u'))
   if (m) return { op: 'setBirthdate', id: m[1]!, birthdate: m[2]! }
+  // ── FULL-PERSON CHAPTER facts (residence / work / preference) ──
+  m = t.match(new RegExp(`${N}\\s+גר[הת]?\\s+ב(.+)$`, 'u'))
+  if (m) return { op: 'addFact', id: m[1]!, fact: { kind: 'residence', value: m[2]!.trim(), source: 'conversation', at: 0 } }
+  m = t.match(new RegExp(`${N}\\s+עובד[הת]?\\s+ב(.+)$`, 'u'))
+  if (m) return { op: 'addFact', id: m[1]!, fact: { kind: 'work', value: m[2]!.trim(), source: 'conversation', at: 0 } }
+  m = t.match(new RegExp(`${N}\\s+אוהב[הת]?\\s+(?:את\\s+)?(.+)$`, 'u'))
+  if (m) return { op: 'addFact', id: m[1]!, fact: { kind: 'preference', value: m[2]!.trim(), source: 'conversation', at: 0 } }
   return null
 }
 
@@ -62,6 +72,7 @@ function describeConfirm(c: Change): string {
     case 'addParent': return `${c.parent} הורה של ${c.child}`
     case 'addSibling': return `${c.a} ו${c.b} אחים`
     case 'setBirthdate': return `${c.id} נולד/ה ב-${c.birthdate}`
+    case 'addFact': return `${c.id}: ${c.fact.value}`
     default: return ''
   }
 }
