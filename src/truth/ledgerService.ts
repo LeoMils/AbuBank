@@ -10,6 +10,7 @@
 import { type Ledger, type LedgerPerson, type Change, applyChange, describeChange } from './familyLaws'
 import { seedLedgerFromGraph } from './ledgerSeed'
 import { renderLedgerHebrew } from './ledgerView'
+import { curateLog, type CurationResult } from './ledgerCurator'
 
 /** The person ids a change references (for auto-creating unknown relatives). */
 function referencedIds(c: Change): string[] {
@@ -110,6 +111,31 @@ export class LedgerService {
 
   /** File-as-view: regenerate the canonical human-readable Hebrew ledger from state. */
   renderHebrew(): string { return renderLedgerHebrew(this.cache, this.log) }
+
+  /**
+   * CURATOR (nightly): dedupe/supersede/reorder the log WITHOUT deleting a fact. Returns the
+   * one-line Hebrew actions. The whole curation is undoable (undoCuration restores the log).
+   */
+  curate(): CurationResult {
+    const r = curateLog(this.log)
+    if (r.actions.length) {
+      this.preCuration = [...this.log]
+      this.log = r.cleanedLog
+      this.cache = replay(this.seedFn(), this.log)
+      this.persist()
+    }
+    return r
+  }
+  /** Revert the last curation (§ every change undoable). */
+  undoCuration(): boolean {
+    if (!this.preCuration) return false
+    this.log = this.preCuration
+    this.preCuration = null
+    this.cache = replay(this.seedFn(), this.log)
+    this.persist()
+    return true
+  }
+  private preCuration: LogEntry[] | null = null
 
   private persist() { this.store.save(JSON.stringify({ log: this.log })) }
 }
