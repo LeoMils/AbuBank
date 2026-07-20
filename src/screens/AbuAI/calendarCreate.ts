@@ -7,6 +7,7 @@ import { isOnlineCurrentInfoQuery } from './onlineIntent'
 // at module-eval time.
 import { refineMeeting } from './meetingIntelligence'
 import { recoverHebrewStt } from './sttSemanticRecovery'
+import { resolveSinglePerson } from './familyReasoning'
 
 // ─── State Machine ──────────────────────────────────────────────────────────
 
@@ -693,26 +694,13 @@ export function parseCreateIntent(text: string): ParsedCreateIntent | null {
   const event = extractEventDetails(text)
 
   let title = extractTitle(event.residualText)
-  // Resolve family references: "החברה של מור" → "יעל", "בת הזוג של מור" → "יעל"
-  if (title) {
-    const familyRef = title.match(/(החברה|בת הזוג|בן הזוג|השותפה) של\s+(\S+)/)
-    if (familyRef) {
-      try {
-        const { loadGraph } = require('./familyGraph')
-        const graph = loadGraph()
-        const targetName = familyRef[2]!
-        const target = graph.find((n: { matchNames: string[]; hebrew: string }) => n.matchNames.includes(targetName.toLowerCase()) || n.hebrew === targetName)
-        if (target) {
-          const isFemaleRole = /החברה|בת הזוג|השותפה/.test(familyRef[1]!)
-          const resolved = [...(target as { partnersHe: string[]; spousesHe: string[] }).partnersHe, ...(target as { partnersHe: string[]; spousesHe: string[] }).spousesHe]
-            .map((p: string) => graph.find((n: { hebrew: string; gender: string }) => n.hebrew === p))
-            .find((n: { gender: string } | undefined) => n && (isFemaleRole ? n.gender === 'female' : n.gender === 'male'))
-          if (resolved) {
-            title = title.replace(familyRef[0], (resolved as { hebrew: string }).hebrew)
-          }
-        }
-      } catch {}
-    }
+  // Resolve a family relation phrase in the title to the concrete person through
+  // the ONE morphology seam: "בת הזוג של מור"→יעל, "החברה של מור"→יעל, "החתן של
+  // מור"→גלעד, "הבת של מרטיטה"→מור. Single-referent only (an ambiguous multi-person
+  // reference like "הילדים של מור" stays literal). Lazy require breaks the cycle.
+  if (title && /\sשל\s/u.test(title)) {
+    const ref = resolveSinglePerson(title)
+    if (ref) title = title.replace(ref.span, ref.person)
   }
   // Title fallback: a bare "פגישה עם <person>" when the title extractor came up
   // empty but we did capture a person.

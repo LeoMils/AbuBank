@@ -33,13 +33,25 @@ LAWS gate (`familyLaws`), ledger (`ledgerService`).
   resolves to the same person); honest emptiness preserved.
 - Evidence: CODE. Full suite 11433 pass / 0 regressions. NOT device-proven.
 
+## Done — session 2 (P2 complete: seam feeds ALL paths)
+
+- **create/title** (`calendarCreate.parseCreateIntent`) resolves a relation-phrase
+  companion to the real person ("עם בת הזוג של מור"→"פגישה עם יעל"). Replaced the old
+  hardcoded 4-word partner regex.
+- **search** (`personPhraseResolver.resolvePersonPhrase`) now **delegates** to
+  `familyReasoning.resolveSinglePerson`; the parallel per-form resolver engine (its own
+  inflection table) was **deleted** — one runtime path per capability.
+- **ledger** (`conversationIntake.extractChange`/`classifyIntake`) take an injected
+  `PersonResolver` (keeps `truth/` decoupled from the graph); wired at
+  `cognitiveRuntime` + `FamilyRecord`. "הבת של מור גרה בחיפה" → fact for אופיר (not the
+  anchor מור); poison ("אופיר היא אשתו של רפי") still reaches THE LAWS and is refused.
+- Added חם/חמות; hardened `parseRelationQuery` (leading-preposition greedy capture).
+- New all-paths suite (`relationSeamPaths.test.ts`) + generative morphology; FULL suite
+  11474 pass / 0 regressions (one create-title test updated to the RESOLVED name).
+
 ## Sequenced plan (remaining)
 
-1. **P2 finish — feed ALL paths through the seam.** Route the create person-ref,
-   search, title, and ledger `extractChange` person parsing through
-   `relationMorphology` (one normalization seam, not five). Extend the generative
-   suite to every path.
-2. **P3 garble suite** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
+1. **P3 garble suite** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
    near-homophones) over the corpus; permanent.
 3. **P1 understanding-first intake** — client interpret step against `api/abuai-chat.ts`
    with a STRICT structured-intent schema {operation, person-refs, datetime, place,

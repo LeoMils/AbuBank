@@ -1,5 +1,30 @@
 # WAR_ROOM_LOG
 
+## 2026-07-20 — INTAKE REBUILD mandate · session 2 (P2 complete: seam feeds all paths) → 0.141.0
+- CONTINUED P2 from who-is to EVERY path, per Leo ("continue P2 across all paths, then P1").
+- FOUND a parallel path (the exact "one runtime path per capability" defect): `personPhraseResolver.ts`
+  had its OWN inflection table + in-law composition, used by the search path — a second engine answering
+  the same relation-phrase→person question as the new seam. CONSOLIDATED: rewrote it to DELEGATE to
+  `familyReasoning.resolveSinglePerson`; deleted the duplicated `relativesOf` switch. Added חם/חמות to the
+  seam first so delegation loses nothing (verified no test pinned them).
+- CREATE/TITLE: replaced the old hardcoded 4-word partner regex in `calendarCreate.parseCreateIntent` with
+  the seam (`resolveSinglePerson`) — "עם בת הזוג של מור"→"פגישה עם יעל", "עם החתן של מור"→"פגישה עם גלעד".
+  Switched a lazy `require` to a static import (the require silently no-op'd in ESM — the old family
+  resolution likely never fired in create). No import cycle (tsc clean).
+- LEDGER: `extractChange`/`classifyIntake` now accept an injected `PersonResolver` (keeps the pure `truth/`
+  layer decoupled from the AbuAI graph); wired at `cognitiveRuntime` (chat door) + `FamilyRecord` (paste box).
+  "הבת של מור גרה בחיפה" → fact for אופיר (previously mis-bound to the ANCHOR מור — a latent bug the seam
+  fixes). Poison "אופיר היא אשתו של רפי" resolves to nobody (רפי has no wife) → reaches THE LAWS unchanged → refused.
+- HARDENED `parseRelationQuery`: a greedy 2-word term capturing a leading preposition ("עם החתן") no longer
+  hides the real phrase — on a non-normalizing hit the global scan retries from match-start+1.
+- REGRESSION-FIRST all-paths suite `src/truth/relationSeamPaths.test.ts` (11). Probed each path before asserting.
+- VALIDATION: all-paths 11/11; FULL suite 379 files / 11474 pass / 2 todo / 0 fail. ONE existing test updated,
+  not weakened: `operationalAiVoiceCalendar` expected the LITERAL "פגישה עם אמא של אופיר"; the seam now stores
+  the RESOLVED "פגישה עם מור" (mandate P4 "titles carry the resolved name") — fixed the truth. tsc + build clean.
+  Version 0.140.0→0.141.0.
+- EVIDENCE: CODE. NOT device-proven; only the Leo free-language round decides ready. NEXT: P1 (understanding-
+  first LLM interpretation layer + strict schema, patterns as fast-path cache, deterministic engines validate).
+
 ## 2026-07-20 — INTAKE REBUILD mandate · session 1 (understanding-first + P2 morphology seam) → 0.140.0
 - SINGLE-WRITER: re-acquired `.abuai/ACTIVE_EXECUTION_LOCK.json` (prior voice-realtime lock was STALE —
   heartbeat 4d old, 15m lease, base b77cba2 != HEAD 9f3541d). v2.x foreground-only, no subagents.

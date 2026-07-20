@@ -59,7 +59,7 @@ registerCalendarMutationPlugins()
 const PLANNER_SKIP: ReadonlySet<RuntimeIntent> = new Set<RuntimeIntent>([
   'audio_complaint', 'continuation', 'frustration', 'confirmation', 'date_query',
 ])
-import { answerFamilyRelation, childrenOfPublic, grandchildrenOfPublic, greatGrandchildrenOfPublic } from './familyReasoning'
+import { answerFamilyRelation, childrenOfPublic, grandchildrenOfPublic, greatGrandchildrenOfPublic, resolveSinglePerson } from './familyReasoning'
 import { answerRelationQuery } from './familyRelationEngine'
 import { explainRelation } from './familyPathReasoner'
 import { loadGraph, findNode, describeRelation, type GraphNode } from './familyGraph'
@@ -1698,7 +1698,7 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       // confirmation before writing (never writes a stated fact without a "כן"). Only here
       // in the general path, so every real domain (calendar/family/…) takes precedence.
       if (state.createState.phase === 'idle' && !state.pendingReminder && !state.pendingLedgerChange) {
-        const intake = classifyIntake(original.trim())
+        const intake = classifyIntake(original.trim(), resolveSinglePerson)
         if (intake.kind === 'soft-confirm' && intake.change) {
           return settle(intake.confirmPrompt!, { state: { ...state, pendingLedgerChange: intake.change }, dataAvailable: true })
         }

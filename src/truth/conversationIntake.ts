@@ -16,9 +16,19 @@ export interface IntakeResult { kind: IntakeKind; change?: Change; confirmPrompt
 const VAGUE = /(?:אולי|נראה\s+לי|כנראה|אני\s+חושבת|בערך|לא\s+בטוחה|נדמה\s+לי|יכול\s+להיות|אם\s+אני\s+לא\s+טועה)/u
 const N = '([א-ת]{2,})' // a Hebrew name token
 
+/** Resolves a relation phrase inside text to a single real person (span→name).
+ *  Injected so this pure `truth/` module stays decoupled from the family graph
+ *  (which lives in the AbuAI layer). See familyReasoning.resolveSinglePerson. */
+export type PersonResolver = (text: string) => { span: string; person: string } | null
+
 /** Try to parse a plainly-stated family fact into a gated Change. Returns null if none. */
-export function extractChange(text: string): Change | null {
-  const t = text.trim()
+export function extractChange(text: string, resolvePerson?: PersonResolver): Change | null {
+  let t = text.trim()
+  // Route a relation-phrase SUBJECT through the ONE person-reference seam so a
+  // fact stated about "הבת של מור" is stored about the resolved person (אופיר).
+  // Deterministic + graph-derived: it can only map a phrase to a real KNOWN
+  // person, never fabricate one; the LAWS gate still runs on the resulting Change.
+  if (resolvePerson) { const ref = resolvePerson(t); if (ref) t = t.replace(ref.span, ref.person) }
   // First-person ("אני אוהבת יין") is Martita's OWN preference — not a person chapter fact;
   // leave it to the existing preference-memory path.
   if (/^(?:אני|אנחנו|אנו)(?![א-ת])/u.test(t)) return null
@@ -52,16 +62,16 @@ export function extractChange(text: string): Change | null {
 }
 
 /** Classify how (or whether) an utterance should enter the ledger. */
-export function classifyIntake(utterance: string): IntakeResult {
+export function classifyIntake(utterance: string, resolvePerson?: PersonResolver): IntakeResult {
   const t = utterance.trim()
   const explicitM = t.match(/^(?:תזכרי|זכרי|תרשמי|רשמי)\s+ש(.+)$/u)
   if (explicitM) {
-    const change = extractChange(explicitM[1]!)
+    const change = extractChange(explicitM[1]!, resolvePerson)
     if (change) return { kind: 'explicit', change, reason: 'explicit remember → write now' }
     return { kind: 'ignore', reason: 'explicit but no parseable family fact' }
   }
   if (VAGUE.test(t)) return { kind: 'ignore', reason: 'vague hint → never writes' }
-  const change = extractChange(t)
+  const change = extractChange(t, resolvePerson)
   if (change) return { kind: 'soft-confirm', change, confirmPrompt: `לרשום שזה נכון? ${describeConfirm(change)} — כן/לא`, reason: 'stated fact → one soft confirmation' }
   return { kind: 'ignore', reason: 'no family fact' }
 }

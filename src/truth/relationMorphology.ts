@@ -29,6 +29,7 @@ export type RelationType =
   | 'partner' | 'ex_spouse'
   | 'aunt' | 'uncle'
   | 'son_in_law' | 'daughter_in_law' | 'brother_in_law' | 'sister_in_law'
+  | 'father_in_law' | 'mother_in_law'
 
 export interface RelationQuery {
   type: RelationType
@@ -36,6 +37,8 @@ export interface RelationQuery {
   subject: string
   /** True for the "<name> … של מי" shape (X is the <relation> of whom). */
   reverse: boolean
+  /** The exact matched span ("בת הזוג של מור"), for in-place substitution by callers. */
+  match: string
 }
 
 /*
@@ -59,7 +62,7 @@ const RELATION_FORMS: Record<RelationType, string[]> = {
   brother:       ['אח', 'אחיו', 'אחיה', 'אחי'],
   siblings:      ['אחים', 'אחיות'],
   grandchildren: ['נכד', 'נכדה', 'נכדים', 'נכדות', 'נכדו', 'נכדתו', 'נכדתה', 'נכדיו', 'נכדיה'],
-  partner:       ['בעל', 'בעלה', 'אישה', 'אשה', 'אשת', 'אשתו', 'אשתה', 'בן זוג', 'בת זוג', 'בן הזוג', 'בת הזוג', 'פרטנר', 'פרטנרית'],
+  partner:       ['בעל', 'בעלה', 'אישה', 'אשה', 'אשת', 'אשתו', 'אשתה', 'בן זוג', 'בת זוג', 'בן הזוג', 'בת הזוג', 'פרטנר', 'פרטנרית', 'חבר', 'חברה', 'שותף', 'שותפה'],
   ex_spouse:     ['גרוש', 'גרושה', 'גרושתו', 'גרושתה'],
   aunt:          ['דודה', 'דודתו', 'דודתה', 'דודות'],
   uncle:         ['דוד', 'דודו', 'דודים'],
@@ -67,6 +70,8 @@ const RELATION_FORMS: Record<RelationType, string[]> = {
   daughter_in_law: ['כלה', 'כלת', 'כלתו', 'כלתה', 'כלות'],
   brother_in_law: ['גיס', 'גיסו', 'גיסים'],
   sister_in_law: ['גיסה', 'גיסתו', 'גיסתה', 'גיסות'],
+  father_in_law: ['חם', 'חמי', 'חמיו', 'חמיה'],
+  mother_in_law: ['חמות', 'חמותו', 'חמותה'],
 }
 
 // NOTE: 'דוד' (uncle) and 'דודה' (aunt) collide with each other only by the
@@ -104,29 +109,43 @@ const NAME = '([\\u05d0-\\u05ea]+)'
 const LEAD = '(?:מי\\s+)?(?:זאת\\s+|זה\\s+|הוא\\s+|היא\\s+)?'
 
 // Forward: "(מי) <term> של <name>"  — name must not be the interrogative מי.
-const FORWARD = new RegExp(`${LEAD}${TERM}\\s+של\\s+(?!מי(?![\\u05d0-\\u05ea]))${NAME}`, 'u')
+// Global so we can skip a leading non-relation "<x> של <y>" (e.g. הכלב של מור)
+// and keep scanning for the first phrase whose term is a real relation.
+const FORWARD_G = new RegExp(`${LEAD}${TERM}\\s+של\\s+(?!מי(?![\\u05d0-\\u05ea]))${NAME}`, 'gu')
 // Reverse: "<name> (הוא/היא) <term> של מי"  — X is the <term> of whom.
-const REVERSE = new RegExp(`${NAME}\\s+(?:הוא\\s+|היא\\s+)?${TERM}\\s+של\\s+מי`, 'u')
+const REVERSE_G = new RegExp(`${NAME}\\s+(?:הוא\\s+|היא\\s+)?${TERM}\\s+של\\s+מי`, 'gu')
 
 /**
- * Parse a Hebrew relational question into { type, subject, reverse }, or null if
- * it is not one. The single entry point every path should call before deciding
- * a relation phrase is "unrecognised" and punting to the LLM.
+ * Parse a Hebrew relational question into { type, subject, reverse, match }, or
+ * null if it is not one. The single entry point every path should call before
+ * deciding a relation phrase is "unrecognised" and punting to the LLM. Scans for
+ * the first phrase whose term actually normalizes, so a non-relation "<x> של <y>"
+ * earlier in the sentence never shadows a real relation reference.
  */
 export function parseRelationQuery(text: string): RelationQuery | null {
   const t = text.trim().replace(/[?？!.]+$/g, '')
 
   // Reverse first: "<name> ... <term> של מי" (so "של מי" is never read as a name).
-  const rev = REVERSE.exec(t)
-  if (rev) {
-    const type = normalizeRelationTerm(rev[2]!)
-    if (type) return { type, subject: rev[1]!.trim(), reverse: true }
+  // On a non-normalizing hit, retry from one char after the match START (not the
+  // end) so a greedy 2-word capture that swallowed a leading word (e.g. a
+  // preposition) never hides a real relation phrase just after it.
+  REVERSE_G.lastIndex = 0
+  for (let m = REVERSE_G.exec(t); m; m = REVERSE_G.exec(t)) {
+    const type = normalizeRelationTerm(m[2]!)
+    if (type) return { type, subject: m[1]!.trim(), reverse: true, match: m[0].trim() }
+    REVERSE_G.lastIndex = m.index + 1
   }
 
-  const fwd = FORWARD.exec(t)
-  if (fwd) {
-    const type = normalizeRelationTerm(fwd[1]!)
-    if (type) return { type, subject: fwd[2]!.trim(), reverse: false }
+  FORWARD_G.lastIndex = 0
+  for (let m = FORWARD_G.exec(t); m; m = FORWARD_G.exec(t)) {
+    const type = normalizeRelationTerm(m[1]!)
+    if (type) {
+      // Span for substitution: the "<term> של <name>" phrase only (drop any
+      // leading interrogative/copula lead so callers replace just the reference).
+      const span = `${m[1]!.trim()} של ${m[2]!.trim()}`
+      return { type, subject: m[2]!.trim(), reverse: false, match: span }
+    }
+    FORWARD_G.lastIndex = m.index + 1
   }
   return null
 }

@@ -140,6 +140,12 @@ export function siblingInLawOf(name: string, gender: 'female' | 'male'): string[
   })
   return uniq([...spousesOfSiblings, ...siblingsOfSpouses]).filter(s => genderOf(ix, s) === gender)
 }
+/** Parents-in-law: the gendered parents of the person's spouse.
+ *  חם (father-in-law) = male; חמות (mother-in-law) = female. */
+export function parentInLawOf(name: string, gender: 'female' | 'male'): string[] {
+  const ix = index()
+  return uniq(spousesOf(ix, name).flatMap(sp => parentsOf(ix, sp)).filter(p => genderOf(ix, p) === gender))
+}
 
 /** Canonical relation type → graph resolver. The ONE place a normalized relation
  *  becomes a set of people, so every path resolves identically. */
@@ -166,6 +172,8 @@ function resolveByType(type: RelationType, subject: string): string[] {
     case 'daughter_in_law':return childInLawOf(subject, 'female')
     case 'brother_in_law': return siblingInLawOf(subject, 'male')
     case 'sister_in_law':  return siblingInLawOf(subject, 'female')
+    case 'father_in_law':  return parentInLawOf(subject, 'male')
+    case 'mother_in_law':  return parentInLawOf(subject, 'female')
   }
 }
 
@@ -204,6 +212,30 @@ const REL = [
   //   forward  "(מי) הגרוש/הגרושה של מור" → capture מור (never the interrogative מי)
   { re: /(?:מי\s+)?ה?גרוש(?:ה)?\s+של\s+(?!מי(?![֐-׿]))([֐-׿]+)/u, rel: 'ex_spouse', fn: (n: string) => exSpouseOf(n) },
 ]
+
+/**
+ * Resolve a relation PHRASE inside free text to concrete family member(s) —
+ * the ONE seam every path uses to turn "עם בת הזוג של מור" / "הבת של מרטיטה"
+ * into real names. Forward phrases only (a reference that denotes a person);
+ * returns the matched span (for in-place substitution) + the resolved people,
+ * or null when it is not a relation phrase or resolves to nobody known.
+ */
+export function resolvePersonReference(text: string): { span: string; people: string[] } | null {
+  const q = parseRelationQuery(text)
+  if (!q || q.reverse) return null
+  const people = uniq(resolveByType(q.type, q.subject).filter(Boolean))
+  if (people.length === 0) return null
+  return { span: q.match, people }
+}
+
+/** Resolve a relation phrase to a SINGLE person, or null. Used where exactly one
+ *  referent is required (a meeting companion, a fact subject) — ambiguous
+ *  multi-person references (e.g. "הילדים של מור") return null on purpose. */
+export function resolveSinglePerson(text: string): { span: string; person: string } | null {
+  const r = resolvePersonReference(text)
+  if (!r || r.people.length !== 1) return null
+  return { span: r.span, person: r.people[0]! }
+}
 
 /** Resolve a Hebrew relationship question deterministically from the graph.
  * Returns null if it is not a recognised relationship query. */

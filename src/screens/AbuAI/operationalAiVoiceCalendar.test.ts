@@ -40,7 +40,9 @@ function isCalendarRead(text: string): boolean {
 
 describe('A. calendar create beats family Q&A', () => {
   const cases: Array<{ text: string; title: string; day: number; time: string }> = [
-    { text: 'תקבע לי עם אמא של אופיר בשני 13:22', title: 'פגישה עם אמא של אופיר', day: 1, time: '13:22' },
+    // The relation phrase resolves to the real person via the morphology seam —
+    // the stored title carries the RESOLVED name (אמא של אופיר → מור), never the phrase.
+    { text: 'תקבע לי עם אמא של אופיר בשני 13:22', title: 'פגישה עם מור', day: 1, time: '13:22' },
     { text: 'תקבע עם מור ברביעי 4 אחהצ', title: 'פגישה עם מור', day: 3, time: '16:00' },
     { text: 'שימי לי עם יעל ביום ראשון הקרוב בשבע בערב', title: 'פגישה עם יעל', day: 0, time: '19:00' },
     { text: 'תרשמי לי עם גילעד בשלישי הבא 14:00', title: 'פגישה עם גילעד', day: 2, time: '14:00' },

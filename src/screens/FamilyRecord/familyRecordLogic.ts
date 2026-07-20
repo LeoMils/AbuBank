@@ -7,6 +7,7 @@
 import { extractChange } from '../../truth/conversationIntake'
 import { describeChange, type Change } from '../../truth/familyLaws'
 import type { LedgerService } from '../../truth/ledgerService'
+import { resolveSinglePerson } from '../AbuAI/familyReasoning'
 
 export interface Proposal { raw: string; change: Change | null; label: string }
 
@@ -15,7 +16,7 @@ export interface Proposal { raw: string; change: Change | null; label: string }
 export function parseFreeText(text: string): Proposal[] {
   return text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((raw) => {
     const fact = raw.replace(/^(?:תזכרי|זכרי|תרשמי|רשמי)\s+ש/u, '')
-    const change = extractChange(fact)
+    const change = extractChange(fact, resolveSinglePerson)
     return { raw, change, label: change ? describeChange({ ...change, ...(change.op === 'addFact' ? { fact: { ...change.fact, at: 0 } } : {}) }) : `לא זוהתה עובדה — ${raw}` }
   })
 }
