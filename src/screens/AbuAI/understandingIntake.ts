@@ -109,13 +109,39 @@ export type InterpretTransport = (text: string, schema: typeof STRUCTURED_INTENT
  * this function only guarantees a safe, validated shape (or operation:'unknown'
  * when the transport fails).
  */
-export async function interpretUtterance(text: string, transport: InterpretTransport): Promise<StructuredIntent> {
+/** Bounded wait — the interpret step FAILS CLOSED on a hang (obligation #9: timeout). */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('interpret_timeout')), ms)
+    p.then((v) => { clearTimeout(timer); resolve(v) }, (e) => { clearTimeout(timer); reject(e) })
+  })
+}
+
+export async function interpretUtterance(text: string, transport: InterpretTransport, opts?: { timeoutMs?: number }): Promise<StructuredIntent> {
   try {
-    const raw = await transport(text, STRUCTURED_INTENT_SCHEMA)
-    return normalizeIntent(raw)
+    const raw = await withTimeout(transport(text, STRUCTURED_INTENT_SCHEMA), opts?.timeoutMs ?? 6000)
+    return normalizeIntent(raw) // malformed / partial schema → coerced to a safe shape (never fabricated)
   } catch {
-    return normalizeIntent(null) // operation:'unknown' → caller falls back
+    return normalizeIntent(null) // timeout / provider-down / throw → operation:'unknown' (fail closed)
   }
+}
+
+/**
+ * FAIL-CLOSED decision (obligation #9): given a grounded intent, decide whether it
+ * is SAFE to act, or whether we must ask ONE clarifying question, or decline to the
+ * normal chat path. Never acts on empty / contradictory / low-confidence structured
+ * meaning — the interpreter is allowed to be unsure, never to fabricate an action.
+ */
+export interface IntakeDecision { action: 'act' | 'clarify' | 'decline'; ask?: string }
+export function decideIntakeAction(g: GroundedIntent): IntakeDecision {
+  if (g.ask) return { action: 'clarify', ask: g.ask }                       // model flagged ambiguity / equal-valid
+  if (g.operation === 'unknown' || g.operation === 'chat') return { action: 'decline' } // not an actionable op → normal path
+  const needsPerson = g.operation === 'family_query' || g.operation === 'remember_fact'
+  if (needsPerson && g.people.length === 0 && !g.fact) return { action: 'clarify', ask: 'על מי מדובר?' }
+  if (g.operation === 'calendar_create' && !g.date && !g.time && g.people.length === 0 && !g.title) {
+    return { action: 'clarify', ask: 'מה לקבוע ולמתי?' }                     // contradictory: "create" with nothing concrete
+  }
+  return { action: 'act' }
 }
 
 const INTERPRET_SYSTEM = [
