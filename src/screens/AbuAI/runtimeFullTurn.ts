@@ -29,6 +29,7 @@ import { createOnlineRuntime, type OnlineRuntimeV2 } from './onlineRuntimeV2'
 import { interpretTask } from './aiTaskInterpreter'
 import { authorityIntent, legacyDomainClassify } from './cognitiveRuntime'
 import { interpretUtterance, groundIntent, groundingLine, type InterpretTransport } from './understandingIntake'
+import { guardNoFabricatedCalendar } from './noFabricationGuard'
 
 function calendarCountForScope(scope: 'today' | 'tomorrow'): number {
   try { return scope === 'tomorrow' ? getTomorrowEvents().events.length : getTodayEvents().events.length }
@@ -158,6 +159,11 @@ export async function runFullTurn(
     const fin = finalizeExternalAnswer(decision.state, 'לא הבנתי עד הסוף. תגידי לי שוב במילים אחרות ואני איתך.', { intent: decision.intent })
     display = fin.display ?? ''; speak = fin.speak ?? display; st = fin.state
   }
+
+  // P6 no-fabrication hard law: an LLM/fallback answer may NEVER assert a specific
+  // appointment (the "1 באוקטובר" class) — calendar is deterministic. Neutralize to an
+  // honest deferral before finalize. Deterministic/online answers are trusted.
+  { const g = guardNoFabricatedCalendar(display, source); if (g.scrubbed) { display = g.text; speak = g.text } }
 
   // Single finalizer tail: Cognitive Supervisor (gate + repair + honest limit) →
   // Conversation Delivery Engine → RUNTIME_FINALIZED trace.

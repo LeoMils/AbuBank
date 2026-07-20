@@ -93,9 +93,16 @@ LAWS gate (`familyLaws`), ledger (`ledgerService`).
 - FOLLOW-UP: FamilyRecord paste-box still uses `extractChange` (no width yet) — can adopt
   `extractExplicitFact` later.
 
+## Done — session 8 (P6 no-fabrication)
+
+- `noFabricationGuard.guardNoFabricatedCalendar` runs before finalize in `runtimeFullTurn`: an
+  LLM/fallback answer with an appointment frame + a concrete date/clock is neutralized to an
+  honest calendar deferral. Historical dates/prose pass; deterministic/online trusted. 6/6 + FULL
+  11536 / 0 regress.
+
 ## Sequenced plan (remaining)
 
-1. **P6 no-fabrication hard law** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
+1. **P7 correction-verification** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
    near-homophones) over the corpus; permanent.
 3. **P1 understanding-first intake** — client interpret step against `api/abuai-chat.ts`
    with a STRICT structured-intent schema {operation, person-refs, datetime, place,
