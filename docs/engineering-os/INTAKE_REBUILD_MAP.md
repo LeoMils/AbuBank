@@ -127,9 +127,16 @@ LAWS gate (`familyLaws`), ledger (`ledgerService`).
    re-search before agreeing.
 8. **P8 toast spam** — kill the "אבחון הקול הועתק" repeat (reproduce the fire path first).
 
-## Verification regime (runs AFTER the fixes, before handover)
+## Verification regime — status (session 10, 0.149.0)
 
-Full corpus (marathon + mirrors + morphology + garble + Leo's imported transcripts as
-regressions) clean → fresh preview deploy → internal 200-session free-language
-simulation through the deployed path → triage every break → hand Leo: URL, version,
-and a 10-line plain-Hebrew test card. Leo's round decides readiness.
+- ✅ **Full corpus clean**: 387 files / 11546 tests / 0 regressions (every cycle).
+- ✅ **Internal free-language simulation**: `src/eval/freeLanguageSimulation.test.ts` — 300+
+  generated utterances (morphology × garble × members × who-is/create/correction) asserting the
+  rebuild invariants (never a wrong person, never a crash, resolved-name titles, no denial). CODE class.
+- ✅ **10-line Hebrew Leo test card**: `docs/engineering-os/LEO_FREE_LANGUAGE_TEST_CARD.md`.
+- ⏳ **HUMAN-GATED (not done here)**: the mandate's 200-session run through the DEPLOYED app +
+  on-device voice/latency is PREVIEW/PHYSICAL. Vercel Preview auto-builds on push to rc5; promotion
+  is human-gated and the preview URL was not fetchable from this environment. Verify via
+  `<preview-URL>/api/health` → `buildVersion: 0.149.0-verification-regime`, then run the test card.
+
+**Leo's free-language round decides readiness — nothing else does.**
