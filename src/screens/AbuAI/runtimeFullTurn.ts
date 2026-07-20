@@ -28,6 +28,7 @@ import { getTodayEvents, getTomorrowEvents } from './tools'
 import { createOnlineRuntime, type OnlineRuntimeV2 } from './onlineRuntimeV2'
 import { interpretTask } from './aiTaskInterpreter'
 import { authorityIntent, legacyDomainClassify } from './cognitiveRuntime'
+import { interpretUtterance, groundIntent, groundingLine, type InterpretTransport } from './understandingIntake'
 
 function calendarCountForScope(scope: 'today' | 'tomorrow'): number {
   try { return scope === 'tomorrow' ? getTomorrowEvents().events.length : getTodayEvents().events.length }
@@ -39,6 +40,12 @@ export interface FullTurnTools {
   llm: (input: string, grounding: string | null, messages: Array<{ role: string; content: string }>) => Promise<string>
   /** Live web/current-info lookup. */
   online: (query: string) => Promise<{ ok: boolean; answer: string; reason?: string | null }>
+  /** P1 understanding-first: interpret a turn the fast-path pattern cache MISSED
+   *  into a structured intent. Optional — absent → pattern-only behavior (backward
+   *  compatible). Injected so it is mockable in tests / a real provider in the app. */
+  interpret?: InterpretTransport
+  /** Optional latency sink for the understanding step (ms, operation) — diagnostics. */
+  onUnderstandLatency?: (ms: number, operation: string) => void
 }
 
 export interface FullTurnResult {
@@ -122,7 +129,24 @@ export async function runFullTurn(
     display = fin.display ?? ''; speak = fin.speak ?? display; st = fin.state
   } else if (decision.needsLLM) {
     source = 'llm'
-    const raw = await tools.llm(input, decision.grounding, ctx.messages)
+    // P1 understanding-first: the pattern fast-path MISSED (it fell to the LLM). Try
+    // the understanding layer to recover a structured intent and ground it through
+    // the deterministic engines, then feed the VERIFIED facts (graph-resolved people,
+    // engine-parsed date/time) to the LLM so it cannot hallucinate them. Understanding
+    // never decides a family relation on its own and can never invent a person; it
+    // only enriches grounding. Bounded + fire-and-forget-safe: it never breaks a turn.
+    let grounding = decision.grounding
+    if (tools.interpret) {
+      try {
+        const started = Date.now()
+        const grounded = groundIntent(await interpretUtterance(input, tools.interpret))
+        const ms = Date.now() - started
+        tools.onUnderstandLatency?.(ms, grounded.operation)
+        const line = groundingLine(grounded)
+        if (line) grounding = grounding ? `${line}\n${grounding}` : line
+      } catch { /* understanding must never break a turn — fall through to raw LLM */ }
+    }
+    const raw = await tools.llm(input, grounding, ctx.messages)
     // Derive the topic from the ask ("ספרי לי על המהפכה הצרפתית" → "המהפכה הצרפתית")
     // so "על מה דיברנו" / "תמשיכי" work next turn.
     const topic = input.replace(/^(?:ספרי\s+לי\s+על|תספרי\s+לי\s+על|ספר\s+לי\s+על|מה\s+זה|מה\s+זאת|מה\s+את\s+יודעת\s+על)\s+/u, '').trim() || null

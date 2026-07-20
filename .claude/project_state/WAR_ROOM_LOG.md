@@ -1,5 +1,28 @@
 # WAR_ROOM_LOG
 
+## 2026-07-20 — INTAKE REBUILD mandate · session 4 (P1 wired live) → 0.143.0
+- WIRING POINT: `runtimeFullTurn` — the ACTUAL live path is index.tsx handleSend → ExecutiveCognitive
+  controller → `runFullTurn` (already async). Its `needsLLM` branch IS the pattern miss (fast-path fell
+  to the LLM). Hooked understanding there — patterns remain the fast-path cache, exactly per the mandate.
+- BUILT the real transport `makeInterpretTransport` on the existing `sendServerChat` client (posts to
+  /api/abuai-chat with a strict json_schema response_format; fetch injected for tests). Added `groundingLine`
+  to render only VERIFIED (graph-resolved / engine-parsed) facts.
+- ENRICH-not-decide (safety): on a miss, interpret→ground→prepend a verified-facts line to the LLM grounding.
+  Understanding NEVER decides a family relation (honors the always-on "family answered deterministically,
+  never the LLM" rule) and can never invent a person (unresolved refs dropped). A failed interpret is caught
+  and the turn falls through to raw LLM — understanding can never break a turn.
+- Added optional `interpret?`/`onUnderstandLatency?` to `FullTurnTools` (backward compatible); wired the real
+  transport + a `[AbuAI][UNDERSTAND|LATENCY]` logger into `fullTurnBridge.buildFullTurnTools`.
+- TESTS: understandingIntake 19/19 (added transport plumbing via mock fetch + groundingLine) + new
+  `runtimeFullTurnUnderstanding` 3/3 (a real needsLLM turn: enrichment reaches the LLM, latency reported,
+  failing interpret still answers, absent interpret = unchanged). Probed the miss path before asserting.
+- VALIDATION: FULL suite 381 files / 11496 pass / 2 todo / 0 fail; tsc + build clean; version contract green.
+  Version 0.142.0→0.143.0.
+- EVIDENCE: CODE/MOCK for the plumbing + enrichment. PREVIEW/PENDING for the REAL provider call + on-device
+  latency (deploy-only). NOT device-proven; only the Leo free-language round decides ready.
+- NEXT (autonomous, in order): P3 garble suite → P4 calendar state-machine audit → P5 ledger width →
+  P6 no-fabrication guard → P7 correction-verify → P8 toast → verification regime.
+
 ## 2026-07-20 — INTAKE REBUILD mandate · session 3 (P1 foundation: understanding-first layer) → 0.142.0
 - BUILT the understanding-first layer `src/screens/AbuAI/understandingIntake.ts` per the mandate:
   a STRICT `StructuredIntent` schema {operation, personRefs (relation phrases in any morphology OR

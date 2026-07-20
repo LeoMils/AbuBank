@@ -60,12 +60,20 @@ LAWS gate (`familyLaws`), ledger (`ledgerService`).
 - **HONEST LIMIT:** built + test-covered, **NOT yet wired** as the live gate in the async turn
   path. Patterns remain the fast-path cache. Real-provider call + latency = PREVIEW, unproven.
 
+## Done — session 4 (P1 wired live)
+
+- `runtimeFullTurn` `needsLLM` branch (the pattern MISS) now runs understanding: real transport
+  `makeInterpretTransport` → `sendServerChat` → `/api/abuai-chat` (strict json_schema) →
+  `groundIntent` → `groundingLine` enriches the LLM grounding with graph-resolved people +
+  engine-parsed date/time. Never decides a relation / invents a person; a failed interpret never
+  breaks the turn; latency reported (`onUnderstandLatency` + `[AbuAI][UNDERSTAND|LATENCY]`).
+- Wired into `fullTurnBridge.buildFullTurnTools` (live). Tests: transport plumbing (mock fetch) +
+  live enrichment/latency/backward-compat (mock transport). FULL suite 11496 / 0 regress.
+- **PREVIEW/PENDING:** real provider call + on-device latency proven only on a deploy — not yet.
+
 ## Sequenced plan (remaining)
 
-1. **Wire P1 live** — call `interpretUtterance` (real transport → `/api/abuai-chat`) on a pattern
-   MISS in the turn path, ground it, route to the existing engines; measure + report latency
-   (PREVIEW). The sync→async change to `runCognitiveTurn` is the careful part.
-2. **P3 garble suite** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
+1. **P3 garble suite** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
    near-homophones) over the corpus; permanent.
 3. **P1 understanding-first intake** — client interpret step against `api/abuai-chat.ts`
    with a STRICT structured-intent schema {operation, person-refs, datetime, place,

@@ -9,9 +9,16 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  normalizeIntent, interpretUtterance, groundIntent,
+  normalizeIntent, interpretUtterance, groundIntent, groundingLine, makeInterpretTransport,
   type StructuredIntent, type InterpretTransport,
 } from './understandingIntake'
+
+/** A fake /api/abuai-chat response carrying the model's JSON content. */
+function mockChatFetch(intentJson: unknown): typeof fetch {
+  return (async () => ({
+    json: async () => ({ ok: true, openai: { choices: [{ message: { content: JSON.stringify(intentJson) } }] } }),
+  })) as unknown as typeof fetch
+}
 
 const base: StructuredIntent = {
   operation: 'chat', personRefs: [], dateWords: null, timeWords: null, place: null,
@@ -87,5 +94,36 @@ describe('P1 · groundIntent resolves through the real engines (deterministic, n
     const g = groundIntent({ ...base, operation: 'remember_fact', fact: { kind: 'residence', value: 'חיפה' }, confirmation: 'yes' })
     expect(g.fact).toEqual({ kind: 'residence', value: 'חיפה' })
     expect(g.confirmation).toBe('yes')
+  })
+})
+
+describe('P1 · groundingLine renders only VERIFIED facts for the LLM (never unresolved)', () => {
+  it('resolved people + date + time → a verified-facts line', () => {
+    const g = groundIntent({ ...base, operation: 'calendar_create', personRefs: ['בת הזוג של מור'], dateWords: 'מחר', timeWords: 'בשלוש אחר הצהריים' })
+    const line = groundingLine(g)!
+    expect(line).toContain('יעל')
+    expect(line).toMatch(/\d{4}-\d{2}-\d{2}/)
+    expect(line).toContain('15:00')
+  })
+  it('nothing deterministic resolved → null (no empty grounding)', () => {
+    expect(groundingLine(groundIntent({ ...base, operation: 'chat' }))).toBeNull()
+  })
+  it('an unresolved ref never leaks into the line', () => {
+    const line = groundingLine(groundIntent({ ...base, personRefs: ['הכלב של מור'] }))
+    expect(line).toBeNull()
+  })
+})
+
+describe('P1 · real transport (makeInterpretTransport) — request/response plumbing (PREVIEW behavior not asserted)', () => {
+  it('parses the model JSON from the /api/abuai-chat envelope', async () => {
+    const transport = makeInterpretTransport({ fetchImpl: mockChatFetch({ ...base, operation: 'calendar_create', personRefs: ['החתן של מור'] }) })
+    const si = await interpretUtterance('תקבע עם החתן של מור', transport)
+    expect(si.operation).toBe('calendar_create')
+    expect(si.personRefs).toEqual(['החתן של מור'])
+  })
+  it('a provider error degrades to unknown (caller falls back)', async () => {
+    const failFetch = (async () => ({ json: async () => ({ ok: false, errorCode: 'CHAT_PROVIDER_FAILED' }) })) as unknown as typeof fetch
+    const transport = makeInterpretTransport({ fetchImpl: failFetch })
+    expect((await interpretUtterance('...', transport)).operation).toBe('unknown')
   })
 })

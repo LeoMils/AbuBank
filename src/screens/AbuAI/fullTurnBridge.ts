@@ -11,8 +11,13 @@
 import { sendMessage } from './service'
 import { answerOnlineCurrentInfo } from './onlineProvider'
 import { isOnlineCurrentInfoQuery, shouldBlockOnlineForPersonal } from './onlineIntent'
+import { makeInterpretTransport } from './understandingIntake'
 import type { FullTurnTools } from './runtimeFullTurn'
 import type { ChatMessage } from './types'
+
+// P1 understanding-first transport — real provider via /api/abuai-chat. Built once
+// (stateless). Live behavior is PREVIEW-class; the request/response plumbing is unit-tested.
+const interpret = makeInterpretTransport()
 
 export function buildFullTurnTools(messages: ChatMessage[], voiceMode: boolean): FullTurnTools {
   return {
@@ -25,5 +30,9 @@ export function buildFullTurnTools(messages: ChatMessage[], voiceMode: boolean):
       const o = await answerOnlineCurrentInfo(q, { locationHint: 'Kfar Saba area, Israel' })
       return { ok: o.ok, answer: o.ok ? o.answer : (o.userMessage ?? ''), reason: o.ok ? null : (o.errorCode ?? 'provider_failed') }
     },
+    // Understanding-first: runs ONLY on a pattern miss (the needsLLM branch), enriching
+    // the LLM grounding with graph-resolved people + engine-parsed dates. Latency logged.
+    interpret,
+    onUnderstandLatency: (ms, op) => { try { console.info(`[AbuAI][UNDERSTAND|LATENCY] ms=${ms} op=${op}`) } catch { /* logging never breaks a turn */ } },
   }
 }

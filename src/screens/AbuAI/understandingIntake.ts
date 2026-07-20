@@ -22,6 +22,7 @@
 import { parseCreateDate, parseHebrewTimeDetailed } from './calendarCreate'
 import { resolveSinglePerson } from './familyReasoning'
 import { findNode } from './familyGraph'
+import { sendServerChat } from './serverChatProvider'
 
 // ─── The strict structured intent (the schema the interpreter must return) ───
 
@@ -115,6 +116,49 @@ export async function interpretUtterance(text: string, transport: InterpretTrans
   } catch {
     return normalizeIntent(null) // operation:'unknown' → caller falls back
   }
+}
+
+const INTERPRET_SYSTEM = [
+  'את/ה שכבת הבנה. קלט: משפט של משתמשת מבוגרת בעברית (לפעמים תעתיק דיבור משובש).',
+  'החזר/י אך ורק JSON תקין לפי הסכימה — בלי טקסט חופשי.',
+  'שחזר/י את המשמעות המכוונת גם אם התעתיק משובש. אם באמת דו-משמעי — מלא/י ambiguousQuestion בשאלה אחת.',
+  'personRefs: השאר/י ביטויי-קרבה כפי שנאמרו ("החתן של מור", "בת הזוג של מור") או שמות — אל תמציא/י אנשים.',
+  'dateWords/timeWords: מילות התאריך/שעה כפי שנאמרו ("מחר", "בשלוש וחצי") — אל תמיר/י לפורמט.',
+].join(' ')
+
+/**
+ * The REAL transport (posts to /api/abuai-chat via sendServerChat with a strict
+ * json_schema). PREVIEW-class: the request-building + response-extraction are
+ * unit-tested with an injected fetch, but the live provider behavior + latency
+ * are proven only on a deploy. `fetchImpl` is injected for tests.
+ */
+export function makeInterpretTransport(opts?: { model?: string; fetchImpl?: typeof fetch }): InterpretTransport {
+  const model = opts?.model ?? 'gpt-4o-mini'
+  return async (text) => {
+    const res = await sendServerChat({
+      model,
+      temperature: 0,
+      messages: [{ role: 'system', content: INTERPRET_SYSTEM }, { role: 'user', content: text }],
+      response_format: { type: 'json_schema', json_schema: { name: 'structured_intent', strict: true, schema: STRUCTURED_INTENT_SCHEMA } },
+    }, { lang: 'he', ...(opts?.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}) })
+    if (!res.ok) throw new Error(res.errorCode)
+    const content = (res as { openai?: { choices?: Array<{ message?: { content?: unknown } }> } }).openai?.choices?.[0]?.message?.content
+    if (typeof content !== 'string') throw new Error('no_content')
+    return JSON.parse(content) as unknown
+  }
+}
+
+/** Render a grounded intent as a VERIFIED-facts line to prepend to the LLM
+ *  grounding on a pattern miss — so the model uses real, graph-resolved people
+ *  and engine-parsed dates instead of hallucinating them. Null when nothing
+ *  deterministic was resolved. Never includes unresolved refs. */
+export function groundingLine(g: GroundedIntent): string | null {
+  const parts: string[] = []
+  if (g.people.length) parts.push(`אנשים: ${g.people.join(', ')}`)
+  if (g.date) parts.push(`תאריך: ${g.date}`)
+  if (g.time) parts.push(`שעה: ${g.time}`)
+  if (g.place) parts.push(`מקום: ${g.place}`)
+  return parts.length ? `מידע מאומת מהמערכת (השתמש/י בו, אל תמציא/י): ${parts.join(' · ')}` : null
 }
 
 // ─── The deterministic half (PURE → CODE-provable) ───────────────────────────
