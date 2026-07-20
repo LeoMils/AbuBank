@@ -182,40 +182,6 @@ function resolveByType(type: RelationType, subject: string): string[] {
 
 export interface FamilyAnswer { relation: string; subject: string; results: string[]; ambiguous: boolean; known: boolean }
 
-const REL = [
-  { re: /(?:מי\s+)?(?:זאת\s+|זה\s+|היא\s+|הוא\s+)?ה?סבתא(?:\s+רבתא)?\s+של\s+(\S+)/u, rel: 'grandmother', fn: (n: string) => grandparentsOf(n, 'female') },
-  { re: /(?:מי\s+)?(?:זה\s+|זאת\s+|הוא\s+|היא\s+)?ה?סבא(?:\s+רבא)?\s+של\s+(\S+)/u, rel: 'grandfather', fn: (n: string) => grandparentsOf(n, 'male') },
-  { re: /(?:מי\s+ה?)?דוד(?:ות|ה)\s+של\s+(\S+)/u, rel: 'aunt', fn: (n: string) => unclesAuntsOf(n, 'female') },
-  { re: /(?:מי\s+ה?)?דוד(?:ים)?\s+של\s+(\S+)/u, rel: 'uncle', fn: (n: string) => unclesAuntsOf(n, 'male') },
-  { re: /(?:ה?ילדים|ה?בנים|ה?ילדות)\s+של\s+(\S+)|מי\s+ה?ילדים\s+של\s+(\S+)/u, rel: 'children', fn: (n: string) => childrenOfPublic(n) },
-  // Grandchildren of X (children-of-children). Handles singular + plural (נכד/נכדים/נכדות).
-  // Placed BEFORE grandparent rules so "נכד של" (grandchild) is not confused with "סבא של".
-  { re: /(?:מי\s+ה?)?נכד(?:ים|ות)?\s+של\s+(\S+)/u, rel: 'grandchildren', fn: (n: string) => grandchildrenOfPublic(n) },
-  // Partner/spouse — includes the POSSESSIVE suffix forms "בעלה" (her husband) and
-  // "אשתו"/"אשתה" (his/her wife), not only "הבעל של" / "האישה של". A common family
-  // question ("מי בעלה של אופיר") must resolve from the graph, never punt to the LLM.
-  { re: /(?:בן|בת|בני)\s+ה?זוג\s+של\s+(\S+)|ה?בעל[הוהּ]?\s+של\s+(\S+)|ה?איש[הת][הו]?\s+של\s+(\S+)|אשת[הו]\s+של\s+(\S+)|פרטנר.*של\s+(\S+)/u, rel: 'partner', fn: (n: string) => partnerOf(n) },
-  // SINGULAR daughter/son — AFTER the partner rule so "בת/בן הזוג של" is a spouse, not
-  // a child. Gender-filtered so "מי הבת של מרטיטה" → מור (not Leo), never the LLM.
-  { re: /(?:מי\s+)?ה?בת\s+של\s+(\S+)/u, rel: 'daughter', fn: (n: string) => childrenByGenderPublic(n, 'female') },
-  { re: /(?:מי\s+)?ה?בן\s+של\s+(\S+)/u, rel: 'son', fn: (n: string) => childrenByGenderPublic(n, 'male') },
-  // SINGULAR mother/father — gender-filtered parents. "מי אמא של אופיר" → מור.
-  { re: /(?:מי\s+)?ה?(?:אמא|אימא|אם)\s+של\s+(\S+)/u, rel: 'mother', fn: (n: string) => parentsByGenderPublic(n, 'female') },
-  { re: /(?:מי\s+)?ה?(?:אבא|אב)\s+של\s+(\S+)/u, rel: 'father', fn: (n: string) => parentsByGenderPublic(n, 'male') },
-  // Siblings — brother/sister/(plural). "מי אח של מור" → לאו. Plural forms first so
-  // "אחים/אחיות" are not shadowed by the bare "אח" rule (which needs "אח" + space).
-  { re: /(?:מי\s+ה?)?אח(?:ים|יות)\s+של\s+(\S+)/u, rel: 'siblings', fn: (n: string) => siblingsByGenderPublic(n) },
-  { re: /(?:מי\s+ה?)?אחות\s+של\s+(\S+)/u, rel: 'sister', fn: (n: string) => siblingsByGenderPublic(n, 'female') },
-  { re: /(?:מי\s+ה?)?אח\s+של\s+(\S+)/u, rel: 'brother', fn: (n: string) => siblingsByGenderPublic(n, 'male') },
-  // Ex-spouse — symmetric edge, so all shapes resolve to exSpouseOf(the named person):
-  //   reverse  "רפי (הוא) הגרוש של מי"  → capture רפי  (Rafi is whose ex-husband)
-  { re: /([֐-׿]+)\s+(?:הוא\s+|היא\s+)?ה?גרוש(?:ה)?\s+של\s+מי/u, rel: 'ex_spouse', fn: (n: string) => exSpouseOf(n) },
-  //   from-whom "ממי מור גרושה" / "מור גרושה ממי" → capture מור
-  { re: /ממי\s+([֐-׿]+)\s+גרוש(?:ה)?|([֐-׿]+)\s+גרוש(?:ה)?\s+ממי/u, rel: 'ex_spouse', fn: (n: string) => exSpouseOf(n) },
-  //   forward  "(מי) הגרוש/הגרושה של מור" → capture מור (never the interrogative מי)
-  { re: /(?:מי\s+)?ה?גרוש(?:ה)?\s+של\s+(?!מי(?![֐-׿]))([֐-׿]+)/u, rel: 'ex_spouse', fn: (n: string) => exSpouseOf(n) },
-]
-
 /**
  * Resolve a relation PHRASE inside free text to concrete family member(s) —
  * the ONE seam every path uses to turn "עם בת הזוג של מור" / "הבת של מרטיטה"
@@ -244,22 +210,11 @@ export function resolveSinglePerson(text: string): { span: string; person: strin
  * Returns null if it is not a recognised relationship query. */
 export function answerFamilyRelation(text: string): FamilyAnswer | null {
   const t = text.trim().replace(/[?？]/g, '')
-  // 1) The morphology normalization seam (systematic inflection space) is the gate.
+  // The morphology normalization seam is now the SOLE gate — the legacy REL pattern
+  // list was retired (see legacyFamilyIntake + intakeShadow: the seam is a proven
+  // strict superset, incl. the "ממי X גרושה" from-whom ex shape). One intake, not two.
   const q = parseRelationQuery(t)
-  if (q) {
-    const results = uniq(resolveByType(q.type, q.subject).filter(Boolean))
-    return { relation: q.type, subject: q.subject, results, ambiguous: results.length > 1, known: results.length > 0 }
-  }
-  // 2) Legacy REL fallback — shapes not yet migrated into the seam (e.g. the
-  //    "ממי X גרושה" from-whom ex form). Being pruned as the seam absorbs them.
-  for (const { re, rel, fn } of REL) {
-    const m = re.exec(t)
-    if (m) {
-      const subject = (m.slice(1).find(Boolean) ?? '').trim()
-      if (!subject) continue
-      const results = uniq(fn(subject).filter(Boolean))
-      return { relation: rel, subject, results, ambiguous: results.length > 1, known: results.length > 0 }
-    }
-  }
-  return null
+  if (!q) return null
+  const results = uniq(resolveByType(q.type, q.subject).filter(Boolean))
+  return { relation: q.type, subject: q.subject, results, ambiguous: results.length > 1, known: results.length > 0 }
 }

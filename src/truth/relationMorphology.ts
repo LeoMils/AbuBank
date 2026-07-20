@@ -137,6 +137,8 @@ const NAME = '([\\u05d0-\\u05ea]+)'
 // Optional interrogative / copula lead-in before the term.
 const LEAD = '(?:מי\\s+)?(?:זאת\\s+|זה\\s+|הוא\\s+|היא\\s+)?'
 
+// Ex-spouse "from-whom" shape (no "של"): "ממי X גרוש(ה)" / "X גרוש(ה) ממי".
+const FROMWHOM_EX = /ממי\s+([א-ת]+)\s+גרוש(?:ה)?|([א-ת]+)\s+גרוש(?:ה)?\s+ממי/u
 // Forward: "(מי) <term> של <name>"  — name must not be the interrogative מי.
 // Global so we can skip a leading non-relation "<x> של <y>" (e.g. הכלב של מור)
 // and keep scanning for the first phrase whose term is a real relation.
@@ -164,6 +166,10 @@ export function parseRelationQuery(text: string): RelationQuery | null {
     if (type) return { type, subject: m[1]!.trim(), reverse: true, match: m[0].trim() }
     REVERSE_G.lastIndex = m.index + 1
   }
+
+  // Ex-spouse "from-whom" (special shape, no "של") — kept from the retired legacy intake.
+  const fw = FROMWHOM_EX.exec(t)
+  if (fw) { const s = (fw[1] ?? fw[2] ?? '').trim(); if (s) return { type: 'ex_spouse', subject: s, reverse: false, match: fw[0].trim() } }
 
   FORWARD_G.lastIndex = 0
   for (let m = FORWARD_G.exec(t); m; m = FORWARD_G.exec(t)) {
