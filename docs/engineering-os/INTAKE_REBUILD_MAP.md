@@ -84,9 +84,18 @@ LAWS gate (`familyLaws`), ledger (`ledgerService`).
   store; multiple meetings/person allowed; resolved-name titles; STANDING capability-denial probe
   (a "can't do it" on read/search/edit/delete is a hard failure). Test-only. FULL 11516 / 0 regress.
 
+## Done — session 7 (P5 ledger width)
+
+- `extractExplicitFact` (explicit-only) covers education/hobby/event + a generic STORY catch-all,
+  gated to KNOWN family persons (via injected `isKnownFamilyPerson`); Martita's own/first-person
+  stays personal-memory; medical/financial declined. Shared soft-confirm `extractChange` untouched
+  (an eval regression from touching it was caught + reverted). FULL 11529 / 0 regress.
+- FOLLOW-UP: FamilyRecord paste-box still uses `extractChange` (no width yet) — can adopt
+  `extractExplicitFact` later.
+
 ## Sequenced plan (remaining)
 
-1. **P5 ledger intake width** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
+1. **P6 no-fabrication hard law** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
    near-homophones) over the corpus; permanent.
 3. **P1 understanding-first intake** — client interpret step against `api/abuai-chat.ts`
    with a STRICT structured-intent schema {operation, person-refs, datetime, place,

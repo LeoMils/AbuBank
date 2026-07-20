@@ -14,7 +14,7 @@ export type Gender = 'male' | 'female' | 'unknown'
 
 /** A chapter fact about a person — the FULL-PERSON chapter (residence/work/hobbies/health/
  *  events/stories/preferences). Every fact carries its PROVENANCE (source) and DATE (at). */
-export type FactKind = 'residence' | 'work' | 'hobby' | 'health' | 'event' | 'story' | 'preference'
+export type FactKind = 'residence' | 'work' | 'education' | 'hobby' | 'health' | 'event' | 'story' | 'preference'
 export interface PersonFact { kind: FactKind; value: string; source: string; at: number }
 
 export interface LedgerPerson {
@@ -179,7 +179,7 @@ export function applyChange(ledger: Ledger, change: Change): WriteResult {
 
 /** Hebrew label for a chapter fact category. */
 export const FACT_LABEL_HE: Record<FactKind, string> = {
-  residence: 'גר/ה ב', work: 'עובד/ת ב', hobby: 'תחביב', health: 'בריאות', event: 'אירוע', story: 'סיפור', preference: 'אוהב/ת',
+  residence: 'גר/ה ב', work: 'עובד/ת ב', education: 'למד/ה', hobby: 'תחביב', health: 'בריאות', event: 'אירוע', story: 'סיפור', preference: 'אוהב/ת',
 }
 
 /** One-line human log for the ledger's change history (§1: every change logged + undoable). */

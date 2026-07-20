@@ -51,7 +51,11 @@ export function extractChange(text: string, resolvePerson?: PersonResolver): Cha
   // birthdate: "<name> נולד/ה ב-YYYY-MM-DD" or "בתאריך …"
   m = t.match(new RegExp(`${N}\\s+נולד[הת]?\\s+ב?-?\\s*(\\d{4}-\\d{2}-\\d{2}|\\d{2}-\\d{2})`, 'u'))
   if (m) return { op: 'setBirthdate', id: m[1]!, birthdate: m[2]! }
-  // ── FULL-PERSON CHAPTER facts (residence / work / preference) ──
+  // ── FULL-PERSON CHAPTER facts. Medical/health is intentionally NOT extracted
+  //    (privacy: never store medical). residence / work / education / hobby / event /
+  //    preference each get a labelled kind; anything else about a person is caught by
+  //    the generic-story fallback in the EXPLICIT path (classifyIntake), so a stated
+  //    fact is never lost. ──
   m = t.match(new RegExp(`${N}\\s+גר[הת]?\\s+ב(.+)$`, 'u'))
   if (m) return { op: 'addFact', id: m[1]!, fact: { kind: 'residence', value: m[2]!.trim(), source: 'conversation', at: 0 } }
   m = t.match(new RegExp(`${N}\\s+עובד[הת]?\\s+ב(.+)$`, 'u'))
@@ -61,12 +65,56 @@ export function extractChange(text: string, resolvePerson?: PersonResolver): Cha
   return null
 }
 
+const FIRST_PERSON = /^(?:אני|אנחנו|אנו)(?![א-ת])/u
+// Privacy: never store medical/financial/phone detail — not even on an explicit remember.
+const SENSITIVE = /(?:חול[הים]|מחל[הת]|סוכרת|סרטן|תרופ|כאב|רופא|בית\s+חולים|ניתוח|אבחנ|דיכאון|לחץ\s+דם|כסף|שקל|משכורת|חשבון\s+בנק|אשראי|טלפון|0\d{1,2}-?\d{7})/u
+
+/** Verifies a bare name is a real FAMILY member. Injected so `truth/` stays graph-free. */
+export type KnownPersonCheck = (name: string) => boolean
+
+/**
+ * The EXPLICIT-remember extractor — wider than the shared soft-confirm `extractChange`.
+ * Only reached from the "תזכרי ש…" path, so widening here can never turn a conversational
+ * statement into a soft-confirm (the shared path is untouched). Chapter facts are about a
+ * FAMILY MEMBER: the subject must resolve to a known person (via a relation phrase OR the
+ * injected name check) — otherwise it is Martita's OWN memory (dog, wine, "שלי…") and is
+ * left to personal-memory (returns null → classifyIntake 'ignore'). First-person, medical,
+ * and financial are always declined.
+ */
+export function extractExplicitFact(text: string, resolvePerson?: PersonResolver, isKnownPerson?: KnownPersonCheck): Change | null {
+  const specific = extractChange(text, resolvePerson)
+  if (specific) return specific
+  if (FIRST_PERSON.test(text.trim()) || SENSITIVE.test(text)) return null
+
+  let t = text.trim()
+  let resolvedByRelation = false
+  if (resolvePerson) { const ref = resolvePerson(t); if (ref) { t = t.replace(ref.span, ref.person); resolvedByRelation = true } }
+  // The subject must be a KNOWN family person — else this is not a person chapter fact.
+  const subject = t.match(new RegExp(`^ה?${N}`, 'u'))?.[1]
+  if (!resolvedByRelation && !(subject && isKnownPerson?.(subject))) return null
+
+  let m = t.match(new RegExp(`${N}\\s+(?:למד[הת]?|לומד[הת]?|סיים[הת]?\\s+תואר)\\s+(?:את\\s+)?(.+)$`, 'u'))
+  if (m) return { op: 'addFact', id: m[1]!, fact: { kind: 'education', value: m[2]!.trim(), source: 'conversation', at: 0 } }
+  m = t.match(new RegExp(`${N}\\s+(?:מנג[נן][הת]?|מצייר[הת]?|רוקד[הת]?|אוס[פף][הת]?|משחק[הת]?)\\s+(?:את\\s+|ב)?(.+)$`, 'u'))
+  if (m) return { op: 'addFact', id: m[1]!, fact: { kind: 'hobby', value: m[2]!.trim(), source: 'conversation', at: 0 } }
+  m = t.match(new RegExp(`${N}\\s+(?:התחתן|התחתנה|התארס[הת]?|טס[הת]?\\s+ל|טייל[הת]?\\s+ב)\\s*(.+)$`, 'u'))
+  if (m) return { op: 'addFact', id: m[1]!, fact: { kind: 'event', value: m[2]!.trim(), source: 'conversation', at: 0 } }
+  // Generic catch-all: store the whole statement as a STORY for the (known) person.
+  const gm = t.match(new RegExp(`^ה?${N}\\s+(.+)$`, 'u'))
+  if (gm) return { op: 'addFact', id: gm[1]!, fact: { kind: 'story', value: text.trim(), source: 'conversation', at: 0 } }
+  return null
+}
+
 /** Classify how (or whether) an utterance should enter the ledger. */
-export function classifyIntake(utterance: string, resolvePerson?: PersonResolver): IntakeResult {
+export function classifyIntake(utterance: string, resolvePerson?: PersonResolver, isKnownPerson?: KnownPersonCheck): IntakeResult {
   const t = utterance.trim()
   const explicitM = t.match(/^(?:תזכרי|זכרי|תרשמי|רשמי)\s+ש(.+)$/u)
   if (explicitM) {
-    const change = extractChange(explicitM[1]!, resolvePerson)
+    // Explicit-remember covers ALL chapter kinds via the wider explicit extractor
+    // (specific labels + generic story fallback) — so "תזכרי ש…" about a known family
+    // person is NEVER answered "can't remember". The shared soft-confirm `extractChange`
+    // is untouched, and Martita's OWN memories fall through to personal-memory.
+    const change = extractExplicitFact(explicitM[1]!, resolvePerson, isKnownPerson)
     if (change) return { kind: 'explicit', change, reason: 'explicit remember → write now' }
     return { kind: 'ignore', reason: 'explicit but no parseable family fact' }
   }

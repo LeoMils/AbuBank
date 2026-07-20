@@ -4,7 +4,7 @@
  * unknown relation returns []. Colloquial matriarch/patriarch ("סבתא/סבא") for a
  * great-grandchild resolves up the ancestor chain to Martita / Pepe.
  */
-import { loadGraph, type GraphNode } from './familyGraph'
+import { loadGraph, findNode, type GraphNode } from './familyGraph'
 import { parseRelationQuery, type RelationType } from '../../truth/relationMorphology'
 
 interface FamilyIndex { byName: Map<string, GraphNode>; nodes: GraphNode[] }
@@ -117,6 +117,9 @@ export function partnerOf(name: string): string[] { return spousesOf(index(), na
 /** Ex-spouse(s). The graph edge is SYMMETRIC, so this answers both directions
  *  ("Mor's ex-husband" and "whose ex-husband is Rafi"). */
 export function exSpouseOf(name: string): string[] { return exSpousesOf(index(), name) }
+/** Is `name` a real family member (canonical / Hebrew / alias)? Used to gate ledger
+ *  chapter facts to FAMILY people — Martita's own things stay in personal memory. */
+export function isKnownFamilyPerson(name: string): boolean { return findNode(name) !== null }
 /** Both parents, gender-neutral ("מי ההורה של X"). */
 export function parentsPublic(name: string): string[] { return parentsOf(index(), name) }
 /** Children-in-law: the gendered spouses of the person's children.
