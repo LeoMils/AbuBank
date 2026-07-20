@@ -49,9 +49,23 @@ LAWS gate (`familyLaws`), ledger (`ledgerService`).
 - New all-paths suite (`relationSeamPaths.test.ts`) + generative morphology; FULL suite
   11474 pass / 0 regressions (one create-title test updated to the RESOLVED name).
 
+## Done — session 3 (P1 foundation: understanding-first layer)
+
+- **`src/screens/AbuAI/understandingIntake.ts`** — strict `StructuredIntent` schema +
+  `interpretUtterance(text, transport)` (LLM half, **injected transport** → MOCK-provable) +
+  `groundIntent(si)` (PURE deterministic half: person refs → the ONE seam, date/time → the
+  date engine, nothing invented) + `normalizeIntent()` (malformed model JSON → safe `unknown`).
+- 13 tests: coercion safety, dictation-corruption recovery (transport contract), deterministic
+  grounding, ambiguity → one question, fact/confirmation passthrough. FULL suite 11488 / 0 regress.
+- **HONEST LIMIT:** built + test-covered, **NOT yet wired** as the live gate in the async turn
+  path. Patterns remain the fast-path cache. Real-provider call + latency = PREVIEW, unproven.
+
 ## Sequenced plan (remaining)
 
-1. **P3 garble suite** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
+1. **Wire P1 live** — call `interpretUtterance` (real transport → `/api/abuai-chat`) on a pattern
+   MISS in the turn path, ground it, route to the existing engines; measure + report latency
+   (PREVIEW). The sync→async change to `runCognitiveTurn` is the careful part.
+2. **P3 garble suite** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
    near-homophones) over the corpus; permanent.
 3. **P1 understanding-first intake** — client interpret step against `api/abuai-chat.ts`
    with a STRICT structured-intent schema {operation, person-refs, datetime, place,

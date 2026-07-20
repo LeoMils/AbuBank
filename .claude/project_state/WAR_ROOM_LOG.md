@@ -1,5 +1,31 @@
 # WAR_ROOM_LOG
 
+## 2026-07-20 — INTAKE REBUILD mandate · session 3 (P1 foundation: understanding-first layer) → 0.142.0
+- BUILT the understanding-first layer `src/screens/AbuAI/understandingIntake.ts` per the mandate:
+  a STRICT `StructuredIntent` schema {operation, personRefs (relation phrases in any morphology OR
+  names), dateWords, timeWords, place, title, fact{kind,value}, correction, confirmation,
+  ambiguousQuestion} + `STRUCTURED_INTENT_SCHEMA` (JSON schema for the model).
+- TWO halves, DIFFERENT evidence classes (labelled honestly):
+    · interpret() — LLM half. Transport is INJECTED → the validation + dictation-corruption
+      tolerance are MOCK-provable; the real provider call + latency is PREVIEW-class, NOT proven.
+    · groundIntent() — PURE deterministic half: person refs resolve via the ONE seam
+      ("החתן של מור"→גלעד, name→canonical), date/time via the real date engine ("מחר"→date,
+      "בשלוש אחר הצהריים"→15:00). Never invents: a non-kin ref ("הכלב של מור") stays in
+      unresolvedRefs; an unparseable date/time stays null.
+- `normalizeIntent()` coerces ARBITRARY/malformed model JSON to a safe shape (bad op→'unknown',
+  junk personRefs dropped, half-specified fact→null) so the caller always falls back cleanly and
+  the model can never inject a field the layer didn't validate.
+- REGRESSION-FIRST tests `understandingIntake.test.ts` (13): coercion safety, transport-failure→
+  unknown, dictation recovery honored, deterministic grounding, ambiguity→one question, fact+
+  confirmation passthrough. Probed groundIntent before asserting.
+- VALIDATION: understandingIntake 13/13; FULL suite 380 files / 11488 pass / 2 todo / 0 fail;
+  tsc + build clean; version contract green. Version 0.141.0→0.142.0.
+- HONEST LIMIT (no overclaim): the layer is test-covered but NOT wired as the live gate in the
+  async turn path yet — `runCognitiveTurn` is sync and the LLM step is async; that wiring +
+  real-latency measurement is PREVIEW-class and is the NEXT careful step. Patterns remain the
+  fast-path cache. NOT device-proven; only the Leo free-language round decides ready.
+- NEXT: wire P1 live (async turn path, real transport → /api/abuai-chat, latency report), then P3–P8.
+
 ## 2026-07-20 — INTAKE REBUILD mandate · session 2 (P2 complete: seam feeds all paths) → 0.141.0
 - CONTINUED P2 from who-is to EVERY path, per Leo ("continue P2 across all paths, then P1").
 - FOUND a parallel path (the exact "one runtime path per capability" defect): `personPhraseResolver.ts`
