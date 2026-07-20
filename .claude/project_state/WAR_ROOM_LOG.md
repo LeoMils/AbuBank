@@ -1,5 +1,40 @@
 # WAR_ROOM_LOG
 
+## 2026-07-20 — INTAKE REBUILD mandate · session 1 (understanding-first + P2 morphology seam) → 0.140.0
+- SINGLE-WRITER: re-acquired `.abuai/ACTIVE_EXECUTION_LOCK.json` (prior voice-realtime lock was STALE —
+  heartbeat 4d old, 15m lease, base b77cba2 != HEAD 9f3541d). v2.x foreground-only, no subagents.
+- UNDERSTANDING-FIRST (mandate premise): the stale project_state docs (v0.8.1) are NOT the current system.
+  Mapped the REAL intake against the 0.139.0 code — three pattern-bound gates:
+    · chat     → `index.tsx handleSend` → `runCognitiveTurn` (cognitiveRuntime.ts) → `classifyIntent`/
+                 `legacyDomainClassify` (regex) → reasoners (familyReasoner/dateReasoner/calendar…).
+    · calendar → `calendarCreate.ts isCreateIntent` (big `CREATE_INTENT`/`CREATE_INTENT_ES` regex);
+                 `parseCreateIntent` hard-returns null unless it matches — the mandate's named failure site.
+    · ledger   → `truth/conversationIntake.ts classifyIntake` → `extractChange` (regex stack) → familyLaws
+                 gate → ledgerService.writeFact.
+  LLM proxy available for P1: `api/abuai-chat.ts` (thin OpenAI passthrough, SSE + tool-calling).
+- BASELINE (honest starting line): FULL suite 377 files / 11123 pass / 2 todo / 0 fail.
+- PICKED (load-bearing, deterministic, CODE-provable, general mechanism, no parallel path): P2 — the ONE
+  morphology normalization seam. RED anchor: in-law who-is + possessive/analytic inflections punted to the
+  LLM (answerFamilyRelation had no seam; REL was a scattered per-form regex list; כלה/חתן/גיס unhandled).
+- BUILT: `src/truth/relationMorphology.ts` — table-driven inflection space (bare/definite ה/construct/
+  possessive-suffix אמו·בתה·כלתו·חתנו·גיסתה/analytic בן הזוג/plural) → canonical `RelationType`;
+  `normalizeRelationTerm` + `parseRelationQuery` (forward + reverse "…של מי"). Wired as the GATE in
+  `answerFamilyRelation` (legacy REL demoted to fallback for the not-yet-migrated "ממי X גרושה" shape).
+  Added graph resolvers: childInLawOf (חתן/כלה), siblingInLawOf (גיס/גיסה), parentsPublic; one `resolveByType`.
+- REGRESSION FIRST → GREEN: `src/truth/relationMorphology.test.ts` — 310 generative assertions auto-derived
+  from the table × the live graph (normalization + resolution-invariance across every inflection). Probed
+  the graph to encode VERIFIED truths only (father-of-Ofir→רפי, חתן-of-Mor→גלעד, כלה-of-Mor→ירדן).
+- VALIDATION: morphology 310/310; FULL suite 378 files / 11433 pass / 2 todo / 0 fail (0 regressions vs
+  baseline); tsc clean; build clean; version contract 22/22. Version 0.139.0→0.140.0 (version.ts+health.ts+
+  version.test.ts in sync; removed an apostrophe that broke the health-label regex extractor).
+- EVIDENCE: CODE (deterministic function run = HIGH). NOT device-proven. Claim discipline: BUILT, awaiting
+  Leo's free-language device round — no "works" claim. That round is the ONLY definition of ready.
+- NOT STARTED (honest): P1 (LLM understanding layer + strict schema + latency), P3 garble suite, P4 calendar
+  state-machine audit, P5 ledger intake width, P6 no-fabrication pre-emission guard, P7 correction-verify,
+  P8 toast spam (source found: DiagnosticPanel/AbuAI index — needs reproduction before a safe fix),
+  and the full VERIFICATION REGIME (marathon + 200 free-form sessions + preview deploy + Leo test card).
+- NEXT: migrate the create/search/title/ledger paths onto the SAME seam (P2 "feeds all paths"), then P1.
+
 ## 2026-07-17 — 0.113.0: RC5 — PREVIEW-verified referability fix (real browser caught a real bug)
 - Discovered Vercel Git integration auto-deploys a preview on every push; queried the unauthenticated
   GitHub deployments API to get the URL. /api/health confirmed 0.112.0 live (PREVIEW class).

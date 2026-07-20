@@ -5,6 +5,7 @@
  * great-grandchild resolves up the ancestor chain to Martita / Pepe.
  */
 import { loadGraph, type GraphNode } from './familyGraph'
+import { parseRelationQuery, type RelationType } from '../../truth/relationMorphology'
 
 interface FamilyIndex { byName: Map<string, GraphNode>; nodes: GraphNode[] }
 
@@ -116,6 +117,57 @@ export function partnerOf(name: string): string[] { return spousesOf(index(), na
 /** Ex-spouse(s). The graph edge is SYMMETRIC, so this answers both directions
  *  ("Mor's ex-husband" and "whose ex-husband is Rafi"). */
 export function exSpouseOf(name: string): string[] { return exSpousesOf(index(), name) }
+/** Both parents, gender-neutral ("מי ההורה של X"). */
+export function parentsPublic(name: string): string[] { return parentsOf(index(), name) }
+/** Children-in-law: the gendered spouses of the person's children.
+ *  חתן (son-in-law) = male spouse of a child; כלה (daughter-in-law) = female. */
+export function childInLawOf(name: string, gender: 'female' | 'male'): string[] {
+  const ix = index()
+  return uniq(childrenOf(ix, name).flatMap(c => spousesOf(ix, c)).filter(s => genderOf(ix, s) === gender))
+}
+/** Siblings-in-law: spouses of the person's siblings + siblings of the person's
+ *  spouse, gender-filtered. גיס (brother-in-law) = male; גיסה (sister-in-law) = female. */
+export function siblingInLawOf(name: string, gender: 'female' | 'male'): string[] {
+  const ix = index()
+  const self = node(ix, name)
+  const sibs = uniq(parentsOf(ix, name).flatMap(p => childrenOf(ix, p)))
+    .filter(c => (self ? node(ix, c)?.hebrew !== self.hebrew : c !== name))
+  const spousesOfSiblings = sibs.flatMap(s => spousesOf(ix, s))
+  const siblingsOfSpouses = spousesOf(ix, name).flatMap(sp => {
+    const spNode = node(ix, sp)
+    return uniq(parentsOf(ix, sp).flatMap(p => childrenOf(ix, p)))
+      .filter(c => (spNode ? node(ix, c)?.hebrew !== spNode.hebrew : c !== sp))
+  })
+  return uniq([...spousesOfSiblings, ...siblingsOfSpouses]).filter(s => genderOf(ix, s) === gender)
+}
+
+/** Canonical relation type → graph resolver. The ONE place a normalized relation
+ *  becomes a set of people, so every path resolves identically. */
+function resolveByType(type: RelationType, subject: string): string[] {
+  switch (type) {
+    case 'grandmother':    return grandparentsOf(subject, 'female')
+    case 'grandfather':    return grandparentsOf(subject, 'male')
+    case 'grandparent':    return grandparentsOf(subject)
+    case 'mother':         return parentsByGenderPublic(subject, 'female')
+    case 'father':         return parentsByGenderPublic(subject, 'male')
+    case 'parent':         return parentsPublic(subject)
+    case 'daughter':       return childrenByGenderPublic(subject, 'female')
+    case 'son':            return childrenByGenderPublic(subject, 'male')
+    case 'children':       return childrenOfPublic(subject)
+    case 'sister':         return siblingsByGenderPublic(subject, 'female')
+    case 'brother':        return siblingsByGenderPublic(subject, 'male')
+    case 'siblings':       return siblingsByGenderPublic(subject)
+    case 'grandchildren':  return grandchildrenOfPublic(subject)
+    case 'partner':        return partnerOf(subject)
+    case 'ex_spouse':      return exSpouseOf(subject)
+    case 'aunt':           return unclesAuntsOf(subject, 'female')
+    case 'uncle':          return unclesAuntsOf(subject, 'male')
+    case 'son_in_law':     return childInLawOf(subject, 'male')
+    case 'daughter_in_law':return childInLawOf(subject, 'female')
+    case 'brother_in_law': return siblingInLawOf(subject, 'male')
+    case 'sister_in_law':  return siblingInLawOf(subject, 'female')
+  }
+}
 
 export interface FamilyAnswer { relation: string; subject: string; results: string[]; ambiguous: boolean; known: boolean }
 
@@ -157,6 +209,14 @@ const REL = [
  * Returns null if it is not a recognised relationship query. */
 export function answerFamilyRelation(text: string): FamilyAnswer | null {
   const t = text.trim().replace(/[?？]/g, '')
+  // 1) The morphology normalization seam (systematic inflection space) is the gate.
+  const q = parseRelationQuery(t)
+  if (q) {
+    const results = uniq(resolveByType(q.type, q.subject).filter(Boolean))
+    return { relation: q.type, subject: q.subject, results, ambiguous: results.length > 1, known: results.length > 0 }
+  }
+  // 2) Legacy REL fallback — shapes not yet migrated into the seam (e.g. the
+  //    "ממי X גרושה" from-whom ex form). Being pruned as the seam absorbs them.
   for (const { re, rel, fn } of REL) {
     const m = re.exec(t)
     if (m) {
