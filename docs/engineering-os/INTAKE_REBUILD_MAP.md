@@ -78,9 +78,15 @@ LAWS gate (`familyLaws`), ledger (`ledgerService`).
   wrong person. `garbleMutator.ts` (deterministic) + `garble.test.ts` (survival floor; splits
   left to STT-recovery/P1, measured not hidden). FULL suite 11512 / 0 regress.
 
+## Done — session 6 (P4 calendar audit)
+
+- `calendarJourney.test.ts`: full journey (create→query→edit→delete→recreate) round-trips the
+  store; multiple meetings/person allowed; resolved-name titles; STANDING capability-denial probe
+  (a "can't do it" on read/search/edit/delete is a hard failure). Test-only. FULL 11516 / 0 regress.
+
 ## Sequenced plan (remaining)
 
-1. **P4 calendar state-machine audit** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
+1. **P5 ledger intake width** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
    near-homophones) over the corpus; permanent.
 3. **P1 understanding-first intake** — client interpret step against `api/abuai-chat.ts`
    with a STRICT structured-intent schema {operation, person-refs, datetime, place,
