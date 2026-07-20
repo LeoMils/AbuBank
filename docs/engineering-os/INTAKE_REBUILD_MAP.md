@@ -71,9 +71,16 @@ LAWS gate (`familyLaws`), ledger (`ledgerService`).
   live enrichment/latency/backward-compat (mock transport). FULL suite 11496 / 0 regress.
 - **PREVIEW/PENDING:** real provider call + on-device latency proven only on a deploy — not yet.
 
+## Done — session 5 (P3 garble-tolerance)
+
+- Phonetic fold in `relationMorphology` (ק/ך/ח→כ, ט→ת, ע→א, ב→ו, finals), gated ≥3 chars +
+  unambiguous → a near-homophone slip in a relation term resolves ("החטן של מור"→גלעד), never a
+  wrong person. `garbleMutator.ts` (deterministic) + `garble.test.ts` (survival floor; splits
+  left to STT-recovery/P1, measured not hidden). FULL suite 11512 / 0 regress.
+
 ## Sequenced plan (remaining)
 
-1. **P3 garble suite** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
+1. **P4 calendar state-machine audit** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
    near-homophones) over the corpus; permanent.
 3. **P1 understanding-first intake** — client interpret step against `api/abuai-chat.ts`
    with a STRICT structured-intent schema {operation, person-refs, datetime, place,

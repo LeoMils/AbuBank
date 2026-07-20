@@ -95,11 +95,40 @@ const FORM_TO_TYPE: Map<string, RelationType> = (() => {
   return m
 })()
 
-/** Normalize a bare relation term/phrase to its canonical type, or null. */
+/*
+ * Phonetic fold for garble-tolerance (P3): collapse the Hebrew near-homophones
+ * an STT engine confuses so a single-character slip still resolves. Gated to
+ * terms of length ≥ 3 so short function words (e.g. "עם") never fold onto a
+ * relation term. Built once, in parallel with the exact map.
+ */
+const PHON_FOLD: Record<string, string> = { 'ק': 'כ', 'ך': 'כ', 'ח': 'כ', 'ט': 'ת', 'ע': 'א', 'ב': 'ו', 'ם': 'מ', 'ן': 'נ', 'ץ': 'צ', 'ף': 'פ' }
+function phoneticKey(word: string): string { return [...word].map((c) => PHON_FOLD[c] ?? c).join('') }
+
+/** phonetic key → type, ONLY where the fold is unambiguous (one type per key). */
+const PHON_TO_TYPE: Map<string, RelationType | null> = (() => {
+  const m = new Map<string, RelationType | null>()
+  for (const [form, type] of FORM_TO_TYPE) {
+    if (form.replace(/\s/g, '').length < 3) continue // skip short forms (collision-prone)
+    const k = phoneticKey(form)
+    if (m.has(k) && m.get(k) !== type) m.set(k, null) // ambiguous fold → refuse
+    else if (!m.has(k)) m.set(k, type)
+  }
+  return m
+})()
+
+/** Normalize a bare relation term/phrase to its canonical type, or null.
+ *  Exact match first; then a phonetic-fold fallback for single-char STT garble
+ *  ("החטן"→son_in_law) — only when the fold is unambiguous. */
 export function normalizeRelationTerm(rawTerm: string): RelationType | null {
   const t = rawTerm.trim().replace(/\s+/g, ' ')
   if (!t) return null
-  return FORM_TO_TYPE.get(t) ?? null
+  const exact = FORM_TO_TYPE.get(t)
+  if (exact) return exact
+  if (t.replace(/\s/g, '').length >= 3) {
+    const phon = PHON_TO_TYPE.get(phoneticKey(t))
+    if (phon) return phon
+  }
+  return null
 }
 
 // A Hebrew term phrase is 1–2 Hebrew words (covers analytic "בן הזוג").
