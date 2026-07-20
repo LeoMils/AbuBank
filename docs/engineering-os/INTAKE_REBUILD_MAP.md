@@ -107,6 +107,24 @@ LAWS gate (`familyLaws`), ledger (`ledgerService`).
   correctionVerification 5/5 (incl. live re-search). P8: deduped the "אבחון הקול הועתק" chat bubble
   (BROWSER-class). FULL 11542 / 0 regress.
 
+## Done — session 13 (per-turn shadow · obligations #2/#6/#7/#8 for the WHOLE understanding path)
+
+- **`understandingShadow.ts`** — per-turn OLD-vs-NEW comparator. OLD = `observeOldIntake` on the
+  real `runCognitiveTurn` decision (family turns resolve the REAL legacy people via the live seam);
+  NEW = interpret→`groundIntent`→`decideIntakeAction`. Buckets: agree / recovered / regressed /
+  disagree / clarify / false_clarify / unresolved. `aggregateKPIs` reports RATES (#7) + `pctl`
+  latency p50/p95/worst per stage (#8). `kpiSummaryLine` for the rolling log.
+- **Wired LIVE, observation-only** in `runtimeFullTurn` (`onIntakeShadow`, fire-and-forget → zero
+  added user latency; a pattern MISS reuses its interpretation via `shadowPre` so NO turn fires a
+  2nd provider call) + `fullTurnBridge` → `intakeShadowCollector` (bounded ring, logs rolling KPIs
+  + surfaces disagree/regressed risks immediately).
+- **KPI report**: `src/eval/understandingShadowKpi.test.ts` → `docs/eval/UNDERSTANDING_SHADOW_KPI.md`.
+  Migration-safety gate asserted: **regressed=0, disagree=0**; recovery>0; ambiguity>0. The MOCK
+  interpreter encodes target behavior (CODE); live real-provider rates/latency are PREVIEW-pending.
+- **Finding surfaced**: on under-specified turns ("תקבעי לזה משהו") the LEGACY path acts while the
+  understanding path asks ONE question — the safer behavior, a migration candidate (not a regression).
+- Evidence: CODE. understandingShadow 13/13 + shadow-wiring 2/2 + KPI corpus 1/1. NOT device-proven.
+
 ## Sequenced plan (remaining)
 
 1. **Verification regime** (full corpus green ✅ each cycle · fresh PREVIEW deploy — auto on push,

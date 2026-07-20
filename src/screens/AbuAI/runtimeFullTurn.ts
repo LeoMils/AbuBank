@@ -28,7 +28,8 @@ import { getTodayEvents, getTomorrowEvents } from './tools'
 import { createOnlineRuntime, type OnlineRuntimeV2 } from './onlineRuntimeV2'
 import { interpretTask } from './aiTaskInterpreter'
 import { authorityIntent, legacyDomainClassify } from './cognitiveRuntime'
-import { interpretUtterance, groundIntent, groundingLine, type InterpretTransport } from './understandingIntake'
+import { interpretUtterance, groundIntent, groundingLine, type GroundedIntent, type InterpretTransport } from './understandingIntake'
+import { observeOldIntake, runIntakeShadow, type ShadowRecord } from './understandingShadow'
 import { guardNoFabricatedCalendar } from './noFabricationGuard'
 import { shouldReverifyOnline } from './correctionVerification'
 
@@ -48,6 +49,10 @@ export interface FullTurnTools {
   interpret?: InterpretTransport
   /** Optional latency sink for the understanding step (ms, operation) — diagnostics. */
   onUnderstandLatency?: (ms: number, operation: string) => void
+  /** Optional PER-TURN SHADOW sink (obligation #2/#6/#7/#8). When present (+ interpret),
+   *  the understanding path is compared to the legacy intake on EVERY turn, OBSERVATION-ONLY:
+   *  it never changes the answer and is fired fire-and-forget (zero added user latency). */
+  onIntakeShadow?: (rec: ShadowRecord) => void
 }
 
 export interface FullTurnResult {
@@ -107,6 +112,8 @@ export async function runFullTurn(
   const sideEffect = decision.sideEffect
   let source: FullTurnResult['source'] = 'deterministic'
   let onlineTrace: ReturnType<OnlineRuntimeV2['exportOnlineTrace']> = null
+  // Captured on a pattern MISS so the per-turn shadow can reuse it (no 2nd provider call).
+  let shadowPre: { grounded: GroundedIntent; interpretMs: number; groundMs: number } | undefined
 
   if (decision.handled) {
     display = decision.display ?? ''
@@ -152,6 +159,7 @@ export async function runFullTurn(
         const grounded = groundIntent(await interpretUtterance(input, tools.interpret))
         const ms = Date.now() - started
         tools.onUnderstandLatency?.(ms, grounded.operation)
+        shadowPre = { grounded, interpretMs: ms, groundMs: 0 } // reuse for the shadow — no 2nd provider call
         const line = groundingLine(grounded)
         if (line) grounding = grounding ? `${line}\n${grounding}` : line
       } catch { /* understanding must never break a turn — fall through to raw LLM */ }
@@ -182,6 +190,17 @@ export async function runFullTurn(
   // AI Task Interpreter authority trace: the inferred task + whether it overrode the
   // legacy router (i.e. its confident decision drove the executed route, differing from
   // what the legacy cues alone would have picked).
+  // PER-TURN SHADOW (obligation #2/#6/#7/#8) — OBSERVATION-ONLY, fire-and-forget so it adds
+  // ZERO latency to the answer just composed. Compares the legacy intake (what the runtime
+  // actually decided) to the understanding path; a pattern MISS reuses its interpretation
+  // (`shadowPre`) so no turn ever fires a second provider call. Never affects the reply.
+  if (tools.onIntakeShadow && tools.interpret) {
+    const old = observeOldIntake(input, { intent: decision.intent, handled: decision.handled, domain: meta.domain })
+    void runIntakeShadow(input, old, tools.interpret, shadowPre ? { pre: shadowPre } : undefined)
+      .then((rec) => tools.onIntakeShadow!(rec))
+      .catch(() => { /* shadow is diagnostics-only — never surfaces */ })
+  }
+
   const task = interpretTask(input, { pendingReminder: !!state.pendingReminder, pendingCreate: state.createState.phase !== 'idle' })
   const auth = authorityIntent(input, state)
   const interpreterOverrodeRuntime = auth !== null && auth === intent && auth !== legacyDomainClassify(input.trim())

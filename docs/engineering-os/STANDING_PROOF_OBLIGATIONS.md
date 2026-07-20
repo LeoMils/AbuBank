@@ -34,13 +34,16 @@ Leo's free-language device round.
 
 | # | Status | Evidence |
 |---|---|---|
-| 2 · shadow validation | **DONE (family intake)** | `src/eval/intakeShadow.ts` + `intakeShadow.test.ts`: legacy-vs-seam over a 1419-item corpus. |
-| 6 · shadow metrics | **DONE (family intake)** | KPI: total=1419, agree=1101, recovered=318, regressed=0, disagree=0. |
+| 2 · shadow validation | **DONE (family intake)** + **DONE (whole understanding path, per-turn)** | Family: `src/eval/intakeShadow.ts` (legacy-vs-seam, 1419-item corpus). Whole path: `src/screens/AbuAI/understandingShadow.ts` — per-turn OLD (`observeOldIntake` on the real `runCognitiveTurn`) vs NEW (interpret→ground→decide), wired LIVE observation-only in `runtimeFullTurn` + `fullTurnBridge` (`onIntakeShadow`), collected by `intakeShadowCollector` (bounded ring, rolling KPI log). |
+| 6 · shadow metrics | **DONE (family intake)** + **DONE (understanding path)** | Family KPI: total=1419, agree=1101, recovered=318, regressed=0, disagree=0. Understanding KPI pipeline: `aggregateKPIs` (agreement/recovery/disagreement/regression/ambiguity/false-clarify/unresolved) — see `docs/eval/UNDERSTANDING_SHADOW_KPI.md`. Live real-provider numbers = PREVIEW-pending. |
+| 7 · understanding KPIs | **DONE (pipeline + report)** | `aggregateKPIs` + `kpiSummaryLine` report RATES, not test counts. `src/eval/understandingShadowKpi.test.ts` publishes the report + asserts the safety gate (regressed=0, disagree=0). Live rates over real traffic = PREVIEW. |
+| 8 · latency | **DONE (per-stage percentiles)** | `ShadowStageLatency` + `pctl` → p50/p95/worst per stage (interpret/ground/decide/total) in the KPI report. interpret latency here is MOCK (0ms); real-provider interpret latency = PREVIEW-pending. |
+| 9 · fail-closed | **DONE** | `understandingFailClosed` 10/10; `interpretUtterance` bounded timeout + coercion; `decideIntakeAction` never acts on empty/contradictory meaning. |
 | 13 · retirement | **DONE (family intake)** | Criterion `regressed=0 && disagree=0` MET → legacy REL retired to `legacyFamilyIntake.ts` (shadow-only, not wired); live `answerFamilyRelation` is seam-only. |
-| 14 · prove-yourself-wrong | **DONE (this migration)** | Verified the legacy REL's only unique shape ("ממי X גרושה") is now in the seam; the shadow proves no other unique capability. Two intakes → one. |
+| 14 · prove-yourself-wrong | **DONE (family migration + shadow reuse)** | Legacy REL's only unique shape ("ממי X גרושה") is in the seam. The per-turn shadow REUSES the pattern-miss interpretation (`shadowPre`) so no turn fires a 2nd provider call (no unnecessary LLM calls). |
 | 3 · meaning before execution | Holds by design | `understandingIntake`: interpret → groundIntent (engines). |
 | 5 · interpreter ≠ truth | Holds by design | interpret returns personRefs/dateWords (phrases), truth only in `groundIntent`. To be covered by an explicit test. |
-| 1,4,7(full),8,9,10,11,12 | **OPEN** | Next: fail-closed suite (#9), latency stage KPIs (#8), meaning-cache (#10), transcript→gold auto-pipeline (#11), broader shadow over create/ledger paths (#2 for all paths), paraphrase/multilingual tolerance (#4). |
+| 1,4,10,11,12 | **OPEN** | Next: system-level whole-conversation proof (#1), paraphrase/multilingual tolerance (#4), meaning-cache (#10), transcript→gold auto-pipeline (#11), one continuous recovery state machine (#12). |
 
 ## Retirement record — legacy family REL intake (0.150.0)
 

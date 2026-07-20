@@ -12,6 +12,7 @@ import { sendMessage } from './service'
 import { answerOnlineCurrentInfo } from './onlineProvider'
 import { isOnlineCurrentInfoQuery, shouldBlockOnlineForPersonal } from './onlineIntent'
 import { makeInterpretTransport } from './understandingIntake'
+import { recordIntakeShadow } from './intakeShadowCollector'
 import type { FullTurnTools } from './runtimeFullTurn'
 import type { ChatMessage } from './types'
 
@@ -34,5 +35,9 @@ export function buildFullTurnTools(messages: ChatMessage[], voiceMode: boolean):
     // the LLM grounding with graph-resolved people + engine-parsed dates. Latency logged.
     interpret,
     onUnderstandLatency: (ms, op) => { try { console.info(`[AbuAI][UNDERSTAND|LATENCY] ms=${ms} op=${op}`) } catch { /* logging never breaks a turn */ } },
+    // Per-turn shadow (obligation #2/#6/#7/#8), OBSERVATION-ONLY: compares the legacy intake to
+    // the understanding path every turn and logs rolling KPIs + correctness risks. A pattern MISS
+    // reuses its interpretation, so only turns the patterns HANDLED add a background interpret call.
+    onIntakeShadow: recordIntakeShadow,
   }
 }
