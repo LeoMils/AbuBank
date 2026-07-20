@@ -100,9 +100,17 @@ LAWS gate (`familyLaws`), ledger (`ledgerService`).
   honest calendar deferral. Historical dates/prose pass; deterministic/online trusted. 6/6 + FULL
   11536 / 0 regress.
 
+## Done — session 9 (P7 correction-verify + P8 toast)
+
+- P7 `correctionVerification.shouldReverifyOnline` wired in `runtimeFullTurn`: a factual correction
+  of a prior online answer re-runs the online search on that topic instead of blind-agreeing.
+  correctionVerification 5/5 (incl. live re-search). P8: deduped the "אבחון הקול הועתק" chat bubble
+  (BROWSER-class). FULL 11542 / 0 regress.
+
 ## Sequenced plan (remaining)
 
-1. **P7 correction-verification** — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
+1. **Verification regime** (full corpus green ✅ each cycle · fresh PREVIEW deploy — auto on push,
+   human-gated to promote · internal free-language simulation). See "Verification regime" section below. — phonetic/edit-distance mutator (ק↔כ, ה-insertions, splits,
    near-homophones) over the corpus; permanent.
 3. **P1 understanding-first intake** — client interpret step against `api/abuai-chat.ts`
    with a STRICT structured-intent schema {operation, person-refs, datetime, place,

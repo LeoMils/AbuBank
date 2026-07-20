@@ -30,6 +30,7 @@ import { interpretTask } from './aiTaskInterpreter'
 import { authorityIntent, legacyDomainClassify } from './cognitiveRuntime'
 import { interpretUtterance, groundIntent, groundingLine, type InterpretTransport } from './understandingIntake'
 import { guardNoFabricatedCalendar } from './noFabricationGuard'
+import { shouldReverifyOnline } from './correctionVerification'
 
 function calendarCountForScope(scope: 'today' | 'tomorrow'): number {
   try { return scope === 'tomorrow' ? getTomorrowEvents().events.length : getTodayEvents().events.length }
@@ -89,7 +90,15 @@ export async function runFullTurn(
 ): Promise<FullTurnResult> {
   // Meta Reasoner FIRST — understand what was actually asked (traced every turn).
   const meta = metaReason(input, state)
-  const decision = runCognitiveTurn(state, input, ctx)
+  let decision = runCognitiveTurn(state, input, ctx)
+
+  // P7 correction-verification: a factual correction of a prior ONLINE answer must
+  // RE-SEARCH that topic, never just agree. Only overrides when the runtime would
+  // otherwise merely chat / fall back (not a deterministic domain, not already online).
+  if (!decision.handled && !decision.needsOnline) {
+    const rv = shouldReverifyOnline(input, state.focus)
+    if (rv.reverify) decision = { ...decision, handled: false, needsLLM: false, needsOnline: true, online: { query: rv.topic } }
+  }
 
   let display = ''
   let speak = ''

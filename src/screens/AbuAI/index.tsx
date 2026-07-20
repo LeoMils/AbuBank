@@ -3089,7 +3089,7 @@ ${fewShotText}`
           )}
           {/* Voice Flight Recorder — copy a compact diagnostic Leo can paste (no Safari devtools). */}
           <button
-            onClick={async (e) => { e.stopPropagation(); const txt = await copyVoiceReport(); setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'אבחון הקול הועתק. אפשר להדביק ללאו.', timestamp: Date.now() }]); console.log(txt) }}
+            onClick={async (e) => { e.stopPropagation(); const txt = await copyVoiceReport(); const COPIED = 'אבחון הקול הועתק. אפשר להדביק ללאו.'; setMessages(prev => prev[prev.length - 1]?.content === COPIED ? prev : [...prev, { id: nextId(), role: 'assistant', content: COPIED, timestamp: Date.now() }]); console.log(txt) }}
             aria-label="העתקת אבחון קול"
             style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 20,
               padding: '10px 16px', minHeight: 44, borderRadius: 12, border: '1px solid rgba(201,168,76,0.4)',
