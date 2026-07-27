@@ -81,6 +81,7 @@ import { normalizeInput } from './understandingOrchestrator'
 import {
   memoryCommandType, parseRememberFact, parseForgetQuery, saveMemory, forgetMemories, loadMemories,
 } from './savedMemory'
+import { detectWhatsAppTurn, type WhatsAppTurn } from './whatsappCompose'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export type RuntimeIntent =
@@ -96,6 +97,7 @@ export type RuntimeIntent =
   | 'memory'            // durable saved-memory command (remember / recall / forget)
   | 'family'
   | 'online'
+  | 'whatsapp'          // send/write/call a contact — owned before calendar
   | 'continuation'
   | 'frustration'
   | 'audio_complaint'
@@ -184,6 +186,11 @@ export interface CognitiveDecision {
   /** a grounded family answer (resolved pair or BFS explanation) — the Confidence
    *  Guard must not overwrite it with the honest-unknown fallback. */
   familyGrounded?: boolean
+  /** Set when this turn is a WhatsApp compose / phone-call request. The caller
+   *  performs the async compose + renders the draft (kept OUT of the sync
+   *  controller). Precedence is enforced ahead of calendar so a date/time in the
+   *  MESSAGE never routes the turn to the calendar. */
+  whatsapp?: WhatsAppTurn | null
 }
 
 // ── Layer 1: Input Normalizer ─────────────────────────────────────────────────
@@ -1255,6 +1262,27 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   // LLM (garbled STT / mis-taps are common for an 80+ user). Answer warmly instead.
   if (!normalized.trim() || /^[\s\p{P}\p{S}]+$/u.test(normalized)) {
     return settle('לא שמעתי טוב. תגידי לי שוב?', { state, dataAvailable: false })
+  }
+
+  // ─── WhatsApp / call PRECEDENCE (before calendar) ────────────────────────────
+  // "תכתבי/שלחי/תתקשרי ל<מישהו> …" is a communication action, NOT a calendar turn —
+  // even when the message body says "מחר בערב". Without this, the date words route
+  // the turn to calendar_read and Abu AI wrongly answers "מחר אין כלום ביומן".
+  // The controller OWNS the classification (precedence) and DEFERS the async compose
+  // to the caller via `decision.whatsapp` (handled:false, no LLM/online). Guarded to
+  // idle create-state + no pending reminder so it can never hijack a pending draft.
+  if (state.createState.phase === 'idle' && !state.pendingReminder) {
+    const wa = detectWhatsAppTurn(original.trim(), { source: 'text' }) ?? detectWhatsAppTurn(normalized, { source: 'text' })
+    if (wa) {
+      return {
+        ...base, intent: 'whatsapp', handled: false,
+        display: null, speak: null, chunks: [],
+        needsLLM: false, needsOnline: false, online: null, grounding: null,
+        sideEffect: null, verifier: { ok: true, violations: [] },
+        whatsapp: wa,
+        state: { ...state, lastIntent: 'whatsapp', focus: null },
+      }
+    }
   }
 
   // ─── CALENDAR CONTINUITY — property query on the event IN FOCUS ──────────────

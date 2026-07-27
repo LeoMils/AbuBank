@@ -29,6 +29,7 @@ import { createOnlineRuntime, type OnlineRuntimeV2 } from './onlineRuntimeV2'
 import { interpretTask } from './aiTaskInterpreter'
 import { authorityIntent, legacyDomainClassify } from './cognitiveRuntime'
 import { interpretUtterance, groundIntent, groundingLine, type GroundedIntent, type InterpretTransport } from './understandingIntake'
+import { buildWhatsAppReply } from './whatsappTurn'
 import { observeOldIntake, runIntakeShadow, type ShadowRecord } from './understandingShadow'
 import { guardNoFabricatedCalendar } from './noFabricationGuard'
 import { shouldReverifyOnline } from './correctionVerification'
@@ -100,7 +101,7 @@ export async function runFullTurn(
   // P7 correction-verification: a factual correction of a prior ONLINE answer must
   // RE-SEARCH that topic, never just agree. Only overrides when the runtime would
   // otherwise merely chat / fall back (not a deterministic domain, not already online).
-  if (!decision.handled && !decision.needsOnline) {
+  if (!decision.handled && !decision.needsOnline && !decision.whatsapp) {
     const rv = shouldReverifyOnline(input, state.focus)
     if (rv.reverify) decision = { ...decision, handled: false, needsLLM: false, needsOnline: true, online: { query: rv.topic } }
   }
@@ -130,6 +131,15 @@ export async function runFullTurn(
     if (meta.domain === 'family' && !decision.familyGrounded && assessConfidence(meta).block && !/לא אנחש|לא בטוחה|לא יודעת/u.test(display)) {
       display = 'אני לא בטוחה בקשר הזה, אז לא אנחש. תגידי לי מי מי ואני אזכור.'; speak = display
     }
+  } else if (decision.whatsapp) {
+    // WhatsApp compose / call — the controller owns this ahead of calendar. Draft
+    // the message here (async) and reply inline; NEVER a calendar/LLM answer.
+    source = 'deterministic'
+    intent = 'whatsapp'
+    const reply = await buildWhatsAppReply(decision.whatsapp)
+    display = reply.text
+    speak = reply.speak
+    st = decision.state
   } else if (decision.needsOnline && decision.online) {
     source = 'online'
     intent = 'online'

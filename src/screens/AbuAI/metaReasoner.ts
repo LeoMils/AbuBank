@@ -38,6 +38,7 @@ const DOMAIN_OF: Record<RuntimeIntent, MetaDomain> = {
   confirmation: 'confirmation', family: 'family', online: 'online',
   continuation: 'continuation', frustration: 'frustration', audio_complaint: 'audio',
   memory: 'general', math: 'general', general: 'general', unknown: 'unknown',
+  whatsapp: 'general', // owned by runCognitiveTurn precedence, not classifyIntent
 }
 
 export function metaReason(text: string, state: RuntimeState = IDLE_RUNTIME): MetaResult {

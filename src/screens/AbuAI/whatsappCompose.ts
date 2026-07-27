@@ -179,6 +179,13 @@ export function isComposeCommand(text: string): boolean {
   return hasCompose
 }
 
+/** True when the utterance is a phone-CALL request ("תתקשרי ל…"/"llamá a…"). */
+export function isCallCommand(text: string): boolean {
+  const t = (text ?? '').trim()
+  if (!t) return false
+  return CALL_ONLY_HE.test(t) || CALL_ONLY_ES.test(t) || CALL_ONLY_EN.test(t)
+}
+
 // Words that follow the verb but are not the message ("הודעה"/"וואטסאפ"/"a"/"to").
 const FILLER_WORDS = new Set([
   'הודעה', 'וואטסאפ', 'whatsapp', 'ל', 'a', 'to', 'un', 'una', 'que', 'ש',
@@ -358,6 +365,39 @@ export function understandWhatsAppCommand(
     plan,
     source: opts.source ?? 'text',
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Turn-level detection — used by the Abu AI cognitive controller so a
+// "send/write/call X" turn is recognised as its OWN intent and NEVER swallowed
+// by the calendar just because the message body mentions a date/time.
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface WhatsAppTurn {
+  kind: 'compose' | 'call'
+  targetName: string | null
+  targetHebrew: string | null
+  /** For compose: the full normalized command (recipient/intent/style/plan). */
+  command: WhatsAppComposeCommand | null
+}
+
+/**
+ * Classify a raw utterance as a WhatsApp compose / phone-call turn, or null.
+ * Compose wins over call when both cues appear ("שלחי וואטסאפ" + a name). The
+ * recipient is extracted prefix-safely ("למור" → "מור") for BOTH kinds.
+ */
+export function detectWhatsAppTurn(text: string, opts: { source?: ComposeSource } = {}): WhatsAppTurn | null {
+  const t = (text ?? '').trim()
+  if (!t) return null
+  if (isComposeCommand(t)) {
+    const command = understandWhatsAppCommand(t, opts)
+    return { kind: 'compose', targetName: command.targetName, targetHebrew: command.targetHebrew, command }
+  }
+  if (isCallCommand(t)) {
+    const m = matchTargetName(t)
+    return { kind: 'call', targetName: m?.token ?? null, targetHebrew: m?.hebrew ?? null, command: null }
+  }
+  return null
 }
 
 // ════════════════════════════════════════════════════════════════════════════

@@ -11,6 +11,8 @@ import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
 import { toSpokenText } from './spokenPersona'
 import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState, type ConversationFocus } from './cognitiveRuntime'
+import { detectWhatsAppTurn } from './whatsappCompose'
+import { buildWhatsAppReply } from './whatsappTurn'
 import { ExecutiveCognitiveController } from './executiveCognitiveController'
 import { buildFullTurnTools } from './fullTurnBridge'
 import { shouldUseWebSpeechPrimary, LISTEN_WATCHDOG_MS } from '../../services/sttStrategy'
@@ -851,6 +853,14 @@ export function AbuAI() {
           msgText,
           { messages, now: new Date() },
         )
+        // WhatsApp / call turn — the controller claimed it ahead of calendar.
+        // Compose the draft (async) and reply; never a calendar answer here.
+        if (decision.whatsapp) {
+          const reply = await buildWhatsAppReply(decision.whatsapp)
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(reply.text, companionPlan), timestamp: Date.now() }])
+          setLoading(false); streamingMsgIdRef.current = null
+          return
+        }
         const familyUnknown = decision.intent === 'family' && /לא אנחש|לא בטוחה בקשר/u.test(decision.display ?? '')
         if (decision.handled && decision.display && decision.verifier.ok && RUNTIME_OWNED.has(decision.intent) && !familyUnknown) {
           conversationOSRef.current = decision.state.conv
@@ -1825,8 +1835,14 @@ export function AbuAI() {
         // Try grounded answer first
         const isDirectVoiceQ = /^מי |^מתי |^איפה |^כמה |^מה זה |^מה זאת |[?؟]$/.test(text.trim())
         const voiceGrounded = tryGroundedAnswer(text)
+        // WhatsApp / call PRECEDENCE (voice parity with the text controller): a
+        // "תכתבי/שלחי/תתקשרי ל<מישהו>" turn composes a message here — it must never
+        // fall to the calendar/LLM (which produced the wrong "מחר אין כלום ביומן").
+        const voiceWa = detectWhatsAppTurn(text, { source: 'voice' })
         let response: string
-        if (convTurn.handled) {
+        if (voiceWa) {
+          response = (await buildWhatsAppReply(voiceWa)).text
+        } else if (convTurn.handled) {
           conversationOSRef.current = convTurn.state
           response = convTurn.speak ?? ''
           diagSet({ responseSource: `conversation_os:${convTurn.action}`, rawResponse: response })
