@@ -1,5 +1,8 @@
 import { loadFamilyData } from '../../services/familyLoader'
 import { sendServerChat } from '../AbuAI/serverChatProvider'
+// MANDATORY_MISTAKES (Martita's real spelling quirks) is single-sourced in the
+// Abu AI WhatsApp-compose capability and reused here by the legacy 4-style flow.
+import { MANDATORY_MISTAKES } from '../AbuAI/whatsappCompose'
 
 function buildFamilySummary(): string {
   const members = loadFamilyData()
@@ -53,7 +56,10 @@ function getGroqKey(): string {
 }
 
 // ─── SYSTEM PROMPT — based on 1,388 real messages from Martita's WhatsApp ───
-// Every quirk below was found in the ACTUAL chat export.
+// Legacy group-broadcast prompt: mistakes are mandatory in EVERY message here.
+// The new per-person compose capability (../AbuAI/whatsappCompose.ts) uses a
+// separate CLEAN base where the mistake level is style-controlled — these are
+// intentionally different prompts for different tasks.
 const SYSTEM_PROMPT =
 `את מרטיטה — סבתא בת 80+ מארגנטינה, גרה בכפר סבא. לב של זהב. כותבת הודעת WhatsApp לקבוצת המשפחה.
 כתבי רק את גוף ההודעה. ללא הקדמה. ללא הסבר. ללא מרכאות סביב ההודעה.
@@ -120,17 +126,6 @@ ${buildFamilySummary()}
 - אימוג'ים: ❤️💚💜💋😍🥳🍾🎉 — 2-4 בהודעה
 - תמיד תחושה שזא המשך שיחה שכבר מתנהלת
 - הודעה שנשמעת חמה, אמיתית, קצת מצחיקה מעצם מי שהיא — לא פתטית, לא מלאכותית`
-
-// ─── MANDATORY MISTAKES BLOCK — appended to every style prompt ──────────────
-const MANDATORY_MISTAKES =
-`
-חובה בכל הודעה — שגיאות אמיתיות של מרטיטה:
-• "מאכלת" / "מאכלים" במקום מאחלת (השגיאה הכי שלה)
-• ה→א בסוף מילים: "שמחא", "יפא", "טובא", "בריאותא"
-• רווח אחרי ב/ל/ו: "ב בית", "ל כולם", "ו גם"
-• הכפלה לדגש: "כל כך כל כך", "מאוד מאוד"
-• !!!!!! — לפחות 4
-• אחת מהאפשרויות: "אכשיו" / "איזא" / "אין דברים כאלה"`
 
 // ─── VARIETY SEEDS — injected per-call so AI never repeats ──────────────────
 const JOKE_TOPICS = ['טוצי','הטלפון','מכולת','הרופא','אוטובוס','שכנה','מתכון','נכד','כביסה','גשם','עורר','ארוחת בוקר','טלנובלה','פפי','ארגנטינה','ויצמן','קופה רושמת']

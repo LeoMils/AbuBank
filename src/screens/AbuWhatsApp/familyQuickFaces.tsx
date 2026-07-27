@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
 import { getLocalContacts, type LocalFamilyContact } from './familyContactsStorage'
+import { matchTargetName } from '../AbuAI/whatsappCompose'
+import { loadFamilyData } from '../../services/familyLoader'
 
 const WA_GREEN = '#25D366'
 const TEAL = '#14b8a6'
@@ -20,9 +22,10 @@ export function sanitizePhoneE164(raw: string): string {
 
 /**
  * Normalize an Israeli local phone number to E.164 format.
- * "0541111111" → "+972541111111"
- * "+972541111111" → "+972541111111" (already E.164, pass through)
+ * Local "0NN-NNNNNNN" (10 digits) → "+972NN-NNNNNNN" (drop the leading 0).
+ * Already-E.164 "+972…" → passed through unchanged.
  * Non-Israeli / unrecognized → returned as-is.
+ * (Examples use N placeholders on purpose — no phone-shaped literals in source.)
  */
 export function normalizeIsraeliPhone(raw: string): string {
   if (typeof raw !== 'string') return ''
@@ -43,13 +46,148 @@ export function isValidPhoneE164(raw: string): boolean {
   return digits.length >= 8 && digits.length <= 15
 }
 
-export function buildWhatsAppPersonUrl(face: Extract<FamilyQuickFace, { type: 'person' }>): string {
+export function buildWhatsAppPersonUrl(
+  face: Extract<FamilyQuickFace, { type: 'person' }>,
+  text?: string,
+): string {
   const target = face.whatsappE164 && face.whatsappE164.length > 0 ? face.whatsappE164 : face.phoneE164
-  return `https://wa.me/${sanitizePhoneE164(target)}`
+  const base = `https://wa.me/${sanitizePhoneE164(target)}`
+  // With text → pre-FILL the chat (WhatsApp still requires a manual send tap;
+  // there is no auto-send). Without text the URL stays byte-identical to the
+  // original contract that existing tests pin.
+  if (typeof text === 'string' && text.trim().length > 0) {
+    return `${base}?text=${encodeURIComponent(text)}`
+  }
+  return base
 }
 
 export function buildTelUrl(face: Extract<FamilyQuickFace, { type: 'person' }>): string {
   return `tel:+${sanitizePhoneE164(face.phoneE164)}`
+}
+
+export interface ResolvedContact {
+  face: Extract<FamilyQuickFace, { type: 'person' }>
+  /** true when the contact has a valid, enabled phone (chat can be opened). */
+  actionable: boolean
+}
+
+// ─── RecipientEntityResolver (channel adapter half) ─────────────────────────
+//
+// Resolve a spoken/typed family name to phone-bearing CONTACT candidates. The
+// join key is the Hebrew display name — the AbuAI family graph and this
+// scaffold do NOT share ids — enriched with aliases from family_data. Fuzzy
+// scoring tolerates STT misspellings and partial names, and SURFACES ambiguity
+// (two similar names) instead of silently guessing.
+
+export type RecipientEvidence = 'exact' | 'alias' | 'prefix' | 'fuzzy'
+
+export interface RecipientCandidate {
+  face: Extract<FamilyQuickFace, { type: 'person' }>
+  /** 0..1 match confidence. */
+  confidence: number
+  evidence: RecipientEvidence
+  actionable: boolean
+}
+
+/** Levenshtein edit distance (small strings). */
+function editDistance(a: string, b: string): number {
+  const m = a.length, n = b.length
+  if (m === 0) return n
+  if (n === 0) return m
+  const dp = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0))
+  for (let i = 0; i <= m; i++) dp[i]![0] = i
+  for (let j = 0; j <= n; j++) dp[0]![j] = j
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      dp[i]![j] = Math.min(dp[i - 1]![j]! + 1, dp[i]![j - 1]! + 1, dp[i - 1]![j - 1]! + cost)
+    }
+  }
+  return dp[m]![n]!
+}
+
+function scoreName(query: string, name: string): { score: number; evidence: RecipientEvidence } {
+  const q = query.toLowerCase(), n = name.toLowerCase()
+  if (!q || !n) return { score: 0, evidence: 'fuzzy' }
+  if (q === n) return { score: 1, evidence: 'exact' }
+  const short = q.length <= n.length ? q : n
+  const long = q.length <= n.length ? n : q
+  if (short.length >= 3 && long.startsWith(short)) return { score: 0.78, evidence: 'prefix' }
+  const d = editDistance(q, n)
+  if (d === 1 && Math.max(q.length, n.length) >= 3) return { score: 0.7, evidence: 'fuzzy' }
+  if (d === 2 && Math.max(q.length, n.length) >= 5) return { score: 0.55, evidence: 'fuzzy' }
+  return { score: 0, evidence: 'fuzzy' }
+}
+
+/** Build the set of names a scaffold person answers to (display + aliases). */
+function namesForPerson(displayName: string): string[] {
+  const out = new Set<string>([displayName])
+  try {
+    const member = loadFamilyData().find(m => m.hebrew === displayName)
+    if (member) {
+      out.add(member.canonicalName)
+      for (const a of member.aliases ?? []) out.add(a)
+    }
+  } catch { /* family data optional */ }
+  return [...out].filter(Boolean)
+}
+
+/**
+ * Return ranked recipient candidates for a spoken/typed name. Empty when no
+ * family member plausibly matches. Callers decide ambiguity policy via
+ * `isRecipientAmbiguous`.
+ */
+export function resolveContactCandidates(
+  name: string,
+  local: ReadonlyArray<LocalFamilyContact> = getLocalContacts(),
+): RecipientCandidate[] {
+  const cleaned = (name ?? '').trim()
+  if (!cleaned) return []
+  // Canonicalize a prefixed token / exact alias up-front (e.g. "לאדר" → "אדר").
+  const canon = matchTargetName(cleaned)?.hebrew ?? cleaned
+  const queries = [...new Set([cleaned.toLowerCase(), canon.toLowerCase()])]
+  const persons = getDisplayablePersons(FAMILY_QUICK_FACES, local)
+  const out: RecipientCandidate[] = []
+  for (const face of persons) {
+    let best = { score: 0, evidence: 'fuzzy' as RecipientEvidence }
+    for (const nm of namesForPerson(face.displayName)) {
+      for (const q of queries) {
+        const s = scoreName(q, nm)
+        if (s.score > best.score) best = s
+      }
+    }
+    if (best.score > 0) out.push({ face, confidence: best.score, evidence: best.evidence, actionable: isPersonActionable(face) })
+  }
+  return out.sort((a, b) => b.confidence - a.confidence)
+}
+
+/**
+ * Ambiguity policy: a resolution is UNAMBIGUOUS only when there is a clear top
+ * candidate (high confidence) that is meaningfully ahead of the runner-up.
+ * Otherwise the UI must ask Martita to choose — never silently pick.
+ */
+export function isRecipientAmbiguous(candidates: RecipientCandidate[]): boolean {
+  if (candidates.length === 0) return false // "no match" is not "ambiguous"
+  const top = candidates[0]!
+  if (top.confidence < 0.85) return true
+  const second = candidates[1]
+  if (second && top.confidence - second.confidence < 0.2) return true
+  return false
+}
+
+/**
+ * Back-compat single-result resolver: returns the confident top candidate, or
+ * null when there is no match OR the match is ambiguous (caller should prompt).
+ */
+export function resolveContactForName(
+  name: string,
+  local: ReadonlyArray<LocalFamilyContact> = getLocalContacts(),
+): ResolvedContact | null {
+  const candidates = resolveContactCandidates(name, local)
+  if (candidates.length === 0) return null
+  if (isRecipientAmbiguous(candidates)) return null
+  const top = candidates[0]!
+  return { face: top.face, actionable: top.actionable }
 }
 
 // ─── Visibility & merge ─────────────────────────────────────────────────────

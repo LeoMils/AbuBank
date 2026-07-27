@@ -19,6 +19,7 @@ import { PageShell } from '../../components/PageShell'
 import { LoadingState } from '../../components/LoadingState'
 import { FamilyQuickFaces } from './familyQuickFaces'
 import { FamilyContactsSetup } from './FamilyContactsSetup'
+import { VoiceCompose } from './VoiceCompose'
 
 function isOperatorQueryParam(): boolean {
   try {
@@ -121,6 +122,9 @@ export function AbuWhatsApp() {
   const [audioLevel, setAudioLevel] = useState(0)
   const [copyToast, setCopyToast] = useState(false)
   const [isReading, setIsReading] = useState(false)
+
+  // Voice-compose overlay (Abu-AI-composed message to a specific contact).
+  const [composeOpen, setComposeOpen] = useState(false)
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
   const familyPhoto = useMemo(() => getRandomFamilyPhoto(), [])
@@ -683,11 +687,39 @@ export function AbuWhatsApp() {
       }}>
 
         {tab === 'family' && !voiceMode && !operatorMode && (
-          <FamilyQuickFaces
-            onOpenWhatsApp={(url) => { window.location.href = url }}
-            onOpenTel={(url) => { window.location.href = url }}
-            onOperatorSetup={() => setOperatorMode(true)}
-          />
+          <>
+            <FamilyQuickFaces
+              onOpenWhatsApp={(url) => { window.location.href = url }}
+              onOpenTel={(url) => { window.location.href = url }}
+              onOperatorSetup={() => setOperatorMode(true)}
+            />
+
+            {/* Voice compose — Abu AI writes a message to a chosen contact. */}
+            <button
+              type="button"
+              data-testid="abuwhatsapp-voice-compose-cta"
+              onClick={() => { soundTap(); unlockIOSAudio(); setComposeOpen(true) }}
+              style={{
+                width: '100%', maxWidth: 370, height: 60, borderRadius: 30,
+                border: '1.5px solid rgba(37,211,102,0.42)',
+                background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 40%, #128C7E 100%)',
+                color: 'white', fontSize: 18, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                boxShadow: '0 6px 24px rgba(20,184,166,0.24), inset 0 1px 0 rgba(255,255,255,0.16)',
+                WebkitTapHighlightColor: 'transparent', marginTop: 4,
+              }}
+              onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.97)' }}
+              onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
+              onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+            >
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+              כתבי הודעה בקול
+            </button>
+          </>
         )}
 
         {tab === 'family' && !voiceMode && operatorMode && (
@@ -1394,6 +1426,10 @@ export function AbuWhatsApp() {
         onClose={() => setGalleryOpen(false)}
         extras={galleryExtras}
       />
+
+      {/* Voice compose overlay — Abu AI writes a message to a chosen contact,
+          then opens that contact's WhatsApp with the text pre-filled. */}
+      <VoiceCompose open={composeOpen} onClose={() => setComposeOpen(false)} />
     </PageShell>
   )
 }
