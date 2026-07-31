@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
-import { getLocalContacts, type LocalFamilyContact } from './familyContactsStorage'
+import { getLocalContacts, CONTACTS_UPDATED_EVENT, type LocalFamilyContact } from './familyContactsStorage'
 import { matchTargetName } from '../AbuAI/whatsappCompose'
 import { loadFamilyData } from '../../services/familyLoader'
 
@@ -449,10 +449,15 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
     }
     window.addEventListener('storage', onStorage)
     window.addEventListener('focus', refresh)
+    // Same-tab signal: the operator setup writes contacts in THIS tab, where the
+    // 'storage' event never fires. This is what makes an import show up on the
+    // board immediately without a reload.
+    window.addEventListener(CONTACTS_UPDATED_EVENT, refresh)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
       window.removeEventListener('storage', onStorage)
       window.removeEventListener('focus', refresh)
+      window.removeEventListener(CONTACTS_UPDATED_EVENT, refresh)
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [localContacts])

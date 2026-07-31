@@ -17,6 +17,22 @@ import { durable } from '../../services/durableStore'
 export const LOCAL_FAMILY_CONTACTS_STORAGE_KEY = 'abubank.familyContacts.v1'
 
 /**
+ * Same-tab change signal. The browser 'storage' event only fires in OTHER tabs,
+ * so a write made by the operator setup would not refresh the family board that
+ * is about to mount in the SAME tab. Every mutation dispatches this event so any
+ * live view can re-read immediately. (No-op outside the browser.)
+ */
+export const CONTACTS_UPDATED_EVENT = 'abubank:contacts-updated'
+
+function notifyContactsUpdated(): void {
+  try {
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new Event(CONTACTS_UPDATED_EVENT))
+    }
+  } catch { /* best-effort */ }
+}
+
+/**
  * On-disk schema version for the contacts payload.
  *  - v1 (legacy): a bare JSON array of LocalFamilyContact.
  *  - v2 (current): an envelope `{ v: 2, contacts: LocalFamilyContact[] }`.
@@ -190,6 +206,7 @@ export function setLocalContacts(contacts: LocalFamilyContact[], storage: Storag
   // backend copy on the next app start.
   if (isDefaultBrowserStorage(storage)) {
     try { durable.setString(LOCAL_FAMILY_CONTACTS_STORAGE_KEY, json) } catch { /* best-effort */ }
+    notifyContactsUpdated()
   }
 }
 
@@ -198,6 +215,7 @@ export function clearLocalContacts(storage: StorageLike | null = defaultStorage(
   try { storage.removeItem(LOCAL_FAMILY_CONTACTS_STORAGE_KEY) } catch { /* private mode */ }
   if (isDefaultBrowserStorage(storage)) {
     try { durable.remove(LOCAL_FAMILY_CONTACTS_STORAGE_KEY) } catch { /* best-effort */ }
+    notifyContactsUpdated()
   }
 }
 
@@ -281,10 +299,68 @@ export function sanitizeImportText(raw: string): SanitizeResult {
 export interface ImportDebug {
   rawLength: number
   cleanedLength: number
+  /** true when sanitation changed NOTHING — the string that reaches JSON.parse
+   *  is byte-identical to the pasted text. When true, the parse error is in the
+   *  real content, not an invisible/typographic artifact. */
+  identicalToRaw: boolean
   first100: string
   last100: string
   parseError: string | null
+  /** Character offset reported by JSON.parse ("...at position N"), or null. */
+  parseErrorOffset: number | null
+  /** 1-based line / column reported by JSON.parse ("line L column C"), or null. */
+  parseErrorLine: number | null
+  parseErrorColumn: number | null
+  /** Up to 100 chars of the parsed string immediately BEFORE the error offset. */
+  contextBefore: string
+  /** Up to 100 chars of the parsed string immediately AT/AFTER the error offset. */
+  contextAfter: string
+  /** The exact character at the error offset, described with its codepoint. */
+  charAtOffset: string
   notes: string[]
+}
+
+/**
+ * Pull the numeric offset / line / column out of a V8 JSON.parse error message.
+ * V8 emits e.g. "Expected ',' or '}' after property value in JSON at position
+ * 47 (line 3 column 5)" or "Unexpected token x in JSON at position 12". Returns
+ * nulls when the shape is not recognized (never throws).
+ */
+export function analyzeParseError(message: string): {
+  offset: number | null
+  line: number | null
+  column: number | null
+} {
+  const pos = /position (\d+)/i.exec(message)
+  const lc = /line (\d+) column (\d+)/i.exec(message)
+  return {
+    offset: pos ? Number(pos[1]) : null,
+    line: lc ? Number(lc[1]) : null,
+    column: lc ? Number(lc[2]) : null,
+  }
+}
+
+/** Describe a single character with its Unicode codepoint (for the debug panel). */
+function describeChar(ch: string | undefined): string {
+  if (ch === undefined || ch === '') return '(end of string)'
+  const cp = ch.codePointAt(0) ?? 0
+  const hex = cp.toString(16).toUpperCase().padStart(4, '0')
+  return `${JSON.stringify(ch)} (U+${hex})`
+}
+
+/**
+ * SHA-256 of a string, hex-encoded. Uses the platform WebCrypto (available in
+ * browsers and Node ≥ 18). Returns '' if WebCrypto is unavailable so callers
+ * can render a graceful fallback instead of throwing.
+ */
+export async function sha256Hex(text: string): Promise<string> {
+  try {
+    const subtle = (globalThis.crypto as Crypto | undefined)?.subtle
+    if (!subtle) return ''
+    const bytes = new TextEncoder().encode(text)
+    const digest = await subtle.digest('SHA-256', bytes)
+    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
+  } catch { return '' }
 }
 
 /** Diagnose the paste WITHOUT importing — for the operator debug panel. */
@@ -293,12 +369,26 @@ export function describeImportText(raw: string): ImportDebug {
   const { text, notes } = sanitizeImportText(r)
   let parseError: string | null = null
   try { JSON.parse(text) } catch (e) { parseError = e instanceof Error ? e.message : String(e) }
+  const loc = parseError ? analyzeParseError(parseError) : { offset: null, line: null, column: null }
+  // Slice context out of the ACTUAL string handed to JSON.parse (the cleaned
+  // one), so the operator sees exactly what the parser choked on.
+  const off = loc.offset
+  const contextBefore = off !== null ? text.slice(Math.max(0, off - 100), off) : ''
+  const contextAfter = off !== null ? text.slice(off, off + 100) : ''
+  const charAtOffset = off !== null ? describeChar(text[off]) : ''
   return {
     rawLength: r.length,
     cleanedLength: text.length,
+    identicalToRaw: text === r,
     first100: r.slice(0, 100),
     last100: r.length > 100 ? r.slice(-100) : '',
     parseError,
+    parseErrorOffset: off,
+    parseErrorLine: loc.line,
+    parseErrorColumn: loc.column,
+    contextBefore,
+    contextAfter,
+    charAtOffset,
     notes,
   }
 }

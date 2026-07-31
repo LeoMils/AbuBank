@@ -20,6 +20,7 @@ import {
   migrateContactsFormat,
   removeLocalContact,
   setLocalContacts,
+  sha256Hex,
   upsertLocalContact,
   type ImportDebug,
   type LocalFamilyContact,
@@ -256,6 +257,7 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
           stored={stored}
           onImport={handleAdvancedImport}
           onClearAll={handleClearAll}
+          onViewFamily={onClose}
           confirmClearAll={confirmClearAll}
           setConfirmClearAll={setConfirmClearAll}
         />
@@ -393,17 +395,19 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
 }
 
 function AdvancedJsonPanel({
-  stored, onImport, onClearAll, confirmClearAll, setConfirmClearAll,
+  stored, onImport, onClearAll, onViewFamily, confirmClearAll, setConfirmClearAll,
 }: {
   stored: LocalFamilyContact[]
   onImport: (jsonText: string) => { ok: boolean; messages: string[] }
   onClearAll: () => void
+  onViewFamily: () => void
   confirmClearAll: boolean
   setConfirmClearAll: (v: boolean) => void
 }) {
   const [draft, setDraft] = useState<string>('')
   const [banner, setBanner] = useState<{ ok: boolean; messages: string[] } | null>(null)
   const [dbg, setDbg] = useState<ImportDebug | null>(null)
+  const [sha, setSha] = useState<string>('')
 
   function handleExport() {
     setDraft(exportContactsJSON(stored))
@@ -413,6 +417,29 @@ function AdvancedJsonPanel({
     const r = onImport(draft)
     setBanner(r)
     if (r.ok) setDraft('')
+  }
+  function handleDebug() {
+    setDbg(describeImportText(draft))
+    setSha('…')
+    // SHA-256 of the EXACT pasted string (not the cleaned one) so the operator
+    // can prove byte-for-byte what is on the device vs. what they meant to paste.
+    sha256Hex(draft).then((h) => setSha(h || '(WebCrypto unavailable)')).catch(() => setSha('(error)'))
+  }
+  function handleDownloadExact() {
+    // Save the EXACT pasted string to a file so its raw bytes can be inspected
+    // off-device (hex editor / diff). No sanitation, no re-encoding beyond the
+    // Blob's UTF-8 serialization of the in-memory string.
+    try {
+      const blob = new Blob([draft], { type: 'application/json;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'abu-contacts-paste.json'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch { /* download best-effort */ }
   }
 
   return (
@@ -427,9 +454,17 @@ function AdvancedJsonPanel({
             fontFamily: "ui-monospace,'SFMono-Regular',Menlo,monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-all',
           }}
         >
-          {`raw length: ${dbg.rawLength}\n`}
+          {`raw length:   ${dbg.rawLength}\n`}
           {`clean length: ${dbg.cleanedLength}\n`}
+          {`byte-identical to paste: ${dbg.identicalToRaw ? 'YES (sanitation changed nothing)' : 'NO (see fixed: below)'}\n`}
+          {`sha-256(paste): ${sha}\n`}
           {`JSON.parse: ${dbg.parseError ? 'ERROR — ' + dbg.parseError : 'OK ✓'}\n`}
+          {dbg.parseError && dbg.parseErrorOffset !== null
+            ? `error at: offset ${dbg.parseErrorOffset}${dbg.parseErrorLine !== null ? ` (line ${dbg.parseErrorLine} column ${dbg.parseErrorColumn})` : ''}\n`
+            : ''}
+          {dbg.parseError && dbg.parseErrorOffset !== null ? `char at offset: ${dbg.charAtOffset}\n` : ''}
+          {dbg.parseError && dbg.parseErrorOffset !== null ? `100 before: ${JSON.stringify(dbg.contextBefore)}\n` : ''}
+          {dbg.parseError && dbg.parseErrorOffset !== null ? `100 after:  ${JSON.stringify(dbg.contextAfter)}\n` : ''}
           {dbg.notes.length ? `fixed: ${dbg.notes.join('; ')}\n` : ''}
           {`first100: ${JSON.stringify(dbg.first100)}\n`}
           {`last100:  ${JSON.stringify(dbg.last100)}`}
@@ -446,6 +481,20 @@ function AdvancedJsonPanel({
           }}
         >
           {banner.messages.map((m, i) => <div key={i}>{m}</div>)}
+          {banner.ok && (
+            <button
+              type="button"
+              data-testid="setup-adv-view-family"
+              onClick={onViewFamily}
+              style={{
+                marginTop: 10, minHeight: 44, width: '100%', padding: '0 16px', borderRadius: 12,
+                border: `1.5px solid ${TEAL}88`,
+                background: `linear-gradient(145deg, ${TEAL}, #0d9488)`,
+                color: 'white', fontFamily: "'Heebo',sans-serif", fontSize: 15, fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >צפי במשפחה עכשיו ←</button>
+          )}
         </div>
       )}
       {/* Import instructions */}
@@ -500,7 +549,7 @@ function AdvancedJsonPanel({
         <button
           type="button"
           data-testid="setup-adv-debug"
-          onClick={() => setDbg(describeImportText(draft))}
+          onClick={handleDebug}
           disabled={draft.trim().length === 0}
           style={{
             minHeight: 40, padding: '0 14px', borderRadius: 10,
@@ -511,6 +560,20 @@ function AdvancedJsonPanel({
             cursor: draft.trim().length === 0 ? 'default' : 'pointer',
           }}
         >🔎 בדיקת JSON</button>
+        <button
+          type="button"
+          data-testid="setup-adv-download"
+          onClick={handleDownloadExact}
+          disabled={draft.length === 0}
+          style={{
+            minHeight: 40, padding: '0 14px', borderRadius: 10,
+            border: '1px solid rgba(255,255,255,0.18)',
+            background: 'rgba(255,255,255,0.05)',
+            color: draft.length === 0 ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.65)',
+            fontFamily: "'Heebo',sans-serif", fontSize: 13, fontWeight: 600,
+            cursor: draft.length === 0 ? 'default' : 'pointer',
+          }}
+        >⬇️ הורדת הטקסט המדויק</button>
         <button
           type="button"
           data-testid="setup-adv-export"

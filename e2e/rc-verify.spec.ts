@@ -34,10 +34,33 @@ test('1) Operator import UI is reachable via ?operator=1 and imports contacts', 
   await expect(page.getByTestId('setup-adv-banner-ok')).toBeVisible()
   await expect(page.getByTestId('setup-active-count')).toHaveAttribute('data-active-count', '1')
 
-  // The debug panel exists and shows an honest parse status for a bad paste.
-  await json.fill('[{ id: mor }]')
+  // After a successful import the operator can jump straight to the family board,
+  // and the imported contact is immediately actionable (Call / WhatsApp).
+  await page.getByTestId('setup-adv-view-family').click()
+  await expect(page.getByTestId('family-quick-faces')).toBeVisible()
+  const mor = page.getByTestId('bubble-person-mor')
+  await expect(mor).toBeVisible()
+  await page.getByTestId('bubble-person-tap-mor').click()
+  await expect(page.getByTestId('chip-whatsapp-mor')).toBeVisible()
+  await expect(page.getByTestId('chip-call-mor')).toBeVisible()
+})
+
+test('1b) Debug panel localizes a structural parse error the operator cannot see', async ({ page }) => {
+  await page.goto('/?operator=1', { waitUntil: 'networkidle', timeout: 30_000 })
+  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await expect(page.getByTestId('family-contacts-setup')).toBeVisible({ timeout: 10_000 })
+  const json = page.getByTestId('setup-adv-json')
+
+  // Missing comma between two properties → valid-looking first/last 100, real
+  // structural error in the middle. The panel must surface the exact offset,
+  // the byte-identity verdict, a SHA-256, and the text around the fault.
+  await json.fill('[{ "id": "mor" "enabled": true, "phoneE164": "+972500000456" }]')
   await page.getByTestId('setup-adv-debug').click()
-  await expect(page.getByTestId('setup-adv-debug-box')).toContainText('JSON.parse: ERROR')
+  const box = page.getByTestId('setup-adv-debug-box')
+  await expect(box).toContainText('JSON.parse: ERROR')
+  await expect(box).toContainText('byte-identical to paste: YES')
+  await expect(box).toContainText('error at: offset')
+  await expect(box).toContainText('sha-256(paste):')
 })
 
 test('3) Operator Mode persists across a reload without ?operator, and ?operator=0 clears it', async ({ page }) => {
