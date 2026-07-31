@@ -23,8 +23,7 @@ test('1) Operator import UI is reachable via ?operator=1 and imports contacts', 
   await expect(setup).toBeVisible({ timeout: 10_000 })
   await expect(page.getByTestId('setup-row-mor')).toBeVisible()
 
-  // Expand "מתקדם" → the JSON import textarea.
-  await page.getByTestId('setup-advanced').locator('summary').click()
+  // The JSON import is OPEN at the top of the setup (no digging required).
   const json = page.getByTestId('setup-adv-json')
   await expect(json).toBeVisible()
 

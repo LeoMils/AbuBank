@@ -187,7 +187,7 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
           fontFamily: "'DM Sans',monospace", direction: 'ltr',
         }}
       >
-        v{APP_VERSION.version} · {APP_VERSION.buildLabel}
+        build v{APP_VERSION.version}
       </div>
 
       {(() => {
@@ -233,6 +233,35 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
         <br />
         אחרי שמירת מספר, יופיעו כפתורי וואטסאפ ושיחה.
       </p>
+
+      {/* Import is the FAST path (paste JSON once) — shown OPEN at the TOP so it
+          is never buried under the per-contact rows. Manual entry stays below. */}
+      <details
+        data-testid="setup-advanced"
+        open
+        style={{
+          marginTop: 4,
+          padding: '10px 12px',
+          borderRadius: 14,
+          background: 'rgba(20,184,166,0.06)',
+          border: '1px solid rgba(20,184,166,0.30)',
+        }}
+      >
+        <summary style={{ cursor: 'pointer', fontSize: 15, fontWeight: 700, color: TEAL }}>
+          ⚡ ייבוא מהיר — הדבקת JSON (מומלץ)
+        </summary>
+        <AdvancedJsonPanel
+          stored={stored}
+          onImport={handleAdvancedImport}
+          onClearAll={handleClearAll}
+          confirmClearAll={confirmClearAll}
+          setConfirmClearAll={setConfirmClearAll}
+        />
+      </details>
+
+      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
+        או הזיני ידנית למטה:
+      </div>
 
       <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {PERSON_SCAFFOLD.map((person) => {
@@ -357,25 +386,6 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
         })}
       </ul>
 
-      <details
-        data-testid="setup-advanced"
-        style={{
-          marginTop: 4,
-          padding: '8px 12px',
-          borderRadius: 12,
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        <summary style={{ cursor: 'pointer', fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>מתקדם</summary>
-        <AdvancedJsonPanel
-          stored={stored}
-          onImport={handleAdvancedImport}
-          onClearAll={handleClearAll}
-          confirmClearAll={confirmClearAll}
-          setConfirmClearAll={setConfirmClearAll}
-        />
-      </details>
     </div>
   )
 }
