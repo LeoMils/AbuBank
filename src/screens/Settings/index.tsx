@@ -774,7 +774,7 @@ export function Settings() {
       id: 'about',
       icon: '⭐',
       color: GOLD,
-      label: 'אודות AbuBank',
+      label: 'אודות Abu-ela',
       desc: 'הפורטל האישי של Martita',
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', textAlign: 'center' }}>

@@ -410,8 +410,8 @@ export default defineConfig({
         clientsClaim: true,             // new SW takes control of ALL open tabs/windows immediately
       },
       manifest: {
-        name: 'AbuBank',
-        short_name: 'AbuBank',
+        name: 'Abu-ela',
+        short_name: 'Abu-ela',
         description: 'הפורטל הפרטי של Martita',
         display: 'standalone',
         orientation: 'portrait',

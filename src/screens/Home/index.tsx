@@ -219,7 +219,7 @@ export function Home() {
             cursor: 'default',
           }}
         >
-          {/* AbuBank — luxury metallic wordmark */}
+          {/* Abu-ela — luxury metallic wordmark */}
           <div style={{
             display: 'flex', alignItems: 'baseline',
             direction: 'ltr', gap: 3,
@@ -244,17 +244,36 @@ export function Home() {
               filter: 'drop-shadow(0 0 14px rgba(94,234,212,0.40)) drop-shadow(0 0 35px rgba(20,184,166,0.18)) drop-shadow(0 2px 3px rgba(0,0,0,0.65))',
               position: 'relative',
             } as React.CSSProperties}>Abu</span>
+
+            {/* Elegant connector — a fine tapered metallic hairline (teal → rose-gold)
+                that JOINS the two marks without competing with them. */}
+            <span aria-hidden="true" style={{
+              alignSelf: 'center',
+              transform: 'translateY(-4px)',
+              width: 22, height: 1.5, borderRadius: 1,
+              marginInline: 6,
+              background: 'linear-gradient(90deg, rgba(94,234,212,0) 0%, rgba(94,234,212,0.75) 30%, rgba(233,168,124,0.95) 70%, rgba(233,168,124,0) 100%)',
+              boxShadow: '0 0 9px rgba(217,128,99,0.35)',
+              display: 'inline-block', flexShrink: 0,
+            }} />
+
+            {/* "ela" — a DELIBERATELY different voice from the upright "Abu": lowercase
+                ITALIC serif (couture posture) in a warm champagne → rose-gold shimmer.
+                Strong presence, innovative, elegant, quietly luxurious. */}
             <span style={{
-              fontFamily: "'DM Sans',sans-serif",
-              fontSize: 42, fontWeight: 500,
-              letterSpacing: '1.5px',
-              background: 'linear-gradient(135deg, #FDE68A 0%, #F59E0B 12%, #D97706 26%, #FBBF24 40%, #B45309 55%, #D4A843 68%, #F59E0B 80%, #FDE68A 92%, #EAB308 100%)',
+              fontFamily: "'Cormorant Garamond',Georgia,serif",
+              fontStyle: 'italic',
+              fontSize: 47, fontWeight: 600,
+              letterSpacing: '0.5px',
+              textTransform: 'lowercase',
+              paddingRight: 3,
+              background: 'linear-gradient(135deg, #FFF1D9 0%, #F6C99A 18%, #E8A87C 36%, #F2BE92 50%, #D98063 63%, #E7A574 77%, #F7DCB0 91%, #E8B77E 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              filter: 'drop-shadow(0 0 12px rgba(245,158,11,0.35)) drop-shadow(0 0 28px rgba(201,168,76,0.18)) drop-shadow(0 2px 3px rgba(0,0,0,0.60))',
+              filter: 'drop-shadow(0 0 13px rgba(232,168,124,0.45)) drop-shadow(0 0 32px rgba(217,128,99,0.22)) drop-shadow(0 2px 3px rgba(0,0,0,0.60))',
               position: 'relative',
-            } as React.CSSProperties}>Bank</span>
+            } as React.CSSProperties}>ela</span>
           </div>
           {/* Reversed 1px underline — architectural gap */}
           <div aria-hidden="true" style={{

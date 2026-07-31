@@ -15,8 +15,8 @@ async function openFamilyRecord(page: Page): Promise<void> {
   await page.evaluate(() => { try { localStorage.clear() } catch { /* */ } })
   await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
   await page.locator('[aria-label="הגדרות"]').first().click()
-  // The link lives inside the collapsed "אודות AbuBank" accordion — expand it first.
-  await page.locator('text=אודות AbuBank').first().click()
+  // The link lives inside the collapsed "אודות Abu-ela" accordion — expand it first.
+  await page.locator('text=אודות Abu-ela').first().click()
   const open = page.locator('[data-testid="open-family-record"]')
   await open.waitFor({ state: 'attached', timeout: 10_000 })
   await open.scrollIntoViewIfNeeded()
