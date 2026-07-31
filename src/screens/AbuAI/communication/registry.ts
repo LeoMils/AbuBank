@@ -21,7 +21,9 @@ export function listAdapters(): ChannelAdapter[] {
   return [...ADAPTERS.values()]
 }
 
-// Register the built-in adapters. WhatsApp is the first; add SMS/Email/Telegram
-// imports here (or register from their own domains) without touching callers.
+// Register the built-in adapters. WhatsApp + phone are the first two; add
+// SMS/Email/Telegram the same way without touching any caller.
 import { whatsappAdapter } from '../../AbuWhatsApp/whatsappAdapter'
+import { phoneAdapter } from '../../AbuWhatsApp/phoneAdapter'
 registerAdapter(whatsappAdapter)
+registerAdapter(phoneAdapter)

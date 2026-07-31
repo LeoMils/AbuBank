@@ -70,7 +70,14 @@ export interface WhatsAppComposeCommand {
   plan: MessagePlan
   /** Which modality produced this command (parity instrumentation). */
   source: ComposeSource
+  /** True only when Martita explicitly asked to review/edit before sending —
+   *  then AbuAI shows the editable draft; otherwise WhatsApp is the review
+   *  surface (one "open" action, no card). */
+  wantsReview: boolean
 }
+
+// Explicit "let me see/edit it first" — the ONLY time the draft is shown in AbuAI.
+const REVIEW_INTENT_RE = /תראי לי|תני לי לראות|אני רוצה ל(?:ראות|בדוק)|רוצה לראות|לפני ש?(?:נשלח|שולח|תשלח)|תעצרי לפני|show me|let me (?:see|review|edit)/i
 
 // ─── Shared Martita WhatsApp persona (compose base) ─────────────────────────
 // Deliberately CLEAN: spelling-quirk level is set ONLY by the style block. This
@@ -127,9 +134,11 @@ ${buildFamilySummary()}
 
 // ─── Style blocks ─────────────────────────────────────────────────────────
 export const STYLE_BLOCKS: Record<WhatsAppStyle, string> = {
-  normal: `סגנון: רגיל וטבעי. עברית חמה, ברורה ונקייה — כמעט בלי שגיאות כתיב.
-משפטים קצרים ואישיים, מכוונים ישירות לאדם שאליו כותבים. חתימה חמה בסוף אם מתאים ("אבו" / "סבתא").
-בלי הגזמות, בלי שפה מלאכותית.`,
+  normal: `סגנון: הקול האמיתי של מרטיטה — חם, אישי ויומיומי, כמו שהיא כותבת לבני המשפחה שלה.
+משפטים קצרים, ישירים, עם חיבה אמיתית ופנייה אישית לאדם. חתימה חמה כשמתאים ("אבו" / "סבתא").
+אפשר אימוג'י אחד-שניים כשמתאים ❤️. לא נוקשה, לא "עברית של חדשות", ולא שפת AI מלוטשת.
+שמרי בדיוק על כל העובדות — שמות, שעות, מספרים, מקומות, קישורים, אי-ודאות ("אולי"/"בערך"), תנאים והבטחות.
+אל תוסיפי שגיאות שלא ביקשו, ואל תמציאי פרטים או זיכרונות שלא נאמרו.`,
 
   funny: `סגנון: מצחיק וחם. הודעה עם קריצה או בדיחה קטנה שתגרום לאדם לחייך — אוהבת, לעולם לא לועגת.
 מבנה קצר עם פאנץ' קטן. אפשר לסיים ב"Ja ja ja" ו-!!!!!!.
@@ -338,6 +347,52 @@ export function extractMessagePlan(
   }
 }
 
+// ── Semantic refinement — meaning, not transcript ───────────────────────────
+// Deterministic first-pass that resolves self-corrections and removes retracted
+// content BEFORE composition, so the message reflects intent. The LLM composer
+// (when available) further understands the cleaned facts; the local composer
+// uses them verbatim. Uncertainty/conditions/promises are LEFT intact (they are
+// meaning), so they survive into the draft.
+
+const HOUR_ALT = HEBREW_HOUR_WORDS.slice().sort((a, b) => b.length - a.length).join('|')
+const TIMEISH = `(?:ב|ל)?(?:${HOUR_ALT}|\\d{1,2}(?::\\d{2})?)`
+// "בארבע סליחה בחמש" / "בארבע, בעצם בחמש" → keep the corrected value.
+const SELF_CORRECTION_RE = new RegExp(`(${TIMEISH})\\s*[,.]?\\s*(?:סליחה|בעצם|טעות)\\s*[,.]?\\s*(${TIMEISH})`, 'g')
+
+// Retraction: an EXPLICIT meta-instruction to not mention something →
+// "…בעצם אל תזכירי/אל תכתבי/אל תגידי/לא להזכיר/לא לכתוב (את/על) X" → drop X.
+// Deliberately does NOT include "בלי" — "קפה בלי סוכר" is content, not a retraction.
+const RETRACT_RE = /(?:בעצם\s+)?(?:אל\s+ת(?:זכיר|כתב|גיד)[יי]?|לא\s+ל(?:הזכיר|כתוב|הגיד)|לא\s+צריך\s+(?:להזכיר|לכתוב))\s+(?:את\s+|על\s+)?(ה?[֐-׿]{2,})/g
+
+export interface SemanticRefinement { text: string; removed: string[] }
+
+/** Apply self-corrections + content retractions to the raw facts. */
+export function refineIntentSemantics(input: string): SemanticRefinement {
+  let text = (input ?? '').trim()
+  // 1) Self-correction: collapse "X <correction> Y" → Y (repeat for chains).
+  for (let i = 0; i < 4; i++) {
+    const next = text.replace(SELF_CORRECTION_RE, '$2')
+    if (next === text) break
+    text = next
+  }
+  // 2) Retractions: remove the instruction AND earlier mentions of the noun.
+  const removed: string[] = []
+  let m: RegExpExecArray | null
+  RETRACT_RE.lastIndex = 0
+  while ((m = RETRACT_RE.exec(text)) !== null) { if (m[1]) removed.push(m[1]) }
+  if (removed.length) {
+    text = text.replace(RETRACT_RE, ' ')
+    for (const noun of removed) {
+      const base = noun.replace(/^ה/, '')
+      // Remove remaining occurrences of the noun (with common prefixes/article).
+      const occ = new RegExp(`(?:על\\s+|את\\s+|ל|ב|מ)?ה?${base}`, 'g')
+      text = text.replace(occ, ' ')
+    }
+  }
+  text = text.replace(/\s{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').replace(/^[\s,.]+/, '').trim()
+  return { text, removed }
+}
+
 /**
  * CommunicationIntentResolver — parse a free-language WhatsApp command into a
  * normalized command with a structured plan. Deterministic (no LLM).
@@ -355,7 +410,7 @@ export function understandWhatsAppCommand(
   const stripToken: TargetMatch | null = exact
     ? exact
     : candidate ? { token: candidate.token, hebrew: '' } : null
-  const intent = extractIntent(raw, stripToken)
+  const intent = refineIntentSemantics(extractIntent(raw, stripToken)).text
   const plan = extractMessagePlan(intent, style, raw, false)
   return {
     targetName: exact?.token ?? candidate?.name ?? null,
@@ -364,6 +419,7 @@ export function understandWhatsAppCommand(
     style,
     plan,
     source: opts.source ?? 'text',
+    wantsReview: REVIEW_INTENT_RE.test(raw),
   }
 }
 

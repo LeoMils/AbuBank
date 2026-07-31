@@ -26,42 +26,57 @@ export async function buildCommunicationAction(
   turn: WhatsAppTurn,
   opts: BuildActionOpts = {},
 ): Promise<CommunicationAction> {
-  const channel = opts.channel ?? 'whatsapp'
+  const mode: 'message' | 'call' = turn.kind === 'call' ? 'call' : 'message'
+  // Call turns hand off through the phone adapter; compose turns through the
+  // messaging adapter (default WhatsApp). The controller stays channel-agnostic.
+  const channel = mode === 'call' ? 'phone' : (opts.channel ?? 'whatsapp')
   const adapter = getAdapter(channel)
-  const label = adapter?.primaryActionLabel ?? 'פתחי'
+  const label = adapter?.primaryActionLabel ?? (mode === 'call' ? 'התקשרי' : 'פתחי')
   const name = (turn.targetHebrew ?? turn.targetName ?? '').trim()
 
-  const clarify = (field: 'recipient' | 'intent', prompt: string): CommunicationAction => ({
-    capability: 'communication', action: 'clarify', channel, adapter: adapter?.id ?? channel,
-    primaryActionLabel: label,
+  const base = (partial: Partial<CommunicationAction>): CommunicationAction => ({
+    capability: 'communication', action: 'handoff', channel, adapter: adapter?.id ?? channel,
+    primaryActionLabel: label, mode,
     recipient: { name, canHandoff: false, confidence: 0 },
     draft: { text: '', style: turn.command?.style ?? 'normal', language: turn.command?.plan.language ?? 'he' },
-    verification: { ok: false, issues: ['incomplete'], missingFacts: [] },
-    clarify: { field, prompt },
+    verification: { ok: true, issues: [], missingFacts: [] },
+    ...partial,
   })
+  const clarify = (field: 'recipient' | 'intent', prompt: string): CommunicationAction =>
+    base({ action: 'clarify', verification: { ok: false, issues: ['incomplete'], missingFacts: [] }, clarify: { field, prompt } })
 
-  if (!name) return clarify('recipient', 'למי לכתוב? תגידי לי את השם.')
-  if (!turn.command || !turn.command.intent) return clarify('intent', `מה לכתוב ל${name}?`)
+  if (!name) return clarify('recipient', 'למי? תגידי לי את השם.')
 
-  // Recipient resolution (channel-specific) — verify we can actually hand off.
   const resolved = adapter?.resolveRecipient(name) ?? null
+  // Recipient did not resolve to ONE confident contact (ambiguous or unknown) —
+  // never guess; ask ONE short clarification and keep the pending action.
+  if (resolved === null) {
+    return clarify('recipient', `לא בטוחה למי בדיוק — תגידי לי שוב את השם של ${name}?`)
+  }
 
-  // Compose + verify (facts, non-empty). Composition is channel-agnostic voice.
+  // ── CALL: no message body; just verify we can reach the phone adapter. ──
+  if (mode === 'call') {
+    return base({ recipient: { name, canHandoff: resolved?.canHandoff ?? false, confidence: resolved?.confidence ?? 0 } })
+  }
+
+  // ── MESSAGE: compose + verify (facts, non-empty). ──
+  if (!turn.command || !turn.command.intent) return clarify('intent', `מה לכתוב ל${name}?`)
   const text = await composeWhatsAppMessage(turn.command, { recipientLabel: name })
   const v = verifyDraft(turn.command, text)
-
-  return {
-    capability: 'communication', action: 'handoff', channel, adapter: adapter?.id ?? channel,
-    primaryActionLabel: label,
+  return base({
     recipient: { name, canHandoff: resolved?.canHandoff ?? false, confidence: resolved?.confidence ?? 0 },
     draft: { text, style: turn.command.style, language: turn.command.plan.language },
     verification: { ok: v.ok, issues: v.issues, missingFacts: v.missingFacts },
-  }
+    ...(turn.command.wantsReview ? { review: true } : {}),
+  })
 }
 
-/** The chat lead line that accompanies the Action card (or the clarify question). */
+/** The chat lead line that accompanies the Action (or the clarify question).
+ *  Deliberately brief — "פותחת שיחה/הודעה ל…"; the message body is NEVER read
+ *  aloud and (by default) not shown in AbuAI. */
 export function communicationLead(action: CommunicationAction): string {
   if (action.action === 'clarify') return action.clarify?.prompt ?? 'מה לכתוב?'
   const name = action.recipient.name
-  return name ? `כתבתי ל${name}:` : 'כתבתי:'
+  const who = name ? ` ל${name}` : ''
+  return action.mode === 'call' ? `פותחת שיחה${who}.` : `פותחת הודעה${who}.`
 }

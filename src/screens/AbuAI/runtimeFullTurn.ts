@@ -29,7 +29,6 @@ import { createOnlineRuntime, type OnlineRuntimeV2 } from './onlineRuntimeV2'
 import { interpretTask } from './aiTaskInterpreter'
 import { authorityIntent, legacyDomainClassify } from './cognitiveRuntime'
 import { interpretUtterance, groundIntent, groundingLine, type GroundedIntent, type InterpretTransport } from './understandingIntake'
-import { buildWhatsAppReply } from './whatsappTurn'
 import { buildCommunicationAction, communicationLead } from './communication/capability'
 import type { CommunicationAction } from './communication/types'
 import { observeOldIntake, runIntakeShadow, type ShadowRecord } from './understandingShadow'
@@ -145,15 +144,20 @@ export async function runFullTurn(
     source = 'deterministic'
     intent = 'whatsapp'
     st = decision.state
-    if (decision.whatsapp.kind === 'compose') {
-      const commAction = await buildCommunicationAction(decision.whatsapp)
-      display = communicationLead(commAction)
-      speak = commAction.action === 'handoff' ? commAction.draft.text : display
-      if (commAction.action === 'handoff') action = commAction
+    const commAction = await buildCommunicationAction(decision.whatsapp)
+    if (commAction.action === 'clarify') {
+      // Genuinely ambiguous / incomplete — ask ONE short question, keep no action.
+      display = commAction.clarify?.prompt ?? 'מה לכתוב?'
+      speak = display
+    } else if (commAction.mode === 'call' && !commAction.recipient.canHandoff) {
+      // A call with no usable telephone number — explain clearly, no handoff.
+      display = `אין לי מספר טלפון שמור ל${commAction.recipient.name}. אפשר להוסיף אותו בהגדרות.`
+      speak = display
     } else {
-      const reply = await buildWhatsAppReply(decision.whatsapp)
-      display = reply.text
-      speak = reply.speak
+      // The message body is NEVER read aloud and (by default) not shown in AbuAI.
+      display = communicationLead(commAction)
+      speak = display
+      action = commAction
     }
   } else if (decision.needsOnline && decision.online) {
     source = 'online'

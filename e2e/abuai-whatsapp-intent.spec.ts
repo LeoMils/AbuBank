@@ -1,10 +1,9 @@
 /**
  * Abu AI — Communication Capability handoff (evidence class: BROWSER).
- * Reproduces the reported failure ("send WhatsApp to Mor … tomorrow evening" →
- * wrong "מחר אין כלום ביומן") and proves the new behaviour: AbuAI returns a
- * generic CommunicationAction, the chat renders the draft + a single primary
- * action, and pressing it opens the correct conversation with the EXACT reviewed
- * (even edited) text prefilled — never auto-sent. Providers are blocked so the
+ * Proves the shipped behaviour in the built app: call + WhatsApp both produce a
+ * generic CommunicationAction; the clear path shows ONE primary action (WhatsApp
+ * is the review surface); explicit review shows an editable draft that reaches
+ * the adapter byte-for-byte; nothing is auto-sent. Providers are blocked so the
  * deterministic local composer runs (reproducible without server keys).
  *
  *   npx playwright test e2e/abuai-whatsapp-intent.spec.ts --project=mobile-chrome
@@ -41,49 +40,51 @@ async function say(page: Page, text: string) {
 test.describe('Abu AI — Communication Capability', () => {
   test.beforeEach(async ({ page }) => { await prime(page) })
 
-  test('compose → generic action card with draft + single primary action (no calendar)', async ({ page }) => {
+  test('clear WhatsApp path: ONE action, no forced draft, not a calendar answer', async ({ page }) => {
     await enterAbuAI(page)
     await say(page, 'תכתבי למור שמחר בערב אני אביא קולה')
 
     const card = page.getByTestId('communication-action-card')
     await card.waitFor({ state: 'visible', timeout: 20_000 })
-    expect(await card.getAttribute('data-channel')).toBe('whatsapp') // generic, adapter-driven
-
-    const draft = page.getByTestId('communication-draft')
-    const draftText = await draft.inputValue()
-    expect(draftText).toContain('מור')
-    expect(draftText).toContain('קולה')                 // fact preserved
+    expect(await card.getAttribute('data-mode')).toBe('message')
     await expect(page.getByTestId('communication-primary-action')).toContainText('פתחי בוואטסאפ')
+    // Default flow: WhatsApp is the review surface → no editable draft shown.
+    await expect(page.getByTestId('communication-draft')).toHaveCount(0)
+    // Brief lead, never a calendar answer, no "are you sure".
+    const lead = page.getByTestId('abuai-msg-assistant').last()
+    await expect(lead).toContainText('פותחת הודעה')
+    await expect(lead).not.toContainText('אין כלום ביומן')
 
-    // The lead bubble is not a calendar answer.
-    const bubbles = page.getByTestId('abuai-msg-assistant')
-    await expect(bubbles.last()).not.toContainText('אין כלום ביומן')
+    // Optional review reveals the (local) draft with the fact preserved.
+    await page.getByTestId('communication-reveal').click()
+    await expect(page.getByTestId('communication-draft')).toContainText('קולה')
   })
 
-  test('editing the draft, then Open, hands off the EXACT reviewed text (prefill, no auto-send)', async ({ page }) => {
+  test('explicit review → editable draft reaches WhatsApp byte-for-byte (no auto-send)', async ({ page }) => {
     let waUrl = ''
     await page.route(/wa\.me/, (route) => { waUrl = route.request().url(); return route.abort() })
 
     await enterAbuAI(page)
-    await say(page, 'תכתבי למור שמחר בערב אני אביא קולה')
-    const draft = page.getByTestId('communication-draft')
+    await say(page, 'תכתבי למור שמחר בערב אני אביא קולה, תראי לי לפני')
+    const draft = page.getByTestId('communication-draft')       // shown because review was requested
     await draft.waitFor({ state: 'visible', timeout: 20_000 })
 
-    // Review + edit the draft.
     const edited = 'מור, מחר בערב אני מביאה קולה וגם עוגה 🎂'
     await draft.fill(edited)
-
     await page.getByTestId('communication-primary-action').click()
     await expect.poll(() => waUrl, { timeout: 10_000 }).toContain('wa.me/972500000456')
-    const decoded = decodeURIComponent(waUrl.split('?text=')[1] ?? '')
-    expect(decoded).toBe(edited) // EXACT reviewed text prefilled — nothing added, nothing sent
+    expect(decodeURIComponent(waUrl.split('?text=')[1] ?? '')).toBe(edited)
   })
 
-  test('call request → name-correct hand-off, not the calendar', async ({ page }) => {
+  test('call request → generic call Action (mode=call), not the calendar', async ({ page }) => {
     await enterAbuAI(page)
     await say(page, 'תתקשרי למור')
-    const last = page.getByTestId('abuai-msg-assistant').last()
-    await expect(last).toContainText('מור', { timeout: 20_000 })
-    await expect(last).not.toContainText('אין כלום ביומן')
+    const card = page.getByTestId('communication-action-card')
+    await card.waitFor({ state: 'visible', timeout: 20_000 })
+    expect(await card.getAttribute('data-mode')).toBe('call')
+    await expect(page.getByTestId('communication-primary-action')).toContainText('התקשרי')
+    const lead = page.getByTestId('abuai-msg-assistant').last()
+    await expect(lead).toContainText('פותחת שיחה')
+    await expect(lead).not.toContainText('אין כלום ביומן')
   })
 })

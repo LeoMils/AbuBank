@@ -12,7 +12,7 @@
  * looked up by id at press time.
  */
 
-export type CommunicationChannel = 'whatsapp' | 'sms' | 'email' | 'telegram'
+export type CommunicationChannel = 'whatsapp' | 'phone' | 'sms' | 'email' | 'telegram'
 
 export interface CommunicationRecipient {
   /** Display name (e.g. Hebrew "מור"). */
@@ -55,6 +55,11 @@ export interface CommunicationAction {
   draft: CommunicationDraft
   verification: CommunicationVerification
   clarify?: { field: 'recipient' | 'intent'; prompt: string }
+  /** 'message' → compose+handoff a message; 'call' → open a phone call (no body). */
+  mode: 'message' | 'call'
+  /** True only when Martita explicitly asked to review/edit the draft in AbuAI.
+   *  Default flow shows just the primary action; WhatsApp is the review surface. */
+  review?: boolean
 }
 
 /**
