@@ -64,6 +64,29 @@ describe('communication ownership — multi-turn refinement', () => {
   })
 })
 
+describe('EXACT real-device conversation (the original failure)', () => {
+  it('every turn owns communication; calendar never activates', () => {
+    let s = IDLE_RUNTIME
+    const seq = ['תשלח הודעה ללאו', 'שיבוא היום בערב', 'עם יין', 'לא פגישה', 'בשמונה וחצי']
+    let last: ReturnType<typeof run> | null = null
+    for (const t of seq) {
+      const d = run(s, t)
+      expect(d.intent, `"${t}"`).toBe('whatsapp')
+      expect(d.state.createState.phase, `"${t}" must not create a calendar draft`).toBe('idle')
+      s = d.state; last = d
+    }
+    const msg = last!.whatsapp?.command?.intent ?? ''
+    expect(msg).toMatch(/יין/)          // "עם יין" kept
+    expect(msg).toMatch(/בערב/)         // evening kept
+    expect(msg).toMatch(/שמונה/)        // "בשמונה וחצי" part of the message
+    expect(msg).not.toMatch(/פגישה/)    // "לא פגישה" did NOT inject a meeting word
+
+    const call = run(s, 'תתקשר למור')
+    expect(call.intent).toBe('whatsapp')
+    expect(call.whatsapp?.kind).toBe('call')
+  })
+})
+
 describe('calendar still works, evening stays evening', () => {
   it('a real "תקבעי פגישה…" stays calendar', () => {
     const d = run(IDLE_RUNTIME, 'תקבעי פגישה עם מור מחר בשלוש')

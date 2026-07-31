@@ -81,7 +81,7 @@ import { normalizeInput } from './understandingOrchestrator'
 import {
   memoryCommandType, parseRememberFact, parseForgetQuery, saveMemory, forgetMemories, loadMemories,
 } from './savedMemory'
-import { detectWhatsAppTurn, applyFollowUp, isFollowUpCorrection, type WhatsAppTurn } from './whatsappCompose'
+import { detectWhatsAppTurn, applyFollowUp, type WhatsAppTurn } from './whatsappCompose'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export type RuntimeIntent =
@@ -1302,11 +1302,19 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   if (state.pendingCommunication?.command && state.createState.phase === 'idle') {
     const t = original.trim()
     const fresh = detectWhatsAppTurn(t, { source: 'text' })
-    const isRefinement = isFollowUpCorrection(t)
-      || /(?:^|\s)(?:בערב|בבוקר|בצהריים|בלילה|אחר הצהריים|לפנות בוקר)(?:\s|$)/u.test(t)
-      || /לא\s+(?:פגיש|תור|יומן)/u.test(t)
-    if (!fresh && isRefinement && t.split(/\s+/).length <= 8) {
-      const updated = applyFollowUp(state.pendingCommunication.command, t)
+    // NB: JS \b is ASCII-only and never matches at a Hebrew boundary — anchor on
+    // a following space / end / punctuation instead.
+    const isQuestion = /[?？]\s*$/.test(t) || /^(?:מה|מי|מתי|איפה|כמה|למה|איך|האם)(?:\s|$|[?])/u.test(t)
+    const isExit = /^(?:תודה|ביי|להתראות|סיימתי|עצרי|די|זהו|סבבה|שכחי|בטלי|עזבי)(?:\s|$|[?!.])/u.test(t)
+    // While a communication is pending, EVERY short follow-up refines that SAME
+    // message — additions ("עם יין"), times ("בשמונה וחצי"), style ("תעשי מצחיק").
+    // It never spawns a calendar draft. Only a fresh command / question / exit breaks out.
+    if (!fresh && !isQuestion && !isExit && t.split(/\s+/).length <= 10) {
+      // "לא פגישה" reaffirms this is a MESSAGE — do NOT inject "פגישה" into the body.
+      const isNotCalendar = /^לא[,\s]+(?:פגיש|תור|יומן|אירוע)/u.test(t)
+      const updated = isNotCalendar
+        ? state.pendingCommunication.command
+        : applyFollowUp(state.pendingCommunication.command, t)
       const wa: WhatsAppTurn = { kind: 'compose', targetName: updated.targetName, targetHebrew: updated.targetHebrew, command: updated }
       return emitWhatsApp(wa)
     }
