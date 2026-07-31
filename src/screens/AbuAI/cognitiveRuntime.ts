@@ -81,7 +81,7 @@ import { normalizeInput } from './understandingOrchestrator'
 import {
   memoryCommandType, parseRememberFact, parseForgetQuery, saveMemory, forgetMemories, loadMemories,
 } from './savedMemory'
-import { detectWhatsAppTurn, type WhatsAppTurn } from './whatsappCompose'
+import { detectWhatsAppTurn, applyFollowUp, isFollowUpCorrection, type WhatsAppTurn } from './whatsappCompose'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export type RuntimeIntent =
@@ -140,6 +140,10 @@ export interface RuntimeState {
   /** a family fact stated plainly (no "תזכרי"), awaiting ONE soft "כן" before it is
    *  written to the ledger through THE LAWS gate. Cleared on any non-confirm. */
   pendingLedgerChange?: LedgerChange | null
+  /** a communication (WhatsApp/call) action just produced — so a bare follow-up
+   *  ("בשמונה וחצי" / "בערב" / "תעשי מצחיק" / "לא פגישה") UPDATES that action and
+   *  never creates a calendar event. Cleared by any deterministic non-comm answer. */
+  pendingCommunication?: WhatsAppTurn | null
 }
 
 export const IDLE_RUNTIME: RuntimeState = {
@@ -152,6 +156,7 @@ export const IDLE_RUNTIME: RuntimeState = {
   lastFamilyPair: null,
   lastFamilySubject: null,
   focus: null,
+  pendingCommunication: null,
 }
 
 export interface RuntimeContext {
@@ -1253,8 +1258,9 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
       needsLLM: false, needsOnline: false, online: null, grounding: null,
       sideEffect: null, verifier,
       // A deterministic (non-online) answer ends any active online topic, so the
-      // next bare "ומחר?" can't bind to a stale weather focus.
-      state: { ...opts.state, conv, focus: null, lastIntent: intent },
+      // next bare "ומחר?" can't bind to a stale weather focus. It also ends any
+      // pending communication (a normal answer means she moved on).
+      state: { ...opts.state, conv, focus: null, lastIntent: intent, pendingCommunication: null },
     }
   }
 
@@ -1272,20 +1278,46 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   // to the caller via `decision.whatsapp` (handled:false, no LLM/online). Guarded to
   // idle create-state + no pending reminder so it can never hijack a pending draft.
   // detectWhatsAppTurn fires ONLY when the utterance LEADS with a write/send/call
-  // verb, so a WhatsApp message that merely mentions a meeting ("תכתבי למור שיש
-  // לי פגישה מחר") stays communication, while a real "תקבעי פגישה…" create (whose
-  // embedded "…ותכתבי להביא…" is a note) is not caught here and flows to calendar.
-  if (state.createState.phase === 'idle' && !state.pendingReminder) {
+  // verb (allowing a "לא פגישה," correction prefix), so a message that merely
+  // mentions a meeting ("תכתבי למור שיש לי פגישה מחר") stays communication, while a
+  // real "תקבעי פגישה…" create (whose embedded "…ותכתבי להביא…" is a note) is not
+  // caught here and flows to calendar.
+  const emitWhatsApp = (wa: WhatsAppTurn): CognitiveDecision => ({
+    ...base, intent: 'whatsapp', handled: false,
+    display: null, speak: null, chunks: [],
+    needsLLM: false, needsOnline: false, online: null, grounding: null,
+    sideEffect: null, verifier: { ok: true, violations: [] },
+    whatsapp: wa,
+    // An explicit communication command OWNS the turn: clear any accidental
+    // calendar draft / reminder and remember this as the pending communication
+    // so bare follow-ups refine it (never create a calendar event).
+    state: { ...state, lastIntent: 'whatsapp', focus: null, createState: IDLE_STATE, pendingReminder: null, pendingCommunication: wa },
+  })
+
+  // ── Multi-turn refinement: a bare follow-up updates the PENDING communication ──
+  // "בשמונה וחצי" / "בערב" / "תעשי מצחיק" / "לא פגישה" after a communication action
+  // edits THAT message — it must never spawn a calendar draft. Runs only when a
+  // communication is pending, the utterance is NOT a fresh explicit command, and it
+  // reads as a refinement (correction marker, time/time-of-day, style, or negation).
+  if (state.pendingCommunication?.command && state.createState.phase === 'idle') {
+    const t = original.trim()
+    const fresh = detectWhatsAppTurn(t, { source: 'text' })
+    const isRefinement = isFollowUpCorrection(t)
+      || /(?:^|\s)(?:בערב|בבוקר|בצהריים|בלילה|אחר הצהריים|לפנות בוקר)(?:\s|$)/u.test(t)
+      || /לא\s+(?:פגיש|תור|יומן)/u.test(t)
+    if (!fresh && isRefinement && t.split(/\s+/).length <= 8) {
+      const updated = applyFollowUp(state.pendingCommunication.command, t)
+      const wa: WhatsAppTurn = { kind: 'compose', targetName: updated.targetName, targetHebrew: updated.targetHebrew, command: updated }
+      return emitWhatsApp(wa)
+    }
+  }
+
+  {
     const wa = detectWhatsAppTurn(original.trim(), { source: 'text' }) ?? detectWhatsAppTurn(normalized, { source: 'text' })
-    if (wa) {
-      return {
-        ...base, intent: 'whatsapp', handled: false,
-        display: null, speak: null, chunks: [],
-        needsLLM: false, needsOnline: false, online: null, grounding: null,
-        sideEffect: null, verifier: { ok: true, violations: [] },
-        whatsapp: wa,
-        state: { ...state, lastIntent: 'whatsapp', focus: null },
-      }
+    // Fire for a real recipient (exact family name) or a call — protects mid-draft
+    // notes ("…ותכתבי להביא…" → target is a verb, not a person) from being caught.
+    if (wa && (wa.targetHebrew || wa.kind === 'call')) {
+      return emitWhatsApp(wa)
     }
   }
 

@@ -41,6 +41,7 @@ import {
 import { planTurn } from './conversationBrain'
 import { diagReset, diagSet, diagCommit, diagCopyText } from '../../services/productDiagnostics'
 import { setProductTruth, recordLastPerson, getProductTruth, formatProductTruthReport } from '../../services/productTruth'
+import { isOperatorMode } from '../../services/operatorMode'
 import { planCompanionTurn, deriveStateFromMessages } from './companionPlanner'
 import { enforceCompanion } from './companionComposer'
 import { durable } from '../../services/durableStore'
@@ -199,16 +200,11 @@ const KEYFRAMES = `
 // The old "...אני כאן." was a dead end — it greeted and then nothing happened.
 // This opens the door: she knows immediately she can just talk, ask, or have me
 // put something in the calendar. One sentence, warm, adult — never a menu.
-// Operator-only diagnostics gate. The Product Truth panel + Copy Diagnostics /
-// Copy Product Truth Report are for LEO (dev, or the preview via ?operator=1) —
-// they show English engineering text and must NEVER appear to Martita.
-function isOperatorView(): boolean {
-  try {
-    if (import.meta.env.DEV) return true
-    if (typeof window === 'undefined' || !window.location) return false
-    return new URLSearchParams(window.location.search || '').get('operator') === '1'
-  } catch { return false }
-}
+// Operator-only diagnostics gate — the Product Truth panel + Copy Diagnostics /
+// Copy Product Truth Report are for LEO (dev, ?operator=1, or persisted operator
+// mode) and must NEVER appear to Martita. Delegates to the ONE canonical gate so
+// it survives PWA launches (no query string) once enabled.
+const isOperatorView = isOperatorMode
 
 // Product Truth: the Realtime path dropped to the free Web-Speech pipeline.
 // Silent to Martita, but NEVER hidden from the truth report / dashboard.
@@ -1585,8 +1581,9 @@ export function AbuAI() {
         conversationOSRef.current = result.state.conv
         cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
         // Pipeline (fallback) voice STILL runs the brain — record it so Product Truth
-        // shows BRAIN_PIPELINE_USED: YES even when Realtime WebRTC is unavailable.
-        setProductTruth({ brainPipelineUsed: true, executiveControllerUsed: true, route: result.intent, toolUsed: result.source })
+        // shows BRAIN_PIPELINE_USED: YES + INPUT_SOURCE: voice_fallback even when
+        // Realtime WebRTC is unavailable and STT is Web Speech.
+        setProductTruth({ brainPipelineUsed: true, executiveControllerUsed: true, route: result.intent, toolUsed: result.source, inputSource: 'voice_fallback' })
         setMessages(prev => [...prev, {
           id: nextId(), role: 'assistant', content: result.display, timestamp: Date.now(),
           ...(result.action ? { action: result.action } : {}),

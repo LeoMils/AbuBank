@@ -35,6 +35,41 @@ test('1) Operator import UI is reachable via ?operator=1 and imports contacts', 
   await expect(page.getByTestId('setup-active-count')).toHaveAttribute('data-active-count', '1')
 })
 
+test('3) Operator Mode persists across a reload without ?operator, and ?operator=0 clears it', async ({ page }) => {
+  // Enable via ?operator=1, then reach the WhatsApp screen operator setup.
+  await page.goto('/?operator=1', { waitUntil: 'networkidle', timeout: 30_000 })
+  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await expect(page.getByTestId('family-contacts-setup')).toBeVisible({ timeout: 10_000 })
+
+  // Reload WITHOUT the query param (mimics an installed-PWA launch) → still operator.
+  await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
+  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await expect(page.getByTestId('family-contacts-setup')).toBeVisible({ timeout: 10_000 })
+
+  // Explicitly disable → operator tools gone (family grid instead).
+  await page.goto('/?operator=0', { waitUntil: 'networkidle', timeout: 30_000 })
+  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await expect(page.getByTestId('family-contacts-setup')).toHaveCount(0)
+})
+
+test('4) Multi-turn: a bare follow-up refines the SAME message, not the calendar', async ({ page }) => {
+  await blockProviders(page)
+  await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
+  await page.locator('text=Abu AI').first().click()
+  const ta = page.locator('textarea[placeholder]').first()
+  await ta.waitFor({ state: 'visible', timeout: 10_000 })
+
+  await ta.fill('תכתבי למור שהפגישה מחר'); await ta.press('Enter')
+  await page.getByTestId('communication-action-card').first().waitFor({ state: 'visible', timeout: 20_000 })
+
+  // Bare time correction — must stay communication.
+  await ta.fill('בשמונה וחצי'); await ta.press('Enter')
+  await page.waitForTimeout(1500)
+  const lead = page.getByTestId('abuai-msg-assistant').last()
+  await expect(lead).toContainText('פותחת הודעה')
+  await expect(lead).not.toContainText('ביומן')
+})
+
 test('2) A WhatsApp message that mentions a meeting is communication, NOT calendar', async ({ page }) => {
   await blockProviders(page)
   await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })

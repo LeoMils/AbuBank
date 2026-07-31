@@ -448,7 +448,10 @@ export interface WhatsAppTurn {
 // "תקבעי פגישה עם מור מחר ותכתבי להביא תעודה" (a calendar create whose embedded
 // "תכתבי" is a note → NOT communication). Anchoring on the leading verb — not on
 // calendar words in the body — is the correct discriminator.
-const LEADING_COMM_VERB_RE = /^[\s,.!?־-]*(?:אבו[,\s]+)?(?:בבקשה\s+)?(?:תכתב[יו]?|כתב[יו]?|תשלח[יו]?|שלח[יו]?|תגיד[יי]?|תאחל[יי]?|תברכ[יי]?|תודיע[יי]?|הודיע[יי]?|תתקשר[יי]?|להתקשר|תצלצל[יי]?|mand[aá]\w*|escrib\w*|dec[ií]\w*|send|write|text|tell|message|whatsapp|call|llam\w*)(?:\s|$)/i
+// Allow a leading correction/negation clause before the verb, so
+// "לא פגישה. תשלח הודעה ללאו" (she is correcting a calendar mishearing INTO a
+// message) is still recognised as a communication command.
+const LEADING_COMM_VERB_RE = /^[\s,.!?־-]*(?:לא[,\s]+(?:פגיש[הות]+|תור|יומן|זה)?[,.!\s]*)?(?:אבו[,\s]+)?(?:בבקשה\s+)?(?:תכתב[יו]?|כתב[יו]?|תשלח[יו]?|שלח[יו]?|תגיד[יי]?|תאחל[יי]?|תברכ[יי]?|תודיע[יי]?|הודיע[יי]?|תתקשר[יי]?|להתקשר|תצלצל[יי]?|mand[aá]\w*|escrib\w*|dec[ií]\w*|send|write|text|tell|message|whatsapp|call|llam\w*)(?:\s|$)/i
 
 export function detectWhatsAppTurn(text: string, opts: { source?: ComposeSource } = {}): WhatsAppTurn | null {
   const t = (text ?? '').trim()

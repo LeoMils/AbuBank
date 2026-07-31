@@ -9,12 +9,18 @@ import path from 'path'
 import { describe, it, expect } from 'vitest'
 
 const SRC = fs.readFileSync(path.resolve(__dirname, 'index.tsx'), 'utf8')
+const GATE = fs.readFileSync(path.resolve(__dirname, '../../services/operatorMode.ts'), 'utf8')
 
 describe('AbuAI diagnostics — operator-gated, hidden from Martita', () => {
-  it('an operator gate exists (dev OR ?operator=1)', () => {
-    expect(SRC).toMatch(/function isOperatorView\(\)/)
-    expect(SRC).toMatch(/operator'\)\s*===\s*'1'/)
-    expect(SRC).toMatch(/import\.meta\.env\.DEV/)
+  it('uses ONE canonical persistent operator gate (dev OR ?operator=1, persisted)', () => {
+    // index.tsx delegates to the canonical gate.
+    expect(SRC).toMatch(/isOperatorView\s*=\s*isOperatorMode/)
+    expect(SRC).toMatch(/from '\.\.\/\.\.\/services\/operatorMode'/)
+    // The canonical gate: dev, ?operator=1/0, and persistence.
+    expect(GATE).toMatch(/import\.meta\.env\.DEV/)
+    expect(GATE).toMatch(/'abu-operator'/)
+    expect(GATE).toMatch(/getItem\(KEY\)/)
+    expect(GATE).toMatch(/export function setOperatorMode/)
   })
 
   it('the Product Truth panel is behind isOperatorView()', () => {

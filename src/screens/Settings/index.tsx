@@ -8,6 +8,33 @@ import { copyLastTurns } from '../AbuAI/liveTurnDiagnostics'
 import { exportStoredTranscript, serializeExport } from '../../evolution/recorderExport'
 import { isRecorderOff, setRecorderOff } from '../../evolution/recorderSwitch'
 import { setSpeechRate } from '../../services/speechProfile'
+import { isOperatorPersisted, setOperatorMode } from '../../services/operatorMode'
+
+/**
+ * Persistent Operator Mode toggle. Enables the operator/diagnostics tools
+ * (Product Truth, Copy Diagnostics, contacts setup) and — unlike ?operator=1 —
+ * survives installed-PWA launches. Off by default; Martita never turns it on.
+ */
+export function OperatorModeToggle() {
+  const [on, setOn] = useState(() => isOperatorPersisted())
+  return (
+    <button
+      type="button"
+      data-testid="operator-mode-toggle"
+      data-operator-on={on ? 'true' : 'false'}
+      onClick={() => { const next = !on; setOperatorMode(next); setOn(next) }}
+      style={{
+        marginTop: 8, width: '100%', minHeight: 44, padding: '10px 16px', borderRadius: 12,
+        background: on ? 'rgba(201,168,76,0.14)' : 'transparent',
+        border: `1px solid ${on ? 'rgba(201,168,76,0.45)' : 'rgba(255,255,255,0.14)'}`,
+        color: on ? '#FFE9B3' : 'rgba(255,255,255,0.45)',
+        fontSize: 14, fontWeight: 600, fontFamily: "'Heebo',sans-serif", cursor: 'pointer', direction: 'rtl',
+      }}
+    >
+      🔧 מצב מפעיל (Operator): {on ? 'פעיל — כלי אבחון מוצגים' : 'כבוי'}
+    </button>
+  )
+}
 
 /** Visible, senior-discreet debug access: copies the last 20 AbuAI turns for support. */
 export function CopyTurnsButton() {
@@ -800,6 +827,7 @@ export function Settings() {
             <br />
             {APP_VERSION.branchHint} · {APP_VERSION.buildDate}
           </div>
+          <OperatorModeToggle />
           <CopyTurnsButton />
           <FlightRecorderControls />
           <button

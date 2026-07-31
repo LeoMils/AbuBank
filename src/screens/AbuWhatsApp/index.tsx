@@ -20,13 +20,11 @@ import { LoadingState } from '../../components/LoadingState'
 import { FamilyQuickFaces } from './familyQuickFaces'
 import { FamilyContactsSetup } from './FamilyContactsSetup'
 import { VoiceCompose } from './VoiceCompose'
+import { isOperatorMode } from '../../services/operatorMode'
 
 function isOperatorQueryParam(): boolean {
-  try {
-    if (typeof window === 'undefined' || !window.location) return false
-    const params = new URLSearchParams(window.location.search || '')
-    return params.get('operator') === '1'
-  } catch { return false }
+  // One canonical gate (persistent: ?operator=1 / ?operator=0 / Settings toggle).
+  return isOperatorMode()
 }
 
 type WhatsAppTab = 'family' | 'actions'

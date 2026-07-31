@@ -174,9 +174,14 @@ describe('operator setup UX — phone-friendly labels & feedback', () => {
 describe('operator entry & privacy guards (source contract)', () => {
   const indexSrc = fs.readFileSync(path.join(PROJECT_ROOT, 'src/screens/AbuWhatsApp/index.tsx'), 'utf8')
 
-  it('?operator=1 reliably opens setup', () => {
-    expect(indexSrc.includes("params.get('operator') === '1'")).toBe(true)
+  it('?operator=1 (or persisted operator mode) reliably opens setup via the canonical gate', () => {
+    // AbuWhatsApp routes operator entry through the ONE canonical gate.
+    expect(indexSrc.includes('isOperatorMode')).toBe(true)
     expect(indexSrc.includes('FamilyContactsSetup')).toBe(true)
+    // The canonical gate handles the ?operator=1 query param + persistence.
+    const gateSrc = fs.readFileSync(path.join(PROJECT_ROOT, 'src/services/operatorMode.ts'), 'utf8')
+    expect(gateSrc.includes("get('operator')")).toBe(true)
+    expect(gateSrc.includes("'abu-operator'")).toBe(true)
   })
 
   it('long-press is an additional (not the only) path to operator setup', () => {
