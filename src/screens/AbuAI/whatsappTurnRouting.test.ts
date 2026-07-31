@@ -48,6 +48,13 @@ describe('runCognitiveTurn — WhatsApp/call precedence over calendar', () => {
     expect(d.whatsapp ?? null).toBeNull()
     expect(d.intent).not.toBe('whatsapp')
   })
+
+  it('does NOT hijack a calendar create that embeds a note "…ותכתבי להביא…"', () => {
+    // "תכתבי ל…" here is a calendar NOTE, not a message to a person.
+    const d = run('תקבעי פגישה עם מור מחר בשלוש ותכתבי להביא תעודת זהות')
+    expect(d.whatsapp ?? null).toBeNull()
+    expect(d.intent).not.toBe('whatsapp')
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════

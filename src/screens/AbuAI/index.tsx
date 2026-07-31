@@ -13,6 +13,9 @@ import { toSpokenText } from './spokenPersona'
 import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState, type ConversationFocus } from './cognitiveRuntime'
 import { detectWhatsAppTurn } from './whatsappCompose'
 import { buildWhatsAppReply } from './whatsappTurn'
+import { getAdapter } from './communication/registry'
+import { recordComposeEvent } from './whatsappComposeTelemetry'
+import type { CommunicationAction } from './communication/types'
 import { ExecutiveCognitiveController } from './executiveCognitiveController'
 import { buildFullTurnTools } from './fullTurnBridge'
 import { shouldUseWebSpeechPrimary, LISTEN_WATCHDOG_MS } from '../../services/sttStrategy'
@@ -634,7 +637,10 @@ export function AbuAI() {
         cognitiveRuntimeStateRef.current = result.state
         conversationOSRef.current = result.state.conv
         cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
-        setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: result.display, timestamp: Date.now() }])
+        setMessages(prev => [...prev, {
+          id: aiMsgId, role: 'assistant', content: result.display, timestamp: Date.now(),
+          ...(result.action ? { action: result.action } : {}),
+        }])
         setLoading(false); streamingMsgIdRef.current = null
         return
       }
@@ -1575,7 +1581,10 @@ export function AbuAI() {
         cognitiveRuntimeStateRef.current = result.state
         conversationOSRef.current = result.state.conv
         cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
-        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: result.display, timestamp: Date.now() }])
+        setMessages(prev => [...prev, {
+          id: nextId(), role: 'assistant', content: result.display, timestamp: Date.now(),
+          ...(result.action ? { action: result.action } : {}),
+        }])
         if (voiceModeRef.current) {
           transitionVoice('RESPONDING', 'runtime-full')
           setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(result.display)
@@ -2575,7 +2584,10 @@ ${fewShotText}`
               conversationOSRef.current = result.state.conv
               cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
               setProductTruth({ brainPipelineUsed: true, executiveControllerUsed: true, route: result.intent, toolUsed: result.source, memoryUsed: /conversation_os|memory/.test(result.source) })
-              setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: result.display, timestamp: Date.now() }])
+              setMessages(prev => [...prev, {
+                id: nextId(), role: 'assistant', content: result.display, timestamp: Date.now(),
+                ...(result.action ? { action: result.action } : {}),
+              }])
               // Voice the BRAIN's answer through Realtime (model runs create_response:false,
               // so it never self-answers — it only reads AbuAI's reply). Suppress the echo.
               suppressRealtimeAssistantMsgRef.current = true
@@ -3004,6 +3016,22 @@ ${fewShotText}`
               onRetry={() => setMessages(prev => prev.filter(m => m.id !== msg.id))}
               onHome={() => setScreen(Screen.Home)}
               onDismiss={() => setMessages(prev => prev.filter(m => m.id !== msg.id))}
+              onOpenAction={(action: CommunicationAction, draftText: string) => {
+                // Perform the channel handoff: open the conversation with the
+                // reviewed text PRE-FILLED. Never mutate the draft, never send.
+                const adapter = getAdapter(action.channel)
+                if (!adapter) return false
+                try { navigator.clipboard?.writeText(draftText)?.catch(() => {}) } catch { /* clipboard optional */ }
+                const { url } = adapter.buildHandoff(action.recipient.name, draftText)
+                if (url) {
+                  recordComposeEvent({ type: 'url_opened', recipient: action.recipient.name, draftLen: draftText.length, ok: true })
+                  try { navigator.vibrate?.(15) } catch { /* no haptics */ }
+                  window.location.href = url
+                  return true
+                }
+                recordComposeEvent({ type: 'no_phone_fallback', recipient: action.recipient.name, ok: false })
+                return false
+              }}
             />
           ))}
 

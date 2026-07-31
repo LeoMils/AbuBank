@@ -1271,7 +1271,10 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   // The controller OWNS the classification (precedence) and DEFERS the async compose
   // to the caller via `decision.whatsapp` (handled:false, no LLM/online). Guarded to
   // idle create-state + no pending reminder so it can never hijack a pending draft.
-  if (state.createState.phase === 'idle' && !state.pendingReminder) {
+  // An explicit calendar-create wins (a note like "…ותכתבי להביא תעודה" inside a
+  // "תקבעי פגישה…" turn is a calendar note, not a message to a person).
+  if (state.createState.phase === 'idle' && !state.pendingReminder
+      && !isCreateIntent(original.trim()) && !isCreateIntent(normalized)) {
     const wa = detectWhatsAppTurn(original.trim(), { source: 'text' }) ?? detectWhatsAppTurn(normalized, { source: 'text' })
     if (wa) {
       return {

@@ -1,7 +1,9 @@
 import React from 'react'
 import type { ChatMessage } from './types'
 import type { MediatedError } from '../../services/errorMediation'
+import type { CommunicationAction } from './communication/types'
 import { ErrorCard } from '../../components/ErrorCard'
+import { CommunicationActionCard } from '../../components/CommunicationActionCard'
 import { SURFACE, TEXT } from './constants'
 
 interface ChatBubbleProps {
@@ -10,9 +12,12 @@ interface ChatBubbleProps {
   onRetry: () => void
   onHome: () => void
   onDismiss: () => void
+  /** Perform a communication handoff (open conversation + prefill, never send).
+   *  Returns false when it could not open (e.g. no number). */
+  onOpenAction?: (action: CommunicationAction, draftText: string) => boolean
 }
 
-export function ChatBubble({ msg, isLast, onRetry, onHome, onDismiss }: ChatBubbleProps) {
+export function ChatBubble({ msg, isLast, onRetry, onHome, onDismiss, onOpenAction }: ChatBubbleProps) {
   const isUser = msg.role === 'user'
   const ts = new Date(msg.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
 
@@ -83,6 +88,14 @@ export function ChatBubble({ msg, isLast, onRetry, onHome, onDismiss }: ChatBubb
           {msg.content}
         </div>
       </div>
+
+      {/* Generic communication handoff (WhatsApp/SMS/…) rendered beneath the lead. */}
+      {msg.action && msg.action.action === 'handoff' && (
+        <CommunicationActionCard
+          action={msg.action}
+          onOpen={(text) => onOpenAction?.(msg.action!, text) ?? false}
+        />
+      )}
 
       <div style={{
         fontSize: 12,

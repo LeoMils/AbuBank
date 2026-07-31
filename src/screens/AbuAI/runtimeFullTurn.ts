@@ -30,6 +30,8 @@ import { interpretTask } from './aiTaskInterpreter'
 import { authorityIntent, legacyDomainClassify } from './cognitiveRuntime'
 import { interpretUtterance, groundIntent, groundingLine, type GroundedIntent, type InterpretTransport } from './understandingIntake'
 import { buildWhatsAppReply } from './whatsappTurn'
+import { buildCommunicationAction, communicationLead } from './communication/capability'
+import type { CommunicationAction } from './communication/types'
 import { observeOldIntake, runIntakeShadow, type ShadowRecord } from './understandingShadow'
 import { guardNoFabricatedCalendar } from './noFabricationGuard'
 import { shouldReverifyOnline } from './correctionVerification'
@@ -78,6 +80,9 @@ export interface FullTurnResult {
   aiTask: { taskType: string; confidence: number; reason: string; slots: unknown }
   runtimeExecutedTask: RuntimeIntent
   interpreterOverrodeRuntime: boolean
+  /** Set when the final intent is "communicate" — a verified handoff Action the
+   *  chat UI renders generically (draft + single primary action). Null otherwise. */
+  action?: CommunicationAction | null
 }
 
 // Online retry/failover now lives in Online Runtime v2 (onlineRuntimeV2.runQuery), the
@@ -108,6 +113,7 @@ export async function runFullTurn(
 
   let display = ''
   let speak = ''
+  let action: CommunicationAction | null = null
   let st = decision.state
   let intent = decision.intent
   const sideEffect = decision.sideEffect
@@ -132,14 +138,23 @@ export async function runFullTurn(
       display = 'אני לא בטוחה בקשר הזה, אז לא אנחש. תגידי לי מי מי ואני אזכור.'; speak = display
     }
   } else if (decision.whatsapp) {
-    // WhatsApp compose / call — the controller owns this ahead of calendar. Draft
-    // the message here (async) and reply inline; NEVER a calendar/LLM answer.
+    // Communication turn — the controller owns this ahead of calendar. NEVER a
+    // calendar/LLM answer. A COMPOSE turn produces a verified CommunicationAction
+    // (draft + single primary handoff) the UI renders generically; a CALL turn is
+    // a simple text hand-off.
     source = 'deterministic'
     intent = 'whatsapp'
-    const reply = await buildWhatsAppReply(decision.whatsapp)
-    display = reply.text
-    speak = reply.speak
     st = decision.state
+    if (decision.whatsapp.kind === 'compose') {
+      const commAction = await buildCommunicationAction(decision.whatsapp)
+      display = communicationLead(commAction)
+      speak = commAction.action === 'handoff' ? commAction.draft.text : display
+      if (commAction.action === 'handoff') action = commAction
+    } else {
+      const reply = await buildWhatsAppReply(decision.whatsapp)
+      display = reply.text
+      speak = reply.speak
+    }
   } else if (decision.needsOnline && decision.online) {
     source = 'online'
     intent = 'online'
@@ -219,5 +234,6 @@ export async function runFullTurn(
     supervisor: fin.supervisor, routedThroughRuntime: true, source, trace: fin.trace, meta, onlineTrace,
     aiTask: { taskType: task.taskType, confidence: task.confidence, reason: task.reason, slots: task.slots },
     runtimeExecutedTask: intent, interpreterOverrodeRuntime,
+    action,
   }
 }
