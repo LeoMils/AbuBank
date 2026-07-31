@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
 import {
   clearLocalContacts,
+  describeImportText,
   exportContactsJSON,
   getLocalContacts,
   importContactsJSON,
@@ -20,6 +21,7 @@ import {
   removeLocalContact,
   setLocalContacts,
   upsertLocalContact,
+  type ImportDebug,
   type LocalFamilyContact,
 } from './familyContactsStorage'
 import { computeInitials, isValidPhoneE164 } from './familyQuickFaces'
@@ -401,6 +403,7 @@ function AdvancedJsonPanel({
 }) {
   const [draft, setDraft] = useState<string>('')
   const [banner, setBanner] = useState<{ ok: boolean; messages: string[] } | null>(null)
+  const [dbg, setDbg] = useState<ImportDebug | null>(null)
 
   function handleExport() {
     setDraft(exportContactsJSON(stored))
@@ -414,6 +417,24 @@ function AdvancedJsonPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+      {dbg && (
+        <div
+          data-testid="setup-adv-debug-box"
+          style={{
+            fontSize: 12, lineHeight: 1.6, padding: '10px 12px', borderRadius: 10,
+            background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.15)',
+            color: 'rgba(255,255,255,0.85)', direction: 'ltr', textAlign: 'left',
+            fontFamily: "ui-monospace,'SFMono-Regular',Menlo,monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+          }}
+        >
+          {`raw length: ${dbg.rawLength}\n`}
+          {`clean length: ${dbg.cleanedLength}\n`}
+          {`JSON.parse: ${dbg.parseError ? 'ERROR — ' + dbg.parseError : 'OK ✓'}\n`}
+          {dbg.notes.length ? `fixed: ${dbg.notes.join('; ')}\n` : ''}
+          {`first100: ${JSON.stringify(dbg.first100)}\n`}
+          {`last100:  ${JSON.stringify(dbg.last100)}`}
+        </div>
+      )}
       {banner && (
         <div
           data-testid={banner.ok ? 'setup-adv-banner-ok' : 'setup-adv-banner-err'}
@@ -446,6 +467,9 @@ function AdvancedJsonPanel({
         onChange={(e) => setDraft(e.target.value)}
         rows={8}
         spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="none"
+        autoComplete="off"
         placeholder={'דוגמה:\n[\n  { "id": "yael", "enabled": true, "phoneE164": "05XXXXXXXX" },\n  { "id": "mor", "enabled": true, "phoneE164": "05XXXXXXXX" }\n]'}
         style={{
           width: '100%', minHeight: 140,
@@ -473,6 +497,20 @@ function AdvancedJsonPanel({
             cursor: draft.trim().length === 0 ? 'default' : 'pointer',
           }}
         >ייבוא אנשי קשר</button>
+        <button
+          type="button"
+          data-testid="setup-adv-debug"
+          onClick={() => setDbg(describeImportText(draft))}
+          disabled={draft.trim().length === 0}
+          style={{
+            minHeight: 40, padding: '0 14px', borderRadius: 10,
+            border: '1px solid rgba(255,255,255,0.18)',
+            background: 'rgba(255,255,255,0.05)',
+            color: draft.trim().length === 0 ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.65)',
+            fontFamily: "'Heebo',sans-serif", fontSize: 13, fontWeight: 600,
+            cursor: draft.trim().length === 0 ? 'default' : 'pointer',
+          }}
+        >🔎 בדיקת JSON</button>
         <button
           type="button"
           data-testid="setup-adv-export"

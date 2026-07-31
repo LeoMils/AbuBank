@@ -247,10 +247,70 @@ export function removeLocalContact(id: string, storage: StorageLike | null = def
   setLocalContacts(next, storage)
 }
 
+// ─── Import-text sanitation (mobile paste reality) ──────────────────────────
+// Valid JSON pasted on an iPhone frequently fails JSON.parse because of things
+// the user cannot see: a BOM, zero-width chars, RTL bidi control marks (Hebrew
+// context inserts these), typographic "smart" quotes, or non-breaking spaces.
+// We strip/normalize ONLY these invisible/typographic artifacts — the data
+// (ids, numbers, structure) is untouched. Everything removed is reported.
+const ZERO_WIDTH_RE = /[​‌‍⁠﻿]/g
+const BIDI_RE = /[‎‏‪-‮⁦-⁩]/g
+const SMART_DQUOTE_RE = /[“”„‟″‶〝〞]/g
+const SMART_SQUOTE_RE = /[‘’‚‛′‵]/g
+const NBSP_RE = / /g
+
+export interface SanitizeResult { text: string; notes: string[] }
+
+export function sanitizeImportText(raw: string): SanitizeResult {
+  const notes: string[] = []
+  let t = String(raw ?? '')
+  if (/^﻿/.test(t)) notes.push('הוסר סימן BOM בתחילת הקובץ')
+  const beforeInvisible = t.length
+  t = t.replace(ZERO_WIDTH_RE, '').replace(BIDI_RE, '')
+  if (t.length !== beforeInvisible) notes.push('הוסרו תווים נסתרים (zero-width / סימני כיווניות RTL)')
+  const beforeQuotes = t
+  t = t.replace(SMART_DQUOTE_RE, '"').replace(SMART_SQUOTE_RE, "'")
+  if (t !== beforeQuotes) notes.push('תוקנו מרכאות טיפוגרפיות למרכאות רגילות')
+  const beforeNbsp = t
+  t = t.replace(NBSP_RE, ' ')
+  if (t !== beforeNbsp) notes.push('הומרו רווחים קשיחים (NBSP) לרווח רגיל')
+  t = t.trim()
+  return { text: t, notes }
+}
+
+export interface ImportDebug {
+  rawLength: number
+  cleanedLength: number
+  first100: string
+  last100: string
+  parseError: string | null
+  notes: string[]
+}
+
+/** Diagnose the paste WITHOUT importing — for the operator debug panel. */
+export function describeImportText(raw: string): ImportDebug {
+  const r = String(raw ?? '')
+  const { text, notes } = sanitizeImportText(r)
+  let parseError: string | null = null
+  try { JSON.parse(text) } catch (e) { parseError = e instanceof Error ? e.message : String(e) }
+  return {
+    rawLength: r.length,
+    cleanedLength: text.length,
+    first100: r.slice(0, 100),
+    last100: r.length > 100 ? r.slice(-100) : '',
+    parseError,
+    notes,
+  }
+}
+
 export function importContactsJSON(jsonText: string): ImportResult {
   const errors: string[] = []
+  // Strip invisible/typographic artifacts that break JSON.parse on mobile paste.
+  const { text: cleaned } = sanitizeImportText(jsonText)
   let parsed: unknown
-  try { parsed = JSON.parse(jsonText) } catch { return { ok: false, errors: ['JSON parse error'], contacts: [] } }
+  // Surface the EXACT JSON.parse exception instead of a generic message.
+  try { parsed = JSON.parse(cleaned) }
+  catch (e) { return { ok: false, errors: ['JSON parse error: ' + (e instanceof Error ? e.message : String(e))], contacts: [] } }
   if (!Array.isArray(parsed)) return { ok: false, errors: ['JSON must be an array of contacts'], contacts: [] }
   const seen = new Set<string>()
   const out: LocalFamilyContact[] = []

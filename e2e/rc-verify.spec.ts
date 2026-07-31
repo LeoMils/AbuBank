@@ -27,11 +27,17 @@ test('1) Operator import UI is reachable via ?operator=1 and imports contacts', 
   const json = page.getByTestId('setup-adv-json')
   await expect(json).toBeVisible()
 
-  // Import one SYNTHETIC contact and confirm it registered.
-  await json.fill('[{"id":"mor","enabled":true,"phoneE164":"+972500000456"}]')
+  // Import SYNTHETIC contacts using SMART/CURLY quotes + a BOM (the mobile-paste
+  // corruption that broke JSON.parse). Data is valid; the importer must sanitize.
+  await json.fill('﻿[{ “id”: “mor”, “enabled”: true, “phoneE164”: “+972500000456” }]')
   await page.getByTestId('setup-adv-import').click()
   await expect(page.getByTestId('setup-adv-banner-ok')).toBeVisible()
   await expect(page.getByTestId('setup-active-count')).toHaveAttribute('data-active-count', '1')
+
+  // The debug panel exists and shows an honest parse status for a bad paste.
+  await json.fill('[{ id: mor }]')
+  await page.getByTestId('setup-adv-debug').click()
+  await expect(page.getByTestId('setup-adv-debug-box')).toContainText('JSON.parse: ERROR')
 })
 
 test('3) Operator Mode persists across a reload without ?operator, and ?operator=0 clears it', async ({ page }) => {
