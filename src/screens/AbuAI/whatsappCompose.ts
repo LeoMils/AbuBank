@@ -442,9 +442,18 @@ export interface WhatsAppTurn {
  * Compose wins over call when both cues appear ("שלחי וואטסאפ" + a name). The
  * recipient is extracted prefix-safely ("למור" → "מור") for BOTH kinds.
  */
+// The utterance must be PRIMARILY a communication command — i.e. it LEADS with a
+// write/send/call verb. This is what separates "תכתבי למור שיש לי פגישה מחר"
+// (a message that merely mentions a meeting → communication) from
+// "תקבעי פגישה עם מור מחר ותכתבי להביא תעודה" (a calendar create whose embedded
+// "תכתבי" is a note → NOT communication). Anchoring on the leading verb — not on
+// calendar words in the body — is the correct discriminator.
+const LEADING_COMM_VERB_RE = /^[\s,.!?־-]*(?:אבו[,\s]+)?(?:בבקשה\s+)?(?:תכתב[יו]?|כתב[יו]?|תשלח[יו]?|שלח[יו]?|תגיד[יי]?|תאחל[יי]?|תברכ[יי]?|תודיע[יי]?|הודיע[יי]?|תתקשר[יי]?|להתקשר|תצלצל[יי]?|mand[aá]\w*|escrib\w*|dec[ií]\w*|send|write|text|tell|message|whatsapp|call|llam\w*)(?:\s|$)/i
+
 export function detectWhatsAppTurn(text: string, opts: { source?: ComposeSource } = {}): WhatsAppTurn | null {
   const t = (text ?? '').trim()
   if (!t) return null
+  if (!LEADING_COMM_VERB_RE.test(t)) return null // not primarily a communication command
   if (isComposeCommand(t)) {
     const command = understandWhatsAppCommand(t, opts)
     return { kind: 'compose', targetName: command.targetName, targetHebrew: command.targetHebrew, command }

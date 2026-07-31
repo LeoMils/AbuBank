@@ -1271,10 +1271,11 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   // The controller OWNS the classification (precedence) and DEFERS the async compose
   // to the caller via `decision.whatsapp` (handled:false, no LLM/online). Guarded to
   // idle create-state + no pending reminder so it can never hijack a pending draft.
-  // An explicit calendar-create wins (a note like "…ותכתבי להביא תעודה" inside a
-  // "תקבעי פגישה…" turn is a calendar note, not a message to a person).
-  if (state.createState.phase === 'idle' && !state.pendingReminder
-      && !isCreateIntent(original.trim()) && !isCreateIntent(normalized)) {
+  // detectWhatsAppTurn fires ONLY when the utterance LEADS with a write/send/call
+  // verb, so a WhatsApp message that merely mentions a meeting ("תכתבי למור שיש
+  // לי פגישה מחר") stays communication, while a real "תקבעי פגישה…" create (whose
+  // embedded "…ותכתבי להביא…" is a note) is not caught here and flows to calendar.
+  if (state.createState.phase === 'idle' && !state.pendingReminder) {
     const wa = detectWhatsAppTurn(original.trim(), { source: 'text' }) ?? detectWhatsAppTurn(normalized, { source: 'text' })
     if (wa) {
       return {

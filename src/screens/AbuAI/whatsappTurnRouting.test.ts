@@ -55,6 +55,22 @@ describe('runCognitiveTurn — WhatsApp/call precedence over calendar', () => {
     expect(d.whatsapp ?? null).toBeNull()
     expect(d.intent).not.toBe('whatsapp')
   })
+
+  // Device regression (RC 0.153.4): a WhatsApp MESSAGE whose body mentions a
+  // meeting/appointment was wrongly routed to Calendar. The turn LEADS with a
+  // write verb → it is communication, regardless of calendar words in the body.
+  it('routes a WhatsApp message that MENTIONS a meeting to communication, not calendar', () => {
+    for (const text of [
+      'תכתבי למור שיש לי פגישה מחר',
+      'תשלחי למור שיש לי תור מחר בערב',
+      'תכתבי למור שנקבע פגישה ביום שישי בשבע',
+    ]) {
+      const d = run(text)
+      expect(d.whatsapp?.kind, `"${text}"`).toBe('compose')
+      expect(d.whatsapp?.targetHebrew, `"${text}"`).toBe('מור')
+      expect(d.intent, `"${text}"`).toBe('whatsapp')
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
