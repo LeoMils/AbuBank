@@ -637,6 +637,9 @@ export function AbuAI() {
         cognitiveRuntimeStateRef.current = result.state
         conversationOSRef.current = result.state.conv
         cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
+        // The brain (ExecutiveCognitiveController) produced this answer — record it
+        // so Product Truth is accurate on the TEXT path too (not only realtime voice).
+        setProductTruth({ brainPipelineUsed: true, executiveControllerUsed: true, route: result.intent, toolUsed: result.source, inputSource: 'text' })
         setMessages(prev => [...prev, {
           id: aiMsgId, role: 'assistant', content: result.display, timestamp: Date.now(),
           ...(result.action ? { action: result.action } : {}),
@@ -1581,6 +1584,9 @@ export function AbuAI() {
         cognitiveRuntimeStateRef.current = result.state
         conversationOSRef.current = result.state.conv
         cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
+        // Pipeline (fallback) voice STILL runs the brain — record it so Product Truth
+        // shows BRAIN_PIPELINE_USED: YES even when Realtime WebRTC is unavailable.
+        setProductTruth({ brainPipelineUsed: true, executiveControllerUsed: true, route: result.intent, toolUsed: result.source })
         setMessages(prev => [...prev, {
           id: nextId(), role: 'assistant', content: result.display, timestamp: Date.now(),
           ...(result.action ? { action: result.action } : {}),
