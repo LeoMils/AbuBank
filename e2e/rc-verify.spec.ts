@@ -17,7 +17,7 @@ async function blockProviders(page: Page) {
 
 test('1) WhatsApp opens the Family Board for a normal user (never the admin editor)', async ({ page }) => {
   await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
-  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await page.getByRole('button', { name: /WhatsApp|הודעות/ }).first().click()
 
   // The family board is the destination — bubbles, not the admin setup.
   await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
@@ -29,7 +29,7 @@ test('1) WhatsApp opens the Family Board for a normal user (never the admin edit
 test('1b) WhatsApp opens the Family Board even when operator mode is ON; admin is Settings-only', async ({ page }) => {
   // Persist operator mode (the state that used to force the admin landing).
   await page.goto('/?operator=1', { waitUntil: 'networkidle', timeout: 30_000 })
-  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await page.getByRole('button', { name: /WhatsApp|הודעות/ }).first().click()
   await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByTestId('family-contacts-setup')).toHaveCount(0) // NOT the admin screen
   await expect(page.getByTestId('setup-adv-json')).toHaveCount(0)
@@ -53,7 +53,7 @@ test('5) With contacts already saved, ?operator=1 lands on the family BOARD, not
     } catch { /* ignore */ }
   })
   await page.goto('/?operator=1', { waitUntil: 'networkidle', timeout: 30_000 })
-  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await page.getByRole('button', { name: /WhatsApp|הודעות/ }).first().click()
 
   // Import is DONE → the board is the home, not the setup screen.
   await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
@@ -67,21 +67,21 @@ test('5) With contacts already saved, ?operator=1 lands on the family BOARD, not
 
 test('3) Operator persists (tab bar) yet WhatsApp always lands on the board; ?operator=0 clears', async ({ page }) => {
   await page.goto('/?operator=1', { waitUntil: 'networkidle', timeout: 30_000 })
-  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await page.getByRole('button', { name: /WhatsApp|הודעות/ }).first().click()
   await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByTestId('abuwhatsapp-tab-bar')).toBeVisible() // operator tools present
 
   // Reload WITHOUT the query param (installed-PWA launch) → operator persists,
   // and the WhatsApp destination is STILL the board (not the admin editor).
   await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
-  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await page.getByRole('button', { name: /WhatsApp|הודעות/ }).first().click()
   await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByTestId('abuwhatsapp-tab-bar')).toBeVisible()
   await expect(page.getByTestId('family-contacts-setup')).toHaveCount(0)
 
   // Explicitly disable → operator tools gone; still the board.
   await page.goto('/?operator=0', { waitUntil: 'networkidle', timeout: 30_000 })
-  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await page.getByRole('button', { name: /WhatsApp|הודעות/ }).first().click()
   await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByTestId('abuwhatsapp-tab-bar')).toHaveCount(0)
 })

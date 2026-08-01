@@ -991,7 +991,7 @@ const footerItems: {
   },
   {
     id: 'whatsapp',
-    hebrewLabel: 'Abu הודעות',
+    hebrewLabel: 'Abu WhatsApp',
     labelColor: '#4ade80',
     rgb: '74,222,128',
     rgbDark: '21,128,61',

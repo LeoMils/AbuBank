@@ -590,7 +590,7 @@ export function AbuWhatsApp() {
     <PageShell>
 
       {/* ══════════════════════════════════════════════════
-          HEADER — "Abu הודעות", Martita photo, back button
+          HEADER — "Abu WhatsApp", Martita photo, back button
          ══════════════════════════════════════════════════ */}
       <header style={{
         flexShrink: 0,
@@ -635,14 +635,14 @@ export function AbuWhatsApp() {
             />
           </button>
 
-          {/* Wordmark: Abu + הודעות (WA-green gradient) */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'baseline', gap: 5,
+          {/* Wordmark: Abu + WhatsApp (WA-green gradient) */}
+          <div data-testid="abuwhatsapp-wordmark" style={{
+            display: 'inline-flex', alignItems: 'baseline', gap: 6,
             direction: 'ltr', position: 'relative',
           }}>
             <span style={{
               fontFamily: "'Cormorant Garamond',Georgia,serif",
-              fontSize: 31, fontWeight: 600, letterSpacing: '2px',
+              fontSize: 34, fontWeight: 600, letterSpacing: '2px',
               background: GRADIENT_TEAL,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -650,13 +650,13 @@ export function AbuWhatsApp() {
             } as React.CSSProperties}>Abu</span>
             <span style={{
               fontFamily: "'DM Sans',sans-serif",
-              fontSize: 27, fontWeight: 500, letterSpacing: '0.3px',
-              direction: 'rtl',
+              fontSize: 30, fontWeight: 600, letterSpacing: '0.3px',
+              direction: 'ltr',
               background: 'linear-gradient(135deg, #86EFAC 0%, #4ADE80 12%, #25D366 24%, #16A34A 38%, #6EE7B7 52%, #15803D 66%, #34D399 78%, #86EFAC 90%, #4ADE80 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-            } as React.CSSProperties}>הודעות</span>
+            } as React.CSSProperties}>WhatsApp</span>
           </div>
 
           {/* Back button — right */}
@@ -668,7 +668,7 @@ export function AbuWhatsApp() {
       </header>
 
       <InfoButton
-        title="Abu הודעות"
+        title="Abu WhatsApp"
         lines={['כתיבת הודעות WhatsApp בסגנון של מרטיטה — כולל שגיאות אמיתיות.', 'בחרי בדיחה, חידה, או טריק לתוכן מיידי.']}
         howTo={['לחצי על בדיחה / חידה / טריק לתוכן מיידי', 'כתבי נושא בשדה ולחצי "כתבי לי" להודעה מותאמת אישית', 'לחצי "שלחי למשפחה" לשליחה קבוצת הווצאפ', 'לחצי על "תקשיבי" לשמיעת ההודעה']}
         position="top-left"

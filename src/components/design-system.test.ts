@@ -41,8 +41,9 @@ describe('Design tokens', () => {
     expect(FONT_DISPLAY).toContain('Cormorant')
     expect(FONT_BODY).toContain('Heebo')
     expect(FONT_LABEL).toContain('DM Sans')
-    expect(SIZE_BODY).toBe(16)
-    expect(SIZE_HEADING).toBe(22)
+    // Stage 7: sizes bumped for iPhone readability (body 16→17, heading 22→24).
+    expect(SIZE_BODY).toBe(17)
+    expect(SIZE_HEADING).toBe(24)
   })
 
   it('animation tokens exist', () => {

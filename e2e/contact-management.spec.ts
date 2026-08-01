@@ -35,7 +35,7 @@ test('simple form adds a NEW contact with validation; board reflects it', async 
 
   // The family board reflects the brand-new contact: saba is actionable.
   await page.goto('/?operator=1', { waitUntil: 'networkidle', timeout: 30_000 })
-  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await page.getByRole('button', { name: /WhatsApp|הודעות/ }).first().click()
   await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
   await page.getByTestId('bubble-person-tap-saba').click()
   await expect(page.getByTestId('chip-whatsapp-saba')).toBeVisible()

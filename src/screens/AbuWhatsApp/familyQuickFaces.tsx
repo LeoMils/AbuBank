@@ -425,7 +425,7 @@ export function computeInitials(displayName: string): string {
 
 // Visual rules — match AbuBank Home launcher's bubble system.
 const BUBBLE_SIZE = 80           // px — the circle on the front face
-const BUBBLE_LABEL_FONT = 14
+const BUBBLE_LABEL_FONT = 15
 const GRID_GAP = 12              // px — calmer vertical rhythm on iPhone
 const FLIPPED_CARD_W = 144       // px — back-face footprint (lifts above grid)
 const FLIPPED_CARD_H = 144       // px — back-face footprint
@@ -605,7 +605,7 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, o
           data-testid="abuwhatsapp-subtitle"
           style={{
             fontFamily: "'Heebo',sans-serif",
-            fontSize: 13,
+            fontSize: 15,
             color: 'rgba(255,255,255,0.50)',
           }}
         >
@@ -723,6 +723,11 @@ function FocusedContact({
   onComposeVoice?: (() => void) | undefined
 }) {
   const actionable = isPersonActionable(face)
+  const reduced = usePrefersReducedMotion()
+  const [imgError, setImgError] = useState(false)
+  const photo = (!imgError && face.photoFile) ? face.photoFile : null
+  const resolvedFit = face.photoFit ?? 'cover'
+  const resolvedPos = face.photoObjectPosition ?? 'center'
   // Back button / Esc → return to the board.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -731,6 +736,9 @@ function FocusedContact({
     window.addEventListener('popstate', onPop)
     return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('popstate', onPop) }
   }, [onClose])
+
+  // Responsive portrait — a large personal scene, not a small circle.
+  const PORTRAIT = 'min(72vw, 320px)'
 
   return (
     <div
@@ -741,58 +749,69 @@ function FocusedContact({
       aria-label={`פעולות עבור ${face.displayName}`}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
       style={{
-        position: 'absolute', inset: 0, zIndex: 25,
-        background: 'rgba(5,10,24,0.78)',
-        backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+        position: 'absolute', inset: 0, zIndex: 25, overflow: 'hidden',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        gap: 18, padding: '24px 20px', direction: 'rtl',
-        animation: 'focusIn 200ms cubic-bezier(0.4,0,0.2,1)',
+        gap: 22, padding: '28px 22px calc(28px + env(safe-area-inset-bottom,0px))', direction: 'rtl',
+        animation: reduced ? 'none' : 'focusIn 220ms cubic-bezier(0.4,0,0.2,1)',
       }}
     >
+      {/* Contact-derived ambience: a blurred, dimmed version of the photo. */}
+      {photo ? (
+        <img aria-hidden src={photo} onError={() => setImgError(true)} style={{
+          position: 'absolute', inset: -60, width: 'calc(100% + 120px)', height: 'calc(100% + 120px)',
+          objectFit: 'cover', filter: `blur(46px) saturate(1.35) brightness(0.42)`,
+          transform: reduced ? 'none' : 'scale(1.05)', pointerEvents: 'none',
+        }} />
+      ) : (
+        <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 32%, rgba(20,184,166,0.18), rgba(5,10,24,0.9) 60%)', pointerEvents: 'none' }} />
+      )}
+      {/* Strong contrast scrim over the ambience. */}
+      <div aria-hidden onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(5,10,24,0.62), rgba(5,10,24,0.86))', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} />
+
       <button
         type="button" data-testid="focused-close" onClick={onClose} aria-label="סגירה"
         style={{
-          position: 'absolute', top: 14, left: 14, width: 48, height: 48, borderRadius: '50%',
-          border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)',
-          color: 'rgba(255,255,255,0.75)', fontSize: 22, cursor: 'pointer',
+          position: 'absolute', top: 16, left: 16, zIndex: 2, width: 52, height: 52, borderRadius: '50%',
+          border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(8,16,28,0.55)',
+          color: 'rgba(255,255,255,0.85)', fontSize: 24, cursor: 'pointer',
+          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
         }}
       >✕</button>
 
       {/* Large centred portrait */}
       <div style={{
-        width: 168, height: 168, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
-        border: `3px solid ${TEAL}`,
-        boxShadow: `0 0 0 4px rgba(8,16,28,0.6), 0 12px 40px rgba(0,0,0,0.5), 0 0 28px rgba(20,184,166,0.25)`,
+        width: PORTRAIT, height: PORTRAIT, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, zIndex: 2,
+        border: `3px solid rgba(255,255,255,0.9)`,
+        boxShadow: `0 0 0 6px rgba(8,16,28,0.5), 0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(20,184,166,0.28)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'linear-gradient(145deg,#0b2220,#050A18)',
       }}>
-        <BubbleAvatar
-          photoFile={face.photoFile}
-          photoFit={face.photoFit}
-          photoObjectPosition={face.photoObjectPosition}
-          initials={computeInitials(face.displayName)}
-          size={168}
-          accent={TEAL}
-          accentSoft="rgba(20,184,166,0.55)"
-        />
+        {photo ? (
+          <img src={photo} alt="" onError={() => setImgError(true)}
+            style={{ width: '100%', height: '100%', objectFit: resolvedFit, objectPosition: resolvedPos, display: 'block' }} />
+        ) : (
+          <span style={{ fontFamily: "'Cormorant Garamond',Georgia,serif", fontSize: 'min(30vw, 132px)', fontWeight: 600, color: TEAL, textShadow: '0 3px 16px rgba(20,184,166,0.5)', userSelect: 'none' }}>
+            {computeInitials(face.displayName)}
+          </span>
+        )}
       </div>
 
-      <div style={{ textAlign: 'center' }}>
-        <div data-testid="focused-name" style={{ fontSize: 26, fontWeight: 700, color: 'rgba(255,255,255,0.96)', fontFamily: "'Heebo',sans-serif" }}>{face.displayName}</div>
+      <div style={{ textAlign: 'center', zIndex: 2 }}>
+        <div data-testid="focused-name" style={{ fontSize: 32, fontWeight: 800, color: '#ffffff', fontFamily: "'Heebo',sans-serif", textShadow: '0 2px 12px rgba(0,0,0,0.6)', letterSpacing: '0.2px' }}>{face.displayName}</div>
         {face.relationshipHebrew && (
-          <div data-testid="focused-relationship" style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>{face.relationshipHebrew}</div>
+          <div data-testid="focused-relationship" style={{ fontSize: 18, color: 'rgba(255,255,255,0.82)', fontFamily: "'Heebo',sans-serif", marginTop: 4, textShadow: '0 1px 8px rgba(0,0,0,0.5)' }}>{face.relationshipHebrew}</div>
         )}
       </div>
 
       {actionable ? (
-        <div style={{ display: 'flex', gap: 16, width: '100%', maxWidth: 340, justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: 16, width: '100%', maxWidth: 360, justifyContent: 'center', zIndex: 2 }}>
           {/* WhatsApp — LEFT (RTL: appears on the visual left) */}
           <button
             type="button" data-testid={`chip-whatsapp-${face.id}`} onClick={onWhatsApp}
             aria-label={`שליחת וואטסאפ אל ${face.displayName}`}
             style={focusActionStyle(WA_GREEN)}
           >
-            <HubWhatsAppIcon size={30} /><span>וואטסאפ</span>
+            <HubWhatsAppIcon size={34} /><span>וואטסאפ</span>
           </button>
           {/* Call — RIGHT */}
           <button
@@ -800,13 +819,13 @@ function FocusedContact({
             aria-label={`שיחה אל ${face.displayName}`}
             style={focusActionStyle('#D83A3A')}
           >
-            <HubCallIcon size={30} /><span>שיחה</span>
+            <HubCallIcon size={34} /><span>שיחה</span>
           </button>
         </div>
       ) : (
         <div data-testid="focused-no-number" style={{
-          fontSize: 15, color: 'rgba(255,255,255,0.7)', fontFamily: "'Heebo',sans-serif",
-          textAlign: 'center', lineHeight: 1.5, whiteSpace: 'pre-line', maxWidth: 300,
+          fontSize: 17, color: 'rgba(255,255,255,0.82)', fontFamily: "'Heebo',sans-serif", zIndex: 2,
+          textAlign: 'center', lineHeight: 1.55, whiteSpace: 'pre-line', maxWidth: 320, textShadow: '0 1px 8px rgba(0,0,0,0.5)',
         }}>{getMissingPhoneMessage(face.id)}</div>
       )}
 
@@ -814,25 +833,26 @@ function FocusedContact({
         <button
           type="button" data-testid={`focused-voice-${face.id}`} onClick={onComposeVoice}
           style={{
-            width: '100%', maxWidth: 340, height: 52, borderRadius: 26,
-            border: '1.5px solid rgba(20,184,166,0.4)', background: 'rgba(20,184,166,0.10)',
-            color: TEAL, fontSize: 16, fontWeight: 700, fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
+            width: '100%', maxWidth: 360, height: 58, borderRadius: 29, zIndex: 2,
+            border: '1.5px solid rgba(255,255,255,0.3)', background: 'rgba(8,16,28,0.55)',
+            color: '#eafff8', fontSize: 18, fontWeight: 700, fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
           }}
         >🎤 כתבי הודעה בקול</button>
       )}
-      <style>{`@keyframes focusIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}`}</style>
+      <style>{`@keyframes focusIn{from{opacity:0;transform:scale(0.94)}to{opacity:1;transform:scale(1)}}`}</style>
     </div>
   )
 }
 
 function focusActionStyle(color: string): React.CSSProperties {
   return {
-    flex: 1, minHeight: 88, borderRadius: 22, border: 'none', cursor: 'pointer',
+    flex: 1, minHeight: 96, borderRadius: 24, border: 'none', cursor: 'pointer',
     background: `linear-gradient(145deg, ${color}, ${color}cc)`, color: 'white',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
-    fontSize: 16, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
-    boxShadow: '0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.16)',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
+    fontSize: 18, fontWeight: 800, fontFamily: "'Heebo',sans-serif",
+    boxShadow: '0 10px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.18)',
     WebkitTapHighlightColor: 'transparent',
   }
 }

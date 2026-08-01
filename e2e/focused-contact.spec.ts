@@ -17,7 +17,7 @@ async function seedAndOpen(page: Page) {
     } catch { /* ignore */ }
   })
   await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
-  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await page.getByRole('button', { name: /WhatsApp|הודעות/ }).first().click()
   await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
 }
 

@@ -66,7 +66,7 @@ async function primeApp(page: Page): Promise<void> {
 // the fake SpeechRecognition delivers it through the real onresult boundary.
 async function openCompose(page: Page, voiceTranscript?: string): Promise<void> {
   await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
-  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await page.getByRole('button', { name: /WhatsApp|הודעות/ }).first().click()
   const cta = page.getByTestId('abuwhatsapp-voice-compose-cta')
   await cta.waitFor({ state: 'visible', timeout: 10_000 })
   if (voiceTranscript) {

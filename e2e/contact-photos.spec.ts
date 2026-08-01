@@ -25,7 +25,7 @@ async function openCM(page: Page) {
 }
 async function openBoard(page: Page) {
   await page.goto('/?operator=1', { waitUntil: 'networkidle', timeout: 30_000 })
-  await page.getByRole('button', { name: /הודעות/ }).first().click()
+  await page.getByRole('button', { name: /WhatsApp|הודעות/ }).first().click()
   await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
 }
 
