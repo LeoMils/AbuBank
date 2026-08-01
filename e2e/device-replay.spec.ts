@@ -48,7 +48,7 @@ test('exact multi-turn conversation stays in communication, never Calendar', asy
   // Turns 2-5 — every follow-up updates the SAME message; never Calendar.
   for (const t of ['שיבוא היום בערב', 'עם יין', 'לא פגישה', 'בשמונה וחצי']) {
     const r = await say(page, t)
-    expect(r, `turn "${t}"`).toContain('פותחת הודעה')
+    expect(r, `turn "${t}"`).toMatch(/מוכנה|WhatsApp/)
     expect(r, `turn "${t}"`).not.toMatch(CAL)
   }
 
@@ -62,7 +62,7 @@ test('exact multi-turn conversation stays in communication, never Calendar', asy
 
   // Call — separate, correct.
   const rc = await say(page, 'תתקשר למור')
-  expect(rc).toContain('פותחת שיחה')
+  expect(rc).toMatch(/מכינה שיחה|החייגן/)
   expect(rc).not.toMatch(CAL)
   const card = page.getByTestId('communication-action-card').last()
   expect(await card.getAttribute('data-mode')).toBe('call')

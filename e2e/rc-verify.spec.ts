@@ -100,7 +100,7 @@ test('4) Multi-turn: a bare follow-up refines the SAME message, not the calendar
   await ta.fill('בשמונה וחצי'); await ta.press('Enter')
   await page.waitForTimeout(1500)
   const lead = page.getByTestId('abuai-msg-assistant').last()
-  await expect(lead).toContainText('פותחת הודעה')
+  await expect(lead).toContainText(/מוכנה|WhatsApp|אין מספר/)
   await expect(lead).not.toContainText('ביומן')
 })
 
@@ -119,7 +119,7 @@ test('2) A WhatsApp message that mentions a meeting is communication, NOT calend
   await card.waitFor({ state: 'visible', timeout: 20_000 })
   expect(await card.getAttribute('data-mode')).toBe('message')
   const lead = page.getByTestId('abuai-msg-assistant').last()
-  await expect(lead).toContainText('פותחת הודעה')
+  await expect(lead).toContainText(/מוכנה|WhatsApp|אין מספר/)
   await expect(lead).not.toContainText('ביומן')
   await expect(lead).not.toContainText('אין כלום')
 })

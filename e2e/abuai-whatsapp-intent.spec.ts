@@ -52,7 +52,7 @@ test.describe('Abu AI — Communication Capability', () => {
     await expect(page.getByTestId('communication-draft')).toHaveCount(0)
     // Brief lead, never a calendar answer, no "are you sure".
     const lead = page.getByTestId('abuai-msg-assistant').last()
-    await expect(lead).toContainText('פותחת הודעה')
+    await expect(lead).toContainText('מוכנה')
     await expect(lead).not.toContainText('אין כלום ביומן')
 
     // Optional review reveals the (local) draft with the fact preserved.
@@ -84,7 +84,7 @@ test.describe('Abu AI — Communication Capability', () => {
     expect(await card.getAttribute('data-mode')).toBe('call')
     await expect(page.getByTestId('communication-primary-action')).toContainText('התקשרי')
     const lead = page.getByTestId('abuai-msg-assistant').last()
-    await expect(lead).toContainText('פותחת שיחה')
+    await expect(lead).toContainText('מכינה שיחה')
     await expect(lead).not.toContainText('אין כלום ביומן')
   })
 })

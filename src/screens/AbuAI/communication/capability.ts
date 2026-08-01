@@ -10,6 +10,7 @@
  */
 import { composeWhatsAppMessage, verifyDraft, type WhatsAppTurn } from '../whatsappCompose'
 import { getAdapter } from './registry'
+import { renderResponse } from './engine'
 import type { CommunicationAction, CommunicationChannel } from './types'
 
 export interface BuildActionOpts {
@@ -72,11 +73,16 @@ export async function buildCommunicationAction(
 }
 
 /** The chat lead line that accompanies the Action (or the clarify question).
- *  Deliberately brief — "פותחת שיחה/הודעה ל…"; the message body is NEVER read
- *  aloud and (by default) not shown in AbuAI. */
+ *  It is produced by the ONE response-truth policy (engine.renderResponse) so
+ *  the wording always agrees with the action status — never claims a send/dial,
+ *  never denies a live handoff, never mentions calendar (Laws 6,7,9). */
 export function communicationLead(action: CommunicationAction): string {
   if (action.action === 'clarify') return action.clarify?.prompt ?? 'מה לכתוב?'
-  const name = action.recipient.name
-  const who = name ? ` ל${name}` : ''
-  return action.mode === 'call' ? `פותחת שיחה${who}.` : `פותחת הודעה${who}.`
+  const canHandoff = action.recipient.canHandoff
+  return renderResponse({
+    mode: action.mode,
+    status: canHandoff ? 'HANDOFF_AVAILABLE' : 'FAILED',
+    recipientName: action.recipient.name || null,
+    hasHandoff: canHandoff,
+  }).text
 }

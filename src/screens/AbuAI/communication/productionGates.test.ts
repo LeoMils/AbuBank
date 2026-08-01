@@ -47,7 +47,9 @@ describe('Gate 1-3 · CALL', () => {
     expect(r.action?.capability).toBe('communication')
     expect(r.action?.mode).toBe('call')
     expect(r.action?.channel).toBe('phone')
-    expect(r.display).toContain('פותחת שיחה')       // brief lead, not a claim it started
+    // Truthful lead from the ONE response-truth policy — prepares, never claims it started.
+    expect(r.display).toMatch(/מכינה שיחה|אין מספר/)
+    expect(r.display).not.toMatch(/התקשרתי|השיחה בוצעה/)
   })
   it('2: phone adapter builds the correct sanitized tel: handoff', () => {
     const h = getAdapter('phone')!.buildHandoff('מור', '')
@@ -174,7 +176,9 @@ describe('Gate 18-22 · parity, privacy, resilience, UX', () => {
   })
   it('21: the clear path has no redundant confirmation (one action, no card, not review)', async () => {
     const r = await turn('תכתבי למור שמחר אני אביא קולה')
-    expect(r.display).toContain('פותחת הודעה')
+    // Truthful message lead: ready + opens WhatsApp + not sent until Send.
+    expect(r.display).toMatch(/מוכנה|WhatsApp/)
+    expect(r.display).not.toMatch(/שלחתי|נשלח/)          // no auto-send claim
     expect(r.display).not.toMatch(/בטוח|לשלוח\?|את בטוחה/)
     expect(r.action?.review ?? false).toBe(false)          // no editable card by default
   })
