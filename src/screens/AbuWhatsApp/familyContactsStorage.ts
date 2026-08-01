@@ -35,7 +35,13 @@ export const LOCAL_FAMILY_CONTACTS_STORAGE_KEY = 'abubank.familyContacts.v1'
  */
 export const CONTACTS_UPDATED_EVENT = 'abubank:contacts-updated'
 
+/** Monotonic snapshot version + last-update marker (for the operator receipt). */
+let contactsSnapshotVersion = 0
+let contactsLastUpdateAt: number | null = null
+
 function notifyContactsUpdated(): void {
+  contactsSnapshotVersion += 1
+  try { contactsLastUpdateAt = Date.now() } catch { /* clock unavailable */ }
   try {
     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       window.dispatchEvent(new Event(CONTACTS_UPDATED_EVENT))
@@ -230,6 +236,46 @@ export function readContactsWithDiagnostics(storage: StorageLike | null = defaul
 export function getLocalContacts(storage: StorageLike | null = defaultStorage()): LocalFamilyContact[] {
   if (!storage) return []
   return parseContactsPayload(readRawWithDurableFallback(storage)).contacts
+}
+
+/**
+ * Privacy-safe operator receipt for the contact store — the diagnostic that
+ * makes "Communication has no numbers" reproducible WITHOUT re-importing and
+ * WITHOUT exposing any name / number / message. Reads the same authoritative
+ * store the recipient resolver reads (getLocalContacts), so it reflects exactly
+ * what Communication sees at this moment.
+ */
+export interface ContactsReceipt {
+  contactCount: number
+  actionableCall: number       // enabled AND a valid phone (tel: handoff possible)
+  actionableWhatsApp: number   // enabled AND a valid phone/whatsapp (wa.me possible)
+  storageSource: 'localStorage' | 'durable' | 'none'
+  hydrated: boolean            // durable backend finished init()
+  snapshotVersion: number      // bumps on every store mutation this session
+  lastUpdateAt: number | null  // ms epoch of the last mutation, or null
+}
+
+export function contactsReceipt(storage: StorageLike | null = defaultStorage()): ContactsReceipt {
+  const contacts = storage ? getLocalContacts(storage) : []
+  const validPhone = (c: LocalFamilyContact) => isValidPhoneE164(c.phoneE164)
+  const validWa = (c: LocalFamilyContact) => isValidPhoneE164(c.phoneE164) || (!!c.whatsappE164 && isValidPhoneE164(c.whatsappE164))
+  let storageSource: ContactsReceipt['storageSource'] = 'none'
+  if (storage) {
+    let ls: string | null = null
+    try { ls = storage.getItem(LOCAL_FAMILY_CONTACTS_STORAGE_KEY) } catch { ls = null }
+    storageSource = (ls !== null && ls !== '') ? 'localStorage' : (contacts.length > 0 ? 'durable' : 'none')
+  }
+  let hydrated = false
+  try { hydrated = durable.isReady() } catch { hydrated = false }
+  return {
+    contactCount: contacts.length,
+    actionableCall: contacts.filter((c) => c.enabled && validPhone(c)).length,
+    actionableWhatsApp: contacts.filter((c) => c.enabled && validWa(c)).length,
+    storageSource,
+    hydrated,
+    snapshotVersion: contactsSnapshotVersion,
+    lastUpdateAt: contactsLastUpdateAt,
+  }
 }
 
 export function setLocalContacts(contacts: LocalFamilyContact[], storage: StorageLike | null = defaultStorage()): void {

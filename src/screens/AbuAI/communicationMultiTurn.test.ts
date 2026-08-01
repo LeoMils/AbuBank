@@ -19,6 +19,20 @@ describe('communication ownership — single utterance', () => {
     expect(d.whatsapp?.kind).toBe('compose')
     expect(d.whatsapp?.targetHebrew).toBe('לאו')
   })
+
+  // DEVICE FAILURE B (0.160.0): an explicit send command to an UNRESOLVED name
+  // ("לאה" ≠ stored "לאו") was routed to general chat. An explicit communication
+  // command must OWN the turn (payload preserved; recipient clarified downstream),
+  // and must NEVER fall to general.
+  it('an explicit send to an unresolved recipient stays communication (never general)', () => {
+    const d = run(IDLE_RUNTIME, 'תשלח הודעה ללאה שיביא מחר שניצלים בערב')
+    expect(d.intent, 'explicit send must not fall to general chat').toBe('whatsapp')
+    expect(d.whatsapp?.kind).toBe('compose')
+    // Payload preserved (Law 2): the message content survives even though the
+    // recipient name did not resolve.
+    expect(d.whatsapp?.command?.intent ?? '').toMatch(/שניצל/)
+    expect(d.whatsapp?.command?.intent ?? '').toMatch(/בערב/)
+  })
   it('"תשלח וואטסאפ ללאו שיביא היום בערב יין" is a message that keeps its facts', () => {
     const d = run(IDLE_RUNTIME, 'תשלח וואטסאפ ללאו שיביא היום בערב יין לארוחת ערב')
     expect(d.intent).toBe('whatsapp')

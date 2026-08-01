@@ -22,6 +22,7 @@ import {
   exportContactsJSON,
   getLocalContacts,
   previewImportContacts,
+  contactsReceipt,
   removeLocalContact,
   setLocalContacts,
   upsertLocalContact,
@@ -442,6 +443,19 @@ export function ContactManagement() {
       <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.6 }}>
         המספרים נשמרים במכשיר הזה בלבד. אפשר להוסיף, לערוך או למחוק כל איש קשר — הלוח מתעדכן מיד.
       </div>
+      {(() => {
+        // Privacy-safe operator receipt — reflects exactly what Communication
+        // sees NOW (no names/numbers). If "פעילים לשיחה/וואטסאפ" is 0, the numbers
+        // are not usable on THIS origin — import once here (a new RC URL is a new
+        // origin with fresh storage; use a stable URL / the PWA to persist).
+        const r = contactsReceipt()
+        return (
+          <div data-testid="contacts-receipt" style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', fontFamily: "ui-monospace,Menlo,monospace", direction: 'ltr', textAlign: 'left', padding: '6px 8px', borderRadius: 8, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.10)', lineHeight: 1.7 }}>
+            contacts:{r.contactCount} · call-ready:{r.actionableCall} · wa-ready:{r.actionableWhatsApp}
+            <br />source:{r.storageSource} · hydrated:{String(r.hydrated)} · snapshot:v{r.snapshotVersion}
+          </div>
+        )
+      })()}
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" data-testid="cm-tab-simple" onClick={() => setMode('simple')} style={{ ...btn(TEAL, mode === 'simple'), flex: 1 }}>טופס פשוט</button>
         <button type="button" data-testid="cm-tab-advanced" onClick={() => setMode('advanced')} style={{ ...btn(GOLD, mode === 'advanced'), flex: 1 }}>מתקדם — JSON</button>

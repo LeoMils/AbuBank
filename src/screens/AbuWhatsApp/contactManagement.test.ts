@@ -7,6 +7,7 @@ import {
   setLocalContacts,
   getLocalContacts,
   exportContactsJSON,
+  contactsReceipt,
   DEFAULT_SEED_CONTACTS,
   type LocalFamilyContact,
 } from './familyContactsStorage'
@@ -60,6 +61,35 @@ describe('validateContactFields — per-field, specific errors', () => {
     const list = knownContactIdList()
     expect(list).toContain('mor')
     expect(list).not.toContain('family-group')
+  })
+})
+
+describe('contactsReceipt — privacy-safe operator diagnostic (Failure A)', () => {
+  it('reports counts + actionability the way Communication sees them; no names/numbers', () => {
+    const s = new MapStore()
+    setLocalContacts([
+      { id: 'mor', displayName: 'מור', enabled: true, phoneE164: '+972500000001' },   // call+wa ready
+      { id: 'leo', displayName: 'לאו', enabled: true, phoneE164: '', whatsappE164: '+972500000002' }, // wa only
+      { id: 'yael', displayName: 'יעל', enabled: false, phoneE164: '+972500000003' }, // disabled → not actionable
+    ], s)
+    const r = contactsReceipt(s)
+    expect(r.contactCount).toBe(3)
+    expect(r.actionableCall).toBe(1)       // only mor has an enabled valid phone
+    expect(r.actionableWhatsApp).toBe(2)   // mor (phone) + leo (whatsapp)
+    expect(r.storageSource).toBe('localStorage')
+    expect(typeof r.snapshotVersion).toBe('number')
+    // Privacy: the receipt shape carries no name / number / message fields.
+    expect(Object.keys(r)).not.toContain('phoneE164')
+    expect(JSON.stringify(r)).not.toContain('+9725')
+    expect(JSON.stringify(r)).not.toContain('מור')
+  })
+  it('an empty store reports zero actionable (the "no usable numbers" state)', () => {
+    const s = new MapStore()
+    setLocalContacts([], s)
+    const r = contactsReceipt(s)
+    expect(r.contactCount).toBe(0)
+    expect(r.actionableCall).toBe(0)
+    expect(r.actionableWhatsApp).toBe(0)
   })
 })
 

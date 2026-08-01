@@ -1308,9 +1308,12 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
     if (cr.capability === 'communication' && cr.goal) {
       if (cr.turnKind === 'ACTION_START') {
         // A brand-new explicit command OWNS the turn even mid-draft (overrides a
-        // stale calendar draft), but must name a real recipient or be a call —
-        // protects a mid-draft note ("…ותכתבי להביא…") from being caught.
-        if (!!cr.goal.recipientHebrew || cr.goal.mode === 'call') return emitWhatsApp(cr.goal)
+        // stale calendar draft). It owns when it NAMES a recipient — resolved
+        // ("מור") OR not ("לאה", a typo/unknown) — or is a call. An unresolved
+        // name is clarified downstream; it must NEVER fall to general chat
+        // (device failure B). detectWhatsAppTurn's leading-verb anchor already
+        // protects a mid-draft note ("…ותכתבי להביא…"): no recipient token there.
+        if (!!cr.goal.recipientHebrew || !!cr.goal.recipientToken || cr.goal.mode === 'call') return emitWhatsApp(cr.goal)
       } else if (state.createState.phase === 'idle') {
         // Continue / correct / recipient-change / meta-question — only when no
         // calendar draft is mid-flight (they are mutually exclusive).

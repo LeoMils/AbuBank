@@ -235,3 +235,18 @@ describe('FAULT INJECTION — the suite catches a broken engine', () => {
     expect(d.goal).toBeNull()
   })
 })
+
+// FAILURE C invariant: the "לחצי על התקשרי" claim may appear ONLY with a handoff.
+describe('ACTION-TRUTH invariant — "התקשרי" wording only accompanies a handoff', () => {
+  it('a call HANDOFF_AVAILABLE says "התקשרי" (a reachable button will exist)', () => {
+    const r = renderResponse({ mode: 'call', status: 'HANDOFF_AVAILABLE', recipientName: 'לאו', hasHandoff: true })
+    expect(r.text).toMatch(/התקשרי/)
+    expect(r.responseClass).toBe('call_available')
+  })
+  it('clarification / no-number NEVER claim the call button', () => {
+    for (const status of ['NEEDS_CLARIFICATION', 'FAILED', 'CANCELLED'] as const) {
+      const r = renderResponse({ mode: 'call', status, recipientName: 'לאו', hasHandoff: false })
+      expect(r.text, `${status}`).not.toMatch(/לחצי על "?התקשרי/)
+    }
+  })
+})

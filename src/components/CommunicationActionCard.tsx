@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { CommunicationAction } from '../screens/AbuAI/communication/types'
 
 /**
@@ -26,6 +26,18 @@ export function CommunicationActionCard({ action, onOpen }: Props) {
   const [text, setText] = useState(action.draft.text)
   const [showDraft, setShowDraft] = useState(!!action.review)
   const [note, setNote] = useState('')
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  // FAILURE C fix: a claimed action ("לחצי על התקשרי") must be REACHABLE. Scroll
+  // the new action card fully into view so its primary button is never left
+  // below the fold / behind the composer on a small iPhone viewport.
+  useEffect(() => {
+    if (action.action !== 'handoff') return
+    const id = requestAnimationFrame(() => {
+      try { cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) } catch { /* older Safari */ }
+    })
+    return () => cancelAnimationFrame(id)
+  }, [action.action])
 
   const factLost = !isCall && !action.verification.ok && action.verification.missingFacts.length > 0
 
@@ -42,6 +54,7 @@ export function CommunicationActionCard({ action, onOpen }: Props) {
 
   return (
     <div
+      ref={cardRef}
       data-testid="communication-action-card"
       data-channel={action.channel}
       data-adapter={action.adapter}
