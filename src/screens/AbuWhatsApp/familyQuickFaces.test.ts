@@ -280,13 +280,21 @@ describe('mergeFacesWithLocal', () => {
     expect(/^tel:\+\d{8,15}$/.test(tel)).toBe(true)
   })
 
-  it('identity (displayName, relationshipHebrew) is sourced from scaffold, not from local override', () => {
-    // Malicious-override scenario: cast through unknown to inject extra fields.
-    const malicious: unknown = { id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE, displayName: 'OVERRIDE', relationshipHebrew: 'NOT_HEBET' }
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [malicious as LocalFamilyContact])
+  it('identity (displayName, relationshipHebrew) falls back to scaffold when no override is set', () => {
+    // No override fields → scaffold identity is used (the common case).
+    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [{ id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE }])
     const mor = merged.find(f => f.type === 'person' && f.id === 'mor') as Extract<FamilyQuickFace, { type: 'person' }>
     expect(mor.displayName).toBe('מור')
     expect(mor.relationshipHebrew).toBe('הבת')
+  })
+
+  it('Contact Management may override displayName / relationship (feature: editable label)', () => {
+    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [
+      { id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE, displayName: 'מורי', relationshipHebrew: 'הבכורה' },
+    ])
+    const mor = merged.find(f => f.type === 'person' && f.id === 'mor') as Extract<FamilyQuickFace, { type: 'person' }>
+    expect(mor.displayName).toBe('מורי')          // operator-edited label applies
+    expect(mor.relationshipHebrew).toBe('הבכורה')
   })
 })
 
@@ -315,12 +323,12 @@ describe('getDisplayablePersons (visible-by-default scaffold persons)', () => {
     expect(persons.map((p) => p.id)).toEqual(scaffoldOrder)
   })
 
-  it('overlays phone/photo/enabled from local override but never identity', () => {
+  it('overlays phone/photo/enabled from local override; identity uses scaffold when not overridden', () => {
     const persons = getDisplayablePersons(FAMILY_QUICK_FACES, [
       { id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE, photoFile: '/family/FAmilly%201.JPG' },
     ])
     const mor = persons.find((p) => p.id === 'mor')!
-    expect(mor.displayName).toBe('מור')
+    expect(mor.displayName).toBe('מור')            // no override → scaffold identity
     expect(mor.relationshipHebrew).toBe('הבת')
     expect(mor.phoneE164).toBe(TEST_FAKE_PHONE)
     expect(mor.enabled).toBe(true)

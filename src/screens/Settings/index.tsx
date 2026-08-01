@@ -9,6 +9,7 @@ import { exportStoredTranscript, serializeExport } from '../../evolution/recorde
 import { isRecorderOff, setRecorderOff } from '../../evolution/recorderSwitch'
 import { setSpeechRate } from '../../services/speechProfile'
 import { isOperatorPersisted, setOperatorMode } from '../../services/operatorMode'
+import { ContactManagement } from '../AbuWhatsApp/ContactManagement'
 
 /**
  * Persistent Operator Mode toggle. Enables the operator/diagnostics tools
@@ -628,6 +629,16 @@ export function Settings() {
           ))}
         </div>
       ),
+    },
+
+    // ── 2b. Contact Management (family board contacts, device-local) ──
+    {
+      id: 'contact-management',
+      icon: '👨‍👩‍👧',
+      color: TEAL,
+      label: 'ניהול אנשי קשר',
+      desc: 'הוספה, עריכה וגיבוי של אנשי הקשר בלוח המשפחה',
+      content: <ContactManagement />,
     },
 
     // ── 3. Location ──────────────────────────────────────────

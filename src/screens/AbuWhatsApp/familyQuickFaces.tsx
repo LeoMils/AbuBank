@@ -257,11 +257,13 @@ export function mergeFacesWithLocal(
     const merged: Extract<FamilyQuickFace, { type: 'person' }> = {
       type: 'person',
       id: f.id,
-      displayName: f.displayName,
+      // Contact Management may override the label; fall back to the scaffold.
+      displayName: (override.displayName && override.displayName.trim()) || f.displayName,
       phoneE164: override.phoneE164 || '',
       enabled: override.enabled === true,
     }
-    if (f.relationshipHebrew !== undefined) merged.relationshipHebrew = f.relationshipHebrew
+    const rel = (override.relationshipHebrew && override.relationshipHebrew.trim()) || f.relationshipHebrew
+    if (rel !== undefined) merged.relationshipHebrew = rel
     if (override.whatsappE164 && override.whatsappE164.length > 0) merged.whatsappE164 = override.whatsappE164
     let photoSource: 'override-data' | 'override-file' | 'scaffold' | null = null
     if (override.photoDataUrl && override.photoDataUrl.length > 0) {

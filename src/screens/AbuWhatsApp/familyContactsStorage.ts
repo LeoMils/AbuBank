@@ -93,6 +93,11 @@ export interface LocalFamilyContact {
   whatsappE164?: string
   photoFile?: string
   photoDataUrl?: string
+  /** Optional display-name / relationship OVERRIDES for the known scaffold
+   *  person. Absent → the scaffold's own value is used (board merge falls back).
+   *  These let Contact Management edit the label without touching source. */
+  displayName?: string
+  relationshipHebrew?: string
 }
 
 export interface ImportResult {
@@ -123,6 +128,8 @@ export function isLocalFamilyContactShape(value: unknown): value is LocalFamilyC
   if (v.whatsappE164 !== undefined && typeof v.whatsappE164 !== 'string') return false
   if (v.photoFile !== undefined && typeof v.photoFile !== 'string') return false
   if (v.photoDataUrl !== undefined && typeof v.photoDataUrl !== 'string') return false
+  if (v.displayName !== undefined && typeof v.displayName !== 'string') return false
+  if (v.relationshipHebrew !== undefined && typeof v.relationshipHebrew !== 'string') return false
   return true
 }
 
@@ -456,6 +463,158 @@ export function validateContacts(input: unknown): { valid: LocalFamilyContact[];
     valid.push({ ...item, id })
   })
   return { valid, errors }
+}
+
+// ─── Contact Management: per-field validation (simple form) ─────────────────
+// Field-level, plain-Hebrew errors for the Settings → Contact Management form.
+// The contact universe is Martita's known family (KNOWN_CONTACT_IDS); an unknown
+// id cannot render on the board, so it is a specific, explained error — never a
+// silent drop.
+
+export interface ContactFormInput {
+  id: string
+  displayName?: string | undefined
+  relationshipHebrew?: string | undefined
+  phoneE164: string
+  whatsappE164?: string | undefined
+  enabled: boolean
+}
+
+export type ContactFieldErrors = Partial<Record<'id' | 'displayName' | 'phoneE164' | 'whatsappE164' | 'enabled', string>>
+
+/** Comma-joined Hebrew list of the ids the operator may use. */
+export function knownContactIdList(): string {
+  return [...KNOWN_CONTACT_IDS].filter((id) => id !== 'family-group').sort().join(', ')
+}
+
+export function validateContactFields(input: ContactFormInput): ContactFieldErrors {
+  const errors: ContactFieldErrors = {}
+  const rawId = String(input.id ?? '').trim()
+  if (rawId.length === 0) {
+    errors.id = 'חסר מזהה (id) לאיש הקשר'
+  } else if (!isKnownContactId(resolveContactId(rawId))) {
+    errors.id = `מזהה לא נתמך. אפשרי: ${knownContactIdList()}`
+  }
+  if (input.displayName !== undefined && input.displayName.trim().length === 0) {
+    errors.displayName = 'שם התצוגה לא יכול להיות ריק'
+  }
+  const phone = normalizeIsraeliPhone(String(input.phoneE164 ?? '').trim())
+  if (phone.length > 0 && !isValidPhoneE164(phone)) {
+    errors.phoneE164 = 'מספר טלפון לא תקין. דוגמה: +9725XXXXXXXX או 05XXXXXXXX'
+  }
+  const wa = input.whatsappE164 !== undefined ? normalizeIsraeliPhone(String(input.whatsappE164).trim()) : ''
+  if (wa.length > 0 && !isValidPhoneE164(wa)) {
+    errors.whatsappE164 = 'מספר וואטסאפ לא תקין. דוגמה: +9725XXXXXXXX'
+  }
+  // To be ENABLED (actionable on the board) a valid phone or whatsapp is required.
+  if (input.enabled && !isValidPhoneE164(phone) && !isValidPhoneE164(wa)) {
+    errors.enabled = 'כדי להפעיל צריך מספר טלפון או וואטסאפ תקין'
+  }
+  return errors
+}
+
+// ─── Contact Management: import preview / diff (advanced JSON) ───────────────
+// Before ANY save, the operator sees exactly what will change. Merge/upsert is
+// the default (existing id → update, new id → add, absent id → preserve).
+
+export interface ContactImportInvalid { index: number; id: string | null; reason: string }
+export interface ContactImportPreview {
+  parseError: string | null
+  parseErrorOffset: number | null
+  parseErrorLine: number | null
+  parseErrorColumn: number | null
+  /** New ids not in the current store. */
+  added: LocalFamilyContact[]
+  /** Existing ids whose data changes. */
+  updated: LocalFamilyContact[]
+  /** Existing ids with byte-identical data (no-op). */
+  unchanged: LocalFamilyContact[]
+  /** Items that failed shape / id / phone validation (never saved). */
+  invalid: ContactImportInvalid[]
+  /** Ids that appeared more than once in the incoming JSON (later wins). */
+  duplicate: { index: number; id: string }[]
+  /** The net set to upsert on a Merge/Save (added ∪ updated), normalized. */
+  toSave: LocalFamilyContact[]
+  /** How many current contacts a Replace-All would REMOVE (not present incoming). */
+  replaceAllRemoves: number
+}
+
+/** Normalize a contact the way the store would persist it (for stable diffing). */
+function normalizeContact(raw: LocalFamilyContact): LocalFamilyContact {
+  const out: LocalFamilyContact = {
+    id: resolveContactId(raw.id),
+    enabled: raw.enabled === true,
+    phoneE164: normalizeIsraeliPhone(raw.phoneE164),
+  }
+  if (raw.whatsappE164 && raw.whatsappE164.length > 0) out.whatsappE164 = normalizeIsraeliPhone(raw.whatsappE164)
+  if (raw.photoDataUrl && raw.photoDataUrl.length > 0) out.photoDataUrl = raw.photoDataUrl
+  if (raw.photoFile && raw.photoFile.length > 0) out.photoFile = raw.photoFile
+  if (raw.displayName && raw.displayName.trim().length > 0) out.displayName = raw.displayName.trim()
+  if (raw.relationshipHebrew && raw.relationshipHebrew.trim().length > 0) out.relationshipHebrew = raw.relationshipHebrew.trim()
+  return out
+}
+
+function sameContact(a: LocalFamilyContact, b: LocalFamilyContact): boolean {
+  return JSON.stringify(normalizeContact(a)) === JSON.stringify(normalizeContact(b))
+}
+
+/**
+ * Diff an incoming contacts JSON against the current store WITHOUT saving.
+ * Powers the mandatory pre-save preview. Never throws: a parse error is
+ * reported with its exact offset/line/column and everything else stays empty.
+ */
+export function previewImportContacts(
+  jsonText: string,
+  current: LocalFamilyContact[] = getLocalContacts(),
+): ContactImportPreview {
+  const empty = (parseError: string | null, loc = { offset: null as number | null, line: null as number | null, column: null as number | null }): ContactImportPreview => ({
+    parseError,
+    parseErrorOffset: loc.offset,
+    parseErrorLine: loc.line,
+    parseErrorColumn: loc.column,
+    added: [], updated: [], unchanged: [], invalid: [], duplicate: [], toSave: [], replaceAllRemoves: 0,
+  })
+
+  const { text } = sanitizeImportText(jsonText)
+  let parsed: unknown
+  try { parsed = JSON.parse(text) }
+  catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return empty('JSON parse error: ' + msg, analyzeParseError(msg))
+  }
+  if (!Array.isArray(parsed)) return empty('ה-JSON חייב להיות מערך של אנשי קשר (מתחיל ב-[ )')
+
+  const currentById = new Map<string, LocalFamilyContact>()
+  for (const c of current) currentById.set(c.id, c)
+
+  const out = empty(null)
+  const seen = new Set<string>()
+  parsed.forEach((rawItem, index) => {
+    if (!isLocalFamilyContactShape(rawItem)) {
+      out.invalid.push({ index, id: (rawItem && typeof rawItem === 'object' && typeof (rawItem as Record<string, unknown>).id === 'string') ? String((rawItem as Record<string, unknown>).id) : null, reason: 'מבנה איש קשר לא תקין (חסר id / enabled / phoneE164)' })
+      return
+    }
+    const id = resolveContactId(rawItem.id)
+    if (!isKnownContactId(id)) {
+      out.invalid.push({ index, id: rawItem.id, reason: `מזהה לא נתמך "${rawItem.id}". אפשרי: ${knownContactIdList()}` })
+      return
+    }
+    const normalized = normalizeContact(rawItem)
+    if (normalized.enabled && !isValidPhoneE164(normalized.phoneE164) && !(normalized.whatsappE164 && isValidPhoneE164(normalized.whatsappE164))) {
+      out.invalid.push({ index, id, reason: 'מסומן כפעיל אך אין מספר טלפון/וואטסאפ תקין' })
+      return
+    }
+    if (seen.has(id)) out.duplicate.push({ index, id })
+    seen.add(id)
+    const existing = currentById.get(id)
+    if (!existing) out.added.push(normalized)
+    else if (sameContact(existing, normalized)) out.unchanged.push(normalized)
+    else out.updated.push(normalized)
+  })
+  out.toSave = [...out.added, ...out.updated]
+  // Replace-All removes every current contact whose id is NOT in the incoming set.
+  out.replaceAllRemoves = current.filter((c) => !seen.has(c.id)).length
+  return out
 }
 
 export interface MigrationResult {
