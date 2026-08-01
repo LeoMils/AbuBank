@@ -18,7 +18,7 @@ import {
   computeInitials,
   type RecipientCandidate,
 } from './familyQuickFaces'
-import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
+import { type FamilyQuickFace } from './familyContacts.private'
 import { getLocalContacts } from './familyContactsStorage'
 import { transcribeAudio } from './service'
 import { recordComposeEvent, mechanismForCorrection } from '../AbuAI/whatsappComposeTelemetry'
@@ -78,7 +78,7 @@ export function VoiceCompose({ open, onClose, initialFace }: VoiceComposeProps) 
   useEffect(() => { commandRef.current = command }, [command])
   useEffect(() => { messageRef.current = message }, [message])
 
-  const persons = useMemo(() => getDisplayablePersons(FAMILY_QUICK_FACES, getLocalContacts()), [open])
+  const persons = useMemo(() => getDisplayablePersons(getLocalContacts()), [open])
   const pickList = candidates.length > 0 ? candidates.map(c => c.face) : persons
 
   const cleanupCapture = useCallback(() => {

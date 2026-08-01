@@ -24,21 +24,26 @@ import {
   buildTelUrl,
   buildWhatsAppPersonUrl,
   isPersonActionable,
-  mergeFacesWithLocal,
+  getDisplayablePersons,
 } from './familyQuickFaces'
 import {
   LOCAL_FAMILY_CONTACTS_STORAGE_KEY,
+  DEFAULT_SEED_CONTACTS,
   getLocalContacts,
   type LocalFamilyContact,
 } from './familyContactsStorage'
-import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
+import { type FamilyQuickFace } from './familyContacts.private'
 
-// Pinned synthetic test fixtures — covered by the privacy allowlist below.
-const SEED: LocalFamilyContact[] = [
-  { id: 'mor', enabled: true, phoneE164: '+972500000001', whatsappE164: '+972500000001' },
-  { id: 'leo', enabled: true, phoneE164: '+972500000002', whatsappE164: '+972500000002' },
-  { id: 'yael', enabled: true, phoneE164: '+972500000003', whatsappE164: '+972500000003' },
-]
+// The store is the single source of truth: the realistic device state is the
+// default family SEED (all members) with a few configured with a number. Pinned
+// synthetic phones only — covered by the privacy allowlist.
+const CONFIGURED: Record<string, { phone: string }> = {
+  mor: { phone: '+972500000001' }, leo: { phone: '+972500000002' }, yael: { phone: '+972500000003' },
+}
+const SEED: LocalFamilyContact[] = DEFAULT_SEED_CONTACTS.map((c) => {
+  const cfg = CONFIGURED[c.id]
+  return cfg ? { ...c, enabled: true, phoneE164: cfg.phone, whatsappE164: cfg.phone } : c
+})
 
 interface MapStorage {
   store: Map<string, string>
@@ -74,16 +79,15 @@ describe('seeded-localStorage repro — operator-imported contacts must be actio
     expect(fake.getItem(LOCAL_FAMILY_CONTACTS_STORAGE_KEY)).not.toBeNull()
   })
 
-  it('getLocalContacts(fakeStorage) returns the 3 seeded entries (shape passes filter)', () => {
+  it('getLocalContacts(fakeStorage) returns the full seeded family; 3 are configured/enabled', () => {
     const c = getLocalContacts(fake)
-    expect(c.length).toBe(3)
-    expect(c.map((x) => x.id).sort()).toEqual(['leo', 'mor', 'yael'])
-    expect(c.every((x) => x.enabled === true)).toBe(true)
+    expect(c.length).toBe(DEFAULT_SEED_CONTACTS.length)
+    expect(c.filter((x) => x.enabled).map((x) => x.id).sort()).toEqual(['leo', 'mor', 'yael'])
   })
 
-  it('mergeFacesWithLocal hydrates Mor / Leo / Yael with override phone + enabled=true', () => {
+  it('the board renders Mor / Leo / Yael with their phone + enabled=true', () => {
     const c = getLocalContacts(fake)
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, c)
+    const merged = getDisplayablePersons(c)
     for (const id of ['mor', 'leo', 'yael']) {
       const p = person(merged, id)
       expect(p, `id=${id}`).toBeDefined()
@@ -99,7 +103,7 @@ describe('seeded-localStorage repro — operator-imported contacts must be actio
 
   it('isPersonActionable is TRUE for every seeded person (regression guard for the bug Leo reported)', () => {
     const c = getLocalContacts(fake)
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, c)
+    const merged = getDisplayablePersons(c)
     for (const id of ['mor', 'leo', 'yael']) {
       const p = person(merged, id)
       expect(isPersonActionable(p), `id=${id} must be actionable when local data exists`).toBe(true)
@@ -108,7 +112,7 @@ describe('seeded-localStorage repro — operator-imported contacts must be actio
 
   it('Ari / Anabel stay non-actionable when not in the seed', () => {
     const c = getLocalContacts(fake)
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, c)
+    const merged = getDisplayablePersons(c)
     for (const id of ['ari', 'anabel']) {
       const p = person(merged, id)
       expect(isPersonActionable(p), `id=${id} must NOT be actionable without local data`).toBe(false)
@@ -117,7 +121,7 @@ describe('seeded-localStorage repro — operator-imported contacts must be actio
 
   it('Other family members not in the seed (e.g. raphi, ofir) stay non-actionable', () => {
     const c = getLocalContacts(fake)
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, c)
+    const merged = getDisplayablePersons(c)
     for (const id of ['raphi', 'ofir', 'gilad']) {
       const p = person(merged, id)
       expect(isPersonActionable(p), `id=${id} should not be actionable`).toBe(false)
@@ -126,7 +130,7 @@ describe('seeded-localStorage repro — operator-imported contacts must be actio
 
   it('buildWhatsAppPersonUrl prefers whatsappE164, yields wa.me/<digits> (no plus, no spaces, no dashes)', () => {
     const c = getLocalContacts(fake)
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, c)
+    const merged = getDisplayablePersons(c)
     const mor = person(merged, 'mor')
     const url = buildWhatsAppPersonUrl(mor)
     expect(url).toBe('https://wa.me/972500000001')
@@ -135,7 +139,7 @@ describe('seeded-localStorage repro — operator-imported contacts must be actio
 
   it('buildTelUrl yields tel:+<digits> with leading +', () => {
     const c = getLocalContacts(fake)
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, c)
+    const merged = getDisplayablePersons(c)
     const leo = person(merged, 'leo')
     const tel = buildTelUrl(leo)
     expect(tel).toBe('tel:+972500000002')
@@ -185,12 +189,12 @@ describe('runtime path — default-arg getLocalContacts() with shimmed window.lo
 
   it('default-arg getLocalContacts() reads the seeded storage', () => {
     const c = getLocalContacts()
-    expect(c.length).toBe(3)
+    expect(c.length).toBe(DEFAULT_SEED_CONTACTS.length)
   })
 
   it('full pipeline (storage → merge → isPersonActionable) returns true for every seeded id', () => {
     const c = getLocalContacts()
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, c)
+    const merged = getDisplayablePersons(c)
     for (const id of ['mor', 'leo', 'yael']) {
       expect(isPersonActionable(person(merged, id)), `id=${id}`).toBe(true)
     }

@@ -6,7 +6,7 @@ import {
   buildTelUrl,
   getVisibleFaces,
   computeInitials,
-  mergeFacesWithLocal,
+  contactsToPersonFaces,
   getDisplayablePersons,
   isPersonActionable,
   isGroupActionable,
@@ -218,117 +218,73 @@ describe('source scaffold contains no real phone numbers', () => {
   })
 })
 
-describe('mergeFacesWithLocal', () => {
-  it('returns the scaffold untouched when no local overrides exist', () => {
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [])
-    expect(merged.length).toBe(FAMILY_QUICK_FACES.length)
-    const visible = getVisibleFaces(merged)
-    expect(visible.length).toBe(1)
-    expect(visible[0]?.type).toBe('group')
-  })
-
-  it('localStorage data can enable a person with a valid local phone', () => {
-    const local: LocalFamilyContact[] = [{ id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE }]
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, local)
-    const visible = getVisibleFaces(merged)
-    const mor = visible.find(f => f.type === 'person' && f.id === 'mor')
-    expect(mor).toBeDefined()
-    expect((mor as Extract<FamilyQuickFace, { type: 'person' }>).enabled).toBe(true)
-  })
-
-  it('invalid local phone keeps the person hidden', () => {
-    const local: LocalFamilyContact[] = [{ id: 'mor', enabled: true, phoneE164: '12345' }]
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, local)
-    const visible = getVisibleFaces(merged)
-    expect(visible.find(f => f.type === 'person' && f.id === 'mor')).toBeUndefined()
-  })
-
-  it('local override with enabled=false leaves the person hidden even with a valid phone', () => {
-    const local: LocalFamilyContact[] = [{ id: 'mor', enabled: false, phoneE164: TEST_FAKE_PHONE }]
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, local)
-    const visible = getVisibleFaces(merged)
-    expect(visible.find(f => f.type === 'person' && f.id === 'mor')).toBeUndefined()
-  })
-
-  it('Anabel and Ari remain hidden unless valid local data exists', () => {
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [])
-    const visible = getVisibleFaces(merged)
-    expect(visible.find(f => f.id === 'anabel')).toBeUndefined()
-    expect(visible.find(f => f.id === 'ari')).toBeUndefined()
-  })
-
-  it('group bubble survives even when no local contacts exist', () => {
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [])
-    const visible = getVisibleFaces(merged)
-    expect(visible.some(f => f.type === 'group' && f.id === 'family-group')).toBe(true)
-  })
-
-  it('WhatsApp URL builds only from local data (scaffold has no number)', () => {
-    const local: LocalFamilyContact[] = [{ id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE }]
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, local)
-    const mor = merged.find(f => f.type === 'person' && f.id === 'mor') as Extract<FamilyQuickFace, { type: 'person' }>
-    const url = buildWhatsAppPersonUrl(mor)
-    expect(url.startsWith('https://wa.me/')).toBe(true)
-    expect(/^https:\/\/wa\.me\/\d{8,15}$/.test(url)).toBe(true)
-  })
-
-  it('phone (tel:) URL builds only from local data', () => {
-    const local: LocalFamilyContact[] = [{ id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE }]
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, local)
-    const mor = merged.find(f => f.type === 'person' && f.id === 'mor') as Extract<FamilyQuickFace, { type: 'person' }>
-    const tel = buildTelUrl(mor)
-    expect(/^tel:\+\d{8,15}$/.test(tel)).toBe(true)
-  })
-
-  it('identity (displayName, relationshipHebrew) falls back to scaffold when no override is set', () => {
-    // No override fields → scaffold identity is used (the common case).
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [{ id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE }])
-    const mor = merged.find(f => f.type === 'person' && f.id === 'mor') as Extract<FamilyQuickFace, { type: 'person' }>
-    expect(mor.displayName).toBe('מור')
-    expect(mor.relationshipHebrew).toBe('הבת')
-  })
-
-  it('Contact Management may override displayName / relationship (feature: editable label)', () => {
-    const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, [
-      { id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE, displayName: 'מורי', relationshipHebrew: 'הבכורה' },
+describe('contactsToPersonFaces (dynamic render — store is the single source of truth)', () => {
+  it('renders exactly the stored contacts, in store order', () => {
+    const faces = contactsToPersonFaces([
+      { id: 'leo', displayName: 'לאו', enabled: true, phoneE164: TEST_FAKE_PHONE },
+      { id: 'mor', displayName: 'מור', enabled: false, phoneE164: '' },
     ])
-    const mor = merged.find(f => f.type === 'person' && f.id === 'mor') as Extract<FamilyQuickFace, { type: 'person' }>
-    expect(mor.displayName).toBe('מורי')          // operator-edited label applies
-    expect(mor.relationshipHebrew).toBe('הבכורה')
+    expect(faces.map((f) => f.id)).toEqual(['leo', 'mor'])
+  })
+
+  it('a contact carries its OWN identity (label + relationship); label falls back to id', () => {
+    const [named, terse] = contactsToPersonFaces([
+      { id: 'mor', displayName: 'מורי', relationshipHebrew: 'הבכורה', enabled: true, phoneE164: TEST_FAKE_PHONE },
+      { id: 'saba', enabled: false, phoneE164: '' }, // no displayName → label = id
+    ])
+    expect(named!.displayName).toBe('מורי')
+    expect(named!.relationshipHebrew).toBe('הבכורה')
+    expect(terse!.displayName).toBe('saba')
+  })
+
+  it('a valid, enabled contact is actionable; disabled or invalid-phone is not', () => {
+    const [ok, disabled, bad] = contactsToPersonFaces([
+      { id: 'mor', displayName: 'מור', enabled: true, phoneE164: TEST_FAKE_PHONE },
+      { id: 'leo', displayName: 'לאו', enabled: false, phoneE164: TEST_FAKE_PHONE },
+      { id: 'yael', displayName: 'יעל', enabled: true, phoneE164: '12345' },
+    ])
+    expect(isPersonActionable(ok!)).toBe(true)
+    expect(isPersonActionable(disabled!)).toBe(false)
+    expect(isPersonActionable(bad!)).toBe(false)
+  })
+
+  it('WhatsApp + tel URLs build from the contact number', () => {
+    const [mor] = contactsToPersonFaces([{ id: 'mor', displayName: 'מור', enabled: true, phoneE164: TEST_FAKE_PHONE }])
+    expect(/^https:\/\/wa\.me\/\d{8,15}$/.test(buildWhatsAppPersonUrl(mor!))).toBe(true)
+    expect(/^tel:\+\d{8,15}$/.test(buildTelUrl(mor!))).toBe(true)
   })
 })
 
-// ─── v0.3.2 — visible-by-default family grid ──────────────────────────────
+// ─── Dynamic family grid — renders from the stored contacts ────────────────
 
-describe('getDisplayablePersons (visible-by-default scaffold persons)', () => {
-  it('returns every scaffold person even with empty localStorage', () => {
-    const persons = getDisplayablePersons(FAMILY_QUICK_FACES, [])
-    const scaffoldPersons = FAMILY_QUICK_FACES.filter((f) => f.type === 'person')
-    expect(persons.length).toBe(scaffoldPersons.length)
-    expect(persons.length).toBeGreaterThan(0)
-  })
-
-  it('includes Anabel and Ari (scaffold persons) even without override', () => {
-    const persons = getDisplayablePersons(FAMILY_QUICK_FACES, [])
-    expect(persons.some((p) => p.id === 'anabel')).toBe(true)
-    expect(persons.some((p) => p.id === 'ari')).toBe(true)
-  })
-
-  it('preserves scaffold render order regardless of local overrides', () => {
-    const scaffoldOrder = (FAMILY_QUICK_FACES.filter((f) => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]).map((p) => p.id)
-    const persons = getDisplayablePersons(FAMILY_QUICK_FACES, [
-      { id: 'leo', enabled: true, phoneE164: TEST_FAKE_PHONE },
-      { id: 'mor', enabled: false, phoneE164: '' },
+describe('getDisplayablePersons (dynamic — every stored contact)', () => {
+  it('renders every stored contact, even without a phone', () => {
+    const persons = getDisplayablePersons([
+      { id: 'mor', displayName: 'מור', enabled: false, phoneE164: '' },
+      { id: 'leo', displayName: 'לאו', enabled: true, phoneE164: TEST_FAKE_PHONE },
     ])
-    expect(persons.map((p) => p.id)).toEqual(scaffoldOrder)
+    expect(persons.map((p) => p.id)).toEqual(['mor', 'leo'])
   })
 
-  it('overlays phone/photo/enabled from local override; identity uses scaffold when not overridden', () => {
-    const persons = getDisplayablePersons(FAMILY_QUICK_FACES, [
-      { id: 'mor', enabled: true, phoneE164: TEST_FAKE_PHONE, photoFile: '/family/FAmilly%201.JPG' },
+  it('an empty store renders no persons (nothing hardcoded)', () => {
+    expect(getDisplayablePersons([]).length).toBe(0)
+  })
+
+  it('preserves store order', () => {
+    const persons = getDisplayablePersons([
+      { id: 'leo', displayName: 'לאו', enabled: true, phoneE164: TEST_FAKE_PHONE },
+      { id: 'anabel', displayName: 'אנאבל', enabled: false, phoneE164: '' },
+      { id: 'mor', displayName: 'מור', enabled: false, phoneE164: '' },
+    ])
+    expect(persons.map((p) => p.id)).toEqual(['leo', 'anabel', 'mor'])
+  })
+
+  it('carries phone/photo/enabled/identity straight from the stored contact', () => {
+    const persons = getDisplayablePersons([
+      { id: 'mor', displayName: 'מור', relationshipHebrew: 'הבת', enabled: true, phoneE164: TEST_FAKE_PHONE, photoFile: '/family/FAmilly%201.JPG' },
     ])
     const mor = persons.find((p) => p.id === 'mor')!
-    expect(mor.displayName).toBe('מור')            // no override → scaffold identity
+    expect(mor.displayName).toBe('מור')
     expect(mor.relationshipHebrew).toBe('הבת')
     expect(mor.phoneE164).toBe(TEST_FAKE_PHONE)
     expect(mor.enabled).toBe(true)
@@ -400,9 +356,9 @@ describe('AbuWhatsApp unified bubble grid (source contract)', () => {
     expect(src.includes('APP_VERSION')).toBe(false)
   })
 
-  it('grid uses getDisplayablePersons (visible-by-default), not contacts.some filtering', () => {
+  it('grid renders dynamically from the stored contacts (no hardcoded scaffold list)', () => {
     const src = readSrc('src/screens/AbuWhatsApp/familyQuickFaces.tsx')
-    expect(src.includes('getDisplayablePersons(FAMILY_QUICK_FACES, contacts)')).toBe(true)
+    expect(src.includes('getDisplayablePersons(contacts)')).toBe(true)
     // The previous "hide unless localStorage override exists" filter must be gone.
     expect(src.includes('contacts.some((c) => c.id === p.id)')).toBe(false)
   })

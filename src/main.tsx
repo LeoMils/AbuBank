@@ -31,6 +31,13 @@ if ((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
 // any failure degrades gracefully to the localStorage-only path.
 async function boot() {
   try { await durable.init() } catch { /* best-effort; degrade to localStorage */ }
+  // Seed the default family into the contact store on first-ever run (the store
+  // is the single source of truth for the family board; the scaffold is only
+  // initial data). No-op once the store exists — a deleted contact stays deleted.
+  try {
+    const { seedDefaultContactsIfEmpty } = await import('./screens/AbuWhatsApp/familyContactsStorage')
+    seedDefaultContactsIfEmpty()
+  } catch { /* best-effort */ }
   // Flush pending durable (IndexedDB) writes before the app is backgrounded or
   // killed. On iOS a PWA can be frozen at any time and localStorage may later be
   // evicted, so an un-flushed async write could lose a just-created appointment.

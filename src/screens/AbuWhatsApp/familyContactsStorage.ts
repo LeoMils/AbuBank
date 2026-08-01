@@ -11,7 +11,7 @@
  */
 
 import { isValidPhoneE164, normalizeIsraeliPhone } from './familyQuickFaces'
-import { FAMILY_QUICK_FACES } from './familyContacts.private'
+import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
 import { durable } from '../../services/durableStore'
 
 export const LOCAL_FAMILY_CONTACTS_STORAGE_KEY = 'abubank.familyContacts.v1'
@@ -86,6 +86,19 @@ export function resolveContactId(id: string): string {
   return CONTACT_ID_ALIASES[key] ?? key
 }
 
+/**
+ * The local contact store is the SINGLE SOURCE OF TRUTH — any contact id is
+ * allowed (no fixed scaffold allowlist). We only require a SAFE, stable id so it
+ * can be a durable storage/merge key: lowercase letters/digits with `-`/`_`,
+ * starting alphanumeric, 1–40 chars. Unsafe ids are rejected with a specific
+ * error, never silently dropped. `isKnownContactId` remains only as an
+ * INFORMATIONAL "is this one of the default family" flag — not a gate.
+ */
+export const SAFE_CONTACT_ID_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/
+export function isSafeContactId(id: string): boolean {
+  return SAFE_CONTACT_ID_RE.test(String(id ?? ''))
+}
+
 export interface LocalFamilyContact {
   id: string
   enabled: boolean
@@ -93,11 +106,14 @@ export interface LocalFamilyContact {
   whatsappE164?: string
   photoFile?: string
   photoDataUrl?: string
-  /** Optional display-name / relationship OVERRIDES for the known scaffold
-   *  person. Absent → the scaffold's own value is used (board merge falls back).
-   *  These let Contact Management edit the label without touching source. */
+  /** The contact's own identity. The store is the source of truth, so these
+   *  ARE the label/relationship the board renders (falling back to `id` /
+   *  empty when absent — e.g. a terse JSON import). */
   displayName?: string
   relationshipHebrew?: string
+  /** Optional photo crop hints, carried from the default-family seed. */
+  photoFit?: 'contain' | 'cover'
+  photoObjectPosition?: string
 }
 
 export interface ImportResult {
@@ -130,6 +146,8 @@ export function isLocalFamilyContactShape(value: unknown): value is LocalFamilyC
   if (v.photoDataUrl !== undefined && typeof v.photoDataUrl !== 'string') return false
   if (v.displayName !== undefined && typeof v.displayName !== 'string') return false
   if (v.relationshipHebrew !== undefined && typeof v.relationshipHebrew !== 'string') return false
+  if (v.photoFit !== undefined && v.photoFit !== 'contain' && v.photoFit !== 'cover') return false
+  if (v.photoObjectPosition !== undefined && typeof v.photoObjectPosition !== 'string') return false
   return true
 }
 
@@ -227,6 +245,38 @@ export function clearLocalContacts(storage: StorageLike | null = defaultStorage(
 }
 
 /**
+ * Default-family SEED. The scaffold is no longer a runtime render gate — it is
+ * one-time initial data. Each known family member becomes a contact carrying its
+ * own identity + photo, DISABLED with no number (the operator adds numbers). Once
+ * the store is written (by the seed or any edit) it is authoritative: a deleted
+ * contact stays deleted and is never re-seeded.
+ */
+export const DEFAULT_SEED_CONTACTS: LocalFamilyContact[] = FAMILY_QUICK_FACES
+  .filter((f): f is Extract<FamilyQuickFace, { type: 'person' }> => f.type === 'person')
+  .map((p) => {
+    const c: LocalFamilyContact = { id: p.id, enabled: false, phoneE164: '', displayName: p.displayName }
+    if (p.relationshipHebrew) c.relationshipHebrew = p.relationshipHebrew
+    if (p.photoFile) c.photoFile = p.photoFile
+    if (p.photoFit) c.photoFit = p.photoFit
+    if (p.photoObjectPosition) c.photoObjectPosition = p.photoObjectPosition
+    return c
+  })
+
+/**
+ * Seed the default family ONLY when the store has never been written (both
+ * localStorage and the durable mirror are empty). Idempotent + safe: an existing
+ * store — even an empty one the user cleared — is left untouched. Returns true
+ * iff it seeded. Call once at app start, after `durable.init()`.
+ */
+export function seedDefaultContactsIfEmpty(storage: StorageLike | null = defaultStorage()): boolean {
+  if (!storage) return false
+  const raw = readRawWithDurableFallback(storage)
+  if (raw !== null && raw !== '') return false
+  setLocalContacts(DEFAULT_SEED_CONTACTS, storage)
+  return true
+}
+
+/**
  * True when `storage` is the real browser localStorage (the default runtime
  * path), NOT an injected fake. Guards the durable-backend mirror so unit tests
  * that pass their own StorageLike stay hermetic and local-only.
@@ -251,7 +301,7 @@ export function upsertLocalContact(contact: LocalFamilyContact, storage: Storage
   contact = { ...contact, id: resolveContactId(contact.id), phoneE164: normalizeIsraeliPhone(contact.phoneE164) }
   if (contact.whatsappE164) contact = { ...contact, whatsappE164: normalizeIsraeliPhone(contact.whatsappE164) }
   if (!isLocalFamilyContactShape(contact)) errors.push('invalid contact shape')
-  if (!isKnownContactId(contact.id)) errors.push(`unknown contact id "${contact.id}"`)
+  if (!isSafeContactId(contact.id)) errors.push(`invalid contact id "${contact.id}"`)
   if (contact.enabled && !isValidPhoneE164(contact.phoneE164)) errors.push('phoneE164 fails E.164 validation')
   if (contact.whatsappE164 !== undefined && contact.whatsappE164.length > 0 && !isValidPhoneE164(contact.whatsappE164)) {
     errors.push('whatsappE164 fails E.164 validation')
@@ -416,7 +466,7 @@ export function importContactsJSON(jsonText: string): ImportResult {
     // Resolve spelling aliases (e.g. "rafi" → canonical "raphi") before the
     // known-id gate, then store the canonical id so the runtime merge renders it.
     const id = resolveContactId(raw.id)
-    if (!isKnownContactId(id)) { errors.push(`item ${i}: unknown id "${raw.id}"`); return }
+    if (!isSafeContactId(id)) { errors.push(`item ${i}: invalid id "${raw.id}"`); return }
     if (seen.has(id)) { errors.push(`item ${i}: duplicate id "${raw.id}"`); return }
     seen.add(id)
     raw.id = id
@@ -459,7 +509,7 @@ export function validateContacts(input: unknown): { valid: LocalFamilyContact[];
   input.forEach((item, i) => {
     if (!isLocalFamilyContactShape(item)) { errors.push(`item ${i}: invalid shape`); return }
     const id = resolveContactId(item.id)
-    if (!isKnownContactId(id)) { errors.push(`item ${i}: unknown id "${item.id}"`); return }
+    if (!isSafeContactId(id)) { errors.push(`item ${i}: invalid id "${item.id}"`); return }
     valid.push({ ...item, id })
   })
   return { valid, errors }
@@ -492,11 +542,13 @@ export function validateContactFields(input: ContactFormInput): ContactFieldErro
   const rawId = String(input.id ?? '').trim()
   if (rawId.length === 0) {
     errors.id = 'חסר מזהה (id) לאיש הקשר'
-  } else if (!isKnownContactId(resolveContactId(rawId))) {
-    errors.id = `מזהה לא נתמך. אפשרי: ${knownContactIdList()}`
+  } else if (!isSafeContactId(resolveContactId(rawId))) {
+    errors.id = 'מזהה לא תקין — אותיות באנגלית קטנות, ספרות, מקף בלבד (למשל: mor, dr-cohen)'
   }
-  if (input.displayName !== undefined && input.displayName.trim().length === 0) {
-    errors.displayName = 'שם התצוגה לא יכול להיות ריק'
+  // Display name is required — the store is the source of truth, there is no
+  // scaffold fallback for a contact's label.
+  if (input.displayName === undefined || input.displayName.trim().length === 0) {
+    errors.displayName = 'צריך שם תצוגה לאיש הקשר'
   }
   const phone = normalizeIsraeliPhone(String(input.phoneE164 ?? '').trim())
   if (phone.length > 0 && !isValidPhoneE164(phone)) {
@@ -595,8 +647,8 @@ export function previewImportContacts(
       return
     }
     const id = resolveContactId(rawItem.id)
-    if (!isKnownContactId(id)) {
-      out.invalid.push({ index, id: rawItem.id, reason: `מזהה לא נתמך "${rawItem.id}". אפשרי: ${knownContactIdList()}` })
+    if (!isSafeContactId(id)) {
+      out.invalid.push({ index, id: rawItem.id, reason: `מזהה לא תקין "${rawItem.id}" (אותיות באנגלית, ספרות, מקף בלבד)` })
       return
     }
     const normalized = normalizeContact(rawItem)

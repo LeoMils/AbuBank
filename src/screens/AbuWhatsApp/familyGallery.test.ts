@@ -14,17 +14,16 @@ import {
   getFamilyGalleryPhotos,
   type FamilyGalleryPhoto,
 } from './familyQuickFaces'
-import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
-import type { LocalFamilyContact } from './familyContactsStorage'
+import { DEFAULT_SEED_CONTACTS, type LocalFamilyContact } from './familyContactsStorage'
 
 const PROJECT_ROOT = path.resolve(__dirname, '../../..')
 const facesSrc = fs.readFileSync(path.join(PROJECT_ROOT, 'src/screens/AbuWhatsApp/familyQuickFaces.tsx'), 'utf8')
 const gallerySrc = fs.readFileSync(path.join(PROJECT_ROOT, 'src/screens/AbuWhatsApp/FamilyPhotoGallery.tsx'), 'utf8')
 const indexSrc = fs.readFileSync(path.join(PROJECT_ROOT, 'src/screens/AbuWhatsApp/index.tsx'), 'utf8')
 
-describe('getFamilyGalleryPhotos — derived from the same data as the bubble grid', () => {
-  it('returns FamilyGalleryPhoto entries with id / label / photoUrl only (no phone fields)', () => {
-    const items = getFamilyGalleryPhotos(FAMILY_QUICK_FACES, [])
+describe('getFamilyGalleryPhotos — derived from the stored contacts (single source of truth)', () => {
+  it('returns id / label / photoUrl only (no phone fields)', () => {
+    const items = getFamilyGalleryPhotos(DEFAULT_SEED_CONTACTS)
     expect(items.length).toBeGreaterThan(0)
     for (const item of items) {
       expect(typeof item.id).toBe('string')
@@ -37,84 +36,56 @@ describe('getFamilyGalleryPhotos — derived from the same data as the bubble gr
     }
   })
 
-  it('includes the family group photo when one is set on the merged group', () => {
-    const scaffold: FamilyQuickFace[] = [
-      {
-        type: 'group', id: 'family-group', label: 'המשפחה',
-        photoFile: '/family/FAmilly%201.JPG',
-        whatsappUrl: 'https://chat.whatsapp.com/ABC',
-        enabled: true,
-      },
-      {
-        type: 'person', id: 'mor', displayName: 'מור',
-        phoneE164: '', enabled: false,
-        photoFile: '/family-contacts/mor.jpeg',
-      },
+  it('includes a stored contact photo', () => {
+    const contacts: LocalFamilyContact[] = [
+      { id: 'mor', displayName: 'מור', phoneE164: '', enabled: false, photoFile: '/family-contacts/mor.jpeg' },
     ]
-    const items = getFamilyGalleryPhotos(scaffold, [])
-    expect(items.find((x) => x.id === 'family-group')?.photoUrl).toBe('/family/FAmilly%201.JPG')
-    expect(items.find((x) => x.id === 'mor')?.photoUrl).toBe('/family-contacts/mor.jpeg')
+    expect(getFamilyGalleryPhotos(contacts).find((x) => x.id === 'mor')?.photoUrl).toBe('/family-contacts/mor.jpeg')
   })
 
-  it('includes every scaffold person that has a photoFile (current + future contacts)', () => {
-    const items = getFamilyGalleryPhotos(FAMILY_QUICK_FACES, [])
-    const ids = items.map((x) => x.id)
-    // Real scaffold ships these 14 people with photos. New future ids will
-    // appear automatically here without changing this helper.
-    for (const id of ['mor', 'leo', 'yael', 'ari', 'anabel']) {
-      expect(ids).toContain(id)
-    }
+  it('includes every default-family member that ships with a photo', () => {
+    const ids = getFamilyGalleryPhotos(DEFAULT_SEED_CONTACTS).map((x) => x.id)
+    for (const id of ['mor', 'leo', 'yael', 'ari', 'anabel']) expect(ids).toContain(id)
   })
 
-  it('skips entries with no photoUrl', () => {
-    const scaffold: FamilyQuickFace[] = [
-      { type: 'person', id: 'no-photo', displayName: 'X', phoneE164: '', enabled: false },
-      { type: 'person', id: 'with-photo', displayName: 'Y', phoneE164: '', enabled: false, photoFile: '/family-contacts/leo.png' },
+  it('skips entries with no photo', () => {
+    const contacts: LocalFamilyContact[] = [
+      { id: 'no-photo', displayName: 'X', phoneE164: '', enabled: false },
+      { id: 'with-photo', displayName: 'Y', phoneE164: '', enabled: false, photoFile: '/family-contacts/leo.png' },
     ]
-    const items = getFamilyGalleryPhotos(scaffold, [])
+    const items = getFamilyGalleryPhotos(contacts)
     expect(items.find((x) => x.id === 'no-photo')).toBeUndefined()
     expect(items.find((x) => x.id === 'with-photo')).toBeDefined()
   })
 
-  it('localStorage photo overrides flow through and replace the scaffold photo', () => {
-    const local: LocalFamilyContact[] = [
-      { id: 'mor', enabled: true, phoneE164: '+972500000001', photoFile: '/operator-supplied/mor.jpg' },
+  it('an operator photoDataUrl replaces the seed photo (dataUrl wins)', () => {
+    const contacts: LocalFamilyContact[] = [
+      { id: 'mor', displayName: 'מור', enabled: true, phoneE164: '+972500000001', photoFile: '/family-contacts/mor.jpeg', photoDataUrl: '/operator-supplied/mor.jpg' },
     ]
-    const items = getFamilyGalleryPhotos(FAMILY_QUICK_FACES, local)
-    expect(items.find((x) => x.id === 'mor')?.photoUrl).toBe('/operator-supplied/mor.jpg')
+    expect(getFamilyGalleryPhotos(contacts).find((x) => x.id === 'mor')?.photoUrl).toBe('/operator-supplied/mor.jpg')
   })
 
   it('extras are prepended and de-duplicated by photoUrl', () => {
     const extras: FamilyGalleryPhoto[] = [
       { id: 'martita-portrait', label: 'Martita', photoUrl: '/martita/Martita%201.JPG' },
     ]
-    const items = getFamilyGalleryPhotos(FAMILY_QUICK_FACES, [], extras)
+    const items = getFamilyGalleryPhotos(DEFAULT_SEED_CONTACTS, extras)
     expect(items[0]?.id).toBe('martita-portrait')
-    // No duplicate of the same photo URL:
     const urls = items.map((x) => x.photoUrl)
-    const uniq = new Set(urls)
-    expect(urls.length).toBe(uniq.size)
+    expect(urls.length).toBe(new Set(urls).size)
   })
 
   it('extras with empty photoUrl are dropped', () => {
-    const extras: FamilyGalleryPhoto[] = [
-      { id: 'empty', label: 'X', photoUrl: '' },
-    ]
-    const items = getFamilyGalleryPhotos(FAMILY_QUICK_FACES, [], extras)
-    expect(items.find((x) => x.id === 'empty')).toBeUndefined()
+    const extras: FamilyGalleryPhoto[] = [{ id: 'empty', label: 'X', photoUrl: '' }]
+    expect(getFamilyGalleryPhotos(DEFAULT_SEED_CONTACTS, extras).find((x) => x.id === 'empty')).toBeUndefined()
   })
 
-  it('a brand-new contact added to the scaffold appears automatically (regression guard)', () => {
-    const augmented: FamilyQuickFace[] = [
-      ...FAMILY_QUICK_FACES,
-      {
-        type: 'person', id: 'new-future-cousin', displayName: 'בן-דוד',
-        phoneE164: '', enabled: false,
-        photoFile: '/family-contacts/new-future-cousin.jpeg',
-      },
+  it('a brand-new contact with a photo appears automatically (dynamic, no scaffold)', () => {
+    const contacts: LocalFamilyContact[] = [
+      ...DEFAULT_SEED_CONTACTS,
+      { id: 'new-future-cousin', displayName: 'בן-דוד', phoneE164: '', enabled: false, photoFile: '/family-contacts/new-future-cousin.jpeg' },
     ]
-    const items = getFamilyGalleryPhotos(augmented, [])
-    expect(items.find((x) => x.id === 'new-future-cousin')?.photoUrl)
+    expect(getFamilyGalleryPhotos(contacts).find((x) => x.id === 'new-future-cousin')?.photoUrl)
       .toBe('/family-contacts/new-future-cousin.jpeg')
   })
 })
@@ -147,7 +118,7 @@ describe('FamilyPhotoGallery component — source contract', () => {
   })
 
   it('reads photos from getFamilyGalleryPhotos by default (no hardcoded list)', () => {
-    expect(gallerySrc.includes('getFamilyGalleryPhotos(FAMILY_QUICK_FACES, getLocalContacts(), extras')).toBe(true)
+    expect(gallerySrc.includes('getFamilyGalleryPhotos(getLocalContacts(), extras')).toBe(true)
   })
 
   it('grid is 3 columns', () => {

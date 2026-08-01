@@ -226,13 +226,14 @@ describe('familyContactsStorage — schema envelope + validation', () => {
     expect(diag.dropped).toBe(2)
   })
 
-  it('validateContacts rejects unknown ids and bad shapes, keeps valid ones', () => {
+  it('validateContacts accepts any SAFE id, rejects UNSAFE ids and bad shapes', () => {
     const r = validateContacts([
       { id: 'mor', enabled: false, phoneE164: '' },
-      { id: 'stranger', enabled: false, phoneE164: '' },  // unknown id
-      { nope: 1 },                                        // bad shape
+      { id: 'stranger', enabled: false, phoneE164: '' },  // safe id → now VALID
+      { id: 'bad id!', enabled: false, phoneE164: '' },   // unsafe id → rejected
+      { nope: 1 },                                        // bad shape → rejected
     ])
-    expect(r.valid.map(c => c.id)).toEqual(['mor'])
+    expect(r.valid.map(c => c.id).sort()).toEqual(['mor', 'stranger'])
     expect(r.errors).toHaveLength(2)
     expect(validateContacts('not-an-array').errors).toEqual(['not an array'])
   })

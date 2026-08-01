@@ -27,7 +27,7 @@ import fs from 'fs'
 import path from 'path'
 import { describe, it, expect } from 'vitest'
 import {
-  mergeFacesWithLocal,
+  contactsToPersonFaces,
 } from './familyQuickFaces'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
 import type { LocalFamilyContact } from './familyContactsStorage'
@@ -140,34 +140,25 @@ describe('BubbleAvatar per-contact photo crop metadata (BUG 2 fix)', () => {
     expect(/<BubbleTile[\s\S]{0,800}kind="person"[\s\S]{0,400}photoFit=\{p\.photoFit\}/.test(facesSrc)).toBe(true)
   })
 
-  it("mergeFacesWithLocal preserves scaffold photoFit + photoObjectPosition when scaffold's own photo wins", () => {
-    const ari: Extract<FamilyQuickFace, { type: 'person' }> = {
-      type: 'person', id: 'adar', displayName: 'אדר',
-      phoneE164: '', enabled: false,
+  it('contactsToPersonFaces carries a contact photoFit + photoObjectPosition (e.g. the Adar seed crop)', () => {
+    const adar: LocalFamilyContact = {
+      id: 'adar', displayName: 'אדר', phoneE164: '', enabled: false,
       photoFile: '/family-contacts/adar.jpeg',
       photoFit: 'cover', photoObjectPosition: 'center 28%',
     }
-    const merged = mergeFacesWithLocal([ari], [])
-    const m = merged[0] as Extract<FamilyQuickFace, { type: 'person' }>
+    const m = contactsToPersonFaces([adar])[0] as Extract<FamilyQuickFace, { type: 'person' }>
     expect(m.photoFit).toBe('cover')
     expect(m.photoObjectPosition).toBe('center 28%')
   })
 
-  it('mergeFacesWithLocal drops the scaffold crop when an OPERATOR photo override wins (unknown aspect ratio)', () => {
-    const adarScaffold: Extract<FamilyQuickFace, { type: 'person' }> = {
-      type: 'person', id: 'adar', displayName: 'אדר',
-      phoneE164: '', enabled: false,
-      photoFile: '/family-contacts/adar.jpeg',
-      photoFit: 'cover', photoObjectPosition: 'center 28%',
+  it('a contact photo with no crop hint renders with the default (no photoFit)', () => {
+    // Operator uploads a square photo (photoDataUrl wins) with no crop metadata.
+    const adar: LocalFamilyContact = {
+      id: 'adar', displayName: 'אדר', enabled: true, phoneE164: '+972500000001',
+      photoDataUrl: '/operator/adar-square.jpg',
     }
-    const local: LocalFamilyContact[] = [
-      { id: 'adar', enabled: true, phoneE164: '+972500000001', photoFile: '/operator/adar-square.jpg' },
-    ]
-    const merged = mergeFacesWithLocal([adarScaffold], local)
-    const m = merged[0] as Extract<FamilyQuickFace, { type: 'person' }>
-    expect(m.photoFile).toBe('/operator/adar-square.jpg')
-    // Operator-supplied photos default to contain/center — we don't
-    // know their aspect ratio, so we don't carry over the cover crop.
+    const m = contactsToPersonFaces([adar])[0] as Extract<FamilyQuickFace, { type: 'person' }>
+    expect(m.photoFile).toBe('/operator/adar-square.jpg') // dataUrl wins, rendered as photoFile
     expect(m.photoFit).toBeUndefined()
     expect(m.photoObjectPosition).toBeUndefined()
   })

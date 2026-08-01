@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { importContactsJSON } from './familyContactsStorage'
-import { FAMILY_QUICK_FACES } from './familyContacts.private'
 import { getDisplayablePersons, isPersonActionable } from './familyQuickFaces'
 
 // The home communication board (FamilyQuickFaces) must reflect imported
@@ -14,7 +13,7 @@ describe('family board reflects imported contacts', () => {
     const r = importContactsJSON('[{ "id": "mor", "enabled": true, "phoneE164": "+972500000001" }]')
     expect(r.ok, r.errors.join(' | ')).toBe(true)
 
-    const persons = getDisplayablePersons(FAMILY_QUICK_FACES, r.contacts)
+    const persons = getDisplayablePersons(r.contacts)
     const mor = persons.find((p) => p.id === 'mor')
     expect(mor, 'mor must render on the board').toBeTruthy()
     expect(isPersonActionable(mor!)).toBe(true) // Call + WhatsApp now available
@@ -27,14 +26,14 @@ describe('family board reflects imported contacts', () => {
       `[{ "id": "mor", "enabled": true, "phoneE164": "+972500000001", "photoDataUrl": "${dataUrl}" }]`,
     )
     expect(r.ok, r.errors.join(' | ')).toBe(true)
-    const mor = getDisplayablePersons(FAMILY_QUICK_FACES, r.contacts).find((p) => p.id === 'mor')
+    const mor = getDisplayablePersons(r.contacts).find((p) => p.id === 'mor')
     expect(mor!.photoFile).toBe(dataUrl)
   })
 
   it('a local number (05…) imports, normalizes, and is actionable', () => {
     const r = importContactsJSON('[{ "id": "yael", "enabled": true, "phoneE164": "0501234567" }]')
     expect(r.ok, r.errors.join(' | ')).toBe(true)
-    const yael = getDisplayablePersons(FAMILY_QUICK_FACES, r.contacts).find((p) => p.id === 'yael')
+    const yael = getDisplayablePersons(r.contacts).find((p) => p.id === 'yael')
     expect(yael!.phoneE164).toBe('+972501234567')
     expect(isPersonActionable(yael!)).toBe(true)
   })

@@ -133,6 +133,44 @@ function namesForPerson(displayName: string): string[] {
 }
 
 /**
+ * The default family identity (names + relationship + photos, no numbers). The
+ * name RESOLVER knows the family even before the operator saves any number — so
+ * "call adar" resolves who Adar is, then reports "no number yet" if unconfigured.
+ * This is resolution knowledge ONLY; the family board renders purely from the
+ * stored contacts (getDisplayablePersons).
+ */
+const SEED_PERSON_FACES: ReadonlyArray<Extract<FamilyQuickFace, { type: 'person' }>> =
+  FAMILY_QUICK_FACES.filter((f): f is Extract<FamilyQuickFace, { type: 'person' }> => f.type === 'person')
+
+/**
+ * Faces the resolver matches against: the seed family overlaid with the store's
+ * per-contact data (a saved number makes the seed member actionable), PLUS any
+ * store-only contacts that are not part of the seed (new, dynamic contacts).
+ */
+function resolutionFaces(local: ReadonlyArray<LocalFamilyContact>): Extract<FamilyQuickFace, { type: 'person' }>[] {
+  const byId = new Map<string, LocalFamilyContact>()
+  for (const c of local) byId.set(c.id, c)
+  const seedIds = new Set(SEED_PERSON_FACES.map((f) => f.id))
+  const merged: LocalFamilyContact[] = SEED_PERSON_FACES.map((seed) => {
+    const o = byId.get(seed.id)
+    const c: LocalFamilyContact = {
+      id: seed.id,
+      enabled: o?.enabled === true,
+      phoneE164: o?.phoneE164 || '',
+      displayName: (o?.displayName && o.displayName.trim()) || seed.displayName,
+    }
+    const rel = (o?.relationshipHebrew && o.relationshipHebrew.trim()) || seed.relationshipHebrew
+    if (rel) c.relationshipHebrew = rel
+    if (o?.whatsappE164) c.whatsappE164 = o.whatsappE164
+    const photo = o?.photoDataUrl || o?.photoFile || seed.photoFile
+    if (photo) c.photoFile = photo
+    return c
+  })
+  const extra = local.filter((c) => !seedIds.has(c.id))
+  return contactsToPersonFaces([...merged, ...extra])
+}
+
+/**
  * Return ranked recipient candidates for a spoken/typed name. Empty when no
  * family member plausibly matches. Callers decide ambiguity policy via
  * `isRecipientAmbiguous`.
@@ -146,7 +184,7 @@ export function resolveContactCandidates(
   // Canonicalize a prefixed token / exact alias up-front (e.g. "לאדר" → "אדר").
   const canon = matchTargetName(cleaned)?.hebrew ?? cleaned
   const queries = [...new Set([cleaned.toLowerCase(), canon.toLowerCase()])]
-  const persons = getDisplayablePersons(FAMILY_QUICK_FACES, local)
+  const persons = resolutionFaces(local)
   const out: RecipientCandidate[] = []
   for (const face of persons) {
     let best = { score: 0, evidence: 'fuzzy' as RecipientEvidence }
@@ -206,18 +244,48 @@ export function getVisibleFaces(faces: ReadonlyArray<FamilyQuickFace> = FAMILY_Q
 }
 
 /**
- * Returns every scaffold person — visible by default in the family grid.
- * Local override (if any) is merged for phone/photo/enabled so the tile can
- * render the correct photo and the tap handler can decide what to do, but
- * MISSING PHONE IS NOT A REASON TO HIDE A FAMILY MEMBER. Per Leo's product
- * direction: family members appear on screen first; configuration follows.
+ * The family group face (a fixed WhatsApp invite link — NOT a phone contact, so
+ * it is not part of the dynamic contact store). Rendered alongside the contacts.
+ */
+export const FAMILY_GROUP_FACE = FAMILY_QUICK_FACES.find((f) => f.type === 'group') as Extract<FamilyQuickFace, { type: 'group' }>
+
+/**
+ * Render person faces DIRECTLY from the stored contacts — the single source of
+ * truth. Each contact carries its own identity (label falls back to the id, and
+ * a photoDataUrl wins over a photoFile). No scaffold, no known-id gate: whatever
+ * is in the store is what the board shows, in store order.
+ */
+export function contactsToPersonFaces(
+  contacts: ReadonlyArray<LocalFamilyContact>,
+): Extract<FamilyQuickFace, { type: 'person' }>[] {
+  return contacts.map((c) => {
+    const face: Extract<FamilyQuickFace, { type: 'person' }> = {
+      type: 'person',
+      id: c.id,
+      displayName: (c.displayName && c.displayName.trim()) || c.id,
+      phoneE164: c.phoneE164 || '',
+      enabled: c.enabled === true,
+    }
+    if (c.relationshipHebrew && c.relationshipHebrew.trim()) face.relationshipHebrew = c.relationshipHebrew.trim()
+    if (c.whatsappE164 && c.whatsappE164.length > 0) face.whatsappE164 = c.whatsappE164
+    const photo = (c.photoDataUrl && c.photoDataUrl.length > 0) ? c.photoDataUrl
+      : (c.photoFile && c.photoFile.length > 0) ? c.photoFile : undefined
+    if (photo) face.photoFile = photo
+    if (c.photoFit) face.photoFit = c.photoFit
+    if (c.photoObjectPosition) face.photoObjectPosition = c.photoObjectPosition
+    return face
+  })
+}
+
+/**
+ * Every displayable person = every stored contact, in store order. MISSING PHONE
+ * IS NOT A REASON TO HIDE: a contact still renders (as a non-actionable tile)
+ * until a number is added. Defaults to reading the live store.
  */
 export function getDisplayablePersons(
-  scaffold: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES,
-  local: ReadonlyArray<LocalFamilyContact> = [],
+  contacts: ReadonlyArray<LocalFamilyContact> = getLocalContacts(),
 ): Extract<FamilyQuickFace, { type: 'person' }>[] {
-  const merged = mergeFacesWithLocal(scaffold, local)
-  return merged.filter((f) => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]
+  return contactsToPersonFaces(contacts)
 }
 
 /**
@@ -240,53 +308,6 @@ export function isGroupActionable(face: Extract<FamilyQuickFace, { type: 'group'
   return typeof face.whatsappUrl === 'string' && face.whatsappUrl.length > 0
 }
 
-/**
- * Merge static scaffold (names + relationships + group URL, no real numbers)
- * with localStorage-only per-person overrides (phone/whatsapp/photo/enabled).
- */
-export function mergeFacesWithLocal(
-  scaffold: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES,
-  local: ReadonlyArray<LocalFamilyContact> = [],
-): FamilyQuickFace[] {
-  const byId = new Map<string, LocalFamilyContact>()
-  for (const c of local) byId.set(c.id, c)
-  return scaffold.map((f) => {
-    if (f.type !== 'person') return { ...f }
-    const override = byId.get(f.id)
-    if (!override) return { ...f }
-    const merged: Extract<FamilyQuickFace, { type: 'person' }> = {
-      type: 'person',
-      id: f.id,
-      // Contact Management may override the label; fall back to the scaffold.
-      displayName: (override.displayName && override.displayName.trim()) || f.displayName,
-      phoneE164: override.phoneE164 || '',
-      enabled: override.enabled === true,
-    }
-    const rel = (override.relationshipHebrew && override.relationshipHebrew.trim()) || f.relationshipHebrew
-    if (rel !== undefined) merged.relationshipHebrew = rel
-    if (override.whatsappE164 && override.whatsappE164.length > 0) merged.whatsappE164 = override.whatsappE164
-    let photoSource: 'override-data' | 'override-file' | 'scaffold' | null = null
-    if (override.photoDataUrl && override.photoDataUrl.length > 0) {
-      merged.photoFile = override.photoDataUrl
-      photoSource = 'override-data'
-    } else if (override.photoFile && override.photoFile.length > 0) {
-      merged.photoFile = override.photoFile
-      photoSource = 'override-file'
-    } else if (f.photoFile && f.photoFile.length > 0) {
-      merged.photoFile = f.photoFile
-      photoSource = 'scaffold'
-    }
-    // Preserve per-contact crop metadata from the scaffold ONLY when the
-    // scaffold's own photo is the one we ended up rendering. Operator-
-    // supplied photos (override-data / override-file) get the default
-    // contain/center treatment because we don't know their aspect ratio.
-    if (photoSource === 'scaffold') {
-      if (f.photoFit !== undefined) merged.photoFit = f.photoFit
-      if (f.photoObjectPosition !== undefined) merged.photoObjectPosition = f.photoObjectPosition
-    }
-    return merged
-  })
-}
 
 /**
  * Public family photo gallery item — derived from the same scaffold +
@@ -314,25 +335,16 @@ export interface FamilyGalleryPhoto {
  * the user just pressed feels visually anchored at the top of the album.
  */
 export function getFamilyGalleryPhotos(
-  scaffold: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES,
-  local: ReadonlyArray<LocalFamilyContact> = [],
+  contacts: ReadonlyArray<LocalFamilyContact> = getLocalContacts(),
   extras: ReadonlyArray<FamilyGalleryPhoto> = [],
 ): FamilyGalleryPhoto[] {
-  const merged = mergeFacesWithLocal(scaffold, local)
   const items: FamilyGalleryPhoto[] = []
-  // Family group first (when a photo exists). Falls back to the public
-  // /family/FAmilly%206.JPG asset only when used by the runtime renderer;
-  // if the scaffold itself doesn't carry a photoFile, omit from the album.
-  for (const f of merged) {
-    if (f.type !== 'group') continue
-    if (f.photoFile && f.photoFile.length > 0) {
-      items.push({ id: f.id, label: f.label, photoUrl: f.photoFile })
-    }
+  // Family group first (when the group face carries a photo).
+  if (FAMILY_GROUP_FACE?.photoFile && FAMILY_GROUP_FACE.photoFile.length > 0) {
+    items.push({ id: FAMILY_GROUP_FACE.id, label: FAMILY_GROUP_FACE.label, photoUrl: FAMILY_GROUP_FACE.photoFile })
   }
-  // Every scaffold person with a non-empty photoFile (after merge with
-  // localStorage overrides — operator-set photos appear automatically).
-  for (const f of merged) {
-    if (f.type !== 'person') continue
+  // Every stored contact with a photo (dataUrl wins over file), in store order.
+  for (const f of contactsToPersonFaces(contacts)) {
     if (typeof f.photoFile !== 'string' || f.photoFile.length === 0) continue
     items.push({ id: f.id, label: f.displayName, photoUrl: f.photoFile })
   }
@@ -464,10 +476,9 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
     }
   }, [localContacts])
 
-  const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, contacts)
-  const group = merged.find((f) => f.type === 'group') as Extract<FamilyQuickFace, { type: 'group' }> | undefined
-  // Visible-by-default: every scaffold person renders, even without phone.
-  const personsForGrid = getDisplayablePersons(FAMILY_QUICK_FACES, contacts)
+  // The family group is a fixed invite link; persons render from the store.
+  const group: Extract<FamilyQuickFace, { type: 'group' }> | undefined = FAMILY_GROUP_FACE
+  const personsForGrid = getDisplayablePersons(contacts)
 
   // Single source of truth for which card is flipped to its action side.
   // Family group uses id 'family-group'; persons use their stable id.

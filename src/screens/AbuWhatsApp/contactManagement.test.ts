@@ -3,26 +3,42 @@ import {
   validateContactFields,
   previewImportContacts,
   knownContactIdList,
+  seedDefaultContactsIfEmpty,
+  setLocalContacts,
+  getLocalContacts,
+  DEFAULT_SEED_CONTACTS,
   type LocalFamilyContact,
 } from './familyContactsStorage'
+
+class MapStore {
+  m = new Map<string, string>()
+  getItem(k: string) { return this.m.get(k) ?? null }
+  setItem(k: string, v: string) { this.m.set(k, v) }
+  removeItem(k: string) { this.m.delete(k) }
+}
 
 // Synthetic, pinned phone fixtures (see phonePrivacy.test.ts allow-list).
 const P1 = '+972500000001'
 const P2 = '+972500000002'
 
 describe('validateContactFields — per-field, specific errors', () => {
-  it('accepts a well-formed known contact', () => {
-    expect(validateContactFields({ id: 'mor', phoneE164: P1, enabled: true })).toEqual({})
+  it('accepts a well-formed contact (any safe id — the store is the source of truth)', () => {
+    expect(validateContactFields({ id: 'dr-cohen', displayName: 'ד״ר כהן', phoneE164: P1, enabled: true })).toEqual({})
   })
   it('rejects a missing id', () => {
-    expect(validateContactFields({ id: '', phoneE164: P1, enabled: false }).id).toBeTruthy()
+    expect(validateContactFields({ id: '', displayName: 'X', phoneE164: P1, enabled: false }).id).toBeTruthy()
   })
-  it('rejects an unsupported id and names the allowed set', () => {
-    const e = validateContactFields({ id: 'nobody', phoneE164: P1, enabled: false })
-    expect(e.id).toContain('לא נתמך')
+  it('rejects an UNSAFE id (spaces / capitals / punctuation)', () => {
+    expect(validateContactFields({ id: 'Mor Cohen!', displayName: 'מור', phoneE164: P1, enabled: false }).id).toBeTruthy()
+  })
+  it('accepts any previously-"unknown" safe id now (no fixed allowlist)', () => {
+    expect(validateContactFields({ id: 'nobody', displayName: 'מישהו', phoneE164: P1, enabled: false }).id).toBeUndefined()
+  })
+  it('requires a display name (no scaffold fallback)', () => {
+    expect(validateContactFields({ id: 'mor', phoneE164: P1, enabled: true }).displayName).toBeTruthy()
   })
   it('accepts a documented alias (rafi → raphi)', () => {
-    expect(validateContactFields({ id: 'rafi', phoneE164: P1, enabled: true }).id).toBeUndefined()
+    expect(validateContactFields({ id: 'rafi', displayName: 'רפי', phoneE164: P1, enabled: true }).id).toBeUndefined()
   })
   it('rejects an invalid phone', () => {
     expect(validateContactFields({ id: 'mor', phoneE164: '12', enabled: false }).phoneE164).toBeTruthy()
@@ -43,6 +59,34 @@ describe('validateContactFields — per-field, specific errors', () => {
     const list = knownContactIdList()
     expect(list).toContain('mor')
     expect(list).not.toContain('family-group')
+  })
+})
+
+describe('seedDefaultContactsIfEmpty — store is the single source of truth, seeded once', () => {
+  it('seeds the full default family into an empty store', () => {
+    const s = new MapStore()
+    expect(seedDefaultContactsIfEmpty(s)).toBe(true)
+    const c = getLocalContacts(s)
+    expect(c.length).toBe(DEFAULT_SEED_CONTACTS.length)
+    // Seeded contacts carry identity + are disabled with no number.
+    const mor = c.find((x) => x.id === 'mor')!
+    expect(mor.displayName).toBe('מור')
+    expect(mor.enabled).toBe(false)
+    expect(mor.phoneE164).toBe('')
+  })
+
+  it('is a NO-OP once the store exists — a cleared (empty) store is NOT re-seeded', () => {
+    const s = new MapStore()
+    setLocalContacts([], s)                      // user cleared everyone
+    expect(seedDefaultContactsIfEmpty(s)).toBe(false)
+    expect(getLocalContacts(s)).toEqual([])       // stays empty (deleted stays deleted)
+  })
+
+  it('does not clobber existing contacts', () => {
+    const s = new MapStore()
+    setLocalContacts([{ id: 'saba', displayName: 'סבא', enabled: true, phoneE164: '+972500000001' }], s)
+    expect(seedDefaultContactsIfEmpty(s)).toBe(false)
+    expect(getLocalContacts(s).map((c) => c.id)).toEqual(['saba'])
   })
 })
 
@@ -73,16 +117,16 @@ describe('previewImportContacts — merge diff before any save', () => {
     expect(p.added.map((c) => c.id)).toEqual(['leo'])
   })
 
-  it('flags invalid items (unknown id, bad shape, enabled-without-number) without saving', () => {
+  it('flags invalid items (unsafe id, bad shape, enabled-without-number) without saving', () => {
     const json = JSON.stringify([
-      { id: 'nobody', enabled: true, phoneE164: P1 }, // unknown id
+      { id: 'bad id!', enabled: true, phoneE164: P1 }, // unsafe id (space + punctuation)
       { id: 'mor', enabled: true },                    // bad shape (no phoneE164)
       { id: 'leo', enabled: true, phoneE164: 'xx' },   // enabled without a valid number
     ])
     const p = previewImportContacts(json, current)
     expect(p.invalid.length).toBe(3)
     expect(p.toSave.length).toBe(0)
-    expect(p.invalid[0]!.reason).toContain('לא נתמך')
+    expect(p.invalid[0]!.reason).toContain('לא תקין')
   })
 
   it('detects duplicate ids in the incoming JSON', () => {

@@ -21,7 +21,6 @@ import {
   CONTACTS_UPDATED_EVENT,
   exportContactsJSON,
   getLocalContacts,
-  knownContactIdList,
   previewImportContacts,
   removeLocalContact,
   setLocalContacts,
@@ -74,10 +73,7 @@ function ContactEditForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  const configuredIds = new Set(getLocalContacts().map((c) => c.id))
-  const addable = PERSONS.filter((p) => !configuredIds.has(p.id))
-
-  const [id, setId] = useState(initial?.id ?? addable[0]?.id ?? '')
+  const [id, setId] = useState(initial?.id ?? '')
   const [displayName, setDisplayName] = useState(initial?.displayName ?? '')
   const [relationshipHebrew, setRel] = useState(initial?.relationshipHebrew ?? '')
   const [phoneE164, setPhone] = useState(initial?.phoneE164 ?? '')
@@ -112,12 +108,24 @@ function ContactEditForm({
   return (
     <div data-testid="cm-edit-form" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 0' }}>
       <div>
-        <div style={label}>מזהה (id)</div>
+        <div style={label}>מזהה (id) — אנגלית קטנה/ספרות/מקף</div>
         {isNew ? (
-          <select data-testid="cm-field-id" value={id} onChange={(e) => setId(e.target.value)} style={{ ...input, direction: 'ltr' }}>
-            {addable.length === 0 && <option value="">— כל אנשי הקשר כבר מוגדרים —</option>}
-            {addable.map((p) => <option key={p.id} value={p.id}>{p.id} — {p.displayName}</option>)}
-          </select>
+          <>
+            <input
+              data-testid="cm-field-id" value={id} list="cm-id-suggestions" dir="ltr"
+              onChange={(e) => {
+                const next = e.target.value.toLowerCase().replace(/\s+/g, '-')
+                setId(next)
+                // Convenience: picking a known-family id pre-fills its name.
+                const m = personMeta(next)
+                if (m && displayName.trim() === '') setDisplayName(m.displayName)
+              }}
+              placeholder="לדוגמה: mor, dr-cohen, saba" style={ltrInput}
+            />
+            <datalist id="cm-id-suggestions">
+              {PERSONS.map((p) => <option key={p.id} value={p.id}>{p.displayName}</option>)}
+            </datalist>
+          </>
         ) : (
           <div data-testid="cm-field-id" style={{ ...ltrInput, display: 'flex', alignItems: 'center', color: 'rgba(255,255,255,0.6)' }}>{id}</div>
         )}
@@ -370,12 +378,10 @@ export function ContactManagement() {
     return () => window.removeEventListener(CONTACTS_UPDATED_EVENT, onUpd)
   }, [])
 
-  const supported = useMemo(() => knownContactIdList(), [])
-
   return (
     <div data-testid="contact-management" style={{ display: 'flex', flexDirection: 'column', gap: 12, direction: 'rtl' }}>
       <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.6 }}>
-        המספרים נשמרים במכשיר הזה בלבד. אנשי הקשר הם המשפחה: {supported}.
+        המספרים נשמרים במכשיר הזה בלבד. אפשר להוסיף, לערוך או למחוק כל איש קשר — הלוח מתעדכן מיד.
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" data-testid="cm-tab-simple" onClick={() => setMode('simple')} style={{ ...btn(TEAL, mode === 'simple'), flex: 1 }}>טופס פשוט</button>

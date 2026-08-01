@@ -48,8 +48,9 @@ describe('importContactsJSON — the exact record format, Israeli + E.164', () =
     expect(r.contacts).toHaveLength(12)
     expect(r.contacts.map((c) => c.id)).toContain('raphi')
   })
-  it('rejects an unknown id and a bad number', () => {
-    expect(importContactsJSON(JSON.stringify([{ id: 'nobody', enabled: true, phoneE164: FAKE_E164 }])).ok).toBe(false)
+  it('accepts any SAFE id (no fixed allowlist) but rejects an unsafe id and a bad number', () => {
+    expect(importContactsJSON(JSON.stringify([{ id: 'nobody', enabled: true, phoneE164: FAKE_E164 }])).ok).toBe(true)
+    expect(importContactsJSON(JSON.stringify([{ id: 'bad id!', enabled: true, phoneE164: FAKE_E164 }])).ok).toBe(false)
     expect(importContactsJSON(JSON.stringify([{ id: 'mor', enabled: true, phoneE164: '12' }])).ok).toBe(false)
   })
   it('rejects duplicates and non-array / non-JSON', () => {

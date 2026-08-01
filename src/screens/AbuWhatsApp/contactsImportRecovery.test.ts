@@ -52,11 +52,16 @@ describe('known contact ids', () => {
 
 // ─── Import validation ─────────────────────────────────────────────────────────
 
-describe('importContactsJSON — unknown id is rejected (#9)', () => {
-  it('fails when an item has an unknown id', () => {
+describe('importContactsJSON — id validation (#9): any SAFE id, no fixed allowlist', () => {
+  it('accepts a previously-"unknown" but SAFE id (store is the source of truth)', () => {
     const r = importContactsJSON(JSON.stringify([{ id: 'stranger', enabled: false, phoneE164: '' }]))
+    expect(r.ok).toBe(true)
+    expect(r.contacts[0]?.id).toBe('stranger')
+  })
+  it('rejects an UNSAFE id (spaces / punctuation / capitals)', () => {
+    const r = importContactsJSON(JSON.stringify([{ id: 'bad id!', enabled: false, phoneE164: '' }]))
     expect(r.ok).toBe(false)
-    expect(r.errors.some((e) => /unknown id/i.test(e))).toBe(true)
+    expect(r.errors.some((e) => /invalid id/i.test(e))).toBe(true)
     expect(r.contacts.length).toBe(0)
   })
 
@@ -85,12 +90,12 @@ describe('importContactsJSON — unknown id is rejected (#9)', () => {
   })
 })
 
-describe('upsertLocalContact — unknown id is rejected', () => {
-  it('refuses to save an unknown id', () => {
+describe('upsertLocalContact — UNSAFE id is rejected', () => {
+  it('refuses to save an unsafe id', () => {
     const s = new MemoryStorage()
-    const r = upsertLocalContact({ id: 'stranger', enabled: false, phoneE164: '' }, s)
+    const r = upsertLocalContact({ id: 'bad id!', enabled: false, phoneE164: '' }, s)
     expect(r.ok).toBe(false)
-    expect(r.errors.some((e) => /unknown contact id/i.test(e))).toBe(true)
+    expect(r.errors.some((e) => /invalid contact id/i.test(e))).toBe(true)
     expect(getLocalContacts(s)).toEqual([])
   })
 })
