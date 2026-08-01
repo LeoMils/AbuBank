@@ -70,13 +70,19 @@ export interface GoalResult {
 const CANCEL_RE = /(?:^|\s)(?:עזב[יו]?|תעזב[יי]?|עזוב|לא\s+משנה|תשכח[יי]?|שכח[יי]?|בטל[יי]?|תבטל[יי]?|נשכח\s+מזה|forget\s+it|cancel|never\s*mind|olvid\w*|deja\w*)(?:\s|[,.!]|$)/i
 // A calendar query the user switches TO (only consulted on an explicit cancel).
 const CALENDAR_QUERY_RE = /(?:מה\s+(?:יש\s+לי|יש)|מה\s+ב?יומן|מה\s+קורה|מה\s+התוכנית|איזה\s+פגישות|what'?s\s+on)/i
+// Acknowledgment / soft exit — releases communication ownership WITHOUT a
+// "ביטלתי" (the user is done; general chat may respond). Distinct from CANCEL.
+const EXIT_RE = /^\s*(?:תודה|תודה\s+רבה|ביי|להתראות|סיימתי|די|זהו|סבבה|יופי|מעולה|אחלה|thanks?|thank\s+you|bye|ok|okay)(?:\s|$|[?!.,])/i
 // A meta-question about the action (answered truthfully; goal is retained).
 // Anchored: LEADS with a question word OR ends with "?" — so "...לא מסוגלת?"
 // is a question, while "לא פגישה" / "לא, למור" remain corrections.
-const QUESTION_RE = /^\s*(?:מה|למה|איך|מתי|האם|כמה|why|what|how|when)\b|[?？]\s*$/i
+const QUESTION_RE = /^\s*(?:מה|למה|איך|מתי|האם|כמה|why|what|how|when)(?:\s|$|[?？])|[?？]\s*$/i
 // A "לא <calendar-word>" retraction: correct a calendar mishearing WITHOUT
 // injecting the word into the message payload (Law 3).
 const NOT_CALENDAR_RE = /^\s*לא[,\s]+(?:פגיש[הות]+|תור|יומן|אירוע|זה)(?:\s|$|[,.!?])/u
+// A meta-question ABOUT the current action (stays in communication, answered
+// from action truth). A general question ("מה השעה?") releases to general chat.
+const ACTION_META_RE = /(?:פותחת|נפתח|שיחה|הודע|להתקשר|לשלוח|מסוגל|יכול[הת]?\s+(?:להתקשר|לשלוח|לפתוח)|וואטסאפ|whatsapp|\bcall\b|\bmessage\b)/i
 
 /**
  * THE single active-goal arbiter. Pure. Given the current goal and a turn,
@@ -97,6 +103,12 @@ export function reduceGoal(active: ActiveGoal | null, turn: Turn): GoalResult {
     return { turnKind: 'CANCEL', goal: null, capability: 'none', changed: 'none', decisionReason: 'explicit cancel' }
   }
 
+  // (1b) Acknowledgment / soft exit releases ownership (no "ביטלתי"); general
+  // chat may respond. Only meaningful while a goal is active.
+  if (active && EXIT_RE.test(t)) {
+    return { turnKind: 'OTHER', goal: null, capability: 'none', changed: 'none', decisionReason: 'exit/ack releases goal' }
+  }
+
   // (2) Active goal owns the turn.
   if (active) {
     // (2a) A brand-new explicit command (leads with a verb + names someone) is a
@@ -107,11 +119,15 @@ export function reduceGoal(active: ActiveGoal | null, turn: Turn): GoalResult {
       return startFrom(fresh, 'new explicit command while active')
     }
 
-    // (2b) A meta-question about the action — answer truthfully, keep the goal.
-    // Checked BEFORE correction so "למה... לא מסוגלת?" is not mis-read as a
-    // correction just because it contains "לא".
+    // (2b) A question — checked BEFORE correction so "למה... לא מסוגלת?" is not
+    // mis-read as a correction. A meta-question ABOUT the action stays in
+    // communication (answered from action truth); a general question releases
+    // the goal so general chat can answer (Law 1: not an ordinary follow-up).
     if (QUESTION_RE.test(t)) {
-      return { turnKind: 'QUESTION', goal: active, capability: 'communication', changed: 'none', decisionReason: 'meta-question; goal retained' }
+      if (ACTION_META_RE.test(t)) {
+        return { turnKind: 'QUESTION', goal: active, capability: 'communication', changed: 'none', decisionReason: 'meta-question about the action; goal retained' }
+      }
+      return { turnKind: 'QUESTION', goal: null, capability: 'none', changed: 'none', decisionReason: 'general question; releases the goal' }
     }
 
     // (2c) Correction (Law 3): "לא פגישה" / "לא, למור" / time / style.

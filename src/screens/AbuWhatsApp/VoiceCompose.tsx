@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   understandWhatsAppCommand,
-  applyFollowUp,
-  isFollowUpCorrection,
   composeWhatsAppMessageDetailed,
   STYLE_LABEL_HE,
   type WhatsAppStyle,
@@ -27,6 +25,7 @@ import { unlockIOSAudio, stopSpeaking } from '../../services/voice'
 import type { SilenceDetector } from '../../services/voice'
 import { soundTap, soundSuccess } from '../../services/sounds'
 import { DictationController, type Recognizer } from '../../services/dictationController'
+import { reduceGoal, type ActiveGoal } from '../AbuAI/communication/engine'
 
 const TEAL = '#14b8a6'
 const WA_GREEN = '#25D366'
@@ -149,21 +148,28 @@ export function VoiceCompose({ open, onClose, initialFace }: VoiceComposeProps) 
     const t = (text ?? '').trim()
     if (!t) { setPhase('listening'); return }
 
-    // Follow-up correction to the current draft (spoken or typed from review).
-    if (correctingRef.current && commandRef.current && isFollowUpCorrection(t)) {
+    // Follow-up correction / recipient-change → the communication ENGINE
+    // arbitrates (single owner). VoiceCompose no longer owns this logic; it hands
+    // the current goal + utterance to reduceGoal and consumes the typed result.
+    if (correctingRef.current && commandRef.current) {
       correctingRef.current = false
       const prev = commandRef.current
-      const updated = applyFollowUp(prev, t)
-      const field = prev.style !== updated.style ? 'style'
-        : prev.targetHebrew !== updated.targetHebrew ? 'recipient'
-        : prev.intent !== updated.intent ? 'fact' : 'other'
-      recordComposeEvent({
-        type: 'followup_correction', source, correctedField: field,
-        mechanismClass: mechanismForCorrection(field === 'fact' ? 'time' : field),
-        requestPreview: t, style: updated.style,
-      })
-      proceedWithCommand(updated)
-      return
+      const activeGoal: ActiveGoal = { capability: 'communication', mode: 'message', command: prev, recipientHebrew: prev.targetHebrew, recipientToken: prev.targetName }
+      const gr = reduceGoal(activeGoal, { text: t, source })
+      if (gr.capability === 'communication' && gr.goal?.command) {
+        const updated = gr.goal.command
+        const field = prev.style !== updated.style ? 'style'
+          : prev.targetHebrew !== updated.targetHebrew ? 'recipient'
+          : prev.intent !== updated.intent ? 'fact' : 'other'
+        recordComposeEvent({
+          type: 'followup_correction', source, correctedField: field,
+          mechanismClass: mechanismForCorrection(field === 'fact' ? 'time' : field),
+          requestPreview: t, style: updated.style,
+        })
+        proceedWithCommand(updated)
+        return
+      }
+      // Not a correction (general question / release) → fall through to parse.
     }
     correctingRef.current = false
 

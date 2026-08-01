@@ -81,7 +81,8 @@ import { normalizeInput } from './understandingOrchestrator'
 import {
   memoryCommandType, parseRememberFact, parseForgetQuery, saveMemory, forgetMemories, loadMemories,
 } from './savedMemory'
-import { detectWhatsAppTurn, applyFollowUp, type WhatsAppTurn } from './whatsappCompose'
+import { type WhatsAppTurn } from './whatsappCompose'
+import { reduceGoal, type ActiveGoal } from './communication/engine'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export type RuntimeIntent =
@@ -140,10 +141,11 @@ export interface RuntimeState {
   /** a family fact stated plainly (no "תזכרי"), awaiting ONE soft "כן" before it is
    *  written to the ledger through THE LAWS gate. Cleared on any non-confirm. */
   pendingLedgerChange?: LedgerChange | null
-  /** a communication (WhatsApp/call) action just produced — so a bare follow-up
-   *  ("בשמונה וחצי" / "בערב" / "תעשי מצחיק" / "לא פגישה") UPDATES that action and
-   *  never creates a calendar event. Cleared by any deterministic non-comm answer. */
-  pendingCommunication?: WhatsAppTurn | null
+  /** The canonical active Communication goal (owned by the communication engine's
+   *  reduceGoal). A bare follow-up ("בשמונה וחצי" / "עם יין" / "לא פגישה") updates
+   *  THIS goal via the engine and never creates a calendar event. Cleared by any
+   *  deterministic non-comm answer, or when the engine releases ownership. */
+  pendingCommunication?: ActiveGoal | null
 }
 
 export const IDLE_RUNTIME: RuntimeState = {
@@ -1282,50 +1284,42 @@ export function runCognitiveTurn(state: RuntimeState, raw: string, ctx: RuntimeC
   // mentions a meeting ("תכתבי למור שיש לי פגישה מחר") stays communication, while a
   // real "תקבעי פגישה…" create (whose embedded "…ותכתבי להביא…" is a note) is not
   // caught here and flows to calendar.
-  const emitWhatsApp = (wa: WhatsAppTurn): CognitiveDecision => ({
-    ...base, intent: 'whatsapp', handled: false,
-    display: null, speak: null, chunks: [],
-    needsLLM: false, needsOnline: false, online: null, grounding: null,
-    sideEffect: null, verifier: { ok: true, violations: [] },
-    whatsapp: wa,
-    // An explicit communication command OWNS the turn: clear any accidental
-    // calendar draft / reminder and remember this as the pending communication
-    // so bare follow-ups refine it (never create a calendar event).
-    state: { ...state, lastIntent: 'whatsapp', focus: null, createState: IDLE_STATE, pendingReminder: null, pendingCommunication: wa },
-  })
-
-  // ── Multi-turn refinement: a bare follow-up updates the PENDING communication ──
-  // "בשמונה וחצי" / "בערב" / "תעשי מצחיק" / "לא פגישה" after a communication action
-  // edits THAT message — it must never spawn a calendar draft. Runs only when a
-  // communication is pending, the utterance is NOT a fresh explicit command, and it
-  // reads as a refinement (correction marker, time/time-of-day, style, or negation).
-  if (state.pendingCommunication?.command && state.createState.phase === 'idle') {
-    const t = original.trim()
-    const fresh = detectWhatsAppTurn(t, { source: 'text' })
-    // NB: JS \b is ASCII-only and never matches at a Hebrew boundary — anchor on
-    // a following space / end / punctuation instead.
-    const isQuestion = /[?？]\s*$/.test(t) || /^(?:מה|מי|מתי|איפה|כמה|למה|איך|האם)(?:\s|$|[?])/u.test(t)
-    const isExit = /^(?:תודה|ביי|להתראות|סיימתי|עצרי|די|זהו|סבבה|שכחי|בטלי|עזבי)(?:\s|$|[?!.])/u.test(t)
-    // While a communication is pending, EVERY short follow-up refines that SAME
-    // message — additions ("עם יין"), times ("בשמונה וחצי"), style ("תעשי מצחיק").
-    // It never spawns a calendar draft. Only a fresh command / question / exit breaks out.
-    if (!fresh && !isQuestion && !isExit && t.split(/\s+/).length <= 10) {
-      // "לא פגישה" reaffirms this is a MESSAGE — do NOT inject "פגישה" into the body.
-      const isNotCalendar = /^לא[,\s]+(?:פגיש|תור|יומן|אירוע)/u.test(t)
-      const updated = isNotCalendar
-        ? state.pendingCommunication.command
-        : applyFollowUp(state.pendingCommunication.command, t)
-      const wa: WhatsAppTurn = { kind: 'compose', targetName: updated.targetName, targetHebrew: updated.targetHebrew, command: updated }
-      return emitWhatsApp(wa)
+  // ── SINGLE OWNER: the communication engine (reduceGoal) arbitrates every
+  // Call/WhatsApp turn — start, continue, correct, recipient-change, cancel,
+  // switch. cognitiveRuntime no longer detects/refines communication itself; it
+  // delegates and consumes the typed result. `pendingCommunication` holds the
+  // engine's canonical ActiveGoal (the one authoritative communication state).
+  const emitWhatsApp = (g: ActiveGoal): CognitiveDecision => {
+    const wa: WhatsAppTurn = g.mode === 'call'
+      ? { kind: 'call', targetName: g.recipientToken, targetHebrew: g.recipientHebrew, command: g.command }
+      : { kind: 'compose', targetName: g.command?.targetName ?? g.recipientToken, targetHebrew: g.command?.targetHebrew ?? g.recipientHebrew, command: g.command }
+    return {
+      ...base, intent: 'whatsapp', handled: false,
+      display: null, speak: null, chunks: [],
+      needsLLM: false, needsOnline: false, online: null, grounding: null,
+      sideEffect: null, verifier: { ok: true, violations: [] },
+      whatsapp: wa,
+      state: { ...state, lastIntent: 'whatsapp', focus: null, createState: IDLE_STATE, pendingReminder: null, pendingCommunication: g },
     }
   }
 
   {
-    const wa = detectWhatsAppTurn(original.trim(), { source: 'text' }) ?? detectWhatsAppTurn(normalized, { source: 'text' })
-    // Fire for a real recipient (exact family name) or a call — protects mid-draft
-    // notes ("…ותכתבי להביא…" → target is a verb, not a person) from being caught.
-    if (wa && (wa.targetHebrew || wa.kind === 'call')) {
-      return emitWhatsApp(wa)
+    const cr = reduceGoal(state.pendingCommunication ?? null, { text: original.trim(), source: 'text' })
+    if (cr.capability === 'communication' && cr.goal) {
+      if (cr.turnKind === 'ACTION_START') {
+        // A brand-new explicit command OWNS the turn even mid-draft (overrides a
+        // stale calendar draft), but must name a real recipient or be a call —
+        // protects a mid-draft note ("…ותכתבי להביא…") from being caught.
+        if (!!cr.goal.recipientHebrew || cr.goal.mode === 'call') return emitWhatsApp(cr.goal)
+      } else if (state.createState.phase === 'idle') {
+        // Continue / correct / recipient-change / meta-question — only when no
+        // calendar draft is mid-flight (they are mutually exclusive).
+        return emitWhatsApp(cr.goal)
+      }
+    } else if (state.pendingCommunication && cr.capability !== 'communication' && state.createState.phase === 'idle') {
+      // The engine released ownership (cancel / switch / exit / general question)
+      // — clear the goal and fall through to calendar / general routing.
+      state = { ...state, pendingCommunication: null }
     }
   }
 
