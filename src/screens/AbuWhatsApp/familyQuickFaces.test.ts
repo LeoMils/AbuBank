@@ -11,7 +11,7 @@ import {
   isPersonActionable,
   isGroupActionable,
 } from './familyQuickFaces'
-import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
+import { FAMILY_QUICK_FACES, KNOWN_CONTACT_PHOTOS, type FamilyQuickFace } from './familyContacts.private'
 import type { LocalFamilyContact } from './familyContactsStorage'
 
 // Single synthetic placeholder reused by every merge test in this file.
@@ -262,7 +262,23 @@ describe('contactsToPersonFaces (dynamic render — store is the single source o
     ])
     expect(both!.photoFile).toBe('data:image/jpeg;base64,QUJD') // uploaded wins
     expect(fileOnly!.photoFile).toBe('/bundled/b.png')          // bundled fallback
-    expect(none!.photoFile).toBeUndefined()                     // → initials at render
+    expect(none!.photoFile).toBeUndefined()                     // arbitrary id, no default → initials
+  })
+
+  it('self-heal: a known-family contact with NO stored photo falls back to its bundled default', () => {
+    const [mor] = contactsToPersonFaces([{ id: 'mor', displayName: 'מור', enabled: true, phoneE164: TEST_FAKE_PHONE }])
+    expect(mor!.photoFile).toBe(KNOWN_CONTACT_PHOTOS.mor) // real photo, never initials
+  })
+
+  it('self-heal carries the crop hint for the default photo (Adar)', () => {
+    const [adar] = contactsToPersonFaces([{ id: 'adar', displayName: 'אדר', enabled: false, phoneE164: '' }])
+    expect(adar!.photoFile).toBe(KNOWN_CONTACT_PHOTOS.adar)
+    expect(adar!.photoFit).toBe('cover')
+  })
+
+  it('an uploaded photo still overrides the known default', () => {
+    const [mor] = contactsToPersonFaces([{ id: 'mor', displayName: 'מור', enabled: true, phoneE164: TEST_FAKE_PHONE, photoDataUrl: 'data:image/jpeg;base64,QUJD' }])
+    expect(mor!.photoFile).toBe('data:image/jpeg;base64,QUJD')
   })
 })
 

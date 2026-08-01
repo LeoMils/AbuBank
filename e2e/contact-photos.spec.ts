@@ -53,15 +53,25 @@ test('(5,8) uploaded image appears immediately on the board for a brand-new cont
   await expect(page.locator('[data-testid="bubble-person-saba"] img')).toHaveAttribute('src', /^data:image\//)
 })
 
-test('(7) removing a photo falls back to initials (no broken image)', async ({ page }) => {
-  await seed(page, [{ id: 'mor', displayName: 'מור', enabled: true, phoneE164: '+972500000456', photoFile: '/family-contacts/mor.jpeg' }])
+test('(7) removing an arbitrary contact photo falls back to initials (no broken image)', async ({ page }) => {
+  // Arbitrary (non-family) contact has no bundled default → remove → initials.
+  await seed(page, [{ id: 'friend1', displayName: 'חבר', enabled: true, phoneE164: '+972500000456', photoDataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' }])
   await openCM(page)
-  await page.getByTestId('cm-edit-mor').click()
+  await page.getByTestId('cm-edit-friend1').click()
   await page.getByTestId('cm-photo-remove').click()
   await page.getByTestId('cm-save').click()
 
   await openBoard(page)
-  // No <img> in mor's tile → initials fallback is shown instead.
-  await expect(page.locator('[data-testid="bubble-person-mor"] img')).toHaveCount(0)
-  await expect(page.getByTestId('bubble-person-mor')).toContainText('מ')
+  await expect(page.locator('[data-testid="bubble-person-friend1"] img')).toHaveCount(0)
+  await expect(page.getByTestId('bubble-person-friend1')).toContainText('ח')
+})
+
+test('(1b) self-heal: a known contact whose store lost its photoFile still shows the bundled photo', async ({ page }) => {
+  // Simulates a store overwritten without photoFile (migration already applied):
+  // the render-time default fallback must still show the real photo, not initials.
+  await seed(page, [{ id: 'mor', displayName: 'מור', enabled: true, phoneE164: '+972500000456' }])
+  // Pretend the one-time migration already ran so it will NOT backfill.
+  await page.addInitScript(() => { try { localStorage.setItem('abubank.familyContacts.photoMigration.v', '1') } catch { /* ignore */ } })
+  await openBoard(page)
+  await expect(page.locator('[data-testid="bubble-person-mor"] img')).toHaveAttribute('src', /\/family-contacts\/mor\.jpeg/)
 })

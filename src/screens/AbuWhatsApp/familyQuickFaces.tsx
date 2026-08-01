@@ -250,10 +250,20 @@ export function getVisibleFaces(faces: ReadonlyArray<FamilyQuickFace> = FAMILY_Q
 export const FAMILY_GROUP_FACE = FAMILY_QUICK_FACES.find((f) => f.type === 'group') as Extract<FamilyQuickFace, { type: 'group' }>
 
 /**
+ * Default-photo registry (id → bundled photo + crop), for the LAST-RESORT render
+ * fallback: a known-family contact whose stored record has no photo still shows
+ * the bundled photo instead of initials. This is self-healing — it does NOT
+ * depend on the one-time migration having run, and survives a store overwrite.
+ * It is NOT a board source: the board still renders exactly the stored contacts;
+ * this only supplies a default IMAGE for a contact already being rendered.
+ */
+const DEFAULT_PHOTO_BY_ID = new Map(SEED_PERSON_FACES.map((s) => [s.id, s]))
+
+/**
  * Render person faces DIRECTLY from the stored contacts — the single source of
- * truth. Each contact carries its own identity (label falls back to the id, and
- * a photoDataUrl wins over a photoFile). No scaffold, no known-id gate: whatever
- * is in the store is what the board shows, in store order.
+ * truth. Photo priority per contact: valid photoDataUrl > valid photoFile >
+ * bundled default (known family, by id) > initials. No scaffold, no known-id
+ * gate on WHICH contacts render: whatever is in the store, in store order.
  */
 export function contactsToPersonFaces(
   contacts: ReadonlyArray<LocalFamilyContact>,
@@ -268,11 +278,25 @@ export function contactsToPersonFaces(
     }
     if (c.relationshipHebrew && c.relationshipHebrew.trim()) face.relationshipHebrew = c.relationshipHebrew.trim()
     if (c.whatsappE164 && c.whatsappE164.length > 0) face.whatsappE164 = c.whatsappE164
-    const photo = (c.photoDataUrl && c.photoDataUrl.length > 0) ? c.photoDataUrl
-      : (c.photoFile && c.photoFile.length > 0) ? c.photoFile : undefined
+    // Photo priority: uploaded → bundled-on-contact → known default → initials.
+    let photo: string | undefined
+    let fit = c.photoFit
+    let pos = c.photoObjectPosition
+    if (c.photoDataUrl && c.photoDataUrl.length > 0) {
+      photo = c.photoDataUrl
+    } else if (c.photoFile && c.photoFile.length > 0) {
+      photo = c.photoFile
+    } else {
+      const def = DEFAULT_PHOTO_BY_ID.get(c.id)
+      if (def?.photoFile) {
+        photo = def.photoFile
+        if (fit === undefined) fit = def.photoFit
+        if (pos === undefined) pos = def.photoObjectPosition
+      }
+    }
     if (photo) face.photoFile = photo
-    if (c.photoFit) face.photoFit = c.photoFit
-    if (c.photoObjectPosition) face.photoObjectPosition = c.photoObjectPosition
+    if (fit) face.photoFit = fit
+    if (pos) face.photoObjectPosition = pos
     return face
   })
 }

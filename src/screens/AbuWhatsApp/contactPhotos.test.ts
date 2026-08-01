@@ -135,9 +135,11 @@ describe('BubbleAvatar render path (source contract)', () => {
     expect(facesSrc.includes('Cormorant Garamond')).toBe(true)
   })
 
-  it('contactsToPersonFaces resolves the tile photo (photoDataUrl wins over photoFile)', () => {
-    // Dynamic render from the store: a contact's own photo drives the tile.
-    expect(/photoDataUrl[\s\S]{0,80}photoFile[\s\S]{0,40}undefined/.test(facesSrc)).toBe(true)
+  it('contactsToPersonFaces resolves the tile photo by priority (dataUrl → file → default)', () => {
+    // Dynamic render from the store, with a self-healing default-photo fallback.
+    expect(facesSrc.includes('c.photoDataUrl')).toBe(true)
+    expect(facesSrc.includes('c.photoFile')).toBe(true)
+    expect(facesSrc.includes('DEFAULT_PHOTO_BY_ID')).toBe(true)
   })
 
   it('group target is WhatsApp-only — no tel/call action wired (regression guard)', () => {
