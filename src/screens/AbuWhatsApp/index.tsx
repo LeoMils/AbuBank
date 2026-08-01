@@ -17,14 +17,29 @@ import { StyleSelector, STYLES, type Style } from './StyleSelector'
 import { Toast } from '../../components/Toast'
 import { PageShell } from '../../components/PageShell'
 import { LoadingState } from '../../components/LoadingState'
-import { FamilyQuickFaces } from './familyQuickFaces'
+import { FamilyQuickFaces, isValidPhoneE164 } from './familyQuickFaces'
 import { FamilyContactsSetup } from './FamilyContactsSetup'
 import { VoiceCompose } from './VoiceCompose'
+import { getLocalContacts, CONTACTS_UPDATED_EVENT } from './familyContactsStorage'
 import { isOperatorMode } from '../../services/operatorMode'
 
 function isOperatorQueryParam(): boolean {
   // One canonical gate (persistent: ?operator=1 / ?operator=0 / Settings toggle).
   return isOperatorMode()
+}
+
+/**
+ * True when this device holds at least one contact that can actually be called
+ * or messaged (enabled AND a valid phone / whatsapp number). This is what makes
+ * the family board the primary experience: once contacts exist, import is done
+ * and Abu WhatsApp lands on the board, not the setup screen.
+ */
+function hasActionableContacts(): boolean {
+  try {
+    return getLocalContacts().some(
+      (c) => c.enabled && (isValidPhoneE164(c.phoneE164) || (!!c.whatsappE164 && isValidPhoneE164(c.whatsappE164))),
+    )
+  } catch { return false }
 }
 
 type WhatsAppTab = 'family' | 'actions'
@@ -110,9 +125,23 @@ export function AbuWhatsApp() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [lastIntent, setLastIntent] = useState('')
 
-  // Operator-only setup for local family contacts. Hidden from normal use:
-  // toggled by `?operator=1` query param or a long-press on the family title.
+  // Operator features unlocked (tab bar, setup access). Persistent gate.
   const [operatorMode, setOperatorMode] = useState<boolean>(isOperatorQueryParam)
+  // Whether to render the contacts SETUP screen instead of the family board.
+  // Setup is a one-time thing: it is the landing view ONLY for an operator who
+  // has not configured any actionable contact yet. Once contacts exist, the
+  // board is the home; setup stays reachable via long-press on the title.
+  const [showSetup, setShowSetup] = useState<boolean>(() => isOperatorQueryParam() && !hasActionableContacts())
+
+  // If contacts change under us (e.g. a save/clear in this tab), and everything
+  // was removed while on the board in operator mode, fall back to setup so the
+  // operator is never staring at an empty board with no way forward.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onUpdate = () => { if (operatorMode && !hasActionableContacts()) setShowSetup(true) }
+    window.addEventListener(CONTACTS_UPDATED_EVENT, onUpdate)
+    return () => window.removeEventListener(CONTACTS_UPDATED_EVENT, onUpdate)
+  }, [operatorMode])
 
   // Voice conversation mode
   const [voiceMode, setVoiceMode] = useState(false)
@@ -684,12 +713,12 @@ export function AbuWhatsApp() {
         position: 'relative',
       }}>
 
-        {tab === 'family' && !voiceMode && !operatorMode && (
+        {tab === 'family' && !voiceMode && !showSetup && (
           <>
             <FamilyQuickFaces
               onOpenWhatsApp={(url) => { window.location.href = url }}
               onOpenTel={(url) => { window.location.href = url }}
-              onOperatorSetup={() => setOperatorMode(true)}
+              onOperatorSetup={() => { setOperatorMode(true); setShowSetup(true) }}
             />
 
             {/* Voice compose — Abu AI writes a message to a chosen contact. */}
@@ -720,8 +749,8 @@ export function AbuWhatsApp() {
           </>
         )}
 
-        {tab === 'family' && !voiceMode && operatorMode && (
-          <FamilyContactsSetup onClose={() => setOperatorMode(false)} />
+        {tab === 'family' && !voiceMode && showSetup && (
+          <FamilyContactsSetup onClose={() => setShowSetup(false)} />
         )}
 
         {tab === 'actions' && (

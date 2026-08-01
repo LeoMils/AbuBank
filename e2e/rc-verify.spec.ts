@@ -52,15 +52,39 @@ test('1b) Debug panel localizes a structural parse error the operator cannot see
   const json = page.getByTestId('setup-adv-json')
 
   // Missing comma between two properties → valid-looking first/last 100, real
-  // structural error in the middle. The panel must surface the exact offset,
-  // the byte-identity verdict, a SHA-256, and the text around the fault.
+  // structural error in the middle. A FAILED IMPORT must AUTO-surface the full
+  // diagnostics (no need to find the debug button): exact offset, byte-identity
+  // verdict, a SHA-256, and the text around the fault.
   await json.fill('[{ "id": "mor" "enabled": true, "phoneE164": "+972500000456" }]')
-  await page.getByTestId('setup-adv-debug').click()
+  await page.getByTestId('setup-adv-import').click()
   const box = page.getByTestId('setup-adv-debug-box')
+  await expect(box).toBeVisible()
   await expect(box).toContainText('JSON.parse: ERROR')
   await expect(box).toContainText('byte-identical to paste: YES')
   await expect(box).toContainText('error at: offset')
   await expect(box).toContainText('sha-256(paste):')
+})
+
+test('5) With contacts already saved, ?operator=1 lands on the family BOARD, not setup', async ({ page }) => {
+  // Seed one actionable contact before the app boots.
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('abubank.familyContacts.v1', JSON.stringify({
+        v: 2, contacts: [{ id: 'mor', enabled: true, phoneE164: '+972500000456' }],
+      }))
+    } catch { /* ignore */ }
+  })
+  await page.goto('/?operator=1', { waitUntil: 'networkidle', timeout: 30_000 })
+  await page.getByRole('button', { name: /הודעות/ }).first().click()
+
+  // Import is DONE → the board is the home, not the setup screen.
+  await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId('family-contacts-setup')).toHaveCount(0)
+  await expect(page.getByTestId('bubble-person-mor')).toBeVisible()
+  // And that contact is actionable (Call / WhatsApp).
+  await page.getByTestId('bubble-person-tap-mor').click()
+  await expect(page.getByTestId('chip-whatsapp-mor')).toBeVisible()
+  await expect(page.getByTestId('chip-call-mor')).toBeVisible()
 })
 
 test('3) Operator Mode persists across a reload without ?operator, and ?operator=0 clears it', async ({ page }) => {

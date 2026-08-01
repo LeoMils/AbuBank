@@ -413,17 +413,23 @@ function AdvancedJsonPanel({
     setDraft(exportContactsJSON(stored))
     setBanner({ ok: true, messages: ['יוצא לחלון. אל תשתפי בלוגים.'] })
   }
-  function handleImport() {
-    const r = onImport(draft)
-    setBanner(r)
-    if (r.ok) setDraft('')
-  }
-  function handleDebug() {
-    setDbg(describeImportText(draft))
+  function runDiagnostics(text: string) {
+    setDbg(describeImportText(text))
     setSha('…')
     // SHA-256 of the EXACT pasted string (not the cleaned one) so the operator
     // can prove byte-for-byte what is on the device vs. what they meant to paste.
-    sha256Hex(draft).then((h) => setSha(h || '(WebCrypto unavailable)')).catch(() => setSha('(error)'))
+    sha256Hex(text).then((h) => setSha(h || '(WebCrypto unavailable)')).catch(() => setSha('(error)'))
+  }
+  function handleImport() {
+    const r = onImport(draft)
+    setBanner(r)
+    if (r.ok) { setDraft(''); setDbg(null) }
+    // On failure, AUTO-surface the full diagnostics (offset, byte-identity,
+    // SHA-256, context) so the operator never has to find the debug button.
+    else runDiagnostics(draft)
+  }
+  function handleDebug() {
+    runDiagnostics(draft)
   }
   function handleDownloadExact() {
     // Save the EXACT pasted string to a file so its raw bytes can be inspected
