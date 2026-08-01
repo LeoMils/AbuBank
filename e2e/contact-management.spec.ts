@@ -41,6 +41,34 @@ test('simple form adds a NEW contact with validation; board reflects it', async 
   await expect(page.getByTestId('chip-whatsapp-saba')).toBeVisible()
 })
 
+test('advanced JSON: load a file from the device (FileReader) → auto-preview → save', async ({ page }) => {
+  await openContactManagement(page)
+  await page.getByTestId('cm-tab-advanced').click()
+
+  // DEFAULT path: choose a JSON file; its contents are read into the box and
+  // validated automatically — no copy-paste.
+  await page.getByTestId('cm-file-input').setInputFiles({
+    name: 'contacts.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify([
+      { id: 'saba', displayName: 'סבא', enabled: true, phoneE164: '+972500000001' },
+    ])),
+  })
+
+  // The box is filled and the preview appears immediately; only then can we save.
+  await expect(page.getByTestId('cm-json')).not.toHaveValue('')
+  await expect(page.getByTestId('cm-preview')).toContainText('נוספים: 1')
+  await expect(page.getByTestId('cm-merge-save')).toBeEnabled()
+  await page.getByTestId('cm-merge-save').click()
+  await expect(page.getByTestId('cm-banner')).toContainText('נשמר')
+
+  // Persisted to the store.
+  await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
+  await page.getByRole('button', { name: 'הגדרות' }).first().click()
+  await page.getByRole('button', { name: /ניהול אנשי קשר/ }).click()
+  await expect(page.getByTestId('cm-row-saba')).toBeVisible()
+})
+
 test('advanced JSON: invalid JSON is explained and saves nothing; valid merges after preview', async ({ page }) => {
   await openContactManagement(page)
   await page.getByTestId('cm-tab-advanced').click()

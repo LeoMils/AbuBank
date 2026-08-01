@@ -249,7 +249,7 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
   const [preview, setPreview] = useState<ContactImportPreview | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
   const [confirmReplace, setConfirmReplace] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const loadFileRef = useRef<HTMLInputElement>(null)
 
   function validate() {
     setBanner(null); setConfirmReplace(false)
@@ -274,12 +274,22 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
     setBanner(`הוחלף הכל: ${next.length} אנשי קשר נשמרו, ${p.replaceAllRemoves} הוסרו (גובו אוטומטית)`)
     setPreview(null); setConfirmReplace(false)
   }
-  function onRestore(e: React.ChangeEvent<HTMLInputElement>) {
+  // DEFAULT import path: pick a JSON file from the device, read it with
+  // FileReader into the box, then auto-validate + preview. No copy-paste needed.
+  function onLoadFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file
     if (!file) return
-    file.text().then((t) => { setDraft(t); setPreview(previewImportContacts(t, contacts)); setBanner('קובץ נטען — בדקי את התצוגה המקדימה ואז שמרי') })
-      .catch(() => setBanner('לא הצלחתי לקרוא את הקובץ'))
-    e.target.value = ''
+    const reader = new FileReader()
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result : ''
+      setDraft(text)
+      setConfirmReplace(false)
+      setPreview(previewImportContacts(text, contacts)) // Validate + Preview immediately
+      setBanner(`קובץ "${file.name}" נטען — בדקי את התצוגה המקדימה, ואז שמרי`)
+    }
+    reader.onerror = () => setBanner('לא הצלחתי לקרוא את הקובץ. נסי שוב או הדביקי ידנית.')
+    reader.readAsText(file)
   }
 
   const hasParseError = !!preview?.parseError
@@ -287,8 +297,17 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
   return (
     <div data-testid="cm-advanced" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: "'Heebo',sans-serif", lineHeight: 1.6 }}>
-        עריכה מתקדמת. מיזוג (Merge) הוא ברירת המחדל: id קיים → עדכון, id חדש → הוספה, id חסר → נשמר.
+        הדרך המומלצת: טעני קובץ JSON מהמכשיר. מיזוג (Merge) הוא ברירת המחדל: id קיים → עדכון, id חדש → הוספה, id חסר → נשמר.
       </div>
+
+      {/* DEFAULT: load a JSON file from the device (FileReader → box → preview). */}
+      <button type="button" data-testid="cm-load-file" onClick={() => loadFileRef.current?.click()} style={{ ...btn(TEAL, true), minHeight: 52 }}>
+        📂 טעני קובץ JSON מהמכשיר
+      </button>
+      <input ref={loadFileRef} data-testid="cm-file-input" type="file" accept=".json,application/json" onChange={onLoadFile} style={{ display: 'none' }} />
+
+      {/* Alternative: manual paste. */}
+      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'Heebo',sans-serif" }}>או הדביקי JSON ידנית:</div>
       <textarea
         data-testid="cm-json"
         value={draft}
@@ -302,8 +321,6 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
         <button type="button" data-testid="cm-merge-save" onClick={saveMerge} disabled={!preview || hasParseError} style={{ ...btn(GREEN, true), opacity: (!preview || hasParseError) ? 0.4 : 1 }}>מיזוג ושמירה</button>
         <button type="button" data-testid="cm-export" onClick={() => setDraft(exportContactsJSON(getLocalContacts()))} style={btn(GOLD)}>ייצוא JSON</button>
         <button type="button" data-testid="cm-backup" onClick={() => downloadJSON('abu-contacts-backup.json', exportContactsJSON(getLocalContacts()))} style={btn(GOLD)}>💾 הורדת גיבוי</button>
-        <button type="button" data-testid="cm-restore" onClick={() => fileRef.current?.click()} style={btn('#3b82f6')}>📂 שחזור מגיבוי</button>
-        <input ref={fileRef} type="file" accept=".json,application/json" onChange={onRestore} style={{ display: 'none' }} />
       </div>
 
       {/* Replace-All — strong confirmation, removal count, auto-backup. */}
