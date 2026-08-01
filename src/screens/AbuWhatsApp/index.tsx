@@ -18,6 +18,7 @@ import { Toast } from '../../components/Toast'
 import { PageShell } from '../../components/PageShell'
 import { LoadingState } from '../../components/LoadingState'
 import { FamilyQuickFaces } from './familyQuickFaces'
+import { type FamilyQuickFace } from './familyContacts.private'
 import { VoiceCompose } from './VoiceCompose'
 import { isOperatorMode } from '../../services/operatorMode'
 
@@ -124,6 +125,8 @@ export function AbuWhatsApp() {
 
   // Voice-compose overlay (Abu-AI-composed message to a specific contact).
   const [composeOpen, setComposeOpen] = useState(false)
+  // The contact carried in from a focused-contact "כתבי הודעה בקול" tap (context).
+  const [composeInitialFace, setComposeInitialFace] = useState<Extract<FamilyQuickFace, { type: 'person' }> | null>(null)
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
   const familyPhoto = useMemo(() => getRandomFamilyPhoto(), [])
@@ -693,13 +696,15 @@ export function AbuWhatsApp() {
               // Operator long-press → Settings (where Contact Management lives).
               // The WhatsApp screen itself never shows the admin/editor surface.
               onOperatorSetup={() => setScreen(Screen.Settings)}
+              // Focused-contact "כתבי הודעה בקול" → compose to THAT person (context).
+              onComposeVoice={(face) => { soundTap(); unlockIOSAudio(); setComposeInitialFace(face); setComposeOpen(true) }}
             />
 
             {/* Voice compose — Abu AI writes a message to a chosen contact. */}
             <button
               type="button"
               data-testid="abuwhatsapp-voice-compose-cta"
-              onClick={() => { soundTap(); unlockIOSAudio(); setComposeOpen(true) }}
+              onClick={() => { soundTap(); unlockIOSAudio(); setComposeInitialFace(null); setComposeOpen(true) }}
               style={{
                 width: '100%', maxWidth: 370, height: 60, borderRadius: 30,
                 border: '1.5px solid rgba(37,211,102,0.42)',
@@ -1426,7 +1431,7 @@ export function AbuWhatsApp() {
 
       {/* Voice compose overlay — Abu AI writes a message to a chosen contact,
           then opens that contact's WhatsApp with the text pre-filled. */}
-      <VoiceCompose open={composeOpen} onClose={() => setComposeOpen(false)} />
+      <VoiceCompose open={composeOpen} initialFace={composeInitialFace} onClose={() => { setComposeOpen(false); setComposeInitialFace(null) }} />
     </PageShell>
   )
 }

@@ -445,6 +445,8 @@ interface FamilyQuickFacesProps {
   onOpenTel: (url: string) => void
   /** Operator-only setup hand-off (long-press the screen title). */
   onOperatorSetup?: () => void
+  /** Focused-contact "כתבי הודעה בקול" — compose a voice message to this person. */
+  onComposeVoice?: (face: Extract<FamilyQuickFace, { type: 'person' }>) => void
   /** Test/Storybook hook. Defaults to localStorage at mount. */
   localContacts?: ReadonlyArray<LocalFamilyContact>
 }
@@ -467,7 +469,7 @@ function usePrefersReducedMotion(): boolean {
   return reduced
 }
 
-export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, localContacts }: FamilyQuickFacesProps) {
+export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, onComposeVoice, localContacts }: FamilyQuickFacesProps) {
   const [contacts, setContacts] = useState<ReadonlyArray<LocalFamilyContact>>(localContacts ?? [])
 
   // Re-read localStorage on mount AND whenever the page becomes visible / a
@@ -504,9 +506,10 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
   const group: Extract<FamilyQuickFace, { type: 'group' }> | undefined = FAMILY_GROUP_FACE
   const personsForGrid = getDisplayablePersons(contacts)
 
-  // Single source of truth for which card is flipped to its action side.
-  // Family group uses id 'family-group'; persons use their stable id.
+  // The family GROUP still flips in place (single WhatsApp action). PERSONS now
+  // open a focused-contact state (large portrait + Call/WhatsApp) instead.
   const [activeFlippedId, setActiveFlippedId] = useState<string | null>(null)
+  const [focusedFace, setFocusedFace] = useState<Extract<FamilyQuickFace, { type: 'person' }> | null>(null)
   const [toast, setToast] = useState<string>('')
   const reducedMotion = usePrefersReducedMotion()
 
@@ -537,13 +540,13 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
   }
 
   function handleTapPerson(face: Extract<FamilyQuickFace, { type: 'person' }>) {
-    if (!isPersonActionable(face)) {
-      showToast(getMissingPhoneMessage(face.id))
-      return
-    }
-    // Toggle this card; opening a new card auto-closes any other.
-    setActiveFlippedId((prev) => (prev === face.id ? null : face.id))
+    // Expand to the focused-contact state (works for actionable AND not-yet-
+    // configured people — the focus makes it unmistakable who is selected).
+    setActiveFlippedId(null)
+    setFocusedFace(face)
   }
+
+  function closeFocus() { setFocusedFace(null) }
 
   function fireGroupWhatsApp() {
     if (!group) return
@@ -552,11 +555,11 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
   }
   function firePersonWhatsApp(p: Extract<FamilyQuickFace, { type: 'person' }>) {
     onOpenWhatsApp(buildWhatsAppPersonUrl(p))
-    setActiveFlippedId(null)
+    setFocusedFace(null)
   }
   function firePersonCall(p: Extract<FamilyQuickFace, { type: 'person' }>) {
     onOpenTel(buildTelUrl(p))
-    setActiveFlippedId(null)
+    setFocusedFace(null)
   }
 
   // Tapping outside any card (the grid wrapper background) closes the open
@@ -644,7 +647,6 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
           />
         )}
         {personsForGrid.map((p) => {
-          const actionable = isPersonActionable(p)
           return (
             <BubbleTile
               key={p.id}
@@ -655,16 +657,10 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
               photoFit={p.photoFit}
               photoObjectPosition={p.photoObjectPosition}
               initials={computeInitials(p.displayName)}
-              flipped={activeFlippedId === p.id}
+              flipped={false}
               reducedMotion={reducedMotion}
               onTap={() => handleTapPerson(p)}
               onFlipBack={closeFlip}
-              {...(actionable ? {
-                actions: {
-                  onWhatsApp: () => firePersonWhatsApp(p),
-                  onCall:     () => firePersonCall(p),
-                },
-              } : {})}
             />
           )
         })}
@@ -695,8 +691,150 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
           {toast}
         </div>
       )}
+
+      {focusedFace && (
+        <FocusedContact
+          face={focusedFace}
+          onClose={closeFocus}
+          onWhatsApp={() => firePersonWhatsApp(focusedFace)}
+          onCall={() => firePersonCall(focusedFace)}
+          onComposeVoice={onComposeVoice ? () => { const f = focusedFace; closeFocus(); onComposeVoice(f) } : undefined}
+        />
+      )}
     </div>
   )
+}
+
+/**
+ * Focused-contact state: the selected person expands into a large centred
+ * portrait with WhatsApp (left) + Call (right) primary actions and a secondary
+ * "כתבי הודעה בקול". The rest of the board is dimmed. Tap the backdrop, the
+ * close button, or Back to return. RTL, large tap targets, calm ~200ms motion.
+ * Resolution / phone numbers / adapters are untouched — it reuses the same
+ * build*Url helpers via the caller's fire handlers.
+ */
+function FocusedContact({
+  face, onClose, onWhatsApp, onCall, onComposeVoice,
+}: {
+  face: Extract<FamilyQuickFace, { type: 'person' }>
+  onClose: () => void
+  onWhatsApp: () => void
+  onCall: () => void
+  onComposeVoice?: (() => void) | undefined
+}) {
+  const actionable = isPersonActionable(face)
+  // Back button / Esc → return to the board.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onPop = () => onClose()
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('popstate', onPop)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('popstate', onPop) }
+  }, [onClose])
+
+  return (
+    <div
+      data-testid="focused-contact"
+      data-contact-id={face.id}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`פעולות עבור ${face.displayName}`}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      style={{
+        position: 'absolute', inset: 0, zIndex: 25,
+        background: 'rgba(5,10,24,0.78)',
+        backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        gap: 18, padding: '24px 20px', direction: 'rtl',
+        animation: 'focusIn 200ms cubic-bezier(0.4,0,0.2,1)',
+      }}
+    >
+      <button
+        type="button" data-testid="focused-close" onClick={onClose} aria-label="סגירה"
+        style={{
+          position: 'absolute', top: 14, left: 14, width: 48, height: 48, borderRadius: '50%',
+          border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)',
+          color: 'rgba(255,255,255,0.75)', fontSize: 22, cursor: 'pointer',
+        }}
+      >✕</button>
+
+      {/* Large centred portrait */}
+      <div style={{
+        width: 168, height: 168, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+        border: `3px solid ${TEAL}`,
+        boxShadow: `0 0 0 4px rgba(8,16,28,0.6), 0 12px 40px rgba(0,0,0,0.5), 0 0 28px rgba(20,184,166,0.25)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(145deg,#0b2220,#050A18)',
+      }}>
+        <BubbleAvatar
+          photoFile={face.photoFile}
+          photoFit={face.photoFit}
+          photoObjectPosition={face.photoObjectPosition}
+          initials={computeInitials(face.displayName)}
+          size={168}
+          accent={TEAL}
+          accentSoft="rgba(20,184,166,0.55)"
+        />
+      </div>
+
+      <div style={{ textAlign: 'center' }}>
+        <div data-testid="focused-name" style={{ fontSize: 26, fontWeight: 700, color: 'rgba(255,255,255,0.96)', fontFamily: "'Heebo',sans-serif" }}>{face.displayName}</div>
+        {face.relationshipHebrew && (
+          <div data-testid="focused-relationship" style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>{face.relationshipHebrew}</div>
+        )}
+      </div>
+
+      {actionable ? (
+        <div style={{ display: 'flex', gap: 16, width: '100%', maxWidth: 340, justifyContent: 'center' }}>
+          {/* WhatsApp — LEFT (RTL: appears on the visual left) */}
+          <button
+            type="button" data-testid={`chip-whatsapp-${face.id}`} onClick={onWhatsApp}
+            aria-label={`שליחת וואטסאפ אל ${face.displayName}`}
+            style={focusActionStyle(WA_GREEN)}
+          >
+            <HubWhatsAppIcon size={30} /><span>וואטסאפ</span>
+          </button>
+          {/* Call — RIGHT */}
+          <button
+            type="button" data-testid={`chip-call-${face.id}`} onClick={onCall}
+            aria-label={`שיחה אל ${face.displayName}`}
+            style={focusActionStyle('#D83A3A')}
+          >
+            <HubCallIcon size={30} /><span>שיחה</span>
+          </button>
+        </div>
+      ) : (
+        <div data-testid="focused-no-number" style={{
+          fontSize: 15, color: 'rgba(255,255,255,0.7)', fontFamily: "'Heebo',sans-serif",
+          textAlign: 'center', lineHeight: 1.5, whiteSpace: 'pre-line', maxWidth: 300,
+        }}>{getMissingPhoneMessage(face.id)}</div>
+      )}
+
+      {actionable && onComposeVoice && (
+        <button
+          type="button" data-testid={`focused-voice-${face.id}`} onClick={onComposeVoice}
+          style={{
+            width: '100%', maxWidth: 340, height: 52, borderRadius: 26,
+            border: '1.5px solid rgba(20,184,166,0.4)', background: 'rgba(20,184,166,0.10)',
+            color: TEAL, fontSize: 16, fontWeight: 700, fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >🎤 כתבי הודעה בקול</button>
+      )}
+      <style>{`@keyframes focusIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}`}</style>
+    </div>
+  )
+}
+
+function focusActionStyle(color: string): React.CSSProperties {
+  return {
+    flex: 1, minHeight: 88, borderRadius: 22, border: 'none', cursor: 'pointer',
+    background: `linear-gradient(145deg, ${color}, ${color}cc)`, color: 'white',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+    fontSize: 16, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
+    boxShadow: '0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.16)',
+    WebkitTapHighlightColor: 'transparent',
+  }
 }
 
 interface BubbleTileProps {

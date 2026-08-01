@@ -23,9 +23,10 @@ import { getLocalContacts } from './familyContactsStorage'
 import { transcribeAudio } from './service'
 import { recordComposeEvent, mechanismForCorrection } from '../AbuAI/whatsappComposeTelemetry'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
-import { createSilenceDetector, unlockIOSAudio, stopSpeaking } from '../../services/voice'
+import { unlockIOSAudio, stopSpeaking } from '../../services/voice'
 import type { SilenceDetector } from '../../services/voice'
 import { soundTap, soundSuccess } from '../../services/sounds'
+import { DictationController, type Recognizer } from '../../services/dictationController'
 
 const TEAL = '#14b8a6'
 const WA_GREEN = '#25D366'
@@ -59,12 +60,15 @@ export function VoiceCompose({ open, onClose, initialFace }: VoiceComposeProps) 
   const [error, setError] = useState('')
   const [typed, setTyped] = useState('')
 
+  const [liveTranscript, setLiveTranscript] = useState('')
+
   const streamRef = useRef<MediaStream | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const silenceRef = useRef<SilenceDetector | null>(null)
   const levelRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recognitionRef = useRef<any>(null)
+  const dictationRef = useRef<DictationController | null>(null)
 
   const phaseRef = useRef<Phase>('listening')
   const faceRef = useRef<Person | null>(initialFace ?? null)
@@ -82,6 +86,7 @@ export function VoiceCompose({ open, onClose, initialFace }: VoiceComposeProps) 
   const pickList = candidates.length > 0 ? candidates.map(c => c.face) : persons
 
   const cleanupCapture = useCallback(() => {
+    if (dictationRef.current) { try { dictationRef.current.cancel() } catch { /* ignore */ } dictationRef.current = null }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.onresult = null
@@ -180,36 +185,52 @@ export function VoiceCompose({ open, onClose, initialFace }: VoiceComposeProps) 
     proceedWithCommand(cmd)
   }, [doCompose, proceedWithCommand])
 
-  // ─── One-shot speech capture (Web Speech → Whisper fallback) ─────────────
+  // Browser adapter over webkitSpeechRecognition (continuous + interim) for the
+  // shared DictationController. A fresh instance per session (restart-safe).
+  const makeBrowserRecognizer = useCallback((): Recognizer => {
+    const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const rec = new WSR()
+    rec.lang = 'he-IL'
+    rec.continuous = true       // long dictation — don't stop on the first pause
+    rec.interimResults = true
+    rec.maxAlternatives = 1
+    const adapter: Recognizer = { start: () => rec.start(), abort: () => { try { rec.onresult = null; rec.onend = null; rec.onerror = null; rec.abort() } catch { /* ignore */ } }, onresult: null, onend: null, onerror: null }
+    rec.onresult = (e: any) => {
+      const segs = Array.from(e.results as ArrayLike<any>).map((r: any) => ({ transcript: r[0]?.transcript ?? '', isFinal: !!r.isFinal }))
+      adapter.onresult?.(segs)
+    }
+    rec.onend = () => adapter.onend?.()
+    rec.onerror = (e: any) => adapter.onerror?.(e?.error || 'error')
+    return adapter
+  }, [])
+
+  // ─── Long-dictation capture (state machine) → Whisper fallback ────────────
   const beginListen = useCallback((source: ComposeSource = 'voice') => {
     setError('')
+    setLiveTranscript('')
     setPhase('listening')
 
     const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (WSR) {
-      const rec = new WSR()
-      rec.lang = 'he-IL'
-      rec.continuous = false
-      rec.interimResults = false
-      rec.maxAlternatives = 1
-      let got = false
-      rec.onresult = (e: any) => {
-        got = true
-        recognitionRef.current = null
-        const t = (e.results?.[0]?.[0]?.transcript ?? '').trim()
-        setPhase('transcribing')
-        handleUtterance(t, source)
-      }
-      rec.onerror = (e: any) => {
-        recognitionRef.current = null
-        if (e.error === 'not-allowed') { setError('צריך הרשאה למיקרופון. בדקי בהגדרות.'); setPhase('error') }
-        else setPhase('listening')
-      }
-      rec.onend = () => { recognitionRef.current = null; if (!got) setPhase('listening') }
-      try { rec.start(); recognitionRef.current = rec; return } catch { recognitionRef.current = null }
+      const ctrl = new DictationController({
+        mode: 'long',
+        createRecognizer: makeBrowserRecognizer,
+        onTranscript: (t) => setLiveTranscript(t),
+        onFinal: (t) => {
+          dictationRef.current = null
+          setLiveTranscript('')
+          setPhase('transcribing')
+          handleUtterance(t.trim(), source)
+        },
+        onError: (m) => { dictationRef.current = null; setError(m); setPhase('error') },
+      })
+      dictationRef.current = ctrl
+      ctrl.start()
+      return
     }
 
-    // Fallback: MediaRecorder + Groq Whisper (same command runtime).
+    // Fallback (no Web Speech): record CONTINUOUSLY until the user taps "סיימתי"
+    // (no silence auto-stop → long messages are never cut off), then Whisper.
     ;(async () => {
       try {
         const stream = await startMicStream()
@@ -220,8 +241,6 @@ export function VoiceCompose({ open, onClose, initialFace }: VoiceComposeProps) 
         recorder.ondataavailable = (ev) => { if (ev.data.size > 0) chunksRef.current.push(ev.data) }
         recorder.onstop = async () => {
           if (streamRef.current === stream) { try { stream.getTracks().forEach(t => t.stop()) } catch {}; streamRef.current = null }
-          if (levelRef.current) { clearInterval(levelRef.current); levelRef.current = null }
-          if (silenceRef.current) { try { silenceRef.current.stop() } catch {}; silenceRef.current = null }
           const blob = assembleBlob(chunksRef.current, recorder)
           if (blob.size < 500) { setPhase('listening'); return }
           setPhase('transcribing')
@@ -229,18 +248,15 @@ export function VoiceCompose({ open, onClose, initialFace }: VoiceComposeProps) 
           catch { setError('לא הצלחתי להבין. נסי שוב.'); setPhase('error') }
         }
         recorder.start(100)
-        const detector = createSilenceDetector(stream, () => {
-          if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
-        })
-        silenceRef.current = detector
       } catch {
         setError('מיקרופון לא זמין. בדקי בהגדרות.'); setPhase('error')
       }
     })()
-  }, [handleUtterance])
+  }, [handleUtterance, makeBrowserRecognizer])
 
-  const stopListen = useCallback(() => {
-    if (recognitionRef.current) { try { recognitionRef.current.stop() } catch {} }
+  // "סיימתי" — explicit completion (finalizes the accumulated transcript now).
+  const finishDictation = useCallback(() => {
+    if (dictationRef.current) { dictationRef.current.finishByUser(); return }
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
   }, [])
 
@@ -378,8 +394,8 @@ export function VoiceCompose({ open, onClose, initialFace }: VoiceComposeProps) 
             {phase === 'askIntent' ? 'מה לכתוב?' : recipientName ? 'אמרי מה לכתוב' : 'אמרי למי ומה לכתוב — למשל: "תכתבי לאדר מזל טוב, מצחיק"'}
           </div>
           <button
-            type="button" onClick={stopListen}
-            aria-label="עצרי הקלטה" data-testid="vc-mic"
+            type="button" onClick={finishDictation}
+            aria-label="סיימתי לדבר" data-testid="vc-mic"
             style={{
               width: 96, height: 96, borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(20,184,166,0.22) 0%, rgba(20,184,166,0.05) 70%)',
@@ -387,6 +403,24 @@ export function VoiceCompose({ open, onClose, initialFace }: VoiceComposeProps) 
               animation: 'vcPulse 1.6s ease-in-out infinite',
             }}
           >מקשיבה…</button>
+          {/* Live transcript so far — proves speech is being captured, tolerates pauses. */}
+          {liveTranscript && (
+            <div data-testid="vc-live-transcript" style={{
+              width: '100%', minHeight: 44, padding: '10px 14px', borderRadius: 14,
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(20,184,166,0.25)',
+              color: 'rgba(255,255,255,0.9)', fontSize: 16, lineHeight: 1.6,
+              fontFamily: "'Heebo',sans-serif", direction: 'rtl', whiteSpace: 'pre-wrap',
+            }}>{liveTranscript}</div>
+          )}
+          {/* Explicit completion — never rely on silence alone for a long message. */}
+          <button
+            type="button" onClick={finishDictation} data-testid="vc-finish"
+            style={{
+              width: '100%', maxWidth: 380, height: 52, borderRadius: 16, border: 'none',
+              background: `linear-gradient(145deg,#2ee67a,${WA_GREEN},#128C7E)`, color: 'white',
+              fontSize: 17, fontWeight: 700, fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
+            }}
+          >✓ סיימתי</button>
           <div style={{ width: '100%', display: 'flex', gap: 8 }}>
             <input
               value={typed} onChange={e => setTyped(e.target.value)}

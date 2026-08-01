@@ -48,31 +48,27 @@ describe('flip-card default state — clean photo + name', () => {
 // ─── Tap behaviour — flip toggle, single source of truth ───────────────────
 
 describe('flip-card tap behaviour', () => {
-  it('FamilyQuickFaces holds a single activeFlippedId source of truth', () => {
-    expect(facesSrc.includes('activeFlippedId')).toBe(true)
-    expect(facesSrc.includes('setActiveFlippedId')).toBe(true)
-    // Toggle pattern: tapping the same person closes; tapping another opens.
-    expect(/setActiveFlippedId\(\(prev\) => \(prev === face\.id \? null : face\.id\)\)/.test(facesSrc)).toBe(true)
+  it('persons open the focused-contact state; the family group still flips in place', () => {
+    expect(facesSrc.includes('setFocusedFace')).toBe(true)
+    // The group keeps its in-place flip toggle.
     expect(/setActiveFlippedId\(\(prev\) => \(prev === ['"]family-group['"] \? null : ['"]family-group['"]\)\)/.test(facesSrc)).toBe(true)
+    // handleTapPerson opens focus (no person flip toggle anymore).
+    const m = facesSrc.match(/function handleTapPerson\([^)]*\)\s*\{([\s\S]*?)\n {2}\}/)
+    const body = (m as RegExpMatchArray)[1] ?? ''
+    expect(body.includes('setFocusedFace(face)')).toBe(true)
   })
 
-  it('handleTapPerson never flips when the person is not actionable', () => {
+  it('handleTapPerson opens the focused-contact state for every person (actionable or not)', () => {
     const m = facesSrc.match(/function handleTapPerson\([^)]*\)\s*\{([\s\S]*?)\n {2}\}/)
     expect(m).not.toBeNull()
     const body = (m as RegExpMatchArray)[1] ?? ''
-    // Non-actionable path returns before setActiveFlippedId.
-    expect(body.includes('!isPersonActionable(face)')).toBe(true)
-    expect(body.includes('showToast(getMissingPhoneMessage(face.id))')).toBe(true)
-    // The actionable branch toggles the flip via the setter.
-    expect(body.includes('setActiveFlippedId')).toBe(true)
+    expect(body.includes('setFocusedFace(face)')).toBe(true)
+    // No person-flip toggle (prev === face.id) remains.
+    expect(/prev === face\.id/.test(body)).toBe(false)
   })
 
-  it('only one card open at a time — opening a new card closes any prior', () => {
-    // Architectural assertion: there is exactly one piece of flip state, and
-    // the tile receives `flipped` derived from `activeFlippedId === id`.
-    const occurrences = facesSrc.match(/useState<string \| null>\(null\)/g) ?? []
-    expect(occurrences.length).toBe(1)
-    expect(facesSrc.includes('flipped={activeFlippedId === p.id}')).toBe(true)
+  it('persons render flipped={false}; only the group binds to activeFlippedId', () => {
+    expect(facesSrc.includes('flipped={false}')).toBe(true)
     expect(facesSrc.includes("flipped={activeFlippedId === 'family-group'}")).toBe(true)
   })
 })
@@ -146,17 +142,13 @@ describe('Ari / Anabel — no flip, cute toast only', () => {
     expect(ARI_ANABEL_NO_PHONE_TOAST).toBe('הן עדיין קטנות 👧✨\nעדיין אין להן טלפון משלהן')
   })
 
-  it('handleTapPerson short-circuits before setActiveFlippedId for non-actionable persons', () => {
+  it('non-actionable persons still open the focused card, which shows the missing-number message', () => {
+    // Tapping any person opens focus (no more toast short-circuit).
     const m = facesSrc.match(/function handleTapPerson\([^)]*\)\s*\{([\s\S]*?)\n {2}\}/)
-    expect(m).not.toBeNull()
     const body = (m as RegExpMatchArray)[1] ?? ''
-    // The non-actionable branch returns BEFORE the toggle setter call.
-    const toastIdx = body.indexOf('showToast(getMissingPhoneMessage')
-    const setterIdx = body.indexOf('setActiveFlippedId')
-    expect(toastIdx).toBeGreaterThan(-1)
-    expect(setterIdx).toBeGreaterThan(toastIdx) // setter is later in body
-    // And the non-actionable branch ends with `return`
-    expect(/!isPersonActionable\(face\)\)\s*\{\s*showToast[\s\S]*?return/.test(body)).toBe(true)
+    expect(body.includes('setFocusedFace(face)')).toBe(true)
+    // The focused card renders getMissingPhoneMessage(face.id) when not actionable.
+    expect(facesSrc.includes('getMissingPhoneMessage(face.id)')).toBe(true)
   })
 })
 
