@@ -179,10 +179,12 @@ describe('operator setup UX — phone-friendly labels & feedback', () => {
 describe('operator entry & privacy guards (source contract)', () => {
   const indexSrc = fs.readFileSync(path.join(PROJECT_ROOT, 'src/screens/AbuWhatsApp/index.tsx'), 'utf8')
 
-  it('?operator=1 (or persisted operator mode) reliably opens setup via the canonical gate', () => {
-    // AbuWhatsApp routes operator entry through the ONE canonical gate.
+  it('the WhatsApp screen uses the canonical operator gate but NEVER renders the admin setup', () => {
+    // AbuWhatsApp reads the ONE canonical operator gate (for the tab bar)…
     expect(indexSrc.includes('isOperatorMode')).toBe(true)
-    expect(indexSrc.includes('FamilyContactsSetup')).toBe(true)
+    // …but the admin contacts editor is NOT a WhatsApp destination anymore —
+    // it lives only in Settings → Contact Management.
+    expect(indexSrc.includes('FamilyContactsSetup')).toBe(false)
     // The canonical gate handles the ?operator=1 query param + persistence.
     const gateSrc = fs.readFileSync(path.join(PROJECT_ROOT, 'src/services/operatorMode.ts'), 'utf8')
     expect(gateSrc.includes("get('operator')")).toBe(true)

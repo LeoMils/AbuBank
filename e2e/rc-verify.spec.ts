@@ -1,6 +1,8 @@
 /**
- * RC verification (BROWSER) — proves the deployed build actually contains:
- *  (1) the operator contacts import UI and how to reach it, and
+ * RC verification (BROWSER) — proves the deployed build routes correctly:
+ *  (1) the WhatsApp button opens the FAMILY BOARD (never the admin editor),
+ *      for normal users AND when operator mode is on; contact admin lives only
+ *      in Settings → Contact Management, and
  *  (2) the communication routing fix (WhatsApp message that mentions a meeting
  *      is handled by the communication pipeline, NOT the calendar).
  * Runs against the same production bundle that is deployed.
@@ -13,55 +15,32 @@ async function blockProviders(page: Page) {
   await page.route(/api\.groq\.com/, (r) => r.abort())
 }
 
-test('1) Operator import UI is reachable via ?operator=1 and imports contacts', async ({ page }) => {
-  await page.goto('/?operator=1', { waitUntil: 'networkidle', timeout: 30_000 })
-  // Home → tap the messages entry (Abu הודעות).
+test('1) WhatsApp opens the Family Board for a normal user (never the admin editor)', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
   await page.getByRole('button', { name: /הודעות/ }).first().click()
 
-  // Operator setup is shown (NOT the family grid), with per-contact rows.
-  const setup = page.getByTestId('family-contacts-setup')
-  await expect(setup).toBeVisible({ timeout: 10_000 })
-  await expect(page.getByTestId('setup-row-mor')).toBeVisible()
-
-  // The JSON import is OPEN at the top of the setup (no digging required).
-  const json = page.getByTestId('setup-adv-json')
-  await expect(json).toBeVisible()
-
-  // Import SYNTHETIC contacts using SMART/CURLY quotes + a BOM (the mobile-paste
-  // corruption that broke JSON.parse). Data is valid; the importer must sanitize.
-  await json.fill('﻿[{ “id”: “mor”, “enabled”: true, “phoneE164”: “+972500000456” }]')
-  await page.getByTestId('setup-adv-import').click()
-
-  // A successful import AUTO-navigates to the family board immediately (no extra
-  // tap): setup unmounts, the board is the home, and the imported contact is
-  // actionable (Call / WhatsApp).
-  await expect(page.getByTestId('family-quick-faces')).toBeVisible()
+  // The family board is the destination — bubbles, not the admin setup.
+  await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByTestId('family-contacts-setup')).toHaveCount(0)
-  const mor = page.getByTestId('bubble-person-mor')
-  await expect(mor).toBeVisible()
-  await page.getByTestId('bubble-person-tap-mor').click()
-  await expect(page.getByTestId('chip-whatsapp-mor')).toBeVisible()
-  await expect(page.getByTestId('chip-call-mor')).toBeVisible()
+  await expect(page.getByTestId('setup-adv-json')).toHaveCount(0)
+  await expect(page.getByTestId('bubble-person-mor')).toBeVisible() // seeded family
 })
 
-test('1b) Debug panel localizes a structural parse error the operator cannot see', async ({ page }) => {
+test('1b) WhatsApp opens the Family Board even when operator mode is ON; admin is Settings-only', async ({ page }) => {
+  // Persist operator mode (the state that used to force the admin landing).
   await page.goto('/?operator=1', { waitUntil: 'networkidle', timeout: 30_000 })
   await page.getByRole('button', { name: /הודעות/ }).first().click()
-  await expect(page.getByTestId('family-contacts-setup')).toBeVisible({ timeout: 10_000 })
-  const json = page.getByTestId('setup-adv-json')
+  await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId('family-contacts-setup')).toHaveCount(0) // NOT the admin screen
+  await expect(page.getByTestId('setup-adv-json')).toHaveCount(0)
 
-  // Missing comma between two properties → valid-looking first/last 100, real
-  // structural error in the middle. A FAILED IMPORT must AUTO-surface the full
-  // diagnostics (no need to find the debug button): exact offset, byte-identity
-  // verdict, a SHA-256, and the text around the fault.
-  await json.fill('[{ "id": "mor" "enabled": true, "phoneE164": "+972500000456" }]')
-  await page.getByTestId('setup-adv-import').click()
-  const box = page.getByTestId('setup-adv-debug-box')
-  await expect(box).toBeVisible()
-  await expect(box).toContainText('JSON.parse: ERROR')
-  await expect(box).toContainText('byte-identical to paste: YES')
-  await expect(box).toContainText('error at: offset')
-  await expect(box).toContainText('sha-256(paste):')
+  // Contact Management (the JSON editor) IS reachable — only from Settings.
+  await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
+  await page.getByRole('button', { name: 'הגדרות' }).first().click()
+  await page.getByRole('button', { name: /ניהול אנשי קשר/ }).click()
+  await expect(page.getByTestId('contact-management')).toBeVisible({ timeout: 10_000 })
+  await page.getByTestId('cm-tab-advanced').click()
+  await expect(page.getByTestId('cm-json')).toBeVisible()
 })
 
 test('5) With contacts already saved, ?operator=1 lands on the family BOARD, not setup', async ({ page }) => {
@@ -86,21 +65,25 @@ test('5) With contacts already saved, ?operator=1 lands on the family BOARD, not
   await expect(page.getByTestId('chip-call-mor')).toBeVisible()
 })
 
-test('3) Operator Mode persists across a reload without ?operator, and ?operator=0 clears it', async ({ page }) => {
-  // Enable via ?operator=1, then reach the WhatsApp screen operator setup.
+test('3) Operator persists (tab bar) yet WhatsApp always lands on the board; ?operator=0 clears', async ({ page }) => {
   await page.goto('/?operator=1', { waitUntil: 'networkidle', timeout: 30_000 })
   await page.getByRole('button', { name: /הודעות/ }).first().click()
-  await expect(page.getByTestId('family-contacts-setup')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId('abuwhatsapp-tab-bar')).toBeVisible() // operator tools present
 
-  // Reload WITHOUT the query param (mimics an installed-PWA launch) → still operator.
+  // Reload WITHOUT the query param (installed-PWA launch) → operator persists,
+  // and the WhatsApp destination is STILL the board (not the admin editor).
   await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
   await page.getByRole('button', { name: /הודעות/ }).first().click()
-  await expect(page.getByTestId('family-contacts-setup')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId('abuwhatsapp-tab-bar')).toBeVisible()
+  await expect(page.getByTestId('family-contacts-setup')).toHaveCount(0)
 
-  // Explicitly disable → operator tools gone (family grid instead).
+  // Explicitly disable → operator tools gone; still the board.
   await page.goto('/?operator=0', { waitUntil: 'networkidle', timeout: 30_000 })
   await page.getByRole('button', { name: /הודעות/ }).first().click()
-  await expect(page.getByTestId('family-contacts-setup')).toHaveCount(0)
+  await expect(page.getByTestId('family-quick-faces')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId('abuwhatsapp-tab-bar')).toHaveCount(0)
 })
 
 test('4) Multi-turn: a bare follow-up refines the SAME message, not the calendar', async ({ page }) => {
