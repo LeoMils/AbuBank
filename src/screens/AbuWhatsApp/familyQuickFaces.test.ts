@@ -253,6 +253,17 @@ describe('contactsToPersonFaces (dynamic render — store is the single source o
     expect(/^https:\/\/wa\.me\/\d{8,15}$/.test(buildWhatsAppPersonUrl(mor!))).toBe(true)
     expect(/^tel:\+\d{8,15}$/.test(buildTelUrl(mor!))).toBe(true)
   })
+
+  it('photo render priority: photoDataUrl wins over photoFile; photoFile when no dataUrl; none → undefined', () => {
+    const [both, fileOnly, none] = contactsToPersonFaces([
+      { id: 'a', displayName: 'A', enabled: false, phoneE164: '', photoFile: '/bundled/a.png', photoDataUrl: 'data:image/jpeg;base64,QUJD' },
+      { id: 'b', displayName: 'B', enabled: false, phoneE164: '', photoFile: '/bundled/b.png' },
+      { id: 'c', displayName: 'C', enabled: false, phoneE164: '' },
+    ])
+    expect(both!.photoFile).toBe('data:image/jpeg;base64,QUJD') // uploaded wins
+    expect(fileOnly!.photoFile).toBe('/bundled/b.png')          // bundled fallback
+    expect(none!.photoFile).toBeUndefined()                     // → initials at render
+  })
 })
 
 // ─── Dynamic family grid — renders from the stored contacts ────────────────

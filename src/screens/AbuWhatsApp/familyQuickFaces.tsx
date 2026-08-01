@@ -1142,6 +1142,11 @@ function BubbleAvatar({
   // `photoFit: 'cover'` is opt-in (e.g. Adar's tall portrait).
   const resolvedFit: 'contain' | 'cover' = photoFit ?? 'contain'
   const resolvedPosition: string = photoObjectPosition ?? 'center'
+  // If a real photo fails to load, fall back to initials (never a broken-image
+  // icon). Reset the error whenever the photo changes (e.g. after a replace).
+  const [errored, setErrored] = useState(false)
+  useEffect(() => { setErrored(false) }, [photoFile])
+  const showPhoto = Boolean(photoFile) && !errored
   // Forced circle: explicit width=height, aspect-ratio:1/1, fixed flex
   // basis. Defends against parent flex/grid stretching the avatar into
   // an oval on narrow phone viewports.
@@ -1157,7 +1162,7 @@ function BubbleAvatar({
         boxSizing: 'border-box',
         borderRadius: '50%',
         border: `2px solid ${accentSoft}`,
-        background: photoFile
+        background: showPhoto
           ? 'linear-gradient(145deg, #0b2220, #050A18)'
           : `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(20,184,166,0.18) 45%, rgba(8,16,28,0.95) 100%)`,
         boxShadow: `0 0 0 2px rgba(0,0,0,0.20), 0 0 16px ${accentSoft}, 0 4px 10px rgba(0,0,0,0.32)`,
@@ -1165,13 +1170,14 @@ function BubbleAvatar({
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >
-      {photoFile ? (
+      {showPhoto ? (
         <img
+          key={photoFile}
           src={photoFile}
           alt=""
           loading="lazy"
           style={{ width: '100%', height: '100%', objectFit: resolvedFit, objectPosition: resolvedPosition, display: 'block', borderRadius: '50%' }}
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+          onError={() => setErrored(true)}
         />
       ) : (
         <span style={{

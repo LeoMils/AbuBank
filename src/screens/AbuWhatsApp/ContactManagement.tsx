@@ -30,6 +30,7 @@ import {
   type ContactImportPreview,
   type LocalFamilyContact,
 } from './familyContactsStorage'
+import { validateImageFile, resizeImageToDataUrl } from '../../services/imageResize'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -79,16 +80,33 @@ function ContactEditForm({
   const [phoneE164, setPhone] = useState(initial?.phoneE164 ?? '')
   const [whatsappE164, setWa] = useState(initial?.whatsappE164 ?? '')
   const [enabled, setEnabled] = useState(initial?.enabled ?? true)
-  const [photoDataUrl, setPhoto] = useState(initial?.photoDataUrl ?? '')
+  // Uploaded (device-local) photo AND bundled photo are tracked separately so
+  // editing a seeded contact never silently drops its bundled photo, and an
+  // uploaded photo always wins at render.
+  const [photoDataUrl, setPhotoDataUrl] = useState(initial?.photoDataUrl ?? '')
+  const [photoFile, setPhotoFile] = useState(initial?.photoFile ?? '')
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoError, setPhotoError] = useState('')
   const [errors, setErrors] = useState<ContactFieldErrors>({})
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const meta = personMeta(id)
+  const previewPhoto = photoDataUrl || photoFile
 
   function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setPhoto(typeof reader.result === 'string' ? reader.result : '')
-    reader.readAsDataURL(file)
+    e.target.value = '' // allow re-picking the same file
+    setPhotoError('')
+    const v = validateImageFile(file)
+    if (!v.ok) { setPhotoError(v.error); return }
+    setPhotoBusy(true)
+    // Resize/compress ON DEVICE (orientation-normalized). Never uploaded anywhere.
+    resizeImageToDataUrl(file as File)
+      .then((dataUrl) => { setPhotoDataUrl(dataUrl); setPhotoBusy(false) })
+      .catch((err: unknown) => { setPhotoError(err instanceof Error ? err.message : 'עיבוד התמונה נכשל'); setPhotoBusy(false) })
+  }
+
+  function removePhoto() {
+    setPhotoDataUrl(''); setPhotoFile(''); setPhotoError('')
   }
 
   function save() {
@@ -98,6 +116,7 @@ function ContactEditForm({
     const contact: LocalFamilyContact = { id, enabled, phoneE164: phoneE164.trim() }
     if (whatsappE164.trim()) contact.whatsappE164 = whatsappE164.trim()
     if (photoDataUrl) contact.photoDataUrl = photoDataUrl
+    if (photoFile) contact.photoFile = photoFile // preserve the bundled photo on edit
     if (displayName.trim()) contact.displayName = displayName.trim()
     if (relationshipHebrew.trim()) contact.relationshipHebrew = relationshipHebrew.trim()
     const r = upsertLocalContact(contact)
@@ -156,12 +175,27 @@ function ContactEditForm({
       </label>
       {errors.enabled && <div data-testid="cm-err-enabled" style={err}>{errors.enabled}</div>}
       <div>
-        <div style={label}>תמונה — לא חובה</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {photoDataUrl && <img src={photoDataUrl} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />}
-          <input data-testid="cm-field-photo" type="file" accept="image/*" onChange={onPhoto} style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }} />
-          {photoDataUrl && <button type="button" onClick={() => setPhoto('')} style={{ ...btn(RED), minHeight: 36 }}>הסירי</button>}
+        <div style={label}>תמונה — לא חובה (נשמרת במכשיר בלבד)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Current photo preview, or an initials fallback preview. */}
+          {previewPhoto ? (
+            <img data-testid="cm-photo-preview" src={previewPhoto} alt="" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `2px solid ${TEAL}55` }} />
+          ) : (
+            <div data-testid="cm-photo-fallback" style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${TEAL}55`, background: `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(20,184,166,0.18) 45%, rgba(8,16,28,0.95))`, color: TEAL, fontFamily: "'Cormorant Garamond',serif", fontSize: 24 }}>
+              {Array.from((displayName || id || '?').trim())[0] ?? '?'}
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+            <button type="button" data-testid="cm-photo-choose" onClick={() => photoInputRef.current?.click()} disabled={photoBusy} style={{ ...btn(TEAL), minHeight: 40, opacity: photoBusy ? 0.5 : 1 }}>
+              {photoBusy ? 'מעבדת…' : (previewPhoto ? '🖼️ החלפת תמונה' : '🖼️ בחרי תמונה מהמכשיר')}
+            </button>
+            {previewPhoto && (
+              <button type="button" data-testid="cm-photo-remove" onClick={removePhoto} disabled={photoBusy} style={{ ...btn(RED), minHeight: 36 }}>הסרת תמונה</button>
+            )}
+          </div>
+          <input ref={photoInputRef} data-testid="cm-field-photo" type="file" accept="image/*" onChange={onPhoto} style={{ display: 'none' }} />
         </div>
+        {photoError && <div data-testid="cm-photo-error" style={err}>{photoError}</div>}
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
         <button type="button" data-testid="cm-save" onClick={save} style={{ ...btn(TEAL, true), flex: 1 }}>שמירה ✓</button>
@@ -232,6 +266,14 @@ function SimpleWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[];
 }
 
 // ─── Advanced JSON ──────────────────────────────────────────────────────────
+
+/** Honest warning about whether an export/backup embeds private device photos. */
+function exportPhotoWarning(all: LocalFamilyContact[]): string {
+  const n = all.filter((c) => c.photoDataUrl && c.photoDataUrl.length > 0).length
+  return n > 0
+    ? `⚠️ הגיבוי כולל ${n} תמונות פרטיות מוטמעות — קובץ רגיש. שמרי אותו במקום בטוח ואל תשתפי בציבור.`
+    : 'הגיבוי אינו כולל תמונות פרטיות מוטמעות (רק הפניות לתמונות מובנות).'
+}
 
 function downloadJSON(filename: string, text: string) {
   try {
@@ -319,8 +361,8 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         <button type="button" data-testid="cm-validate" onClick={validate} style={btn(TEAL)}>🔎 בדיקה + תצוגה מקדימה</button>
         <button type="button" data-testid="cm-merge-save" onClick={saveMerge} disabled={!preview || hasParseError} style={{ ...btn(GREEN, true), opacity: (!preview || hasParseError) ? 0.4 : 1 }}>מיזוג ושמירה</button>
-        <button type="button" data-testid="cm-export" onClick={() => setDraft(exportContactsJSON(getLocalContacts()))} style={btn(GOLD)}>ייצוא JSON</button>
-        <button type="button" data-testid="cm-backup" onClick={() => downloadJSON('abu-contacts-backup.json', exportContactsJSON(getLocalContacts()))} style={btn(GOLD)}>💾 הורדת גיבוי</button>
+        <button type="button" data-testid="cm-export" onClick={() => { const all = getLocalContacts(); setDraft(exportContactsJSON(all)); setBanner(exportPhotoWarning(all)) }} style={btn(GOLD)}>ייצוא JSON</button>
+        <button type="button" data-testid="cm-backup" onClick={() => { const all = getLocalContacts(); downloadJSON('abu-contacts-backup.json', exportContactsJSON(all)); setBanner(exportPhotoWarning(all)) }} style={btn(GOLD)}>💾 הורדת גיבוי</button>
       </div>
 
       {/* Replace-All — strong confirmation, removal count, auto-backup. */}

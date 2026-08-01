@@ -6,6 +6,7 @@ import {
   seedDefaultContactsIfEmpty,
   setLocalContacts,
   getLocalContacts,
+  exportContactsJSON,
   DEFAULT_SEED_CONTACTS,
   type LocalFamilyContact,
 } from './familyContactsStorage'
@@ -148,5 +149,19 @@ describe('previewImportContacts — merge diff before any save', () => {
   it('rejects a non-array top level with a plain-language message', () => {
     const p = previewImportContacts('{"id":"mor"}', current)
     expect(p.parseError).toContain('מערך')
+  })
+
+  it('(9) export → import round-trip preserves photoDataUrl and photoFile', () => {
+    const withPhotos: LocalFamilyContact[] = [
+      { id: 'mor', displayName: 'מור', enabled: true, phoneE164: P1, photoDataUrl: 'data:image/jpeg;base64,QUJD' },
+      { id: 'leo', displayName: 'לאו', enabled: false, phoneE164: '', photoFile: '/family-contacts/leo.png' },
+    ]
+    const json = exportContactsJSON(withPhotos)
+    const p = previewImportContacts(json, [])
+    expect(p.parseError).toBeNull()
+    const mor = p.toSave.find((c) => c.id === 'mor')!
+    const leo = p.toSave.find((c) => c.id === 'leo')!
+    expect(mor.photoDataUrl).toBe('data:image/jpeg;base64,QUJD')
+    expect(leo.photoFile).toBe('/family-contacts/leo.png')
   })
 })

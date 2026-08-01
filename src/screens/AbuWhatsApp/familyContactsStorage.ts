@@ -11,8 +11,19 @@
  */
 
 import { isValidPhoneE164, normalizeIsraeliPhone } from './familyQuickFaces'
-import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
+import { FAMILY_QUICK_FACES, KNOWN_CONTACT_PHOTOS, type FamilyQuickFace } from './familyContacts.private'
 import { durable } from '../../services/durableStore'
+
+/**
+ * Default-photo REGISTRY — id → bundled asset path for the known family. This is
+ * a one-time migration/default source ONLY; the board never renders from it (it
+ * renders from the stored contacts). Reuses the committed asset mapping.
+ */
+export const DEFAULT_CONTACT_PHOTOS: Readonly<Record<string, string>> = KNOWN_CONTACT_PHOTOS
+
+/** Bumped when the migration logic changes so it re-runs once per version. */
+export const CONTACT_PHOTO_MIGRATION_VERSION = 1
+const PHOTO_MIGRATION_KEY = 'abubank.familyContacts.photoMigration.v'
 
 export const LOCAL_FAMILY_CONTACTS_STORAGE_KEY = 'abubank.familyContacts.v1'
 
@@ -274,6 +285,46 @@ export function seedDefaultContactsIfEmpty(storage: StorageLike | null = default
   if (raw !== null && raw !== '') return false
   setLocalContacts(DEFAULT_SEED_CONTACTS, storage)
   return true
+}
+
+export interface PhotoMigrationResult { migrated: number; ranVersion: number; skipped: boolean }
+
+/**
+ * One-time, versioned, idempotent photo backfill. For every EXISTING stored
+ * contact that has NO photo (neither photoDataUrl nor photoFile) but whose id
+ * matches a known bundled asset, set photoFile from the default-photo registry.
+ *
+ * Safety guarantees:
+ *  - never overwrites a user-uploaded photoDataUrl (or an existing photoFile);
+ *  - never recreates a deleted contact (only maps over what is stored);
+ *  - never makes the board depend on a hardcoded list (registry is migration-only);
+ *  - idempotent (re-running is a no-op) AND version-gated (skips once applied).
+ * Call at boot after `seedDefaultContactsIfEmpty()`.
+ */
+export function migrateContactPhotos(storage: StorageLike | null = defaultStorage()): PhotoMigrationResult {
+  if (!storage) return { migrated: 0, ranVersion: 0, skipped: true }
+  let applied = 0
+  try {
+    const raw = storage.getItem(PHOTO_MIGRATION_KEY)
+      ?? (isDefaultBrowserStorage(storage) ? durable.getString(PHOTO_MIGRATION_KEY) : null)
+    applied = raw ? Number(raw) : 0
+  } catch { applied = 0 }
+  if (applied >= CONTACT_PHOTO_MIGRATION_VERSION) return { migrated: 0, ranVersion: applied, skipped: true }
+
+  const contacts = getLocalContacts(storage)
+  let migrated = 0
+  const next = contacts.map((c) => {
+    const hasPhoto = (c.photoDataUrl && c.photoDataUrl.length > 0) || (c.photoFile && c.photoFile.length > 0)
+    const known = DEFAULT_CONTACT_PHOTOS[c.id]
+    if (!hasPhoto && known) { migrated++; return { ...c, photoFile: known } }
+    return c
+  })
+  if (migrated > 0) setLocalContacts(next, storage)
+  try {
+    storage.setItem(PHOTO_MIGRATION_KEY, String(CONTACT_PHOTO_MIGRATION_VERSION))
+    if (isDefaultBrowserStorage(storage)) durable.setString(PHOTO_MIGRATION_KEY, String(CONTACT_PHOTO_MIGRATION_VERSION))
+  } catch { /* best-effort */ }
+  return { migrated, ranVersion: CONTACT_PHOTO_MIGRATION_VERSION, skipped: false }
 }
 
 /**

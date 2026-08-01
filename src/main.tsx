@@ -35,8 +35,11 @@ async function boot() {
   // is the single source of truth for the family board; the scaffold is only
   // initial data). No-op once the store exists — a deleted contact stays deleted.
   try {
-    const { seedDefaultContactsIfEmpty } = await import('./screens/AbuWhatsApp/familyContactsStorage')
+    const { seedDefaultContactsIfEmpty, migrateContactPhotos } = await import('./screens/AbuWhatsApp/familyContactsStorage')
     seedDefaultContactsIfEmpty()
+    // Backfill the correct bundled photo onto any existing contact that has none
+    // (one-time, versioned, idempotent). Fresh seeds already carry photos.
+    migrateContactPhotos()
   } catch { /* best-effort */ }
   // Flush pending durable (IndexedDB) writes before the app is backgrounded or
   // killed. On iOS a PWA can be frozen at any time and localStorage may later be
