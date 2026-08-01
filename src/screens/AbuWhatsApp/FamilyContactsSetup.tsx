@@ -423,7 +423,13 @@ function AdvancedJsonPanel({
   function handleImport() {
     const r = onImport(draft)
     setBanner(r)
-    if (r.ok) { setDraft(''); setDbg(null) }
+    if (r.ok) {
+      setDraft(''); setDbg(null)
+      // Import is the ONE-TIME setup step. On success, go straight to the family
+      // board so it becomes the home IMMEDIATELY — no extra tap. The board's
+      // actionable bubbles are the confirmation. (Reachable again via long-press.)
+      onViewFamily()
+    }
     // On failure, AUTO-surface the full diagnostics (offset, byte-identity,
     // SHA-256, context) so the operator never has to find the debug button.
     else runDiagnostics(draft)

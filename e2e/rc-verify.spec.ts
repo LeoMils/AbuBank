@@ -31,13 +31,12 @@ test('1) Operator import UI is reachable via ?operator=1 and imports contacts', 
   // corruption that broke JSON.parse). Data is valid; the importer must sanitize.
   await json.fill('﻿[{ “id”: “mor”, “enabled”: true, “phoneE164”: “+972500000456” }]')
   await page.getByTestId('setup-adv-import').click()
-  await expect(page.getByTestId('setup-adv-banner-ok')).toBeVisible()
-  await expect(page.getByTestId('setup-active-count')).toHaveAttribute('data-active-count', '1')
 
-  // After a successful import the operator can jump straight to the family board,
-  // and the imported contact is immediately actionable (Call / WhatsApp).
-  await page.getByTestId('setup-adv-view-family').click()
+  // A successful import AUTO-navigates to the family board immediately (no extra
+  // tap): setup unmounts, the board is the home, and the imported contact is
+  // actionable (Call / WhatsApp).
   await expect(page.getByTestId('family-quick-faces')).toBeVisible()
+  await expect(page.getByTestId('family-contacts-setup')).toHaveCount(0)
   const mor = page.getByTestId('bubble-person-mor')
   await expect(mor).toBeVisible()
   await page.getByTestId('bubble-person-tap-mor').click()
