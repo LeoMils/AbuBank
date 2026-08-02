@@ -68,12 +68,30 @@ describe('DurableStore — migration (localStorage → backend)', () => {
     expect(Object.keys(backend.snapshot()).filter((k) => k === KEY)).toHaveLength(1)
   })
 
-  it('does NOT overwrite backend data with stale localStorage on init', async () => {
-    installLS({ [KEY]: JSON.stringify([{ id: 'stale' }]) })
-    const backend = new MemoryBackend({ [KEY]: JSON.stringify([{ id: 'fresh-from-idb' }]) })
+  // DEVICE BUG (contacts vanish on reopen): the backend write is ASYNC and can
+  // lag; localStorage is written synchronously and is the LIVE authority. On
+  // reopen, init must NOT clobber a present localStorage value with a stale
+  // backend copy — otherwise freshly-imported phone numbers are replaced by the
+  // stale number-less seed every time.
+  it('does NOT clobber a PRESENT localStorage value with a stale backend on init', async () => {
+    const ls = installLS({ [KEY]: JSON.stringify([{ id: 'fresh-in-localStorage' }]) })
+    const backend = new MemoryBackend({ [KEY]: JSON.stringify([{ id: 'stale-seed-in-idb' }]) })
     const s = new DurableStore(backend)
     await s.init()
-    expect(s.getJSON<{ id: string }[]>(KEY, [])[0]!.id).toBe('fresh-from-idb') // backend wins
+    await flush()
+    // localStorage (the live write) wins — the number-less seed does not clobber it.
+    expect(s.getJSON<{ id: string }[]>(KEY, [])[0]!.id).toBe('fresh-in-localStorage')
+    expect(JSON.parse(ls.get(KEY)!)[0].id).toBe('fresh-in-localStorage')
+    // …and the stale backend is synced FORWARD so recovery stays fresh.
+    expect(JSON.parse(backend.snapshot()[KEY]!)[0].id).toBe('fresh-in-localStorage')
+  })
+
+  it('recovers an EVICTED (empty) localStorage key from the backend', async () => {
+    installLS()                                   // localStorage evicted (empty)
+    const backend = new MemoryBackend({ [KEY]: JSON.stringify([{ id: 'from-idb' }]) })
+    const s = new DurableStore(backend)
+    await s.init()
+    expect(s.getJSON<{ id: string }[]>(KEY, [])[0]!.id).toBe('from-idb') // recovered
   })
 })
 

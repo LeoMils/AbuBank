@@ -103,6 +103,12 @@ function hasLocalStorage(): boolean {
   try { return typeof localStorage !== 'undefined' && localStorage !== null } catch { return false }
 }
 
+/** True if `s` parses as JSON. Managed keys hold JSON; a mirror that does not
+ *  parse is corrupt and must not be treated as the authoritative live copy. */
+function isParseableJSON(s: string): boolean {
+  try { JSON.parse(s); return true } catch { return false }
+}
+
 export class DurableStore {
   private cache = new Map<string, string>()
   private ready = false
@@ -162,14 +168,36 @@ export class DurableStore {
     // Hydrate cache from the (now-migrated) backend snapshot.
     for (const [k, v] of Object.entries(backendData)) this.cache.set(k, v)
 
-    // Restore the localStorage MIRROR from the durable backend, so existing
-    // synchronous readers (loadAppointments, reminderStore, …) see data that
-    // localStorage may have evicted. This is the durability win: IndexedDB
-    // repopulates localStorage on every app start.
+    // Reconcile localStorage (the LIVE authority) with the durable backend.
+    //
+    // localStorage is written SYNCHRONOUSLY on every setString; the backend copy
+    // is written asynchronously and may not have flushed before the app was
+    // backgrounded/closed on iOS. So a PRESENT localStorage value is never staler
+    // than the backend — restore must NEVER overwrite it (doing so clobbered
+    // freshly-imported contact phone numbers with the number-less seed on every
+    // reopen). Rules:
+    //   • localStorage present  → it wins; sync it FORWARD into cache+backend so
+    //     recovery stays fresh (fixes the "numbers vanish on reopen" loop).
+    //   • localStorage empty     → RECOVER it from the backend (e.g. after ITP
+    //     eviction). This preserves the IndexedDB durability win.
     if (hasLocalStorage()) {
       for (const k of this.keys) {
-        const v = this.cache.get(k)
-        if (v !== undefined && safeLSGet(k) !== v) safeLSSet(k, v)
+        const backendV = this.cache.get(k)
+        const ls = safeLSGet(k)
+        // A managed value is only authoritative if it is present AND structurally
+        // valid (all managed keys hold JSON). A corrupt mirror must NOT win — and
+        // must never be synced forward over a good backend copy.
+        const lsUsable = ls !== null && ls !== '' && isParseableJSON(ls)
+        if (lsUsable) {
+          if (backendV !== ls) {
+            this.cache.set(k, ls)
+            void this.backend.set(k, ls).catch(() => {})
+          }
+        } else if (backendV !== undefined) {
+          // localStorage missing or corrupt → recover from the durable backend.
+          this.cache.set(k, backendV)
+          safeLSSet(k, backendV)
+        }
       }
     }
 
