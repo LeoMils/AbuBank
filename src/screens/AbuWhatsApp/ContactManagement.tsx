@@ -34,11 +34,20 @@ import {
 import { validateImageFile, resizeImageToDataUrl } from '../../services/imageResize'
 import { getTraceText, clearPersistenceTrace, requestPersistentStorage } from '../../services/persistenceTrace'
 import { durable } from '../../services/durableStore'
+import {
+  classifyContactStorage, contactStorageMessageHebrew,
+  recordCommittedSave, markSaveInflight, markUserDeletion,
+} from './contactStorageHealth'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
 const RED = '#ef4444'
 const GREEN = '#25D366'
+
+/** Phones in the committed store (for the high-water durability marker). */
+function committedPhoneCount(): number {
+  return getLocalContacts().filter((c) => (c.phoneE164 ?? '').trim().length > 0 || (c.whatsappE164 ?? '').trim().length > 0).length
+}
 
 const PERSONS: ReadonlyArray<Extract<FamilyQuickFace, { type: 'person' }>> =
   FAMILY_QUICK_FACES.filter((f) => f.type === 'person') as never
@@ -123,11 +132,13 @@ function ContactEditForm({
     if (photoFile) contact.photoFile = photoFile // preserve the bundled photo on edit
     if (displayName.trim()) contact.displayName = displayName.trim()
     if (relationshipHebrew.trim()) contact.relationshipHebrew = relationshipHebrew.trim()
+    markSaveInflight()
     const r = upsertLocalContact(contact)
     if (!r.ok) { setErrors({ id: r.errors.join(' · ') }); return }
     // D11 (durability before success): the IndexedDB transaction must COMMIT
     // before we report success, so a termination right after cannot lose it.
     try { await durable.flush() } catch { /* best-effort; localStorage already synced */ }
+    recordCommittedSave(committedPhoneCount())
     onSaved()
   }
 
@@ -219,7 +230,7 @@ function SimpleWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[];
   function disable(c: LocalFamilyContact) {
     upsertLocalContact({ ...c, enabled: false }); refresh()
   }
-  function del(id: string) { removeLocalContact(id); setConfirmDelete(null); refresh() }
+  function del(id: string) { markUserDeletion(); removeLocalContact(id); setConfirmDelete(null); refresh() }
 
   return (
     <div data-testid="cm-simple" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -308,10 +319,12 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
     void requestPersistentStorage('import-merge') // gesture-time durability hint
     const p = preview ?? previewImportContacts(draft, contacts)
     if (p.parseError) { setPreview(p); return }
+    markSaveInflight()
     for (const c of p.toSave) upsertLocalContact(c)
     refresh()
     // D11: report success only AFTER the durable transaction commits.
     try { await durable.flush() } catch { /* best-effort */ }
+    recordCommittedSave(committedPhoneCount())
     setBanner(`נשמר (מיזוג): ${p.added.length} נוספו, ${p.updated.length} עודכנו, ${p.unchanged.length} ללא שינוי`)
     setPreview(null)
   }
@@ -321,11 +334,13 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
     if (p.parseError) { setPreview(p); return }
     // Automatic backup FIRST — the current store, before it is overwritten.
     downloadJSON('abu-contacts-backup-before-replace.json', exportContactsJSON(contacts))
+    markSaveInflight()
     const next = [...p.added, ...p.updated, ...p.unchanged]
     setLocalContacts(next)
     refresh()
     // D11: report success only AFTER the durable transaction commits.
     try { await durable.flush() } catch { /* best-effort */ }
+    recordCommittedSave(committedPhoneCount())
     setBanner(`הוחלף הכל: ${next.length} אנשי קשר נשמרו, ${p.replaceAllRemoves} הוסרו (גובו אוטומטית)`)
     setPreview(null); setConfirmReplace(false)
   }
@@ -461,13 +476,21 @@ export function ContactManagement() {
         // are not usable on THIS origin — import once here (a new RC URL is a new
         // origin with fresh storage; use a stable URL / the PWA to persist).
         const r = contactsReceipt()
+        const health = classifyContactStorage()
+        const healthIsFailure = health.code !== 'OK' && health.code !== 'CONTACT_NOT_CONFIGURED'
         return (
           <>
-            <div data-testid="contacts-receipt" data-canonical={String(r.isCanonical)} style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', fontFamily: "ui-monospace,Menlo,monospace", direction: 'ltr', textAlign: 'left', padding: '6px 8px', borderRadius: 8, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.10)', lineHeight: 1.7 }}>
+            <div data-testid="contacts-receipt" data-canonical={String(r.isCanonical)} data-health={health.code} style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', fontFamily: "ui-monospace,Menlo,monospace", direction: 'ltr', textAlign: 'left', padding: '6px 8px', borderRadius: 8, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.10)', lineHeight: 1.7 }}>
               contacts:{r.contactCount} · call-ready:{r.actionableCall} · wa-ready:{r.actionableWhatsApp}
               <br />source:{r.storageSource} · hydrated:{String(r.hydrated)} · snapshot:v{r.snapshotVersion}
               <br />origin:{r.origin} · canonical:{String(r.isCanonical)}
+              <br />health:{health.code} · highWater:{health.highWater}
             </div>
+            {healthIsFailure && (
+              <div data-testid="storage-health-warning" data-code={health.code} style={{ fontSize: 13, color: '#ffd7a8', fontFamily: "'Heebo',sans-serif", direction: 'rtl', padding: '8px 10px', borderRadius: 8, background: 'rgba(180,120,20,0.14)', border: '1px solid rgba(201,168,76,0.4)', lineHeight: 1.6, marginTop: 6 }}>
+                {contactStorageMessageHebrew(health.code)}
+              </div>
+            )}
             {!r.isCanonical && (
               <div data-testid="noncanonical-origin-warning" style={{ fontSize: 13, color: '#ffd7a8', fontFamily: "'Heebo',sans-serif", direction: 'rtl', padding: '8px 10px', borderRadius: 8, background: 'rgba(180,120,20,0.14)', border: '1px solid rgba(201,168,76,0.4)', lineHeight: 1.6, marginTop: 6 }}>
                 ⚠️ זו אינה כתובת ה‑RC הקבועה. אנשי הקשר נשמרים בנפרד בכל כתובת. לשימוש קבוע פתחי את <b>abu-ela-rc.vercel.app</b>.

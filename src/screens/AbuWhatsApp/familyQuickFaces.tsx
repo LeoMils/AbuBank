@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
 import { getLocalContacts, CONTACTS_UPDATED_EVENT, type LocalFamilyContact } from './familyContactsStorage'
 import { traceStage } from '../../services/persistenceTrace'
+import { classifyContactStorage, contactStorageMessageHebrew } from './contactStorageHealth'
 import { matchTargetName } from '../AbuAI/whatsappCompose'
 import { loadFamilyData } from '../../services/familyLoader'
 
@@ -405,6 +406,18 @@ export const ARI_ANABEL_NO_PHONE_TOAST = 'הן עדיין קטנות 👧✨\nע
 export function getMissingPhoneMessage(contactId: string): string {
   if (contactId === 'ari' || contactId === 'anabel') return ARI_ANABEL_NO_PHONE_TOAST
   return GENERIC_MISSING_PHONE_TOAST
+}
+
+/** Honest missing-phone copy: when the reason is a STORAGE/recovery failure (not a
+ *  genuine unconfigured contact), show the storage-health message instead of
+ *  "no number configured" — otherwise a whole-store loss looks like a per-contact
+ *  gap. Falls back to the per-contact message on a genuine first-run. */
+export function focusedMissingMessage(contactId: string): string {
+  try {
+    const h = classifyContactStorage()
+    if (h.code !== 'OK' && h.code !== 'CONTACT_NOT_CONFIGURED') return contactStorageMessageHebrew(h.code)
+  } catch { /* fall through to the per-contact message */ }
+  return getMissingPhoneMessage(contactId)
 }
 
 export function computeInitials(displayName: string): string {
@@ -869,7 +882,7 @@ function FocusedContact({
             fontSize: 17, color: 'rgba(255,255,255,0.86)', fontFamily: "'Heebo',sans-serif",
             textAlign: 'center', lineHeight: 1.55, whiteSpace: 'pre-line', maxWidth: 340, margin: '0 auto',
             textShadow: '0 1px 8px rgba(0,0,0,0.6)',
-          }}>{getMissingPhoneMessage(face.id)}</div>
+          }}>{focusedMissingMessage(face.id)}</div>
         )}
       </div>
 

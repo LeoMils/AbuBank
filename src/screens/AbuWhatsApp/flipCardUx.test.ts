@@ -147,8 +147,10 @@ describe('Ari / Anabel — no flip, cute toast only', () => {
     const m = facesSrc.match(/function handleTapPerson\([^)]*\)\s*\{([\s\S]*?)\n {2}\}/)
     const body = (m as RegExpMatchArray)[1] ?? ''
     expect(body.includes('setFocusedFace(face)')).toBe(true)
-    // The focused card renders getMissingPhoneMessage(face.id) when not actionable.
-    expect(facesSrc.includes('getMissingPhoneMessage(face.id)')).toBe(true)
+    // The focused card renders focusedMissingMessage(face.id) when not actionable —
+    // the centralized helper that delegates to getMissingPhoneMessage for a genuine
+    // first-run and shows an honest storage-failure message otherwise (Gate 8).
+    expect(facesSrc.includes('focusedMissingMessage(face.id)')).toBe(true)
   })
 })
 

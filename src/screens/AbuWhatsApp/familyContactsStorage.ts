@@ -776,6 +776,74 @@ export function previewImportContacts(
   return out
 }
 
+/**
+ * D5 — MIGRATION-ON-CLONE ATOMICITY.
+ *
+ * Runs an arbitrary contact migration transactionally so a bad/partial migration
+ * can NEVER corrupt or strip the committed store:
+ *   1. clone the committed contacts;
+ *   2. run the migration on the CLONE (never the live store);
+ *   3. validate every candidate row (shape + safe id);
+ *   4. enforce phone-field preservation (no contact that HAD a phone may lose it);
+ *   5. checksum (candidate phone count >= committed phone count);
+ *   6. no-op detection (identical → do not rewrite);
+ *   7. commit atomically ONLY if every invariant passed.
+ * Any thrown error / failed invariant aborts and leaves the prior committed
+ * revision byte-for-byte untouched.
+ */
+export interface CloneMigrationResult {
+  committed: boolean
+  reason: 'ok' | 'no-op' | 'threw' | 'schema-invalid' | 'phone-loss'
+  beforePhones: number
+  afterPhones: number
+}
+
+function hasPhone(c: LocalFamilyContact): boolean {
+  return (c.phoneE164 ?? '').trim().length > 0 || (c.whatsappE164 ?? '').trim().length > 0
+}
+
+export function migrateContactsOnClone(
+  migrate: (clone: LocalFamilyContact[]) => LocalFamilyContact[],
+  storage: StorageLike | null = defaultStorage(),
+): CloneMigrationResult {
+  const committed = getLocalContacts(storage)
+  const beforePhones = committed.filter(hasPhone).length
+  // 1+2: deep clone, migrate on the clone (never the live store).
+  let candidate: LocalFamilyContact[]
+  try {
+    const clone = JSON.parse(JSON.stringify(committed)) as LocalFamilyContact[]
+    candidate = migrate(clone)
+  } catch {
+    return { committed: false, reason: 'threw', beforePhones, afterPhones: beforePhones }
+  }
+  // 3: schema validation — every row must be a valid contact with a safe id.
+  if (!Array.isArray(candidate) || !candidate.every((c) => isLocalFamilyContactShape(c) && isSafeContactId(c.id))) {
+    return { committed: false, reason: 'schema-invalid', beforePhones, afterPhones: beforePhones }
+  }
+  const afterPhones = candidate.filter(hasPhone).length
+  // 4: phone preservation — no contact that HAD a phone may lose it.
+  const candidateById = new Map(candidate.map((c) => [c.id, c]))
+  for (const prev of committed) {
+    if (hasPhone(prev)) {
+      const now = candidateById.get(prev.id)
+      if (!now || !hasPhone(now)) {
+        return { committed: false, reason: 'phone-loss', beforePhones, afterPhones }
+      }
+    }
+  }
+  // 5: checksum — never fewer phones than before.
+  if (afterPhones < beforePhones) {
+    return { committed: false, reason: 'phone-loss', beforePhones, afterPhones }
+  }
+  // 6: no-op — identical committed shape, do not rewrite.
+  if (JSON.stringify(committed) === JSON.stringify(candidate)) {
+    return { committed: false, reason: 'no-op', beforePhones, afterPhones }
+  }
+  // 7: commit atomically.
+  setLocalContacts(candidate, storage)
+  return { committed: true, reason: 'ok', beforePhones, afterPhones }
+}
+
 export interface MigrationResult {
   migrated: boolean
   from: number
