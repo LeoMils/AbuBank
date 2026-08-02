@@ -32,7 +32,7 @@ import {
   type LocalFamilyContact,
 } from './familyContactsStorage'
 import { validateImageFile, resizeImageToDataUrl } from '../../services/imageResize'
-import { getTraceText, clearPersistenceTrace } from '../../services/persistenceTrace'
+import { getTraceText, clearPersistenceTrace, requestPersistentStorage } from '../../services/persistenceTrace'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -115,6 +115,7 @@ function ContactEditForm({
     const errs = validateContactFields({ id, displayName: displayName || undefined, phoneE164, whatsappE164: whatsappE164 || undefined, enabled })
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
+    void requestPersistentStorage('contact-save') // gesture-time durability hint
     const contact: LocalFamilyContact = { id, enabled, phoneE164: phoneE164.trim() }
     if (whatsappE164.trim()) contact.whatsappE164 = whatsappE164.trim()
     if (photoDataUrl) contact.photoDataUrl = photoDataUrl
@@ -300,6 +301,7 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
     setPreview(previewImportContacts(draft, contacts))
   }
   function saveMerge() {
+    void requestPersistentStorage('import-merge') // gesture-time durability hint
     const p = preview ?? previewImportContacts(draft, contacts)
     if (p.parseError) { setPreview(p); return }
     for (const c of p.toSave) upsertLocalContact(c)
@@ -308,6 +310,7 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
     setPreview(null)
   }
   function replaceAll() {
+    void requestPersistentStorage('import-replace') // gesture-time durability hint
     const p = preview ?? previewImportContacts(draft, contacts)
     if (p.parseError) { setPreview(p); return }
     // Automatic backup FIRST — the current store, before it is overwritten.

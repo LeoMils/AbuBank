@@ -1,0 +1,54 @@
+{
+  "$schema": "internal://abu/evidence",
+  "build": "0.165.0-persistence-trace-rc (this commit bumps to 0.166.0)",
+  "stableOrigin": "https://abu-ela-rc.vercel.app",
+  "evidenceClasses": "CODE < MOCK < BROWSER < PREVIEW < PHYSICAL_DEVICE < PRODUCTION",
+  "claims": [
+    {
+      "claim": "Contact phones survive import -> full terminate -> reopen x5 on the same stable origin, with the Family Board Call button live and NO JSON re-import, in Chromium.",
+      "test": "e2e/persistence-lifecycle.spec.ts :: chromium persistent profile",
+      "codePath": "real deployed Contact Management import (cm-json/cm-validate/cm-merge-save) -> upsertLocalContact -> setLocalContacts -> durable.setString; startup durable.init reconcile + seedDefaultContactsIfEmpty + migrateContactPhotos; getLocalContacts -> contactsToPersonFaces -> Board chip-call",
+      "mode": "chromium.launchPersistentContext (real on-disk IndexedDB+localStorage), providers live",
+      "browser": "Chromium persistent profile, viewport 390x844",
+      "build": "0.165.0",
+      "result": "PASS (boot1 call-ready=3; reopen 1..5 board-actionable=true call-ready=3)",
+      "limitation": "PREVIEW class. Graceful ctx.close() (not a hard process kill). Not iOS."
+    },
+    {
+      "claim": "Same lifecycle also persists under the WebKit engine (closest automatable proxy to iOS Safari).",
+      "test": "e2e/persistence-lifecycle.spec.ts :: webkit persistent profile",
+      "codePath": "identical to above via the real deployed UI",
+      "mode": "webkit.launchPersistentContext",
+      "browser": "Playwright WebKit 26.5 persistent profile",
+      "build": "0.165.0",
+      "result": "PASS (boot1 call-ready=3; reopen 1..5 board-actionable=true call-ready=3)",
+      "limitation": "Desktop WebKit != iOS WebKit; does NOT reproduce iOS ITP eviction or standalone-PWA storage partitioning."
+    },
+    {
+      "claim": "The privacy-safe boot trace records counts only (never a name/number) and locates any phoneCount N->0.",
+      "test": "src/services/persistenceTrace.test.ts (4/4), e2e/persistence-trace.spec.ts",
+      "codePath": "persistenceTrace.ts stages: env, boot-start, reconcile(WON=), post-init, post-seed-migrate, persist-request, wa-read",
+      "mode": "node + browser",
+      "build": "0.165.0",
+      "result": "PASS; trace leaks no phone-like token",
+      "limitation": "CODE+BROWSER. Device trace not yet captured."
+    },
+    {
+      "claim": "Durable init makes present+valid localStorage authoritative and only recovers an evicted/corrupt key from IndexedDB (no clobber of fresh import).",
+      "test": "src/services/durableStore.test.ts (15/15)",
+      "codePath": "DurableStore.init reconcile",
+      "mode": "node (localStorage mock + MemoryBackend)",
+      "build": "0.164.0+",
+      "result": "PASS",
+      "limitation": "CODE. Proven again at PREVIEW by the persistent-profile lab."
+    }
+  ],
+  "openReleaseBlockers": [
+    "Harness 12-defect certification not yet codified (Gate 1).",
+    "Exact device N->0 transition not reproduced in-engine; residual is iOS storage-partition/eviction (needs 1 device trace capture).",
+    "Hard-process-kill kill-points (Gate 5 D1) pending.",
+    "Injected SpeechRecognition through deployed UI (Gate 6) pending.",
+    "Obscured-button (elementFromPoint) reachability (Gate 7) pending."
+  ],
+  "verdict": "NOT READY — automatable blockers remain; see openReleaseBlockers."
+}

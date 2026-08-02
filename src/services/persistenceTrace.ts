@@ -141,6 +141,63 @@ export function initPersistenceTrace(): void {
   // boot-start: the localStorage contacts snapshot the instant we launch.
   const ls = countContactsPhones(safeLSGet(CONTACTS_KEY))
   push({ stage: 'boot-start', lsContacts: ls.contacts, lsPhones: ls.phones })
+
+  // Environment fingerprint (privacy-safe): the leading device hypothesis is a
+  // standalone-PWA-vs-Safari-tab storage partition on iOS. Capturing display
+  // mode + storage-persistence lets the device trace confirm/deny it in ONE
+  // capture. Async (storage.persisted() is a promise); appended when it resolves.
+  void captureEnvironment()
+}
+
+/** Privacy-safe environment fingerprint — display mode, standalone flag, and
+ *  storage-persistence status. No contact data. */
+async function captureEnvironment(): Promise<void> {
+  try {
+    let displayMode = 'browser'
+    try {
+      if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+        for (const m of ['standalone', 'minimal-ui', 'fullscreen', 'window-controls-overlay']) {
+          if (window.matchMedia(`(display-mode: ${m})`).matches) { displayMode = m; break }
+        }
+      }
+    } catch { /* ignore */ }
+    // iOS Safari exposes navigator.standalone for home-screen PWAs.
+    let iosStandalone: boolean | undefined
+    try { iosStandalone = (navigator as unknown as { standalone?: boolean }).standalone } catch { /* ignore */ }
+    let persisted: string = '?'
+    try {
+      const sm = (navigator as unknown as { storage?: { persisted?: () => Promise<boolean> } }).storage
+      if (sm?.persisted) persisted = String(await sm.persisted())
+    } catch { /* ignore */ }
+    let usage = ''
+    try {
+      const sm = (navigator as unknown as { storage?: { estimate?: () => Promise<{ usage?: number; quota?: number }> } }).storage
+      if (sm?.estimate) {
+        const est = await sm.estimate()
+        const mb = (n?: number) => (typeof n === 'number' ? Math.round(n / 1048576) : '?')
+        usage = `usage=${mb(est.usage)}MB quota=${mb(est.quota)}MB`
+      }
+    } catch { /* ignore */ }
+    push({ stage: 'env', note: `display=${displayMode} iosStandalone=${String(iosStandalone)} persisted=${persisted} ${usage}`.trim() })
+  } catch { /* env capture must never break boot */ }
+}
+
+/**
+ * Request durable storage from an OPERATOR GESTURE (import/save). Persistent
+ * storage is only granted from a user gesture and reduces (does not eliminate)
+ * eviction. Records the outcome. Safe: does NOT change the storage authority or
+ * reconcile policy — it is a durability hint.
+ */
+export async function requestPersistentStorage(reason: string): Promise<boolean | null> {
+  try {
+    const sm = (navigator as unknown as { storage?: { persist?: () => Promise<boolean>; persisted?: () => Promise<boolean> } }).storage
+    if (!sm?.persist) { push({ stage: 'persist-request', note: `${reason} unsupported` }); return null }
+    let already = false
+    try { already = !!(sm.persisted && await sm.persisted()) } catch { /* ignore */ }
+    const granted = already ? true : await sm.persist()
+    push({ stage: 'persist-request', note: `${reason} granted=${String(granted)} already=${String(already)}` })
+    return granted
+  } catch { push({ stage: 'persist-request', note: `${reason} error` }); return null }
 }
 
 /**

@@ -1,0 +1,40 @@
+{
+  "$schema": "internal://abu/qa-ownership",
+  "purpose": "Classify every acceptance item as CLAUDE_MUST_PROVE (automatable) or PHYSICAL_IPHONE_ONLY (genuinely device-only, with a written reason). Leo is asked to test ONLY PHYSICAL_IPHONE_ONLY items.",
+  "stableOrigin": "https://abu-ela-rc.vercel.app",
+  "updated": "2026-08-03",
+  "CLAUDE_MUST_PROVE": [
+    { "item": "JSON import validation", "harness": "unit importContactsJSON/previewImportContacts + e2e contact-management", "status": "PROVEN_CODE" },
+    { "item": "Contact persistence across terminate/reopen (same origin)", "harness": "e2e/persistence-lifecycle.spec.ts (Chromium + WebKit persistent profile, real deployed UI)", "status": "PROVEN_PREVIEW_2_ENGINES" },
+    { "item": "Immediate terminate/reopen", "harness": "persistence-lifecycle: ctx.close() then relaunch same userDataDir", "status": "PROVEN_PREVIEW" },
+    { "item": "Repeated reopen (x5)", "harness": "persistence-lifecycle reopen loop", "status": "PROVEN_PREVIEW" },
+    { "item": "RC upgrade on stable hostname (A->B->C)", "harness": "persistence-lifecycle across redeploys (planned: same profile across build bumps)", "status": "PARTIAL_reopen_proven_build_bump_pending" },
+    { "item": "Resolver freshness (no re-import)", "harness": "persistence-lifecycle reads contacts-receipt call-ready after reopen", "status": "PROVEN_PREVIEW" },
+    { "item": "Board freshness (no re-import)", "harness": "persistence-lifecycle boardContactActionable(chip-call) after reopen", "status": "PROVEN_PREVIEW" },
+    { "item": "Typed Call/WhatsApp routing", "harness": "e2e comm-real-provider + comm-call-visibility (deployed UI)", "status": "PROVEN_PREVIEW_prior_session" },
+    { "item": "Recipient typos and ambiguity", "harness": "communicationMultiTurn.test + planned deployed-UI variants (Gate 6)", "status": "PROVEN_CODE_deployed_pending" },
+    { "item": "General-chat denial prevention", "harness": "communicationMultiTurn + comm-call-visibility (B)", "status": "PROVEN_CODE_PREVIEW" },
+    { "item": "Calendar theft prevention", "harness": "communicationMultiTurn EXACT real-device conversation", "status": "PROVEN_CODE" },
+    { "item": "Action card creation", "harness": "e2e comm-call-visibility communication-action-card", "status": "PROVEN_PREVIEW" },
+    { "item": "Action button visibility/reachability", "harness": "comm-call-visibility multi-viewport bbox-in-viewport (Gate 7 to add elementFromPoint not-obscured)", "status": "PROVEN_PREVIEW_geometry_enrich_pending" },
+    { "item": "Product Truth accuracy", "harness": "productTruth tests", "status": "PROVEN_CODE_prior" },
+    { "item": "Real-provider behavior", "harness": "e2e comm-real-provider (real gpt-4o proxy)", "status": "PROVEN_PREVIEW_prior" },
+    { "item": "Provider-blocked behavior", "harness": "comm-call-visibility routes abort providers -> deterministic engine", "status": "PROVEN_PREVIEW" },
+    { "item": "Injected SpeechRecognition transcripts", "harness": "Gate 6 injected Web Speech (planned this mission)", "status": "PENDING" },
+    { "item": "Long transcript accumulation / early onend / duplicate / interim", "harness": "Gate 6 injected voice variants (planned)", "status": "PENDING" },
+    { "item": "Mobile viewport layout / enlarged text", "harness": "comm-call-visibility 3 viewports (Gate 7 enlarge text add)", "status": "PARTIAL" },
+    { "item": "Naming consistency (Abu WhatsApp)", "harness": "version/source-grep tests + e2e", "status": "PROVEN_CODE" },
+    { "item": "Error handling / honest storage errors", "harness": "Gate 8 storage-health classification (persistenceTrace env + persist-request added)", "status": "PARTIAL_diagnostics_added" },
+    { "item": "No-op JSON re-import", "harness": "previewImportContacts unchanged path + e2e (Gate 4 D7)", "status": "PROVEN_CODE" },
+    { "item": "Backup/export integrity", "harness": "exportContactsJSON tests", "status": "PROVEN_CODE" },
+    { "item": "Privacy checks", "harness": "phonePrivacy scan + trace-is-counts-only assertions", "status": "PROVEN_CODE (phonePrivacy pre-existing flake unrelated)" }
+  ],
+  "PHYSICAL_IPHONE_ONLY": [
+    { "item": "Real microphone acoustics", "reason": "No automation can produce real acoustic capture through the device mic." },
+    { "item": "True iOS Safari SpeechRecognition behavior not reproducible by event injection", "reason": "iOS webkitSpeechRecognition timing/endpointing is a native black box; injection covers the app's handling but not the recognizer itself." },
+    { "item": "Real WhatsApp application handoff", "reason": "Opening the installed WhatsApp app from wa.me/whatsapp: is an OS-level app switch; automation can only assert the URL/intent, not the app opening." },
+    { "item": "Real iOS dialer handoff", "reason": "tel: opening the native dialer is an OS-level action; automation asserts the tel: URL only." },
+    { "item": "Subjective physical-device feel", "reason": "Human judgement of readability/warmth/latency on the actual screen." },
+    { "item": "iOS standalone-PWA vs Safari-tab storage PARTITION confirmation", "reason": "Desktop Chromium AND WebKit persistent profiles both persist correctly (proven); iOS-specific storage jar partitioning between the home-screen PWA and the Safari tab cannot be reproduced off-device. The enriched trace (display-mode/standalone/persisted) makes this a ONE-capture confirmation, not open-ended QA. This is the ONLY remaining persistence unknown." }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "mission": "CLAUDE CODE OWNS ALL AUTOMATABLE QA — end Leo-as-QA for automatable failures.",
+  "stableOrigin": "https://abu-ela-rc.vercel.app",
+  "branch": "rc5/cognitive-architecture-and-acceptance",
+  "doNot": ["merge main", "deploy production", "add another comm classifier", "add second full-data mirror without proof", "change storage policy before the device N->0 transition is proven", "hand automatable QA to Leo"],
+  "gates": {
+    "GATE_0_baseline_safety": {
+      "status": "DONE",
+      "buildId": "0.165.0-persistence-trace-rc",
+      "testedCommit": "pending-this-commit",
+      "remotePushed": true,
+      "rollbackCommit": "de00f27 (0.164.0) / dae079b (0.163.0)",
+      "artifacts": ["mission.json", "qa-ownership.json", "evidence.json"]
+    },
+    "GATE_1_certify_harness": {
+      "status": "PARTIAL",
+      "note": "Persistent-profile lab uses REAL deployed UI + real storage adapters + real startup (no direct storage mutation). 12-defect injection matrix still to be codified as explicit red tests.",
+      "twelveDefects": "pending explicit injection suite"
+    },
+    "GATE_2_persistence_root_cause": {
+      "status": "REPRODUCTION_ATTEMPTED_NOT_REPRODUCED_IN_ENGINE",
+      "finding": "Persistent Chromium AND WebKit profiles keep phones across import->terminate->reopen x5 on the real deployed origin, with the Family Board Call button live and NO re-import. The app storage code does not lose data on reopen in either engine.",
+      "traceAtBoot1": "boot-start ls[c=0 p=0] -> reconcile WON=none -> post-seed-migrate seeded=true c=14 p=0 -> import -> call-ready=3 -> reopens hold at 3",
+      "residualHypothesis": "iOS standalone-PWA vs Safari-tab storage partition, or ITP eviction. Enriched trace (display/standalone/persisted) added for a one-capture device confirmation.",
+      "policyChange": "NONE (mission rule: no storage-policy change until the exact transition is proven)."
+    },
+    "GATE_3_one_transactional_authority": { "status": "PENDING", "note": "Await device transition proof before restructuring to IndexedDB-sole authority; current two-mirror+reconcile is proven durable in-engine." },
+    "GATE_4_durability_laws": { "status": "PENDING", "note": "D1-D12 to be encoded as executable laws + negation tests." },
+    "GATE_5_crash_upgrade_lab": { "status": "PARTIAL", "done": ["graceful terminate/reopen x5, 2 engines"], "pending": ["hard-process-kill kill-points", "A->B->C build bump on same profile", "service-worker activation kill-point"] },
+    "GATE_6_communication_qa": { "status": "PARTIAL", "done": ["prior deployed real-provider replay + call-visibility"], "pending": ["injected SpeechRecognition variants through deployed UI", "full recipient/voice variant matrix"] },
+    "GATE_7_action_ui_mobile": { "status": "PARTIAL", "done": ["3-viewport bbox-in-viewport"], "pending": ["elementFromPoint not-obscured", "enlarged text", "keyboard/composer present"] },
+    "GATE_8_storage_health": { "status": "PARTIAL", "done": ["persistenceTrace env (display/standalone/persisted/usage) + persist-request on gesture"], "pending": ["explicit error taxonomy surfacing"] },
+    "GATE_9_red_team_loops": { "status": "PENDING" },
+    "GATE_10_proof_carrying_handoff": { "status": "IN_PROGRESS", "file": "evidence.json" }
+  },
+  "nextExecutableAction": "Add hard-process-kill kill-points to the persistent-profile lab (Gate 5 D1) and codify the 12-defect harness certification (Gate 1); then Gate 6 injected-SpeechRecognition through the deployed UI.",
+  "verdict": "NOT READY — automatable gates 1,4,5(hard-kill),6(injected voice),7(obscured),9 still open; residual device-only item is the iOS storage-partition confirmation."
+}
