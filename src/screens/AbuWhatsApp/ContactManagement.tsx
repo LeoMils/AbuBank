@@ -450,10 +450,18 @@ export function ContactManagement() {
         // origin with fresh storage; use a stable URL / the PWA to persist).
         const r = contactsReceipt()
         return (
-          <div data-testid="contacts-receipt" style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', fontFamily: "ui-monospace,Menlo,monospace", direction: 'ltr', textAlign: 'left', padding: '6px 8px', borderRadius: 8, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.10)', lineHeight: 1.7 }}>
-            contacts:{r.contactCount} · call-ready:{r.actionableCall} · wa-ready:{r.actionableWhatsApp}
-            <br />source:{r.storageSource} · hydrated:{String(r.hydrated)} · snapshot:v{r.snapshotVersion}
-          </div>
+          <>
+            <div data-testid="contacts-receipt" data-canonical={String(r.isCanonical)} style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', fontFamily: "ui-monospace,Menlo,monospace", direction: 'ltr', textAlign: 'left', padding: '6px 8px', borderRadius: 8, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.10)', lineHeight: 1.7 }}>
+              contacts:{r.contactCount} · call-ready:{r.actionableCall} · wa-ready:{r.actionableWhatsApp}
+              <br />source:{r.storageSource} · hydrated:{String(r.hydrated)} · snapshot:v{r.snapshotVersion}
+              <br />origin:{r.origin} · canonical:{String(r.isCanonical)}
+            </div>
+            {!r.isCanonical && (
+              <div data-testid="noncanonical-origin-warning" style={{ fontSize: 13, color: '#ffd7a8', fontFamily: "'Heebo',sans-serif", direction: 'rtl', padding: '8px 10px', borderRadius: 8, background: 'rgba(180,120,20,0.14)', border: '1px solid rgba(201,168,76,0.4)', lineHeight: 1.6, marginTop: 6 }}>
+                ⚠️ זו אינה כתובת ה‑RC הקבועה. אנשי הקשר נשמרים בנפרד בכל כתובת. לשימוש קבוע פתחי את <b>abu-ela-rc.vercel.app</b>.
+              </div>
+            )}
+          </>
         )
       })()}
       <div style={{ display: 'flex', gap: 8 }}>

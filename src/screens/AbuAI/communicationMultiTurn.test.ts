@@ -33,6 +33,21 @@ describe('communication ownership — single utterance', () => {
     expect(d.whatsapp?.command?.intent ?? '').toMatch(/שניצל/)
     expect(d.whatsapp?.command?.intent ?? '').toMatch(/בערב/)
   })
+
+  // STT-distorted recipient names (Leo heard as לאה/ליאור/ליאו/לאות/ללאו) — an
+  // explicit send/call must stay communication regardless of the distortion.
+  it('every STT-distorted recipient stays a communication turn (never general)', () => {
+    for (const name of ['ללאו', 'לליאו', 'לליאור', 'ללאה', 'ללאות']) {
+      const d = run(IDLE_RUNTIME, `תשלחי הודעה ${name} שיביא שניצלים`)
+      expect(d.intent, `send to "${name}"`).toBe('whatsapp')
+      expect(d.whatsapp?.kind).toBe('compose')
+    }
+    for (const name of ['ללאו', 'לליאו', 'ללאה']) {
+      const d = run(IDLE_RUNTIME, `תתקשרי ${name}`)
+      expect(d.intent, `call "${name}"`).toBe('whatsapp')
+      expect(d.whatsapp?.kind).toBe('call')
+    }
+  })
   it('"תשלח וואטסאפ ללאו שיביא היום בערב יין" is a message that keeps its facts', () => {
     const d = run(IDLE_RUNTIME, 'תשלח וואטסאפ ללאו שיביא היום בערב יין לארוחת ערב')
     expect(d.intent).toBe('whatsapp')

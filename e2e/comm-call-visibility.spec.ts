@@ -10,7 +10,7 @@ import { test, expect, type Page } from '@playwright/test'
 // Physical iPhone viewport (from the device screenshot).
 const VW = 390, VH = 844
 
-async function seedAndOpenAbuAI(page: Page) {
+async function seedAndOpenAbuAI(page: Page, vw = VW, vh = VH) {
   await page.addInitScript(() => {
     try {
       localStorage.setItem('abubank.familyContacts.v1', JSON.stringify({
@@ -22,10 +22,28 @@ async function seedAndOpenAbuAI(page: Page) {
   await page.route(/\/api\/abuai-chat/, (r) => r.abort())
   await page.route(/generativelanguage\.googleapis\.com/, (r) => r.abort())
   await page.route(/api\.groq\.com/, (r) => r.abort())
-  await page.setViewportSize({ width: VW, height: VH })
+  await page.setViewportSize({ width: vw, height: vh })
   await page.goto('/', { waitUntil: 'networkidle', timeout: 30_000 })
   await page.locator('text=Abu AI').first().click()
   await page.locator('textarea[placeholder]').first().waitFor({ state: 'visible', timeout: 10_000 })
+}
+
+// The primary action button must be inside the usable viewport, enabled, and a
+// large tap target — across the range of real iPhone sizes.
+for (const vp of [{ w: 390, h: 844, name: 'iPhone 13' }, { w: 375, h: 667, name: 'iPhone SE' }, { w: 430, h: 932, name: 'iPhone 15 Pro Max' }]) {
+  test(`(C multi-viewport) Call button reachable at ${vp.name} ${vp.w}x${vp.h}`, async ({ page }) => {
+    await seedAndOpenAbuAI(page, vp.w, vp.h)
+    const ta = page.locator('textarea[placeholder]').first()
+    await ta.fill('תתקשרי למור'); await ta.press('Enter')
+    const btn = page.getByTestId('communication-primary-action')
+    await btn.waitFor({ state: 'visible', timeout: 20_000 })
+    await expect(btn).toBeEnabled()
+    const box = await btn.boundingBox()
+    expect(box, `${vp.name}: layout box`).not.toBeNull()
+    expect(box!.y, `${vp.name}: top edge on-screen`).toBeGreaterThanOrEqual(0)
+    expect(box!.y + box!.height, `${vp.name}: bottom edge on-screen`).toBeLessThanOrEqual(vp.h)
+    expect(box!.height, `${vp.name}: >=44px`).toBeGreaterThanOrEqual(44)
+  })
 }
 
 test('(C) a call handoff renders a Call button INSIDE the iPhone viewport, enabled', async ({ page }) => {

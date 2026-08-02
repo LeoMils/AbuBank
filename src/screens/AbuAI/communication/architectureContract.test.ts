@@ -14,6 +14,7 @@ const cognitive = read('src/screens/AbuAI/cognitiveRuntime.ts')
 const voiceCompose = read('src/screens/AbuWhatsApp/VoiceCompose.tsx')
 const capability = read('src/screens/AbuAI/communication/capability.ts')
 const engine = read('src/screens/AbuAI/communication/engine.ts')
+const fullTurn = read('src/screens/AbuAI/runtimeFullTurn.ts')
 
 describe('single Communication owner — cognitiveRuntime delegates to the engine', () => {
   it('imports and calls reduceGoal', () => {
@@ -50,6 +51,16 @@ describe('single response-truth source', () => {
   it('the response-truth policy + anti-contradiction gate live in ONE module', () => {
     expect(engine.includes('export function renderResponse')).toBe(true)
     expect(engine.includes('export function validateResponse')).toBe(true)
+  })
+})
+
+describe('no LLM / general-chat bypass for an explicit Communication turn', () => {
+  it('runtimeFullTurn reaches the LLM ONLY when there is no whatsapp decision', () => {
+    // The general-chat / LLM branch is guarded by `!decision.whatsapp`, so a
+    // communication turn (which sets decision.whatsapp) can NEVER produce an
+    // LLM capability-denial ("אני לא יכולה לשלוח/להתקשר").
+    expect(/!decision\.whatsapp/.test(fullTurn)).toBe(true)
+    expect(/decision\.whatsapp[\s\S]{0,400}buildCommunicationAction/.test(fullTurn)).toBe(true)
   })
 })
 

@@ -245,6 +245,10 @@ export function getLocalContacts(storage: StorageLike | null = defaultStorage())
  * store the recipient resolver reads (getLocalContacts), so it reflects exactly
  * what Communication sees at this moment.
  */
+/** The one canonical operator origin whose browser storage persists across RC
+ *  updates (each other *.vercel.app Preview URL is a SEPARATE storage origin). */
+export const CANONICAL_RC_ORIGIN = 'abu-ela-rc.vercel.app'
+
 export interface ContactsReceipt {
   contactCount: number
   actionableCall: number       // enabled AND a valid phone (tel: handoff possible)
@@ -253,6 +257,8 @@ export interface ContactsReceipt {
   hydrated: boolean            // durable backend finished init()
   snapshotVersion: number      // bumps on every store mutation this session
   lastUpdateAt: number | null  // ms epoch of the last mutation, or null
+  origin: string               // current host (not private)
+  isCanonical: boolean         // true only on the stable RC origin
 }
 
 export function contactsReceipt(storage: StorageLike | null = defaultStorage()): ContactsReceipt {
@@ -267,6 +273,8 @@ export function contactsReceipt(storage: StorageLike | null = defaultStorage()):
   }
   let hydrated = false
   try { hydrated = durable.isReady() } catch { hydrated = false }
+  let origin = 'unknown'
+  try { if (typeof window !== 'undefined' && window.location) origin = window.location.hostname } catch { /* SSR/test */ }
   return {
     contactCount: contacts.length,
     actionableCall: contacts.filter((c) => c.enabled && validPhone(c)).length,
@@ -275,6 +283,8 @@ export function contactsReceipt(storage: StorageLike | null = defaultStorage()):
     hydrated,
     snapshotVersion: contactsSnapshotVersion,
     lastUpdateAt: contactsLastUpdateAt,
+    origin,
+    isCanonical: origin === CANONICAL_RC_ORIGIN,
   }
 }
 
