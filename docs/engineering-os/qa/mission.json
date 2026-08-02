@@ -2,37 +2,34 @@
   "mission": "CLAUDE CODE OWNS ALL AUTOMATABLE QA — end Leo-as-QA for automatable failures.",
   "stableOrigin": "https://abu-ela-rc.vercel.app",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "build": "0.167.0-durability-laws-and-gate-suites-rc",
+  "build": "0.168.0-storage-taxonomy-clone-migrate-genome-rc",
+  "testedCommit": "e32dfdf (+ this artifact commit)",
   "doNot": ["merge main", "deploy production", "add another comm classifier", "add second full-data mirror without proof", "change storage policy before the device N->0 transition is proven", "hand automatable QA to Leo"],
   "gates": {
-    "GATE_0_baseline_safety": { "status": "DONE", "remotePushed": true, "artifacts": ["mission.json", "qa-ownership.json", "evidence.json"] },
-    "GATE_1_certify_harness": {
-      "status": "SUBSTANTIALLY_DONE",
-      "twelveDefects": {
-        "1_success_before_durable": "durableCommitContract.test.ts (D11) — race observable before flush, closed after; FIX shipped (await flush before success)",
-        "2_stale_overwrites_current": "durableStore.test.ts — localStorage-wins reconcile; clobber test red on mutant",
-        "3_seed_overwrites_phones": "durabilityLaws D3 mutant",
-        "4_migration_strips_phones": "durabilityLaws D6 mutant",
-        "5_resolver_stale_snapshot": "durabilityLaws D9 (getLocalContacts fresh)",
-        "6_board_stale_snapshot": "durabilityLaws D9 stale-Board mutant",
-        "7_whatsapp_to_general": "communicationMultiTurn.test.ts + comm-call-visibility (B)",
-        "8_call_denial": "communicationMultiTurn STT-variants + comm-call-visibility",
-        "9_button_outside_viewport": "action-reachability.spec.ts (elementFromPoint + bbox)",
-        "10_prose_contradicts_status": "engine validateResponse tests",
-        "11_webspeech_loses_second_half": "injectedVoiceParity early-onend/no-dup",
-        "12_stale_cached_build": "version contract (version.test.ts) + health fingerprint"
-      }
-    },
-    "GATE_2_persistence_root_cause": { "status": "REPRODUCTION_NOT_REPRODUCED_IN_ENGINE", "finding": "2-engine persistent-profile lab keeps phones across terminate/reopen x5; residual is iOS storage partition/eviction; enriched trace ships for a 1-capture device confirmation." },
-    "GATE_3_one_transactional_authority": { "status": "DEFERRED_BY_RULE", "note": "No storage-policy change until the device transition is proven. D11 hardening (await commit before success) shipped without changing the authority model." },
-    "GATE_4_durability_laws": { "status": "DONE_CORE", "encoded": ["D3", "D4", "D6", "D7", "D8", "D9", "D10", "D11"], "viaLab": ["D1", "D2 (graceful)"], "pending": ["D5 migrate-on-clone-atomic", "D12 error-taxonomy surfacing"] },
-    "GATE_5_crash_upgrade_lab": { "status": "PARTIAL", "done": ["graceful terminate/reopen x5 (2 engines)", "D11 delayed-backend hard-kill equivalent"], "pending": ["true SIGKILL (Playwright API-limited in this version)", "real A->B->C multi-deploy on one profile"] },
-    "GATE_6_communication_qa": { "status": "DONE_CORE", "done": ["injected-voice->typed parity", "dictation event variants", "prior real-provider replay + call-visibility"], "pending": ["full recipient matrix through deployed UI (covered at controller level)"] },
-    "GATE_7_action_ui_mobile": { "status": "DONE_CORE", "done": ["elementFromPoint not-obscured + in-viewport + >=44px @ 3 viewports + composer-focused"], "pending": ["enlarged-text emulation"] },
-    "GATE_8_storage_health": { "status": "PARTIAL", "done": ["env fingerprint (display/standalone/persisted/usage)", "persist-request on gesture"], "pending": ["surface the 9-code error taxonomy in UI"] },
-    "GATE_9_red_team_loops": { "status": "ONE_PASS_DONE", "found": ["self-inflicted phonePrivacy regression (FIXED)", "D11 fire-and-forget gap (FIXED)"] },
-    "GATE_10_proof_carrying_handoff": { "status": "UPDATED", "file": "evidence.json" }
+    "GATE_0_baseline_safety": { "status": "DONE" },
+    "GATE_1_certify_harness": { "status": "SUBSTANTIALLY_DONE", "note": "12-defect->test mapping in mission (session 43) + mutationCertification in meta-qa.json." },
+    "GATE_2_persistence_root_cause": { "status": "REPRODUCTION_NOT_REPRODUCED_IN_ENGINE", "finding": "2-engine persistent-profile lab keeps phones; residual is iOS storage partition/eviction (device-only)." },
+    "GATE_3_one_transactional_authority": { "status": "DEFERRED_BY_RULE", "note": "No policy change until the device transition is proven; D11 + D5 harden without changing the authority model." },
+    "GATE_4_durability_laws": { "status": "DONE_CORE", "encoded": ["D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11"], "viaLab": ["D1", "D2 graceful"], "pending": ["D12 error-taxonomy is now surfaced (Gate 8)"] },
+    "GATE_5_crash_upgrade_lab": { "status": "PARTIAL", "done": ["graceful terminate/reopen x5 (2 engines)", "D11 delayed-backend hard-kill equivalent"], "pending": ["real A->B->C multi-deploy on one profile", "service-worker activation kill-point"] },
+    "GATE_6_communication_qa": { "status": "DONE_CORE", "pending": ["real-provider malformed/timeout matrix through deployed UI", "full recipient matrix through deployed UI"] },
+    "GATE_7_action_ui_mobile": { "status": "DONE_CORE", "pending": ["enlarged-text reachability", "focused-contact asset-variant matrix"] },
+    "GATE_8_storage_health": { "status": "DONE", "done": ["9-code taxonomy classifier + tests", "honest Board + operator messages (never 'not configured' for a failure)", "high-water + in-flight + user-deletion markers"], "limitation": "iOS partition/total-eviction removes the marker too -> that case stays device-only." },
+    "GATE_9_red_team_loops": { "status": "TWO_PASSES", "found": ["phonePrivacy self-regression (FIXED)", "D11 fire-and-forget (FIXED)"], "metaQa": "blind-spot + assumption registers, mutation certification, test-path authenticity, QA-system fault-injection, coverage matrix -> meta-qa.json" },
+    "GATE_10_proof_carrying_handoff": { "status": "UPDATED", "files": ["evidence.json", "failure-genome.json", "meta-qa.json"], "pending": ["release-controller script to automate the fault-injection detections (unpushed/skipped-suite/falsified-evidence)"] }
   },
-  "nextExecutableAction": "Gate 8 error-taxonomy surfacing + Gate 4 D5 (migrate-on-clone atomic) + Gate 5 real A->B->C multi-deploy; a second red-team pass.",
-  "verdict": "NOT READY — automatable residue (Gate 8 taxonomy UI, D5, A->B->C multi-deploy) + the single device-only iOS storage-partition confirmation. Blocking-invariant hardening (D11) is shipped; 2-engine persistence proven."
+  "failureGenome": "docs/engineering-os/qa/failure-genome.json — 20 automatable failures, each with regression + mutation proof + deployed replay.",
+  "metaQa": "docs/engineering-os/qa/meta-qa.json",
+  "nextExecutableAction": "Real A->B->C multi-deploy lab (Gate 5) + real-provider comms matrix through deployed UI (Gate 6/7) + enlarged-text reachability (Gate 7) + release-controller script (Gate 10).",
+  "goals": {
+    "leo_not_automatable_qa": "PARTIAL — persistence, routing, reachability, taxonomy, migration all automated; A->B->C + comms matrix remain.",
+    "contacts_persist_no_reimport": "PROVEN AUTOMATICALLY (2 engines) + PHYSICAL CONFIRMATION ONLY for iOS partition.",
+    "communication_typed_voice_coherent": "PROVEN AUTOMATICALLY (controller + injected voice parity); deployed real-provider matrix PARTIAL.",
+    "provider_cannot_contradict_capability": "PROVEN AUTOMATICALLY (validateResponse) + PREVIEW (comm-real-provider); malformed/timeout PARTIAL.",
+    "action_ui_reachable": "PROVEN AUTOMATICALLY (elementFromPoint, 3 viewports); enlarged-text PARTIAL.",
+    "historical_bugs_cannot_escape": "PARTIAL — genome + mutation certification in place; release-controller enforcement pending.",
+    "stable_rc_reproducible": "PROVEN (fingerprint == tested commit, stable alias).",
+    "only_genuine_iphone_checks_remain": "NOT YET — automatable residue above."
+  },
+  "verdict": "NOT READY — automatable blockers: real A->B->C multi-deploy + SW activation (Gate 5); real-provider malformed/timeout + full comms matrix through deployed UI (Gate 6/7); enlarged-text reachability (Gate 7); release-controller enforcement script (Gate 10). Device-only residual: iOS storage-partition confirmation."
 }
