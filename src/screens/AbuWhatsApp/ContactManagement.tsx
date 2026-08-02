@@ -32,6 +32,7 @@ import {
   type LocalFamilyContact,
 } from './familyContactsStorage'
 import { validateImageFile, resizeImageToDataUrl } from '../../services/imageResize'
+import { getTraceText, clearPersistenceTrace } from '../../services/persistenceTrace'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -464,6 +465,7 @@ export function ContactManagement() {
           </>
         )
       })()}
+      <PersistenceTracePanel />
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" data-testid="cm-tab-simple" onClick={() => setMode('simple')} style={{ ...btn(TEAL, mode === 'simple'), flex: 1 }}>טופס פשוט</button>
         <button type="button" data-testid="cm-tab-advanced" onClick={() => setMode('advanced')} style={{ ...btn(GOLD, mode === 'advanced'), flex: 1 }}>מתקדם — JSON</button>
@@ -478,6 +480,53 @@ export function ContactManagement() {
 const rowBox: React.CSSProperties = {
   borderRadius: 12, padding: '12px 14px',
   background: 'rgba(8,16,28,0.6)', border: '1px solid rgba(20,184,166,0.18)',
+}
+
+/**
+ * Persistence trace panel (operator diagnostic). Renders the privacy-safe boot
+ * trace (counts only) that persists across a reopen, so the "phones vanish on
+ * reopen" failure is copyable WITHOUT re-importing and WITHOUT exposing any
+ * name/number. Read-only textarea + Copy + Refresh + Clear.
+ */
+function PersistenceTracePanel(): React.JSX.Element {
+  const [text, setText] = useState<string>(() => getTraceText())
+  const [copied, setCopied] = useState(false)
+  const reload = () => setText(getTraceText())
+  useEffect(() => {
+    reload()
+    const onUpd = () => reload()
+    window.addEventListener(CONTACTS_UPDATED_EVENT, onUpd)
+    return () => window.removeEventListener(CONTACTS_UPDATED_EVENT, onUpd)
+  }, [])
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500) }
+    catch { /* clipboard blocked — the textarea is selectable as a fallback */ }
+  }
+  return (
+    <div data-testid="persistence-trace" style={{ display: 'flex', flexDirection: 'column', gap: 6, direction: 'rtl' }}>
+      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: "'Heebo',sans-serif" }}>
+        עקבות אחסון (אבחון — ספירות בלבד, ללא שמות/מספרים)
+      </div>
+      <textarea
+        data-testid="persistence-trace-text" readOnly value={text}
+        onFocus={(e) => e.currentTarget.select()}
+        style={{
+          width: '100%', minHeight: 150, resize: 'vertical', boxSizing: 'border-box',
+          fontSize: 11, lineHeight: 1.5, fontFamily: 'ui-monospace,Menlo,monospace',
+          direction: 'ltr', textAlign: 'left', color: 'rgba(220,255,245,0.9)',
+          background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 8, padding: '8px 10px', whiteSpace: 'pre',
+        }}
+      />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="button" data-testid="persistence-trace-copy" onClick={copy} style={{ ...btn(TEAL), flex: 1 }}>
+          {copied ? '✓ הועתק' : 'העתקת עקבות'}
+        </button>
+        <button type="button" data-testid="persistence-trace-refresh" onClick={reload} style={{ ...btn(GOLD), flex: 1 }}>רענון</button>
+        <button type="button" data-testid="persistence-trace-clear" onClick={() => { clearPersistenceTrace(); reload() }} style={{ ...btn(RED), flex: 1 }}>ניקוי</button>
+      </div>
+    </div>
+  )
 }
 
 function iconBtn(color: string): React.CSSProperties {

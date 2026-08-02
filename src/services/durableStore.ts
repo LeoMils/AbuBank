@@ -109,6 +109,25 @@ function isParseableJSON(s: string): boolean {
   try { JSON.parse(s); return true } catch { return false }
 }
 
+/**
+ * Reconcile observer — lets an external tracer (persistenceTrace) see, per key,
+ * exactly what localStorage vs the IndexedDB backend held at init and which copy
+ * won. Kept as a registered callback (not an import) so durableStore has NO
+ * dependency on the tracer and there is no import cycle. Privacy: only raw
+ * key/value strings are passed; the tracer reduces them to counts and stores
+ * nothing sensitive.
+ */
+export interface ReconcileInfo {
+  key: string
+  lsValue: string | null
+  backendValue: string | undefined
+  winner: 'localStorage' | 'backend-recover' | 'none'
+}
+let reconcileObserver: ((info: ReconcileInfo) => void) | null = null
+export function setReconcileObserver(fn: ((info: ReconcileInfo) => void) | null): void {
+  reconcileObserver = fn
+}
+
 export class DurableStore {
   private cache = new Map<string, string>()
   private ready = false
@@ -182,21 +201,29 @@ export class DurableStore {
     //     eviction). This preserves the IndexedDB durability win.
     if (hasLocalStorage()) {
       for (const k of this.keys) {
-        const backendV = this.cache.get(k)
+        const backendV = this.cache.get(k)     // original backend value (pre-mutation)
         const ls = safeLSGet(k)
         // A managed value is only authoritative if it is present AND structurally
         // valid (all managed keys hold JSON). A corrupt mirror must NOT win — and
         // must never be synced forward over a good backend copy.
         const lsUsable = ls !== null && ls !== '' && isParseableJSON(ls)
+        let winner: ReconcileInfo['winner']
         if (lsUsable) {
+          winner = 'localStorage'
           if (backendV !== ls) {
             this.cache.set(k, ls)
             void this.backend.set(k, ls).catch(() => {})
           }
         } else if (backendV !== undefined) {
           // localStorage missing or corrupt → recover from the durable backend.
+          winner = 'backend-recover'
           this.cache.set(k, backendV)
           safeLSSet(k, backendV)
+        } else {
+          winner = 'none'
+        }
+        if (reconcileObserver) {
+          try { reconcileObserver({ key: k, lsValue: ls, backendValue: backendV, winner }) } catch { /* tracing must never break init */ }
         }
       }
     }

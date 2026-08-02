@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
 import { getLocalContacts, CONTACTS_UPDATED_EVENT, type LocalFamilyContact } from './familyContactsStorage'
+import { traceStage } from '../../services/persistenceTrace'
 import { matchTargetName } from '../AbuAI/whatsappCompose'
 import { loadFamilyData } from '../../services/familyLoader'
 
@@ -480,6 +481,9 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, o
     if (localContacts !== undefined) { setContacts(localContacts); return }
     const refresh = () => setContacts(getLocalContacts())
     refresh()
+    // Privacy-safe trace: record the phone count the moment Abu WhatsApp reads
+    // the contacts (once per mount). Counts only — never names/numbers.
+    try { traceStage('wa-read') } catch { /* best-effort */ }
     if (typeof window === 'undefined') return
     const onStorage = (e: StorageEvent) => {
       if (e.key === null || e.key === 'abubank.familyContacts.v1') refresh()

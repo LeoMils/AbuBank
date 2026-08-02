@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { App } from './App'
 import { APP_VERSION } from './version'
 import { durable } from './services/durableStore'
+import { initPersistenceTrace, traceStage } from './services/persistenceTrace'
 
 console.info('[AbuBank Build]', APP_VERSION)
 
@@ -30,16 +31,22 @@ if ((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
 // back) BEFORE mounting, so the first read sees durable data. Best-effort:
 // any failure degrades gracefully to the localStorage-only path.
 async function boot() {
+  // Register the reconcile observer + snapshot localStorage BEFORE durable.init,
+  // so the trace captures the exact reconciliation decision (privacy-safe counts
+  // only — no names/numbers). Diagnoses "phones vanish on reopen" from the device.
+  try { initPersistenceTrace() } catch { /* tracing must never block boot */ }
   try { await durable.init() } catch { /* best-effort; degrade to localStorage */ }
+  try { traceStage('post-init') } catch { /* best-effort */ }
   // Seed the default family into the contact store on first-ever run (the store
   // is the single source of truth for the family board; the scaffold is only
   // initial data). No-op once the store exists — a deleted contact stays deleted.
   try {
     const { seedDefaultContactsIfEmpty, migrateContactPhotos } = await import('./screens/AbuWhatsApp/familyContactsStorage')
-    seedDefaultContactsIfEmpty()
+    const seeded = seedDefaultContactsIfEmpty()
     // Backfill the correct bundled photo onto any existing contact that has none
     // (one-time, versioned, idempotent). Fresh seeds already carry photos.
-    migrateContactPhotos()
+    const mig = migrateContactPhotos()
+    try { traceStage('post-seed-migrate', { note: `seeded=${seeded} migrated=${mig.migrated}` }) } catch { /* best-effort */ }
   } catch { /* best-effort */ }
   // Flush pending durable (IndexedDB) writes before the app is backgrounded or
   // killed. On iOS a PWA can be frozen at any time and localStorage may later be
