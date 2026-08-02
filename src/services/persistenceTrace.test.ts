@@ -39,10 +39,11 @@ const SEED = [
   { id: 'mor', displayName: 'מור', enabled: false, phoneE164: '', photoFile: '/x.png' },
   { id: 'leo', displayName: 'לאו', enabled: false, phoneE164: '', photoFile: '/y.png' },
 ]
-// Imported shape: same people WITH phones.
+// Imported shape: same people WITH phones. Uses pinned-synthetic numbers from
+// the phonePrivacy allow-list (obvious placeholders, never real).
 const IMPORTED = [
-  { id: 'mor', displayName: 'מור', enabled: true, phoneE164: '+972500000456', photoFile: '/x.png' },
-  { id: 'leo', displayName: 'לאו', enabled: true, phoneE164: '+972500000123', photoFile: '/y.png' },
+  { id: 'mor', displayName: 'מור', enabled: true, phoneE164: '+972500000001', photoFile: '/x.png' },
+  { id: 'leo', displayName: 'לאו', enabled: true, phoneE164: '+972500000002', photoFile: '/y.png' },
 ]
 
 beforeEach(() => { installLS(); clearPersistenceTrace() })

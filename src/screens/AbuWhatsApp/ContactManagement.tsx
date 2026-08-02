@@ -33,6 +33,7 @@ import {
 } from './familyContactsStorage'
 import { validateImageFile, resizeImageToDataUrl } from '../../services/imageResize'
 import { getTraceText, clearPersistenceTrace, requestPersistentStorage } from '../../services/persistenceTrace'
+import { durable } from '../../services/durableStore'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -111,7 +112,7 @@ function ContactEditForm({
     setPhotoDataUrl(''); setPhotoFile(''); setPhotoError('')
   }
 
-  function save() {
+  async function save() {
     const errs = validateContactFields({ id, displayName: displayName || undefined, phoneE164, whatsappE164: whatsappE164 || undefined, enabled })
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
@@ -124,6 +125,9 @@ function ContactEditForm({
     if (relationshipHebrew.trim()) contact.relationshipHebrew = relationshipHebrew.trim()
     const r = upsertLocalContact(contact)
     if (!r.ok) { setErrors({ id: r.errors.join(' · ') }); return }
+    // D11 (durability before success): the IndexedDB transaction must COMMIT
+    // before we report success, so a termination right after cannot lose it.
+    try { await durable.flush() } catch { /* best-effort; localStorage already synced */ }
     onSaved()
   }
 
@@ -300,16 +304,18 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
     setBanner(null); setConfirmReplace(false)
     setPreview(previewImportContacts(draft, contacts))
   }
-  function saveMerge() {
+  async function saveMerge() {
     void requestPersistentStorage('import-merge') // gesture-time durability hint
     const p = preview ?? previewImportContacts(draft, contacts)
     if (p.parseError) { setPreview(p); return }
     for (const c of p.toSave) upsertLocalContact(c)
     refresh()
+    // D11: report success only AFTER the durable transaction commits.
+    try { await durable.flush() } catch { /* best-effort */ }
     setBanner(`נשמר (מיזוג): ${p.added.length} נוספו, ${p.updated.length} עודכנו, ${p.unchanged.length} ללא שינוי`)
     setPreview(null)
   }
-  function replaceAll() {
+  async function replaceAll() {
     void requestPersistentStorage('import-replace') // gesture-time durability hint
     const p = preview ?? previewImportContacts(draft, contacts)
     if (p.parseError) { setPreview(p); return }
@@ -318,6 +324,8 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
     const next = [...p.added, ...p.updated, ...p.unchanged]
     setLocalContacts(next)
     refresh()
+    // D11: report success only AFTER the durable transaction commits.
+    try { await durable.flush() } catch { /* best-effort */ }
     setBanner(`הוחלף הכל: ${next.length} אנשי קשר נשמרו, ${p.replaceAllRemoves} הוסרו (גובו אוטומטית)`)
     setPreview(null); setConfirmReplace(false)
   }
