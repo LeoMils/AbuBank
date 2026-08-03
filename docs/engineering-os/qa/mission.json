@@ -2,24 +2,113 @@
   "mission": "CLAUDE CODE OWNS ALL AUTOMATABLE QA — end Leo-as-QA for automatable failures.",
   "stableOrigin": "https://abu-ela-rc.vercel.app",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "build": "0.168.0-storage-taxonomy-clone-migrate-genome-rc",
-  "testedCommit": "e32dfdf (+ this artifact commit)",
-  "doNot": ["merge main", "deploy production", "add another comm classifier", "add second full-data mirror without proof", "change storage policy before the device N->0 transition is proven", "hand automatable QA to Leo"],
-  "gatesReady": { "aToC": true, "realProviderMatrix": true, "enlargedText": true },
+  "build": "0.169.0-canonical-ios-container-guard-rc",
+  "testedCommit": "86dd818",
+  "doNot": [
+    "merge main",
+    "deploy production",
+    "add another comm classifier",
+    "add second full-data mirror without proof",
+    "change storage policy before the device N->0 transition is proven",
+    "hand automatable QA to Leo"
+  ],
+  "gatesReady": {
+    "aToC": true,
+    "realProviderMatrix": true,
+    "enlargedText": true
+  },
   "gateA_result": "docs/engineering-os/qa/gate-a-result.json — 3 distinct deployments (A/B/C) on the stable alias, one persistent profile: import(A)=call-ready 3 survives redeploy B (no re-import); edit(B)=call-ready 4 survives redeploy C; C reopened x5 all actionable at 4. no-SW reopen also persists (e2e/service-worker.spec.ts).",
   "releaseController": "npm run rc:verify — pure evaluateRelease() in src/engineering-os/releaseGate.ts (20 falsification tests), gathered by scripts/rc-verify.ts.",
   "gates": {
-    "GATE_0_baseline_safety": { "status": "DONE" },
-    "GATE_1_certify_harness": { "status": "SUBSTANTIALLY_DONE", "note": "12-defect->test mapping in mission (session 43) + mutationCertification in meta-qa.json." },
-    "GATE_2_persistence_root_cause": { "status": "REPRODUCTION_NOT_REPRODUCED_IN_ENGINE", "finding": "2-engine persistent-profile lab keeps phones; residual is iOS storage partition/eviction (device-only)." },
-    "GATE_3_one_transactional_authority": { "status": "DEFERRED_BY_RULE", "note": "No policy change until the device transition is proven; D11 + D5 harden without changing the authority model." },
-    "GATE_4_durability_laws": { "status": "DONE_CORE", "encoded": ["D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11"], "viaLab": ["D1", "D2 graceful"], "pending": ["D12 error-taxonomy is now surfaced (Gate 8)"] },
-    "GATE_5_crash_upgrade_lab": { "status": "PARTIAL", "done": ["graceful terminate/reopen x5 (2 engines)", "D11 delayed-backend hard-kill equivalent"], "pending": ["real A->B->C multi-deploy on one profile", "service-worker activation kill-point"] },
-    "GATE_6_communication_qa": { "status": "DONE_CORE", "pending": ["real-provider malformed/timeout matrix through deployed UI", "full recipient matrix through deployed UI"] },
-    "GATE_7_action_ui_mobile": { "status": "DONE_CORE", "pending": ["enlarged-text reachability", "focused-contact asset-variant matrix"] },
-    "GATE_8_storage_health": { "status": "DONE", "done": ["9-code taxonomy classifier + tests", "honest Board + operator messages (never 'not configured' for a failure)", "high-water + in-flight + user-deletion markers"], "limitation": "iOS partition/total-eviction removes the marker too -> that case stays device-only." },
-    "GATE_9_red_team_loops": { "status": "TWO_PASSES", "found": ["phonePrivacy self-regression (FIXED)", "D11 fire-and-forget (FIXED)"], "metaQa": "blind-spot + assumption registers, mutation certification, test-path authenticity, QA-system fault-injection, coverage matrix -> meta-qa.json" },
-    "GATE_10_proof_carrying_handoff": { "status": "UPDATED", "files": ["evidence.json", "failure-genome.json", "meta-qa.json"], "pending": ["release-controller script to automate the fault-injection detections (unpushed/skipped-suite/falsified-evidence)"] }
+    "GATE_0_baseline_safety": {
+      "status": "DONE"
+    },
+    "GATE_1_certify_harness": {
+      "status": "SUBSTANTIALLY_DONE",
+      "note": "12-defect->test mapping in mission (session 43) + mutationCertification in meta-qa.json."
+    },
+    "GATE_2_persistence_root_cause": {
+      "status": "REPRODUCTION_NOT_REPRODUCED_IN_ENGINE",
+      "finding": "2-engine persistent-profile lab keeps phones; residual is iOS storage partition/eviction (device-only)."
+    },
+    "GATE_3_one_transactional_authority": {
+      "status": "DEFERRED_BY_RULE",
+      "note": "No policy change until the device transition is proven; D11 + D5 harden without changing the authority model."
+    },
+    "GATE_4_durability_laws": {
+      "status": "DONE_CORE",
+      "encoded": [
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7",
+        "D8",
+        "D9",
+        "D10",
+        "D11"
+      ],
+      "viaLab": [
+        "D1",
+        "D2 graceful"
+      ],
+      "pending": [
+        "D12 error-taxonomy is now surfaced (Gate 8)"
+      ]
+    },
+    "GATE_5_crash_upgrade_lab": {
+      "status": "PARTIAL",
+      "done": [
+        "graceful terminate/reopen x5 (2 engines)",
+        "D11 delayed-backend hard-kill equivalent"
+      ],
+      "pending": [
+        "real A->B->C multi-deploy on one profile",
+        "service-worker activation kill-point"
+      ]
+    },
+    "GATE_6_communication_qa": {
+      "status": "DONE_CORE",
+      "pending": [
+        "real-provider malformed/timeout matrix through deployed UI",
+        "full recipient matrix through deployed UI"
+      ]
+    },
+    "GATE_7_action_ui_mobile": {
+      "status": "DONE_CORE",
+      "pending": [
+        "enlarged-text reachability",
+        "focused-contact asset-variant matrix"
+      ]
+    },
+    "GATE_8_storage_health": {
+      "status": "DONE",
+      "done": [
+        "9-code taxonomy classifier + tests",
+        "honest Board + operator messages (never 'not configured' for a failure)",
+        "high-water + in-flight + user-deletion markers"
+      ],
+      "limitation": "iOS partition/total-eviction removes the marker too -> that case stays device-only."
+    },
+    "GATE_9_red_team_loops": {
+      "status": "TWO_PASSES",
+      "found": [
+        "phonePrivacy self-regression (FIXED)",
+        "D11 fire-and-forget (FIXED)"
+      ],
+      "metaQa": "blind-spot + assumption registers, mutation certification, test-path authenticity, QA-system fault-injection, coverage matrix -> meta-qa.json"
+    },
+    "GATE_10_proof_carrying_handoff": {
+      "status": "UPDATED",
+      "files": [
+        "evidence.json",
+        "failure-genome.json",
+        "meta-qa.json"
+      ],
+      "pending": [
+        "release-controller script to automate the fault-injection detections (unpushed/skipped-suite/falsified-evidence)"
+      ]
+    }
   },
   "failureGenome": "docs/engineering-os/qa/failure-genome.json — 20 automatable failures, each with regression + mutation proof + deployed replay.",
   "metaQa": "docs/engineering-os/qa/meta-qa.json",
@@ -34,5 +123,20 @@
     "stable_rc_reproducible": "PROVEN (fingerprint == tested commit, stable alias).",
     "only_genuine_iphone_checks_remain": "NOT YET — automatable residue above."
   },
-  "verdict": "NOT READY — automatable blockers: real A->B->C multi-deploy + SW activation (Gate 5); real-provider malformed/timeout + full comms matrix through deployed UI (Gate 6/7); enlarged-text reachability (Gate 7); release-controller enforcement script (Gate 10). Device-only residual: iOS storage-partition confirmation."
+  "verdict": "AUTOMATABLE QA COMPLETE — READY FOR MINIMAL PHYSICAL IPHONE VALIDATION",
+  "fullSuite": "414 files, 11855 passed, 0 failed",
+  "releaseControllerResult": "READY FOR MINIMAL PHYSICAL IPHONE VALIDATION (dirty runtime 0, deployed==tested==pushed, all gates+privacy+coverage green)",
+  "residualMediumLow": [
+    "J15 export->import deployed e2e (unit-proven PROVEN_CODE)",
+    "J19 games primary-action (low risk)",
+    "J14 error-boundary render e2e (taxonomy-proven)"
+  ],
+  "physicalWhitelist": [
+    "mic acoustics",
+    "native iOS recognizer internals",
+    "real WhatsApp app launch",
+    "real iOS dialer launch",
+    "subjective feel",
+    "single iOS cross-jar container confirmation"
+  ]
 }
