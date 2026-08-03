@@ -12,8 +12,11 @@
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  transition: transform var(--abu-dur-tap-press) ease-out,
+              background var(--abu-dur-tap-press) ease-out;
 }
 
 .button:active {
   transform: scale(0.97);
+  background: rgba(255,255,255,0.06);
 }
