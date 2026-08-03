@@ -11,7 +11,7 @@
  *   7. "מה יש לי בשבוע הקרוב" routes to calendar_upcoming
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
 import { parseHebrewTime, parseCreateIntent, isCreateIntent, startCreate, resolvePendingMessage } from './calendarCreate'
 import { parseLocally } from '../AbuCalendar/localParser'
 import { routePersonalQuery } from './router'
@@ -19,6 +19,12 @@ import { tryGroundedAnswer } from './service'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
 import { addAppointment, loadAppointments } from '../AbuCalendar/service'
 import { getWeekEvents } from './tools'
+
+// CONTROLLED CLOCK (§11): freeze Date only, to a birthday-free window (06-15) so
+// recurring family birthdays the product correctly injects don't make the empty
+// "week ahead" assertion flaky.
+vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-06-15T09:00:00'))
+afterAll(() => vi.useRealTimers())
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

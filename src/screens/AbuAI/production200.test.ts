@@ -4,7 +4,7 @@
  * Failures here = user-visible bugs on the phone.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterAll, vi } from 'vitest'
 import { tryGroundedAnswer } from './service'
 import { routePersonalQuery } from './router'
 import { resolvePronouns } from './pronounResolver'
@@ -13,6 +13,12 @@ import { isCreateIntent, isConfirm, isCancel } from './calendarCreate'
 import { detectReminderIntent } from '../AbuCalendar/reminders/reminderParser'
 import { detectIntent, getProactiveSeed } from './proactive'
 import type { ChatMessage } from './types'
+
+// CONTROLLED CLOCK (§11): freeze Date only, to a birthday-free window (06-15;
+// nearest birthdays 04-19 / 07-29) so recurring family birthdays the product
+// correctly injects don't make the "empty calendar week" assertion flaky.
+vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-06-15T09:00:00'))
+afterAll(() => vi.useRealTimers())
 
 function msg(role: 'user' | 'assistant', content: string): ChatMessage {
   return { id: String(Math.random()), role, content, timestamp: Date.now() }

@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
 import { runRecordedReplay, recordedScore, byCategory, bySource } from './executiveControllerRecordedReplay'
+
+// CONTROLLED CLOCK (§11): freeze Date only, to a birthday-free window (06-15) so
+// recurring family birthdays the product correctly injects don't make recorded
+// calendar-replay expectations flaky.
+vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-06-15T09:00:00'))
+afterAll(() => vi.useRealTimers())
 
 class MemoryLocalStorage {
   private store = new Map<string, string>()

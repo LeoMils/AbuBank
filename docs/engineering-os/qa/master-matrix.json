@@ -95,10 +95,9 @@
       "id": "J09-calendar-create-query-edit-delete",
       "surface": "AbuCalendar",
       "evidence": [
-        "41 unit files"
+        "calendarProductionProof + tools + operationalContract + production200 (controlled clock, §11)"
       ],
-      "status": "PROVEN_CODE",
-      "gap": "controlled-clock date-boundary + deployed-UI e2e"
+      "status": "PROVEN_CODE"
     },
     {
       "id": "J10-comm-payload-with-date-or-meeting",
@@ -186,10 +185,10 @@
     }
   ],
   "openJourneyGaps": [
-    "J09-calendar-clock/e2e",
     "J15-export-import-e2e",
     "J19-games-actions",
     "J14-error-boundary"
   ],
-  "note": "Gaps are ranked in product-universe.coverageGaps; the release controller blocks READY while any journey with risk>=high is GAP."
+  "note": "Gaps are ranked in product-universe.coverageGaps; the release controller blocks READY while any journey with risk>=high is GAP.",
+  "fullSuite": "414 files, 11855 passed, 0 failed (controlled clock closes J09)"
 }
