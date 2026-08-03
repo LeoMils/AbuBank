@@ -5,6 +5,15 @@
   "evidenceClasses": "CODE < MOCK < BROWSER < PREVIEW < PHYSICAL_DEVICE < PRODUCTION",
   "claims": [
     {
+      "claim": "FORENSIC first-transition analysis: instrumenting the full import->commit->terminate->reopen lifecycle and reading localStorage AND IndexedDB DIRECTLY (independent of the app) at every boundary, there is NO phones>0->0 transition in any channel. The numbers DO become durable: IndexedDB held 3 phones at the UI-success boundary (post durable.flush()) AND at the pre-init reopen boundary (before any app code ran). Therefore the device N->0 is NOT a function/transaction/commit in this code path — it is out-of-process (iOS standalone-PWA/Safari storage partition or ITP eviction).",
+      "test": "scripts/lifecycle-forensics.mjs",
+      "codePath": "ledger B0 seed(0/0) -> B1 validate(0/0) -> B3 UI-success post-flush(ls=3,idb=3) -> B4 Board(3/3) -> TERMINATE -> B5 reopen pre-init(ls=3,idb=3) -> B6 post-init(3/3) -> B7 Board(3/3); firstDrop=null in authoritative/localStorage/indexedDB/resolver",
+      "mode": "chromium persistent profile, direct localStorage + IndexedDB reads (indexedDB.databases() to avoid probe-created shells), local build of the tested commit",
+      "build": "0.168.0",
+      "result": "NO_TRANSITION_NUMBERS_ARE_DURABLE (docs/engineering-os/qa/lifecycle-forensics-result.json)",
+      "limitation": "A single persistent profile is ONE storage partition; it cannot reproduce the iOS cross-partition (PWA vs Safari) read, which is the only remaining device-only hypothesis. Forensic caution recorded: a naive IndexedDB open(name) CREATES an empty DB and masks the real one — the probe uses databases() first."
+    },
+    {
       "claim": "REAL A->B->C multi-deploy: contacts survive 3 distinct Vercel deployments on the same stable alias with ONE persistent profile and NO JSON re-import; an edit made under Build B survives Build C; C reopened x5 all actionable.",
       "test": "scripts/gate-a-abc.mjs",
       "codePath": "real deployed Contact Management import + simple-form edit; startup reconcile/seed/migrate; getLocalContacts -> Board chip-call; deploy via scripts/deploy-rc.sh (new immutable deployment + re-alias each build)",

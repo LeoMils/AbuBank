@@ -1,0 +1,95 @@
+{
+  "ledger": [
+    {
+      "boundary": "B0 pre-import (seed)",
+      "phase": "session1",
+      "function": "seedDefaultContactsIfEmpty",
+      "lsPhones": 0,
+      "idbPhones": 0,
+      "authoritativePhones": 0,
+      "resolverPhones": 0
+    },
+    {
+      "boundary": "B1 after validate",
+      "phase": "session1",
+      "function": "previewImportContacts (parsed, NOT saved)",
+      "lsPhones": 0,
+      "idbPhones": 0,
+      "authoritativePhones": 0,
+      "resolverPhones": 0
+    },
+    {
+      "boundary": "B3 UI-success (post-flush)",
+      "phase": "session1",
+      "function": "saveMerge/upsertLocalContact -> setLocalContacts -> durable.flush()",
+      "lsPhones": 3,
+      "idbPhones": 3,
+      "authoritativePhones": 3,
+      "resolverPhones": 3
+    },
+    {
+      "boundary": "B4 Board (consumer)",
+      "phase": "session1",
+      "function": "getLocalContacts -> contactsToPersonFaces",
+      "lsPhones": 3,
+      "idbPhones": 3,
+      "authoritativePhones": 3,
+      "resolverPhones": 3
+    },
+    {
+      "boundary": "B5 reopen PRE-init",
+      "phase": "session2",
+      "function": "process boot (before durable.init)",
+      "lsPhones": 3,
+      "idbPhones": 3,
+      "authoritativePhones": 3,
+      "resolverPhones": null
+    },
+    {
+      "boundary": "B6 reopen POST-init",
+      "phase": "session2",
+      "function": "durable.init reconcile + seed + migrate",
+      "lsPhones": 3,
+      "idbPhones": 3,
+      "authoritativePhones": 3,
+      "resolverPhones": 3
+    },
+    {
+      "boundary": "B7 reopen Board",
+      "phase": "session2",
+      "function": "getLocalContacts -> contactsToPersonFaces",
+      "lsPhones": 3,
+      "idbPhones": 3,
+      "authoritativePhones": 3,
+      "resolverPhones": 3
+    }
+  ],
+  "firstDrop": {
+    "authoritative": null,
+    "localStorage": null,
+    "indexedDB": null,
+    "resolver": null
+  },
+  "conclusion": {
+    "verdict": "NO_TRANSITION_NUMBERS_ARE_DURABLE",
+    "proof": "IndexedDB held the phones at the UI-success boundary AND at the pre-init reopen boundary; the authoritative store never dropped to 0. The in-process lifecycle has no phones>0->0 transition — durability succeeded and survived terminate/reopen. Any device N->0 is therefore OUT OF PROCESS (iOS standalone-PWA/Safari storage-partition or ITP eviction), not a function/transaction in this code path.",
+    "uiSuccess": {
+      "boundary": "B3 UI-success (post-flush)",
+      "phase": "session1",
+      "function": "saveMerge/upsertLocalContact -> setLocalContacts -> durable.flush()",
+      "lsPhones": 3,
+      "idbPhones": 3,
+      "authoritativePhones": 3,
+      "resolverPhones": 3
+    },
+    "reopenPre": {
+      "boundary": "B5 reopen PRE-init",
+      "phase": "session2",
+      "function": "process boot (before durable.init)",
+      "lsPhones": 3,
+      "idbPhones": 3,
+      "authoritativePhones": 3,
+      "resolverPhones": null
+    }
+  }
+}
