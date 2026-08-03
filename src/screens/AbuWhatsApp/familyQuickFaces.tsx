@@ -3,6 +3,7 @@ import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.priva
 import { getLocalContacts, CONTACTS_UPDATED_EVENT, type LocalFamilyContact } from './familyContactsStorage'
 import { traceStage } from '../../services/persistenceTrace'
 import { classifyContactStorage, contactStorageMessageHebrew } from './contactStorageHealth'
+import { classifyContainer, detectEnvironment, containerMessageHebrew } from './iosContainer'
 import { matchTargetName } from '../AbuAI/whatsappCompose'
 import { loadFamilyData } from '../../services/familyLoader'
 
@@ -414,6 +415,10 @@ export function getMissingPhoneMessage(contactId: string): string {
  *  gap. Falls back to the per-contact message on a genuine first-run. */
 export function focusedMissingMessage(contactId: string): string {
   try {
+    // Container condition first (Safari tab / wrong host / eviction) — never show
+    // "no number" when the real cause is the wrong iOS storage jar.
+    const cc = classifyContainer(detectEnvironment())
+    if (cc !== 'NON_IOS_OK' && cc !== 'CANONICAL_PWA') return containerMessageHebrew(cc)
     const h = classifyContactStorage()
     if (h.code !== 'OK' && h.code !== 'CONTACT_NOT_CONFIGURED') return contactStorageMessageHebrew(h.code)
   } catch { /* fall through to the per-contact message */ }

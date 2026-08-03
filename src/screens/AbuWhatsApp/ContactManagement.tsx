@@ -38,6 +38,10 @@ import {
   classifyContactStorage, contactStorageMessageHebrew,
   recordCommittedSave, markSaveInflight, markUserDeletion,
 } from './contactStorageHealth'
+import {
+  detectEnvironment, classifyContainer, isImportBlockedForContainer,
+  containerMessageHebrew, recommendedAction, recordSaveContainer, containerIdPrefix,
+} from './iosContainer'
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -47,6 +51,12 @@ const GREEN = '#25D366'
 /** Phones in the committed store (for the high-water durability marker). */
 function committedPhoneCount(): number {
   return getLocalContacts().filter((c) => (c.phoneE164 ?? '').trim().length > 0 || (c.whatsappE164 ?? '').trim().length > 0).length
+}
+
+/** True on an iOS Safari tab (wrong container) — normal import/save is blocked
+ *  there because it writes a jar the installed PWA never reads. */
+function containerBlockedNow(): boolean {
+  try { return isImportBlockedForContainer(classifyContainer(detectEnvironment())) } catch { return false }
 }
 
 const PERSONS: ReadonlyArray<Extract<FamilyQuickFace, { type: 'person' }>> =
@@ -125,6 +135,7 @@ function ContactEditForm({
     const errs = validateContactFields({ id, displayName: displayName || undefined, phoneE164, whatsappE164: whatsappE164 || undefined, enabled })
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
+    if (containerBlockedNow()) { setErrors({ id: containerMessageHebrew('SAFARI_BROWSER') }); return }
     void requestPersistentStorage('contact-save') // gesture-time durability hint
     const contact: LocalFamilyContact = { id, enabled, phoneE164: phoneE164.trim() }
     if (whatsappE164.trim()) contact.whatsappE164 = whatsappE164.trim()
@@ -138,7 +149,7 @@ function ContactEditForm({
     // D11 (durability before success): the IndexedDB transaction must COMMIT
     // before we report success, so a termination right after cannot lose it.
     try { await durable.flush() } catch { /* best-effort; localStorage already synced */ }
-    recordCommittedSave(committedPhoneCount())
+    recordCommittedSave(committedPhoneCount()); recordSaveContainer()
     onSaved()
   }
 
@@ -316,6 +327,7 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
     setPreview(previewImportContacts(draft, contacts))
   }
   async function saveMerge() {
+    if (containerBlockedNow()) { setBanner(containerMessageHebrew('SAFARI_BROWSER')); return }
     void requestPersistentStorage('import-merge') // gesture-time durability hint
     const p = preview ?? previewImportContacts(draft, contacts)
     if (p.parseError) { setPreview(p); return }
@@ -324,11 +336,12 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
     refresh()
     // D11: report success only AFTER the durable transaction commits.
     try { await durable.flush() } catch { /* best-effort */ }
-    recordCommittedSave(committedPhoneCount())
+    recordCommittedSave(committedPhoneCount()); recordSaveContainer()
     setBanner(`נשמר (מיזוג): ${p.added.length} נוספו, ${p.updated.length} עודכנו, ${p.unchanged.length} ללא שינוי`)
     setPreview(null)
   }
   async function replaceAll() {
+    if (containerBlockedNow()) { setBanner(containerMessageHebrew('SAFARI_BROWSER')); return }
     void requestPersistentStorage('import-replace') // gesture-time durability hint
     const p = preview ?? previewImportContacts(draft, contacts)
     if (p.parseError) { setPreview(p); return }
@@ -340,7 +353,7 @@ function AdvancedWorkflow({ contacts, refresh }: { contacts: LocalFamilyContact[
     refresh()
     // D11: report success only AFTER the durable transaction commits.
     try { await durable.flush() } catch { /* best-effort */ }
-    recordCommittedSave(committedPhoneCount())
+    recordCommittedSave(committedPhoneCount()); recordSaveContainer()
     setBanner(`הוחלף הכל: ${next.length} אנשי קשר נשמרו, ${p.replaceAllRemoves} הוסרו (גובו אוטומטית)`)
     setPreview(null); setConfirmReplace(false)
   }
@@ -478,13 +491,29 @@ export function ContactManagement() {
         const r = contactsReceipt()
         const health = classifyContactStorage()
         const healthIsFailure = health.code !== 'OK' && health.code !== 'CONTACT_NOT_CONFIGURED'
+        const env = detectEnvironment(undefined, {}, r.origin === 'unknown' ? '' : r.origin)
+        const containerClass = classifyContainer(env)
+        const containerBlocked = isImportBlockedForContainer(containerClass)
         return (
           <>
-            <div data-testid="contacts-receipt" data-canonical={String(r.isCanonical)} data-health={health.code} style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', fontFamily: "ui-monospace,Menlo,monospace", direction: 'ltr', textAlign: 'left', padding: '6px 8px', borderRadius: 8, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.10)', lineHeight: 1.7 }}>
+            {/* Prominent canonical-container guard: on an iOS Safari tab, contacts
+                belong in the installed PWA — never silently import into this jar. */}
+            {containerBlocked && (
+              <div data-testid="container-guard-banner" data-class={containerClass} style={{ fontSize: 15, color: '#fff3d6', fontFamily: "'Heebo',sans-serif", direction: 'rtl', padding: '14px 14px', borderRadius: 12, background: 'rgba(180,60,20,0.22)', border: '1.5px solid rgba(230,120,60,0.6)', lineHeight: 1.7, fontWeight: 700 }}>
+                🏠 {containerMessageHebrew(containerClass)}
+                <div style={{ fontSize: 13, fontWeight: 400, marginTop: 6, color: 'rgba(255,255,255,0.85)' }}>
+                  איך פותחים: Safari → כפתור השיתוף → «הוסף למסך הבית», ואז לפתוח את Abu מהאייקון.
+                </div>
+              </div>
+            )}
+            <div data-testid="contacts-receipt" data-canonical={String(r.isCanonical)} data-health={health.code} data-container={containerClass} style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', fontFamily: "ui-monospace,Menlo,monospace", direction: 'ltr', textAlign: 'left', padding: '6px 8px', borderRadius: 8, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.10)', lineHeight: 1.7 }}>
               contacts:{r.contactCount} · call-ready:{r.actionableCall} · wa-ready:{r.actionableWhatsApp}
               <br />source:{r.storageSource} · hydrated:{String(r.hydrated)} · snapshot:v{r.snapshotVersion}
               <br />origin:{r.origin} · canonical:{String(r.isCanonical)}
               <br />health:{health.code} · highWater:{health.highWater}
+              <br />container:{containerClass} · action:{recommendedAction(containerClass)}
+              <br />display:{env.displayMode} · iosStandalone:{String(env.iosStandalone)} · iOS:{String(env.isIOS)}
+              <br />cid:{containerIdPrefix(env.containerId)} · lastSave:{containerIdPrefix(env.lastSaveContainerId)}
             </div>
             {healthIsFailure && (
               <div data-testid="storage-health-warning" data-code={health.code} style={{ fontSize: 13, color: '#ffd7a8', fontFamily: "'Heebo',sans-serif", direction: 'rtl', padding: '8px 10px', borderRadius: 8, background: 'rgba(180,120,20,0.14)', border: '1px solid rgba(201,168,76,0.4)', lineHeight: 1.6, marginTop: 6 }}>
