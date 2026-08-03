@@ -8,7 +8,7 @@
     { "item": "Contact persistence across terminate/reopen (same origin)", "harness": "e2e/persistence-lifecycle.spec.ts (Chromium + WebKit persistent profile, real deployed UI)", "status": "PROVEN_PREVIEW_2_ENGINES" },
     { "item": "Immediate terminate/reopen", "harness": "persistence-lifecycle: ctx.close() then relaunch same userDataDir", "status": "PROVEN_PREVIEW" },
     { "item": "Repeated reopen (x5)", "harness": "persistence-lifecycle reopen loop", "status": "PROVEN_PREVIEW" },
-    { "item": "RC upgrade on stable hostname (A->B->C)", "harness": "persistence-lifecycle across redeploys (planned: same profile across build bumps)", "status": "PARTIAL_reopen_proven_build_bump_pending" },
+    { "item": "RC upgrade on stable hostname (A->B->C)", "harness": "scripts/gate-a-abc.mjs (3 real deploys A/B/C on the stable alias, one persistent profile, edit survives, no re-import) + e2e/service-worker.spec.ts (no-SW persistence)", "status": "PROVEN_PREVIEW" },
     { "item": "Resolver freshness (no re-import)", "harness": "persistence-lifecycle reads contacts-receipt call-ready after reopen", "status": "PROVEN_PREVIEW" },
     { "item": "Board freshness (no re-import)", "harness": "persistence-lifecycle boardContactActionable(chip-call) after reopen", "status": "PROVEN_PREVIEW" },
     { "item": "Typed Call/WhatsApp routing", "harness": "e2e comm-real-provider + comm-call-visibility (deployed UI)", "status": "PROVEN_PREVIEW_prior_session" },

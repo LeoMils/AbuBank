@@ -5,7 +5,8 @@
   "build": "0.168.0-storage-taxonomy-clone-migrate-genome-rc",
   "testedCommit": "e32dfdf (+ this artifact commit)",
   "doNot": ["merge main", "deploy production", "add another comm classifier", "add second full-data mirror without proof", "change storage policy before the device N->0 transition is proven", "hand automatable QA to Leo"],
-  "gatesReady": { "aToC": false, "realProviderMatrix": true, "enlargedText": true },
+  "gatesReady": { "aToC": true, "realProviderMatrix": true, "enlargedText": true },
+  "gateA_result": "docs/engineering-os/qa/gate-a-result.json — 3 distinct deployments (A/B/C) on the stable alias, one persistent profile: import(A)=call-ready 3 survives redeploy B (no re-import); edit(B)=call-ready 4 survives redeploy C; C reopened x5 all actionable at 4. no-SW reopen also persists (e2e/service-worker.spec.ts).",
   "releaseController": "npm run rc:verify — pure evaluateRelease() in src/engineering-os/releaseGate.ts (20 falsification tests), gathered by scripts/rc-verify.ts.",
   "gates": {
     "GATE_0_baseline_safety": { "status": "DONE" },

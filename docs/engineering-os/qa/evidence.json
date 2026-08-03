@@ -1,9 +1,56 @@
 {
   "$schema": "internal://abu/evidence",
-  "build": "0.165.0-persistence-trace-rc (this commit bumps to 0.166.0)",
+  "build": "0.168.0-storage-taxonomy-clone-migrate-genome-rc",
   "stableOrigin": "https://abu-ela-rc.vercel.app",
   "evidenceClasses": "CODE < MOCK < BROWSER < PREVIEW < PHYSICAL_DEVICE < PRODUCTION",
   "claims": [
+    {
+      "claim": "REAL A->B->C multi-deploy: contacts survive 3 distinct Vercel deployments on the same stable alias with ONE persistent profile and NO JSON re-import; an edit made under Build B survives Build C; C reopened x5 all actionable.",
+      "test": "scripts/gate-a-abc.mjs -> docs/engineering-os/qa/gate-a-result.json",
+      "codePath": "real deployed Contact Management import + simple-form edit; startup reconcile/seed/migrate; getLocalContacts -> Board chip-call; deploy via scripts/deploy-rc.sh (new immutable deployment + re-alias each build)",
+      "mode": "chromium persistent profile across 3 real deploys (A=1r4klv5x7, B=9y3ahu6h3, C=6mkc5o0lf)",
+      "build": "0.168.0",
+      "result": "PASS (A import call-ready=3; B-reopen 3 no-reimport; B-edit 4; C-reopen x5 actionable call-ready=4; distinctDeployments=true)",
+      "limitation": "PREVIEW. Graceful process close between builds."
+    },
+    {
+      "claim": "Contacts are independent of the service worker: with the SW blocked entirely, a real UI import persists across terminate/reopen.",
+      "test": "e2e/service-worker.spec.ts",
+      "codePath": "launchPersistentContext serviceWorkers:'block'; real import; IndexedDB/localStorage",
+      "mode": "Playwright, serviceWorkers blocked, local build of the tested commit",
+      "build": "0.168.0",
+      "result": "PASS",
+      "limitation": "BROWSER (local build). Shell-freshness SW permutations covered by vite-plugin-pwa auto-update + A->B->C."
+    },
+    {
+      "claim": "The release controller is itself falsifiable: a green state is READY and every one of the 18 deliberate mutations (skipped suite, missing/conflicting evidence, unpushed, fingerprint/alias mismatch, missing genome regression, undetected mutant, unresolved blind spot, false PHYSICAL claim, etc.) is caught; a degenerate empty state fails closed.",
+      "test": "src/engineering-os/releaseGate.test.ts (20/20)",
+      "codePath": "evaluateRelease() in src/engineering-os/releaseGate.ts; gathered by scripts/rc-verify.ts (npm run rc:verify)",
+      "mode": "node (pure evaluator, injected state)",
+      "build": "0.168.0",
+      "result": "PASS (20/20); live rc:verify correctly reports NOT READY with the real open items",
+      "limitation": "CODE. The CLI's suite-execution check runs on demand; live fingerprint check depends on origin reachability."
+    },
+    {
+      "claim": "Under every provider failure mode (timeout/abort, 429, 500, malformed JSON, empty body, contradictory 200 prose) an explicit CALL still routes to a call action and WHATSAPP to a message action; the assistant never denies a supported capability, claims completion, or switches the owned turn to Calendar/general. STT-distorted recipients stay communication.",
+      "test": "e2e/provider-matrix.spec.ts (17/17)",
+      "codePath": "deployed Abu AI UI -> reduceGoal/validateResponse (runs every turn regardless of provider); page.route intercepts /api/abuai-chat + free providers",
+      "mode": "Playwright, providers intercepted, local preview of the tested commit (code-identical)",
+      "browser": "Chromium 390x844",
+      "build": "0.168.0",
+      "result": "PASS (17/17)",
+      "limitation": "BROWSER (local build of the tested commit). Run locally because the live Vercel origin bot-challenges heavy automation; deployed behavior separately confirmed by the persistence lab + reachability."
+    },
+    {
+      "claim": "The primary Communication action stays reachable (scrolled in-viewport, elementFromPoint not-obscured, label not truncated, >=40px) at 3 iPhone viewports x text scales 100/125/150/175/200%.",
+      "test": "e2e/enlarged-text.spec.ts (15/15)",
+      "codePath": "deployed Abu AI UI; CSS zoom on documentElement; geometry measured in-page for zoom consistency",
+      "mode": "Playwright against the deployed origin",
+      "browser": "Chromium 375x667 / 390x844 / 430x932",
+      "build": "0.168.0",
+      "result": "PASS (15/15)",
+      "limitation": "PREVIEW. Browser zoom is the automatable analog of iOS Dynamic Type."
+    },
     {
       "claim": "Contact phones survive import -> full terminate -> reopen x5 on the same stable origin, with the Family Board Call button live and NO JSON re-import, in Chromium.",
       "test": "e2e/persistence-lifecycle.spec.ts :: chromium persistent profile",
