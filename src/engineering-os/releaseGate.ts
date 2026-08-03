@@ -42,6 +42,11 @@ export interface ReleaseState {
   }
   codeArtifactCommitsDiffer: boolean
   commitsDocOnlyClassified: boolean
+  /** Whole-product coverage (Product Universe + Master Matrix). */
+  productUniversePresent: boolean
+  masterMatrixPresent: boolean
+  /** Critical journeys/surfaces with NO mapped evidence (block READY). */
+  criticalCoverageGaps: string[]
 }
 
 /** Extract the file path portion of a test reference ("a.test.ts :: x" -> "a.test.ts"). */
@@ -115,6 +120,10 @@ export function evaluateRelease(s: ReleaseState): { ready: boolean; blockers: Re
   if (s.codeArtifactCommitsDiffer && !s.commitsDocOnlyClassified) {
     add('COMMIT_CLASSIFICATION_MISSING', 'code vs artifact commits differ without a verified docs-only classification')
   }
+  // 19. whole-product coverage: universe + matrix present, no critical gap
+  if (!s.productUniversePresent) add('PRODUCT_UNIVERSE_MISSING', 'docs/engineering-os/qa/product-universe.json missing')
+  if (!s.masterMatrixPresent) add('MASTER_MATRIX_MISSING', 'docs/engineering-os/qa/master-matrix.json missing')
+  for (const g of s.criticalCoverageGaps) add('CRITICAL_COVERAGE_GAP', g)
 
   return { ready: b.length === 0, blockers: b }
 }

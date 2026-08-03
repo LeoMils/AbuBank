@@ -30,6 +30,9 @@ function greenState(): ReleaseState {
     gates: { aToC: true, realProviderMatrix: true, enlargedText: true, privacyScan: 'pass' },
     codeArtifactCommitsDiffer: false,
     commitsDocOnlyClassified: false,
+    productUniversePresent: true,
+    masterMatrixPresent: true,
+    criticalCoverageGaps: [],
   }
 }
 
@@ -98,6 +101,15 @@ describe('release controller — every deliberate mutation is caught', () => {
   it('code/artifact commit divergence without a docs-only classification', () => {
     expect(codesFor((s) => { s.codeArtifactCommitsDiffer = true })).toContain('COMMIT_CLASSIFICATION_MISSING')
   })
+  it('product universe missing', () => {
+    expect(codesFor((s) => { s.productUniversePresent = false })).toContain('PRODUCT_UNIVERSE_MISSING')
+  })
+  it('master matrix missing', () => {
+    expect(codesFor((s) => { s.masterMatrixPresent = false })).toContain('MASTER_MATRIX_MISSING')
+  })
+  it('a critical coverage gap blocks READY', () => {
+    expect(codesFor((s) => { s.criticalCoverageGaps = ['J18-weather has no tests'] })).toContain('CRITICAL_COVERAGE_GAP')
+  })
 })
 
 describe('release controller — fails closed', () => {
@@ -109,6 +121,7 @@ describe('release controller — fails closed', () => {
       testFileExists: () => false, suiteResult: () => 'unknown', requiredSuites: [],
       gates: { aToC: false, realProviderMatrix: false, enlargedText: false, privacyScan: 'pass' },
       codeArtifactCommitsDiffer: false, commitsDocOnlyClassified: false,
+      productUniversePresent: false, masterMatrixPresent: false, criticalCoverageGaps: [],
     }
     expect(evaluateRelease(empty).ready).toBe(false)
   })

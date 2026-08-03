@@ -66,6 +66,13 @@ function classifyOwnershipStatus(status: string): boolean {
   return /PROVEN|DONE/i.test(status) && !/PENDING|PARTIAL|NOT/i.test(status)
 }
 
+/** Surface ids in the Product Universe whose risk is high or medium — a GAP
+ *  journey on one of these blocks READY. */
+function productUniverseHighRiskSurfaces(): string[] {
+  const pu = readJSON('docs/engineering-os/qa/product-universe.json')
+  return (pu?.screens || []).filter((s: any) => /high|medium/i.test(String(s.risk))).map((s: any) => String(s.surfaceId))
+}
+
 async function main() {
   const ownership = readJSON('docs/engineering-os/qa/qa-ownership.json') || {}
   const evidence = readJSON('docs/engineering-os/qa/evidence.json') || {}
@@ -109,6 +116,16 @@ async function main() {
     gates,
     codeArtifactCommitsDiffer: false,
     commitsDocOnlyClassified: true,
+    productUniversePresent: existsSync(p('docs/engineering-os/qa/product-universe.json')),
+    masterMatrixPresent: existsSync(p('docs/engineering-os/qa/master-matrix.json')),
+    criticalCoverageGaps: ((): string[] => {
+      const mm = readJSON('docs/engineering-os/qa/master-matrix.json')
+      // A journey with status GAP (no evidence at all) and a high-risk surface blocks READY.
+      const highRisk = new Set((productUniverseHighRiskSurfaces()))
+      return (mm?.journeys || [])
+        .filter((j: any) => String(j.status) === 'GAP' && highRisk.has(String(j.surface).split('/')[0]))
+        .map((j: any) => `${j.id} (${j.surface}): ${j.gap || 'no evidence'}`)
+    })(),
   }
   // Map ownership statuses through the classifier by marking done ones.
   state.doneStatuses = Array.from(new Set(claudeMustProve.map((c) => c.status).filter(classifyOwnershipStatus)))
