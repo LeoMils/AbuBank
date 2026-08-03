@@ -28,7 +28,7 @@
     { "invariant": "migration preserves phones", "mutant": "strip/drop phones", "caughtBy": "cloneMigration.test.ts (phone-loss)" },
     { "invariant": "resolver/Board freshness", "mutant": "render stale snapshot", "caughtBy": "durabilityLaws.test.ts D9" },
     { "invariant": "routing ownership", "mutant": "classify on body words / drop to general", "caughtBy": "communicationMultiTurn.test.ts" },
-    { "invariant": "response truth", "mutant": "prose denies capability", "caughtBy": "engine validateResponse + comm-real-provider" },
+    { "invariant": "response truth", "mutant": "prose denies capability", "caughtBy": "src/screens/AbuAI/communication/engine.test.ts (validateResponse) + e2e/comm-real-provider.spec.ts" },
     { "invariant": "button reachability", "mutant": "button below the fold", "caughtBy": "action-reachability.spec.ts bbox<=vh" },
     { "invariant": "voice transcript integrity", "mutant": "no restart / dup append", "caughtBy": "dictationController.test.ts + injectedVoiceParity" },
     { "invariant": "stale backend does not overwrite", "mutant": "backend-authoritative reconcile", "caughtBy": "durableStore.test.ts clobber test" },

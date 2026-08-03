@@ -5,6 +5,8 @@
   "build": "0.168.0-storage-taxonomy-clone-migrate-genome-rc",
   "testedCommit": "e32dfdf (+ this artifact commit)",
   "doNot": ["merge main", "deploy production", "add another comm classifier", "add second full-data mirror without proof", "change storage policy before the device N->0 transition is proven", "hand automatable QA to Leo"],
+  "gatesReady": { "aToC": false, "realProviderMatrix": false, "enlargedText": false },
+  "releaseController": "npm run rc:verify — pure evaluateRelease() in src/engineering-os/releaseGate.ts (20 falsification tests), gathered by scripts/rc-verify.ts.",
   "gates": {
     "GATE_0_baseline_safety": { "status": "DONE" },
     "GATE_1_certify_harness": { "status": "SUBSTANTIALLY_DONE", "note": "12-defect->test mapping in mission (session 43) + mutationCertification in meta-qa.json." },

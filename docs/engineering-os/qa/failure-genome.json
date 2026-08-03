@@ -199,7 +199,7 @@
       "class": "import-robustness",
       "rootCause": "Raw paste contained invisible/typographic characters.",
       "invariant": "Sanitize only invisible/typographic artifacts; data untouched; report changes.",
-      "regressionTest": "familyContactsStorage sanitizeImportText/describeImportText (+ import tests)",
+      "regressionTest": "src/screens/AbuWhatsApp/importSanitize.test.ts (sanitizeImportText/describeImportText)",
       "mutationProof": "a smart-quote fixture parses after sanitize; disabling sanitize fails parse.",
       "evidenceLevel": "CODE",
       "recurrenceRisk": "low",
