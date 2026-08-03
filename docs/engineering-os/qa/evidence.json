@@ -6,7 +6,7 @@
   "claims": [
     {
       "claim": "REAL A->B->C multi-deploy: contacts survive 3 distinct Vercel deployments on the same stable alias with ONE persistent profile and NO JSON re-import; an edit made under Build B survives Build C; C reopened x5 all actionable.",
-      "test": "scripts/gate-a-abc.mjs -> docs/engineering-os/qa/gate-a-result.json",
+      "test": "scripts/gate-a-abc.mjs",
       "codePath": "real deployed Contact Management import + simple-form edit; startup reconcile/seed/migrate; getLocalContacts -> Board chip-call; deploy via scripts/deploy-rc.sh (new immutable deployment + re-alias each build)",
       "mode": "chromium persistent profile across 3 real deploys (A=1r4klv5x7, B=9y3ahu6h3, C=6mkc5o0lf)",
       "build": "0.168.0",
