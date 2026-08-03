@@ -3,28 +3,193 @@
   "purpose": "Critical end-to-end journeys x scenario dimensions, each mapped to its exact automated evidence or marked as a gap. Combinatorial where large; all high-risk combinations preserved.",
   "build": "0.169.0-canonical-ios-container-guard-rc",
   "updated": "2026-08-03",
-  "dimensions": ["happy", "empty", "loading", "validation-fail", "provider-fail", "storage-fail", "restart", "build-update", "cancel", "correction", "retry", "a11y-enlarged", "offline", "privacy", "cross-feature"],
-  "journeys": [
-    { "id": "J01-first-launch", "surface": "Opening->Home", "evidence": ["e2e production-smoke"], "status": "PARTIAL", "gap": "explicit Opening->Home transition" },
-    { "id": "J02-home-to-each-module", "surface": "Home->*->Home", "evidence": [], "status": "GAP", "gap": "Home nav round-trip e2e" },
-    { "id": "J03-contact-import-edit-delete-reopen", "surface": "AbuWhatsApp/ContactManagement", "evidence": ["e2e contact-management, persistence-lifecycle, container-isolation", "cloneMigration, contactStorageHealth units"], "status": "PROVEN_PREVIEW" },
-    { "id": "J04-contact-persist-across-RC-upgrade", "surface": "storage/PWA", "evidence": ["scripts/gate-a-abc.mjs (A->B->C)", "service-worker.spec"], "status": "PROVEN_PREVIEW" },
-    { "id": "J05-typed-call", "surface": "AbuAI", "evidence": ["e2e comm-call-visibility, provider-matrix", "communicationMultiTurn"], "status": "PROVEN_PREVIEW" },
-    { "id": "J06-typed-whatsapp", "surface": "AbuAI", "evidence": ["e2e provider-matrix, comm-real-provider"], "status": "PROVEN_PREVIEW" },
-    { "id": "J07-injected-voice-call-whatsapp", "surface": "AbuAI voice", "evidence": ["injectedVoiceParity", "dictationController"], "status": "PROVEN_CODE" },
-    { "id": "J08-multi-turn-clarify-correct-cancel-switch", "surface": "AbuAI", "evidence": ["communicationMultiTurn"], "status": "PROVEN_CODE", "gap": "cancel/switch through deployed UI" },
-    { "id": "J09-calendar-create-query-edit-delete", "surface": "AbuCalendar", "evidence": ["41 unit files"], "status": "PROVEN_CODE", "gap": "controlled-clock date-boundary + deployed-UI e2e" },
-    { "id": "J10-comm-payload-with-date-or-meeting", "surface": "AbuAI x Calendar", "evidence": ["communicationMultiTurn (calendar never activates)"], "status": "PROVEN_CODE" },
-    { "id": "J11-provider-failure-matrix", "surface": "AbuAI", "evidence": ["e2e provider-matrix (17/17)"], "status": "PROVEN_BROWSER" },
-    { "id": "J12-settings-operator-toggle", "surface": "Settings/Admin", "evidence": ["?operator=1 in e2e"], "status": "GAP", "gap": "explicit operator on/off e2e" },
-    { "id": "J13-pwa-update-old-new-cache", "surface": "PWA", "evidence": ["gate-a-abc, service-worker.spec"], "status": "PROVEN_PREVIEW" },
-    { "id": "J14-error-recovery", "surface": "Error/storage", "evidence": ["contactStorageHealth taxonomy"], "status": "PROVEN_CODE", "gap": "Error boundary render e2e" },
-    { "id": "J15-backup-export-import", "surface": "ContactManagement", "evidence": ["exportContactsJSON, importSanitize units"], "status": "PROVEN_CODE", "gap": "deployed export->import round-trip e2e" },
-    { "id": "J16-enlarged-text-reachability", "surface": "AbuAI/ContactManagement", "evidence": ["e2e enlarged-text (15/15)"], "status": "PROVEN_PREVIEW" },
-    { "id": "J17-container-isolation-canonical-entry", "surface": "AbuWhatsApp iOS", "evidence": ["e2e container-isolation, iosContainer units"], "status": "PROVEN_PREVIEW" },
-    { "id": "J18-weather", "surface": "AbuWeather", "evidence": [], "status": "GAP", "gap": "AbuWeather has NO tests (happy/empty/error/offline)" },
-    { "id": "J19-games", "surface": "AbuGames", "evidence": ["e2e abu-games-visual", "wowGame unit"], "status": "PARTIAL", "gap": "primary-action + back-nav" }
+  "dimensions": [
+    "happy",
+    "empty",
+    "loading",
+    "validation-fail",
+    "provider-fail",
+    "storage-fail",
+    "restart",
+    "build-update",
+    "cancel",
+    "correction",
+    "retry",
+    "a11y-enlarged",
+    "offline",
+    "privacy",
+    "cross-feature"
   ],
-  "openJourneyGaps": ["J02-home-nav", "J12-operator-toggle", "J18-weather", "J09-calendar-clock/e2e", "J15-export-import-e2e", "J19-games-actions", "J14-error-boundary"],
+  "journeys": [
+    {
+      "id": "J01-first-launch",
+      "surface": "Opening->Home",
+      "evidence": [
+        "e2e production-smoke"
+      ],
+      "status": "PARTIAL",
+      "gap": "explicit Opening->Home transition"
+    },
+    {
+      "id": "J02-home-to-each-module",
+      "surface": "Home->*->Home",
+      "evidence": [
+        "e2e home-nav.spec (Home->AbuAI/WhatsApp/Weather/Settings)"
+      ],
+      "status": "PROVEN_PREVIEW"
+    },
+    {
+      "id": "J03-contact-import-edit-delete-reopen",
+      "surface": "AbuWhatsApp/ContactManagement",
+      "evidence": [
+        "e2e contact-management, persistence-lifecycle, container-isolation",
+        "cloneMigration, contactStorageHealth units"
+      ],
+      "status": "PROVEN_PREVIEW"
+    },
+    {
+      "id": "J04-contact-persist-across-RC-upgrade",
+      "surface": "storage/PWA",
+      "evidence": [
+        "scripts/gate-a-abc.mjs (A->B->C)",
+        "service-worker.spec"
+      ],
+      "status": "PROVEN_PREVIEW"
+    },
+    {
+      "id": "J05-typed-call",
+      "surface": "AbuAI",
+      "evidence": [
+        "e2e comm-call-visibility, provider-matrix",
+        "communicationMultiTurn"
+      ],
+      "status": "PROVEN_PREVIEW"
+    },
+    {
+      "id": "J06-typed-whatsapp",
+      "surface": "AbuAI",
+      "evidence": [
+        "e2e provider-matrix, comm-real-provider"
+      ],
+      "status": "PROVEN_PREVIEW"
+    },
+    {
+      "id": "J07-injected-voice-call-whatsapp",
+      "surface": "AbuAI voice",
+      "evidence": [
+        "injectedVoiceParity",
+        "dictationController"
+      ],
+      "status": "PROVEN_CODE"
+    },
+    {
+      "id": "J08-multi-turn-clarify-correct-cancel-switch",
+      "surface": "AbuAI",
+      "evidence": [
+        "communicationMultiTurn"
+      ],
+      "status": "PROVEN_CODE",
+      "gap": "cancel/switch through deployed UI"
+    },
+    {
+      "id": "J09-calendar-create-query-edit-delete",
+      "surface": "AbuCalendar",
+      "evidence": [
+        "41 unit files"
+      ],
+      "status": "PROVEN_CODE",
+      "gap": "controlled-clock date-boundary + deployed-UI e2e"
+    },
+    {
+      "id": "J10-comm-payload-with-date-or-meeting",
+      "surface": "AbuAI x Calendar",
+      "evidence": [
+        "communicationMultiTurn (calendar never activates)"
+      ],
+      "status": "PROVEN_CODE"
+    },
+    {
+      "id": "J11-provider-failure-matrix",
+      "surface": "AbuAI",
+      "evidence": [
+        "e2e provider-matrix (17/17)"
+      ],
+      "status": "PROVEN_BROWSER"
+    },
+    {
+      "id": "J12-settings-operator-toggle",
+      "surface": "Settings/Admin",
+      "evidence": [
+        "e2e operator-toggle.spec (?operator=1/0 canonical flag, production build)"
+      ],
+      "status": "PROVEN_PREVIEW"
+    },
+    {
+      "id": "J13-pwa-update-old-new-cache",
+      "surface": "PWA",
+      "evidence": [
+        "gate-a-abc, service-worker.spec"
+      ],
+      "status": "PROVEN_PREVIEW"
+    },
+    {
+      "id": "J14-error-recovery",
+      "surface": "Error/storage",
+      "evidence": [
+        "contactStorageHealth taxonomy"
+      ],
+      "status": "PROVEN_CODE",
+      "gap": "Error boundary render e2e"
+    },
+    {
+      "id": "J15-backup-export-import",
+      "surface": "ContactManagement",
+      "evidence": [
+        "exportContactsJSON, importSanitize units"
+      ],
+      "status": "PROVEN_CODE",
+      "gap": "deployed export->import round-trip e2e"
+    },
+    {
+      "id": "J16-enlarged-text-reachability",
+      "surface": "AbuAI/ContactManagement",
+      "evidence": [
+        "e2e enlarged-text (15/15)"
+      ],
+      "status": "PROVEN_PREVIEW"
+    },
+    {
+      "id": "J17-container-isolation-canonical-entry",
+      "surface": "AbuWhatsApp iOS",
+      "evidence": [
+        "e2e container-isolation, iosContainer units"
+      ],
+      "status": "PROVEN_PREVIEW"
+    },
+    {
+      "id": "J18-weather",
+      "surface": "AbuWeather",
+      "evidence": [
+        "e2e weather-smoke.spec (happy + provider-fail)"
+      ],
+      "status": "PROVEN_PREVIEW"
+    },
+    {
+      "id": "J19-games",
+      "surface": "AbuGames",
+      "evidence": [
+        "e2e abu-games-visual",
+        "wowGame unit"
+      ],
+      "status": "PARTIAL",
+      "gap": "primary-action + back-nav"
+    }
+  ],
+  "openJourneyGaps": [
+    "J09-calendar-clock/e2e",
+    "J15-export-import-e2e",
+    "J19-games-actions",
+    "J14-error-boundary"
+  ],
   "note": "Gaps are ranked in product-universe.coverageGaps; the release controller blocks READY while any journey with risk>=high is GAP."
 }

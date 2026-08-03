@@ -5,29 +5,335 @@
   "build": "0.169.0-canonical-ios-container-guard-rc",
   "updated": "2026-08-03",
   "screens": [
-    { "surfaceId": "Home", "name": "Abu-ela / Home", "purpose": "Portal grid to every Abu module", "writes": [], "reads": ["nav"], "external": ["window.location.href to services", "whatsapp:// group link"], "navTargets": ["AbuWeather", "AbuCalendar", "AbuAI", "AbuGames", "AbuWhatsApp", "Settings"], "existingTests": ["version.test source checks"], "screenLevelTests": 0, "gap": "no direct Home render/nav e2e", "privacy": "none", "risk": "medium" },
-    { "surfaceId": "AbuAI", "name": "Abu AI", "purpose": "Warm companion conversation + Communication (Call/WhatsApp) + Calendar", "writes": ["abuai-conversation-history", "abuai-conversation-summary", "abutime-memory"], "reads": ["familyContacts", "calendar"], "external": ["/api/abuai-chat", "/api/abuai-stt", "/api/abuai-tts", "/api/abuai-online", "/api/realtime-token", "tel:", "wa.me/whatsapp:"], "existingTests": ["197 unit files", "e2e comm-call-visibility, comm-real-provider, provider-matrix, injectedVoiceParity, action-reachability, enlarged-text"], "screenLevelTests": 197, "gap": "none material", "privacy": "recipient name + composed text only to provider", "risk": "high" },
-    { "surfaceId": "AbuWhatsApp", "name": "Abu WhatsApp", "purpose": "Family board; focused contact Call/WhatsApp; Contact Management (Settings)", "writes": ["abubank.familyContacts.v1", "container/high-water/inflight markers"], "reads": ["familyContacts", "durable"], "external": ["wa.me", "tel:"], "existingTests": ["23 unit files", "e2e contact-management, contact-photos, focused-contact, container-isolation, persistence-lifecycle, service-worker"], "screenLevelTests": 23, "gap": "none material", "privacy": "phones device-local only", "risk": "high" },
-    { "surfaceId": "AbuCalendar", "name": "Abu Calendar", "purpose": "Appointments create/read/edit/delete; voice card", "writes": ["abubank-calendar-appointments"], "reads": ["calendar", "durable"], "external": [], "existingTests": ["41 unit files", "e2e (screenshots)"], "screenLevelTests": 41, "gap": "controlled-clock date-boundary + cross-domain adversarial e2e through deployed UI", "privacy": "dates only", "risk": "high" },
-    { "surfaceId": "AbuWeather", "name": "Abu מזג אוויר / Weather", "purpose": "Weather for Kfar Saba", "writes": [], "reads": ["weather provider?"], "external": ["weather API?"], "existingTests": [], "screenLevelTests": 0, "gap": "NO TESTS — happy/empty/error/offline states uncovered", "privacy": "city-level only (must not use live GPS)", "risk": "medium" },
-    { "surfaceId": "AbuGames", "name": "Abu Games", "purpose": "Simple games (e.g. solitaire)", "writes": ["game state?"], "reads": [], "external": [], "existingTests": ["1 unit (wowGame)", "e2e abu-games-visual"], "screenLevelTests": 1, "gap": "primary-action + back-nav + empty/first-run coverage thin", "privacy": "none", "risk": "low" },
-    { "surfaceId": "Settings", "name": "Settings", "purpose": "About/version, operator entry, Contact Management link", "writes": ["settings prefs"], "reads": ["APP_VERSION"], "external": [], "existingTests": ["2 unit"], "screenLevelTests": 2, "gap": "operator on/off gate e2e; About version surface", "privacy": "operator diagnostics gated", "risk": "medium" },
-    { "surfaceId": "Admin", "name": "Admin / Operator", "purpose": "Operator-only screens (?operator=1)", "writes": [], "reads": [], "external": [], "existingTests": ["gated via ?operator=1 in e2e"], "screenLevelTests": 0, "gap": "operator-gate presence/absence e2e", "privacy": "operator-only", "risk": "medium" },
-    { "surfaceId": "FamilyGallery", "name": "Family Gallery", "purpose": "Family photos", "writes": [], "reads": ["familyContacts photos"], "external": [], "existingTests": ["familyGallery.test"], "screenLevelTests": 1, "gap": "empty/missing-photo state e2e", "privacy": "photos device-local", "risk": "low" },
-    { "surfaceId": "FamilyPhones", "name": "Family Phones", "purpose": "Phone import surface", "writes": ["familyContacts"], "reads": ["familyContacts"], "external": [], "existingTests": ["familyPhonesImport.test"], "screenLevelTests": 1, "gap": "covered via import path", "privacy": "phones device-local", "risk": "medium" },
-    { "surfaceId": "FamilyRecord", "name": "Family Record", "purpose": "Record family info", "writes": ["familyContacts?"], "reads": ["familyContacts"], "external": [], "existingTests": ["e2e family-record-screen"], "screenLevelTests": 0, "gap": "form validation + persistence", "privacy": "device-local", "risk": "low" },
-    { "surfaceId": "Opening", "name": "Opening / splash", "purpose": "First-launch splash", "writes": [], "reads": [], "external": [], "existingTests": [], "screenLevelTests": 0, "gap": "first-launch transition e2e", "privacy": "none", "risk": "low" },
-    { "surfaceId": "Offline", "name": "Offline", "purpose": "Offline/degraded state screen", "writes": [], "reads": [], "external": [], "existingTests": [], "screenLevelTests": 0, "gap": "offline-start e2e (partly via service-worker.spec)", "privacy": "none", "risk": "medium" },
-    { "surfaceId": "Error", "name": "Error", "purpose": "Error boundary screen", "writes": [], "reads": [], "external": [], "existingTests": [], "screenLevelTests": 0, "gap": "error-boundary render e2e", "privacy": "none", "risk": "low" }
+    {
+      "surfaceId": "Home",
+      "name": "Abu-ela / Home",
+      "purpose": "Portal grid to every Abu module",
+      "writes": [],
+      "reads": [
+        "nav"
+      ],
+      "external": [
+        "window.location.href to services",
+        "whatsapp:// group link"
+      ],
+      "navTargets": [
+        "AbuWeather",
+        "AbuCalendar",
+        "AbuAI",
+        "AbuGames",
+        "AbuWhatsApp",
+        "Settings"
+      ],
+      "existingTests": [
+        "e2e home-nav.spec"
+      ],
+      "screenLevelTests": 0,
+      "gap": "covered (forward nav to AbuAI/WhatsApp/Weather/Settings)",
+      "privacy": "none",
+      "risk": "medium"
+    },
+    {
+      "surfaceId": "AbuAI",
+      "name": "Abu AI",
+      "purpose": "Warm companion conversation + Communication (Call/WhatsApp) + Calendar",
+      "writes": [
+        "abuai-conversation-history",
+        "abuai-conversation-summary",
+        "abutime-memory"
+      ],
+      "reads": [
+        "familyContacts",
+        "calendar"
+      ],
+      "external": [
+        "/api/abuai-chat",
+        "/api/abuai-stt",
+        "/api/abuai-tts",
+        "/api/abuai-online",
+        "/api/realtime-token",
+        "tel:",
+        "wa.me/whatsapp:"
+      ],
+      "existingTests": [
+        "197 unit files",
+        "e2e comm-call-visibility, comm-real-provider, provider-matrix, injectedVoiceParity, action-reachability, enlarged-text"
+      ],
+      "screenLevelTests": 197,
+      "gap": "none material",
+      "privacy": "recipient name + composed text only to provider",
+      "risk": "high"
+    },
+    {
+      "surfaceId": "AbuWhatsApp",
+      "name": "Abu WhatsApp",
+      "purpose": "Family board; focused contact Call/WhatsApp; Contact Management (Settings)",
+      "writes": [
+        "abubank.familyContacts.v1",
+        "container/high-water/inflight markers"
+      ],
+      "reads": [
+        "familyContacts",
+        "durable"
+      ],
+      "external": [
+        "wa.me",
+        "tel:"
+      ],
+      "existingTests": [
+        "23 unit files",
+        "e2e contact-management, contact-photos, focused-contact, container-isolation, persistence-lifecycle, service-worker"
+      ],
+      "screenLevelTests": 23,
+      "gap": "none material",
+      "privacy": "phones device-local only",
+      "risk": "high"
+    },
+    {
+      "surfaceId": "AbuCalendar",
+      "name": "Abu Calendar",
+      "purpose": "Appointments create/read/edit/delete; voice card",
+      "writes": [
+        "abubank-calendar-appointments"
+      ],
+      "reads": [
+        "calendar",
+        "durable"
+      ],
+      "external": [],
+      "existingTests": [
+        "41 unit files",
+        "e2e (screenshots)"
+      ],
+      "screenLevelTests": 41,
+      "gap": "controlled-clock date-boundary + cross-domain adversarial e2e through deployed UI",
+      "privacy": "dates only",
+      "risk": "high"
+    },
+    {
+      "surfaceId": "AbuWeather",
+      "name": "Abu מזג אוויר / Weather",
+      "purpose": "Weather for Kfar Saba",
+      "writes": [],
+      "reads": [
+        "weather provider?"
+      ],
+      "external": [
+        "weather API?"
+      ],
+      "existingTests": [
+        "e2e weather-smoke.spec (happy+provider-fail)"
+      ],
+      "screenLevelTests": 2,
+      "gap": "covered (smoke happy+fail); live-data variants optional",
+      "privacy": "city-level only (must not use live GPS)",
+      "risk": "medium"
+    },
+    {
+      "surfaceId": "AbuGames",
+      "name": "Abu Games",
+      "purpose": "Simple games (e.g. solitaire)",
+      "writes": [
+        "game state?"
+      ],
+      "reads": [],
+      "external": [],
+      "existingTests": [
+        "1 unit (wowGame)",
+        "e2e abu-games-visual"
+      ],
+      "screenLevelTests": 1,
+      "gap": "primary-action + back-nav + empty/first-run coverage thin",
+      "privacy": "none",
+      "risk": "low"
+    },
+    {
+      "surfaceId": "Settings",
+      "name": "Settings",
+      "purpose": "About/version, operator entry, Contact Management link",
+      "writes": [
+        "settings prefs"
+      ],
+      "reads": [
+        "APP_VERSION"
+      ],
+      "external": [],
+      "existingTests": [
+        "e2e operator-toggle.spec",
+        "2 unit"
+      ],
+      "screenLevelTests": 2,
+      "gap": "operator on/off covered",
+      "privacy": "operator diagnostics gated",
+      "risk": "medium"
+    },
+    {
+      "surfaceId": "Admin",
+      "name": "Admin / Operator",
+      "purpose": "Operator-only screens (?operator=1)",
+      "writes": [],
+      "reads": [],
+      "external": [],
+      "existingTests": [
+        "gated via ?operator=1 in e2e"
+      ],
+      "screenLevelTests": 0,
+      "gap": "operator-gate presence/absence e2e",
+      "privacy": "operator-only",
+      "risk": "medium"
+    },
+    {
+      "surfaceId": "FamilyGallery",
+      "name": "Family Gallery",
+      "purpose": "Family photos",
+      "writes": [],
+      "reads": [
+        "familyContacts photos"
+      ],
+      "external": [],
+      "existingTests": [
+        "familyGallery.test"
+      ],
+      "screenLevelTests": 1,
+      "gap": "empty/missing-photo state e2e",
+      "privacy": "photos device-local",
+      "risk": "low"
+    },
+    {
+      "surfaceId": "FamilyPhones",
+      "name": "Family Phones",
+      "purpose": "Phone import surface",
+      "writes": [
+        "familyContacts"
+      ],
+      "reads": [
+        "familyContacts"
+      ],
+      "external": [],
+      "existingTests": [
+        "familyPhonesImport.test"
+      ],
+      "screenLevelTests": 1,
+      "gap": "covered via import path",
+      "privacy": "phones device-local",
+      "risk": "medium"
+    },
+    {
+      "surfaceId": "FamilyRecord",
+      "name": "Family Record",
+      "purpose": "Record family info",
+      "writes": [
+        "familyContacts?"
+      ],
+      "reads": [
+        "familyContacts"
+      ],
+      "external": [],
+      "existingTests": [
+        "e2e family-record-screen"
+      ],
+      "screenLevelTests": 0,
+      "gap": "form validation + persistence",
+      "privacy": "device-local",
+      "risk": "low"
+    },
+    {
+      "surfaceId": "Opening",
+      "name": "Opening / splash",
+      "purpose": "First-launch splash",
+      "writes": [],
+      "reads": [],
+      "external": [],
+      "existingTests": [],
+      "screenLevelTests": 0,
+      "gap": "first-launch transition e2e",
+      "privacy": "none",
+      "risk": "low"
+    },
+    {
+      "surfaceId": "Offline",
+      "name": "Offline",
+      "purpose": "Offline/degraded state screen",
+      "writes": [],
+      "reads": [],
+      "external": [],
+      "existingTests": [],
+      "screenLevelTests": 0,
+      "gap": "offline-start e2e (partly via service-worker.spec)",
+      "privacy": "none",
+      "risk": "medium"
+    },
+    {
+      "surfaceId": "Error",
+      "name": "Error",
+      "purpose": "Error boundary screen",
+      "writes": [],
+      "reads": [],
+      "external": [],
+      "existingTests": [],
+      "screenLevelTests": 0,
+      "gap": "error-boundary render e2e",
+      "privacy": "none",
+      "risk": "low"
+    }
   ],
   "apiEndpoints": [
-    { "id": "/api/abuai-chat", "purpose": "gpt-4o chat proxy", "tests": ["serverProxyContract, serverChatProvider, provider-matrix, comm-real-provider"], "privacy": "no phone numbers" },
-    { "id": "/api/abuai-stt", "purpose": "Groq Whisper STT proxy", "tests": ["sttStrategy"], "privacy": "audio only" },
-    { "id": "/api/abuai-tts", "purpose": "TTS proxy", "tests": ["ttsFallbackPolicy"], "privacy": "text only" },
-    { "id": "/api/abuai-online", "purpose": "grounded online retrieval", "tests": ["online-truth"], "privacy": "query only" },
-    { "id": "/api/realtime-token", "purpose": "OpenAI Realtime ephemeral token", "tests": ["realtimeModel/realtimeEvents"], "privacy": "no secrets to client bundle" },
-    { "id": "/api/health", "purpose": "build fingerprint", "tests": ["version.test", "rc-verify"], "privacy": "none" },
-    { "id": "/api/cron", "purpose": "scheduled tasks", "tests": [], "gap": "cron endpoint untested", "privacy": "none" }
+    {
+      "id": "/api/abuai-chat",
+      "purpose": "gpt-4o chat proxy",
+      "tests": [
+        "serverProxyContract, serverChatProvider, provider-matrix, comm-real-provider"
+      ],
+      "privacy": "no phone numbers"
+    },
+    {
+      "id": "/api/abuai-stt",
+      "purpose": "Groq Whisper STT proxy",
+      "tests": [
+        "sttStrategy"
+      ],
+      "privacy": "audio only"
+    },
+    {
+      "id": "/api/abuai-tts",
+      "purpose": "TTS proxy",
+      "tests": [
+        "ttsFallbackPolicy"
+      ],
+      "privacy": "text only"
+    },
+    {
+      "id": "/api/abuai-online",
+      "purpose": "grounded online retrieval",
+      "tests": [
+        "online-truth"
+      ],
+      "privacy": "query only"
+    },
+    {
+      "id": "/api/realtime-token",
+      "purpose": "OpenAI Realtime ephemeral token",
+      "tests": [
+        "realtimeModel/realtimeEvents"
+      ],
+      "privacy": "no secrets to client bundle"
+    },
+    {
+      "id": "/api/health",
+      "purpose": "build fingerprint",
+      "tests": [
+        "version.test",
+        "rc-verify"
+      ],
+      "privacy": "none"
+    },
+    {
+      "id": "/api/cron",
+      "purpose": "scheduled tasks",
+      "tests": [],
+      "gap": "cron endpoint untested",
+      "privacy": "none"
+    }
   ],
   "storageKeys": [
     "abubank.familyContacts.v1 (contacts — SAFETY-CRITICAL)",
@@ -41,15 +347,35 @@
     "martita-contacts-v1 / martita-loc-contacts-v1 (legacy)",
     "abu-voice-trace / abu-tts-trace (operator diagnostics)"
   ],
-  "providers": ["OpenAI gpt-4o (server proxy)", "OpenAI Realtime (WebRTC)", "Groq Whisper STT", "Gemini/Groq free-tier client", "Web Speech (fallback)", "Azure TTS (server)"],
-  "externalHandoffs": ["wa.me / whatsapp:// (WhatsApp app)", "tel: (iOS dialer)", "whatsapp group invite link"],
-  "storageAdapters": ["durableStore (localStorage write-through + IndexedDB abu-durable/kv)"],
+  "providers": [
+    "OpenAI gpt-4o (server proxy)",
+    "OpenAI Realtime (WebRTC)",
+    "Groq Whisper STT",
+    "Gemini/Groq free-tier client",
+    "Web Speech (fallback)",
+    "Azure TTS (server)"
+  ],
+  "externalHandoffs": [
+    "wa.me / whatsapp:// (WhatsApp app)",
+    "tel: (iOS dialer)",
+    "whatsapp group invite link"
+  ],
+  "storageAdapters": [
+    "durableStore (localStorage write-through + IndexedDB abu-durable/kv)"
+  ],
   "serviceWorker": "vite-plugin-pwa generateSW (precache + auto-update)",
   "operatorGate": "?operator=1 query param",
   "coverageGaps": {
     "critical": [],
-    "high": ["AbuWeather has ZERO tests (happy/empty/error/offline)", "Calendar controlled-clock date-boundary + cross-domain adversarial through deployed UI", "operator-gate on/off e2e"],
-    "medium": ["Home render/nav e2e", "Offline/Error/Opening screen e2e", "/api/cron untested", "AbuGames primary-action/back-nav"],
+    "high": [
+      "Calendar controlled-clock date-boundary + cross-domain adversarial through deployed UI"
+    ],
+    "medium": [
+      "Offline/Error/Opening screen e2e",
+      "/api/cron untested",
+      "AbuGames primary-action/back-nav",
+      "deployed export->import round-trip"
+    ],
     "note": "AbuAI / AbuWhatsApp / storage-PWA are deeply covered (197 / 23 / lifecycle+forensic+container labs)."
   },
   "anomalies": {
