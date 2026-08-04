@@ -38,6 +38,20 @@ let parseError: string | null = null
 try { scorecard = JSON.parse(readFileSync(scorecardPath, 'utf8')) }
 catch (e) { parseError = e instanceof Error ? e.message : String(e) }
 
+// Source-staleness: has product SOURCE (src/api/scripts) changed since the
+// scorecard fingerprint commit? Doc-only commits (incl. scorecard edits) do NOT
+// count — a "seal" commit that only bumps the fingerprint stays fresh.
+let sourceStale: boolean | undefined
+if (!fast && !parseError) {
+  const fpCommit = (scorecard as { fingerprint?: { commit?: string } })?.fingerprint?.commit ?? ''
+  if (/^[0-9a-f]{40}$/.test(fpCommit)) {
+    try {
+      const changed = execSync(`git diff --name-only ${fpCommit}..HEAD -- src api scripts`, { encoding: 'utf8' }).trim()
+      sourceStale = changed.length > 0
+    } catch { sourceStale = undefined } // unknown (e.g. commit not in history) — do not force-fail
+  }
+}
+
 // Required Critical/High inventory ids (manifest) — reconciled against rows so a
 // deleted/omitted row cannot pass. Missing manifest is itself a fail reason.
 let requiredInventoryIds: string[] = []
@@ -51,7 +65,7 @@ let result: GateResult
 if (parseError) {
   result = { pass: false, commit: 'UNKNOWN', build: 'UNKNOWN', totalsBySeverity: {}, automatableCriticalHighTotal: 0, automatableCriticalHighOpen: 1, physicalCount: 0, externalCount: 0, reasons: [{ id: '(root)', code: 'UNREADABLE_SCORECARD', detail: parseError }] }
 } else {
-  result = evaluateGate(scorecard, { actualCommit, fast, fileExists, requiredInventoryIds })
+  result = evaluateGate(scorecard, { actualCommit, fast, sourceStale, fileExists, requiredInventoryIds })
   if (inventoryError) result.reasons.push({ id: '(root)', code: 'MISSING_INVENTORY_MANIFEST', detail: inventoryError })
   if (inventoryError) result.pass = false
 }

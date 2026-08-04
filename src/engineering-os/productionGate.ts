@@ -63,10 +63,14 @@ export interface Scorecard {
 }
 
 export interface GateOptions {
-  /** The real HEAD commit; when provided, the scorecard fingerprint must match it. */
+  /** The real HEAD commit (for the summary + prefix check). */
   actualCommit?: string
-  /** Skip git-commit staleness (used by --fast / the Stop guard). */
+  /** Skip source-staleness (used by --fast / the Stop guard). */
   fast?: boolean
+  /** True when PRODUCT SOURCE (src/api/scripts) changed since the scorecard
+   *  fingerprint commit — the CLI computes this from git. Doc-only commits do NOT
+   *  make the scorecard stale, so the fingerprint is stable across scorecard edits. */
+  sourceStale?: boolean
   /** Repo-relative existence checker (CLI wires fs). Enables MISSING_TEST_FILE /
    *  MISSING_EVIDENCE_ARTIFACT — a PROVEN row cannot cite deleted/nonexistent evidence. */
   fileExists?: (repoRelativePath: string) => boolean
@@ -121,9 +125,11 @@ export function evaluateGate(scorecard: unknown, opts: GateOptions = {}): GateRe
   if (!/^[0-9a-f]{40}$/.test(String(sc.fingerprint?.commit ?? ''))) {
     reasons.push({ id: '(root)', code: 'PREFIX_ONLY_FINGERPRINT', detail: `scorecard commit '${sc.fingerprint?.commit}' is not a full 40-hex SHA` })
   }
-  // Staleness: the scorecard must describe the CURRENT commit (unless --fast).
-  if (!opts.fast && opts.actualCommit && sc.fingerprint?.commit && sc.fingerprint.commit !== opts.actualCommit) {
-    reasons.push({ id: '(root)', code: 'STALE_FINGERPRINT', detail: `scorecard commit ${sc.fingerprint.commit} != HEAD ${opts.actualCommit}` })
+  // Staleness: product SOURCE has changed since the scorecard was reconciled
+  // (doc-only commits, incl. scorecard/fingerprint edits, do NOT count — that is
+  // what lets a seal commit stabilise the fingerprint). --fast skips this.
+  if (!opts.fast && opts.sourceStale === true) {
+    reasons.push({ id: '(root)', code: 'STALE_FINGERPRINT', detail: `product source (src/api/scripts) changed since scorecard fingerprint ${sc.fingerprint?.commit}` })
   }
 
   const seenIds = new Set<string>()

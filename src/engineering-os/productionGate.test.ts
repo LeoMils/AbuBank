@@ -60,10 +60,14 @@ describe('production gate — rejects every false-green class', () => {
     expect(r.reasons.some((x) => x.code === 'STALE_ROW_BUILD')).toBe(true)
   })
 
-  it('rejects a stale scorecard fingerprint vs the real HEAD (non-fast)', () => {
-    const r = evaluateGate(card([provenRow()]), { actualCommit: 'DIFFERENT' })
+  it('rejects a stale scorecard when product source changed since the fingerprint (non-fast)', () => {
+    const r = evaluateGate(card([provenRow()]), { sourceStale: true })
     expect(r.pass).toBe(false)
     expect(r.reasons.some((x) => x.code === 'STALE_FINGERPRINT')).toBe(true)
+  })
+  it('does NOT flag staleness when only docs changed (sourceStale false)', () => {
+    const r = evaluateGate(card([provenRow()]), { sourceStale: false, fileExists: () => true, requiredInventoryIds: ['R1'] })
+    expect(r.reasons.some((x) => x.code === 'STALE_FINGERPRINT')).toBe(false)
   })
 
   it('rejects a fake PHYSICAL_ONLY (automatable row hidden as physical, or no proof)', () => {
