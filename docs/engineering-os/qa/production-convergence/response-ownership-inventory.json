@@ -1,19 +1,91 @@
 {
   "note": "§1 inventory — every response.create / audible-output path. All Realtime response.create funnel through RealtimeVoiceSession.sendEvent (single choke point) → createResponse (per-turn lease). Pipeline TTS (speakVoiceMode) is the separate fallback path.",
   "realtime_response_create": [
-    { "file": "src/services/realtimeVoice.ts", "line": 406, "trigger": "greeting on connect", "class": "GREETING_RESPONSE", "guarded": "via sendEvent→createResponse" },
-    { "file": "src/services/realtimeVoice.ts", "line": 613, "trigger": "speak()/create", "class": "AUTO_MODEL_RESPONSE", "guarded": "via sendEvent→createResponse" },
-    { "file": "src/services/realtimeVoice.ts", "line": 633, "trigger": "stopTalking push-to-talk", "class": "AUTO_MODEL_RESPONSE", "guarded": "via sendEvent→createResponse" },
-    { "file": "src/services/realtimeVoice.ts", "line": 650, "trigger": "lang/repair response", "class": "TRUTH_REPAIR_RESPONSE", "guarded": "via sendEvent→createResponse" },
-    { "file": "src/screens/AbuAI/realtime/realtimeCommController.ts", "line": 104, "trigger": "post-tool continuation", "class": "POST_TOOL_GROUNDED_RESPONSE", "guarded": "via injected send = sendEvent→createResponse" },
-    { "file": "src/screens/AbuAI/realtime/realtimeCommController.ts", "line": 118, "trigger": "truth repair", "class": "TRUTH_REPAIR_RESPONSE", "guarded": "via injected send = sendEvent→createResponse" },
-    { "file": "src/screens/AbuAI/realtime/calendarDraftController.ts", "line": 61, "trigger": "post-tool continuation", "class": "POST_TOOL_GROUNDED_RESPONSE", "guarded": "via injected send = sendEvent→createResponse" }
+    {
+      "file": "src/services/realtimeVoice.ts",
+      "line": 406,
+      "trigger": "greeting on connect",
+      "class": "GREETING_RESPONSE",
+      "guarded": "via sendEvent→createResponse"
+    },
+    {
+      "file": "src/services/realtimeVoice.ts",
+      "line": 613,
+      "trigger": "speak()/create",
+      "class": "AUTO_MODEL_RESPONSE",
+      "guarded": "via sendEvent→createResponse"
+    },
+    {
+      "file": "src/services/realtimeVoice.ts",
+      "line": 633,
+      "trigger": "stopTalking push-to-talk",
+      "class": "AUTO_MODEL_RESPONSE",
+      "guarded": "via sendEvent→createResponse"
+    },
+    {
+      "file": "src/services/realtimeVoice.ts",
+      "line": 650,
+      "trigger": "lang/repair response",
+      "class": "TRUTH_REPAIR_RESPONSE",
+      "guarded": "via sendEvent→createResponse"
+    },
+    {
+      "file": "src/screens/AbuAI/realtime/realtimeCommController.ts",
+      "line": 104,
+      "trigger": "post-tool continuation",
+      "class": "POST_TOOL_GROUNDED_RESPONSE",
+      "guarded": "via injected send = sendEvent→createResponse"
+    },
+    {
+      "file": "src/screens/AbuAI/realtime/realtimeCommController.ts",
+      "line": 118,
+      "trigger": "truth repair",
+      "class": "TRUTH_REPAIR_RESPONSE",
+      "guarded": "via injected send = sendEvent→createResponse"
+    },
+    {
+      "file": "src/screens/AbuAI/realtime/calendarDraftController.ts",
+      "line": 61,
+      "trigger": "post-tool continuation",
+      "class": "POST_TOOL_GROUNDED_RESPONSE",
+      "guarded": "via injected send = sendEvent→createResponse"
+    }
   ],
   "audible_output_other": [
-    { "file": "src/screens/AbuAI/index.tsx", "line": 2672, "trigger": "legacy brain speak", "class": "MANUAL_LEGACY_SPEAK", "guarded": "modelOwnsTalk gate + brain does not run in REALTIME_ACTIVE" },
-    { "file": "src/screens/AbuAI/index.tsx", "trigger": "speakVoiceMode (pipeline)", "class": "FALLBACK_RESPONSE", "guarded": "PENDING — §6 transactional fallback state machine not yet built" }
+    {
+      "file": "src/screens/AbuAI/index.tsx",
+      "line": 2672,
+      "trigger": "legacy brain speak",
+      "class": "MANUAL_LEGACY_SPEAK",
+      "guarded": "modelOwnsTalk gate + brain does not run in REALTIME_ACTIVE"
+    },
+    {
+      "file": "src/screens/AbuAI/index.tsx",
+      "trigger": "speakVoiceMode (pipeline)",
+      "class": "FALLBACK_RESPONSE",
+      "guarded": "PENDING — §6 transactional fallback state machine not yet built"
+    }
   ],
   "no_bypass": "sendEvent routes EVERY response.create through createResponse; a raw response.create cannot reach the wire without the per-turn lease (rawSend is private).",
   "turn_boundary": "user_transcript_done (accepted input, deduped by item_id/transcript) begins one response turn; lease releases on assistant_transcript_done / response_done.",
-  "remaining_B": ["§3 explicit source-class ownership rules table", "§5 per-callback owner/generation/turn/response capture on every async callback", "§6 transactional fallback state machine REALTIME_CANCELLING→DRAINED→FALLBACK_ACTIVE", "§7 tests 4-15", "§8 mutations (bypass/second-turn/manual-speak/fallback-before-drain/stale-generation/wrong-response-id)", "§9 typed-state-without-brain audit"]
+  "remaining_B": [
+    "§3 explicit source-class ownership rules table",
+    "§5 per-callback owner/generation/turn/response capture on every async callback",
+    "§6 transactional fallback state machine REALTIME_CANCELLING→DRAINED→FALLBACK_ACTIVE",
+    "§7 tests 4-15",
+    "§8 mutations (bypass/second-turn/manual-speak/fallback-before-drain/stale-generation/wrong-response-id)",
+    "§9 typed-state-without-brain audit"
+  ],
+  "section4_crux": {
+    "finding": "SLICE mode sets create_response:TRUE (realtimeVoice buildRealtimeSessionUpdate) → the SERVER auto-responds to user audio WITHOUT a client response.create. The current client-side response lease is therefore NOT AUTHORITATIVE: an auto-response can overlap a client post-tool/repair response.create.",
+    "chosen_design": "Option B (server-automatic with OBSERVED lease): the ResponseLifecycle observes the provider response via response_created (auto OR client) → ACTIVE; a client createResponse while ACTIVE is blocked; post-tool/repair are sequential after the prior response is terminal.",
+    "boolean_lease_status": "SUPERSEDED-PENDING-WIRING. The committed boolean lease (responseLease) has the holes you named (released on transcript-done, reset on new input, text dedup). It is replaced by src/services/responseLifecycle.ts."
+  },
+  "responseLifecycle": {
+    "file": "src/services/responseLifecycle.ts",
+    "states": "ResponseState(IDLE/REQUESTED/ACTIVE/CANCELLING/COMPLETED/FAILED) x AudioState(SILENT/STARTING/PLAYING/DRAINING/STOPPED)",
+    "terminal_rule": "a new response starts only when previous ResponseState terminal AND AudioState quiet; transcript-done is NOT terminal; turn identity = provider item id + generation (never text); new input during output = INTERRUPTION (cancel+drain), not reset; terminal for wrong response id rejected.",
+    "tests": "src/services/responseLifecycle.test.ts (6, mutation-proven: transcript-done-releases -> RED; new-input-always-new-turn -> RED)",
+    "wiring_status": "NOT YET wired into RealtimeVoiceSession — correct wiring requires validating the real provider event sequence (auto-response/post-tool/repair ordering) against a DEVICE TRACE, which is exactly what the harness gates. Wiring blind risks breaking the injected-event-proven function-tool flow."
+  }
 }
