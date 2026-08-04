@@ -212,7 +212,7 @@
       "owner": "main",
       "oracle": "Calendar under ADR-0001: typed draft + provenance + field corrections preserving unrelated fields + unresolved relationships never guessed + same-revision confirm/commit + grounded reads + Communication/general isolation; injected calendar function-call journey (production-faithful).",
       "minEvidenceClass": "PRODUCTION_ADAPTER",
-      "currentEvidenceClass": "PRODUCTION_ADAPTER",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/screens/AbuAI/realtime/calendarDraft.test.ts"
       ],
@@ -222,7 +222,9 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the calendarDraft commit (new state layer; existing AbuCalendar truth untouched)",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: unresolved relationship (אח של מור) resolved to Leo + committed as calendar truth"
     },
     {
       "id": "DEPLOY-PREVIEW-RC",
@@ -268,7 +270,7 @@
       "owner": "main",
       "oracle": "one-step ?voice=realtime2 persists in a real browser; survives reload; ?voice=pipeline deactivates",
       "minEvidenceClass": "BROWSER",
-      "currentEvidenceClass": "BROWSER",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "e2e/feature-activation.spec.ts",
         "src/services/voiceModePreference.test.ts"
@@ -279,7 +281,9 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the activation commit; ?voice=pipeline disables at runtime",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: path=unknown — realtime2 active path unconfirmed on device"
     },
     {
       "id": "ONLINE-CURRENT-INFO",
@@ -289,7 +293,7 @@
       "owner": "main",
       "oracle": "current-info answered from a REAL retrieval tool with sources, or declined when zero sources (NO TOOL RESULT = NO CLAIM) — proven live on deployed RC",
       "minEvidenceClass": "LIVE_PROVIDER",
-      "currentEvidenceClass": "LIVE_PROVIDER",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/eval/onlineGroundingGate.test.ts"
       ],
@@ -299,7 +303,9 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the online-grounding commit; endpoint returns not-grounded on zero sources",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: in-conversation current-info returned generic לא הצלחתי (endpoint probe != live path)"
     },
     {
       "id": "RT-LIVE-SESSION",
@@ -309,7 +315,7 @@
       "owner": "main",
       "oracle": "live OpenAI Realtime session establishment (ephemeral client_secret for gpt-realtime) + declared tools — proven live on deployed RC. Audio-native WebRTC duplex + mic is PHYSICAL (VOICE-DEVICE).",
       "minEvidenceClass": "LIVE_PROVIDER",
-      "currentEvidenceClass": "LIVE_PROVIDER",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/services/realtimeModel.test.ts",
         "src/services/realtimeVoiceSlice.test.ts"
@@ -320,7 +326,9 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the realtime-token commit; placeholder key → OPENAI_API_KEY_MISSING",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: duplicate/overlapping audio, missing audio, ~5-6s truncation"
     },
     {
       "id": "HEBREW-CORPUS",
@@ -330,7 +338,7 @@
       "owner": "main",
       "oracle": "Hebrew factual-correction detection across phrasings (negation-aware); non-corrections not flagged; re-verify only for a corrected ONLINE focus (never guesses)",
       "minEvidenceClass": "INTEGRATION",
-      "currentEvidenceClass": "INTEGRATION",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/screens/AbuAI/conversationConvergence.test.ts",
         "src/screens/AbuAI/correctionVerification.test.ts"
@@ -341,7 +349,9 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the conversation module commit",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: Hebrew STT repeatedly missed/garbled"
     },
     {
       "id": "LONG-SESSION-CONTEXT",
@@ -351,7 +361,7 @@
       "owner": "main",
       "oracle": "bounded follow-up continuity preserving recency/provenance and the pending draft (a long sentence is not hijacked; a bare temporal fragment continues the schedule; a pending create keeps its day slot)",
       "minEvidenceClass": "INTEGRATION",
-      "currentEvidenceClass": "INTEGRATION",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/screens/AbuAI/conversationConvergence.test.ts",
         "src/screens/AbuAI/contextResolver.test.ts"
@@ -362,7 +372,9 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the conversation module commit",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: no context maintained; robotic"
     },
     {
       "id": "DIALOGUE-QUALITY",
@@ -372,7 +384,7 @@
       "owner": "main",
       "oracle": "non-repetitive adult Hebrew: loop/repetition guard breaks stuck lines but never suppresses a repeated true answer; specific correction ack; meta/challenge phrased differently across repeats",
       "minEvidenceClass": "INTEGRATION",
-      "currentEvidenceClass": "INTEGRATION",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/screens/AbuAI/conversationConvergence.test.ts",
         "src/screens/AbuAI/conversationBrainQuality.test.ts"
@@ -383,7 +395,9 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the conversation module commit",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: generic canned phrases, no content-aware dialogue"
     },
     {
       "id": "PWA-UPDATE",
@@ -414,7 +428,7 @@
       "owner": "main",
       "oracle": "generative property/race/fault/mutation across distinct product seams (privacy: numbers never label; truth: 1st-person completion unsayable; state: wrong gen/rev always rejected) — 700+ generated cases, mutation-proven",
       "minEvidenceClass": "INTEGRATION",
-      "currentEvidenceClass": "INTEGRATION",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/screens/AbuAI/wholeProductProperty.test.ts",
         "src/screens/AbuAI/realtime/destructiveSweep.test.ts",
@@ -426,7 +440,9 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the property-test commit",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: systemic failures across calendar/comm/audio/dialogue/online"
     },
     {
       "id": "LATENCY-VAD-INSTRUMENTATION",
@@ -436,7 +452,7 @@
       "owner": "main",
       "oracle": "privacy-safe event timestamps + latency/interruption budgets + median/p95/p99 distributions (offline runner); independent verifier + mutation proof",
       "minEvidenceClass": "INTEGRATION",
-      "currentEvidenceClass": "INTEGRATION",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/screens/AbuAI/realtime/latencyInstrumentation.test.ts"
       ],
@@ -446,7 +462,9 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the latencyInstrumentation commit (pure module; no runtime wiring yet)",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: diagnostic path=unknown, first-missing-stage MIC_PERMISSION — not observing the real path"
     },
     {
       "id": "CONFIG-TOURNAMENT",
@@ -456,7 +474,7 @@
       "owner": "main",
       "oracle": "deterministic Pareto tournament runner over a frozen corpus + metric matrix; naturalness can never buy past a truth/correction/stale violation or a p95-latency budget. Live audio A/B is PHYSICAL (VOICE-DEVICE).",
       "minEvidenceClass": "INTEGRATION",
-      "currentEvidenceClass": "INTEGRATION",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/screens/AbuAI/realtime/configTournament.test.ts"
       ],
@@ -466,7 +484,9 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the configTournament commit (pure runner; no runtime wiring)",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: voice/model/VAD not selected against live output; robotic result"
     },
     {
       "id": "BASELINE-METRICS",
@@ -476,7 +496,7 @@
       "owner": "main",
       "oracle": "frozen baseline distributions collected from the DEPLOYED RC (real API round-trip latency, cache-busted); aggregated by the mutation-proven summarizeDistribution. Full audio turn-latency baseline is PHYSICAL.",
       "minEvidenceClass": "DEPLOYED_PREVIEW",
-      "currentEvidenceClass": "DEPLOYED_PREVIEW",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/screens/AbuAI/realtime/latencyInstrumentation.test.ts"
       ],
@@ -486,7 +506,9 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "n/a (measurement snapshot); re-collect to refresh",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: diagnostic integrity failed; API-latency baseline is not the live turn baseline"
     },
     {
       "id": "VOICE-DEVICE",
@@ -538,13 +560,15 @@
       "severity": "High",
       "oracle": "TTS synthesis endpoint returns real audio on the deployed RC (subjective warmth is TTS-WARMTH, physical)",
       "minEvidenceClass": "LIVE_PROVIDER",
-      "currentEvidenceClass": "LIVE_PROVIDER",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/services/ttsFallbackPolicy.test.ts"
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/endpoint-evidence.json#tts",
       "rollbackTrigger": "git revert of the tts proxy commit; placeholder key -> error",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: audio duplicated/missing/truncated in the real session (synth-bytes != heard)"
     },
     {
       "classification": "automatable",
@@ -578,13 +602,15 @@
       "severity": "High",
       "oracle": "STT endpoint deployed+wired+guarded on the RC; deterministic fallback strategy (iOS Whisper primary + watchdog). Transcription ACCURACY under a real mic is PHYSICAL (VOICE-DEVICE).",
       "minEvidenceClass": "DEPLOYED_PREVIEW",
-      "currentEvidenceClass": "DEPLOYED_PREVIEW",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/services/sttStrategy.test.ts"
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/endpoint-evidence.json#stt",
       "rollbackTrigger": "git revert of the stt strategy commit",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: real-mic Hebrew transcription broken (endpoint wired != live)"
     },
     {
       "id": "CAL-RUNTIME-INTEGRATION",
@@ -594,7 +620,7 @@
       "owner": "main",
       "oracle": "calendarDraft is REACHABLE + constructed at runtime under ?voice=realtime2 (parity with Communication): calendar function-tools declared, CalendarDraftController routed disjointly through the REAL RealtimeVoiceSession, index.tsx composition root constructs it, UI projects the committed receipt. Legacy AbuCalendar remains screen/read/persistence only.",
       "minEvidenceClass": "PRODUCTION_ADAPTER",
-      "currentEvidenceClass": "PRODUCTION_ADAPTER",
+      "currentEvidenceClass": "STATIC",
       "tests": [
         "src/screens/AbuAI/realtime/calendarRuntimeIntegration.test.ts"
       ],
@@ -604,7 +630,179 @@
         "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the calendar-wiring commit (realtimeVoice + index.tsx); flag OFF by default",
-      "status": "PROVEN"
+      "status": "GAP",
+      "deviceFalsified": true,
+      "reopenReason": "live: calendar intent routed to Call; not the wired draft path"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "tests": [],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
+      "rollbackTrigger": "",
+      "status": "GAP",
+      "id": "ONE-RUNTIME-PATH-LIVE",
+      "surface": "runtime/one-path",
+      "severity": "Critical",
+      "minEvidenceClass": "PRODUCTION_ADAPTER",
+      "oracle": "exactly ONE runtime path handles a live turn — the transcript→brain path and the model→function-tool path must not both act on the same turn (dual-path caused duplicate audio + legacy calendar/comm routing)"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "tests": [],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
+      "rollbackTrigger": "",
+      "status": "GAP",
+      "id": "OUTPUT-AUDIO-EXACTLY-ONCE",
+      "surface": "voice/output-exactly-once",
+      "severity": "Critical",
+      "minEvidenceClass": "PRODUCTION_ADAPTER",
+      "oracle": "one logical turn produces exactly ONE audible response — no overlapping/duplicate audio"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "tests": [],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
+      "rollbackTrigger": "",
+      "status": "GAP",
+      "id": "OUTPUT-AUDIO-INTEGRITY",
+      "surface": "voice/output-integrity",
+      "severity": "Critical",
+      "minEvidenceClass": "PHYSICAL_DEVICE",
+      "oracle": "no silent-text responses; no ~5-6s truncation — full response audio plays with a truthful stop reason"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "tests": [],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
+      "rollbackTrigger": "",
+      "status": "GAP",
+      "id": "LIVE-STT-HEBREW",
+      "surface": "voice/live-stt",
+      "severity": "Critical",
+      "minEvidenceClass": "PHYSICAL_DEVICE",
+      "oracle": "real iPhone Hebrew microphone transcription succeeds across normal/fast/paused/noisy speech (not a walkie-talkie)"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "tests": [],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
+      "rollbackTrigger": "",
+      "status": "GAP",
+      "id": "CAL-COMM-ROUTING-LIVE",
+      "surface": "routing/cal-comm-live",
+      "severity": "Critical",
+      "minEvidenceClass": "PRODUCTION_ADAPTER",
+      "oracle": "a live Calendar intent never routes to the Communication call path, and vice-versa"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "tests": [],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
+      "rollbackTrigger": "",
+      "status": "GAP",
+      "id": "RELATIONSHIP-TRUTH-LIVE",
+      "surface": "truth/relationship-live",
+      "severity": "Critical",
+      "minEvidenceClass": "PRODUCTION_ADAPTER",
+      "oracle": "an unresolved relationship (אח של מור) is never guessed to a person, never committed, never returned as grounded truth in the live path"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "tests": [],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
+      "rollbackTrigger": "",
+      "status": "GAP",
+      "id": "GREETING-LIFECYCLE",
+      "surface": "session/greeting-lifecycle",
+      "severity": "High",
+      "minEvidenceClass": "PRODUCTION_ADAPTER",
+      "oracle": "exactly one greeting per logical session; no repeated בוקר טוב; no false חזרת without a real return"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "tests": [],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
+      "rollbackTrigger": "",
+      "status": "GAP",
+      "id": "DIAGNOSTIC-INTEGRITY",
+      "surface": "observability/diagnostic-integrity",
+      "severity": "High",
+      "minEvidenceClass": "PRODUCTION_ADAPTER",
+      "oracle": "live diagnostics carry a real path id + client SHA (not path=unknown/commit=local) with non-contradictory stages"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "tests": [],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
+      "rollbackTrigger": "",
+      "status": "GAP",
+      "id": "LIVE-DEVICE-TRACE-HARNESS",
+      "surface": "observability/live-trace-harness",
+      "severity": "High",
+      "minEvidenceClass": "PRODUCTION_ADAPTER",
+      "oracle": "a privacy-safe real-device trace can be ingested + deterministic invariants (single session/track/response, greeting<=1, no truncation, cal!=comm, unresolved!=person, path!=unknown) reject the device failures"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "tests": [],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
+      "rollbackTrigger": "",
+      "status": "GAP",
+      "id": "VOICE-QUALITY-LIVE",
+      "surface": "voice/quality-live",
+      "severity": "High",
+      "minEvidenceClass": "PHYSICAL_DEVICE",
+      "oracle": "live voice is warm/natural (tournament-selected on live output + human rating), not flat/robotic"
     }
   ]
 }

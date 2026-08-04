@@ -174,6 +174,66 @@
       "surface": "calendar/runtime-authority-wiring",
       "severity": "High",
       "classification": "automatable"
+    },
+    {
+      "id": "ONE-RUNTIME-PATH-LIVE",
+      "surface": "runtime/one-path",
+      "severity": "Critical",
+      "classification": "automatable"
+    },
+    {
+      "id": "OUTPUT-AUDIO-EXACTLY-ONCE",
+      "surface": "voice/output-exactly-once",
+      "severity": "Critical",
+      "classification": "automatable"
+    },
+    {
+      "id": "OUTPUT-AUDIO-INTEGRITY",
+      "surface": "voice/output-integrity",
+      "severity": "Critical",
+      "classification": "automatable"
+    },
+    {
+      "id": "LIVE-STT-HEBREW",
+      "surface": "voice/live-stt",
+      "severity": "Critical",
+      "classification": "automatable"
+    },
+    {
+      "id": "CAL-COMM-ROUTING-LIVE",
+      "surface": "routing/cal-comm-live",
+      "severity": "Critical",
+      "classification": "automatable"
+    },
+    {
+      "id": "RELATIONSHIP-TRUTH-LIVE",
+      "surface": "truth/relationship-live",
+      "severity": "Critical",
+      "classification": "automatable"
+    },
+    {
+      "id": "GREETING-LIFECYCLE",
+      "surface": "session/greeting-lifecycle",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "DIAGNOSTIC-INTEGRITY",
+      "surface": "observability/diagnostic-integrity",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "LIVE-DEVICE-TRACE-HARNESS",
+      "surface": "observability/live-trace-harness",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "VOICE-QUALITY-LIVE",
+      "surface": "voice/quality-live",
+      "severity": "High",
+      "classification": "automatable"
     }
   ]
 }

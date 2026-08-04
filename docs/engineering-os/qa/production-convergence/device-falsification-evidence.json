@@ -1,0 +1,28 @@
+{
+  "state": "LIVE_CANDIDATE_FALSIFIED",
+  "authority": "PHYSICAL_DEVICE — overrides all injected-event / deployed-endpoint / unit evidence",
+  "candidate": { "stableRc": "https://abu-ela-rc.vercel.app", "build": "0.177.0-calendar-runtime-integration-rc", "head": "277b9867e48a23b2b55bb2ecfcf11d42ec8ccbfc" },
+  "device": { "iphone": "iOS 18.7", "env": "Safari/PWA", "clientServerMatched": true, "serviceWorkerActive": true, "mediaCapabilitiesPresent": true },
+  "observed_failures": {
+    "A_relationship_truth_calendar": "Requested meeting with 'אח של מור' → routed to a CALL to Mor; later substituted 'אח של מור'→Leo; asked to confirm a meeting with Leo; committed a meeting with Leo after 'כן'; later answered the 'אח של מור' meeting was with Leo. Unsupported relationship became committed calendar truth.",
+    "B_cal_comm_routing": "'תקבעי פגישה…' repeatedly produced 'מכינה שיחה עם מור. לחצי על התקשרי' — Calendar intent reached the Communication call path.",
+    "C_repeated_greeting_lifecycle": "'בוקר טוב, Martita. אני פה איתך.' emitted repeatedly across turns/actions/reconnect; 'חזרת! אני פה. דברי.' without a real user return.",
+    "D_duplicate_overlapping_audio": "Assistant frequently spoke twice at once, one response layered over another.",
+    "E_missing_output_audio": "Some responses appeared as text with no audible speech.",
+    "F_output_truncation": "Longer speech stopped after ~5–6s regardless of remaining content.",
+    "G_mic_stt_failure": "Frequent 'לא הצלחתי להבין את ההקלטה. ננסה שוב.'; speech repeatedly missed/garbled — walkie-talkie, not continuous conversation.",
+    "H_diagnostic_integrity": "path=unknown; commit=local; microphone fields unknown; FIRST MISSING STAGE = MICROPHONE_PERMISSION_GRANTED; no later stages — yet the session did transcribe+respond. The voice diagnostic is NOT observing the real live path.",
+    "I_dialogue_context": "Generic canned phrases ('נשמע שיש לך הרבה על הראש','תפרטי קצת יותר','אני פה', generic apology) instead of content-aware dialogue. Robotic, restrictive, non-conversational.",
+    "J_online_current_info": "'אילו סרטים מוקרנים בכפר סבא' → 'לא הצלחתי לבדוק את זה עכשיו' despite ONLINE-CURRENT-INFO classified PROVEN (endpoint probe ≠ live in-conversation path).",
+    "K_voice_quality": "Flat, robotic, unpleasant; no warmth/prosody/natural intonation."
+  },
+  "reproduction_utterances": [
+    "תקבעי פגישה עם אח של מור היום בשבע בערב בקפה מונקו באילת",
+    "תקבעי פגישה עם אח של מור מחר בשבע בערב בקפה מונקו באילת",
+    "כן",
+    "מתי הפגישה עם אח של מור?",
+    "אילו סרטים מוקרנים בכפר סבא"
+  ],
+  "first_divergence_hypothesis": "The realtime SLICE handles a turn via TWO paths: (a) model function_call → comm/calendar controller, AND (b) onUserTranscript → ExecutiveCognitiveController (legacy brain). Dual runtime path likely produced duplicate audio + legacy calendar→call routing + Leo substitution. Injected-event tests only exercised path (a); they never ran path (b) concurrently, so they were blind to the live defect. VIOLATES 'one runtime path per capability'.",
+  "note_privacy": "No phone numbers / medical / financial / street stored. Relationship phrases are the product test corpus."
+}
