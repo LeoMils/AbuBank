@@ -210,17 +210,19 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "control-plane calendar draft + field corrections + Communication isolation",
+      "oracle": "Calendar under ADR-0001: typed draft + provenance + field corrections preserving unrelated fields + unresolved relationships never guessed + same-revision confirm/commit + grounded reads + Communication/general isolation; injected calendar function-call journey (production-faithful).",
       "minEvidenceClass": "PRODUCTION_ADAPTER",
-      "currentEvidenceClass": "STATIC",
-      "tests": [],
-      "evidenceArtifact": "",
+      "currentEvidenceClass": "PRODUCTION_ADAPTER",
+      "tests": [
+        "src/screens/AbuAI/realtime/calendarDraft.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#calendar-migration",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "GAP"
+      "rollbackTrigger": "git revert of the calendarDraft commit (new state layer; existing AbuCalendar truth untouched)",
+      "status": "PROVEN"
     },
     {
       "id": "DEPLOY-PREVIEW-RC",

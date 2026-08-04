@@ -109,5 +109,22 @@
       "control-plane generation guard dropped (destructiveSweep)",
       "truth-monitor NEG emptied (destructiveSweep/truthMonitor)"
     ]
+  },
+  "calendar_migration": {
+    "file": "src/screens/AbuAI/realtime/calendarDraft.ts",
+    "note": "Calendar under ADR-0001 control-plane DISCIPLINE (typed draft + revisions + same-revision confirm + isolation), delegating TRUTH (relationship/date) to an injected resolver (production: familyResolve/calendarEventBuilderV2). No second conversational brain.",
+    "class": "PRODUCTION_ADAPTER (injected calendar function-call journey, no mic)",
+    "proven": [
+      "field corrections preserve every unrelated field",
+      "relationship/gender change is a structured update",
+      "unresolved relationship (אח של מור) stays unresolved + blocks confirm (never guessed)",
+      "same-revision confirm/commit; stale confirm rejected",
+      "general/communication turns never mutate the draft (isolation)",
+      "receipt never emits a relative date (grounded)"
+    ],
+    "mutations": [
+      "field-correction clobbers unrelated fields -> 5 tests fail",
+      "allow stale confirm -> 2 tests fail"
+    ]
   }
 }
