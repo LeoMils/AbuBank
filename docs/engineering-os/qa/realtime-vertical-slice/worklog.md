@@ -99,6 +99,21 @@
   fallback under the same control plane is ADR §17 stage 8 (out of this slice). No hidden second semantic authority,
   no duplicate card renderer (ActiveActionCard is shared), kernel never authors prose, model never certifies truth.
 
+## Checkpoint 7 (this commit) — S1 false-completion audit + exactly-once dedup (Critical/High)
+- **1.A handoff-target boundary AUDITED — CORRECT**: ActiveActionCard.onPrimary passes the safe NAME to
+  adapter.buildHandoff, which resolves the number LOCALLY (resolveContactForName) and encodes the wa.me/tel URL;
+  the number never reaches the provider. Proven by the adapter code + e2e/abuai-whatsapp-intent (wa.me/972…
+  byte-for-byte, no auto-send). Not a defect.
+- **1.C event dedup DEFECT FOUND + FIXED (Critical/High)**: the same model call can arrive in
+  response.output_item.done AND response.done (and function_call_arguments.done); the controller re-sent a second
+  function_call_output and had an async race that could double-invoke the kernel. Fixed with a synchronously-marked
+  in-flight guard → EXACTLY ONE kernel call, one card, one function_call_output per call_id. Proven at the controller
+  (race-safe concurrent test) AND on the real RealtimeVoiceSession path (dual-shape test). Updated the prior idempotency
+  test (which encoded the re-send) to the corrected exactly-once contract — fixing the truth, not weakening a test.
+- Created **production-scorecard.json** (immutable, evidence-classed) — honest status incl. GAP / EXTERNAL-BLOCKER /
+  PHYSICAL-ONLY categories (Calendar migration, live baseline/tournament, Hebrew corpus, whole-product QA, device).
+- Version 0.171.0 → **0.172.0-realtime-exactly-once-dedup-rc** (synced). typecheck 0; build green.
+
 ## Status
 - §18 vertical slice: **wired (flag-gated) + deployed (Preview) + falsified (deployed browser)** = the mission's
   COMPLETION terminal condition for THIS slice is met. **99 tests** (controlPlane 16 · realtimeTools 9 · truthMonitor

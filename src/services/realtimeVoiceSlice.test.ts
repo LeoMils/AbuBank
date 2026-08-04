@@ -89,6 +89,16 @@ describe('RealtimeVoiceSession — live function-tool journey through the REAL a
     expect(sent.filter((e) => e.type === 'conversation.item.create')).toHaveLength(2)
   })
 
+  it('EXACTLY-ONCE on the real path: the same call in output_item.done + response.done → one card, one output', async () => {
+    const { sent, cards, receive } = makeSession()
+    const item = { type: 'function_call', name: 'prepare_whatsapp', call_id: 'dup1', arguments: '{"recipient":"מור","intent":"x"}' }
+    receive({ type: 'response.output_item.done', item })
+    receive({ type: 'response.done', response: { output: [item] } })   // same call, second official shape
+    await flush()
+    expect(cards.length).toBe(1)
+    expect(sent.filter((e) => e.type === 'conversation.item.create')).toHaveLength(1)
+  })
+
   it('a non-function event (audio delta) is ignored by the slice and does not emit tool events', async () => {
     const { sent, cards, receive } = makeSession()
     receive({ type: 'response.output_audio.delta', delta: 'xx' })

@@ -37,6 +37,11 @@ export interface CommControllerCallbacks {
 export class RealtimeCommController {
   private seq = 0
   private readonly handled = new Map<string, ActiveActionViewModel>()
+  // Synchronously-marked in-flight call ids. The SAME model call can arrive in more
+  // than one official completion shape (response.output_item.done AND response.done);
+  // marking BEFORE the first await makes dedup race-safe so a call id produces EXACTLY
+  // one kernel invocation, one receipt, one card and one function_call_output (§12).
+  private readonly inFlight = new Set<string>()
 
   constructor(
     private readonly orch: SessionOrchestrator,
@@ -48,16 +53,22 @@ export class RealtimeCommController {
    * Handle a completed function call from the live model. Maps it to a control-plane
    * turn (using the current committed state to tell START from REPLACE), executes via
    * the kernel, commits, returns the SAFE receipt to the model, and continues it.
+   * EXACTLY ONCE per call id: a duplicate event shape of the same call is a no-op (no
+   * second kernel call, no second card, no second function_call_output).
    */
   async onFunctionCall(fc: ParsedFunctionCall): Promise<ActiveActionViewModel> {
-    // Idempotency: a duplicate model call id re-sends the SAME receipt — never a
-    // second handoff / a second card (ADR §12 retries-cannot-duplicate).
     const cached = this.handled.get(fc.callId)
-    if (cached) {
-      this.replyToModel(fc.callId, cached)
-      return cached
+    if (cached) return cached                                   // completed duplicate → no re-send
+    if (this.inFlight.has(fc.callId)) return this.orch.viewModel() // in-flight duplicate → drop
+    this.inFlight.add(fc.callId)
+    try {
+      return await this.runCall(fc)
+    } finally {
+      this.inFlight.delete(fc.callId)
     }
+  }
 
+  private async runCall(fc: ParsedFunctionCall): Promise<ActiveActionViewModel> {
     const args = safeParseArgs(fc.argsJson)
     const cur = this.orch.viewModel()
     const active = cur.visible && !!cur.cardId

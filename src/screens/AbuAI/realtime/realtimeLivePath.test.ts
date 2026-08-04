@@ -117,15 +117,30 @@ describe('RealtimeCommController — the live function-tool journey (§18) throu
     expect(ctl.viewModel().recipientLabel).toBe('מור')  // recipient carried
   })
 
-  it('a duplicate model call id is idempotent — no second card, receipt re-sent', async () => {
+  it('a duplicate model call id is EXACTLY-ONCE — one kernel call, one card, one function_call_output', async () => {
     const { sent, cards, ctl } = make()
     await ctl.onFunctionCall({ name: 'prepare_call', callId: 'dup', argsJson: '{"recipient":"מור"}' })
-    const before = cards.length
     await ctl.onFunctionCall({ name: 'prepare_call', callId: 'dup', argsJson: '{"recipient":"מור"}' })
-    expect(cards.length).toBe(before)                     // NO second card
-    // The receipt was re-sent (idempotent) but no new action was created.
-    expect(sent.filter((e) => e.type === 'conversation.item.create').length).toBe(2)
-    expect(ctl.viewModel().revision).toBe(1)              // revision did not advance
+    expect(cards.length).toBe(1)                                                     // exactly ONE card
+    expect(sent.filter((e) => e.type === 'conversation.item.create').length).toBe(1) // exactly ONE receipt
+    expect(ctl.viewModel().revision).toBe(1)                                          // revision did not advance
+  })
+
+  it('RACE-SAFE dedup: the SAME call arriving in two official shapes concurrently invokes the kernel once', async () => {
+    let kernelCalls = 0
+    const counting: KernelFn = async (a) => { kernelCalls++; return { action: 'handoff', mode: a.kind, recipientName: a.recipientName, canHandoff: true, status: 'HANDOFF_AVAILABLE' } }
+    const orch = new SessionOrchestrator({ sessionId: 'race', kernel: counting })
+    const sent: Array<Record<string, unknown>> = []
+    const cards: unknown[] = []
+    const ctl = new RealtimeCommController(orch, (e) => sent.push(e), { onCard: (vm) => cards.push(vm) })
+    // Fire both completion shapes for the SAME call_id in the same tick (output_item.done + response.done).
+    await Promise.all([
+      ctl.onFunctionCall({ name: 'prepare_whatsapp', callId: 'same', argsJson: '{"recipient":"מור","intent":"x"}' }),
+      ctl.onFunctionCall({ name: 'prepare_whatsapp', callId: 'same', argsJson: '{"recipient":"מור","intent":"x"}' }),
+    ])
+    expect(kernelCalls).toBe(1)
+    expect(cards.length).toBe(1)
+    expect(sent.filter((e) => e.type === 'conversation.item.create').length).toBe(1)
   })
 
   it('a phone number in the args never resolves and never appears in the receipt', async () => {
