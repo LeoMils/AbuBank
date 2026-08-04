@@ -1,0 +1,20 @@
+{
+  "objective": "Wire + prove the first generalized Realtime vertical slice (ADR-0001 GRA-EDC): one continuous Hebrew Realtime conversation; one greeting/session; WhatsApp action via typed tool+kernel; in-session live card; 'לא, תתקשרי אליו' atomically replaces WhatsApp->Call; no stale speech/card; UI+speech one revision; no fabricated fact/completion; fallback preserves authorities.",
+  "governingADR": "docs/engineering-os/adr/ADR-0001-abu-realtime-conversational-architecture.md (CERTIFIED)",
+  "authorityModel": { "TALK": "gpt-realtime (model)", "STATE": "control plane (deterministic)", "TRUTH/ACTION": "kernel reduceGoal + tools", "UI": "projection of committed state" },
+  "currentCommit": "pending-this-commit (builds on b1e88fc)",
+  "completedStages": [
+    "S1 control plane (STATE authority) — src/screens/AbuAI/realtime/controlPlane.ts — 16/16",
+    "S4a tool dispatch (delegates to kernel; no completion; privacy; idempotency) — realtimeTools.ts — 9/9",
+    "S7a streaming-truth monitor (completion + unsupported-denial) — truthMonitor.ts — 6/6"
+  ],
+  "activeStage": "S5 wire the control plane + tools + monitor into the live Realtime session (realtimeVoice.ts / AbuAI/index.tsx) behind an experimental flag; render the in-session live card bound to the committed revision; then S13 deploy + built-browser/simulated-realtime falsification.",
+  "nextExactExecutableAction": "Add a control-plane-driven in-session ActiveActionCard component + a test seam on RealtimeVoiceSession that injects function_call/interruption events, so the ADR §18 journey (WhatsApp card -> replace to Call in a live session) is provable in a built browser WITHOUT a mic; then deploy Preview behind ?voice=realtime2 and falsify.",
+  "terminalConditions": ["COMPLETION (wired+deployed+falsified)", "EXTERNAL BLOCKER", "ADR CONTRADICTION"],
+  "blockers": [
+    "The live-audio conversational journey is physical-only (mic) per ADR §20; the AUTOMATABLE deployed proof requires a simulated-realtime test seam on the 2000-line RealtimeVoiceSession that is a multi-file build.",
+    "Wiring must be strictly flag-gated (off by default) so the certified default path is never endangered; deploying unproven wiring onto the live default path is forbidden."
+  ],
+  "rollbackPoints": ["b1e88fc (control plane only)", "this commit (control plane + tools + truth, all additive/unwired)", "de00f27 (product 0.164.0)"],
+  "verdictSoFar": "NOT READY — deterministic authority stack (STATE+tools+TRUTH) implemented and proven (31 tests); live-session wiring + deployed falsification remain."
+}
