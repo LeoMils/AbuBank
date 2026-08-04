@@ -7,5 +7,12 @@
   "deploy": "NONE — no Production deploy; no merge to main. Preview deploy requires explicit human action.",
   "rollback": "git revert of the fix commits restores 0.172.0 truth-monitor behavior; no data migration, no storage change, flag path untouched.",
   "physical_blockers": "See PHYSICAL_PROTOCOL section in worklog.md — real mic Hebrew, interruption, warmth, WhatsApp/dialer launch, latency feel.",
-  "verdict": "NOT a full Production Candidate. One automatable High/Medium defect closed with permanent coverage; the whole-product Critical/High denominator remains blocked on physical iPhone + live OpenAI Realtime + deployed telemetry."
+  "communication_realtime_subsystem": "Automatable Critical/High hardening COMPLETE + mutation-proven: 3 real defects closed (TM-FP-001/002 forward-Hebrew false positives; CD-FN-001 dial-denial false negative), destructive sweep of the real adapter chain (14 hostile-sequence tests) green and proven non-vacuous. Stale/generation/revision rejection, cancel/replace-in-flight, exactly-once, privacy, fallback/reconnect, greeting-once, one-projection all covered.",
+  "remaining_blockers": {
+    "architectural_STOP_needs_authorization": "CAL-MIGRATION — Calendar under the certified authority model (DoD point 2). Medium/high-risk architectural change; requires explicit human go-ahead + repo audit. Not built speculatively.",
+    "physical_iphone": "Enumerated PHYSICAL_PROTOCOL in worklog.md (mic Hebrew, interruption, warmth, pacing, WhatsApp/dialer launch).",
+    "external_live_provider": "CFG-TOURNAMENT + true audio-native duplex — needs a live OpenAI Realtime account+mic.",
+    "external_deployed_telemetry": "BASELINE-METRICS distributions — needs an instrumented deployed candidate with real traffic."
+  },
+  "verdict": "NOT a full Production Candidate. The Communication/Realtime/TruthMonitor automatable Critical/High surface is closed and mutation-proven, but the whole-product denominator remains open: Calendar-under-authority (automatable but a STOP-gated architectural change needing authorization) + physical iPhone + live-provider tournament + deployed telemetry. Not claiming 'automatable candidate proven' because CAL-MIGRATION is automatable Critical/High work that is not complete."
 }
