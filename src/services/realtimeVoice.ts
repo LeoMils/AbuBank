@@ -25,6 +25,7 @@ import { REALTIME_COMM_TOOLS, REALTIME_CALENDAR_TOOLS, isCalendarToolName, type 
 import { extractFunctionCall, isKnownToolCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 import type { RealtimeCommController } from '../screens/AbuAI/realtime/realtimeCommController'
 import type { CalendarDraftController } from '../screens/AbuAI/realtime/calendarDraftController'
+import { acquireSession, releaseSession, nextSessionToken } from './sessionOwnershipRegistry'
 
 // Model comes from the ONE shared source (realtimeModel.ts) so the client secret,
 // SDP call, health, and diagnostics can never drift (Defect 3).
@@ -141,6 +142,8 @@ export class RealtimeVoiceSession {
   private primedAudioEl: HTMLAudioElement | null
   // realtime2 SLICE (ADR §12): the live communication controller (function-tool → kernel →
   // committed card → grounded speech). Null = certified brain-driven path (unchanged).
+  // ONE LIVE SESSION: this instance's unique ownership token (single-owner registry).
+  private readonly ownerToken = nextSessionToken()
   private sliceController: RealtimeCommController | null = null
   // realtime2 SLICE (ADR §12): the live CALENDAR authority — a completed calendar
   // function-call routes to the canonical typed draft, at parity with communication.
@@ -230,6 +233,10 @@ export class RealtimeVoiceSession {
   }
 
   async connect(): Promise<void> {
+    // ONE LIVE SESSION (ADR §5): acquire the single-owner slot; a previous live
+    // session (rerender/reconnect) is DRAINED first so there is never a parallel
+    // peer connection / remote track / audio element.
+    acquireSession(this.ownerToken, () => this.cleanup())
     this.setState('connecting')
 
     try {
@@ -670,5 +677,6 @@ export class RealtimeVoiceSession {
     if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null }
     if (this.pc) { try { this.pc.close() } catch {} this.pc = null }
     if (this.audioEl) { this.audioEl.pause(); this.audioEl.srcObject = null; try { this.audioEl.remove() } catch { /* not in DOM */ } this.audioEl = null }
+    releaseSession(this.ownerToken) // ONE LIVE SESSION: release the single-owner slot
   }
 }
