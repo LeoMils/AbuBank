@@ -144,6 +144,9 @@ export class RealtimeVoiceSession {
   // committed card → grounded speech). Null = certified brain-driven path (unchanged).
   // ONE LIVE SESSION: this instance's unique ownership token (single-owner registry).
   private readonly ownerToken = nextSessionToken()
+  // ONE RESPONSE PER TURN (§B): the per-turn response lease + input-dedup key.
+  private responseLeased = false
+  private lastInputKey = ''
   private sliceController: RealtimeCommController | null = null
   // realtime2 SLICE (ADR §12): the live CALENDAR authority — a completed calendar
   // function-call routes to the canonical typed draft, at parity with communication.
@@ -466,12 +469,45 @@ export class RealtimeVoiceSession {
     }
   }
 
+  // ONE RESPONSE PER TURN (§B): sendEvent is the SINGLE choke point for every
+  // response.create in the app (internal sites + both controllers route here). A
+  // response.create is NEVER sent raw — it is centralized through createResponse,
+  // which enforces the per-turn response lease. Any other event passes straight to
+  // the wire. A raw response.create therefore cannot bypass the authorization.
   private sendEvent(event: Record<string, unknown>): void {
+    if (event && event.type === 'response.create') { this.createResponse(event); return }
+    this.rawSend(event)
+  }
+
+  private rawSend(event: Record<string, unknown>): void {
     if (this.testSend) { this.testSend(event); return }
     if (this.dc?.readyState === 'open') {
       this.dc.send(JSON.stringify(event))
     }
   }
+
+  /** The ONE authoritative response creator. Grants at most one response per logical
+   *  turn; a second attempt for the same turn is rejected (device-falsified duplicate
+   *  audio). The lease releases on response_done / cancel / a new user turn. */
+  private createResponse(event: Record<string, unknown>): { granted: boolean } {
+    if (this.responseLeased) {
+      // eslint-disable-next-line no-console
+      console.log('[AbuAI][VOICE] response.create REJECTED — a response is already active for this turn')
+      return { granted: false }
+    }
+    this.responseLeased = true
+    this.rawSend(event)
+    return { granted: true }
+  }
+
+  /** Begin a new logical response turn (accepted-input boundary), deduped so a
+   *  duplicate transcription shape does not grant a second response. */
+  private beginResponseTurn(inputKey: string): void {
+    if (inputKey && inputKey === this.lastInputKey) return // duplicate shape → same turn
+    this.lastInputKey = inputKey
+    this.responseLeased = false
+  }
+  private releaseResponseLease(): void { this.responseLeased = false }
 
   private handleEvent(event: any): void {
     // realtime2 SLICE (ADR §12): a completed communication function call is routed to the
@@ -517,6 +553,9 @@ export class RealtimeVoiceSession {
       case 'user_transcript_done':
         this.stage('TRANSCRIPTION_COMPLETED', 'ok')
         if (event.transcript) {
+          // §B turn boundary: an accepted user transcript begins ONE logical response
+          // turn (deduped) → exactly one response.create may be granted for it.
+          this.beginResponseTurn(String((event as { item_id?: string }).item_id ?? event.transcript))
           try { currentVoiceFlight()?.noteTranscript(event.transcript) } catch { /* */ }
           this.cb.onUserTranscript(event.transcript)
         }
@@ -549,6 +588,10 @@ export class RealtimeVoiceSession {
       case 'assistant_transcript_done':
         if (this._listenMode) break
         if (event.transcript) {
+          // §B: the model's spoken response for this turn has ENDED → release the lease so
+          // the NEXT response (e.g. a truth repair on the next turn) may be created. This
+          // keeps responses SEQUENTIAL (never two overlapping/concurrent) — the device bug.
+          this.releaseResponseLease()
           // realtime2 SLICE: guard the model's spoken transcript (§11 bounded monitor) —
           // a fabricated completion / unsupported denial is repaired on the next turn.
           if (this.sliceController) this.sliceController.onAssistantTranscript(event.transcript)
@@ -557,6 +600,7 @@ export class RealtimeVoiceSession {
         break
 
       case 'response_done':
+        this.releaseResponseLease() // §B: the response lifecycle ended → next turn may respond
         this.setState('listening')
         break
 
