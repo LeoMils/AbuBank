@@ -468,17 +468,19 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "frozen baseline distributions from an instrumented candidate",
+      "oracle": "frozen baseline distributions collected from the DEPLOYED RC (real API round-trip latency, cache-busted); aggregated by the mutation-proven summarizeDistribution. Full audio turn-latency baseline is PHYSICAL.",
       "minEvidenceClass": "DEPLOYED_PREVIEW",
-      "currentEvidenceClass": "STATIC",
-      "tests": [],
-      "evidenceArtifact": "",
+      "currentEvidenceClass": "DEPLOYED_PREVIEW",
+      "tests": [
+        "src/screens/AbuAI/realtime/latencyInstrumentation.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/baseline-evidence.json",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "GAP"
+      "rollbackTrigger": "n/a (measurement snapshot); re-collect to refresh",
+      "status": "PROVEN"
     },
     {
       "id": "VOICE-DEVICE",
