@@ -25,6 +25,37 @@ describe('arbiter — REALTIME_ACTIVE gives the model sole TALK; the legacy brai
   })
 })
 
+describe('arbiter — §1 the legacy brain does not RUN under REALTIME_ACTIVE', () => {
+  it('legacyBrainAllowed is false in REALTIME_ACTIVE, true certified/fallback', () => {
+    const a = new TurnAuthorityArbiter('s')
+    expect(a.legacyBrainAllowed()).toBe(true)            // TERMINATED/certified default → brain runs
+    a.activateRealtime()
+    expect(a.legacyBrainAllowed()).toBe(false)           // slice → brain must NOT run
+    a.activateFallback()
+    expect(a.legacyBrainAllowed()).toBe(true)            // fallback → legacy brain owns TALK
+  })
+})
+
+describe('arbiter — §2 per-turn ownership snapshot', () => {
+  it('a turn under REALTIME_ACTIVE owns model/control-plane/function-tools with a turn+response id', () => {
+    const a = new TurnAuthorityArbiter('sess-x'); a.activateRealtime()
+    const turnId = a.beginTurn()
+    const lease = a.requestResponseLease('resp-1')
+    const v = a.view()
+    expect(lease.granted).toBe(true)
+    expect(v.sessionId).toBe('sess-x'); expect(v.turnId).toBe(turnId)
+    expect(v.talkOwner).toBe('model'); expect(v.stateOwner).toBe('control_plane'); expect(v.actionOwner).toBe('function_tools')
+    expect(v.activeResponseId).toBe('resp-1')
+    expect(a.requestResponseLease('resp-2').granted).toBe(false)  // one response per turn
+  })
+  it('a new turn resets the response lease but keeps model TALK ownership', () => {
+    const a = new TurnAuthorityArbiter(); a.activateRealtime(); a.beginTurn(); a.requestResponseLease()
+    a.beginTurn()
+    expect(a.view().talkOwner).toBe('model'); expect(a.view().activeResponseId).toBeNull()
+    expect(a.requestResponseLease().granted).toBe(true)
+  })
+})
+
 describe('arbiter — fallback exclusivity (never concurrent with realtime)', () => {
   it('transfers ONCE, drains realtime, then denies model TALK and allows legacy speak', () => {
     const a = new TurnAuthorityArbiter(); a.activateRealtime()

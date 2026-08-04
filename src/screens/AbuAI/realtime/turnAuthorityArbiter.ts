@@ -18,8 +18,15 @@
 
 export type RuntimeMode = 'REALTIME_ACTIVE' | 'FALLBACK_ACTIVE' | 'TERMINATED'
 export type TalkOwner = 'model' | 'legacy_brain' | 'none'
+export type StateOwner = 'control_plane' | 'legacy_brain' | 'none'
+export type ActionOwner = 'function_tools' | 'legacy_brain' | 'none'
 
 export interface Decision { granted: boolean; reason: string }
+export interface TurnView {
+  sessionId: string; turnId: string | null; generation: number; runtimeMode: RuntimeMode
+  talkOwner: TalkOwner; stateOwner: StateOwner; actionOwner: ActionOwner
+  activeResponseId: string | null; responseLeases: number
+}
 
 export class TurnAuthorityArbiter {
   private mode: RuntimeMode = 'TERMINATED'
@@ -27,8 +34,13 @@ export class TurnAuthorityArbiter {
   private turnSeq = 0
   private currentTurn: string | null = null
   private talkOwner: TalkOwner = 'none'
+  private stateOwner: StateOwner = 'none'
+  private actionOwner: ActionOwner = 'none'
+  private activeResponseId: string | null = null
   private responseLeases = 0          // active response.create leases for the current turn
   private readonly log: string[] = []
+
+  constructor(private readonly sessionId: string = 'session') {}
 
   private note(s: string): void { this.log.push(s) }
   reasons(): string[] { return [...this.log] }
@@ -36,22 +48,52 @@ export class TurnAuthorityArbiter {
   get gen(): number { return this.generation }
   get talk(): TalkOwner { return this.talkOwner }
 
-  /** Enter realtime ownership (bumps generation so pre-transfer callbacks are stale). */
-  activateRealtime(): void { this.mode = 'REALTIME_ACTIVE'; this.generation += 1; this.note(`mode=REALTIME_ACTIVE gen=${this.generation}`) }
+  /** The per-turn ownership snapshot (feeds the privacy-safe live trace). */
+  view(): TurnView {
+    return {
+      sessionId: this.sessionId, turnId: this.currentTurn, generation: this.generation, runtimeMode: this.mode,
+      talkOwner: this.talkOwner, stateOwner: this.stateOwner, actionOwner: this.actionOwner,
+      activeResponseId: this.activeResponseId, responseLeases: this.responseLeases,
+    }
+  }
+
+  /** The single global authority question §1 forbids relying on alone — kept, but the
+   *  legacy BRAIN itself must not RUN under REALTIME_ACTIVE (see legacyBrainAllowed). */
+  legacyBrainAllowed(): boolean { return this.mode !== 'REALTIME_ACTIVE' }
+
+  /** Enter realtime ownership: model owns TALK, control plane owns STATE, function
+   *  tools own ACTIONS. The legacy brain owns nothing and does not run. */
+  activateRealtime(): void {
+    this.mode = 'REALTIME_ACTIVE'; this.generation += 1
+    this.talkOwner = 'model'; this.stateOwner = 'control_plane'; this.actionOwner = 'function_tools'
+    this.note(`mode=REALTIME_ACTIVE gen=${this.generation} talk=model state=control_plane action=function_tools`)
+  }
 
   /** Transfer to fallback: realtime output MUST be cancelled+drained first; transfer once. */
   activateFallback(): { transferred: boolean; drainRealtime: boolean } {
     if (this.mode === 'FALLBACK_ACTIVE') { this.note('fallback already active — no double transfer'); return { transferred: false, drainRealtime: false } }
     const drain = this.mode === 'REALTIME_ACTIVE'
-    this.mode = 'FALLBACK_ACTIVE'; this.generation += 1; this.talkOwner = 'none'; this.responseLeases = 0
+    this.mode = 'FALLBACK_ACTIVE'; this.generation += 1
+    this.talkOwner = 'legacy_brain'; this.stateOwner = 'legacy_brain'; this.actionOwner = 'legacy_brain'
+    this.responseLeases = 0; this.activeResponseId = null
     this.note(`transfer→FALLBACK_ACTIVE gen=${this.generation} drainRealtime=${drain}`)
     return { transferred: true, drainRealtime: drain }
   }
 
-  terminate(): void { this.mode = 'TERMINATED'; this.talkOwner = 'none'; this.responseLeases = 0; this.currentTurn = null; this.note('mode=TERMINATED') }
+  terminate(): void {
+    this.mode = 'TERMINATED'; this.talkOwner = 'none'; this.stateOwner = 'none'; this.actionOwner = 'none'
+    this.responseLeases = 0; this.activeResponseId = null; this.currentTurn = null; this.note('mode=TERMINATED')
+  }
 
-  /** Begin a new logical turn — resets the per-turn TALK + response leases. */
-  beginTurn(): string { this.turnSeq += 1; this.currentTurn = `turn_${this.turnSeq}`; this.talkOwner = 'none'; this.responseLeases = 0; return this.currentTurn }
+  /** Begin a new logical turn — assigns a turn id and resets the per-turn response
+   *  lease. TALK/state/action owners follow the runtime mode (model/control-plane/tools
+   *  in REALTIME_ACTIVE), so a new turn cannot silently hand TALK back to the brain. */
+  beginTurn(): string {
+    this.turnSeq += 1; this.currentTurn = `turn_${this.turnSeq}`
+    this.responseLeases = 0; this.activeResponseId = null
+    this.talkOwner = this.mode === 'REALTIME_ACTIVE' ? 'model' : (this.mode === 'FALLBACK_ACTIVE' ? 'legacy_brain' : 'none')
+    return this.currentTurn
+  }
 
   /** Grant TALK to exactly one authority for the current turn (idempotent for the same owner). */
   requestTalk(who: Exclude<TalkOwner, 'none'>): Decision {
@@ -64,11 +106,12 @@ export class TurnAuthorityArbiter {
   }
 
   /** At most ONE response.create per turn — a second is rejected (dedup duplicate audio). */
-  requestResponseLease(): Decision {
-    if (this.responseLeases >= 1) return this.reject('response denied: a response already active for this turn')
-    this.responseLeases += 1; this.note('response lease granted'); return { granted: true, reason: 'ok' }
+  requestResponseLease(responseId?: string): Decision {
+    if (this.responseLeases >= 1) return this.reject(`response denied: a response (${this.activeResponseId ?? '?'}) already active for this turn`)
+    this.responseLeases += 1; this.activeResponseId = responseId ?? `resp_${this.turnSeq}`
+    this.note(`response lease granted: ${this.activeResponseId}`); return { granted: true, reason: 'ok' }
   }
-  releaseResponse(): void { if (this.responseLeases > 0) this.responseLeases -= 1 }
+  releaseResponse(): void { if (this.responseLeases > 0) this.responseLeases -= 1; this.activeResponseId = null }
 
   /** The legacy brain may SPEAK only when it is not realtime-owned. */
   canLegacySpeak(): boolean { return this.mode !== 'REALTIME_ACTIVE' }

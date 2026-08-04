@@ -2630,6 +2630,17 @@ ${fewShotText}`
             setProductTruth({ voiceMode: 'realtime', inputSource: 'voice_realtime', rawTranscript: text, normalizedTranscript: eff, vadType: 'semantic_vad', bargeInEnabled: true, fallbackUsed: false })
             void (async () => {
               const myTurn = ++voiceTurnSeqRef.current
+              // ONE-RUNTIME-PATH-LIVE (§1): under REALTIME_ACTIVE the MODEL owns TALK and
+              // the deterministic tools own ACTIONS — the legacy ExecutiveCognitiveController
+              // must NOT RUN at all (no handleTurn, no conv/frustration/productTruth/display
+              // side effects). It runs only on the certified/fallback path. This removes the
+              // SECOND SEMANTIC BRAIN, not merely its audible speech.
+              arbiterRef.current?.beginTurn()
+              if (arbiterRef.current && !arbiterRef.current.legacyBrainAllowed()) {
+                // eslint-disable-next-line no-console
+                console.log('[AbuAI][SLICE] REALTIME_ACTIVE — legacy brain skipped (model owns TALK)')
+                return
+              }
               const tools = buildFullTurnTools(currentMsgs, true)
               const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
               currentVoiceFlight()?.mark('TRANSCRIPT_LANGUAGE_RESOLVED', 'ok', Date.now(), { detail: detectUtteranceLanguage(eff) })
