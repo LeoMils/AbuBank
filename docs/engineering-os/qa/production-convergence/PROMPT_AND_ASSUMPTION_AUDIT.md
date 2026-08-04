@@ -47,6 +47,35 @@ exists to improve execution; it is **not** a terminal result.
    checkpoint. Corrected: checkpoints persist state + surface only delta + next
    action; the gate (not prose) is the completion oracle.
 
+## Bootstrap defects found and corrected (self-hostile review)
+
+- **My own gate was gameable — fixed.** Hostile review of the gate found three real
+  bypasses, now closed with failing-first tests:
+  1. deleting an entire row lowered the count and could PASS → added a
+     machine-readable `product-inventory.json` manifest; the gate reconciles required
+     Critical/High ids (`MISSING_INVENTORY_ROW`).
+  2. a PROVEN row could cite a **deleted/nonexistent** test/artifact → the CLI now
+     injects `fileExists`; the gate raises `MISSING_TEST_FILE` / `MISSING_EVIDENCE_ARTIFACT`.
+  3. a **prefix-only** commit fingerprint was accepted → now requires a full 40-hex
+     SHA (`PREFIX_ONLY_FINGERPRINT`); copied evidence across rows raises `DUPLICATE_EVIDENCE`.
+- **False-green in my own scorecard — fixed.** `PRIVACY-KEYS` cited
+  `src/services/clientProviderKeyContract.test.ts`, which does not exist; the real
+  path is `src/clientProviderKeyContract.test.ts`. The new `MISSING_TEST_FILE` check
+  is exactly what caught it.
+- **Frontmatter corruption hypothesis — disproven by bytes.** `od -c` on
+  `SKILL.md` and every agent shows `- - - \n n a m e :` (`---\nname:`); the
+  missing-first-character was a transcript rendering artifact, not a file defect.
+- **Classification review (item 7) — confirmed correct + sharpened.** The live
+  Realtime PATH is `automatable` (control plane/kernel/controller PROVEN), not
+  physical. Only genuine mic/acoustic/subjective rows are `physical` (`VOICE-DEVICE`,
+  `TTS-WARMTH`). Added `RT-LIVE-SESSION` (automatable, min `LIVE_PROVIDER`) to
+  separate the live-provider *session* from mic/acoustic. Runner readiness
+  (`LATENCY-VAD-INSTRUMENTATION`, `CONFIG-TOURNAMENT`, `BASELINE-METRICS`) stays
+  `automatable`/open — distinct from unavailable live execution. No row is
+  `EXTERNAL_BLOCKER` without `blockerProof`.
+- **Stop-guard lifecycle — completed.** Deterministic `npm run abu:goal:{arm,status,
+  disarm}`; proven disarmed=no-op, armed=block, pass=allow, backstop=release; documented rollback.
+
 ## Assumptions to re-verify at execution time (not yet proven defects)
 
 - Latest tested build (0.175.0) is **not** yet deployed to Preview/stable RC

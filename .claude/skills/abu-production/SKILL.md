@@ -34,17 +34,21 @@ reproduce → first divergence → failing-first regression → fix the MECHANIS
 mutation-prove → strongest available production path → update failure corpus → continue.
 
 ## Critical path (order)
-0 restore+deploy/fingerprint · 1 reconcile inventory+truthful gate · 2 audit AbuCalendar ·
+0 `npm run abu:goal:arm` + restore+deploy/fingerprint · 1 reconcile inventory+truthful gate · 2 audit AbuCalendar ·
 3 Calendar under ADR-0001 (failing-first) · 4 unify Calendar/Comm/general · 5 Hebrew/
 complaint/repair/repetition/long-session · 6 instrumentation+runners · 7 live-provider
 experiments or prove blocker · 8 whole-product property/race/fault/mutation QA · 9 hostile
 review, remove false greens · 10 push+Preview/RC+fingerprint+rollback · 11 gate exit 0.
 
-## Stop enforcement (optional arming)
+## Stop enforcement (arm FIRST, before execution)
 `scripts/abu-stop-guard.mjs` (wired in `.claude/settings.json` Stop hook) blocks a
-premature turn-end ONLY when armed via `.claude/.abu-goal-active`, and only while the
-cached gate reports open work. Loop-safe (releases after 3 consecutive blocks).
-Arm: `touch .claude/.abu-goal-active`. Disarm: delete it.
+premature turn-end ONLY when armed, and only while the cached gate reports open work.
+Loop-safe (releases after 3 consecutive blocks). Deterministic commands:
+- `npm run abu:goal:arm` — arm (do this as execution step 0).
+- `npm run abu:goal:status` — armed state + cached gate result.
+- `npm run abu:goal:disarm` — normal workflow / hand back.
+Rollback/removal: `npm run abu:goal:disarm`, then delete the `Stop` entry for
+`scripts/abu-stop-guard.mjs` in `.claude/settings.json`.
 
 ## Terminal rules
 Only **PRODUCTION CANDIDATE PROVEN** (gate 0 + physical passed) or **AUTOMATABLE

@@ -36,6 +36,26 @@ Added 22 adversarial Hebrew variants (10 MUST-FLAG 1st-person completions; 11 MU
 
 Gates: sweep+monitor+livePath 42, version contract 22, **full suite 11959/2 todo (423 files)**, typecheck 0, build exit 0.
 
+## Execution control bootstrap (d087f60 + hardening) — DONE
+Machine-enforced execution system so the Definition of Done cannot silently shrink:
+- `npm run qa:production-gate` — deterministic gate (`src/engineering-os/productionGate.ts`,
+  pure; `scripts/qa-production-gate.ts` CLI). Currently FAILS: **13 open automatable
+  Critical/High** (+ `STALE_FINGERPRINT` until execution step 1 re-fingerprints).
+- Derived `scorecard.json` v2 (24 rows) + `product-inventory.json` manifest reconciled
+  by the gate (`MISSING_INVENTORY_ROW`).
+- Adversarial gate tests (18) reject every false-green class AND pass a complete fixture.
+- Loop-safe Stop guard (`scripts/abu-stop-guard.mjs`) + `abu:goal:{arm,status,disarm}`;
+  full lifecycle proven; disarmed by default so no session is trapped.
+- Project skill `.claude/skills/abu-production` (discoverable) + 8 read-only specialist agents.
+
+### Self-hostile review of the gate (bootstrap defects found + fixed)
+- Gate bypasses closed: row-deletion (→ inventory manifest), deleted/nonexistent cited
+  evidence (→ `fileExists` `MISSING_TEST_FILE`/`MISSING_EVIDENCE_ARTIFACT`), prefix-only
+  fingerprint (→ full-40-hex `PREFIX_ONLY_FINGERPRINT`), copied evidence (→ `DUPLICATE_EVIDENCE`).
+- Real false-green caught: `PRIVACY-KEYS` cited a nonexistent `src/services/…` path;
+  fixed to `src/clientProviderKeyContract.test.ts`.
+- Windows-safe: CLI uses `fileURLToPath`; guard reads stdin defensively; forward-slash paths.
+
 ## PHYSICAL_PROTOCOL (run on a real iPhone; 1–5 rubric, explicit pass/fail)
 1. Hebrew mic capture, quiet + noisy — transcript accepted, no infinite "מקשיבה…" (pass = bounded).
 2. Short + long utterances, meaningful pauses, fast speech — no premature turn end.

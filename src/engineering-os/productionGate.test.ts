@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import { evaluateGate, EVIDENCE_LADDER, type Scorecard, type ScorecardRow } from './productionGate'
 
+const FULL_SHA = 'abcdef0123456789abcdef0123456789abcdef01' // valid 40-hex
 function provenRow(over: Partial<ScorecardRow> = {}): ScorecardRow {
   return {
     id: 'R1', surface: 'realtime/x', severity: 'High', classification: 'automatable',
@@ -16,13 +17,16 @@ function provenRow(over: Partial<ScorecardRow> = {}): ScorecardRow {
     ...over,
   }
 }
-function card(rows: ScorecardRow[], build = 'b1', commit = 'c1'): Scorecard {
+function card(rows: ScorecardRow[], build = 'b1', commit = FULL_SHA): Scorecard {
   return { schemaVersion: 2, evidenceLadder: EVIDENCE_LADDER, fingerprint: { commit, build }, rows }
 }
+/** All new fs/inventory checks satisfied — used by the "CAN pass" test. */
+const passOpts = { fast: true, fileExists: () => true, requiredInventoryIds: ['R1', 'R2'] }
 
 describe('production gate — a complete fixture CAN pass (not an always-fail gate)', () => {
   it('passes when every automatable Critical/High row is truly PROVEN', () => {
-    const r = evaluateGate(card([provenRow(), provenRow({ id: 'R2', severity: 'Critical' })]), { fast: true })
+    const rows = [provenRow(), provenRow({ id: 'R2', severity: 'Critical', tests: ['y.test.ts'], evidenceArtifact: 'other.json' })]
+    const r = evaluateGate(card(rows), passOpts)
     expect(r.pass).toBe(true)
     expect(r.automatableCriticalHighOpen).toBe(0)
     expect(r.reasons).toEqual([])
@@ -96,5 +100,45 @@ describe('production gate — rejects every false-green class', () => {
   it('rejects duplicate row ids', () => {
     const r = evaluateGate(card([provenRow(), provenRow()]), { fast: true })
     expect(r.reasons.some((x) => x.code === 'DUPLICATE_ID')).toBe(true)
+  })
+})
+
+describe('production gate — hardened bypass rejections (hostile review)', () => {
+  it('rejects a DELETED / omitted required inventory row (cannot pass by removing a row)', () => {
+    const r = evaluateGate(card([provenRow()]), { fast: true, requiredInventoryIds: ['R1', 'DELETED-ROW'] })
+    expect(r.pass).toBe(false)
+    expect(r.reasons.some((x) => x.code === 'MISSING_INVENTORY_ROW' && x.id === 'DELETED-ROW')).toBe(true)
+  })
+
+  it('rejects a PROVEN row that cites a NONEXISTENT test file (deleted evidence)', () => {
+    const r = evaluateGate(card([provenRow({ tests: ['ghost.test.ts'] })]), { fast: true, fileExists: () => false })
+    expect(r.pass).toBe(false)
+    expect(r.reasons.some((x) => x.code === 'MISSING_TEST_FILE')).toBe(true)
+  })
+
+  it('rejects a PROVEN row that cites a NONEXISTENT evidence artifact', () => {
+    const r = evaluateGate(card([provenRow({ tests: ['ok.test.ts'], evidenceArtifact: 'docs/gone.md' })]), { fast: true, fileExists: (p) => !p.includes('gone') })
+    expect(r.pass).toBe(false)
+    expect(r.reasons.some((x) => x.code === 'MISSING_EVIDENCE_ARTIFACT')).toBe(true)
+  })
+
+  it('rejects a PREFIX-ONLY (non 40-hex) commit fingerprint', () => {
+    const r = evaluateGate(card([provenRow()], 'b1', 'ceda213'), { fast: true })
+    expect(r.pass).toBe(false)
+    expect(r.reasons.some((x) => x.code === 'PREFIX_ONLY_FINGERPRINT')).toBe(true)
+  })
+
+  it('rejects COPIED evidence: two PROVEN rows with an identical evidence signature', () => {
+    const a = provenRow({ id: 'R1', tests: ['same.test.ts'], evidenceArtifact: 'same.json' })
+    const b = provenRow({ id: 'R2', tests: ['same.test.ts'], evidenceArtifact: 'same.json' })
+    const r = evaluateGate(card([a, b]), { fast: true, fileExists: () => true })
+    expect(r.pass).toBe(false)
+    expect(r.reasons.some((x) => x.code === 'DUPLICATE_EVIDENCE')).toBe(true)
+  })
+
+  it('rejects harness evidence substituted for a user-visible (BROWSER+) row', () => {
+    const r = evaluateGate(card([provenRow({ minEvidenceClass: 'BROWSER', currentEvidenceClass: 'INTEGRATION' })]), { fast: true, fileExists: () => true })
+    expect(r.pass).toBe(false)
+    expect(r.reasons.some((x) => x.code === 'EVIDENCE_DEFICIT')).toBe(true)
   })
 })

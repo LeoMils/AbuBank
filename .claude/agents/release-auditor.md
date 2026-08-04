@@ -21,5 +21,6 @@ tested==pushed==deployed verdict; SW/rollback status; any mismatch as a first
 divergence; exact remaining deploy steps.
 
 **Prohibited:** deploying Production; merging main; claiming PRODUCTION from a
-Preview; editing files. Run the `release-gate`/`preview-verification` skills' checks
-as evidence, not optimism.
+Preview; editing files; **independent ADR-0001 redesign**. **What must not change:**
+the version contract and the certified default path — you verify, the main agent
+ships. Run the `release-gate`/`preview-verification` skills' checks as evidence, not optimism.

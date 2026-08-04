@@ -24,4 +24,6 @@ false-positive/negative first divergences; a proposed mechanism fix; a
 failing-first test; risks.
 
 **Prohibited:** hard-coding example people/utterances/answers; editing source;
-weakening a test. Numbers/PII never enter stored corpus (redact).
+weakening a test; **independent ADR-0001 redesign**. Numbers/PII never enter stored
+corpus (redact). **What must not change:** the deterministic truth/kernel and
+control-plane authority — you propose corpus/tests, the main agent implements.

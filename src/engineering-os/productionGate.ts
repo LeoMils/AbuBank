@@ -67,6 +67,12 @@ export interface GateOptions {
   actualCommit?: string
   /** Skip git-commit staleness (used by --fast / the Stop guard). */
   fast?: boolean
+  /** Repo-relative existence checker (CLI wires fs). Enables MISSING_TEST_FILE /
+   *  MISSING_EVIDENCE_ARTIFACT — a PROVEN row cannot cite deleted/nonexistent evidence. */
+  fileExists?: (repoRelativePath: string) => boolean
+  /** Required Critical/High inventory ids that MUST each appear as a scorecard row —
+   *  deleting or omitting a required row cannot produce a false PASS. */
+  requiredInventoryIds?: string[]
 }
 
 export interface GateReason { id: string; code: string; detail: string }
@@ -110,12 +116,18 @@ export function evaluateGate(scorecard: unknown, opts: GateOptions = {}): GateRe
     reasons.push({ id: '(root)', code: 'EMPTY', detail: 'scorecard has no rows' })
     return done(false)
   }
+  // Fingerprint must be a FULL 40-hex SHA — a prefix-only fingerprint can silently
+  // match a stale build; it is not an acceptable candidate identity.
+  if (!/^[0-9a-f]{40}$/.test(String(sc.fingerprint?.commit ?? ''))) {
+    reasons.push({ id: '(root)', code: 'PREFIX_ONLY_FINGERPRINT', detail: `scorecard commit '${sc.fingerprint?.commit}' is not a full 40-hex SHA` })
+  }
   // Staleness: the scorecard must describe the CURRENT commit (unless --fast).
   if (!opts.fast && opts.actualCommit && sc.fingerprint?.commit && sc.fingerprint.commit !== opts.actualCommit) {
     reasons.push({ id: '(root)', code: 'STALE_FINGERPRINT', detail: `scorecard commit ${sc.fingerprint.commit} != HEAD ${opts.actualCommit}` })
   }
 
   const seenIds = new Set<string>()
+  const evidenceSig = new Map<string, string>() // signature -> first row id (copy detection)
   for (const row of sc.rows) {
     const id = (row && typeof row === 'object' && 'id' in row && typeof row.id === 'string') ? row.id : '(missing-id)'
     // Schema validation.
@@ -155,6 +167,25 @@ export function evaluateGate(scorecard: unknown, opts: GateOptions = {}): GateRe
       }
       const hasEvidence = (Array.isArray(row.tests) && row.tests.length > 0) || (typeof row.evidenceArtifact === 'string' && row.evidenceArtifact.trim().length > 0)
       if (row.status === 'PROVEN' && !hasEvidence) { open = true; reasons.push({ id, code: 'FALSE_GREEN', detail: 'PROVEN with no tests and no evidenceArtifact' }) }
+      // Cited evidence must actually EXIST on disk — defeats a deleted/renamed/
+      // nonexistent test path masquerading as green.
+      if (row.status === 'PROVEN' && opts.fileExists) {
+        for (const t of Array.isArray(row.tests) ? row.tests : []) {
+          if (!opts.fileExists(t)) { open = true; reasons.push({ id, code: 'MISSING_TEST_FILE', detail: `cited test does not exist: ${t}` }) }
+        }
+        const artifactPath = String(row.evidenceArtifact ?? '').split('#')[0]!
+        if (artifactPath.includes('/') && !opts.fileExists(artifactPath)) {
+          open = true; reasons.push({ id, code: 'MISSING_EVIDENCE_ARTIFACT', detail: `cited artifact does not exist: ${artifactPath}` })
+        }
+      }
+      // Copy detection: two PROVEN rows sharing the EXACT same evidence signature
+      // (sorted tests + artifact) is a blind copy, not independent proof.
+      if (row.status === 'PROVEN' && hasEvidence) {
+        const sig = [...(Array.isArray(row.tests) ? row.tests : [])].sort().join('|') + '::' + String(row.evidenceArtifact ?? '')
+        const prior = evidenceSig.get(sig)
+        if (prior) { open = true; reasons.push({ id, code: 'DUPLICATE_EVIDENCE', detail: `identical evidence to row ${prior}` }) }
+        else evidenceSig.set(sig, id)
+      }
       if (row.status === 'PROVEN' && (!row.rollbackTrigger || row.rollbackTrigger.trim() === '')) {
         open = true; reasons.push({ id, code: 'MISSING_ROLLBACK', detail: 'PROVEN without a rollbackTrigger' })
       }
@@ -172,6 +203,12 @@ export function evaluateGate(scorecard: unknown, opts: GateOptions = {}): GateRe
         reasons.push({ id, code: 'UNPROVEN_BLOCKER_HIDES_WORK', detail: `${row.classification} Critical/High without blockerProof` })
       }
     }
+  }
+
+  // Inventory reconciliation: every REQUIRED Critical/High inventory id must be
+  // represented by a row. Deleting or omitting a required row cannot pass the gate.
+  for (const reqId of opts.requiredInventoryIds ?? []) {
+    if (!seenIds.has(reqId)) reasons.push({ id: reqId, code: 'MISSING_INVENTORY_ROW', detail: 'required Critical/High inventory id has no scorecard row' })
   }
 
   const pass = reasons.length === 0 && achOpen === 0

@@ -41,6 +41,16 @@ tests[], evidenceArtifact, fingerprint{commit,build}, rollbackTrigger, status(PR
 PARTIAL|GAP|TESTED_NOT_DEPLOYED|STALE|EXTERNAL_BLOCKER|PHYSICAL_ONLY), blockerProof?`.
 `blockerProof` is REQUIRED for PHYSICAL_ONLY/EXTERNAL_BLOCKER. Green is derived, never typed.
 
+**Inventory reconciliation:** `product-inventory.json` lists every REQUIRED Critical/High
+id; the gate raises `MISSING_INVENTORY_ROW` if any is absent — deleting/omitting a row
+cannot PASS. **Anti-gaming reason codes** the gate enforces: `OPEN_ROW`,
+`EVIDENCE_DEFICIT`, `FALSE_GREEN`, `MISSING_TEST_FILE`, `MISSING_EVIDENCE_ARTIFACT`,
+`DUPLICATE_EVIDENCE`, `STALE_ROW_BUILD`, `STALE_FINGERPRINT`, `PREFIX_ONLY_FINGERPRINT`,
+`MISCLASSIFIED_PHYSICAL/EXTERNAL`, `FAKE_PHYSICAL/EXTERNAL_BLOCKER`,
+`UNPROVEN_BLOCKER_HIDES_WORK`, `MISSING_ROLLBACK`, `MISSING_INVENTORY_ROW/MANIFEST`,
+`DUPLICATE_ID`, `BAD_SEVERITY/CLASSIFICATION/STATUS/*_EVIDENCE`, `UNREADABLE_SCORECARD`.
+Stop enforcement: `npm run abu:goal:{arm,status,disarm}` (arm as execution step 0).
+
 ## 4. Defect lifecycle (every defect)
 reproduce → identify first divergence → **failing-first** regression → fix the
 mechanism (not the phrase) → **mutation-prove** the regression → exercise the

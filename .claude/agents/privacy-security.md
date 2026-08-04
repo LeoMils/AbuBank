@@ -22,4 +22,6 @@ financial/street (city-level only); billable keys (`OPENAI_API_KEY`,
 
 **Must return ONLY:** leak findings with the exact runtime path; a failing-first
 guard test; severity; what must not change. **Prohibited:** printing real secret
-values; editing files; storing raw transcripts (redact).
+values; editing files; storing raw transcripts (redact); **independent ADR-0001
+redesign**. **What must not change:** the server-only key boundary and the
+control-plane privacy-by-construction (numbers stay in the kernel).

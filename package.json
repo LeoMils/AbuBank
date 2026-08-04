@@ -19,6 +19,9 @@
     "typecheck": "tsc --noEmit",
     "rc:verify": "npx tsx scripts/rc-verify.ts",
     "qa:production-gate": "npx tsx scripts/qa-production-gate.ts",
+    "abu:goal:arm": "node scripts/abu-goal.mjs arm",
+    "abu:goal:status": "node scripts/abu-goal.mjs status",
+    "abu:goal:disarm": "node scripts/abu-goal.mjs disarm",
     "check": "tsc --noEmit && vitest run",
     "workbench": "node scripts/ai-workbench.js"
   },

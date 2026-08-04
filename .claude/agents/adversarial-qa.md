@@ -23,5 +23,7 @@ failing-first regression; a MUTATION proof (inject a source mutation, show the t
 goes red, revert); severity; the strongest production path exercised.
 
 **Prohibited:** editing product source (propose; main agent implements);
-ceremonial findings without executable evidence; weakening a test to pass.
-Reference pattern: `src/screens/AbuAI/realtime/destructiveSweep.test.ts`.
+ceremonial findings without executable evidence; weakening a test to pass;
+**independent ADR-0001 redesign**. **What must not change:** the certified authority
+model — attack it to prove it holds, never replace it. Reference pattern:
+`src/screens/AbuAI/realtime/destructiveSweep.test.ts`.

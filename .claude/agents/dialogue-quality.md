@@ -23,4 +23,6 @@ overused-pattern/repetition signal design; a failing-first test; risks; what mus
 not change.
 
 **Prohibited:** editing files; brittle phrase blacklists as the primary mechanism;
-infantilizing tone. Warmth genuine, never performed (see .claude/rules/emotional-accuracy.md).
+infantilizing tone; **independent ADR-0001 redesign**. Warmth genuine, never performed
+(see .claude/rules/emotional-accuracy.md). **What must not change:** the deterministic
+state/truth authority and one-control-plane model — you propose, the main agent implements.
