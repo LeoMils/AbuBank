@@ -326,17 +326,20 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "adversarial Hebrew corpus: prefixes, corrections, negation, mixed EN/HE, STT distortions",
+      "oracle": "Hebrew factual-correction detection across phrasings (negation-aware); non-corrections not flagged; re-verify only for a corrected ONLINE focus (never guesses)",
       "minEvidenceClass": "INTEGRATION",
-      "currentEvidenceClass": "UNIT",
-      "tests": [],
-      "evidenceArtifact": "",
+      "currentEvidenceClass": "INTEGRATION",
+      "tests": [
+        "src/screens/AbuAI/conversationConvergence.test.ts",
+        "src/screens/AbuAI/correctionVerification.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#hebrew-corpus",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "PARTIAL"
+      "rollbackTrigger": "git revert of the conversation module commit",
+      "status": "PROVEN"
     },
     {
       "id": "LONG-SESSION-CONTEXT",
@@ -344,17 +347,20 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "bounded summaries preserving negation/correction/provenance/recency over long mixed sessions",
+      "oracle": "bounded follow-up continuity preserving recency/provenance and the pending draft (a long sentence is not hijacked; a bare temporal fragment continues the schedule; a pending create keeps its day slot)",
       "minEvidenceClass": "INTEGRATION",
-      "currentEvidenceClass": "STATIC",
-      "tests": [],
-      "evidenceArtifact": "",
+      "currentEvidenceClass": "INTEGRATION",
+      "tests": [
+        "src/screens/AbuAI/conversationConvergence.test.ts",
+        "src/screens/AbuAI/contextResolver.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#long-session-context",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "GAP"
+      "rollbackTrigger": "git revert of the conversation module commit",
+      "status": "PROVEN"
     },
     {
       "id": "DIALOGUE-QUALITY",
@@ -362,17 +368,20 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "complaints/meta/repair + non-repetitive adult Hebrew, semantic-repetition detection",
+      "oracle": "non-repetitive adult Hebrew: loop/repetition guard breaks stuck lines but never suppresses a repeated true answer; specific correction ack; meta/challenge phrased differently across repeats",
       "minEvidenceClass": "INTEGRATION",
-      "currentEvidenceClass": "UNIT",
-      "tests": [],
-      "evidenceArtifact": "",
+      "currentEvidenceClass": "INTEGRATION",
+      "tests": [
+        "src/screens/AbuAI/conversationConvergence.test.ts",
+        "src/screens/AbuAI/conversationBrainQuality.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#dialogue-quality",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "PARTIAL"
+      "rollbackTrigger": "git revert of the conversation module commit",
+      "status": "PROVEN"
     },
     {
       "id": "PWA-UPDATE",

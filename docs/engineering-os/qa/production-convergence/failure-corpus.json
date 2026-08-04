@@ -42,7 +42,18 @@
   "destructive_sweep": {
     "file": "src/screens/AbuAI/realtime/destructiveSweep.test.ts",
     "targets_real_paths": "RealtimeCommController -> SessionOrchestrator -> control-plane reducer + dispatchTool kernel -> ActiveActionViewModel -> truthMonitor",
-    "seams_attacked": ["stale generation rejection", "stale revision after replace", "cancel WHILE tool in flight", "replace WHILE tool in flight (latest-intent-wins)", "exactly-once across duplicate+reordered completion shapes", "phone-in-args privacy (controller + dispatchTool)", "safe-label vs local-phone resolution", "fallback/reconnect not reviving cancelled action", "greeting-once across reconnect", "one canonical projection card==receipt revision"],
+    "seams_attacked": [
+      "stale generation rejection",
+      "stale revision after replace",
+      "cancel WHILE tool in flight",
+      "replace WHILE tool in flight (latest-intent-wins)",
+      "exactly-once across duplicate+reordered completion shapes",
+      "phone-in-args privacy (controller + dispatchTool)",
+      "safe-label vs local-phone resolution",
+      "fallback/reconnect not reviving cancelled action",
+      "greeting-once across reconnect",
+      "one canonical projection card==receipt revision"
+    ],
     "mutation_proofs": [
       "control-plane: dropped the generation check in TOOL_RESULT -> 'pre-fallback tool result REJECTED' test went RED (reverted).",
       "truth-monitor: emptied NEG (negation guard) -> 4 negation/forward sentinels went RED (reverted)."
@@ -52,11 +63,38 @@
   "certification": {
     "build": "0.174.0-realtime-truthmonitor-hebrew-hardened-rc",
     "adversarial_variants": "22 (10 MUST-FLAG 1st-person completions + 11 MUST-NOT-FLAG truthful/negated/2nd-person/offer/forward + capability-denial both ways)",
-    "dimensions_covered": ["punctuation", "ו/כ/ש prefixes", "mixed clauses", "questions", "negation (leading/trailing/ש-prefixed)", "future-tense offer vs past completion", "capability exists vs genuinely absent"],
+    "dimensions_covered": [
+      "punctuation",
+      "ו/כ/ש prefixes",
+      "mixed clauses",
+      "questions",
+      "negation (leading/trailing/ש-prefixed)",
+      "future-tense offer vs past completion",
+      "capability exists vs genuinely absent"
+    ],
     "result": "detection of real 1st-person fabrication NOT weakened; all forward-Hebrew false positives closed.",
     "known_bounded_limits": [
       "Deeply nested negation ('לא אמרתי ששלחתי' = 'I did not say that I sent') can still trip the bounded regex; this is an accepted ADR-0001 §7 bound (structural receipt guarantee is PRIMARY — completion is unrepresentable in a receipt; the monitor is a bounded secondary net, NOT open NLP).",
       "Implied completion with no completion verb ('ההודעה בדרך') is not pattern-detectable and is covered structurally, not by the monitor."
     ]
+  },
+  "conversation_convergence": {
+    "file": "src/screens/AbuAI/conversationConvergence.test.ts",
+    "note": "Adversarial INTEGRATION over the REAL conversation modules (no second brain); 10 assertions.",
+    "dialogue-quality": {
+      "module": "dialogueManager (guardDialogue/acknowledgeCorrection)",
+      "independentVerifier": "src/screens/AbuAI/conversationBrainQuality.test.ts",
+      "mutation": "disable repeated-apology detection -> 1 test fails; reverted"
+    },
+    "long-session-context": {
+      "module": "contextResolver.resolveFollowUp (bounded continuity)",
+      "independentVerifier": "src/screens/AbuAI/contextResolver.test.ts",
+      "mutation": "break bare-מחר follow-up -> 1 test fails; reverted"
+    },
+    "hebrew-corpus": {
+      "module": "correctionVerification.isFactualCorrection/shouldReverifyOnline",
+      "independentVerifier": "src/screens/AbuAI/correctionVerification.test.ts",
+      "mutation": "break factual-correction regex -> 2 tests fail; reverted"
+    }
   }
 }
