@@ -96,5 +96,18 @@
       "independentVerifier": "src/screens/AbuAI/correctionVerification.test.ts",
       "mutation": "break factual-correction regex -> 2 tests fail; reverted"
     }
+  },
+  "whole_product_qa": {
+    "file": "src/screens/AbuAI/wholeProductProperty.test.ts",
+    "note": "Generative property/race/fault across DISTINCT seams (privacy/truth/state-ordering); 700+ generated cases.",
+    "independentVerifiers": [
+      "src/screens/AbuAI/realtime/destructiveSweep.test.ts",
+      "src/eval/productDestructionLab.test.ts"
+    ],
+    "mutations": [
+      "privacy digit gate weakened -> property fails",
+      "control-plane generation guard dropped (destructiveSweep)",
+      "truth-monitor NEG emptied (destructiveSweep/truthMonitor)"
+    ]
   }
 }

@@ -410,17 +410,21 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "property/race/fault/mutation across all Critical/High journeys + graders reject known-bad",
+      "oracle": "generative property/race/fault/mutation across distinct product seams (privacy: numbers never label; truth: 1st-person completion unsayable; state: wrong gen/rev always rejected) — 700+ generated cases, mutation-proven",
       "minEvidenceClass": "INTEGRATION",
-      "currentEvidenceClass": "UNIT",
-      "tests": [],
-      "evidenceArtifact": "",
+      "currentEvidenceClass": "INTEGRATION",
+      "tests": [
+        "src/screens/AbuAI/wholeProductProperty.test.ts",
+        "src/screens/AbuAI/realtime/destructiveSweep.test.ts",
+        "src/eval/productDestructionLab.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#whole-product",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "PARTIAL"
+      "rollbackTrigger": "git revert of the property-test commit",
+      "status": "PROVEN"
     },
     {
       "id": "LATENCY-VAD-INSTRUMENTATION",
