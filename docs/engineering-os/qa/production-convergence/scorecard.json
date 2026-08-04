@@ -641,7 +641,9 @@
         "commit": "",
         "build": ""
       },
-      "tests": [],
+      "tests": [
+        "src/screens/AbuAI/realtime/turnAuthorityArbiter.test.ts"
+      ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
       "rollbackTrigger": "",
       "status": "GAP",
@@ -649,7 +651,9 @@
       "surface": "runtime/one-path",
       "severity": "Critical",
       "minEvidenceClass": "PRODUCTION_ADAPTER",
-      "oracle": "exactly ONE runtime path handles a live turn — the transcript→brain path and the model→function-tool path must not both act on the same turn (dual-path caused duplicate audio + legacy calendar/comm routing)"
+      "oracle": "exactly ONE runtime path handles a live turn — the transcript→brain path and the model→function-tool path must not both act on the same turn (dual-path caused duplicate audio + legacy calendar/comm routing)",
+      "mechanismLanded": true,
+      "mechanismNote": "MECHANISM LANDED (arbiter enforces single TALK/response; index.tsx gates legacy speak+action in slice mode; mutation-proven). STATUS STAYS GAP — requires a real iPhone trace passing liveTraceHarness."
     },
     {
       "classification": "automatable",
@@ -760,7 +764,9 @@
         "commit": "",
         "build": ""
       },
-      "tests": [],
+      "tests": [
+        "src/screens/AbuAI/realtime/liveTraceHarness.test.ts"
+      ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
       "rollbackTrigger": "",
       "status": "GAP",
@@ -768,7 +774,9 @@
       "surface": "observability/diagnostic-integrity",
       "severity": "High",
       "minEvidenceClass": "PRODUCTION_ADAPTER",
-      "oracle": "live diagnostics carry a real path id + client SHA (not path=unknown/commit=local) with non-contradictory stages"
+      "oracle": "live diagnostics carry a real path id + client SHA (not path=unknown/commit=local) with non-contradictory stages",
+      "mechanismLanded": true,
+      "mechanismNote": "MECHANISM LANDED (real commit SHA via VITE_COMMIT_SHA; harness rejects path=unknown/commit=local). STATUS STAYS GAP — requires a deployed device trace with a real SHA + path."
     },
     {
       "classification": "automatable",
@@ -777,7 +785,9 @@
         "commit": "",
         "build": ""
       },
-      "tests": [],
+      "tests": [
+        "src/screens/AbuAI/realtime/liveTraceHarness.test.ts"
+      ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/device-falsification-evidence.json",
       "rollbackTrigger": "",
       "status": "GAP",
@@ -785,7 +795,9 @@
       "surface": "observability/live-trace-harness",
       "severity": "High",
       "minEvidenceClass": "PRODUCTION_ADAPTER",
-      "oracle": "a privacy-safe real-device trace can be ingested + deterministic invariants (single session/track/response, greeting<=1, no truncation, cal!=comm, unresolved!=person, path!=unknown) reject the device failures"
+      "oracle": "a privacy-safe real-device trace can be ingested + deterministic invariants (single session/track/response, greeting<=1, no truncation, cal!=comm, unresolved!=person, path!=unknown) reject the device failures",
+      "mechanismLanded": true,
+      "mechanismNote": "MECHANISM LANDED (checkDeviceTrace rejects all 15 device-falsified classes; mutation-proven). STATUS STAYS GAP — requires an ingested real iPhone trace."
     },
     {
       "classification": "automatable",

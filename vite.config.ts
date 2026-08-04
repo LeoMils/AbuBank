@@ -457,6 +457,9 @@ export default defineConfig({
   },
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
+    // DIAGNOSTIC-INTEGRITY: bake the real deployed commit SHA (Vercel provides
+    // VERCEL_GIT_COMMIT_SHA at build) so live diagnostics never report commit=local.
+    'import.meta.env.VITE_COMMIT_SHA': JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA || process.env.COMMIT_SHA || 'local'),
   },
   // H6-FIX: explicit build target and minify for bundle control
   build: {

@@ -24,6 +24,7 @@ import { RealtimeSliceHarness } from './realtime/RealtimeSliceHarness'
 import { SessionOrchestrator, type ActiveActionViewModel } from './realtime/sessionOrchestrator'
 import { RealtimeCommController } from './realtime/realtimeCommController'
 import { CalendarDraftController } from './realtime/calendarDraftController'
+import { TurnAuthorityArbiter } from './realtime/turnAuthorityArbiter'
 import type { CalendarReceipt, RelationshipResolver } from './realtime/calendarDraft'
 import { resolvePersonPhrase } from '../AbuCalendar/familyResolve'
 import { makeProductionKernel } from './realtime/kernelAdapter'
@@ -359,6 +360,10 @@ export function AbuAI() {
   // plane (calendarDraft) at parity with the communication card. Null when none active.
   const [liveCalendarDraft, setLiveCalendarDraft] = useState<CalendarReceipt | null>(null)
   const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
+  // ONE-RUNTIME-PATH-LIVE: the live turn ownership law. In the realtime2 SLICE the
+  // MODEL owns TALK (create_response=true), so the legacy brain must NOT also speak/act
+  // for the same turn (device-falsified duplicate audio + legacy calendar→call).
+  const arbiterRef = useRef<TurnAuthorityArbiter | null>(null)
   // True once a Realtime session actually reached a working state. Used to keep
   // an INITIAL connect failure SILENT (the fatal-error handler falls back to the
   // pipeline quietly) while still surfacing a mid-conversation error.
@@ -2577,6 +2582,10 @@ ${fewShotText}`
               onCard: (r) => setLiveCalendarDraft(r.confirmation === 'CANCELLED' ? null : r),
             })
         : undefined
+      // ONE-RUNTIME-PATH-LIVE: arm the turn-authority arbiter. In slice mode the MODEL
+      // owns TALK → the legacy brain is silenced (canLegacySpeak/canLegacyAct = false).
+      arbiterRef.current = new TurnAuthorityArbiter()
+      if (sliceOn) arbiterRef.current.activateRealtime()
       const session = new RealtimeVoiceSession(
         {
           onStateChange: (state) => {
@@ -2633,18 +2642,23 @@ ${fewShotText}`
               conversationOSRef.current = result.state.conv
               cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
               setProductTruth({ brainPipelineUsed: true, executiveControllerUsed: true, route: result.intent, toolUsed: result.source, memoryUsed: /conversation_os|memory/.test(result.source) })
+              // ONE-RUNTIME-PATH-LIVE: when the MODEL owns TALK (slice mode,
+              // create_response=true) the legacy brain must NOT speak or attach an action
+              // for this turn — that was the device-falsified duplicate audio + legacy
+              // calendar→call. The brain still updates working state; the model speaks and
+              // the function-tool controllers own actions.
+              const modelOwnsTalk = arbiterRef.current ? !arbiterRef.current.canLegacySpeak() : false
               setMessages(prev => [...prev, {
                 id: nextId(), role: 'assistant', content: result.display, timestamp: Date.now(),
-                ...(result.action ? { action: result.action } : {}),
+                ...((result.action && !modelOwnsTalk) ? { action: result.action } : {}),
               }])
-              // Voice the BRAIN's answer through Realtime (model runs create_response:false,
-              // so it never self-answers — it only reads AbuAI's reply). Suppress the echo.
+              // Voice the BRAIN's answer through Realtime ONLY on the certified path (model
+              // create_response:false). In slice mode the model self-answers → suppress the
+              // second TALK authority. Remember the reply for exactly-once fallback voicing.
               suppressRealtimeAssistantMsgRef.current = true
-              // Remember this reply so a Realtime audio-playback failure can auto-voice
-              // it via the pipeline TTS chain (exactly once — reset per turn).
               lastRealtimeReplyRef.current = result.speak
               realtimeTtsFallbackUsedRef.current = false
-              realtimeRef.current?.speak(result.speak)
+              if (!modelOwnsTalk) realtimeRef.current?.speak(result.speak)
               currentVoiceFlight()?.mark('RESPONSE_CREATE_SENT', 'ok', Date.now())
             })()
           },
@@ -2757,6 +2771,7 @@ ${fewShotText}`
     }
     setLiveSliceCard(null) // realtime2: drop the live action card when the session ends
     setLiveCalendarDraft(null) // realtime2: drop the live calendar draft when the session ends
+    arbiterRef.current?.terminate() // ONE-RUNTIME-PATH-LIVE: release turn ownership
 
     transitionVoice('IDLE', 'exit-voice-mode')
     voiceModeRef.current = false
