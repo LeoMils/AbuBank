@@ -1,21 +1,25 @@
 {
   "note": "DEPLOYED_PREVIEW evidence — tested == pushed == deployed on the canonical stable RC. Preview deploy + stable-RC alias only; never Production.",
-  "testedCommit": "2df53278d9075e7a716274a3c40335f026342566",
-  "testedBuild": "0.176.0-latency-vad-instrumentation-rc",
-  "deployment": "https://abu-bank-30cv4zhbq-leos-projects-d3c04c09.vercel.app",
+  "testedCommit": "(see HEAD)",
+  "testedBuild": "0.177.0-calendar-runtime-integration-rc",
+  "deployment": "https://abu-bank-7xtggwket-leos-projects-d3c04c09.vercel.app",
   "stableRcAlias": "https://abu-ela-rc.vercel.app",
   "healthProbe": {
     "url": "https://abu-ela-rc.vercel.app/api/health?cb=<ts>",
     "cacheBusted": true,
-    "buildVersion": "0.176.0-latency-vad-instrumentation-rc",
-    "buildLabelPrefix": "AbuBank 0.176.0 — LATENCY_VAD_INSTRUMENT",
+    "buildVersion": "0.177.0-calendar-runtime-integration-rc",
+    "buildLabelPrefix": "AbuBank 0.177.0 — CALENDAR_RUNTIME_INTEGRATION",
     "matchesTestedBuild": true
   },
-  "gates_before_deploy": { "typecheck": 0, "fullSuite": "11995 passed / 2 todo (426 files)", "build": 0 },
+  "gates_before_deploy": {
+    "typecheck": 0,
+    "fullSuite": "11995 passed / 2 todo (426 files)",
+    "build": 0
+  },
   "rollback": {
     "mechanism": "npx vercel alias set <deployment-url> abu-ela-rc.vercel.app",
     "roundTrip": "aliased stable RC -> prior deployment (abu-bank-j7qcfu465) [Success, health 200], then re-aliased -> current (abu-bank-30cv4zhbq) [Success]",
-    "restoredBuild": "0.176.0-latency-vad-instrumentation-rc",
+    "restoredBuild": "0.177.0-calendar-runtime-integration-rc",
     "restoredOk": true,
     "honestLimitation": "The immediately-prior deployment carried the SAME 0.176.0 build label, so this proves the re-alias mechanism + reversibility/restoration, not serving a DIFFERENT older build. A distinct-build rollback demo needs an older deployment."
   },
