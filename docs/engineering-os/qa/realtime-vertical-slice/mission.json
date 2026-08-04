@@ -10,13 +10,21 @@
     "S5a simulated-realtime seam: session orchestrator composing STATE+TRUTH+SPEECH-GUARD with injected events + canonical ActiveActionViewModel (§13) — sessionOrchestrator.ts — 9/9; production kernel adapter over buildCommunicationAction — kernelAdapter.ts. §18 journey provable WITHOUT a mic. 40 tests total; typecheck 0 errors.",
     "S5b canonical ActiveActionCard (§13 projection) + realtime2 slice flag (independent, OFF by default) + self-contained mic-free RealtimeSliceHarness mounted behind isRealtimeSliceEnabled() (two gated lines; certified path untouched). Version 0.169.0->0.170.0-realtime-slice-harness-rc (version.ts+health+test synced). 81 tests (adds ActiveActionCard 5 + slice-flag 14 + version 22); typecheck 0; production build green."
   ],
-  "activeStage": "S5c deploy Preview and falsify the §18 journey by clicking ?voice=realtime2 in the deployed browser (BROWSER/PREVIEW class): greeting-once, WhatsApp card, atomic REPLACE to Call, complaint-no-mutation, fallback preserves the Call action, fabricated-completion blocked. Then update the stable RC alias and run the independent unknown-failure campaign.",
-  "nextExactExecutableAction": "Deploy a Vercel Preview of this commit; open the deployed URL /?voice=realtime2, enter AbuAI, and click through the harness (greet -> WhatsApp -> 'לא, תתקשרי אליו' -> complaint -> fallback), recording the state readout (rev/kind/status/supersedes/active/transport) as PREVIEW evidence; then point the stable RC alias at it.",
+  "activeStage": "SLICE COMPLETE — §18 wired (flag-gated) + deployed (Preview) + falsified (deployed browser, no mic) + RC alias updated + unknown-failure campaign green. Next broader-mission stage (§17 stage 5): drive the ACTUAL live mic->function_call path over WebRTC (session tools + create_response) through the SAME orchestrator, replacing the create_response:false brain-voicing for communication turns behind the same flag.",
+  "nextExactExecutableAction": "Add a Realtime function-tool config to buildRealtimeSessionUpdate (prepare_whatsapp/prepare_call/replace_active_action/cancel_active_action) + a function_call/interruption handler in RealtimeVoiceSession that routes to the SessionOrchestrator (makeProductionKernel) and speaks receipt-grounded confirmations guarded by monitorUtterance — all behind ?voice=realtime2, off by default; then a simulated-realtime event test injecting a live function_call and a deployed re-falsification.",
   "terminalConditions": ["COMPLETION (wired+deployed+falsified)", "EXTERNAL BLOCKER", "ADR CONTRADICTION"],
+  "sliceCompletion": {
+    "wired": "flag-gated (?voice=realtime2, OFF by default) — RealtimeSliceHarness mounts the SessionOrchestrator + canonical ActiveActionCard; certified voice path untouched",
+    "deployed": "Vercel PREVIEW abu-bank-6hhfwyqb9-leos-projects-d3c04c09.vercel.app (target=Preview, NOT production); /api/health buildVersion 0.170.0-realtime-slice-harness-rc == tested == pushed",
+    "falsified": "e2e/realtime-slice-journey.spec.ts PASSED on the live Preview (mobile-chrome, no mic): greeting-once, WhatsApp->atomic REPLACE to Call (rev 1->2, kind flip, supersedes, active=1), complaint no-mutation, fabricated-completion BLOCKED, card never shows completion",
+    "rcAlias": "abu-ela-rc.vercel.app -> this deployment (serves 0.170.0, verified via health)",
+    "unknownFailureCampaign": "sessionOrchestratorAdversarial.test.ts 9/9 — no unknown failure; generalizes beyond the supplied transcript",
+    "honestRemaining": "the ACTUAL live mic->function_call WebRTC path is NOT yet wired (session still create_response:false; brain voices answers); proven via the injectable seam + deployed harness, not a real mic turn. DEVICE mic naturalness/audibility physical-only per §20."
+  },
   "blockers": [
     "The live-audio conversational journey is physical-only (mic) per ADR §20; the AUTOMATABLE deployed proof requires a simulated-realtime test seam on the 2000-line RealtimeVoiceSession that is a multi-file build.",
     "Wiring must be strictly flag-gated (off by default) so the certified default path is never endangered; deploying unproven wiring onto the live default path is forbidden."
   ],
   "rollbackPoints": ["b1e88fc (control plane only)", "this commit (control plane + tools + truth, all additive/unwired)", "de00f27 (product 0.164.0)"],
-  "verdictSoFar": "NOT READY — deterministic authority stack (STATE+tools+TRUTH) implemented and proven (31 tests); live-session wiring + deployed falsification remain."
+  "verdictSoFar": "§18 VERTICAL SLICE COMPLETE — wired (flag-gated) + deployed (Preview) + falsified (deployed browser, no mic) + RC alias updated + unknown-failure campaign green. 99 tests; full suite 11906/0; typecheck 0; build green. HONEST LIMIT: the live mic->function_call WebRTC path is a follow-on §17-stage-5 wiring (session still brain-voiced); DEVICE mic naturalness physical-only per §20."
 }

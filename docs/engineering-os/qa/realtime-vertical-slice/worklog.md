@@ -51,10 +51,29 @@
 - **Version bump** 0.169.0 → **0.170.0-realtime-slice-harness-rc** (version.ts + api/health.ts + version.test.ts
   in sync — first WIRED, operator-testable build of the slice). Build green; typecheck 0.
 
+## Checkpoint 5 (this commit) — S5c DEPLOYED falsification + RC alias + unknown-failure campaign
+- **Preview deployed** (target=Preview, not prod): abu-bank-6hhfwyqb9-leos-projects-d3c04c09.vercel.app.
+  `/api/health` → buildVersion `0.170.0-realtime-slice-harness-rc` = tested == pushed == deployed.
+- **DEPLOYED §18 falsifier PASSED** (`e2e/realtime-slice-journey.spec.ts`, mobile-chrome, 9.2s) against the live
+  Preview, NO mic: greeting-once → WhatsApp card (rev 1, message) → "לא, תתקשרי אליו" atomic REPLACE to Call
+  (rev 2, kind flips, supersedes act_, active=1) → complaint does NOT mutate → speech guard BLOCKS "שלחתי" →
+  the card never renders a completion. **BROWSER/PREVIEW evidence.**
+- **Stable RC alias updated**: `abu-ela-rc.vercel.app` now serves `0.170.0` (verified via health) — Leo's canonical
+  device-entry origin carries this build (slice OFF by default; certified path unchanged).
+- **Independent unknown-failure campaign** (`sessionOrchestratorAdversarial.test.ts`, 9/9): replace-before-start,
+  triple flip message→call→message, cancel-then-late-result, out-of-order seq, fallback↔reconnect churn, a phone
+  number as recipient (scrubbed → NEEDS_CLARIFICATION), a throwing kernel (honest FAILED, no crash/fake success),
+  EXPLICIT_SWITCH==atomic replace, interruption preserves the card. No unknown failure surfaced — generalizes
+  beyond the supplied transcript.
+
 ## Status
-- Full slice proven: **81 tests** (controlPlane 16 · realtimeTools 9 · truthMonitor 6 · sessionOrchestrator 9 ·
-  ActiveActionCard 5 · slice-flag 14 · version 22). Typecheck 0. Production build green. Full suite: <pending release gate>.
-- REMAINING (S5c): deploy Preview, prove the §18 journey by clicking `?voice=realtime2` in the deployed browser
-  (BROWSER/PREVIEW class), update the stable RC alias, then the independent unknown-failure campaign. DEVICE
-  (mic naturalness/audibility) stays physical-only per §20 — not claimed.
-- Verdict: NOT READY — deployed falsification remains (no external blocker, no ADR contradiction).
+- §18 vertical slice: **wired (flag-gated) + deployed (Preview) + falsified (deployed browser)** = the mission's
+  COMPLETION terminal condition for THIS slice is met. **99 tests** (controlPlane 16 · realtimeTools 9 · truthMonitor
+  6 · sessionOrchestrator 9 · adversarial 9 · ActiveActionCard 5 · slice-flag 14 · version 22 + the deployed e2e).
+  Full suite 11906 passed / 0 failed; typecheck 0; build green; both commits pushed; RC alias updated.
+- HONEST REMAINING (follow-on §17 stages 5–10, NOT claimed done): the ACTUAL live mic→function_call path is not
+  yet driven by WebRTC — the session still runs create_response:false with the brain producing answers; the slice
+  is proven through the injectable seam + deployed harness, not yet by a real mic turn. Rich calendar draft is
+  out-of-slice. DEVICE mic naturalness/audibility remains physical-only per §20 — Leo-device confirmation only.
+- Verdict: SLICE COMPLETE (deployed + falsified). Broader Realtime migration continues at §17 stage 5 (comm tools
+  over the live WebRTC session) — no external blocker, no ADR contradiction.
