@@ -112,7 +112,14 @@
   test (which encoded the re-send) to the corrected exactly-once contract — fixing the truth, not weakening a test.
 - Created **production-scorecard.json** (immutable, evidence-classed) — honest status incl. GAP / EXTERNAL-BLOCKER /
   PHYSICAL-ONLY categories (Calendar migration, live baseline/tournament, Hebrew corpus, whole-product QA, device).
-- Version 0.171.0 → **0.172.0-realtime-exactly-once-dedup-rc** (synced). typecheck 0; build green.
+- Version 0.171.0 → **0.172.0-realtime-exactly-once-dedup-rc** (synced). typecheck 0; build green; FULL SUITE
+  11938 passed / 0 failed. Deployed (abu-bank-7flyrapmj); RC alias abu-ela-rc.vercel.app → 0.172.0 (health verified);
+  deployed §18 falsifier PASSED (7.7s). tested == pushed == deployed.
+- **HONEST DENOMINATOR NOTE**: against the PRODUCTION-CANDIDATE denominator (see production-scorecard.json) the
+  Communication LIVE path is proven to the automatable limit, but Calendar migration, general-conversation live
+  measurement, Hebrew audio corpus, live latency baseline + config tournament, whole-product Critical/High QA, and
+  physical iPhone validation are GAP / EXTERNAL-BLOCKER (headless env cannot run a live WebRTC audio session) /
+  PHYSICAL-ONLY. NOT a full production candidate; not claimed.
 
 ## Status
 - §18 vertical slice: **wired (flag-gated) + deployed (Preview) + falsified (deployed browser)** = the mission's
