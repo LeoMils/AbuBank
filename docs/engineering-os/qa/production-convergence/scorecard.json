@@ -448,17 +448,19 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "experiment runner + frozen corpus + metric matrix (execution needs live creds)",
+      "oracle": "deterministic Pareto tournament runner over a frozen corpus + metric matrix; naturalness can never buy past a truth/correction/stale violation or a p95-latency budget. Live audio A/B is PHYSICAL (VOICE-DEVICE).",
       "minEvidenceClass": "INTEGRATION",
-      "currentEvidenceClass": "STATIC",
-      "tests": [],
-      "evidenceArtifact": "",
+      "currentEvidenceClass": "INTEGRATION",
+      "tests": [
+        "src/screens/AbuAI/realtime/configTournament.test.ts"
+      ],
+      "evidenceArtifact": "src/screens/AbuAI/realtime/configTournament.ts",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "GAP"
+      "rollbackTrigger": "git revert of the configTournament commit (pure runner; no runtime wiring)",
+      "status": "PROVEN"
     },
     {
       "id": "BASELINE-METRICS",
