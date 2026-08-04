@@ -2,14 +2,15 @@
   "objective": "Wire + prove the first generalized Realtime vertical slice (ADR-0001 GRA-EDC): one continuous Hebrew Realtime conversation; one greeting/session; WhatsApp action via typed tool+kernel; in-session live card; 'לא, תתקשרי אליו' atomically replaces WhatsApp->Call; no stale speech/card; UI+speech one revision; no fabricated fact/completion; fallback preserves authorities.",
   "governingADR": "docs/engineering-os/adr/ADR-0001-abu-realtime-conversational-architecture.md (CERTIFIED)",
   "authorityModel": { "TALK": "gpt-realtime (model)", "STATE": "control plane (deterministic)", "TRUTH/ACTION": "kernel reduceGoal + tools", "UI": "projection of committed state" },
-  "currentCommit": "pending-this-commit (builds on b1e88fc)",
+  "currentCommit": "pending-this-commit (builds on 683f3c1)",
   "completedStages": [
     "S1 control plane (STATE authority) — src/screens/AbuAI/realtime/controlPlane.ts — 16/16",
     "S4a tool dispatch (delegates to kernel; no completion; privacy; idempotency) — realtimeTools.ts — 9/9",
-    "S7a streaming-truth monitor (completion + unsupported-denial) — truthMonitor.ts — 6/6"
+    "S7a streaming-truth monitor (completion + unsupported-denial) — truthMonitor.ts — 6/6",
+    "S5a simulated-realtime seam: session orchestrator composing STATE+TRUTH+SPEECH-GUARD with injected events + canonical ActiveActionViewModel (§13) — sessionOrchestrator.ts — 9/9; production kernel adapter over buildCommunicationAction — kernelAdapter.ts. §18 journey provable WITHOUT a mic. 40 tests total; typecheck 0 errors."
   ],
-  "activeStage": "S5 wire the control plane + tools + monitor into the live Realtime session (realtimeVoice.ts / AbuAI/index.tsx) behind an experimental flag; render the in-session live card bound to the committed revision; then S13 deploy + built-browser/simulated-realtime falsification.",
-  "nextExactExecutableAction": "Add a control-plane-driven in-session ActiveActionCard component + a test seam on RealtimeVoiceSession that injects function_call/interruption events, so the ADR §18 journey (WhatsApp card -> replace to Call in a live session) is provable in a built browser WITHOUT a mic; then deploy Preview behind ?voice=realtime2 and falsify.",
+  "activeStage": "S5b render the React <ActiveActionCard> bound to ActiveActionViewModel and wire the orchestrator into AbuAI/index.tsx + RealtimeVoiceSession behind ?voice=realtime2 (OFF by default; certified path untouched); built-browser proof of the §18 journey; then deploy Preview + simulated-realtime/deployed falsification.",
+  "nextExactExecutableAction": "Create src/components/ActiveActionCard.tsx (renders ActiveActionViewModel: recipient label, status, single primary control, a11y, enlarged text) and mount it in AbuAI/index.tsx voice surface behind a ?voice=realtime2 flag that constructs a SessionOrchestrator(makeProductionKernel()); prove the §18 journey in a built browser via the injected seam (no mic); then deploy Preview and falsify.",
   "terminalConditions": ["COMPLETION (wired+deployed+falsified)", "EXTERNAL BLOCKER", "ADR CONTRADICTION"],
   "blockers": [
     "The live-audio conversational journey is physical-only (mic) per ADR §20; the AUTOMATABLE deployed proof requires a simulated-realtime test seam on the 2000-line RealtimeVoiceSession that is a multi-file build.",
