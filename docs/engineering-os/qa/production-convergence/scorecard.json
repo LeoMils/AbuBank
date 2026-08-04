@@ -13,7 +13,7 @@
     "PRODUCTION"
   ],
   "fingerprint": {
-    "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+    "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
     "build": "0.176.0-latency-vad-instrumentation-rc"
   },
   "rows": [
@@ -33,7 +33,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/evidence.json",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the reducer commit",
@@ -55,7 +55,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/evidence.json",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the dispatch commit",
@@ -76,7 +76,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the controller commit",
@@ -97,7 +97,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the monitor commit",
@@ -117,7 +117,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/risk-register.json",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert",
@@ -137,7 +137,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert",
@@ -157,7 +157,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/VERSION_CONTRACT.md",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert",
@@ -177,7 +177,7 @@
       ],
       "evidenceArtifact": ".claude/rules/privacy.md",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert",
@@ -198,7 +198,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/FINAL_EXECUTION_SPEC.md",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert",
@@ -218,8 +218,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#calendar-migration",
       "fingerprint": {
-        "commit": "",
-        "build": ""
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
+        "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the calendarDraft commit (new state layer; existing AbuCalendar truth untouched)",
       "status": "PROVEN"
@@ -236,7 +236,7 @@
       "tests": [],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/deploy-evidence.json#deploy",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "re-alias stable RC to the prior deployment (see ROLLBACK)",
@@ -254,7 +254,7 @@
       "tests": [],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/deploy-evidence.json#rollback",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "n/a (this IS the rollback capability)",
@@ -275,7 +275,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/browser-evidence.json#feature-activation",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the activation commit; ?voice=pipeline disables at runtime",
@@ -295,7 +295,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/live-provider-evidence.json#online",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the online-grounding commit; endpoint returns not-grounded on zero sources",
@@ -316,7 +316,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/live-provider-evidence.json#realtime-session",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the realtime-token commit; placeholder key → OPENAI_API_KEY_MISSING",
@@ -337,7 +337,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#hebrew-corpus",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the conversation module commit",
@@ -358,7 +358,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#long-session-context",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the conversation module commit",
@@ -379,7 +379,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#dialogue-quality",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the conversation module commit",
@@ -400,7 +400,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/browser-evidence.json#pwa",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the PWA config commit",
@@ -422,7 +422,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#whole-product",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the property-test commit",
@@ -442,7 +442,7 @@
       ],
       "evidenceArtifact": "src/screens/AbuAI/realtime/latencyInstrumentation.ts",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the latencyInstrumentation commit (pure module; no runtime wiring yet)",
@@ -462,7 +462,7 @@
       ],
       "evidenceArtifact": "src/screens/AbuAI/realtime/configTournament.ts",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "git revert of the configTournament commit (pure runner; no runtime wiring)",
@@ -482,7 +482,7 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/baseline-evidence.json",
       "fingerprint": {
-        "commit": "d22ae30401e78e2c4a7406a21ca8060f583d687c",
+        "commit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
         "build": "0.176.0-latency-vad-instrumentation-rc"
       },
       "rollbackTrigger": "n/a (measurement snapshot); re-collect to refresh",
