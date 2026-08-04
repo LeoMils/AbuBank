@@ -90,6 +90,14 @@
   injected real-shaped server events, proves card + safe function_call_output + response.create, atomic replace,
   transcript repair, and tools-only-in-slice config. Plus live controller + bridge + schema tests.
 - Version 0.170.0 → **0.171.0-realtime-live-functiontool-rc** (version.ts+health+test synced). typecheck 0; build green.
+- **Deployed re-falsification**: Preview abu-bank-pa93w1vin serves 0.171.0; the §18 harness falsifier PASSED
+  against the RC alias abu-ela-rc.vercel.app (mobile-chrome, no mic, 8.2s). tested == pushed == deployed.
+- **Post-implementation review (fresh eyes)** — one HONEST LIMITATION recorded (not a blocker for the automatable
+  slice): in slice mode a mid-session realtime→pipeline FALLBACK reverts to the certified brain-driven path (which
+  has no function tools), so the control-plane live card does not advance via tools after a fallback until the
+  session ends (the certified fallback still produces its own CommunicationAction card via the brain). Unifying the
+  fallback under the same control plane is ADR §17 stage 8 (out of this slice). No hidden second semantic authority,
+  no duplicate card renderer (ActiveActionCard is shared), kernel never authors prose, model never certifies truth.
 
 ## Status
 - §18 vertical slice: **wired (flag-gated) + deployed (Preview) + falsified (deployed browser)** = the mission's
