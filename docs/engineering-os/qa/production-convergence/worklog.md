@@ -22,6 +22,12 @@ Positive fabrications still caught (`כבר שלחתי`, `דיברתי עם … 
 - **LIVE-PROVIDER BLOCKED:** the configuration tournament (VAD/voice/model/eagerness) and true audio-native duplex need a live OpenAI Realtime session unavailable here.
 - **DEPLOYED-TELEMETRY BLOCKED:** baseline latency/failure distributions need an instrumented deployed candidate with traffic. Not fabricated.
 
+### Certification of the truth-monitor fix (0.173.0 → 0.174.0)
+Added 22 adversarial Hebrew variants (10 MUST-FLAG 1st-person completions; 11 MUST-NOT-FLAG truthful/negated/2nd-person/offer/forward) + capability-denial both ways (exists → flag; genuinely absent → do not flag). Dimensions: punctuation, ו/כ/ש prefixes, mixed clauses, questions, leading/trailing/ש-prefixed negation, future-offer vs past-completion. Result: real 1st-person fabrication detection NOT weakened; all forward-Hebrew false positives closed. Gates: truthMonitor+livePath 27, version contract 35, **full suite 11944/2 todo**, typecheck 0, build exit 0. Accepted bound: deeply nested negation ("לא אמרתי ששלחתי") — ADR-0001 §7 keeps the monitor bounded (structural receipt guarantee is primary); logged as RT-RISK-005.
+
+## Destructive / mutation QA sweep (in progress)
+Attacking the REAL production paths (control plane, kernel idempotency, function bridge, truth monitor), not repeating unit assertions. Findings recorded in failure-corpus.json as discovered.
+
 ## PHYSICAL_PROTOCOL (run on a real iPhone; 1–5 rubric, explicit pass/fail)
 1. Hebrew mic capture, quiet + noisy — transcript accepted, no infinite "מקשיבה…" (pass = bounded).
 2. Short + long utterances, meaningful pauses, fast speech — no premature turn end.

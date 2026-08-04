@@ -7,7 +7,12 @@
     {"cmd": "npx vitest run src/screens/AbuAI/realtime/ ...", "result": "81 passed (realtime slice)"},
     {"cmd": "npx vitest run truthMonitor.test.ts (RED, before fix)", "result": "2 failed (both new forward-Hebrew FP regressions) — defect confirmed"},
     {"cmd": "npx vitest run truthMonitor.test.ts realtimeLivePath.test.ts (after fix)", "result": "23 passed"},
-    {"cmd": "npx vitest run src/version.test.ts truthMonitor.test.ts", "result": "31 passed (version contract synced at 0.173.0)"}
+    {"cmd": "npx vitest run src/version.test.ts truthMonitor.test.ts", "result": "31 passed (version contract synced at 0.173.0)"},
+    {"cmd": "npx vitest run truthMonitor.test.ts realtimeLivePath.test.ts (0.174.0 adversarial)", "result": "27 passed (22 adversarial Hebrew variants + capability-denial both ways)"},
+    {"cmd": "npx vitest run (full, 0.174.0)", "result": "422 files, 11944 passed, 2 todo, exit 0"},
+    {"cmd": "npx tsc --noEmit (0.174.0)", "result": "exit 0"},
+    {"cmd": "npm run build (0.174.0)", "result": "exit 0, PWA precache 29 entries"},
+    {"cmd": "version contract 0.174.0", "result": "version.ts == api/health.ts == version.test.ts (35 passed incl. version.test.ts)"}
   ],
   "evidence_class_ceiling": "CODE+TEST (a.k.a. MOCK where providers mocked). NOT browser/preview/device/production. Physical + live-provider items remain unproven and are labeled as such.",
   "not_claimed": ["real mic capture", "audible Hebrew warmth/prosody", "on-device latency feel", "live OpenAI Realtime duplex", "deployed baseline distributions", "Production deployment"]

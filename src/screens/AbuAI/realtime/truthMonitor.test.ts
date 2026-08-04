@@ -70,3 +70,56 @@ describe('monitorUtterance combines both', () => {
     expect(r.violations).toEqual([])
   })
 })
+
+// ─── Adversarial Hebrew variants — mutation-hardened certification ────────────
+// Certifies the 0.173.0 forward-Hebrew false-positive fix does NOT weaken real
+// first-person fabrication detection, across punctuation, prefixes (ו/כ/ש),
+// mixed clauses, questions, negation and normal forward Hebrew. Every MUST-FLAG
+// is a genuine 1st-person completion; every MUST-NOT-FLAG is truthful Abu wording.
+describe('truth monitor — adversarial Hebrew variants (must still FLAG real fabrication)', () => {
+  const MUST_FLAG = [
+    'שלחתי לו הודעה עכשיו',            // bare 1st-person
+    'ושלחתי את זה',                    // ו- prefix
+    'הכנתי וגם התקשרתי אליו',          // mixed clause, verb after גם
+    'כבר שלחתי לה',                    // כבר + 1st person (still caught)
+    'חייגתי אליו הרגע',               // dial completion
+    'ההודעה נשלחה בהצלחה!',           // passive completion + punctuation
+    'דיברתי עם מור וסידרתי הכול',      // spoke-with completion
+    'השיחה בוצעה',                    // call-made completion
+    'עדיין לא סיימתי אבל שלחתי',       // negation elsewhere, positive verb still flagged
+    'לא רק שלחתי אלא גם התקשרתי',     // "not only sent but also called" — both positive
+  ]
+  const MUST_NOT_FLAG = [
+    'מכינה לך הודעה למור, תלחצי כדי לשלוח',   // infinitive לשלוח, no completion
+    'עדיין לא שלחתי כלום',                     // negated
+    'לא התקשרתי, רק מכינה',                    // negated
+    'לא חייגתי עדיין',                         // negated
+    'ההודעה עדיין לא נשלחה',                   // negated passive
+    'לא דיברתי עם אף אחד',                     // negated spoke-with (0.173.0 fix)
+    'שלא שלחתי בכלל',                          // ש-prefixed negation ("that I didn't send")
+    'כבר שלחת לו?',                            // 2nd-person question (0.173.0 fix)
+    'שלחת לה כבר?',                            // 2nd-person question
+    'רוצה שאתקשר למור?',                       // future 1st-person OFFER, not completion
+    'מוכן! לחצי כדי לפתוח.',                   // forward, punctuation
+  ]
+  it('flags every real first-person completion variant', () => {
+    for (const u of MUST_FLAG) expect(detectForbiddenCompletion(u).length, u).toBeGreaterThan(0)
+  })
+  it('never flags truthful / negated / 2nd-person / offer / forward variants', () => {
+    for (const u of MUST_NOT_FLAG) expect(detectForbiddenCompletion(u), u).toEqual([])
+  })
+})
+
+describe('truth monitor — capability denial both ways (exists vs genuinely absent)', () => {
+  it('FLAGS denial when the receipt proves the capability IS available', () => {
+    const ready = { status: 'READY_FOR_HANDOFF' }
+    for (const u of ['אני לא יכולה להתקשר כרגע', 'אין לי אפשרות לקבוע פגישה', 'לא מסוגלת לשלוח']) {
+      expect(detectUnsupportedDenial(u, ready).length, u).toBeGreaterThan(0)
+    }
+  })
+  it('does NOT flag the SAME denial words when the capability genuinely does not exist', () => {
+    const absent = { status: 'NOT_CONFIGURED' }
+    expect(detectUnsupportedDenial('אני לא יכולה להתקשר כי אין מספר שמור', absent)).toEqual([])
+    expect(detectUnsupportedDenial('אין לי אפשרות להתקשר', null)).toEqual([])
+  })
+})
