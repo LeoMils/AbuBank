@@ -35,11 +35,26 @@
 - Additive + unwired (same class as b1e88fc/683f3c1) → no product version bump; the bump ships with the
   wired+deployed operator-testable build (S5b, next).
 
+## Checkpoint 4 (this commit) — S5b canonical card + flag-gated live harness + version bump
+- **`ActiveActionCard`** (`src/components/ActiveActionCard.tsx`): the ONE canonical live card (§13), a pure
+  projection of a committed `ActiveActionViewModel` — recipient label, committed status/a11y, the single
+  primary control, `rev N`. Structurally cannot show a completion; never shows a number. Tested (renderToString)
+  for message + call revisions incl. no-completion + not-configured (no button) + invisible→renders nothing.
+- **`realtime2` slice flag** (`voiceModePreference.ts`): independent, OFF by default, `?voice=realtime2|slice`
+  opt-in / `pipeline|off|0` clear; proven independent of the realtime BETA in both directions (14 flag tests).
+- **`RealtimeSliceHarness`** (`realtime/RealtimeSliceHarness.tsx`): a self-contained, mic-free §18/§19 falsifier
+  owning a real `SessionOrchestrator`; operator injects greeting → WhatsApp start → atomic REPLACE to Call →
+  complaint (no mutation) → interruption → fallback, renders the `ActiveActionCard` + a privacy-safe state
+  readout, and a speech-guard checker. Kernel modes: PRODUCTION (real `buildCommunicationAction`) or
+  SIMULATED-READY (§19). Mounted in AbuAI/index.tsx behind `isRealtimeSliceEnabled()` (two gated lines;
+  certified path untouched when off).
+- **Version bump** 0.169.0 → **0.170.0-realtime-slice-harness-rc** (version.ts + api/health.ts + version.test.ts
+  in sync — first WIRED, operator-testable build of the slice). Build green; typecheck 0.
+
 ## Status
-- Deterministic authority stack + simulated-realtime seam + canonical card view-model implemented + proven:
-  **40 tests** (controlPlane 16 + realtimeTools 9 + truthMonitor 6 + sessionOrchestrator 9). Full typecheck: 0 errors.
-- REMAINING (active stage S5b): the React `<ActiveActionCard>` bound to `ActiveActionViewModel`; wire the
-  orchestrator into AbuAI/index + RealtimeVoiceSession behind `?voice=realtime2` (OFF by default; certified
-  path untouched); built-browser proof of the §18 journey; deploy Preview; falsify; unknown-failure campaign.
-- Verdict: NOT READY — live-session wiring + deployed falsification remain (no external blocker, no ADR
-  contradiction; Option F holds and is reinforced by the deterministic + seam proofs).
+- Full slice proven: **81 tests** (controlPlane 16 · realtimeTools 9 · truthMonitor 6 · sessionOrchestrator 9 ·
+  ActiveActionCard 5 · slice-flag 14 · version 22). Typecheck 0. Production build green. Full suite: <pending release gate>.
+- REMAINING (S5c): deploy Preview, prove the §18 journey by clicking `?voice=realtime2` in the deployed browser
+  (BROWSER/PREVIEW class), update the stable RC alias, then the independent unknown-failure campaign. DEVICE
+  (mic naturalness/audibility) stays physical-only per §20 — not claimed.
+- Verdict: NOT READY — deployed falsification remains (no external blocker, no ADR contradiction).

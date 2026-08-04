@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { isRealtimeBetaEnabled, syncRealtimeBetaFromUrl, REALTIME_BETA_KEY } from './voiceModePreference'
+import {
+  isRealtimeBetaEnabled, syncRealtimeBetaFromUrl, REALTIME_BETA_KEY,
+  isRealtimeSliceEnabled, syncRealtimeSliceFromUrl, REALTIME_SLICE_KEY,
+} from './voiceModePreference'
 
 const store = (v: string | null) => ({ getItem: (k: string) => (k === REALTIME_BETA_KEY ? v : null) })
 
@@ -57,5 +60,47 @@ describe('syncRealtimeBetaFromUrl — enable/disable the beta from a link (no co
   })
   it('never throws on a malformed query', () => {
     expect(syncRealtimeBetaFromUrl('%%%', rwStore())).toBeNull()
+  })
+})
+
+describe('Realtime SLICE flag (realtime2) — independent, OFF by default', () => {
+  const sliceStore = (v: string | null) => ({ getItem: (k: string) => (k === REALTIME_SLICE_KEY ? v : null) })
+  function rwSlice(initial: string | null = null) {
+    let val = initial
+    return {
+      getItem: (k: string) => (k === REALTIME_SLICE_KEY ? val : null),
+      setItem: (k: string, v: string) => { if (k === REALTIME_SLICE_KEY) val = v },
+      get value() { return val },
+    }
+  }
+
+  it('defaults OFF and enables only on explicit "1"', () => {
+    expect(isRealtimeSliceEnabled(sliceStore(null))).toBe(false)
+    expect(isRealtimeSliceEnabled(sliceStore('1'))).toBe(true)
+  })
+  it('?voice=realtime2 / slice opt in and PERSIST "1"', () => {
+    const s = rwSlice(null)
+    expect(syncRealtimeSliceFromUrl('?voice=realtime2', s)).toBe(true)
+    expect(s.value).toBe('1')
+    expect(syncRealtimeSliceFromUrl('?voice=slice', rwSlice())).toBe(true)
+  })
+  it('?voice=pipeline clears the slice too', () => {
+    const s = rwSlice('1')
+    expect(syncRealtimeSliceFromUrl('?voice=pipeline', s)).toBe(false)
+    expect(s.value).toBe('0')
+  })
+  it('INDEPENDENCE: ?voice=realtime2 does NOT enable the realtime BETA', () => {
+    const beta = rwStore(null)
+    // The beta sync only recognizes realtime/beta/on/1 — realtime2 is not one of them.
+    expect(syncRealtimeBetaFromUrl('?voice=realtime2', beta)).toBeNull()
+    expect(beta.value).toBeNull()
+  })
+  it('INDEPENDENCE: ?voice=realtime does NOT enable the slice', () => {
+    const slice = rwSlice(null)
+    expect(syncRealtimeSliceFromUrl('?voice=realtime', slice)).toBeNull()
+    expect(slice.value).toBeNull()
+  })
+  it('never throws on a malformed query', () => {
+    expect(syncRealtimeSliceFromUrl('%%%', rwSlice())).toBeNull()
   })
 })

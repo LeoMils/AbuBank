@@ -24,6 +24,46 @@ export function isRealtimeBetaEnabled(storage?: Pick<Storage, 'getItem'>): boole
   }
 }
 
+// ─── Realtime VERTICAL-SLICE flag (ADR-0001 §17 stage-gated, INDEPENDENT of the
+// beta above) — opts into the deterministic control-plane/tools/monitor slice
+// harness (?voice=realtime2). OFF by default so the certified voice path is never
+// touched; separate key so it can never entangle with the pipeline/realtime beta.
+export const REALTIME_SLICE_KEY = 'abu-voice-realtime-slice'
+
+/** True only when the Realtime slice (realtime2) is explicitly opted in. Default = false. */
+export function isRealtimeSliceEnabled(storage?: Pick<Storage, 'getItem'>): boolean {
+  try {
+    const s = storage ?? (typeof localStorage !== 'undefined' ? localStorage : undefined)
+    return s?.getItem(REALTIME_SLICE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Apply a `?voice=realtime2|slice` URL override for the slice harness and PERSIST it.
+ * `pipeline|off|0` clears it. Returns the applied boolean, or null when no recognized
+ * value is present. `realtime2` does NOT enable the realtime BETA (different values), so
+ * the two flags stay independent.
+ */
+export function syncRealtimeSliceFromUrl(
+  search?: string,
+  storage?: Pick<Storage, 'getItem' | 'setItem'>,
+): boolean | null {
+  try {
+    const q = search ?? (typeof window !== 'undefined' ? window.location.search : '')
+    if (!q) return null
+    const v = new URLSearchParams(q).get(REALTIME_BETA_QUERY)
+    if (v == null) return null
+    const s = storage ?? (typeof localStorage !== 'undefined' ? localStorage : undefined)
+    if (v === 'realtime2' || v === 'slice') { s?.setItem(REALTIME_SLICE_KEY, '1'); return true }
+    if (v === 'pipeline' || v === 'off' || v === '0') { s?.setItem(REALTIME_SLICE_KEY, '0'); return false }
+    return null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Apply a `?voice=realtime|pipeline` URL override and PERSIST it, so Leo can enable the
  * Realtime beta from a link on the phone (no console on installed iOS PWA). Returns the

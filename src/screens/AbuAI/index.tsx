@@ -19,12 +19,16 @@ import type { CommunicationAction } from './communication/types'
 import { ExecutiveCognitiveController } from './executiveCognitiveController'
 import { buildFullTurnTools } from './fullTurnBridge'
 import { shouldUseWebSpeechPrimary, LISTEN_WATCHDOG_MS } from '../../services/sttStrategy'
-import { isRealtimeBetaEnabled, syncRealtimeBetaFromUrl } from '../../services/voiceModePreference'
+import { isRealtimeBetaEnabled, syncRealtimeBetaFromUrl, isRealtimeSliceEnabled, syncRealtimeSliceFromUrl } from '../../services/voiceModePreference'
+import { RealtimeSliceHarness } from './realtime/RealtimeSliceHarness'
 
 // Honor a `?voice=realtime|pipeline` URL override at module load and PERSIST it, so the
 // Realtime beta can be enabled from a link on a phone with no JS console (installed iOS PWA).
 // Runs before any component reads isRealtimeBetaEnabled(), so the first render sees the choice.
 syncRealtimeBetaFromUrl()
+// Independent `?voice=realtime2|slice` override for the deterministic Realtime SLICE
+// harness (ADR §18 falsifier). OFF by default; never touches the certified voice path.
+syncRealtimeSliceFromUrl()
 
 // SINGLE PATH: the Executive Cognitive Controller is the sole RUNTIME path. This is
 // hardcoded on (no env flag) — every text/voice turn returns from the controller
@@ -3008,6 +3012,9 @@ ${fewShotText}`
             {/* v27.1: Noise environment toggle hidden (state kept for v28 refactor) */}
           </div>
         )}
+
+        {/* ──────── REALTIME SLICE HARNESS (ADR §18 falsifier, ?voice=realtime2 only) ──────── */}
+        {isRealtimeSliceEnabled() && <RealtimeSliceHarness />}
 
         {/* ──────── CHAT MESSAGES ──────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
