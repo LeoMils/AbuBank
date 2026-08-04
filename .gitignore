@@ -35,3 +35,12 @@ docs/eval/baseline.json
 
 # AbuAI parity program single-writer execution lock (local lease, never committed)
 .abuai/ACTIVE_EXECUTION_LOCK.json
+.claude/settings.local.json
+.abuai-live-parity-v4-backups/
+evals/live-parity-lab/private-recordings/
+evals/live-parity-lab/raw-user-audio/
+
+# Abu production gate — generated cache + Stop-guard state (not source)
+docs/engineering-os/qa/production-convergence/gate-status.json
+.claude/.abu-goal-active
+.claude/.abu-stop-block-count

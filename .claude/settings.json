@@ -30,7 +30,8 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guards/claim-check.cjs\"", "timeout": 10 }
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guards/claim-check.cjs\"", "timeout": 10 },
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/abu-stop-guard.mjs\"", "timeout": 10 }
         ]
       }
     ]

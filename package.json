@@ -18,6 +18,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "rc:verify": "npx tsx scripts/rc-verify.ts",
+    "qa:production-gate": "npx tsx scripts/qa-production-gate.ts",
     "check": "tsc --noEmit && vitest run",
     "workbench": "node scripts/ai-workbench.js"
   },
