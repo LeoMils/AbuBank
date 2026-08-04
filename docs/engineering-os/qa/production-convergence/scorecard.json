@@ -228,17 +228,35 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "tested==pushed==deployed on Preview/stable RC (cache-busted /api/health fingerprint)",
+      "oracle": "tested==pushed==deployed on Preview/stable RC (cache-busted /api/health == tested build)",
       "minEvidenceClass": "DEPLOYED_PREVIEW",
-      "currentEvidenceClass": "INTEGRATION",
+      "currentEvidenceClass": "DEPLOYED_PREVIEW",
       "tests": [],
-      "evidenceArtifact": "",
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/deploy-evidence.json#deploy",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "TESTED_NOT_DEPLOYED"
+      "rollbackTrigger": "re-alias stable RC to the prior deployment (see ROLLBACK)",
+      "status": "PROVEN"
+    },
+    {
+      "id": "ROLLBACK",
+      "surface": "release/rollback",
+      "severity": "High",
+      "classification": "automatable",
+      "owner": "main",
+      "oracle": "re-alias stable RC to a prior deployment succeeds and restoration to the tested build is verified (round-trip)",
+      "minEvidenceClass": "DEPLOYED_PREVIEW",
+      "currentEvidenceClass": "DEPLOYED_PREVIEW",
+      "tests": [],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/deploy-evidence.json#rollback",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "rollbackTrigger": "n/a (this IS the rollback capability)",
+      "status": "PROVEN"
     },
     {
       "id": "FEATURE-ACTIVATION",

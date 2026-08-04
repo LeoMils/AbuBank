@@ -1,29 +1,155 @@
 {
   "note": "Required Critical/High product inventory. `npm run qa:production-gate` reconciles these ids against scorecard.json rows — deleting or omitting a required row raises MISSING_INVENTORY_ROW and cannot produce a false PASS. Add a row here the moment a new Critical/High surface is discovered.",
   "required": [
-    { "id": "RT-CTRL-001", "surface": "realtime/control-plane", "severity": "Critical", "classification": "automatable" },
-    { "id": "RT-KERNEL-001", "surface": "realtime/kernel-dispatch", "severity": "Critical", "classification": "automatable" },
-    { "id": "RT-CONTROLLER-001", "surface": "realtime/live-comm-controller", "severity": "Critical", "classification": "automatable" },
-    { "id": "RT-TRUTH-001", "surface": "realtime/truth-monitor", "severity": "High", "classification": "automatable" },
-    { "id": "RT-BRIDGE-001", "surface": "realtime/function-bridge", "severity": "High", "classification": "automatable" },
-    { "id": "RT-DESTRUCTIVE-SWEEP", "surface": "realtime/adapter-chain", "severity": "High", "classification": "automatable" },
-    { "id": "RT-LIVE-SESSION", "surface": "realtime/live-webrtc-session", "severity": "High", "classification": "automatable" },
-    { "id": "VERSION-CONTRACT", "surface": "release/version", "severity": "High", "classification": "automatable" },
-    { "id": "PRIVACY-KEYS", "surface": "privacy/provider-keys", "severity": "High", "classification": "automatable" },
-    { "id": "GATE-SELF", "surface": "qa/production-gate", "severity": "High", "classification": "automatable" },
-    { "id": "CAL-MIGRATION", "surface": "calendar/realtime-authority", "severity": "High", "classification": "automatable" },
-    { "id": "DEPLOY-PREVIEW-RC", "surface": "release/preview-rc", "severity": "High", "classification": "automatable" },
-    { "id": "FEATURE-ACTIVATION", "surface": "realtime/activation", "severity": "High", "classification": "automatable" },
-    { "id": "ONLINE-CURRENT-INFO", "surface": "online/grounding", "severity": "High", "classification": "automatable" },
-    { "id": "HEBREW-CORPUS", "surface": "conversation/hebrew-repair", "severity": "High", "classification": "automatable" },
-    { "id": "LONG-SESSION-CONTEXT", "surface": "conversation/long-session", "severity": "High", "classification": "automatable" },
-    { "id": "DIALOGUE-QUALITY", "surface": "conversation/persona-repetition", "severity": "High", "classification": "automatable" },
-    { "id": "PWA-UPDATE", "surface": "pwa/service-worker", "severity": "High", "classification": "automatable" },
-    { "id": "WHOLE-PRODUCT-QA", "surface": "whole-product/property-race-fault-mutation", "severity": "High", "classification": "automatable" },
-    { "id": "LATENCY-VAD-INSTRUMENTATION", "surface": "realtime/instrumentation", "severity": "High", "classification": "automatable" },
-    { "id": "CONFIG-TOURNAMENT", "surface": "realtime/config-experiments", "severity": "High", "classification": "automatable" },
-    { "id": "BASELINE-METRICS", "surface": "observability/baseline", "severity": "High", "classification": "automatable" },
-    { "id": "VOICE-DEVICE", "surface": "voice/mic-loop", "severity": "Critical", "classification": "physical" },
-    { "id": "TTS-WARMTH", "surface": "voice/tts-perception", "severity": "High", "classification": "physical" }
+    {
+      "id": "RT-CTRL-001",
+      "surface": "realtime/control-plane",
+      "severity": "Critical",
+      "classification": "automatable"
+    },
+    {
+      "id": "RT-KERNEL-001",
+      "surface": "realtime/kernel-dispatch",
+      "severity": "Critical",
+      "classification": "automatable"
+    },
+    {
+      "id": "RT-CONTROLLER-001",
+      "surface": "realtime/live-comm-controller",
+      "severity": "Critical",
+      "classification": "automatable"
+    },
+    {
+      "id": "RT-TRUTH-001",
+      "surface": "realtime/truth-monitor",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "RT-BRIDGE-001",
+      "surface": "realtime/function-bridge",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "RT-DESTRUCTIVE-SWEEP",
+      "surface": "realtime/adapter-chain",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "RT-LIVE-SESSION",
+      "surface": "realtime/live-webrtc-session",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "VERSION-CONTRACT",
+      "surface": "release/version",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "PRIVACY-KEYS",
+      "surface": "privacy/provider-keys",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "GATE-SELF",
+      "surface": "qa/production-gate",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "CAL-MIGRATION",
+      "surface": "calendar/realtime-authority",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "DEPLOY-PREVIEW-RC",
+      "surface": "release/preview-rc",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "ROLLBACK",
+      "surface": "release/rollback",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "FEATURE-ACTIVATION",
+      "surface": "realtime/activation",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "ONLINE-CURRENT-INFO",
+      "surface": "online/grounding",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "HEBREW-CORPUS",
+      "surface": "conversation/hebrew-repair",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "LONG-SESSION-CONTEXT",
+      "surface": "conversation/long-session",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "DIALOGUE-QUALITY",
+      "surface": "conversation/persona-repetition",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "PWA-UPDATE",
+      "surface": "pwa/service-worker",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "WHOLE-PRODUCT-QA",
+      "surface": "whole-product/property-race-fault-mutation",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "LATENCY-VAD-INSTRUMENTATION",
+      "surface": "realtime/instrumentation",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "CONFIG-TOURNAMENT",
+      "surface": "realtime/config-experiments",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "BASELINE-METRICS",
+      "surface": "observability/baseline",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "VOICE-DEVICE",
+      "surface": "voice/mic-loop",
+      "severity": "Critical",
+      "classification": "physical"
+    },
+    {
+      "id": "TTS-WARMTH",
+      "surface": "voice/tts-perception",
+      "severity": "High",
+      "classification": "physical"
+    }
   ]
 }
