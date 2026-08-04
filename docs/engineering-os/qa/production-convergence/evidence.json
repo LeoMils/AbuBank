@@ -12,7 +12,13 @@
     {"cmd": "npx vitest run (full, 0.174.0)", "result": "422 files, 11944 passed, 2 todo, exit 0"},
     {"cmd": "npx tsc --noEmit (0.174.0)", "result": "exit 0"},
     {"cmd": "npm run build (0.174.0)", "result": "exit 0, PWA precache 29 entries"},
-    {"cmd": "version contract 0.174.0", "result": "version.ts == api/health.ts == version.test.ts (35 passed incl. version.test.ts)"}
+    {"cmd": "version contract 0.174.0", "result": "version.ts == api/health.ts == version.test.ts (35 passed incl. version.test.ts)"},
+    {"cmd": "npx vitest run destructiveSweep.test.ts (0.175.0)", "result": "14 passed (real adapter-chain hostile sequences)"},
+    {"cmd": "MUTATION control-plane: drop generation check", "result": "'pre-fallback tool result REJECTED' RED -> reverted via git checkout (sweep non-vacuous)"},
+    {"cmd": "MUTATION truth-monitor: NEG='' ", "result": "4 negation/forward sentinels RED -> restored (sweep+monitor non-vacuous)"},
+    {"cmd": "npx vitest run (full, 0.175.0)", "result": "423 files, 11959 passed, 2 todo, exit 0"},
+    {"cmd": "npx tsc --noEmit (0.175.0)", "result": "exit 0"},
+    {"cmd": "npm run build (0.175.0)", "result": "exit 0, PWA precache 29 entries"}
   ],
   "evidence_class_ceiling": "CODE+TEST (a.k.a. MOCK where providers mocked). NOT browser/preview/device/production. Physical + live-provider items remain unproven and are labeled as such.",
   "not_claimed": ["real mic capture", "audible Hebrew warmth/prosody", "on-device latency feel", "live OpenAI Realtime duplex", "deployed baseline distributions", "Production deployment"]

@@ -33,8 +33,11 @@ const COMPLETION = [
   new RegExp(NEG + 'נשלח(ה|ו)?'), /השיחה\s+(בוצעה|התבצעה)/,
   new RegExp(NEG + 'כבר\\s+(שלחתי|התקשרתי|חייגתי)'),
 ]
+// "לחייג" (to dial) is a first-class CALL verb the product prepares — it must be
+// in the denial verb set alongside "להתקשר"/"לשלוח"/"לשלח", or a "לא יכולה לחייג"
+// denial escapes unchecked while a call receipt is READY (CD-FN-001).
 const CAPABILITY_DENIAL = [
-  /לא\s+יכולה\s+ל(ה?תקשר|שלוח|שלח)/, /אין\s+לי\s+אפשרות/, /לא\s+מסוגלת\s+ל/,
+  /לא\s+יכולה\s+ל(ה?תקשר|חייג|שלוח|שלח)/, /אין\s+לי\s+אפשרות/, /לא\s+מסוגלת\s+ל/,
   /לא\s+יכולה\s+לקבוע\s+פגיש/,
 ]
 

@@ -1,11 +1,11 @@
 {
-  "candidate": "0.173.0-realtime-truthmonitor-forward-hebrew-fp-rc",
+  "candidate": "0.175.0-realtime-denial-dial-fn-plus-destructive-sweep-rc",
   "builds_on": "0.172.0-realtime-exactly-once-dedup-rc",
-  "change": "Truth-monitor forward-Hebrew false-positive fix (2 defects) + red-first regression tests + honest production-convergence execution system.",
-  "version_contract": "src/version.ts == api/health.ts == src/version.test.ts (0.173.0), enforced by version.test.ts",
-  "gates": {"typecheck": "PASS", "full_suite": "PASS (11938/2 todo)", "build": "NOT_RUN_THIS_ENTRY (run npm run build before any release claim)"},
+  "change": "Truth-monitor forward-Hebrew FP fix (TM-FP-001/002) + adversarial certification + CD-FN-001 dial-denial FN fix + destructive/mutation sweep of the real adapter chain + honest production-convergence execution system.",
+  "version_contract": "src/version.ts == api/health.ts == src/version.test.ts (0.175.0), enforced by version.test.ts",
+  "gates": {"typecheck": "PASS", "full_suite": "PASS (11959/2 todo, 423 files)", "build": "PASS (exit 0)"},
   "deploy": "NONE — no Production deploy; no merge to main. Preview deploy requires explicit human action.",
-  "rollback": "git revert of the single fix commit restores 0.172.0 truth-monitor behavior; no data migration, no storage change, flag path untouched.",
+  "rollback": "git revert of the fix commits restores 0.172.0 truth-monitor behavior; no data migration, no storage change, flag path untouched.",
   "physical_blockers": "See PHYSICAL_PROTOCOL section in worklog.md — real mic Hebrew, interruption, warmth, WhatsApp/dialer launch, latency feel.",
   "verdict": "NOT a full Production Candidate. One automatable High/Medium defect closed with permanent coverage; the whole-product Critical/High denominator remains blocked on physical iPhone + live OpenAI Realtime + deployed telemetry."
 }

@@ -122,4 +122,15 @@ describe('truth monitor — capability denial both ways (exists vs genuinely abs
     expect(detectUnsupportedDenial('אני לא יכולה להתקשר כי אין מספר שמור', absent)).toEqual([])
     expect(detectUnsupportedDenial('אין לי אפשרות להתקשר', null)).toEqual([])
   })
+  it('REGRESSION (CD-FN-001): "לא יכולה לחייג" (dial) is an unsupported denial when a call IS ready', () => {
+    // The product PREPARES calls; "לחייג" (to dial) is a first-class call verb the
+    // denial matcher must cover alongside "להתקשר" — otherwise the model can deny a
+    // ready capability unchecked. Also cover the message side ("לשלוח").
+    const ready = { status: 'READY_FOR_HANDOFF' }
+    for (const u of ['אני לא יכולה לחייג לו', 'לא יכולה לחייג כרגע', 'אני לא יכולה לשלוח לה']) {
+      expect(detectUnsupportedDenial(u, ready).length, u).toBeGreaterThan(0)
+    }
+    // …but genuinely-absent capability stays truthful (not flagged).
+    expect(detectUnsupportedDenial('אני לא יכולה לחייג, אין מספר', { status: 'NOT_CONFIGURED' })).toEqual([])
+  })
 })

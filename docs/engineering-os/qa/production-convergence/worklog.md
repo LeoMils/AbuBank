@@ -25,8 +25,16 @@ Positive fabrications still caught (`כבר שלחתי`, `דיברתי עם … 
 ### Certification of the truth-monitor fix (0.173.0 → 0.174.0)
 Added 22 adversarial Hebrew variants (10 MUST-FLAG 1st-person completions; 11 MUST-NOT-FLAG truthful/negated/2nd-person/offer/forward) + capability-denial both ways (exists → flag; genuinely absent → do not flag). Dimensions: punctuation, ו/כ/ש prefixes, mixed clauses, questions, leading/trailing/ש-prefixed negation, future-offer vs past-completion. Result: real 1st-person fabrication detection NOT weakened; all forward-Hebrew false positives closed. Gates: truthMonitor+livePath 27, version contract 35, **full suite 11944/2 todo**, typecheck 0, build exit 0. Accepted bound: deeply nested negation ("לא אמרתי ששלחתי") — ADR-0001 §7 keeps the monitor bounded (structural receipt guarantee is primary); logged as RT-RISK-005.
 
-## Destructive / mutation QA sweep (in progress)
-Attacking the REAL production paths (control plane, kernel idempotency, function bridge, truth monitor), not repeating unit assertions. Findings recorded in failure-corpus.json as discovered.
+## Destructive / mutation QA sweep (0.175.0) — DONE
+`src/screens/AbuAI/realtime/destructiveSweep.test.ts` (14 tests) attacks the REAL adapter chain (controller → orchestrator → control-plane reducer + kernel dispatch → viewModel → truth monitor), not unit repeats. Seams: stale generation/revision rejection; cancel/replace WHILE a tool result is in flight (real async race, latest-intent-wins); exactly-once across duplicate+reordered completion shapes; phone-in-args privacy (controller + dispatchTool); safe-label vs local-phone resolution; fallback/reconnect not reviving a cancelled action; greeting-once across reconnect; one canonical card==receipt revision.
+
+**New defect found + fixed — CD-FN-001 (High):** the capability-denial monitor caught "לא יכולה להתקשר" but NOT "לא יכולה לחייג" (to dial) → a READY call capability could be denied unchecked. Red-first regression → mechanism fix (add dial verb) → green.
+
+**Sweep proven non-vacuous (mutation testing):**
+- control-plane: dropped the generation check in TOOL_RESULT → "pre-fallback tool result REJECTED" went RED; reverted via `git checkout`.
+- truth-monitor: emptied the `NEG` negation guard → 4 negation/forward sentinels went RED; restored.
+
+Gates: sweep+monitor+livePath 42, version contract 22, **full suite 11959/2 todo (423 files)**, typecheck 0, build exit 0.
 
 ## PHYSICAL_PROTOCOL (run on a real iPhone; 1–5 rubric, explicit pass/fail)
 1. Hebrew mic capture, quiet + noisy — transcript accepted, no infinite "מקשיבה…" (pass = bounded).

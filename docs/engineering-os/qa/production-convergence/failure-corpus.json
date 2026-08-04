@@ -24,8 +24,31 @@
       "regression_test": "src/screens/AbuAI/realtime/truthMonitor.test.ts :: 'forward-Hebrew false positive: negated \"דיברתי עם\" is truthful, never flagged'",
       "status": "FIXED_AND_TESTED",
       "evidence_class": "CODE+TEST"
+    },
+    {
+      "id": "CD-FN-001",
+      "surface": "realtime/truth-monitor",
+      "severity": "High",
+      "class": "false-negative / unsupported-denial escape",
+      "first_divergence": "CAPABILITY_DENIAL matched /לא\\s+יכולה\\s+ל(ה?תקשר|שלוח|שלח)/ — it covered 'להתקשר' (to call) but NOT 'לחייג' (to dial), a first-class call verb in a product that PREPARES calls.",
+      "reproduction": "detectUnsupportedDenial('אני לא יכולה לחייג לו', {status:'READY_FOR_HANDOFF'}) returned [] — the model could deny a READY call capability unchecked.",
+      "fix": "Added 'חייג' to the denial verb set: /לא\\s+יכולה\\s+ל(ה?תקשר|חייג|שלוח|שלח)/ (mechanism, not phrase). Genuinely-absent capability (NOT_CONFIGURED) stays truthful.",
+      "regression_test": "src/screens/AbuAI/realtime/truthMonitor.test.ts :: 'REGRESSION (CD-FN-001): לא יכולה לחייג …'",
+      "found_by": "destructive/mutation sweep (src/screens/AbuAI/realtime/destructiveSweep.test.ts)",
+      "status": "FIXED_AND_TESTED",
+      "evidence_class": "CODE+TEST"
     }
   ],
+  "destructive_sweep": {
+    "file": "src/screens/AbuAI/realtime/destructiveSweep.test.ts",
+    "targets_real_paths": "RealtimeCommController -> SessionOrchestrator -> control-plane reducer + dispatchTool kernel -> ActiveActionViewModel -> truthMonitor",
+    "seams_attacked": ["stale generation rejection", "stale revision after replace", "cancel WHILE tool in flight", "replace WHILE tool in flight (latest-intent-wins)", "exactly-once across duplicate+reordered completion shapes", "phone-in-args privacy (controller + dispatchTool)", "safe-label vs local-phone resolution", "fallback/reconnect not reviving cancelled action", "greeting-once across reconnect", "one canonical projection card==receipt revision"],
+    "mutation_proofs": [
+      "control-plane: dropped the generation check in TOOL_RESULT -> 'pre-fallback tool result REJECTED' test went RED (reverted).",
+      "truth-monitor: emptied NEG (negation guard) -> 4 negation/forward sentinels went RED (reverted)."
+    ],
+    "result": "14 sweep tests green against correct code; proven non-vacuous by injected mutations."
+  },
   "certification": {
     "build": "0.174.0-realtime-truthmonitor-hebrew-hardened-rc",
     "adversarial_variants": "22 (10 MUST-FLAG 1st-person completions + 11 MUST-NOT-FLAG truthful/negated/2nd-person/offer/forward + capability-denial both ways)",
