@@ -32,3 +32,18 @@ how many sessions/tracks/response.create existed, and why the diagnostic shows
 path=unknown/commit=local. Replace path=unknown/commit=local with a real per-turn trace.
 No live-dependent row returns to PROVEN without a real-device trace passing the
 LIVE-DEVICE-TRACE-HARNESS invariants. Do not patch phrases, timeouts, or greetings blindly.
+
+## Campaign 1 result — WHICH RUNTIME RAN (first divergence, grep-proven)
+- **Dual authority per live turn (root cause of D duplicate-audio + A/B legacy routing + relationship guess):**
+  - `realtimeVoice.ts:78` — slice mode sets `create_response: !!sliceTools` = TRUE → the MODEL speaks its own audio.
+  - `index.tsx:~2600-2648` — `onUserTranscript → ExecutiveCognitiveController.handleTurn(...) → realtimeRef.current.speak(result.speak)` → the LEGACY BRAIN independently computes a reply, an action, and SPEAKS it.
+  - Result: two authorities act on every turn (model audio + brain audio) → overlapping audio; the LEGACY brain (not the control-plane draft) produced `מכינה שיחה עם מור` and `אח של מור`→Leo. The function-tool controllers are a THIRD overlay that fires only if the model emits a function_call. This is NOT one runtime path per capability. Injected-event proofs tested the overlay in isolation → blind to this.
+- **Diagnostic integrity (H):** `version.ts:19 commitHint:'local'` (hardcoded, never the real SHA); `voiceFlightRecorder.ts:67 ctx={path:'unknown'}` default, never set in the realtime path; MICROPHONE_PERMISSION_GRANTED never marked → path=unknown/commit=local/first-missing-stage.
+
+## Exact next executable action
+ONE-RUNTIME-PATH-LIVE first: make a live turn have exactly ONE speaking authority in slice mode
+(either the model OR the brain, not both) and route calendar/comm through the control plane —
+failing-first via a real-session test that asserts a single audio authority + that a calendar
+utterance does not reach the legacy comm speak path. Then DIAGNOSTIC-INTEGRITY (real commit SHA
+via build injection; wire the flight recorder into the realtime path) so subsequent live rows are
+observable. No live row returns to PROVEN without a real-device trace passing LIVE-DEVICE-TRACE-HARNESS.
