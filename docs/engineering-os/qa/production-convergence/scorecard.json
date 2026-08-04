@@ -585,6 +585,24 @@
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/endpoint-evidence.json#stt",
       "rollbackTrigger": "git revert of the stt strategy commit",
       "status": "PROVEN"
+    },
+    {
+      "id": "CAL-RUNTIME-INTEGRATION",
+      "surface": "calendar/runtime-authority-wiring",
+      "severity": "High",
+      "classification": "automatable",
+      "owner": "main",
+      "oracle": "the ADR-0001 calendar draft (calendarDraft) is REACHABLE at runtime — constructed/used by a real product path (parity with Communication reachable via ?voice=realtime2), with legacy AbuCalendar duplication retired or explicitly guarded",
+      "minEvidenceClass": "BROWSER",
+      "currentEvidenceClass": "STATIC",
+      "tests": [],
+      "evidenceArtifact": "",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "rollbackTrigger": "",
+      "status": "GAP"
     }
   ]
 }

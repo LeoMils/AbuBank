@@ -168,6 +168,12 @@
       "surface": "stt-input",
       "severity": "High",
       "classification": "automatable"
+    },
+    {
+      "id": "CAL-RUNTIME-INTEGRATION",
+      "surface": "calendar/runtime-authority-wiring",
+      "severity": "High",
+      "classification": "automatable"
     }
   ]
 }
