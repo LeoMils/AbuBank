@@ -25,6 +25,25 @@ describe('forbidden completion (always a violation)', () => {
     // …but the POSITIVE completion right next to a negated one is still caught.
     expect(detectForbiddenCompletion('לא התקשרתי אתמול אבל שלחתי היום').length).toBeGreaterThan(0)
   })
+  it('REGRESSION (forward-Hebrew false positive): a 2nd-person question is NOT a 1st-person completion', () => {
+    // The monitor guards against the ASSISTANT falsely claiming IT completed an action
+    // (1st person). Abu asking Martita whether SHE already sent/called ("כבר שלחת לו?")
+    // is truthful forward Hebrew and must never be flagged as a fabricated completion.
+    for (const u of ['כבר שלחת לו את זה?', 'כבר שלחת להם הודעה?', 'שלחת לה כבר?']) {
+      expect(detectForbiddenCompletion(u), u).toEqual([])
+    }
+    // 1st-person "כבר שלחתי/התקשרתי" is STILL caught (the real fabrication).
+    expect(detectForbiddenCompletion('כבר שלחתי לו').length).toBeGreaterThan(0)
+    expect(detectForbiddenCompletion('כבר התקשרתי אליו').length).toBeGreaterThan(0)
+  })
+  it('REGRESSION (forward-Hebrew false positive): negated "דיברתי עם" is truthful, never flagged', () => {
+    // "דיברתי עם" carried no "לא " negation guard while every other completion verb did.
+    for (const u of ['לא דיברתי עם מור עדיין', 'עוד לא דיברתי עם אף אחד']) {
+      expect(detectForbiddenCompletion(u), u).toEqual([])
+    }
+    // A POSITIVE "דיברתי עם" (assistant falsely claiming it spoke to someone) is still caught.
+    expect(detectForbiddenCompletion('דיברתי עם מור והכל סודר').length).toBeGreaterThan(0)
+  })
 })
 
 describe('unsupported capability denial (violation only when the action IS available)', () => {

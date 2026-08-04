@@ -25,9 +25,13 @@
 const NEG = '(?<!לא\\s)'
 const COMPLETION = [
   new RegExp(NEG + 'שלחתי'), new RegExp(NEG + 'התקשרתי'), new RegExp(NEG + 'חייגתי'),
-  /דיברתי\s+עם/,
+  // NOTE 3: every completion verb needs the "לא " negation guard, and only FIRST-person
+  // claims count. "דיברתי עם" previously lacked the guard (so "לא דיברתי עם" over-blocked),
+  // and the "כבר …" group carried 2nd-person "שלחת" ("YOU sent") — an assistant question
+  // like "כבר שלחת לו?" is truthful forward Hebrew, never a fabricated 1st-person completion.
+  new RegExp(NEG + 'דיברתי\\s+עם'),
   new RegExp(NEG + 'נשלח(ה|ו)?'), /השיחה\s+(בוצעה|התבצעה)/,
-  /כבר\s+(שלחתי|התקשרתי|חייגתי|שלחת)/,
+  new RegExp(NEG + 'כבר\\s+(שלחתי|התקשרתי|חייגתי)'),
 ]
 const CAPABILITY_DENIAL = [
   /לא\s+יכולה\s+ל(ה?תקשר|שלוח|שלח)/, /אין\s+לי\s+אפשרות/, /לא\s+מסוגלת\s+ל/,

@@ -1,0 +1,9 @@
+{
+  "note": "Controlled experiments require a LIVE OpenAI Realtime session + real Hebrew mic audio, neither available in this environment. No fabricated results are recorded. Each entry states the exact protocol to run when a live account + device are available.",
+  "experiments": [
+    {"id": "EXP-VAD", "factor": "server VAD vs semantic VAD x silence threshold x prefix padding", "metric_frozen_corpus": "clarification-rate, lost-speech-rate, turn-latency median+tail", "status": "NOT_RUN_BLOCKED_LIVE_PROVIDER"},
+    {"id": "EXP-VOICE", "factor": "each supported voice", "metric_frozen_corpus": "Hebrew intelligibility of names/dates, warmth, stability, interruption response", "status": "NOT_RUN_BLOCKED_PHYSICAL_PERCEPTUAL"},
+    {"id": "EXP-MODEL-EAGER", "factor": "realtime model x reasoning control x eagerness", "metric_frozen_corpus": "reasoning-quality vs latency Pareto", "status": "NOT_RUN_BLOCKED_LIVE_PROVIDER"}
+  ],
+  "requirement_before_run": "Verify current official OpenAI Realtime docs immediately before experimentation; use one frozen corpus + identical metrics across candidates; select a Pareto winner; reject any candidate that improves naturalness by weakening truth/privacy/correction/latency-tails/action-consistency."
+}

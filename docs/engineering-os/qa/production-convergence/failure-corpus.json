@@ -1,0 +1,29 @@
+{
+  "note": "Real defects found this session via mechanism-first audit of the live realtime path. Each has a red-first regression test (failure-to-regression).",
+  "defects": [
+    {
+      "id": "TM-FP-001",
+      "surface": "realtime/truth-monitor",
+      "severity": "High",
+      "class": "false-positive / over-block (ADR-0001 §16 firewall)",
+      "first_divergence": "COMPLETION regex group /כבר\\s+(שלחתי|התקשרתי|חייגתי|שלחת)/ included 2nd-person 'שלחת' ('YOU sent'); the monitor exists to catch the ASSISTANT falsely claiming IT (1st person) completed an action.",
+      "reproduction": "detectForbiddenCompletion('כבר שלחת לו את זה?') returned a violation -> assistant question wrongly triggers 'fabricated_completion' repair.",
+      "fix": "Removed 2nd-person 'שלחת' from the group and wrapped the group in the 'לא ' negation guard; only 1st-person completions count.",
+      "regression_test": "src/screens/AbuAI/realtime/truthMonitor.test.ts :: 'forward-Hebrew false positive: a 2nd-person question is NOT a 1st-person completion'",
+      "status": "FIXED_AND_TESTED",
+      "evidence_class": "CODE+TEST"
+    },
+    {
+      "id": "TM-FP-002",
+      "surface": "realtime/truth-monitor",
+      "severity": "Medium",
+      "class": "false-positive / over-block",
+      "first_divergence": "/דיברתי\\s+עם/ lacked the 'לא ' negation guard that every other completion verb (שלחתי/התקשרתי/חייגתי/נשלח) carried.",
+      "reproduction": "detectForbiddenCompletion('לא דיברתי עם מור עדיין') returned a violation -> truthful negation over-blocked.",
+      "fix": "Wrapped 'דיברתי\\s+עם' in the negation guard.",
+      "regression_test": "src/screens/AbuAI/realtime/truthMonitor.test.ts :: 'forward-Hebrew false positive: negated \"דיברתי עם\" is truthful, never flagged'",
+      "status": "FIXED_AND_TESTED",
+      "evidence_class": "CODE+TEST"
+    }
+  ]
+}
