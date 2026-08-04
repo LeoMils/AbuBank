@@ -285,17 +285,19 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "current-info answered from a real retrieval tool or declined (NO TOOL RESULT = NO CLAIM)",
+      "oracle": "current-info answered from a REAL retrieval tool with sources, or declined when zero sources (NO TOOL RESULT = NO CLAIM) — proven live on deployed RC",
       "minEvidenceClass": "LIVE_PROVIDER",
-      "currentEvidenceClass": "INTEGRATION",
-      "tests": [],
-      "evidenceArtifact": "",
+      "currentEvidenceClass": "LIVE_PROVIDER",
+      "tests": [
+        "src/eval/onlineGroundingGate.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/live-provider-evidence.json#online",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "PARTIAL"
+      "rollbackTrigger": "git revert of the online-grounding commit; endpoint returns not-grounded on zero sources",
+      "status": "PROVEN"
     },
     {
       "id": "RT-LIVE-SESSION",
@@ -303,17 +305,20 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "actual live OpenAI Realtime WebRTC audio-native duplex session established + tools exercised (needs a live account; distinct from mic/acoustic which is VOICE-DEVICE)",
+      "oracle": "live OpenAI Realtime session establishment (ephemeral client_secret for gpt-realtime) + declared tools — proven live on deployed RC. Audio-native WebRTC duplex + mic is PHYSICAL (VOICE-DEVICE).",
       "minEvidenceClass": "LIVE_PROVIDER",
-      "currentEvidenceClass": "PRODUCTION_ADAPTER",
-      "tests": [],
-      "evidenceArtifact": "",
+      "currentEvidenceClass": "LIVE_PROVIDER",
+      "tests": [
+        "src/services/realtimeModel.test.ts",
+        "src/services/realtimeVoiceSlice.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/live-provider-evidence.json#realtime-session",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "PARTIAL"
+      "rollbackTrigger": "git revert of the realtime-token commit; placeholder key → OPENAI_API_KEY_MISSING",
+      "status": "PROVEN"
     },
     {
       "id": "HEBREW-CORPUS",

@@ -1,0 +1,20 @@
+{
+  "note": "LIVE_PROVIDER evidence — real provider calls executed against the DEPLOYED stable RC (server keys configured in Vercel; never client-side).",
+  "target": "https://abu-ela-rc.vercel.app",
+  "testedBuild": "0.176.0-latency-vad-instrumentation-rc",
+  "realtime-session": {
+    "endpoint": "POST /api/realtime-token",
+    "probe": { "ok": true, "model": "gpt-realtime", "hasClientSecret": true },
+    "class": "LIVE_PROVIDER",
+    "scope": "AUTOMATABLE portion = live OpenAI Realtime session establishment (ephemeral client_secret minted for gpt-realtime) + server-only key. The WebRTC audio-native duplex + microphone round-trip is PHYSICAL and lives under VOICE-DEVICE — not claimed here.",
+    "independentVerifier": "src/services/realtimeModel.test.ts + src/services/realtimeVoiceSlice.test.ts (session.update/model contract)",
+    "falsification": "truth-monitor + exactly-once dedup mutation-proven in destructiveSweep.test.ts; a placeholder key returns OPENAI_API_KEY_MISSING (server guard)"
+  },
+  "online": {
+    "endpoint": "POST /api/abuai-online",
+    "currentInfoProbe": { "query": "latest stable version of the react library today", "hasAnswer": true, "sourceCount": 1, "sourceHost": "devcheck.dev" },
+    "falsificationProbe": { "query": "asdfqwerzxcv nonsense token 9xq7", "hasAnswer": false, "sourceCount": 0, "meaning": "NO TOOL RESULT = NO CLAIM — zero sources yields NO grounded answer (no fabrication)" },
+    "class": "LIVE_PROVIDER",
+    "independentVerifier": "src/eval/onlineGroundingGate.test.ts"
+  }
+}
