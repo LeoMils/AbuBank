@@ -13,8 +13,8 @@
     "PRODUCTION"
   ],
   "fingerprint": {
-    "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-    "build": "0.176.0-latency-vad-instrumentation-rc"
+    "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+    "build": "0.177.0-calendar-runtime-integration-rc"
   },
   "rows": [
     {
@@ -33,8 +33,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/evidence.json",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the reducer commit",
       "status": "PROVEN"
@@ -55,8 +55,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/evidence.json",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the dispatch commit",
       "status": "PROVEN"
@@ -76,8 +76,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the controller commit",
       "status": "PROVEN"
@@ -97,8 +97,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the monitor commit",
       "status": "PROVEN"
@@ -117,8 +117,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/risk-register.json",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert",
       "status": "PROVEN"
@@ -137,8 +137,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert",
       "status": "PROVEN"
@@ -157,8 +157,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/VERSION_CONTRACT.md",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert",
       "status": "PROVEN"
@@ -177,8 +177,8 @@
       ],
       "evidenceArtifact": ".claude/rules/privacy.md",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert",
       "status": "PROVEN"
@@ -198,8 +198,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/FINAL_EXECUTION_SPEC.md",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert",
       "status": "PROVEN"
@@ -218,8 +218,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#calendar-migration",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the calendarDraft commit (new state layer; existing AbuCalendar truth untouched)",
       "status": "PROVEN"
@@ -236,8 +236,8 @@
       "tests": [],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/deploy-evidence.json#deploy",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "re-alias stable RC to the prior deployment (see ROLLBACK)",
       "status": "PROVEN"
@@ -254,8 +254,8 @@
       "tests": [],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/deploy-evidence.json#rollback",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "n/a (this IS the rollback capability)",
       "status": "PROVEN"
@@ -275,8 +275,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/browser-evidence.json#feature-activation",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the activation commit; ?voice=pipeline disables at runtime",
       "status": "PROVEN"
@@ -295,8 +295,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/live-provider-evidence.json#online",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the online-grounding commit; endpoint returns not-grounded on zero sources",
       "status": "PROVEN"
@@ -316,8 +316,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/live-provider-evidence.json#realtime-session",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the realtime-token commit; placeholder key → OPENAI_API_KEY_MISSING",
       "status": "PROVEN"
@@ -337,8 +337,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#hebrew-corpus",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the conversation module commit",
       "status": "PROVEN"
@@ -358,8 +358,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#long-session-context",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the conversation module commit",
       "status": "PROVEN"
@@ -379,8 +379,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#dialogue-quality",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the conversation module commit",
       "status": "PROVEN"
@@ -400,8 +400,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/browser-evidence.json#pwa",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the PWA config commit",
       "status": "PROVEN"
@@ -422,8 +422,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#whole-product",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the property-test commit",
       "status": "PROVEN"
@@ -442,8 +442,8 @@
       ],
       "evidenceArtifact": "src/screens/AbuAI/realtime/latencyInstrumentation.ts",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the latencyInstrumentation commit (pure module; no runtime wiring yet)",
       "status": "PROVEN"
@@ -462,8 +462,8 @@
       ],
       "evidenceArtifact": "src/screens/AbuAI/realtime/configTournament.ts",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the configTournament commit (pure runner; no runtime wiring)",
       "status": "PROVEN"
@@ -482,8 +482,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/baseline-evidence.json",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "n/a (measurement snapshot); re-collect to refresh",
       "status": "PROVEN"
@@ -530,8 +530,8 @@
       "classification": "automatable",
       "owner": "main",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "id": "TTS-FUNCTION",
       "surface": "voice/tts-synthesis",
@@ -550,8 +550,8 @@
       "classification": "automatable",
       "owner": "main",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "id": "CHAT-ENDPOINT",
       "surface": "conversation/chat-proxy",
@@ -570,8 +570,8 @@
       "classification": "automatable",
       "owner": "main",
       "fingerprint": {
-        "commit": "194215913141cd6d437403ae84b820dfb1c36599",
-        "build": "0.176.0-latency-vad-instrumentation-rc"
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "id": "STT-INPUT",
       "surface": "voice/stt-input",
@@ -600,8 +600,8 @@
       ],
       "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#cal-runtime-integration",
       "fingerprint": {
-        "commit": "",
-        "build": ""
+        "commit": "8fe7500327df1a6097dd05043f171eafb567de23",
+        "build": "0.177.0-calendar-runtime-integration-rc"
       },
       "rollbackTrigger": "git revert of the calendar-wiring commit (realtimeVoice + index.tsx); flag OFF by default",
       "status": "PROVEN"
