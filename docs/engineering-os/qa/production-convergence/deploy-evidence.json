@@ -18,10 +18,11 @@
   },
   "rollback": {
     "mechanism": "npx vercel alias set <deployment-url> abu-ela-rc.vercel.app",
-    "roundTrip": "aliased stable RC -> prior deployment (abu-bank-j7qcfu465) [Success, health 200], then re-aliased -> current (abu-bank-30cv4zhbq) [Success]",
+    "roundTrip": "aliased stable RC 0.177.0 -> prior deployment 30cv4zhbq (served 0.176.0, a DIFFERENT older build) -> re-aliased -> 7xtggwket (restored 0.177.0)",
     "restoredBuild": "0.177.0-calendar-runtime-integration-rc",
     "restoredOk": true,
-    "honestLimitation": "The immediately-prior deployment carried the SAME 0.176.0 build label, so this proves the re-alias mechanism + reversibility/restoration, not serving a DIFFERENT older build. A distinct-build rollback demo needs an older deployment."
+    "servedDifferentBuild": "0.176.0-latency-vad-instrumentation-rc"
   },
-  "notProduction": true
+  "notProduction": true,
+  "postFixHostileRecheck": "removed the calendar runtime routing -> calendarRuntimeIntegration.test.ts 3 RED; restored -> 3 pass (evidence tied to real wiring)"
 }
