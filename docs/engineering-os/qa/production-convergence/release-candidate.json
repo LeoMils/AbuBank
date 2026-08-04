@@ -18,8 +18,10 @@
     "external_live_provider": "CFG-TOURNAMENT + true audio-native duplex — needs a live OpenAI Realtime account+mic.",
     "external_deployed_telemetry": "BASELINE-METRICS distributions — needs an instrumented deployed candidate with real traffic."
   },
-  "verdict": "AUTOMATABLE PRODUCTION CANDIDATE PROVEN — zero automatable Critical/High gaps; only 2 physical rows remain (VOICE-DEVICE, TTS-WARMTH), each with blockerProof.",
-  "gate": "PASS — qa:production-gate exit 0; 23/23 automatable Critical/High PROVEN; 0 open",
+  "verdict": "AUTOMATABLE PRODUCTION CANDIDATE PROVEN",
+  "gate": "PASS — qa:production-gate exit 0; 26/26 automatable Critical/High PROVEN; 0 open",
   "fingerprintCommit": "15f3d9adfc61489d546518cd9da26aaa7447b7de",
-  "deployedBuild": "0.176.0-latency-vad-instrumentation-rc"
+  "deployedBuild": "0.176.0-latency-vad-instrumentation-rc",
+  "verdictAuthority": "PASS — qa:production-verdict exit 0 (live: gate, HEAD==remote, deployed==tested, physical contracts, rollback)",
+  "denominator": "26 automatable Critical/High (grew from 23 via STT/TTS/CHAT reconciliation) + 2 physical (VOICE-DEVICE, TTS-WARMTH); 0 UNKNOWN_BLOCKING"
 }
