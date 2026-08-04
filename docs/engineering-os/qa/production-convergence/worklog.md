@@ -56,6 +56,30 @@ Machine-enforced execution system so the Definition of Done cannot silently shri
   fixed to `src/clientProviderKeyContract.test.ts`.
 - Windows-safe: CLI uses `fileURLToPath`; guard reads stdin defensively; forward-slash paths.
 
+## Production-candidate execution — live progress (gate-driven)
+Gate at goal start: 13 open automatable Critical/High. **Now: 11 open** (build 0.176.0, HEAD ec0038f, source-aware fingerprint sealed, HEAD==remote).
+
+CLOSED with full evidence (impl + independent verifier + mutation/round-trip + strongest path):
+- **LATENCY-VAD-INSTRUMENTATION** (INTEGRATION) — `latencyInstrumentation.ts` pure timing substrate; independent verifier + mutation proof (flip delta → 6 fail).
+- **DEPLOY-PREVIEW-RC** (DEPLOYED_PREVIEW) — 0.176.0 deployed to stable RC; cache-busted /api/health == tested build. `deploy-evidence.json#deploy`.
+- **ROLLBACK** (DEPLOYED_PREVIEW) — re-alias round-trip proven + restored; honest limit (prior deploy shared build label). `deploy-evidence.json#rollback`.
+Also: gate staleness is now SOURCE-aware + `npm run qa:seal` (two-commit seal keeps the fingerprint fresh under active commits).
+
+Environment capability probe (for honest classification):
+- Vercel authed (leomilstein-7548), network OK → DEPLOYED_PREVIEW rows achievable.
+- Playwright + chromium/webkit installed → BROWSER rows (FEATURE-ACTIVATION, PWA-UPDATE) achievable locally/against RC.
+- `.env` defines VITE_OPENAI_API_KEY/OPENAI_API_KEY/GROQ/GEMINI/AZURE (values redacted). Live WebRTC Realtime audio session (RT-LIVE-SESSION) still needs a browser+mic; ONLINE-CURRENT-INFO retrieval may be probeable via the key.
+
+REMAINING 11 open + next action per row:
+- FEATURE-ACTIVATION (BROWSER) → Playwright: load RC `?voice=realtime2`, assert activation state.
+- PWA-UPDATE (BROWSER) → Playwright: SW registration + update + persistence across reload.
+- HEBREW-CORPUS / LONG-SESSION-CONTEXT / DIALOGUE-QUALITY (INTEGRATION) → bind to existing conversation modules (conversationBrainQuality/companionQuality/…) with a new adversarial corpus + independent verifier + mutation; confirm no second brain.
+- WHOLE-PRODUCT-QA (INTEGRATION) → extend property/race/fault/mutation beyond realtime to storage/PWA/online seams.
+- CAL-MIGRATION (PRODUCTION_ADAPTER) → audit existing AbuCalendar (mature: calendarPipeline/EventBuilderV2/MutationReasoner + AbuCalendar/*), migrate under control plane REUSING it (no fork), injected-event tests.
+- CONFIG-TOURNAMENT (INTEGRATION) → build runner + frozen corpus + metric matrix (offline); live exec needs creds.
+- ONLINE-CURRENT-INFO / RT-LIVE-SESSION (LIVE_PROVIDER) → probe live access; if blocked after all prep, record failed-access probe → external.
+- BASELINE-METRICS (DEPLOYED_PREVIEW) → wire latencyInstrumentation emit in deployed session; collect distributions.
+
 ## PHYSICAL_PROTOCOL (run on a real iPhone; 1–5 rubric, explicit pass/fail)
 1. Hebrew mic capture, quiet + noisy — transcript accepted, no infinite "מקשיבה…" (pass = bounded).
 2. Short + long utterances, meaningful pauses, fast speech — no premature turn end.
