@@ -21,6 +21,9 @@ import { detectUtteranceLanguage } from './languagePolicy'
 import { REALTIME_MODEL, assertNoModelDrift } from './realtimeModel'
 import { normalizeRealtimeEvent } from './realtimeEvents'
 import { currentVoiceFlight, type VoiceStage } from './voiceFlightRecorder'
+import { REALTIME_COMM_TOOLS, type RealtimeFunctionTool } from './realtimeToolSchemas'
+import { extractFunctionCall, isKnownToolCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
+import type { RealtimeCommController } from '../screens/AbuAI/realtime/realtimeCommController'
 
 // Model comes from the ONE shared source (realtimeModel.ts) so the client secret,
 // SDP call, health, and diagnostics can never drift (Defect 3).
@@ -36,43 +39,53 @@ export function isPlaceholderKey(k: string | undefined): boolean {
   return !k || k.length < 20 || /^(sk-\.\.\.|sk-xxx|your_|placeholder|example|<)/i.test(k)
 }
 
-export interface SessionMode { pushToTalk: boolean; listenMode: boolean; instructions: string; voice: string; transcriptionLanguage?: string }
+export interface SessionMode {
+  pushToTalk: boolean; listenMode: boolean; instructions: string; voice: string; transcriptionLanguage?: string
+  /** realtime2 SLICE only: declare communication function tools + let the model respond
+   *  and decide-to-call a tool (ADR §12). Absent → the certified brain-driven config
+   *  (create_response:false) is unchanged. */
+  tools?: RealtimeFunctionTool[]
+}
 
 /**
  * The FULL-DUPLEX session config sent over the data channel on connect. Pure +
  * exported so it can be regression-locked: hands-free semantic VAD, barge-in
  * (interrupt_response), and input transcription — ChatGPT Advanced-Voice behavior.
- * - default (quiet):  semantic_vad, create_response+interrupt_response → true duplex
+ * - default (quiet):  semantic_vad, create_response false (brain drives), interrupt on
  * - noisy (PTT):      turn_detection null (manual commit)
  * - listen:           semantic_vad but create_response false (transcribe only)
+ * - SLICE (tools set): semantic_vad + create_response TRUE + session.tools + tool_choice
+ *                      auto → the model owns talk and MAY call a communication tool.
  */
 export function buildRealtimeSessionUpdate(m: SessionMode): Record<string, unknown> {
-  return {
-    type: 'session.update',
-    session: {
-      type: 'realtime',
-      instructions: m.instructions,
-      audio: {
-        input: {
-          // Pin the STT language (Hebrew, Martita's primary, unless caller overrides
-          // for an active Spanish conversation). Auto-detect misheard short Hebrew
-          // like "בוקר טוב" as Russian/Cyrillic — never leave this unset.
-          transcription: { model: 'gpt-4o-mini-transcribe', language: m.transcriptionLanguage ?? 'he' },
-          turn_detection: m.pushToTalk ? null : {
-            type: 'semantic_vad',
-            eagerness: 'auto',
-            // create_response FALSE: the model does NOT answer on its own — it
-            // transcribes, and AbuAI's BRAIN produces the answer (family/calendar/
-            // online/memory), voiced via session.speak(). Path-unification rule:
-            // voice must not bypass the brain.
-            create_response: false,
-            interrupt_response: true, // barge-in still cuts off a brain reply mid-voice
-          },
+  const sliceTools = m.tools && m.tools.length > 0
+  const session: Record<string, unknown> = {
+    type: 'realtime',
+    instructions: m.instructions,
+    audio: {
+      input: {
+        // Pin the STT language (Hebrew, Martita's primary, unless caller overrides
+        // for an active Spanish conversation). Auto-detect misheard short Hebrew
+        // like "בוקר טוב" as Russian/Cyrillic — never leave this unset.
+        transcription: { model: 'gpt-4o-mini-transcribe', language: m.transcriptionLanguage ?? 'he' },
+        turn_detection: m.pushToTalk ? null : {
+          type: 'semantic_vad',
+          eagerness: 'auto',
+          // create_response FALSE by default: the model does NOT answer on its own — it
+          // transcribes, and AbuAI's BRAIN produces the answer, voiced via session.speak().
+          // In the realtime2 SLICE it is TRUE so the model owns talk and can call a tool.
+          create_response: !!sliceTools,
+          interrupt_response: true, // barge-in still cuts off a reply mid-voice
         },
-        output: { voice: m.voice },
       },
+      output: { voice: m.voice },
     },
   }
+  if (sliceTools) {
+    session.tools = m.tools
+    session.tool_choice = 'auto'
+  }
+  return { type: 'session.update', session }
 }
 
 export type RealtimeState = 'idle' | 'connecting' | 'listening' | 'speaking' | 'error'
@@ -125,11 +138,24 @@ export class RealtimeVoiceSession {
   // model's voice audible on iOS Safari PWA, where the element created post-await
   // (outside the gesture) is autoplay-blocked. Null = non-iOS/test path (created here).
   private primedAudioEl: HTMLAudioElement | null
+  // realtime2 SLICE (ADR §12): the live communication controller (function-tool → kernel →
+  // committed card → grounded speech). Null = certified brain-driven path (unchanged).
+  private sliceController: RealtimeCommController | null = null
+  // Test seam: when set, sendEvent routes here instead of the data channel, so the REAL
+  // handleEvent/sendEvent path is exercised without WebRTC (see injectForTest).
+  private testSend: ((event: Record<string, unknown>) => void) | null = null
 
   /** Server event names we did not recognize this session — surfaced for diagnostics. */
   get unrecognizedEvents(): string[] { return [...this.unknownEvents] }
 
-  constructor(callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void, noiseMode: 'quiet' | 'noisy' | 'listen' = 'quiet', transcriptionLanguage: string = 'he', primedAudioEl: HTMLAudioElement | null = null) {
+  constructor(
+    callbacks: RealtimeCallbacks, instructions: string, onFatalError?: () => void,
+    noiseMode: 'quiet' | 'noisy' | 'listen' = 'quiet', transcriptionLanguage: string = 'he',
+    primedAudioEl: HTMLAudioElement | null = null,
+    // realtime2 SLICE only: a factory that builds the communication controller bound to
+    // THIS session's send. Decoupled (no SessionOrchestrator import here) + off by default.
+    sliceControllerFactory?: (send: (event: Record<string, unknown>) => void) => RealtimeCommController,
+  ) {
     this.cb = callbacks
     this.instructions = instructions
     this.onFatalError = onFatalError ?? null
@@ -140,6 +166,20 @@ export class RealtimeVoiceSession {
     this.primedAudioEl = primedAudioEl
     this.vadThreshold = 0.75
     this.vadSilenceMs = 900
+    this.sliceController = sliceControllerFactory ? sliceControllerFactory((e) => this.sendEvent(e)) : null
+  }
+
+  /** True when the live communication slice (realtime2) is active on this session. */
+  get isSliceMode(): boolean { return this.sliceController !== null }
+
+  /**
+   * TEST SEAM (no mic/WebRTC): capture outbound events and feed inbound server events
+   * through the REAL handleEvent + sendEvent path, so the function-tool journey is proven
+   * on the actual production adapter. Returns a `receive` to push raw server events.
+   */
+  injectForTest(onSend: (event: Record<string, unknown>) => void): { receive: (event: unknown) => void } {
+    this.testSend = onSend
+    return { receive: (event: unknown) => this.handleEvent(event) }
   }
 
   get state(): RealtimeState { return this._state }
@@ -337,6 +377,9 @@ export class RealtimeVoiceSession {
           instructions: this.instructions,
           voice: HE_VOICE.realtimeVoice,
           transcriptionLanguage: this.transcriptionLanguage,
+          // realtime2 SLICE: declare the communication tools so the model can REQUEST
+          // (never decide) a WhatsApp/call action. Absent in the certified path.
+          ...(this.sliceController ? { tools: REALTIME_COMM_TOOLS } : {}),
         }))
         this.stage('SESSION_UPDATE_SENT', 'ok')
 
@@ -407,12 +450,21 @@ export class RealtimeVoiceSession {
   }
 
   private sendEvent(event: Record<string, unknown>): void {
+    if (this.testSend) { this.testSend(event); return }
     if (this.dc?.readyState === 'open') {
       this.dc.send(JSON.stringify(event))
     }
   }
 
   private handleEvent(event: any): void {
+    // realtime2 SLICE (ADR §12): a completed communication function call is routed to the
+    // deterministic controller BEFORE the normal switch. It runs the kernel, commits the
+    // card, returns a safe receipt to the model and continues it. Non-function events fall
+    // through. In the certified path (no controller) this is a no-op.
+    if (this.sliceController) {
+      const fc = extractFunctionCall(event)
+      if (fc && isKnownToolCall(fc)) { void this.sliceController.onFunctionCall(fc); return }
+    }
     // Normalize CURRENT + legacy server event names into one internal contract
     // (Defect 2). A renamed output/transcription event is no longer silently dropped.
     const { internal, raw, isBenign } = normalizeRealtimeEvent(event?.type ?? '')
@@ -474,7 +526,12 @@ export class RealtimeVoiceSession {
         break
       case 'assistant_transcript_done':
         if (this._listenMode) break
-        if (event.transcript) this.cb.onAssistantTranscript(event.transcript)
+        if (event.transcript) {
+          // realtime2 SLICE: guard the model's spoken transcript (§11 bounded monitor) —
+          // a fabricated completion / unsupported denial is repaired on the next turn.
+          if (this.sliceController) this.sliceController.onAssistantTranscript(event.transcript)
+          this.cb.onAssistantTranscript(event.transcript)
+        }
         break
 
       case 'response_done':

@@ -21,6 +21,10 @@ import { buildFullTurnTools } from './fullTurnBridge'
 import { shouldUseWebSpeechPrimary, LISTEN_WATCHDOG_MS } from '../../services/sttStrategy'
 import { isRealtimeBetaEnabled, syncRealtimeBetaFromUrl, isRealtimeSliceEnabled, syncRealtimeSliceFromUrl } from '../../services/voiceModePreference'
 import { RealtimeSliceHarness } from './realtime/RealtimeSliceHarness'
+import { SessionOrchestrator, type ActiveActionViewModel } from './realtime/sessionOrchestrator'
+import { RealtimeCommController } from './realtime/realtimeCommController'
+import { makeProductionKernel } from './realtime/kernelAdapter'
+import { ActiveActionCard } from '../../components/ActiveActionCard'
 
 // Honor a `?voice=realtime|pipeline` URL override at module load and PERSIST it, so the
 // Realtime beta can be enabled from a link on a phone with no JS console (installed iOS PWA).
@@ -345,6 +349,9 @@ export function AbuAI() {
   // v20.2: OpenAI Realtime API (WebRTC) — true real-time conversation
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
   const [realtimeTranscript, setRealtimeTranscript] = useState('')
+  // realtime2 SLICE: the ONE canonical live-conversation action card (ADR §13), committed
+  // by the control plane via the function-tool path. Null when there is no active action.
+  const [liveSliceCard, setLiveSliceCard] = useState<ActiveActionViewModel | null>(null)
   const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
   // True once a Realtime session actually reached a working state. Used to keep
   // an INITIAL connect failure SILENT (the fatal-error handler falls back to the
@@ -2535,6 +2542,22 @@ ${fewShotText}`
           if (line) setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: line, timestamp: Date.now() }])
         }
       }
+      // realtime2 SLICE (ADR §12): when the deterministic communication slice is opted in
+      // (needs the WebRTC transport → also requires the realtime beta), build a factory that
+      // wires the live function-tool path — model function_call → control plane + kernel →
+      // committed card → grounded speech. OFF by default → certified path is unchanged.
+      const sliceOn = isRealtimeSliceEnabled() && isRealtimeBetaEnabled()
+      const sliceControllerFactory = sliceOn
+        ? (send: (event: Record<string, unknown>) => void) =>
+            new RealtimeCommController(
+              new SessionOrchestrator({ sessionId: `voice_${Date.now()}`, kernel: makeProductionKernel() }),
+              send,
+              {
+                onCard: (vm) => setLiveSliceCard(vm.visible ? vm : null),
+                onIncident: (i) => { try { console.warn(`[AbuAI][SLICE] truth incident: ${i.kind} [${i.violations.join(',')}]`) } catch { /* */ } },
+              },
+            )
+        : undefined
       const session = new RealtimeVoiceSession(
         {
           onStateChange: (state) => {
@@ -2691,6 +2714,7 @@ ${fewShotText}`
         noiseMode as 'quiet' | 'noisy',
         realtimeSttLang,
         primedRealtimeAudioEl, // gesture-primed remote-audio element (muted-then-unmute, iOS)
+        sliceControllerFactory, // realtime2 SLICE only — undefined on the certified path
       )
       realtimeRef.current = session
       session.connect()
@@ -2711,6 +2735,7 @@ ${fewShotText}`
       setRealtimeState('idle')
       setRealtimeTranscript('')
     }
+    setLiveSliceCard(null) // realtime2: drop the live action card when the session ends
 
     transitionVoice('IDLE', 'exit-voice-mode')
     voiceModeRef.current = false
@@ -3015,6 +3040,21 @@ ${fewShotText}`
 
         {/* ──────── REALTIME SLICE HARNESS (ADR §18 falsifier, ?voice=realtime2 only) ──────── */}
         {isRealtimeSliceEnabled() && <RealtimeSliceHarness />}
+
+        {/* ──────── LIVE in-session action card (ADR §13) — the function-tool path commits it;
+             stays visible while the conversation continues; manual open only (never auto-send). ── */}
+        {liveSliceCard && (
+          <ActiveActionCard
+            vm={liveSliceCard}
+            onPrimary={(vm) => {
+              const channel = vm.kind === 'call' ? 'phone' : 'whatsapp'
+              const adapter = getAdapter(channel)
+              if (!adapter || !vm.recipientLabel) return
+              const { url } = adapter.buildHandoff(vm.recipientLabel, '')
+              if (url) { try { navigator.vibrate?.(15) } catch { /* */ } window.location.href = url }
+            }}
+          />
+        )}
 
         {/* ──────── CHAT MESSAGES ──────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

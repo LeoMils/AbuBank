@@ -66,6 +66,31 @@
   EXPLICIT_SWITCH==atomic replace, interruption preserves the card. No unknown failure surfaced — generalizes
   beyond the supplied transcript.
 
+## Checkpoint 6 (this commit) — S5-LIVE the ACTUAL WebRTC function-tool path (§12/§17-5)
+- **Official contract verified** (developers.openai.com, 2026-08): session.tools + tool_choice; function call via
+  response.function_call_arguments.done AND response.output_item.done / response.done (item type function_call,
+  name/call_id/arguments); result via conversation.item.create(function_call_output); continue via response.create.
+- **realtimeToolSchemas.ts** — the 4 comm tools (prepare_whatsapp/prepare_call/replace_active_action/
+  cancel_active_action); privacy by construction (recipient is a NAME, no phone param, additionalProperties false).
+- **realtimeFunctionBridge.ts** — pure parser for all three completion shapes; ignores audio/text/delta.
+- **realtimeCommController.ts** — the LIVE production adapter: function_call → map turn → SessionOrchestrator
+  (control plane + the ONE buildCommunicationAction kernel) → SAFE function_call_output (never a number/completion)
+  + response.create → onCard(committed vm); guards the model transcript (fabricated completion / unsupported denial
+  → truthful repair next turn + incident); idempotent by model call_id.
+- **realtimeVoice.ts** — buildRealtimeSessionUpdate declares session.tools + tool_choice auto + create_response TRUE
+  ONLY in slice mode (certified brain-driven config unchanged); RealtimeVoiceSession routes function-call events to
+  the controller + runs the monitor on assistant_transcript_done; a minimal injectForTest seam exercises the REAL
+  handleEvent/sendEvent path with no WebRTC.
+- **index.tsx** — constructs the slice-enabled session behind isRealtimeSliceEnabled() && isRealtimeBetaEnabled()
+  (double flag, OFF by default) and renders the canonical live ActiveActionCard from the committed view-model.
+- **DEFECT FOUND + FIXED (campaign)**: the truth monitor over-blocked a NEGATED completion ("לא נשלח" = "won't be
+  sent" — the receipt's own truthful note). Added negative-lookbehind + a failing-first regression. This is the
+  ADR §16 over-blocking-firewall failure, surfaced by the live path.
+- **Production-faithful proof** (`realtimeVoiceSlice.test.ts`): a REAL RealtimeVoiceSession instance, driven by
+  injected real-shaped server events, proves card + safe function_call_output + response.create, atomic replace,
+  transcript repair, and tools-only-in-slice config. Plus live controller + bridge + schema tests.
+- Version 0.170.0 → **0.171.0-realtime-live-functiontool-rc** (version.ts+health+test synced). typecheck 0; build green.
+
 ## Status
 - §18 vertical slice: **wired (flag-gated) + deployed (Preview) + falsified (deployed browser)** = the mission's
   COMPLETION terminal condition for THIS slice is met. **99 tests** (controlPlane 16 · realtimeTools 9 · truthMonitor

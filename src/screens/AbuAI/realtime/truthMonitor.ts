@@ -14,12 +14,19 @@
  *    when the committed receipt says the action IS available.
  */
 
-// NOTE: JS \b is ASCII-only and never matches a Hebrew word boundary, so these
+// NOTE 1: JS \b is ASCII-only and never matches a Hebrew word boundary, so these
 // patterns must NOT use \b. Hebrew completion verbs are distinctive enough as
 // substrings for this bounded monitor.
+// NOTE 2: a NEGATED completion is TRUTHFUL, not a violation — "לא נשלח" ("won't be
+// sent"), "לא שלחתי" ("I didn't send") are exactly the honest preparation wording
+// Abu SHOULD say. A negative lookbehind for "לא " keeps the monitor from over-
+// blocking its own truthful grounding (the receipt note "…לא נשלח לבד"). This is the
+// over-blocking-firewall failure of ADR §16, caught by the live-path campaign.
+const NEG = '(?<!לא\\s)'
 const COMPLETION = [
-  /שלחתי/, /התקשרתי/, /חייגתי/, /דיברתי\s+עם/,
-  /נשלח(ה|ו)?/, /ההודעה\s+נשלחה/, /השיחה\s+(בוצעה|התבצעה)/,
+  new RegExp(NEG + 'שלחתי'), new RegExp(NEG + 'התקשרתי'), new RegExp(NEG + 'חייגתי'),
+  /דיברתי\s+עם/,
+  new RegExp(NEG + 'נשלח(ה|ו)?'), /השיחה\s+(בוצעה|התבצעה)/,
   /כבר\s+(שלחתי|התקשרתי|חייגתי|שלחת)/,
 ]
 const CAPABILITY_DENIAL = [

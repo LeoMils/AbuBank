@@ -17,6 +17,14 @@ describe('forbidden completion (always a violation)', () => {
       expect(detectForbiddenCompletion(u), u).toEqual([])
     }
   })
+  it('REGRESSION (live-path campaign): a NEGATED completion is truthful, never flagged', () => {
+    // "לא נשלח לבד" is the receipt note itself; "לא שלחתי/התקשרתי/חייגתי" are honest.
+    for (const u of ['ההודעה מוכנה. לא נשלח לבד.', 'עוד לא שלחתי כלום', 'לא התקשרתי, רק מכינה', 'לא חייגתי עדיין', 'ההודעה עדיין לא נשלחה']) {
+      expect(detectForbiddenCompletion(u), u).toEqual([])
+    }
+    // …but the POSITIVE completion right next to a negated one is still caught.
+    expect(detectForbiddenCompletion('לא התקשרתי אתמול אבל שלחתי היום').length).toBeGreaterThan(0)
+  })
 })
 
 describe('unsupported capability denial (violation only when the action IS available)', () => {
