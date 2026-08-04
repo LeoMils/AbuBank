@@ -264,17 +264,20 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "exact one-step ?voice=realtime2 activation proven in a browser",
+      "oracle": "one-step ?voice=realtime2 persists in a real browser; survives reload; ?voice=pipeline deactivates",
       "minEvidenceClass": "BROWSER",
-      "currentEvidenceClass": "INTEGRATION",
-      "tests": [],
-      "evidenceArtifact": "",
+      "currentEvidenceClass": "BROWSER",
+      "tests": [
+        "e2e/feature-activation.spec.ts",
+        "src/services/voiceModePreference.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/browser-evidence.json#feature-activation",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "PARTIAL"
+      "rollbackTrigger": "git revert of the activation commit; ?voice=pipeline disables at runtime",
+      "status": "PROVEN"
     },
     {
       "id": "ONLINE-CURRENT-INFO",
@@ -372,17 +375,20 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "SW update safety + persistence across reopen/update",
+      "oracle": "service worker registers/active on deployed origin; localStorage survives a full reload (update-safe shell)",
       "minEvidenceClass": "BROWSER",
-      "currentEvidenceClass": "INTEGRATION",
-      "tests": [],
-      "evidenceArtifact": "",
+      "currentEvidenceClass": "BROWSER",
+      "tests": [
+        "e2e/feature-activation.spec.ts",
+        "e2e/service-worker.spec.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/browser-evidence.json#pwa",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "PARTIAL"
+      "rollbackTrigger": "git revert of the PWA config commit",
+      "status": "PROVEN"
     },
     {
       "id": "WHOLE-PRODUCT-QA",
