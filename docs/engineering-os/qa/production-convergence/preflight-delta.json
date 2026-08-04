@@ -1,0 +1,9 @@
+{
+  "preflight": "OMEGA one-pass joint-intelligence",
+  "corrected_assumptions": [
+    { "assumption": "The prior denominator (23 automatable rows) was complete.", "evidence": "Independent api-route reconciliation found abuai-stt / abuai-tts / abuai-chat unmapped (UNKNOWN_BLOCKING).", "mechanism": "Added TTS-FUNCTION + CHAT-ENDPOINT (LIVE_PROVIDER) + STT-INPUT (DEPLOYED_PREVIEW); closed with live deployed probes + existing verifiers + sttStrategy mutation." },
+    { "assumption": "The passing gate alone can authorize the terminal verdict.", "evidence": "OMEGA requires a separate live authority.", "mechanism": "Built npm run qa:production-verdict — live gate + HEAD==remote + deployed-fingerprint + physical-contract + rollback checks, emits verdict.json." },
+    { "assumption": "Advanced TaskCreated/TaskCompleted hooks are required.", "evidence": "Not needed and add loop risk; the deterministic gate+verdict are the authority. Stop guard already proven.", "mechanism": "Deterministic manual fallback: run gate/verdict before lifecycle transitions (already the practice)." }
+  ],
+  "clean_tree_note": "9 pre-existing dirty files (gate-a-abc.mjs, several *.test.ts, martitaRedTeam.test.ts) were dirty at session start and are NOT release-owned; the verdict authority excludes them and lists them as out-of-scope."
+}

@@ -150,6 +150,24 @@
       "surface": "voice/tts-perception",
       "severity": "High",
       "classification": "physical"
+    },
+    {
+      "id": "TTS-FUNCTION",
+      "surface": "tts-function",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "CHAT-ENDPOINT",
+      "surface": "chat-endpoint",
+      "severity": "High",
+      "classification": "automatable"
+    },
+    {
+      "id": "STT-INPUT",
+      "surface": "stt-input",
+      "severity": "High",
+      "classification": "automatable"
     }
   ]
 }

@@ -1,0 +1,26 @@
+{
+  "note": "LIVE deployed-RC probes for voice-I/O + chat surfaces surfaced by independent denominator reconciliation (were UNKNOWN_BLOCKING). Real provider calls; never client-side keys.",
+  "target": "https://abu-ela-rc.vercel.app",
+  "testedBuild": "0.176.0-latency-vad-instrumentation-rc",
+  "tts": {
+    "endpoint": "POST /api/abuai-tts",
+    "probe": { "http": 200, "contentType": "audio/mpeg", "bytes": 21120 },
+    "class": "LIVE_PROVIDER",
+    "independentVerifier": "src/services/ttsFallbackPolicy.test.ts",
+    "note": "Real audio synthesized end-to-end. Subjective voice WARMTH is TTS-WARMTH (physical)."
+  },
+  "chat": {
+    "endpoint": "POST /api/abuai-chat",
+    "probe": { "ok": true, "hasCompletion": true, "sample": "Hello! How can I assist you today?" },
+    "class": "LIVE_PROVIDER",
+    "independentVerifier": "src/screens/AbuAI/serverChatProvider.test.ts"
+  },
+  "stt": {
+    "endpoint": "POST /api/abuai-stt",
+    "probe": { "deployed": true, "badBody": "http 500 STT_PROVIDER_FAILED (endpoint wired + guarded)" },
+    "class": "DEPLOYED_PREVIEW",
+    "independentVerifier": "src/services/sttStrategy.test.ts",
+    "mutation": "flip the first boolean return in sttStrategy -> 2 tests fail (reverted)",
+    "note": "Transcription ACCURACY under a real microphone is PHYSICAL (VOICE-DEVICE)."
+  }
+}

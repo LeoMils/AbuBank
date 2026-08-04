@@ -24,7 +24,8 @@
     "abu:goal:status": "node scripts/abu-goal.mjs status",
     "abu:goal:disarm": "node scripts/abu-goal.mjs disarm",
     "check": "tsc --noEmit && vitest run",
-    "workbench": "node scripts/ai-workbench.js"
+    "workbench": "node scripts/ai-workbench.js",
+    "qa:production-verdict": "npx tsx scripts/qa-production-verdict.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",

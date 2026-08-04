@@ -44,3 +44,5 @@ evals/live-parity-lab/raw-user-audio/
 docs/engineering-os/qa/production-convergence/gate-status.json
 .claude/.abu-goal-active
 .claude/.abu-stop-block-count
+
+docs/engineering-os/qa/production-convergence/verdict.json

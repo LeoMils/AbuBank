@@ -525,6 +525,66 @@
       "rollbackTrigger": "n/a (physical validation)",
       "status": "PHYSICAL_ONLY",
       "blockerProof": "Perceptual voice-quality judgment is inherently human/physical; automatable synthesis wiring is proven at BROWSER."
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "id": "TTS-FUNCTION",
+      "surface": "voice/tts-synthesis",
+      "severity": "High",
+      "oracle": "TTS synthesis endpoint returns real audio on the deployed RC (subjective warmth is TTS-WARMTH, physical)",
+      "minEvidenceClass": "LIVE_PROVIDER",
+      "currentEvidenceClass": "LIVE_PROVIDER",
+      "tests": [
+        "src/services/ttsFallbackPolicy.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/endpoint-evidence.json#tts",
+      "rollbackTrigger": "git revert of the tts proxy commit; placeholder key -> error",
+      "status": "PROVEN"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "id": "CHAT-ENDPOINT",
+      "surface": "conversation/chat-proxy",
+      "severity": "High",
+      "oracle": "chat completion proxy returns a real grounded completion on the deployed RC (server-only key)",
+      "minEvidenceClass": "LIVE_PROVIDER",
+      "currentEvidenceClass": "LIVE_PROVIDER",
+      "tests": [
+        "src/screens/AbuAI/serverChatProvider.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/endpoint-evidence.json#chat",
+      "rollbackTrigger": "git revert of the chat proxy commit",
+      "status": "PROVEN"
+    },
+    {
+      "classification": "automatable",
+      "owner": "main",
+      "fingerprint": {
+        "commit": "",
+        "build": ""
+      },
+      "id": "STT-INPUT",
+      "surface": "voice/stt-input",
+      "severity": "High",
+      "oracle": "STT endpoint deployed+wired+guarded on the RC; deterministic fallback strategy (iOS Whisper primary + watchdog). Transcription ACCURACY under a real mic is PHYSICAL (VOICE-DEVICE).",
+      "minEvidenceClass": "DEPLOYED_PREVIEW",
+      "currentEvidenceClass": "DEPLOYED_PREVIEW",
+      "tests": [
+        "src/services/sttStrategy.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/endpoint-evidence.json#stt",
+      "rollbackTrigger": "git revert of the stt strategy commit",
+      "status": "PROVEN"
     }
   ]
 }
