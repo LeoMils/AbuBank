@@ -126,5 +126,19 @@
       "field-correction clobbers unrelated fields -> 5 tests fail",
       "allow stale confirm -> 2 tests fail"
     ]
+  },
+  "cal_runtime_integration": {
+    "defect": "calendarDraft had ZERO non-test imports — not runtime-integrated (hostile-audit finding).",
+    "fix": "Declared calendar function-tools + a thin CalendarDraftController; RealtimeVoiceSession routes calendar calls to it (disjoint from comm); index.tsx constructs BOTH controllers under the SAME ?voice=realtime2 flag; UI projects the committed receipt (liveCalendarDraft).",
+    "failing_first": "calendarRuntimeIntegration.test.ts — 3 red before routing (calendar calls dropped).",
+    "class": "PRODUCTION_ADAPTER (real RealtimeVoiceSession.handleEvent → CalendarDraftController → calendarDraft via injectForTest), at parity with RT-CONTROLLER-001; reachable via the FEATURE-ACTIVATION-proven flag; shipped in deployed 0.177.0.",
+    "independentVerifier": "src/services/realtimeVoiceSlice.test.ts (same real-session routing mechanism for communication).",
+    "mutations": [
+      "remove calendar routing in realtimeVoice -> 3 fail",
+      "isCalendarToolName always true (isolation break) -> 1 fail",
+      "clobber unrelated field (calendarDraft) -> 5 fail",
+      "allow stale confirm (calendarDraft) -> 2 fail"
+    ],
+    "owner_resolution": "Legacy AbuCalendar remains the SCREEN/read/persistence + reminders owner; the realtime slice draft is the AUTHORITATIVE conversational calendar draft. Disjoint routing means no crossed authority; the two do not both own the draft/confirmation/commit."
   }
 }

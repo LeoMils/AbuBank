@@ -23,6 +23,9 @@ import { isRealtimeBetaEnabled, syncRealtimeBetaFromUrl, isRealtimeSliceEnabled,
 import { RealtimeSliceHarness } from './realtime/RealtimeSliceHarness'
 import { SessionOrchestrator, type ActiveActionViewModel } from './realtime/sessionOrchestrator'
 import { RealtimeCommController } from './realtime/realtimeCommController'
+import { CalendarDraftController } from './realtime/calendarDraftController'
+import type { CalendarReceipt, RelationshipResolver } from './realtime/calendarDraft'
+import { resolvePersonPhrase } from '../AbuCalendar/familyResolve'
 import { makeProductionKernel } from './realtime/kernelAdapter'
 import { ActiveActionCard } from '../../components/ActiveActionCard'
 
@@ -352,6 +355,9 @@ export function AbuAI() {
   // realtime2 SLICE: the ONE canonical live-conversation action card (ADR §13), committed
   // by the control plane via the function-tool path. Null when there is no active action.
   const [liveSliceCard, setLiveSliceCard] = useState<ActiveActionViewModel | null>(null)
+  // realtime2 SLICE: the committed CALENDAR draft receipt, projected from the control
+  // plane (calendarDraft) at parity with the communication card. Null when none active.
+  const [liveCalendarDraft, setLiveCalendarDraft] = useState<CalendarReceipt | null>(null)
   const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
   // True once a Realtime session actually reached a working state. Used to keep
   // an INITIAL connect failure SILENT (the fatal-error handler falls back to the
@@ -2558,6 +2564,19 @@ ${fewShotText}`
               },
             )
         : undefined
+      // realtime2 SLICE: the CALENDAR authority, constructed BESIDE communication under the
+      // SAME flag (runtime parity). Relationship truth is DELEGATED to familyResolve; the
+      // draft owns state; the committed receipt projects to liveCalendarDraft.
+      const calendarResolve: RelationshipResolver = (phrase) => {
+        const r = resolvePersonPhrase(phrase)
+        return r.status === 'resolved' ? r.name : null
+      }
+      const calendarControllerFactory = sliceOn
+        ? (send: (event: Record<string, unknown>) => void) =>
+            new CalendarDraftController(calendarResolve, send, {
+              onCard: (r) => setLiveCalendarDraft(r.confirmation === 'CANCELLED' ? null : r),
+            })
+        : undefined
       const session = new RealtimeVoiceSession(
         {
           onStateChange: (state) => {
@@ -2715,6 +2734,7 @@ ${fewShotText}`
         realtimeSttLang,
         primedRealtimeAudioEl, // gesture-primed remote-audio element (muted-then-unmute, iOS)
         sliceControllerFactory, // realtime2 SLICE only — undefined on the certified path
+        calendarControllerFactory, // realtime2 SLICE only — calendar authority at parity
       )
       realtimeRef.current = session
       session.connect()
@@ -2736,6 +2756,7 @@ ${fewShotText}`
       setRealtimeTranscript('')
     }
     setLiveSliceCard(null) // realtime2: drop the live action card when the session ends
+    setLiveCalendarDraft(null) // realtime2: drop the live calendar draft when the session ends
 
     transitionVoice('IDLE', 'exit-voice-mode')
     voiceModeRef.current = false
@@ -3041,6 +3062,20 @@ ${fewShotText}`
         {/* ──────── REALTIME SLICE HARNESS (ADR §18 falsifier, ?voice=realtime2 only) ──────── */}
         {isRealtimeSliceEnabled() && <RealtimeSliceHarness />}
 
+        {/* ──────── LIVE calendar draft (ADR §13) — the control plane commits it; the UI
+             only PROJECTS the committed receipt (never a relative date, never a guessed person). ── */}
+        {liveCalendarDraft && (
+          <div
+            data-testid="live-calendar-draft"
+            style={{ margin: '8px 16px', padding: '10px 14px', borderRadius: 12, background: '#0a4a45', color: '#eafaf6', fontSize: 16 }}
+          >
+            {liveCalendarDraft.confirmation === 'CONFIRMED'
+              ? '✓ נשמר ביומן'
+              : liveCalendarDraft.unresolvedRelationship
+                ? `יומן — למי? (${liveCalendarDraft.unresolvedRelationship})`
+                : `יומן: ${liveCalendarDraft.date ?? ''} ${liveCalendarDraft.time ?? ''} ${liveCalendarDraft.participant ?? ''}`.trim()}
+          </div>
+        )}
         {/* ──────── LIVE in-session action card (ADR §13) — the function-tool path commits it;
              stays visible while the conversation continues; manual open only (never auto-send). ── */}
         {liveSliceCard && (

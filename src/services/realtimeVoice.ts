@@ -21,9 +21,10 @@ import { detectUtteranceLanguage } from './languagePolicy'
 import { REALTIME_MODEL, assertNoModelDrift } from './realtimeModel'
 import { normalizeRealtimeEvent } from './realtimeEvents'
 import { currentVoiceFlight, type VoiceStage } from './voiceFlightRecorder'
-import { REALTIME_COMM_TOOLS, type RealtimeFunctionTool } from './realtimeToolSchemas'
+import { REALTIME_COMM_TOOLS, REALTIME_CALENDAR_TOOLS, isCalendarToolName, type RealtimeFunctionTool } from './realtimeToolSchemas'
 import { extractFunctionCall, isKnownToolCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 import type { RealtimeCommController } from '../screens/AbuAI/realtime/realtimeCommController'
+import type { CalendarDraftController } from '../screens/AbuAI/realtime/calendarDraftController'
 
 // Model comes from the ONE shared source (realtimeModel.ts) so the client secret,
 // SDP call, health, and diagnostics can never drift (Defect 3).
@@ -141,6 +142,9 @@ export class RealtimeVoiceSession {
   // realtime2 SLICE (ADR §12): the live communication controller (function-tool → kernel →
   // committed card → grounded speech). Null = certified brain-driven path (unchanged).
   private sliceController: RealtimeCommController | null = null
+  // realtime2 SLICE (ADR §12): the live CALENDAR authority — a completed calendar
+  // function-call routes to the canonical typed draft, at parity with communication.
+  private calendarController: CalendarDraftController | null = null
   // Test seam: when set, sendEvent routes here instead of the data channel, so the REAL
   // handleEvent/sendEvent path is exercised without WebRTC (see injectForTest).
   private testSend: ((event: Record<string, unknown>) => void) | null = null
@@ -155,6 +159,9 @@ export class RealtimeVoiceSession {
     // realtime2 SLICE only: a factory that builds the communication controller bound to
     // THIS session's send. Decoupled (no SessionOrchestrator import here) + off by default.
     sliceControllerFactory?: (send: (event: Record<string, unknown>) => void) => RealtimeCommController,
+    // realtime2 SLICE only: a factory that builds the CALENDAR controller bound to THIS
+    // session's send (parity with communication). Off by default.
+    calendarControllerFactory?: (send: (event: Record<string, unknown>) => void) => CalendarDraftController,
   ) {
     this.cb = callbacks
     this.instructions = instructions
@@ -167,6 +174,7 @@ export class RealtimeVoiceSession {
     this.vadThreshold = 0.75
     this.vadSilenceMs = 900
     this.sliceController = sliceControllerFactory ? sliceControllerFactory((e) => this.sendEvent(e)) : null
+    this.calendarController = calendarControllerFactory ? calendarControllerFactory((e) => this.sendEvent(e)) : null
   }
 
   /** True when the live communication slice (realtime2) is active on this session. */
@@ -377,9 +385,11 @@ export class RealtimeVoiceSession {
           instructions: this.instructions,
           voice: HE_VOICE.realtimeVoice,
           transcriptionLanguage: this.transcriptionLanguage,
-          // realtime2 SLICE: declare the communication tools so the model can REQUEST
-          // (never decide) a WhatsApp/call action. Absent in the certified path.
-          ...(this.sliceController ? { tools: REALTIME_COMM_TOOLS } : {}),
+          // realtime2 SLICE: declare communication AND calendar tools so the model can
+          // REQUEST (never decide/commit) an action. Absent in the certified path.
+          ...((this.sliceController || this.calendarController)
+            ? { tools: [...(this.sliceController ? REALTIME_COMM_TOOLS : []), ...(this.calendarController ? REALTIME_CALENDAR_TOOLS : [])] }
+            : {}),
         }))
         this.stage('SESSION_UPDATE_SENT', 'ok')
 
@@ -461,9 +471,14 @@ export class RealtimeVoiceSession {
     // deterministic controller BEFORE the normal switch. It runs the kernel, commits the
     // card, returns a safe receipt to the model and continues it. Non-function events fall
     // through. In the certified path (no controller) this is a no-op.
-    if (this.sliceController) {
+    if (this.sliceController || this.calendarController) {
       const fc = extractFunctionCall(event)
-      if (fc && isKnownToolCall(fc)) { void this.sliceController.onFunctionCall(fc); return }
+      if (fc) {
+        // Disjoint routing: a calendar tool goes to the Calendar authority, a
+        // communication tool to the Communication authority — never crossed.
+        if (this.calendarController && isCalendarToolName(fc.name)) { void this.calendarController.onFunctionCall(fc); return }
+        if (this.sliceController && isKnownToolCall(fc)) { void this.sliceController.onFunctionCall(fc); return }
+      }
     }
     // Normalize CURRENT + legacy server event names into one internal contract
     // (Defect 2). A renamed output/transcription event is no longer silently dropped.

@@ -592,17 +592,19 @@
       "severity": "High",
       "classification": "automatable",
       "owner": "main",
-      "oracle": "the ADR-0001 calendar draft (calendarDraft) is REACHABLE at runtime — constructed/used by a real product path (parity with Communication reachable via ?voice=realtime2), with legacy AbuCalendar duplication retired or explicitly guarded",
-      "minEvidenceClass": "BROWSER",
-      "currentEvidenceClass": "STATIC",
-      "tests": [],
-      "evidenceArtifact": "",
+      "oracle": "calendarDraft is REACHABLE + constructed at runtime under ?voice=realtime2 (parity with Communication): calendar function-tools declared, CalendarDraftController routed disjointly through the REAL RealtimeVoiceSession, index.tsx composition root constructs it, UI projects the committed receipt. Legacy AbuCalendar remains screen/read/persistence only.",
+      "minEvidenceClass": "PRODUCTION_ADAPTER",
+      "currentEvidenceClass": "PRODUCTION_ADAPTER",
+      "tests": [
+        "src/screens/AbuAI/realtime/calendarRuntimeIntegration.test.ts"
+      ],
+      "evidenceArtifact": "docs/engineering-os/qa/production-convergence/failure-corpus.json#cal-runtime-integration",
       "fingerprint": {
         "commit": "",
         "build": ""
       },
-      "rollbackTrigger": "",
-      "status": "GAP"
+      "rollbackTrigger": "git revert of the calendar-wiring commit (realtimeVoice + index.tsx); flag OFF by default",
+      "status": "PROVEN"
     }
   ]
 }
