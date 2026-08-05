@@ -7,7 +7,7 @@
  * key/provider problem we return a JSON error so the client falls back to the
  * free pipeline — never a raw provider error, never the long-lived key.
  */
-import { REALTIME_MODEL } from '../src/services/realtimeModel'
+import { REALTIME_MODEL, REALTIME_MODEL_CANDIDATES } from '../src/services/realtimeModel'
 
 export const config = { runtime: 'edge' }
 
@@ -48,68 +48,66 @@ export default async function handler(req: Request): Promise<Response> {
   const apiKey = env.OPENAI_API_KEY
   if (isPlaceholderKey(apiKey)) return jsonError('OPENAI_API_KEY_MISSING')
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-  let upstream: Response
-  try {
-    upstream = await fetch(REALTIME_SESSION_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      // 2026 shape: config is wrapped in a `session` object with an explicit
-      // type. Fine-grained turn detection / transcription are configured
-      // client-side via session.update over the data channel after connect.
-      body: JSON.stringify({
-        session: {
-          type: 'realtime',
-          model: REALTIME_MODEL,
-          instructions: typeof payload.instructions === 'string' ? payload.instructions : '',
-          audio: { output: { voice: typeof payload.voice === 'string' ? payload.voice : 'shimmer' } },
-        },
-      }),
-      signal: controller.signal,
-    })
-  } catch (err) {
-    clearTimeout(timeout)
-    return jsonError((err as { name?: string } | null)?.name === 'AbortError' ? 'REALTIME_TIMEOUT' : 'REALTIME_PROVIDER_FAILED')
-  }
-  clearTimeout(timeout)
-
-  if (!upstream.ok) {
-    const isAuth = upstream.status === 401 || upstream.status === 403
-    const isQuota = upstream.status === 429
-    // A 400/404 here means the request shape/model is outdated (the Realtime
-    // API evolved) rather than an account problem — the status tells Leo which
-    // fix path applies. For a 4xx we include a SHORT sanitized snippet of the
-    // provider's validation message (never a secret) to pinpoint the shape bug.
-    let hint = `upstream_http_${upstream.status}`
-    if (upstream.status >= 400 && upstream.status < 500) {
-      try {
-        const body = await upstream.text()
-        const msg = (JSON.parse(body) as { error?: { message?: string } })?.error?.message
-        if (msg) hint += `: ${msg.slice(0, 160)}`
-      } catch { /* non-JSON body — status alone */ }
+  // §0 GPT-Live parity: try the STRONGEST available Realtime model first
+  // (gpt-realtime-2.1), then fall back through the candidate list. A model that is
+  // unavailable to THIS project returns a 400/404 → we try the next candidate and
+  // record the provider response. Auth/quota errors stop immediately. We NEVER
+  // silently skip a stronger model; the chosen model + the ladder are reported.
+  const attempts: Array<{ model: string; status: number | 'network'; note?: string }> = []
+  let clientSecret: string | undefined
+  let chosenModel: string | undefined
+  for (const model of REALTIME_MODEL_CANDIDATES) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    let upstream: Response
+    try {
+      upstream = await fetch(REALTIME_SESSION_URL, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session: {
+            type: 'realtime',
+            model,
+            instructions: typeof payload.instructions === 'string' ? payload.instructions : '',
+            audio: { output: { voice: typeof payload.voice === 'string' ? payload.voice : 'shimmer' } },
+          },
+        }),
+        signal: controller.signal,
+      })
+    } catch (err) {
+      clearTimeout(timeout)
+      attempts.push({ model, status: 'network', note: (err as { name?: string } | null)?.name === 'AbortError' ? 'timeout' : 'network' })
+      continue // try the next candidate on a network/timeout error
     }
-    return jsonError(
-      isAuth ? 'OPENAI_API_KEY_INVALID' : isQuota ? 'REALTIME_QUOTA' : 'REALTIME_PROVIDER_FAILED',
-      200,
-      hint,
-    )
+    clearTimeout(timeout)
+
+    if (upstream.ok) {
+      let data: unknown
+      try { data = await upstream.json() } catch { attempts.push({ model, status: upstream.status, note: 'bad_json' }); continue }
+      const d = data as { value?: string; client_secret?: { value?: string } } | null
+      const secret = d?.value ?? d?.client_secret?.value
+      if (secret) { clientSecret = secret; chosenModel = model; attempts.push({ model, status: upstream.status, note: 'ok' }); break }
+      attempts.push({ model, status: upstream.status, note: 'no_secret' }); continue
+    }
+
+    // Auth/quota are account problems — stop and report (do not keep trying).
+    if (upstream.status === 401 || upstream.status === 403) return jsonError('OPENAI_API_KEY_INVALID', 200, `model=${model}`)
+    if (upstream.status === 429) return jsonError('REALTIME_QUOTA', 200, `model=${model}`)
+    // 400/404 = this model is not available to the project → record + try the next.
+    let note = `http_${upstream.status}`
+    if (upstream.status >= 400 && upstream.status < 500) {
+      try { const b = await upstream.text(); const m = (JSON.parse(b) as { error?: { message?: string } })?.error?.message; if (m) note += `: ${m.slice(0, 120)}` } catch { /* */ }
+    }
+    attempts.push({ model, status: upstream.status, note })
   }
 
-  let data: unknown
-  try { data = await upstream.json() } catch { return jsonError('REALTIME_PROVIDER_FAILED') }
-  // 2026: token is at top-level `value`. Keep the legacy nested read as a
-  // fallback so an older provider response still works.
-  const d = data as { value?: string; client_secret?: { value?: string } } | null
-  const clientSecret = d?.value ?? d?.client_secret?.value
-  if (!clientSecret) return jsonError('REALTIME_PROVIDER_FAILED', 200, 'no_secret_in_response')
+  if (!clientSecret || !chosenModel) {
+    return jsonError('REALTIME_PROVIDER_FAILED', 200, `no model minted: ${attempts.map((a) => `${a.model}=${a.status}`).join(', ')}`)
+  }
 
-  // Return ONLY the ephemeral secret (safe for browser use) — never the long-lived
-  // key. `model` lets the client assert the SDP call uses the SAME model (no drift).
-  return new Response(JSON.stringify({ ok: true, client_secret: clientSecret, model: REALTIME_MODEL }), {
+  // Return ONLY the ephemeral secret + the CHOSEN model (client asserts SDP uses it)
+  // + the selection ladder (which stronger models were unavailable, if any).
+  return new Response(JSON.stringify({ ok: true, client_secret: clientSecret, model: chosenModel, modelSelection: { chosen: chosenModel, tried: attempts } }), {
     status: 200,
     headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
   })

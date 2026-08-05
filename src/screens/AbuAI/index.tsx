@@ -25,6 +25,7 @@ import { SessionOrchestrator, type ActiveActionViewModel } from './realtime/sess
 import { RealtimeCommController } from './realtime/realtimeCommController'
 import { CalendarDraftController } from './realtime/calendarDraftController'
 import { TurnAuthorityArbiter } from './realtime/turnAuthorityArbiter'
+import { buildAbuRealtimeSystemPrompt } from './realtimeSystemPrompt'
 import type { CalendarReceipt, RelationshipResolver } from './realtime/calendarDraft'
 import { resolvePersonPhrase } from '../AbuCalendar/familyResolve'
 import { makeProductionKernel } from './realtime/kernelAdapter'
@@ -2388,7 +2389,12 @@ export function AbuAI() {
       }
     } catch {}
 
-    return `${SYSTEM_PROMPT}${VOICE_SUFFIX}
+    // GPT-Live parity §6: the production conversational-intelligence instructions come
+    // FIRST (highest priority) so the live model talks like an intelligent companion,
+    // not a canned script — then the existing identity/grounding/memory.
+    return `${buildAbuRealtimeSystemPrompt()}
+
+${SYSTEM_PROMPT}${VOICE_SUFFIX}
 ${dateGrounding}${calendarSnapshot}${familyFacts}${memorySummary}
 ═══ כלל ברזל — יומן ═══
 יש לך מידע אמיתי מהיומן למעלה. תשתמשי רק בו.
