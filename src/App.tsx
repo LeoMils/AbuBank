@@ -30,6 +30,10 @@ const FamilyGallery = lazy(() => import('./screens/FamilyGallery').then(m => ({ 
 const FamilyRecord = lazy(() => import('./screens/FamilyRecord').then(m => ({ default: m.FamilyRecord })))
 const FamilyPhones = lazy(() => import('./screens/FamilyPhones').then(m => ({ default: m.FamilyPhones })))
 import { matchFamilyPhonesRoute, FAMILY_PHONES_PATH } from './screens/FamilyPhones/familyPhonesImport'
+// Milestone 1: the ISOLATED live-voice screen. Opened via ?live=1 as a top-level
+// overlay (mirrors the FamilyPhones isolation) — it uses ONLY liveSession.ts and
+// touches no existing screen or the legacy voice cascade.
+const LiveScreen = lazy(() => import('./screens/Live/LiveScreen').then(m => ({ default: m.LiveScreen })))
 import styles from './App.module.css'
 
 // T7.1: Loading fallback for lazy screens
@@ -112,6 +116,29 @@ export function App() {
   const closeFamilyPhones = () => {
     try { if (window.location.pathname === FAMILY_PHONES_PATH) window.history.pushState({}, '', '/') } catch { /* */ }
     setFamilyPhonesOpen(false)
+  }
+
+  // Milestone 1 live screen — open via ?live=1 (works from a plain iPhone Safari
+  // link / installed PWA, no console needed). Top-level overlay, zero coupling.
+  const readLiveParam = () => {
+    try { return new URL(window.location.href).searchParams.get('live') === '1' } catch { return false }
+  }
+  const [liveOpen, setLiveOpen] = useState<boolean>(readLiveParam)
+  useEffect(() => {
+    const check = () => setLiveOpen(readLiveParam())
+    window.addEventListener('popstate', check)
+    window.addEventListener('hashchange', check)
+    return () => {
+      window.removeEventListener('popstate', check)
+      window.removeEventListener('hashchange', check)
+    }
+  }, [])
+  const closeLive = () => {
+    try {
+      const url = new URL(window.location.href)
+      if (url.searchParams.get('live') === '1') { url.searchParams.delete('live'); window.history.pushState({}, '', url.pathname + url.search) }
+    } catch { /* */ }
+    setLiveOpen(false)
   }
 
   // P0.3 — app-wide diagnostic overlay. Visible whenever the user
@@ -248,6 +275,12 @@ export function App() {
       {familyPhonesOpen && (
         <Suspense fallback={<ScreenLoader />}>
           <ErrorBoundary><FamilyPhones onClose={closeFamilyPhones} /></ErrorBoundary>
+        </Suspense>
+      )}
+
+      {liveOpen && (
+        <Suspense fallback={<ScreenLoader />}>
+          <ErrorBoundary><LiveScreen onClose={closeLive} /></ErrorBoundary>
         </Suspense>
       )}
 
