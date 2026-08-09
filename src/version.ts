@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.180.0-m1-live-rc1',
-  buildLabel: 'AbuBank 0.180.0 — M1_LIVE_RC1: new isolated live-voice path (src/services/liveSession.ts) owning the entire realtime conversation — one server-minted ephemeral token, one RTCPeerConnection/data channel, one mic track, one WebAudio playback path, one session.update (instructions/voice/server_vad silence 1200ms/reasoning.effort low/wait_for_user tool). Module-level epoch is the sole ownership guard; greeting keyed to conversation id (silent on reconnect); both response phases handled (commentary vs final_answer); fail closed (no fallback). Reachable via ?live=1 as a top-level overlay (mirrors FamilyPhones isolation) — the legacy AbuAI voice cascade is untouched. Server selects gpt-realtime-2.1. Evidence: CODE/MOCK (19 liveSession tests; typecheck 0; build). PHYSICAL_DEVICE (Leo iPhone, 5-min Hebrew call) NOT yet run — pending the first device test.',
-  buildDate:  '2026-08-05',
+  version:    '0.181.0-m2-live-rc1',
+  buildLabel: 'AbuBank 0.181.0 — M2_LIVE_RC1: Abu live-session instructions are now assembled AT BUILD TIME from two editable knowledge files — knowledge/abu-persona-draft.md (persona) first, then knowledge/abu-knowledge.md verbatim — via Vite ?raw import, so editing abu-knowledge.md reaches Abu on the next deploy with NO code change. Abu is female (feminine Hebrew) and follows the user between Hebrew and Rioplatense Spanish. Labeled OpenAI-Realtime sections (Role/Personality/Language/What-Abu-Knows/Length/Unclear-Audio); editor preamble stripped; a build-time guard fails the build if any phone number appears in either file. Evidence: CODE/MOCK (liveInstructions + liveSession tests; typecheck 0; build). PHYSICAL_DEVICE (Leo iPhone Hebrew call) NOT claimed.',
+  buildDate:  '2026-08-09',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time
   // (Vercel VERCEL_GIT_COMMIT_SHA → VITE_COMMIT_SHA). Falls back to 'local' only for

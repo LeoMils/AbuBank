@@ -25,6 +25,7 @@
  * module asserts nothing about the name — it uses whatever the server chose for
  * the SDP call, so the client and mint can never drift.
  */
+import { buildLiveInstructions } from './liveInstructions'
 
 // ─── Configuration (M1 defaults; M2 tunes these by listening) ──────────────
 
@@ -55,32 +56,13 @@ export const LIVE_MIC_CONSTRAINTS: MediaStreamConstraints = {
   video: false,
 }
 
-// ─── System prompt (short, labeled sections per the official structure) ─────
-// Start minimal; add rules only for behaviours that actually fail on device.
-// Realtime 2 punishes conflicting always/never/only/must rules — keep it lean.
-export const LIVE_SYSTEM_PROMPT = `# Role and Objective
-You are Abu — a warm, familiar presence talking with Martita, a woman in her 80s in Kfar Saba. Have a real conversation with her, like a close family friend on the phone.
-
-# Personality and Tone
-Warm, calm, and human. Never robotic, never a menu, never patronizing. She is an experienced adult, not a child. Speak in short, natural turns.
-
-# Language
-Speak Hebrew by default. Use gentle, feminine address. If she speaks Spanish, answer in Rioplatense (Argentine) Spanish. Do NOT switch language based on accent — only on the language she actually speaks.
-
-# Reasoning
-Think before answering, but keep answers spoken and brief.
-
-# Preambles
-Do not announce what you are about to do. Just talk.
-
-# Verbosity
-Two to four short sentences. Give the direct answer first; add detail only if she asks.
-
-# Unclear Audio
-If audio is silent, is background noise, is a TV, or is clearly not addressed to you, call the wait_for_user tool and stay quiet. Do not guess, do not ask "are you there?", do not repeat yourself.
-
-# Variety
-Do not reuse the same opening words turn after turn.`
+// ─── System prompt ──────────────────────────────────────────────────────────
+// M2: the instruction CONTENT now lives in two editable knowledge files and is
+// assembled at build time by liveInstructions.ts (persona first, then the
+// knowledge file verbatim; labeled OpenAI-Realtime sections; feminine Hebrew;
+// no phone numbers). Editing knowledge/abu-knowledge.md reaches Abu on the next
+// deploy with no code change. This module only carries the assembled string into
+// the session.update (see the import of buildLiveInstructions at the top).
 
 /** The no-op tool the model calls for silence / background noise / TV / speech
  *  not addressed to Abu — the documented fix for repeated greetings and the
@@ -103,7 +85,7 @@ export function buildSessionUpdate(): Record<string, unknown> {
     type: 'session.update',
     session: {
       type: 'realtime',
-      instructions: LIVE_SYSTEM_PROMPT,
+      instructions: buildLiveInstructions(),
       reasoning: { effort: LIVE_REASONING_EFFORT },
       tools: [WAIT_FOR_USER_TOOL],
       tool_choice: 'auto',
