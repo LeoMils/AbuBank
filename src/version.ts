@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.181.0-m2-live-rc1',
-  buildLabel: 'AbuBank 0.181.0 — M2_LIVE_RC1: Abu live-session instructions are now assembled AT BUILD TIME from two editable knowledge files — knowledge/abu-persona-draft.md (persona) first, then knowledge/abu-knowledge.md verbatim — via Vite ?raw import, so editing abu-knowledge.md reaches Abu on the next deploy with NO code change. Abu is female (feminine Hebrew) and follows the user between Hebrew and Rioplatense Spanish. Labeled OpenAI-Realtime sections (Role/Personality/Language/What-Abu-Knows/Length/Unclear-Audio); editor preamble stripped; a build-time guard fails the build if any phone number appears in either file. Evidence: CODE/MOCK (liveInstructions + liveSession tests; typecheck 0; build). PHYSICAL_DEVICE (Leo iPhone Hebrew call) NOT claimed.',
+  version:    '0.182.0-m2m3-live-rc1',
+  buildLabel: 'AbuBank 0.182.0 — M2M3_LIVE_RC1: Abu live path gains KNOWLEDGE + CALENDAR + ACTIONS on the M1 voice path (unchanged conversation core). Instructions assembled AT BUILD TIME from THREE editable knowledge files — knowledge/abu-persona.md then abu-family.md then abu-knowledge.md verbatim (Vite ?raw), so editing any reaches Abu next deploy with no code change. New deterministic tools wired into the live session: resolve_contact (id | AMBIGUOUS | NOT_FOUND — a relationship phrase like "אח של מור" can never resolve to a person; no phone numbers ever enter the model); read/prepare/correct/confirm/cancel calendar reusing the typed draft kernel with exactly-once commit + durable read-after-write; prepare-only WhatsApp/Call (nothing sends or dials). Feminine Hebrew + Rioplatense Spanish. Evidence: CODE (liveContacts/liveTools/liveInstructions/liveSession tests; typecheck 0; build). PHYSICAL_DEVICE (Leo iPhone five-minute Hebrew call) NOT claimed.',
   buildDate:  '2026-08-09',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time

@@ -26,6 +26,8 @@
  * the SDP call, so the client and mint can never drift.
  */
 import { buildLiveInstructions } from './liveInstructions'
+import { LiveTools, LIVE_TOOL_SCHEMAS, durableCalendarStore, type LiveCalendarStore } from './liveTools'
+import { extractFunctionCall, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 
 // ─── Configuration (M1 defaults; M2 tunes these by listening) ──────────────
 
@@ -77,17 +79,32 @@ export const WAIT_FOR_USER_TOOL = {
 
 // ─── Pure helpers (unit-testable without WebRTC) ────────────────────────────
 
+/** A runtime "today" line appended to the instructions so the model can resolve
+ *  relative dates ("מחר"/"היום") to a real YYYY-MM-DD before any calendar tool call.
+ *  Computed from the caller's clock (the device Martita is holding). */
+export function todayInstruction(now: number): string {
+  const d = new Date(now)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const weekday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()]
+  return [
+    '',
+    '# Today',
+    `Today is ${iso} (${weekday}). Resolve any relative date ("מחר", "היום", "יום שישי") to a real YYYY-MM-DD before calling a calendar tool — never pass a relative word.`,
+  ].join('\n')
+}
+
 /** The FULL-DUPLEX session config sent ONCE over the data channel on open. The
  *  model owns the turn (create_response TRUE) and reasons natively. Pure so it
- *  can be regression-locked. */
-export function buildSessionUpdate(): Record<string, unknown> {
+ *  can be regression-locked. `now` seeds the runtime "today" line. */
+export function buildSessionUpdate(now: number = Date.now()): Record<string, unknown> {
   return {
     type: 'session.update',
     session: {
       type: 'realtime',
-      instructions: buildLiveInstructions(),
+      instructions: buildLiveInstructions() + '\n' + todayInstruction(now),
       reasoning: { effort: LIVE_REASONING_EFFORT },
-      tools: [WAIT_FOR_USER_TOOL],
+      tools: [WAIT_FOR_USER_TOOL, ...LIVE_TOOL_SCHEMAS],
       tool_choice: 'auto',
       audio: {
         input: {
@@ -197,6 +214,9 @@ export interface LiveDeps {
   now: () => number
   /** Optional: substitute the mic track (replay harness feeds recorded Hebrew WAV). */
   micTrackOverride?: () => MediaStreamTrack | null
+  /** Optional: the durable calendar store the live tools read/write (real one by default;
+   *  tests inject an in-memory store to prove read-after-write without a browser). */
+  calendarStore?: LiveCalendarStore
 }
 
 // A minimal in-memory storage so the module never throws when constructed
@@ -250,6 +270,10 @@ export class LiveSession {
   private torn = false
   private audioWatchdog: ReturnType<typeof setTimeout> | null = null
   private _state: LiveState = 'idle'
+  /** The ONE tool executor for this session (contacts, calendar, whatsapp/call). */
+  private readonly liveTools: LiveTools
+  /** wait_for_user call ids already acknowledged (idempotent, no double-ack). */
+  private readonly waitHandled = new Set<string>()
 
   /**
    * @param isReconnect true when resuming an existing conversation after a drop —
@@ -260,6 +284,12 @@ export class LiveSession {
     this.conversationId = conversationId
     this.isReconnect = isReconnect
     this.deps = { ...defaultDeps(), ...deps }
+    // ONE tool executor, wired to send over this session's data channel and to the
+    // durable calendar store (or an injected one in tests). No conversation state.
+    this.liveTools = new LiveTools(
+      (event) => this.send(event),
+      this.deps.calendarStore ?? durableCalendarStore(),
+    )
   }
 
   get state(): LiveState { return this._state }
@@ -357,9 +387,9 @@ export class LiveSession {
       dc.onopen = () => {
         if (myEpoch !== liveEpoch) return
         this.setState('listening')
-        // ONE session.update carrying instructions, voice, turn_detection,
-        // reasoning.effort, and the wait_for_user tool.
-        this.send(buildSessionUpdate())
+        // ONE session.update carrying instructions (+ today's date), voice,
+        // turn_detection, reasoning.effort, and the tool set.
+        this.send(buildSessionUpdate(this.deps.now()))
         // Greeting is keyed to the conversation id in storage — NOT session start.
         // On a reconnect we send nothing and resume listening silently.
         if (!this.isReconnect && shouldGreet(this.deps.storage, this.conversationId)) {
@@ -438,6 +468,14 @@ export class LiveSession {
   private handleEvent(event: unknown, myEpoch: number): void {
     const type = (event as { type?: string })?.type ?? ''
     const e = event as Record<string, unknown>
+
+    // Tool calls arrive in several official completion shapes
+    // (response.function_call_arguments.done / response.output_item.done /
+    // response.done). The bridge extracts a completed call from any of them; the
+    // executors dedup by call id, so handling it here on every shape is safe.
+    const fc = extractFunctionCall(event)
+    if (fc) this.handleToolCall(fc)
+
     switch (type) {
       case 'input_audio_buffer.speech_started':
         this.clearAudioWatchdog()
@@ -456,14 +494,6 @@ export class LiveSession {
       case 'response.audio_transcript.done':
         if (typeof e.transcript === 'string') this.cb.onAbuTranscript?.(e.transcript)
         break
-      case 'response.function_call_arguments.done': {
-        // wait_for_user: acknowledge and STAY SILENT (do not create a response).
-        if (e.name === 'wait_for_user' && typeof e.call_id === 'string') {
-          this.send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: e.call_id, output: '{"status":"waiting"}' } })
-          this.setState('listening')
-        }
-        break
-      }
       case 'response.done':
         // Only a FINAL answer (or a phaseless done) ends the turn. A `commentary`
         // done is mid-turn — keep speaking; more audio is coming.
@@ -477,6 +507,21 @@ export class LiveSession {
       default:
         break
     }
+  }
+
+  /** Route a completed function call. wait_for_user is a turn-taking no-op handled
+   *  here (acknowledge, stay SILENT — no response.create). Every other tool is owned
+   *  by the LiveTools executor (which sends the safe output + a response.create so the
+   *  model speaks the grounded result). */
+  private handleToolCall(fc: ParsedFunctionCall): void {
+    if (fc.name === 'wait_for_user') {
+      if (this.waitHandled.has(fc.callId)) return
+      this.waitHandled.add(fc.callId)
+      this.send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: fc.callId, output: '{"status":"waiting"}' } })
+      this.setState('listening')
+      return
+    }
+    if (LiveTools.owns(fc.name)) this.liveTools.handleFunctionCall(fc)
   }
 
   private armAudioWatchdog(myEpoch: number): void {

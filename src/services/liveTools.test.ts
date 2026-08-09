@@ -1,0 +1,187 @@
+/*
+ * liveTools.test.ts — Milestone 2/3 evidence (CODE class).
+ *
+ * Drives the live tool executor with injected function-calls (no WebRTC, no mic)
+ * and an in-memory calendar store, proving the milestone's hard requirements:
+ *   • exactly-once: one confirmation → at most one event (retries/dupes/reorders)
+ *   • a pending draft survives an unrelated question
+ *   • correcting one field preserves the others
+ *   • read-after-write: a confirmed event is immediately readable from the SAME store
+ *   • "אח של מור" is structurally impossible as an event participant (no substitution)
+ *   • a plain unknown name (Gabi) still makes an event
+ *   • WhatsApp/Call only PREPARE — nothing sends or dials; recipients resolve to ids
+ * These prove the DETERMINISTIC behavior — NOT that Abu sounded warm on a device.
+ */
+import { describe, it, expect } from 'vitest'
+import { LiveTools, type LiveCalendarStore, type LiveEvent } from './liveTools'
+import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
+
+function memStore(): LiveCalendarStore & { events: LiveEvent[] } {
+  const events: LiveEvent[] = []
+  let n = 0
+  return {
+    events,
+    list: () => events.slice(),
+    add: (e) => { const ev: LiveEvent = { id: `e${++n}`, ...e }; events.push(ev); return ev },
+  }
+}
+
+interface Harness {
+  tools: LiveTools
+  sent: Array<Record<string, unknown>>
+  store: ReturnType<typeof memStore>
+  call: (name: string, args: Record<string, unknown>, callId?: string) => void
+  outputs: () => Array<Record<string, unknown>>
+  lastOutput: () => Record<string, unknown> | null
+}
+
+function harness(): Harness {
+  const sent: Array<Record<string, unknown>> = []
+  const store = memStore()
+  const tools = new LiveTools((e) => sent.push(e), store)
+  let auto = 0
+  const call = (name: string, args: Record<string, unknown>, callId?: string) => {
+    const fc: ParsedFunctionCall = { name, callId: callId ?? `auto-${++auto}`, argsJson: JSON.stringify(args) }
+    tools.handleFunctionCall(fc)
+  }
+  const outputs = () =>
+    sent.filter((e) => e.type === 'conversation.item.create')
+      .map((e) => JSON.parse(((e.item as { output: string }).output)) as Record<string, unknown>)
+  const lastOutput = () => { const o = outputs(); return o.length ? o[o.length - 1]! : null }
+  return { tools, sent, store, call, outputs, lastOutput }
+}
+
+describe('resolve_contact tool', () => {
+  it('returns resolved / ambiguous / not_found and always a response.create', () => {
+    const h = harness()
+    h.call('resolve_contact', { name: 'מור' })
+    expect(h.lastOutput()).toMatchObject({ status: 'resolved', id: 'mor' })
+    h.call('resolve_contact', { name: 'אח של מור' })
+    expect(h.lastOutput()).toMatchObject({ status: 'ambiguous' })
+    h.call('resolve_contact', { name: 'Gabi' })
+    expect(h.lastOutput()).toMatchObject({ status: 'not_found' })
+    // every tool reply is followed by a response.create so the model speaks
+    expect(h.sent.filter((e) => e.type === 'response.create').length).toBe(3)
+  })
+})
+
+describe('calendar — create, confirm, read-after-write', () => {
+  it('prepares a draft, confirms it, saves EXACTLY ONE event, and reads it back immediately', () => {
+    const h = harness()
+    h.call('prepare_calendar_event', { title: 'פגישה עם מור', date: '2026-08-10', time: '15:00', participant: 'מור' })
+    const draft = h.tools.viewCalendarDraft()!
+    expect(draft.confirmation).toBe('AWAITING_CONFIRM')
+    expect(draft.participant).toBe('מור')
+
+    h.call('confirm_calendar_event', { forRevision: draft.revision })
+    expect(h.store.events.length).toBe(1)
+    expect(h.lastOutput()).toMatchObject({ confirmation: 'CONFIRMED', saved: true })
+
+    // read-after-write: the SAME store returns the event
+    h.call('read_calendar', { date: '2026-08-10' })
+    const read = h.lastOutput()!
+    expect(read.count).toBe(1)
+    expect((read.events as Array<{ title: string }>)[0]!.title).toBe('פגישה עם מור')
+  })
+
+  it('exactly-once: a duplicate confirm call id is a strict no-op (one event, one output)', () => {
+    const h = harness()
+    h.call('prepare_calendar_event', { title: 'רופא', date: '2026-08-11', time: '09:00' })
+    const rev = h.tools.viewCalendarDraft()!.revision
+    h.call('confirm_calendar_event', { forRevision: rev }, 'confirm-1')
+    const outputsAfterFirst = h.outputs().length
+    h.call('confirm_calendar_event', { forRevision: rev }, 'confirm-1') // same id → no-op
+    expect(h.store.events.length).toBe(1)
+    expect(h.outputs().length).toBe(outputsAfterFirst) // no second output
+  })
+
+  it('exactly-once: a SECOND distinct confirm on the committed draft never doubles the event', () => {
+    const h = harness()
+    h.call('prepare_calendar_event', { title: 'רופא', date: '2026-08-11', time: '09:00' })
+    const rev = h.tools.viewCalendarDraft()!.revision
+    h.call('confirm_calendar_event', { forRevision: rev }, 'confirm-A')
+    h.call('confirm_calendar_event', { forRevision: rev }, 'confirm-B') // different id, same draft
+    expect(h.store.events.length).toBe(1)
+    expect(h.lastOutput()).toMatchObject({ saved: true, already: true })
+  })
+
+  it('a pending draft SURVIVES an unrelated question (read_calendar) then still confirms', () => {
+    const h = harness()
+    h.call('prepare_calendar_event', { title: 'פגישה עם מור', date: '2026-08-10', time: '15:00', participant: 'מור' })
+    const rev = h.tools.viewCalendarDraft()!.revision
+    // unrelated turn in the middle — must not disturb the draft
+    h.call('read_calendar', {})
+    const stillPending = h.tools.viewCalendarDraft()!
+    expect(stillPending.confirmation).toBe('AWAITING_CONFIRM')
+    expect(stillPending.participant).toBe('מור')
+    h.call('confirm_calendar_event', { forRevision: rev })
+    expect(h.store.events.length).toBe(1)
+  })
+
+  it('correcting ONE field preserves every other field', () => {
+    const h = harness()
+    h.call('prepare_calendar_event', { title: 'פגישה עם מור', date: '2026-08-10', time: '15:00', participant: 'מור' })
+    h.call('correct_calendar_field', { field: 'time', value: '16:00' })
+    const d = h.tools.viewCalendarDraft()!
+    expect(d.time).toBe('16:00')
+    expect(d.title).toBe('פגישה עם מור')  // preserved
+    expect(d.date).toBe('2026-08-10')     // preserved
+    expect(d.participant).toBe('מור')     // preserved
+  })
+})
+
+describe('calendar — identity safety (no substitution)', () => {
+  it('"אח של מור" is held as an UNRESOLVED relationship and BLOCKS confirm — no event', () => {
+    const h = harness()
+    h.call('prepare_calendar_event', { title: 'פגישה', date: '2026-08-10', time: '15:00', participant: 'אח של מור' })
+    const d = h.tools.viewCalendarDraft()!
+    expect(d.participant).toBeNull()                 // never became a specific person
+    expect(d.unresolvedRelationship).toBe('אח של מור')
+    // Attempting to confirm is rejected — Abu must ask who first.
+    h.call('confirm_calendar_event', { forRevision: d.revision })
+    expect(h.store.events.length).toBe(0)
+    expect(h.lastOutput()).toMatchObject({ confirmation: 'AWAITING_CONFIRM', rejected: true })
+  })
+
+  it('a plain unknown name (Gabi, Spanish flow) still creates exactly one event', () => {
+    const h = harness()
+    h.call('prepare_calendar_event', { title: 'reunión con Gabi', date: '2026-08-10', time: '15:00', participant: 'Gabi' })
+    const d = h.tools.viewCalendarDraft()!
+    expect(d.participant).toBe('Gabi')
+    expect(d.unresolvedRelationship).toBeNull()
+    h.call('confirm_calendar_event', { forRevision: d.revision })
+    expect(h.store.events.length).toBe(1)
+  })
+})
+
+describe('whatsapp / call — PREPARE only', () => {
+  it('prepares a WhatsApp draft for a resolved recipient; never claims it was sent', () => {
+    const h = harness()
+    h.call('prepare_whatsapp', { recipient: 'מור', intent: 'שנשמע' })
+    const out = h.lastOutput()!
+    expect(out.status).toBe('READY_TO_SEND')
+    expect(out.recipient).toBe('מור')
+    expect((out.allowed_to_say as string[]).some((s) => /never say you sent/i.test(s))).toBe(true)
+    expect(h.tools.viewCommDraft()).toMatchObject({ kind: 'message', recipientId: 'mor', status: 'READY_TO_SEND' })
+  })
+
+  it('a call is only PREPARED (READY_TO_CALL), never dialed', () => {
+    const h = harness()
+    h.call('prepare_call', { recipient: 'לאו' })
+    expect(h.lastOutput()).toMatchObject({ status: 'READY_TO_CALL', kind: 'call', recipient: 'לאו' })
+  })
+
+  it('an unresolved recipient (relationship phrase) creates NO comm draft — Abu asks who', () => {
+    const h = harness()
+    h.call('prepare_whatsapp', { recipient: 'אח של מור', intent: 'משהו' })
+    expect(h.lastOutput()).toMatchObject({ status: 'ambiguous' })
+    expect(h.tools.viewCommDraft()).toBeNull()
+  })
+
+  it('cancel_communication cancels the pending preparation', () => {
+    const h = harness()
+    h.call('prepare_call', { recipient: 'מור' })
+    h.call('cancel_communication', {})
+    expect(h.tools.viewCommDraft()!.status).toBe('CANCELLED')
+  })
+})

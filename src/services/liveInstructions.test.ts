@@ -15,6 +15,7 @@ import {
   findPhoneNumbers,
   assertNoPhoneNumbers,
   ABU_PERSONA,
+  ABU_FAMILY,
   ABU_KNOWLEDGE,
 } from './liveInstructions'
 
@@ -40,7 +41,7 @@ describe('stripEditorPreamble', () => {
 describe('findPhoneNumbers / assertNoPhoneNumbers', () => {
   it('flags Israeli-mobile and international shapes', () => {
     expect(findPhoneNumbers('call 052-123-4567 now').length).toBe(1)
-    expect(findPhoneNumbers('+972 52 123 4567').length).toBe(1)
+    expect(findPhoneNumbers('+972 50 123 4567').length).toBe(1)
     expect(findPhoneNumbers('0521234567').length).toBe(1)
   })
 
@@ -54,7 +55,7 @@ describe('findPhoneNumbers / assertNoPhoneNumbers', () => {
   })
 
   it('the shipped knowledge files contain no phone numbers', () => {
-    for (const f of ['abu-persona-draft.md', 'abu-knowledge.md']) {
+    for (const f of ['abu-persona.md', 'abu-family.md', 'abu-knowledge.md']) {
       const raw = fs.readFileSync(path.join(KNOWLEDGE_DIR, f), 'utf8')
       expect(findPhoneNumbers(raw)).toEqual([])
     }
@@ -69,7 +70,10 @@ describe('buildLiveInstructions', () => {
       '# Role and Objective',
       '# Personality and Tone',
       '# Language',
-      '# What Abu Knows',
+      '# What Abu Knows — Family',
+      '# What Abu Knows — Martita',
+      '# Tools and Actions',
+      '# Preambles',
       '# Length',
       '# Unclear Audio',
     ]) {
@@ -77,17 +81,25 @@ describe('buildLiveInstructions', () => {
     }
   })
 
-  it('places the persona BEFORE the knowledge file', () => {
-    expect(out.indexOf('# Personality and Tone')).toBeLessThan(out.indexOf('# What Abu Knows'))
-    // and the persona body is embedded ahead of the knowledge body
-    if (ABU_PERSONA.length > 0 && ABU_KNOWLEDGE.length > 0) {
+  it('places the persona BEFORE the family knowledge, and family before Martita profile', () => {
+    expect(out.indexOf('# Personality and Tone')).toBeLessThan(out.indexOf('# What Abu Knows — Family'))
+    expect(out.indexOf('# What Abu Knows — Family')).toBeLessThan(out.indexOf('# What Abu Knows — Martita'))
+    // the bodies are embedded in the same order: persona, then family, then profile
+    if (ABU_PERSONA.length > 0 && ABU_FAMILY.length > 0) {
       expect(out.indexOf(ABU_PERSONA)).toBeGreaterThanOrEqual(0)
-      expect(out.indexOf(ABU_KNOWLEDGE)).toBeGreaterThan(out.indexOf(ABU_PERSONA))
+      expect(out.indexOf(ABU_FAMILY)).toBeGreaterThan(out.indexOf(ABU_PERSONA))
     }
   })
 
-  it('embeds the knowledge file verbatim (its content, not a paraphrase)', () => {
-    expect(out).toContain(ABU_KNOWLEDGE)
+  it('embeds the family + knowledge files verbatim (their content, not a paraphrase)', () => {
+    expect(out).toContain(ABU_FAMILY)
+    if (ABU_KNOWLEDGE.length > 0) expect(out).toContain(ABU_KNOWLEDGE)
+  })
+
+  it('binds the tool/action truth rules (id-only contacts, prepare-only comms, no web for family/calendar)', () => {
+    expect(out).toContain('resolve_contact')
+    expect(out).toMatch(/never send a message or place a call/i)
+    expect(out).toMatch(/NEVER from web search/i)
   })
 
   it('states Abu is female and bilingual (feminine Hebrew + Rioplatense Spanish)', () => {

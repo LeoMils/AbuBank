@@ -1,21 +1,24 @@
 /*
- * liveInstructions.ts — Abu AI, Milestone 2: the live-session instructions,
- * assembled AT BUILD TIME from two editable knowledge files.
+ * liveInstructions.ts — Abu AI, Milestone 2/3: the live-session instructions,
+ * assembled AT BUILD TIME from THREE editable knowledge files.
  * ════════════════════════════════════════════════════════════════════════════
  * Milestone 1 hard-coded Abu's system prompt as a string in liveSession.ts. M2
- * moves the CONTENT out to two files Leo edits in Hebrew:
+ * moves the CONTENT out to three files Leo edits in Hebrew:
  *
- *   knowledge/abu-persona-draft.md   → who Abu is (personality, tone, language)
- *   knowledge/abu-knowledge.md       → the facts Abu knows (Martita + family)
+ *   knowledge/abu-persona.md    → who Abu is (personality, tone, language)
+ *   knowledge/abu-family.md     → canonical family truth (who exists, spelling,
+ *                                 what is unknown-and-stays-unknown)
+ *   knowledge/abu-knowledge.md  → Martita's own profile (may be partly empty)
  *
- * Both are inlined here via Vite's `?raw` import, so their text is baked into the
- * bundle AT BUILD TIME. Editing knowledge/abu-knowledge.md and redeploying reaches
- * Abu on the next deploy with NO code change (the requirement) — the file is the
- * source, this module only frames it.
+ * All three are inlined here via Vite's `?raw` import, so their text is baked into
+ * the bundle AT BUILD TIME. Editing any of them and redeploying reaches Abu on the
+ * next deploy with NO code change (the requirement) — the files are the source,
+ * this module only frames them.
  *
- * Assembly order (the requirement): persona FIRST, then the knowledge file. Each
- * file's editor-facing preamble (the note-to-Leo above its first `---`) is stripped
- * so it never reaches Abu; everything after the first `---` is used verbatim.
+ * Assembly order (the requirement): persona FIRST, then the knowledge files
+ * verbatim (family, then Martita's profile). Each file's editor-facing preamble
+ * (the note-to-Leo above its first `---`) is stripped so it never reaches Abu;
+ * everything after the first `---` is used verbatim.
  *
  * Abu is FEMALE; all Hebrew is feminine. She follows the user between Hebrew and
  * Rioplatense (Argentine) Spanish. The frame uses the labeled sections from the
@@ -23,10 +26,11 @@
  * rules (the persona's prose and the frame's operational rules point the same way).
  *
  * A build-time guard (assertNoPhoneNumbers, run at module load) FAILS the build if
- * a phone number ever appears in either file — phone numbers live only in contacts,
+ * a phone number ever appears in ANY file — phone numbers live only in contacts,
  * never in Abu's knowledge or instructions.
  */
-import personaRaw from '../../knowledge/abu-persona-draft.md?raw'
+import personaRaw from '../../knowledge/abu-persona.md?raw'
+import familyRaw from '../../knowledge/abu-family.md?raw'
 import knowledgeRaw from '../../knowledge/abu-knowledge.md?raw'
 
 /**
@@ -72,15 +76,19 @@ export function assertNoPhoneNumbers(text: string, source: string): void {
 }
 
 // Build-time enforcement: importing this module (which the build and the tests do)
-// throws if either source file carries a phone number. Checked against the RAW file
+// throws if any source file carries a phone number. Checked against the RAW file
 // so a number hidden in the stripped preamble is still caught.
-assertNoPhoneNumbers(personaRaw, 'knowledge/abu-persona-draft.md')
+assertNoPhoneNumbers(personaRaw, 'knowledge/abu-persona.md')
+assertNoPhoneNumbers(familyRaw, 'knowledge/abu-family.md')
 assertNoPhoneNumbers(knowledgeRaw, 'knowledge/abu-knowledge.md')
 
 /** Abu's persona, verbatim after its editor preamble. */
 export const ABU_PERSONA = stripEditorPreamble(personaRaw)
 
-/** Abu's knowledge, verbatim after its editor preamble. */
+/** Canonical family truth, verbatim after its editor preamble. */
+export const ABU_FAMILY = stripEditorPreamble(familyRaw)
+
+/** Martita's own profile, verbatim after its editor preamble (may be sparse). */
 export const ABU_KNOWLEDGE = stripEditorPreamble(knowledgeRaw)
 
 /**
@@ -101,10 +109,25 @@ export function buildLiveInstructions(): string {
     '# Language',
     "Follow Martita's language. Hebrew by default; when she speaks Spanish, answer in Rioplatense (Argentine) Spanish (vos tenés, vos sabés). Switch only on the language she actually speaks — never on accent — and never remark on the language.",
     '',
-    '# What Abu Knows',
-    'Everything below is what Abu knows. If a detail is not here, Abu does not know it and says so plainly — she never invents a name, date, or fact.',
+    '# What Abu Knows — Family',
+    'Everything below is what Abu knows about the family. If a detail is not here, Abu does not know it and says so plainly — she never invents a name, gender, date, or fact. The "מה לא ידוע" (what is unknown) section is binding: those things stay unknown. Deceased family stay part of the family.',
+    '',
+    ABU_FAMILY,
+    '',
+    '# What Abu Knows — Martita',
+    'Additional profile notes for Martita (may be sparse):',
     '',
     ABU_KNOWLEDGE,
+    '',
+    '# Tools and Actions',
+    'You have tools for contacts, the calendar, WhatsApp and phone calls. Rules:',
+    '- Family and calendar questions are answered from your own knowledge and the calendar tools — NEVER from web search.',
+    '- To message or call a person, first call resolve_contact with the name as spoken and use ONLY the id it returns. If it returns AMBIGUOUS (for example a relationship like "אח של מור"), ask Martita which specific person she means — never guess and never substitute a relative for a name. If it returns NOT_FOUND you have no way to reach that person.',
+    '- Calendar: prepare a draft, read it back, and only save it after Martita confirms. A person who resolves is added by name; a relationship phrase (AMBIGUOUS) is never added — ask who first. An ordinary name you simply do not have as a contact (NOT_FOUND) may still be written on the event as a plain label. Correcting one detail keeps the rest. A saved event can be read back immediately.',
+    '- WhatsApp and calls are only PREPARED for Martita to send or dial herself. You never send a message or place a call, and you never claim one happened. You only ever say what a tool actually confirmed.',
+    '',
+    '# Preambles',
+    'Before a tool call, say one short natural line so there is no silence ("רגע, בודקת."). Then give the result. Never narrate the machinery — no "searching the database", no "tool finished". Never claim progress on something that is not actually running.',
     '',
     '# Length',
     'Two to four short spoken sentences. Give the direct answer first; add detail only if she asks.',
