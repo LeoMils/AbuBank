@@ -12,6 +12,8 @@ export enum Screen {
   AbuGames    = 'AbuGames',
   AbuWeather  = 'AbuWeather',
   AbuCalendar = 'AbuCalendar',
+  AbuBank     = 'AbuBank',
+  AbuNews     = 'AbuNews',
   FamilyGallery = 'FamilyGallery',
   FamilyRecord = 'FamilyRecord',
 }
@@ -29,6 +31,8 @@ export const SCREEN_LABELS: Record<Screen, string> = {
   [Screen.AbuGames]:    'משחקים',
   [Screen.AbuWeather]:  'מזג האוויר',
   [Screen.AbuCalendar]: 'יומן פגישות',
+  [Screen.AbuBank]:     'Abu Bank — שירותים',
+  [Screen.AbuNews]:     'Abu News — חדשות',
   [Screen.FamilyGallery]: 'אלבום משפחתי',
   [Screen.FamilyRecord]: 'תעודת המשפחה',
 }

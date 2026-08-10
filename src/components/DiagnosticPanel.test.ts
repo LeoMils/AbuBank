@@ -145,9 +145,11 @@ describe('P0.4 — Home does NOT carry a diagnostic pill (visual safety)', () =>
     expect(HOME.includes('__abubankOpenDiag')).toBe(false)
   })
 
-  it('Home preserves the QA version pill (unchanged from pre-PR31 baseline)', () => {
+  it('Home preserves the QA version pill (absolute overlay, not in a flex footer)', () => {
     expect(HOME.includes('data-testid="home-qa-version"')).toBe(true)
-    expect(HOME.includes("position: 'absolute', top: 8, left: 10")).toBe(true)
+    // The pill is an absolute overlay in the corner (the PR31 concern was pills inside
+    // the footer flex disturbing layout — this one is outside any flex row).
+    expect(HOME.includes("position: 'absolute', top: 6, left: 10")).toBe(true)
   })
 })
 

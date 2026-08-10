@@ -37,12 +37,17 @@ describe('Abu AI entry point — cutover to the live path', () => {
   const appSrc = read('App.tsx')
 
   it('home Abu AI tile routes to the live path, not the legacy AbuAI screen', () => {
-    // The 'ai' tile opens the live overlay through the opener…
-    expect(homeSrc).toMatch(/item\.id === 'ai'\s*\?\s*\(\)\s*=>\s*openLiveAbu\(\)/)
-    // …and openLiveAbu invokes the global App exposes.
-    expect(homeSrc).toContain('__abubankOpenLive')
-    // The tile must NOT navigate to the legacy Screen.AbuAI anymore.
-    expect(homeSrc).not.toMatch(/item\.id === 'ai'[^\n]*setScreen\(Screen\.AbuAI\)/)
+    // The hub routing now lives in screens/Home/hub.ts (locked also by hub.test.ts).
+    const hubSrc = read('screens/Home/hub.ts')
+    // Home dispatches the hub action through openLiveAbu (imported from hub)…
+    expect(homeSrc).toContain('openLiveAbu')
+    // …the Abu AI hub entry is a LIVE action, never a screen…
+    expect(hubSrc).toMatch(/id:\s*'ai'[^\n]*action:\s*\{\s*kind:\s*'live'\s*\}/)
+    // …openLiveAbu invokes the global App exposes…
+    expect(hubSrc).toContain('__abubankOpenLive')
+    // …and neither Home nor the hub ever points Abu AI at the legacy Screen.AbuAI.
+    expect(homeSrc).not.toContain('Screen.AbuAI')
+    expect(hubSrc).not.toContain('Screen.AbuAI')
   })
 
   it('the live overlay no longer REQUIRES ?live=1 (opened via the global)', () => {
