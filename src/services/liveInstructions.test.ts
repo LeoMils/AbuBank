@@ -121,18 +121,18 @@ describe('buildLiveInstructions', () => {
   })
 })
 
-describe('name pronunciation guidance (spoken form, not spelling)', () => {
+describe('name pronunciation guidance (read the Latin spelling as Spanish)', () => {
   it('projects a person\'s pronunciation map into a per-language bullet', () => {
     const g = buildPronunciationGuidance({
       family: {
         children: [
-          { canonical_name: 'Leo', hebrew_name: 'לאו', pronunciation: { es: 'LEH-oh' } },
+          { canonical_name: 'Leo', hebrew_name: 'לאו', pronunciation: { es: 'leo' } },
           { canonical_name: 'Mor', hebrew_name: 'מור' }, // no pronunciation → omitted
         ],
       },
     })
     expect(g).toContain('לאו (Leo)')
-    expect(g).toContain('Spanish: LEH-oh')
+    expect(g).toContain('Spanish: leo')
     expect(g).not.toContain('מור') // people without a pronunciation are not listed
   })
 
@@ -140,14 +140,30 @@ describe('name pronunciation guidance (spoken form, not spelling)', () => {
     expect(buildPronunciationGuidance({ family: { children: [{ canonical_name: 'Mor', hebrew_name: 'מור' }] } })).toBe('')
   })
 
-  it('the seeded family: Leo is pronounced the Spanish way, never the English "LEE-oh"', () => {
+  it('the real store reads every listed person by their exact Spanish Latin spelling', () => {
+    const g = buildPronunciationGuidance() // real family_data.json
+    const expected: Record<string, string> = {
+      'לאו (Leo)': 'leo', 'מור (Mor)': 'mor', 'רפי (Raphi)': 'rafi', 'אופיר (Ofir)': 'ofir',
+      'איילון (Ayalon)': 'eilon', 'עילי (Eili)': 'ilay', 'אדר (Adar)': 'adar',
+      'עדי (Adi)': 'adi', 'נועם (Noam)': 'noam', 'ירדן (Yarden)': 'yarden', 'גלעד (Gilad)': 'gilad',
+      'אנאבל (Anabel)': 'anabel', 'ארי (Ari)': 'ari', 'יעל (Yael)': 'yael',
+      'מרטיטה (Martita)': 'martita', 'פפי (Papi)': 'papi',
+    }
+    for (const [name, es] of Object.entries(expected)) {
+      expect(g, `${name} → ${es}`).toContain(`- ${name} — Spanish: ${es}`)
+    }
+  })
+
+  it('the seeded family: names are read as Spanish, by their Latin spelling (no invented respellings)', () => {
     const out = buildLiveInstructions()
     expect(out).toContain('# How to Say Names (Pronunciation)')
-    expect(out).toContain('לאו (Leo)')
-    expect(out).toContain('LEH-oh')
-    expect(out).toContain('LEE-oh')       // the guidance names the wrong form to avoid
-    expect(out).toMatch(/never the English "LEE-oh"/i)
-    expect(out).toMatch(/NEVER anglicize/i)
+    expect(out).toMatch(/READING ITS LATIN SPELLING AS SPANISH/i)
+    expect(out).toMatch(/no English vowel shifts/i)
+    // the exact Latin spellings Leo supplied — Leo → "leo", Ayalon read as "eilon"
+    expect(out).toContain('לאו (Leo) — Spanish: leo')
+    expect(out).toContain('איילון (Ayalon) — Spanish: eilon')
+    // the old free-text respelling is gone
+    expect(out).not.toContain('LEH-oh')
     // the section sits after the family knowledge and before the tools
     expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeGreaterThan(out.indexOf('# What Abu Knows — Family'))
     expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeLessThan(out.indexOf('# Tools and Actions'))

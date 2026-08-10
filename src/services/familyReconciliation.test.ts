@@ -88,3 +88,38 @@ describe('Part C.4 — family source reconciliation', () => {
     }
   })
 })
+
+describe('Adi and Noam are MALE (data correction — the prose had their gender unknown)', () => {
+  it('family_data.json records them as grandson / בן (male)', () => {
+    const leo = (familyData as { family: { grandchildren_leo: Array<{ canonical_name: string; relationship: string; relationship_hebrew?: string }> } }).family.grandchildren_leo
+    for (const name of ['Adi', 'Noam']) {
+      const p = leo.find((x) => x.canonical_name === name)!
+      expect(p.relationship).toBe('grandson')
+      expect(p.relationship_hebrew).toMatch(/בן של לאו/)   // male: בן, not בת/ילד-ה
+    }
+  })
+
+  it('abu-family.md declares both as בן (male), not gender-ambiguous or unknown', () => {
+    expect(abuFamilyMd).not.toContain('ילד/ה של לאו')          // the ambiguous slash form is gone
+    expect(abuFamilyMd).not.toMatch(/המגדר של עדי ונועם/)      // removed from the "unknown" section
+    expect(abuFamilyMd).toMatch(/##\s*עדי[^#]*בן של לאו/)
+    expect(abuFamilyMd).toMatch(/##\s*נועם[^#]*בן של לאו/)
+  })
+
+  it('the assembled live instructions never mark their gender unknown', () => {
+    expect(buildLiveInstructions()).not.toContain('המגדר של עדי ונועם')
+  })
+})
+
+describe('Spanish-spelling aliases resolve to the right person (eilon → Ayalon, ilay → Eili)', () => {
+  it('eilon resolves to איילון', () => {
+    const r = resolveContact('eilon')
+    expect(r.status).toBe('resolved')
+    expect(r.status === 'resolved' && r.label).toBe('איילון')
+  })
+  it('ilay resolves to עילי', () => {
+    const r = resolveContact('ilay')
+    expect(r.status).toBe('resolved')
+    expect(r.status === 'resolved' && r.label).toBe('עילי')
+  })
+})

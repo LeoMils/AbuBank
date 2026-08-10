@@ -19,12 +19,12 @@ import { buildPronunciationGuidance } from '../liveInstructions'
 const NOW = Date.parse('2026-08-10T09:00:00.000Z')
 
 describe('pronunciation guidance reaches the live session', () => {
-  it('the seeded Leo pronunciation (LEH-oh, never LEE-oh) is in the session instructions', () => {
+  it('the Spanish-reading rule + the seeded Latin spellings reach the session instructions', () => {
     const { instructions } = buildHarnessSession(NOW)
     expect(instructions).toContain('# How to Say Names (Pronunciation)')
-    expect(instructions).toContain('לאו (Leo)')
-    expect(instructions).toContain('LEH-oh')
-    expect(instructions).toMatch(/never the English "LEE-oh"/i)
+    expect(instructions).toMatch(/READING ITS LATIN SPELLING AS SPANISH/i)
+    expect(instructions).toContain('לאו (Leo) — Spanish: leo')
+    expect(instructions).toContain('איילון (Ayalon) — Spanish: eilon')
   })
 
   it('the guidance the harness sees is byte-identical to the voice session.update', () => {

@@ -94,13 +94,14 @@ export const ABU_KNOWLEDGE = stripEditorPreamble(knowledgeRaw)
 
 // ─── Name pronunciation (spoken form, not spelling) ──────────────────────────
 /*
- * Hebrew and Spanish names spoken by a model that defaults to English phonetics
- * sound wrong to Martita ("Leo" → English "LEE-oh" instead of "LEH-oh"). Each
- * person in knowledge/family_data.json may carry an optional `pronunciation` map
- * of language → the spoken form of the name (how it SOUNDS, never how it is
- * spelled). This projects that structured field into an instruction section so the
- * Realtime model pronounces names by the field and never by the written form. It is
- * derived from the SAME family source of truth liveContacts reads — no duplication.
+ * Names spoken by a model that defaults to English phonetics sound wrong to Martita
+ * (Spanish/Hebrew names anglicised). The rule is the simplest possible: every family
+ * name is pronounced by READING ITS LATIN SPELLING AS SPANISH — pure Spanish vowels,
+ * Spanish stress, no English shifts. Each person in knowledge/family_data.json may
+ * carry an optional `pronunciation` map of language → the Latin spelling to read that
+ * way (e.g. { es: "leo" }). This projects that structured field into an instruction
+ * section, derived from the SAME family source of truth liveContacts reads — no
+ * duplication, no invented phonetic respellings.
  */
 const LANG_DISPLAY: Record<string, string> = { es: 'Spanish', he: 'Hebrew', en: 'English' }
 
@@ -219,7 +220,7 @@ export function buildLiveInstructions(): string {
     ...(pronunciation
       ? [
           '# How to Say Names (Pronunciation)',
-          'These names must be SPOKEN exactly as written below — this is how the name SOUNDS, not how it is spelled. When you say each name, pronounce it this way and NEVER anglicize it or read it by its English spelling:',
+          'Every family name is pronounced by READING ITS LATIN SPELLING AS SPANISH: pure Spanish vowel values (a, e, i, o, u exactly as in Spanish) and Spanish stress, with NO English vowel shifts and NO English stress. This applies to every name and nickname below — and to any other family name or nickname (Abu, Marta, Papi, Victor). Read the Latin spelling shown after each name exactly as a Spanish speaker would:',
           '',
           pronunciation,
           '',
