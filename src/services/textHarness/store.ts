@@ -20,6 +20,7 @@ export function inMemoryCalendarStore(
     date: e.date,
     time: e.time,
     ...(e.participant ? { participant: e.participant } : {}),
+    ...(e.location ? { location: e.location } : {}),
   }))
   return {
     events,
@@ -33,6 +34,9 @@ export function inMemoryCalendarStore(
         date: e.date,
         time: e.time,
         ...(e.participant ? { participant: e.participant } : {}),
+        // If the caller ever passes a location, keep it — so a future LiveTools fix
+        // makes the location scenarios go green without touching this store.
+        ...(e.location ? { location: e.location } : {}),
       }
       events.push(stored)
       // Round-trip verify against the same array (never a false "saved").

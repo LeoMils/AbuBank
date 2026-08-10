@@ -38,6 +38,10 @@ export interface LiveEvent {
   date: string        // YYYY-MM-DD
   time: string        // HH:MM or ''
   participant?: string
+  /** Optional location. NOTE: the live commit path (doCalendar/durableCalendarStore)
+   *  does NOT yet persist this — the text harness's location scenarios assert on it to
+   *  make the device "location dropped on save" bug visible. */
+  location?: string
 }
 
 /** Persistence seam — production wires this to the durable calendar store

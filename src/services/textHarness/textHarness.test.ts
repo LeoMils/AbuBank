@@ -10,9 +10,10 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  checkToolBeforeSpeech, checkNoStalling, checkPersistedMatchesClaim,
-  checkNameInLongConversation, checkNoCapabilityWithoutTool, checkHebrewAndFeminine,
+  checkToolBeforeSpeech, checkNoStalling, checkPersistedMatchesClaim, checkLocationSurvives,
+  checkNameInLongConversation, checkNoCapabilityWithoutTool, checkHebrewAndFeminine, claimsSave,
 } from './assertions'
+import type { LiveEvent } from '../liveTools'
 import { runScenario } from './runner'
 import { scriptedDriver, blockedDriver } from './drivers'
 import { SCENARIOS } from './scenarios'
@@ -69,6 +70,39 @@ describe('assertion: persisted state matches Abu\'s claim', () => {
     checkPersistedMatchesClaim([abu('קבעתי לך את התור', 0, 1)], [{ id: 'x', title: 'תור', date: '2026-08-11', time: '10:00' }], v)
     expect(v).toEqual([])
   })
+  // FIXED false positive: a NEGATED save ("לא קבעתי עדיין" = not set up yet) is a
+  // denial, not a claim, and must not fire on an empty calendar.
+  it('does NOT flag a negated save ("לא קבעתי עדיין") on an empty calendar', () => {
+    const v: Violation[] = []
+    checkPersistedMatchesClaim([abu('לא קבעתי עדיין, אני צריכה לדעת עם מי', 0, 1)], [], v)
+    expect(v).toEqual([])
+  })
+  it('claimsSave: true for a real claim, false when negated', () => {
+    expect(claimsSave('קבעתי לך את התור')).toBe(true)
+    expect(claimsSave('לא קבעתי עדיין')).toBe(false)
+    expect(claimsSave('עדיין לא שמרתי את זה')).toBe(false)
+  })
+})
+
+describe('assertion: location survives to the persisted event', () => {
+  const withLoc: Scenario = { id: 'loc', title: 'loc', expectLocation: 'קפה נמרוד', turns: [{ user: 'x' }] }
+  it('flags when the location was dropped (persisted event has none)', () => {
+    const v: Violation[] = []
+    const persisted: LiveEvent[] = [{ id: 'a', title: 'פגישה', date: '2026-08-11', time: '16:00' }]
+    checkLocationSurvives(withLoc, persisted, v)
+    expect(v.map((x) => x.code)).toContain('LOCATION_DROPPED')
+  })
+  it('passes when the persisted event carries the location', () => {
+    const v: Violation[] = []
+    const persisted: LiveEvent[] = [{ id: 'a', title: 'פגישה', date: '2026-08-11', time: '16:00', location: 'קפה נמרוד' }]
+    checkLocationSurvives(withLoc, persisted, v)
+    expect(v).toEqual([])
+  })
+  it('is a no-op when the scenario declares no expected location', () => {
+    const v: Violation[] = []
+    checkLocationSurvives({ id: 'n', title: 'n', turns: [{ user: 'x' }] }, [], v)
+    expect(v).toEqual([])
+  })
 })
 
 describe('assertion: name appears in long conversations', () => {
@@ -107,10 +141,17 @@ describe('assertion: Hebrew output + feminine self-reference', () => {
     checkHebrewAndFeminine(s, [abu('I will help you right now', 0, 1)], v)
     expect(v.map((x) => x.code)).toContain('NON_HEBREW_OUTPUT')
   })
-  it('flags masculine self-reference', () => {
+  it('flags a genuinely masculine self-reference ("אני בודק")', () => {
     const v: Violation[] = []
     checkHebrewAndFeminine(s, [abu('אני בודק לך את זה', 0, 1)], v)
     expect(v.map((x) => x.code)).toContain('MASCULINE_SELF_REFERENCE')
+  })
+  // FIXED false positive: רואה / רוצה are spelled identically for both genders and
+  // must NOT be flagged (Abu is not mis-gendering herself).
+  it('does NOT flag the gender-homographic "אני רואה" / "אני רוצה"', () => {
+    const v: Violation[] = []
+    checkHebrewAndFeminine(s, [abu('אני רואה שיום שישי זה ה־14', 0, 1), abu('אני רוצה לעזור לך', 0, 2)], v)
+    expect(v.map((x) => x.code)).not.toContain('MASCULINE_SELF_REFERENCE')
   })
   it('passes feminine Hebrew with an allowed brand word', () => {
     const v: Violation[] = []
@@ -183,13 +224,13 @@ describe('runner plumbing via a scripted driver', () => {
   })
 })
 
-// ─── the 40 seed scenarios are well-formed ───────────────────────────────────
+// ─── the 43 seed scenarios are well-formed ───────────────────────────────────
 
-describe('the 40 seed scenarios', () => {
-  it('there are exactly 40, with unique ids and non-empty Hebrew/Spanish turns', () => {
-    expect(SCENARIOS).toHaveLength(40)
+describe('the 43 seed scenarios', () => {
+  it('there are exactly 43, with unique ids and non-empty Hebrew/Spanish turns', () => {
+    expect(SCENARIOS).toHaveLength(43)
     const ids = SCENARIOS.map((s) => s.id)
-    expect(new Set(ids).size).toBe(40)
+    expect(new Set(ids).size).toBe(43)
     for (const s of SCENARIOS) {
       expect(s.turns.length).toBeGreaterThan(0)
       for (const t of s.turns) expect(t.user.trim().length).toBeGreaterThan(0)
@@ -198,12 +239,15 @@ describe('the 40 seed scenarios', () => {
   it('covers every required category', () => {
     const has = (frag: string) => SCENARIOS.some((s) => s.id.includes(frag))
     for (const frag of ['calendar-create', 'calendar-readback', 'calendar-update', 'contact-ambiguous',
-      'interruption', 'topic-change', 'chitchat', 'current-info', 'emotional', 'confused', 'bait', 'spanish', 'long-conversation']) {
+      'interruption', 'topic-change', 'chitchat', 'current-info', 'emotional', 'confused', 'bait', 'spanish',
+      'long-conversation', 'calendar-location']) {
       expect(has(frag), `missing category: ${frag}`).toBe(true)
     }
   })
-  it('has tool-requiring turns and a fake-family-graph scenario', () => {
+  it('has tool-requiring turns, a fake-family-graph scenario, and location-survival scenarios', () => {
     expect(SCENARIOS.some((s) => s.turns.some((t) => t.requiresTool))).toBe(true)
     expect(SCENARIOS.some((s) => s.fakes?.familyData)).toBe(true)
+    // Three scenarios assert location survives (the device bug).
+    expect(SCENARIOS.filter((s) => s.expectLocation).length).toBe(3)
   })
 })

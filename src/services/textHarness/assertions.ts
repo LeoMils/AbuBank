@@ -21,8 +21,23 @@ import type { Scenario, ScenarioTurn, ToolCallRecord, TranscriptEntry, Violation
 /** Banned stalling phrases: Abu must return a grounded result, never park the user. */
 export const STALLING_PHRASES = ['רגע', 'אני בודקת', 'תכף אחזור', 'שנייה', 'חכי רגע']
 
-/** Hebrew words that CLAIM a persisted calendar write ("קבעתי", "שמרתי", "רשמתי"). */
-const SAVE_CLAIM = /(קבעתי|שמרתי|רשמתי|הוספתי|נקבע|נשמר|רשומה ביומן|הכנסתי ליומן)/
+/** Hebrew verbs that CLAIM a persisted calendar write ("קבעתי", "שמרתי", "רשמתי"). */
+const SAVE_VERBS = ['קבעתי', 'שמרתי', 'רשמתי', 'הוספתי', 'נקבע', 'נשמר', 'רשומה ביומן', 'הכנסתי ליומן']
+
+/** True if `text` asserts a save that is NOT negated. A save-verb immediately
+ *  preceded by "לא" ("לא קבעתי עדיין" = "I haven't set it up yet") is a DENIAL, not
+ *  a claim, and must not count — the negation-blind check was a false positive. */
+export function claimsSave(text: string): boolean {
+  for (const verb of SAVE_VERBS) {
+    let idx = text.indexOf(verb)
+    while (idx >= 0) {
+      const before = text.slice(Math.max(0, idx - 8), idx)
+      if (!/לא\s*$/.test(before)) return true // a save-verb that is not negated
+      idx = text.indexOf(verb, idx + verb.length)
+    }
+  }
+  return false
+}
 
 /** Latin tokens that are allowed to appear in otherwise-Hebrew output (brand names). */
 const LATIN_ALLOWLIST = /^(abu|martita|whatsapp|ok|leo|mor|ela|pepe)$/i
@@ -84,13 +99,28 @@ export function checkNoStalling(transcript: TranscriptEntry[], v: Violation[]): 
 export function checkPersistedMatchesClaim(
   transcript: TranscriptEntry[], persisted: LiveEvent[], v: Violation[],
 ): void {
-  const claimed = transcript.filter((t) => t.role === 'abu' && SAVE_CLAIM.test(t.text))
+  const claimed = transcript.filter((t) => t.role === 'abu' && claimsSave(t.text))
   for (const claim of claimed) {
     if (persisted.length === 0) {
       push(v, 'PERSISTED_STATE_MISMATCH', claim.turn, `claimed a save ("${claim.text.slice(0, 40)}") but the calendar is empty`)
     }
   }
   // Inverse: a real save with no claim is not a violation (Abu may read it back later).
+}
+
+// ── 3b. a location the user gave must survive to the persisted event ─────────
+/** The exact device bug: an event created/updated WITH a location loses the
+ *  location by the time it is committed and read back. If the scenario declares an
+ *  expected location, assert the persisted event actually carries it. */
+export function checkLocationSurvives(
+  scenario: Scenario, persisted: LiveEvent[], v: Violation[],
+): void {
+  const want = scenario.expectLocation
+  if (!want) return
+  const survived = persisted.some((e) => !!e.location && e.location.includes(want))
+  if (!survived) {
+    push(v, 'LOCATION_DROPPED', -1, `location "${want}" did not survive to the persisted event (persisted: ${JSON.stringify(persisted)})`)
+  }
 }
 
 // ── 4. user's name appears in long conversations ─────────────────────────────
@@ -126,8 +156,10 @@ const HEBREW = /[֐-׿]/
 /** Masculine self-reference forms Abu (female) must never use about herself. JS `\b`
  *  is ASCII-only (useless for Hebrew), so we anchor on explicit non-letter boundaries
  *  and use a trailing boundary that the feminine form (…ת) would not satisfy — so
- *  "אני בודק" is flagged but "אני בודקת" is not. */
-const MASC_SELF = /(^|[\s.,!?])אני\s+(בודק|שומע|יודע|חושב|רואה|מבין|מוכן|יכול|הולך|רוצה|שמח)(?=[\s.,!?]|$)/
+ *  "אני בודק" is flagged but "אני בודקת" is not. Gender-HOMOGRAPHIC present-tense verbs
+ *  (רואה, רוצה — spelled identically for masculine and feminine) are deliberately
+ *  EXCLUDED: they were false positives (Abu was not mis-gendering herself). */
+const MASC_SELF = /(^|[\s.,!?])אני\s+(בודק|שומע|יודע|חושב|מבין|מוכן|יכול|הולך|שמח)(?=[\s.,!?]|$)/
 
 export function checkHebrewAndFeminine(scenario: Scenario, transcript: TranscriptEntry[], v: Violation[]): void {
   // Spanish scenarios are exempt from the Hebrew-script check (Rioplatense is Latin).
@@ -161,6 +193,7 @@ export function runAssertions(
   checkToolBeforeSpeech(scenario.turns, transcript, toolCalls, v)
   checkNoStalling(transcript, v)
   checkPersistedMatchesClaim(transcript, persisted, v)
+  checkLocationSurvives(scenario, persisted, v)
   checkNameInLongConversation(scenario, transcript, v)
   checkNoCapabilityWithoutTool(transcript, v)
   checkHebrewAndFeminine(scenario, transcript, v)

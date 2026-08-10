@@ -5,7 +5,7 @@
  * it is skipped so the suite stays fast/offline. When it runs it:
  *   • prints the EXACT build-time session instructions string;
  *   • reports the word count of abu-persona.md, abu-family.md, abu-knowledge.md;
- *   • drives all 40 scenarios through the shared live-path reasoning/tool/turn loop
+ *   • drives all 43 scenarios through the shared live-path reasoning/tool/turn loop
  *     via the environment's model driver (real OpenAI when a key is present; else
  *     BLOCKED — never faked);
  *   • prints, per scenario, the full transcript, every tool call (args + results),
@@ -55,7 +55,7 @@ function printScenario(r: ScenarioResult): void {
 }
 
 describe.skipIf(!RUN)('TEXT HARNESS — full report run', () => {
-  it('runs all 40 scenarios and reports (always passes; failures are surfaced, not fixed)', async () => {
+  it('runs all 43 scenarios and reports (always passes; failures are surfaced, not fixed)', async () => {
     const counts = {
       'abu-persona.md': wordCount('abu-persona.md'),
       'abu-family.md': wordCount('abu-family.md'),
@@ -106,11 +106,11 @@ describe.skipIf(!RUN)('TEXT HARNESS — full report run', () => {
     } catch (e) { console.log('Could not write JSON report:', (e as Error).message) }
 
     // Never fails the suite — the report IS the deliverable.
-    expect(results).toHaveLength(40)
-  }, 120_000)
+    expect(results).toHaveLength(43)
+  }, 300_000)
 })
 
 // Keep the file non-empty when skipped so vitest reports a clean pass.
 describe('TEXT HARNESS — report file loads', () => {
-  it('has 40 scenarios wired', () => { expect(SCENARIOS).toHaveLength(40) })
+  it('has 43 scenarios wired', () => { expect(SCENARIOS).toHaveLength(43) })
 })

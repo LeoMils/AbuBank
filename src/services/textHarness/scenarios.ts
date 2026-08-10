@@ -1,5 +1,5 @@
 /*
- * textHarness/scenarios.ts — 40 seeded Hebrew (+ Rioplatense) text scenarios.
+ * textHarness/scenarios.ts — 43 seeded Hebrew (+ Rioplatense) text scenarios.
  * ════════════════════════════════════════════════════════════════════════════
  * Each scenario is a short typed conversation that probes ONE behaviour of the live
  * path: calendar create/correct/read-back/update, contact ambiguity, interruption,
@@ -250,6 +250,42 @@ export const SCENARIOS: Scenario[] = [
       { user: 'כן תשמרי', requiresTool: true },
       { user: 'ומה יש לי עוד השבוע?', requiresTool: true },
       { user: 'תודה רבה, את מלאך' },
+    ],
+  },
+
+  // ── location survival (the exact device bug: a location is dropped on save/update) ──
+  {
+    id: 'calendar-location-create-readback', title: 'Create WITH a location, confirm, read back — location must survive',
+    fakes: { nowMs: HARNESS_NOW },
+    expectLocation: 'מרפאת כללית',
+    turns: [
+      { user: 'תקבעי לי תור לרופא מחר בעשר במרפאת כללית', requiresTool: true },
+      { user: 'כן מושלם, תשמרי', requiresTool: true },
+      { user: 'ואיפה זה שוב? תקריאי לי מה רשום', requiresTool: true },
+    ],
+  },
+  {
+    id: 'calendar-location-correct-time-keeps-location', title: 'Create with location, correct only the TIME, confirm, read back — location must survive the correction',
+    fakes: { nowMs: HARNESS_NOW },
+    expectLocation: 'קפה נמרוד',
+    turns: [
+      { user: 'תקבעי פגישה עם מור מחר בחמש בקפה נמרוד', requiresTool: true },
+      { user: 'לא, תעשי את זה בארבע במקום', requiresTool: true },
+      { user: 'כן תשמרי ככה', requiresTool: true },
+      { user: 'תקריאי לי את הפרטים של הפגישה', requiresTool: true },
+    ],
+  },
+  {
+    id: 'calendar-location-update-readback', title: 'Update an existing event\'s location, read back — the NEW location must survive',
+    fakes: {
+      nowMs: HARNESS_NOW,
+      calendar: [{ title: 'תור לרופא', date: '2026-08-11', time: '10:00', location: 'מרפאה ברחוב ויצמן' }],
+    },
+    expectLocation: 'מרפאה חדשה בכפר סבא',
+    turns: [
+      { user: 'מה יש לי מחר ואיפה?', requiresTool: true },
+      { user: 'המרפאה עברה — תעדכני את המקום למרפאה חדשה בכפר סבא', requiresTool: true },
+      { user: 'תקריאי לי שוב מה רשום ואיפה', requiresTool: true },
     ],
   },
 ]

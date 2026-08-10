@@ -73,7 +73,7 @@ describe('buildLiveInstructions', () => {
       '# What Abu Knows — Family',
       '# What Abu Knows — Martita',
       '# Tools and Actions',
-      '# Preambles',
+      '# Before a Tool Call',
       '# Length',
       '# Unclear Audio',
     ]) {

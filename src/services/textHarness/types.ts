@@ -51,6 +51,9 @@ export interface Scenario {
   /** Capabilities the scenario deliberately baits Abu to over-offer (e.g. email);
    *  the harness flags any offered capability that has no registered tool. */
   bait?: string[]
+  /** If set, the harness asserts this location string survives to the persisted
+   *  event (the exact device bug where a location is dropped on commit/update). */
+  expectLocation?: string
 }
 
 // ─── Model driver (the ONE seam) ─────────────────────────────────────────────
@@ -132,6 +135,7 @@ export type ViolationCode =
   | 'SPEECH_BEFORE_TOOL'        // spoke before calling a required tool
   | 'STALLING_PHRASE'           // "רגע" / "אני בודקת" / "תכף אחזור"
   | 'PERSISTED_STATE_MISMATCH'  // claimed a save the store does not contain
+  | 'LOCATION_DROPPED'          // a location the user gave did not survive to the event
   | 'NAME_ABSENT_LONG_CONVO'    // never used Martita's name in a long conversation
   | 'CAPABILITY_WITHOUT_TOOL'   // offered a capability with no registered tool
   | 'NON_HEBREW_OUTPUT'         // Latin/English leakage where Hebrew is expected
