@@ -53,8 +53,13 @@ function toId(canonical: string): string {
   return canonical.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
+/** Test/harness seam: when set, the registry is built from THIS data instead of the
+ *  bundled knowledge/family_data.json. Lets the text harness inject a fake family
+ *  graph per scenario. Default (null) is the real bundled data — runtime is unchanged. */
+let DATA_OVERRIDE: { family: Record<string, unknown> } | null = null
+
 function collectPeople(): PersonRecord[] {
-  const fam = (familyData as { family: Record<string, unknown> }).family
+  const fam = (DATA_OVERRIDE ?? (familyData as { family: Record<string, unknown> })).family
   const out: PersonRecord[] = []
   for (const group of PERSON_GROUPS) {
     const raw = fam[group]
@@ -82,6 +87,13 @@ function registry(): PersonRecord[] {
 
 /** Test seam: rebuild the registry (used only if the data is swapped in a test). */
 export function __resetContactRegistry(): void { REGISTRY = null }
+
+/** Test/harness seam: inject a fake family graph (or null to restore the bundled
+ *  data). Rebuilds the registry on the next resolve. Never used by runtime. */
+export function __setContactData(fake: { family: Record<string, unknown> } | null): void {
+  DATA_OVERRIDE = fake
+  REGISTRY = null
+}
 
 /** Every known contact id (for validating an id the model hands back). */
 export function knownContactIds(): Set<string> {

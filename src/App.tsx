@@ -118,19 +118,26 @@ export function App() {
     setFamilyPhonesOpen(false)
   }
 
-  // Milestone 1 live screen — open via ?live=1 (works from a plain iPhone Safari
-  // link / installed PWA, no console needed). Top-level overlay, zero coupling.
+  // Abu AI live path — now the DEFAULT and only Abu AI. The home Abu AI tile opens
+  // this overlay via the __abubankOpenLive global (no ?live=1 required anymore). The
+  // ?live=1 URL is still honored as a harmless deep-link alias, but is no longer a
+  // gate. The legacy AbuAI screen survives ONLY behind ?legacy=1 (see below).
   const readLiveParam = () => {
     try { return new URL(window.location.href).searchParams.get('live') === '1' } catch { return false }
   }
   const [liveOpen, setLiveOpen] = useState<boolean>(readLiveParam)
   useEffect(() => {
-    const check = () => setLiveOpen(readLiveParam())
+    const check = () => { if (readLiveParam()) setLiveOpen(true) }
     window.addEventListener('popstate', check)
     window.addEventListener('hashchange', check)
+    // The one entry point: any tile/button opens the live path through this global,
+    // mirroring __abubankOpenFamilyPhones / __abubankOpenDiag (no prop drilling
+    // through the Suspense/lazy boundary).
+    ;(window as unknown as { __abubankOpenLive?: () => void }).__abubankOpenLive = () => setLiveOpen(true)
     return () => {
       window.removeEventListener('popstate', check)
       window.removeEventListener('hashchange', check)
+      delete (window as unknown as { __abubankOpenLive?: () => void }).__abubankOpenLive
     }
   }, [])
   const closeLive = () => {
@@ -140,6 +147,15 @@ export function App() {
     } catch { /* */ }
     setLiveOpen(false)
   }
+
+  // Legacy AbuAI screen — DEPRECATED, kept reachable ONLY via ?legacy=1 (never from
+  // the home tile). Routes the legacy Screen enum on mount so the old canned-string
+  // cascade cannot be reached from the default route.
+  useEffect(() => {
+    try {
+      if (new URL(window.location.href).searchParams.get('legacy') === '1') setScreen(Screen.AbuAI)
+    } catch { /* */ }
+  }, [setScreen])
 
   // P0.3 — app-wide diagnostic overlay. Visible whenever the user
   // navigates to ?diagnostics=1 / ?diagnostic=1 / #diagnostics, or when

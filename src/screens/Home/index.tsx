@@ -20,6 +20,15 @@ function handleTap(url: string): void {
   window.location.href = url;
 }
 
+// Abu AI tile → the live path (the default and only Abu AI). Opens the top-level
+// live overlay via the global App exposes (__abubankOpenLive), mirroring the
+// family-phones / diagnostics openers. No ?live=1 needed; the legacy AbuAI screen
+// is reachable only via ?legacy=1 and never from here.
+function openLiveAbu(): void {
+  const w = window as unknown as { __abubankOpenLive?: () => void };
+  if (typeof w.__abubankOpenLive === 'function') w.__abubankOpenLive();
+}
+
 const DARK_BG = ['#1a1a2e', '#0a4a45'];
 function isDarkService(svc: Service): boolean {
   return DARK_BG.includes(svc.bgColor.toLowerCase());
@@ -642,7 +651,7 @@ export function Home() {
               type="button"
               className="btn-focus"
               onClick={item.id === 'calendar'  ? () => setScreen(Screen.AbuCalendar)
-                : item.id === 'ai'       ? () => setScreen(Screen.AbuAI)
+                : item.id === 'ai'       ? () => openLiveAbu()
                 : item.id === 'games'    ? () => setScreen(Screen.AbuGames)
                 : item.id === 'weather'  ? () => setScreen(Screen.AbuWeather)
                 : item.id === 'whatsapp' ? () => setScreen(Screen.AbuWhatsApp)

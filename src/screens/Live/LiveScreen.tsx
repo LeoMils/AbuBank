@@ -18,6 +18,7 @@ import {
   currentConversationId,
   type LiveState,
 } from '../../services/liveSession'
+import { BUILD_ID } from '../../version'
 
 const BG = '#050A18'
 const GOLD = '#C9A84C'
@@ -130,6 +131,20 @@ export function LiveScreen({ onClose }: { onClose: () => void }) {
       >
         ✕
       </button>
+
+      {/* Build fingerprint — small corner text so any screenshot proves which
+          build actually ran on the device. Never a secret; build identity only. */}
+      <div
+        data-testid="live-build-id"
+        style={{
+          position: 'absolute', bottom: 8, insetInlineEnd: 10,
+          fontSize: 11, fontFamily: 'ui-monospace, monospace',
+          color: 'rgba(245,243,236,0.45)', letterSpacing: 0.2,
+          pointerEvents: 'none', userSelect: 'text',
+        }}
+      >
+        {BUILD_ID}
+      </div>
 
       <div style={{ fontSize: 34, fontWeight: 700, color: GOLD, letterSpacing: 0.5 }}>Abu</div>
 
