@@ -21,6 +21,9 @@ import {
   __getLiveEpoch,
   LIVE_VOICE,
   LIVE_VAD_SILENCE_MS,
+  LIVE_VAD_THRESHOLD,
+  LIVE_VAD_PREFIX_PADDING_MS,
+  LIVE_TRANSCRIBE_MODEL,
   LIVE_REASONING_EFFORT,
   WAIT_FOR_USER_TOOL,
   type LiveDeps,
@@ -174,6 +177,21 @@ describe('liveSession pure helpers', () => {
     expect(LIVE_VAD_SILENCE_MS).toBeGreaterThan(500) // above the default that cuts off elderly speech
   })
 
+  it('transcription is explicit Hebrew with a family-name bias prompt; VAD uses the raised threshold', () => {
+    const u = buildSessionUpdate() as { session: { audio: { input: { transcription: { model: string; language: string; prompt: string }; turn_detection: Record<string, unknown> } } } }
+    const t = u.session.audio.input.transcription
+    expect(t.model).toBe(LIVE_TRANSCRIBE_MODEL)
+    expect(t.language).toBe('he')
+    expect(typeof t.prompt).toBe('string')
+    expect(t.prompt).toContain('מור')            // a family name biases the transcriber
+    expect(t.prompt).toContain('תקבעי לי תור')   // a common request phrasing
+    const vad = u.session.audio.input.turn_detection
+    expect(vad.threshold).toBe(LIVE_VAD_THRESHOLD)
+    expect(LIVE_VAD_THRESHOLD).toBeGreaterThan(0.5) // less barge-in sensitive than the 0.5 default
+    expect(vad.prefix_padding_ms).toBe(LIVE_VAD_PREFIX_PADDING_MS)
+    expect(vad.interrupt_response).toBe(true)       // genuine interruption stays responsive
+  })
+
   it('wait_for_user tool takes no parameters and is a function', () => {
     expect(WAIT_FOR_USER_TOOL.type).toBe('function')
     expect(WAIT_FOR_USER_TOOL.name).toBe('wait_for_user')
@@ -313,6 +331,48 @@ describe('LiveSession', () => {
     const types = h.pc.dc!.sent.map((e) => e.type)
     expect(types).toContain('conversation.item.create') // the function_call_output ack
     expect(types).not.toContain('response.create') // silence — no reply
+    h.session.teardown()
+  })
+
+  it('ONE model tool call = exactly ONE execution across all three completion shapes (no triple dispatch)', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.sent.length = 0 // drop the session.update
+    const call = { name: 'resolve_contact', call_id: 'dup1', arguments: '{"name":"מור"}' }
+    // The SAME completed call, delivered in ALL THREE official shapes (the device bug).
+    h.pc.dc!.fire({ type: 'response.function_call_arguments.done', ...call })
+    h.pc.dc!.fire({ type: 'response.output_item.done', item: { type: 'function_call', ...call } })
+    h.pc.dc!.fire({ type: 'response.done', response: { output: [{ type: 'function_call', ...call }] } })
+    // Exactly ONE function_call_output for this call id → one execution (no triple confirm).
+    const outputs = h.pc.dc!.sent.filter(
+      (e) => e.type === 'conversation.item.create'
+        && (e.item as { type?: string; call_id?: string })?.type === 'function_call_output'
+        && (e.item as { call_id?: string })?.call_id === 'dup1',
+    )
+    expect(outputs.length).toBe(1)
+    // …and the flight recorder logged exactly ONE tool_call (dispatch-boundary dedup).
+    const toolCalls = h.session.getRecorder().toExport().entries.filter(
+      (e) => e.kind === 'tool_call' && e.tool === 'resolve_contact',
+    )
+    expect(toolCalls.length).toBe(1)
+    h.session.teardown()
+  })
+
+  it('a function-call response.done stays MID-TURN — grounded speech lands in the same turn, no silent turn (finding #4)', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    // Model requests phone_call, delivered as a response.done that CARRIES the call.
+    const call = { name: 'phone_call', call_id: 'p1', arguments: '{"recipient":"לאו"}' }
+    h.pc.dc!.fire({ type: 'response.done', response: { output: [{ type: 'function_call', ...call }] } })
+    // The turn has NOT ended — Abu now speaks the card description; the SPOKEN done ends it.
+    h.pc.dc!.fire({ type: 'response.output_audio.delta', delta: 'x' })
+    expect(h.session.state).toBe('speaking')
+    h.pc.dc!.fire({ type: 'response.done', response: { phase: 'final_answer' } })
+    expect(h.session.state).toBe('listening')
+    // The tool result was followed by speech in the same turn → NOT a silent turn.
+    expect(h.session.getRecorder().silentTurnCount()).toBe(0)
     h.session.teardown()
   })
 

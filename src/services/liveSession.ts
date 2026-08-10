@@ -25,7 +25,7 @@
  * module asserts nothing about the name — it uses whatever the server chose for
  * the SDP call, so the client and mint can never drift.
  */
-import { buildLiveInstructions } from './liveInstructions'
+import { buildLiveInstructions, buildTranscriptionPrompt } from './liveInstructions'
 import { LiveTools, LIVE_TOOL_SCHEMAS, durableCalendarStore, type LiveCalendarStore, type LiveCommDraft, type LiveEvent } from './liveTools'
 import type { CalendarDraft } from '../screens/AbuAI/realtime/calendarDraft'
 import { extractFunctionCall, safeParseArgs, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
@@ -41,6 +41,23 @@ export const LIVE_VOICE = 'marin' as const
  *  default so an elderly speaker is not cut off mid-thought (the "walkie-talkie"
  *  feel). M2 tunes this against real Hebrew audio. */
 export const LIVE_VAD_SILENCE_MS = 1200
+
+/** turn_detection.threshold — server-VAD speech-probability gate. RAISED from the
+ *  0.5 default to 0.7 after a device trace showed brief room noise crossing the gate
+ *  and interrupting Abu mid-sentence (interrupt_response is TRUE, so a false
+ *  speech_started truncates her). A higher gate ignores brief/quiet noise while a
+ *  genuine, sustained utterance still interrupts. Tunable on device. */
+export const LIVE_VAD_THRESHOLD = 0.7
+
+/** turn_detection.prefix_padding_ms — audio kept before detected speech so a soft
+ *  onset is not clipped. Exported so it is tunable alongside the other VAD knobs. */
+export const LIVE_VAD_PREFIX_PADDING_MS = 300
+
+/** Input-audio transcription model for the Hebrew side-channel. Upgraded from
+ *  gpt-4o-mini-transcribe to the full gpt-4o-transcribe after a device trace showed
+ *  badly mis-heard Hebrew (and even wrong-language output). More accurate on Hebrew;
+ *  paired with an explicit language + a family-name/phrasing bias prompt. */
+export const LIVE_TRANSCRIBE_MODEL = 'gpt-4o-transcribe' as const
 
 /** Realtime 2 reasons natively; `low` keeps latency down for chat. This replaces
  *  any separate reasoning delegate. */
@@ -112,11 +129,13 @@ export function buildSessionUpdate(now: number = Date.now()): Record<string, unk
         input: {
           // The transcript is a WEAK Hebrew side-channel for the UI only — nothing
           // routes, dedups, or decides on it. The model hears the audio directly.
-          transcription: { model: 'gpt-4o-mini-transcribe', language: 'he' },
+          // Hebrew is set EXPLICITLY and a bias prompt (family names + common request
+          // phrasings) steers the transcriber toward the words Martita actually uses.
+          transcription: { model: LIVE_TRANSCRIBE_MODEL, language: 'he', prompt: buildTranscriptionPrompt() },
           turn_detection: {
             type: 'server_vad',
-            threshold: 0.5,
-            prefix_padding_ms: 300,
+            threshold: LIVE_VAD_THRESHOLD,
+            prefix_padding_ms: LIVE_VAD_PREFIX_PADDING_MS,
             silence_duration_ms: LIVE_VAD_SILENCE_MS,
             create_response: true,
             interrupt_response: true,
@@ -281,8 +300,11 @@ export class LiveSession {
   private _state: LiveState = 'idle'
   /** The ONE tool executor for this session (contacts, calendar, whatsapp/call). */
   private readonly liveTools: LiveTools
-  /** wait_for_user call ids already acknowledged (idempotent, no double-ack). */
-  private readonly waitHandled = new Set<string>()
+  /** Call ids already DISPATCHED. The same completed call arrives in three event
+   *  shapes (function_call_arguments.done / output_item.done / response.done), each
+   *  with the same call_id; this set makes the whole dispatch — recorder, wait ack,
+   *  and executor — fire EXACTLY ONCE per model tool call (no triple confirm). */
+  private readonly dispatchedCalls = new Set<string>()
   /** Flight recorder — OBSERVATION ONLY. Records my/her speech + every tool call,
    *  and surfaces silent-turn (C.3) + truncation-evidence (C.2) flags. It never
    *  changes turn/VAD/audio behaviour; the live session only appends to it.
@@ -521,8 +543,12 @@ export class LiveSession {
         break
       case 'response.done':
         // Only a FINAL answer (or a phaseless done) ends the turn. A `commentary`
-        // done is mid-turn — keep speaking; more audio is coming.
-        if (isEndOfTurn(event)) { this.recorder.onTurnEnd(); this.clearAudioWatchdog(); if (myEpoch === liveEpoch) this.setState('listening') }
+        // done is mid-turn — keep speaking; more audio is coming. A done that CARRIED
+        // a function call (fc truthy) is ALSO mid-turn: the tool result is about to be
+        // spoken (LiveTools sends the output + a response.create), so the grounded
+        // speech lands in the SAME turn. Ending here would flip to listening early AND
+        // make the recorder see a silent turn — the turn ends on the SPOKEN done.
+        if (isEndOfTurn(event) && !fc) { this.recorder.onTurnEnd(); this.clearAudioWatchdog(); if (myEpoch === liveEpoch) this.setState('listening') }
         break
       case 'error': {
         const code = String((e.error as { code?: string })?.code ?? 'SERVER_ERROR')
@@ -539,10 +565,13 @@ export class LiveSession {
    *  by the LiveTools executor (which sends the safe output + a response.create so the
    *  model speaks the grounded result). */
   private handleToolCall(fc: ParsedFunctionCall): void {
+    // ONE model tool call = ONE execution. Dispatch each call_id exactly once — before
+    // the recorder and before any executor — so a duplicate completion shape can never
+    // record a second call, ack twice, or (critically) commit a calendar event twice.
+    if (this.dispatchedCalls.has(fc.callId)) return
+    this.dispatchedCalls.add(fc.callId)
     this.recorder.onToolCall(fc.name, safeParseArgs(fc.argsJson))  // observation only
     if (fc.name === 'wait_for_user') {
-      if (this.waitHandled.has(fc.callId)) return
-      this.waitHandled.add(fc.callId)
       this.send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: fc.callId, output: '{"status":"waiting"}' } })
       this.setState('listening')
       return
@@ -587,6 +616,7 @@ export class LiveSession {
    *  the model handles it exactly like a spoken turn. No-op if the channel is closed. */
   sendUserText(text: string): void {
     if (!this.dc || this.dc.readyState !== 'open') return
+    this.recorder.onUserTypedText(text)  // observation only — provenance for a typed confirm (card tap)
     this.send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } })
     this.send({ type: 'response.create' })
   }

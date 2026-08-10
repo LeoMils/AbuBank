@@ -145,6 +145,46 @@ export function buildPronunciationGuidance(
   return lines.join('\n')
 }
 
+// ─── Transcription bias prompt (Hebrew side-channel accuracy) ────────────────
+/*
+ * The input-audio transcriber defaults toward English phonetics and mis-hears
+ * Hebrew (a device trace showed garbled Hebrew and even wrong-language output). A
+ * bias `prompt` on the transcription config steers it toward the words Martita
+ * actually uses: the family's Hebrew names/aliases (from the SAME family source of
+ * truth) plus the common Hebrew request phrasings for this product. Pure and
+ * deterministic. This biases the WEAK UI side-channel only — nothing routes on it.
+ */
+const HEBREW = /[֐-׿]/
+
+/** Common Hebrew request phrasings Martita uses — biases the transcriber toward the
+ *  product's real utterances (booking, messaging, calling, reading the calendar). */
+export const HEBREW_REQUEST_PHRASINGS = [
+  'תקבעי לי תור', 'תשלחי הודעה ל', 'תתקשרי ל', 'מה יש לי מחר', 'מה יש לי היום',
+  'מה יש לי השבוע', 'ביומן', 'בבוקר', 'בצהריים', 'אחר הצהריים', 'בערב',
+  'תזכירי לי', 'מתי יום ההולדת של', 'ארוחת שישי',
+] as const
+
+interface NamedPerson { hebrew_name?: string; aliases?: string[] }
+
+/** Build the Hebrew transcription bias prompt: every family Hebrew name + alias, plus
+ *  the common request phrasings. Deterministic over the family data. */
+export function buildTranscriptionPrompt(
+  data: { family: Record<string, unknown> } = familyData as { family: Record<string, unknown> },
+): string {
+  const names = new Set<string>()
+  for (const group of PRONUNCIATION_GROUPS) {
+    const raw = data.family[group]
+    const list: NamedPerson[] = Array.isArray(raw) ? raw : raw ? [raw as NamedPerson] : []
+    for (const p of list) {
+      if (p.hebrew_name && HEBREW.test(p.hebrew_name)) names.add(p.hebrew_name.trim())
+      for (const a of p.aliases ?? []) if (a && HEBREW.test(a)) names.add(a.trim())
+    }
+  }
+  const nameList = [...names].join(', ')
+  const phrasings = HEBREW_REQUEST_PHRASINGS.join(', ')
+  return `השיחה כולה בעברית מדוברת. שמות בני המשפחה שעשויים להופיע: ${nameList}. ביטויים נפוצים בבקשות: ${phrasings}.`
+}
+
 /**
  * The full live-session instruction string. Labeled sections (OpenAI Realtime
  * prompting guide), persona first, then the knowledge file verbatim. Pure and

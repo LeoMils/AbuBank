@@ -12,6 +12,7 @@ import path from 'path'
 import {
   buildLiveInstructions,
   buildPronunciationGuidance,
+  buildTranscriptionPrompt,
   stripEditorPreamble,
   findPhoneNumbers,
   assertNoPhoneNumbers,
@@ -150,6 +151,27 @@ describe('name pronunciation guidance (spoken form, not spelling)', () => {
     // the section sits after the family knowledge and before the tools
     expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeGreaterThan(out.indexOf('# What Abu Knows — Family'))
     expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeLessThan(out.indexOf('# Tools and Actions'))
+  })
+})
+
+describe('buildTranscriptionPrompt (Hebrew transcription bias)', () => {
+  it('declares Hebrew and biases toward family names + common request phrasings', () => {
+    const p = buildTranscriptionPrompt()
+    expect(p).toContain('בעברית')
+    expect(p).toContain('מור')            // a family Hebrew name
+    expect(p).toContain('לאו')
+    expect(p).toContain('תקבעי לי תור')   // a common request phrasing
+  })
+
+  it('includes Hebrew aliases and excludes Latin ones (the transcriber hint is Hebrew)', () => {
+    const p = buildTranscriptionPrompt({ family: { children: [{ hebrew_name: 'לאו', aliases: ['ליאו', 'Leo'] }] } })
+    expect(p).toContain('לאו')
+    expect(p).toContain('ליאו')
+    expect(p).not.toContain('Leo')
+  })
+
+  it('contains no phone numbers (built from names/phrasings only)', () => {
+    expect(findPhoneNumbers(buildTranscriptionPrompt())).toEqual([])
   })
 })
 

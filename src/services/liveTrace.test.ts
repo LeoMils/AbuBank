@@ -53,6 +53,65 @@ describe('silent-turn detector (C.3)', () => {
   })
 })
 
+describe('silent-turn detector exempts wait_for_user (finding #4)', () => {
+  it('does NOT flag a turn that ends after ONLY wait_for_user (contractually silent)', () => {
+    const r = rec()
+    r.onToolCall('wait_for_user', {})
+    r.onTurnEnd()
+    expect(r.silentTurnCount()).toBe(0)
+  })
+  it('STILL flags a grounded tool (phone_call) that ends with no spoken continuation', () => {
+    const r = rec()
+    r.onToolCall('phone_call', { recipient: 'לאו' })
+    r.onTurnEnd()
+    expect(r.silentTurnCount()).toBe(1)
+    expect(r.toExport().silentTurns[0]!.toolsInTurn).toEqual(['phone_call'])
+  })
+  it('a grounded tool FOLLOWED by speech in the same turn is not silent', () => {
+    const r = rec()
+    r.onToolCall('phone_call', { recipient: 'לאו' })
+    r.onAudioDelta(); r.onAbuText('הכרטיס מוכן, תלחצי כדי להתקשר')
+    r.onTurnEnd()
+    expect(r.silentTurnCount()).toBe(0)
+  })
+})
+
+describe('confirmation source on confirm_calendar_event (trace provenance)', () => {
+  const confirmEntry = (r: ReturnType<typeof rec>) =>
+    r.toExport().entries.find((e) => e.tool === 'confirm_calendar_event')!
+
+  it('voice: a spoken user turn after the read-back → confirmed by voice', () => {
+    const r = rec()
+    r.onAudioDelta(); r.onAbuText('לקבוע תור לרופא מחר בעשר?')   // Abu reads the draft back
+    r.onUserText('כן תשמרי')                                       // Martita confirms by voice
+    r.onToolCall('confirm_calendar_event', { forRevision: 1 })
+    expect(confirmEntry(r).confirmationSource).toBe('voice')
+    expect(r.toText()).toContain('confirmed by: voice')
+  })
+
+  it('typed: the card Confirm tap (a typed turn) → confirmed by typed', () => {
+    const r = rec()
+    r.onAbuText('הכרטיס מוכן — לאשר ולשמור?')
+    r.onUserTypedText('כן, תשמרי')
+    r.onToolCall('confirm_calendar_event', {})
+    expect(confirmEntry(r).confirmationSource).toBe('typed')
+  })
+
+  it('inferred: the model confirms with NO user input since Abu spoke → inferred', () => {
+    const r = rec()
+    r.onAudioDelta(); r.onAbuText('קבעתי לך')   // Abu speaks, then the model confirms on its own
+    r.onToolCall('confirm_calendar_event', {})
+    expect(confirmEntry(r).confirmationSource).toBe('inferred')
+  })
+
+  it('only confirm_calendar_event carries a source — other tools do not', () => {
+    const r = rec()
+    r.onUserText('כן')
+    r.onToolCall('read_calendar', {})
+    expect(r.toExport().entries.find((e) => e.tool === 'read_calendar')!.confirmationSource).toBeUndefined()
+  })
+})
+
 describe('truncation-evidence detector (C.2)', () => {
   it('flags the mic opening WHILE Abu is speaking (VAD interrupt / self-hearing)', () => {
     const r = rec()
