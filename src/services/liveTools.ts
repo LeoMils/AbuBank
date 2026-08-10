@@ -84,8 +84,16 @@ export const LIVE_TOOL_SCHEMAS = [
   },
   {
     type: 'function', name: 'read_calendar',
-    description: "Read Martita's real calendar. Optionally filter to one date. Use this for any 'what do I have' / 'when is…' question — never answer calendar questions from memory or the web.",
-    parameters: { type: 'object', properties: { date: { type: 'string', description: 'Optional real date YYYY-MM-DD (already resolved, never "מחר"). Omit for everything upcoming.' } }, required: [], additionalProperties: false },
+    description: "Read Martita's real calendar. For ONE day pass date. For a WINDOW — 'this week', 'this month', 'the next few days' — pass from AND to (inclusive real dates) so you get EVERY event in the range, not just one day. Omit all three for everything. Use this for any 'what do I have' / 'when is…' question — never answer calendar questions from memory or the web.",
+    parameters: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'A single real date YYYY-MM-DD (already resolved, never "מחר").' },
+        from: { type: 'string', description: 'Start of a date RANGE, YYYY-MM-DD (already resolved). Use WITH to for "this week"/"this month".' },
+        to: { type: 'string', description: 'End of the date RANGE, INCLUSIVE, YYYY-MM-DD (already resolved).' },
+      },
+      required: [], additionalProperties: false,
+    },
   },
   {
     type: 'function', name: 'prepare_calendar_event',
@@ -273,20 +281,35 @@ export class LiveTools {
 
   private doRead(args: Record<string, unknown>): Record<string, unknown> {
     const date = str(args, 'date')
+    const from = str(args, 'from')
+    const to = str(args, 'to')
     const all = this.store.list()
-    const events = (date ? all.filter((e) => e.date === date) : all)
+    // Filter: a single day (date), a RANGE (from..to inclusive), or everything.
+    // YYYY-MM-DD compares lexicographically == chronologically, so a string range
+    // is a correct date window (no timezone math, no off-by-one). A range that is
+    // only half-given (from XOR to) falls back to that bound as an open interval.
+    const inRange = (d: string): boolean => {
+      if (from && to) return d >= from && d <= to
+      if (from) return d >= from
+      if (to) return d <= to
+      return true
+    }
+    const filtered = date ? all.filter((e) => e.date === date) : (from || to ? all.filter((e) => inRange(e.date)) : all)
+    const events = filtered
       .slice()
       .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
       .map((e) => ({
         title: e.title, date: e.date, time: e.time || null,
         participant: e.participant ?? null, location: e.location ?? null, notes: e.notes ?? null,
       }))
+    const scope = date ?? (from || to ? `${from ?? '…'}..${to ?? '…'}` : null)
     return {
       count: events.length,
       date: date ?? null,
+      range: from || to ? { from: from ?? null, to: to ?? null } : null,
       events,
       allowed_to_say: events.length === 0
-        ? [date ? 'nothing on that day' : 'the calendar is empty']
+        ? [scope ? 'nothing in that period' : 'the calendar is empty']
         : ['read back these events exactly as given, including the location if present'],
     }
   }

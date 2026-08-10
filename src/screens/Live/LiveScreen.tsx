@@ -177,6 +177,23 @@ export function LiveScreen({ onClose }: { onClose: () => void }) {
         {BUILD_ID}
       </div>
 
+      {/* Flight-recorder export — subtle, operator-facing. Downloads the whole-session
+          trace (my speech, her speech, every tool call + turn-health flags). */}
+      {started && (
+        <button
+          onClick={() => sessionRef.current?.exportTrace()}
+          aria-label="שמירת תיעוד השיחה"
+          style={{
+            position: 'absolute', bottom: 6, insetInlineStart: 10, minHeight: 32,
+            padding: '4px 10px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.15)',
+            background: 'rgba(255,255,255,0.05)', color: 'rgba(245,243,236,0.6)',
+            fontSize: 12, cursor: 'pointer',
+          }}
+        >
+          תיעוד ⤓
+        </button>
+      )}
+
       <div style={{ fontSize: 34, fontWeight: 700, color: GOLD, letterSpacing: 0.5 }}>Abu</div>
 
       {/* Live orb — colour-coded AND labelled (no colour-only state). */}

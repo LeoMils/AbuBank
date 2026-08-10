@@ -1,12 +1,12 @@
 # ⚠️ 100% GENERATED FILE — DO NOT EDIT
 # Source of truth: knowledge/family_data.json + knowledge/martita_personality.yaml
 # Regenerate with: npm run generate:memory
-# Generated: 2026-07-04
+# Generated: 2026-08-10
 
 
 matriarch:
   canonical_name: "Martita"
-  aliases: ["אבו","Abu","Abuela"]
+  aliases: ["אבו","Abu","Abuela","מרתה"]
   birthday: "04-01"
   location: "כפר סבא"
 

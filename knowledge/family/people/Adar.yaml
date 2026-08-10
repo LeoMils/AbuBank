@@ -2,7 +2,8 @@
 group: grandchildren_mor
 canonical_name: Adar
 hebrew_name: אדר
-aliases: []
+aliases:
+- הדר
 relationship: grandson
 relationship_hebrew: נכד (הצעיר של מור ורפי)
 birthday: 02-28

@@ -200,6 +200,42 @@ describe('whatsapp_draft / phone_call — PREPARE only (card is the receipt)', (
   })
 })
 
+describe('read_calendar returns ALL events in a window (Part C.1 — filter/window/tz)', () => {
+  const seed = (h: ReturnType<typeof harness>) => {
+    h.store.events.push(
+      { id: 'a', title: 'סוף אוגוסט', date: '2026-08-30', time: '09:00' },
+      { id: 'b', title: 'יום אחרון', date: '2026-08-31', time: '10:00' },
+      { id: 'c', title: 'תחילת ספטמבר', date: '2026-09-01', time: '11:00' },
+      { id: 'd', title: 'אמצע ספטמבר', date: '2026-09-15', time: '12:00' },
+    )
+  }
+  it('exact date returns just that day', () => {
+    const h = harness(); seed(h)
+    h.call('read_calendar', { date: '2026-08-31' })
+    expect(h.lastOutput()!.count).toBe(1)
+    expect((h.lastOutput()!.events as Array<{ title: string }>)[0]!.title).toBe('יום אחרון')
+  })
+  it('a week window (from..to) returns every event in the range — not just one day', () => {
+    const h = harness(); seed(h)
+    h.call('read_calendar', { from: '2026-08-30', to: '2026-09-05' })
+    expect(h.lastOutput()!.count).toBe(3) // 30 Aug, 31 Aug, 1 Sep
+  })
+  it('a range that CROSSES a month boundary returns both months', () => {
+    const h = harness(); seed(h)
+    h.call('read_calendar', { from: '2026-08-31', to: '2026-09-01' })
+    const titles = (h.lastOutput()!.events as Array<{ title: string }>).map((e) => e.title)
+    expect(titles).toEqual(['יום אחרון', 'תחילת ספטמבר'])
+  })
+  it('no args returns everything; an empty period is honestly empty', () => {
+    const h = harness(); seed(h)
+    h.call('read_calendar', {})
+    expect(h.lastOutput()!.count).toBe(4)
+    h.call('read_calendar', { from: '2026-10-01', to: '2026-10-31' })
+    expect(h.lastOutput()!.count).toBe(0)
+    expect((h.lastOutput()!.allowed_to_say as string[])[0]).toContain('nothing')
+  })
+})
+
 describe('action-card callbacks (Part B) — the overlay gets the draft + the receipt', () => {
   it('whatsapp_draft fires onCommDraft with the recipient + composed message', () => {
     const h = harness()

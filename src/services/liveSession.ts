@@ -28,7 +28,8 @@
 import { buildLiveInstructions } from './liveInstructions'
 import { LiveTools, LIVE_TOOL_SCHEMAS, durableCalendarStore, type LiveCalendarStore, type LiveCommDraft, type LiveEvent } from './liveTools'
 import type { CalendarDraft } from '../screens/AbuAI/realtime/calendarDraft'
-import { extractFunctionCall, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
+import { extractFunctionCall, safeParseArgs, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
+import { FlightRecorder, downloadTrace } from './liveTrace'
 
 // ─── Configuration (M1 defaults; M2 tunes these by listening) ──────────────
 
@@ -282,6 +283,11 @@ export class LiveSession {
   private readonly liveTools: LiveTools
   /** wait_for_user call ids already acknowledged (idempotent, no double-ack). */
   private readonly waitHandled = new Set<string>()
+  /** Flight recorder — OBSERVATION ONLY. Records my/her speech + every tool call,
+   *  and surfaces silent-turn (C.3) + truncation-evidence (C.2) flags. It never
+   *  changes turn/VAD/audio behaviour; the live session only appends to it.
+   *  Assigned in the constructor AFTER deps (its clock reads this.deps.now()). */
+  private readonly recorder: FlightRecorder
 
   /**
    * @param isReconnect true when resuming an existing conversation after a drop —
@@ -292,6 +298,7 @@ export class LiveSession {
     this.conversationId = conversationId
     this.isReconnect = isReconnect
     this.deps = { ...defaultDeps(), ...deps }
+    this.recorder = new FlightRecorder(() => this.deps.now())
     // ONE tool executor, wired to send over this session's data channel and to the
     // durable calendar store (or an injected one in tests). No conversation state.
     // The draft/receipt callbacks forward to the overlay so every action becomes a
@@ -494,26 +501,28 @@ export class LiveSession {
 
     switch (type) {
       case 'input_audio_buffer.speech_started':
+        this.recorder.onUserSpeechStart()  // observation only — records truncation evidence
         this.clearAudioWatchdog()
         this.setState('listening')
         break
       case 'conversation.item.input_audio_transcription.completed':
         // Side-channel ONLY: hand the UI the Hebrew transcript. Nothing routes on it.
-        if (typeof e.transcript === 'string') this.cb.onUserTranscript?.(e.transcript)
+        if (typeof e.transcript === 'string') { this.cb.onUserTranscript?.(e.transcript); this.recorder.onUserText(e.transcript) }
         break
       case 'response.output_audio.delta':
       case 'response.audio.delta':
+        this.recorder.onAudioDelta()       // observation only
         this.clearAudioWatchdog()
         this.setState('speaking')
         break
       case 'response.output_audio_transcript.done':
       case 'response.audio_transcript.done':
-        if (typeof e.transcript === 'string') this.cb.onAbuTranscript?.(e.transcript)
+        if (typeof e.transcript === 'string') { this.cb.onAbuTranscript?.(e.transcript); this.recorder.onAbuText(e.transcript) }
         break
       case 'response.done':
         // Only a FINAL answer (or a phaseless done) ends the turn. A `commentary`
         // done is mid-turn — keep speaking; more audio is coming.
-        if (isEndOfTurn(event)) { this.clearAudioWatchdog(); if (myEpoch === liveEpoch) this.setState('listening') }
+        if (isEndOfTurn(event)) { this.recorder.onTurnEnd(); this.clearAudioWatchdog(); if (myEpoch === liveEpoch) this.setState('listening') }
         break
       case 'error': {
         const code = String((e.error as { code?: string })?.code ?? 'SERVER_ERROR')
@@ -530,6 +539,7 @@ export class LiveSession {
    *  by the LiveTools executor (which sends the safe output + a response.create so the
    *  model speaks the grounded result). */
   private handleToolCall(fc: ParsedFunctionCall): void {
+    this.recorder.onToolCall(fc.name, safeParseArgs(fc.argsJson))  // observation only
     if (fc.name === 'wait_for_user') {
       if (this.waitHandled.has(fc.callId)) return
       this.waitHandled.add(fc.callId)
@@ -539,6 +549,12 @@ export class LiveSession {
     }
     if (LiveTools.owns(fc.name)) this.liveTools.handleFunctionCall(fc)
   }
+
+  /** Export the whole-session flight trace (my speech, her speech, every tool call,
+   *  plus silent-turn / truncation flags) as a downloadable file. */
+  exportTrace(filename?: string): void { downloadTrace(this.recorder, filename) }
+  /** The flight recorder (for tests / diagnostics). */
+  getRecorder(): FlightRecorder { return this.recorder }
 
   private armAudioWatchdog(myEpoch: number): void {
     this.clearAudioWatchdog()
@@ -555,6 +571,13 @@ export class LiveSession {
 
   /** The single wire-send. A closed channel is a no-op (fail closed). */
   private send(event: Record<string, unknown>): void {
+    // Observation only: record the grounded tool result as it goes out.
+    if (event.type === 'conversation.item.create') {
+      const item = event.item as { type?: string; output?: string } | undefined
+      if (item?.type === 'function_call_output' && typeof item.output === 'string') {
+        try { this.recorder.onToolResult('', JSON.parse(item.output)) } catch { /* */ }
+      }
+    }
     if (this.dc && this.dc.readyState === 'open') this.dc.send(JSON.stringify(event))
   }
 

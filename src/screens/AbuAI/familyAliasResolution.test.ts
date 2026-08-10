@@ -5,6 +5,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { loadGraph } from './familyGraph'
+import { tryGroundedAnswer } from './service'
 
 describe('family alias resolution — spelling variants', () => {
   const graph = loadGraph()
@@ -23,5 +24,17 @@ describe('family alias resolution — spelling variants', () => {
     expect(find('אנבל')?.gender).toBe('female')
     expect(find('איליי')?.gender).toBe('male')
     expect(find('הדר')?.gender).toBe('male')
+  })
+})
+
+describe('family alias resolution — grounded answer path (not LLM fallthrough)', () => {
+  it('"מי זה הדר?" returns a grounded answer', () => {
+    expect(tryGroundedAnswer('מי זה הדר?')).not.toBeNull()
+  })
+  it('"מי זאת אנבל?" returns a grounded answer', () => {
+    expect(tryGroundedAnswer('מי זאת אנבל?')).not.toBeNull()
+  })
+  it('"מי זה איליי?" returns a grounded answer', () => {
+    expect(tryGroundedAnswer('מי זה איליי?')).not.toBeNull()
   })
 })

@@ -1,11 +1,11 @@
 # ⚠️ 100% GENERATED FILE — DO NOT EDIT
 # Source of truth: knowledge/family_data.json + knowledge/martita_personality.yaml
 # Regenerate with: npm run generate:memory
-# Generated: 2026-07-04
+# Generated: 2026-08-10
 
 
 aliases:
-  Martita     : ["מרטיטה","אבו","Abu","Abuela"]
+  Martita     : ["מרטיטה","אבו","Abu","Abuela","מרתה"]
   Papi        : ["פפי","Pepe","פאפי"]
   Mor         : ["מור","מורי"]
   Leo         : ["לאו","לאון","ליאו"]
@@ -13,13 +13,13 @@ aliases:
   Yael        : ["יעל"]
   Ofir        : ["אופיר"]
   Ayalon      : ["איילון","Eylon","אילון"]
-  Eili        : ["עילי","Ilai","עילאי"]
-  Adar        : ["אדר"]
+  Eili        : ["עילי","Ilai","עילאי","איליי"]
+  Adar        : ["אדר","הדר"]
   Adi         : ["עדי","אדי"]
   Noam        : ["נועם"]
   Yarden      : ["ירדן"]
   Gilad       : ["גלעד"]
-  Anabel      : ["אנאבל","Annabel"]
+  Anabel      : ["אנאבל","Annabel","אנבל"]
   Ari         : ["ארי"]
   Tutsi       : ["טוטסי","טוצי"]
   Tonto       : ["טונטו","Tuntu"]
