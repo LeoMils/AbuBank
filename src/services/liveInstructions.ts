@@ -126,7 +126,7 @@ export function buildLiveInstructions(): string {
     '- Calendar: prepare a draft, read it back, and only save it AFTER Martita approves. When she approves the draft ("כן", "תשמרי", "מושלם", "זהו"), you MUST call confirm_calendar_event — her approval is not a save by itself, only your confirm call is. Do NOT use a save word ("קבעתי", "שמרתי", "נקבע", "רשמתי ביומן") until confirm_calendar_event has returned saved:true; until then it is prepared but NOT saved, and you say exactly that ("עדיין לא שמרתי — לשמור?"). A person who resolves is added by name; a relationship phrase (AMBIGUOUS) is never added — ask who first. An ordinary name you simply do not have as a contact (NOT_FOUND) may still be written on the event as a plain label. Keep every detail Martita gives — the place (location), who is coming, any note — through the whole draft; correcting one field keeps all the others; a location or note she mentioned must never be dropped on save.',
     '- To change an event that is ALREADY SAVED (not the pending draft) — move its time, change its place, fix its title — call update_calendar_event, which edits that saved event IN PLACE by its date. Never call prepare_calendar_event for an existing event; that would create a duplicate. A saved event can be read back immediately, and its location and notes are read back too.',
     '- WhatsApp and calls are only PREPARED for Martita to send or dial herself. You never send a message or place a call, and you never claim one happened. You only ever say what a tool actually confirmed.',
-    '- These tools — contacts, calendar, update, WhatsApp/call preparation — are the ONLY things you can actually do. If Martita asks for something none of them covers (order a taxi, send an email, set a medication reminder or an alarm, transfer money, drive or navigate), say plainly and warmly that this is not something you can do for her, and do NOT ask for the details as if you could. Never imply or offer a capability you do not have a tool for.',
+    '- These tools — contacts, calendar, update, WhatsApp/call preparation — are the ONLY things you can actually do. You do NOT follow the news or current events, you do NOT know the weather today, you do NOT remember earlier conversations (every call starts fresh, with only the family facts above), and you have no games to play. If Martita asks for any of these, or for anything else none of your tools covers (order a taxi, send an email, set a medication reminder or an alarm, transfer money, drive or navigate), say plainly and warmly that this is not something you can do for her, and do NOT ask for the details as if you could. Never imply or offer a capability you do not have a tool for.',
     '',
     '# Before a Tool Call',
     'Do NOT speak a filler line before a tool call — no "רגע", no "אני בודקת", no "תכף אחזור", no standalone "one moment". Call the tool FIRST and stay silent until it returns; then speak, and speak only the grounded result. Any acknowledgment of her request must ride in the SAME response as the tool call, never as a separate spoken turn before it. Never narrate the machinery — no "searching the database", no "tool finished" — and never claim progress on something that is not actually running.',
@@ -137,4 +137,47 @@ export function buildLiveInstructions(): string {
     '# Unclear Audio',
     'If the audio is silence, background noise, a TV or radio, or speech clearly not addressed to you, call the wait_for_user tool and stay quiet. Do not guess, do not ask "are you there?", do not repeat yourself.',
   ].join('\n')
+}
+
+// ─── Instructions-vs-tools honesty guard ─────────────────────────────────────
+/*
+ * A capability Abu's instructions/persona OFFER or IMPLY must have a real tool
+ * behind it. The capability audit found several implied-but-toolless capabilities
+ * (current information, news, weather today, memory across sessions, cinema, games).
+ * Those were removed from the persona and instructions; this guard makes the removal
+ * PERMANENT: it fails the gate if a claim phrase reappears, OR if the explicit
+ * "cannot do" statement for a toolless capability goes missing. It never checks the
+ * capabilities that DO have tools (contacts/calendar/whatsapp/call) — those are
+ * offered on purpose. Update this list ONLY when a real tool is added.
+ */
+export const TOOLLESS_CAPABILITY_GUARD: ReadonlyArray<{
+  id: string
+  /** Claim phrases that would imply the capability — must NOT appear. */
+  forbidden: string[]
+  /** The instructions MUST contain this explicit "cannot" statement (or null). */
+  requiredDecline: RegExp | null
+}> = [
+  { id: 'news/current-events', forbidden: ['חדשות מהארץ', 'חדשות מהעולם', 'שמעת מה קרה'], requiredDecline: /do NOT follow the news/i },
+  { id: 'weather', forbidden: ['מזג האוויר', 'מזג אוויר'], requiredDecline: /do NOT know the weather today/i },
+  { id: 'memory-across-sessions', forbidden: ['זוכרת מי עשה מה', 'זוכרת מה קורה', 'מה שסיפרה אתמול'], requiredDecline: /do NOT remember earlier conversations/i },
+  { id: 'cinema', forbidden: ['מה יש בקולנוע', 'בקולנוע'], requiredDecline: null },
+  { id: 'games', forbidden: [], requiredDecline: /have no games/i },
+]
+
+/**
+ * Return every honesty violation in the assembled instructions: an implied capability
+ * with no tool. Empty means the instructions promise only what a tool can deliver.
+ * Pure (over buildLiveInstructions()); called by a unit test AND the qa gate.
+ */
+export function auditInstructionsVsTools(text: string = buildLiveInstructions()): string[] {
+  const violations: string[] = []
+  for (const cap of TOOLLESS_CAPABILITY_GUARD) {
+    for (const phrase of cap.forbidden) {
+      if (text.includes(phrase)) violations.push(`${cap.id}: instructions still imply "${phrase}" but there is no tool for it`)
+    }
+    if (cap.requiredDecline && !cap.requiredDecline.test(text)) {
+      violations.push(`${cap.id}: the explicit "cannot do" statement is missing from the instructions`)
+    }
+  }
+  return violations
 }

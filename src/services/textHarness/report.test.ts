@@ -18,7 +18,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { buildLiveInstructions } from '../liveInstructions'
+import { buildLiveInstructions, auditInstructionsVsTools } from '../liveInstructions'
 import { runScenarios } from './runner'
 import { resolveDefaultDriver } from './drivers'
 import { SCENARIOS } from './scenarios'
@@ -113,4 +113,13 @@ describe.skipIf(!RUN)('TEXT HARNESS — full report run', () => {
 // Keep the file non-empty when skipped so vitest reports a clean pass.
 describe('TEXT HARNESS — report file loads', () => {
   it('has 43 scenarios wired', () => { expect(SCENARIOS).toHaveLength(43) })
+
+  // GATE GUARD (always on, even when the scenario run is skipped): the instructions
+  // must never imply a capability with no tool. This is what makes the honesty
+  // removal permanent — a re-added claim fails the qa:production-gate, never silent.
+  it('GATE: instructions imply no capability without a registered tool', () => {
+    const violations = auditInstructionsVsTools()
+    if (violations.length) console.log('INSTRUCTIONS_VS_TOOLS_VIOLATIONS:\n  ' + violations.join('\n  '))
+    expect(violations).toEqual([])
+  })
 })

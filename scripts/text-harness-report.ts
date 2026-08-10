@@ -85,5 +85,12 @@ try {
   console.log('(text-harness JSON report not found — see the vitest output above)')
 }
 
-// Informational only — never block the production gate.
+// SCENARIO results are informational (never block the gate) — the report test passes
+// even when scenarios fail. But the always-on GATE GUARD (instructions-vs-tools) DOES
+// fail the report test, which makes vitest exit nonzero. Propagate that so an implied-
+// but-toolless capability blocks qa:production-gate and can never silently return.
+if (res.status && res.status !== 0) {
+  console.log('\n⛔ GATE BLOCKED: the instructions-vs-tools honesty guard failed (see above).')
+  process.exit(res.status)
+}
 process.exit(0)

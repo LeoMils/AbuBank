@@ -14,6 +14,8 @@ import {
   stripEditorPreamble,
   findPhoneNumbers,
   assertNoPhoneNumbers,
+  auditInstructionsVsTools,
+  TOOLLESS_CAPABILITY_GUARD,
   ABU_PERSONA,
   ABU_FAMILY,
   ABU_KNOWLEDGE,
@@ -114,5 +116,37 @@ describe('buildLiveInstructions', () => {
 
   it('contains no phone numbers', () => {
     expect(findPhoneNumbers(out)).toEqual([])
+  })
+})
+
+describe('instructions-vs-tools honesty guard', () => {
+  const out = buildLiveInstructions()
+  it('the assembled instructions imply NO capability without a registered tool', () => {
+    // If this fails, a capability was offered/implied that Abu cannot actually do —
+    // remove it, or add the real tool. This is the gate guard, run here + in qa.
+    expect(auditInstructionsVsTools()).toEqual([])
+  })
+
+  it('the removed toolless capabilities are each explicitly disclaimed', () => {
+    for (const cap of TOOLLESS_CAPABILITY_GUARD) {
+      if (cap.requiredDecline) expect(out, `missing decline for ${cap.id}`).toMatch(cap.requiredDecline)
+    }
+  })
+
+  it('the persona no longer implies news / weather / cross-session memory / cinema', () => {
+    for (const phrase of ['חדשות מהארץ', 'חדשות מהעולם', 'זוכרת מי עשה מה', 'מה שסיפרה אתמול', 'מה יש בקולנוע']) {
+      expect(out, `still implies "${phrase}"`).not.toContain(phrase)
+    }
+  })
+
+  it('the guard actually has teeth — a re-added claim IS caught', () => {
+    // Re-introducing a claim phrase into the text is flagged.
+    const withNews = out + '\nמספרת חדשות מהעולם כל בוקר.'
+    const v1 = auditInstructionsVsTools(withNews)
+    expect(v1.some((x) => x.includes('news/current-events'))).toBe(true)
+    // Removing a required "cannot" statement is flagged.
+    const withoutWeatherDecline = out.replace(/do NOT know the weather today/i, 'knows the weather')
+    const v2 = auditInstructionsVsTools(withoutWeatherDecline)
+    expect(v2.some((x) => x.includes('weather'))).toBe(true)
   })
 })
