@@ -32,6 +32,7 @@
 import personaRaw from '../../knowledge/abu-persona.md?raw'
 import familyRaw from '../../knowledge/abu-family.md?raw'
 import knowledgeRaw from '../../knowledge/abu-knowledge.md?raw'
+import familyData from '../../knowledge/family_data.json'
 
 /**
  * Drop the editor-facing preamble: everything up to and INCLUDING the first
@@ -91,12 +92,66 @@ export const ABU_FAMILY = stripEditorPreamble(familyRaw)
 /** Martita's own profile, verbatim after its editor preamble (may be sparse). */
 export const ABU_KNOWLEDGE = stripEditorPreamble(knowledgeRaw)
 
+// ─── Name pronunciation (spoken form, not spelling) ──────────────────────────
+/*
+ * Hebrew and Spanish names spoken by a model that defaults to English phonetics
+ * sound wrong to Martita ("Leo" → English "LEE-oh" instead of "LEH-oh"). Each
+ * person in knowledge/family_data.json may carry an optional `pronunciation` map
+ * of language → the spoken form of the name (how it SOUNDS, never how it is
+ * spelled). This projects that structured field into an instruction section so the
+ * Realtime model pronounces names by the field and never by the written form. It is
+ * derived from the SAME family source of truth liveContacts reads — no duplication.
+ */
+const LANG_DISPLAY: Record<string, string> = { es: 'Spanish', he: 'Hebrew', en: 'English' }
+
+/** Person-bearing groups of family_data.json (pets excluded — they are not people). */
+const PRONUNCIATION_GROUPS = [
+  'matriarch', 'deceased', 'children', 'children_related',
+  'grandchildren_mor', 'grandchildren_leo', 'grandchildren_spouses',
+  'great_grandchildren', 'close_friends',
+] as const
+
+interface PronouncedPerson {
+  canonical_name?: string
+  hebrew_name?: string
+  pronunciation?: Record<string, string>
+}
+
+/**
+ * One instruction bullet per person that carries a `pronunciation`, listing the
+ * spoken form for each language. Pure over the family data. Returns '' when no one
+ * has a pronunciation, so the section is omitted rather than left empty.
+ */
+export function buildPronunciationGuidance(
+  data: { family: Record<string, unknown> } = familyData as { family: Record<string, unknown> },
+): string {
+  const lines: string[] = []
+  for (const group of PRONUNCIATION_GROUPS) {
+    const raw = data.family[group]
+    const list: PronouncedPerson[] = Array.isArray(raw) ? raw : raw ? [raw as PronouncedPerson] : []
+    for (const p of list) {
+      const pron = p.pronunciation
+      if (!pron || typeof pron !== 'object') continue
+      const forms = Object.entries(pron)
+        .filter(([, v]) => typeof v === 'string' && v.trim().length > 0)
+        .map(([lang, v]) => `${LANG_DISPLAY[lang] ?? lang}: ${v.trim()}`)
+      if (forms.length === 0) continue
+      const heb = (p.hebrew_name ?? '').trim()
+      const lat = (p.canonical_name ?? '').trim()
+      const name = heb && lat ? `${heb} (${lat})` : heb || lat
+      lines.push(`- ${name} — ${forms.join(' · ')}`)
+    }
+  }
+  return lines.join('\n')
+}
+
 /**
  * The full live-session instruction string. Labeled sections (OpenAI Realtime
  * prompting guide), persona first, then the knowledge file verbatim. Pure and
  * deterministic so it can be regression-locked.
  */
 export function buildLiveInstructions(): string {
+  const pronunciation = buildPronunciationGuidance()
   return [
     '# Role and Objective',
     'You are Abu — a warm, familiar woman having a real conversation with Martita, a woman in her 80s in Kfar Saba. You are her close friend on the phone, not an assistant and not a menu.',
@@ -119,6 +174,17 @@ export function buildLiveInstructions(): string {
     '',
     ABU_KNOWLEDGE,
     '',
+    // Present only when at least one person carries a pronunciation, so the section
+    // is never an empty header. The names must be SPOKEN as written here.
+    ...(pronunciation
+      ? [
+          '# How to Say Names (Pronunciation)',
+          'These names must be SPOKEN exactly as written below — this is how the name SOUNDS, not how it is spelled. When you say each name, pronounce it this way and NEVER anglicize it or read it by its English spelling:',
+          '',
+          pronunciation,
+          '',
+        ]
+      : []),
     '# Tools and Actions',
     'You have tools for contacts, the calendar, WhatsApp and phone calls. Rules:',
     '- Family and calendar questions are answered from your own knowledge and the calendar tools — NEVER from web search.',

@@ -11,6 +11,7 @@ import fs from 'fs'
 import path from 'path'
 import {
   buildLiveInstructions,
+  buildPronunciationGuidance,
   stripEditorPreamble,
   findPhoneNumbers,
   assertNoPhoneNumbers,
@@ -116,6 +117,39 @@ describe('buildLiveInstructions', () => {
 
   it('contains no phone numbers', () => {
     expect(findPhoneNumbers(out)).toEqual([])
+  })
+})
+
+describe('name pronunciation guidance (spoken form, not spelling)', () => {
+  it('projects a person\'s pronunciation map into a per-language bullet', () => {
+    const g = buildPronunciationGuidance({
+      family: {
+        children: [
+          { canonical_name: 'Leo', hebrew_name: 'לאו', pronunciation: { es: 'LEH-oh' } },
+          { canonical_name: 'Mor', hebrew_name: 'מור' }, // no pronunciation → omitted
+        ],
+      },
+    })
+    expect(g).toContain('לאו (Leo)')
+    expect(g).toContain('Spanish: LEH-oh')
+    expect(g).not.toContain('מור') // people without a pronunciation are not listed
+  })
+
+  it('is empty when no one carries a pronunciation (section is then omitted)', () => {
+    expect(buildPronunciationGuidance({ family: { children: [{ canonical_name: 'Mor', hebrew_name: 'מור' }] } })).toBe('')
+  })
+
+  it('the seeded family: Leo is pronounced the Spanish way, never the English "LEE-oh"', () => {
+    const out = buildLiveInstructions()
+    expect(out).toContain('# How to Say Names (Pronunciation)')
+    expect(out).toContain('לאו (Leo)')
+    expect(out).toContain('LEH-oh')
+    expect(out).toContain('LEE-oh')       // the guidance names the wrong form to avoid
+    expect(out).toMatch(/never the English "LEE-oh"/i)
+    expect(out).toMatch(/NEVER anglicize/i)
+    // the section sits after the family knowledge and before the tools
+    expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeGreaterThan(out.indexOf('# What Abu Knows — Family'))
+    expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeLessThan(out.indexOf('# Tools and Actions'))
   })
 })
 
