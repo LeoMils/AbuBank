@@ -21,6 +21,13 @@ import type { Scenario, ScenarioTurn, ToolCallRecord, TranscriptEntry, Violation
 /** Banned stalling phrases: Abu must return a grounded result, never park the user. */
 export const STALLING_PHRASES = ['רגע', 'אני בודקת', 'תכף אחזור', 'שנייה', 'חכי רגע']
 
+/** Match a stalling phrase as a WHOLE word. Hebrew has no ASCII `\b`, so we guard with
+ *  lookarounds that exclude an adjacent Hebrew letter — otherwise "רגע" false-matches
+ *  inside legitimate words like "להירגע" (to relax) or "רגעים" (moments). */
+const STALLING_RES = STALLING_PHRASES.map(
+  (p) => new RegExp(`(?<![א-ת])${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![א-ת])`),
+)
+
 /** Hebrew verbs that CLAIM a persisted calendar write ("קבעתי", "שמרתי", "רשמתי"). */
 const SAVE_VERBS = ['קבעתי', 'שמרתי', 'רשמתי', 'הוספתי', 'נקבע', 'נשמר', 'רשומה ביומן', 'הכנסתי ליומן']
 
@@ -89,8 +96,8 @@ export function checkToolBeforeSpeech(
 export function checkNoStalling(transcript: TranscriptEntry[], v: Violation[]): void {
   for (const t of transcript) {
     if (t.role !== 'abu') continue
-    for (const phrase of STALLING_PHRASES) {
-      if (t.text.includes(phrase)) push(v, 'STALLING_PHRASE', t.turn, `stalling phrase "${phrase}" in: "${t.text.slice(0, 50)}"`)
+    for (let i = 0; i < STALLING_PHRASES.length; i++) {
+      if (STALLING_RES[i]!.test(t.text)) push(v, 'STALLING_PHRASE', t.turn, `stalling phrase "${STALLING_PHRASES[i]}" in: "${t.text.slice(0, 50)}"`)
     }
   }
 }
@@ -138,11 +145,17 @@ export function checkNameInLongConversation(
   }
 }
 
+/** Decline/refusal cues: when Abu says she CANNOT do the thing, a mention of the
+ *  capability ("I can't order a taxi") is correct, not an over-offer — so it must not
+ *  be flagged. This mirrors the save-claim negation fix. */
+const DECLINE_CUE = /(לא יכולה|לא אוכל|אין לי|לא ניתן|לא עושה|לא מצליחה|זה לא משהו ש|לצערי לא|אני לא יודעת איך)/
+
 // ── 5. no capability offered without a registered tool ───────────────────────
 export function checkNoCapabilityWithoutTool(transcript: TranscriptEntry[], v: Violation[]): void {
   const registered = new Set(LIVE_TOOL_NAMES)
   for (const t of transcript) {
     if (t.role !== 'abu') continue
+    if (DECLINE_CUE.test(t.text)) continue // a warm refusal is the CORRECT behaviour
     for (const offer of CAPABILITY_OFFERS) {
       if (offer.re.test(t.text) && !registered.has(offer.needsTool)) {
         push(v, 'CAPABILITY_WITHOUT_TOOL', t.turn, `offered "${offer.human}" — no registered tool: "${t.text.slice(0, 50)}"`)

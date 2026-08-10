@@ -23,6 +23,12 @@ function memStore(): LiveCalendarStore & { events: LiveEvent[] } {
     events,
     list: () => events.slice(),
     add: (e) => { const ev: LiveEvent = { id: `e${++n}`, ...e }; events.push(ev); return ev },
+    update: (id, patch) => {
+      const e = events.find((x) => x.id === id)
+      if (!e) return null
+      for (const [k, val] of Object.entries(patch)) if (val !== undefined) (e as unknown as Record<string, unknown>)[k] = val
+      return { ...e }
+    },
   }
 }
 
@@ -183,5 +189,74 @@ describe('whatsapp / call — PREPARE only', () => {
     h.call('prepare_call', { recipient: 'מור' })
     h.call('cancel_communication', {})
     expect(h.tools.viewCommDraft()!.status).toBe('CANCELLED')
+  })
+})
+
+describe('every prepared field round-trips: create → confirm → read → update (no field dropped)', () => {
+  it('persists title/date/time/participant/location/notes and reads them all back', () => {
+    const h = harness()
+    h.call('prepare_calendar_event', {
+      title: 'פגישה', date: '2026-08-20', time: '15:00',
+      participant: 'מור', location: 'קפה נמרוד', notes: 'להביא מסמכים',
+    })
+    h.call('confirm_calendar_event', { forRevision: h.tools.viewCalendarDraft()!.revision })
+
+    // Persisted event carries EVERY field (the device "location dropped on save" bug).
+    expect(h.store.events).toHaveLength(1)
+    expect(h.store.events[0]).toMatchObject({
+      title: 'פגישה', date: '2026-08-20', time: '15:00',
+      participant: 'מור', location: 'קפה נמרוד', notes: 'להביא מסמכים',
+    })
+
+    // read_calendar returns every field too, so Abu can read the place/notes back.
+    h.call('read_calendar', { date: '2026-08-20' })
+    const read = h.lastOutput()!
+    expect(read.count).toBe(1)
+    expect((read.events as Array<Record<string, unknown>>)[0]).toMatchObject({
+      title: 'פגישה', time: '15:00', participant: 'מור', location: 'קפה נמרוד', notes: 'להביא מסמכים',
+    })
+  })
+
+  it('update_calendar_event edits a SAVED event IN PLACE for each field — never a duplicate', () => {
+    const h = harness()
+    h.call('prepare_calendar_event', { title: 'פגישה', date: '2026-08-20', time: '15:00', location: 'קפה נמרוד' })
+    h.call('confirm_calendar_event', { forRevision: h.tools.viewCalendarDraft()!.revision })
+    const id0 = h.store.events[0]!.id
+
+    const upd = (field: string, value: string) => h.call('update_calendar_event', { date: h.store.events[0]!.date, field, value })
+    upd('location', 'מרפאה חדשה')
+    expect(h.lastOutput()).toMatchObject({ status: 'updated' })
+    upd('time', '16:30')
+    upd('title', 'פגישה חדשה')
+    upd('notes', 'הערה חשובה')
+    upd('participant', 'לאו')
+
+    // Same single event, id unchanged, EVERY field now updated (others preserved each step).
+    expect(h.store.events).toHaveLength(1)
+    expect(h.store.events[0]!.id).toBe(id0)
+    expect(h.store.events[0]).toMatchObject({
+      title: 'פגישה חדשה', time: '16:30', location: 'מרפאה חדשה', notes: 'הערה חשובה', participant: 'לאו',
+    })
+
+    // moving the date keeps it a single in-place event
+    h.call('update_calendar_event', { date: '2026-08-20', field: 'date', value: '2026-08-21' })
+    expect(h.store.events).toHaveLength(1)
+    expect(h.store.events[0]!.date).toBe('2026-08-21')
+  })
+
+  it('update_calendar_event is honest: not_found when nothing matches, ambiguous when several share the date', () => {
+    const h = harness()
+    h.call('update_calendar_event', { date: '2026-08-20', field: 'time', value: '10:00' })
+    expect(h.lastOutput()).toMatchObject({ status: 'not_found' })
+
+    // Two events on the same date → ambiguous (ask which), disambiguate via title_contains.
+    h.store.events.push({ id: 'a', title: 'רופא', date: '2026-08-22', time: '09:00' })
+    h.store.events.push({ id: 'b', title: 'מספרה', date: '2026-08-22', time: '11:00' })
+    h.call('update_calendar_event', { date: '2026-08-22', field: 'time', value: '12:00' })
+    expect(h.lastOutput()).toMatchObject({ status: 'ambiguous' })
+    h.call('update_calendar_event', { date: '2026-08-22', field: 'time', value: '12:00', title_contains: 'מספרה' })
+    expect(h.lastOutput()).toMatchObject({ status: 'updated' })
+    expect(h.store.events.find((e) => e.id === 'b')!.time).toBe('12:00')
+    expect(h.store.events.find((e) => e.id === 'a')!.time).toBe('09:00') // untouched
   })
 })

@@ -27,21 +27,21 @@ import {
 } from '../screens/AbuAI/realtime/calendarDraft'
 import { resolveCalendarParticipant, resolveContact, contactLabel } from './liveContacts'
 import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
-import { loadAppointments, saveAppointments, detectEmoji, type Appointment } from '../screens/AbuCalendar/service'
+import { loadAppointments, saveAppointments, updateAppointment, detectEmoji, type Appointment } from '../screens/AbuCalendar/service'
 
 export type SendEvent = (event: Record<string, unknown>) => void
 
-/** The minimal calendar event shape the live path reads and writes. */
+/** The calendar event shape the live path reads and writes. Carries every field the
+ *  prepare_calendar_event tool accepts, so a created event round-trips losslessly
+ *  (title/date/time/participant/location/notes) through persist → read → update. */
 export interface LiveEvent {
   id: string
   title: string
   date: string        // YYYY-MM-DD
   time: string        // HH:MM or ''
   participant?: string
-  /** Optional location. NOTE: the live commit path (doCalendar/durableCalendarStore)
-   *  does NOT yet persist this — the text harness's location scenarios assert on it to
-   *  make the device "location dropped on save" bug visible. */
   location?: string
+  notes?: string
 }
 
 /** Persistence seam — production wires this to the durable calendar store
@@ -51,6 +51,10 @@ export interface LiveCalendarStore {
   list(): LiveEvent[]
   /** Persist and RETURN the stored event (with id), or null if it did not persist. */
   add(e: Omit<LiveEvent, 'id'>): LiveEvent | null
+  /** Patch an EXISTING event in place and RETURN the updated event, or null if the id
+   *  is unknown / the write did not persist. Used by update_calendar_event so a saved
+   *  event is corrected without creating a duplicate. */
+  update(id: string, patch: Partial<Omit<LiveEvent, 'id'>>): LiveEvent | null
 }
 
 export interface LiveCommDraft {
@@ -120,6 +124,20 @@ export const LIVE_TOOL_SCHEMAS = [
     parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
   },
   {
+    type: 'function', name: 'update_calendar_event',
+    description: 'Change ONE field of an ALREADY-SAVED calendar event, IN PLACE (never a new event). Use this — NOT prepare_calendar_event — when Martita wants to change something (time, place, title…) about an event already in the calendar. Identify the event by its real date; add a word from the title if several events share that date. Every other field is preserved.',
+    parameters: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'The saved event\'s date, a REAL YYYY-MM-DD (already resolved — never "מחר").' },
+        field: { type: 'string', description: 'Which field to change.', enum: ['title', 'date', 'time', 'location', 'notes', 'participant'] },
+        value: { type: 'string', description: 'The new value for that field (for date: a real YYYY-MM-DD).' },
+        title_contains: { type: 'string', description: 'Optional word from the title, to pick the right event when several are on that date.' },
+      },
+      required: ['date', 'field', 'value'], additionalProperties: false,
+    },
+  },
+  {
     type: 'function', name: 'prepare_whatsapp',
     description: 'Prepare (do NOT send) a WhatsApp message for Martita to review and send herself. Pass the recipient as a NAME; it is resolved to a contact locally. Never claim the message was sent.',
     parameters: { type: 'object', properties: { recipient: { type: 'string', description: 'The contact NAME (e.g. "מור"). Never a number.' }, intent: { type: 'string', description: "What Martita wants to say, in her words." } }, required: ['recipient', 'intent'], additionalProperties: false },
@@ -186,6 +204,7 @@ export class LiveTools {
     const args = safeArgs(fc.argsJson)
     if (fc.name === 'resolve_contact') return this.doResolve(args)
     if (fc.name === 'read_calendar') return this.doRead(args)
+    if (fc.name === 'update_calendar_event') return this.doUpdate(args)
     if (isCalendarTool(fc.name)) return this.doCalendar(fc.name, args)
     if (COMM_TOOLS.has(fc.name)) return this.doComm(fc.name, args)
     return { error: 'unknown_tool' }
@@ -211,13 +230,17 @@ export class LiveTools {
     this.draft = outcome.draft
     this.cb.onCalendarDraft?.(this.draft)
 
-    // Commit exactly once when a draft reaches CONFIRMED.
+    // Commit exactly once when a draft reaches CONFIRMED. EVERY field the draft holds
+    // is carried through — title/date/time/participant/location/notes — so nothing the
+    // model prepared is silently dropped on save (the device "location dropped" bug).
     if (this.draft && this.draft.confirmation === 'CONFIRMED' && !this.committedApptId) {
       const saved = this.store.add({
         title: this.draft.title ?? 'פגישה',
         date: this.draft.date ?? '',
         time: this.draft.time ?? '',
         ...(this.draft.participant ? { participant: this.draft.participant } : {}),
+        ...(this.draft.location ? { location: this.draft.location } : {}),
+        ...(this.draft.notes ? { notes: this.draft.notes } : {}),
       })
       if (saved) {
         this.committedApptId = saved.id
@@ -250,14 +273,55 @@ export class LiveTools {
     const events = (date ? all.filter((e) => e.date === date) : all)
       .slice()
       .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
-      .map((e) => ({ title: e.title, date: e.date, time: e.time || null, participant: e.participant ?? null }))
+      .map((e) => ({
+        title: e.title, date: e.date, time: e.time || null,
+        participant: e.participant ?? null, location: e.location ?? null, notes: e.notes ?? null,
+      }))
     return {
       count: events.length,
       date: date ?? null,
       events,
       allowed_to_say: events.length === 0
         ? [date ? 'nothing on that day' : 'the calendar is empty']
-        : ['read back these events exactly as given'],
+        : ['read back these events exactly as given, including the location if present'],
+    }
+  }
+
+  // ─── update a SAVED event in place (no duplicate) ─────────────────────────────
+  private doUpdate(args: Record<string, unknown>): Record<string, unknown> {
+    const date = str(args, 'date')
+    const field = str(args, 'field')
+    const value = str(args, 'value')
+    const titleContains = str(args, 'title_contains')
+    const ALLOWED = new Set(['title', 'date', 'time', 'location', 'notes', 'participant'])
+    if (!date || !field || value === undefined || !ALLOWED.has(field)) {
+      return { status: 'error', error: 'bad_update_args', allowed_to_say: ['ask which event and what to change'] }
+    }
+    const matches = this.store.list().filter(
+      (e) => e.date === date && (!titleContains || e.title.includes(titleContains)),
+    )
+    if (matches.length === 0) {
+      return { status: 'not_found', allowed_to_say: ['say there is no saved event matching that day'] }
+    }
+    if (matches.length > 1) {
+      return {
+        status: 'ambiguous',
+        candidates: matches.map((e) => ({ title: e.title, date: e.date, time: e.time || null })),
+        allowed_to_say: ['ask which of these events she means'],
+      }
+    }
+    const target = matches[0]!
+    const updated = this.store.update(target.id, { [field]: value } as Partial<Omit<LiveEvent, 'id'>>)
+    if (!updated) {
+      return { status: 'not_saved', error: 'update_failed', allowed_to_say: ['be honest that the change did not save'] }
+    }
+    return {
+      status: 'updated',
+      event: {
+        title: updated.title, date: updated.date, time: updated.time || null,
+        participant: updated.participant ?? null, location: updated.location ?? null, notes: updated.notes ?? null,
+      },
+      allowed_to_say: ['confirm the change is saved, and read back the updated detail'],
     }
   }
 
@@ -317,12 +381,15 @@ function safeArgs(argsJson: string): Record<string, unknown> {
  *  saved here is immediately readable, and survives reload/reconnect. service.ts
  *  is pure logic (no UI imports), safe to pull into the isolated live path. */
 export function durableCalendarStore(): LiveCalendarStore {
+  const toLiveEvent = (a: Appointment): LiveEvent => ({
+    id: a.id, title: a.title, date: a.date, time: a.time,
+    ...(a.personName ? { participant: a.personName } : {}),
+    ...(a.location ? { location: a.location } : {}),
+    ...(a.notes ? { notes: a.notes } : {}),
+  })
   return {
     list(): LiveEvent[] {
-      return loadAppointments().map((a) => ({
-        id: a.id, title: a.title, date: a.date, time: a.time,
-        ...(a.personName ? { participant: a.personName } : {}),
-      }))
+      return loadAppointments().map(toLiveEvent)
     },
     add(e): LiveEvent | null {
       const appts = loadAppointments()
@@ -332,14 +399,30 @@ export function durableCalendarStore(): LiveCalendarStore {
         title: e.title,
         date: e.date,
         time: e.time,
-        emoji: detectEmoji(`${e.title} ${e.participant ?? ''}`),
+        emoji: detectEmoji(`${e.title} ${e.participant ?? ''} ${e.location ?? ''}`),
         color: '#4ECDC4',
         ...(e.participant ? { personName: e.participant } : {}),
+        ...(e.location ? { location: e.location } : {}),
+        ...(e.notes ? { notes: e.notes } : {}),
       }
       saveAppointments([...appts, appt])
       // Round-trip verify against the same store (never a false "saved").
       const back = loadAppointments().find((a) => a.id === id)
-      return back ? { id, title: e.title, date: e.date, time: e.time, ...(e.participant ? { participant: e.participant } : {}) } : null
+      return back ? toLiveEvent(back) : null
+    },
+    update(id, patch): LiveEvent | null {
+      // Translate LiveEvent fields → Appointment fields (participant → personName).
+      const apptPatch: Partial<Appointment> = {}
+      if (patch.title !== undefined) apptPatch.title = patch.title
+      if (patch.date !== undefined) apptPatch.date = patch.date
+      if (patch.time !== undefined) apptPatch.time = patch.time
+      if (patch.location !== undefined) apptPatch.location = patch.location
+      if (patch.notes !== undefined) apptPatch.notes = patch.notes
+      if (patch.participant !== undefined) apptPatch.personName = patch.participant
+      updateAppointment(id, apptPatch)
+      // Round-trip verify the change actually persisted.
+      const back = loadAppointments().find((a) => a.id === id)
+      return back ? toLiveEvent(back) : null
     },
   }
 }

@@ -57,6 +57,17 @@ describe('assertion: no stalling phrases', () => {
     checkNoStalling([abu('יש לך תור לרופא מחר בעשר', 0, 1)], v)
     expect(v).toEqual([])
   })
+  // FIXED false positive: "רגע" as a substring of a legitimate word must NOT flag.
+  it('does NOT flag "רגע" inside "להירגע" / "רגעים" (word-boundary aware)', () => {
+    const v: Violation[] = []
+    checkNoStalling([abu('סוף השבוע זה זמן טוב להירגע ולבלות רגעים יפים עם המשפחה', 0, 1)], v)
+    expect(v).toEqual([])
+  })
+  it('still flags a standalone "רגע," ', () => {
+    const v: Violation[] = []
+    checkNoStalling([abu('רגע, אני כבר בודקת לך', 0, 1)], v)
+    expect(v.map((x) => x.code)).toContain('STALLING_PHRASE')
+  })
 })
 
 describe('assertion: persisted state matches Abu\'s claim', () => {

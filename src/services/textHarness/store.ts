@@ -21,6 +21,7 @@ export function inMemoryCalendarStore(
     time: e.time,
     ...(e.participant ? { participant: e.participant } : {}),
     ...(e.location ? { location: e.location } : {}),
+    ...(e.notes ? { notes: e.notes } : {}),
   }))
   return {
     events,
@@ -34,13 +35,22 @@ export function inMemoryCalendarStore(
         date: e.date,
         time: e.time,
         ...(e.participant ? { participant: e.participant } : {}),
-        // If the caller ever passes a location, keep it — so a future LiveTools fix
-        // makes the location scenarios go green without touching this store.
         ...(e.location ? { location: e.location } : {}),
+        ...(e.notes ? { notes: e.notes } : {}),
       }
       events.push(stored)
       // Round-trip verify against the same array (never a false "saved").
       return events.find((x) => x.id === stored.id) ? { ...stored } : null
+    },
+    update(id, patch): LiveEvent | null {
+      const e = events.find((x) => x.id === id)
+      if (!e) return null
+      // Apply only defined keys; blank string clears an optional field.
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === undefined) continue
+        ;(e as unknown as Record<string, unknown>)[k] = v
+      }
+      return { ...e }
     },
   }
 }

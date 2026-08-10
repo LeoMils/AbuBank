@@ -31,9 +31,13 @@ const FAKE_FAMILY = {
 export const SCENARIOS: Scenario[] = [
   // ── calendar create / correct / read back / update ─────────────────────────
   {
-    id: 'calendar-create-basic', title: 'Create a doctor appointment for tomorrow at 10',
+    id: 'calendar-create-basic', title: 'Doctor appointment — clarify which doctor, then book',
     fakes: { nowMs: HARNESS_NOW },
-    turns: [{ user: 'קבעי לי תור לרופא מחר בעשר בבוקר', requiresTool: true }],
+    turns: [
+      // "which doctor?" is the CORRECT first move — this turn does not require a tool.
+      { user: 'קבעי לי תור לרופא מחר בעשר בבוקר' },
+      { user: 'אצל דוקטור לוי, רופאת המשפחה', requiresTool: true },
+    ],
   },
   {
     id: 'calendar-create-with-person', title: 'Create a meeting with Mor on Friday at 17:00',
@@ -82,11 +86,11 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
-    id: 'calendar-create-cancel', title: 'Start creating then cancel the event',
+    id: 'calendar-create-cancel', title: 'Prepare a concrete event, then cancel the draft',
     fakes: { nowMs: HARNESS_NOW },
     turns: [
-      { user: 'תקבעי לי משהו מחר בבוקר', requiresTool: true },
-      { user: 'לא משנה, עזבי, אל תקבעי כלום', requiresTool: true },
+      { user: 'תקבעי לי תור לרופא שיניים מחר בתשע בבוקר', requiresTool: true },
+      { user: 'לא משנה, בטלי את זה, אני כבר לא רוצה', requiresTool: true },
     ],
   },
 
@@ -104,16 +108,18 @@ export const SCENARIOS: Scenario[] = [
     turns: [{ user: 'תתקשרי בבקשה לגברת רוזנברג מהמכולת', requiresTool: true }],
   },
   {
-    id: 'contact-ambiguous-then-clarify', title: 'Ambiguous, then clarify to a name',
+    id: 'contact-ambiguous-then-clarify', title: 'Ambiguous relationship, then clarify to a name',
     turns: [
-      { user: 'תתקשרי לבת שלי', requiresTool: true },
+      // "בת שלי" is a relationship phrase → "which one?" first is correct (no tool yet).
+      { user: 'תתקשרי לבת שלי' },
       { user: 'מור', requiresTool: true },
     ],
   },
   {
     id: 'contact-fake-family-graph', title: 'Resolve against an injected fake family graph (Gabi)',
     fakes: { familyData: FAKE_FAMILY },
-    turns: [{ user: 'תשלחי הודעה לגבי שאני מגיעה', requiresTool: true }],
+    // "אל גבי" (to Gabi) — unambiguous; "לגבי" would collide with the word "regarding".
+    turns: [{ user: 'תשלחי הודעה אל גבי, תגידי לה שאני מגיעה', requiresTool: true }],
   },
 
   // ── interruption ───────────────────────────────────────────────────────────
@@ -129,8 +135,10 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'interruption-question-midcreate', title: 'Factual interruption mid-create, then resume',
     fakes: { nowMs: HARNESS_NOW },
+    // Concrete enough to draft immediately (doctor named), so the interruption really
+    // lands mid-DRAFT rather than mid-clarification.
     turns: [
-      { user: 'תקבעי תור לרופא מחר בעשר', requiresTool: true },
+      { user: 'תקבעי תור אצל דוקטור כהן מחר בעשר', requiresTool: true },
       { user: 'רגע, כמה ילדים יש למור?' },
       { user: 'אוקיי תשמרי את התור', requiresTool: true },
     ],
@@ -168,7 +176,8 @@ export const SCENARIOS: Scenario[] = [
     id: 'topic-change-abandon-task', title: 'Abandon a half-built event and move on',
     fakes: { nowMs: HARNESS_NOW },
     turns: [
-      { user: 'תקבעי לי משהו ביום שישי', requiresTool: true },
+      // "משהו" (something) is vague → "what kind of event?" first is correct (no tool yet).
+      { user: 'תקבעי לי משהו ביום שישי' },
       { user: 'אה לא, שכחי מזה. מה שלומך את?' },
     ],
   },
@@ -201,12 +210,14 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
-    id: 'confused-repeat-create', title: 'Repeats the same booking request, confused',
+    id: 'confused-repeat-create', title: 'Repeats a booking request but never gives the details',
     fakes: { nowMs: HARNESS_NOW },
+    // She never says WHICH doctor or WHAT time, so patiently clarifying every time is the
+    // correct behaviour on every turn — no tool call is expected until she gives details.
     turns: [
-      { user: 'תקבעי לי תור לרופא מחר', requiresTool: true },
-      { user: 'קבעת? תקבעי לי תור לרופא מחר', requiresTool: true },
-      { user: 'לא זוכרת אם אמרתי — תור לרופא מחר בבוקר', requiresTool: true },
+      { user: 'תקבעי לי תור לרופא מחר' },
+      { user: 'קבעת? תקבעי לי תור לרופא מחר' },
+      { user: 'לא זוכרת אם אמרתי — תור לרופא מחר בבוקר' },
     ],
   },
 
@@ -261,7 +272,8 @@ export const SCENARIOS: Scenario[] = [
     turns: [
       { user: 'תקבעי לי תור לרופא מחר בעשר במרפאת כללית', requiresTool: true },
       { user: 'כן מושלם, תשמרי', requiresTool: true },
-      { user: 'ואיפה זה שוב? תקריאי לי מה רשום', requiresTool: true },
+      // Just created → Abu may read it back from working memory; persistence is asserted directly.
+      { user: 'ואיפה זה שוב? תקריאי לי מה רשום' },
     ],
   },
   {
@@ -272,7 +284,7 @@ export const SCENARIOS: Scenario[] = [
       { user: 'תקבעי פגישה עם מור מחר בחמש בקפה נמרוד', requiresTool: true },
       { user: 'לא, תעשי את זה בארבע במקום', requiresTool: true },
       { user: 'כן תשמרי ככה', requiresTool: true },
-      { user: 'תקריאי לי את הפרטים של הפגישה', requiresTool: true },
+      { user: 'תקריאי לי את הפרטים של הפגישה' },
     ],
   },
   {
@@ -285,7 +297,7 @@ export const SCENARIOS: Scenario[] = [
     turns: [
       { user: 'מה יש לי מחר ואיפה?', requiresTool: true },
       { user: 'המרפאה עברה — תעדכני את המקום למרפאה חדשה בכפר סבא', requiresTool: true },
-      { user: 'תקריאי לי שוב מה רשום ואיפה', requiresTool: true },
+      { user: 'תקריאי לי שוב מה רשום ואיפה' },
     ],
   },
 ]
