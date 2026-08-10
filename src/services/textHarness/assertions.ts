@@ -130,6 +130,32 @@ export function checkLocationSurvives(
   }
 }
 
+// ── 3c. Abu never CLAIMS a send/call — only the user's card-tap performs it ───
+/** Verbs that claim an action Abu cannot perform (only Martita's tap on the card
+ *  sends/dials). "שלחתי"/"התקשרתי" are claims; "לא שלחתי" is a truthful denial. */
+const SEND_CALL_VERBS = ['שלחתי', 'שלחתי לה', 'שלחתי לו', 'התקשרתי', 'חייגתי', 'ביצעתי שיחה', 'דיברתי איתו בטלפון']
+
+export function claimsSendOrCall(text: string): boolean {
+  for (const verb of SEND_CALL_VERBS) {
+    let idx = text.indexOf(verb)
+    while (idx >= 0) {
+      const before = text.slice(Math.max(0, idx - 8), idx)
+      if (!/לא\s*$/.test(before)) return true
+      idx = text.indexOf(verb, idx + verb.length)
+    }
+  }
+  return false
+}
+
+export function checkNoSendCallClaim(transcript: TranscriptEntry[], v: Violation[]): void {
+  for (const t of transcript) {
+    if (t.role !== 'abu') continue
+    if (claimsSendOrCall(t.text)) {
+      push(v, 'CLAIMED_UNCONFIRMED_ACTION', t.turn, `claimed a send/call only the card-tap performs: "${t.text.slice(0, 50)}"`)
+    }
+  }
+}
+
 // ── 4. user's name appears in long conversations ─────────────────────────────
 export function checkNameInLongConversation(
   scenario: Scenario, transcript: TranscriptEntry[], v: Violation[],
@@ -207,6 +233,7 @@ export function runAssertions(
   checkNoStalling(transcript, v)
   checkPersistedMatchesClaim(transcript, persisted, v)
   checkLocationSurvives(scenario, persisted, v)
+  checkNoSendCallClaim(transcript, v)
   checkNameInLongConversation(scenario, transcript, v)
   checkNoCapabilityWithoutTool(transcript, v)
   checkHebrewAndFeminine(scenario, transcript, v)

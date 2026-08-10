@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest'
 import {
   checkToolBeforeSpeech, checkNoStalling, checkPersistedMatchesClaim, checkLocationSurvives,
   checkNameInLongConversation, checkNoCapabilityWithoutTool, checkHebrewAndFeminine, claimsSave,
+  checkNoSendCallClaim,
 } from './assertions'
 import type { LiveEvent } from '../liveTools'
 import { runScenario } from './runner'
@@ -112,6 +113,24 @@ describe('assertion: location survives to the persisted event', () => {
   it('is a no-op when the scenario declares no expected location', () => {
     const v: Violation[] = []
     checkLocationSurvives({ id: 'n', title: 'n', turns: [{ user: 'x' }] }, [], v)
+    expect(v).toEqual([])
+  })
+})
+
+describe('assertion: Abu never claims a send/call (only the card-tap does it)', () => {
+  it('flags "שלחתי" / "התקשרתי" (claimed the action)', () => {
+    const v: Violation[] = []
+    checkNoSendCallClaim([abu('שלחתי למור את ההודעה', 0, 1), abu('התקשרתי ללאו', 1, 2)], v)
+    expect(v.filter((x) => x.code === 'CLAIMED_UNCONFIRMED_ACTION').length).toBe(2)
+  })
+  it('does NOT flag the correct card wording ("מוכן, תלחצי שליחה")', () => {
+    const v: Violation[] = []
+    checkNoSendCallClaim([abu('ההודעה מוכנה בכרטיס, תלחצי על שליחה כדי לשלוח', 0, 1)], v)
+    expect(v).toEqual([])
+  })
+  it('does NOT flag a negated "לא שלחתי"', () => {
+    const v: Violation[] = []
+    checkNoSendCallClaim([abu('עדיין לא שלחתי — זה מחכה לך בכרטיס', 0, 1)], v)
     expect(v).toEqual([])
   })
 })
@@ -235,13 +254,13 @@ describe('runner plumbing via a scripted driver', () => {
   })
 })
 
-// ─── the 43 seed scenarios are well-formed ───────────────────────────────────
+// ─── the 46 seed scenarios are well-formed ───────────────────────────────────
 
-describe('the 43 seed scenarios', () => {
+describe('the 46 seed scenarios', () => {
   it('there are exactly 43, with unique ids and non-empty Hebrew/Spanish turns', () => {
-    expect(SCENARIOS).toHaveLength(43)
+    expect(SCENARIOS).toHaveLength(46)
     const ids = SCENARIOS.map((s) => s.id)
-    expect(new Set(ids).size).toBe(43)
+    expect(new Set(ids).size).toBe(46)
     for (const s of SCENARIOS) {
       expect(s.turns.length).toBeGreaterThan(0)
       for (const t of s.turns) expect(t.user.trim().length).toBeGreaterThan(0)
@@ -251,7 +270,7 @@ describe('the 43 seed scenarios', () => {
     const has = (frag: string) => SCENARIOS.some((s) => s.id.includes(frag))
     for (const frag of ['calendar-create', 'calendar-readback', 'calendar-update', 'contact-ambiguous',
       'interruption', 'topic-change', 'chitchat', 'current-info', 'emotional', 'confused', 'bait', 'spanish',
-      'long-conversation', 'calendar-location']) {
+      'long-conversation', 'calendar-location', 'card-']) {
       expect(has(frag), `missing category: ${frag}`).toBe(true)
     }
   })

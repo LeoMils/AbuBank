@@ -26,7 +26,8 @@
  * the SDP call, so the client and mint can never drift.
  */
 import { buildLiveInstructions } from './liveInstructions'
-import { LiveTools, LIVE_TOOL_SCHEMAS, durableCalendarStore, type LiveCalendarStore } from './liveTools'
+import { LiveTools, LIVE_TOOL_SCHEMAS, durableCalendarStore, type LiveCalendarStore, type LiveCommDraft, type LiveEvent } from './liveTools'
+import type { CalendarDraft } from '../screens/AbuAI/realtime/calendarDraft'
 import { extractFunctionCall, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 
 // ─── Configuration (M1 defaults; M2 tunes these by listening) ──────────────
@@ -201,6 +202,13 @@ export interface LiveCallbacks {
   onAbuTranscript?: (text: string) => void
   /** A truthful, human error line (Hebrew). Fail closed — there is no fallback. */
   onError?: (messageHe: string, code: string) => void
+  // ─── Action-card signals (Part B): the overlay renders a card as the receipt ──
+  /** The pending calendar draft changed (prepare/correct/cancel). */
+  onCalendarDraft?: (d: CalendarDraft | null) => void
+  /** An event was actually persisted — the receipt card shows the saved fields. */
+  onCalendarSaved?: (e: LiveEvent) => void
+  /** A WhatsApp/call preparation changed (whatsapp_draft/phone_call/cancel). */
+  onCommDraft?: (d: LiveCommDraft | null) => void
 }
 
 /** Injected browser seams — real defaults in the browser, fakes in tests. */
@@ -286,9 +294,17 @@ export class LiveSession {
     this.deps = { ...defaultDeps(), ...deps }
     // ONE tool executor, wired to send over this session's data channel and to the
     // durable calendar store (or an injected one in tests). No conversation state.
+    // The draft/receipt callbacks forward to the overlay so every action becomes a
+    // visible card (Part B). This is UI notification ONLY — it does not touch the
+    // audio/VAD/turn machinery.
     this.liveTools = new LiveTools(
       (event) => this.send(event),
       this.deps.calendarStore ?? durableCalendarStore(),
+      {
+        onCalendarDraft: (d) => this.cb.onCalendarDraft?.(d),
+        onCalendarSaved: (e) => this.cb.onCalendarSaved?.(e),
+        onCommDraft: (d) => this.cb.onCommDraft?.(d),
+      },
     )
   }
 
@@ -540,6 +556,16 @@ export class LiveSession {
   /** The single wire-send. A closed channel is a no-op (fail closed). */
   private send(event: Record<string, unknown>): void {
     if (this.dc && this.dc.readyState === 'open') this.dc.send(JSON.stringify(event))
+  }
+
+  /** Inject a TYPED user turn (the calendar card's Confirm button sends "כן, תשמרי").
+   *  This is an additive input channel — a normal user message + response.create over
+   *  the same data channel. It does NOT change VAD, turn detection, or audio playback;
+   *  the model handles it exactly like a spoken turn. No-op if the channel is closed. */
+  sendUserText(text: string): void {
+    if (!this.dc || this.dc.readyState !== 'open') return
+    this.send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } })
+    this.send({ type: 'response.create' })
   }
 
   /** ONE function: tear the whole thing down. Idempotent. Bumps the epoch so any

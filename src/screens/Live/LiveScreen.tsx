@@ -18,7 +18,19 @@ import {
   currentConversationId,
   type LiveState,
 } from '../../services/liveSession'
+import {
+  buildWhatsAppCard, buildCallCard, buildCalendarDraftCard, buildCalendarReceiptCard,
+  type LiveCard, type Handoff,
+} from '../../services/liveActionCards'
+import { whatsappAdapter } from '../AbuWhatsApp/whatsappAdapter'
+import { phoneAdapter } from '../AbuWhatsApp/phoneAdapter'
+import { ActionCard } from './ActionCard'
 import { BUILD_ID } from '../../version'
+
+// Number resolution happens HERE, at the UI layer — the number is encoded straight
+// into the wa.me/tel link and never enters the model or the card text (privacy).
+const waHandoff: Handoff = (name, text) => whatsappAdapter.buildHandoff(name, text)
+const telHandoff: Handoff = (name) => phoneAdapter.buildHandoff(name, '')
 
 const BG = '#050A18'
 const GOLD = '#C9A84C'
@@ -38,6 +50,8 @@ export function LiveScreen({ onClose }: { onClose: () => void }) {
   const [started, setStarted] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [abuText, setAbuText] = useState('')
+  // The ONE active action card (the receipt). Every prepared action renders here.
+  const [card, setCard] = useState<LiveCard | null>(null)
 
   const teardown = useCallback(() => {
     sessionRef.current?.teardown()
@@ -80,6 +94,17 @@ export function LiveScreen({ onClose }: { onClose: () => void }) {
         onState: setState,
         onAbuTranscript: (t) => setAbuText(t),
         onError: (messageHe) => { setErrorMsg(messageHe) },
+        // Action-card receipts (Part B) — the card is the proof, never speech alone.
+        onCommDraft: (d) => {
+          if (!d || d.status === 'CANCELLED') { setCard(null); return }
+          setCard(d.kind === 'call' ? buildCallCard(d, telHandoff) : buildWhatsAppCard(d, waHandoff))
+        },
+        onCalendarDraft: (d) => {
+          const c = buildCalendarDraftCard(d)
+          // Keep a save receipt on screen; only replace/clear for a live draft change.
+          setCard((prev) => (c ? c : prev && prev.kind === 'calendar-receipt' ? prev : null))
+        },
+        onCalendarSaved: (e) => setCard(buildCalendarReceiptCard(e)),
       },
       conversationId,
       isReconnect,
@@ -106,7 +131,13 @@ export function LiveScreen({ onClose }: { onClose: () => void }) {
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [])
 
-  const handleEnd = () => { teardown(); onClose() }
+  const handleEnd = () => { setCard(null); teardown(); onClose() }
+
+  // The calendar draft card's Confirm button sends a typed "yes" into the session so
+  // the model saves it (and then fires the receipt card). Never saves client-side.
+  const confirmCalendar = useCallback(() => {
+    sessionRef.current?.sendUserText('כן, זה מושלם, תשמרי את זה')
+  }, [])
 
   const isError = state === 'error' || !!errorMsg
   const orbColor = state === 'speaking' ? GOLD : state === 'listening' ? '#4ADE80' : isError ? '#F87171' : 'rgba(201,168,76,0.4)'
@@ -195,6 +226,19 @@ export function LiveScreen({ onClose }: { onClose: () => void }) {
         >
           נסי שוב
         </button>
+      )}
+
+      {/* Action-card receipt — the visible proof of a prepared action (Part B). */}
+      {card && (
+        <div
+          style={{
+            position: 'absolute', inset: 0, zIndex: 9100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(5,10,24,0.72)', padding: 20,
+          }}
+        >
+          <ActionCard card={card} onDismiss={() => setCard(null)} onConfirm={confirmCalendar} />
+        </div>
       )}
     </div>
   )

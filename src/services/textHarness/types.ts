@@ -136,6 +136,7 @@ export type ViolationCode =
   | 'STALLING_PHRASE'           // "רגע" / "אני בודקת" / "תכף אחזור"
   | 'PERSISTED_STATE_MISMATCH'  // claimed a save the store does not contain
   | 'LOCATION_DROPPED'          // a location the user gave did not survive to the event
+  | 'CLAIMED_UNCONFIRMED_ACTION'// claimed a send/call that only the user's card-tap performs
   | 'NAME_ABSENT_LONG_CONVO'    // never used Martita's name in a long conversation
   | 'CAPABILITY_WITHOUT_TOOL'   // offered a capability with no registered tool
   | 'NON_HEBREW_OUTPUT'         // Latin/English leakage where Hebrew is expected

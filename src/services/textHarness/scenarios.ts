@@ -1,5 +1,5 @@
 /*
- * textHarness/scenarios.ts — 43 seeded Hebrew (+ Rioplatense) text scenarios.
+ * textHarness/scenarios.ts — 46 seeded Hebrew (+ Rioplatense) text scenarios.
  * ════════════════════════════════════════════════════════════════════════════
  * Each scenario is a short typed conversation that probes ONE behaviour of the live
  * path: calendar create/correct/read-back/update, contact ambiguity, interruption,
@@ -298,6 +298,24 @@ export const SCENARIOS: Scenario[] = [
       { user: 'מה יש לי מחר ואיפה?', requiresTool: true },
       { user: 'המרפאה עברה — תעדכני את המקום למרפאה חדשה בכפר סבא', requiresTool: true },
       { user: 'תקריאי לי שוב מה רשום ואיפה' },
+    ],
+  },
+
+  // ── action cards (Part B): a card is the receipt; Abu never claims the action ──
+  {
+    id: 'card-whatsapp-draft', title: 'WhatsApp draft → card; Abu asks her to tap Send, never says sent',
+    turns: [{ user: 'תשלחי הודעה למור שאני אוהבת אותה מאוד', requiresTool: true }],
+  },
+  {
+    id: 'card-phone-call', title: 'Phone call → card; Abu asks her to tap Call, never says called',
+    turns: [{ user: 'אני רוצה להתקשר ללאו', requiresTool: true }],
+  },
+  {
+    id: 'card-calendar-draft-confirm-receipt', title: 'Calendar draft card → confirm → receipt; no premature save claim',
+    fakes: { nowMs: HARNESS_NOW },
+    turns: [
+      { user: 'תקבעי לי תור לרופא שיניים מחר בתשע', requiresTool: true },
+      { user: 'כן, תאשרי ותשמרי', requiresTool: true },
     ],
   },
 ]

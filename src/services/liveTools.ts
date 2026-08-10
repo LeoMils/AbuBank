@@ -67,6 +67,9 @@ export interface LiveCommDraft {
 
 export interface LiveToolsCallbacks {
   onCalendarDraft?: (d: CalendarDraft | null) => void
+  /** Fires with the event AS ACTUALLY PERSISTED, so the overlay can render a
+   *  receipt card showing the saved fields (not just what was drafted). */
+  onCalendarSaved?: (e: LiveEvent) => void
   onCommDraft?: (d: LiveCommDraft | null) => void
 }
 
@@ -138,13 +141,13 @@ export const LIVE_TOOL_SCHEMAS = [
     },
   },
   {
-    type: 'function', name: 'prepare_whatsapp',
-    description: 'Prepare (do NOT send) a WhatsApp message for Martita to review and send herself. Pass the recipient as a NAME; it is resolved to a contact locally. Never claim the message was sent.',
-    parameters: { type: 'object', properties: { recipient: { type: 'string', description: 'The contact NAME (e.g. "מור"). Never a number.' }, intent: { type: 'string', description: "What Martita wants to say, in her words." } }, required: ['recipient', 'intent'], additionalProperties: false },
+    type: 'function', name: 'whatsapp_draft',
+    description: 'Compose a WhatsApp message and show Martita a CARD with the recipient and the FULL message text and a Send button. It does NOT send — only her tap on the card sends it. Pass the recipient as a NAME (resolved to a contact locally) and the full message you composed. Never claim the message was sent; tell her the card is ready and to tap Send.',
+    parameters: { type: 'object', properties: { recipient: { type: 'string', description: 'The contact NAME (e.g. "מור"). Never a number.' }, message: { type: 'string', description: 'The FULL message text you composed, in Martita\'s voice, ready to send.' } }, required: ['recipient', 'message'], additionalProperties: false },
   },
   {
-    type: 'function', name: 'prepare_call',
-    description: 'Prepare (do NOT dial) a phone call for Martita to place herself. Pass the recipient as a NAME; it is resolved locally. Never claim a call was placed.',
+    type: 'function', name: 'phone_call',
+    description: 'Show Martita a CARD with a contact\'s name and number and a Call button. It does NOT dial — only her tap on the card places the call. Pass the recipient as a NAME (resolved locally). Never claim a call was placed; tell her the card is ready and to tap Call.',
     parameters: { type: 'object', properties: { recipient: { type: 'string', description: 'The contact NAME. Never a number.' } }, required: ['recipient'], additionalProperties: false },
   },
   {
@@ -155,7 +158,7 @@ export const LIVE_TOOL_SCHEMAS = [
 ] as const
 
 export const LIVE_TOOL_NAMES: string[] = LIVE_TOOL_SCHEMAS.map((t) => t.name)
-const COMM_TOOLS = new Set(['prepare_whatsapp', 'prepare_call', 'cancel_communication'])
+const COMM_TOOLS = new Set(['whatsapp_draft', 'phone_call', 'cancel_communication'])
 
 function str(a: Record<string, unknown>, k: string): string | undefined {
   return typeof a[k] === 'string' && (a[k] as string).trim() ? (a[k] as string).trim() : undefined
@@ -244,6 +247,7 @@ export class LiveTools {
       })
       if (saved) {
         this.committedApptId = saved.id
+        this.cb.onCalendarSaved?.(saved)   // receipt card gets the ACTUAL persisted event
         return this.calendarOutput(receipt, { saved: true, event_id: saved.id })
       }
       // Persistence failed — be honest, do not claim it was saved.
@@ -332,7 +336,7 @@ export class LiveTools {
       this.cb.onCommDraft?.(this.comm)
       return { status: 'cancelled', allowed_to_say: ['confirm you cancelled it'] }
     }
-    const kind: LiveCommDraft['kind'] = name === 'prepare_call' ? 'call' : 'message'
+    const kind: LiveCommDraft['kind'] = name === 'phone_call' ? 'call' : 'message'
     const recipientSpoken = str(args, 'recipient') ?? ''
     const res = resolveContact(recipientSpoken)
     if (res.status !== 'resolved') {
@@ -350,7 +354,7 @@ export class LiveTools {
       kind,
       recipientId: res.id,
       recipientLabel: contactLabel(res.id) ?? res.label,
-      intent: kind === 'message' ? (str(args, 'intent') ?? '') : null,
+      intent: kind === 'message' ? (str(args, 'message') ?? '') : null,
       status: kind === 'call' ? 'READY_TO_CALL' : 'READY_TO_SEND',
     }
     this.cb.onCommDraft?.(this.comm)

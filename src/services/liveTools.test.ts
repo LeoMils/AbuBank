@@ -39,12 +39,19 @@ interface Harness {
   call: (name: string, args: Record<string, unknown>, callId?: string) => void
   outputs: () => Array<Record<string, unknown>>
   lastOutput: () => Record<string, unknown> | null
+  /** Captured action-card callback events (type + payload), in order. */
+  cbEvents: Array<Record<string, unknown>>
 }
 
 function harness(): Harness {
   const sent: Array<Record<string, unknown>> = []
   const store = memStore()
-  const tools = new LiveTools((e) => sent.push(e), store)
+  const cbEvents: Array<Record<string, unknown>> = []
+  const tools = new LiveTools((e) => sent.push(e), store, {
+    onCalendarDraft: (d) => cbEvents.push({ type: 'calendarDraft', d }),
+    onCalendarSaved: (e) => cbEvents.push({ type: 'calendarSaved', e }),
+    onCommDraft: (d) => cbEvents.push({ type: 'commDraft', d }),
+  })
   let auto = 0
   const call = (name: string, args: Record<string, unknown>, callId?: string) => {
     const fc: ParsedFunctionCall = { name, callId: callId ?? `auto-${++auto}`, argsJson: JSON.stringify(args) }
@@ -54,7 +61,7 @@ function harness(): Harness {
     sent.filter((e) => e.type === 'conversation.item.create')
       .map((e) => JSON.parse(((e.item as { output: string }).output)) as Record<string, unknown>)
   const lastOutput = () => { const o = outputs(); return o.length ? o[o.length - 1]! : null }
-  return { tools, sent, store, call, outputs, lastOutput }
+  return { tools, sent, store, call, outputs, lastOutput, cbEvents }
 }
 
 describe('resolve_contact tool', () => {
@@ -160,35 +167,64 @@ describe('calendar — identity safety (no substitution)', () => {
   })
 })
 
-describe('whatsapp / call — PREPARE only', () => {
-  it('prepares a WhatsApp draft for a resolved recipient; never claims it was sent', () => {
+describe('whatsapp_draft / phone_call — PREPARE only (card is the receipt)', () => {
+  it('drafts a WhatsApp message (carrying the composed text) for a resolved recipient; never claims sent', () => {
     const h = harness()
-    h.call('prepare_whatsapp', { recipient: 'מור', intent: 'שנשמע' })
+    h.call('whatsapp_draft', { recipient: 'מור', message: 'אמא חושבת עלייך, נשמע בקרוב' })
     const out = h.lastOutput()!
     expect(out.status).toBe('READY_TO_SEND')
     expect(out.recipient).toBe('מור')
     expect((out.allowed_to_say as string[]).some((s) => /never say you sent/i.test(s))).toBe(true)
-    expect(h.tools.viewCommDraft()).toMatchObject({ kind: 'message', recipientId: 'mor', status: 'READY_TO_SEND' })
+    // The draft carries the FULL composed message for the card to show.
+    expect(h.tools.viewCommDraft()).toMatchObject({ kind: 'message', recipientId: 'mor', status: 'READY_TO_SEND', intent: 'אמא חושבת עלייך, נשמע בקרוב' })
   })
 
   it('a call is only PREPARED (READY_TO_CALL), never dialed', () => {
     const h = harness()
-    h.call('prepare_call', { recipient: 'לאו' })
+    h.call('phone_call', { recipient: 'לאו' })
     expect(h.lastOutput()).toMatchObject({ status: 'READY_TO_CALL', kind: 'call', recipient: 'לאו' })
   })
 
   it('an unresolved recipient (relationship phrase) creates NO comm draft — Abu asks who', () => {
     const h = harness()
-    h.call('prepare_whatsapp', { recipient: 'אח של מור', intent: 'משהו' })
+    h.call('whatsapp_draft', { recipient: 'אח של מור', message: 'משהו' })
     expect(h.lastOutput()).toMatchObject({ status: 'ambiguous' })
     expect(h.tools.viewCommDraft()).toBeNull()
   })
 
   it('cancel_communication cancels the pending preparation', () => {
     const h = harness()
-    h.call('prepare_call', { recipient: 'מור' })
+    h.call('phone_call', { recipient: 'מור' })
     h.call('cancel_communication', {})
     expect(h.tools.viewCommDraft()!.status).toBe('CANCELLED')
+  })
+})
+
+describe('action-card callbacks (Part B) — the overlay gets the draft + the receipt', () => {
+  it('whatsapp_draft fires onCommDraft with the recipient + composed message', () => {
+    const h = harness()
+    h.call('whatsapp_draft', { recipient: 'מור', message: 'נתראה בשישי' })
+    const comm = h.cbEvents.filter((e) => e.type === 'commDraft')
+    expect(comm.length).toBe(1)
+    expect(comm[0]!.d).toMatchObject({ kind: 'message', recipientLabel: 'מור', intent: 'נתראה בשישי', status: 'READY_TO_SEND' })
+  })
+
+  it('a confirmed calendar event fires onCalendarSaved with the ACTUAL persisted event', () => {
+    const h = harness()
+    h.call('prepare_calendar_event', { title: 'רופא', date: '2026-08-20', time: '10:00', location: 'מרפאה' })
+    h.call('confirm_calendar_event', { forRevision: h.tools.viewCalendarDraft()!.revision })
+    const saved = h.cbEvents.filter((e) => e.type === 'calendarSaved')
+    expect(saved.length).toBe(1)
+    // The receipt payload is the persisted event, carrying the location that was saved.
+    expect(saved[0]!.e).toMatchObject({ title: 'רופא', date: '2026-08-20', time: '10:00', location: 'מרפאה' })
+  })
+
+  it('onCalendarDraft fires on prepare (so the draft card can show before save)', () => {
+    const h = harness()
+    h.call('prepare_calendar_event', { title: 'תספורת', date: '2026-08-21', time: '14:00' })
+    const drafts = h.cbEvents.filter((e) => e.type === 'calendarDraft')
+    expect(drafts.length).toBeGreaterThanOrEqual(1)
+    expect(drafts[drafts.length - 1]!.d).toMatchObject({ confirmation: 'AWAITING_CONFIRM', title: 'תספורת' })
   })
 })
 
