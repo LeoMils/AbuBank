@@ -1,6 +1,6 @@
 # Family — per-person files (GENERATED)
 
-67 people. Source: knowledge/family_data.json.
+68 people. Source: knowledge/family_data.json.
 
 - Martita (matriarch) -> people/Martita.yaml
 - Papi (deceased) -> people/Papi.yaml
@@ -43,6 +43,7 @@
 - Daniel Yavnir (close_friends) -> people/Daniel_Yavnir.yaml
 - Olga Kani (close_friends) -> people/Olga_Kani.yaml
 - Isidoro Kani (close_friends) -> people/Isidoro_Kani.yaml
+- Nili (extended_family) -> people/Nili.yaml
 - Dora (extended_family) -> people/Dora.yaml
 - Jacobo (extended_family) -> people/Jacobo.yaml
 - Luis (extended_family) -> people/Luis.yaml

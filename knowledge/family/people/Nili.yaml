@@ -1,0 +1,16 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Nili
+hebrew_name: נילי
+aliases: []
+relationship: partner_of_ex_son_in_law
+relationship_hebrew: בת הזוג של רפי
+role: בת הזוג (חברתו) של רפי
+location: רֹאש העין
+origin: ארגנטינה
+gender: female
+occupation: אחות
+partner: רפי
+notes: בת הזוג של רפי (הגרוש של מור). ארגנטינאית; אחות במקצועה; לאו חושב שגם היא גרה ברֹאש העין.
+pronunciation:
+  es: nili

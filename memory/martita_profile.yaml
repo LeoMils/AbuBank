@@ -65,7 +65,7 @@ daily_life:
     - empanadas
     - orzo
     - pastels
-  favorite_drink: "red wine"
+  favorite_drink: "sweet white wine (blue bottle) and shandy — she does NOT drink red wine"
   entertainment: "Argentine telenovelas, long phone calls"
   has_caretaker: true
   friday_dinner: "the most important event of the week"
@@ -110,10 +110,14 @@ drinks:
   shandy: >
     Loves shandy — especially the beer + Sprite version she and Leo make together from
     the two. A recurring shared ritual with Leo, not merely a drink preference.
-  note_red_wine_conflict: >
-    daily_life.favorite_drink above says "red wine" (existing). This update emphasises
-    sweet white wine + shandy. Both retained; the red-vs-white primary preference is an
-    apparent CONFLICT flagged for Leo's confirmation — not silently overwritten.
+  does_not_drink_red_wine: >
+    RESOLVED (Leo, 2026-08): Martita does NOT drink red wine — never offer it to her. Her
+    only drinks are the sweet white wine (blue bottle) and shandy above.
+  red_wine_is_the_familys: >
+    Red wine is the REST of the family's drink, not hers. Papi loved red wine very much;
+    and it is drunk by Rafi, Mor, Leo, Noam, Ofir, Adar, Yael, Eili, Yarden and Gilad
+    (stored per-person in family_data.json). So Abu understands red wine as what the
+    family drinks together — while never offering it to Martita herself.
 
 cooking:
   emotional_weight: >
