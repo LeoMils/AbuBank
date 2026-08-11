@@ -53,6 +53,8 @@ import { ScreenHeader } from '../../components/ScreenHeader'
 import { SeniorButton } from '../../components/SeniorButton'
 import { EmptyState } from '../../components/EmptyState'
 import { BackButton } from '../../components/BackButton'
+import { PAGE_BG } from '../../design/theme'
+import { AbuLogo } from '../../design/logos/AbuLogo'
 import { GOLD, BRIGHT_GOLD, BG, CREAM, TEXT_SECONDARY, DAY_HEADERS, getTodayStr, daysInMonth, firstDayOfMonth, dateStr, getTimeState, type ApptTimeState } from './constants'
 
 
@@ -1011,11 +1013,16 @@ export function AbuCalendar() {
   const todayCount = useMemo(() => glanceSource.filter(a => a.date === today).length, [glanceSource, today])
 
   return (
-    <PageShell scrollable>
+    <PageShell scrollable background={PAGE_BG}>
 
       <ScreenHeader
         title="Abu יומן"
-        left={<BackButton onPress={() => setScreen(Screen.Home)} />}
+        left={<>
+          <BackButton onPress={() => setScreen(Screen.Home)} />
+          {/* Shared Abu-family emblem (M4 logo system) so the calendar reads as one
+              product with the hub — sits beside the back control on the header. */}
+          <AbuLogo app="calendar" size={34} style={{ flexShrink: 0 }} />
+        </>}
         right={<>
 
         {/* Left side: Martita photo with hearts + 3-dot settings */}
