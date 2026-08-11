@@ -13,7 +13,7 @@
  * These prove the DETERMINISTIC behavior — NOT that Abu sounded warm on a device.
  */
 import { describe, it, expect } from 'vitest'
-import { LiveTools, type LiveCalendarStore, type LiveEvent, type OnlineFetch } from './liveTools'
+import { LiveTools, LIVE_TOOL_NAMES, type LiveCalendarStore, type LiveEvent, type OnlineFetch } from './liveTools'
 import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 
 function memStore(): LiveCalendarStore & { events: LiveEvent[] } {
@@ -75,6 +75,26 @@ describe('resolve_contact tool', () => {
     expect(h.lastOutput()).toMatchObject({ status: 'not_found' })
     // every tool reply is followed by a response.create so the model speaks
     expect(h.sent.filter((e) => e.type === 'response.create').length).toBe(3)
+  })
+})
+
+describe('tool-agnostic speech guarantee', () => {
+  // Defect-1 guard: EVERY tool the model can call MUST produce a spoken response
+  // (response.create) in the SAME turn it is handled — so Abu answers with the
+  // grounded result, never leaving a tool result silent and never needing a preamble
+  // to fill the gap. Iterating LIVE_TOOL_NAMES means a NEWLY ADDED tool that forgets
+  // to reply fails this test — the guarantee cannot silently regress.
+  it('every owned live tool emits exactly one response.create in the same turn', async () => {
+    const fastOnline: OnlineFetch = async () => ({ ok: false }) // no network; still must speak
+    for (const name of LIVE_TOOL_NAMES) {
+      const sent: Array<Record<string, unknown>> = []
+      const tools = new LiveTools((e) => sent.push(e), memStore(), {}, fastOnline)
+      tools.handleFunctionCall({ name, callId: `c-${name}`, argsJson: '{}' })
+      // get_current_info is async (a server round-trip) — flush microtasks.
+      await Promise.resolve(); await Promise.resolve()
+      const speaks = sent.filter((e) => e.type === 'response.create').length
+      expect(speaks, `tool "${name}" must speak its result in the same turn`).toBe(1)
+    }
   })
 })
 

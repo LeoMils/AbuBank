@@ -141,6 +141,8 @@ export type ViolationCode =
   | 'CAPABILITY_WITHOUT_TOOL'   // offered a capability with no registered tool
   | 'NON_HEBREW_OUTPUT'         // Latin/English leakage where Hebrew is expected
   | 'MASCULINE_SELF_REFERENCE'  // Abu referred to herself in the masculine
+  | 'REPEATED_OPENING_PHRASE'   // the same opening phrase repeats >2× in a long conversation
+  | 'ANNOUNCED_CHECK'           // announced a lookup ("נבדוק…", "בוא נבדוק") instead of answering
   | 'RUN_ERROR'                 // driver/plumbing error (surfaced, not hidden)
 
 export type ScenarioStatus = 'PASS' | 'FAIL' | 'BLOCKED'

@@ -84,11 +84,11 @@ export function checkToolBeforeSpeech(
       push(v, 'SPEECH_BEFORE_TOOL', i, `spoke without calling any tool: "${spokeThisTurn[0]!.text.slice(0, 40)}"`)
       continue
     }
-    // A tool was called; ensure no substantive speech was emitted before it. (A short
-    // preamble is allowed by the persona, but a full answer before the tool is not —
-    // we flag any abu entry whose seq precedes the first tool call.)
+    // A tool was called; NO speech may precede it. The persona/instructions forbid any
+    // filler or acknowledgment before a tool call — the tool runs first and she speaks
+    // only the grounded result. We flag any abu entry whose seq precedes the first tool call.
     const spokeBefore = spokeThisTurn.find((s) => s.seq < (firstToolSeq ?? 0))
-    if (spokeBefore) push(v, 'SPEECH_BEFORE_TOOL', i, `answered before the tool ran: "${spokeBefore.text.slice(0, 40)}"`)
+    if (spokeBefore) push(v, 'SPEECH_BEFORE_TOOL', i, `spoke before the tool ran: "${spokeBefore.text.slice(0, 40)}"`)
   }
 }
 
@@ -221,6 +221,57 @@ export function checkHebrewAndFeminine(scenario: Scenario, transcript: Transcrip
   }
 }
 
+// ── 7. no opening phrase repeats more than twice in a long conversation ───────
+/** Normalise the OPENING of a spoken turn to its first two meaningful words, so a
+ *  repeated stock opener ("טוב, נבדוק …" every turn) collapses to one key regardless of
+ *  what follows. Punctuation and the filler comma are stripped; empty → ''. */
+export function openingPhraseOf(text: string): string {
+  const cleaned = text.replace(/[.,!?…"'()\-—:;]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return ''
+  return cleaned.split(' ').slice(0, 2).join(' ')
+}
+
+/** Assertion 7: in a long conversation, the SAME opening phrase must not repeat more
+ *  than twice. Robotic re-use of an opener ("טוב, …" every turn) is the repetition the
+ *  device trace showed. Only long conversations are graded (short ones can coincide). */
+export function checkNoRepeatedOpeningPhrase(
+  scenario: Scenario, transcript: TranscriptEntry[], v: Violation[],
+): void {
+  const threshold = scenario.longConversationTurns ?? 6
+  const abuTurns = transcript.filter((t) => t.role === 'abu' && t.text.trim())
+  if (transcript.filter((t) => t.role === 'user').length < threshold) return
+  const counts = new Map<string, number>()
+  for (const t of abuTurns) {
+    const opener = openingPhraseOf(t.text)
+    if (!opener) continue
+    const n = (counts.get(opener) ?? 0) + 1
+    counts.set(opener, n)
+    if (n === 3) push(v, 'REPEATED_OPENING_PHRASE', t.turn, `opening phrase "${opener}" repeats more than twice`)
+  }
+}
+
+// ── 8. never ANNOUNCE the check she then performs (tool-agnostic) ─────────────
+/** Announcement-of-a-check phrases. Flagged ONLY when a tool actually ran on the SAME
+ *  turn — i.e. she narrated the lookup she then did. The honest-defer line ("בואי נבדוק
+ *  ביומן ביחד") is spoken when she CANNOT check (no tool runs) and is therefore not
+ *  flagged. Tool-agnostic: it keys on "she announced then a tool ran", not on any
+ *  specific tool, so a future tool cannot regress it. */
+const ANNOUNCE_CHECK = /(נבדוק|אבדוק|בוא\s*נבדוק|בואי\s*נבדוק|תני\s*לי\s*לבדוק|אני\s*אבדוק|בוא\s*נראה|נראה\s*מה)/
+export function checkNoAnnouncedCheck(
+  transcript: TranscriptEntry[], toolCalls: ToolCallRecord[], v: Violation[],
+): void {
+  const turnsWithTool = new Set(toolCalls.map((c) => c.turn))
+  for (const t of transcript) {
+    if (t.role !== 'abu' || !t.text.trim()) continue
+    if (!turnsWithTool.has(t.turn)) continue // no tool ran → an honest defer, not an announced check
+    if (t.seq < Math.min(...toolCalls.filter((c) => c.turn === t.turn).map((c) => c.seq))) {
+      if (ANNOUNCE_CHECK.test(t.text)) {
+        push(v, 'ANNOUNCED_CHECK', t.turn, `announced the check before doing it: "${t.text.slice(0, 50)}"`)
+      }
+    }
+  }
+}
+
 /** Run every assertion family and return the aggregated violations. */
 export function runAssertions(
   scenario: Scenario,
@@ -237,5 +288,7 @@ export function runAssertions(
   checkNameInLongConversation(scenario, transcript, v)
   checkNoCapabilityWithoutTool(transcript, v)
   checkHebrewAndFeminine(scenario, transcript, v)
+  checkNoRepeatedOpeningPhrase(scenario, transcript, v)
+  checkNoAnnouncedCheck(transcript, toolCalls, v)
   return v
 }

@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest'
 import {
   checkToolBeforeSpeech, checkNoStalling, checkPersistedMatchesClaim, checkLocationSurvives,
   checkNameInLongConversation, checkNoCapabilityWithoutTool, checkHebrewAndFeminine, claimsSave,
-  checkNoSendCallClaim,
+  checkNoSendCallClaim, checkNoRepeatedOpeningPhrase, checkNoAnnouncedCheck, openingPhraseOf,
 } from './assertions'
 import type { LiveEvent } from '../liveTools'
 import { runScenario } from './runner'
@@ -25,6 +25,54 @@ const abu = (text: string, turn: number, seq: number, phase: 'commentary' | 'fin
 const usr = (text: string, turn: number, seq: number): TranscriptEntry => ({ role: 'user', text, turn, seq })
 
 // ─── assertion families ──────────────────────────────────────────────────────
+
+describe('assertion: no opening phrase repeats more than twice (long conversation)', () => {
+  const longScenario = (): Scenario => ({
+    id: 'rep', title: 't', longConversationTurns: 6,
+    turns: Array.from({ length: 6 }, (_, i) => ({ user: `שאלה ${i}` })),
+  } as unknown as Scenario)
+  const sixUsers = (): TranscriptEntry[] => Array.from({ length: 6 }, (_, i) => usr(`שאלה ${i}`, i, i * 2))
+
+  it('normalises an opener to its first three words', () => {
+    expect(openingPhraseOf('טוב, נבדוק את זה')).toBe(openingPhraseOf('טוב נבדוק את'))
+  })
+  it('flags the SAME opener used three times', () => {
+    const v: Violation[] = []
+    const t = [
+      ...sixUsers(),
+      abu('טוב נבדוק את הקשר ביניהם', 0, 1), abu('טוב נבדוק מתי זה', 1, 3), abu('טוב נבדוק איפה', 2, 5),
+      abu('יש לך תור בשלוש', 3, 7),
+    ]
+    checkNoRepeatedOpeningPhrase(longScenario(), t, v)
+    expect(v.map((x) => x.code)).toContain('REPEATED_OPENING_PHRASE')
+  })
+  it('stays quiet when openers vary', () => {
+    const v: Violation[] = []
+    const t = [
+      ...sixUsers(),
+      abu('יש לך תור בשלוש', 0, 1), abu('מור מגיעה מחר', 1, 3), abu('אין כלום ביום שישי', 2, 5),
+      abu('אתקשר לאופיר', 3, 7),
+    ]
+    checkNoRepeatedOpeningPhrase(longScenario(), t, v)
+    expect(v).toEqual([])
+  })
+})
+
+describe('assertion: never announce the check she then performs (tool-agnostic)', () => {
+  it('flags an announced check when a tool ran the SAME turn', () => {
+    const v: Violation[] = []
+    const t = [usr('מה הקשר בין מור לאופיר', 0, 0), abu('טוב, נבדוק את הקשר ביניהם', 0, 1)]
+    const tc: ToolCallRecord[] = [{ turn: 0, name: 'people_lookup', callId: 'c1', args: {}, result: {}, seq: 2 }]
+    checkNoAnnouncedCheck(t, tc, v)
+    expect(v.map((x) => x.code)).toContain('ANNOUNCED_CHECK')
+  })
+  it('does NOT flag the honest defer when NO tool runs (she genuinely cannot check)', () => {
+    const v: Violation[] = []
+    const t = [usr('מתי התור?', 0, 0), abu('בואי נבדוק ביומן ביחד — אני לא בטוחה', 0, 1)]
+    checkNoAnnouncedCheck(t, [], v)
+    expect(v).toEqual([])
+  })
+})
 
 describe('assertion: tool-before-speech on tool-requiring intents', () => {
   const turns = [{ user: 'מה יש לי מחר?', requiresTool: true }]
