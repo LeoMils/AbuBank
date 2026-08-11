@@ -1,0 +1,38 @@
+{
+  "corpusSize": 36,
+  "providers": [
+    {
+      "provider": "openai",
+      "status": "RAN",
+      "total": 36,
+      "citationRatePct": 58,
+      "answerRatePct": 100,
+      "avgLatencyMs": 4535,
+      "p95LatencyMs": 8169,
+      "citationByCategoryPct": {
+        "news": 63,
+        "sports": 33,
+        "weather": 33,
+        "cinema": 33,
+        "prices": 75,
+        "hours": 100,
+        "live": 67
+      }
+    },
+    {
+      "provider": "tavily",
+      "status": "BLOCKED",
+      "reason": "no TAVILY_API_KEY"
+    },
+    {
+      "provider": "brave",
+      "status": "BLOCKED",
+      "reason": "no BRAVE_API_KEY"
+    },
+    {
+      "provider": "perplexity",
+      "status": "BLOCKED",
+      "reason": "no PERPLEXITY_API_KEY"
+    }
+  ]
+}
