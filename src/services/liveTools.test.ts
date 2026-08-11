@@ -381,3 +381,33 @@ describe('get_current_info — grounded online tool (async, no verified result �
     expect(h.sent.filter((e) => e.type === 'conversation.item.create')).toHaveLength(1)
   })
 })
+
+// ─── people_lookup — the ONE people tool (M3) ──────────────────────────────────
+describe('people_lookup — who / relationship / relatives / contact (no numbers)', () => {
+  it('who: identifies a person and their relation to Martita', () => {
+    const h = harness()
+    h.call('people_lookup', { want: 'who', person: 'לאו' })
+    expect(h.lastOutput()).toMatchObject({ status: 'ok', name: 'לאו', relationToMartita: 'בן של מרטיטה' })
+  })
+  it('relationship: the derived Hebrew term (Gilad is Eili\'s גיס)', () => {
+    const h = harness()
+    h.call('people_lookup', { want: 'relationship', person: 'גלעד', other: 'עילי' })
+    expect(h.lastOutput()).toMatchObject({ status: 'ok', relationship: 'גלעד גיס של עילי' })
+  })
+  it('relatives: Martita\'s grandchildren = six', () => {
+    const h = harness()
+    h.call('people_lookup', { want: 'relatives', person: 'מרטיטה', relation: 'grandchild' })
+    expect((h.lastOutput()!.people as string[]).length).toBe(6)
+  })
+  it('contact by relationship: "הבת שלי" → Mor resolved (id+label, no number)', () => {
+    const h = harness()
+    h.call('people_lookup', { want: 'contact', person: 'הבת שלי' })
+    expect(h.lastOutput()).toMatchObject({ status: 'resolved', id: 'mor', label: 'מור' })
+    expect(JSON.stringify(h.lastOutput())).not.toMatch(/\d{7,}/)
+  })
+  it('contact by relationship: "הנכד שלי" → ambiguous, ask which', () => {
+    const h = harness()
+    h.call('people_lookup', { want: 'contact', person: 'הנכד שלי' })
+    expect(h.lastOutput()!.status).toBe('ambiguous')
+  })
+})

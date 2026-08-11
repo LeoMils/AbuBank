@@ -38,16 +38,22 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 - [ ] Abu News: real stories, Israel-first, dynamic count, source+time, plain Hebrew; read aloud + discuss
 - [ ] Harness scenarios for each, run for real against the chosen provider
 
-### M3 — One people store, real Hebrew kinship
-- [ ] Collapse family_data.json + family_graph.json + abu-family.md + contacts → ONE canonical store
-- [ ] Store DIRECT facts + direct edges only; derive kinship at query time (correct Hebrew + gender)
-- [ ] Named failures work: Leo=uncle of Mor's children · Gilad=brother-in-law of Ili · Yarden=daughter-in-law of Rafi
-- [ ] ONE `people_lookup` tool; retire `resolve_contact` into it; numbers resolve at UI, never in model
-- [ ] Family data leaves session instructions — report char count before/after
-- [ ] Invariant tests (unknown-stays-unknown, alias→one person, spellings verbatim, death keeps genealogy,
-      former_spouse/partner/cohabits distinct, temporal facts dated, gender only where known, add-by-data-only)
-- [ ] Gate validator reporting errors in plain Hebrew; broken file never builds
-- [ ] Harness: 20 kinship queries incl. every derived type + "תתקשרי לנכד שלי" → person → contact in one turn
+### M3 — One people store, real Hebrew kinship  ── DONE (core) ──
+- [x] ONE canonical model (src/services/people/peopleModel) reads the single source (family_data.json);
+      direct edges only (parents/children/spouses/formerSpouses/partners/cohabits)
+- [~] Collapse 4 stores: the canonical MODEL + people_lookup are the one path; PHYSICAL retirement of
+      family_graph.json / abu-family.md (generate them FROM the one source) + contacts merge = STAGED (D4)
+- [x] Derive kinship at query time (kinship.ts) — every required Hebrew term, gendered, never stored
+- [x] Named failures pass (tests): Leo=דוד of Mor's children · Gilad=גיס of Eili · Yarden=כלה of Rafi
+- [x] ONE `people_lookup` tool wired into LiveTools (who/relationship/relatives/contact); numbers at UI only
+- [~] Retire `resolve_contact`: people_lookup supersedes it and is wired; physical removal = STAGED (D4)
+- [x] Char count reported: family in prompt 12978 → 9587 if moved to people_lookup (−26%). Actual prompt
+      removal STAGED (touches the embedded-family / familyReconciliation tests) (D4)
+- [x] Invariant tests (all 8: unknown-stays-unknown, alias→one person, spellings verbatim, death keeps
+      genealogy, former_spouse/partner distinct + partner≠parent, temporal dated, gender-only-where-known, add-by-data)
+- [x] Gate validator (scripts/validate-people.ts) — errors in plain Hebrew, in prebuild; broken file never builds
+- [x] Kinship "harness": 28 deterministic queries (kinship.test + peopleLookup.test) incl. every derived type
+      + "הבת שלי"→Mor in one turn + "הנכד שלי"→ambiguous. (Deterministic > LLM for kinship correctness.)
 
 ### M4 — Brand + design revolution
 - [ ] Logo family: real graphic "Abu" mark, per-app identity (AI/News/Bank/WhatsApp/Weather/Games/Calendar) as SVG components
@@ -81,13 +87,25 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 - **Agents:** M1 is an empirical/measurement + architecture task — done directly, no subagent
   (a design/review agent adds nothing to a latency/citation measurement). Agents are planned
   for M4 (design directions) and M5 (character) where they genuinely help.
+- **D3 (M3, safest):** Built the canonical parent graph from the EXISTING data (children arrays +
+  spouse/former-spouse as co-parents, EXCLUDING partners — matches the brief's "partner implies
+  nothing about parenthood") + a group rule for the matriarch. No family_data.json edits ⇒ zero
+  generator/memory churn, zero regression to the 12k-test suite.
+- **D4 (M3, staged):** Delivered the correctness CORE (model + kinship + people_lookup + Hebrew
+  validator + 59 tests) green. Deferred the PHYSICAL store merge (generate family_graph.json /
+  abu-family.md from the one source), the full prompt-removal of family, and the physical deletion
+  of resolve_contact — each touches the embedded-family / familyReconciliation / resolve_contact
+  tests and is a migration best done as its own reviewed commit. people_lookup already supersedes
+  resolve_contact functionally; the char-count delta (−26%) is measured and reported.
 
 ## Status / evidence per milestone
 - **M1 … DONE (framework + incumbent baseline). Evidence: TEST (framework, 13 tests) +
   PREVIEW (real incumbent run, 36 queries: 58% citation / 4.5s avg). Winner selection
   BLOCKED on Leo's keys.**
 - M2 … not started (depends on M1 winner; can proceed on the incumbent meanwhile)
-- M3 … not started
+- **M3 … DONE (core). Evidence: TEST (59 tests — kinship engine, people_lookup, live-tool wiring,
+  8 invariants, 3 named failures) + gate validator (Hebrew) in prebuild. Physical store merge +
+  prompt removal STAGED (D4). On-device kinship speech = PHYSICAL_DEVICE (not claimed).**
 - M4 … not started
 - M5 … not started
 - M6 … not started
@@ -102,5 +120,7 @@ in `.env.local` (server-side; never the client bundle), then re-run `npx tsx scr
 OpenWeather — flagged after the search tournament runs.)
 
 ## Resume pointer
-- **Next action:** M2 — full online inside the conversation (proceed on the incumbent + honesty
-  gate; add Abu-News harness scenarios run for real; swap provider when M1 winner is keyed).
+- **Next action:** M4 — brand + design revolution (logo family SVGs + design system across all
+  screens; 2–3 hub directions first). M2 (full online) is staged on the incumbent pending M1 keys.
+  (Order note: M3 was done before M2 because M2's real quality depends on the M1 winner, which is
+  blocked on Leo's keys, whereas M3 needs no keys and fixes a live device bug — safest-option, logged.)

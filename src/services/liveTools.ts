@@ -26,6 +26,8 @@ import {
   type CalendarDraft, type CalendarReceipt,
 } from '../screens/AbuAI/realtime/calendarDraft'
 import { resolveCalendarParticipant, resolveContact, contactLabel } from './liveContacts'
+import { whoIs, relationshipBetween, relativesByKind, resolveContactTarget } from './people/peopleLookup'
+import type { KinKind } from './people/kinship'
 import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 import { loadAppointments, saveAppointments, updateAppointment, detectEmoji, type Appointment } from '../screens/AbuCalendar/service'
 
@@ -168,6 +170,20 @@ export const LIVE_TOOL_SCHEMAS = [
     description: "Get CURRENT, live information from the web — today's news, the weather right now, sports results, prices, what is open or on now. Use this for anything time-sensitive or 'today/now/latest'. Speak ONLY what it returns and mention the source; if it has no result, say plainly you could not check. NEVER answer a current fact from memory. Do NOT use this for family, the calendar, or stable knowledge.",
     parameters: { type: 'object', properties: { query: { type: 'string', description: 'The current-info question, in the language Martita asked.' } }, required: ['query'], additionalProperties: false },
   },
+  {
+    type: 'function', name: 'people_lookup',
+    description: "The ONE tool for family/people questions, all derived from the canonical people store. want='who' → who a person is and how they relate to Martita; want='relationship' → the Hebrew relationship between `person` and `other`; want='relatives' → `person`'s relatives of a `relation` kind; want='contact' → resolve a person named DIRECTLY or BY RELATIONSHIP (e.g. \"הנכד שלי\") to an id+label for the UI to call/message. Never invents a relationship; unknown stays unknown. Never returns a phone number.",
+    parameters: {
+      type: 'object',
+      properties: {
+        want: { type: 'string', enum: ['who', 'relationship', 'relatives', 'contact'], description: 'What to look up.' },
+        person: { type: 'string', description: 'The person as spoken (a name, or a relationship phrase like "הבת שלי" for want=contact).' },
+        other: { type: 'string', description: 'For want=relationship: the second person.' },
+        relation: { type: 'string', description: 'For want=relatives: the kind (child, sibling, grandchild, uncle_aunt, cousin, …).' },
+      },
+      required: ['want', 'person'], additionalProperties: false,
+    },
+  },
 ] as const
 
 export const LIVE_TOOL_NAMES: string[] = LIVE_TOOL_SCHEMAS.map((t) => t.name)
@@ -266,7 +282,36 @@ export class LiveTools {
     if (fc.name === 'update_calendar_event') return this.doUpdate(args)
     if (isCalendarTool(fc.name)) return this.doCalendar(fc.name, args)
     if (COMM_TOOLS.has(fc.name)) return this.doComm(fc.name, args)
+    if (fc.name === 'people_lookup') return this.doPeopleLookup(args)
     return { error: 'unknown_tool' }
+  }
+
+  /** The ONE people tool — who / relationship / relatives / contact — all derived
+   *  from the canonical people store. Never invents a relationship; never a number. */
+  private doPeopleLookup(args: Record<string, unknown>): Record<string, unknown> {
+    const want = str(args, 'want') ?? 'who'
+    const person = str(args, 'person') ?? ''
+    if (want === 'relationship') {
+      const r = relationshipBetween(person, str(args, 'other') ?? '')
+      if (r.status === 'ok') return { status: 'ok', relationship: r.text, allowed_to_say: ['say this exact relationship'] }
+      if (r.status === 'unrelated') return { status: 'unrelated', allowed_to_say: ['say they are not directly related'] }
+      return { status: 'not_found', allowed_to_say: ['say you do not know that person'] }
+    }
+    if (want === 'relatives') {
+      const r = relativesByKind(person, (str(args, 'relation') ?? 'child') as KinKind)
+      if (r.status === 'ok') return { status: 'ok', kind: r.kind, people: r.people, allowed_to_say: ['read back these names exactly'] }
+      return { status: 'not_found', allowed_to_say: ['say you do not know that person'] }
+    }
+    if (want === 'contact') {
+      const r = resolveContactTarget(person) // {resolved,id,label} | {ambiguous,candidates} | {not_found} — no number
+      if (r.status === 'ambiguous') return { ...r, allowed_to_say: ['ask which specific person she means'] }
+      if (r.status === 'not_found') return { status: 'not_found', allowed_to_say: ['say you do not have that person'] }
+      return { ...r, allowed_to_say: ['use this id to message or call — never read a number aloud'] }
+    }
+    const w = whoIs(person)
+    return w.status === 'ok'
+      ? { ...w, allowed_to_say: ['say who this is and how they relate to Martita'] }
+      : { status: 'not_found', allowed_to_say: ['say you do not know that person'] }
   }
 
   // ─── resolve_contact ───────────────────────────────────────────────────────
