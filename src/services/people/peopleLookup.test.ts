@@ -85,4 +85,14 @@ describe('contact by name OR by relationship (id/label only — never a number)'
     const r = resolveContactTarget('דוד')
     if (r.status === 'resolved') expect(r.label).toBe('דוד')
   })
+
+  // ── device defect 6: reaching a DECEASED person is never a callable contact ──
+  it('"פפי" (deceased) is NEVER a reachable contact — status deceased, no id to call', () => {
+    const r = resolveContactTarget('פפי')
+    expect(r.status).toBe('deceased')
+    expect(JSON.stringify(r)).not.toContain('"id"') // no contact id handed out to call/message
+  })
+  it('but פפי is STILL knowable — whoIs describes him (remembering is not reaching)', () => {
+    expect(whoIs('פפי')).toMatchObject({ status: 'ok', name: 'פפי' })
+  })
 })

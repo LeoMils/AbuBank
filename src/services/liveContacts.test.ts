@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   resolveContact, resolveCalendarParticipant, isRelationshipPhrase,
-  knownContactIds, contactLabel,
+  knownContactIds, contactLabel, isDeceasedContact,
 } from './liveContacts'
 
 describe('resolveContact', () => {
@@ -88,5 +88,18 @@ describe('resolveCalendarParticipant (adapter for the draft kernel)', () => {
   it('a relationship phrase is STILL refused even when multi-word (never guessed)', () => {
     expect(resolveCalendarParticipant('אח של מור')).toBeNull()
     expect(resolveCalendarParticipant('הדוד')).toBeNull()
+  })
+})
+
+describe('isDeceasedContact (device defect 6)', () => {
+  it('פפי (deceased husband) resolves as an identity but is flagged deceased', () => {
+    const r = resolveContact('פפי')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(isDeceasedContact(r.id)).toBe(true)
+  })
+  it('a living contact is NOT flagged deceased', () => {
+    const r = resolveContact('מור')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(isDeceasedContact(r.id)).toBe(false)
   })
 })

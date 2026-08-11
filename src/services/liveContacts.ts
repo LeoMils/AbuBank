@@ -34,6 +34,9 @@ interface PersonRecord {
   canonical: string
   /** Lowercased match keys: hebrew name, canonical name, aliases. */
   keys: string[]
+  /** True for a person in the `deceased` group — resolvable for who/remember, but
+   *  NEVER reachable (call/message). Reaching them is a gentle decline, not a card. */
+  deceased: boolean
 }
 
 interface RawPerson {
@@ -72,7 +75,7 @@ function collectPeople(): PersonRecord[] {
       if (p.hebrew_name) keys.add(normalize(p.hebrew_name))
       if (p.canonical_name) keys.add(normalize(p.canonical_name))
       for (const a of p.aliases ?? []) if (a) keys.add(normalize(a))
-      out.push({ id: toId(canonical), label, canonical, keys: [...keys] })
+      out.push({ id: toId(canonical), label, canonical, keys: [...keys], deceased: group === 'deceased' })
     }
   }
   return out
@@ -103,6 +106,12 @@ export function knownContactIds(): Set<string> {
 /** The Hebrew display label for a resolved id, or null if the id is unknown. */
 export function contactLabel(id: string): string | null {
   return registry().find((r) => r.id === id)?.label ?? null
+}
+
+/** True if a resolved contact id belongs to a DECEASED person. Reaching them (call /
+ *  message) must be a gentle "he is no longer with us", never a call/message card. */
+export function isDeceasedContact(id: string): boolean {
+  return registry().find((r) => r.id === id)?.deceased ?? false
 }
 
 // ─── Normalization ───────────────────────────────────────────────────────────

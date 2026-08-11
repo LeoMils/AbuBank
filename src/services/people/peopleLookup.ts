@@ -28,6 +28,7 @@ export interface NotFound { status: 'not_found' }
 export type ContactResult =
   | { status: 'resolved'; id: string; label: string }
   | { status: 'ambiguous'; candidates: Array<{ id: string; label: string }> }
+  | { status: 'deceased'; label: string }
   | { status: 'not_found' }
 
 export function whoIs(name: string, people: Person[] = loadPeople()): WhoIs | NotFound {
@@ -123,11 +124,20 @@ function resolveDescriptive(phrase: string, people: Person[]): string[] | null {
  *  named anchor ("הבת של <someone unknown>") is not_found, never a guess. */
 export function resolveContactTarget(phrase: string, people: Person[] = loadPeople()): ContactResult {
   const direct = resolvePersonId(phrase, people)
-  if (direct) { const p = personById(direct, people)!; return { status: 'resolved', id: p.id, label: p.hebrewName } }
+  if (direct) {
+    const p = personById(direct, people)!
+    // A deceased person is an identity, not a reachable contact — never a call/message.
+    if (p.deceased) return { status: 'deceased', label: p.hebrewName }
+    return { status: 'resolved', id: p.id, label: p.hebrewName }
+  }
   const desc = resolveDescriptive(phrase, people)
   if (desc === null) return { status: 'not_found' } // not a descriptive phrase and no direct match
   const matches = desc.map((id) => personById(id, people)!)
-  if (matches.length === 1) return { status: 'resolved', id: matches[0]!.id, label: matches[0]!.hebrewName }
+  if (matches.length === 1) {
+    const p = matches[0]!
+    if (p.deceased) return { status: 'deceased', label: p.hebrewName }
+    return { status: 'resolved', id: p.id, label: p.hebrewName }
+  }
   if (matches.length > 1) return { status: 'ambiguous', candidates: matches.map((p) => ({ id: p.id, label: p.hebrewName })) }
   return { status: 'not_found' }
 }

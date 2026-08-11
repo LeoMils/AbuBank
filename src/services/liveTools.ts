@@ -25,7 +25,7 @@ import {
   applyCalendarFunctionCall, isCalendarTool,
   type CalendarDraft, type CalendarReceipt,
 } from '../screens/AbuAI/realtime/calendarDraft'
-import { resolveCalendarParticipant, resolveContact, contactLabel } from './liveContacts'
+import { resolveCalendarParticipant, resolveContact, contactLabel, isDeceasedContact } from './liveContacts'
 import { whoIs, relationshipBetween, relativesByKind, resolveContactTarget } from './people/peopleLookup'
 import type { KinKind } from './people/kinship'
 import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
@@ -315,8 +315,9 @@ export class LiveTools {
       return { status: 'not_found', allowed_to_say: ['say you do not know that person'] }
     }
     if (want === 'contact') {
-      const r = resolveContactTarget(person) // {resolved,id,label} | {ambiguous,candidates} | {not_found} — no number
+      const r = resolveContactTarget(person) // resolved | ambiguous | deceased | not_found — no number
       if (r.status === 'ambiguous') return { ...r, allowed_to_say: ['ask which specific person she means'] }
+      if (r.status === 'deceased') return { status: 'deceased', label: r.label, allowed_to_say: ['gently say this person is no longer with us, so there is no way to call or message them', 'do NOT answer about a different family relationship'] }
       if (r.status === 'not_found') return { status: 'not_found', allowed_to_say: ['say you do not have that person'] }
       return { ...r, allowed_to_say: ['use this id to message or call — never read a number aloud'] }
     }
@@ -467,6 +468,20 @@ export class LiveTools {
     const kind: LiveCommDraft['kind'] = name === 'phone_call' ? 'call' : 'message'
     const recipientSpoken = str(args, 'recipient') ?? ''
     const res = resolveContact(recipientSpoken)
+    // A DECEASED person resolves as an identity but is NEVER reachable. Asking to call
+    // or message Papi (פפי) must be a gentle, truthful "he is no longer with us" — never
+    // a call/message card, and never a confused deflection into a family relationship
+    // (the device defect). No draft is created.
+    if (res.status === 'resolved' && isDeceasedContact(res.id)) {
+      return {
+        status: 'deceased',
+        label: contactLabel(res.id) ?? res.label,
+        allowed_to_say: [
+          'gently and warmly say this person is no longer with us, so there is no way to call or message them',
+          'never create a call or a message, never claim one, and do NOT answer about a different family relationship',
+        ],
+      }
+    }
     if (res.status !== 'resolved') {
       // Cannot reach an unresolved person — never guess. Ask (ambiguous) or say
       // there is no contact (not_found). No draft is created.

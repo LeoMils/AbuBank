@@ -212,6 +212,29 @@ describe('whatsapp_draft / phone_call — PREPARE only (card is the receipt)', (
     expect(h.tools.viewCommDraft()).toBeNull()
   })
 
+  // device defect 6: calling/messaging a DECEASED person (פפי) is a gentle decline,
+  // NEVER a call/message card and NEVER a deflection into a family relationship.
+  it('phone_call to פפי (deceased) → status deceased, NO call draft, no id leaked', () => {
+    const h = harness()
+    h.call('phone_call', { recipient: 'פפי' })
+    const out = h.lastOutput()!
+    expect(out.status).toBe('deceased')
+    expect(JSON.stringify(out)).not.toContain('"id"')
+    expect(h.tools.viewCommDraft()).toBeNull() // nothing prepared
+  })
+  it('whatsapp_draft to פפי (deceased) also declines gently with no draft', () => {
+    const h = harness()
+    h.call('whatsapp_draft', { recipient: 'פפי', message: 'משהו' })
+    expect(h.lastOutput()!.status).toBe('deceased')
+    expect(h.tools.viewCommDraft()).toBeNull()
+  })
+  it('people_lookup want=contact for פפי is deceased, never a callable id', () => {
+    const h = harness()
+    h.call('people_lookup', { want: 'contact', person: 'פפי' })
+    expect(h.lastOutput()!.status).toBe('deceased')
+    expect(JSON.stringify(h.lastOutput())).not.toContain('"id"')
+  })
+
   it('cancel_communication cancels the pending preparation', () => {
     const h = harness()
     h.call('phone_call', { recipient: 'מור' })
