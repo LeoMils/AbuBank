@@ -91,6 +91,20 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 ---
 
 ## Decisions log
+- **D10 (M5 STEP 1+2, shipped):** Animated variant A as-is (D9) and rebuilt the Abu AI screen.
+  Choices/rationale for a fresh session: (a) AbuCharacterA is a DUMB asset with an asset-agnostic prop
+  contract (mouth 0..1, eyesClosed 0..1); AbuPresence is the animation code. Swapping the commissioned
+  illustration = replace AbuCharacterA's SVG keeping the same layer-group ids + props; AbuPresence never
+  changes. (b) Mouth cross-fades the three registered visemes by opacity (continuous, no shape jump).
+  (c) The "thinking" state is signalled by a NEW observation-only liveSession callback `onThinking`
+  (server-VAD speech_stopped) — I did NOT add a `thinking` member to the LiveState union (that ripples
+  through STATE_LABEL + every consumer; the union stays idle|connecting|listening|speaking|error). The
+  UI clears the thinking hint on every onState transition, and toPresenceState lets real speaking win over
+  a stale hint. (d) `onRemoteStream` exposes the realtime stream in `ontrack` (not attachPlayback) so the
+  UI analyser is a SECOND MediaStreamSource — it does not touch the audible graph. (e) useOutputAmplitude
+  takes the REAL AudioContext (cast to the AudioCtxLike seam) so the engine stays fake-testable. (f) The
+  visual is honest-interim (refined vector, not painterly) exactly as CHARACTER-ASSET-SPEC.md documents —
+  a PNG proof was rendered for Leo; his warmth judgement + on-device fps remain PHYSICAL_DEVICE/HUMAN-EYE.
 - **D9 (M5 character, Leo's call):** SHIP variant A ("Warm Gold", docs/design/abu-bust-A.svg) as-is and
   ANIMATE it now. "Warm and not uncanny" is the bar; a commissioned illustration is a later upgrade,
   not a blocker. Keep CHARACTER-ASSET-SPEC.md and structure the animation so the asset swaps in later
@@ -168,12 +182,19 @@ OpenWeather — flagged after the search tournament runs.)
 ## Resume pointer — DO THESE IN ORDER (fresh session starts here)
 
 Ledger so far (all pushed to RC): 7d7be99 spec · 9fd23d3 M1 · 70f157b M3 · 11d3837 D4 ·
-a904200 M4-foundation · 51774b7 character-refine · f0b2f6f rollout-w1+M6 · (this) resume-spec.
+a904200 M4-foundation · 51774b7 character-refine · f0b2f6f rollout-w1+M6 · 68e42b4 resume-spec ·
+0cf48b4 M5-S1-engine · a44cec2 M5-STEP1 (presence components) · 835d9f3 M5-STEP2 (Abu AI screen).
 Every commit ends green: `npm run typecheck` · `npx vitest run` · `npm run build` · validators.
 Bump src/version.ts + api/health.ts + src/version.test.ts together; LABEL must have NO apostrophe
 (health BUILD_LABEL regex truncates on it — see D5). Use the escape-aware bump pattern in prior commits.
+Current version: 0.201.0-abuela-presence-screen-m5s2. **NEXT = STEP 3 (below); STEP 1 & 2 are DONE.**
 
-### STEP 1 — Animate character A  (D9)
+### STEP 1 — Animate character A  (D9)  ── DONE (a44cec2; engine 0cf48b4) ──
+Shipped: `src/screens/AbuAI/presence/AbuCharacterA.tsx` (variant A as named `<g>` layers, transparent
+bg, asset-agnostic props mouth 0..1 + eyesClosed 0..1) + `AbuPresence.tsx` (amplitude→mouth cross-fade,
+irregular blink, CSS breathe, 4-state aura, degrade loop) + `useOutputAmplitude.ts`. Tested by
+presence.test.tsx (11). The historic sub-notes below are kept for context.
+### STEP 1 (historic notes)
 Architecture so the commissioned asset swaps in later without touching animation code:
 - `src/screens/AbuAI/presence/AbuCharacterA.tsx` — variant A (docs/design/abu-bust-A.svg) as an SVG
   React component, split into NAMED `<g>` layers per CHARACTER-ASSET-SPEC.md: hair-back, base,
@@ -193,7 +214,13 @@ Architecture so the commissioned asset swaps in later without touching animation
   real fps is DEVICE-measured — do not claim it. Add a test: AbuPresence renders each state + a given
   amplitude opens the mouth (renderToString, assert the open-mouth group is shown).
 
-### STEP 2 — Rebuild the Abu AI screen in Night Garden
+### STEP 2 — Rebuild the Abu AI screen in Night Garden  ── DONE (835d9f3) ──
+Shipped: LiveScreen.tsx rebuilt on PAGE_BG + tokens + Abu-AI logo header + plain-Hebrew state label;
+liveSession got onRemoteStream + onThinking (observation-only); useOutputAmplitude feeds AbuPresence;
+toPresenceState maps the 4 states (presenceState.test). Action cards / trace / build fingerprint preserved.
+Frame cost = design budget; on-device fps + warmth = PHYSICAL_DEVICE / HUMAN-EYE (not claimed). The
+historic sub-notes below are kept for context.
+### STEP 2 (historic notes)
 - The screen is `src/screens/Live/LiveScreen.tsx` (opened via window.__abubankOpenLive → App setLiveOpen).
 - liveSession (src/services/liveSession.ts) holds `this.remoteStream` (the realtime audio) and calls
   cb.onState('listening'|'speaking'|…). EXPOSE the remote stream to the UI: add a callback e.g.
@@ -205,11 +232,17 @@ Architecture so the commissioned asset swaps in later without touching animation
   button (session.exportTrace). All ≥56px targets, ≥16px body, both themes (seniorFirst gate covers
   tokens/components). Keep the live cutover (liveEntryPoint.test) + the recorder intact.
 
-### STEP 3 — Re-theme Weather, Games, Calendar, WhatsApp — ONE AT A TIME, each verified
+### STEP 3 — Re-theme Weather, Games, Calendar, WhatsApp — ONE AT A TIME, each verified  ── NEXT ──
 - Per screen: root bg → PAGE_BG; header → ScreenHeader with its `app` logo (weather/games/calendar/
   whatsapp); text/surfaces → theme tokens (t.*); buttons ≥56px. AbuWeather ALREADY has the Night
   Garden starfield — migrate its colours to tokens without flattening the starfield. Run THAT screen's
   tests after each; fix failures in the same pass (do not blind-swap). Commit per screen.
+- VERIFY BY EYE, not blind: the fast harness used in STEP 2 = a throwaway `scripts/*.mts` that
+  `renderToStaticMarkup`s the screen/component onto PAGE_BG and Playwright-screenshots it (chromium is
+  installed), then Read the PNG. Delete the harness before committing (do not stage it). Alternatively
+  drive the real Vite dev server if the screen needs live state. Bump the version each screen (D5 rules).
+- Order suggestion (least→most bespoke risk): WhatsApp, Games, Calendar, then Weather (starfield is
+  delicate). Each screen's tests live beside it (e.g. AbuGames/*.test, AbuCalendar/*.test).
 
 ### Then M2 (still blocked on keys)
 - Keys needed: TAVILY_API_KEY, BRAVE_API_KEY, PERPLEXITY_API_KEY in .env.local (server-side).
