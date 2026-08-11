@@ -23,6 +23,7 @@ import {
   LIVE_VAD_SILENCE_MS,
   LIVE_VAD_THRESHOLD,
   LIVE_VAD_PREFIX_PADDING_MS,
+  LIVE_INTERRUPT_RESPONSE,
   LIVE_TRANSCRIBE_MODEL,
   LIVE_REASONING_EFFORT,
   WAIT_FOR_USER_TOOL,
@@ -189,7 +190,12 @@ describe('liveSession pure helpers', () => {
     expect(vad.threshold).toBe(LIVE_VAD_THRESHOLD)
     expect(LIVE_VAD_THRESHOLD).toBeGreaterThan(0.5) // less barge-in sensitive than the 0.5 default
     expect(vad.prefix_padding_ms).toBe(LIVE_VAD_PREFIX_PADDING_MS)
-    expect(vad.interrupt_response).toBe(true)       // genuine interruption stays responsive
+    // Device defect 2: interrupt_response is DISABLED so a self-hearing echo (Abu's own
+    // loudspeaker audio leaking into the mic) can never trigger a server-side truncation
+    // that cuts her off after one word. Turn-taking is preserved by create_response.
+    expect(vad.interrupt_response).toBe(false)
+    expect(vad.create_response).toBe(true)          // turn-taking still fires on the user's turn end
+    expect(LIVE_INTERRUPT_RESPONSE).toBe(false)
   })
 
   it('wait_for_user tool takes no parameters and is a function', () => {

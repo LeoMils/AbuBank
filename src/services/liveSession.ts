@@ -43,11 +43,30 @@ export const LIVE_VOICE = 'marin' as const
 export const LIVE_VAD_SILENCE_MS = 1200
 
 /** turn_detection.threshold — server-VAD speech-probability gate. RAISED from the
- *  0.5 default to 0.7 after a device trace showed brief room noise crossing the gate
- *  and interrupting Abu mid-sentence (interrupt_response is TRUE, so a false
- *  speech_started truncates her). A higher gate ignores brief/quiet noise while a
- *  genuine, sustained utterance still interrupts. Tunable on device. */
+ *  0.5 default to 0.7 to ignore brief/quiet room noise. NOTE: the threshold ALONE did
+ *  NOT stop the severe truncation — see LIVE_INTERRUPT_RESPONSE for the real mechanism
+ *  and fix. Tunable on device. */
 export const LIVE_VAD_THRESHOLD = 0.7
+
+/** turn_detection.interrupt_response — whether a detected speech_started TRUNCATES
+ *  Abu's in-progress audio. DISABLED (false).
+ *
+ *  MECHANISM (device defect 2, "one word then text-only"): the audible remote audio is
+ *  rendered on device and its loudspeaker output leaks into the microphone. The server
+ *  VAD hears that echo of Abu's OWN voice as `speech_started`; with interrupt_response
+ *  TRUE the server then TRUNCATES her response server-side after the first word (the
+ *  client only observes it — line ~534 records truncation evidence, it cannot un-cut a
+ *  server truncation). The text transcript still completes, so the sentence renders as
+ *  text but is never heard. Raising the threshold did not fix it — a full-voice echo
+ *  crosses any gate. The correct fix for THIS user is to stop the server from ever
+ *  truncating her mid-sentence: Martita (80s) does not barge in over Abu, and Abu's
+ *  answers are 2–4 short sentences, so losing mid-response barge-in costs almost nothing
+ *  while eliminating the worst defect entirely. create_response stays TRUE, so normal
+ *  turn-taking (respond when the user finishes) is unchanged. The deeper echo root — so
+ *  the mic never hears her at all — is handled by routing playback through a real
+ *  media-element sink (device defect 4) which lets the OS/browser echo-canceller
+ *  reference her output. */
+export const LIVE_INTERRUPT_RESPONSE = false
 
 /** turn_detection.prefix_padding_ms — audio kept before detected speech so a soft
  *  onset is not clipped. Exported so it is tunable alongside the other VAD knobs. */
@@ -138,7 +157,7 @@ export function buildSessionUpdate(now: number = Date.now()): Record<string, unk
             prefix_padding_ms: LIVE_VAD_PREFIX_PADDING_MS,
             silence_duration_ms: LIVE_VAD_SILENCE_MS,
             create_response: true,
-            interrupt_response: true,
+            interrupt_response: LIVE_INTERRUPT_RESPONSE,
           },
         },
         output: { voice: LIVE_VOICE },
