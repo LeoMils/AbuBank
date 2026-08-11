@@ -1,106 +1,142 @@
 # Abu-ela — iPhone test script (for Leo)
 
-For the build on the RC branch (see the QA version at the top-left of the home
-screen). Do these **in order — riskiest first**. For each: what to **say**, what
-**should happen**, and what the **trace** should show. To read the trace: open Abu AI,
-tap **תיעוד ⤓** (bottom-left) after a few turns — it downloads a text file; the lines
-look like `👤 מרטיטה: …` (you), `🤖 אבו: …` (Abu), `🔧 tool(…) → …` (a tool).
+For the build on the RC branch (check the QA version at the top-left of the home screen —
+it should read **0.211.0** or higher). Do these **in order — riskiest first**. For each:
+what to **say**, what **should happen**, and what the **trace** should show. To read the
+trace: open Abu AI, tap **תיעוד ⤓** (bottom-left) after a few turns — it downloads a text
+file; lines look like `👤 מרטיטה: …` (you), `🤖 אבו: …` (Abu), `🔧 tool(…) → …` (a tool).
 
 No programming needed. If something is wrong, note the item number + what happened.
 
 ---
 
-### 1. She hears you and answers, in Hebrew, out loud  *(riskiest)*
+### 1. She hears you and answers, in Hebrew, out loud — and is NOT cut off  *(riskiest)*
 - **Say:** "בוקר טוב אבו, מה שלומך?"
 - **Should happen:** within ~2 seconds she answers warmly in Hebrew, **out loud**, 2–4
-  sentences, and does not get cut off mid-sentence.
+  sentences, and — critically — **speaks the whole sentence**. The bad behaviour we fixed
+  was her saying one word ("מרתיטה…") and the rest appearing only as text, never heard.
+  That must not happen: what you SEE as text you should also HEAR.
 - **Trace:** `👤 מרטיטה: בוקר טוב…` then `🤖 אבו: …`. **No** `⚠️ SILENT TURN`, **no**
   `⚠️ POSSIBLE AUDIO TRUNCATION`.
 
-### 1a. Her face is alive while she talks  *(new — animated presence)*
-- **Look:** the Abu AI screen now shows a warm grandmother character, not a plain orb.
-- **Should happen:** while she **speaks**, her **mouth moves in time with her voice**
-  (open on louder sounds, closed when silent); she **blinks** now and then and breathes
-  gently. The glow around her changes by state: teal = מקשיבה, amber = חושבת, gold =
-  מדברת, calm blue = מוכנה. It should feel warm, **not** jerky or uncanny.
-- **Note:** the character art is an **interim** drawing (a nicer illustration is being
-  commissioned); what to judge here is that the movement feels alive and matches her voice.
+### 2. She answers DIRECTLY — no "טוב, נבדוק", no repeating herself  *(preambles fix)*
+- **Say:** "מה הקשר בין גלעד לעילי?" and, a few turns later, "מי הנכדים שלי?"
+- **Should happen:** the **first words out of her mouth are the answer** — she does NOT
+  say "טוב, נבדוק את הקשר ביניהם" or "רגע, אני בודקת" before looking it up. Across a longer
+  chat she should not keep opening turns with the same word.
+- **Trace:** the `🔧 people_lookup(…)` appears, and her spoken line is the answer itself —
+  not a "let me check" line before the tool.
 
-### 2. Room noise does NOT cut her off  *(barge-in)*
-- **Do:** while she is speaking a long answer, stay quiet but let normal room noise
-  (a TV low, a tap) happen.
-- **Should happen:** she keeps talking; brief noise does not interrupt her. If YOU
-  actually speak, she stops and listens.
-- **Trace:** while she speaks, no `POSSIBLE AUDIO TRUNCATION` from mere noise.
+### 3. Her face is alive while she talks — the mouth MOVES  *(animated presence)*
+- **Look:** the Abu AI screen shows a warm grandmother character, not a plain orb.
+- **Should happen:** while she **speaks**, her **mouth moves** (this is the fix — before,
+  only her eyes blinked and the mouth stayed shut on the iPhone). She blinks now and then
+  and breathes gently. Glow by state: teal = מקשיבה, amber = חושבת, gold = מדברת, calm blue
+  = מוכנה. Warm, **not** jerky or uncanny.
+- **Note:** the art is an **interim** drawing (a nicer one is being commissioned). Judge
+  that the **mouth moves with her voice** and it feels alive.
 
-### 3. A confirmed appointment is saved ONCE  *(no duplicates)*
-- **Say:** "תקבעי לי תור לרופא שיניים ביום רביעי בתשע." then, after she reads it back,
-  "כן, תשמרי."
-- **Should happen:** she confirms it is saved — **one** event, not several.
-- **Trace:** one `🔧 confirm_calendar_event(…)` with `[confirmed by: voice]`, and the
-  result shows `saved:true`. You should NOT see the same tool three times with results.
+### 4. Room noise does NOT cut her off  *(barge-in)*
+- **Do:** while she speaks a long answer, stay quiet but let normal room noise (TV low, a
+  tap) happen.
+- **Should happen:** she keeps talking; brief noise does not interrupt her. (We turned OFF
+  the server-side "interrupt on any sound" so her own voice echoing in the room can't cut
+  her. If you actually want her to stop, just start talking and then pause.)
 
-### 4. What she saved can be read back and changed
-- **Say:** "מה יש לי ביום רביעי?" then "תעבירי את זה לעשר."
-- **Should happen:** she reads back the dentist at 9, then confirms it moved to 10.
-- **Trace:** `🔧 read_calendar` returns the event; `🔧 update_calendar_event` returns
-  `status:updated`.
+### 5. A confirmed appointment is saved ONCE, reads back, and changes
+- **Say:** "תקבעי לי תור לרופא שיניים ביום רביעי בתשע." → after she reads it back → "כן, תשמרי."
+  Then: "מה יש לי ביום רביעי?" → "תעבירי את זה לעשר."
+- **Should happen:** she confirms it is saved — **one** event; reads back the dentist at 9;
+  confirms it moved to 10.
+- **Trace:** one `🔧 confirm_calendar_event(…)` → `saved:true` (not three); `🔧 read_calendar`
+  returns it; `🔧 update_calendar_event` → `status:updated`.
 
-### 5. Family — who is who, in correct Hebrew
-- **Say:** "מי זה גלעד?" · "מה הקשר בין גלעד לעילי?" · "מי הנכדים שלי?"
-- **Should happen:** Gilad is Ofir's husband; **Gilad is Eili's גיס**; the six
-  grandchildren are named. She never invents a relationship.
-- **Trace:** `🔧 people_lookup(want:"relationship" …) → "גלעד גיס של עילי"`.
+### 6. A meeting with SEVERAL people, including a non-contact  *(new)*
+- **Say:** "תקבעי פגישה מחר בשש עם מור, אופיר ורבקה." → "כן."
+- **Should happen:** she books it and reads back **all three** names — even רבקה, who is
+  not in the contacts, is kept as a plain name on the event. She should NOT drop anyone.
+- **Trace:** the saved event's participant shows "מור, אופיר, רבקה".
 
-### 6. Call someone by their relationship
-- **Say:** "תתקשרי לבת שלי."
-- **Should happen:** she resolves it to **Mor** and shows a call card with a big
-  button (she does NOT read a phone number aloud). "תתקשרי לנכד שלי" should make her
-  ask **which** grandson.
-- **Trace:** `🔧 people_lookup(want:"contact", person:"הבת שלי") → resolved … מור`. No
-  phone number anywhere in the trace.
+### 7. Family — the new, much bigger family, in correct Hebrew
+- **Say:** "מי זה גלעד?" · "מי זאת סוזי רז?" · "מי זה חורחה?" · "מי הבת של רפי?"
+- **Should happen:** Gilad is Ofir's husband; **Susi Raz** is a good friend (cosmetician,
+  from the Kfar Saba Argentine circle); **Jorge** is her nephew in Argentina; "הבת של רפי"
+  resolves to **Rafi's** actual child (or an honest "I'm not sure") — **never** his ex-wife.
+  She never invents a relationship.
+- **Trace:** `🔧 people_lookup(want:"who"/"relationship" …)` with the grounded answer.
 
-### 7. Names are said the Spanish way
-- **Say:** "ספרי לי על לאו."
-- **Should happen:** she says "Leo" as **"LEH-oh"** (two syllables), not English
-  "LEE-oh"; other family names sound natural, not anglicised.
-- **Trace:** n/a (this is about how she *sounds* — listen).
+### 8. She does NOT guess, and never mixes up two people with the same name
+- **Say:** "מי זה בוריס?" then "מי זה אריאל?"
+- **Should happen:** for Boris she says plainly she **doesn't know** (no guessing). For
+  Ariel — there are **two** Ariels in the family (Bobby's son who drowned, and Tavela's son
+  in Vancouver) — she must **not** confidently pick one; "I'm not sure which Ariel" is the
+  right answer.
+- **Trace:** `🔧 people_lookup(…) → not_found` → an honest "I don't know" line.
 
-### 8. Current info — honest, never invented
-- **Say:** "מה מזג האוויר עכשיו בכפר סבא?"
-- **Should happen:** the online provider is now **chosen** (Tavily won the real bake-off:
-  100% sourced, clean Hebrew, ~2s). If it has been **activated in the server env**
-  (`ONLINE_PROVIDER=tavily` on Vercel — a one-line deploy setting), she answers with a
-  real forecast **and a source**, in ~1–2 seconds. If it has NOT been activated yet, she
-  still behaves as before — honestly says she **could not check** rather than guessing.
-  Either way she must **never** invent a forecast or a fake source.
-- **Trace:** `🔧 get_current_info(…)`; either a grounded answer **with a source**, or
-  `status:"no_result"` → she says she could not check. Never a confident answer with
-  no source. (Family / calendar questions are **never** sent online — verified.)
+### 9. Reaching someone who has passed — gently, never a call card  *(new)*
+- **Say:** "תתקשרי לפפי."
+- **Should happen:** she gently says Papi is **no longer with us**, so there's no way to
+  call him — she does **not** create a call card and does **not** wander into some other
+  family fact. (Asking "מי זה פפי?" still works — she can talk about him with love.)
+- **Trace:** `🔧 people_lookup(want:"contact", person:"פפי") → deceased`. No call card.
 
-### 9. Abu News screen
-- **Do:** from the home hub, open **Abu News**.
-- **Should happen (today):** either real headlines each with a **source and a time**,
-  or an honest "I could not bring the news now" — **never** blank half-cards or
-  stale/made-up stories.
+### 10. What she knows about YOU — food, drink, routine  *(new knowledge)*
+- **Say:** "חשבתי להכין סלט עם הרבה כוסברה." · "בא לי לשתות משהו, מה מתאים לי?" ·
+  "שנפתח יין אדום?" · "מה אני עושה בימי שלישי?"
+- **Should happen:** she knows you **hate כוסברה** (and cinnamon) and steers you off it;
+  for a drink she offers your **sweet white wine (blue bottle)** or **shandy** — and if you
+  suggest **red wine she declines it** (you don't drink red — that's the rest of the
+  family's drink); she knows **Tuesday you're at Mor's**.
+- **Trace:** n/a — this is about what she *says*; it comes from her profile, no tool needed.
 
-### 10. The hub, and always a way back
-- **Do:** from home, open each app (Abu AI, Bank, יומן, WhatsApp, Games, מזג אוויר,
-  News) and come back.
-- **Should happen:** every app opens and has an obvious **back** control that returns
-  to the home hub. Text is large and readable at arm's length. Abu AI opens the live
-  conversation (not an old text screen).
+### 11. Call someone by their relationship — no number read aloud
+- **Say:** "תתקשרי לבת שלי." then "תתקשרי לנכד שלי."
+- **Should happen:** "הבת שלי" → **Mor** with a call card (a big button; she never reads a
+  phone number aloud). "הנכד שלי" → she asks **which** grandson (there are several).
+- **Trace:** `🔧 people_lookup(want:"contact", person:"הבת שלי") → resolved … מור`. No phone
+  number anywhere.
+
+### 12. Names are said the Spanish way
+- **Say:** "ספרי לי על לאו." and "מי זה חורחה?"
+- **Should happen:** "Leo" as **"LEH-oh"** (not English "LEE-oh"); Jorge, José, Achi and the
+  rest sound Spanish, not anglicised.
+- **Trace:** n/a — listen.
+
+### 13. Current info — honest, sourced, and now self-diagnosing
+- **Say:** "מה מזג האוויר עכשיו בכפר סבא?" and "כמה עולה דולר היום?"
+- **Should happen:** if the online provider is **activated in the server env**
+  (`ONLINE_PROVIDER=tavily` + `TAVILY_API_KEY` on Vercel), she answers with a real forecast/
+  rate **and a source**, in ~1–2s. If NOT activated, she honestly says she **could not
+  check** — never invents a forecast or a fake source. Family/calendar questions are
+  **never** sent online.
+- **Trace:** `🔧 get_current_info(…)`. The endpoint now returns a **diag** — if online
+  misbehaves, the trace/console shows `[abuai-online-diag] {provider, providerKeyPresent,
+  reached, sourceCount, outcome}`, which says exactly whether it's the provider setting, the
+  key, or a genuinely empty search. (Verified working locally against real Tavily: provider
+  = tavily, key present, reached, 6 sources.)
+
+### 14. The hub — every app opens, is re-themed, and has a way back
+- **Do:** from home open each app — **Abu AI, Bank, יומן (Calendar), WhatsApp, Games, מזג
+  אוויר (Weather), News** — and come back.
+- **Should happen:** every app opens with an obvious **back** control to the home hub. All
+  seven now carry the shared **Abu logo** and the Night-Garden look (Games keeps its bright
+  terrace by design; Weather keeps its sky + starfield). Text large and readable at arm's
+  length. Abu AI opens the **live conversation** (not an old text screen).
 
 ---
 
 **What is NOT expected to be perfect yet (do not report as bugs):**
-- Real current-info / news: the winner (Tavily) is chosen and wired, but only goes live
-  once `ONLINE_PROVIDER=tavily` is set in the Vercel server env. Until then she honestly
-  says she could not check (never guesses). Tavily is fast (~2s) but a few queries can
-  take ~3s — a brief "checking…" is expected, not a freeze.
-- The Abu AI character is now **animated** (mouth follows her voice, blink, breathing,
-  state glow) but the art is an **interim** drawing; a nicer illustration is being
-  commissioned. Judge the *movement/warmth*, not the drawing polish.
-- Design migration so far: the home hub, Abu Bank, Abu News **and the Abu AI screen** are
-  in the Night-Garden design. **Weather, Games, Calendar and WhatsApp are NOT re-themed
-  yet** — they keep their current look; that migration is the next task.
+- **Online in production:** the code path is proven (real Tavily works locally — provider/
+  key/reached/6 sources). Going live only needs `ONLINE_PROVIDER=tavily` set in the Vercel
+  server env for the Preview/Production environment **and a redeploy**. Until then she
+  honestly says she could not check. A few queries can take ~3s — a brief "checking…" is
+  expected, not a freeze.
+- **The Abu AI character** is animated (mouth follows voice, blink, breathing, state glow)
+  but the art is an **interim** drawing; a nicer illustration is being commissioned. Judge
+  movement/warmth, not drawing polish.
+- **Open family facts** still being filled in over time (exact company names, a few spellings,
+  how Martita & Papi met). She says she doesn't know these rather than guessing.
+- **Two small phrasing nuances** seen in the automated real-model harness: she sometimes
+  says a preference in the first person ("I don't drink red wine") — the behaviour is right
+  (no red wine for you), only the wording is loose; and for two same-named people she says
+  "I'm not sure which" rather than listing both. Neither is a bug.
