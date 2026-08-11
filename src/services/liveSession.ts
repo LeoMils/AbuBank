@@ -220,6 +220,13 @@ export interface LiveCallbacks {
   onState: (s: LiveState) => void
   onUserTranscript?: (text: string) => void
   onAbuTranscript?: (text: string) => void
+  /** The remote realtime audio stream, handed to the UI so it can read Abu's live
+   *  output loudness for the mouth (services/outputAmplitude). Observation only —
+   *  it does NOT touch the audio graph or turn machinery. */
+  onRemoteStream?: (stream: MediaStream) => void
+  /** The user's turn just ended (server-VAD speech_stopped): a UI 'thinking' hint
+   *  for the window before Abu speaks. Observation only — changes no VAD/turn/audio. */
+  onThinking?: () => void
   /** A truthful, human error line (Hebrew). Fail closed — there is no fallback. */
   onError?: (messageHe: string, code: string) => void
   // ─── Action-card signals (Part B): the overlay renders a card as the receipt ──
@@ -397,6 +404,7 @@ export class LiveSession {
         if (!stream) return
         this.remoteStream = stream
         this.attachPlayback(stream)
+        this.cb.onRemoteStream?.(stream) // UI mouth-amplitude analyser (observation only)
         // Bluetooth / headphone route changes end the track — surface it, don't
         // wait silently on dead audio.
         const track = stream.getAudioTracks()[0]
@@ -526,6 +534,11 @@ export class LiveSession {
         this.recorder.onUserSpeechStart()  // observation only — records truncation evidence
         this.clearAudioWatchdog()
         this.setState('listening')
+        break
+      case 'input_audio_buffer.speech_stopped':
+        // UI hint only: the user finished; show 'thinking' until Abu's audio starts.
+        // No state/VAD/turn change — the model owns turn-taking.
+        this.cb.onThinking?.()
         break
       case 'conversation.item.input_audio_transcription.completed':
         // Side-channel ONLY: hand the UI the Hebrew transcript. Nothing routes on it.

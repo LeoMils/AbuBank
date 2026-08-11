@@ -76,8 +76,14 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
       CHARACTER-ASSET-SPEC.md, transparent bg) + `presence/AbuPresence.tsx` (amplitude→mouth cross-fade,
       irregular blink, CSS breathe, state aura, degrade loop). Evidence: TEST (presence.test.tsx, 11 assertions).
       Frame cost REPORTED (below). Real call site = STEP 2 (screen rebuild); until then it is test-covered only.
-- [ ] Screen around her (cards, transcript, trace) in the new system; wire the remote stream → amplitude
-      (STEP 2); measure + report frame cost ON DEVICE (design budget only so far)
+- [x] Screen around her (cards, transcript, trace) in the new system + remote-stream→amplitude wiring
+      (STEP 2 DONE). LiveScreen.tsx rebuilt on PAGE_BG + tokens, Abu-AI logo header, plain-Hebrew state
+      label, action-card receipts + trace export + build fingerprint preserved. liveSession exposes the
+      remote stream (onRemoteStream) + a thinking hint (onThinking), both observation-only. Presence state
+      mapped by toPresenceState (tested). Evidence: TEST (presenceState + liveEntryPoint + presence + the
+      liveSession suite). Frame cost = design budget (one rAF while speaking, GPU CSS for breathe/aura);
+      ON-DEVICE fps + whether she reads as warm = PHYSICAL_DEVICE / HUMAN-EYE — NOT claimed. Visual proof
+      rendered for Leo (four states + visemes + blink) — his judgement pending.
 
 ### M6 — Device test script
 - [x] docs/DEVICE-TEST.md written for the RC build: 10 numbered items, riskiest-first, say/expect/trace, non-programmer

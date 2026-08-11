@@ -26,7 +26,7 @@ export type PresenceState = 'listening' | 'thinking' | 'speaking' | 'waiting'
 export interface AbuPresenceProps {
   state: PresenceState
   /** Live output-audio loudness 0..1. Undefined ⇒ no analyser ⇒ degrade loop. */
-  amplitude?: number
+  amplitude?: number | undefined
   /** Character box size in px (default fits the presence panel). */
   size?: number
 }
