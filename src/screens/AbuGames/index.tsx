@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { soundTap, soundGameTap, haptic } from '../../services/sounds'
+import { AbuLogo } from '../../design/logos/AbuLogo'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ABU GAMES — "Terrace" redesign (v40)
@@ -206,6 +207,11 @@ function Scene({ children }: { children: React.ReactNode }) {
 function BrandHeader({ subtitle }: { subtitle: string }) {
   return (
     <header style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 20px 0', textAlign: 'center' }}>
+      {/* Shared Abu-family emblem (M4 logo system) — the one badge every app carries,
+          so this bright terrace still reads as part of one product. The dark emblem
+          disc + games accent reads as a crest above the wordmark; the terrace scene,
+          palette and locked layout are untouched. */}
+      <AbuLogo app="games" size={46} style={{ marginBottom: 4, filter: 'drop-shadow(0 4px 10px rgba(40,70,80,0.28))', animation: 'ag-rise .6s both' }} />
       <h1 data-ag style={{
         margin: 0, direction: 'ltr', fontFamily: "'Cormorant Garamond',Georgia,serif",
         fontWeight: 700, fontSize: 52, lineHeight: 1.02, letterSpacing: '-0.01em',

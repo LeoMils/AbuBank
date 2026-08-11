@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.203.0-abuela-rollout-whatsapp',
-  buildLabel: 'AbuBank 0.203.0 — ABUELA_M4 rollout wave 2 (WhatsApp): brought the Abu WhatsApp screen into the one design system. Added the shared per-app AbuLogo emblem to the header so it reads as one product family, and moved the page root to the themeable PAGE_BG (Night Garden) via a new optional PageShell background prop (default unchanged, so every other screen is untouched). The bespoke WA-green wordmark and the family-portrait album entry are preserved. Verified by rendering the REAL dev screen with Playwright at 412×870: the emblem sits in the header, the nebula background shows behind the family grid, zero horizontal overflow; 454 AbuWhatsApp + design-system tests and typecheck stay green. Evidence: CODE + AUTOMATED TEST + BROWSER (rendered screen). One screen of four in this wave; Games, Calendar, Weather follow, one verified commit each.',
+  version:    '0.204.0-abuela-rollout-games',
+  buildLabel: 'AbuBank 0.204.0 — ABUELA_M4 rollout wave 2 (Games): brought Abu Games into the one logo family. Added the shared per-app AbuLogo emblem (app=games) as a crest above the AbuGames wordmark so the bright terrace lobby reads as one product with the hub. Per the design-lock this screen is NOT forced dark: the sunlit terrace scene — sky wash, wooden podium, floral clusters and the three hero cards (WOW Words / Solitaire / Mahjong) — is untouched, and no PAGE_BG or dark tokens are applied. Verified by rendering the REAL dev screen with Playwright at 412×870: the emblem crest is present, the terrace is intact, zero horizontal overflow; 19 wowGame design-lock tests and typecheck stay green. Evidence: CODE + AUTOMATED TEST + BROWSER (rendered screen). Screen 2 of 4 in this wave; Calendar and Weather follow, one verified commit each.',
   buildDate:  '2026-08-11',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time
