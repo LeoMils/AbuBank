@@ -79,7 +79,14 @@ describe('resolveCalendarParticipant (adapter for the draft kernel)', () => {
   it('a plain unknown single name is allowed as a free-text label (Gabi)', () => {
     expect(resolveCalendarParticipant('Gabi')).toBe('Gabi')
   })
-  it('a multi-word unknown phrase is NOT allowed as a label', () => {
-    expect(resolveCalendarParticipant('gabi lopez')).toBeNull()
+  // device defect 5: ANY spoken name is accepted as a participant, even a two-word name
+  // that is not a contact — a participant does not have to be in the contact book.
+  it('a multi-word proper name IS allowed as a free-text label (not a contact)', () => {
+    expect(resolveCalendarParticipant('gabi lopez')).toBe('gabi lopez')
+    expect(resolveCalendarParticipant('דודה רבקה')).toBe('דודה רבקה')
+  })
+  it('a relationship phrase is STILL refused even when multi-word (never guessed)', () => {
+    expect(resolveCalendarParticipant('אח של מור')).toBeNull()
+    expect(resolveCalendarParticipant('הדוד')).toBeNull()
   })
 })

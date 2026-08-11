@@ -39,6 +39,31 @@ describe('calendar draft — field corrections preserve every unrelated field', 
   })
 })
 
+describe('calendar draft — multiple named participants (device defect 5)', () => {
+  it('"מור ולאו" → two participants, joined for display, both kept', () => {
+    const d = start({ title: 'קפה', date: '2026-08-12' }, 'מור ולאו')
+    expect(d.participants).toEqual(['מור', 'לאו'])
+    expect(d.participant).toBe('מור, לאו')
+    expect(d.unresolvedRelationship).toBeNull()
+  })
+  it('"מור, לאו ואדר" → three participants (comma + ו conjunctions)', () => {
+    const d = start({ title: 'ארוחה', date: '2026-08-12' }, 'מור, לאו ואדר')
+    expect(d.participants).toEqual(['מור', 'לאו', 'אדר'])
+    expect(d.participant).toBe('מור, לאו, אדר')
+  })
+  it('an ambiguous relationship among several blocks the save (never guessed)', () => {
+    const d = start({ title: 'קפה', date: '2026-08-12' }, 'מור ואח של מור')
+    expect(d.participants).toEqual(['מור'])                 // the resolved one is kept
+    expect(d.unresolvedRelationship).toBe('אח של מור')       // the ambiguous one blocks
+    expect(reduceDraft(d, { t: 'CONFIRM', forRevision: d.revision }, resolve).rejected).toBe(true)
+  })
+  it('a single participant still fills participants[] (backward compatible)', () => {
+    const d = start({ title: 'קפה', date: '2026-08-12' }, 'מור')
+    expect(d.participant).toBe('מור')
+    expect(d.participants).toEqual(['מור'])
+  })
+})
+
 describe('calendar draft — unresolved relationship is never guessed', () => {
   it('"אח של מור" (brother of Mor) stays UNRESOLVED — never becomes a person', () => {
     const d = start({ title: 'קפה', date: '2026-08-12' }, 'אח של מור')

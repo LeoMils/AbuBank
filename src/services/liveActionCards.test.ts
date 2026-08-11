@@ -56,7 +56,7 @@ describe('call card', () => {
 
 describe('calendar draft card', () => {
   const draft = (over: Partial<CalendarDraft>): CalendarDraft => ({
-    participant: null, unresolvedRelationship: null, title: 'פגישה', date: '2026-08-20', time: '16:00',
+    participant: null, participants: [], unresolvedRelationship: null, title: 'פגישה', date: '2026-08-20', time: '16:00',
     durationMin: null, location: 'קפה נמרוד', notes: null, provenance: {}, revision: 1, confirmation: 'AWAITING_CONFIRM', ...over,
   })
   it('shows the pending fields + a Confirm action (not saved yet)', () => {

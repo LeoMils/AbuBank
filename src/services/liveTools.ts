@@ -106,7 +106,7 @@ export const LIVE_TOOL_SCHEMAS = [
         title: { type: 'string', description: 'What the event is (e.g. "פגישה עם מור").' },
         date: { type: 'string', description: 'A REAL date YYYY-MM-DD (already resolved — never "מחר").' },
         time: { type: 'string', description: 'HH:MM 24h, optional.' },
-        participant: { type: 'string', description: 'A person name as spoken, optional. A relationship phrase ("אח של מור") is NOT accepted — resolve it with Martita first.' },
+        participant: { type: 'string', description: 'Who is coming, as spoken — optional. May be SEVERAL people ("מור ואופיר", "מור, אופיר ורבקה"); a name does NOT have to be a saved contact (an ordinary spoken name is written on the event as-is). Only a relationship phrase ("אח של מור") is NOT accepted — resolve it with Martita to a name first.' },
         location: { type: 'string', description: 'Optional location.' },
         notes: { type: 'string', description: 'Optional notes.' },
       },
@@ -121,7 +121,7 @@ export const LIVE_TOOL_SCHEMAS = [
       properties: {
         field: { type: 'string', description: 'Which field to correct.', enum: ['title', 'date', 'time', 'location', 'notes'] },
         value: { type: 'string', description: 'The new value for that field.' },
-        participant: { type: 'string', description: 'Optional: set the participant name instead of a scalar field.' },
+        participant: { type: 'string', description: 'Optional: RESTATE who is coming (one or several names, contacts or not) instead of a scalar field.' },
       },
       required: [], additionalProperties: false,
     },

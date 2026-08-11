@@ -14,9 +14,14 @@ export type CalendarField = 'participant' | 'title' | 'date' | 'time' | 'duratio
 export type ConfirmationState = 'DRAFTING' | 'AWAITING_CONFIRM' | 'CONFIRMED' | 'CANCELLED'
 
 export interface CalendarDraft {
+  /** Display form of ALL participants, comma-joined (backward-compatible single field). */
   participant: string | null
+  /** Every named participant, in order (contacts by resolved label + plain spoken names
+   *  that are not contacts). One event can have several people. */
+  participants: string[]
   /** A relationship phrase we could NOT resolve to a person (e.g. "אח של מור"). Stays
-   *  unresolved until an explicit name arrives — never guessed into a person. */
+   *  unresolved until an explicit name arrives — never guessed into a person. Any one
+   *  ambiguous relationship among the participants blocks the save until clarified. */
   unresolvedRelationship: string | null
   title: string | null
   date: string | null           // YYYY-MM-DD (real resolved date, never "מחר")
@@ -46,9 +51,19 @@ const REQUIRED: CalendarField[] = ['title', 'date']
 
 function emptyDraft(): CalendarDraft {
   return {
-    participant: null, unresolvedRelationship: null, title: null, date: null, time: null,
+    participant: null, participants: [], unresolvedRelationship: null, title: null, date: null, time: null,
     durationMin: null, location: null, notes: null, provenance: {}, revision: 0, confirmation: 'DRAFTING',
   }
+}
+
+/** Split a spoken participant phrase into individual names on Hebrew conjunctions /
+ *  commas ("מור ואופיר", "מור, אופיר ועדי", "מור עם רבקה"). A leading ו־ that is glued
+ *  to the next word is a conjunction; a name is never split mid-word. */
+export function splitParticipantNames(phrase: string): string[] {
+  return phrase
+    .split(/\s*,\s*|\s+עם\s+|\s+ו(?=[א-ת])|\s+ו\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
 }
 
 function missing(d: CalendarDraft): CalendarField[] { return REQUIRED.filter((f) => d[f] == null) }
@@ -60,9 +75,25 @@ function applyField(d: CalendarDraft, field: CalendarField, value: string | numb
 }
 
 function setParticipant(d: CalendarDraft, phrase: string, resolve: RelationshipResolver): void {
-  const name = resolve(phrase)
-  if (name) { d.participant = name; d.unresolvedRelationship = null; d.provenance.participant = 'resolved' }
-  else { d.participant = null; d.unresolvedRelationship = phrase }   // stays unresolved — never guessed
+  // Setting participants REPLACES the whole set (a correction restates who is coming).
+  const names = splitParticipantNames(phrase)
+  const resolved: string[] = []
+  for (const n of names) {
+    const name = resolve(n)
+    if (name) { resolved.push(name) }               // a contact label OR an accepted plain name
+    else {
+      // An ambiguous relationship among the participants ("אח של מור") is never guessed —
+      // it blocks the save until Martita says which person she means.
+      d.participant = resolved.length ? resolved.join(', ') : null
+      d.participants = resolved
+      d.unresolvedRelationship = n
+      return
+    }
+  }
+  d.participants = resolved
+  d.participant = resolved.length ? resolved.join(', ') : null
+  d.unresolvedRelationship = null
+  d.provenance.participant = 'resolved'
 }
 
 /**
@@ -126,6 +157,7 @@ export interface CalendarReceipt {
   confirmation: ConfirmationState
   revision: number
   participant: string | null
+  participants: string[]
   unresolvedRelationship: string | null
   date: string | null
   time: string | null
@@ -186,6 +218,7 @@ export function applyCalendarFunctionCall(
     confirmation: d?.confirmation ?? 'DRAFTING',
     revision: d?.revision ?? 0,
     participant: d?.participant ?? null,
+    participants: d?.participants ?? [],
     unresolvedRelationship: d?.unresolvedRelationship ?? null,
     date: d?.date ?? null,          // always a resolved YYYY-MM-DD or null — never "מחר"
     time: d?.time ?? null,

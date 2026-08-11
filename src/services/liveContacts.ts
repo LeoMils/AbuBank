@@ -195,11 +195,15 @@ export function resolveCalendarParticipant(phrase: string | null | undefined): s
   const r = resolveContact(phrase)
   if (r.status === 'resolved') return r.label
   if (r.status === 'ambiguous') return null
-  // not_found: allow a clean single-token proper name as a free-text label,
-  // but never a multi-word phrase (which could be a relationship we failed to detect).
+  // not_found: accept ANY spoken proper name as a plain free-text label — a participant
+  // does NOT have to be a contact (device defect 5). We still refuse a RELATIONSHIP
+  // phrase ("אח של מור", a bare "הדוד") — those must be resolved to a person first, never
+  // guessed — but an ordinary name, including a two-word name like "דודה רבקה" or a
+  // full name, is written on the event as-is. The relationship guard (not a blanket
+  // whitespace ban) is what keeps an unresolved relationship from sneaking in as a label.
   const p = (phrase ?? '').trim()
   if (!p) return null
   if (isRelationshipPhrase(p)) return null
-  if (/\s/.test(p)) return null
+  if (p.length > 40) return null // sanity bound — a name, not a sentence
   return p
 }

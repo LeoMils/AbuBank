@@ -54,7 +54,7 @@ export class CalendarDraftController {
   private replyToModel(callId: string, r: CalendarReceipt): void {
     const output = {
       confirmation: r.confirmation, revision: r.revision,
-      participant: r.participant, unresolved_relationship: r.unresolvedRelationship,
+      participant: r.participant, participants: r.participants, unresolved_relationship: r.unresolvedRelationship,
       date: r.date, time: r.time, missing: r.missing, allowed_to_say: r.allowedClaims,
     }
     this.send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(output) } })
@@ -64,7 +64,8 @@ export class CalendarDraftController {
   private lastReceipt(): CalendarReceipt {
     return {
       confirmation: this.draft?.confirmation ?? 'DRAFTING', revision: this.draft?.revision ?? 0,
-      participant: this.draft?.participant ?? null, unresolvedRelationship: this.draft?.unresolvedRelationship ?? null,
+      participant: this.draft?.participant ?? null, participants: this.draft?.participants ?? [],
+      unresolvedRelationship: this.draft?.unresolvedRelationship ?? null,
       date: this.draft?.date ?? null, time: this.draft?.time ?? null, missing: [], allowedClaims: [], rejected: false, reason: 'in-flight',
     }
   }
