@@ -74,7 +74,7 @@ describe('buildLiveInstructions', () => {
       '# Role and Objective',
       '# Personality and Tone',
       '# Language',
-      '# What Abu Knows — Family',
+      '# Family and People',
       '# What Abu Knows — Martita',
       '# Tools and Actions',
       '# Before a Tool Call',
@@ -85,23 +85,21 @@ describe('buildLiveInstructions', () => {
     }
   })
 
-  it('places the persona BEFORE the family knowledge, and family before Martita profile', () => {
-    expect(out.indexOf('# Personality and Tone')).toBeLessThan(out.indexOf('# What Abu Knows — Family'))
-    expect(out.indexOf('# What Abu Knows — Family')).toBeLessThan(out.indexOf('# What Abu Knows — Martita'))
-    // the bodies are embedded in the same order: persona, then family, then profile
-    if (ABU_PERSONA.length > 0 && ABU_FAMILY.length > 0) {
-      expect(out.indexOf(ABU_PERSONA)).toBeGreaterThanOrEqual(0)
-      expect(out.indexOf(ABU_FAMILY)).toBeGreaterThan(out.indexOf(ABU_PERSONA))
-    }
+  it('the family DATA is no longer embedded — the model uses people_lookup instead (D4)', () => {
+    // The family graph left the prompt; only the routing instruction remains.
+    expect(out).toContain('# Family and People')
+    expect(out).toContain('people_lookup')
+    expect(out).not.toContain(ABU_FAMILY) // the family prose is gone from the prompt
+    expect(out.indexOf('# Personality and Tone')).toBeLessThan(out.indexOf('# Family and People'))
+    expect(out.indexOf('# Family and People')).toBeLessThan(out.indexOf('# What Abu Knows — Martita'))
   })
 
-  it('embeds the family + knowledge files verbatim (their content, not a paraphrase)', () => {
-    expect(out).toContain(ABU_FAMILY)
+  it('embeds Martita\'s own profile verbatim (family graph excluded)', () => {
     if (ABU_KNOWLEDGE.length > 0) expect(out).toContain(ABU_KNOWLEDGE)
   })
 
-  it('binds the tool/action truth rules (id-only contacts, prepare-only comms, no web for family/calendar)', () => {
-    expect(out).toContain('resolve_contact')
+  it('binds the tool/action truth rules (people_lookup for people, prepare-only comms, no web for family/calendar)', () => {
+    expect(out).toContain('people_lookup') // reaching a person now goes through the one people tool
     expect(out).toMatch(/never send a message or place a call/i)
     expect(out).toMatch(/NEVER from web search/i)
   })
@@ -164,8 +162,8 @@ describe('name pronunciation guidance (read the Latin spelling as Spanish)', () 
     expect(out).toContain('איילון (Ayalon) — Spanish: eilon')
     // the old free-text respelling is gone
     expect(out).not.toContain('LEH-oh')
-    // the section sits after the family knowledge and before the tools
-    expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeGreaterThan(out.indexOf('# What Abu Knows — Family'))
+    // the section sits after Martita's profile and before the tools
+    expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeGreaterThan(out.indexOf('# What Abu Knows — Martita'))
     expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeLessThan(out.indexOf('# Tools and Actions'))
   })
 })

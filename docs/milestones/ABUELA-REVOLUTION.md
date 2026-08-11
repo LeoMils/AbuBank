@@ -47,8 +47,11 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 - [x] Named failures pass (tests): Leo=דוד of Mor's children · Gilad=גיס of Eili · Yarden=כלה of Rafi
 - [x] ONE `people_lookup` tool wired into LiveTools (who/relationship/relatives/contact); numbers at UI only
 - [~] Retire `resolve_contact`: people_lookup supersedes it and is wired; physical removal = STAGED (D4)
-- [x] Char count reported: family in prompt 12978 → 9587 if moved to people_lookup (−26%). Actual prompt
-      removal STAGED (touches the embedded-family / familyReconciliation tests) (D4)
+- [x] Family DATA physically REMOVED from the live prompt (D4 done): "# What Abu Knows — Family" + the
+      abu-family.md embed are gone; a "# Family and People" routing instruction sends the model to
+      people_lookup. resolve_contact references in the instructions replaced by people_lookup. Size
+      12978 → 9962 chars (−23%; pure-removal floor 9587 + the routing paragraph). abu-family.md remains
+      legacy prose only; generating it from the one source is still staged.
 - [x] Invariant tests (all 8: unknown-stays-unknown, alias→one person, spellings verbatim, death keeps
       genealogy, former_spouse/partner distinct + partner≠parent, temporal dated, gender-only-where-known, add-by-data)
 - [x] Gate validator (scripts/validate-people.ts) — errors in plain Hebrew, in prebuild; broken file never builds
@@ -73,6 +76,11 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 ---
 
 ## Decisions log
+- **D5 (D4 pass):** Physically removed family from the live prompt (12978 to 9962 chars). Fixed a
+  version-label sync bug shipped in 0.196.0: an apostrophe in the build label truncated the health.ts
+  BUILD_LABEL extraction regex in version.test — labels must stay apostrophe-free (the bump tooling now
+  guards it). The people_lookup LIVE tool remains; physically deleting the resolve_contact executor + its
+  tests is still staged (its own commit).
 - **D0 (protocol):** Wrote this spec as the first commit; it is the resume point.
 - **D1 (M1, safest):** Built the bake-off as a self-contained framework; did NOT refactor
   the shipped endpoint internals this milestone (would risk 30+ passing online tests for a
