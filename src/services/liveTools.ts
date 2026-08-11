@@ -163,10 +163,32 @@ export const LIVE_TOOL_SCHEMAS = [
     description: 'Cancel the pending WhatsApp/call preparation (Martita changed her mind).',
     parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
   },
+  {
+    type: 'function', name: 'get_current_info',
+    description: "Get CURRENT, live information from the web — today's news, the weather right now, sports results, prices, what is open or on now. Use this for anything time-sensitive or 'today/now/latest'. Speak ONLY what it returns and mention the source; if it has no result, say plainly you could not check. NEVER answer a current fact from memory. Do NOT use this for family, the calendar, or stable knowledge.",
+    parameters: { type: 'object', properties: { query: { type: 'string', description: 'The current-info question, in the language Martita asked.' } }, required: ['query'], additionalProperties: false },
+  },
 ] as const
 
 export const LIVE_TOOL_NAMES: string[] = LIVE_TOOL_SCHEMAS.map((t) => t.name)
 const COMM_TOOLS = new Set(['whatsapp_draft', 'phone_call', 'cancel_communication'])
+const ONLINE_TOOL = 'get_current_info'
+
+/** The grounded online result the live tool speaks from (server-side endpoint shape). */
+export interface OnlineAnswer { ok: boolean; answer?: string; sources?: Array<{ title?: string; url?: string }>; userMessage?: string }
+/** Injected online seam — real one POSTs to the server endpoint; tests inject a fake. */
+export type OnlineFetch = (query: string) => Promise<OnlineAnswer>
+
+/** Default seam: POST the query to the server-side GROUNDED endpoint (holds the key,
+ *  applies the no-sources honesty gate). A thrown/failed call becomes an honest miss. */
+export function defaultOnlineFetch(): OnlineFetch {
+  return async (query) => {
+    try {
+      const res = await fetch('/api/abuai-online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, lang: 'he' }) })
+      return (await res.json()) as OnlineAnswer
+    } catch { return { ok: false, userMessage: 'לא הצלחתי לבדוק מידע עדכני כרגע.' } }
+  }
+}
 
 function str(a: Record<string, unknown>, k: string): string | undefined {
   return typeof a[k] === 'string' && (a[k] as string).trim() ? (a[k] as string).trim() : undefined
@@ -183,6 +205,7 @@ export class LiveTools {
     private readonly send: SendEvent,
     private readonly store: LiveCalendarStore,
     private readonly cb: LiveToolsCallbacks = {},
+    private readonly onlineFetch: OnlineFetch = defaultOnlineFetch(),
   ) {}
 
   /** True for every tool this executor owns (everything except wait_for_user). */
@@ -196,9 +219,34 @@ export class LiveTools {
     if (this.handled.has(fc.callId)) return                              // completed duplicate → no-op
     if (this.inFlight.has(fc.callId)) return                             // in-flight duplicate → drop
     this.inFlight.add(fc.callId)
+    // get_current_info is ASYNC (a server round-trip): it keeps the callId in-flight
+    // and replies when the grounded result returns. Every other tool is sync + local.
+    if (fc.name === ONLINE_TOOL) { void this.handleOnline(fc); return }
     try {
       const output = this.dispatch(fc)
       const json = JSON.stringify(output)
+      this.handled.set(fc.callId, json)
+      this.reply(fc.callId, json)
+    } finally {
+      this.inFlight.delete(fc.callId)
+    }
+  }
+
+  /** get_current_info: fetch a GROUNDED answer from the server endpoint and let the
+   *  model speak ONLY that (with its source). No verified result ⇒ an honest "could
+   *  not check" — NEVER a current fact from memory. Deduped like every other tool. */
+  private async handleOnline(fc: ParsedFunctionCall): Promise<void> {
+    try {
+      const query = str(safeArgs(fc.argsJson), 'query') ?? ''
+      const r = await this.onlineFetch(query)
+      const output = r && r.ok && r.answer
+        ? { status: 'ok', answer: r.answer, sources: r.sources ?? [], allowed_to_say: ['say ONLY this grounded answer, and mention the source', 'never add a fact it did not give'] }
+        : { status: 'no_result', allowed_to_say: ['say plainly you could not check current information right now', 'never answer a current fact from memory'] }
+      const json = JSON.stringify(output)
+      this.handled.set(fc.callId, json)
+      this.reply(fc.callId, json)
+    } catch {
+      const json = JSON.stringify({ status: 'no_result', allowed_to_say: ['say plainly you could not check current information right now', 'never answer a current fact from memory'] })
       this.handled.set(fc.callId, json)
       this.reply(fc.callId, json)
     } finally {

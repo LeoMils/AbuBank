@@ -13,7 +13,7 @@
  * These prove the DETERMINISTIC behavior — NOT that Abu sounded warm on a device.
  */
 import { describe, it, expect } from 'vitest'
-import { LiveTools, type LiveCalendarStore, type LiveEvent } from './liveTools'
+import { LiveTools, type LiveCalendarStore, type LiveEvent, type OnlineFetch } from './liveTools'
 import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 
 function memStore(): LiveCalendarStore & { events: LiveEvent[] } {
@@ -330,5 +330,54 @@ describe('every prepared field round-trips: create → confirm → read → upda
     expect(h.lastOutput()).toMatchObject({ status: 'updated' })
     expect(h.store.events.find((e) => e.id === 'b')!.time).toBe('12:00')
     expect(h.store.events.find((e) => e.id === 'a')!.time).toBe('09:00') // untouched
+  })
+})
+
+// ─── get_current_info — the grounded online tool (async) ───────────────────────
+function onlineHarness(online: OnlineFetch) {
+  const sent: Array<Record<string, unknown>> = []
+  const tools = new LiveTools((e) => sent.push(e), memStore(), {}, online)
+  const fire = (callId: string, query = 'מה מזג האוויר עכשיו?') =>
+    tools.handleFunctionCall({ name: 'get_current_info', callId, argsJson: JSON.stringify({ query }) } as ParsedFunctionCall)
+  const output = () => {
+    const item = sent.find((e) => e.type === 'conversation.item.create')?.item as { output?: string } | undefined
+    return item?.output ? (JSON.parse(item.output) as Record<string, unknown>) : null
+  }
+  return { sent, tools, fire, output }
+}
+const tick = () => new Promise((r) => setTimeout(r, 0))
+
+describe('get_current_info — grounded online tool (async, no verified result ⇒ no claim)', () => {
+  it('speaks ONLY the grounded answer + source on success, then asks the model to reply', async () => {
+    const h = onlineHarness(async () => ({ ok: true, answer: 'בתל אביב עכשיו 31 מעלות ושמשי.', sources: [{ url: 'https://weather.example/tlv' }] }))
+    h.fire('o1')
+    await tick()
+    expect(h.output()).toMatchObject({ status: 'ok' })
+    expect(String(h.output()!.answer)).toContain('31')
+    expect(h.sent.some((e) => e.type === 'response.create')).toBe(true) // model speaks the grounded result
+  })
+
+  it('a no-result (ungrounded) reply is an HONEST miss — no answer, never from memory', async () => {
+    const h = onlineHarness(async () => ({ ok: false, userMessage: 'לא מצאתי' }))
+    h.fire('o2', 'מי ניצח אתמול בכדורגל?')
+    await tick()
+    expect(h.output()).toMatchObject({ status: 'no_result' })
+    expect(h.output()!.answer).toBeUndefined()
+  })
+
+  it('a thrown online call is an honest miss, not a crash', async () => {
+    const h = onlineHarness(async () => { throw new Error('network down') })
+    h.fire('o3')
+    await tick()
+    expect(h.output()).toMatchObject({ status: 'no_result' })
+  })
+
+  it('the same call id across duplicate shapes runs the fetch EXACTLY once', async () => {
+    let calls = 0
+    const h = onlineHarness(async () => { calls++; return { ok: true, answer: 'עדכני', sources: [{ url: 'https://s.example' }] } })
+    h.fire('dup'); h.fire('dup'); h.fire('dup')
+    await tick()
+    expect(calls).toBe(1)
+    expect(h.sent.filter((e) => e.type === 'conversation.item.create')).toHaveLength(1)
   })
 })

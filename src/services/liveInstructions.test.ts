@@ -205,20 +205,24 @@ describe('instructions-vs-tools honesty guard', () => {
     }
   })
 
-  it('the persona no longer implies news / weather / cross-session memory / cinema', () => {
-    for (const phrase of ['חדשות מהארץ', 'חדשות מהעולם', 'זוכרת מי עשה מה', 'מה שסיפרה אתמול', 'מה יש בקולנוע']) {
+  it('the persona does not claim a STILL-toolless capability (memory across sessions)', () => {
+    // news / weather / cinema now have get_current_info, so they are no longer here.
+    for (const phrase of ['זוכרת מי עשה מה', 'מה שסיפרה אתמול']) {
       expect(out, `still implies "${phrase}"`).not.toContain(phrase)
     }
   })
 
-  it('the guard actually has teeth — a re-added claim IS caught', () => {
-    // Re-introducing a claim phrase into the text is flagged.
-    const withNews = out + '\nמספרת חדשות מהעולם כל בוקר.'
-    const v1 = auditInstructionsVsTools(withNews)
-    expect(v1.some((x) => x.includes('news/current-events'))).toBe(true)
-    // Removing a required "cannot" statement is flagged.
-    const withoutWeatherDecline = out.replace(/do NOT know the weather today/i, 'knows the weather')
-    const v2 = auditInstructionsVsTools(withoutWeatherDecline)
-    expect(v2.some((x) => x.includes('weather'))).toBe(true)
+  it('offers get_current_info and forbids answering a current fact from memory', () => {
+    expect(out).toContain('get_current_info')
+    expect(out).toMatch(/NEVER answer a current fact from your own memory/i)
+  })
+
+  it('the guard actually has teeth — a re-added toolless claim IS caught', () => {
+    // memory-across-sessions and games are still toolless and still guarded.
+    const withMemory = out + '\nזוכרת מה שסיפרה אתמול בשיחה.'
+    expect(auditInstructionsVsTools(withMemory).some((x) => x.includes('memory-across-sessions'))).toBe(true)
+    // Removing a required "cannot" statement (games) is flagged.
+    const withoutGamesDecline = out.replace(/have no games/i, 'loves playing games')
+    expect(auditInstructionsVsTools(withoutGamesDecline).some((x) => x.includes('games'))).toBe(true)
   })
 })
