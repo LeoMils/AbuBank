@@ -169,10 +169,10 @@ Architecture so the commissioned asset swaps in later without touching animation
   cheeks, brows, eyes (eyeballs+irises+catchlights), eyelids (a shape that can lower to fully cover
   the eyes = blink), mouth (THREE registered shapes: closed/mid/open on one origin), hair-front,
   rim-light. A future asset = replace this file's SVG keeping the same group ids.
-- `src/services/useOutputAmplitude.ts` — hook: given a MediaStream, AudioContext→AnalyserNode→
-  getByteTimeDomainData in ONE requestAnimationFrame loop → RMS amplitude 0..1 (smoothed). Cleanup on
-  unmount. Returns `undefined` when no AudioContext/stream (graceful degrade). Unit-test with a fake
-  analyser (inject the AnalyserNode/ctx) — do NOT require a real device.
+- DONE ✅ the amplitude ENGINE: `src/services/outputAmplitude.ts` — createAmplitudeReader(ctx, stream)
+  → { read(): 0..1 RMS (smoothed), stop() } + amplitudeToViseme(amp)→closed|mid|open. Injectable +
+  tested (outputAmplitude.test.ts, no device). REMAINING for the screen: call it with the real remote
+  MediaStream in ONE requestAnimationFrame loop, and omit it (→ speaking-loop degrade) when no ctx/stream.
 - `src/screens/AbuAI/presence/AbuPresence.tsx` — props { state:'listening'|'thinking'|'speaking'|
   'waiting', amplitude?:number }. Mouth = cross-fade closed→mid→open by amplitude; if amplitude is
   undefined AND state==='speaking', a gentle mouth loop (degrade). Blink = setInterval 3–6s lowering
