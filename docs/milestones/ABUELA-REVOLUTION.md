@@ -72,7 +72,14 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 - [x] Applied to the HUB (logos + theme tokens + Night-Garden page bg)
 - [x] Senior-first VERIFICATION gate (both themes): WCAG AA contrast + 56px/16px, system-wide via tokens/components
 - [x] Rollout wave 1: ScreenHeader carries the per-app logo; Abu News + Abu Bank fully in the Night Garden system
-- [ ] Rollout wave 2 (STAGED, careful per-screen): Weather (already starfield) / Games / Calendar / WhatsApp + Abu AI
+- [x] Abu AI screen DONE (M5 STEP 2, 835d9f3) — in the Night Garden system with the animated presence.
+- [ ] Rollout wave 2 REMAINING (STEP 3, careful per-screen, ONE AT A TIME, verified not blind-swapped):
+      **WhatsApp, Games, Calendar, Weather.** NOT started — see the STEP 3 section for the exact per-screen
+      recipe + the render-to-PNG verify technique. NOTE: all four are large bespoke screens (WhatsApp 1469
+      lines; Games is a bright terrace DESIGN-LOCKED by wowGame.test.ts — do NOT force it dark, add the logo
+      header + tokens and preserve the terrace; Weather has the sky hero + starfield to preserve). The
+      both-themes senior-first bar means real token migration per screen, not a bg swap. This is the next
+      session's focused work — it deserves a fresh budget to do each screen properly.
 
 ### M5 — Abu's presence (Abu AI screen)
 - [x] 2–3 character directions proposed; Leo chose **3 "Silhouette & light"**
@@ -206,7 +213,12 @@ a904200 M4-foundation · 51774b7 character-refine · f0b2f6f rollout-w1+M6 · 68
 Every commit ends green: `npm run typecheck` · `npx vitest run` · `npm run build` · validators.
 Bump src/version.ts + api/health.ts + src/version.test.ts together; LABEL must have NO apostrophe
 (health BUILD_LABEL regex truncates on it — see D5). Use the escape-aware bump pattern in prior commits.
-Current version: 0.201.0-abuela-presence-screen-m5s2. **NEXT = STEP 3 (below); STEP 1 & 2 are DONE.**
+Current version: 0.202.0-abuela-online-winner-m2. Later commits (pushed): cda6d7a M2 online winner ·
+d55b653 PART 4 docs (gate review + DEVICE-TEST). This session ALSO: ran the FULL suite (467 files / 12354
+green), the REAL online tournament (winner Tavily, wired), and the gate review. **NEXT = STEP 3 below —
+re-theme WhatsApp / Games / Calendar / Weather, one verified commit each. It is the only PART not yet done.**
+Two follow-ups worth a line: (a) activate the online winner in prod by setting ONLINE_PROVIDER=tavily in the
+Vercel env (deploy step); (b) a bounded ~2.5s client timeout + "checking…" state for Tavily p95, Brave as fallback.
 
 ### STEP 1 — Animate character A  (D9)  ── DONE (a44cec2; engine 0cf48b4) ──
 Shipped: `src/screens/AbuAI/presence/AbuCharacterA.tsx` (variant A as named `<g>` layers, transparent
