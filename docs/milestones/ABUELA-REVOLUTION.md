@@ -80,6 +80,11 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 ---
 
 ## Decisions log
+- **D9 (M5 character, Leo's call):** SHIP variant A ("Warm Gold", docs/design/abu-bust-A.svg) as-is and
+  ANIMATE it now. "Warm and not uncanny" is the bar; a commissioned illustration is a later upgrade,
+  not a blocker. Keep CHARACTER-ASSET-SPEC.md and structure the animation so the asset swaps in later
+  WITHOUT touching animation code (the character SVG lives in ONE component with named layer groups;
+  replacing that file's SVG — same group ids — is the whole swap).
 - **D8 (M4 rollout, safest):** Verified senior-first minimums SYSTEM-WIDE (WCAG AA contrast in both
   themes + 56/16 sizes) via the tokens + shared components every screen uses — a per-screen guarantee
   without rushing 7 bespoke re-themes. Applied the full system to hub + News + Bank. STAGED the careful
@@ -149,8 +154,54 @@ in `.env.local` (server-side; never the client bundle), then re-run `npx tsx scr
 (Weather may be better served by a dedicated API, e.g. the Israel Meteorological Service or
 OpenWeather — flagged after the search tournament runs.)
 
-## Resume pointer
-- **Next action:** M4 — brand + design revolution (logo family SVGs + design system across all
-  screens; 2–3 hub directions first). M2 (full online) is staged on the incumbent pending M1 keys.
-  (Order note: M3 was done before M2 because M2's real quality depends on the M1 winner, which is
-  blocked on Leo's keys, whereas M3 needs no keys and fixes a live device bug — safest-option, logged.)
+## Resume pointer — DO THESE IN ORDER (fresh session starts here)
+
+Ledger so far (all pushed to RC): 7d7be99 spec · 9fd23d3 M1 · 70f157b M3 · 11d3837 D4 ·
+a904200 M4-foundation · 51774b7 character-refine · f0b2f6f rollout-w1+M6 · (this) resume-spec.
+Every commit ends green: `npm run typecheck` · `npx vitest run` · `npm run build` · validators.
+Bump src/version.ts + api/health.ts + src/version.test.ts together; LABEL must have NO apostrophe
+(health BUILD_LABEL regex truncates on it — see D5). Use the escape-aware bump pattern in prior commits.
+
+### STEP 1 — Animate character A  (D9)
+Architecture so the commissioned asset swaps in later without touching animation code:
+- `src/screens/AbuAI/presence/AbuCharacterA.tsx` — variant A (docs/design/abu-bust-A.svg) as an SVG
+  React component, split into NAMED `<g>` layers per CHARACTER-ASSET-SPEC.md: hair-back, base,
+  cheeks, brows, eyes (eyeballs+irises+catchlights), eyelids (a shape that can lower to fully cover
+  the eyes = blink), mouth (THREE registered shapes: closed/mid/open on one origin), hair-front,
+  rim-light. A future asset = replace this file's SVG keeping the same group ids.
+- `src/services/useOutputAmplitude.ts` — hook: given a MediaStream, AudioContext→AnalyserNode→
+  getByteTimeDomainData in ONE requestAnimationFrame loop → RMS amplitude 0..1 (smoothed). Cleanup on
+  unmount. Returns `undefined` when no AudioContext/stream (graceful degrade). Unit-test with a fake
+  analyser (inject the AnalyserNode/ctx) — do NOT require a real device.
+- `src/screens/AbuAI/presence/AbuPresence.tsx` — props { state:'listening'|'thinking'|'speaking'|
+  'waiting', amplitude?:number }. Mouth = cross-fade closed→mid→open by amplitude; if amplitude is
+  undefined AND state==='speaking', a gentle mouth loop (degrade). Blink = setInterval 3–6s lowering
+  eyelids ~120ms. Breathe = CSS keyframe scale 1→1.02 on `base`. Aura/ring colour by state (listening
+  teal, thinking amber shimmer, speaking gold ripple, waiting calm). Use theme tokens; NO hardcoded bg.
+- FRAME COST: one rAF (amplitude) + CSS-composited blink/breathe (GPU). Report the design budget;
+  real fps is DEVICE-measured — do not claim it. Add a test: AbuPresence renders each state + a given
+  amplitude opens the mouth (renderToString, assert the open-mouth group is shown).
+
+### STEP 2 — Rebuild the Abu AI screen in Night Garden
+- The screen is `src/screens/Live/LiveScreen.tsx` (opened via window.__abubankOpenLive → App setLiveOpen).
+- liveSession (src/services/liveSession.ts) holds `this.remoteStream` (the realtime audio) and calls
+  cb.onState('listening'|'speaking'|…). EXPOSE the remote stream to the UI: add a callback e.g.
+  `onRemoteStream?(stream)` set in LiveSession.attachPlayback (where remoteStream is assigned), and a
+  state→presence-state mapping. Feed the stream to useOutputAmplitude → AbuPresence.amplitude, and
+  onState → AbuPresence.state (thinking = between user-stop and first audio; waiting = wait_for_user).
+- Rebuild the layout in the system: PAGE_BG, theme tokens, ScreenHeader-style back, AbuPresence centre,
+  the action cards (existing ActiveActionCard / CommunicationActionCard), the transcript, the trace
+  button (session.exportTrace). All ≥56px targets, ≥16px body, both themes (seniorFirst gate covers
+  tokens/components). Keep the live cutover (liveEntryPoint.test) + the recorder intact.
+
+### STEP 3 — Re-theme Weather, Games, Calendar, WhatsApp — ONE AT A TIME, each verified
+- Per screen: root bg → PAGE_BG; header → ScreenHeader with its `app` logo (weather/games/calendar/
+  whatsapp); text/surfaces → theme tokens (t.*); buttons ≥56px. AbuWeather ALREADY has the Night
+  Garden starfield — migrate its colours to tokens without flattening the starfield. Run THAT screen's
+  tests after each; fix failures in the same pass (do not blind-swap). Commit per screen.
+
+### Then M2 (still blocked on keys)
+- Keys needed: TAVILY_API_KEY, BRAVE_API_KEY, PERPLEXITY_API_KEY in .env.local (server-side).
+- Wiring the winner = refactor api/abuai-online.ts to call selectProvider(env).search() (registry is
+  built: src/services/online/registry.ts) and map to the existing {ok,answer,sources}|failure shape,
+  keeping the honesty gate. Do it WITH a keyed winner so it can be validated; re-run scripts/online-bakeoff.ts.
