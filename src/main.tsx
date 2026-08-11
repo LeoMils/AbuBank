@@ -1,4 +1,5 @@
 import './design/tokens.css'
+import './design/theme.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -6,6 +7,10 @@ import { App } from './App'
 import { APP_VERSION } from './version'
 import { durable } from './services/durableStore'
 import { initPersistenceTrace, traceStage } from './services/persistenceTrace'
+import { initTheme } from './design/theme'
+
+// Apply the persisted Abu-ela theme (Night Garden default; Bright Day is one flip away).
+initTheme()
 
 console.info('[AbuBank Build]', APP_VERSION)
 

@@ -5,16 +5,8 @@ import { getGreeting } from './data';
 import { HUB_APPS, openLiveAbu, type HubApp, type HubAction } from './hub';
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos';
 import { injectSharedKeyframes } from '../../design/animations';
-import {
-  Sparkle, Bank, CalendarBlank, WhatsappLogo, GameController, CloudSun, Newspaper,
-  type IconProps,
-} from '@phosphor-icons/react';
-
-// One consistent icon per hub app (Phosphor — one system, not seven styles).
-const HUB_ICON: Record<string, React.ComponentType<IconProps>> = {
-  ai: Sparkle, bank: Bank, calendar: CalendarBlank,
-  whatsapp: WhatsappLogo, games: GameController, weather: CloudSun, news: Newspaper,
-};
+import { AbuLogo, type AbuAppId } from '../../design/logos/AbuLogo';
+import { t, PAGE_BG } from '../../design/theme';
 
 /** Turn an rgba/hex-ish accent into an "r,g,b" triple for glow shadows. */
 function accentRgb(hex: string): string {
@@ -57,7 +49,7 @@ export function Home() {
   return (
     <div dir="rtl" style={{
       height: '100%', width: '100%', overflow: 'hidden',
-      background: 'linear-gradient(180deg, #070D1E 0%, #050A18 40%, #050A18 100%)',
+      background: PAGE_BG,
       display: 'flex', flexDirection: 'column',
       fontFamily: "'Heebo','DM Sans',sans-serif", userSelect: 'none', WebkitUserSelect: 'none',
     }}>
@@ -139,7 +131,6 @@ function HubTile({ app, hero = false, pressed, setPressed, loaded, index, onOpen
   setPressed: (id: string | null) => void; loaded: boolean; index: number;
   onOpen: (a: HubAction) => void;
 }) {
-  const Icon = HUB_ICON[app.id] ?? Sparkle;
   const rgb = accentRgb(app.accent);
   const isPressed = pressed === app.id;
   return (
@@ -155,11 +146,12 @@ function HubTile({ app, hero = false, pressed, setPressed, loaded, index, onOpen
         justifyContent: 'center', gap: hero ? 16 : 10,
         minHeight: hero ? 92 : 56, width: '100%', height: '100%',
         padding: hero ? '0 24px' : '10px', borderRadius: 22, cursor: 'pointer',
-        background: `linear-gradient(150deg, rgba(${rgb},0.12) 0%, rgba(255,250,240,0.05) 55%, rgba(255,250,240,0.03) 100%)`,
+        // themeable surface + a per-app accent wash (constellation colour)
+        background: `linear-gradient(150deg, rgba(${rgb},0.14) 0%, ${t.surface} 60%)`,
         border: `1px solid rgba(${rgb},${isPressed ? 0.55 : 0.28})`,
         boxShadow: isPressed
           ? `0 0 0 1px rgba(${rgb},0.30) inset`
-          : `0 0 22px rgba(${rgb},0.12), 0 10px 30px rgba(0,0,0,0.40)`,
+          : `0 0 22px rgba(${rgb},0.12), 0 10px 30px ${t.shadow}`,
         backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
         transform: isPressed ? 'scale(0.97)' : (loaded ? 'scale(1)' : 'scale(0.9)'),
         opacity: loaded ? 1 : 0,
@@ -167,18 +159,12 @@ function HubTile({ app, hero = false, pressed, setPressed, loaded, index, onOpen
         WebkitTapHighlightColor: 'transparent',
       }}
     >
-      <span aria-hidden="true" style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        width: hero ? 60 : 52, height: hero ? 60 : 52, borderRadius: '50%', flexShrink: 0,
-        background: `radial-gradient(circle at 38% 32%, rgba(${rgb},0.85) 0%, rgba(${rgb},0.35) 55%, rgba(${rgb},0.10) 100%)`,
-        boxShadow: `0 4px 16px rgba(${rgb},0.35), inset 0 2px 8px rgba(255,255,255,0.14)`,
-      }}>
-        <Icon size={hero ? 34 : 30} weight="fill" color="#0B1220" />
-      </span>
+      {/* the per-app Abu logo mark (one family) */}
+      <AbuLogo app={app.id as AbuAppId} size={hero ? 62 : 54} style={{ flexShrink: 0 }} />
       <span style={{
-        fontSize: hero ? 26 : 18, fontWeight: 800, color: 'rgba(255,255,255,0.96)',
+        fontSize: hero ? 26 : 18, fontWeight: 800, color: t.textStrong,
         fontFamily: "'Heebo',sans-serif", letterSpacing: '0.2px', textAlign: 'center',
-        lineHeight: 1.2, textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+        lineHeight: 1.2,
       }}>{app.hebrewLabel}</span>
     </button>
   );

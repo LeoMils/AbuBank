@@ -58,17 +58,20 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 - [x] Kinship "harness": 28 deterministic queries (kinship.test + peopleLookup.test) incl. every derived type
       + "הבת שלי"→Mor in one turn + "הנכד שלי"→ambiguous. (Deterministic > LLM for kinship correctness.)
 
-### M4 — Brand + design revolution
-- [ ] Logo family: real graphic "Abu" mark, per-app identity (AI/News/Bank/WhatsApp/Weather/Games/Calendar) as SVG components
-- [ ] Design system extended: tokens + components + docs, applied to EVERY screen (hub + 7 apps)
-- [ ] 2–3 genuinely different hub directions built + described; report before rolling the chosen one wider
+### M4 — Brand + design revolution  ── FOUNDATION done; rollout next ──
+- [x] 2–3 hub directions proposed in words; Leo chose **B "Night Garden"** (+ light "Bright Day" flip)
+- [x] THEMEABLE tokens (condition 1): src/design/theme.css + theme.ts — dark⇄light by one attribute, no rebuild
+- [x] Per-app logo FAMILY as SVG components (src/design/logos/AbuLogo): 7 emblems, one system, distinct glyph+accent
+- [x] Applied to the HUB (logos + theme tokens + Night-Garden page bg)
+- [ ] ROLL the system + logos across the other 6 app screens (reporting first, per brief) — NEXT WAVE
+- [~] Design-system docs updated for the theme + logos — pending the rollout
 
 ### M5 — Abu's presence (Abu AI screen)
-- [ ] Warm illustrated character (NOT photorealistic, NOT video), 2–3 directions proposed then built
-- [ ] Mouth driven by real output-audio amplitude (AnalyserNode on the realtime stream)
-- [ ] States: listening/thinking/speaking/waiting; idle life (breathing/blinking); graceful degrade
-- [ ] Screen around her (action cards, transcript, trace button) in the new system, readable at 80
-- [ ] Measure + report frame cost
+- [x] 2–3 character directions proposed; Leo chose **3 "Silhouette & light"**
+- [x] STILL FRAME delivered for approval BEFORE animating (condition 2): docs/design/abu-bust-still.svg + .png
+- [ ] AWAITING Leo's judgement on the still (warm + dignified in one look?) before any animation
+- [ ] Mouth from real output-audio amplitude (AnalyserNode); states; idle life; graceful degrade
+- [ ] Screen around her (cards, transcript, trace) in the new system; measure + report frame cost
 
 ### M6 — Device test script
 - [ ] docs/DEVICE-TEST.md for the shipped build: numbered say-this / expect-that / trace-signature, riskiest first, non-programmer
@@ -76,6 +79,11 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 ---
 
 ## Decisions log
+- **D6 (M4/M5, Leo's choices + conditions):** Hub = Night Garden (B); character = Silhouette & light (3).
+  Condition 1 met — palette is CSS-variable tokens, dark⇄light by one attribute, no rebuild (Bright Day
+  wired). Condition 2 honoured — the character STILL is delivered for approval BEFORE animating. Applied the
+  system to the HUB only this pass; per the brief I REPORT before rolling logos+theme across the other 6
+  screens. Character animation is BLOCKED on Leo approving the still.
 - **D5 (D4 pass):** Physically removed family from the live prompt (12978 to 9962 chars). Fixed a
   version-label sync bug shipped in 0.196.0: an apostrophe in the build label truncated the health.ts
   BUILD_LABEL extraction regex in version.test — labels must stay apostrophe-free (the bump tooling now
