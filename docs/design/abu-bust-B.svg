@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 400" width="360" height="400" role="img" aria-label="Abu variant B — starlight depth">
+  <defs>
+    <radialGradient id="Bbg" cx="52%" cy="30%" r="82%"><stop offset="0%" stop-color="#1e2450"/><stop offset="50%" stop-color="#0a0f2a"/><stop offset="100%" stop-color="#030518"/></radialGradient>
+    <radialGradient id="Baura" cx="52%" cy="38%" r="48%"><stop offset="0%" stop-color="#F0C070" stop-opacity="0.36"/><stop offset="60%" stop-color="#8FA6E0" stop-opacity="0.10"/><stop offset="100%" stop-color="#8FA6E0" stop-opacity="0"/></radialGradient>
+    <radialGradient id="Bskin" cx="38%" cy="32%" r="78%"><stop offset="0%" stop-color="#FADCB6"/><stop offset="46%" stop-color="#E7B78D"/><stop offset="74%" stop-color="#C68C64"/><stop offset="100%" stop-color="#8F5C3E"/></radialGradient>
+    <linearGradient id="Bhair" x1="14%" y1="0%" x2="86%" y2="100%"><stop offset="0%" stop-color="#FFFCF4"/><stop offset="38%" stop-color="#E4DFD6"/><stop offset="70%" stop-color="#BDB5AC"/><stop offset="100%" stop-color="#8F8880"/></linearGradient>
+    <linearGradient id="Bshawl" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#E7A776"/><stop offset="44%" stop-color="#C57A4C"/><stop offset="100%" stop-color="#7E3E2A"/></linearGradient>
+    <radialGradient id="Bcheek" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#E5896A" stop-opacity="0.5"/><stop offset="100%" stop-color="#E5896A" stop-opacity="0"/></radialGradient>
+    <linearGradient id="Bwarm" x1="100%" y1="0%" x2="0%" y2="70%"><stop offset="0%" stop-color="#FFD98F" stop-opacity="0.95"/><stop offset="45%" stop-color="#FFD98F" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFD98F" stop-opacity="0"/></linearGradient>
+    <linearGradient id="Bcool" x1="0%" y1="10%" x2="100%" y2="80%"><stop offset="0%" stop-color="#AEC4FF" stop-opacity="0.85"/><stop offset="40%" stop-color="#AEC4FF" stop-opacity="0.12"/><stop offset="100%" stop-color="#AEC4FF" stop-opacity="0"/></linearGradient>
+    <linearGradient id="Bshadow" x1="0%" y1="0%" x2="100%" y2="30%"><stop offset="0%" stop-color="#2A1A10" stop-opacity="0.55"/><stop offset="55%" stop-color="#2A1A10" stop-opacity="0"/></linearGradient>
+    <filter id="Bsoft" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="2.6"/></filter>
+    <filter id="Bsoft1" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1"/></filter>
+    <filter id="Bweave" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="turbulence" baseFrequency="1 0.14" numOctaves="2" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0"/><feComposite operator="in" in2="SourceGraphic"/><feBlend in="SourceGraphic" mode="soft-light"/></filter>
+  </defs>
+
+  <rect width="360" height="400" fill="url(#Bbg)"/>
+  <g fill="#FFFFFF"><circle cx="300" cy="52" r="1.7" opacity="0.85"/><circle cx="326" cy="120" r="1.2" opacity="0.6"/><circle cx="52" cy="70" r="1" opacity="0.4"/><circle cx="332" cy="200" r="1.1" opacity="0.5"/><circle cx="40" cy="250" r="1" opacity="0.35"/><circle cx="60" cy="330" r="1.2" opacity="0.4"/></g>
+  <ellipse cx="184" cy="160" rx="158" ry="168" fill="url(#Baura)"/>
+
+  <path d="M64 400 Q72 296 130 272 Q160 260 180 260 Q200 260 230 272 Q288 296 296 400 Z" fill="url(#Bshawl)"/>
+  <path d="M64 400 Q72 296 130 272 Q160 260 180 260 Q200 260 230 272 Q288 296 296 400 Z" fill="url(#Bweave)" opacity="0.6"/>
+  <path d="M64 400 Q72 296 130 272 Q160 260 180 260 Q176 320 168 400 Z" fill="url(#Bshadow)" opacity="0.7"/>
+  <path d="M126 298 Q180 284 234 298" fill="none" stroke="#5E2C1C" stroke-width="2.6" opacity="0.5" filter="url(#Bsoft1)"/>
+  <path d="M144 272 Q150 330 138 400" fill="none" stroke="#5E2C1C" stroke-width="2.2" opacity="0.35"/>
+  <path d="M216 272 Q210 330 222 400" fill="none" stroke="#F3C098" stroke-width="2" opacity="0.3" filter="url(#Bsoft1)"/>
+
+  <path d="M158 258 Q160 286 180 290 Q200 286 202 258 L202 242 L158 242 Z" fill="url(#Bskin)"/>
+  <path d="M158 254 Q180 272 202 254 Q196 266 180 268 Q164 266 158 254 Z" fill="#7E5238" opacity="0.45" filter="url(#Bsoft1)"/>
+
+  <path d="M104 150 Q100 88 152 62 Q180 48 208 62 Q260 88 256 150 Q266 214 226 248 L134 248 Q94 214 104 150 Z" fill="url(#Bhair)" filter="url(#Bsoft)"/>
+  <path d="M104 150 Q100 88 152 62 Q180 48 208 62 Q260 88 256 150 Q266 214 226 248 L134 248 Q94 214 104 150 Z" fill="url(#Bhair)"/>
+  <path d="M104 150 Q100 88 152 62 Q140 84 130 150 Q126 206 150 244 L134 248 Q94 214 104 150 Z" fill="#2A2620" opacity="0.30" filter="url(#Bsoft)"/>
+  <ellipse cx="242" cy="88" rx="24" ry="26" fill="url(#Bhair)" filter="url(#Bsoft1)"/>
+
+  <path d="M132 150 Q130 100 180 94 Q230 100 228 150 Q230 200 196 226 Q180 236 164 226 Q130 200 132 150 Z" fill="url(#Bskin)"/>
+  <path d="M132 150 Q130 100 180 94 Q152 106 146 150 Q142 200 168 226 Q160 230 156 226 Q130 200 132 150 Z" fill="url(#Bshadow)" opacity="0.5"/>
+  <path d="M228 150 Q230 100 180 94 Q206 104 214 150 Q216 194 198 222 Q214 208 224 178 Q230 160 228 150 Z" fill="url(#Bwarm)" opacity="0.7"/>
+  <path d="M132 150 Q124 104 158 94 Q146 106 142 150 Q140 176 150 196" fill="none" stroke="url(#Bcool)" stroke-width="3" opacity="0.7" filter="url(#Bsoft1)"/>
+
+  <path d="M132 150 Q118 106 158 94" fill="none" stroke="#EAE4DA" stroke-width="2" opacity="0.7" filter="url(#Bsoft1)"/>
+  <path d="M228 150 Q242 106 202 92" fill="none" stroke="#EAE4DA" stroke-width="2" opacity="0.55" filter="url(#Bsoft1)"/>
+
+  <ellipse cx="152" cy="178" rx="16" ry="12" fill="url(#Bcheek)"/><ellipse cx="208" cy="178" rx="16" ry="12" fill="url(#Bcheek)"/>
+
+  <path d="M143 144 Q156 137 169 143" fill="none" stroke="#BEAC93" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M191 143 Q204 137 217 144" fill="none" stroke="#BEAC93" stroke-width="2.4" stroke-linecap="round"/>
+
+  <path d="M144 159 Q156 148 170 158 Q157 168 144 159 Z" fill="#FBF2E6"/>
+  <path d="M190 158 Q204 148 216 159 Q203 168 190 158 Z" fill="#FBF2E6"/>
+  <circle cx="157" cy="159" r="4.1" fill="#6E4A28"/><circle cx="203" cy="159" r="4.1" fill="#6E4A28"/>
+  <circle cx="157" cy="159" r="1.8" fill="#32200F"/><circle cx="203" cy="159" r="1.8" fill="#32200F"/>
+  <circle cx="158.7" cy="157" r="1.3" fill="#FFFFFF"/><circle cx="204.7" cy="157" r="1.3" fill="#FFFFFF"/>
+  <circle cx="155.6" cy="160.6" r="0.6" fill="#FFE9C4" opacity="0.8"/><circle cx="201.6" cy="160.6" r="0.6" fill="#FFE9C4" opacity="0.8"/>
+  <path d="M144 159 Q156 148 170 158" fill="none" stroke="#5E3E24" stroke-width="1.7" stroke-linecap="round"/>
+  <path d="M190 158 Q204 148 216 159" fill="none" stroke="#5E3E24" stroke-width="1.7" stroke-linecap="round"/>
+  <path d="M138 168 Q143 173 149 172" fill="none" stroke="#B98A68" stroke-width="1.2" opacity="0.6"/>
+  <path d="M222 168 Q217 173 211 172" fill="none" stroke="#B98A68" stroke-width="1.2" opacity="0.6"/>
+
+  <path d="M180 162 Q174 181 172 189 Q180 194 188 189" fill="none" stroke="#AE7E5A" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M162 203 Q180 216 198 203" fill="none" stroke="#AE5248" stroke-width="3.1" stroke-linecap="round"/>
+  <path d="M165 204 Q180 211 195 204" fill="#E5896A" opacity="0.55"/>
+
+  <circle cx="140" cy="199" r="3.1" fill="#F0C070"/><circle cx="138.8" cy="198" r="1" fill="#FFF6DC"/>
+  <ellipse cx="180" cy="392" rx="150" ry="26" fill="#F0C070" opacity="0.06"/>
+</svg>

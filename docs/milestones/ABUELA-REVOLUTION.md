@@ -79,6 +79,12 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 ---
 
 ## Decisions log
+- **D7 (M5 character, honest ceiling):** Two refinement passes (variants A "Warm Gold", B "Starlight
+  Depth") warmed + softened the bust but hand-authored SVG has hit its ceiling — it reads as refined
+  vector, not painterly; more shading makes the face muddy. Stopped animation (Leo's condition). Wrote
+  docs/design/CHARACTER-ASSET-SPEC.md — the exact commissioned-illustration spec (layered SVG, named
+  groups for eyes/eyelids/mouth-visemes/brows/hair, registration, format) so the ordered asset is
+  directly animatable. Awaiting Leo: pick a variant to ship interim, or commission per the spec.
 - **D6 (M4/M5, Leo's choices + conditions):** Hub = Night Garden (B); character = Silhouette & light (3).
   Condition 1 met — palette is CSS-variable tokens, dark⇄light by one attribute, no rebuild (Bright Day
   wired). Condition 2 honoured — the character STILL is delivered for approval BEFORE animating. Applied the

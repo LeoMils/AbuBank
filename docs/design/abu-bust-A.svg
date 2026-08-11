@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 400" width="360" height="400" role="img" aria-label="Abu variant A — warm gold">
+  <defs>
+    <radialGradient id="Abg" cx="50%" cy="32%" r="80%"><stop offset="0%" stop-color="#1b1f3e"/><stop offset="55%" stop-color="#0a0f26"/><stop offset="100%" stop-color="#04061a"/></radialGradient>
+    <radialGradient id="Aaura" cx="50%" cy="40%" r="46%"><stop offset="0%" stop-color="#F0C070" stop-opacity="0.42"/><stop offset="55%" stop-color="#E8B563" stop-opacity="0.12"/><stop offset="100%" stop-color="#E8B563" stop-opacity="0"/></radialGradient>
+    <radialGradient id="Askin" cx="42%" cy="34%" r="72%"><stop offset="0%" stop-color="#FBDDB8"/><stop offset="52%" stop-color="#EEBE94"/><stop offset="82%" stop-color="#D89A70"/><stop offset="100%" stop-color="#B87A54"/></radialGradient>
+    <linearGradient id="Ahair" x1="18%" y1="0%" x2="82%" y2="100%"><stop offset="0%" stop-color="#FFFBF2"/><stop offset="40%" stop-color="#E9E4DA"/><stop offset="72%" stop-color="#CFC7BE"/><stop offset="100%" stop-color="#AFA79E"/></linearGradient>
+    <linearGradient id="Ashawl" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F0B87E"/><stop offset="48%" stop-color="#D98A55"/><stop offset="100%" stop-color="#9B5236"/></linearGradient>
+    <radialGradient id="Acheek" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#E88C6E" stop-opacity="0.5"/><stop offset="100%" stop-color="#E88C6E" stop-opacity="0"/></radialGradient>
+    <linearGradient id="Arim" x1="100%" y1="0%" x2="0%" y2="60%"><stop offset="0%" stop-color="#FFE6B0" stop-opacity="0.95"/><stop offset="45%" stop-color="#FFE6B0" stop-opacity="0.2"/><stop offset="100%" stop-color="#FFE6B0" stop-opacity="0"/></linearGradient>
+    <filter id="Asoft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter>
+    <filter id="Asoft1" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="0.8"/></filter>
+    <filter id="Aweave" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="turbulence" baseFrequency="0.9 0.12" numOctaves="2" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0"/><feComposite operator="in" in2="SourceGraphic"/><feBlend in="SourceGraphic" mode="soft-light"/></filter>
+  </defs>
+
+  <rect width="360" height="400" fill="url(#Abg)"/>
+  <g fill="#FFFFFF"><circle cx="54" cy="66" r="1.1" opacity="0.6"/><circle cx="302" cy="54" r="1.5" opacity="0.75"/><circle cx="332" cy="150" r="1" opacity="0.5"/><circle cx="34" cy="176" r="1" opacity="0.5"/><circle cx="316" cy="250" r="1.1" opacity="0.45"/><circle cx="44" cy="300" r="1.2" opacity="0.4"/></g>
+  <ellipse cx="180" cy="164" rx="156" ry="166" fill="url(#Aaura)"/>
+
+  <!-- shawl with woven texture + soft folds -->
+  <path d="M66 400 Q74 298 130 274 Q160 262 180 262 Q200 262 230 274 Q286 298 294 400 Z" fill="url(#Ashawl)"/>
+  <path d="M66 400 Q74 298 130 274 Q160 262 180 262 Q200 262 230 274 Q286 298 294 400 Z" fill="url(#Ashawl)" filter="url(#Aweave)" opacity="0.6"/>
+  <path d="M128 300 Q180 286 232 300" fill="none" stroke="#7C3E28" stroke-width="2.5" opacity="0.45" filter="url(#Asoft1)"/>
+  <path d="M112 344 Q180 322 248 344" fill="none" stroke="#F6C79A" stroke-width="2" opacity="0.4" filter="url(#Asoft1)"/>
+  <path d="M150 274 Q160 320 150 384" fill="none" stroke="#7C3E28" stroke-width="2" opacity="0.3"/>
+  <path d="M210 274 Q200 320 210 384" fill="none" stroke="#7C3E28" stroke-width="2" opacity="0.3"/>
+
+  <!-- neck with form shadow -->
+  <path d="M158 260 Q160 286 180 290 Q200 286 202 260 L202 244 L158 244 Z" fill="url(#Askin)"/>
+  <path d="M158 256 Q180 272 202 256 Q196 268 180 270 Q164 268 158 256 Z" fill="#9E6B4C" opacity="0.35" filter="url(#Asoft1)"/>
+
+  <!-- hair back (soft, blurred edges) -->
+  <path d="M106 150 Q102 90 152 64 Q180 50 208 64 Q258 90 254 150 Q264 212 224 246 L136 246 Q96 212 106 150 Z" fill="url(#Ahair)" filter="url(#Asoft)"/>
+  <path d="M106 150 Q102 90 152 64 Q180 50 208 64 Q258 90 254 150 Q264 212 224 246 L136 246 Q96 212 106 150 Z" fill="url(#Ahair)"/>
+  <ellipse cx="240" cy="90" rx="23" ry="25" fill="url(#Ahair)" filter="url(#Asoft1)"/>
+
+  <!-- face + form shading + rim light -->
+  <path d="M132 150 Q130 102 180 96 Q230 102 228 150 Q230 198 196 224 Q180 234 164 224 Q130 198 132 150 Z" fill="url(#Askin)"/>
+  <path d="M180 96 Q214 104 226 148 Q214 128 196 118 Q188 104 180 96 Z" fill="#B87A54" opacity="0.28" filter="url(#Asoft)"/>
+  <path d="M132 150 Q130 102 180 96 Q166 108 158 150 Q154 198 178 224 Q170 228 164 224 Q130 198 132 150 Z" fill="url(#Arim)" opacity="0.7"/>
+
+  <!-- soft flyaway wisps -->
+  <path d="M132 150 Q120 108 158 96" fill="none" stroke="#EDE7DD" stroke-width="2" opacity="0.7" filter="url(#Asoft1)"/>
+  <path d="M228 150 Q240 108 202 94" fill="none" stroke="#EDE7DD" stroke-width="2" opacity="0.6" filter="url(#Asoft1)"/>
+  <path d="M136 176 Q126 190 132 206" fill="none" stroke="#DED7CD" stroke-width="1.6" opacity="0.5" filter="url(#Asoft1)"/>
+
+  <ellipse cx="152" cy="178" rx="16" ry="12" fill="url(#Acheek)"/><ellipse cx="208" cy="178" rx="16" ry="12" fill="url(#Acheek)"/>
+
+  <path d="M143 145 Q156 138 169 144" fill="none" stroke="#C9B79E" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M191 144 Q204 138 217 145" fill="none" stroke="#C9B79E" stroke-width="2.4" stroke-linecap="round"/>
+
+  <!-- eyes: open, warm, catchlight -->
+  <path d="M144 159 Q156 149 170 158 Q157 168 144 159 Z" fill="#FCF3E7"/>
+  <path d="M190 158 Q204 149 216 159 Q203 168 190 158 Z" fill="#FCF3E7"/>
+  <circle cx="157" cy="159" r="4" fill="#7A5230"/><circle cx="203" cy="159" r="4" fill="#7A5230"/>
+  <circle cx="157" cy="159" r="1.7" fill="#3A2415"/><circle cx="203" cy="159" r="1.7" fill="#3A2415"/>
+  <circle cx="158.6" cy="157.2" r="1.2" fill="#FFFFFF"/><circle cx="204.6" cy="157.2" r="1.2" fill="#FFFFFF"/>
+  <path d="M144 159 Q156 149 170 158" fill="none" stroke="#6E4A2E" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M190 158 Q204 149 216 159" fill="none" stroke="#6E4A2E" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M138 168 Q143 173 149 172" fill="none" stroke="#C79A78" stroke-width="1.2" opacity="0.6"/>
+  <path d="M222 168 Q217 173 211 172" fill="none" stroke="#C79A78" stroke-width="1.2" opacity="0.6"/>
+
+  <path d="M180 162 Q175 180 173 188 Q180 193 187 188" fill="none" stroke="#BC8A66" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M162 202 Q180 215 198 202" fill="none" stroke="#B85C52" stroke-width="3" stroke-linecap="round"/>
+  <path d="M165 203 Q180 210 195 203" fill="#E8917A" opacity="0.5"/>
+
+  <circle cx="140" cy="198" r="3" fill="#F0C070"/><circle cx="139" cy="197" r="1" fill="#FFF6DC"/>
+  <ellipse cx="180" cy="392" rx="150" ry="26" fill="#E8B563" opacity="0.06"/>
+</svg>
