@@ -17,6 +17,15 @@ No programming needed. If something is wrong, note the item number + what happen
 - **Trace:** `👤 מרטיטה: בוקר טוב…` then `🤖 אבו: …`. **No** `⚠️ SILENT TURN`, **no**
   `⚠️ POSSIBLE AUDIO TRUNCATION`.
 
+### 1a. Her face is alive while she talks  *(new — animated presence)*
+- **Look:** the Abu AI screen now shows a warm grandmother character, not a plain orb.
+- **Should happen:** while she **speaks**, her **mouth moves in time with her voice**
+  (open on louder sounds, closed when silent); she **blinks** now and then and breathes
+  gently. The glow around her changes by state: teal = מקשיבה, amber = חושבת, gold =
+  מדברת, calm blue = מוכנה. It should feel warm, **not** jerky or uncanny.
+- **Note:** the character art is an **interim** drawing (a nicer illustration is being
+  commissioned); what to judge here is that the movement feels alive and matches her voice.
+
 ### 2. Room noise does NOT cut her off  *(barge-in)*
 - **Do:** while she is speaking a long answer, stay quiet but let normal room noise
   (a TV low, a tap) happen.
@@ -59,13 +68,15 @@ No programming needed. If something is wrong, note the item number + what happen
 
 ### 8. Current info — honest, never invented
 - **Say:** "מה מזג האוויר עכשיו בכפר סבא?"
-- **Should happen (today):** she MAY answer with a source, but often she will say
-  plainly she **could not check** — that is CORRECT for now (the online provider is
-  not finalised; it is honest rather than guessing). She must **never** invent a
-  forecast or a fake source.
+- **Should happen:** the online provider is now **chosen** (Tavily won the real bake-off:
+  100% sourced, clean Hebrew, ~2s). If it has been **activated in the server env**
+  (`ONLINE_PROVIDER=tavily` on Vercel — a one-line deploy setting), she answers with a
+  real forecast **and a source**, in ~1–2 seconds. If it has NOT been activated yet, she
+  still behaves as before — honestly says she **could not check** rather than guessing.
+  Either way she must **never** invent a forecast or a fake source.
 - **Trace:** `🔧 get_current_info(…)`; either a grounded answer **with a source**, or
   `status:"no_result"` → she says she could not check. Never a confident answer with
-  no source.
+  no source. (Family / calendar questions are **never** sent online — verified.)
 
 ### 9. Abu News screen
 - **Do:** from the home hub, open **Abu News**.
@@ -83,8 +94,13 @@ No programming needed. If something is wrong, note the item number + what happen
 ---
 
 **What is NOT expected to be perfect yet (do not report as bugs):**
-- Real current-info / news reliability — waiting on the chosen provider's API keys.
-- The Abu AI character is still the simple presence; the illustrated character is
-  being commissioned.
-- Only the home hub, Abu Bank and Abu News are in the new Night-Garden design so far;
-  the other screens are being migrated.
+- Real current-info / news: the winner (Tavily) is chosen and wired, but only goes live
+  once `ONLINE_PROVIDER=tavily` is set in the Vercel server env. Until then she honestly
+  says she could not check (never guesses). Tavily is fast (~2s) but a few queries can
+  take ~3s — a brief "checking…" is expected, not a freeze.
+- The Abu AI character is now **animated** (mouth follows her voice, blink, breathing,
+  state glow) but the art is an **interim** drawing; a nicer illustration is being
+  commissioned. Judge the *movement/warmth*, not the drawing polish.
+- Design migration so far: the home hub, Abu Bank, Abu News **and the Abu AI screen** are
+  in the Night-Garden design. **Weather, Games, Calendar and WhatsApp are NOT re-themed
+  yet** — they keep their current look; that migration is the next task.

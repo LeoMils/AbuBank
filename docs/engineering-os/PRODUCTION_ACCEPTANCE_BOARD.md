@@ -10,6 +10,10 @@ they do NOT turn a row green. Real device/production evidence overrides any numb
 0.69.0 spanish-transcript-locale-integrity, 0.70.0 spanish-create-stays-spanish). Earlier baseline: `0.63.0`
 / commit `090b54b` (pre-FR1, 2026-07-12).
 Schema: `src/engineering-os/evidence.ts`. Classes: `CODE < MOCK < BROWSER < PREVIEW < PHYSICAL_DEVICE < PRODUCTION`.
+**Reviewed 2026-08-11 at build `0.202.0-abuela-online-winner-m2`:** no device retest this cycle — the RED/
+YELLOW device rows are UNCHANGED (still blocked on Leo's iPhone). The only movement is the **Online** row's
+"real grounded retrieval" sub-blocker → **PREVIEW** (real keyed Tavily win, wired, honesty gate proven; see
+its detail). Full unit suite green (12354). Everything else here remains as stamped.
 
 > ⚠️ This board is intentionally NOT optimistic. Most rows are RED/YELLOW because physical
 > acceptance failed. Nothing here was made green by this Foundation task (no product code changed).
@@ -100,6 +104,18 @@ Status: 🟢 accepted · 🟡 partial (works at a weaker class, unproven at the 
   (`ONLINE_NO_RESULTS`), the fabricated text is discarded. §47 / NO TOOL RESULT = NO CLAIM. Regression
   `src/eval/onlineGroundingGate.test.ts`. Evidence: **CODE / AUTOMATED_TEST** now; PREVIEW re-verify on
   redeploy. *Residual (queued):* the personal-guard over-blocks "who is the current PM of Israel".
+  **PREVIEW progress (0.202.0, real keyed tournament):** all four provider keys are live; ran the REAL
+  36-question Hebrew bake-off (`docs/eval/ONLINE_BAKEOFF.json`). Found + fixed a Brave adapter bug
+  (`country=IL` → 422). Numbers: incumbent OpenAI 61% citation / 3941ms avg / 8851ms p95 (inadequate for
+  voice); **Tavily won** — 100% citation, ~1963ms avg / 3228ms p95, clean speakable Hebrew. Tavily is
+  **wired behind `/api/abuai-online` via `selectProvider(ONLINE_PROVIDER)`** (default stays openai; same
+  honesty gate; key server-side; personal/family/calendar never online — the calendar query was blocked
+  in 1ms on the wired path). Re-ran through the WIRED endpoint against live Tavily: grounded answers in
+  0.2–1.6s. This closes the "real grounded retrieval works" sub-blocker at **PREVIEW** class. *Still 🔴
+  because:* (a) production activation needs `ONLINE_PROVIDER=tavily` in the Vercel env (a deploy step, not
+  done here); (b) on-**device** grounded-answer + spoken latency remains unproven. *Latency caveat:* Tavily
+  p95 3.2s can exceed the 2s voice target on some queries — the fix is a bounded client timeout + a truthful
+  "checking…" state, with Brave (sub-second) as fallback.
 - **Calendar 🔴** — Write→read→modify continuity failed on device. *First divergence:* a just-created
   event not reliably readable/modifiable in the same session. *Next:* device transactional test; a
   gold replay of the failing session (`gold-replay`).
