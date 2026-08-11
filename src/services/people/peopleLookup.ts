@@ -31,7 +31,14 @@ export type ContactResult =
   | { status: 'not_found' }
 
 export function whoIs(name: string, people: Person[] = loadPeople()): WhoIs | NotFound {
-  const id = resolvePersonId(name, people)
+  // Direct name first (a real person named like a kinship word stays that person).
+  // Then a descriptive phrase ("הבת של רפי") — but only when it resolves to EXACTLY
+  // ONE person; 0 or >1 → not_found, never a guessed identity.
+  let id = resolvePersonId(name, people)
+  if (!id) {
+    const desc = resolveDescriptive(name, people)
+    id = desc && desc.length === 1 ? desc[0]! : null
+  }
   const p = id ? personById(id, people) : null
   if (!p) return { status: 'not_found' }
   const relRec = p.id === SELF ? null : relationshipOf(p.id, SELF, people)
@@ -58,23 +65,68 @@ export function relativesByKind(name: string, kind: KinKind, people: Person[] = 
   return { status: 'ok', kind, term: hebrewTerm(kind, 'unknown'), people: rel }
 }
 
-/** A relationship phrase like "הבת שלי" / "הנכד שלי" → the kind + gender filter, or null. */
-function parseRelationshipPhrase(phrase: string): { kind: KinKind; gender?: Gender } | null {
-  const cleaned = phrase.normalize('NFC').replace(/של[יו]?|ה(?=[א-ת])/g, ' ').trim()
-  for (const word of Object.keys(WORD_TO_KIND)) if (new RegExp(`(^|\\s)${word}(\\s|$)`).test(` ${cleaned} `)) return WORD_TO_KIND[word]!
+/** A descriptive relationship phrase, decomposed into the kinship kind (+ optional
+ *  gender filter) and its ANCHOR — the person the relationship is relative to. The
+ *  anchor is either Martita (the SELF sentinel, from "שלי" or a bare kinship word) or a
+ *  NAMED person (from "של <name>", e.g. "הבת של רפי" → anchor "רפי"). */
+interface DescriptivePhrase { kind: KinKind; gender?: Gender; anchor: string }
+
+/**
+ * Parse a descriptive phrase deterministically, or return null when it is not one.
+ * Examples: "הבת שלי" → {child/female, anchor SELF}; "הבת של רפי" → {child/female,
+ * anchor "רפי"}; "הנכד שלי" → {grandchild/male, anchor SELF}; a bare "הבת" → SELF.
+ * A possessive PRONOUN anchor ("שלו"/"שלה"/"שלך" — his/her/your) has no deterministic
+ * referent here (no working-memory context), so it returns null → the caller declines
+ * rather than guessing whose daughter is meant.
+ */
+function parseDescriptivePhrase(phrase: string): DescriptivePhrase | null {
+  const s = phrase.normalize('NFC').trim()
+  // Find the kinship word (optionally with a leading ה־), as a whole token.
+  let found: { kind: KinKind; gender?: Gender } | null = null
+  for (const word of Object.keys(WORD_TO_KIND)) {
+    if (new RegExp(`(^|\\s)ה?${word}(\\s|$)`).test(s)) { found = WORD_TO_KIND[word]!; break }
+  }
+  if (!found) return null
+  // Anchor = a NAMED person: "... של <name>" (name = the rest of the string). Anchored
+  // on whitespace/start, NOT \b — \b is ASCII-only and never fires before a Hebrew letter.
+  const named = s.match(/(?:^|\s)של\s+([א-ת][^]*?)\s*$/)
+  if (named && named[1]!.trim()) return { ...found, anchor: named[1]!.trim() }
+  // Anchor = Martita: explicit "שלי" (my) or a bare kinship word with no "של".
+  if (/שלי(\s|$)/.test(s) || !/של/.test(s)) return { ...found, anchor: SELF }
+  // Possessive pronoun (שלו/שלה/שלך) — no deterministic anchor → do not guess.
   return null
 }
 
-/** Resolve a contact target by a DIRECT name OR by a relationship to Martita. Returns
- *  an id + label (never a number). Ambiguous relationships (e.g. "נכד" → 6 people)
- *  come back as candidates so Abu asks which one. */
+/**
+ * Resolve a descriptive phrase to the list of people it denotes, deterministically:
+ *   • null  → the phrase is NOT descriptive (caller should try a direct-name match)
+ *   • []    → descriptive but the anchor/relatives could not be resolved → not_found
+ *   • [ids] → the exact relatives of the correct anchor (never a fuzzy substitute)
+ * A NAMED anchor that does not resolve returns [] (not_found) — it NEVER falls back to
+ * Martita, which was the "הבת של רפי → wrong person" defect.
+ */
+function resolveDescriptive(phrase: string, people: Person[]): string[] | null {
+  const desc = parseDescriptivePhrase(phrase)
+  if (!desc) return null
+  const anchorId = desc.anchor === SELF ? SELF : resolvePersonId(desc.anchor, people)
+  if (!anchorId) return [] // named anchor unknown → not_found, never guess
+  let matches = relativesOfKind(anchorId, desc.kind, people)
+  if (desc.gender) matches = matches.filter((id) => personById(id, people)!.gender === desc.gender)
+  return matches
+}
+
+/** Resolve a contact target by a DIRECT name OR a descriptive relationship phrase.
+ *  Direct name FIRST (so a real person named like a kinship word — e.g. "דוד"/David —
+ *  is the person, not "my uncle"); only a phrase with no direct match is parsed
+ *  structurally. Returns an id + label (never a number). Ambiguous relationships
+ *  (e.g. "נכד" → 6 people) come back as candidates so Abu asks which one; an unknown
+ *  named anchor ("הבת של <someone unknown>") is not_found, never a guess. */
 export function resolveContactTarget(phrase: string, people: Person[] = loadPeople()): ContactResult {
   const direct = resolvePersonId(phrase, people)
   if (direct) { const p = personById(direct, people)!; return { status: 'resolved', id: p.id, label: p.hebrewName } }
-  const rk = parseRelationshipPhrase(phrase)
-  if (!rk) return { status: 'not_found' }
-  let matches = relativesOfKind(SELF, rk.kind, people).map((id) => personById(id, people)!)
-  if (rk.gender) matches = matches.filter((p) => p.gender === rk.gender)
+  const desc = resolveDescriptive(phrase, people)
+  if (desc === null) return { status: 'not_found' } // not a descriptive phrase and no direct match
+  const matches = desc.map((id) => personById(id, people)!)
   if (matches.length === 1) return { status: 'resolved', id: matches[0]!.id, label: matches[0]!.hebrewName }
   if (matches.length > 1) return { status: 'ambiguous', candidates: matches.map((p) => ({ id: p.id, label: p.hebrewName })) }
   return { status: 'not_found' }

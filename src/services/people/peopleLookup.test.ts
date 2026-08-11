@@ -52,4 +52,37 @@ describe('contact by name OR by relationship (id/label only — never a number)'
   it('an unknown target → not_found', () => {
     expect(resolveContactTarget('הטייס שלי')).toEqual({ status: 'not_found' })
   })
+
+  // ── device defect 3: a descriptive phrase anchored on a NAMED person never guesses ──
+  it('"הבת של רפי" resolves against RAFI (not Martita, not his in-law) or is not_found', () => {
+    const r = resolveContactTarget('הבת של רפי')
+    if (r.status === 'resolved') {
+      expect(r.id).not.toBe('mor')     // the old bug: fell back to Martita's daughter
+      expect(r.id).not.toBe('yarden')  // ירדן is his כלה (daughter-in-law), NOT his daughter
+      const rr = relativesByKind('רפי', 'child')
+      const rafiChildren = rr.status === 'ok' ? rr.people : []
+      expect(rafiChildren).toContain(r.label) // must be an ACTUAL child of Rafi
+    } else {
+      expect(r.status).toBe('not_found') // Rafi has no daughter in the graph → honest miss
+    }
+  })
+  it('"הבת של רפי" is NEVER Rafi\'s former spouse (the reported wrong answer)', () => {
+    const r = resolveContactTarget('הבת של רפי')
+    // relationshipBetween proves ירדן is only his כלה; whatever resolves must be his child.
+    if (r.status === 'resolved') {
+      const rel = relationshipBetween(r.label, 'רפי')
+      expect(rel).toEqual({ status: 'ok', text: `${r.label} בת של רפי` })
+    }
+  })
+  it('a descriptive phrase with an UNKNOWN named anchor is not_found, never a guess', () => {
+    expect(resolveContactTarget('הבת של גברת כהן מהמכולת')).toEqual({ status: 'not_found' })
+  })
+  it('whoIs on a descriptive phrase with an unknown anchor is not_found', () => {
+    expect(whoIs('הבן של גברת כהן מהמכולת')).toEqual({ status: 'not_found' })
+  })
+  it('a real person named like a kinship word (דוד/David) stays the person, not "my uncle"', () => {
+    // Direct-name match must win over descriptive parsing for a kinship-homograph name.
+    const r = resolveContactTarget('דוד')
+    if (r.status === 'resolved') expect(r.label).toBe('דוד')
+  })
 })
