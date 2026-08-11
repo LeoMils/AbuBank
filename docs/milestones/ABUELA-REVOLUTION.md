@@ -70,9 +70,14 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 ### M5 — Abu's presence (Abu AI screen)
 - [x] 2–3 character directions proposed; Leo chose **3 "Silhouette & light"**
 - [x] STILL FRAME delivered for approval BEFORE animating (condition 2): docs/design/abu-bust-still.svg + .png
-- [ ] AWAITING Leo's judgement on the still (warm + dignified in one look?) before any animation
-- [ ] Mouth from real output-audio amplitude (AnalyserNode); states; idle life; graceful degrade
-- [ ] Screen around her (cards, transcript, trace) in the new system; measure + report frame cost
+- [x] Leo's judgement (D9): SHIP variant A now + animate; commissioned illustration is a later upgrade
+- [x] Mouth from real output-audio amplitude (AnalyserNode); 4 states; blink+breathe idle life; graceful
+      degrade — DONE as reusable components. `presence/AbuCharacterA.tsx` (variant A, named layer groups per
+      CHARACTER-ASSET-SPEC.md, transparent bg) + `presence/AbuPresence.tsx` (amplitude→mouth cross-fade,
+      irregular blink, CSS breathe, state aura, degrade loop). Evidence: TEST (presence.test.tsx, 11 assertions).
+      Frame cost REPORTED (below). Real call site = STEP 2 (screen rebuild); until then it is test-covered only.
+- [ ] Screen around her (cards, transcript, trace) in the new system; wire the remote stream → amplitude
+      (STEP 2); measure + report frame cost ON DEVICE (design budget only so far)
 
 ### M6 — Device test script
 - [x] docs/DEVICE-TEST.md written for the RC build: 10 numbered items, riskiest-first, say/expect/trace, non-programmer
