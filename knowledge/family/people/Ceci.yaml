@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Ceci
+hebrew_name: ססי
+aliases: []
+relationship: niece_in_law_of_husband
+relationship_hebrew: אשתו של מריו (וונקובר)
+role: אשתו של מריו בן טאבלה (וונקובר)
+location: ונקובר, קנדה
+gender: female
+spouse: מריו
+occupation: תחום השיניים (כנראה שיננית — לאמת); עסק עצמאי משלה
+notes: אשתו של מריו בוונקובר; לא-יהודייה. עובדת בתחום השיניים (תיאור לאו נשמע כמו שיננית — לאמת) ויש לה עסק משלה. שתי בנות תאומות עם מריו — השמות לא ידועים.
+pronunciation:
+  es: seci

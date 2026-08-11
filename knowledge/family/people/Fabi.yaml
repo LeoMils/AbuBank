@@ -1,0 +1,12 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Fabi
+hebrew_name: פאבי
+aliases: []
+relationship: grandnephew_of_matriarch
+relationship_hebrew: בן של חורחה ואאצ'י
+role: נכד-אחיין של מרטיטה; בנם של חורחה ואאצ'י
+gender: male
+notes: בנם של חורחה ואאצ'י. התחתן לאחרונה — שם האישה לא ידוע (לא להמציא). נולדה לו בת לאחרונה — השם לא ידוע (לא להמציא).
+pronunciation:
+  es: fabi

@@ -1,0 +1,12 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Tavela
+hebrew_name: טאבלה
+aliases: []
+relationship: sister_of_husband
+relationship_hebrew: אחותו הגדולה של פפי
+role: אחותו הגדולה של פפי (גיסתה של מרטיטה)
+gender: female
+notes: "אחותו הגדולה של פפי. בניה: אריאל ומריו — שניהם עברו בסופו של דבר לוונקובר, קנדה; קודם גרו ברוסאריו, ארגנטינה; שניהם נשואים לנשים לא-יהודיות."
+pronunciation:
+  es: tavela

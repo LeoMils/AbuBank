@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Susana
+hebrew_name: סוזנה
+aliases: []
+relationship: sister_in_law_of_matriarch
+relationship_hebrew: גרושתו של בובי
+role: גרושתו של בובי
+gender: female
+ex_spouse: בובי
+notes: גרושתו של בובי. שלושה ילדים עם בובי (אחד היה אריאל שטבע; שני האחרים לא ידועים).
+pronunciation:
+  es: susana

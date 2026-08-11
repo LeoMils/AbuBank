@@ -45,7 +45,9 @@ describe('resolveContact', () => {
   })
 
   it('returns NOT_FOUND for an unknown name', () => {
-    expect(resolveContact('Gabi').status).toBe('not_found')
+    // NB: 'Gabi' is now a real person (Ariel's wife) since the master family update, so a
+    // truly-unknown name is used here.
+    expect(resolveContact('בוריס').status).toBe('not_found')
     expect(resolveContact('').status).toBe('not_found')
   })
 
@@ -76,8 +78,9 @@ describe('resolveCalendarParticipant (adapter for the draft kernel)', () => {
   it('a relationship phrase resolves to null (blocks the draft → Abu asks who)', () => {
     expect(resolveCalendarParticipant('אח של מור')).toBeNull()
   })
-  it('a plain unknown single name is allowed as a free-text label (Gabi)', () => {
-    expect(resolveCalendarParticipant('Gabi')).toBe('Gabi')
+  it('a plain unknown single name is allowed as a free-text label', () => {
+    // 'Gabi' is now a real contact, so an unknown single name is used for the label case.
+    expect(resolveCalendarParticipant('בוריס')).toBe('בוריס')
   })
   // device defect 5: ANY spoken name is accepted as a participant, even a two-word name
   // that is not a contact — a participant does not have to be in the contact book.

@@ -1,6 +1,6 @@
 # Family — per-person files (GENERATED)
 
-21 people. Source: knowledge/family_data.json.
+67 people. Source: knowledge/family_data.json.
 
 - Martita (matriarch) -> people/Martita.yaml
 - Papi (deceased) -> people/Papi.yaml
@@ -19,7 +19,53 @@
 - Anabel (great_grandchildren) -> people/Anabel.yaml
 - Ari (great_grandchildren) -> people/Ari.yaml
 - Tutsi (pets) -> people/Tutsi.yaml
+- Milli (pets) -> people/Milli.yaml
 - Tonto (pets) -> people/Tonto.yaml
 - Mirta (close_friends) -> people/Mirta.yaml
 - Shoshana (close_friends) -> people/Shoshana.yaml
 - Sharon (close_friends) -> people/Sharon.yaml
+- Cacho (close_friends) -> people/Cacho.yaml
+- Susi Raz (close_friends) -> people/Susi_Raz.yaml
+- Hector Raz (close_friends) -> people/Hector_Raz.yaml
+- Lydia Omansky (close_friends) -> people/Lydia_Omansky.yaml
+- Noah Omansky (close_friends) -> people/Noah_Omansky.yaml
+- Tuchi (close_friends) -> people/Tuchi.yaml
+- Dani (close_friends) -> people/Dani.yaml
+- Elsi (close_friends) -> people/Elsi.yaml
+- Saul (close_friends) -> people/Saul.yaml
+- Oscar Minuchin (close_friends) -> people/Oscar_Minuchin.yaml
+- Morian Minuchin (close_friends) -> people/Morian_Minuchin.yaml
+- Marisa Minuchin (close_friends) -> people/Marisa_Minuchin.yaml
+- Yaron Minuchin (close_friends) -> people/Yaron_Minuchin.yaml
+- Flori (close_friends) -> people/Flori.yaml
+- Dviko (close_friends) -> people/Dviko.yaml
+- Pupa Yavnir (close_friends) -> people/Pupa_Yavnir.yaml
+- Daniel Yavnir (close_friends) -> people/Daniel_Yavnir.yaml
+- Olga Kani (close_friends) -> people/Olga_Kani.yaml
+- Isidoro Kani (close_friends) -> people/Isidoro_Kani.yaml
+- Dora (extended_family) -> people/Dora.yaml
+- Jacobo (extended_family) -> people/Jacobo.yaml
+- Luis (extended_family) -> people/Luis.yaml
+- Sofia (extended_family) -> people/Sofia.yaml
+- Jorge (extended_family) -> people/Jorge.yaml
+- Achi (extended_family) -> people/Achi.yaml
+- Fabi (extended_family) -> people/Fabi.yaml
+- Martin (extended_family) -> people/Martin.yaml
+- Bobby (extended_family) -> people/Bobby.yaml
+- Susana (extended_family) -> people/Susana.yaml
+- Ariel Bobby (extended_family) -> people/Ariel_Bobby.yaml
+- Marcos Greenberg (extended_family) -> people/Marcos_Greenberg.yaml
+- Ruti (extended_family) -> people/Ruti.yaml
+- Jose Milstein (extended_family) -> people/Jose_Milstein.yaml
+- Tavela (extended_family) -> people/Tavela.yaml
+- PapiOlderBrother (extended_family) -> people/PapiOlderBrother.yaml
+- PapiChildBrother (extended_family) -> people/PapiChildBrother.yaml
+- Rosita (extended_family) -> people/Rosita.yaml
+- Oscar (extended_family) -> people/Oscar.yaml
+- Lior (extended_family) -> people/Lior.yaml
+- Yoav (extended_family) -> people/Yoav.yaml
+- Ron (extended_family) -> people/Ron.yaml
+- Ariel Tavela (extended_family) -> people/Ariel_Tavela.yaml
+- Gabi (extended_family) -> people/Gabi.yaml
+- Mario (extended_family) -> people/Mario.yaml
+- Ceci (extended_family) -> people/Ceci.yaml

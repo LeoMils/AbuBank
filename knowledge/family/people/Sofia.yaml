@@ -1,0 +1,14 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Sofia
+hebrew_name: סופיה
+aliases: []
+relationship: sister_in_law_of_matriarch
+relationship_hebrew: אשת לואיס ז"ל
+role: אשתו של לואיס ז"ל
+gender: female
+deceased: true
+spouse: לואיס
+notes: "אשתו של לואיס; נפטרה. אמו של חורחה. זיכרון משפחתי מיוחס (לאו): אישה קשה."
+pronunciation:
+  es: sofia

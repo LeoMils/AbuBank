@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Lydia Omansky
+hebrew_name: לידיה אומנסקי
+aliases:
+- Lydia
+- לידיה
+relationship: close_friend
+relationship_hebrew: חברה קרובה מאוד
+role: חברה קרובה מאוד של מרטיטה
+location: כפר סבא
+gender: female
+notes: לידיה אומנסקי, גרה בכפר סבא, גיל ~85 (בקירוב). קוסמטיקאית ידועה מאוד. אשתו של נוח אומנסקי. הכירו את המשפחה באולפן בן יהודה, נתניה. חברות של עשרות שנים.
+pronunciation:
+  es: lidia

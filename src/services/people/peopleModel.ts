@@ -61,10 +61,14 @@ interface RawPerson {
   birthday?: string
   notes?: string
   role?: string
+  deceased?: boolean
 }
 
 const FAMILY_GROUPS = ['matriarch', 'deceased', 'children', 'children_related', 'grandchildren_mor', 'grandchildren_leo', 'grandchildren_spouses', 'great_grandchildren'] as const
-const NONFAMILY_GROUPS = ['close_friends'] as const
+// Role-based groups: known + resolvable people whose relation to Martita is carried by
+// their `role`/relationship_hebrew, NOT derived through the kinship graph (keeps the
+// derived graph stable while still making the extended family + friends known in speech).
+const NONFAMILY_GROUPS = ['close_friends', 'extended_family'] as const
 const HEBREW = /[֐-׿]/
 
 const GENDER_BY_RELATIONSHIP: Record<string, Gender> = {
@@ -84,7 +88,11 @@ function toId(name: string): string {
 /** Normalise a spoken/written name for matching (NFC, lowercase, strip one Hebrew prefix). */
 export function normalizeName(s: string): string {
   const n = s.normalize('NFC').trim().toLowerCase().replace(/\s+/g, ' ')
-  const m = n.match(/^([לבמהוכש])(.{2,})$/)
+  // Strip ONE leading grammatical prefix (ל/ב/מ/ה/ו/כ) so "למור"/"במור" match "מור".
+  // ש is deliberately EXCLUDED: it is a name-initial (שרון/Sharon, שאול/Saul, שושנה),
+  // and stripping it collapsed "שרון" → "רון" (a different person). No one addresses a
+  // person as "ש<name>" ("that-<name>"), so excluding ש never costs a real match.
+  const m = n.match(/^([לבמהוכ])(.{2,})$/)
   return m ? m[2]! : n
 }
 
@@ -126,7 +134,9 @@ export function loadPeople(data: { family: Record<string, unknown> } = familyDat
       ...(raw.birthday ? { birthday: raw.birthday } : {}),
       ...(raw.notes ? { notes: raw.notes } : {}),
       ...(nonFamily ? { role: raw.role ?? 'friend' } : {}),
-      ...(group === 'deceased' ? { deceased: true } : {}),
+      // Deceased is the canonical `deceased` group OR any person carrying deceased:true
+      // (extended relatives/friends who have passed) — so reaching them is declined gently.
+      ...(group === 'deceased' || raw.deceased ? { deceased: true } : {}),
       parents: [], children: [], spouses: [], formerSpouses: [], partners: [], cohabitsWith: [],
     }
   })

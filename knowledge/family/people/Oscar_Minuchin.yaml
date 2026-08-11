@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Oscar Minuchin
+hebrew_name: אוסקר מינושין
+aliases: []
+relationship: family_friend
+relationship_hebrew: בעלה של מירטה מינושין ז"ל
+role: בעלה של מירטה מינושין ז"ל
+gender: male
+deceased: true
+notes: בעלה של מירטה מינושין; נפטר. אבא של מוריאן, מריסה ויארון.
+pronunciation:
+  es: oscar

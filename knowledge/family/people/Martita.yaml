@@ -7,14 +7,23 @@ aliases:
 - Abu
 - Abuela
 - מרתה
+- Marta
+- Abu Ela
+- אבו אלה
 relationship: matriarch
+relationship_hebrew: מלכת המשפחה
+maiden_name: null
+maiden_name_note: "שם נעורים לא מאומת: Muller / Müller / Miller — לא לבחור איות עד אישור."
 birthday: 04-01
+birth_year: 1945
 location: כפר סבא
 origin: בואנוס איירס, ארגנטינה
 languages:
 - עברית
 - ספרדית
+- אנגלית (מבינה מעט)
+gender: female
 pet: טוטסי
-notes: חותמת הודעות כ-אבו. אוהבת לבשל, לארח, ארוחות שישי.
+notes: מלכת המשפחה; הייתה המלכה של פפי והוא המלך שלה. נולדה 1 באפריל 1945 בבואנוס איירס (מתקן טעות קודמת של 01-01). חותמת הודעות כ-אבו. אוהבת לבשל, לארח, ארוחות שישי. אישה חדה, חכמה, לא פראיירית — כולם אוהבים אותה. פרטי אישיות, העדפות, שגרות ובריאות — ב-knowledge/martita_personality.yaml.
 pronunciation:
   es: martita

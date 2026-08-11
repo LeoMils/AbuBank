@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Ariel Bobby
+hebrew_name: אריאל (בן בובי)
+aliases: []
+relationship: nephew_of_matriarch
+relationship_hebrew: בן של בובי וסוזנה ז"ל
+role: אחיינה של מרטיטה; בנם של בובי וסוזנה ז"ל
+gender: male
+deceased: true
+notes: בנם של בובי וסוזנה; נפטר בטביעה. ⚠ אדם נפרד מ'אריאל' בן של טאבלה מונקובר — לא לאחד ביניהם למרות השם המשותף.
+pronunciation:
+  es: ariel

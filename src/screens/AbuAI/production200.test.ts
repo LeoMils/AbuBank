@@ -64,7 +64,7 @@ describe('FAMILY — 30 scenarios', () => {
     ['מי זה רפי?', null],                      // 27
     ['מי זאת אילנית?', null],                  // 28
     // Not found
-    ['מי זה דניאל?', /לא מכירה|לא יודעת/],    // 29
+    ['מי זה בוריס?', /לא מכירה|לא יודעת/],    // 29 ("דניאל" is now a real person — Daniel Yavnir; Boris is genuinely unknown)
     // Relationship between
     ['מה הקשר בין מור ללאו?', null],           // 30
   ]

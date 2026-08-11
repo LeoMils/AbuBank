@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Marisa Minuchin
+hebrew_name: מריסה מינושין
+aliases:
+- Marisa
+- מריסה
+relationship: family_friend
+relationship_hebrew: בת של מירטה מינושין
+role: בתם של מירטה ואוסקר מינושין
+location: הוד השרון
+gender: female
+notes: בת של מירטה מינושין; גרה בהוד השרון.
+pronunciation:
+  es: marisa

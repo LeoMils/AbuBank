@@ -71,7 +71,7 @@ describe('resolve_contact tool', () => {
     expect(h.lastOutput()).toMatchObject({ status: 'resolved', id: 'mor' })
     h.call('resolve_contact', { name: 'אח של מור' })
     expect(h.lastOutput()).toMatchObject({ status: 'ambiguous' })
-    h.call('resolve_contact', { name: 'Gabi' })
+    h.call('resolve_contact', { name: 'בוריס' }) // a truly-unknown name (Gabi is now a real contact)
     expect(h.lastOutput()).toMatchObject({ status: 'not_found' })
     // every tool reply is followed by a response.create so the model speaks
     expect(h.sent.filter((e) => e.type === 'response.create').length).toBe(3)
@@ -176,11 +176,12 @@ describe('calendar — identity safety (no substitution)', () => {
     expect(h.lastOutput()).toMatchObject({ confirmation: 'AWAITING_CONFIRM', rejected: true })
   })
 
-  it('a plain unknown name (Gabi, Spanish flow) still creates exactly one event', () => {
+  it('a plain unknown name (Boris, Spanish flow) still creates exactly one event', () => {
     const h = harness()
-    h.call('prepare_calendar_event', { title: 'reunión con Gabi', date: '2026-08-10', time: '15:00', participant: 'Gabi' })
+    // Boris is not a contact (Gabi is now a real person) — a plain spoken name still books.
+    h.call('prepare_calendar_event', { title: 'reunión con Boris', date: '2026-08-10', time: '15:00', participant: 'Boris' })
     const d = h.tools.viewCalendarDraft()!
-    expect(d.participant).toBe('Gabi')
+    expect(d.participant).toBe('Boris')
     expect(d.unresolvedRelationship).toBeNull()
     h.call('confirm_calendar_event', { forRevision: d.revision })
     expect(h.store.events.length).toBe(1)

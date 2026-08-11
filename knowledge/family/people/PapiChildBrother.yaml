@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: PapiChildBrother
+hebrew_name: אחיו שנפטר בילדות
+aliases: []
+relationship: brother_of_husband
+relationship_hebrew: אחיו של פפי שנפטר בילדות
+role: אחיו של פפי שנפטר כילד קטן
+gender: male
+deceased: true
+name_uncertain: true
+notes: אחיו של פפי שנפטר בערך בגיל 4. לאו חושב שכנראה נפטר בתאונת דרכים אך אינו בטוח — לרשום את הסיבה רק כזיכרון משפחתי לא ודאי. לאו חושב שהיה מבוגר מפפי אך עדיין ילד קטן; לא בטוח אם פפי הכיר אותו אישית. אין לפשט ל'אחיו הצעיר של פפי נהרג בתאונת דרכים'.
+pronunciation: null

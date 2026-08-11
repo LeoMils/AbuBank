@@ -43,13 +43,14 @@ interface RawPerson {
   canonical_name?: string
   hebrew_name?: string
   aliases?: string[]
+  deceased?: boolean
 }
 
 /** The person-bearing groups of family_data.json. Pets are intentionally excluded. */
 const PERSON_GROUPS = [
   'matriarch', 'deceased', 'children', 'children_related',
   'grandchildren_mor', 'grandchildren_leo', 'grandchildren_spouses',
-  'great_grandchildren', 'close_friends',
+  'great_grandchildren', 'close_friends', 'extended_family',
 ] as const
 
 function toId(canonical: string): string {
@@ -75,7 +76,7 @@ function collectPeople(): PersonRecord[] {
       if (p.hebrew_name) keys.add(normalize(p.hebrew_name))
       if (p.canonical_name) keys.add(normalize(p.canonical_name))
       for (const a of p.aliases ?? []) if (a) keys.add(normalize(a))
-      out.push({ id: toId(canonical), label, canonical, keys: [...keys], deceased: group === 'deceased' })
+      out.push({ id: toId(canonical), label, canonical, keys: [...keys], deceased: group === 'deceased' || !!p.deceased })
     }
   }
   return out
@@ -124,8 +125,9 @@ function normalize(s: string): string {
 
 function stripHebrewPrefix(s: string): string {
   // Only strip when the remainder is a plausible name (≥ 2 chars) so we never
-  // eat the first letter of a genuinely short name.
-  const m = s.match(/^([לבמהוכש])(.{2,})$/)
+  // eat the first letter of a genuinely short name. ש is EXCLUDED (name-initial:
+  // שרון/Sharon, שאול/Saul, שושנה) — stripping it collapsed "שרון" → "רון".
+  const m = s.match(/^([לבמהוכ])(.{2,})$/)
   return m ? m[2]! : s
 }
 

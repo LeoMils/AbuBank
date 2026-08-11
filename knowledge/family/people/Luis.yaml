@@ -1,0 +1,14 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Luis
+hebrew_name: לואיס
+aliases: []
+relationship: brother_of_matriarch
+relationship_hebrew: אח של מרטיטה ז"ל
+role: אח של מרטיטה ז"ל
+gender: male
+deceased: true
+spouse: סופיה
+notes: "אחיה של מרטיטה; רואה חשבון; נפטר. היה נשוי לסופיה (נפטרה). זיכרון משפחתי (לאו): אדם טוב מאוד וכן; סופיה אישה קשה — אלה זיכרונות מיוחסים, לא עובדות אובייקטיביות. בן אחד: חורחה."
+pronunciation:
+  es: luis

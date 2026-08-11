@@ -93,10 +93,14 @@ describe('M3 invariants', () => {
     expect(personById('mor')!.formerSpouses).toContain('raphi')
     expect(personById('mor')!.partners).toContain('yael')
   })
-  it('gender is correct only where known — a friend is unknown, never guessed', () => {
-    expect(personById('mirta')!.gender).toBe('unknown')
+  it('gender is set where known and only ever from the allowed set (never a guessed value)', () => {
+    // Mirta now carries an explicit gender (the master family update populated friends'
+    // genders where known) — a stated fact, not a guess.
+    expect(personById('mirta')!.gender).toBe('female')
     expect(personById('leo')!.gender).toBe('male')
     expect(personById('mor')!.gender).toBe('female')
+    // The invariant: gender is ALWAYS one of the three valid values — never an invented one.
+    for (const p of loadPeople()) expect(['male', 'female', 'unknown']).toContain(p.gender)
   })
   it('temporal facts carry their date', () => {
     expect(personById('mor')!.birthday).toBe('08-10')

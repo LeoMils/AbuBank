@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Flori
+hebrew_name: פלורי
+aliases: []
+relationship: close_friend
+relationship_hebrew: חברה מהעולם הישן של מנדוסה
+role: חברה של מרטיטה ממנדוסה
+location: חיפה
+gender: female
+notes: חברה מ-מנדוסה, ארגנטינה. גרה בחיפה. בעלה דביקו.
+pronunciation:
+  es: flori

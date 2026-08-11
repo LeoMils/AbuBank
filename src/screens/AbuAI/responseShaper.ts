@@ -81,7 +81,10 @@ export function shapeFamilyAnswer(m: FamilyMember, rich = false): string {
   else if (rel.includes('נינה') || rel.includes('נין')) role = `${m.hebrew}, ${isFemale ? 'הנינה' : 'הנין'} שלך`
   else if (rel.includes('כלה')) role = partner ? `${m.hebrew}, אשת ${partner}` : `${m.hebrew}, הכלה שלך`
   else if (rel.includes('בת זוג') && partner) role = `${m.hebrew}, בת הזוג של ${partner}`
-  else if (rel.includes('בעל')) role = `${m.hebrew}, בעלך${deceased ? ' ז"ל' : ''}`
+  // "בעלך" (YOUR husband) applies ONLY to Martita's own husband — a relationship that
+  // STARTS with "הבעל"/"בעל" and is NOT "בעל(ה) של X" (someone ELSE's husband, e.g. a
+  // friend's husband like "בעלה של טוצ'י"). Those keep their verbatim descriptor below.
+  else if (/^ה?בעל(ה)?(?!\s*של)/.test(rel)) role = `${m.hebrew}, בעלך${deceased ? ' ז"ל' : ''}`
   // Pets, friends, and any unrecognized role keep their (short) descriptor.
   else role = `${m.hebrew} — ${rel}`
 
@@ -129,9 +132,24 @@ const LATIN_CITY: Record<string, string> = {
   'כפר סבא': 'Kfar Saba',
   'תל אביב': 'Tel Aviv',
   'רמת גן': 'Ramat Gan',
+  'רעננה': "Ra'anana",
+  'חיפה': 'Haifa',
+  'בת ים': 'Bat Yam',
+  'נתניה': 'Netanya',
+  'רֹאש העין': 'Rosh HaAyin',
+  'ראש העין': 'Rosh HaAyin',
+  'בואנוס איירס, ארגנטינה': 'Buenos Aires, Argentina',
+  'סנטה פה, ארגנטינה': 'Santa Fe, Argentina',
+  'מנדוסה, ארגנטינה': 'Mendoza, Argentina',
+  'לוס אנג\'לס, ארה"ב': 'Los Ángeles, EE.UU.',
+  'ונקובר, קנדה': 'Vancouver, Canadá',
 }
 function latinCity(loc: string): string {
-  return LATIN_CITY[loc.trim()] ?? loc
+  const mapped = LATIN_CITY[loc.trim()]
+  if (mapped) return mapped
+  // Never leak Hebrew into a Spanish answer: if a city is unmapped and still contains
+  // Hebrew, drop it rather than surface Hebrew script (better a shorter answer than a leak).
+  return /[֐-׿]/.test(loc) ? '' : loc
 }
 
 export function shapeFamilyAnswerES(m: FamilyMember, rich = false): string {
@@ -149,15 +167,16 @@ export function shapeFamilyAnswerES(m: FamilyMember, rich = false): string {
 
   const partnerLatin = partner ? latinName(partner) : null
   const isFemale = rel.includes('הבת') || rel.includes('נכדה') || rel.includes('בת זוג') || rel.includes('נינה') || rel.includes('כלה')
+  const cityLatin = m.location ? latinCity(m.location) : ''
   if (!rich) {
     const bits: string[] = []
-    if (m.location) bits.push(`vive en ${latinCity(m.location)}`)
+    if (cityLatin) bits.push(`vive en ${cityLatin}`)
     if (partnerLatin && !role.includes(partnerLatin)) bits.push(`con ${partnerLatin}`)
     return bits.length ? `${role}. ${bits.join(', ')}.` : `${role}.`
   }
 
   const parts: string[] = [`${role}.`]
-  if (m.location) parts.push(`Vive en ${latinCity(m.location)}${partnerLatin && !role.includes(partnerLatin) ? ` con ${partnerLatin}` : ''}.`)
+  if (cityLatin) parts.push(`Vive en ${cityLatin}${partnerLatin && !role.includes(partnerLatin) ? ` con ${partnerLatin}` : ''}.`)
   else if (partnerLatin && !role.includes(partnerLatin)) parts.push(`Con ${partnerLatin}.`)
   if (m.children?.length) {
     const kids = m.children.map(latinName)

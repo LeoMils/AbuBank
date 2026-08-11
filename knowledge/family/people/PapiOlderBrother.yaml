@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: PapiOlderBrother
+hebrew_name: אחיו הגדול
+aliases:
+- Roma?
+relationship: brother_of_husband
+relationship_hebrew: אחיו הגדול של פפי
+role: אחיו הגדול של פפי
+gender: male
+name_uncertain: true
+notes: אחיו הגדול של פפי. השם עדיין לא מאומת — בתמלול נשמע כמו 'Roma', אך אין לקבוע איות. אביה של רוסיטה (אחייניתו של פפי).
+pronunciation: null

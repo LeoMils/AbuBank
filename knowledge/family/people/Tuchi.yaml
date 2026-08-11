@@ -1,0 +1,14 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Tuchi
+hebrew_name: טוצ'י
+aliases: []
+relationship: close_friend
+relationship_hebrew: חברה טובה
+role: חברה טובה של מרטיטה ופפי
+location: כפר סבא
+gender: female
+name_uncertain: true
+notes: גרה בכפר סבא; חברה טובה של מרטיטה, וגם של פפי. הכירו במהלך איזה טיול. איות השם 'Tuchi'/'טוצ'י' לא ודאי.
+pronunciation:
+  es: tuchi

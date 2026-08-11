@@ -124,11 +124,12 @@ function generateAliases(): string {
     ...(f.great_grandchildren ?? []),
     ...(f.pets ?? []),
     ...(f.close_friends ?? []),
+    ...(f.extended_family ?? []),
   ].filter(Boolean)
 
   for (const m of allMembers) {
     const name = m.canonical_name
-    const aliases = [m.hebrew_name, ...(m.aliases ?? [])].filter((a: string) => a !== name)
+    const aliases = [m.hebrew_name, ...(m.aliases ?? [])].filter((a: string) => a && a !== name)
     const uniqueAliases = [...new Set(aliases)]
     lines.push(`  ${name.padEnd(12)}: ${JSON.stringify(uniqueAliases)}`)
   }

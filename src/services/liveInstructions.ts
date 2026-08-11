@@ -109,7 +109,7 @@ const LANG_DISPLAY: Record<string, string> = { es: 'Spanish', he: 'Hebrew', en: 
 const PRONUNCIATION_GROUPS = [
   'matriarch', 'deceased', 'children', 'children_related',
   'grandchildren_mor', 'grandchildren_leo', 'grandchildren_spouses',
-  'great_grandchildren', 'close_friends',
+  'great_grandchildren', 'close_friends', 'extended_family',
 ] as const
 
 interface PronouncedPerson {

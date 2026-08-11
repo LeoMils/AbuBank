@@ -1,0 +1,12 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Ruti
+hebrew_name: רותי
+aliases: []
+relationship: former_daughter_in_law
+relationship_hebrew: גרושתו של לאו, אמם של עדי ונועם
+role: גרושתו של לאו; אמם של עדי ונועם
+gender: female
+notes: גרושתו של לאו; אמם של עדי ונועם.
+pronunciation:
+  es: ruti
