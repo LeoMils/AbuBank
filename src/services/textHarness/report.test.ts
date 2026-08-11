@@ -21,10 +21,15 @@ import { fileURLToPath } from 'node:url'
 import { buildLiveInstructions, auditInstructionsVsTools } from '../liveInstructions'
 import { runScenarios } from './runner'
 import { resolveDefaultDriver } from './drivers'
+import { loadHarnessEnv } from './loadHarnessEnv'
 import { SCENARIOS } from './scenarios'
 import type { ScenarioResult } from './types'
 
 const RUN = process.env.TEXT_HARNESS_RUN === '1'
+// On a REAL harness run, pull OPENAI_API_KEY from .env.local/.env so a direct
+// `vitest run` is not falsely BLOCKED (the gate script loads it too). The normal
+// full suite (no TEXT_HARNESS_RUN) never loads it, so other tests are untouched.
+if (RUN) loadHarnessEnv()
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolve(HERE, '..', '..', '..')
 const KNOWLEDGE = resolve(REPO, 'knowledge')

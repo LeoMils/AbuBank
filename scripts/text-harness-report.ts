@@ -14,46 +14,18 @@
  * + word counts from the JSON so they are guaranteed to appear in gate output.
  */
 import { spawnSync } from 'node:child_process'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadHarnessEnv } from '../src/services/textHarness/loadHarnessEnv'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const REPORT_TEST = 'src/services/textHarness/report.test.ts'
 const OUT_JSON = resolve(REPO, 'docs', 'eval', 'TEXT_HARNESS_RESULTS.json')
 
-/**
- * Load the harness's credential from the local env files into process.env, since
- * vitest does NOT auto-load them. Only two keys are honoured (never a blind dump):
- *   OPENAI_API_KEY     — the server-side key the live path + harness read
- *   TEXT_HARNESS_MODEL — optional model override
- * Precedence: an already-exported process.env value wins, then .env.local, then
- * .env. The literal placeholder PUT_KEY_HERE (and empty) is treated as UNSET, so a
- * freshly-created template never sends a bogus key.
- */
-function loadHarnessEnv(): void {
-  const ALLOW = ['OPENAI_API_KEY', 'TEXT_HARNESS_MODEL']
-  const files = ['.env.local', '.env'] // .env.local overrides .env (Vite semantics)
-  for (const rel of files) {
-    const p = resolve(REPO, rel)
-    if (!existsSync(p)) continue
-    let text: string
-    try { text = readFileSync(p, 'utf8') } catch { continue }
-    for (const line of text.split(/\r?\n/)) {
-      const t = line.trim()
-      if (!t || t.startsWith('#')) continue
-      const i = t.indexOf('=')
-      if (i < 0) continue
-      const k = t.slice(0, i).trim()
-      if (!ALLOW.includes(k)) continue
-      if (process.env[k]) continue // already set (export or earlier file) wins
-      const v = t.slice(i + 1).trim().replace(/^["']|["']$/g, '')
-      if (!v || v === 'PUT_KEY_HERE') continue // placeholder / empty → leave unset
-      process.env[k] = v
-    }
-  }
-}
-loadHarnessEnv()
+// The ONE shared loader (also used by report.test.ts): reads OPENAI_API_KEY from
+// .env.local then .env so the harness is never falsely BLOCKED when the key is here.
+loadHarnessEnv(REPO)
 
 console.log('\n╔══════════════════════════════════════════════════════════════════╗')
 console.log('║  ABU AI — TEXT-MODE CONVERSATION HARNESS (informational)          ║')
