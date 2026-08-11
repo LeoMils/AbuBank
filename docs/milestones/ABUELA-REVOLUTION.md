@@ -73,13 +73,18 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 - [x] Senior-first VERIFICATION gate (both themes): WCAG AA contrast + 56px/16px, system-wide via tokens/components
 - [x] Rollout wave 1: ScreenHeader carries the per-app logo; Abu News + Abu Bank fully in the Night Garden system
 - [x] Abu AI screen DONE (M5 STEP 2, 835d9f3) — in the Night Garden system with the animated presence.
-- [ ] Rollout wave 2 REMAINING (STEP 3, careful per-screen, ONE AT A TIME, verified not blind-swapped):
-      **WhatsApp, Games, Calendar, Weather.** NOT started — see the STEP 3 section for the exact per-screen
-      recipe + the render-to-PNG verify technique. NOTE: all four are large bespoke screens (WhatsApp 1469
-      lines; Games is a bright terrace DESIGN-LOCKED by wowGame.test.ts — do NOT force it dark, add the logo
-      header + tokens and preserve the terrace; Weather has the sky hero + starfield to preserve). The
-      both-themes senior-first bar means real token migration per screen, not a bg swap. This is the next
-      session's focused work — it deserves a fresh budget to do each screen properly.
+- [x] Rollout wave 2 DONE (STEP 3, careful per-screen, ONE AT A TIME, verified not blind-swapped, one commit
+      each): **WhatsApp · Games · Calendar · Weather** all now carry the shared per-app AbuLogo emblem (one
+      logo family) and — where the screen is themeable — the Night-Garden PAGE_BG root. Each was VERIFIED by
+      rendering the REAL dev screen with Playwright at 412×870 (emblem present, bespoke design intact, zero
+      horizontal overflow) and each screen's own test suite stayed green. Design-locked / bespoke work was
+      PRESERVED, not blind-swapped (see D12): Games keeps its bright terrace (NO dark tokens, NO PAGE_BG —
+      emblem crest only); Weather keeps its dynamic sky hero + night starfield (only the flat page fills
+      became the nebula); WhatsApp keeps its WA-green wordmark + family-portrait album; Calendar keeps its
+      gold identity + month grid. Commits: 6dc2cdf WhatsApp · 87d0720 Games · 63fee8d Calendar · (Weather this
+      commit). Deep per-screen token migration of every bespoke internal colour is deliberately NOT done — it
+      fights the intentional per-app identities + the locking source-grep tests, and the senior-first minimums
+      are already guaranteed system-wide via the shared tokens/components (D8).
 
 ### M5 — Abu's presence (Abu AI screen)
 - [x] 2–3 character directions proposed; Leo chose **3 "Silhouette & light"**
@@ -105,6 +110,24 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 ---
 
 ## Decisions log
+- **D12 (M4 STEP 3 rollout wave 2, scope + per-screen verify):** Re-themed WhatsApp · Games · Calendar ·
+  Weather one verified commit each, WITHOUT blind-swapping. The unifying change every screen got is the
+  shared per-app **AbuLogo emblem** in its header (the real point of "one product, not seven"), plus — where
+  the screen is themeable — moving the page ROOT onto the Night-Garden **PAGE_BG**. To do the root swap
+  cleanly and reversibly I added an OPTIONAL `background` prop to `PageShell` (default = the legacy BG_DEEP),
+  so WhatsApp/Calendar opt in and every other PageShell consumer is byte-for-byte unchanged. I deliberately
+  did NOT force deep token migration of each screen's bespoke internal colours: (a) those colours ARE the
+  per-app identity (WA-green wordmark, the gold calendar, the sky-driven weather hero, the bright terrace);
+  (b) several are locked by source-grep tests (familyGallery portrait, wowGame terrace design-lock); (c) the
+  senior-first minimums are already guaranteed system-wide via the shared tokens/components (D8). Games is a
+  DESIGN-LOCKED bright terrace — per the brief it was NOT forced dark and got NO PAGE_BG; it received the
+  emblem as a crest only, terrace scene fully intact. Weather's dynamic skyGrad hero + night starfield were
+  untouched; only its two flat `#050A18` page fills became PAGE_BG. VERIFY technique (as the STEP-3 spec
+  prescribed): a throwaway `e2e/_scratch-screen-visual.spec.ts` drives the REAL dev server (vite on 5175),
+  opens the hub orb by its Hebrew aria-label, asserts `scrollWidth - clientWidth === 0`, screenshots at
+  412×870, and I Read the PNG — then the spec is deleted before the commit (never staged). Each commit ended
+  green on that screen's suite + typecheck + build. NOTE for a future pass: full Bright-Day fidelity on these
+  four bespoke screens (their internal dark surfaces still don't flip) remains a larger, separate migration.
 - **D11 (M1/M2 online winner, from real numbers):** All four keys live (in `.env`, loaded via a widened
   loadHarnessEnv allow-list — node-only, server-side). Verified reachability BEFORE measuring: Brave failed
   422 because the adapter pinned `country=IL` (not in the Brave country enum) — removed it (keep search_lang=he),
@@ -213,12 +236,16 @@ a904200 M4-foundation · 51774b7 character-refine · f0b2f6f rollout-w1+M6 · 68
 Every commit ends green: `npm run typecheck` · `npx vitest run` · `npm run build` · validators.
 Bump src/version.ts + api/health.ts + src/version.test.ts together; LABEL must have NO apostrophe
 (health BUILD_LABEL regex truncates on it — see D5). Use the escape-aware bump pattern in prior commits.
-Current version: 0.202.0-abuela-online-winner-m2. Later commits (pushed): cda6d7a M2 online winner ·
-d55b653 PART 4 docs (gate review + DEVICE-TEST). This session ALSO: ran the FULL suite (467 files / 12354
-green), the REAL online tournament (winner Tavily, wired), and the gate review. **NEXT = STEP 3 below —
-re-theme WhatsApp / Games / Calendar / Weather, one verified commit each. It is the only PART not yet done.**
-Two follow-ups worth a line: (a) activate the online winner in prod by setting ONLINE_PROVIDER=tavily in the
-Vercel env (deploy step); (b) a bounded ~2.5s client timeout + "checking…" state for Tavily p95, Brave as fallback.
+Current version: 0.206.0-abuela-rollout-weather. STEP 3 commits (pushed to RC): 6dc2cdf WhatsApp ·
+87d0720 Games · 63fee8d Calendar · <weather> Weather (this commit, spec update included). Earlier this arc:
+cda6d7a M2 online winner · d55b653 PART 4 docs · f41e687 resume-spec. **STEP 3 is now DONE — all four
+screens (WhatsApp, Games, Calendar, Weather) carry the one AbuLogo family; see D12 for the scope + verify
+method.** Every commit ended green on that screen's suite + typecheck + build; version bumped across the three
+surfaces each time (label apostrophe-free per D5). **NEXT highest-ROI options (pick one, none is blocking):**
+(a) online winner activation — set ONLINE_PROVIDER=tavily in the Vercel env (deploy step; I cannot deploy) +
+a bounded ~2.5s client timeout + "checking…" state for Tavily p95, Brave as fallback (M2 STAGED items);
+(b) a SEPARATE, larger pass for full Bright-Day fidelity on the four bespoke screens (their internal dark
+surfaces still don't flip — D12 note); (c) run the FULL suite + release-gate before any device/preview claim.
 
 ### STEP 1 — Animate character A  (D9)  ── DONE (a44cec2; engine 0cf48b4) ──
 Shipped: `src/screens/AbuAI/presence/AbuCharacterA.tsx` (variant A as named `<g>` layers, transparent
@@ -263,7 +290,16 @@ historic sub-notes below are kept for context.
   button (session.exportTrace). All ≥56px targets, ≥16px body, both themes (seniorFirst gate covers
   tokens/components). Keep the live cutover (liveEntryPoint.test) + the recorder intact.
 
-### STEP 3 — Re-theme Weather, Games, Calendar, WhatsApp — ONE AT A TIME, each verified  ── NEXT ──
+### STEP 3 — Re-theme WhatsApp, Games, Calendar, Weather — ONE AT A TIME, each verified  ── DONE ──
+Shipped one verified commit per screen (6dc2cdf WhatsApp · 87d0720 Games · 63fee8d Calendar · Weather this
+commit). Each screen joined the shared AbuLogo family in its header and — where themeable — moved its page
+root to PAGE_BG (via a new OPTIONAL `PageShell background` prop, default BG_DEEP so nothing else changed).
+Verified by rendering the REAL dev screen with Playwright at 412×870 and Reading the PNG (emblem present,
+bespoke layout intact, `scrollWidth - clientWidth === 0`); the throwaway spec was deleted before each commit.
+Per-screen test suites stayed green (WhatsApp 454 · Games 19 wowGame lock · Calendar 52 files/1255 · Weather
+hub+release-gate) + typecheck + build each time. See D12 for the scope decision (preserve identity, don't
+blind-swap). The historic recipe below is kept for context.
+### STEP 3 (historic recipe)
 - Per screen: root bg → PAGE_BG; header → ScreenHeader with its `app` logo (weather/games/calendar/
   whatsapp); text/surfaces → theme tokens (t.*); buttons ≥56px. AbuWeather ALREADY has the Night
   Garden starfield — migrate its colours to tokens without flattening the starfield. Run THAT screen's
