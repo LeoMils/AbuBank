@@ -94,7 +94,10 @@ export const braveProvider: OnlineProvider = {
     const key = env.BRAVE_API_KEY
     if (!key) return fail(started, 'NO_KEY')
     try {
-      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&search_lang=he&country=IL&count=6`
+      // NOTE: Brave's `country` enum does NOT include Israel (IL) — passing country=IL
+      // returns 422 Unprocessable Entity (verified against the live key). Omit country
+      // and let Brave geolocate; `search_lang=he` still yields Hebrew results.
+      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&search_lang=he&count=6`
       const res = await fetchWithTimeout(url, { method: 'GET', headers: { Accept: 'application/json', 'X-Subscription-Token': key } })
       if (!res.ok) return fail(started, 'PROVIDER_FAILED')
       const d = (await res.json()) as { web?: { results?: Array<{ title?: string; url?: string; description?: string }> } }

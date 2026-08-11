@@ -15,6 +15,8 @@
  *   • Short timeout. Clear typed error codes.
  */
 
+import { selectProvider } from '../src/services/online/registry'
+
 export const config = { runtime: 'edge' }
 
 interface OnlinePayload {
@@ -147,12 +149,49 @@ export default async function handler(req: Request): Promise<Response> {
     }, 200)
   }
 
+  const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
+
+  // ── Bake-off winner path (M2), selectable via ONLINE_PROVIDER ──────────────
+  // The empirical tournament (docs/eval/ONLINE_BAKEOFF.json) proved the incumbent
+  // OpenAI web_search is INADEQUATE for a voice product: 61% citation and 3.9s avg /
+  // 8.85s p95. Tavily won on the two metrics that matter here — 100% citation and a
+  // clean, speakable synthesized Hebrew answer at ~2s avg. `selectProvider(env)`
+  // routes to the chosen provider; the DEFAULT stays 'openai' so production behaviour
+  // and this endpoint's existing tests are unchanged until the env flips to the winner.
+  // The SAME honesty gate applies: zero sources ⇒ ungrounded ⇒ decline (never speak
+  // stale memory as fact). The provider key stays server-side (read from env here).
+  const providerId = (env.ONLINE_PROVIDER ?? 'openai').toLowerCase()
+  if (providerId !== 'openai') {
+    const provider = selectProvider(env)
+    // selectProvider falls back to 'openai' for an unknown id → fall through below.
+    if (provider.id !== 'openai') {
+      if (!provider.available(env)) {
+        return jsonResponse({ ok: false, errorCode: 'ONLINE_PROVIDER_FAILED', userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang) }, 200)
+      }
+      const r = await provider.search(query, lang, env)
+      if (!r.ok) {
+        const code: OnlineErrorCode = r.error === 'TIMEOUT' ? 'ONLINE_TIMEOUT' : 'ONLINE_PROVIDER_FAILED'
+        return jsonResponse({ ok: false, errorCode: code, userMessage: userMessageFor(code, lang) }, 200)
+      }
+      // Grounding gate — identical rule to the OpenAI path below.
+      if (r.sources.length === 0) {
+        return jsonResponse({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
+      }
+      // Strip any provider HTML so the answer is safe to speak (TTS), then require text.
+      const winnerAnswer = (r.answer ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
+      if (!winnerAnswer) {
+        return jsonResponse({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
+      }
+      const winnerSources: OnlineSource[] = r.sources.map((s) => (s.title ? { url: s.url, title: s.title } : { url: s.url }))
+      return jsonResponse({ ok: true, answer: winnerAnswer, sources: winnerSources })
+    }
+  }
+
   // Read API key from server env. Never sent to the client.
   // We accept either OPENAI_API_KEY (preferred for server) or
   // VITE_OPENAI_API_KEY (legacy carry-over) so existing Vercel projects
   // that already configured the VITE_ name keep working without
   // re-deploy.
-  const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
   const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
   if (!apiKey) {
     return jsonResponse({

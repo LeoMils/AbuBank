@@ -5,34 +5,73 @@
       "provider": "openai",
       "status": "RAN",
       "total": 36,
-      "citationRatePct": 58,
+      "citationRatePct": 61,
       "answerRatePct": 100,
-      "avgLatencyMs": 4535,
-      "p95LatencyMs": 8169,
+      "avgLatencyMs": 3941,
+      "p95LatencyMs": 8851,
       "citationByCategoryPct": {
         "news": 63,
         "sports": 33,
         "weather": 33,
         "cinema": 33,
-        "prices": 75,
+        "prices": 100,
         "hours": 100,
         "live": 67
       }
     },
     {
       "provider": "tavily",
-      "status": "BLOCKED",
-      "reason": "no TAVILY_API_KEY"
+      "status": "RAN",
+      "total": 36,
+      "citationRatePct": 100,
+      "answerRatePct": 100,
+      "avgLatencyMs": 1963,
+      "p95LatencyMs": 3228,
+      "citationByCategoryPct": {
+        "news": 100,
+        "sports": 100,
+        "weather": 100,
+        "cinema": 100,
+        "prices": 100,
+        "hours": 100,
+        "live": 100
+      }
     },
     {
       "provider": "brave",
-      "status": "BLOCKED",
-      "reason": "no BRAVE_API_KEY"
+      "status": "RAN",
+      "total": 36,
+      "citationRatePct": 100,
+      "answerRatePct": 100,
+      "avgLatencyMs": 784,
+      "p95LatencyMs": 1132,
+      "citationByCategoryPct": {
+        "news": 100,
+        "sports": 100,
+        "weather": 100,
+        "cinema": 100,
+        "prices": 100,
+        "hours": 100,
+        "live": 100
+      }
     },
     {
       "provider": "perplexity",
-      "status": "BLOCKED",
-      "reason": "no PERPLEXITY_API_KEY"
+      "status": "RAN",
+      "total": 36,
+      "citationRatePct": 100,
+      "answerRatePct": 100,
+      "avgLatencyMs": 4501,
+      "p95LatencyMs": 6860,
+      "citationByCategoryPct": {
+        "news": 100,
+        "sports": 100,
+        "weather": 100,
+        "cinema": 100,
+        "prices": 100,
+        "hours": 100,
+        "live": 100
+      }
     }
   ]
 }

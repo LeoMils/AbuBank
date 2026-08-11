@@ -29,14 +29,21 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 - [x] Ran incumbent FOR REAL; others recorded BLOCKED (no key) — never faked
 - [x] Matrix written (`docs/eval/ONLINE_BAKEOFF.json`) — see decision D2
 - [x] Key request reported (below) — Leo must obtain 3 keys to finish the tournament
-- [ ] BLOCKED-on-keys: run Tavily/Brave/Perplexity, choose winner (likely a composition), wire behind the endpoint
+- [x] DONE (keys arrived): ran Tavily/Brave/Perplexity FOR REAL on the 36-Q corpus. Found + fixed a Brave
+      adapter bug (country=IL → 422; removed, regression added). Matrix (real): OpenAI 61%/3941ms/8851ms ·
+      Tavily 100%/1963ms/3228ms · Brave 100%/784ms/1132ms (snippets only) · Perplexity 100%/4501ms/6860ms.
+      Winner = **Tavily** (only speakable grounded Hebrew answer inside the voice budget). See D11.
 
-### M2 — Full online, inside the conversation
-- [ ] Abu answers current things invisibly; states source in speech, never a URL
-- [ ] Follow-ups from the SAME retrieved results; personal/family/calendar never hit the web
-- [ ] Failed retrieval = warm honest "couldn't check"; never stale-as-fresh
-- [ ] Abu News: real stories, Israel-first, dynamic count, source+time, plain Hebrew; read aloud + discuss
-- [ ] Harness scenarios for each, run for real against the chosen provider
+### M2 — Full online, inside the conversation  ── winner wired (endpoint); UX polish staged ──
+- [x] Winner (Tavily) WIRED behind /api/abuai-online via selectProvider(ONLINE_PROVIDER). Default stays
+      openai (zero prod change until the env flips); same honesty gate (0 sources ⇒ decline); key server-side.
+- [x] personal/family/calendar never hit the web — proven on the WIRED path (calendar query blocked in 1ms).
+- [x] Failed/ungrounded retrieval = honest decline (grounding gate holds on the winner path; tested).
+- [x] Harness re-run FOR REAL through the wired endpoint against live Tavily: grounded answers 0.2–1.6s.
+- [ ] STAGED (needs deploy/env): set ONLINE_PROVIDER=tavily in the Vercel env to activate the winner in prod
+      (I cannot deploy). Client-side bounded timeout (~2.5s) + a truthful "checking…" state for Tavily p95.
+- [ ] STAGED: "states source in speech never a URL" wording + follow-ups from the SAME cached results + Abu
+      News dynamic-count polish — conversation-layer work, separate from the endpoint swap.
 
 ### M3 — One people store, real Hebrew kinship  ── DONE (core) ──
 - [x] ONE canonical model (src/services/people/peopleModel) reads the single source (family_data.json);
@@ -91,6 +98,18 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 ---
 
 ## Decisions log
+- **D11 (M1/M2 online winner, from real numbers):** All four keys live (in `.env`, loaded via a widened
+  loadHarnessEnv allow-list — node-only, server-side). Verified reachability BEFORE measuring: Brave failed
+  422 because the adapter pinned `country=IL` (not in the Brave country enum) — removed it (keep search_lang=he),
+  regression added. Real 36-Q matrix: OpenAI 61%/3941/8851 · Tavily 100%/1963/3228 · Brave 100%/784/1132 ·
+  Perplexity 100%/4501/6860 (citation% / avg ms / p95 ms). Correctness spot-check: Perplexity + Brave nail the
+  dollar (~3.0); Tavily occasionally grabs a stale source (dollar 2.877, shabbat 19:32); OpenAI worst (3.75).
+  WINNER = **Tavily**: the ONLY provider returning a clean, speakable, grounded Hebrew answer within the voice
+  budget (Brave = snippets not speech; Perplexity/OpenAI too slow). Wired via selectProvider(ONLINE_PROVIDER),
+  DEFAULT openai (safe, reversible, no prod change until env flips), honesty gate + personal guard + server-side
+  key all preserved; SAME shape the providerTypes doc intends. Cost at one-user volume is negligible (Tavily/Brave
+  free tiers). LATENCY caveat surfaced: Tavily p95 3.2s can exceed 2s — the fix is a bounded client timeout +
+  a truthful checking state, with Brave (sub-second) as fallback; NOT a blocker for the endpoint swap itself.
 - **D10 (M5 STEP 1+2, shipped):** Animated variant A as-is (D9) and rebuilt the Abu AI screen.
   Choices/rationale for a fresh session: (a) AbuCharacterA is a DUMB asset with an asset-agnostic prop
   contract (mouth 0..1, eyesClosed 0..1); AbuPresence is the animation code. Swapping the commissioned

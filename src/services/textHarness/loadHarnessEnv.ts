@@ -9,9 +9,13 @@
  * is only ever BLOCKED when the key is genuinely absent — never faked, never falsely
  * blocked.
  *
- * Only two keys are honoured (never a blind dump of the env file):
+ * Only a fixed allow-list is honoured (never a blind dump of the env file):
  *   OPENAI_API_KEY     — the server-side key the live path + harness read
  *   TEXT_HARNESS_MODEL — optional model override
+ *   TAVILY_API_KEY / BRAVE_API_KEY / PERPLEXITY_API_KEY — the online bake-off
+ *     candidates (server-side only; this loader is node-only, never bundled to the
+ *     client). Present so `scripts/online-bakeoff.ts` runs the REAL tournament off
+ *     the local keys instead of falsely recording keyed providers as BLOCKED.
  * Precedence: an already-exported process.env value wins, then .env.local, then
  * .env. The literal placeholder PUT_KEY_HERE (and empty) is treated as UNSET.
  */
@@ -20,7 +24,7 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const DEFAULT_REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
-const ALLOWED_KEYS = ['OPENAI_API_KEY', 'TEXT_HARNESS_MODEL'] as const
+const ALLOWED_KEYS = ['OPENAI_API_KEY', 'TEXT_HARNESS_MODEL', 'TAVILY_API_KEY', 'BRAVE_API_KEY', 'PERPLEXITY_API_KEY'] as const
 
 /** Load the allowed keys from .env.local then .env into process.env (idempotent).
  *  Returns true if OPENAI_API_KEY is set afterwards (i.e. a real run is possible). */

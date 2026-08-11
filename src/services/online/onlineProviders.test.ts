@@ -81,11 +81,18 @@ describe('adapters — map each provider response → ProviderResult', () => {
     expect(r.sources[0]!.url).toBe('https://t.example')
   })
   it('brave: web.results → sources (top snippet as context)', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ web: { results: [{ title: 'B', url: 'https://b.example', description: 'snippet' }] } }), { status: 200 })))
+    const fetchSpy = vi.fn(async (..._a: unknown[]) => new Response(JSON.stringify({ web: { results: [{ title: 'B', url: 'https://b.example', description: 'snippet' }] } }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
     const r = await braveProvider.search('q', 'he', { BRAVE_API_KEY: 'k' })
     expect(r.ok).toBe(true)
     expect(r.sources[0]!.url).toBe('https://b.example')
     expect(r.answer).toBe('snippet')
+    // Regression (verified against the live key): Brave's country enum has NO Israel,
+    // so `country=IL` returns 422. The request must NOT pin an unsupported country and
+    // must keep Hebrew search_lang.
+    const calledUrl = String(fetchSpy.mock.calls[0]![0])
+    expect(calledUrl).not.toContain('country=')
+    expect(calledUrl).toContain('search_lang=he')
   })
   it('perplexity: content + citations → answer + sources', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ choices: [{ message: { content: 'sonar' } }], citations: ['https://p.example'] }), { status: 200 })))
