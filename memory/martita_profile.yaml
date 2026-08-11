@@ -197,3 +197,24 @@ health_appearance:
 
 privacy_note:
   address: "City level only: Kfar Saba. Exact address / phone / national ID intentionally excluded — see family_data.json pii_excluded."
+
+life_history:
+  argentina:
+    born: "Buenos Aires, 1 April 1945 (childhood family: mother Dora, father Jacobo, brothers Luis and Bobby)."
+    youth: "~age 18 travelled to Mendoza for an end-of-high-school event; had a boyfriend in Buenos Aires, Marcos Greenberg. How she and Papi met is not yet supplied — do not invent."
+    mendoza: "Life in Mendoza with Papi's family (José Milstein's store 'Casa Milstein' on San Martín St). Many friends; country club and synagogue ('shil'). Leo attended Escuela Israelita Max Nordau."
+  aliyah_1977:
+    who: "Martita, Papi, Mor, Leo."
+    route: "~one week in Italy first — Rome and Florence — then Israel."
+    ulpan: "Ulpan Ben Yehuda, Netanya — residential, ~six months; food provided, parents studied much of the day. Several lifelong friendships began there (Lydia & Noah Omansky, Elsi & Saul)."
+  bat_yam_years:
+    first_home: "Ramat HaNasi, Bat Yam (address supplied: 29 November St 27 / כ\"ט בנובמבר 27 — verify canonical spelling)."
+    later_homes: "Balfour Street, then Jabotinsky Street (opposite the sea)."
+    business: >
+      Martita and Papi bought a galantería / haberdashery store from an Argentine family and
+      worked very long hours. Later expanded into the adjacent store (opened the wall), at some
+      point bought the neighbouring space, with an arrangement to rent part of it out; later the
+      business included clothing and bags. The EXACT sequence of purchase / wall-opening / use /
+      rental is NOT fully clear — do not invent a precise commercial sequence.
+  work_history: "Extensive retail / sales work — with Papi in their store, later a clothing store and a bag store. Recurring lifelong role: salesperson / retail sales."
+  legacy: "The themes of their shared life: love, partnership, work, immigration, rebuilding in Israel, family, travel, persistence, warmth. Difficult periods, but a warm, close, loving family."
