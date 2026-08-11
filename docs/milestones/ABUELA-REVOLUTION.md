@@ -63,8 +63,9 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 - [x] THEMEABLE tokens (condition 1): src/design/theme.css + theme.ts — dark⇄light by one attribute, no rebuild
 - [x] Per-app logo FAMILY as SVG components (src/design/logos/AbuLogo): 7 emblems, one system, distinct glyph+accent
 - [x] Applied to the HUB (logos + theme tokens + Night-Garden page bg)
-- [ ] ROLL the system + logos across the other 6 app screens (reporting first, per brief) — NEXT WAVE
-- [~] Design-system docs updated for the theme + logos — pending the rollout
+- [x] Senior-first VERIFICATION gate (both themes): WCAG AA contrast + 56px/16px, system-wide via tokens/components
+- [x] Rollout wave 1: ScreenHeader carries the per-app logo; Abu News + Abu Bank fully in the Night Garden system
+- [ ] Rollout wave 2 (STAGED, careful per-screen): Weather (already starfield) / Games / Calendar / WhatsApp + Abu AI
 
 ### M5 — Abu's presence (Abu AI screen)
 - [x] 2–3 character directions proposed; Leo chose **3 "Silhouette & light"**
@@ -74,11 +75,18 @@ deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
 - [ ] Screen around her (cards, transcript, trace) in the new system; measure + report frame cost
 
 ### M6 — Device test script
-- [ ] docs/DEVICE-TEST.md for the shipped build: numbered say-this / expect-that / trace-signature, riskiest first, non-programmer
+- [x] docs/DEVICE-TEST.md written for the RC build: 10 numbered items, riskiest-first, say/expect/trace, non-programmer
 
 ---
 
 ## Decisions log
+- **D8 (M4 rollout, safest):** Verified senior-first minimums SYSTEM-WIDE (WCAG AA contrast in both
+  themes + 56/16 sizes) via the tokens + shared components every screen uses — a per-screen guarantee
+  without rushing 7 bespoke re-themes. Applied the full system to hub + News + Bank. STAGED the careful
+  re-theme of Weather/Games/Calendar/WhatsApp + the Abu AI rebuild (Weather already carries the Night
+  Garden starfield; blind bg swaps would regress bespoke layouts — the brief says fix-don't-note, which
+  means doing them properly). M6 device-test doc shipped. M2 prep: M1 registry makes the winner-swap a
+  small change, gated on a keyed winner.
 - **D7 (M5 character, honest ceiling):** Two refinement passes (variants A "Warm Gold", B "Starlight
   Depth") warmed + softened the bust but hand-authored SVG has hit its ceiling — it reads as refined
   vector, not painterly; more shading makes the face muddy. Stopped animation (Leo's condition). Wrote

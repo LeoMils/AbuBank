@@ -19,6 +19,7 @@ import { fetchNews, type NewsResult } from './newsClient'
 import { type NewsStory } from './newsTypes'
 import { TEXT_STRONG, TEXT_MEDIUM, TEXT_MUTED, GOLD_BORDER } from '../../design/colors'
 import { space } from '../../design/space'
+import { PAGE_BG } from '../../design/theme'
 
 const NEWS_ACCENT = '#FDBA74'
 
@@ -59,10 +60,10 @@ export function AbuNews() {
   return (
     <div dir="rtl" style={{
       height: '100%', width: '100%', display: 'flex', flexDirection: 'column',
-      background: 'linear-gradient(180deg, #070D1E 0%, #050A18 40%, #050A18 100%)',
+      background: PAGE_BG,
       fontFamily: "'Heebo','DM Sans',sans-serif", userSelect: 'none', WebkitUserSelect: 'none',
     }}>
-      <ScreenHeader name="News" accent={NEWS_ACCENT} right={refresh} />
+      <ScreenHeader name="News" accent={NEWS_ACCENT} right={refresh} app="news" />
 
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: `${space.xs}px ${space.lg}px ${space.xl}px` }}>
         {view.phase === 'loading' && <Centered><p style={msg}>מביאה את החדשות של היום…</p></Centered>}

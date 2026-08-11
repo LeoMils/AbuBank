@@ -30,6 +30,14 @@ export const t = {
 /** The Night Garden page background — a deep nebula gradient (uses the themed vars). */
 export const PAGE_BG = 'radial-gradient(120% 90% at 50% -10%, var(--abu-bg-2) 0%, var(--abu-bg) 55%, var(--abu-bg-3) 100%)'
 
+/** Worst-case background + text values per theme (the LIGHTEST bg for the dark theme,
+ *  the DARKEST bg for the light theme), for the senior-first contrast gate. Kept in
+ *  sync with theme.css. */
+export const THEME_PALETTE = {
+  night: { bg: '#0B1226', textStrong: { hex: '#F5F3EC', alpha: 0.96 }, textMedium: { hex: '#F5F3EC', alpha: 0.72 }, textMuted: { hex: '#F5F3EC', alpha: 0.50 } },
+  day: { bg: '#F4EAD6', textStrong: { hex: '#241C12', alpha: 1 }, textMedium: { hex: '#241C12', alpha: 0.78 }, textMuted: { hex: '#241C12', alpha: 0.56 } },
+} as const
+
 const STORAGE_KEY = 'abu-theme'
 
 /** Apply a theme (persists the choice). Safe outside the DOM (no-op). */

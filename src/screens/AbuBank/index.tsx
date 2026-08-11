@@ -12,6 +12,7 @@ import { SERVICES, type Service } from '../Home/data'
 import { ICONS } from '../Home/icons'
 import { ScreenHeader } from '../../components/ui/ScreenHeader'
 import { injectSharedKeyframes } from '../../design/animations'
+import { PAGE_BG } from '../../design/theme'
 
 // Module-level navigation guard (same pattern as the old Home).
 let isNavigating = false
@@ -78,12 +79,12 @@ export function AbuBank() {
   return (
     <div dir="rtl" style={{
       height: '100%', width: '100%', overflow: 'hidden',
-      background: 'linear-gradient(180deg, #070D1E 0%, #050A18 40%, #050A18 100%)',
+      background: PAGE_BG,
       display: 'flex', flexDirection: 'column',
       fontFamily: "'Heebo','DM Sans',sans-serif", userSelect: 'none', WebkitUserSelect: 'none',
     }}>
       {/* Shared Abu-ela header — always-visible way back to the hub + brand title */}
-      <ScreenHeader name="Bank" accent="#5EEAD4" />
+      <ScreenHeader name="Bank" accent="#5EEAD4" app="bank" />
 
       {/* The nine services — unchanged 3×3 grid of water-drop orbs */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '4px 16px 12px' }}>
