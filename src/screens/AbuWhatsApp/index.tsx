@@ -12,6 +12,8 @@ import { soundTap, soundSuccess, soundSend, soundCopy } from '../../services/sou
 import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
 import { GRADIENT_TEAL } from '../../design/gradients'
+import { PAGE_BG } from '../../design/theme'
+import { AbuLogo } from '../../design/logos/AbuLogo'
 import { BackButton } from '../../components/BackButton'
 import { StyleSelector, STYLES, type Style } from './StyleSelector'
 import { Toast } from '../../components/Toast'
@@ -587,7 +589,7 @@ export function AbuWhatsApp() {
   const ringBorderOpacity = voicePhase === 'listening' ? Math.min(0.7, 0.2 + audioLevel * 0.008) : 0.3
 
   return (
-    <PageShell>
+    <PageShell background={PAGE_BG}>
 
       {/* ══════════════════════════════════════════════════
           HEADER — "Abu WhatsApp", Martita photo, back button
@@ -635,11 +637,14 @@ export function AbuWhatsApp() {
             />
           </button>
 
-          {/* Wordmark: Abu + WhatsApp (WA-green gradient) */}
+          {/* Wordmark: the Abu-family emblem + Abu + WhatsApp (WA-green gradient).
+              The emblem is the shared logo system (M4) so this screen reads as one
+              product with the rest of the hub, not a seventh separate app. */}
           <div data-testid="abuwhatsapp-wordmark" style={{
-            display: 'inline-flex', alignItems: 'baseline', gap: 6,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
             direction: 'ltr', position: 'relative',
           }}>
+            <AbuLogo app="whatsapp" size={34} style={{ flexShrink: 0, alignSelf: 'center' }} />
             <span style={{
               fontFamily: "'Cormorant Garamond',Georgia,serif",
               fontSize: 34, fontWeight: 600, letterSpacing: '2px',
