@@ -34,6 +34,18 @@ export interface AbuPresenceProps {
 /** Amplitude → mouth openness, with a mild gamma so quiet speech still parts the lips. */
 const mouthFromAmplitude = (amp: number) => Math.min(1, Math.pow(Math.max(0, amp), 0.7) * 1.15)
 
+/** The loudness below which the analyser is considered to be producing no real signal. */
+export const SIGNAL_FLOOR = 0.05
+
+/**
+ * Whether to drive the mouth from the fallback loop instead of real amplitude. TRUE when
+ * she is speaking AND either there is no analyser at all (amplitude undefined) OR the
+ * analyser is DEAD — the iOS Safari case where a WebRTC remote stream reads as a defined
+ * 0. Pure so the device-critical rule is unit-tested without a DOM/timer. */
+export function shouldDegradeMouth(state: PresenceState, amplitude: number | undefined, analyserDead: boolean): boolean {
+  return state === 'speaking' && (amplitude === undefined || analyserDead)
+}
+
 /** The state aura — a semantic accent glow (NOT a page background). */
 const AURA: Record<PresenceState, string> = {
   listening: '#5EEAD4', // teal — I'm hearing you
@@ -69,9 +81,33 @@ export function AbuPresence({ state, amplitude, size = 260 }: AbuPresenceProps) 
     return () => { clearTimeout(openTimer); clearTimeout(closeTimer) }
   }, [])
 
-  // Degrade loop: ONLY when she is speaking but there is no analyser amplitude.
-  // A slow, slightly irregular open/close so she looks alive without real audio.
-  const degrade = state === 'speaking' && amplitude === undefined
+  // Degrade loop trigger. On iOS Safari the WebAudio analyser reads a WebRTC remote
+  // stream as SILENCE (a defined 0, not undefined) — so the mouth would sit shut through
+  // a whole spoken turn while only the eyes blink (device defect 4). So we do NOT rely on
+  // `amplitude === undefined`: we detect a DEAD analyser — speaking with no real signal
+  // shortly after she starts — and fall back to the loop. A working analyser (any signal
+  // above the floor) keeps driving the mouth from real loudness.
+  const seenSignalRef = useRef(false)
+  const [analyserDead, setAnalyserDead] = useState(false)
+
+  useEffect(() => {
+    if (state !== 'speaking') { seenSignalRef.current = false; setAnalyserDead(false); return }
+    seenSignalRef.current = false
+    setAnalyserDead(false)
+    // Grace window: if no real loudness arrives soon after she starts speaking, the
+    // analyser is unavailable on this device → animate from the speaking state instead.
+    const t = setTimeout(() => { if (!seenSignalRef.current) setAnalyserDead(true) }, 450)
+    return () => clearTimeout(t)
+  }, [state])
+
+  useEffect(() => {
+    if (state === 'speaking' && amplitude !== undefined && amplitude > SIGNAL_FLOOR) {
+      seenSignalRef.current = true
+      if (analyserDead) setAnalyserDead(false) // real audio recovered — use it
+    }
+  }, [amplitude, state, analyserDead])
+
+  const degrade = shouldDegradeMouth(state, amplitude, analyserDead)
   const phase = useRef(0)
   useEffect(() => {
     if (!degrade) { setLoopMouth(0); return }
@@ -86,7 +122,7 @@ export function AbuPresence({ state, amplitude, size = 260 }: AbuPresenceProps) 
 
   const mouth =
     state === 'speaking'
-      ? (amplitude !== undefined ? mouthFromAmplitude(amplitude) : loopMouth)
+      ? (degrade ? loopMouth : mouthFromAmplitude(amplitude ?? 0))
       : 0
 
   const aura = AURA[state]

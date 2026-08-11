@@ -13,7 +13,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import React from 'react'
-import { AbuPresence, type PresenceState } from './AbuPresence'
+import { AbuPresence, shouldDegradeMouth, type PresenceState } from './AbuPresence'
 import { AbuCharacterA } from './AbuCharacterA'
 
 const render = (props: React.ComponentProps<typeof AbuPresence>) =>
@@ -51,6 +51,22 @@ describe('AbuPresence — mouth follows real output amplitude', () => {
     const html = render({ state: 'speaking' }) // amplitude undefined
     expect(html).toContain('data-testid="abu-presence"')
     expect(html).toContain('id="mouth"')
+  })
+
+  // ── device defect 4: a DEAD analyser (iOS reads the remote stream as a defined 0)
+  //    must still move the mouth — not sit shut while only the eyes blink ──
+  it('shouldDegradeMouth: a defined-0 amplitude with a DEAD analyser degrades (iOS case)', () => {
+    expect(shouldDegradeMouth('speaking', 0, true)).toBe(true)      // iOS: defined 0, analyser dead
+    expect(shouldDegradeMouth('speaking', undefined, false)).toBe(true) // no analyser at all
+  })
+  it('shouldDegradeMouth: a LIVE analyser (real signal) drives the real mouth, no loop', () => {
+    expect(shouldDegradeMouth('speaking', 0.4, false)).toBe(false)  // desktop: real amplitude wins
+    expect(shouldDegradeMouth('speaking', 0, false)).toBe(false)    // pre-grace silence: not yet dead
+  })
+  it('shouldDegradeMouth: never degrades when she is not speaking', () => {
+    for (const s of ['listening', 'thinking', 'waiting'] as PresenceState[]) {
+      expect(shouldDegradeMouth(s, undefined, true)).toBe(false)
+    }
   })
 })
 

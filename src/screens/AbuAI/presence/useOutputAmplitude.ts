@@ -23,10 +23,31 @@ export function useOutputAmplitude(ctx: AudioContext | null, stream: MediaStream
     if (!ctx || !stream) { setAmplitude(undefined); return }
     let raf = 0
     let reader: ReturnType<typeof createAmplitudeReader> | null = null
+
+    // iOS Safari WORKAROUND (device defect 4): a WebRTC remote MediaStream fed straight
+    // into createMediaStreamSource reads as SILENCE on iOS unless the stream is ALSO sunk
+    // to a playing media element. Attach a MUTED (never audible — the session owns the
+    // audible path), playsinline <audio> element so the analyser actually sees samples.
+    // Best-effort and fully cleaned up; harmless where it is not needed (desktop).
+    let sink: HTMLAudioElement | null = null
+    try {
+      if (typeof document !== 'undefined') {
+        sink = document.createElement('audio')
+        sink.muted = true
+        ;(sink as unknown as { playsInline: boolean }).playsInline = true
+        sink.setAttribute('aria-hidden', 'true')
+        sink.style.display = 'none'
+        sink.srcObject = stream
+        if (document.body) document.body.appendChild(sink)
+        void sink.play?.().catch(() => { /* muted, best effort */ })
+      }
+    } catch { sink = null }
+
     try {
       reader = createAmplitudeReader(ctx as unknown as AudioCtxLike, stream)
     } catch {
       setAmplitude(undefined)
+      if (sink) { try { sink.pause(); sink.srcObject = null; sink.remove() } catch { /* */ } }
       return
     }
     const tick = () => {
@@ -34,7 +55,11 @@ export function useOutputAmplitude(ctx: AudioContext | null, stream: MediaStream
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
-    return () => { cancelAnimationFrame(raf); reader?.stop() }
+    return () => {
+      cancelAnimationFrame(raf)
+      reader?.stop()
+      if (sink) { try { sink.pause(); sink.srcObject = null; sink.remove() } catch { /* */ } }
+    }
   }, [ctx, stream])
 
   return amplitude
