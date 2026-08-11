@@ -10,9 +10,8 @@
 import { useState, useEffect } from 'react'
 import { SERVICES, type Service } from '../Home/data'
 import { ICONS } from '../Home/icons'
-import { BackButton } from '../../components/BackButton'
+import { ScreenHeader } from '../../components/ui/ScreenHeader'
 import { injectSharedKeyframes } from '../../design/animations'
-import { GOLD, TEXT_STRONG } from '../../design/colors'
 
 // Module-level navigation guard (same pattern as the old Home).
 let isNavigating = false
@@ -83,17 +82,8 @@ export function AbuBank() {
       display: 'flex', flexDirection: 'column',
       fontFamily: "'Heebo','DM Sans',sans-serif", userSelect: 'none', WebkitUserSelect: 'none',
     }}>
-      {/* Header: always-visible way back to the hub + title */}
-      <header style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px 8px' }}>
-        <BackButton />
-        <h1 style={{
-          margin: 0, fontSize: 24, fontWeight: 800, color: TEXT_STRONG, letterSpacing: '0.3px',
-          display: 'flex', alignItems: 'baseline', gap: 7,
-        }}>
-          <span style={{ color: GOLD, fontFamily: "'Cormorant Garamond',Georgia,serif", fontStyle: 'italic', fontSize: 27 }}>Abu</span>
-          <span>Bank</span>
-        </h1>
-      </header>
+      {/* Shared Abu-ela header — always-visible way back to the hub + brand title */}
+      <ScreenHeader name="Bank" accent="#5EEAD4" />
 
       {/* The nine services — unchanged 3×3 grid of water-drop orbs */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '4px 16px 12px' }}>
