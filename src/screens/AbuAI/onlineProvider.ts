@@ -43,6 +43,16 @@ export interface OnlineSource {
   url?: string
 }
 
+/** Non-secret endpoint diagnostic (mirror of api/abuai-online OnlineDiag). Provider
+ *  name + booleans + counts only — never a key value. */
+export interface OnlineDiag {
+  requested: string; provider: string; providerKeyPresent: boolean
+  openaiKeyPresent: boolean; reached: boolean; sourceCount: number; outcome: string
+}
+let _lastOnlineDiag: OnlineDiag | null = null
+/** The last non-secret online diagnostic (for the operator diagnostics surface). */
+export function lastOnlineDiag(): OnlineDiag | null { return _lastOnlineDiag }
+
 export interface OnlineSuccessResult {
   ok: true
   answer: string
@@ -215,6 +225,15 @@ export async function answerOnlineCurrentInfo(
     }
   }
 
+  // Capture + log the endpoint's non-secret diagnostic BEFORE branching on ok/failure,
+  // so a device trace records which provider ran, whether its key was present, and
+  // whether the upstream call was reached — a misconfigured provider must never look
+  // identical to a search that found nothing.
+  if (data && typeof data === 'object' && (data as Record<string, unknown>).diag) {
+    _lastOnlineDiag = (data as { diag: OnlineDiag }).diag
+    try { console.info('[abuai-online-diag]', JSON.stringify(_lastOnlineDiag)) } catch { /* */ }
+  }
+
   // Server responses are already shaped as { ok: true, answer, sources? }
   // or { ok: false, errorCode, userMessage }.
   if (data && typeof data === 'object' && (data as Record<string, unknown>).ok === true) {
@@ -267,6 +286,8 @@ export interface OnlineProviderHealth {
   mode: OnlineProviderMode
   /** Last failure code observed by `answerOnlineCurrentInfo`. */
   lastErrorCode: OnlineErrorCode | null
+  /** Last non-secret endpoint diagnostic (provider selected, key present, reached). */
+  lastDiag: OnlineDiag | null
 }
 
 let _lastErrorCode: OnlineErrorCode | null = null
@@ -287,6 +308,7 @@ export function checkOnlineProviderHealth(): OnlineProviderHealth {
     provider: 'openai',
     mode: 'server',
     lastErrorCode: _lastErrorCode,
+    lastDiag: _lastOnlineDiag,
   }
 }
 

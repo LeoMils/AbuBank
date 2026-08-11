@@ -73,9 +73,15 @@ export const tavilyProvider: OnlineProvider = {
     const key = env.TAVILY_API_KEY
     if (!key) return fail(started, 'NO_KEY')
     try {
+      // topic defaults to 'general'. Do NOT pin topic:'news' — that restricts Tavily to
+      // recent news ARTICLES and returns ZERO results for the non-news current questions
+      // this endpoint also serves (dollar rate, opening hours, shabbat times, holiday
+      // dates). Zero results ⇒ the honesty gate declines ⇒ looks identical to a real
+      // "found nothing". A general search still answers news queries AND those. (regression:
+      // adapters.test.ts asserts no topic:'news' pin.)
       const res = await fetchWithTimeout('https://api.tavily.com/search', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ query, search_depth: 'basic', include_answer: true, max_results: 6, topic: 'news' }),
+        body: JSON.stringify({ query, search_depth: 'basic', include_answer: true, max_results: 6 }),
       })
       if (!res.ok) return fail(started, 'PROVIDER_FAILED')
       const d = (await res.json()) as { answer?: string; results?: Array<{ title?: string; url?: string }> }

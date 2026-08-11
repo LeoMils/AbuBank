@@ -190,18 +190,30 @@ export const LIVE_TOOL_NAMES: string[] = LIVE_TOOL_SCHEMAS.map((t) => t.name)
 const COMM_TOOLS = new Set(['whatsapp_draft', 'phone_call', 'cancel_communication'])
 const ONLINE_TOOL = 'get_current_info'
 
+/** Non-secret endpoint diagnostic (mirror of api/abuai-online OnlineDiag). Provider
+ *  name + booleans + counts only — NEVER a key. Logged so a device trace shows WHY
+ *  online failed (misconfig vs genuinely-empty search must never look the same). */
+export interface OnlineDiag { requested: string; provider: string; providerKeyPresent: boolean; openaiKeyPresent: boolean; reached: boolean; sourceCount: number; outcome: string }
 /** The grounded online result the live tool speaks from (server-side endpoint shape). */
-export interface OnlineAnswer { ok: boolean; answer?: string; sources?: Array<{ title?: string; url?: string }>; userMessage?: string }
+export interface OnlineAnswer { ok: boolean; answer?: string; sources?: Array<{ title?: string; url?: string }>; userMessage?: string; diag?: OnlineDiag }
 /** Injected online seam — real one POSTs to the server endpoint; tests inject a fake. */
 export type OnlineFetch = (query: string) => Promise<OnlineAnswer>
 
+/** Last online diagnostic seen by the live path — read by operator diagnostics. */
+let _lastLiveOnlineDiag: OnlineDiag | null = null
+export function lastLiveOnlineDiag(): OnlineDiag | null { return _lastLiveOnlineDiag }
+
 /** Default seam: POST the query to the server-side GROUNDED endpoint (holds the key,
- *  applies the no-sources honesty gate). A thrown/failed call becomes an honest miss. */
+ *  applies the no-sources honesty gate). A thrown/failed call becomes an honest miss.
+ *  The endpoint's non-secret `diag` is logged + retained so a misconfigured provider
+ *  is never again indistinguishable from a search that genuinely found nothing. */
 export function defaultOnlineFetch(): OnlineFetch {
   return async (query) => {
     try {
       const res = await fetch('/api/abuai-online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, lang: 'he' }) })
-      return (await res.json()) as OnlineAnswer
+      const j = (await res.json()) as OnlineAnswer
+      if (j.diag) { _lastLiveOnlineDiag = j.diag; try { console.info('[abuai-online-diag]', JSON.stringify(j.diag)) } catch { /* */ } }
+      return j
     } catch { return { ok: false, userMessage: 'לא הצלחתי לבדוק מידע עדכני כרגע.' } }
   }
 }

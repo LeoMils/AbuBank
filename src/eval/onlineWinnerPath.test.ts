@@ -64,6 +64,52 @@ describe('online endpoint — bake-off winner path (ONLINE_PROVIDER=tavily)', ()
     expect(fetchSpy).not.toHaveBeenCalled() // never reached the network
   })
 
+  // ── The diagnostic: a misconfigured provider must NEVER look like an empty search ──
+  it('diag reports the SELECTED provider + key present + reached on the winner happy path', async () => {
+    setEnv({ ONLINE_PROVIDER: 'tavily', TAVILY_API_KEY: 'k' })
+    vi.stubGlobal('fetch', vi.fn(async () => tavilyResponse('הדולר ~3.00 שקלים.', [{ url: 'https://boi.example' }])))
+    const res = await handler(req({ query: 'כמה עולה דולר היום', lang: 'he' }))
+    const j = await res.json() as { ok: boolean; diag?: Record<string, unknown> }
+    expect(j.diag).toBeDefined()
+    expect(j.diag!.requested).toBe('tavily')
+    expect(j.diag!.provider).toBe('tavily')
+    expect(j.diag!.providerKeyPresent).toBe(true)
+    expect(j.diag!.reached).toBe(true)
+    expect(j.diag!.sourceCount).toBe(1)
+    expect(j.diag!.outcome).toBe('ok')
+  })
+
+  it('diag distinguishes a MISSING winner key (reached:false) from an empty search (reached:true, sourceCount:0)', async () => {
+    // Missing key → never reached the provider.
+    setEnv({ ONLINE_PROVIDER: 'tavily' })
+    vi.stubGlobal('fetch', vi.fn(async () => tavilyResponse('x', [{ url: 'https://a' }])))
+    let j = await (await handler(req({ query: 'מה החדשות היום', lang: 'he' }))).json() as { diag?: Record<string, unknown> }
+    expect(j.diag!.provider).toBe('tavily')
+    expect(j.diag!.providerKeyPresent).toBe(false)
+    expect(j.diag!.reached).toBe(false)
+    expect(j.diag!.outcome).toBe('ONLINE_PROVIDER_FAILED')
+
+    // Key present but genuinely empty → reached the provider, zero sources.
+    setEnv({ ONLINE_PROVIDER: 'tavily', TAVILY_API_KEY: 'k' })
+    vi.stubGlobal('fetch', vi.fn(async () => tavilyResponse('', [])))
+    j = await (await handler(req({ query: 'מי ניצח אתמול', lang: 'he' }))).json() as { diag?: Record<string, unknown> }
+    expect(j.diag!.providerKeyPresent).toBe(true)
+    expect(j.diag!.reached).toBe(true)
+    expect(j.diag!.sourceCount).toBe(0)
+    expect(j.diag!.outcome).toBe('ONLINE_NO_RESULTS')
+  })
+
+  it('diag shows requested:unset when ONLINE_PROVIDER is not set (defaulted to openai)', async () => {
+    setEnv({ OPENAI_API_KEY: 'k' }) // no ONLINE_PROVIDER
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ output_text: 'x', output: [] }), { status: 200 })))
+    const j = await (await handler(req({ query: 'מה מזג האוויר היום', lang: 'he' }))).json() as { diag?: Record<string, unknown> }
+    expect(j.diag!.requested).toBe('unset')
+    expect(j.diag!.provider).toBe('openai')
+    expect(j.diag!.openaiKeyPresent).toBe(true)
+    expect(j.diag!.reached).toBe(true)
+    expect(j.diag!.outcome).toBe('ONLINE_NO_RESULTS') // 0 sources → honest decline
+  })
+
   it('the personal guard still blocks family/calendar queries before any provider runs', async () => {
     setEnv({ ONLINE_PROVIDER: 'tavily', TAVILY_API_KEY: 'k' })
     const fetchSpy = vi.fn(async () => tavilyResponse('x', [{ url: 'https://a' }]))

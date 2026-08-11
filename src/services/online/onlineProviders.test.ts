@@ -74,11 +74,19 @@ describe('adapters — map each provider response → ProviderResult', () => {
     expect(r.sources).toHaveLength(1)
   })
   it('tavily: answer + results → sources', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ answer: 'ans', results: [{ title: 'T', url: 'https://t.example' }] }), { status: 200 })))
+    const fetchSpy = vi.fn(async (..._a: unknown[]) => new Response(JSON.stringify({ answer: 'ans', results: [{ title: 'T', url: 'https://t.example' }] }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
     const r = await tavilyProvider.search('q', 'he', { TAVILY_API_KEY: 'k' })
     expect(r.ok).toBe(true)
     expect(r.answer).toBe('ans')
     expect(r.sources[0]!.url).toBe('https://t.example')
+    // Regression: must NOT pin topic:'news' — that restricts Tavily to recent news
+    // ARTICLES and returns ZERO results for non-news current queries (rates, hours,
+    // shabbat times), which the honesty gate then declines — indistinguishable from a
+    // genuinely empty search. A general search answers both.
+    const body = JSON.parse(String((fetchSpy.mock.calls[0]![1] as RequestInit).body))
+    expect(body.topic).toBeUndefined()
+    expect(body.include_answer).toBe(true)
   })
   it('brave: web.results → sources (top snippet as context)', async () => {
     const fetchSpy = vi.fn(async (..._a: unknown[]) => new Response(JSON.stringify({ web: { results: [{ title: 'B', url: 'https://b.example', description: 'snippet' }] } }), { status: 200 }))

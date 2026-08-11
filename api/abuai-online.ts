@@ -39,15 +39,42 @@ type OnlineErrorCode =
   | 'ONLINE_NO_RESULTS'
   | 'BAD_REQUEST'
 
+/**
+ * Non-secret diagnostic returned on EVERY response (and safe to log) so that a
+ * misconfigured provider can NEVER again look identical to a search that found
+ * nothing. It carries the RESOLVED provider, whether that provider's key was
+ * present (boolean only — never the value), whether we actually reached the
+ * upstream HTTP call, how many sources came back, and the outcome code. With
+ * this, one request to the deployed endpoint tells you exactly why online failed.
+ */
+interface OnlineDiag {
+  /** What ONLINE_PROVIDER was set to (lower-cased), or 'openai' if unset. */
+  requested: string
+  /** The provider actually selected (falls back to 'openai' for an unknown id). */
+  provider: string
+  /** Did the selected provider's key exist in the server env? (boolean only) */
+  providerKeyPresent: boolean
+  /** Is an OpenAI key present at all? (the incumbent path's key) */
+  openaiKeyPresent: boolean
+  /** Did we actually issue the upstream provider HTTP request? */
+  reached: boolean
+  /** Number of grounding sources returned (0 ⇒ honesty gate declines). */
+  sourceCount: number
+  /** 'ok' or the OnlineErrorCode this request resolved to. */
+  outcome: string
+}
+
 interface OnlineSuccess {
   ok: true
   answer: string
   sources?: OnlineSource[]
+  diag?: OnlineDiag
 }
 interface OnlineFailure {
   ok: false
   errorCode: OnlineErrorCode
   userMessage: string
+  diag?: OnlineDiag
 }
 type OnlineResult = OnlineSuccess | OnlineFailure
 
@@ -111,12 +138,19 @@ function jsonResponse(body: OnlineResult, status = 200): Response {
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  // Non-secret diagnostic threaded through every return. Enriched once the env +
+  // provider are known. `respond` merges the CURRENT diag snapshot into the body.
+  const diag: OnlineDiag = {
+    requested: 'unset', provider: 'unknown', providerKeyPresent: false,
+    openaiKeyPresent: false, reached: false, sourceCount: 0, outcome: 'pending',
+  }
+  const respond = (body: OnlineResult, status = 200): Response => {
+    diag.outcome = body.ok ? 'ok' : body.errorCode
+    return jsonResponse({ ...body, diag: { ...diag } }, status)
+  }
+
   if (req.method !== 'POST') {
-    return jsonResponse({
-      ok: false,
-      errorCode: 'BAD_REQUEST',
-      userMessage: userMessageFor('BAD_REQUEST', 'he'),
-    }, 405)
+    return respond({ ok: false, errorCode: 'BAD_REQUEST', userMessage: userMessageFor('BAD_REQUEST', 'he') }, 405)
   }
 
   // Parse + validate
@@ -124,32 +158,29 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     payload = (await req.json()) as OnlinePayload
   } catch {
-    return jsonResponse({
-      ok: false,
-      errorCode: 'BAD_REQUEST',
-      userMessage: userMessageFor('BAD_REQUEST', 'he'),
-    }, 400)
+    return respond({ ok: false, errorCode: 'BAD_REQUEST', userMessage: userMessageFor('BAD_REQUEST', 'he') }, 400)
   }
   const query = (payload.query ?? '').trim()
   const lang = payload.lang ?? 'he'
   if (!query || query.length < 2 || query.length > 600) {
-    return jsonResponse({
-      ok: false,
-      errorCode: 'BAD_REQUEST',
-      userMessage: userMessageFor('BAD_REQUEST', lang),
-    }, 400)
-  }
-
-  // Server-side personal guard
-  if (isPersonal(query)) {
-    return jsonResponse({
-      ok: false,
-      errorCode: 'ONLINE_QUERY_BLOCKED_PERSONAL',
-      userMessage: userMessageFor('ONLINE_QUERY_BLOCKED_PERSONAL', lang),
-    }, 200)
+    return respond({ ok: false, errorCode: 'BAD_REQUEST', userMessage: userMessageFor('BAD_REQUEST', lang) }, 400)
   }
 
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
+
+  // Resolve the provider + key presence up front so the diagnostic is accurate on
+  // EVERY exit path (including the personal-blocked one) — no secret values, only names/booleans.
+  const providerId = (env.ONLINE_PROVIDER ?? 'openai').toLowerCase()
+  const selected = selectProvider(env)
+  diag.requested = env.ONLINE_PROVIDER ? providerId : 'unset'
+  diag.provider = selected.id
+  diag.providerKeyPresent = selected.available(env)
+  diag.openaiKeyPresent = !!(env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY)
+
+  // Server-side personal guard
+  if (isPersonal(query)) {
+    return respond({ ok: false, errorCode: 'ONLINE_QUERY_BLOCKED_PERSONAL', userMessage: userMessageFor('ONLINE_QUERY_BLOCKED_PERSONAL', lang) }, 200)
+  }
 
   // ── Bake-off winner path (M2), selectable via ONLINE_PROVIDER ──────────────
   // The empirical tournament (docs/eval/ONLINE_BAKEOFF.json) proved the incumbent
@@ -160,30 +191,34 @@ export default async function handler(req: Request): Promise<Response> {
   // and this endpoint's existing tests are unchanged until the env flips to the winner.
   // The SAME honesty gate applies: zero sources ⇒ ungrounded ⇒ decline (never speak
   // stale memory as fact). The provider key stays server-side (read from env here).
-  const providerId = (env.ONLINE_PROVIDER ?? 'openai').toLowerCase()
   if (providerId !== 'openai') {
-    const provider = selectProvider(env)
+    const provider = selected
     // selectProvider falls back to 'openai' for an unknown id → fall through below.
     if (provider.id !== 'openai') {
       if (!provider.available(env)) {
-        return jsonResponse({ ok: false, errorCode: 'ONLINE_PROVIDER_FAILED', userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang) }, 200)
+        // The winner was requested but its key is MISSING — an explicit, distinct
+        // failure. This must NOT look like "found nothing" (the exact confusion the
+        // diagnostic exists to end): reached=false, providerKeyPresent=false.
+        return respond({ ok: false, errorCode: 'ONLINE_PROVIDER_FAILED', userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang) }, 200)
       }
+      diag.reached = true
       const r = await provider.search(query, lang, env)
       if (!r.ok) {
         const code: OnlineErrorCode = r.error === 'TIMEOUT' ? 'ONLINE_TIMEOUT' : 'ONLINE_PROVIDER_FAILED'
-        return jsonResponse({ ok: false, errorCode: code, userMessage: userMessageFor(code, lang) }, 200)
+        return respond({ ok: false, errorCode: code, userMessage: userMessageFor(code, lang) }, 200)
       }
+      diag.sourceCount = r.sources.length
       // Grounding gate — identical rule to the OpenAI path below.
       if (r.sources.length === 0) {
-        return jsonResponse({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
+        return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
       }
       // Strip any provider HTML so the answer is safe to speak (TTS), then require text.
       const winnerAnswer = (r.answer ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
       if (!winnerAnswer) {
-        return jsonResponse({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
+        return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
       }
       const winnerSources: OnlineSource[] = r.sources.map((s) => (s.title ? { url: s.url, title: s.title } : { url: s.url }))
-      return jsonResponse({ ok: true, answer: winnerAnswer, sources: winnerSources })
+      return respond({ ok: true, answer: winnerAnswer, sources: winnerSources })
     }
   }
 
@@ -194,11 +229,7 @@ export default async function handler(req: Request): Promise<Response> {
   // re-deploy.
   const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
   if (!apiKey) {
-    return jsonResponse({
-      ok: false,
-      errorCode: 'OPENAI_API_KEY_MISSING',
-      userMessage: userMessageFor('OPENAI_API_KEY_MISSING', lang),
-    }, 200)
+    return respond({ ok: false, errorCode: 'OPENAI_API_KEY_MISSING', userMessage: userMessageFor('OPENAI_API_KEY_MISSING', lang) }, 200)
   }
 
   // Build the system instruction. Light, neutral, source-aware.
@@ -213,6 +244,7 @@ export default async function handler(req: Request): Promise<Response> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
+  diag.reached = true
   let resp: globalThis.Response
   try {
     resp = await fetch(OPENAI_RESPONSES_URL, {
@@ -232,29 +264,17 @@ export default async function handler(req: Request): Promise<Response> {
   } catch (err) {
     clearTimeout(timeout)
     const code: OnlineErrorCode = (err as { name?: string } | null)?.name === 'AbortError' ? 'ONLINE_TIMEOUT' : 'ONLINE_PROVIDER_FAILED'
-    return jsonResponse({
-      ok: false,
-      errorCode: code,
-      userMessage: userMessageFor(code, lang),
-    }, 200)
+    return respond({ ok: false, errorCode: code, userMessage: userMessageFor(code, lang) }, 200)
   }
   clearTimeout(timeout)
 
   if (!resp.ok) {
-    return jsonResponse({
-      ok: false,
-      errorCode: 'ONLINE_PROVIDER_FAILED',
-      userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang),
-    }, 200)
+    return respond({ ok: false, errorCode: 'ONLINE_PROVIDER_FAILED', userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang) }, 200)
   }
 
   let data: unknown
   try { data = await resp.json() } catch {
-    return jsonResponse({
-      ok: false,
-      errorCode: 'ONLINE_PROVIDER_FAILED',
-      userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang),
-    }, 200)
+    return respond({ ok: false, errorCode: 'ONLINE_PROVIDER_FAILED', userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang) }, 200)
   }
 
   // Extract `output_text` (Responses API convenience field) or fall back
@@ -262,13 +282,10 @@ export default async function handler(req: Request): Promise<Response> {
   // tool_use citations when present.
   const answer = extractAnswerText(data)
   if (!answer) {
-    return jsonResponse({
-      ok: false,
-      errorCode: 'ONLINE_PROVIDER_FAILED',
-      userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang),
-    }, 200)
+    return respond({ ok: false, errorCode: 'ONLINE_PROVIDER_FAILED', userMessage: userMessageFor('ONLINE_PROVIDER_FAILED', lang) }, 200)
   }
   const sources = extractSources(data)
+  diag.sourceCount = sources.length
 
   // GROUNDING GATE (§47 / "NO TOOL RESULT = NO CLAIM"): a current-info answer must
   // carry evidence it came from web_search. If ZERO sources came back, we have no proof
@@ -277,18 +294,10 @@ export default async function handler(req: Request): Promise<Response> {
   // surface that free text as a confident answer; return an honest failure instead so the
   // client shows a fixed "I could not find current info" line, not a possible hallucination.
   if (sources.length === 0) {
-    return jsonResponse({
-      ok: false,
-      errorCode: 'ONLINE_NO_RESULTS',
-      userMessage: userMessageFor('ONLINE_NO_RESULTS', lang),
-    }, 200)
+    return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
   }
 
-  return jsonResponse({
-    ok: true,
-    answer,
-    sources,
-  })
+  return respond({ ok: true, answer, sources })
 }
 
 // ─── Helpers (loose typing — Responses API shape stabilising) ──────────────
