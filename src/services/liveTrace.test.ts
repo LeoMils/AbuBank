@@ -32,6 +32,17 @@ describe('flight recorder — connection lifecycle (a failed connect still produ
     expect(r.hasFailure()).toBe(false)
     expect(r.toText()).toContain('מחוברת (gpt-realtime-2.1)')
   })
+
+  it('records the session.update payload SIZE on the connect line (so an over-limit field shows as a number in the trace)', () => {
+    const r = rec()
+    r.onConnectAttempt()
+    r.onConnectOk('gpt-realtime-2.1', { chars: 19315, bytes: 22750 })
+    const exp = r.toExport()
+    const ok = exp.connection.find((c) => c.kind === 'ok')!
+    expect(ok.payloadChars).toBe(19315)
+    expect(ok.payloadBytes).toBe(22750)
+    expect(r.toText()).toContain('session.update 19315 תווים / 22750 bytes')
+  })
 })
 
 describe('flight recorder — full trace', () => {

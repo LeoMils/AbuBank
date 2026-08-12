@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildSessionUpdate, isEndOfTurn as liveIsEndOfTurn, WAIT_FOR_USER_TOOL } from '../liveSession'
-import { buildLiveInstructions, REALTIME_INSTRUCTIONS_MAX } from '../liveInstructions'
+import { buildLiveInstructions, REALTIME_INSTRUCTIONS_MAX, TRANSCRIPTION_PROMPT_MAX } from '../liveInstructions'
 import { LIVE_TOOL_SCHEMAS, LIVE_TOOL_NAMES } from '../liveTools'
 import { buildHarnessSession } from './session'
 
@@ -28,14 +28,18 @@ describe('text harness shares construction with the live voice path', () => {
     expect(harness.instructions).toContain(buildLiveInstructions())
   })
 
-  it('the shared instructions fit the provider cap — the exact string that would reach the device', () => {
-    // The device blocker was string_above_max_length: the assembled instructions grew
-    // past the provider limit, so the Realtime session connected and then died. Because
-    // the harness and voice share ONE instructions string, asserting it here proves the
-    // string the device receives is within the cap. If this fails the build must fail —
-    // move DATA behind people_lookup, never raise the cap.
+  it('EVERY provider-capped field of the shared payload fits — the exact config that reaches the device', () => {
+    // The device blocker was string_above_max_length on session.audio.input.transcription.prompt
+    // (1034 > 1024), NOT instructions. Because the harness and voice share ONE session.update,
+    // asserting BOTH capped fields here proves the config the device receives is within every
+    // provider limit. If this fails the build must fail — bound the field, never raise the cap.
+    const voice = buildSessionUpdate(NOW) as {
+      session: { instructions: string; audio: { input: { transcription: { prompt: string } } } }
+    }
     const harness = buildHarnessSession(NOW)
     expect(harness.instructions.length).toBeLessThanOrEqual(REALTIME_INSTRUCTIONS_MAX)
+    expect(voice.session.instructions.length).toBeLessThanOrEqual(REALTIME_INSTRUCTIONS_MAX)
+    expect(voice.session.audio.input.transcription.prompt.length).toBeLessThanOrEqual(TRANSCRIPTION_PROMPT_MAX)
   })
 
   it('uses the SAME tool registry (liveTools + wait_for_user), not a re-authored one', () => {

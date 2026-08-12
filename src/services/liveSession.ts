@@ -25,7 +25,7 @@
  * module asserts nothing about the name — it uses whatever the server chose for
  * the SDP call, so the client and mint can never drift.
  */
-import { buildLiveInstructions, buildTranscriptionPrompt, assertInstructionsWithinLimit } from './liveInstructions'
+import { buildLiveInstructions, buildTranscriptionPrompt, assertSessionPayloadWithinLimits } from './liveInstructions'
 import { LiveTools, LIVE_TOOL_SCHEMAS, durableCalendarStore, type LiveCalendarStore, type LiveCommDraft, type LiveEvent } from './liveTools'
 import type { CalendarDraft } from '../screens/AbuAI/realtime/calendarDraft'
 import { extractFunctionCall, safeParseArgs, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
@@ -136,12 +136,13 @@ export function todayInstruction(now: number): string {
  *  model owns the turn (create_response TRUE) and reasons natively. Pure so it
  *  can be regression-locked. `now` seeds the runtime "today" line. */
 export function buildSessionUpdate(now: number = Date.now()): Record<string, unknown> {
-  // The ACTUAL string sent to the provider is the assembled instructions PLUS the
-  // runtime "today" line. Guard THAT concatenation against the provider cap — over it
-  // the Realtime session is rejected with string_above_max_length (voice connects,
-  // then dies on device). Fails the build/import if it ever regresses over the cap.
+  // Every provider-capped STRING field is guarded here against its documented maximum,
+  // on the EXACT values sent over the data channel. Over ANY cap, the whole session.update
+  // is rejected with string_above_max_length and voice connects then dies ~500ms later.
+  // The device blocker was NOT instructions — it was transcription.prompt (1034 > 1024).
   const instructions = buildLiveInstructions() + '\n' + todayInstruction(now)
-  assertInstructionsWithinLimit(instructions)
+  const transcriptionPrompt = buildTranscriptionPrompt()
+  assertSessionPayloadWithinLimits({ instructions, transcriptionPrompt })
   return {
     type: 'session.update',
     session: {
@@ -156,7 +157,7 @@ export function buildSessionUpdate(now: number = Date.now()): Record<string, unk
           // routes, dedups, or decides on it. The model hears the audio directly.
           // Hebrew is set EXPLICITLY and a bias prompt (family names + common request
           // phrasings) steers the transcriber toward the words Martita actually uses.
-          transcription: { model: LIVE_TRANSCRIBE_MODEL, language: 'he', prompt: buildTranscriptionPrompt() },
+          transcription: { model: LIVE_TRANSCRIBE_MODEL, language: 'he', prompt: transcriptionPrompt },
           turn_detection: {
             type: 'server_vad',
             threshold: LIVE_VAD_THRESHOLD,
@@ -170,6 +171,16 @@ export function buildSessionUpdate(now: number = Date.now()): Record<string, unk
       },
     },
   }
+}
+
+/** Char + byte size of the assembled session.update payload — recorded on the trace
+ *  connection line so the next device trace shows the number directly (no more
+ *  discovering an over-limit field only on a phone). Pure over buildSessionUpdate. */
+export function sessionPayloadSize(now: number = Date.now()): { chars: number; bytes: number } {
+  const json = JSON.stringify(buildSessionUpdate(now))
+  // eslint-disable-next-line no-restricted-globals
+  const bytes = typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(json).length : json.length
+  return { chars: json.length, bytes }
 }
 
 /** The ONE proactive greeting. Sent exactly once per conversation id (see
@@ -504,11 +515,16 @@ export class LiveSession {
       this.dc = dc
       dc.onopen = () => {
         if (myEpoch !== liveEpoch) return
-        this.recorder.onConnectOk(model)   // the live session is up — recorded for the trace
-        this.setState('listening')
         // ONE session.update carrying instructions (+ today's date), voice,
-        // turn_detection, reasoning.effort, and the tool set.
-        this.send(buildSessionUpdate(this.deps.now()))
+        // turn_detection, reasoning.effort, and the tool set. Build it ONCE and record its
+        // size on the trace connection line, so an over-limit field (string_above_max_length)
+        // shows up as a number in the trace instead of only failing on a device.
+        const payload = buildSessionUpdate(this.deps.now())
+        const json = JSON.stringify(payload)
+        const bytes = typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(json).length : json.length
+        this.recorder.onConnectOk(model, { chars: json.length, bytes })
+        this.setState('listening')
+        this.send(payload)
         // Greeting is keyed to the conversation id in storage — NOT session start.
         // On a reconnect we send nothing and resume listening silently.
         if (!this.isReconnect && shouldGreet(this.deps.storage, this.conversationId)) {

@@ -54,7 +54,7 @@ export interface TruncationFlag { atSeq: number; detail: string }
 
 /** A connection lifecycle event — recorded so a session that FAILS TO CONNECT still
  *  produces a downloadable trace saying WHY (no token / network / mic / provider). */
-export interface ConnectionEvent { t: number; kind: 'attempt' | 'ok' | 'failed'; code?: string; detail?: string }
+export interface ConnectionEvent { t: number; kind: 'attempt' | 'ok' | 'failed'; code?: string; detail?: string; payloadChars?: number; payloadBytes?: number }
 
 export interface TraceExport {
   startedAt: number
@@ -158,10 +158,18 @@ export class FlightRecorder {
     this.connection.push({ t: this.now() - this.startWall, kind: 'attempt' })
     this.add('note', { text: 'connection attempt' })
   }
-  /** The WebRTC data channel opened — the live session is up. */
-  onConnectOk(model?: string): void {
-    this.connection.push({ t: this.now() - this.startWall, kind: 'ok', ...(model ? { detail: model } : {}) })
-    this.add('note', { text: `connected${model ? ` (${model})` : ''}` })
+  /** The WebRTC data channel opened — the live session is up. `payload` is the size of
+   *  the session.update config we are about to send, so an over-limit field (the cause of
+   *  string_above_max_length) is visible IN THE TRACE, not only discoverable on a phone. */
+  onConnectOk(model?: string, payload?: { chars: number; bytes: number }): void {
+    this.connection.push({
+      t: this.now() - this.startWall,
+      kind: 'ok',
+      ...(model ? { detail: model } : {}),
+      ...(payload ? { payloadChars: payload.chars, payloadBytes: payload.bytes } : {}),
+    })
+    const sizeText = payload ? ` · session.update ${payload.chars} תווים / ${payload.bytes} bytes` : ''
+    this.add('note', { text: `connected${model ? ` (${model})` : ''}${sizeText}` })
   }
   /** A failure occurred — connection OR mid-session. `code` is the machine reason
    *  (e.g. OPENAI_API_KEY_MISSING, MIC_PERMISSION_DENIED); `reasonHe` is what Martita saw. */
@@ -191,7 +199,7 @@ export class FlightRecorder {
       for (const c of this.connection) {
         const ts = `[${(c.t / 1000).toFixed(1)}s]`
         if (c.kind === 'attempt') lines.push(`  ${ts} … מנסה להתחבר`)
-        else if (c.kind === 'ok') lines.push(`  ${ts} ✓ מחוברת${c.detail ? ` (${c.detail})` : ''}`)
+        else if (c.kind === 'ok') lines.push(`  ${ts} ✓ מחוברת${c.detail ? ` (${c.detail})` : ''}${c.payloadChars !== undefined ? ` · session.update ${c.payloadChars} תווים / ${c.payloadBytes} bytes` : ''}`)
         else lines.push(`  ${ts} ✗ נכשל — code=${c.code ?? '?'}${c.detail ? ` · "${c.detail}"` : ''}`)
       }
       lines.push('')

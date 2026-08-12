@@ -167,23 +167,68 @@ export const HEBREW_REQUEST_PHRASINGS = [
 
 interface NamedPerson { hebrew_name?: string; aliases?: string[] }
 
-/** Build the Hebrew transcription bias prompt: every family Hebrew name + alias, plus
- *  the common request phrasings. Deterministic over the family data. */
+/*
+ * The OpenAI Realtime session.audio.input.transcription.prompt field has a HARD
+ * provider maximum of 1024 CHARACTERS. Cited directly from the provider's own
+ * validation error (observed against the real /v1/realtime/client_secrets endpoint):
+ *   "Invalid 'session.audio.input.transcription.prompt': string too long. Expected a
+ *    string with maximum length 1024, but got a string with length 1034 instead."
+ *   { code: 'string_above_max_length', param: 'session.audio.input.transcription.prompt' }
+ * Over it, the WHOLE session.update is rejected — the live session connects and then
+ * dies ~500ms later (this is the device blocker; the 68-person knowledge update pushed
+ * the enumerated-name bias prompt from under-cap to 1034). This is a WEAK STT bias
+ * side-channel (nothing routes on it), so when the family outgrows the budget we keep
+ * the closest names (PRONUNCIATION_GROUPS is ordered closest-family-first) + ALL the
+ * request phrasings and drop the long tail — never exceed the provider cap.
+ */
+export const TRANSCRIPTION_PROMPT_MAX = 1024
+/** Build to a SAFE budget below the hard cap so whole-name greedy fill never spills over. */
+const TRANSCRIPTION_PROMPT_BUDGET = 1000
+
+/** Build the Hebrew transcription bias prompt: the closest family Hebrew names + aliases
+ *  that FIT the provider budget, plus ALL the common request phrasings. Deterministic
+ *  over the family data. Names are added closest-family-first and the long tail is
+ *  dropped once the budget is reached — the field is a weak STT hint, never a source of
+ *  truth, so a bounded subset is correct (and a build guard proves it stays ≤ the cap). */
 export function buildTranscriptionPrompt(
   data: { family: Record<string, unknown> } = familyData as { family: Record<string, unknown> },
 ): string {
-  const names = new Set<string>()
+  const names: string[] = []
+  const seen = new Set<string>()
   for (const group of PRONUNCIATION_GROUPS) {
     const raw = data.family[group]
     const list: NamedPerson[] = Array.isArray(raw) ? raw : raw ? [raw as NamedPerson] : []
     for (const p of list) {
-      if (p.hebrew_name && HEBREW.test(p.hebrew_name)) names.add(p.hebrew_name.trim())
-      for (const a of p.aliases ?? []) if (a && HEBREW.test(a)) names.add(a.trim())
+      const add = (n?: string): void => {
+        const t = (n ?? '').trim()
+        if (t && HEBREW.test(t) && !seen.has(t)) { seen.add(t); names.push(t) }
+      }
+      add(p.hebrew_name)
+      for (const a of p.aliases ?? []) add(a)
     }
   }
-  const nameList = [...names].join(', ')
   const phrasings = HEBREW_REQUEST_PHRASINGS.join(', ')
-  return `השיחה כולה בעברית מדוברת. שמות בני המשפחה שעשויים להופיע: ${nameList}. ביטויים נפוצים בבקשות: ${phrasings}.`
+  const assemble = (chosen: string[]): string =>
+    `השיחה כולה בעברית מדוברת. שמות בני המשפחה שעשויים להופיע: ${chosen.join(', ')}. ביטויים נפוצים בבקשות: ${phrasings}.`
+  // Greedily add names (closest family first) until the NEXT name would exceed the budget.
+  const chosen: string[] = []
+  for (const n of names) {
+    if (assemble([...chosen, n]).length > TRANSCRIPTION_PROMPT_BUDGET) break
+    chosen.push(n)
+  }
+  return assemble(chosen)
+}
+
+/** Throw (fail the build/import) if the transcription prompt exceeds the provider cap. */
+export function assertTranscriptionWithinLimit(text: string = buildTranscriptionPrompt()): void {
+  if (text.length > TRANSCRIPTION_PROMPT_MAX) {
+    throw new Error(
+      `[liveInstructions] session.audio.input.transcription.prompt is ${text.length} chars — OVER the ` +
+        `${TRANSCRIPTION_PROMPT_MAX}-char provider cap (OpenAI Realtime rejects the whole session with ` +
+        `string_above_max_length on that field, so voice connects then dies on device). Bound the ` +
+        `name list — do NOT raise the cap.`,
+    )
+  }
 }
 
 /**
@@ -272,9 +317,24 @@ export function assertInstructionsWithinLimit(text: string = buildLiveInstructio
   }
 }
 
-// Build-time enforcement: importing this module (the build + tests do) throws if the
-// assembled instructions are over the provider limit. This can never reach a device again.
-assertInstructionsWithinLimit()
+/**
+ * ONE guard over EVERY provider-capped string field of the assembled session.update.
+ * Called by buildSessionUpdate on the exact values it sends, and at module load below,
+ * so an over-limit field FAILS THE BUILD with the field, its size, and its cap — the
+ * over-limit field is never discoverable only on a device again. Add a field here when
+ * a new provider-capped string enters the payload.
+ */
+export function assertSessionPayloadWithinLimits(
+  fields: { instructions?: string; transcriptionPrompt?: string } = {},
+): void {
+  assertInstructionsWithinLimit(fields.instructions ?? buildLiveInstructions())
+  assertTranscriptionWithinLimit(fields.transcriptionPrompt ?? buildTranscriptionPrompt())
+}
+
+// Build-time enforcement: importing this module (the build + tests do) throws if ANY
+// provider-capped field is over its limit — instructions (self-imposed 10k safety cap)
+// AND transcription.prompt (documented 1024 provider cap; the field that broke on device).
+assertSessionPayloadWithinLimits()
 
 // ─── Instructions-vs-tools honesty guard ─────────────────────────────────────
 /*

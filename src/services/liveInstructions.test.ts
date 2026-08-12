@@ -19,12 +19,15 @@ import {
   auditInstructionsVsTools,
   assertInstructionsWithinLimit,
   REALTIME_INSTRUCTIONS_MAX,
+  assertTranscriptionWithinLimit,
+  assertSessionPayloadWithinLimits,
+  TRANSCRIPTION_PROMPT_MAX,
   TOOLLESS_CAPABILITY_GUARD,
   ABU_PERSONA,
   ABU_FAMILY,
   ABU_KNOWLEDGE,
 } from './liveInstructions'
-import { buildSessionUpdate } from './liveSession'
+import { buildSessionUpdate, sessionPayloadSize } from './liveSession'
 
 const KNOWLEDGE_DIR = path.resolve(__dirname, '../../knowledge')
 
@@ -219,6 +222,58 @@ describe('provider instruction-length guard (device blocker: string_above_max_le
 
   it('a string exactly at the cap is allowed (boundary)', () => {
     expect(() => assertInstructionsWithinLimit('x'.repeat(REALTIME_INSTRUCTIONS_MAX))).not.toThrow()
+  })
+})
+
+describe('transcription.prompt cap — the field that ACTUALLY broke on device (1034 > 1024)', () => {
+  it('the provider cap is 1024 chars (documented by the provider error we cited)', () => {
+    expect(TRANSCRIPTION_PROMPT_MAX).toBe(1024)
+  })
+
+  it('the built transcription prompt is within the provider cap, with real 67-person family data', () => {
+    const p = buildTranscriptionPrompt()
+    expect(p.length).toBeLessThanOrEqual(TRANSCRIPTION_PROMPT_MAX)
+    // it still carries the closest family + the request phrasings (bias not gutted)
+    expect(p).toContain('מור')
+    expect(p).toContain('לאו')
+    expect(p).toContain('תקבעי לי תור')
+    expect(() => assertTranscriptionWithinLimit(p)).not.toThrow()
+  })
+
+  it('the guard THROWS with the field name + measured size when the prompt is over the cap', () => {
+    const over = 'x'.repeat(TRANSCRIPTION_PROMPT_MAX + 1)
+    expect(() => assertTranscriptionWithinLimit(over)).toThrow(/transcription\.prompt/)
+    expect(() => assertTranscriptionWithinLimit(over)).toThrow(/string_above_max_length/)
+    expect(() => assertTranscriptionWithinLimit(over)).toThrow(new RegExp(`${TRANSCRIPTION_PROMPT_MAX + 1} chars`))
+  })
+
+  it('the whole-payload guard fails if ANY capped field is over — instructions OR transcription', () => {
+    // the real assembled fields pass
+    expect(() => assertSessionPayloadWithinLimits()).not.toThrow()
+    // an over-cap transcription prompt is caught by the payload guard
+    expect(() =>
+      assertSessionPayloadWithinLimits({ transcriptionPrompt: 'x'.repeat(TRANSCRIPTION_PROMPT_MAX + 1) }),
+    ).toThrow(/transcription\.prompt/)
+    // an over-cap instructions string is caught too
+    expect(() =>
+      assertSessionPayloadWithinLimits({ instructions: 'x'.repeat(REALTIME_INSTRUCTIONS_MAX + 1) }),
+    ).toThrow(/string_above_max_length/)
+  })
+
+  it('EVERY provider-capped field of the REAL assembled payload is within its limit', () => {
+    // This is the assertion that would have caught the device blocker: measure the real
+    // session.update fields against the real provider caps.
+    const update = buildSessionUpdate(Date.UTC(2026, 7, 12)) as {
+      session: { instructions: string; audio: { input: { transcription: { prompt: string } } } }
+    }
+    expect(update.session.instructions.length).toBeLessThanOrEqual(REALTIME_INSTRUCTIONS_MAX)
+    expect(update.session.audio.input.transcription.prompt.length).toBeLessThanOrEqual(TRANSCRIPTION_PROMPT_MAX)
+  })
+
+  it('reports the real assembled payload size (recorded on the trace connection line)', () => {
+    const size = sessionPayloadSize(Date.UTC(2026, 7, 12))
+    expect(size.chars).toBeGreaterThan(0)
+    expect(size.bytes).toBeGreaterThanOrEqual(size.chars) // utf-8 Hebrew inflates bytes ≥ chars
   })
 })
 
