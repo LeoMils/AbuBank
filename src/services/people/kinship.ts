@@ -112,3 +112,60 @@ export function describeRelationship(xId: string, yId: string, people: Person[] 
   if (!X || !Y) return null
   return `${X.hebrewName} ${r.he} של ${Y.hebrewName}`
 }
+
+/** Adjacency for path-finding: everyone one structural hop from p (blood + marriage + sibling). */
+function neighboursOf(p: Person, byId: Map<string, Person>): string[] {
+  const sibs = siblingsOf(p, byId)
+  return [...new Set([...p.parents, ...p.children, ...p.spouses, ...p.formerSpouses, ...p.partners, ...sibs])]
+    .filter((id) => byId.has(id))
+}
+
+/** Shortest chain of person ids from X to Y over the family graph, or null. Bounded so a
+ *  description stays legible (a 4-hop path is the furthest we render — beyond that, fall back
+ *  to the person's role rather than a sprawling sentence). */
+function shortestPath(xId: string, yId: string, byId: Map<string, Person>, maxHops = 4): string[] | null {
+  if (xId === yId) return null
+  const prev = new Map<string, string>()
+  const seen = new Set<string>([xId])
+  let frontier = [xId]
+  for (let depth = 0; depth < maxHops && frontier.length; depth++) {
+    const next: string[] = []
+    for (const id of frontier) {
+      for (const nb of neighboursOf(byId.get(id)!, byId)) {
+        if (seen.has(nb)) continue
+        seen.add(nb); prev.set(nb, id)
+        if (nb === yId) { // reconstruct
+          const path = [yId]; let cur = yId
+          while (cur !== xId) { cur = prev.get(cur)!; path.unshift(cur) }
+          return path
+        }
+        next.push(nb)
+      }
+    }
+    frontier = next
+  }
+  return null
+}
+
+/**
+ * FIX 2 — when NO single kinship term exists (a niece's husband, a grand-nephew, a grandson's
+ * wife), DESCRIBE THE PATH instead of saying "no relation". Find the shortest structural chain
+ * X→…→Y and render each hop with its real gendered term, chained naturally in Hebrew
+ * ("רוסיטה היא הבת של X, שהוא האח של פפי, שהוא הבעל של מרטיטה"). Every hop is a structurally
+ * present edge — nothing is invented. Null only when the two are genuinely disconnected (or
+ * further apart than we will narrate). Death never removes a path (genealogy persists).
+ */
+export function describePathBetween(xId: string, yId: string, people: Person[] = loadPeople()): string | null {
+  const byId = new Map(people.map((p) => [p.id, p]))
+  const path = shortestPath(xId, yId, byId)
+  if (!path || path.length < 2) return null
+  const pron = (g: Gender, fallbackName: string): string => (g === 'female' ? 'שהיא' : g === 'male' ? 'שהוא' : `ש${fallbackName}`)
+  const parts: string[] = []
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = byId.get(path[i]!)!, b = byId.get(path[i + 1]!)!
+    const r = relationshipOf(a.id, b.id, people)
+    if (!r) return null // adjacent nodes must have a direct term; safety only
+    parts.push(i === 0 ? `${a.hebrewName} ${r.he} של ${b.hebrewName}` : `${pron(a.gender, a.hebrewName)} ${r.he} של ${b.hebrewName}`)
+  }
+  return parts.join(', ')
+}

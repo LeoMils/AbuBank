@@ -1,7 +1,7 @@
 # ⚠️ 100% GENERATED FILE — DO NOT EDIT
 # Source of truth: knowledge/family_data.json + knowledge/martita_personality.yaml
 # Regenerate with: npm run generate:memory
-# Generated: 2026-08-11
+# Generated: 2026-08-12
 
 
 aliases:
@@ -28,7 +28,7 @@ aliases:
   Shoshana    : ["שושנה","Shoshana Barbers","שושנה ברברס"]
   Sharon      : ["שרון"]
   Cacho       : ["כאצ'ו","Cacho Barbers","כאצ'ו ברברס"]
-  Susi Raz    : ["סוזי רז","Susi","סוזי"]
+  Susi Raz    : ["סוזי רז","Susi","סוזי","סוסי"]
   Hector Raz  : ["הקטור רז","Hector","הקטור"]
   Lydia Omansky: ["לידיה אומנסקי","Lydia","לידיה"]
   Noah Omansky: ["נוח אומנסקי","Noah","נוח"]

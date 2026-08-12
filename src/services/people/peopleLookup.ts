@@ -10,7 +10,7 @@
  * layer turns an id into a phone number, exactly as the card system already does.
  */
 import { loadPeople, resolvePersonId, personById, type Person, type Gender } from './peopleModel'
-import { relationshipOf, relativesOfKind, hebrewTerm, type KinKind } from './kinship'
+import { relationshipOf, relativesOfKind, hebrewTerm, describePathBetween, type KinKind } from './kinship'
 
 const SELF = 'martita' // "שלי" / "my" is relative to Martita (the user)
 
@@ -50,13 +50,28 @@ export function whoIs(name: string, people: Person[] = loadPeople()): WhoIs | No
   }
 }
 
-/** "X is Y's ___" in Hebrew, or an honest "not related" / "not found". */
+/** "X is Y's ___" in Hebrew. A single kinship term when one exists; otherwise the DESCRIBED
+ *  PATH (FIX 2 — a by-marriage tie is never "no relation"); only truly disconnected people
+ *  are 'unrelated'. Unknown names are 'not_found'. */
 export function relationshipBetween(nameX: string, nameY: string, people: Person[] = loadPeople()): { status: 'ok'; text: string } | { status: 'unrelated' } | NotFound {
   const x = resolvePersonId(nameX, people), y = resolvePersonId(nameY, people)
   if (!x || !y) return { status: 'not_found' }
   const r = relationshipOf(x, y, people)
-  if (!r) return { status: 'unrelated' }
-  return { status: 'ok', text: `${personById(x, people)!.hebrewName} ${r.he} של ${personById(y, people)!.hebrewName}` }
+  if (r) return { status: 'ok', text: `${personById(x, people)!.hebrewName} ${r.he} של ${personById(y, people)!.hebrewName}` }
+  const path = describePathBetween(x, y, people)
+  if (path) return { status: 'ok', text: path }
+  return { status: 'unrelated' }
+}
+
+/** "My friends" — Martita's friend circle: living role-bearers who relate to her as FRIENDS,
+ *  i.e. have NO blood/marriage path into the family graph (that excludes role-bearing relatives
+ *  like Nili, the partner of an ex-son-in-law, who is kin by a path). Friends relate by role,
+ *  not kinship, but must be reachable on the SAME tool as everyone else. Returns Hebrew names. */
+export function friendsOf(_name: string = SELF, people: Person[] = loadPeople()): string[] {
+  return people
+    .filter((p) => !p.deceased && p.role !== undefined && /חבר/.test(p.role) && p.id !== SELF)
+    .filter((p) => relationshipOf(p.id, SELF, people) === null && describePathBetween(p.id, SELF, people) === null)
+    .map((p) => p.hebrewName)
 }
 
 export function relativesByKind(name: string, kind: KinKind, people: Person[] = loadPeople()): { status: 'ok'; kind: KinKind; term: string; people: string[] } | NotFound {
