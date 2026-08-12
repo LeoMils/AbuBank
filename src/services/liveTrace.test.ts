@@ -8,6 +8,32 @@ import { FlightRecorder } from './liveTrace'
 
 const rec = () => { let t = 0; return new FlightRecorder(() => (t += 100)) }
 
+describe('flight recorder — connection lifecycle (a failed connect still produces a trace)', () => {
+  it('records the attempt + failure with a reason, and toText leads with the CONNECTION section', () => {
+    const r = rec()
+    r.onConnectAttempt()
+    r.onFailure('OPENAI_API_KEY_MISSING', 'החיבור לשרת לא מוגדר')
+    expect(r.hasFailure()).toBe(true)
+    const txt = r.toText()
+    // Even with ZERO conversation turns, the trace says WHY, at the top.
+    expect(txt).toContain('## CONNECTION')
+    expect(txt).toContain('מנסה להתחבר')
+    expect(txt).toContain('code=OPENAI_API_KEY_MISSING')
+    expect(txt).toContain('החיבור לשרת לא מוגדר')
+    // The export carries the machine-readable connection events too.
+    const exp = r.toExport()
+    expect(exp.connection.map((c) => c.kind)).toEqual(['attempt', 'failed'])
+    expect(exp.connection[1]!.code).toBe('OPENAI_API_KEY_MISSING')
+  })
+  it('records a successful connect (attempt → ok) with the model', () => {
+    const r = rec()
+    r.onConnectAttempt()
+    r.onConnectOk('gpt-realtime-2.1')
+    expect(r.hasFailure()).toBe(false)
+    expect(r.toText()).toContain('מחוברת (gpt-realtime-2.1)')
+  })
+})
+
 describe('flight recorder — full trace', () => {
   it('captures my speech, her speech, and every tool call with args + result', () => {
     const r = rec()

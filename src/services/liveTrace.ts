@@ -52,17 +52,23 @@ const CONFIRM_TOOL = 'confirm_calendar_event'
 export interface SilentTurnFlag { atSeq: number; toolsInTurn: string[]; detail: string }
 export interface TruncationFlag { atSeq: number; detail: string }
 
+/** A connection lifecycle event — recorded so a session that FAILS TO CONNECT still
+ *  produces a downloadable trace saying WHY (no token / network / mic / provider). */
+export interface ConnectionEvent { t: number; kind: 'attempt' | 'ok' | 'failed'; code?: string; detail?: string }
+
 export interface TraceExport {
   startedAt: number
   entries: TraceEntry[]
   silentTurns: SilentTurnFlag[]
   truncations: TruncationFlag[]
+  connection: ConnectionEvent[]
 }
 
 export class FlightRecorder {
   private readonly entries: TraceEntry[] = []
   private readonly silentTurns: SilentTurnFlag[] = []
   private readonly truncations: TruncationFlag[] = []
+  private readonly connection: ConnectionEvent[] = []
   private seq = 0
   private readonly startWall: number
 
@@ -146,17 +152,50 @@ export class FlightRecorder {
   /** A free-text note (e.g. an error). */
   note(text: string): void { this.add('note', { text }) }
 
+  // ─── Connection lifecycle (so a failed connect still produces a trace) ────────
+  /** The session began trying to connect (mint token → WebRTC). */
+  onConnectAttempt(): void {
+    this.connection.push({ t: this.now() - this.startWall, kind: 'attempt' })
+    this.add('note', { text: 'connection attempt' })
+  }
+  /** The WebRTC data channel opened — the live session is up. */
+  onConnectOk(model?: string): void {
+    this.connection.push({ t: this.now() - this.startWall, kind: 'ok', ...(model ? { detail: model } : {}) })
+    this.add('note', { text: `connected${model ? ` (${model})` : ''}` })
+  }
+  /** A failure occurred — connection OR mid-session. `code` is the machine reason
+   *  (e.g. OPENAI_API_KEY_MISSING, MIC_PERMISSION_DENIED); `reasonHe` is what Martita saw. */
+  onFailure(code: string, reasonHe?: string): void {
+    this.connection.push({ t: this.now() - this.startWall, kind: 'failed', code, ...(reasonHe ? { detail: reasonHe } : {}) })
+    this.add('note', { text: `FAILURE [${code}]${reasonHe ? ` — ${reasonHe}` : ''}` })
+  }
+  /** True if any failure was recorded (so the UI/exporter knows a trace is worth keeping). */
+  hasFailure(): boolean { return this.connection.some((c) => c.kind === 'failed') }
+
   silentTurnCount(): number { return this.silentTurns.length }
   truncationCount(): number { return this.truncations.length }
 
   toExport(): TraceExport {
-    return { startedAt: this.startWall, entries: [...this.entries], silentTurns: [...this.silentTurns], truncations: [...this.truncations] }
+    return { startedAt: this.startWall, entries: [...this.entries], silentTurns: [...this.silentTurns], truncations: [...this.truncations], connection: [...this.connection] }
   }
 
   /** A downloadable, human-readable trace: my speech, her speech, every tool call. */
   toText(): string {
     const lines: string[] = []
     lines.push('# Abu live session trace', '')
+    // Connection summary FIRST — so a session that failed to connect is immediately
+    // legible (the reason is at the top, not buried), and a failed connect still
+    // downloads a useful trace even with zero conversation turns.
+    if (this.connection.length) {
+      lines.push('## CONNECTION')
+      for (const c of this.connection) {
+        const ts = `[${(c.t / 1000).toFixed(1)}s]`
+        if (c.kind === 'attempt') lines.push(`  ${ts} … מנסה להתחבר`)
+        else if (c.kind === 'ok') lines.push(`  ${ts} ✓ מחוברת${c.detail ? ` (${c.detail})` : ''}`)
+        else lines.push(`  ${ts} ✗ נכשל — code=${c.code ?? '?'}${c.detail ? ` · "${c.detail}"` : ''}`)
+      }
+      lines.push('')
+    }
     for (const e of this.entries) {
       const ts = `[${(e.t / 1000).toFixed(1)}s]`
       if (e.kind === 'user_speech') lines.push(`${ts} 👤 מרטיטה: ${e.text ?? ''}`)

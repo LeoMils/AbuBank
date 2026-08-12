@@ -26,6 +26,7 @@ import {
   LIVE_INTERRUPT_RESPONSE,
   LIVE_TRANSCRIBE_MODEL,
   LIVE_REASONING_EFFORT,
+  connectionReasonHe,
   WAIT_FOR_USER_TOOL,
   type LiveDeps,
   type LiveState,
@@ -196,6 +197,26 @@ describe('liveSession pure helpers', () => {
     expect(vad.interrupt_response).toBe(false)
     expect(vad.create_response).toBe(true)          // turn-taking still fires on the user's turn end
     expect(LIVE_INTERRUPT_RESPONSE).toBe(false)
+  })
+
+  it('connectionReasonHe gives a SPECIFIC plain-Hebrew reason per failure code (not a bare retry)', () => {
+    // No token / server key.
+    expect(connectionReasonHe('OPENAI_API_KEY_MISSING')).toContain('OPENAI_API_KEY')
+    expect(connectionReasonHe('OPENAI_API_KEY_INVALID')).toContain('לא תקין')
+    // Microphone.
+    expect(connectionReasonHe('MIC_PERMISSION_DENIED')).toContain('מיקרופון')
+    // Network.
+    expect(connectionReasonHe('TOKEN_NETWORK_ERROR')).toContain('רשת')
+    // Provider.
+    expect(connectionReasonHe('REALTIME_PROVIDER_FAILED')).toContain('שיחת קול')
+    // Each of the four families is DISTINCT — the screen can say which one it is.
+    const four = ['OPENAI_API_KEY_MISSING', 'MIC_PERMISSION_DENIED', 'TOKEN_NETWORK_ERROR', 'REALTIME_PROVIDER_FAILED']
+      .map(connectionReasonHe)
+    expect(new Set(four).size).toBe(4)
+    // SDP/ICE collapse to a general connection failure; unknown → a safe default.
+    expect(connectionReasonHe('SDP_HTTP_500')).toContain('החיבור נכשל')
+    expect(connectionReasonHe('ICE_FAILED')).toContain('החיבור נכשל')
+    expect(connectionReasonHe('SOMETHING_ELSE')).toContain('מצב הקול')
   })
 
   it('wait_for_user tool takes no parameters and is a function', () => {

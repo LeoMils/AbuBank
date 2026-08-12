@@ -231,6 +231,27 @@ export function isEndOfTurn(event: unknown): boolean {
   return parseResponsePhase(event) !== 'commentary'
 }
 
+/** Plain-Hebrew reason for a connection/session failure code — exactly what Martita
+ *  SEES on the screen, so a failure says WHY (server key, network, microphone, provider)
+ *  instead of a useless "try again". Pure + exported so it is unit-tested and cannot drift. */
+export function connectionReasonHe(code: string): string {
+  switch (code) {
+    case 'OPENAI_API_KEY_MISSING': return 'החיבור לשרת לא מוגדר — חסר מפתח (OPENAI_API_KEY) בשרת. צריך להגדיר אותו.'
+    case 'OPENAI_API_KEY_INVALID': return 'מפתח השרת לא תקין. צריך לבדוק את ההגדרה בשרת.'
+    case 'REALTIME_QUOTA': return 'חרגנו מהמכסה של השרת כרגע. ננסה מאוחר יותר.'
+    case 'REALTIME_PROVIDER_FAILED': return 'השרת לא הצליח לפתוח שיחת קול כרגע. ננסה שוב.'
+    case 'MIC_PERMISSION_DENIED': return 'אין הרשאה למיקרופון. צריך לאשר גישה למיקרופון בהגדרות הטלפון.'
+    case 'MIC_NOT_FOUND': return 'לא נמצא מיקרופון במכשיר.'
+    case 'TOKEN_NETWORK_ERROR': return 'אין חיבור לרשת כרגע. בדקי את האינטרנט וננסה שוב.'
+    case 'NO_AUDIO_EVENT': return 'לא הצלחתי להשמיע קול. ננסה שוב.'
+    case 'AUDIO_ROUTE_ENDED': return 'הקול נותק (אולי אוזניות/בלוטות). ננסה שוב.'
+    default:
+      if (code.startsWith('SDP_HTTP') || code.startsWith('ICE_') || code === 'DATACHANNEL_CLOSED') return 'החיבור נכשל. ננסה שוב.'
+      if (code.startsWith('CONNECT_EXCEPTION')) return 'משהו השתבש בחיבור. ננסה שוב.'
+      return 'מצב הקול לא זמין כרגע. ננסה שוב.'
+  }
+}
+
 // ─── The live session ───────────────────────────────────────────────────────
 
 export type LiveState = 'idle' | 'connecting' | 'listening' | 'speaking' | 'error'
@@ -374,6 +395,7 @@ export class LiveSession {
   }
 
   private fail(messageHe: string, code: string): void {
+    this.recorder.onFailure(code, messageHe)   // a failed session still produces a downloadable trace
     this.setState('error')
     this.cb.onError?.(messageHe, code)
     this.teardown()
@@ -384,10 +406,13 @@ export class LiveSession {
     this.epoch = ++liveEpoch
     const myEpoch = this.epoch
     this.torn = false
+    this.recorder.onConnectAttempt()   // record the attempt so even a failed connect has a trace
     this.setState('connecting')
 
     // 1. Mint the ephemeral secret SERVER-SIDE. The long-lived key never reaches
-    //    the browser. Fail closed on any problem (no fallback in M1).
+    //    the browser. Fail closed on any problem (no fallback in M1). On failure we
+    //    surface the SPECIFIC reason in plain Hebrew (server key / network / provider)
+    //    — never a bare "try again".
     let clientSecret: string
     let model: string
     try {
@@ -401,13 +426,16 @@ export class LiveSession {
         | null
       if (myEpoch !== liveEpoch) return // superseded while awaiting
       if (!res.ok || !data?.ok || !data.client_secret || !data.model) {
-        return this.fail('מצב הקול לא זמין כרגע.', data?.error ?? 'TOKEN_MINT_FAILED')
+        // The token endpoint already classified the reason (OPENAI_API_KEY_MISSING /
+        // OPENAI_API_KEY_INVALID / REALTIME_QUOTA / REALTIME_PROVIDER_FAILED). Show it.
+        const code = data?.error ?? (res.ok ? 'TOKEN_MINT_FAILED' : `TOKEN_HTTP_${res.status}`)
+        return this.fail(connectionReasonHe(code), code)
       }
       clientSecret = data.client_secret
       model = data.model
     } catch {
       if (myEpoch !== liveEpoch) return
-      return this.fail('אין חיבור כרגע. נסי שוב.', 'TOKEN_NETWORK_ERROR')
+      return this.fail(connectionReasonHe('TOKEN_NETWORK_ERROR'), 'TOKEN_NETWORK_ERROR')
     }
 
     try {
@@ -427,13 +455,13 @@ export class LiveSession {
         // Bluetooth / headphone route changes end the track — surface it, don't
         // wait silently on dead audio.
         const track = stream.getAudioTracks()[0]
-        if (track) track.onended = () => { if (myEpoch === liveEpoch) this.fail('הקול נותק. נסי שוב.', 'AUDIO_ROUTE_ENDED') }
+        if (track) track.onended = () => { if (myEpoch === liveEpoch) this.fail(connectionReasonHe('AUDIO_ROUTE_ENDED'), 'AUDIO_ROUTE_ENDED') }
       }
 
       pc.oniceconnectionstatechange = () => {
         if (myEpoch !== liveEpoch) return
         const st = pc.iceConnectionState
-        if (st === 'failed' || st === 'disconnected') this.fail('החיבור נפל. נסי שוב.', `ICE_${st.toUpperCase()}`)
+        if (st === 'failed' || st === 'disconnected') { const code = `ICE_${st.toUpperCase()}`; this.fail(connectionReasonHe(code), code) }
       }
 
       // 4. One mic track (all cleanups on) — or the replay override. The replay
@@ -446,7 +474,19 @@ export class LiveSession {
         this.micStream = null
         pc.addTrack(micTrack)
       } else {
-        const stream = await this.deps.getUserMedia(LIVE_MIC_CONSTRAINTS)
+        // Mic capture — classify a permission/hardware failure SPECIFICALLY so the
+        // screen can say "microphone permission denied", not a generic connect error.
+        let stream: MediaStream
+        try {
+          stream = await this.deps.getUserMedia(LIVE_MIC_CONSTRAINTS)
+        } catch (micErr) {
+          if (myEpoch !== liveEpoch) return
+          const name = (micErr as { name?: string } | null)?.name ?? ''
+          const code = (name === 'NotAllowedError' || name === 'SecurityError') ? 'MIC_PERMISSION_DENIED'
+            : (name === 'NotFoundError' || name === 'OverconstrainedError') ? 'MIC_NOT_FOUND'
+            : 'MIC_ERROR'
+          return this.fail(connectionReasonHe(code), code)
+        }
         if (myEpoch !== liveEpoch) { stream.getTracks().forEach((t) => t.stop()); return }
         this.micStream = stream
         micTrack = stream.getAudioTracks()[0]!
@@ -458,6 +498,7 @@ export class LiveSession {
       this.dc = dc
       dc.onopen = () => {
         if (myEpoch !== liveEpoch) return
+        this.recorder.onConnectOk(model)   // the live session is up — recorded for the trace
         this.setState('listening')
         // ONE session.update carrying instructions (+ today's date), voice,
         // turn_detection, reasoning.effort, and the tool set.
@@ -479,7 +520,7 @@ export class LiveSession {
       dc.onclose = () => {
         if (myEpoch !== liveEpoch) return
         // Unexpected close (not a user teardown): fail closed with a retry-able state.
-        if (!this.torn) this.fail('החיבור נסגר. נסי שוב.', 'DATACHANNEL_CLOSED')
+        if (!this.torn) this.fail(connectionReasonHe('DATACHANNEL_CLOSED'), 'DATACHANNEL_CLOSED')
       }
 
       // 6. SDP exchange with the CHOSEN model (no drift — server picked it).
@@ -492,13 +533,19 @@ export class LiveSession {
         body: offer.sdp ?? '',
       })
       if (myEpoch !== liveEpoch) return
-      if (!sdpRes.ok) return this.fail('החיבור נכשל. נסי שוב.', `SDP_HTTP_${sdpRes.status}`)
+      if (!sdpRes.ok) { const code = `SDP_HTTP_${sdpRes.status}`; return this.fail(connectionReasonHe(code), code) }
       const answerSdp = await sdpRes.text()
       if (myEpoch !== liveEpoch) return
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp } as RTCSessionDescriptionInit)
     } catch (err) {
       if (myEpoch !== liveEpoch) return
-      this.fail('משהו השתבש בחיבור. נסי שוב.', 'CONNECT_EXCEPTION:' + String((err as Error)?.name ?? 'error').slice(0, 30))
+      // A mic permission/hardware error can also surface here (some browsers reject in
+      // pc setup) — classify it so the reason stays specific, not a generic "something went wrong".
+      const name = String((err as Error)?.name ?? 'error')
+      const code = (name === 'NotAllowedError' || name === 'SecurityError') ? 'MIC_PERMISSION_DENIED'
+        : (name === 'NotFoundError') ? 'MIC_NOT_FOUND'
+        : 'CONNECT_EXCEPTION:' + name.slice(0, 30)
+      this.fail(connectionReasonHe(code), code)
     }
   }
 
@@ -623,7 +670,7 @@ export class LiveSession {
       if (myEpoch !== liveEpoch || this.torn) return
       // Fail closed: a response was created but no audio arrived — say so, don't
       // wait silently. (No TTS fallback exists in M1.)
-      this.fail('לא הצלחתי להשמיע קול. נסי שוב.', 'NO_AUDIO_EVENT')
+      this.fail(connectionReasonHe('NO_AUDIO_EVENT'), 'NO_AUDIO_EVENT')
     }, LIVE_AUDIO_TIMEOUT_MS)
   }
   private clearAudioWatchdog(): void {
