@@ -25,7 +25,7 @@
  * module asserts nothing about the name — it uses whatever the server chose for
  * the SDP call, so the client and mint can never drift.
  */
-import { buildLiveInstructions, buildTranscriptionPrompt } from './liveInstructions'
+import { buildLiveInstructions, buildTranscriptionPrompt, assertInstructionsWithinLimit } from './liveInstructions'
 import { LiveTools, LIVE_TOOL_SCHEMAS, durableCalendarStore, type LiveCalendarStore, type LiveCommDraft, type LiveEvent } from './liveTools'
 import type { CalendarDraft } from '../screens/AbuAI/realtime/calendarDraft'
 import { extractFunctionCall, safeParseArgs, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
@@ -136,11 +136,17 @@ export function todayInstruction(now: number): string {
  *  model owns the turn (create_response TRUE) and reasons natively. Pure so it
  *  can be regression-locked. `now` seeds the runtime "today" line. */
 export function buildSessionUpdate(now: number = Date.now()): Record<string, unknown> {
+  // The ACTUAL string sent to the provider is the assembled instructions PLUS the
+  // runtime "today" line. Guard THAT concatenation against the provider cap — over it
+  // the Realtime session is rejected with string_above_max_length (voice connects,
+  // then dies on device). Fails the build/import if it ever regresses over the cap.
+  const instructions = buildLiveInstructions() + '\n' + todayInstruction(now)
+  assertInstructionsWithinLimit(instructions)
   return {
     type: 'session.update',
     session: {
       type: 'realtime',
-      instructions: buildLiveInstructions() + '\n' + todayInstruction(now),
+      instructions,
       reasoning: { effort: LIVE_REASONING_EFFORT },
       tools: [WAIT_FOR_USER_TOOL, ...LIVE_TOOL_SCHEMAS],
       tool_choice: 'auto',

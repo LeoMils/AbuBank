@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildSessionUpdate, isEndOfTurn as liveIsEndOfTurn, WAIT_FOR_USER_TOOL } from '../liveSession'
-import { buildLiveInstructions } from '../liveInstructions'
+import { buildLiveInstructions, REALTIME_INSTRUCTIONS_MAX } from '../liveInstructions'
 import { LIVE_TOOL_SCHEMAS, LIVE_TOOL_NAMES } from '../liveTools'
 import { buildHarnessSession } from './session'
 
@@ -26,6 +26,16 @@ describe('text harness shares construction with the live voice path', () => {
     expect(harness.instructions).toBe(voice.session.instructions)
     // …and that string really is the shared build-time instructions.
     expect(harness.instructions).toContain(buildLiveInstructions())
+  })
+
+  it('the shared instructions fit the provider cap — the exact string that would reach the device', () => {
+    // The device blocker was string_above_max_length: the assembled instructions grew
+    // past the provider limit, so the Realtime session connected and then died. Because
+    // the harness and voice share ONE instructions string, asserting it here proves the
+    // string the device receives is within the cap. If this fails the build must fail —
+    // move DATA behind people_lookup, never raise the cap.
+    const harness = buildHarnessSession(NOW)
+    expect(harness.instructions.length).toBeLessThanOrEqual(REALTIME_INSTRUCTIONS_MAX)
   })
 
   it('uses the SAME tool registry (liveTools + wait_for_user), not a re-authored one', () => {

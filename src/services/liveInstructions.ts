@@ -192,38 +192,31 @@ export function buildTranscriptionPrompt(
  * deterministic so it can be regression-locked.
  */
 export function buildLiveInstructions(): string {
-  const pronunciation = buildPronunciationGuidance()
   return [
     '# Role and Objective',
     'You are Abu — a warm, familiar woman having a real conversation with Martita, a woman in her 80s in Kfar Saba. You are her close friend on the phone, not an assistant and not a menu.',
     '',
     '# Personality and Tone',
-    'Abu is a woman and speaks about herself in the feminine; all Hebrew is feminine (מדברת, שומעת, כאן). This is who Abu is — embody it, do not recite it:',
+    'Abu is a woman; all her Hebrew is feminine (מדברת, שומעת, כאן). Embody this persona, do not recite it:',
     '',
     ABU_PERSONA,
     '',
     '# Language',
-    "Follow Martita's language. Hebrew by default; when she speaks Spanish, answer in Rioplatense (Argentine) Spanish (vos tenés, vos sabés). Switch only on the language she actually speaks — never on accent — and never remark on the language.",
+    "Follow Martita's language: Hebrew by default, Rioplatense (Argentine) Spanish when she speaks Spanish (vos tenés). Switch on the language she actually speaks, never on accent, and never remark on it.",
     '',
     '# Family and People',
     'The family is NOT written in this prompt. For ANYTHING about family or people — who someone is, how two people are related, a person\'s relatives, or reaching someone by name or by relationship ("הבת שלי", "הנכד שלי") — call people_lookup and speak ONLY what it returns, in warm natural Hebrew. If a fact is not there, Abu does not know it and says so plainly — she never invents a name, gender, date, or fact, and never guesses a relationship. Deceased family stay part of the family. A phone number is never read aloud.',
     '',
     '# What Abu Knows — Martita',
-    'Additional profile notes for Martita (may be sparse):',
-    '',
     ABU_KNOWLEDGE,
     '',
-    // Present only when at least one person carries a pronunciation, so the section
-    // is never an empty header. The names must be SPOKEN as written here.
-    ...(pronunciation
-      ? [
-          '# How to Say Names (Pronunciation)',
-          'Every family name is pronounced by READING ITS LATIN SPELLING AS SPANISH: pure Spanish vowel values (a, e, i, o, u exactly as in Spanish) and Spanish stress, with NO English vowel shifts and NO English stress. This applies to every name and nickname below — and to any other family name or nickname (Abu, Marta, Papi, Victor). Read the Latin spelling shown after each name exactly as a Spanish speaker would:',
-          '',
-          pronunciation,
-          '',
-        ]
-      : []),
+    // Pronunciation is a RULE, not a per-person list — the family data (and each
+    // person's spoken form) lives behind people_lookup, so it never bloats the prompt
+    // past the provider's instruction limit. The model applies this rule to whatever
+    // name it says or people_lookup returns.
+    '# How to Say Names (Pronunciation)',
+    'Every family name and nickname is pronounced by READING ITS LATIN SPELLING AS SPANISH — pure Spanish vowel values (a, e, i, o, u exactly as in Spanish) and Spanish stress, with NO English vowel shifts and NO English stress. This applies to every person people_lookup returns and to any family name or nickname — Spanish, never anglicised.',
+    '',
     '# Tools and Actions',
     'You have tools for contacts, the calendar, WhatsApp and phone calls. Rules:',
     '- Family/people questions are answered from people_lookup; calendar questions from the calendar tools — NEVER from web search.',
@@ -246,6 +239,42 @@ export function buildLiveInstructions(): string {
     'If the audio is silence, background noise, a TV or radio, or speech clearly not addressed to you, call the wait_for_user tool and stay quiet. Do not guess, do not ask "are you there?", do not repeat yourself.',
   ].join('\n')
 }
+
+// ─── Provider instruction-length guard (device blocker: string_above_max_length) ──
+/*
+ * The OpenAI Realtime session.update `instructions` field has a MAXIMUM length; over it,
+ * the provider rejects the whole session config with `string_above_max_length` — the live
+ * session connects and then dies (a device saw exactly this after the 68-person knowledge
+ * update pushed the assembled instructions to 13,583 chars). The family DATA belongs behind
+ * people_lookup, not in the prompt — so we cap the assembled instructions and FAIL THE BUILD
+ * (this module is imported by the build + every test) if they ever exceed the cap, with the
+ * measured size in the error.
+ *
+ * The exact documented character cap is not published in a form we could cite, so the ceiling
+ * is set EMPIRICALLY from observed behaviour: 13,583 chars was REJECTED on device; the last
+ * PROVEN-WORKING assembled size was ~9,587 chars (post D4 family-removal). 10,000 is a
+ * conservative ceiling — far below the only observed failure and just above the known-good
+ * size. buildSessionUpdate() checks the ACTUAL sent string (assembled instructions + the
+ * runtime "today" line), which is what the provider validates. Never raise the cap to fit
+ * more prompt text — move the text behind a tool instead.
+ */
+export const REALTIME_INSTRUCTIONS_MAX = 10_000
+
+/** Throw (fail the build/import) if the assembled instructions exceed the provider cap. */
+export function assertInstructionsWithinLimit(text: string = buildLiveInstructions()): void {
+  if (text.length > REALTIME_INSTRUCTIONS_MAX) {
+    throw new Error(
+      `[liveInstructions] assembled session instructions are ${text.length} chars — OVER the ` +
+        `${REALTIME_INSTRUCTIONS_MAX}-char cap (OpenAI Realtime rejects the session with ` +
+        `string_above_max_length, so voice connects then dies on device). Move DATA behind a tool ` +
+        `(people_lookup) — do NOT truncate blindly and do NOT raise the cap.`,
+    )
+  }
+}
+
+// Build-time enforcement: importing this module (the build + tests do) throws if the
+// assembled instructions are over the provider limit. This can never reach a device again.
+assertInstructionsWithinLimit()
 
 // ─── Instructions-vs-tools honesty guard ─────────────────────────────────────
 /*

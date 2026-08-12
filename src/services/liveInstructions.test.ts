@@ -17,11 +17,14 @@ import {
   findPhoneNumbers,
   assertNoPhoneNumbers,
   auditInstructionsVsTools,
+  assertInstructionsWithinLimit,
+  REALTIME_INSTRUCTIONS_MAX,
   TOOLLESS_CAPABILITY_GUARD,
   ABU_PERSONA,
   ABU_FAMILY,
   ABU_KNOWLEDGE,
 } from './liveInstructions'
+import { buildSessionUpdate } from './liveSession'
 
 const KNOWLEDGE_DIR = path.resolve(__dirname, '../../knowledge')
 
@@ -152,15 +155,18 @@ describe('name pronunciation guidance (read the Latin spelling as Spanish)', () 
     }
   })
 
-  it('the seeded family: names are read as Spanish, by their Latin spelling (no invented respellings)', () => {
+  it('pronunciation is a RULE in the prompt, not a per-person enumeration (the list lives behind people_lookup)', () => {
     const out = buildLiveInstructions()
     expect(out).toContain('# How to Say Names (Pronunciation)')
     expect(out).toMatch(/READING ITS LATIN SPELLING AS SPANISH/i)
     expect(out).toMatch(/no English vowel shifts/i)
-    // the exact Latin spellings Leo supplied — Leo → "leo", Ayalon read as "eilon"
-    expect(out).toContain('לאו (Leo) — Spanish: leo')
-    expect(out).toContain('איילון (Ayalon) — Spanish: eilon')
-    // the old free-text respelling is gone
+    // The per-person enumeration is GONE from the prompt (it bloated the instructions
+    // past the provider cap — string_above_max_length on device). The rule applies to
+    // whatever people_lookup returns; the spoken forms travel with the tool data.
+    expect(out).not.toContain('לאו (Leo) — Spanish: leo')
+    expect(out).not.toContain('איילון (Ayalon) — Spanish: eilon')
+    expect(out).not.toMatch(/— Spanish: \w+/) // no "— Spanish: <form>" bullets remain
+    // the old free-text respelling is gone too
     expect(out).not.toContain('LEH-oh')
     // the section sits after Martita's profile and before the tools
     expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeGreaterThan(out.indexOf('# What Abu Knows — Martita'))
@@ -186,6 +192,33 @@ describe('buildTranscriptionPrompt (Hebrew transcription bias)', () => {
 
   it('contains no phone numbers (built from names/phrasings only)', () => {
     expect(findPhoneNumbers(buildTranscriptionPrompt())).toEqual([])
+  })
+})
+
+describe('provider instruction-length guard (device blocker: string_above_max_length)', () => {
+  it('the assembled instructions are within the provider cap', () => {
+    expect(buildLiveInstructions().length).toBeLessThanOrEqual(REALTIME_INSTRUCTIONS_MAX)
+  })
+
+  it('the ACTUAL sent string (instructions + today line) is within the cap', () => {
+    // buildSessionUpdate sends buildLiveInstructions() + the runtime "today" line —
+    // that concatenation is what the provider validates, so THAT is what must fit.
+    const update = buildSessionUpdate(Date.UTC(2026, 7, 12)) as { session: { instructions: string } }
+    const sent = update.session.instructions
+    expect(sent.length).toBeLessThanOrEqual(REALTIME_INSTRUCTIONS_MAX)
+    expect(() => assertInstructionsWithinLimit(sent)).not.toThrow()
+  })
+
+  it('the guard has teeth — it THROWS (fails the build) when instructions exceed the cap', () => {
+    const over = 'x'.repeat(REALTIME_INSTRUCTIONS_MAX + 1)
+    expect(() => assertInstructionsWithinLimit(over)).toThrow(/string_above_max_length/)
+    expect(() => assertInstructionsWithinLimit(over)).toThrow(new RegExp(`${REALTIME_INSTRUCTIONS_MAX}-char cap`))
+    // and reports the measured size in the error
+    expect(() => assertInstructionsWithinLimit(over)).toThrow(new RegExp(`${REALTIME_INSTRUCTIONS_MAX + 1} chars`))
+  })
+
+  it('a string exactly at the cap is allowed (boundary)', () => {
+    expect(() => assertInstructionsWithinLimit('x'.repeat(REALTIME_INSTRUCTIONS_MAX))).not.toThrow()
   })
 })
 
