@@ -21,6 +21,49 @@ hearing the recording hears two friends talking.
 - Loop: after each phase, judge output against the goal, improve, note the second-pass change.
 - Before context runs low: update this file, say it is safe to /clear.
 
+## STATUS (for a fresh session)
+DONE + pushed: **P0 critique · P1 measure · P2 division · P3 portrait** (commit 900a3c7,
+v0.220.0). The core architectural change — Abu holds her family in her head — is shipped and
+provider-verified (HTTP 200 on the real payload). P4 is **substantially delivered** by the
+portrait (relationships + friends/family lists are now in her head) plus this branch's FIX 1+2
+(one retrieval path + describe-the-path, never "unrelated"); what remains for P4 is the
+companion-harness proof, which belongs to P9. **Next to build: P5** (friend behaviour: extend the
+announce guard to every phrasing; add "bring things up" / "connect sideways" / warmth to the
+persona, rate-limited), then P6/P7/P8/P9. P7 (online) and P8 (audio/device) need external provider
+health + a real device trace. See per-phase next-actions in DEVICE_TRACE_FIXES_STATUS.md (FIX 6/8
+overlap P7/P8).
+
+## Phase 10 — PROPOSALS (analysis only; Leo chooses — do NOT build)
+1. **Memory across conversations.** Today every session starts fresh. A tiny, redacted,
+   opt-in "since we last spoke" store (last topics, a promise made — "you were going to call
+   Ofir", a mood) would make her feel continuous. RISK: privacy + drift; must be redacted
+   (evolution/redaction already exists), user-visible, and never medical/financial. HIGH warmth,
+   MEDIUM risk. Recommend a small, transparent, forgettable memory — not a dossier.
+2. **Should she initiate?** A gentle proactive line ("בוקר טוב, מרתה — יום שלישי, את אצל מור
+   היום?") is powerful but dangerous for an 81-year-old living alone: it must NEVER feel like
+   surveillance or nagging, never imply she is being watched, and be strictly rate-limited and
+   opt-in. Recommend: only within an open session (she opened the app), never an unsolicited
+   push/notification, at first.
+3. **Repetition / confusion.** If Martita repeats herself, Abu should respond as if fresh and
+   warm — never "you already told me that". If she seems confused, slow down, shorten, offer one
+   thing at a time. Recommend a "gentle mode": shorter sentences, one question at a time, more
+   confirmation. Detectable heuristically (repeated intent, long pauses) — testable in the harness.
+4. **After two failed understandings.** Today the rule is "rephrase once". Propose a graceful
+   third step: offer the simplest concrete option ("רוצה שאתקשר ללאו?") rather than a third
+   rephrase, so she is never stuck in a loop.
+5. **Distress (sad / frightened / unwell).** This is the most important and most dangerous
+   surface. Loneliness → listen and engage, do not "solve with tips" (rule already exists). But
+   "I fell" / "I have chest pain" / "I am scared" MUST route to a clear, calm action: offer to
+   call Leo / a family member immediately, and know the limits (Abu is not an emergency service).
+   Propose an explicit, tested distress protocol — this is a SAFETY item, not a feature. Highest
+   priority of the proposals.
+6. **Quiet harms to audit.** (a) Never present residence as live location (rule exists — keep).
+   (b) Never let a hallucinated "fact" about family stand — the portrait + "unknown stays unknown"
+   guards this, but the real-model harness (P9) must probe it. (c) Never create dependency that
+   isolates her further from real people — Abu should gently push toward calling real family
+   ("למה שלא תתקשרי לאופיר?"), which the persona already does. (d) Financial/medical: never store,
+   never advise. Recommend a standing "companion safety" harness suite alongside P9.
+
 ## Phase checklist
 - [x] P0  Critique + improve this brief (see Decisions)
 - [x] P1  Measure: real provider limits (instructions + transcription), prose-portrait size, headroom, cost/latency
