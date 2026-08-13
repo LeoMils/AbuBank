@@ -8,8 +8,11 @@
   mid-conversation update), Journeys (card→WhatsApp handoff, confirm→two-events). SEPARATE harness
   needed for App RTL-break / back-nav / name-overflow (Playwright/DOM-render — the unit harness runs
   `vitest run`, not `playwright test`; do NOT force these into it as weak proxies).
-- **O2 · Invariants not always-on** — `companionSuite` invariants are key-gated (real model).
-  No deterministic per-turn invariant assertion over the scenario corpus in CI. Blocks exit #5.
+- **O2 · Invariants not always-on — CLOSED (v0.230).** `src/eval/alwaysOnInvariants.test.ts` now
+  asserts the deterministic A4 invariants (no phone aloud / no-announce / no red wine / feminine
+  self-ref) on every turn of a key-free corpus via `runFullTurn`, with a teeth test. Found + fixed a
+  dead Hebrew-`\b` regex that had made the no-announce check a silent no-op. Residual: model-layer
+  invariants (warmth, full distress wording) still need the key-gated companion suite + credits.
 
 ## Feature gaps surfaced by the mutation sweep
 - **O-LIFECYCLE 🟠P1 — session idle-timeout lifecycle absent/undiscovered.** No deterministic module

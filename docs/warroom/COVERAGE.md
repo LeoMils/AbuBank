@@ -5,7 +5,7 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
 
 | | regression | simulator | adversary | invariants | metamorphic | differential | mutation |
 |---|---|---|---|---|---|---|---|
-| **A · Brain** | ✓ | ✓ | ~ | ~ | ✓ | ~ | ~ |
+| **A · Brain** | ✓ | ✓ | ~ | ✓ | ✓ | ~ | ~ |
 | **B · App** | ~ | ~ | ~ | ~ | ✗ | ~ | ~ |
 | **C · Platform** | ~ | – | ~ | ~ | ✗ | ~ | ~ |
 | **D · Journeys** | ✓ | ~ | ~ | ~ | ✗ | ✓ | ~ |
@@ -22,8 +22,11 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
 - **adversary ~** — `adversarialTrust`, `realtime/sessionOrchestratorAdversarial`,
   `people/fuzzyMatch` fuzz. GAP: no systematic fuzz (emoji-only/numeric/huge/mixed-script) nor
   a prompt-INJECTION-through-data suite (message content / contact names / calendar titles).
-- **invariants ~** — encoded in `services/textHarness/companionSuite.test.ts` but **KEY-GATED**
-  (needs `OPENAI_API_KEY`). GAP: no always-on DETERMINISTIC invariant assertion over the corpus.
+- **invariants ✓ (O2 closed)** — `src/eval/alwaysOnInvariants.test.ts` drives the key-free
+  `runFullTurn`/`IDLE_RUNTIME` over a deterministic corpus and asserts on EVERY turn: no phone
+  aloud, no announce-before-answer, no red wine, feminine self-reference — with a TEETH test proving
+  each detector fires (caught a dead Hebrew-`\b` regex that had silently disabled no-announce). The
+  model-layer invariants (warmth, full distress wording) remain in the key-gated companion suite.
 - **metamorphic ✓** — `familyReasonerProperties.test.ts` = full 68×68 inverse-consistency +
   BFS-path + determinism + 2000-query random-graph fuzz. (HE/ES same-fact & ask-twice: verify.)
 - **differential ~** — `e2e/device-replay.spec`, `e2e/preview-parity.spec`. GAP: no automated
