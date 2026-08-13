@@ -70,6 +70,7 @@ export class FlightRecorder {
   private readonly truncations: TruncationFlag[] = []
   private readonly connection: ConnectionEvent[] = []
   private readonly recoverable: Array<{ t: number; code: string }> = []
+  private readonly toolIssues: Array<{ t: number; name: string; reason: 'error' | 'timeout' }> = []
   private seq = 0
   private readonly startWall: number
 
@@ -187,6 +188,16 @@ export class FlightRecorder {
   }
   /** How many recoverable races were handled (test/diagnostics). */
   recoverableErrorCount(): number { return this.recoverable.length }
+
+  /** FIX 5: a tool did not return normally (threw, or an async tool timed out). The executor
+   *  still sent an honest fallback; this records WHICH tool and WHY so a non-returning call is
+   *  visible in the trace instead of a silent wait. */
+  onToolIssue(name: string, reason: 'error' | 'timeout'): void {
+    this.toolIssues.push({ t: this.now() - this.startWall, name, reason })
+    this.add('note', { text: `tool ${name} did not return (${reason}) — honest fallback sent` })
+  }
+  /** How many tool calls did not return normally (test/diagnostics). */
+  toolIssueCount(): number { return this.toolIssues.length }
 
   /** True if any failure was recorded (so the UI/exporter knows a trace is worth keeping). */
   hasFailure(): boolean { return this.connection.some((c) => c.kind === 'failed') }

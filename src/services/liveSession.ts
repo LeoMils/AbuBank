@@ -407,6 +407,7 @@ export class LiveSession {
         onCalendarDraft: (d) => this.cb.onCalendarDraft?.(d),
         onCalendarSaved: (e) => this.cb.onCalendarSaved?.(e),
         onCommDraft: (d) => this.cb.onCommDraft?.(d),
+        onToolIssue: (name, reason) => this.recorder.onToolIssue(name, reason), // FIX 5: log a non-returning tool
       },
     )
   }

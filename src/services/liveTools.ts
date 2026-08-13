@@ -73,6 +73,10 @@ export interface LiveToolsCallbacks {
    *  receipt card showing the saved fields (not just what was drafted). */
   onCalendarSaved?: (e: LiveEvent) => void
   onCommDraft?: (d: LiveCommDraft | null) => void
+  /** FIX 5: a tool did not return normally — it threw, or an async tool timed out. The
+   *  executor still sends an honest fallback output (never hangs); this logs WHICH call
+   *  and WHY so a non-returning tool is visible in the trace, not a silent wait. */
+  onToolIssue?: (name: string, reason: 'error' | 'timeout') => void
 }
 
 /** The tools the live model may request. Kept minimal and precise for this path
@@ -189,6 +193,11 @@ export const LIVE_TOOL_SCHEMAS = [
 export const LIVE_TOOL_NAMES: string[] = LIVE_TOOL_SCHEMAS.map((t) => t.name)
 const COMM_TOOLS = new Set(['whatsapp_draft', 'phone_call', 'cancel_communication'])
 const ONLINE_TOOL = 'get_current_info'
+/** FIX 5: an async tool (the online round-trip) that does not answer within this budget is
+ *  cut off with an honest "could not check" fallback — Martita never waits on a silent hang. */
+export const LIVE_TOOL_TIMEOUT_MS = 8000
+/** Sentinel resolved by the timeout race when the tool did not answer in time. */
+const TOOL_TIMEOUT = Symbol('tool_timeout')
 
 /** Non-secret endpoint diagnostic (mirror of api/abuai-online OnlineDiag). Provider
  *  name + booleans + counts only — NEVER a key. Logged so a device trace shows WHY
@@ -234,7 +243,16 @@ export class LiveTools {
     private readonly store: LiveCalendarStore,
     private readonly cb: LiveToolsCallbacks = {},
     private readonly onlineFetch: OnlineFetch = defaultOnlineFetch(),
+    private readonly toolTimeoutMs: number = LIVE_TOOL_TIMEOUT_MS,
   ) {}
+
+  /** Race a tool promise against the timeout budget; resolves to TOOL_TIMEOUT if it is slow.
+   *  The timer is cleared when the tool wins, so a fast tool leaves no pending timeout. */
+  private async withTimeout<T>(p: Promise<T>): Promise<T | typeof TOOL_TIMEOUT> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<typeof TOOL_TIMEOUT>((resolve) => { timer = setTimeout(() => resolve(TOOL_TIMEOUT), this.toolTimeoutMs) })
+    try { return await Promise.race([p, timeout]) } finally { if (timer) clearTimeout(timer) }
+  }
 
   /** True for every tool this executor owns (everything except wait_for_user). */
   static owns(name: string): boolean { return LIVE_TOOL_NAMES.includes(name) }
@@ -255,6 +273,14 @@ export class LiveTools {
       const json = JSON.stringify(output)
       this.handled.set(fc.callId, json)
       this.reply(fc.callId, json)
+    } catch {
+      // FIX 5: a sync tool threw. Previously there was no catch, so reply() never fired and
+      // the model waited forever for a result — the "people_lookup fired, no result arrived,
+      // both sides waited" hang. Always send an honest fallback output so the turn completes.
+      this.cb.onToolIssue?.(fc.name, 'error')
+      const json = JSON.stringify({ status: 'error', allowed_to_say: ['say plainly and warmly that you could not do that just now', 'do NOT claim it worked'] })
+      this.handled.set(fc.callId, json)
+      this.reply(fc.callId, json)
     } finally {
       this.inFlight.delete(fc.callId)
     }
@@ -266,7 +292,17 @@ export class LiveTools {
   private async handleOnline(fc: ParsedFunctionCall): Promise<void> {
     try {
       const query = str(safeArgs(fc.argsJson), 'query') ?? ''
-      const r = await this.onlineFetch(query)
+      const raced = await this.withTimeout(this.onlineFetch(query))
+      if (raced === TOOL_TIMEOUT) {
+        // FIX 5: the online round-trip did not answer in time — cut it off with an honest miss
+        // instead of leaving the model (and Martita) waiting on a silent hang. Logged.
+        this.cb.onToolIssue?.(ONLINE_TOOL, 'timeout')
+        const json = JSON.stringify({ status: 'no_result', allowed_to_say: ['say plainly you could not check current information right now', 'never answer a current fact from memory'] })
+        this.handled.set(fc.callId, json)
+        this.reply(fc.callId, json)
+        return
+      }
+      const r = raced
       const output = r && r.ok && r.answer
         ? { status: 'ok', answer: r.answer, sources: r.sources ?? [], allowed_to_say: ['say ONLY this grounded answer, and mention the source', 'never add a fact it did not give'] }
         : { status: 'no_result', allowed_to_say: ['say plainly you could not check current information right now', 'never answer a current fact from memory'] }

@@ -90,8 +90,9 @@ describe('tool-agnostic speech guarantee', () => {
       const sent: Array<Record<string, unknown>> = []
       const tools = new LiveTools((e) => sent.push(e), memStore(), {}, fastOnline)
       tools.handleFunctionCall({ name, callId: `c-${name}`, argsJson: '{}' })
-      // get_current_info is async (a server round-trip) — flush microtasks.
-      await Promise.resolve(); await Promise.resolve()
+      // get_current_info is async (a server round-trip, now behind a timeout race) — flush
+      // to the next macrotask so every microtask hop of the async path has settled.
+      await new Promise((r) => setTimeout(r, 0))
       const speaks = sent.filter((e) => e.type === 'response.create').length
       expect(speaks, `tool "${name}" must speak its result in the same turn`).toBe(1)
     }
@@ -423,6 +424,36 @@ describe('get_current_info — grounded online tool (async, no verified result �
     await tick()
     expect(calls).toBe(1)
     expect(h.sent.filter((e) => e.type === 'conversation.item.create')).toHaveLength(1)
+  })
+})
+
+// ─── FIX 5: a tool must never leave the model (and Martita) waiting on a silent hang ──
+describe('FIX 5: tools always return — timeout + honest fallback + logging', () => {
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+  it('an online tool that NEVER answers times out with an honest miss, speaks it, and logs the issue', async () => {
+    const sent: Array<Record<string, unknown>> = []
+    const issues: Array<{ n: string; r: string }> = []
+    // a fetch that never resolves; tiny 5ms timeout budget
+    const tools = new LiveTools((e) => sent.push(e), memStore(), { onToolIssue: (n, r) => issues.push({ n, r }) }, () => new Promise<never>(() => { /* hangs forever */ }), 5)
+    tools.handleFunctionCall({ name: 'get_current_info', callId: 'to1', argsJson: JSON.stringify({ query: 'מה החדשות?' }) } as ParsedFunctionCall)
+    await wait(30)
+    const item = sent.find((e) => e.type === 'conversation.item.create')?.item as { output?: string } | undefined
+    expect(item?.output ? JSON.parse(item.output).status : null).toBe('no_result')
+    expect(sent.some((e) => e.type === 'response.create')).toBe(true) // the model still gets to speak the honest miss
+    expect(issues).toEqual([{ n: 'get_current_info', r: 'timeout' }])
+  })
+
+  it('a SYNC tool that throws still replies with an honest error (no hang) and logs the issue', () => {
+    const sent: Array<Record<string, unknown>> = []
+    const issues: Array<{ n: string; r: string }> = []
+    const throwingStore = { events: [], list: () => { throw new Error('store down') }, add: () => { throw new Error('store down') }, update: () => null }
+    const tools = new LiveTools((e) => sent.push(e), throwingStore as unknown as LiveCalendarStore, { onToolIssue: (n, r) => issues.push({ n, r }) })
+    tools.handleFunctionCall({ name: 'read_calendar', callId: 'e1', argsJson: JSON.stringify({ date: '2026-08-20' }) } as ParsedFunctionCall)
+    const item = sent.find((e) => e.type === 'conversation.item.create')?.item as { output?: string } | undefined
+    expect(item?.output ? JSON.parse(item.output).status : null).toBe('error')
+    expect(sent.some((e) => e.type === 'response.create')).toBe(true) // model speaks the honest fallback, never hangs
+    expect(issues).toEqual([{ n: 'read_calendar', r: 'error' }])
   })
 })
 
