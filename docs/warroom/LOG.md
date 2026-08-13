@@ -72,27 +72,28 @@ unusually mature test estate. Concretely verified already-covered:
   raw digits gone), plus a long digit-run → `[number]`. Green on correct code; KILLS the mutation.
 - **Re-run:** harness **100% (7/7)**, control behaves. P0/P1 kill rate 7/7.
 
-### ▶ RESUME POINT (safe to /clear) — pushed at 7bd1ab4, build 0.232.0
-State: baseline GREEN (typecheck · **12,681 tests** · build) — TWO consecutive clean full runs under
-parallel load (flake fix holds). All work pushed to `rc5/cognitive-architecture-and-acceptance`.
+### ▶ RESUME POINT (safe to /clear) — pushed at 90743e7, build 0.233.0
+State: baseline GREEN (typecheck · **12,686 tests** · build) — multiple consecutive clean full runs
+under parallel load (flake fix holds). All work pushed to `rc5/cognitive-architecture-and-acceptance`.
 Working tree's remaining `M` files are PRE-EXISTING (dirty at session start — NOT this run's; do not
-touch). Nothing of this run is uncommitted. A vite dev server may still be running on :5175 (only
-needed for the Playwright DOM harness) — safe to kill.
+touch). Nothing of this run is uncommitted. Dev server on :5175 (DOM harness only) — safe to kill.
 
-**DONE this run:** unit mutation harness 15/15 (Brain/Online/Privacy/App/Journey/Platform+Lifecycle)
-· Playwright DOM harness 2/2 (RTL+touch) · O2 always-on invariants · O-FLAKE root-fixed · O-LIFECYCLE
-policy core built+tested (11/11) · O3/O4/O5 documented (`PRODUCTION_PATH.md`) · coverage matrix closed.
+**DONE this run:** unit mutation harness 15/15 · Playwright DOM harness 2/2 · O2 always-on invariants
+· O-FLAKE root-fixed · O-LIFECYCLE policy core (11/11) **+ WIRED into the live realtime session**
+(realtimeVoiceLifecycle.test 5/5, no regression 139/139) · O3/O4/O5 documented (`PRODUCTION_PATH.md`)
+· coverage matrix closed.
 
 **REMAINING — all in OPEN.md with resumable plans (zero re-derivation):**
 1. **H1 ONE VOICE ENGINE** — AbuCalendar's separate mic (`VoiceCard.tsx`+`calendarTranscribe.ts`)
    → route to Abu AI or remove. Medium-risk; own reviewed commit; keep voice tests green.
 2. **H2 ONLINE DEPTH** — full Tavily fan-out, 10+ headlines held in session, cinema honesty, verify
    3 keys. PREVIEW-class (needs real keyed calls).
-3. **H3 COST** per 20-min, measured before/after (needs O-LIFECYCLE WIRED first).
-4. **H-WIRE** — wire `sessionLifecycle.ts` into the live realtime session (medium-risk, device proof).
-5. **H4** reliability tail: 429 backoff, audio truncation, second-voice-at-start, people store
+3. **H3 COST** per 20-min, measured before/after — now UNBLOCKED (O-LIFECYCLE wired; idle streaming
+   stops). Instrument tokens/audio-min via `aiSpendGuard` + `latencyInstrumentation`.
+4. **H4** reliability tail: 429 backoff, audio truncation, second-voice-at-start, people store
    reachable everywhere — audit current state first.
-6. **Adversary fuzz/injection suite** — the top code-buildable coverage gap (see COVERAGE closing).
+5. **Adversary fuzz/injection suite** — top code-buildable coverage gap (see COVERAGE closing).
+6. **Device proof** for the wired lifecycle (idle-cost saving + audible goodbye) — Leo's iPhone.
 
 #### F3 — mutation harness extended to Layer B (App): 10/10, no new survivor
 - Added 3 app-layer mutants with deterministic vitest owners: **touch-target 56→40** and
