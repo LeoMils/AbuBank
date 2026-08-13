@@ -15,12 +15,13 @@
   invariants (warmth, full distress wording) still need the key-gated companion suite + credits.
 
 ## Feature gaps surfaced by the mutation sweep
-- **O-LIFECYCLE 🟠P1 — session idle-timeout lifecycle absent/undiscovered.** No deterministic module
-  implements the brief's 12s stop-streaming / 25s ask-once-warmly / 45s warm-goodbye-and-close /
-  one-tap-resume-with-thread / 20-min-outward-nudge. `IDLE_RUNTIME` is a cognitive-runtime state,
-  `responseLifecycle` is audio-state only. Needs discovery: is it in the realtime session
-  orchestrator (event-driven, no unit test) or genuinely missing? Then build + test. Also the brief's
-  cost argument hangs off this (an idle session must stop costing money).
+- **O-LIFECYCLE 🟡 — policy core BUILT + tested (v0.232); live wiring PENDING.** `src/services/
+  sessionLifecycle.ts` is the deterministic single-source reducer (11/11 tests) for 12s stop-upstream
+  / 25s ask-once / 45s warm-goodbye+close / never-close-mid-task / 20-min single outward nudge /
+  resume-keeps-thread. Two lifecycle mutants added (both KILLED). **Remaining (medium-risk, not done
+  here):** wire it into the live realtime audio session so the clocks actually drive it on device —
+  event-driven integration touching the session orchestrator (four clocks). That is the only part
+  left; it needs a careful, separately-reviewed change (and device proof for the cost claim).
 
 ## Reliability finding (Run 1)
 - **O-FLAKE 🟡P2 — CLOSED at root (v0.231), no retries.** Root cause: `buildCommunicationAction`

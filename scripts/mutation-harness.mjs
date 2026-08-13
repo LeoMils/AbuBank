@@ -144,6 +144,23 @@ const MUTANTS = [
   // 45s warm-goodbye) is NOT seeded — no deterministic module/constants exist for it
   // (IDLE_RUNTIME is a cognitive-runtime state, responseLifecycle is audio-state only).
   // That absence is a real feature gap, tracked in OPEN.md O-LIFECYCLE — see docs/warroom.
+  // ── Layer C · Platform · Session lifecycle (O-LIFECYCLE) ──
+  {
+    id: 'lifecycle-closes-mid-task', layer: 'C/Platform·Lifecycle', severity: 'P0',
+    desc: 'never-close-mid-task law removed — an idle session would close/interrupt while a task is in flight',
+    file: 'src/services/sessionLifecycle.ts',
+    find: "if (i.midTask) return { action: 'none', closes: false }",
+    replace: "if (false) return { action: 'none', closes: false }",
+    owner: 'src/services/sessionLifecycle.test.ts', expect: 'kill',
+  },
+  {
+    id: 'lifecycle-goodbye-does-not-close', layer: 'C/Platform·Lifecycle', severity: 'P1',
+    desc: 'warm goodbye no longer closes the session — an idle session keeps streaming (cost + confusion)',
+    file: 'src/services/sessionLifecycle.ts',
+    find: "return { action: 'warm-goodbye', speak: GOODBYE_HE, closes: true }",
+    replace: "return { action: 'warm-goodbye', speak: GOODBYE_HE, closes: false }",
+    owner: 'src/services/sessionLifecycle.test.ts', expect: 'kill',
+  },
   // ── Negative control: a comment edit that changes NO behavior. MUST survive. ──
   {
     id: 'control-comment-noop', layer: 'control', severity: 'control',

@@ -122,6 +122,14 @@ State: baseline GREEN (typecheck · 12,668 tests · build). Three commits pushed
 - Closes the "App RTL/overflow needs Playwright" gap the unit harness honestly could not cover.
   Back-nav + name-overflow still uncovered (no owning spec yet) — tracked in COVERAGE/OPEN.
 
+#### F6 — O-LIFECYCLE policy core built + tested; harness 15/15
+- Built `src/services/sessionLifecycle.ts` — pure deterministic reducer (11/11 tests) for the
+  brief's session contract: 12s stop-upstream · 25s ask-once ("את שם?") · 45s warm-goodbye+close ·
+  never-close-mid-task (top rule) · 20-min single outward nudge · resume keeps the thread.
+- Added 2 lifecycle mutants (never-close-mid-task removed; goodbye no longer closes) — both KILLED;
+  unit harness now **15/15**. Honest scope: tested policy core + mutants only; wiring into the live
+  realtime session is a flagged medium-risk follow-up (OPEN O-LIFECYCLE).
+
 ### Run 1 mutation summary
 **10 deterministic mutants + 1 negative control → 100% kill (10/10).** Started 80% → 100% after
 closing TWO real blind spots (family label gender F1, Israeli-ID redaction F2); then extended into
