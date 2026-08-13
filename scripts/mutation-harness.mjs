@@ -114,6 +114,36 @@ const MUTANTS = [
     replace: 'durable.setString(STORAGE_KEY, JSON.stringify(appts.map(({ title, ...rest }) => rest)))',
     owner: 'src/screens/AbuCalendar/calendarPersistence.test.ts', expect: 'kill',
   },
+  // ── Layer D · Journeys (end-to-end handoffs) ──
+  {
+    id: 'journey-whatsapp-handoff-drops-message', layer: 'D/Journey', severity: 'P1',
+    desc: 'card→WhatsApp handoff: the composed message is not passed to the wa.me link (Martita taps Send and the text is missing)',
+    file: 'src/services/liveActionCards.ts',
+    find: 'const { url, reason } = handoff(recipient, message)',
+    replace: "const { url, reason } = handoff(recipient, '')",
+    owner: 'src/services/liveActionCards.test.ts', expect: 'kill',
+  },
+  {
+    id: 'journey-confirm-two-events', layer: 'D/Journey', severity: 'P0',
+    desc: 'confirm→two-events: exactly-once dedup by call id disabled — the same calendar confirm creates the event twice',
+    file: 'src/screens/AbuAI/realtime/calendarDraftController.ts',
+    find: 'if (cached) return cached',
+    replace: 'if (cached && false) return cached',
+    owner: 'src/screens/AbuAI/realtime/calendarRuntimeIntegration.test.ts', expect: 'kill',
+  },
+  // ── Layer C · Platform ──
+  {
+    id: 'platform-stale-bundle-undetected', layer: 'C/Platform·PWA', severity: 'P1',
+    desc: 'SW/stale-bundle detection broken — a new deployed version is NOT detected as stale, so the device serves old code forever',
+    file: 'src/services/versionSync.ts',
+    find: 'const stale = c !== s',
+    replace: 'const stale = c === s',
+    owner: 'src/services/versionSync.test.ts', expect: 'kill',
+  },
+  // NOTE: the idle-timeout session-lifecycle mutant (12s stop-streaming / 25s ask-once /
+  // 45s warm-goodbye) is NOT seeded — no deterministic module/constants exist for it
+  // (IDLE_RUNTIME is a cognitive-runtime state, responseLifecycle is audio-state only).
+  // That absence is a real feature gap, tracked in OPEN.md O-LIFECYCLE — see docs/warroom.
   // ── Negative control: a comment edit that changes NO behavior. MUST survive. ──
   {
     id: 'control-comment-noop', layer: 'control', severity: 'control',

@@ -96,6 +96,19 @@ State: baseline GREEN (typecheck · 12,668 tests · build). Three commits pushed
   (RTL break, back-nav, name overflow) are Playwright/DOM-render level and need a SEPARATE harness —
   flagged in COVERAGE/OPEN, NOT forced into this unit harness as weak proxies.
 
+#### F4 — mutation harness extended to Layer D (Journeys) + C (Platform): 13/13
+- **Journey mutants (both KILLED):** (1) card→WhatsApp handoff drops the composed message from the
+  wa.me link (owner `liveActionCards.test.ts`); (2) confirm→two-events — exactly-once dedup by call
+  id disabled in `calendarDraftController.ts` (owner `calendarRuntimeIntegration.test.ts`, the
+  "same call in two shapes → one draft" test). Both handoffs are guarded.
+- **Platform mutant (KILLED):** SW/stale-bundle detection inverted in `versionSync.detectStaleBuild`
+  — a new deployed version would NOT be flagged stale (device serves old code forever). Owner
+  `versionSync.test.ts`.
+- **NOT seeded — real gap found:** the idle-timeout **session lifecycle** (12s stop-streaming / 25s
+  ask-once / 45s warm-goodbye / resume-with-thread / 20-min outward nudge) has **no deterministic
+  module or constants** to mutate — `IDLE_RUNTIME` is a cognitive-runtime state, `responseLifecycle`
+  is audio-state only. Tracked as **O-LIFECYCLE** (OPEN.md) — a feature gap, not just a test gap.
+
 ### Run 1 mutation summary
 **10 deterministic mutants + 1 negative control → 100% kill (10/10).** Started 80% → 100% after
 closing TWO real blind spots (family label gender F1, Israeli-ID redaction F2); then extended into

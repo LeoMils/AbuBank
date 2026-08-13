@@ -7,8 +7,8 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
 |---|---|---|---|---|---|---|---|
 | **A · Brain** | ✓ | ✓ | ~ | ~ | ✓ | ~ | ~ |
 | **B · App** | ~ | ~ | ~ | ~ | ✗ | ~ | ~ |
-| **C · Platform** | ~ | – | ~ | ~ | ✗ | ~ | ✗ |
-| **D · Journeys** | ✓ | ~ | ~ | ~ | ✗ | ✓ | ✗ |
+| **C · Platform** | ~ | – | ~ | ~ | ✗ | ~ | ~ |
+| **D · Journeys** | ✓ | ~ | ~ | ~ | ✗ | ✓ | ~ |
 | **E · Production** | ~ | – | ~ | ~ | ✗ | ~ | ✗ |
 
 ## Evidence per cell (what backs the mark)
