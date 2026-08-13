@@ -21,6 +21,22 @@ hearing the recording hears two friends talking.
 - Loop: after each phase, judge output against the goal, improve, note the second-pass change.
 - Before context runs low: update this file, say it is safe to /clear.
 
+## STATUS AFTER RUN 2 (P5 / P8-names / P9)
+Shipped + pushed this run: **P5** behaviour+safety incl. the distress protocol (v0.221, f76e3f7),
+**P8 name fuzzy/phonetic matching** (v0.222, e5a11d2), **P9 companion suite built** (v0.223,
+561e25f). Full suite 12,661 green; build clean.
+
+BLOCKED ON BILLING (not code): the OPENAI_API_KEY has NO CREDITS (429 "no credits remaining").
+This blocks BOTH (a) the P9 real-model measurement and (b) P7 online provider health/verification.
+FIRST ACTIONS when funded: `npx vitest run src/services/textHarness/companionSuite.test.ts` for
+the pass rate, then P7.
+
+REMAINING (fresh session): P6 actions polish (message-in-Martita-voice is instruction-driven, only
+measurable via P9); P7 online depth (use full Tavily results array; briefing fan-out ≥10 across
+categories; cinema; provider health) — needs funded keys; P8 429-backoff-retry (touches the connect
+lifecycle — needs a delay-dep + fake-timer tests + device validation), audio (device trace), one
+voice engine (AbuCalendar mic audit + decision), knowledge-everywhere audit; then loop P9.
+
 ## STATUS (for a fresh session)
 DONE + pushed: **P0 critique · P1 measure · P2 division · P3 portrait** (commit 900a3c7,
 v0.220.0). The core architectural change — Abu holds her family in her head — is shipped and
