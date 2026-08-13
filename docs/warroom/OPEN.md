@@ -36,15 +36,30 @@
 These were deliberately NOT rushed — each is a real feature/refactor with device or provider
 dependencies; half-doing them risks breaking working behavior. Plans below are ready to execute.
 
-- **H1 · ONE VOICE ENGINE (brief #6) — AbuCalendar has a SEPARATE mic.** First divergence found:
-  AbuCalendar owns its own capture+transcribe path (`src/screens/AbuCalendar/VoiceCard.tsx` +
-  `calendarTranscribe.ts`, its own MediaRecorder→Groq), distinct from Abu AI's voice engine — a
-  "two runtime paths for one capability" defect. Plan: either (a) the AbuCalendar mic button routes
-  into Abu AI (`setScreen(Screen.AbuAI)` + hand off the calendar intent), or (b) remove the separate
-  mic and let calendar creates go through Abu AI. Heavy test surface: `voiceAutoCreate`,
-  `voicePersistence`, `voiceConfirmationP02`, `calendarTranscribe` — must stay green. Medium-risk
-  UI+voice change → do as its own reviewed commit, then add a mutant that a second engine reappearing
-  fails a "single voice entry point" contract test.
+- **H1 · ONE VOICE ENGINE — EXECUTION-READY PLAN (its own reviewed commit; NOT rushed).**
+  **First divergence:** two STT engines exist. AbuCalendar's own capture+transcribe = `index.tsx`
+  `handleVoiceRecord()` (line ~359: getUserMedia → MediaRecorder → `transcribeCalendarAudio` (Groq)
+  → `processVoiceTranscript`), separate from Abu AI's engine.
+  **Triggers (5):** index.tsx L~943 (retry, bypassGuard), L1379 (product button), L1557
+  (`onToggleRecord`→VoiceCard), L1590 (product button), L1629 (`GuidedMicQaPanel`, debug).
+  **Blast radius (~10 test files), incl. SOURCE-CONTRACT tests that must be migrated, not just kept:**
+  `voiceRecordGuard.test.ts:52` asserts INDEX_SOURCE contains `handleVoiceRecord({ bypassGuard: true })`;
+  `micCapture.test.ts` asserts index imports `createSilenceDetector`; plus `calendarTranscribe`,
+  `guidedQa`, `voiceCardSlots`, `voiceTrace`, and the 3 named (`voiceAutoCreate`, `voicePersistence`,
+  `voiceConfirmationP02`).
+  **Decision — ROUTE (not delete):** the calendar mic button becomes `setScreen(Screen.AbuAI)` (opens
+  the ONE engine). **Keep** the pure/tested pieces the 3 named tests cover: `processVoiceTranscript`
+  (pure parser), `createAppointmentSafe`/`addAppointment` (persistence), `VoiceCard.tsx` (still the
+  confirm UI if Abu AI routes a calendar draft back). **Remove** the duplicate CAPTURE: the
+  getUserMedia/MediaRecorder body of `handleVoiceRecord` + `transcribeCalendarAudio` usage + the
+  now-dead voice-capture state in index.tsx. **Migrate** the source-contract tests to assert the NEW
+  truth (calendar routes to Abu AI; no getUserMedia in the calendar product path) — justify each in
+  DECISIONS (a test encoding the removed engine is legitimately updated, not weakened).
+  **Guard:** add a "single voice entry point" contract test — AbuCalendar product path contains NO
+  getUserMedia/MediaRecorder/`transcribeCalendarAudio`; the mic CTA routes to Abu AI. Then a mutant:
+  reintroducing a calendar getUserMedia fails that guard.
+  **Verify:** the 3 named tests green + full AbuCalendar suite green + typecheck + build. Est: a
+  focused session (large diff across index.tsx + ~10 tests) — do it ALONE, not batched.
 - **H2 · ONLINE DEPTH (brief #4).** Today `/api/abuai-online` returns a one-line answer. Plan: use
   the FULL provider (Tavily) result set — fan out across Israel/world/culture/entertainment/society/
   health, return 10+ headlines WITH sources, and HOLD them in session so a follow-up ("more on #3")
@@ -59,9 +74,27 @@ dependencies; half-doing them risks breaking working behavior. Plans below are r
   live counter + budget alert; at the ceiling degrade gracefully, NEVER disconnect her. Quality must
   not drop a millimetre — reject any saving that costs quality. Depends on O-LIFECYCLE being wired
   (H-wire) to actually stop idle streaming.
-- **H4 · reliability tail (brief #6 rest):** 429 backoff+retry, audio truncation, the second voice
-  at session start, and "people store reachable from every screen" — each a focused audit+fix;
-  investigate current state first (some may already be handled) before changing.
+- **H4 · reliability tail — AUDITED (report before change). 3 of 4 already handled; no risky rip.**
+  1. **429 backoff/retry — HANDLED.** `AbuAI/service.ts:1313` parses `Retry-After` (default 3s, cap
+     10s) + records a provider cooldown (L803); `realtimeVoice.ts:754` reconnects with 1s/2s backoff
+     (max 2). Adequate. *Optional:* confirm `/api/abuai-online` (Tavily) also backs off vs its bounded
+     timeout — small, not a bug.
+  2. **Audio truncation — HANDLED (primary path).** Realtime uses `interrupt_response:true` +
+     server auto-truncates unplayed assistant audio on barge-in (WebRTC), plus `response.cancel` on
+     tap (`realtimeVoice.ts:81/500/818`). The cascaded pipeline is turn-based (no mid-truncation
+     needed). Adequate.
+  3. **Second voice at session start — HANDLED.** Greeting-once is enforced: `sessionOrchestrator`
+     Law 8 + `liveSession.ts` `GREETED_KEY` (exactly once per conversation id, never on reconnect;
+     "documented fix for repeated greetings"). Adequate.
+  4. **People store reachable from every screen — PARTIAL BY DESIGN, not broken.** TWO intentional
+     stores: family GRAPH (`knowledge/family_data.json`→`loadGraph`, no-PII, read by AbuAI +
+     AbuCalendar via `familyResolve`) and CONTACTS (`familyContactsStorage`, PII phone/photo, owned by
+     AbuWhatsApp, reached by AbuAI through the registered `whatsappAdapter`/`phoneAdapter`,
+     `AbuAI/communication/registry.ts:26`). AbuCalendar uses the graph for participant NAMES (no phone
+     need). Split is deliberate (privacy: PII isolated). *Real check worth adding (not a proven bug):*
+     a cross-screen IDENTITY-consistency test — "message Mor" / "Mor's birthday" / calendar
+     participant "Mor" all resolve the SAME person (graph↔contacts link). Buildable, low-risk.
+  **Verdict:** do NOT change 1–3. Only #4's cross-screen-identity consistency test is worth building.
 
 ## P2 — measurement / proof gaps
 - **O3 · Rollback — mechanism PROVEN, execution human** (`PRODUCTION_PATH.md`). One-action Vercel
