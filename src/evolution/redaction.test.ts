@@ -3,8 +3,10 @@ import { redactText, redactDeep, assertInert, looksLikeInjection } from './redac
 
 describe('redaction — secrets never enter the pipeline', () => {
   it('removes API keys and bearer tokens', () => {
-    const r = redactText('my key is sk-abcdefghijklmnop1234 and Bearer abcdef.ghijkl.mnopqr')
-    expect(r.text).not.toContain('sk-abcdefghijklmnop1234')
+    // Fake key kept to 18 chars after "sk-": still ≥16 so redaction (sk-[A-Za-z0-9]{16,})
+    // masks it, but <20 so the pre-commit secret-guard (sk-…{20,}) does not false-positive.
+    const r = redactText('my key is sk-abcdefghijklmnop12 and Bearer abcdef.ghijkl.mnopqr')
+    expect(r.text).not.toContain('sk-abcdefghijklmnop12')
     expect(r.text).toContain('[secret-removed]')
     expect(r.secretsRemoved).toBeGreaterThanOrEqual(2)
   })
@@ -27,6 +29,20 @@ describe('redaction — PII masked, shape kept', () => {
     const r = redactText('מי הנכדה של מרתה')
     expect(r.text).toBe('מי הנכדה של מרתה')
     expect(r.piiClassesDetected).toHaveLength(0)
+  })
+  // Mutation-harness survivor (docs/warroom/LOG.md F2): the Israeli-ID (9-digit) mask
+  // was UNTESTED — disabling it passed the whole suite. Privacy rules require IDs never
+  // be stored; this locks the mask on the real redaction path.
+  it('masks a 9-digit Israeli ID (never stores it raw)', () => {
+    const r = redactText('תעודת זהות 312345678 בבקשה')
+    expect(r.text).toContain('[id]')
+    expect(r.text).not.toContain('312345678')
+    expect(r.piiClassesDetected).toContain('israeli_id')
+  })
+  it('masks a long digit run as [number]', () => {
+    const r = redactText('reference 12345678901234')
+    expect(r.text).toContain('[number]')
+    expect(r.text).not.toContain('12345678901234')
   })
 })
 

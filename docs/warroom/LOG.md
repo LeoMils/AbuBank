@@ -60,3 +60,19 @@ unusually mature test estate. Concretely verified already-covered:
   now feel a gender-label regression it previously could not.
 
 **Note:** a stray user message ("2") arrived mid-run; ambiguous, treated as no-op per protocol #2.
+
+#### F2 🟡P1 — mutation-harness survivor: Israeli-ID PII mask unguarded [FIXED]
+- **What:** Expanded the harness to 7 real mutants (added the online honesty gate + Israeli-ID
+  redaction). Results: the **online honesty gate KILLED** — the canonical World-Cup incident
+  (`api/abuai-online.ts` zero-source ⇒ `ONLINE_NO_RESULTS`) IS guarded by `onlineGroundingGate.test`.
+- **Survivor:** disabling the Israeli-ID (9-digit) PII mask in `redaction.ts`
+  (`cls:'israeli_id', mask:'[id]'`) passed the whole suite — NO test asserted ID masking, though
+  `.claude/rules/privacy*.md` require IDs never be stored.
+- **Fix:** two red-before-green assertions in `redaction.test.ts` — a 9-digit ID → `[id]` (and the
+  raw digits gone), plus a long digit-run → `[number]`. Green on correct code; KILLS the mutation.
+- **Re-run:** harness **100% (7/7)**, control behaves. P0/P1 kill rate 7/7.
+
+### Run 1 mutation summary
+7 deterministic mutants + 1 negative control. Started 80% → **100%** after closing TWO real
+blind spots (family label gender F1, Israeli-ID redaction F2). Control never mis-fired. Every
+mutant restores its file in `finally`; full suite re-confirmed green after each fix.

@@ -31,3 +31,11 @@ and repeatedly emphasized, and a monotonic version helps the PWA staleness diagn
 three contract locations (`src/version.ts`, `api/health.ts`, `src/version.test.ts`) per
 VERSION_CONTRACT.md; `version.test.ts` (22) green confirms no drift. Deliberately did NOT set any
 `VITE_*` billable key, touch `.env`, or deploy.
+
+## D5 · Fixed a latent pre-commit false-positive, did NOT --no-verify (2026-08-13)
+Staging `redaction.test.ts` re-triggered `scripts/precommit-guard.cjs`, which flagged a PRE-EXISTING
+fake `sk-` fixture whose body was 20 chars ⇒ it matched the guard's `sk-` + 20-or-more secret rule.
+Chose NOT to bypass the hook (repo rule) and NOT to weaken the guard (would let a real secret into a
+test file). Instead shortened the FAKE key to 18 chars: still ≥16 so redaction still masks it (the
+test's intent is intact, 9/9 green), but <20 so the guard no longer false-positives. Non-weakening,
+minimal, keeps the security guard fully armed. My own added ID/number fixtures never matched `sk-`.

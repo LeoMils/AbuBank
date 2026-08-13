@@ -73,6 +73,22 @@ const MUTANTS = [
     replace: 'd.setDate(d.getDate() + 1)',
     owner: 'src/screens/AbuAI/dateParser.test.ts', expect: 'kill',
   },
+  {
+    id: 'online-honesty-gate-disabled', layer: 'A/Brain·Online', severity: 'P0',
+    desc: 'NO TOOL RESULT = NO CLAIM: zero-source honesty gate disabled — a fabricated ungrounded answer would surface as ok:true (the World Cup incident)',
+    file: 'api/abuai-online.ts',
+    find: 'if (sources.length === 0) {',
+    replace: 'if (sources.length < 0) {',
+    owner: 'src/eval/onlineGroundingGate.test.ts', expect: 'kill',
+  },
+  {
+    id: 'israeli-id-not-redacted', layer: 'A/Platform·Privacy', severity: 'P1',
+    desc: 'Israeli-ID (9-digit) PII mask disabled — an ID would survive redaction',
+    file: 'src/evolution/redaction.ts',
+    find: "cls: 'israeli_id', mask: '[id]'",
+    replace: "cls: 'israeli_id', mask: '[LEAK]'",
+    owner: 'src/evolution/redaction.test.ts', expect: 'kill',
+  },
   // ── Negative control: a comment edit that changes NO behavior. MUST survive. ──
   {
     id: 'control-comment-noop', layer: 'control', severity: 'control',

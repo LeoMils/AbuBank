@@ -28,12 +28,13 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
   BFS-path + determinism + 2000-query random-graph fuzz. (HE/ES same-fact & ask-twice: verify.)
 - **differential ~** — `e2e/device-replay.spec`, `e2e/preview-parity.spec`. GAP: no automated
   "replay recorded device convos vs current build + diff" report as a standing gate.
-- **mutation ~** — `scripts/mutation-harness.mjs` now exists (Phase M). Seeded with 5 deterministic
-  mutants (redaction phone/email/secret, grandchild gender label, date yesterday) + 1 negative
-  control. Kill rate: 80%→**100%** after closing the one survivor (family LABEL gender, see LOG F1).
-  Still ~ not ✓: only 5 mutants across deterministic guards so far; the brief's ~30 across all five
-  layers (App touch-targets/RTL, Platform SW/idle, Journeys card→WhatsApp) are NOT yet seeded, and
-  model-instruction P0s (distress) are out of deterministic scope (see OPEN O2). Expand the manifest.
+- **mutation ~** — `scripts/mutation-harness.mjs` now exists (Phase M). Seeded with 7 deterministic
+  mutants (redaction phone/email/secret/israeli-id, grandchild gender label, date yesterday, online
+  honesty gate) + 1 negative control. Kill rate **100% (7/7)** after closing TWO survivors (family
+  LABEL gender F1, Israeli-ID redaction F2). Online honesty gate (World-Cup incident) confirmed
+  guarded. Still ~ not ✓: the brief's ~30 across all five layers (App touch-targets/RTL, Platform
+  SW/idle, Journeys card→WhatsApp/confirm→two-events) are NOT yet seeded, and model-instruction P0s
+  (distress) are out of deterministic scope (see OPEN O2). Expand the manifest.
 
 ### B · App (Playwright specs exist; techniques thin)
 - Specs: `home-nav`, `contact-management`, `contact-photos`, `enlarged-text`,
