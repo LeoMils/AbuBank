@@ -74,7 +74,7 @@ overlap P7/P8).
 - [ ] P6  Actions end-to-end: messages in Martita's voice, calls, calendar (draft survives, one-confirm-one-event)
 - [ ] P7  Online that delivers: use full Tavily results; briefing fan-out ≥10 across categories; depth-on-demand; cinema; provider health
 - [~] P8  Reliability: [x] name fuzzy/phonetic matching (v0.222). REMAINING: 429 backoff-retry; audio (device); one voice engine (AbuCalendar mic audit); knowledge-everywhere audit
-- [ ] P9  Companion quality suite vs the real model; pass-rate before/after
+- [~] P9  Companion suite BUILT (companionSuite.test.ts, 9 scenarios, real-model) — measurement BLOCKED on API credits (429 "no credits remaining"); runs + reports the pass-rate the moment the key is funded
 - [ ] P10 Proposals (do not build): cross-conversation memory, initiation, confusion/repeat handling, distress, safety
 
 ## Prior in this branch (this-session device-trace fixes, already shipped)
@@ -151,6 +151,16 @@ down, is the door open) after a review found it escalated without first steadyin
 
 ## Decisions log
 (Newest first. Every ambiguous call logged here.)
+
+- **D9.1 — P9 measurement blocked on billing, not code.** The companion suite (9 real-model
+  scenarios through the exact live path) is built and green as a gate, but the OPENAI_API_KEY has
+  NO CREDITS (HTTP 429 "no credits remaining"), so I could not get a real pass-rate tonight. The
+  suite treats an API/infra error as BLOCKED (never faked, never a FAIL), exactly like no-key.
+  ACTION FOR LEO: fund the key, then `npx vitest run src/services/textHarness/companionSuite.test.ts`
+  prints the pass rate; loop-until-plateau is then a fast, honest measurement.
+- **D8.1 — fuzzy is a fallback, conservative by design.** Name fuzzy/phonetic matching only fires
+  after exact + descriptive-phrase both miss, and only returns a confident, unambiguous match
+  (sim ≥ 0.72, margin ≥ 0.12) — a garbled input stays not_found, never a wrong person.
 
 - **D5.0 — AGENTS: single foreground writer, no subagents.** The brief said "use your specialist
   agents", but the checked-in V4 rule (.claude/rules/abuai-live-parity-v4.md + CLAUDE.md) mandates
