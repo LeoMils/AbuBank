@@ -23,3 +23,11 @@ it turns red, then restore — per-guard kill verdict — rather than a full-sui
 This avoids 12-min full-suite loops and keeps the tree clean (restore is guaranteed in finally).
 Start with P0-protecting guards (phone-not-aloud, distress, never-invent, no-announce, dedup,
 feminine self-ref). Report kill-rate honestly; each survivor → a new red-before-green test.
+
+## D4 · Version bumped 0.224.0 → 0.225.0 for a QA-tooling+test change (2026-08-13)
+Root CLAUDE.md: "Every change must increment and display the version number." Honored despite this
+commit touching no product runtime code (new test + harness + docs), because the rule is explicit
+and repeatedly emphasized, and a monotonic version helps the PWA staleness diagnostic. Synced all
+three contract locations (`src/version.ts`, `api/health.ts`, `src/version.test.ts`) per
+VERSION_CONTRACT.md; `version.test.ts` (22) green confirms no drift. Deliberately did NOT set any
+`VITE_*` billable key, touch `.env`, or deploy.

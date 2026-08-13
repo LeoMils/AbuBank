@@ -38,4 +38,25 @@ unusually mature test estate. Concretely verified already-covered:
    "blocked on API credits" — so invariants are NOT continuously enforced without credits.
 
 ### Findings
-(none confirmed as defects yet — baseline is green; work proceeds in COVERAGE/severity order)
+
+#### F1 🟠P1(gap)/P0(class) — mutation-harness survivor: family LABEL table unguarded [FIXED]
+- **What:** Built the missing mutation harness (`scripts/mutation-harness.mjs`, Phase M). First run:
+  5 real deterministic mutants + 1 negative control. **80% kill (4/5)** — one SURVIVED.
+- **Survivor:** swapping the feminine/masculine grandchild term in `familyRelationEngine.ts`
+  (`grandchild: ['נכדה','נכד']` → `['נכד','נכדה']`) **passed the entire 12662-test suite**
+  (verified by running the FULL suite against the mutation, not just the owner file — it still
+  reported 12662 passed). So no test anywhere protected it.
+- **Mechanism (first divergence):** `labelFor()` returns `female ? pair[0] : pair[1]`, and
+  `relationOf()` (the live family-answer path) emits that label to Martita. A swapped table makes
+  a granddaughter be called "נכד" (grandson). `ofirGenderRegression` guards the gender DATA field
+  and the Martita→grandchild (סבתא) direction, but NOT the grandchild-direction OUTPUT label. Live,
+  reachable, gender-correctness → P0-class harm if it ever regresses; the missing-test is the P1.
+- **Fix:** red-before-green regression `src/screens/AbuAI/familyRelationLabelGender.test.ts` — a
+  generalized property test over the live graph (no hardcoded names): every female grandchild's
+  real `relationOf` sentence must say נכדה, every male נכד-not-נכדה, + child בת/בן; non-empty
+  guards prevent a vacuous pass. Proven RED under the mutation, GREEN on correct code.
+- **Re-run:** mutation harness now **100% (5/5)**, control still behaves, tree restored clean.
+- Not a live bug today (the table is currently correct) — it is a closed BLIND SPOT: the suite can
+  now feel a gender-label regression it previously could not.
+
+**Note:** a stray user message ("2") arrived mid-run; ambiguous, treated as no-op per protocol #2.

@@ -1,8 +1,11 @@
 # OPEN ITEMS (unresolved, ranked)
 
 ## P1 — real gaps, code-findable
-- **O1 · No mutation kill-rate** — Phase M harness absent. Building now (see DECISIONS D3).
-  The 12662 green tests have UNMEASURED defect-catching power. Blocks exit #3, #14.
+- **O1 · Mutation harness seeded, not complete** — `scripts/mutation-harness.mjs` built; 5
+  deterministic mutants + control, 100% kill after closing 1 survivor (F1). REMAINING: seed the
+  brief's ~30 across all layers — App (40px touch target, RTL break, dropped calendar field, broken
+  back-nav, name overflow), Platform (SW update break, idle-timeout removal, mid-conversation
+  update), Journeys (card→WhatsApp handoff, confirm→two-events). Each new survivor → a red test.
 - **O2 · Invariants not always-on** — `companionSuite` invariants are key-gated (real model).
   No deterministic per-turn invariant assertion over the scenario corpus in CI. Blocks exit #5.
 

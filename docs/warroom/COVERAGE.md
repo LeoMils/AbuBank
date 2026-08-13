@@ -5,7 +5,7 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
 
 | | regression | simulator | adversary | invariants | metamorphic | differential | mutation |
 |---|---|---|---|---|---|---|---|
-| **A · Brain** | ✓ | ✓ | ~ | ~ | ✓ | ~ | ✗ |
+| **A · Brain** | ✓ | ✓ | ~ | ~ | ✓ | ~ | ~ |
 | **B · App** | ~ | ~ | ~ | ~ | ✗ | ~ | ✗ |
 | **C · Platform** | ~ | – | ~ | ~ | ✗ | ~ | ✗ |
 | **D · Journeys** | ✓ | ~ | ~ | ~ | ✗ | ✓ | ✗ |
@@ -28,8 +28,12 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
   BFS-path + determinism + 2000-query random-graph fuzz. (HE/ES same-fact & ask-twice: verify.)
 - **differential ~** — `e2e/device-replay.spec`, `e2e/preview-parity.spec`. GAP: no automated
   "replay recorded device convos vs current build + diff" report as a standing gate.
-- **mutation ✗** — NONE. No kill-rate harness anywhere. The suite's defect-catching power is
-  UNMEASURED. This is the brief's Phase M and the single biggest empty cell.
+- **mutation ~** — `scripts/mutation-harness.mjs` now exists (Phase M). Seeded with 5 deterministic
+  mutants (redaction phone/email/secret, grandchild gender label, date yesterday) + 1 negative
+  control. Kill rate: 80%→**100%** after closing the one survivor (family LABEL gender, see LOG F1).
+  Still ~ not ✓: only 5 mutants across deterministic guards so far; the brief's ~30 across all five
+  layers (App touch-targets/RTL, Platform SW/idle, Journeys card→WhatsApp) are NOT yet seeded, and
+  model-instruction P0s (distress) are out of deterministic scope (see OPEN O2). Expand the manifest.
 
 ### B · App (Playwright specs exist; techniques thin)
 - Specs: `home-nav`, `contact-management`, `contact-photos`, `enlarged-text`,
