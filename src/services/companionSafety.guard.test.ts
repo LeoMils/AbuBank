@@ -16,8 +16,9 @@ describe('P5.0 — DISTRESS protocol is present and intact (safety, overrides ev
     expect(instr).toContain('אם מרתה במצוקה')
     expect(instr).toMatch(/overrides everything|OVERRIDES every other rule/i)
   })
-  it('it prepares a call to Leo and points to emergency services, without claiming a call was made', () => {
-    expect(instr).toMatch(/phone_call with recipient "לאו"/)
+  it('it ACTUALLY calls phone_call for Leo and points to emergency services, without claiming a call was made', () => {
+    expect(instr).toMatch(/call the phone_call tool with recipient "לאו"/)
+    expect(instr).toMatch(/not a button you describe/i) // must actually call the tool, not just say "tap"
     expect(instr).toContain('מד״א') // Israeli emergency (Magen David Adom)
     expect(instr).toContain('101')
     expect(instr).toMatch(/NEVER say you have called anyone/i)
@@ -46,6 +47,10 @@ describe('P5.1 — standing safety invariants (never silently regress)', () => {
   it('never invents a family fact — unknown stays unknown', () => {
     expect(instr).toMatch(/Never invent a name, gender, date, or relationship/i)
     expect(instr).toMatch(/say warmly that you are not sure|do not guess/i)
+  })
+  it('is Martita\'s FRIEND, not Martita — tells her story in the second person (P9 fix)', () => {
+    expect(instr).toMatch(/you are Martita's FRIEND, not Martita/i)
+    expect(instr).toMatch(/NEVER speak as if you lived her life/i)
   })
 })
 

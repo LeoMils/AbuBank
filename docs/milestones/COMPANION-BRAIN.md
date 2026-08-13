@@ -90,7 +90,7 @@ overlap P7/P8).
 - [ ] P6  Actions end-to-end: messages in Martita's voice, calls, calendar (draft survives, one-confirm-one-event)
 - [ ] P7  Online that delivers: use full Tavily results; briefing fan-out ≥10 across categories; depth-on-demand; cinema; provider health
 - [~] P8  Reliability: [x] name fuzzy/phonetic matching (v0.222). REMAINING: 429 backoff-retry; audio (device); one voice engine (AbuCalendar mic audit); knowledge-everywhere audit
-- [~] P9  Companion suite BUILT (companionSuite.test.ts, 9 scenarios, real-model) — measurement BLOCKED on API credits (429 "no credits remaining"); runs + reports the pass-rate the moment the key is funded
+- [x] P9  Companion suite MEASURED against the real model: 9/9. Reading the transcripts (not just pass/fail) found 2 real gaps → fixed → re-measured 9/9 on STRICTER scorers. Loop below.
 - [ ] P10 Proposals (do not build): cross-conversation memory, initiation, confusion/repeat handling, distress, safety
 
 ## Prior in this branch (this-session device-trace fixes, already shipped)
@@ -165,9 +165,30 @@ are already guarded (announceBeforeChecking.guard + the tool-speech guarantee). 
 (12,653). Second pass: added a grounding cue to the distress protocol (where are you, can you sit
 down, is the door open) after a review found it escalated without first steadying her.
 
+## Phase 9 — MEASURED (the honest loop)
+Credits added → ran the suite against the real model.
+- **Pass 1: 9/9 on coarse scorers.** But reading the actual transcripts (the real judge) found two
+  gaps the checkmarks hid: (a) PERSONA CONFUSION — for Mendoza she said "בשבילי… גרנו" as if SHE
+  lived it, instead of speaking to Martita about HER life; (b) DISTRESS INCOMPLETE — she told
+  Martita to "tap the button" but never actually called phone_call (no card), and omitted 101.
+- **Fixes:** added a CRITICAL "you are Martita's FRIEND, not Martita — her story in the second
+  person, never גרנו/בשבילי" rule; made the distress protocol ACTUALLY call phone_call ("not a
+  button you describe") and always name 101. Tightened the two scorers to MEASURE these.
+- **Pass 2: 9/9 on the stricter scorers.** History: "מהחיים שלך ושל פפי… הייתם חברים… זוכרת את
+  החוויות שהיו לכם שם?" (friend, second person). Distress: calls phone_call, "הכנתי שיחה ללאו",
+  names 101, grounds her. Verified in the transcripts, not just the counts.
+- **Plateau + why:** the 9 single/short-turn scenarios all pass on strict checks; the residual
+  imperfection is a loosely-labelled in-law term ("גיסו של לאו" for a niece's husband — the path
+  it gives is correct, only the one-word label is loose). Pushing further needs MULTI-TURN,
+  LLM-judged scenarios (20-turn no-robotic, bring-things-up-unprompted, gentle-mode, two-strike) —
+  a larger build for the next run, and the true test is still a device listen.
+
 ## Decisions log
 (Newest first. Every ambiguous call logged here.)
 
+- **D9.2 — 100% on coarse scorers is not "done".** The transcripts, not the pass/fail, are the
+  measure. Reading them is what surfaced the persona + distress gaps. The suite is a floor, not a
+  ceiling; the next run should add multi-turn LLM-judged scenarios.
 - **D9.1 — P9 measurement blocked on billing, not code.** The companion suite (9 real-model
   scenarios through the exact live path) is built and green as a gate, but the OPENAI_API_KEY has
   NO CREDITS (HTTP 429 "no credits remaining"), so I could not get a real pass-rate tonight. The
