@@ -1,11 +1,13 @@
 # OPEN ITEMS (unresolved, ranked)
 
 ## P1 — real gaps, code-findable
-- **O1 · Mutation harness seeded, not complete** — `scripts/mutation-harness.mjs` built; 5
-  deterministic mutants + control, 100% kill after closing 1 survivor (F1). REMAINING: seed the
-  brief's ~30 across all layers — App (40px touch target, RTL break, dropped calendar field, broken
-  back-nav, name overflow), Platform (SW update break, idle-timeout removal, mid-conversation
-  update), Journeys (card→WhatsApp handoff, confirm→two-events). Each new survivor → a red test.
+- **O1 · Mutation harness seeded, not complete** — `scripts/mutation-harness.mjs` built; **10
+  deterministic mutants + control, 100% kill** after closing 2 survivors (F1 family label, F2
+  Israeli-ID). Now spans Brain/Online/Privacy + App (touch-target 40px ✓killed, body-text ✓killed,
+  calendar drop-field ✓killed). REMAINING to seed: Platform (SW-update break, idle-timeout removal,
+  mid-conversation update), Journeys (card→WhatsApp handoff, confirm→two-events). SEPARATE harness
+  needed for App RTL-break / back-nav / name-overflow (Playwright/DOM-render — the unit harness runs
+  `vitest run`, not `playwright test`; do NOT force these into it as weak proxies).
 - **O2 · Invariants not always-on** — `companionSuite` invariants are key-gated (real model).
   No deterministic per-turn invariant assertion over the scenario corpus in CI. Blocks exit #5.
 

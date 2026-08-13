@@ -89,6 +89,31 @@ const MUTANTS = [
     replace: "cls: 'israeli_id', mask: '[LEAK]'",
     owner: 'src/evolution/redaction.test.ts', expect: 'kill',
   },
+  // ── Layer B · App (deterministic guards with jsdom/unit owners) ──
+  {
+    id: 'app-touch-target-40', layer: 'B/App·SeniorUX', severity: 'P1',
+    desc: 'Minimum touch target dropped 56px→40px (below the senior-first floor; MIN_TOUCH feeds Card + PrimaryButton)',
+    file: 'src/design/space.ts',
+    find: 'export const MIN_TOUCH = 56',
+    replace: 'export const MIN_TOUCH = 40',
+    owner: 'src/design/seniorFirst.test.ts', expect: 'kill',
+  },
+  {
+    id: 'app-body-text-12', layer: 'B/App·SeniorUX', severity: 'P1',
+    desc: 'Minimum body text dropped 16px→12px (below readable floor for 80+)',
+    file: 'src/design/space.ts',
+    find: 'export const MIN_BODY_PX = 16',
+    replace: 'export const MIN_BODY_PX = 12',
+    owner: 'src/design/seniorFirst.test.ts', expect: 'kill',
+  },
+  {
+    id: 'app-calendar-drop-title-on-save', layer: 'B/App·DataIntegrity', severity: 'P0',
+    desc: 'Calendar save silently drops the title field — data loss on persist (B4 round-trip)',
+    file: 'src/screens/AbuCalendar/service.ts',
+    find: 'durable.setString(STORAGE_KEY, JSON.stringify(appts))',
+    replace: 'durable.setString(STORAGE_KEY, JSON.stringify(appts.map(({ title, ...rest }) => rest)))',
+    owner: 'src/screens/AbuCalendar/calendarPersistence.test.ts', expect: 'kill',
+  },
   // ── Negative control: a comment edit that changes NO behavior. MUST survive. ──
   {
     id: 'control-comment-noop', layer: 'control', severity: 'control',

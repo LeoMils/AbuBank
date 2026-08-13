@@ -87,7 +87,19 @@ State: baseline GREEN (typecheck · 12,668 tests · build). Three commits pushed
    without a key over the deterministic corpus.
 3. **O3/O4/O5** — rollback proof, deploy dry-run, monitoring/heartbeat design.
 
+#### F3 — mutation harness extended to Layer B (App): 10/10, no new survivor
+- Added 3 app-layer mutants with deterministic vitest owners: **touch-target 56→40** and
+  **body-text 16→12** (owner `design/seniorFirst.test.ts`; MIN_TOUCH feeds Card + PrimaryButton),
+  and **calendar-save drops the title field** (owner `calendarPersistence.test.ts`, B4 roundtrip
+  `toEqual`). ALL THREE KILLED — the senior-UX sizing floor and calendar data-integrity are guarded.
+- Honest outcome: no new bug this round; these app guards are solid. The brief's other app mutants
+  (RTL break, back-nav, name overflow) are Playwright/DOM-render level and need a SEPARATE harness —
+  flagged in COVERAGE/OPEN, NOT forced into this unit harness as weak proxies.
+
 ### Run 1 mutation summary
-7 deterministic mutants + 1 negative control. Started 80% → **100%** after closing TWO real
-blind spots (family label gender F1, Israeli-ID redaction F2). Control never mis-fired. Every
-mutant restores its file in `finally`; full suite re-confirmed green after each fix.
+**10 deterministic mutants + 1 negative control → 100% kill (10/10).** Started 80% → 100% after
+closing TWO real blind spots (family label gender F1, Israeli-ID redaction F2); then extended into
+Layer B (F3, 3 app mutants, all killed). Control never mis-fired. Every mutant restores its file in
+`finally`; full suite re-confirmed green after each fix. Layers covered: A/Brain, A/Online,
+A+B/Privacy, B/App-SeniorUX, B/App-DataIntegrity. NOT yet: App-RTL/nav/overflow (Playwright),
+Platform (SW/idle), Journeys (card→WhatsApp/confirm→two-events).

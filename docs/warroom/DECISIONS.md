@@ -39,3 +39,9 @@ Chose NOT to bypass the hook (repo rule) and NOT to weaken the guard (would let 
 test file). Instead shortened the FAKE key to 18 chars: still ≥16 so redaction still masks it (the
 test's intent is intact, 9/9 green), but <20 so the guard no longer false-positives. Non-weakening,
 minimal, keeps the security guard fully armed. My own added ID/number fixtures never matched `sk-`.
+
+## D6 · buildLabel must contain NO apostrophe/single-quote (2026-08-13)
+The v0.227 bump first FAILED `version.test.ts`: the health-sync check extracts the label with
+`/const BUILD_LABEL = '([^']+)'/`, which stops at the first `'`. A label containing "brief's"
+truncated at the backslash, so the health copy ≠ APP_VERSION.buildLabel. Constraint learned: keep
+buildLabel free of apostrophes (rephrased "brief's" → "brief-listed"). Applies to every future bump.

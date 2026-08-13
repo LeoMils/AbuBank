@@ -6,7 +6,7 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
 | | regression | simulator | adversary | invariants | metamorphic | differential | mutation |
 |---|---|---|---|---|---|---|---|
 | **A · Brain** | ✓ | ✓ | ~ | ~ | ✓ | ~ | ~ |
-| **B · App** | ~ | ~ | ~ | ~ | ✗ | ~ | ✗ |
+| **B · App** | ~ | ~ | ~ | ~ | ✗ | ~ | ~ |
 | **C · Platform** | ~ | – | ~ | ~ | ✗ | ~ | ✗ |
 | **D · Journeys** | ✓ | ~ | ~ | ~ | ✗ | ✓ | ✗ |
 | **E · Production** | ~ | – | ~ | ~ | ✗ | ~ | ✗ |
@@ -40,8 +40,15 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
 - Specs: `home-nav`, `contact-management`, `contact-photos`, `enlarged-text`,
   `family-record-screen`, `weather-smoke`, `feature-activation`, `focused-contact`.
 - regression ~ / adversary ~ / invariants ~ / differential ~ = partial via those specs.
-- **metamorphic ✗, mutation ✗** — none at app layer. GAP: systematic per-screen render/overflow/
-  contrast/touch-target(≥56px)/RTL assertion sweep at 412×870 in BOTH themes (brief B1/B2/B3).
+- **mutation ~ (Run 1)** — 3 app mutants seeded in `mutation-harness.mjs`, ALL KILLED: touch-target
+  56→40 and body-text 16→12 (owner `design/seniorFirst.test.ts`), and calendar-save drops the title
+  field (owner `calendarPersistence.test.ts`, B4 roundtrip). So the senior-UX sizing FLOOR and
+  calendar data-integrity ARE guarded. STILL a gap: the brief's RTL-break, back-nav-break, and
+  name-overflow app mutants are Playwright/DOM-render level — they need a SEPARATE Playwright
+  mutation harness (this unit harness runs `vitest run`, not `playwright test`). Do NOT force them
+  into the unit harness as weak proxies.
+- **metamorphic ✗** — none at app layer. GAP: systematic per-screen render/overflow/contrast/
+  touch-target/RTL assertion sweep at 412×870 in BOTH themes (brief B1/B2/B3).
 
 ### C · Platform
 - `service-worker.spec`, `persistence-lifecycle.spec`, `persistence.spec`, `container-isolation`,
