@@ -40,6 +40,45 @@ checking (v0.217), FIX 5 tool timeouts (v0.218), FIX 3 history retrieval path (v
 `docs/milestones/DEVICE_TRACE_FIXES_STATUS.md`. NOTE: this brief REVISES the FIX 1/3 direction —
 knowledge moves INTO the head; the retrieval tools stay for CONTACT id resolution + verification.
 
+## Phase 1 — MEASUREMENTS (real numbers)
+Provider limits (measured against the real `/v1/realtime/client_secrets`, which matched device
+behaviour for the transcription field, so it is the same validator the session.update hits):
+- **`session.instructions` max ≥ 200,000 chars** — 200k returned HTTP 200; the ceiling is above
+  that, unmeasured. (The old 10,000 cap was a MISDIAGNOSIS — the device crash was the transcription
+  prompt, not instructions.)
+- **`session.audio.input.transcription.prompt` max = 1024 chars** — cited from the provider error.
+
+Current payload: instructions 9,984 chars / 12,617 bytes · transcription.prompt 995 (cap 1024) ·
+tools[] 8,895 chars. People store = **65** non-pet people (the brief's "68" is approximate).
+
+Prose portrait size (measured a real 3-person warm sample = 164 chars/person avg, then tiered):
+- close circle 15 × ~230 = 3,450 · middle 25 × ~120 = 3,000 · distant 25 × ~70 = 1,750
+- history ≈ 1,800 · tastes/rituals ≈ 900 · friendships/origins ≈ 700
+- **PORTRAIT ≈ 11,600 chars.** instructions after portrait ≈ 10k + 12k = **~22k chars — 11× under
+  the 200k limit.** Fits in her head with enormous headroom.
+
+Cost/latency: instructions are sent ONCE per session (session.update) and cached on each response
+(prompt caching ~10× cheaper); ~22k chars Hebrew ≈ ~12–15k tokens one-time + cached. The per-TURN
+cost is the conversation, not the re-sent portrait. **Acceptable for voice.**
+
+**DECISION (P1): put the portrait in her head.** Raise the instructions guard from 10,000 to a
+generous-but-safe cap (60,000 — far under the 200k limit, still catches runaway) and inject the
+generated portrait.
+
+## Phase 2 — DIVISION OF KNOWLEDGE (decided)
+IN HER HEAD (durable/personal, as generated prose): who the family + friends are and how each
+relates to Martita and each other; homes, work, marriages, losses; the life history (Argentina →
+Mendoza → Casa Milstein → aliyah → Ulpan → Bat Yam); Martita's tastes/dislikes/rituals/rhythm
+(Tuesday at Mor's, never red wine); how names are pronounced (rule + the closest names spelled);
+and **the shape of what is unknown** (the open_questions, so she owns her ignorance).
+TOOLS ONLY (changing/private/verifiable): calendar (read/create/correct/confirm/cancel); news /
+weather / current info; phone numbers + WhatsApp (numbers NEVER enter the model — server-side id
+resolution); anything timestamped.
+KEPT AS TOOLS FOR VERIFICATION/ACTION (D0.3 hybrid): `people_lookup want=contact` (id+label for
+an action) and the deterministic `kinship`/relationship + list engine — the model holds the warm
+portrait AND can verify a precise relationship or resolve an id. The portrait is GENERATED from
+the same graph, so head and tool never disagree. This preserves "never invent a relationship".
+
 ## Decisions log
 (Newest first. Every ambiguous call logged here.)
 
