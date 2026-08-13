@@ -72,6 +72,21 @@ unusually mature test estate. Concretely verified already-covered:
   raw digits gone), plus a long digit-run → `[number]`. Green on correct code; KILLS the mutation.
 - **Re-run:** harness **100% (7/7)**, control behaves. P0/P1 kill rate 7/7.
 
+### ▶ RESUME POINT (safe to /clear) — pushed at 90a1013, build 0.226.0
+State: baseline GREEN (typecheck · 12,668 tests · build). Three commits pushed to
+`rc5/cognitive-architecture-and-acceptance`. Working tree's remaining `M` files are PRE-EXISTING
+(dirty at session start — NOT this run's; do not touch). Nothing of this run is uncommitted.
+
+**Next highest-ROI (in order), zero re-derivation needed — see COVERAGE.md empty cells + OPEN.md:**
+1. **Extend the mutation manifest** (`scripts/mutation-harness.mjs`, data-driven) into the empty
+   layers: calendar dedup/confirm→two-events (find anchor in `calendarCreate.ts`), never-invent
+   family guard, feminine self-reference. Each survivor → red-before-green test, then re-run.
+   App/Platform mutants (40px target, RTL, SW-update, idle-timeout) need a Playwright-level mutation
+   mechanism — a SEPARATE harness; note that honestly, don't force them into the unit harness.
+2. **O2 · always-on deterministic invariants** — make companionSuite's invariant list assertable
+   without a key over the deterministic corpus.
+3. **O3/O4/O5** — rollback proof, deploy dry-run, monitoring/heartbeat design.
+
 ### Run 1 mutation summary
 7 deterministic mutants + 1 negative control. Started 80% → **100%** after closing TWO real
 blind spots (family label gender F1, Israeli-ID redaction F2). Control never mis-fired. Every
