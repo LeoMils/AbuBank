@@ -5,7 +5,7 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
 
 | | regression | simulator | adversary | invariants | metamorphic | differential | mutation |
 |---|---|---|---|---|---|---|---|
-| **A · Brain** | ✓ | ✓ | ~ | ✓ | ✓ | ~ | ~ |
+| **A · Brain** | ✓ | ✓ | ✓ | ✓ | ✓ | ~ | ~ |
 | **B · App** | ~ | ~ | ~ | ~ | ✗ | ~ | ~ |
 | **C · Platform** | ~ | – | ~ | ~ | ✗ | ~ | ~ |
 | **D · Journeys** | ✓ | ~ | ~ | ~ | ✗ | ✓ | ~ |
@@ -19,9 +19,12 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
   `blockerFixes`, `closureRegressions`, per-defect tests across 199 AbuAI test files.
 - **simulator ✓** — `martitaSimulation.test.ts`, `eval/productionSimulatorScenarios.ts`,
   `eval/freeLanguageSimulation.test.ts`, `e2e/abuai-production-simulator.spec.ts`.
-- **adversary ~** — `adversarialTrust`, `realtime/sessionOrchestratorAdversarial`,
-  `people/fuzzyMatch` fuzz. GAP: no systematic fuzz (emoji-only/numeric/huge/mixed-script) nor
-  a prompt-INJECTION-through-data suite (message content / contact names / calendar titles).
+- **adversary ✓** — `src/eval/adversaryFuzzInjection.test.ts` (28/28): systematic FUZZ
+  (empty/huge/emoji-only/numeric/mixed-script/RTL-control → runtime is total), prompt-INJECTION
+  (6 extraction/override payloads → no phone spoken, no fabricated action), and DATA-NOT-INSTRUCTION
+  (calendar TITLE stored verbatim; recipient NAME inert). Plus prior `adversarialTrust`,
+  `sessionOrchestratorAdversarial`, `fuzzyMatch`. Residual: search-result-as-data injection (needs a
+  grounded-online fixture) not yet its own case.
 - **invariants ✓ (O2 closed)** — `src/eval/alwaysOnInvariants.test.ts` drives the key-free
   `runFullTurn`/`IDLE_RUNTIME` over a deterministic corpus and asserts on EVERY turn: no phone
   aloud, no announce-before-answer, no red wine, feminine self-reference — with a TEETH test proving
