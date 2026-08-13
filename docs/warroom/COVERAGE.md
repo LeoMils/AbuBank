@@ -73,6 +73,24 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
 - Deployment path documented in `docs/engineering-os/MISSION_LEDGER.md` (`deploy:rc`).
 - GAP: rollback proof, monitoring/heartbeat design (brief E2/E4), fresh-install "Abu speaks first".
 
+## CLOSING STATUS (Run 1 end) — every empty cell, filled or explained
+- **mutation column** — was empty everywhere; now `~` across A/Brain+Online, A+B/Privacy, B/App
+  (unit + BROWSER Playwright), C/Platform (SW + lifecycle), D/Journeys. 15 unit + 2 DOM mutants,
+  100% kill. `~` not `✓` because it is a seeded sample, not exhaustive per subsystem.
+- **A/invariants ✓** — closed by O2 (always-on deterministic invariants).
+- **metamorphic at B/C/D/E = ✗ and STAYS ✗ — explained:** metamorphic testing means
+  "different inputs that must yield equivalent outputs" (e.g. 68×68 relation inverses, HE/ES same
+  fact). That is a BRAIN property; App/Platform/Journey/Production have no natural metamorphic
+  relation to assert — the honest coverage there is regression + mutation + e2e, which exist. Marking
+  these `✗` forever would be misleading; they are **N/A**, not gaps. (A/metamorphic ✓ is the real one.)
+- **adversary `~` everywhere** — real remaining gap: systematic FUZZ (emoji-only/huge/mixed-script)
+  and prompt-INJECTION-through-data (message content / contact names / calendar titles / search
+  results) are not a standing suite. Code-buildable — the highest-value remaining adversary work.
+- **differential `~`** — a standing "replay recorded device convos vs current build + diff" gate is
+  not wired (specs exist ad hoc). Needs the device transcripts as fixtures.
+- **E/Production** — path documented + rollback mechanism proven (`PRODUCTION_PATH.md`); live
+  deploy/rollback need Vercel auth (human).
+
 ## Empty cells named (brief requires this): 
 **Mutation across ALL five layers** and **app/platform/journey/production metamorphic** are the
 untested surface. Highest severity = **mutation (Phase M)** because it measures whether the

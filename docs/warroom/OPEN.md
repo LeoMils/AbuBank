@@ -32,11 +32,45 @@
   fetch to fail fast in both files → deterministic local composer. Hermetic, 6–7s → 167ms. No
   `test.retry` band-aid. Lesson logged: a stubbed provider assumption must be ENFORCED, not assumed.
 
+## HEAVY ITEMS — not done this run, RESUMABLE PLANS (zero re-derivation)
+These were deliberately NOT rushed — each is a real feature/refactor with device or provider
+dependencies; half-doing them risks breaking working behavior. Plans below are ready to execute.
+
+- **H1 · ONE VOICE ENGINE (brief #6) — AbuCalendar has a SEPARATE mic.** First divergence found:
+  AbuCalendar owns its own capture+transcribe path (`src/screens/AbuCalendar/VoiceCard.tsx` +
+  `calendarTranscribe.ts`, its own MediaRecorder→Groq), distinct from Abu AI's voice engine — a
+  "two runtime paths for one capability" defect. Plan: either (a) the AbuCalendar mic button routes
+  into Abu AI (`setScreen(Screen.AbuAI)` + hand off the calendar intent), or (b) remove the separate
+  mic and let calendar creates go through Abu AI. Heavy test surface: `voiceAutoCreate`,
+  `voicePersistence`, `voiceConfirmationP02`, `calendarTranscribe` — must stay green. Medium-risk
+  UI+voice change → do as its own reviewed commit, then add a mutant that a second engine reappearing
+  fails a "single voice entry point" contract test.
+- **H2 · ONLINE DEPTH (brief #4).** Today `/api/abuai-online` returns a one-line answer. Plan: use
+  the FULL provider (Tavily) result set — fan out across Israel/world/culture/entertainment/society/
+  health, return 10+ headlines WITH sources, and HOLD them in session so a follow-up ("more on #3")
+  answers from the same retrieval (a session cache keyed by turn). Cinema: real source or honest
+  "cannot" (never fabricate). Verify all THREE provider keys live (Tavily/Brave/one more) via the
+  existing bake-off (`docs/eval/ONLINE_BAKEOFF.json`). Evidence class = PREVIEW (real keyed call) —
+  NOT fully verifiable at CODE. Wire behind the existing honesty gate (zero sources ⇒ decline).
+- **H3 · COST per 20-min conversation (brief #5).** Plan: instrument token/audio-minute usage per
+  turn (there is `aiSpendGuard` + `latencyInstrumentation` to build on), sum a representative 20-min
+  session BEFORE (current stalls/repetitions inflate it) and AFTER the lifecycle+quality fixes, and
+  quantify: every stall forced a repeated turn (wasted output), every repetition wasted tokens. Add a
+  live counter + budget alert; at the ceiling degrade gracefully, NEVER disconnect her. Quality must
+  not drop a millimetre — reject any saving that costs quality. Depends on O-LIFECYCLE being wired
+  (H-wire) to actually stop idle streaming.
+- **H4 · reliability tail (brief #6 rest):** 429 backoff+retry, audio truncation, the second voice
+  at session start, and "people store reachable from every screen" — each a focused audit+fix;
+  investigate current state first (some may already be handled) before changing.
+
 ## P2 — measurement / proof gaps
-- **O3 · Rollback unproven** (exit #12) — no one-action revert + data-preservation proof.
-- **O4 · Deploy path not dry-run** (exit #11) — documented only (`deploy:rc`).
-- **O5 · Monitoring absent** (brief E4) — no heartbeat / error report / last-seen for
-  post-ship silent failure. Diagnostics are in-app only (board: no external SLO sink).
+- **O3 · Rollback — mechanism PROVEN, execution human** (`PRODUCTION_PATH.md`). One-action Vercel
+  re-alias; her client-side IndexedDB/localStorage data untouched → no data loss. Live run needs auth.
+- **O4 · Deploy path — documented + build dry-run GREEN** (`PRODUCTION_PATH.md`). deploy/alias steps
+  need Vercel auth (human); Production `--prod` is a STOP condition.
+- **O5 · Monitoring — heartbeat EXISTS, alerting MISSING** (`PRODUCTION_PATH.md`). `/api/health`
+  liveness + nightly cron exist; the code-buildable gaps: external uptime poll + alert SINK, a client
+  "last seen" beacon, and an ErrorBoundary error beacon. Alert/telemetry SINK is an external decision.
 - **O6 · Per-screen sweep not enforced** (exit #8) — render/overflow/contrast/≥56px/RTL at
   412×870 in both themes is partial across specs, not one gate.
 - **O7 · Data-through-not-instruction injection** (brief C2/Adversary) — no suite proving
