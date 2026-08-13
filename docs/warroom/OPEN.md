@@ -23,12 +23,13 @@
   cost argument hangs off this (an idle session must stop costing money).
 
 ## Reliability finding (Run 1)
-- **O-FLAKE 🟡P2 — flaky tests under full-suite parallel load.**
-  `src/screens/AbuAI/communication/capability.test.ts` and `communication/productionGates.test.ts`
-  each intermittently fail ONE test under the full 476-file parallel run (observed 6–7s runtimes =
-  timeout under contention), but pass 28/28 in isolation. Not caused by this run's changes (only the
-  harness script + version literals + docs were touched). A green suite that flakes is a liability —
-  investigate timers/timeouts/shared state; consider `test.retry` only as a stopgap, fix root cause.
+- **O-FLAKE 🟡P2 — CLOSED at root (v0.231), no retries.** Root cause: `buildCommunicationAction`
+  → `composeWhatsAppMessageDetailed` made REAL provider calls (openai-server proxy, then a real Groq
+  client fetch with 20s timeouts) once `VITE_GROQ_API_KEY` landed in `.env` — breaking the tests'
+  own stated assumption ("providers are never reachable in unit tests"). Under parallel contention
+  the 20s waits blew the per-test timeout (6–7s observed); isolation passed. Fix: `vi.stubGlobal`
+  fetch to fail fast in both files → deterministic local composer. Hermetic, 6–7s → 167ms. No
+  `test.retry` band-aid. Lesson logged: a stubbed provider assumption must be ENFORCED, not assumed.
 
 ## P2 — measurement / proof gaps
 - **O3 · Rollback unproven** (exit #12) — no one-action revert + data-preservation proof.

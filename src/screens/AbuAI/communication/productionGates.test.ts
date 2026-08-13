@@ -4,7 +4,7 @@
  * Runs in the repo's `node` env — we inject a tiny in-memory localStorage so the
  * device-local contact store is readable (no jsdom needed).
  */
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import { ExecutiveCognitiveController } from '../executiveCognitiveController'
 import { IDLE_RUNTIME } from '../cognitiveRuntime'
 import type { FullTurnTools } from '../runtimeFullTurn'
@@ -15,6 +15,13 @@ import {
 } from '../whatsappCompose'
 import { buildCommunicationAction } from './capability'
 import { getAdapter } from './registry'
+
+// HERMETIC (fixes O-FLAKE): the comment below ASSUMES providers are unreachable in unit
+// tests — but that broke once VITE_GROQ_API_KEY landed in .env: composeWhatsAppMessageDetailed
+// then made REAL Groq/openai-server calls (20s timeouts) that flaked under parallel load.
+// Enforce the assumption by failing the network fast → deterministic local composer. No retries.
+beforeEach(() => vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('unit test: network disabled') })))
+afterEach(() => vi.unstubAllGlobals())
 
 // Providers are never reachable in unit tests → deterministic local composer.
 const TOOLS: FullTurnTools = { llm: async () => '[LLM_UNUSED]', online: async () => ({ ok: true, answer: '' }) }

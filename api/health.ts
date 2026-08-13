@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.230.0-always-on-invariants'
-const BUILD_LABEL = 'AbuBank 0.230.0 — O2 always-on deterministic invariants (src/eval/alwaysOnInvariants.test.ts). The A4 invariants were encoded only in the KEY-GATED companion suite, so without OpenAI credits they were not continuously enforced. This drives the SAME cognitive controller typed input uses (runFullTurn / IDLE_RUNTIME) with NO API key, over a deterministic corpus (family identity+in-law, calendar create→save→read, greeting, general knowledge, distress probe), and asserts on EVERY turn: no phone number aloud, no announce-before-answer, no red wine, feminine self-reference. The corpus passes AND the checkers have TEETH (a second test proves each detector fires on a real violation — caught a dead Hebrew-boundary regex that had made no-announce a no-op). Evidence: 2/2 green + typecheck + full suite. Prior: DOM harness (v0.229).'
+const BUILD_VERSION = '0.231.0-flake-root-fix'
+const BUILD_LABEL = 'AbuBank 0.231.0 — O-FLAKE fixed at the root, no retries. Two communication tests (capability, productionGates) intermittently failed under full-suite parallel load because buildCommunicationAction → composeWhatsAppMessageDetailed made REAL provider calls: the openai-server proxy then a real Groq client fetch (20s timeouts) once VITE_GROQ_API_KEY landed in .env — breaking the tests own stated assumption that providers are unreachable in unit tests. Under contention those 20s waits blew the per-test timeout (observed 6-7s runtimes); in isolation they completed. Fix: stub fetch to fail fast in both files, forcing the deterministic local composer — hermetic, no network, no retry band-aid. Runtime dropped from ~6-7s to 167ms. Evidence: both green + full suite. Prior: always-on invariants (v0.230).'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

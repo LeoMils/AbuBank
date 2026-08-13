@@ -1,10 +1,19 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { buildCommunicationAction, communicationLead } from './capability'
 import { getAdapter, listAdapters } from './registry'
 import { detectWhatsAppTurn, understandWhatsAppCommand, type WhatsAppTurn } from '../whatsappCompose'
 import { ExecutiveCognitiveController } from '../executiveCognitiveController'
 import { IDLE_RUNTIME } from '../cognitiveRuntime'
 import type { FullTurnTools } from '../runtimeFullTurn'
+
+// HERMETIC (fixes O-FLAKE): buildCommunicationAction → composeWhatsAppMessageDetailed
+// otherwise makes REAL provider calls (openai-server proxy, then Groq client when
+// VITE_GROQ_API_KEY is present) with 20s timeouts. Under full-suite parallel load those
+// contend and blow the per-test timeout → intermittent red. These tests assert the
+// Action SHAPE, not composed LLM text, so we force the deterministic local composer by
+// failing the network fast. No retries — the root cause is removed.
+beforeEach(() => vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('unit test: network disabled') })))
+afterEach(() => vi.unstubAllGlobals())
 
 const TOOLS: FullTurnTools = { llm: async () => '[LLM_UNUSED]', online: async () => ({ ok: true, answer: '' }) }
 const NOW = new Date(2026, 6, 31, 10, 0, 0)
