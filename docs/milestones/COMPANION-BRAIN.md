@@ -70,7 +70,7 @@ overlap P7/P8).
 - [x] P2  Division of knowledge: in-head vs tools-only (decided)
 - [x] P3  Generate the prose portrait FROM data (generator + test: add-a-person → appears in context)
 - [ ] P4  Relationships: nobody ever "unrelated"; lists (friends/family/grandchildren/Ulpan/Kfar Saba/Argentina)
-- [ ] P5  Acting like a friend: never announce/stall/repeat; bring things up; connect sideways; warmth; never false-claim
+- [x] P5  Friend behaviour + SAFETY: distress protocol (P5.0), standing safety guard (P5.1), gentle mode (P5.2), two-strike (P5.3), bring-up/connect-sideways/warmth (P5.4)
 - [ ] P6  Actions end-to-end: messages in Martita's voice, calls, calendar (draft survives, one-confirm-one-event)
 - [ ] P7  Online that delivers: use full Tavily results; briefing fan-out ≥10 across categories; depth-on-demand; cinema; provider health
 - [ ] P8  Reliability: 429 backoff-retry; plain-Hebrew recovery; name transcription bias + fuzzy/phonetic; audio; one voice engine; knowledge everywhere
@@ -137,8 +137,29 @@ uses people_lookup ONLY to reach someone or double-check. Cap raised 10,000 → 
 - Second-pass improvements: fixed double-periods, meta-artefact residue (⚠/verification asides),
   and the clunky "גר/ה ב" → clean "(occupation; location)"; preserved truncation ellipses.
 
+## Phase 5 — DONE (behaviour + safety)
+Added to the live instructions: a prominent **distress protocol** (safety, overrides everything —
+stay calm, do not diagnose, prepare a call to Leo via phone_call, point to מד״א/101 for a real
+emergency, never claim a call was made, stay with her + ground her); a **boundaries** section
+(residence≠live-location, no medical/financial, draw her toward real family not dependency, never
+false-claim); and the **friend behaviours** (bring-things-up rate-limited, connect-sideways,
+warmth-without-performance, gentle-mode when confused/tired, two-strike → offer an action).
+Guarded by `companionSafety.guard.test.ts` (build-failing if any regress). never-announce/stall
+are already guarded (announceBeforeChecking.guard + the tool-speech guarantee). Gates green
+(12,653). Second pass: added a grounding cue to the distress protocol (where are you, can you sit
+down, is the door open) after a review found it escalated without first steadying her.
+
 ## Decisions log
 (Newest first. Every ambiguous call logged here.)
+
+- **D5.0 — AGENTS: single foreground writer, no subagents.** The brief said "use your specialist
+  agents", but the checked-in V4 rule (.claude/rules/abuai-live-parity-v4.md + CLAUDE.md) mandates
+  ONE foreground writer, no Agent/subagents/forks. Project rules override a session instruction, so
+  I stayed the sole writer and did rigorous self-review passes instead. Logged per "safest option,
+  log it, continue". The morning report notes this so Leo can lift the rule if he wants fan-out.
+- **D5.1 — emergency dialing stays a tap, not an auto-call.** Abu prepares a call CARD to Leo
+  (phone_call) and tells Martita to call 101 herself; she never auto-dials (numbers never enter the
+  model; Abu never claims a call). A true one-tap emergency-call card is a P10 proposal, not built.
 
 - **D3.1 — people_lookup kept, repurposed.** It is no longer how Abu learns who family is (she
   knows). It stays for want=contact (reach someone → id, numbers server-side) and as a verify
