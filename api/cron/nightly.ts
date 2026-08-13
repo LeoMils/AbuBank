@@ -15,6 +15,7 @@
 export const config = { runtime: 'edge' }
 
 import { sendNotification } from '../../src/eval/notify'
+import { probeHealth } from '../../src/services/healthAlert'
 
 export default async function handler(req: Request): Promise<Response> {
   const env = (typeof process !== 'undefined' ? process.env : {}) as Record<string, string | undefined>
@@ -25,15 +26,21 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
-  // The endpoint itself does not run the heavy chain (see note). It emits the Leo-only
-  // status/notification; a green line unless the CI chain has queued items (future: read a
-  // persisted queue once a cloud store exists).
-  const hebrewLine = '🟢 הכל תקין'
-  const notify = await sendNotification(env, { hebrewLine, extra: 'תחזוקת לילה — פרטים ב-CI' })
+  // O5 — HEARTBEAT ALERT: actually PROBE the deployment's own /api/health so a silent
+  // failure (outage / missing env) cannot report green. An unreachable or ok=false health
+  // ⇒ a RED line and Leo's notification fires; otherwise the green maintenance line.
+  const origin = new URL(req.url).origin
+  const health = await probeHealth(origin)
+  const hebrewLine = health.healthy ? '🟢 הכל תקין' : health.hebrewLine
+  const notify = await sendNotification(env, {
+    hebrewLine,
+    extra: health.healthy ? 'תחזוקת לילה — פרטים ב-CI' : `בריאות: ${health.reason}`,
+  })
 
   const payload = {
-    ok: true,
+    ok: health.healthy,
     hebrewLine,
+    health: { healthy: health.healthy, alert: health.alert, reason: health.reason },
     notification: { channel: notify.channel, sent: notify.sent, body: notify.statusPage },
     infraNote:
       'This endpoint is the Leo-only status page. The maintenance chain (duel corpus + ' +

@@ -72,28 +72,32 @@ unusually mature test estate. Concretely verified already-covered:
   raw digits gone), plus a long digit-run → `[number]`. Green on correct code; KILLS the mutation.
 - **Re-run:** harness **100% (7/7)**, control behaves. P0/P1 kill rate 7/7.
 
-### ▶ RESUME POINT (safe to /clear) — pushed at 90743e7, build 0.233.0
-State: baseline GREEN (typecheck · **12,686 tests** · build) — multiple consecutive clean full runs
-under parallel load (flake fix holds). All work pushed to `rc5/cognitive-architecture-and-acceptance`.
+### ▶ RESUME POINT (safe to /clear) — pushed at build 0.235.0
+State: baseline GREEN (typecheck · **12,7xx tests** · build) — many consecutive clean full runs under
+parallel load (flake fix holds). All work pushed to `rc5/cognitive-architecture-and-acceptance`.
 Working tree's remaining `M` files are PRE-EXISTING (dirty at session start — NOT this run's; do not
-touch). Nothing of this run is uncommitted. Dev server on :5175 (DOM harness only) — safe to kill.
+touch). Nothing of this run is uncommitted.
 
-**DONE this run:** unit mutation harness 15/15 · Playwright DOM harness 2/2 · O2 always-on invariants
-· O-FLAKE root-fixed · O-LIFECYCLE policy core (11/11) **+ WIRED into the live realtime session**
-(realtimeVoiceLifecycle.test 5/5, no regression 139/139) · O3/O4/O5 documented (`PRODUCTION_PATH.md`)
-· coverage matrix closed.
+**DONE (this long session):** unit mutation harness 15/15 · Playwright DOM harness 2/2 · O2 always-on
+invariants · O-FLAKE root-fixed · O-LIFECYCLE core (11/11) + WIRED into the live realtime session
+(5/5, no regression 139/139) · **H4 reliability AUDITED** (429/truncation/greeting-once already
+handled — don't touch; only cross-screen identity test worth adding) · **ADVERSARY fuzz+injection
+28/28** (data-not-instruction proven) · **O5 heartbeat alert CLOSED** (cron now probes /api/health →
+RED + notify on outage) · O3/O4 documented (`PRODUCTION_PATH.md`).
 
-**REMAINING — all in OPEN.md with resumable plans (zero re-derivation):**
-1. **H1 ONE VOICE ENGINE** — AbuCalendar's separate mic (`VoiceCard.tsx`+`calendarTranscribe.ts`)
-   → route to Abu AI or remove. Medium-risk; own reviewed commit; keep voice tests green.
-2. **H2 ONLINE DEPTH** — full Tavily fan-out, 10+ headlines held in session, cinema honesty, verify
-   3 keys. PREVIEW-class (needs real keyed calls).
-3. **H3 COST** per 20-min, measured before/after — now UNBLOCKED (O-LIFECYCLE wired; idle streaming
-   stops). Instrument tokens/audio-min via `aiSpendGuard` + `latencyInstrumentation`.
-4. **H4** reliability tail: 429 backoff, audio truncation, second-voice-at-start, people store
-   reachable everywhere — audit current state first.
-5. **Adversary fuzz/injection suite** — top code-buildable coverage gap (see COVERAGE closing).
-6. **Device proof** for the wired lifecycle (idle-cost saving + audible goodbye) — Leo's iPhone.
+**REMAINING — all in OPEN.md with execution-ready plans (zero re-derivation):**
+1. **H1 ONE VOICE ENGINE** — full route-vs-remove plan is in OPEN.md (5 triggers, ~10-test blast
+   radius incl. source-contract tests to migrate, single-voice-entry guard + mutant). Do it ALONE as
+   its own reviewed commit — NOT batched (it will break/rewrite ~10 AbuCalendar tests by design).
+2. **H3 COST** per 20-min, before/after — UNBLOCKED now (lifecycle wired; idle streaming stops).
+   Instrument tokens/audio-min via `aiSpendGuard` + `latencyInstrumentation`; live counter + budget
+   alert; quality must not drop.
+3. **H2 ONLINE DEPTH** — full Tavily fan-out (Israel/world/culture/entertainment/society/health),
+   10+ headlines held in session for follow-ups, cinema real-source-or-honest-cannot, verify 3 keys.
+   PREVIEW-class (needs real keyed calls — not fully verifiable at CODE).
+4. **Device proof** (Leo's iPhone): wired-lifecycle idle-cost + audible goodbye; voice audibility/STT/
+   latency/warmth (docs/LEO-TESTS-ONLY.md).
+5. Small: cross-screen identity consistency test (H4 #4); O5 client last-seen beacon (needs a store).
 
 #### F3 — mutation harness extended to Layer B (App): 10/10, no new survivor
 - Added 3 app-layer mutants with deterministic vitest owners: **touch-target 56→40** and

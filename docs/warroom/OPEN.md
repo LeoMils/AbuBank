@@ -101,9 +101,13 @@ dependencies; half-doing them risks breaking working behavior. Plans below are r
   re-alias; her client-side IndexedDB/localStorage data untouched → no data loss. Live run needs auth.
 - **O4 · Deploy path — documented + build dry-run GREEN** (`PRODUCTION_PATH.md`). deploy/alias steps
   need Vercel auth (human); Production `--prod` is a STOP condition.
-- **O5 · Monitoring — heartbeat EXISTS, alerting MISSING** (`PRODUCTION_PATH.md`). `/api/health`
-  liveness + nightly cron exist; the code-buildable gaps: external uptime poll + alert SINK, a client
-  "last seen" beacon, and an ErrorBoundary error beacon. Alert/telemetry SINK is an external decision.
+- **O5 · Monitoring — heartbeat ALERT CLOSED (v0.235).** The nightly cron previously always
+  reported green without checking. Now `src/services/healthAlert.ts` (`probeHealth` + pure
+  `evaluateHealth`, 7/7) probes the deployment's own `/api/health`; unreachable OR `ok:false` ⇒ RED
+  line + fires Leo's notification through the EXISTING `sendNotification` sink (email via Resend, else
+  Leo-only status page). Wired in `api/cron/nightly.ts`. **Residual (env/product decision):** email
+  delivery needs `RESEND_API_KEY` + `LEO_EMAIL`; a client "last-seen" beacon (detect Martita stopped
+  opening it) + an ErrorBoundary error beacon need a provisioned store — documented, not code-blocked.
 - **O6 · Per-screen sweep not enforced** (exit #8) — render/overflow/contrast/≥56px/RTL at
   412×870 in both themes is partial across specs, not one gate.
 - **O7 · Data-through-not-instruction injection** (brief C2/Adversary) — no suite proving
