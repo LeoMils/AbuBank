@@ -369,6 +369,16 @@ export class LiveSession {
    *  with the same call_id; this set makes the whole dispatch — recorder, wait ack,
    *  and executor — fire EXACTLY ONCE per model tool call (no triple confirm). */
   private readonly dispatchedCalls = new Set<string>()
+  /** Response lifecycle (FIX 4 — the conversation_already_has_active_response crash). The
+   *  Realtime API allows only ONE active response at a time; a second response.create while
+   *  one is active is rejected with that error, and with interrupt_response FALSE the server
+   *  never clears the active one. `activeResponse` tracks whether a response is in flight
+   *  (set on response.created / our own create, cleared on response.done). A create requested
+   *  while active is DEFERRED via `pendingResponseCreate` and flushed on response.done — so a
+   *  tool result, a typed confirm, or a user turn buffered during Abu's speech is answered on
+   *  the next turn instead of crashing the session. */
+  private activeResponse = false
+  private pendingResponseCreate = false
   /** Flight recorder — OBSERVATION ONLY. Records my/her speech + every tool call,
    *  and surfaces silent-turn (C.3) + truncation-evidence (C.2) flags. It never
    *  changes turn/VAD/audio behaviour; the live session only appends to it.
@@ -642,7 +652,15 @@ export class LiveSession {
       case 'response.audio_transcript.done':
         if (typeof e.transcript === 'string') { this.cb.onAbuTranscript?.(e.transcript); this.recorder.onAbuText(e.transcript) }
         break
+      case 'response.created':
+        // A response is now in flight (ours or a server VAD auto-create). FIX 4: mark it so
+        // we never create a second one concurrently.
+        this.activeResponse = true
+        break
       case 'response.done':
+        // The active response finished — FIX 4: the wire is free, so flush any create we
+        // deferred (a tool result, a typed confirm, or a barged-in user turn) now.
+        this.activeResponse = false
         // Only a FINAL answer (or a phaseless done) ends the turn. A `commentary`
         // done is mid-turn — keep speaking; more audio is coming. A done that CARRIED
         // a function call (fc truthy) is ALSO mid-turn: the tool result is about to be
@@ -650,10 +668,23 @@ export class LiveSession {
         // speech lands in the SAME turn. Ending here would flip to listening early AND
         // make the recorder see a silent turn — the turn ends on the SPOKEN done.
         if (isEndOfTurn(event) && !fc) { this.recorder.onTurnEnd(); this.clearAudioWatchdog(); if (myEpoch === liveEpoch) this.setState('listening') }
+        this.flushPendingResponse()
         break
       case 'error': {
         const code = String((e.error as { code?: string })?.code ?? 'SERVER_ERROR')
-        if (code !== 'response_cancel_not_active') this.fail('שגיאה בשרת הקול.', code)
+        // FIX 4: response-lifecycle races are NOT fatal. conversation_already_has_active_response
+        // fires when the user speaks while a response is in flight (a tool call is open) —
+        // with interrupt_response FALSE the server keeps the active response and rejects the
+        // new one. Killing the session on it is the "dies every minute" crash. Instead record
+        // it and, for the active-response race, remember to answer the buffered turn once the
+        // in-flight response completes. response_cancel_not_active is likewise benign.
+        if (code === 'conversation_already_has_active_response') {
+          this.recorder.onRecoverableError(code)
+          this.pendingResponseCreate = true // answer the buffered user turn after response.done
+          break
+        }
+        if (code === 'response_cancel_not_active') { this.recorder.onRecoverableError(code); break }
+        this.fail('שגיאה בשרת הקול.', code)
         break
       }
       default:
@@ -708,7 +739,23 @@ export class LiveSession {
         try { this.recorder.onToolResult('', JSON.parse(item.output)) } catch { /* */ }
       }
     }
+    // FIX 4: never send a second response.create while one is active — that race is the
+    // conversation_already_has_active_response crash. Defer it; response.done flushes it.
+    // The function_call_output above is submitted immediately (an item, not a response), so
+    // the grounded result is already in the conversation when the deferred create fires.
+    if (event.type === 'response.create') {
+      if (this.activeResponse) { this.pendingResponseCreate = true; return }
+      this.activeResponse = true // optimistic; response.created confirms, response.done clears
+    }
     if (this.dc && this.dc.readyState === 'open') this.dc.send(JSON.stringify(event))
+  }
+
+  /** Flush a response.create that was deferred because one was already active (FIX 4). Called
+   *  on response.done, when the wire is free. No-op when nothing is pending. */
+  private flushPendingResponse(): void {
+    if (!this.pendingResponseCreate) return
+    this.pendingResponseCreate = false
+    this.send({ type: 'response.create' }) // activeResponse is false here → actually sends
   }
 
   /** Inject a TYPED user turn (the calendar card's Confirm button sends "כן, תשמרי").

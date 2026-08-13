@@ -361,6 +361,51 @@ describe('LiveSession', () => {
     h.session.teardown()
   })
 
+  // ─── FIX 4: the conversation_already_has_active_response crash ────────────────
+  it('FIX 4: conversation_already_has_active_response is NON-FATAL — the session survives', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.created' }) // a response is in flight (Abu speaking / tool call open)
+    h.pc.dc!.fire({ type: 'error', error: { code: 'conversation_already_has_active_response' } })
+    expect(h.errors).toEqual([])                          // did NOT fail the session
+    expect(h.session.state).not.toBe('error')
+    expect(h.session.getRecorder().hasFailure()).toBe(false)
+    expect(h.session.getRecorder().recoverableErrorCount()).toBe(1) // recorded, not fatal
+    h.session.teardown()
+  })
+
+  it('FIX 4: a response.create requested while one is active is DEFERRED, then flushed on response.done', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.created' }) // a response is active
+    h.pc.dc!.sent.length = 0
+    h.session.sendUserText('כן, תשמרי')        // calendar-confirm card: item.create + response.create
+    let types = h.pc.dc!.sent.map((e) => e.type)
+    expect(types).toContain('conversation.item.create') // the user turn was submitted immediately
+    expect(types).not.toContain('response.create')      // …but the create was DEFERRED (would have crashed)
+    h.pc.dc!.sent.length = 0
+    h.pc.dc!.fire({ type: 'response.done', response: { phase: 'final_answer' } }) // active response ends
+    types = h.pc.dc!.sent.map((e) => e.type)
+    expect(types).toContain('response.create')          // deferred create flushed on the free wire
+    h.session.teardown()
+  })
+
+  it('FIX 4: a user turn buffered during the race is ANSWERED after the active response completes', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.created' }) // Abu is mid-response
+    h.pc.dc!.sent.length = 0
+    // user speaks over her → server VAD create collides → the (now non-fatal) race
+    h.pc.dc!.fire({ type: 'error', error: { code: 'conversation_already_has_active_response' } })
+    expect(h.pc.dc!.sent.map((e) => e.type)).not.toContain('response.create') // nothing yet — she is still speaking
+    h.pc.dc!.fire({ type: 'response.done', response: { phase: 'final_answer' } })
+    expect(h.pc.dc!.sent.map((e) => e.type)).toContain('response.create')      // her turn ended → answer the buffered turn
+    h.session.teardown()
+  })
+
   it('ONE model tool call = exactly ONE execution across all three completion shapes (no triple dispatch)', async () => {
     const h = makeHarness({ isReconnect: true })
     await h.session.connect()

@@ -69,6 +69,7 @@ export class FlightRecorder {
   private readonly silentTurns: SilentTurnFlag[] = []
   private readonly truncations: TruncationFlag[] = []
   private readonly connection: ConnectionEvent[] = []
+  private readonly recoverable: Array<{ t: number; code: string }> = []
   private seq = 0
   private readonly startWall: number
 
@@ -177,6 +178,16 @@ export class FlightRecorder {
     this.connection.push({ t: this.now() - this.startWall, kind: 'failed', code, ...(reasonHe ? { detail: reasonHe } : {}) })
     this.add('note', { text: `FAILURE [${code}]${reasonHe ? ` — ${reasonHe}` : ''}` })
   }
+  /** A RECOVERABLE error — recorded for diagnostics but NOT a failure (the session survives).
+   *  FIX 4: conversation_already_has_active_response / response_cancel_not_active are benign
+   *  response-lifecycle races; they must never read as a session failure. */
+  onRecoverableError(code: string): void {
+    this.recoverable.push({ t: this.now() - this.startWall, code })
+    this.add('note', { text: `recovered [${code}]` })
+  }
+  /** How many recoverable races were handled (test/diagnostics). */
+  recoverableErrorCount(): number { return this.recoverable.length }
+
   /** True if any failure was recorded (so the UI/exporter knows a trace is worth keeping). */
   hasFailure(): boolean { return this.connection.some((c) => c.kind === 'failed') }
 
