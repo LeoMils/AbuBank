@@ -29,6 +29,13 @@ export class CalendarDraftController {
     private readonly cb: CalendarControllerCallbacks,
   ) {}
 
+  /** True while a create/confirm is still in flight (not yet committed or cancelled).
+   *  The session lifecycle reads this so it NEVER closes mid-task. */
+  hasActiveDraft(): boolean {
+    return this.draft !== null
+      && (this.draft.confirmation === 'DRAFTING' || this.draft.confirmation === 'AWAITING_CONFIRM')
+  }
+
   /** Handle a completed calendar function-call EXACTLY ONCE: dispatch one typed draft
    *  op, project the committed draft, return a safe receipt to the model, continue it. */
   async onFunctionCall(fc: ParsedFunctionCall): Promise<CalendarReceipt> {

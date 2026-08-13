@@ -137,6 +137,18 @@ policy core built+tested (11/11) · O3/O4/O5 documented (`PRODUCTION_PATH.md`) �
   unit harness now **15/15**. Honest scope: tested policy core + mutants only; wiring into the live
   realtime session is a flagged medium-risk follow-up (OPEN O-LIFECYCLE).
 
+#### F7 — O-LIFECYCLE WIRED into the live realtime session (H-WIRE)
+- `RealtimeVoiceSession` (`src/services/realtimeVoice.ts`) now drives `sessionLifecycle` on a bounded
+  ~2s tick started at `dc.onopen`, stopped in `cleanup`. Effects through real seams: pause/resume the
+  upstream mic track (cost); `speakLifecycleLine` → authoritative `createResponse`; warm goodbye sets
+  `pendingGoodbyeClose` → `disconnect()` on the next `response_done` (never cut mid-utterance).
+  `speech_started` → `markActivity` (reset clocks + resume upstream). midTask = `responseLeased` OR
+  new `CalendarDraftController.hasActiveDraft()` (DRAFTING/AWAITING_CONFIRM).
+- Deterministic wiring proof: `realtimeVoiceLifecycle.test.ts` (5/5) via `injectForTest(send, clock)`
+  + injected clock (no WebRTC). No regression: realtime+voice **139/139**. Existing tests unaffected
+  (the interval only runs on the real connect path, not under injectForTest).
+- Evidence CODE — idle-cost saving + audible goodbye are device-only (feeds H3 cost).
+
 ### Run 1 mutation summary
 **10 deterministic mutants + 1 negative control → 100% kill (10/10).** Started 80% → 100% after
 closing TWO real blind spots (family label gender F1, Israeli-ID redaction F2); then extended into

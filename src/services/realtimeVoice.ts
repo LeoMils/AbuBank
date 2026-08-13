@@ -26,6 +26,7 @@ import { extractFunctionCall, isKnownToolCall } from '../screens/AbuAI/realtime/
 import type { RealtimeCommController } from '../screens/AbuAI/realtime/realtimeCommController'
 import type { CalendarDraftController } from '../screens/AbuAI/realtime/calendarDraftController'
 import { acquireSession, releaseSession, nextSessionToken } from './sessionOwnershipRegistry'
+import { lifecycleDecision } from './sessionLifecycle'
 
 // Model comes from the ONE shared source (realtimeModel.ts) so the client secret,
 // SDP call, health, and diagnostics can never drift (Defect 3).
@@ -154,6 +155,18 @@ export class RealtimeVoiceSession {
   // Test seam: when set, sendEvent routes here instead of the data channel, so the REAL
   // handleEvent/sendEvent path is exercised without WebRTC (see injectForTest).
   private testSend: ((event: Record<string, unknown>) => void) | null = null
+  // ── O-LIFECYCLE: idle session policy (src/services/sessionLifecycle.ts). The clocks
+  //    drive lifecycleDecision each tick; effects are stop-upstream / ask-once / warm
+  //    goodbye+close / 20-min outward nudge. NEVER closes mid-task. Clock is injectable
+  //    for deterministic tests (default Date.now).
+  private lifecycleClock: () => number = () => Date.now()
+  private lifecycleTimer: ReturnType<typeof setInterval> | null = null
+  private lastActivityMs = 0
+  private sessionStartMs = 0
+  private lifecycleAsked = false
+  private lifecycleNudged = false
+  private upstreamPaused = false
+  private pendingGoodbyeClose = false
 
   /** Server event names we did not recognize this session — surfaced for diagnostics. */
   get unrecognizedEvents(): string[] { return [...this.unknownEvents] }
@@ -191,9 +204,105 @@ export class RealtimeVoiceSession {
    * through the REAL handleEvent + sendEvent path, so the function-tool journey is proven
    * on the actual production adapter. Returns a `receive` to push raw server events.
    */
-  injectForTest(onSend: (event: Record<string, unknown>) => void): { receive: (event: unknown) => void } {
+  injectForTest(
+    onSend: (event: Record<string, unknown>) => void,
+    clock?: () => number,
+  ): {
+    receive: (event: unknown) => void; tickLifecycle: () => void; startLifecycle: () => void
+    isUpstreamPaused: () => boolean; setResponseActiveForTest: (active: boolean) => void
+  } {
     this.testSend = onSend
-    return { receive: (event: unknown) => this.handleEvent(event) }
+    if (clock) this.lifecycleClock = clock
+    return {
+      receive: (event: unknown) => this.handleEvent(event),
+      tickLifecycle: () => this.tickLifecycle(),
+      startLifecycle: () => this.startLifecycle(),
+      isUpstreamPaused: () => this.upstreamPaused,
+      setResponseActiveForTest: (active: boolean) => { this.responseLeased = active },
+    }
+  }
+
+  // ── O-LIFECYCLE wiring ──────────────────────────────────────────────────────
+  /** Reset the idle clocks on any user activity; resume upstream if we had paused it.
+   *  Conversation state (the thread) is untouched — a resume keeps it. */
+  private markActivity(): void {
+    this.lastActivityMs = this.lifecycleClock()
+    this.lifecycleAsked = false
+    if (this.upstreamPaused) this.resumeUpstream()
+  }
+
+  /** Begin driving the idle lifecycle: a bounded ~2s tick (real path only). */
+  private startLifecycle(): void {
+    const now = this.lifecycleClock()
+    this.sessionStartMs = now
+    this.lastActivityMs = now
+    this.lifecycleAsked = false
+    this.lifecycleNudged = false
+    if (this.lifecycleTimer) return
+    // Only run a real interval outside tests (tests drive tickLifecycle directly).
+    if (!this.testSend && typeof setInterval === 'function') {
+      this.lifecycleTimer = setInterval(() => this.tickLifecycle(), 2_000)
+    }
+  }
+
+  private stopLifecycle(): void {
+    if (this.lifecycleTimer) { clearInterval(this.lifecycleTimer); this.lifecycleTimer = null }
+  }
+
+  /** One idle-policy tick: compute the clocks, decide, dispatch the single effect.
+   *  NEVER acts mid-task (Abu responding, or a calendar create/confirm in flight). */
+  private tickLifecycle(): void {
+    const now = this.lifecycleClock()
+    const midTask = this.responseLeased || (this.calendarController?.hasActiveDraft() ?? false)
+    const d = lifecycleDecision({
+      silenceMs: now - this.lastActivityMs,
+      sessionAgeMs: now - this.sessionStartMs,
+      midTask,
+      askedPresence: this.lifecycleAsked,
+      nudgedOutward: this.lifecycleNudged,
+    })
+    switch (d.action) {
+      case 'stop-upstream':
+        this.pauseUpstream()
+        break
+      case 'ask-presence':
+        this.lifecycleAsked = true
+        this.speakLifecycleLine(d.speak!)
+        break
+      case 'outward-nudge':
+        this.lifecycleNudged = true
+        this.speakLifecycleLine(d.speak!)
+        break
+      case 'warm-goodbye':
+        this.speakLifecycleLine(d.speak!)
+        this.pendingGoodbyeClose = true // close AFTER the goodbye finishes (response_done)
+        break
+      case 'none':
+      default:
+        break
+    }
+  }
+
+  /** Stop streaming the mic upstream during silence (cost) — reversible on activity. */
+  private pauseUpstream(): void {
+    if (this.upstreamPaused) return
+    this.upstreamPaused = true
+    const track = this.stream?.getAudioTracks()[0]
+    if (track) track.enabled = false
+  }
+  private resumeUpstream(): void {
+    this.upstreamPaused = false
+    const track = this.stream?.getAudioTracks()[0]
+    if (track) track.enabled = true
+  }
+
+  /** Have Abu SAY a specific warm line (idle prompt / goodbye / nudge). Routed through
+   *  the authoritative createResponse, so it is skipped if a response is already active. */
+  private speakLifecycleLine(line: string): void {
+    this.sendEvent({
+      type: 'response.create',
+      response: { instructions: `אמרי בעברית, בחום ובקצרה, בדיוק את המשפט: "${line}"` },
+    })
   }
 
   get state(): RealtimeState { return this._state }
@@ -382,6 +491,7 @@ export class RealtimeVoiceSession {
         this.setFlightCtx({ dcState: this.dc?.readyState ?? '?' })
 
         this.setState('listening')
+        this.startLifecycle() // O-LIFECYCLE: begin the idle-session policy clocks
 
         // ── FULL-DUPLEX session config (ChatGPT Advanced-Voice behavior) ──────
         // Configure the live session over the data channel (the reliable path; the
@@ -536,6 +646,7 @@ export class RealtimeVoiceSession {
       // VAD detected speech start → user is talking
       case 'speech_started':
         this.clearAudioWatchdog() // barge-in: user is speaking again, drop any pending voicing guard
+        this.markActivity()       // O-LIFECYCLE: user is here → reset idle clocks, resume upstream
         this.stage('SPEECH_STARTED', 'ok')
         this.setState('listening')
         break
@@ -602,6 +713,8 @@ export class RealtimeVoiceSession {
       case 'response_done':
         this.releaseResponseLease() // §B: the response lifecycle ended → next turn may respond
         this.setState('listening')
+        // O-LIFECYCLE: the warm goodbye has now finished speaking → close the session.
+        if (this.pendingGoodbyeClose) { this.pendingGoodbyeClose = false; this.disconnect() }
         break
 
       case 'error':
@@ -717,6 +830,7 @@ export class RealtimeVoiceSession {
 
   private cleanup(): void {
     this.clearAudioWatchdog()
+    this.stopLifecycle() // O-LIFECYCLE: stop the idle-policy tick
     if (this.dc) { try { this.dc.close() } catch {} this.dc = null }
     if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null }
     if (this.pc) { try { this.pc.close() } catch {} this.pc = null }

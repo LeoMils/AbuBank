@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.232.0-session-lifecycle',
-  buildLabel: 'AbuBank 0.232.0 — O-LIFECYCLE: the session-lifecycle policy built as a pure deterministic reducer (src/services/sessionLifecycle.ts, 11/11 tests). Encodes the brief contract: ~12s silence stop streaming mic upstream (cost), ~25s ask once warmly (את שם?), ~45s warm goodbye and close, NEVER close or interrupt mid-task (the top rule), ~20 min one warm outward suggestion never nagging, resume keeps the thread (only the idle clocks reset). Added two lifecycle mutants to the harness (never-close-mid-task removed; goodbye no longer closes) — both KILLED; unit harness now 15/15. Honest scope: this is the tested single-source policy core + mutants; wiring it into the live realtime audio session is a medium-risk architectural follow-up, flagged in docs/warroom (not yet done). Evidence: 11/11 + harness 15/15 + full suite. Prior: flake root-fix (v0.231).',
+  version:    '0.233.0-lifecycle-wired',
+  buildLabel: 'AbuBank 0.233.0 — O-LIFECYCLE WIRED into the live realtime session (H-WIRE done). RealtimeVoiceSession now drives sessionLifecycle each ~2s tick: ~12s silence pauses the upstream mic track (cost, reversible), ~25s speaks one warm response.create (את שם), ~45s speaks the goodbye then closes AFTER response_done (never mid-utterance), 20-min single outward nudge; user speech_started resets the clocks and resumes upstream; NEVER acts mid-task (responseLeased OR a calendar draft in DRAFTING/AWAITING_CONFIRM via new CalendarDraftController.hasActiveDraft). Deterministic wiring test via injectForTest + injected clock (realtimeVoiceLifecycle.test.ts 5/5). No regression: realtime+voice 139/139. Evidence class CODE (WebRTC/audio is device-only) — the idle-cost + audible goodbye still need device proof. Prior: lifecycle core (v0.232).',
   buildDate:  '2026-08-13',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time

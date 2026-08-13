@@ -15,13 +15,13 @@
   invariants (warmth, full distress wording) still need the key-gated companion suite + credits.
 
 ## Feature gaps surfaced by the mutation sweep
-- **O-LIFECYCLE 🟡 — policy core BUILT + tested (v0.232); live wiring PENDING.** `src/services/
-  sessionLifecycle.ts` is the deterministic single-source reducer (11/11 tests) for 12s stop-upstream
-  / 25s ask-once / 45s warm-goodbye+close / never-close-mid-task / 20-min single outward nudge /
-  resume-keeps-thread. Two lifecycle mutants added (both KILLED). **Remaining (medium-risk, not done
-  here):** wire it into the live realtime audio session so the clocks actually drive it on device —
-  event-driven integration touching the session orchestrator (four clocks). That is the only part
-  left; it needs a careful, separately-reviewed change (and device proof for the cost claim).
+- **O-LIFECYCLE ✅ core + WIRED (v0.233); device proof pending.** `sessionLifecycle.ts` reducer
+  (11/11) is now DRIVEN by the live `RealtimeVoiceSession` (~2s tick): 12s pause-upstream-mic,
+  25s ask-once (את שם), 45s goodbye-then-close-on-response_done, 20-min nudge; speech_started resets
+  clocks + resumes upstream; never acts mid-task (responseLeased OR `CalendarDraftController.
+  hasActiveDraft`). Wiring test `realtimeVoiceLifecycle.test.ts` (5/5) via injectForTest + injected
+  clock; no regression (realtime+voice 139/139). **Residual (device-only):** the actual idle-cost
+  saving and the audible warm goodbye/latency are CODE-class here — need iPhone proof. Feeds H3 (cost).
 
 ## Reliability finding (Run 1)
 - **O-FLAKE 🟡P2 — CLOSED at root (v0.231), no retries.** Root cause: `buildCommunicationAction`
