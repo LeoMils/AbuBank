@@ -72,20 +72,27 @@ unusually mature test estate. Concretely verified already-covered:
   raw digits gone), plus a long digit-run → `[number]`. Green on correct code; KILLS the mutation.
 - **Re-run:** harness **100% (7/7)**, control behaves. P0/P1 kill rate 7/7.
 
-### ▶ RESUME POINT (safe to /clear) — pushed at 90a1013, build 0.226.0
-State: baseline GREEN (typecheck · 12,668 tests · build). Three commits pushed to
-`rc5/cognitive-architecture-and-acceptance`. Working tree's remaining `M` files are PRE-EXISTING
-(dirty at session start — NOT this run's; do not touch). Nothing of this run is uncommitted.
+### ▶ RESUME POINT (safe to /clear) — pushed at 7bd1ab4, build 0.232.0
+State: baseline GREEN (typecheck · **12,681 tests** · build) — TWO consecutive clean full runs under
+parallel load (flake fix holds). All work pushed to `rc5/cognitive-architecture-and-acceptance`.
+Working tree's remaining `M` files are PRE-EXISTING (dirty at session start — NOT this run's; do not
+touch). Nothing of this run is uncommitted. A vite dev server may still be running on :5175 (only
+needed for the Playwright DOM harness) — safe to kill.
 
-**Next highest-ROI (in order), zero re-derivation needed — see COVERAGE.md empty cells + OPEN.md:**
-1. **Extend the mutation manifest** (`scripts/mutation-harness.mjs`, data-driven) into the empty
-   layers: calendar dedup/confirm→two-events (find anchor in `calendarCreate.ts`), never-invent
-   family guard, feminine self-reference. Each survivor → red-before-green test, then re-run.
-   App/Platform mutants (40px target, RTL, SW-update, idle-timeout) need a Playwright-level mutation
-   mechanism — a SEPARATE harness; note that honestly, don't force them into the unit harness.
-2. **O2 · always-on deterministic invariants** — make companionSuite's invariant list assertable
-   without a key over the deterministic corpus.
-3. **O3/O4/O5** — rollback proof, deploy dry-run, monitoring/heartbeat design.
+**DONE this run:** unit mutation harness 15/15 (Brain/Online/Privacy/App/Journey/Platform+Lifecycle)
+· Playwright DOM harness 2/2 (RTL+touch) · O2 always-on invariants · O-FLAKE root-fixed · O-LIFECYCLE
+policy core built+tested (11/11) · O3/O4/O5 documented (`PRODUCTION_PATH.md`) · coverage matrix closed.
+
+**REMAINING — all in OPEN.md with resumable plans (zero re-derivation):**
+1. **H1 ONE VOICE ENGINE** — AbuCalendar's separate mic (`VoiceCard.tsx`+`calendarTranscribe.ts`)
+   → route to Abu AI or remove. Medium-risk; own reviewed commit; keep voice tests green.
+2. **H2 ONLINE DEPTH** — full Tavily fan-out, 10+ headlines held in session, cinema honesty, verify
+   3 keys. PREVIEW-class (needs real keyed calls).
+3. **H3 COST** per 20-min, measured before/after (needs O-LIFECYCLE WIRED first).
+4. **H-WIRE** — wire `sessionLifecycle.ts` into the live realtime session (medium-risk, device proof).
+5. **H4** reliability tail: 429 backoff, audio truncation, second-voice-at-start, people store
+   reachable everywhere — audit current state first.
+6. **Adversary fuzz/injection suite** — the top code-buildable coverage gap (see COVERAGE closing).
 
 #### F3 — mutation harness extended to Layer B (App): 10/10, no new survivor
 - Added 3 app-layer mutants with deterministic vitest owners: **touch-target 56→40** and
