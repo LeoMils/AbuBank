@@ -73,7 +73,7 @@ overlap P7/P8).
 - [x] P5  Friend behaviour + SAFETY: distress protocol (P5.0), standing safety guard (P5.1), gentle mode (P5.2), two-strike (P5.3), bring-up/connect-sideways/warmth (P5.4)
 - [ ] P6  Actions end-to-end: messages in Martita's voice, calls, calendar (draft survives, one-confirm-one-event)
 - [ ] P7  Online that delivers: use full Tavily results; briefing fan-out ≥10 across categories; depth-on-demand; cinema; provider health
-- [ ] P8  Reliability: 429 backoff-retry; plain-Hebrew recovery; name transcription bias + fuzzy/phonetic; audio; one voice engine; knowledge everywhere
+- [~] P8  Reliability: [x] name fuzzy/phonetic matching (v0.222). REMAINING: 429 backoff-retry; audio (device); one voice engine (AbuCalendar mic audit); knowledge-everywhere audit
 - [ ] P9  Companion quality suite vs the real model; pass-rate before/after
 - [ ] P10 Proposals (do not build): cross-conversation memory, initiation, confusion/repeat handling, distress, safety
 

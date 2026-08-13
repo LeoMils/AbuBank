@@ -11,6 +11,14 @@
  */
 import { loadPeople, resolvePersonId, personById, type Person, type Gender } from './peopleModel'
 import { relationshipOf, relativesOfKind, hebrewTerm, describePathBetween, type KinKind } from './kinship'
+import { fuzzyResolvePersonId, fuzzyCandidates } from './fuzzyMatch'
+
+/** A misheard direct name → a person id, or null (P8). Confident + unambiguous only; never a
+ *  wrong guess. Used ONLY after an exact match AND descriptive-phrase parse have both missed. */
+function fuzzyId(name: string, people: Person[]): string | null {
+  const r = fuzzyResolvePersonId(name, fuzzyCandidates(people))
+  return r ? r.id : null
+}
 
 const SELF = 'martita' // "שלי" / "my" is relative to Martita (the user)
 
@@ -38,7 +46,9 @@ export function whoIs(name: string, people: Person[] = loadPeople()): WhoIs | No
   let id = resolvePersonId(name, people)
   if (!id) {
     const desc = resolveDescriptive(name, people)
-    id = desc && desc.length === 1 ? desc[0]! : null
+    // A descriptive phrase resolves structurally; a plain (possibly MISHEARD) name that is not a
+    // phrase gets one confident fuzzy/phonetic try before we give up (P8).
+    id = desc === null ? fuzzyId(name, people) : desc.length === 1 ? desc[0]! : null
   }
   const p = id ? personById(id, people) : null
   if (!p) return { status: 'not_found' }
@@ -146,7 +156,12 @@ export function resolveContactTarget(phrase: string, people: Person[] = loadPeop
     return { status: 'resolved', id: p.id, label: p.hebrewName }
   }
   const desc = resolveDescriptive(phrase, people)
-  if (desc === null) return { status: 'not_found' } // not a descriptive phrase and no direct match
+  if (desc === null) {
+    // not a descriptive phrase and no exact match → one confident fuzzy/phonetic try (P8) before not_found
+    const fid = fuzzyId(phrase, people)
+    if (fid) { const p = personById(fid, people)!; return p.deceased ? { status: 'deceased', label: p.hebrewName } : { status: 'resolved', id: p.id, label: p.hebrewName } }
+    return { status: 'not_found' }
+  }
   const matches = desc.map((id) => personById(id, people)!)
   if (matches.length === 1) {
     const p = matches[0]!
