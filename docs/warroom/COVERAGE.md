@@ -47,6 +47,10 @@ Grounded in an actual repo scan (Run 1, 2026-08-13), not assumed.
   name-overflow app mutants are Playwright/DOM-render level — they need a SEPARATE Playwright
   mutation harness (this unit harness runs `vitest run`, not `playwright test`). Do NOT force them
   into the unit harness as weak proxies.
+- **mutation (BROWSER, F5)** — `scripts/mutation-harness-e2e.mjs` (Playwright) now covers the DOM
+  layer: RTL (index.html dir flip, owner new `e2e/rtl-direction.spec.ts`) and touch-target rendered
+  height (owner `e2e/enlarged-text.spec.ts`) — both KILLED. Back-nav + name-overflow still have NO
+  owning spec (uncovered) — needs red-before-green specs to seed those mutants.
 - **metamorphic ✗** — none at app layer. GAP: systematic per-screen render/overflow/contrast/
   touch-target/RTL assertion sweep at 412×870 in BOTH themes (brief B1/B2/B3).
 

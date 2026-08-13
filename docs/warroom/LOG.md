@@ -109,6 +109,19 @@ State: baseline GREEN (typecheck · 12,668 tests · build). Three commits pushed
   module or constants** to mutate — `IDLE_RUNTIME` is a cognitive-runtime state, `responseLifecycle`
   is audio-state only. Tracked as **O-LIFECYCLE** (OPEN.md) — a feature gap, not just a test gap.
 
+#### F5 — Playwright DOM mutation harness built + proven (item #3): 2/2 KILLED (BROWSER)
+- New `scripts/mutation-harness-e2e.mjs` — mirrors the unit harness but runs Playwright specs
+  against a live dev server (:5175), for LAYOUT facts jsdom cannot prove. Probes the server first
+  and refuses to run if it is down (a down server must never read as "survived"). Restores every
+  mutated file in `finally`; git is the safety net (used once when a 2-min FOREGROUND bash limit
+  SIGTERM-killed a run mid-mutant — lesson: run this harness BACKGROUNDED).
+- Mutants (both KILLED, BROWSER evidence): (1) **RTL** — `index.html` dir=rtl→ltr, owner the new
+  red-before-green `e2e/rtl-direction.spec.ts` (asserts document dir + computed body direction =
+  rtl); PROVEN green-on-correct (8.4s) and red-under-mutation. (2) **touch-target** — MIN_TOUCH
+  56→30 falls below the enlarged-text 40px rendered-height floor, owner `e2e/enlarged-text.spec.ts`.
+- Closes the "App RTL/overflow needs Playwright" gap the unit harness honestly could not cover.
+  Back-nav + name-overflow still uncovered (no owning spec yet) — tracked in COVERAGE/OPEN.
+
 ### Run 1 mutation summary
 **10 deterministic mutants + 1 negative control → 100% kill (10/10).** Started 80% → 100% after
 closing TWO real blind spots (family label gender F1, Israeli-ID redaction F2); then extended into
