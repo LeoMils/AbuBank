@@ -79,8 +79,30 @@ an action) and the deterministic `kinship`/relationship + list engine — the mo
 portrait AND can verify a precise relationship or resolve an id. The portrait is GENERATED from
 the same graph, so head and tool never disagree. This preserves "never invent a relationship".
 
+## Phase 3 — DONE (the portrait is in her head)
+`src/services/portrait/familyPortrait.ts` generates a warm PROSE portrait FROM the data files
+(family_data.json + life_history.json), tiered: closest circle in full warmth, extended family +
+Papi side a line each, friends (so "who are my friends" has a warm answer), history as story, and
+the shape of what is unknown. It leans on the hand-written human fields (relationship_hebrew /
+occupation / location / notes) so it reads like a friend describing the family, not a record dump.
+Wired into `buildLiveInstructions`; the "# Family and People" section now says she KNOWS them and
+uses people_lookup ONLY to reach someone or double-check. Cap raised 10,000 → **60,000**.
+- Proof: `familyPortrait.test.ts` — adding a person is a data-only edit and they appear in the
+  assembled context; close circle/friends/extended/history/unknowns all present; no artefacts.
+- Assembled instructions now **21,393 chars / 32,096 bytes**; the REAL provider accepts the full
+  session payload → **HTTP 200** (PREVIEW-class). Portrait itself ≈ 10,900 chars.
+- Second-pass improvements: fixed double-periods, meta-artefact residue (⚠/verification asides),
+  and the clunky "גר/ה ב" → clean "(occupation; location)"; preserved truncation ellipses.
+
 ## Decisions log
 (Newest first. Every ambiguous call logged here.)
+
+- **D3.1 — people_lookup kept, repurposed.** It is no longer how Abu learns who family is (she
+  knows). It stays for want=contact (reach someone → id, numbers server-side) and as a verify
+  path. The who/relationship/relatives branches remain callable (harmless) for double-checking.
+- **D3.2 — history stays BOTH in-head and as a tool.** The story is in the portrait (recall in
+  the flow of talk); history_lookup remains for a precise fact double-check. No contradiction —
+  both read the same life_history.json.
 
 - **D0.1 — the instructions cap was measured against the WRONG failure.** The device crash that
   drove the 10,000-char instructions cap was actually `session.audio.input.transcription.prompt`

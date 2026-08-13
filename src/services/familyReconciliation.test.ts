@@ -64,8 +64,10 @@ describe('Part C.4 — family source reconciliation', () => {
 
   it('Abu is instructed to never GUESS a relationship (says she does not know)', () => {
     const instr = buildLiveInstructions()
-    expect(instr).toMatch(/never invents a name, gender, date, or fact/i)
-    expect(instr).toMatch(/does not know it and says so plainly/i)
+    // Companion Brain wording (Phase 3): she KNOWS the family, but must never invent and must
+    // say warmly when she is unsure — the same "no guessing" invariant, restated.
+    expect(instr).toMatch(/Never invent a name, gender, date, or relationship/i)
+    expect(instr).toMatch(/say warmly that you are not sure|do not guess/i)
   })
 
   it('RECONCILIATION REPORT — drift between the two sources (findings for the rebuild)', () => {

@@ -81,7 +81,7 @@ describe('buildLiveInstructions', () => {
       '# Personality and Tone',
       '# Language',
       '# Family and People',
-      '# What Abu Knows — Martita',
+      '# עוד על מרתה עצמה',
       '# Tools and Actions',
       '# Before a Tool Call',
       '# Length',
@@ -91,13 +91,18 @@ describe('buildLiveInstructions', () => {
     }
   })
 
-  it('the family DATA is no longer embedded — the model uses people_lookup instead (D4)', () => {
-    // The family graph left the prompt; only the routing instruction remains.
-    expect(out).toContain('# Family and People')
-    expect(out).toContain('people_lookup')
-    expect(out).not.toContain(ABU_FAMILY) // the family prose is gone from the prompt
+  it('the family is IN HER HEAD — the generated portrait is embedded (Companion Brain, Phase 3)', () => {
+    // The durable family/friends/history now lives in the instructions (measured limit ≥200k).
+    // people_lookup stays, but only to REACH someone or double-check — not to learn who family is.
+    expect(out).toContain('# Family and People — you KNOW them')
+    expect(out).toContain('מי המשפחה של מרתה')  // the portrait's family section
+    expect(out).toContain('החברים של מרתה')      // "who are my friends" is answerable from the head
+    expect(out).toContain('מור')                  // real people are held, in warmth
+    expect(out).toContain('סוזי רז')
+    expect(out).toMatch(/you KNOW them/i)
+    expect(out).not.toContain(ABU_FAMILY)         // NOT the legacy abu-family.md prose — generated from data
+    expect(out).toContain('people_lookup')        // still present, for reaching/verifying
     expect(out.indexOf('# Personality and Tone')).toBeLessThan(out.indexOf('# Family and People'))
-    expect(out.indexOf('# Family and People')).toBeLessThan(out.indexOf('# What Abu Knows — Martita'))
   })
 
   it('embeds Martita\'s own profile verbatim (family graph excluded)', () => {
@@ -172,7 +177,7 @@ describe('name pronunciation guidance (read the Latin spelling as Spanish)', () 
     // the old free-text respelling is gone too
     expect(out).not.toContain('LEH-oh')
     // the section sits after Martita's profile and before the tools
-    expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeGreaterThan(out.indexOf('# What Abu Knows — Martita'))
+    expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeGreaterThan(out.indexOf('# עוד על מרתה עצמה'))
     expect(out.indexOf('# How to Say Names (Pronunciation)')).toBeLessThan(out.indexOf('# Tools and Actions'))
   })
 })
