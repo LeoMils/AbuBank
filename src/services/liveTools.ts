@@ -28,6 +28,7 @@ import {
 import { resolveCalendarParticipant, resolveContact, contactLabel, isDeceasedContact } from './liveContacts'
 import { whoIs, relationshipBetween, relativesByKind, resolveContactTarget } from './people/peopleLookup'
 import type { KinKind } from './people/kinship'
+import { historyLookup } from './history/historyLookup'
 import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 import { loadAppointments, saveAppointments, updateAppointment, detectEmoji, type Appointment } from '../screens/AbuCalendar/service'
 
@@ -188,6 +189,17 @@ export const LIVE_TOOL_SCHEMAS = [
       required: ['want', 'person'], additionalProperties: false,
     },
   },
+  {
+    type: 'function', name: 'history_lookup',
+    description: "The ONE tool for Martita's LIFE HISTORY and PLACES — her childhood in Buenos Aires, the years in Mendoza and the family store (Casa Milstein), the aliyah in 1977, the Ulpan Ben Yehuda in Netanya, the Bat Yam years, the shop and work. Pass the topic as she said it (\"מנדוסה\", \"איך עליתם ארצה\", \"החנות\", \"הילדות שלך\", \"ארגנטינה\"). Returns grounded summaries only, or not_found. Speak ONLY what it returns; never invent a memory, place, or date. This is NOT for the calendar, current news, or who-someone-is (that is people_lookup).",
+    parameters: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string', description: 'The life-history topic or place as Martita said it (e.g. "מנדוסה", "העלייה", "החנות", "הילדות").' },
+      },
+      required: ['topic'], additionalProperties: false,
+    },
+  },
 ] as const
 
 export const LIVE_TOOL_NAMES: string[] = LIVE_TOOL_SCHEMAS.map((t) => t.name)
@@ -331,7 +343,17 @@ export class LiveTools {
     if (isCalendarTool(fc.name)) return this.doCalendar(fc.name, args)
     if (COMM_TOOLS.has(fc.name)) return this.doComm(fc.name, args)
     if (fc.name === 'people_lookup') return this.doPeopleLookup(args)
+    if (fc.name === 'history_lookup') return this.doHistoryLookup(args)
     return { error: 'unknown_tool' }
+  }
+
+  /** FIX 3 — the ONE life-history/places tool. Reads structured knowledge/life_history.json
+   *  and returns ONLY grounded summaries (with confidence), or an honest not_found. Never a
+   *  fabricated memory — history/places get the SAME grounded discipline as people_lookup. */
+  private doHistoryLookup(args: Record<string, unknown>): Record<string, unknown> {
+    const r = historyLookup(str(args, 'topic') ?? str(args, 'query') ?? '')
+    if (r.status === 'not_found') return { status: 'not_found', allowed_to_say: ['say warmly that you do not have that part of the story', 'never invent a memory or a place'] }
+    return { status: 'ok', entries: r.entries, allowed_to_say: ['tell it warmly in your own words from these grounded facts only', 'never add a detail that is not here', 'if a fact is marked unclear, do not sharpen it'] }
   }
 
   /** The ONE people tool — who / relationship / relatives / contact — all derived
