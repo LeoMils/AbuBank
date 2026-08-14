@@ -33,8 +33,14 @@ import { WarmStore, serveWarm, prefetchWarmTopics } from './online/warmStore'
 /** M4 prefetch warm store. When ON, cinema/weather/headlines/transit are warmed in the
  *  background on session open and a matching question is served from cache when fresh (under 1s,
  *  zero network). Flag OFF by default — serving a cached answer trades a little freshness for
- *  latency, so it enables only after off/on measurement. The store is tab-scoped. */
-export const LIVE_PREFETCH_WARM = false
+ *  latency, so it enables only after off/on measurement. The store is tab-scoped. ENV-overridable
+ *  (VITE_LIVE_PREFETCH_WARM=1) so the owner can A/B it on a Preview build without a code change. */
+export const LIVE_PREFETCH_WARM = ((): boolean => {
+  try {
+    const e = (import.meta as { env?: Record<string, string | undefined> }).env
+    return e?.VITE_LIVE_PREFETCH_WARM === '1' || e?.VITE_LIVE_PREFETCH_WARM === 'true'
+  } catch { return false }
+})()
 const liveWarmStore = new WarmStore()
 import type { CalendarDraft } from '../screens/AbuAI/realtime/calendarDraft'
 import { extractFunctionCall, safeParseArgs, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'

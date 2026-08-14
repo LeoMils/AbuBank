@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.261.0-fullname-p0'
-const BUILD_LABEL = 'AbuBank 0.261.0 — DEVICE P0: full-name lookup fixed. people_lookup("גלעד אבורדי") returned not_found though גלעד is in the dataset — the 739-variant oracle covered given-name spellings but not "given name + unknown surname". Fix: SUBSET matching (peopleModel.subsetResolve) — a spoken multi-word name where exactly ONE person is named by any word WINS even with an unknown surname; several different people → ambiguous (ask), never a silent wrong pick; wired into whoIs + resolveContactTarget. Also matches a given name against the FIRST token of a multi-word display name ("אריאל (בן טאבלה)"). Regression: fullNameLookup.test — גלעד אבורדי→Gilad, EVERY living person findable by givenName+surname (miss 0), "מור לאו"→ambiguous. 272 people tests green. Prior: general search loop (v0.260).'
+const BUILD_VERSION = '0.262.0-flag-audit'
+const BUILD_LABEL = 'AbuBank 0.262.0 — TRACK 2 flag audit (blocks the merge). Enumerated all 8 flags (docs/eval/FLAG_AUDIT.md): each with its evidence, default, survives-merge status, and what is still missing before default-ON. No flag fails invisibly on a merge anymore — every default is a CODE default (or an env var that defaults to the safe value when unset). ONLINE_DEEP_FETCH (the Preview-only env hazard) is already a code default ON (v0.260). LIVE_PREFETCH_WARM made ENV-flippable (VITE_LIVE_PREFETCH_WARM), default OFF, survives merge — so the owner can A/B it on a Preview like the audio flags; default stays OFF pending the device freshness-vs-latency measurement. Remaining OFF flags (monitor repairs, audio, prefetch) are OFF because their off/on measurement is DEVICE/EAR, not an env hazard. Prior: full-name P0 (v0.261).'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
