@@ -236,6 +236,24 @@ Hebrew "half-card" read-back echo was correctly NOT flagged because it fell unde
 ≥50-char design bar — the corpus now echoes chunks that clear the bar (the detector was right, the
 test case was wrong); (2) READ_BACK's fire set was enlarged so the ≥8 sample-size assertion is honest.
 
+## D-M5-01 · Decompose FIRST (measured, reversible), flip on device — never claim a shrink from code
+M5 is a re-architecture of how the session carries instructions, and BRIEF_AUDIT A4 already proved
+<5,000 is not reachable by deletion. The brief's own discipline ("baseline fully BEFORE touching it;
+flag off by default; measure off and on; regression reverts that specific removal") means the SHRINK
+cannot be honestly claimed from a code change — the ON-path changes model behaviour every turn and must
+be device-measured for warmth/parity. DECISION (stricter/honest reading, mirrors D-SCOPE-01): this
+iteration lands the fully-verifiable, ZERO-behaviour-risk part — a precise baseline + a loss-less
+per-intent DECOMPOSITION (`intentInstructions.ts`) that leaves `buildLiveInstructions` byte-identical
+(flag-OFF payload unchanged, all existing tests pass) and MEASURES the projected per-turn payload. The
+ratchet (14,000) is NOT lowered: the default assembled size is unchanged, so lowering it would be a
+false shrink claim. `classifySections` THROWS on any unclassified section, so the decomposition can
+never silently drop a rule. HONEST LIMIT recorded and asserted false-today: the always-on core is
+5,886 (SAFETY 1.3k must ship every turn; persona 2.2k); <5,000 additionally requires condensing the
+persona, a warmth trade that is a DEVICE off/on measurement — not deleted here. The ON-path wiring
+into liveSession (buildCoreInstructions + per-response intentGuidance injection, behind a default-OFF
+flag) and startup pre-warm are the device gates, logged open with exact numbers — never a fabricated
+convergence number.
+
 ## D-M2-03 · Four regex-uncatchable gaps reported as GAPS, not silently passed
 The deterministic SOURCE_NAMED / READ_BACK regexes structurally cannot catch: a spoken domain with
 the dots dropped by STT ("seret co il"), a Hebrew-transliterated source name with no TLD ("בוויקיפדיה
