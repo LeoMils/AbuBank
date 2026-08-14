@@ -1,9 +1,9 @@
 {
   "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "headSha": "3216c9a",
+  "headSha": "ddd998b",
   "rollbackTag": "known-good-pre-qa-run (6324bfc)",
-  "updated": "session-m2-adversarial-interception",
+  "updated": "session-m5-bundle-decomposition",
   "part1Mechanisms": [
     {
       "id": "P0-input-oracle", "title": "misheard name resolution (STT variants) — the input-side oracle",
@@ -41,7 +41,7 @@
     },
     {
       "id": "M5", "title": "session weight + startup — <3s connect, bundle <5,000 chars",
-      "status": "partially_closed", "sha": "3216c9a", "layer": "instrument+device",
+      "status": "partially_closed", "sha": "ddd998b", "layer": "instrument+device",
       "note": "Bundle is 13,221 instruction chars / 25,521 payload after removing the portrait (v0.245) + anti-preamble text (v0.247). <5,000 is NOT reachable by deletion alone (safety/persona/tool-schemas dominate) — needs per-intent instruction injection or tool-description trimming (BRIEF_AUDIT A4). Startup <3s (pre-warm connection, parallelize) not started.",
       "closed": ["BASELINE captured (v0.253): 13,221 chars across 14 sections; biggest = Tools/Actions 3,540, persona 2,181, safety 1,329 (docs/eval/BUNDLE_SHRINK_PLAN.md)", "per-intent DECOMPOSITION built: intentInstructions.ts splits the SHIPPED instructions (buildLiveInstructions UNTOUCHED, byte-identical flag-OFF) into always-on CORE + intent blocks; classifySections THROWS on any unclassified section so no rule is silently dropped; loss-less proven (intentInstructions.test 9)", "MEASURED core 5,886 (safety+persona dominate); intent blocks family 2,065, profile 1,201, tools 4,063; projected per-turn chit-chat 5,886 / family 7,951 / tools 9,949 — down from 13,221 every turn", "HONEST LIMIT asserted false-today: core NOT yet <5,000 — reaching it also needs condensing the persona (warmth trade), a DEVICE off/on measurement, not a deletion"],
       "open": ["WIRE the ON-path into liveSession behind a flag (default OFF): buildCoreInstructions + inject intentGuidance(intent) per response.create — DEVICE-gated (warmth/parity off vs on, no regression beyond noise floor)", "condense persona toward core <5,000 — device-measured off/on only", "tool-description trimming (the other half of A4) — deterministic to measure, routing-behaviour to verify on instrument", "pre-warm connection + parallelize setup -> <3s (device-measured)"]
