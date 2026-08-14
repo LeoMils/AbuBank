@@ -1,9 +1,9 @@
 {
   "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "headSha": "ddd998b",
+  "headSha": "2d1b699",
   "rollbackTag": "known-good-pre-qa-run (6324bfc)",
-  "updated": "session-m5-bundle-decomposition",
+  "updated": "session-m4-lookup-cue",
   "part1Mechanisms": [
     {
       "id": "P0-input-oracle", "title": "misheard name resolution (STT variants) — the input-side oracle",
@@ -34,7 +34,7 @@
     },
     {
       "id": "M4", "title": "online — relevance + synthesis (done) / prefetch + non-verbal cue (open)",
-      "status": "partially_closed", "sha": "f6c1920", "layer": "instrument+device",
+      "status": "partially_closed", "sha": "2d1b699", "layer": "instrument+device",
       "closed": ["price half: first-wins page fetch, real range, ttft ~3.0s (v0.246)", "RELEVANCE gate: price must be near the queried product term (priceNearProduct) — no more wrong-product prices (v0.249)", "SYNTHESIS: fetched text -> cheap model -> one clean sentence or no_answer, never a raw dump (synthesizeAnswer, v0.249)", "MEASURED: 3 phrasings of Bleu de Chanel -> real price 597-649 shekels, clean single sentence, ttft 3.0-4.2s"],
       "closed_extra": ["PREFETCH warm store: cinema/weather/headlines/transit cached with per-topic TTL, served warm (<1s, zero network) or fall through live; background prefetch on session open; warmStore.test 6; behind LIVE_PREFETCH_WARM default OFF (v0.251)", "NON-VERBAL IN-FLIGHT CUE (v0.254): a get_current_info lookup pulses onLookup (liveSession, observation-only, deduped by call_id) -> Live screen plays soundLookup (soft two-note, self-gated silent-while-speaking) + shows distinct word 'מחפשת…' reusing the thinking aura (no new visual); cleared on next state transition, speaking always wins; family/contact lookups do NOT cue. NO words (M1 owns silence). CODE: liveSession.test (pulse only on get_current_info, no double-pulse), presenceState.test, sounds.test. Audibility + render are DEVICE (OWNER_CHECKLIST #6)"],
       "open": ["ENABLE LIVE_PREFETCH_WARM by default after off/on freshness-vs-latency measurement", "DEVICE-verify the in-flight cue is audible + 'מחפשת…' renders during a real online lookup (OWNER_CHECKLIST #6)"]
