@@ -5,29 +5,28 @@ adversarial corpus (cases engineered to trigger it + clean/borderline cases engi
 to fool it). No value is taken verbatim from `outputMonitor.ts` (anti-circularity).
 Interception = fraction of engineered violations caught. FP = fraction of clean caught.
 
-Total corpus: 364 cases.
+Total corpus: 369 cases.
 
 | Detector | fire cases | intercepted | interception | clean cases | false positives | FP rate |
 |---|---|---|---|---|---|---|
 | LANGUAGE_IMPURE | 65 | 65 | 100.0% | 41 | 0 | 0.0% |
-| SOURCE_NAMED | 105 | 105 | 100.0% | 22 | 0 | 0.0% |
+| SOURCE_NAMED | 108 | 108 | 100.0% | 26 | 0 | 0.0% |
 | TOO_LONG | 25 | 25 | 100.0% | 27 | 0 | 0.0% |
-| READ_BACK | 9 | 9 | 100.0% | 7 | 0 | 0.0% |
+| READ_BACK | 10 | 10 | 100.0% | 7 | 0 | 0.0% |
 | LITERAL_COUNT | 28 | 28 | 100.0% | 31 | 0 | 0.0% |
 
 ### LANGUAGE_IMPURE
 - interception: 65/65 (100.0%) · false positives: 0/41 (0.0%)
 
 ### SOURCE_NAMED
-- interception: 105/105 (100.0%) · false positives: 0/22 (0.0%)
-- KNOWN GAPS (regex cannot catch — reported honestly): GAP domain w/o dots (uncaught) · GAP heb-translit source (uncaught) · GAP "אתר של" no domain (uncaught)
+- interception: 108/108 (100.0%) · false positives: 0/26 (0.0%)
 
 ### TOO_LONG
 - interception: 25/25 (100.0%) · false positives: 0/27 (0.0%)
 
 ### READ_BACK
-- interception: 9/9 (100.0%) · false positives: 0/7 (0.0%)
-- KNOWN GAPS (regex cannot catch — reported honestly): GAP punct/insert-broken echo
+- interception: 10/10 (100.0%) · false positives: 0/7 (0.0%)
+- KNOWN GAPS (regex cannot catch — reported honestly): GAP inserted-word-broken echo
 
 ### LITERAL_COUNT
 - interception: 28/28 (100.0%) · false positives: 0/31 (0.0%)

@@ -40,12 +40,15 @@ describe('no detector fires on engineered-clean output (a blocked good answer is
   }
 })
 
-describe('known GAPS are documented, not hidden', () => {
-  it('SOURCE_NAMED cannot catch a dot-less spoken domain or a Hebrew-transliterated source (reported)', () => {
-    // These are REAL defects the deterministic regex structurally cannot catch. They are
-    // emitted as gap cases so the report states honestly where Layer-1 ends — they are NOT
-    // counted against interception. If a future change DOES catch them, this test flags it
-    // (the gap closed) rather than letting the limit rot silently.
-    expect(by('SOURCE_NAMED').gaps.length).toBeGreaterThanOrEqual(3)
+describe('TRACK D · gaps closed, and the one that remains is documented', () => {
+  it('SOURCE_NAMED gaps are now CLOSED (dot-less domain, transliterated source, "אתר של")', () => {
+    // v0.259 added dot-less-domain + named-source + broadened-provenance patterns; these three
+    // former gaps are now fire cases at 100% interception with 0 FP (asserted above).
+    expect(by('SOURCE_NAMED').gaps.length).toBe(0)
+  })
+  it('READ_BACK still cannot catch an INSERTED-word break (contiguous-run limit) — reported honestly', () => {
+    // Punctuation-only breaks are now caught; an inserted word is not, and closing it needs fuzzy
+    // matching with real FP risk. Kept as an explicit gap so the limit cannot rot silently.
+    expect(by('READ_BACK').gaps.length).toBeGreaterThanOrEqual(1)
   })
 })

@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.258.0-m3-title',
-  buildLabel: 'AbuBank 0.258.0 — TRACK C M3 on the REAL instrument. Measured two open Layer-3 defects on the actual realtime model. PARTICIPANT SUBSTITUTION: asked to schedule "פגישה עם אח של מור", the model resolves the relationship to Leo but sometimes wrote the RAW phrase into the calendar TITLE — reproduced 1/2 runs. FIX: the # Tools calendar rule + prepare_calendar_event title description now require the resolved NAME everywhere (participant AND title = "פגישה עם לאו", never the relationship phrase). RE-MEASURED: 0/3 wrote the phrase, 3/3 wrote "פגישה עם לאו". ACCEPT-CORRECTION: 5/5 conceded ("כן, נכון"), 0 argued — passes. ~20 text-mode realtime turns, 0 transport failures, well under the $5 cap. Harness scripts/eval/m3Probe.ts, report docs/eval/M3_PROBE_REPORT.md. Instruction change re-measured to help, not a deterministic guarantee. Prior: TRACK A audio (v0.257).',
+  version:    '0.259.0-source-gaps',
+  buildLabel: 'AbuBank 0.259.0 — TRACK D: closed the closable M2 source gaps. detectSourceNamed now catches (1) a dot-less spoken domain ("seret co il" — the transcriber drops the dots) via a space-separated TLD-pair pattern; (2) a named/transliterated source ("בוויקיפדיה", "בגוגל", ynet, wisebuy…); (3) "אתר של"/"ראיתי באתר" provenance. detectReadBack now strips punctuation so a comma-dropped echo is caught. Re-measured (adversarialCorpus, 369 cases): SOURCE_NAMED 108/108, READ_BACK 10/10 = 100% interception, still 0 false positives over the clean set (new plain-Hebrew guards added). ONE gap remains and is stated plainly: a read-back broken by an INSERTED word defeats a contiguous-run check — closing it needs fuzzy/token-overlap matching with real FP risk vs a genuine paraphrase, not done speculatively. Prior: M3 title fix (v0.258).',
   buildDate:  '2026-08-15',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time

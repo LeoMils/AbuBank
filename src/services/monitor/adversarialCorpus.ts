@@ -91,11 +91,14 @@ function sourceCases(): Case[] {
     c.push({ detector: 'SOURCE_NAMED', expect: 'clean', userText: u, spoken: `${hebRun(5, s)} ${100 + s * 7} שקלים ${hebRun(3, s)}`, label: `plain price(${s})` })
   for (let k = 3; k <= 12; k++)
     c.push({ detector: 'SOURCE_NAMED', expect: 'clean', userText: u, spoken: hebRun(k, k), label: `plain heb(${k})` })
-  // GAP (reported, not scored as a miss): spoken sources the regex structurally cannot catch —
-  // a domain with the dots dropped by STT, or a Hebrew-transliterated site name with no TLD.
-  c.push({ detector: 'SOURCE_NAMED', expect: 'gap', userText: u, spoken: 'מצאתי את זה ב seret co il', label: 'GAP domain w/o dots' })
-  c.push({ detector: 'SOURCE_NAMED', expect: 'gap', userText: u, spoken: 'בוויקיפדיה כתוב שיש היום שלושה סרטים', label: 'GAP heb-translit source' })
-  c.push({ detector: 'SOURCE_NAMED', expect: 'gap', userText: u, spoken: 'ראיתי באתר של הקולנוע שיש שלושה סרטים', label: 'GAP "אתר של" no domain' })
+  // TRACK D · gaps NOW CLOSED (v0.259) — these fire cases previously slipped through:
+  // a dot-less spoken domain, a Hebrew/transliterated source name, and "אתר של" provenance.
+  c.push({ detector: 'SOURCE_NAMED', expect: 'fire', userText: u, spoken: 'מצאתי את זה ב seret co il', label: 'CLOSED domain w/o dots' })
+  c.push({ detector: 'SOURCE_NAMED', expect: 'fire', userText: u, spoken: 'בוויקיפדיה כתוב שיש היום שלושה סרטים', label: 'CLOSED heb-translit source' })
+  c.push({ detector: 'SOURCE_NAMED', expect: 'fire', userText: u, spoken: 'ראיתי באתר של הקולנוע שיש שלושה סרטים', label: 'CLOSED "אתר של" no domain' })
+  // CLEAN guards for the new patterns (must NOT fire): warm Hebrew that merely uses common words.
+  for (let s = 0; s < 4; s++)
+    c.push({ detector: 'SOURCE_NAMED', expect: 'clean', userText: u, spoken: `${hebRun(6, s)} ${hebRun(4, s + 3)}`, label: `plain heb guard(${s})` })
   return c
 }
 
@@ -148,9 +151,13 @@ function readBackCases(): Case[] {
   }
   // CLEAN: no on-screen text at all → nothing to read back.
   c.push({ detector: 'READ_BACK', expect: 'clean', userText: u, spoken: hebRun(20), label: 'no onScreen' })
-  // GAP: a read-back that punctuation/word-substitution breaks below the contiguous ≥8-word bar.
   const card = cards[0]!
-  c.push({ detector: 'READ_BACK', expect: 'gap', userText: u, spoken: `ההודעה מוכנה: ${card.replace(/,/g, '').replace('חושבת', 'חושבת מאוד')}`, ctx: { onScreenText: card }, label: 'GAP punct/insert-broken echo' })
+  // TRACK D · a read-back that only DROPS PUNCTUATION is now CAUGHT (norm strips punctuation).
+  c.push({ detector: 'READ_BACK', expect: 'fire', userText: u, spoken: `ההודעה מוכנה: ${card.replace(/,/g, '')}`, ctx: { onScreenText: card }, label: 'CLOSED punct-only-broken echo' })
+  // GAP (still uncatchable by a contiguous-run check): an INSERTED word breaks the ≥8-word run.
+  // Closing this needs fuzzy/token-overlap matching (real FP risk vs a genuine paraphrase) — not
+  // done speculatively; a real device transcript would justify it. See the report.
+  c.push({ detector: 'READ_BACK', expect: 'gap', userText: u, spoken: `ההודעה מוכנה: ${card.replace('חושבת', 'חושבת מאוד')}`, ctx: { onScreenText: card }, label: 'GAP inserted-word-broken echo' })
   return c
 }
 

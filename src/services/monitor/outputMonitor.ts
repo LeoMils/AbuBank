@@ -68,8 +68,18 @@ export function detectLanguageImpurity(spoken: string, userText?: string): Viola
 /** A named website/source/app, or a narrated lookup — the NO_SOURCES rule, on the spoken side. */
 export function detectSourceNamed(spoken: string): Violation | null {
   const url = /https?:\/\/\S+|\bwww\.\S+|[-\w]+\.(?:co\.il|org\.il|gov\.il|ac\.il|com|net|org|io|ai|co|tv)\b/i
-  const narrated = /(לפי\s+אתר|מצאתי\s+ב|בדקתי\s+ב|לפי\s+גוגל|according to|found (?:it )?on|per the site)/i
+  // TRACK D · dot-less spoken domain: a transcriber drops the dots, so "seret.co.il" is heard as
+  // "seret co il". A space-separated TLD pair (co il / gov il / com …) is a domain, not prose —
+  // very low FP (this Latin pair does not occur in warm Hebrew or Spanish speech).
+  const dotlessDomain = /\b(?:co|com|net|org|gov|ac|edu)\s+(?:il|uk|us|com)\b/i
+  // TRACK D · a NAMED source by transliterated/Hebrew name (naming the source IS the defect),
+  // plus "אתר" used as a provenance ("I saw it on the site of…"). Kept to real source names +
+  // provenance phrasings so it does not fire on ordinary talk.
+  const namedSource = /ויקיפדיה|ויקיפדיה|בגוגל|לפי\s*גוגל|וואלה|וויז|וייז|ynet|וינט|בוקינג|טריפאדווייזר|וישבוי|וויזבוי/i
+  const narrated = /(לפי\s+ה?אתר|מצאתי\s+ב|בדקתי\s+ב|ראיתי\s+באתר|באתר\s+של|according to|found (?:it )?on|per the site)/i
   if (url.test(spoken)) return { kind: 'SOURCE_NAMED', severity: 'hard', detail: 'a URL/domain was spoken' }
+  if (dotlessDomain.test(spoken)) return { kind: 'SOURCE_NAMED', severity: 'hard', detail: 'a dot-less spoken domain (e.g. "co il")' }
+  if (namedSource.test(spoken)) return { kind: 'SOURCE_NAMED', severity: 'hard', detail: 'a named source/site was spoken' }
   if (narrated.test(spoken)) return { kind: 'SOURCE_NAMED', severity: 'hard', detail: 'narrated where the info came from' }
   return null
 }
@@ -86,7 +96,10 @@ export function detectTooLong(spoken: string, allowLong = false, maxWords = 45):
  *  ≥50-char) chunk of the on-screen text echoed in the spoken answer. */
 export function detectReadBack(spoken: string, onScreenText?: string): Violation | null {
   if (!onScreenText || onScreenText.trim().length < 30) return null
-  const norm = (s: string) => s.replace(/\s+/g, ' ').trim()
+  // TRACK D · normalise away punctuation as well as whitespace, so a read-back that only differs
+  // by dropped commas/periods (the transcriber does not punctuate) is still caught. A read-back
+  // broken by an INSERTED word remains uncatchable by a contiguous-run check — see the corpus gap.
+  const norm = (s: string) => s.replace(/[,.;:!?"'()\-–—]/g, '').replace(/\s+/g, ' ').trim()
   const screen = norm(onScreenText), said = norm(spoken)
   const words = screen.split(' ')
   for (let n = words.length; n >= 8; n--) {
