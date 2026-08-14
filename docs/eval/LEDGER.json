@@ -1,7 +1,7 @@
 {
   "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "headSha": "PENDING-output-monitor",
+  "headSha": "9110489",
   "rollbackTag": "known-good-pre-qa-run (6324bfc)",
   "updated": "session-overnight-online-relevance",
   "part1Mechanisms": [
@@ -27,7 +27,7 @@
     },
     {
       "id": "M2", "title": "output validation layer (deterministic monitor done; classified + repair-enable open)",
-      "status": "partially_closed", "sha": "PENDING-output-monitor", "layer": "L1+device",
+      "status": "partially_closed", "sha": "9110489", "layer": "L1+device",
       "closed": ["deterministic detectors: language purity, length, source/URL, read-back, literal-count (outputMonitor.ts, 9 tests, zero FP)", "post-turn monitor wired into liveSession as OBSERVATION (always on, ~0ms, no output change, onMonitorViolations)", "one-attempt next-turn repair for hard violations, stashed + fired on response.done, gated behind LIVE_OUTPUT_MONITOR_REPAIR (default OFF)", "interception measured on instrument: 0/5 real turns (root-cause fixes already clean)"],
       "verified": "outputMonitor.test 9; monitorProbe 0/5 interception on the instrument (clean output, zero FP)",
       "open": ["ENABLE the repair by default — needs device measurement (audible self-correction; warmth off/on)", "CLASSIFIED checks (distress->menu, method narration, invented entity) — measure false-positive rate first"]
