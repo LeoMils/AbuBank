@@ -66,10 +66,36 @@ export function isPriceQuery(query: string): boolean {
 /** A real price token: a currency symbol/word adjacent to a number (either order). */
 const PRICE_TOKEN = /(?:₪|\$|€|£)\s?\d[\d.,]*|\d[\d.,]*\s?(?:₪|\$|€|£|ש["״]?ח|שקל(?:ים)?|ILS|USD|EUR|dollars?|euros?|shekels?)/i
 
-/** Default "does the page contain the answer": for a price query, a real price token; else
- *  a non-trivial page that shares a meaningful word with the query. */
+/** Words that carry no product identity — dropped so the discriminating product name remains. */
+const QUERY_STOP = new Set(['כמה', 'עולה', 'המחיר', 'מחיר', 'בכמה', 'זה', 'של', 'דה', 'the', 'how', 'much', 'price', 'cost', 'cuanto', 'cuánto', 'cuesta', 'vale', 'precio', 'de'])
+
+/** The discriminating product terms in a query ("כמה עולה בלו דה שאנל" → ["בלו","שאנל"]). */
+export function productTerms(query: string): string[] {
+  return query.normalize('NFC').replace(/[?？.,!"״]/g, ' ').split(/\s+/)
+    .map((w) => w.trim()).filter((w) => w.length >= 3 && !QUERY_STOP.has(w.toLowerCase()))
+}
+
+/** For a price query, is there a price token NEAR a product term on the page? The relevance gate:
+ *  a store pricing a hundred OTHER perfumes must NOT pass a Chanel query. Requires a price token
+ *  within `window` chars of a discriminating product term (the queried entity), not merely
+ *  ANY price on the page (the "Clive Christian / Fugazzi prices for a Chanel question" defect). */
+export function priceNearProduct(text: string, query: string, window = 160): boolean {
+  const terms = productTerms(query)
+  if (!terms.length) return PRICE_TOKEN.test(text) // no discriminating term → any price is the best we can require
+  const re = new RegExp(PRICE_TOKEN.source, 'gi')
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text))) {
+    const s = Math.max(0, m.index - window), e = Math.min(text.length, m.index + m[0].length + window)
+    const win = text.slice(s, e)
+    if (terms.some((t) => win.includes(t))) return true
+  }
+  return false
+}
+
+/** Default "does the page contain the answer": for a price query, a real price token BELONGING to
+ *  the queried product (proximity); else a non-trivial page that shares a meaningful word. */
 export function defaultHasAnswer(text: string, query: string): boolean {
-  if (isPriceQuery(query)) return PRICE_TOKEN.test(text)
+  if (isPriceQuery(query)) return priceNearProduct(text, query)
   if (text.length < 200) return false
   const words = query.replace(/[?？.,!]/g, ' ').split(/\s+/).filter((w) => w.length >= 3)
   return words.some((w) => text.includes(w))
@@ -80,17 +106,20 @@ export function defaultHasAnswer(text: string, query: string): boolean {
  *  Always bounded (≤ ~1400 chars) so the grounded tool payload stays small. */
 export function defaultExtract(text: string, query: string, maxChars = 1400): string {
   if (isPriceQuery(query)) {
-    const windows: string[] = []
+    const terms = productTerms(query)
+    const near: string[] = []   // price windows that mention the queried product
+    const any: string[] = []    // any price window (fallback)
     const re = new RegExp(PRICE_TOKEN.source, 'gi')
     let m: RegExpExecArray | null
-    let budget = maxChars
-    while ((m = re.exec(text)) && budget > 0 && windows.length < 6) {
-      const start = Math.max(0, m.index - 90)
-      const end = Math.min(text.length, m.index + m[0].length + 90)
+    while ((m = re.exec(text)) && any.length < 8) {
+      const start = Math.max(0, m.index - 110)
+      const end = Math.min(text.length, m.index + m[0].length + 110)
       const w = text.slice(start, end).replace(/\s+/g, ' ').trim()
-      windows.push(w); budget -= w.length
+      any.push(w)
+      if (terms.length && terms.some((t) => w.includes(t))) near.push(w)
     }
-    if (windows.length) return windows.join(' … ').slice(0, maxChars)
+    const chosen = near.length ? near : any
+    if (chosen.length) return chosen.slice(0, 6).join(' … ').slice(0, maxChars)
   }
   return text.replace(/\s+/g, ' ').trim().slice(0, maxChars)
 }

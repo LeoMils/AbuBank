@@ -32,6 +32,12 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const PRICE_TOKEN = /(?:₪|\$|€)\s?\d[\d.,]*|\d[\d.,]*\s?(?:₪|\$|€|ש["״]?ח|שקל(?:ים)?|יורו|דולר|dollars?|euros?)/i
 const PERFUME = 'כמה עולה הבושם בלו דה שאנל?'
 const CINEMA = 'איזה סרטים רצים בכפר סבא היום?'
+// M4 acceptance: three differently-phrased price questions about the SAME product → consistent range.
+const PERFUME_PHRASINGS = [
+  'כמה עולה הבושם בלו דה שאנל?',
+  'מה המחיר של בלו דה שאנל?',
+  'בכמה יוצא בושם בלו דה שאנל?',
+]
 
 function report(mode: string, recs: TurnRecord[]) {
   recs.forEach((r) => {
@@ -63,11 +69,21 @@ async function main() {
 
   await sleep(2500)
 
-  console.log('\n──── AFTER: first-wins PAGE fetch (firstWinsOnlineFetch) ────')
-  const onlineFetch = firstWinsOnlineFetch({ braveKey, softBudgetMs: 4000, hardCeilingMs: 6000 })
+  console.log('\n──── AFTER: first-wins PAGE fetch + relevance gate + synthesis ────')
+  const onlineFetch = firstWinsOnlineFetch({ braveKey, openaiKey, softBudgetMs: 4000, hardCeilingMs: 6000 })
   const after = await runConversationRealtime([PERFUME, CINEMA], { openaiKey, braveKey, model, onlineFetch })
   report('after', after)
 
+  await sleep(2500)
+  console.log('\n──── M4 ACCEPTANCE: three phrasings of the SAME product → consistent range ────')
+  for (const q of PERFUME_PHRASINGS) {
+    const [r] = await runConversationRealtime([q], { openaiKey, braveKey, model, onlineFetch })
+    const said = (r!.text || r!.error || '').trim()
+    console.log(`\n[phrasing] ${q}`)
+    console.log(`  REAL PRICE: ${PRICE_TOKEN.test(said) ? 'YES ✓' : 'NO ✗'}   ttft ${r!.ttftMs}ms total ${r!.totalMs}ms`)
+    console.log(`  said: ${JSON.stringify(said.slice(0, 220))}`)
+    await sleep(1500)
+  }
   console.log('\n════════════════════════════════════════════════════════════════')
 }
 main().catch((e) => { console.error('PRICE_PROBE_ERROR', e?.stack || e?.message || String(e)); process.exit(1) })

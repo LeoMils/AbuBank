@@ -1,13 +1,13 @@
 {
   "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "headSha": "PENDING-input-oracle",
+  "headSha": "PENDING-online-relevance",
   "rollbackTag": "known-good-pre-qa-run (6324bfc)",
-  "updated": "session-overnight-input-oracle",
+  "updated": "session-overnight-online-relevance",
   "part1Mechanisms": [
     {
       "id": "P0-input-oracle", "title": "misheard name resolution (STT variants) — the input-side oracle",
-      "status": "closed", "sha": "PENDING-input-oracle", "layer": "L1-deterministic",
+      "status": "closed", "sha": "eb1b26e", "layer": "L1-deterministic",
       "closed": ["matres-lectionis skeleton resolves STT yud/vav mangling (גילעד->גלעד)", "resolvePersonId base+prefix dual-index (לאו/מור/מרתה match by true spelling; prefixed forms reduce)", "reach path ambiguous->ask (names deceased match too), never not_found / wrong guess", "sttVariants() generator + inputOracle.test: not_found=0, wrong=0 over 739 generated variants", "STANDING rule: no Layer-1 test feeds a value verbatim from its source"],
       "verified": "deterministic oracle 739 variants; instrument spot-check blocked by the .env safety hook (deterministic proof stands)",
       "open": ["harvest real-transcript variants when a real trace is provided (P0.4)"]
@@ -32,10 +32,10 @@
       "open": ["build the deterministic detector library + post-turn monitor", "next-turn repair with a one-attempt latency budget", "warmth off/on regression measurement"]
     },
     {
-      "id": "M4", "title": "online — prefetch warm store + non-verbal in-flight cue",
-      "status": "partially_closed", "sha": "6324bfc", "layer": "instrument+device",
-      "closed": ["price half: first-wins page fetch, real range, ttft ~3.0s (v0.246, verified on instrument + on the Preview endpoint with ONLINE_DEEP_FETCH=1)"],
-      "open": ["prefetch warm store (cinema/weather/headlines/transit on a schedule) -> <1s prefetched", "non-verbal in-flight cue (sound + lookup state, no words) — coordinates with M1 silence"]
+      "id": "M4", "title": "online — relevance + synthesis (done) / prefetch + non-verbal cue (open)",
+      "status": "partially_closed", "sha": "PENDING-online-relevance", "layer": "instrument+device",
+      "closed": ["price half: first-wins page fetch, real range, ttft ~3.0s (v0.246)", "RELEVANCE gate: price must be near the queried product term (priceNearProduct) — no more wrong-product prices (v0.249)", "SYNTHESIS: fetched text -> cheap model -> one clean sentence or no_answer, never a raw dump (synthesizeAnswer, v0.249)", "MEASURED: 3 phrasings of Bleu de Chanel -> real price 597-649 shekels, clean single sentence, ttft 3.0-4.2s"],
+      "open": ["prefetch warm store (cinema/weather/headlines/transit on a schedule) -> <1s prefetched (also covers the cinema no_answer case)", "non-verbal in-flight cue (sound + lookup state, no words) — coordinates with M1 silence"]
     },
     {
       "id": "M5", "title": "session weight + startup — <3s connect, bundle <5,000 chars",

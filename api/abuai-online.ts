@@ -18,6 +18,7 @@
 import { selectProvider } from '../src/services/online/registry'
 import { buildBriefing, speakableBriefing, type Briefing } from '../src/services/online/briefing'
 import { firstWins } from '../src/services/online/firstWins'
+import { synthesizeAnswer } from '../src/services/online/synthesize'
 
 export const config = { runtime: 'edge' }
 
@@ -53,7 +54,14 @@ async function deepenAnswer(
         } finally { clearTimeout(timer); signal.removeEventListener('abort', onAbort) }
       },
     })
-    return (r.ok && r.hadAnswer && r.answer) ? r.answer : currentAnswer
+    if (!(r.ok && r.hadAnswer && r.answer)) return currentAnswer
+    // SYNTHESIZE the fetched page text into one clean answer for the QUERIED product — never hand
+    // a raw page dump (cart/filter/marketing text) to the realtime model, and never a different
+    // product's price. A synthesis no_answer keeps the provider's own answer rather than a dump.
+    const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
+    if (!apiKey) return r.answer
+    const syn = await synthesizeAnswer(query, r.answer, { openaiKey: apiKey })
+    return syn.status === 'answer' && syn.answer ? syn.answer : currentAnswer
   } catch { return currentAnswer }
 }
 

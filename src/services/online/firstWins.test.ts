@@ -31,6 +31,16 @@ describe('price detection', () => {
     expect(out).toContain('299.90 ₪')
     expect(out.length).toBeLessThanOrEqual(1400)
   })
+
+  it('RELEVANCE — a price for a DIFFERENT product does not pass the queried-product gate', () => {
+    // A store page pricing other perfumes, with NO Chanel price → MISS for a Chanel query.
+    const wrongProduct = 'קליב כריסטיאן 1872 עולה 1200 ₪. אלכסנדר J מחיר 900 ₪. פוגאזי בושם 750 ₪.'
+    expect(defaultHasAnswer(wrongProduct, 'כמה עולה בלו דה שאנל')).toBe(false)
+    // The same page WITH a Chanel price near the name → passes, and extract picks that window.
+    const withChanel = wrongProduct + ' בלו דה שאנל או דה פרפיום 100 מל עולה 597 ₪.'
+    expect(defaultHasAnswer(withChanel, 'כמה עולה בלו דה שאנל')).toBe(true)
+    expect(defaultExtract(withChanel, 'כמה עולה בלו דה שאנל')).toContain('597 ₪')
+  })
 })
 
 describe('firstWins — first qualifying page wins, the rest are aborted', () => {
@@ -42,7 +52,7 @@ describe('firstWins — first qualifying page wins, the rest are aborted', () =>
     // a: slow + no price ; b: fast + price ; c: slow + no price
     const fetchPage = (url: string, signal: AbortSignal) => new Promise<string>((resolve, reject) => {
       const delay = url.includes('b') ? 20 : 200
-      const timer = setTimeout(() => resolve(page(url.includes('b') ? 'המחיר 420 ₪' : 'אין כאן מחיר, רק תיאור')), delay)
+      const timer = setTimeout(() => resolve(page(url.includes('b') ? 'הבושם עולה 420 ₪' : 'אין כאן מחיר, רק תיאור')), delay)
       signal.addEventListener('abort', () => { clearTimeout(timer); aborted.push(url); reject(new Error('aborted')) })
     })
     const r = await firstWins('כמה עולה הבושם', { search, fetchPage })

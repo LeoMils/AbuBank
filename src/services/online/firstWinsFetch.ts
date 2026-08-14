@@ -10,12 +10,16 @@
  */
 import { firstWins } from './firstWins'
 import { braveProvider } from './adapters'
+import { synthesizeAnswer } from './synthesize'
 import type { OnlineAnswer, OnlineFetch } from '../liveTools'
 
 const BROWSERISH_UA = 'Mozilla/5.0 (compatible; AbuBank/1.0; +https://abubank)'
 
 export interface FirstWinsFetchOpts {
   braveKey?: string
+  /** When present, fetched text is SYNTHESIZED to one clean answer (never a raw dump); a
+   *  no_answer becomes an honest miss. Without it, the raw page/snippet is returned (legacy). */
+  openaiKey?: string
   fetchImpl?: typeof fetch
   topN?: number
   softBudgetMs?: number
@@ -61,12 +65,18 @@ export function firstWinsOnlineFetch(opts: FirstWinsFetchOpts = {}): OnlineFetch
         softBudgetMs: opts.softBudgetMs ?? 4000,
         hardCeilingMs: opts.hardCeilingMs ?? 6000,
       })
-      // Use PAGE content ONLY when a page actually contained the answer (r.hadAnswer) — that is
-      // the depth win (a real price). Otherwise fall back to the search SNIPPET, so a query the
-      // page-fetch cannot improve (e.g. a JS-rendered cinema listing) is never WORSE than before.
-      if (r.ok && r.hadAnswer && r.answer) return { ok: true, answer: r.answer, sources: [] }
-      if (snippet) return { ok: true, answer: snippet, sources: [] }
-      return { ok: false, userMessage: 'לא הצלחתי לבדוק מידע עדכני כרגע.' }
+      // Use PAGE content when a page actually contained the answer (r.hadAnswer) — the depth win;
+      // else fall back to the search SNIPPET (never WORSE than before on e.g. a JS-rendered cinema
+      // listing). Either way, if we can SYNTHESIZE, hand the model ONE clean answer, never a raw
+      // dump — and a synthesis no_answer is an honest miss, not a partial dump.
+      const raw = (r.ok && r.hadAnswer && r.answer) ? r.answer : snippet
+      if (!raw) return { ok: false, userMessage: 'לא הצלחתי לבדוק מידע עדכני כרגע.' }
+      if (opts.openaiKey) {
+        const syn = await synthesizeAnswer(query, raw, { openaiKey: opts.openaiKey, fetchImpl: doFetch })
+        if (syn.status === 'answer' && syn.answer) return { ok: true, answer: syn.answer, sources: [] }
+        return { ok: false, userMessage: 'לא הצלחתי לבדוק מידע עדכני כרגע.' }
+      }
+      return { ok: true, answer: raw, sources: [] }
     } catch {
       return { ok: false, userMessage: 'לא הצלחתי לבדוק מידע עדכני כרגע.' }
     }
