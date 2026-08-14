@@ -46,23 +46,16 @@ describe('P02 — Voice confirmation persistence contract', () => {
   })
 })
 
-describe('P02 — Voice result persistence in parent wiring', () => {
-  it('parent passes onRetry={handleVoiceRetry} to VoiceCard', () => {
-    expect(INDEX).toContain('onRetry={handleVoiceRetry}')
-  })
-
-  it('handleVoiceRetry resets voice state and re-records', () => {
-    expect(INDEX).toContain('function handleVoiceRetry()')
-    expect(INDEX).toMatch(/handleVoiceRetry[\s\S]*?setVoiceParsed\(null\)/)
-    expect(INDEX).toMatch(/handleVoiceRetry[\s\S]*?handleVoiceRecord\(\)/)
-  })
-
-  it('failed_to_understand shows VoiceCard (sets voiceParsed)', () => {
-    expect(INDEX).toMatch(/failed_to_understand[\s\S]*?setVoiceParsed\(/)
-  })
-
-  it('failed_to_save shows VoiceCard (sets voiceParsed)', () => {
-    expect(INDEX).toMatch(/failed_to_save[\s\S]*?setVoiceParsed\(/)
+describe('P02 — VoiceCard is a retained confirm component (post D7)', () => {
+  // D7 · one voice engine: the calendar no longer wires an in-screen record →
+  // confirm loop; the mic routes to Abu AI, which owns confirm/retry/persist on
+  // the SAME store. VoiceCard remains a self-contained, tested component (its
+  // button/label/retry contract is asserted in the block above). This pins the
+  // removal of the in-screen retry/record wiring so a second engine cannot return.
+  it('the calendar screen no longer owns a record/retry loop', () => {
+    expect(INDEX).not.toContain('handleVoiceRetry')
+    expect(INDEX).not.toContain('handleVoiceRecord')
+    expect(INDEX).toContain('setScreen(Screen.AbuAI)')
   })
 })
 
@@ -92,9 +85,10 @@ describe('P02 — No unrelated module contamination', () => {
   })
 
   it('raw technical error text is not shown to user (errors are translated)', () => {
-    // All error paths go through setVoiceFailure which sets Hebrew messages
+    // Post D7 the calendar screen surfaces no raw voice-capture errors at all —
+    // the mic routes to Abu AI, which owns its own honest error UI. The retained
+    // VoiceCard translates via its 'לא הצלחתי להבין' copy (asserted above).
     expect(INDEX).not.toMatch(/setVoiceError\([^)]*Error\(/)
-    // Verify setVoiceFailure always sets voiceError
-    expect(INDEX).toMatch(/function setVoiceFailure[\s\S]*?setVoiceError\(message\)/)
+    expect(VOICE_CARD).toContain('לא הצלחתי להבין')
   })
 })

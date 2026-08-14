@@ -5,8 +5,11 @@ Baseline this run: typecheck GREEN, full suite **12723 passed** / 1 skip / 2 tod
 Working tree carries a parallel workstream's uncommitted churn (abuai-live-*, chatgpt-live, regen
 knowledge/memory, a deleted familyContactsStorage.test.ts covered by sibling tests) — NOT folded into
 my commits; I stage only files I touch (never `git add -A`).
-- [ ] **1 · One voice engine** — ROUTE calendar mic → Abu AI; excise duplicate STT capture (see D7).
-      Guard `singleVoiceEntry.test.ts` + mutation-harness mutant. 3 named behavior tests green.
+- [x] **1 · One voice engine** — DONE (v0.236.0). Calendar mic ROUTES to Abu AI; duplicate STT capture
+      excised. Guard `singleVoiceEntry.test.ts` + mutant `second-voice-engine-reintroduced` KILLED
+      (harness 16/16). 3 named behavior tests green. Full suite 12679 / build 0. See LOG Run 2 + D7.
+      🟡 **O-VOICE-ORPHANS** follow-up: ~7 now-unreferenced voice modules (tree-shaken from bundle);
+      delete them + their unit tests in a separate safe PR (not rushed into the rip commit).
 - [ ] **2 · Cost** — measure 20-min conversation before/after lifecycle; counter + budget alert;
       graceful degrade at ceiling, never disconnect. Quality must not drop.
 - [ ] **3 · Online depth** — use full Tavily results, fan-out briefing ≥10 headlines w/ sources,

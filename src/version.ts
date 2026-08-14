@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.235.0-heartbeat-alert',
-  buildLabel: 'AbuBank 0.235.0 — O5 heartbeat alert sink CLOSED. Before: the nightly cron always emitted "🟢 הכל תקין" WITHOUT checking anything — a deployed outage or missing-env misconfig reported green (a silent failure). Now: new src/services/healthAlert.ts (probeHealth + pure evaluateHealth, 7/7) actually probes the deployment own /api/health; unreachable OR ok=false ⇒ a RED Hebrew line + Leo notification fires through the EXISTING sendNotification sink (email via Resend when RESEND_API_KEY + recipient are set, else the Leo-only status page). Wired into api/cron/nightly.ts (payload.ok now reflects real health). Residual (env/product decision, documented): email delivery needs RESEND_API_KEY + LEO_EMAIL; a client last-seen beacon (detect "Martita stopped opening it") needs a provisioned store. Evidence: 7/7 + full suite. Prior: adversary (v0.234).',
-  buildDate:  '2026-08-13',
+  version:    '0.236.0-one-voice-engine',
+  buildLabel: 'AbuBank 0.236.0 — ONE VOICE ENGINE (D7): the AbuCalendar screen ran a SECOND speech engine (in-screen mic capture + calendar transcription + a parser action-switch + a voice reminder-confirm branch) that drifted behind Abu AI. Removed it — the calendar mic now routes to Abu AI, the single engine, which creates/reads/modifies appointments and reminders on the SAME AbuCalendar/service store (cognitiveRuntime.createAppointmentSafe, verified via loadAppointments). Retained the pure domain modules (voiceAutoCreate parser, correctionParser, VoiceCard/ConfirmCard, calendarTranscribe, reminders) as library code. Guard: singleVoiceEntry.test.ts (no capture in the calendar path; mic routes to Screen.AbuAI) + a mutation mutant proving teeth. Source-contract tests migrated to the new truth; the 3 named behavior tests stay green. Evidence: typecheck + full suite 12679 green + build. Prior: heartbeat alert (v0.235).',
+  buildDate:  '2026-08-14',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time
   // (Vercel VERCEL_GIT_COMMIT_SHA → VITE_COMMIT_SHA). Falls back to 'local' only for

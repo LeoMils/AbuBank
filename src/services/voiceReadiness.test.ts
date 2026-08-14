@@ -27,12 +27,18 @@ describe('mic constraints — one iOS-tuned source', () => {
 
   it('no PRIMARY mic capture uses bare {audio:true} (bare is only the fallback)', () => {
     // Source-scan guard: every capture site must request the shared constraints first.
+    // D7 · one voice engine: the AbuCalendar screen no longer captures (its mic routes
+    // to Abu AI), so it is no longer a capture site. VoiceDebugPanel is a retained
+    // dev-only diagnostic module that still uses the shared constraints.
     const root = path.resolve(__dirname, '..')
-    const files = ['services/recording.ts', 'services/realtimeVoice.ts', 'screens/AbuCalendar/index.tsx', 'screens/AbuCalendar/VoiceDebugPanel.tsx']
+    const files = ['services/recording.ts', 'services/realtimeVoice.ts', 'screens/AbuCalendar/VoiceDebugPanel.tsx']
     for (const f of files) {
       const src = fs.readFileSync(path.join(root, f), 'utf8')
       expect(src, `${f} must reference the shared MIC_GETUSERMEDIA constraints`).toContain('MIC_GETUSERMEDIA')
     }
+    // And the calendar screen must NOT reintroduce capture (the D7 guard).
+    const cal = fs.readFileSync(path.join(root, 'screens/AbuCalendar/index.tsx'), 'utf8')
+    expect(cal.includes('getUserMedia'), 'AbuCalendar screen must not capture (D7)').toBe(false)
   })
 })
 

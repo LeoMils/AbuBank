@@ -158,28 +158,18 @@ describe('guided QA — mic recording fix (P0 blocker)', () => {
   })
 })
 
-describe('recording start — iOS Safari fallback chain', () => {
-  it('getUserMedia falls back from constraints to bare audio', () => {
-    expect(IDX.includes('constraintsFallback = true')).toBe(true)
-    expect(IDX.includes("getUserMedia({ audio: true })")).toBe(true)
+describe('recording start — moved to Abu AI (post D7)', () => {
+  // D7 · one voice engine: the iOS-Safari capture fallback chain (getUserMedia →
+  // bare audio → MediaRecorder → timeslice) lived in the calendar's own capture,
+  // which was removed. That robustness now belongs to Abu AI's shared voice
+  // service. The calendar screen must contain NO capture fallback code.
+  it('index.tsx contains no getUserMedia / MediaRecorder capture chain', () => {
+    expect(IDX.includes('getUserMedia')).toBe(false)
+    expect(IDX.includes('MediaRecorder')).toBe(false)
+    expect(IDX.includes('mr.start(')).toBe(false)
   })
-
-  it('MediaRecorder creation falls back to no mimeType', () => {
-    expect(IDX.includes("MediaRecorder(bare) FAIL")).toBe(true)
-    expect(IDX.includes('mediarecorder_failed')).toBe(true)
-  })
-
-  it('mr.start() falls back from timeslice to no-timeslice', () => {
-    expect(IDX.includes('mr.start(250)')).toBe(true)
-    expect(IDX.includes('mr.start()')).toBe(true)
-    expect(IDX.includes('recorder_start_failed')).toBe(true)
-  })
-
-  it('error messages include actual error name for diagnosis', () => {
-    // getUserMedia errors now include the error name
-    expect(IDX.includes('getUserMedia_failed:')).toBe(true)
-    // All catch blocks surface error name
-    expect(IDX.includes("err.name : 'unknown'")).toBe(true)
+  it('the calendar mic routes to Abu AI', () => {
+    expect(IDX.includes('setScreen(Screen.AbuAI)')).toBe(true)
   })
 })
 
@@ -199,8 +189,9 @@ describe('mic self-test diagnostic', () => {
     expect(SRC.includes('RESULT: MIC PROBLEM')).toBe(true)
   })
 
-  it('MicSelfTest rendered in index.tsx', () => {
-    expect(IDX.includes('<MicSelfTest')).toBe(true)
+  it('MicSelfTest is a retained component, no longer rendered in the calendar screen (D7)', () => {
+    // The self-test panel exercised the calendar's own capture, which is gone.
+    expect(IDX.includes('<MicSelfTest')).toBe(false)
   })
 
   it('hidden when QA OFF', () => {

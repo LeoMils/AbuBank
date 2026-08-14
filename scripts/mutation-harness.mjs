@@ -114,6 +114,14 @@ const MUTANTS = [
     replace: 'durable.setString(STORAGE_KEY, JSON.stringify(appts.map(({ title, ...rest }) => rest)))',
     owner: 'src/screens/AbuCalendar/calendarPersistence.test.ts', expect: 'kill',
   },
+  {
+    id: 'second-voice-engine-reintroduced', layer: 'B/App·OneVoiceEngine', severity: 'P0',
+    desc: 'D7 one-voice-engine guard: a getUserMedia capture is reintroduced into the AbuCalendar screen (a second speech engine) — singleVoiceEntry must turn red',
+    file: 'src/screens/AbuCalendar/index.tsx',
+    find: 'aria-label="לדבר עם Abu כדי להוסיף אירוע"',
+    replace: 'aria-label="לדבר עם Abu כדי להוסיף אירוע" /* navigator.mediaDevices.getUserMedia reintroduced */',
+    owner: 'src/screens/AbuCalendar/singleVoiceEntry.test.ts', expect: 'kill',
+  },
   // ── Layer D · Journeys (end-to-end handoffs) ──
   {
     id: 'journey-whatsapp-handoff-drops-message', layer: 'D/Journey', severity: 'P1',

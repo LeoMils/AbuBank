@@ -88,32 +88,16 @@ describe('ReminderBoard — reschedule +1h uses local ISO', () => {
   })
 })
 
-// ─── 4. Reminder fallback dueAt creates local ISO without Z ─────────
-describe('handleReminderConfirm — fallback dueAt uses local ISO', () => {
-  it('fallback dueAt does NOT use toISOString', () => {
-    // Find the handleReminderConfirm function in index.tsx
-    const fnStart = INDEX_SRC.indexOf('function handleReminderConfirm')
-    const fnEnd = INDEX_SRC.indexOf('\n  }', fnStart) + 4
-    const fn = INDEX_SRC.slice(fnStart, fnEnd)
-    // The fallback `draft.dueAt ?? ...` must use local format
-    expect(fn.includes('toISOString')).toBe(false)
-    expect(fn.includes('getFullYear()')).toBe(true)
-  })
-})
-
-// ─── 5. Quick-pick time resolver uses local ISO ─────────────────────
-describe('onResolveTime — quick-pick buttons use local ISO', () => {
-  it('toLocalISO helper defined and used instead of toISOString', () => {
-    const resolveSection = INDEX_SRC.slice(INDEX_SRC.indexOf('const toLocalISO'))
-    const block = resolveSection.slice(0, resolveSection.indexOf('setReminderDraft(updated)'))
-    // toLocalISO must be the function used for all dueAt assignments
-    expect(block.includes('toLocalISO(d)')).toBe(true)
-    // No toISOString in this block
-    const dueAtAssignments = block.split('dueAt = ')
-    for (let i = 1; i < dueAtAssignments.length; i++) {
-      const assignment = dueAtAssignments[i]!.slice(0, 50)
-      expect(assignment.includes('toISOString'), `dueAt assignment #${i} uses toISOString`).toBe(false)
-    }
+// ─── 4. Reminder time math moved to Abu AI + ReminderConfirmCard (D7) ─────
+// D7 · one voice engine: the in-screen reminder voice-confirm handler and its
+// quick-pick time resolver were removed from index.tsx (the mic routes to Abu AI,
+// which owns reminder creation). The local-ISO (no-Z, Israel UTC+3) correctness
+// is still guarded on the retained ReminderConfirmCard below (section 6) and is
+// owned by Abu AI's reminder path for the voice case.
+describe('index.tsx — no in-screen reminder time math (post D7)', () => {
+  it('the calendar screen no longer contains handleReminderConfirm / toLocalISO', () => {
+    expect(INDEX_SRC.includes('handleReminderConfirm')).toBe(false)
+    expect(INDEX_SRC.includes('const toLocalISO')).toBe(false)
   })
 })
 

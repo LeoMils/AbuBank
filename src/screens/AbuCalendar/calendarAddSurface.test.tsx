@@ -96,11 +96,12 @@ describe('AbuCalendar — main-screen primary ADD bar (assistant-first)', () => 
     expect(INDEX_SOURCE).toContain('data-testid="main-mic-btn"')
   })
 
-  it('main-add-bar mic button has correct aria-label', () => {
+  it('main-add-bar mic button has an Abu-routing aria-label (post D7)', () => {
     const barStart = INDEX_SOURCE.indexOf('"main-add-bar"')
     const barEnd = INDEX_SOURCE.indexOf('"main-mic-btn"') + 200
     const barBlock = INDEX_SOURCE.slice(barStart, barEnd)
-    expect(barBlock).toContain('הוספת אירוע בקול')
+    // D7 · one voice engine: the mic opens Abu AI, so its label references talking to Abu.
+    expect(barBlock).toContain('Abu')
   })
 
   it('main-add-bar contains "הוספה ידנית" secondary action', () => {
@@ -204,13 +205,12 @@ describe('DayDetailSheet — renders only when open=true (secondary path)', () =
 
 // ─── Voice flow without selected day ─────────────────────────────────────────
 describe('Main-screen voice flow — no selected day required', () => {
-  it('handleVoiceRecord in index.tsx does not pass selectedDay to voice pipeline', () => {
-    const fnStart = INDEX_SOURCE.indexOf('async function handleVoiceRecord')
-    const fnEnd = INDEX_SOURCE.indexOf('function handleVoiceConfirm')
-    const fnBody = INDEX_SOURCE.slice(fnStart, fnEnd)
-    // The function processes audio and calls processVoiceTranscript with `today`, not selectedDay
-    expect(fnBody).toContain('processVoiceTranscript')
-    expect(fnBody).not.toContain('selectedDay')
+  it('the mic works without a selected day — it routes to Abu AI (post D7)', () => {
+    // D7 · one voice engine: no in-screen pipeline that could depend on selectedDay.
+    // The mic opens Abu AI, which resolves dates itself ("מחר", "יום ראשון") — so
+    // voice-add never requires the user to first tap a day.
+    expect(INDEX_SOURCE).not.toContain('handleVoiceRecord')
+    expect(INDEX_SOURCE).toContain('setScreen(Screen.AbuAI)')
   })
 
   it('VoiceAddFlow confirm screen shows missing date as "חסר" (canSave blocked)', () => {
@@ -349,11 +349,12 @@ describe('AbuCalendar index.tsx — structural contracts', () => {
     expect(INDEX_SOURCE).not.toContain('<VoiceTraceCard')
   })
 
-  it('appointment ConfirmCard is reached via VoiceAddFlow, not imported directly from its own file', () => {
-    // The direct ./ConfirmCard import is forbidden — must go via VoiceAddFlow
+  it('the calendar screen imports no in-screen voice-confirm UI (post D7)', () => {
+    // D7 · one voice engine: the confirm surface moved to Abu AI. The calendar
+    // screen imports neither ConfirmCard nor VoiceAddFlow directly.
     expect(INDEX_SOURCE).not.toContain("from './ConfirmCard'")
     expect(INDEX_SOURCE).not.toContain('<ConfirmCard')
-    expect(INDEX_SOURCE).toContain("from './VoiceAddFlow'")
+    expect(INDEX_SOURCE).not.toContain("from './VoiceAddFlow'")
   })
 
   it('createAppointmentSafe is the write path in index.tsx', () => {

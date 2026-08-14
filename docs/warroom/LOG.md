@@ -2,6 +2,50 @@
 
 Newest first. Every finding logged as discovered. Severity: 🔴P0 🟠P1 🟡P2 ⚪P3.
 
+## Run 2 (LAST BUILD) — 2026-08-14 · branch `rc5/cognitive-architecture-and-acceptance`
+
+### Baseline (verified this run)
+- typecheck GREEN; full suite **12723 passed** / 1 skip / 2 todo (481 files) BEFORE changes.
+- Working tree carried a parallel workstream's uncommitted churn (abuai-live-*, chatgpt-live,
+  regenerated knowledge/memory, a deleted `familyContactsStorage.test.ts` — covered by sibling
+  `familyContactsStorageGuards`/`familyContactsDurability`). NOT folded into my commits.
+
+### Item 1 · ONE VOICE ENGINE — DONE (v0.236.0) · commit pending
+- **Decision (D7):** the AbuCalendar screen ran a SECOND speech engine — `handleVoiceRecord()` →
+  `getUserMedia` → `MediaRecorder` → `transcribeCalendarAudio` (Groq Whisper) → `createSilenceDetector`
+  → `processVoiceTranscript` action-switch — feeding appointment-create, reminder-create AND
+  schedule-query. **Mechanism proof it is redundant:** Abu AI's `cognitiveRuntime.ts:1082` creates via
+  `createAppointmentSafe`/`addAppointment` from `../AbuCalendar/service` (verified with
+  `loadAppointments`), modifies via `calendarMutationReasoner` (same store), and handles reminders
+  (`isReminderIntent`/`pendingReminder`). So Abu AI already owns all three, in the same session + store.
+- **What was REMOVED (from `index.tsx`):** the capture body, `mr.onstop` processing, the
+  `processVoiceTranscript` switch, the voice reminder-confirm branch, the inline VoiceAddFlow/VoiceCard
+  render, the dev capture panels (MicSelfTest/QaRecorderPanel/GuidedMicQaPanel), and all now-dead
+  state/refs/imports. **What was ROUTED:** both product mic CTAs (DayDetailSheet footer + main add-bar)
+  now `setScreen(Screen.AbuAI)` — the ONE engine — keeping the "דברי אליי" affordance + `main-mic-btn`
+  test id. **UNTOUCHED:** typed `ManualModal`, `ReminderBoard`/`ReminderDueEngine` display, grid.
+- **Guard + mutant (teeth proven):** new `singleVoiceEntry.test.ts` (no getUserMedia/MediaRecorder/
+  silence/transcribe in the calendar path; mic routes to `Screen.AbuAI`). Mutation-harness mutant
+  `second-voice-engine-reintroduced` [P0] reintroduces a getUserMedia reference → **KILLED**. Harness
+  now **16/16 (100%)**, control OK.
+- **Tests migrated (source-contract → new truth), behavior kept green:** `micCapture`, `voiceTrace`,
+  `voiceRecordGuard`, `guidedQa`, `voiceCardSlots`, `voiceUxContract`, `timezoneLocal`,
+  `calendarAddSurface`, `createPipelineIntegration`, `calendarTranscribe`, `voiceTranscriptionFailureCopy`,
+  and the index-wiring blocks of the 3 NAMED tests. The named BEHAVIOR contracts stay green untouched:
+  `voiceAutoCreate` (parser), `voicePersistence` (100% pure, untouched), `voiceConfirmationP02` (VoiceCard
+  component). Also migrated the cross-cutting `services/voiceReadiness.test.ts` capture-site list.
+- **Gates:** typecheck 0 · full suite **12679 passed** / 1 skip / 2 todo (482 files) · build 0 · version
+  contract 22/22 · mutation 16/16.
+- **Adversarial pass finding — 🟡 O-VOICE-ORPHANS:** removing the wiring leaves ~7 now-unreferenced
+  modules (VoiceAddFlow, voiceAutoCreate, VoiceCard, calendarTranscribe, VoiceDebugPanel,
+  voiceRecordGuard, calendarTranscriptCorrection; voiceTrace/ReminderConfirmCard only reached
+  transitively). They TREE-SHAKE out of the shipped bundle (build clean), so this is source-only dead
+  code. D7 retained them as library (deleting them + their ~15 unit-test files is a separate, larger,
+  riskier refactor — deferred, tracked in OPEN.md). Honest status: not deleted.
+- **Device note (Leo):** tapping the calendar mic now jumps to the Abu AI chat rather than an inline
+  calendar card. Capability-equivalent (Abu creates/reads/edits on the same store) but it IS a screen
+  change to feel on device — added to LEO-TESTS-ONLY.
+
 ## Run 1 — 2026-08-13 · branch `rc5/cognitive-architecture-and-acceptance`
 
 ### Baseline (verified this session)

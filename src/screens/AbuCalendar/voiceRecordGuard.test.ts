@@ -42,13 +42,18 @@ describe('shouldBlockVoiceRecord — behavior', () => {
   })
 })
 
-describe('shouldBlockVoiceRecord — integration with index.tsx', () => {
+describe('shouldBlockVoiceRecord — integration with index.tsx (post D7)', () => {
   const INDEX_SOURCE = readFileSync(
     resolve(__dirname, 'index.tsx'),
     'utf-8',
   )
 
-  it('handleVoiceRetry still passes bypassGuard: true', () => {
-    expect(INDEX_SOURCE).toContain('handleVoiceRecord({ bypassGuard: true })')
+  // D7 · one voice engine: the calendar no longer records in-screen, so there is
+  // no local retry/bypass path. The guard module is retained (pure tests above);
+  // the mic routes to Abu AI. This pins the removal so the second engine cannot
+  // silently return via this file.
+  it('the calendar screen no longer owns a local record/retry path', () => {
+    expect(INDEX_SOURCE).not.toContain('handleVoiceRecord')
+    expect(INDEX_SOURCE).toContain('setScreen(Screen.AbuAI)')
   })
 })

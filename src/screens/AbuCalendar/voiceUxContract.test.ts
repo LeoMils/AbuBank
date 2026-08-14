@@ -115,12 +115,14 @@ describe('P2 — clean saved success state', () => {
     expect(FLOW).toContain('נשמר ביומן')
   })
 
-  it('savedConfirmation state is set from normalized appointment, not raw ASR', () => {
-    // setSavedConfirmation uses result.appointment.title/date/time — not rawTranscript
-    expect(INDEX).toMatch(/setSavedConfirmation\(\s*\{/)
-    expect(INDEX).toMatch(/title: result\.appointment\.title/)
-    expect(INDEX).toMatch(/date: result\.appointment\.date/)
-    expect(INDEX).toMatch(/time: result\.appointment\.time/)
+  it('the retained VoiceAddFlow saved panel binds normalized fields, not raw ASR (post D7)', () => {
+    // D7 · one voice engine: the calendar screen no longer runs the record→save
+    // loop (Abu AI owns it). The saved-confirmation surface is a retained component
+    // (VoiceAddFlow) that renders normalized title/when, never the raw transcript.
+    expect(FLOW).toContain('vaf-saved-title')
+    expect(FLOW).toContain('vaf-saved-when')
+    expect(FLOW).not.toContain('rawTranscript')
+    expect(INDEX).not.toContain('handleVoiceConfirm')
   })
 
   it('VoiceAddFlow saved panel has close and show-day buttons', () => {

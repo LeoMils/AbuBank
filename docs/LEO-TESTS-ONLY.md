@@ -17,6 +17,11 @@ test the same day (see docs/warroom/).
 Supporting device checks (also human, also not code-findable):
 - Mic-permission walkthrough on a fresh PWA install; does Abu speak first on first launch?
 - Does a new deployed version actually reach her device (SW update), never mid-conversation?
+- **One voice engine (v0.236, NEW):** in the יומן (calendar), tapping the gold mic ("דברי אליי")
+  now opens **Abu AI** instead of recording inside the calendar — there is one voice engine, not two.
+  Say an appointment or reminder to Abu ("תקבעי לי תור לרופא מחר בארבע") and confirm it (a) is created,
+  (b) shows up in the calendar, and (c) can be changed by talking ("תעבירי לחמש"). This is a screen
+  change to feel for warmth/flow on a real device; the create/read/edit logic itself is proven in code.
 
 > Everything else — family facts, relationships, calendar continuity, online grounding honesty,
 > invariants, RTL, overflow, no-billable-key — is proven (or provable) without a device and is

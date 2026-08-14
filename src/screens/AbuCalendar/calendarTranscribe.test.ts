@@ -262,38 +262,20 @@ describe('P0.7 — normalizeCalendarTranscript fixes known misspellings', () => 
 
 // ─── 5) Wiring contract in AbuCalendar/index.tsx ──────────────────────
 
-describe('P0.7 — AbuCalendar wiring uses the new quality-first path', () => {
+describe('P0.7 — AbuCalendar no longer wires its own transcribe path (post D7)', () => {
   const INDEX = fs.readFileSync(path.resolve(__dirname, 'index.tsx'), 'utf8')
 
-  it('imports transcribeCalendarAudio and normalizeCalendarTranscript', () => {
-    expect(INDEX.includes("import { transcribeCalendarAudio } from './calendarTranscribe'")).toBe(true)
-    expect(INDEX.includes("import { normalizeCalendarTranscript } from './calendarTranscriptCorrection'")).toBe(true)
+  // D7 · one voice engine: transcribeCalendarAudio + normalizeCalendarTranscript are
+  // retained MODULES (their behavior is exercised by sections 1–4 above), but the
+  // calendar SCREEN no longer runs them — the mic routes to Abu AI, which owns STT.
+  it('index.tsx no longer imports or calls the calendar transcribe path', () => {
+    expect(INDEX.includes('transcribeCalendarAudio')).toBe(false)
+    expect(INDEX.includes('normalizeCalendarTranscript')).toBe(false)
+    expect(INDEX.includes('Promise.race')).toBe(false)
   })
 
-  it('no longer imports the shared AbuAI transcribeAudio in AbuCalendar', () => {
-    expect(INDEX.includes('transcribeAudio, getSupportedMimeType')).toBe(false)
-    expect(/import\s*\{\s*transcribeAudio[^}]*\}\s*from\s*['"]\.\.\/AbuAI\/service['"]/.test(INDEX)).toBe(false)
-  })
-
-  it('calls transcribeCalendarAudio inside the Promise.race watchdog', () => {
-    expect(/transcribeCalendarAudio\(blob,\s*\{\s*languageHint:\s*'he'\s*\}\)/.test(INDEX)).toBe(true)
-  })
-
-  it('normalizes the raw transcript before parser via normalizeCalendarTranscript', () => {
-    expect(INDEX.includes('const norm = normalizeCalendarTranscript(rawTranscript)')).toBe(true)
-    expect(/const transcribed = norm\.corrected/.test(INDEX)).toBe(true)
-  })
-
-  it('writes ASR metadata (model + fallback flag + language + logprobs + corrections) into trace', () => {
-    expect(INDEX.includes('asrModel: asr.model')).toBe(true)
-    expect(INDEX.includes('asrFallbackUsed: asr.asrFallbackUsed')).toBe(true)
-    expect(INDEX.includes('languageHint: asr.languageHint')).toBe(true)
-    expect(INDEX.includes('avgLogprob: asr.avgLogprob ?? null')).toBe(true)
-    expect(INDEX.includes('noSpeechProb: asr.noSpeechProb ?? null')).toBe(true)
-    expect(INDEX.includes('compressionRatio: asr.compressionRatio ?? null')).toBe(true)
-    expect(INDEX.includes('correctionsApplied: norm.correctionsApplied')).toBe(true)
-    expect(INDEX.includes('rawTranscript: norm.rawText')).toBe(true)
-    expect(INDEX.includes('correctedTranscript: transcribed')).toBe(true)
+  it('the calendar mic routes to Abu AI (the single engine)', () => {
+    expect(INDEX.includes('setScreen(Screen.AbuAI)')).toBe(true)
   })
 })
 
