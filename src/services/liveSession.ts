@@ -27,7 +27,15 @@
  */
 import { buildLiveInstructions, buildTranscriptionPrompt, assertSessionPayloadWithinLimits } from './liveInstructions'
 import { formatSavedMemoriesForLLM } from '../screens/AbuAI/savedMemory'
-import { LiveTools, LIVE_TOOL_SCHEMAS, durableCalendarStore, type LiveCalendarStore, type LiveCommDraft, type LiveEvent } from './liveTools'
+import { LiveTools, LIVE_TOOL_SCHEMAS, durableCalendarStore, defaultOnlineFetch, type LiveCalendarStore, type LiveCommDraft, type LiveEvent } from './liveTools'
+import { WarmStore, serveWarm, prefetchWarmTopics } from './online/warmStore'
+
+/** M4 prefetch warm store. When ON, cinema/weather/headlines/transit are warmed in the
+ *  background on session open and a matching question is served from cache when fresh (under 1s,
+ *  zero network). Flag OFF by default — serving a cached answer trades a little freshness for
+ *  latency, so it enables only after off/on measurement. The store is tab-scoped. */
+export const LIVE_PREFETCH_WARM = false
+const liveWarmStore = new WarmStore()
 import type { CalendarDraft } from '../screens/AbuAI/realtime/calendarDraft'
 import { extractFunctionCall, safeParseArgs, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 import { FlightRecorder, downloadTrace } from './liveTrace'
@@ -420,6 +428,11 @@ export class LiveSession {
     // The draft/receipt callbacks forward to the overlay so every action becomes a
     // visible card (Part B). This is UI notification ONLY — it does not touch the
     // audio/VAD/turn machinery.
+    // M4: when the warm store is enabled, serve a warm topic from cache (<1s) and fall through to
+    // the live grounded fetch otherwise; off by default (base fetch unchanged).
+    const onlineFetch = LIVE_PREFETCH_WARM
+      ? (q: string) => serveWarm(q, liveWarmStore, defaultOnlineFetch()).then((r) => r.answer)
+      : defaultOnlineFetch()
     this.liveTools = new LiveTools(
       (event) => this.send(event),
       this.deps.calendarStore ?? durableCalendarStore(),
@@ -429,6 +442,7 @@ export class LiveSession {
         onCommDraft: (d) => { if (d && d.intent) this.monitorOnScreen = d.intent; this.cb.onCommDraft?.(d) },
         onToolIssue: (name, reason) => this.recorder.onToolIssue(name, reason), // FIX 5: log a non-returning tool
       },
+      onlineFetch,
     )
   }
 
@@ -556,6 +570,9 @@ export class LiveSession {
         this.recorder.onConnectOk(model, { chars: json.length, bytes })
         this.setState('listening')
         this.send(payload)
+        // M4: warm the high-frequency topics in the BACKGROUND (best-effort, non-blocking) so a
+        // later cinema/weather/headlines/transit question is served from cache in under 1s.
+        if (LIVE_PREFETCH_WARM) void prefetchWarmTopics(liveWarmStore, defaultOnlineFetch())
         // Greeting is keyed to the conversation id in storage — NOT session start.
         // On a reconnect we send nothing and resume listening silently.
         if (!this.isReconnect && shouldGreet(this.deps.storage, this.conversationId)) {
