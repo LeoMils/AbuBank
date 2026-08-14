@@ -17,11 +17,25 @@ test the same day (see docs/warroom/).
 Supporting device checks (also human, also not code-findable):
 - Mic-permission walkthrough on a fresh PWA install; does Abu speak first on first launch?
 - Does a new deployed version actually reach her device (SW update), never mid-conversation?
-- **One voice engine (v0.236, NEW):** in the יומן (calendar), tapping the gold mic ("דברי אליי")
-  now opens **Abu AI** instead of recording inside the calendar — there is one voice engine, not two.
-  Say an appointment or reminder to Abu ("תקבעי לי תור לרופא מחר בארבע") and confirm it (a) is created,
-  (b) shows up in the calendar, and (c) can be changed by talking ("תעבירי לחמש"). This is a screen
-  change to feel for warmth/flow on a real device; the create/read/edit logic itself is proven in code.
+## New since the last build — test these on the device, riskiest first
+
+1. **One voice engine (v0.236) — highest risk, it changed a screen.** In the יומן (calendar),
+   tapping the gold mic ("דברי אליי") now opens **Abu AI** instead of recording inside the calendar —
+   there is one voice engine, not two. Say an appointment or reminder to Abu ("תקבעי לי תור לרופא מחר
+   בארבע") and confirm it (a) is created, (b) shows up in the calendar, and (c) can be changed by talking
+   ("תעבירי לחמש"). Feel whether the jump-to-Abu is natural or jarring for her. The create/read/edit
+   logic is proven in code; the *feel* is device-only.
+2. **Idle lifecycle (v0.233) — does she feel abandoned or held?** Start a voice chat and go quiet.
+   At ~25s Abu should ask once, warmly, "את שם?"; at ~45s a warm goodbye ("אני נחה רגע… תגעי במסך…")
+   and the session closes. Tap the screen — it should resume with the conversation intact, never from
+   scratch. Confirm Abu NEVER cuts off mid-answer or mid-appointment. (Cost saving from this is proven
+   in the model; the *warmth* of the goodbye/resume is device-only.)
+3. **Online depth (v0.238) — does "what's new" give a real briefing?** Ask "מה חדש היום?" — Abu should
+   give **several distinct headlines** (Israel, world, culture, entertainment, society, health — not
+   sports/economics), then offer "רוצה שאפרט על אחד מהם?"; pick one and confirm she elaborates. If the
+   provider is not configured she should honestly say she cannot check — never invent. NOTE: needs a
+   live search provider in prod (Tavily key is dead — set `ONLINE_PROVIDER=brave` or rotate the key).
+   Ask about a movie — she should point you to the cinema, not recite made-up showtimes.
 
 > Everything else — family facts, relationships, calendar continuity, online grounding honesty,
 > invariants, RTL, overflow, no-billable-key — is proven (or provable) without a device and is

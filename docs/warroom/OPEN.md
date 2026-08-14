@@ -19,8 +19,10 @@ my commits; I stage only files I touch (never `git add -A`).
       detailFor depth-on-demand. Cinema: honest "needs dedicated adapter". Provider health: 🔴 Tavily
       key DEAD (401 — rotate), 🟢 Brave, 🟢 Perplexity. Mutant KILLED. See ONLINE_DEPTH_REPORT.md.
       🟡 **O-TAVILY-KEY** (Leo): rotate `TAVILY_API_KEY` or set `ONLINE_PROVIDER=brave`.
-- [ ] **4 · Production gate** — run it; ranked blocker list (code/iPhone/judgement); update
-      LEO-TESTS-ONLY.md; confirm deploy path + rollback.
+- [x] **4 · Production gate** — DONE. GREEN: tsc 0 · suite 12717 · build 0 · knowledge+family PASS ·
+      mutation 18/18. Ranked list in `PRODUCTION_GATE.md` (no CODE blockers; 🔴 = iPhone voice + prod
+      deploy + design, all Leo). LEO-TESTS-ONLY updated (voice engine, lifecycle, online). Deploy path
+      + rollback re-confirmed (client-side data ⇒ rollback data-safe; no schema change this run).
 
 
 ## P1 — real gaps, code-findable
