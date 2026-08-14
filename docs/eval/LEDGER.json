@@ -1,7 +1,7 @@
 {
   "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "headSha": "9110489",
+  "headSha": "b18785d",
   "rollbackTag": "known-good-pre-qa-run (6324bfc)",
   "updated": "session-overnight-online-relevance",
   "part1Mechanisms": [
