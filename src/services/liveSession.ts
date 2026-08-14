@@ -144,7 +144,7 @@ export function buildSessionUpdate(now: number = Date.now()): Record<string, unk
   // PERSISTENT MEMORY (agent C): durable facts Martita asked Abu to remember are
   // injected every session, so a death / new family member / correction saved via the
   // `remember` tool is KNOWN next session. Empty string when nothing is saved.
-  const savedMemories = formatSavedMemoriesForLLM()
+  const savedMemories = formatSavedMemoriesForLLM(undefined, { maxChars: 1200 }) // bounded (issue i)
   const instructions = buildLiveInstructions() + '\n' + todayInstruction(now) + (savedMemories ? '\n' + savedMemories : '')
   const transcriptionPrompt = buildTranscriptionPrompt()
   assertSessionPayloadWithinLimits({ instructions, transcriptionPrompt })

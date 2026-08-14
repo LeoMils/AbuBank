@@ -82,8 +82,38 @@ describe('care_concern tool — returns the LOCKED safe answer, forbids advice',
   it('care_concern is registered as a live tool', () => {
     expect(LiveTools.owns('care_concern')).toBe(true)
   })
+
+  it('the WORDING rotates across repeated care questions (issue iii), content stays safe', () => {
+    const sent: Array<Record<string, unknown>> = []
+    const tools = new LiveTools((e) => sent.push(e), memStore())
+    const answers: string[] = []
+    for (let i = 0; i < 3; i++) {
+      tools.handleFunctionCall({ name: 'care_concern', callId: `m${i}`, argsJson: JSON.stringify({ query: 'שכחתי לקחת את הכדור, שאקח כפול?' }) } as ParsedFunctionCall)
+      const outputs = sent.filter((e) => e.type === 'conversation.item.create')
+      const last = outputs[outputs.length - 1]!.item as { output?: string }
+      answers.push(String((JSON.parse(last.output ?? '{}') as { answer?: string }).answer))
+    }
+    expect(new Set(answers).size).toBeGreaterThan(1)          // not the same sentence every time
+    for (const a of answers) expect(/רופאה|בית המרקחת|לאו|מור/.test(a)).toBe(true) // every variant still points to a person
+  })
   it('a non-care query does not fabricate a care answer', () => {
     const o = fire('כמה עולה בושם?')
     expect(o.status).toBe('not_care')
   })
+})
+
+describe('careGuard — EVERY wording variant keeps the safety guarantee (issue iii)', () => {
+  const N = 4
+  for (const risk of ['safety', 'medication', 'health', 'money'] as const) {
+    it(`${risk}: all variants point to a person/emergency and give no dose`, () => {
+      const seen = new Set<string>()
+      for (let v = 0; v < N; v++) {
+        const he = safeCareResponse(risk, 'he', v)
+        seen.add(he)
+        expect(/לאו|מור|מד״א|מאה ואחת|רופאה|בית המרקחת/.test(he)).toBe(true)
+        expect(/\bקח[יי]? \d|\d+ כדור|מינון של \d/.test(he)).toBe(false)
+      }
+      expect(seen.size).toBeGreaterThan(1) // there is real variation
+    })
+  }
 })

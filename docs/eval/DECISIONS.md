@@ -80,3 +80,18 @@ only human ground truth. From here: NO fixing agent reads them; they are never a
 to the visible corpus, never optimized against, never used to tune the judge beyond
 this Phase-0b calibration. The final report scores the human trace SEPARATELY. Marker:
 `docs/eval/human-trace/PERMANENT_HOLDOUT` (see file).
+
+## D-REFINE-01/02/03 · Last-wave issues i/ii/iii handled inside their agents
+- iii (careGuard wording): safeCareResponse now takes a `variant` and rotates across
+  2–3 wordings per risk/lang; LiveTools holds a per-session counter. The safety CONTENT
+  (person + Mada 101 for urgent + no advice/dose) is identical across EVERY variant —
+  asserted for all 4 risks. Rationale: a daily medication question must not read as a
+  machine, but the safety guarantee cannot vary.
+- ii (memory sensitive decline): added sensitiveKind() → the decline now reports EXACTLY
+  which category is kept private (phone/medical/financial/street) and the allowed_to_say
+  is FORBIDDEN from saying she cannot update anything (the original defect). A death is
+  NOT medical → grief/life facts persist. Test asserts both.
+- i (memory injection budget): formatSavedMemoriesForLLM is now bounded (hard maxChars,
+  1200 in the live session), RECENCY-first (reverse+stable-sort so same-ms ties keep
+  newest-first), with an honest "+N older kept" note. Relevance-per-turn is not possible
+  at session-build time (built once) → recency is the honest bound; logged as a known limit.

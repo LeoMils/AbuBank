@@ -44,10 +44,22 @@ describe('remember tool — durable, cross-session, never "I cannot update"', ()
     expect(loadMemories().filter((m) => m.text.includes('עדי')).length).toBe(1)
   })
 
-  it('a sensitive fact (phone) is declined at the privacy boundary, gently', () => {
+  it('a sensitive fact (phone) is declined — reports the category, NEVER "cannot update" (issue ii)', () => {
     const o = fire('הטלפון שלי הוא 050-1234567')
     expect(o.status).toBe('declined_sensitive')
+    expect(o.declined).toBe('phone')
     expect(loadMemories().length).toBe(0)
+    const say = JSON.stringify(o.allowed_to_say)
+    // the ORIGINAL defect ("I cannot update anything") is explicitly forbidden here
+    expect(say).toMatch(/FORBIDDEN from saying you cannot update/i)
+    expect(say).toMatch(/remember everything else/i)
+  })
+  it('ongoing medical detail is kept private, but a DEATH (grief) is remembered (issue ii)', () => {
+    const med = fire('אבא לוקח תרופה ללחץ דם כל בוקר')
+    expect(med.status).toBe('declined_sensitive')
+    expect(med.declined).toBe('medical')
+    const death = fire('כאצ׳ו נפטר')
+    expect(death.status).toBe('saved') // grief/life facts persist
   })
 
   it('PERSISTENCE: a saved fact is injected into the NEXT session instructions', () => {
@@ -60,5 +72,16 @@ describe('remember tool — durable, cross-session, never "I cannot update"', ()
   it('with nothing saved, the session instructions carry no memory block', () => {
     const update = buildSessionUpdate(Date.parse('2026-08-14T09:00:00')) as { session: { instructions: string } }
     expect(update.session.instructions).not.toContain('דברים ש-Martita ביקשה שתזכרי')
+  })
+
+  it('memory injection is BOUNDED and recency-first (issue i)', async () => {
+    const { formatSavedMemoriesForLLM } = await import('../screens/AbuAI/savedMemory')
+    // Save many facts; the newest must appear, the oldest must drop, under the budget.
+    for (let i = 0; i < 60; i++) fire(`עובדה מספר ${i} עם קצת טקסט כדי לתפוס מקום בזיכרון`)
+    const block = formatSavedMemoriesForLLM(undefined, { maxChars: 800 })
+    expect(block.length).toBeLessThanOrEqual(800)
+    expect(block).toContain('עובדה מספר 59') // newest kept
+    expect(block).not.toContain('עובדה מספר 0') // oldest dropped
+    expect(block).toMatch(/ועוד \d+ דברים ישנים/) // honest note about what was dropped
   })
 })

@@ -28,6 +28,18 @@ export function isSensitive(text: string): boolean {
   return PHONE_RE.test(text) || MEDICAL_RE.test(text) || FINANCIAL_RE.test(text) || STREET_RE.test(text)
 }
 
+export type SensitiveKind = 'phone' | 'medical' | 'financial' | 'street'
+/** WHICH sensitive category a fact hit (so Abu can say exactly what she keeps private).
+ *  NOTE: a death ("נפטר") is NOT medical here — grief/life facts persist; only ongoing
+ *  medical/phone/financial/street data is kept out of storage. */
+export function sensitiveKind(text: string): SensitiveKind | null {
+  if (PHONE_RE.test(text)) return 'phone'
+  if (FINANCIAL_RE.test(text)) return 'financial'
+  if (STREET_RE.test(text)) return 'street'
+  if (MEDICAL_RE.test(text)) return 'medical'
+  return null
+}
+
 // ── Store (durable-backed) ──
 export function loadMemories(): SavedMemory[] {
   const list = durable.getJSON<SavedMemory[]>(KEY, [])
@@ -69,10 +81,36 @@ export function clearMemories(): void { persist([]) }
  * nothing is stored. These are things she EXPLICITLY asked AbuAI to remember, so
  * they are real grounding the model may use — NOT license to invent more.
  */
-export function formatSavedMemoriesForLLM(memories: SavedMemory[] = loadMemories()): string {
+export function formatSavedMemoriesForLLM(
+  memories: SavedMemory[] = loadMemories(),
+  opts: { maxChars?: number } = {},
+): string {
   if (!memories.length) return ''
-  const lines = memories.map((m) => `- ${m.text}`).join('\n')
-  return `═══ דברים ש-Martita ביקשה שתזכרי ═══\n${lines}\nאלה עובדות אמיתיות שהיא אמרה לך לזכור — מותר להשתמש בהן. אל תמציאי עובדות נוספות עליה.`
+  // Issue i: HARD token budget so this never grows unbounded and fights the bundle
+  // shrink. Policy = RECENCY: most-recently-saved facts win; older ones drop when the
+  // budget is full. (Per-turn relevance ranking would need the live query, which is
+  // not available when the session is built once — recency is the honest bound here.)
+  const maxChars = opts.maxChars ?? 1200
+  const header = '═══ דברים ש-Martita ביקשה שתזכרי ═══'
+  const footer = 'אלה עובדות אמיתיות שהיא אמרה לך לזכור — מותר להשתמש בהן. אל תמציאי עובדות נוספות עליה.'
+  const NOTE_RESERVE = 48 // room for the "(ועוד N דברים ישנים יותר...)" line so the total stays under maxChars
+  const budget = Math.max(0, maxChars - header.length - footer.length - NOTE_RESERVE - 2)
+  // Recency: newest first. `.reverse()` first so that facts saved in the same
+  // millisecond (a tight loop) tie-break to insertion order NEWEST-first, since
+  // Array.sort is stable. Distinct timestamps still sort strictly by `at`.
+  const byRecent = [...memories].reverse().sort((a, b) => b.at - a.at)
+  const kept: string[] = []
+  let used = 0
+  for (const m of byRecent) {
+    const line = `- ${m.text}`
+    if (used + line.length + 1 > budget) break
+    kept.push(line)
+    used += line.length + 1
+  }
+  if (!kept.length) return ''
+  const dropped = byRecent.length - kept.length
+  const note = dropped > 0 ? `\n(ועוד ${dropped} דברים ישנים יותר ששמורים אצלי)` : ''
+  return `${header}\n${kept.join('\n')}${note}\n${footer}`
 }
 
 // ── Command detection (deterministic; runs before the LLM) ──

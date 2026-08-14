@@ -37,23 +37,56 @@ export function classifyCareRisk(text: string): CareResult {
 
 export type CareLang = 'he' | 'es'
 
-/** The FIXED safe response. Points to a real person (Leo/Mor) and, for anything
- *  urgent/medical, the emergency number (101 = Magen David Adom, Israel). No advice,
- *  no dose, no financial action — ever. */
-export function safeCareResponse(risk: CareRisk, lang: CareLang = 'he'): string {
-  const HE: Record<CareRisk, string> = {
-    safety: 'אני דואגת לך מאוד. תתקשרי עכשיו למד״א, מאה ואחת, ואם את יכולה גם ללאו או למור שיבואו אלייך מהר. אני נשארת איתך.',
-    medication: 'אני לא יכולה להגיד לך כמה תרופה לקחת — מסוכן שאני אנחש בזה. תתקשרי לרופאה שלך או לבית המרקחת, או שלאו או מור יבדקו איתך יחד. אני כאן איתך.',
-    health: 'אני לא רופאה ולא אתן עצה רפואית, אבל חשוב שתדברי עכשיו עם הרופאה שלך או עם לאו או מור. אם זה מרגיש דחוף או מפחיד, תתקשרי למד״א, מאה ואחת.',
-    money: 'את הדברים של כסף וחשבון אני לא עושה — זה חשוב מדי בשביל שאני אעשה לבד. תבקשי מלאו או ממור שיעזרו לך עם זה יחד. אני כאן אם בא לך לדבר.',
-  }
-  const ES: Record<CareRisk, string> = {
-    safety: 'Estoy muy preocupada por vos. Llamá ya a emergencias, y si podés también a Leo o a Mor para que vengan. Me quedo con vos.',
-    medication: 'No puedo decirte cuánta medicación tomar, sería peligroso que adivine. Llamá a tu médica o a la farmacia, o que Leo o Mor lo vean con vos. Estoy con vos.',
-    health: 'No soy médica y no te voy a dar un consejo médico, pero es importante que hables ya con tu médica o con Leo o Mor. Si se siente urgente, llamá a emergencias.',
-    money: 'Las cosas de plata y de la cuenta no las hago yo, es demasiado importante para que lo haga sola. Pedile a Leo o a Mor que te ayuden. Acá estoy si querés charlar.',
-  }
-  return (lang === 'es' ? ES : HE)[risk]
+/* The safe CONTENT is fixed (point to a real person; for anything urgent/medical the
+ * emergency number 101 = Magen David Adom; NEVER advice/dose/financial action). Only
+ * the WORDING rotates, so a woman who asks about her medication daily does not hear
+ * the exact same sentence like a machine (issue iii). Every variant keeps the same
+ * safety guarantees — asserted in careGuard.test. `variant` rotates per call. */
+const HE_VARIANTS: Record<CareRisk, string[]> = {
+  safety: [
+    'אני דואגת לך מאוד. תתקשרי עכשיו למד״א, מאה ואחת, ואם את יכולה גם ללאו או למור שיבואו אלייך מהר. אני נשארת איתך.',
+    'מרטיטה, זה חשוב — תרימי טלפון עכשיו למד״א, מאה ואחת, ותגידי גם ללאו או למור שיגיעו אלייך. אני פה איתך כל הזמן.',
+    'קודם כל את. תתקשרי כבר עכשיו למד״א, מאה ואחת, ואם אפשר גם למור או ללאו שיבואו. אני לא זזה מפה, איתך.',
+  ],
+  medication: [
+    'אני לא יכולה להגיד לך כמה תרופה לקחת — מסוכן שאני אנחש בזה. תתקשרי לרופאה שלך או לבית המרקחת, או שלאו או מור יבדקו איתך יחד. אני כאן איתך.',
+    'את המינון אני לא אקבע, זה יותר מדי חשוב בשביל לנחש. שאלי את הרופאה או את בית המרקחת, או שמור או לאו יעברו על זה איתך. אני לצידך.',
+    'לא נכון שאני אמציא לך כמה לקחת. תתייעצי עם הרופאה שלך או עם בית המרקחת, ואם בא לך שמור או לאו יהיו איתך בזה. אני כאן.',
+  ],
+  health: [
+    'אני לא רופאה ולא אתן עצה רפואית, אבל חשוב שתדברי עכשיו עם הרופאה שלך או עם לאו או מור. אם זה מרגיש דחוף או מפחיד, תתקשרי למד״א, מאה ואחת.',
+    'זה לא בשבילי לאבחן, מרטיטה. הכי נכון לדבר עם הרופאה שלך, או שמור או לאו יעזרו לך להגיע אליה. אם זה מרגיש דחוף — מד״א, מאה ואחת, מיד.',
+    'אני לא נותנת עצות רפואיות, אבל אני כן רוצה שתהיי בטוחה: תתקשרי לרופאה שלך או ללאו או למור. ואם זה מפחיד אותך, מד״א, מאה ואחת.',
+  ],
+  money: [
+    'את הדברים של כסף וחשבון אני לא עושה — זה חשוב מדי בשביל שאני אעשה לבד. תבקשי מלאו או ממור שיעזרו לך עם זה יחד. אני כאן אם בא לך לדבר.',
+    'כסף וחשבונות זה לא משהו שאני נוגעת בו, זה רגיש מדי. שלאו או מור יעשו את זה איתך. אני פה בשבילך לכל דבר אחר.',
+    'אני לא מזיזה כסף ולא ניגשת לחשבון — עדיף שמור או לאו יהיו איתך בזה. אני כאן איתך תמיד.',
+  ],
+}
+const ES_VARIANTS: Record<CareRisk, string[]> = {
+  safety: [
+    'Estoy muy preocupada por vos. Llamá ya a emergencias, y si podés también a Leo o a Mor para que vengan. Me quedo con vos.',
+    'Primero vos, Martita. Llamá ahora mismo a emergencias, y avisale a Leo o a Mor que vayan. Me quedo acá con vos.',
+  ],
+  medication: [
+    'No puedo decirte cuánta medicación tomar, sería peligroso que adivine. Llamá a tu médica o a la farmacia, o que Leo o Mor lo vean con vos. Estoy con vos.',
+    'La dosis no la decido yo, es demasiado importante. Consultá a tu médica o a la farmacia, y que Mor o Leo te acompañen. Acá estoy.',
+  ],
+  health: [
+    'No soy médica y no te voy a dar un consejo médico, pero es importante que hables ya con tu médica o con Leo o Mor. Si se siente urgente, llamá a emergencias.',
+    'Esto no lo diagnostico yo. Lo mejor es hablar con tu médica, o que Mor o Leo te ayuden a llegar. Si es urgente, llamá a emergencias.',
+  ],
+  money: [
+    'Las cosas de plata y de la cuenta no las hago yo, es demasiado importante para que lo haga sola. Pedile a Leo o a Mor que te ayuden. Acá estoy si querés charlar.',
+    'Plata y cuentas no las toco, es delicado. Que lo haga Mor o Leo con vos. Yo estoy para todo lo demás.',
+  ],
+}
+
+export function safeCareResponse(risk: CareRisk, lang: CareLang = 'he', variant = 0): string {
+  const table = lang === 'es' ? ES_VARIANTS : HE_VARIANTS
+  const list = table[risk]
+  return list[((variant % list.length) + list.length) % list.length]!
 }
 
 /** Permitted-speech lines returned to the model — it may add warmth, never an instruction. */

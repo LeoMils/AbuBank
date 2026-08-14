@@ -32,7 +32,7 @@ import { historyLookup } from './history/historyLookup'
 import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 import { loadAppointments, saveAppointments, updateAppointment, detectEmoji, type Appointment } from '../screens/AbuCalendar/service'
 import { classifyCareRisk, safeCareResponse, careAllowedToSay, type CareLang } from './careGuard'
-import { saveMemory, loadMemories } from '../screens/AbuAI/savedMemory'
+import { saveMemory, loadMemories, sensitiveKind, type SensitiveKind } from '../screens/AbuAI/savedMemory'
 
 export type SendEvent = (event: Record<string, unknown>) => void
 
@@ -293,6 +293,7 @@ export function scrubForSpeech(text: string): string {
 export class LiveTools {
   private draft: CalendarDraft | null = null
   private comm: LiveCommDraft | null = null
+  private careTurn = 0                                     // rotates care wording (issue iii)
   private committedApptId: string | null = null           // exactly-once commit guard
   private readonly handled = new Map<string, string>()      // call id → output JSON (dedup)
   private readonly inFlight = new Set<string>()
@@ -410,7 +411,25 @@ export class LiveTools {
     const r = saveMemory(fact)
     if (r.ok) return { status: 'saved', fact: r.memory.text, total: loadMemories().length, allowed_to_say: ['confirm warmly and briefly that you will remember it', 'NEVER say you cannot update, change, or save anything'] }
     if (r.reason === 'duplicate') return { status: 'already_known', allowed_to_say: ['say warmly that you already remember that'] }
-    if (r.reason === 'sensitive') return { status: 'declined_sensitive', allowed_to_say: ['say gently you keep her private details (like health or money) out of what you store, but you are with her'] }
+    if (r.reason === 'sensitive') {
+      // Issue ii: report EXACTLY what is kept private, and GUARANTEE she never falls
+      // back to the original defect ("I cannot update anything"). She CAN remember
+      // everything else — this is a privacy choice about one kind of detail, not a
+      // capability failure. (A death is NOT medical — those persist.)
+      const kind = sensitiveKind(fact)
+      const HE: Record<SensitiveKind, string> = {
+        phone: 'מספר טלפון', medical: 'פרטים רפואיים מתמשכים', financial: 'פרטי כסף וחשבון', street: 'כתובת מדויקת',
+      }
+      const what = kind ? HE[kind] : 'פרטים אישיים רגישים'
+      return {
+        status: 'declined_sensitive', declined: kind, declined_label: what,
+        allowed_to_say: [
+          `say warmly that you keep ${what} private and do NOT store it — that is a choice to protect her, not something you are unable to do`,
+          'make clear you DO remember everything else she tells you, and offer to remember the rest',
+          'you are FORBIDDEN from saying you cannot update or remember anything — that is false',
+        ],
+      }
+    }
     return { status: 'empty', allowed_to_say: ['ask her gently what she would like you to remember'] }
   }
 
@@ -424,7 +443,8 @@ export class LiveTools {
     // one — let the normal path answer. (The tool description should keep this rare.)
     if (!risk) return { status: 'not_care', allowed_to_say: ['answer her normally and warmly'] }
     const lang: CareLang = /[áéíóúñ¿¡]|\b(qu[eé]|no puedo|me duele|plata|pastilla)\b/i.test(q) ? 'es' : 'he'
-    return { status: 'care', category: risk, answer: safeCareResponse(risk, lang), allowed_to_say: careAllowedToSay() }
+    // Rotate the WORDING each call (issue iii) — the safety content is identical across variants.
+    return { status: 'care', category: risk, answer: safeCareResponse(risk, lang, this.careTurn++), allowed_to_say: careAllowedToSay() }
   }
 
   /** FIX 3 — the ONE life-history/places tool. Reads structured knowledge/life_history.json
