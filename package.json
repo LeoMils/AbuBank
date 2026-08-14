@@ -20,6 +20,7 @@
     "typecheck": "tsc --noEmit",
     "rc:verify": "npx tsx scripts/rc-verify.ts",
     "qa:text-harness": "npx tsx scripts/text-harness-report.ts",
+    "eval:behavior": "npx vite-node scripts/eval/report.ts",
     "qa:production-gate": "npx tsx scripts/text-harness-report.ts && npx tsx scripts/qa-production-gate.ts",
     "qa:seal": "node scripts/seal-scorecard.mjs",
     "abu:goal:arm": "node scripts/abu-goal.mjs arm",
