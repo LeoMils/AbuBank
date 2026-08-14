@@ -1,5 +1,20 @@
 # OPEN ITEMS (unresolved, ranked)
 
+## LAST-BUILD RUN CHECKLIST (2026-08-14) — live
+Baseline this run: typecheck GREEN, full suite **12723 passed** / 1 skip / 2 todo (481 files), build pending.
+Working tree carries a parallel workstream's uncommitted churn (abuai-live-*, chatgpt-live, regen
+knowledge/memory, a deleted familyContactsStorage.test.ts covered by sibling tests) — NOT folded into
+my commits; I stage only files I touch (never `git add -A`).
+- [ ] **1 · One voice engine** — ROUTE calendar mic → Abu AI; excise duplicate STT capture (see D7).
+      Guard `singleVoiceEntry.test.ts` + mutation-harness mutant. 3 named behavior tests green.
+- [ ] **2 · Cost** — measure 20-min conversation before/after lifecycle; counter + budget alert;
+      graceful degrade at ceiling, never disconnect. Quality must not drop.
+- [ ] **3 · Online depth** — use full Tavily results, fan-out briefing ≥10 headlines w/ sources,
+      session cache for follow-ups, cinema verdict, provider-key health. PREVIEW-class evidence.
+- [ ] **4 · Production gate** — run it; ranked blocker list (code/iPhone/judgement); update
+      LEO-TESTS-ONLY.md; confirm deploy path + rollback.
+
+
 ## P1 — real gaps, code-findable
 - **O1 · Mutation harness seeded, not complete** — `scripts/mutation-harness.mjs` built; **10
   deterministic mutants + control, 100% kill** after closing 2 survivors (F1 family label, F2
