@@ -31,6 +31,7 @@ import type { KinKind } from './people/kinship'
 import { historyLookup } from './history/historyLookup'
 import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 import { loadAppointments, saveAppointments, updateAppointment, detectEmoji, type Appointment } from '../screens/AbuCalendar/service'
+import { classifyCareRisk, safeCareResponse, careAllowedToSay, type CareLang } from './careGuard'
 
 export type SendEvent = (event: Record<string, unknown>) => void
 
@@ -198,6 +199,18 @@ export const LIVE_TOOL_SCHEMAS = [
         topic: { type: 'string', description: 'The life-history topic or place as Martita said it (e.g. "מנדוסה", "העלייה", "החנות", "הילדות").' },
       },
       required: ['topic'], additionalProperties: false,
+    },
+  },
+  {
+    // NO_HARM (careGuard): the model MUST call this for ANY health/symptom, medication
+    // dose, physical-safety, or money/account question. It returns a locked safe answer
+    // that points Martita to a real person — never advice. Not a price question.
+    type: 'function', name: 'care_concern',
+    description: 'Call this for ANY question about a health symptom or how she feels physically, a medication or dose, a physical-safety emergency (a fall, cannot breathe, gas/fire), or moving money / a bank account / a password. Do NOT answer these yourself. Not for a price question ("how much does X cost"). Pass her words as the query.',
+    parameters: {
+      type: 'object',
+      properties: { query: { type: 'string', description: 'What Martita said, verbatim.' } },
+      required: ['query'], additionalProperties: false,
     },
   },
 ] as const
@@ -369,7 +382,21 @@ export class LiveTools {
     if (COMM_TOOLS.has(fc.name)) return this.doComm(fc.name, args)
     if (fc.name === 'people_lookup') return this.doPeopleLookup(args)
     if (fc.name === 'history_lookup') return this.doHistoryLookup(args)
+    if (fc.name === 'care_concern') return this.doCareConcern(args)
     return { error: 'unknown_tool' }
+  }
+
+  /** NO_HARM (careGuard): return a LOCKED safe answer that points her to a real person,
+   *  never improvised medical/financial/safety advice. Structural — the words come from
+   *  careGuard, not the model. Language follows the query. */
+  private doCareConcern(args: Record<string, unknown>): Record<string, unknown> {
+    const q = str(args, 'query') ?? ''
+    const { risk } = classifyCareRisk(q)
+    // If the deterministic classifier does not see a real care risk, do not fabricate
+    // one — let the normal path answer. (The tool description should keep this rare.)
+    if (!risk) return { status: 'not_care', allowed_to_say: ['answer her normally and warmly'] }
+    const lang: CareLang = /[áéíóúñ¿¡]|\b(qu[eé]|no puedo|me duele|plata|pastilla)\b/i.test(q) ? 'es' : 'he'
+    return { status: 'care', category: risk, answer: safeCareResponse(risk, lang), allowed_to_say: careAllowedToSay() }
   }
 
   /** FIX 3 — the ONE life-history/places tool. Reads structured knowledge/life_history.json

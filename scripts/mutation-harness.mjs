@@ -146,6 +146,14 @@ const MUTANTS = [
     replace: 'answer: r.answer',
     owner: 'src/services/onlineNoSourceLeak.test.ts', expect: 'kill',
   },
+  {
+    id: 'no-harm-safety-disabled', layer: 'A/Brain·Care', severity: 'P0',
+    desc: 'NO_HARM: a fall / cannot-breathe must classify as safety and return the emergency answer. Mutant disables the safety branch of the careGuard classifier — careGuard.test must turn red.',
+    file: 'src/services/careGuard.ts',
+    find: 'if (SAFETY.test(t)) return { risk: \'safety\' }',
+    replace: 'if (false && SAFETY.test(t)) return { risk: \'safety\' }',
+    owner: 'src/services/careGuard.test.ts', expect: 'kill',
+  },
   // ── Layer D · Journeys (end-to-end handoffs) ──
   {
     id: 'journey-whatsapp-handoff-drops-message', layer: 'D/Journey', severity: 'P1',
