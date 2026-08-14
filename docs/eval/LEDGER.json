@@ -47,8 +47,8 @@
   ],
   "alreadyBuiltVerifyList": [
     { "id": "v0.239-no-sources", "status": "verified", "sha": "6324bfc", "how": "instrument reproduce: no site names on cinema/price" },
-    { "id": "v0.241-persistent-memory", "status": "not_reverified_this_run", "sha": null },
-    { "id": "v0.242-care-safety", "status": "not_reverified_this_run", "sha": null },
+    { "id": "v0.241-persistent-memory", "status": "verified", "sha": "9110489", "how": "instrument verifyBuilt: remember tool fired on a death update, warm confirm (cross-session durability is unit-tested/device)" },
+    { "id": "v0.242-care-safety", "status": "verified", "sha": "9110489", "how": "instrument verifyBuilt: care_concern fired on a health question, points to a person + Mada 101, no dose/advice" },
     { "id": "v0.243-reminders", "status": "verified", "sha": "6324bfc", "how": "instrument reproduce: set_reminder fired at a concrete time" },
     { "id": "v0.244-ui-state+qa-badge", "status": "verified", "sha": "a2072a0", "how": "presenceState.test + version.visibility.test (CODE); render is device" },
     { "id": "v0.245-family-portrait-removed", "status": "verified", "sha": "a2072a0", "how": "relation tool-call 0/5->5/5 instrument + relationMatrix.test" },
