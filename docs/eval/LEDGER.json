@@ -1,9 +1,9 @@
 {
   "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "headSha": "313123b",
+  "headSha": "afcc2cd",
   "rollbackTag": "known-good-pre-qa-run (6324bfc)",
-  "updated": "session-scope-inventory",
+  "updated": "session-audio-trackA",
   "part1Mechanisms": [
     {
       "id": "P0-input-oracle", "title": "misheard name resolution (STT variants) — the input-side oracle",
@@ -21,7 +21,7 @@
     },
     {
       "id": "M1", "title": "response lifecycle — one active response / silence between tool call and result / barge-in truncation",
-      "status": "partially_closed", "sha": "a2072a0", "layer": "device",
+      "status": "partially_closed", "sha": "afcc2cd", "layer": "device",
       "closed": ["deleted the dead '# Before a Tool Call' instruction text (disobeyed 100% on device); bundle -630 chars", "kept the instantAcknowledgement code-seed guard", "TRACK A BUILT (v0.257): far-field noise_reduction on audio.input behind VITE_LIVE_AUDIO_TUNE_V2 (documented fix for speakerphone self-hearing / second voice); client barge-in truncate behind VITE_LIVE_BARGE_IN_TRUNCATE (response.cancel + conversation.item.truncate to played position — keeps client/server in sync, the likely 'first sentence only' cause). interrupt_response stays FALSE (server never truncates on echo) = correct COMBINED behaviour, not a blind flip. Both env-overridable, OFF by default, payload byte-identical when off. CODE: liveAudioTrackA.test 8 + default-off safety in liveSession.test. bargeInEvents pure-tested."],
       "open": ["DEVICE A/B (OWNER, docs/eval/AUDIO_CHECK.md): enable VITE_LIVE_AUDIO_TUNE_V2 + VITE_LIVE_BARGE_IN_TRUNCATE TOGETHER on Preview; confirm no second voice, clean barge-in WITHOUT 'one word then silence' echo regression, full-sentence audio", "if ON regresses to echo-truncation, far-field NR did not fully tame it → add client-side echo gate before default-on", "two-concurrent-responses / conversation_already_has_active_response — the truncate should remove the collision; verify on device"]
     },
