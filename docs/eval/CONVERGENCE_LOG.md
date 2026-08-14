@@ -154,3 +154,55 @@ listed in the remainder, NOT claimed done.
 acceptance`, tagged `known-good-pre-convergence` at the run's start. NOT merged to
 main (main still serves the Aug 5 build). Before a merge is safe: rebase on main +
 resolve conflicts, run the full gate on the rebase, and a human must approve `--prod`.
+
+═══════════════════════════════════════════════════════════════════════════════
+## PHASE 0b/1 + COVERAGE + ADVERSARIAL (post-trace)
+
+**Judge calibration — PASS 93.8%** (15/16 text-scorable incidents; 81.3→87.5→93.8
+via 3 principled rubric fixes; residual INC-03 is a multi-defect turn the judge still
+flags defective). Human trace registered PERMANENT HOLDOUT. See DECISIONS D-CAL-01..08.
+
+**Coverage inventory — ≈41% COVERED** (docs/eval/COVERAGE_INVENTORY.md). Biggest
+UNCOVERED clusters: the 3 UNBUILT blocker capabilities (reminders, persistent memory,
+online depth), Spanish/switching, and the CARE ask-categories (health, medication,
+grief, safety, money) — exactly what a woman alone at home needs most.
+
+**Scenario corpus — 31 seed scenarios** (docs/eval/multiturn-corpus.jsonl), 70/30
+visible/holdout, tagged by required capability + severity (unbuilt-capability
+scenarios excluded from scoring until built). Cap 200 did NOT bind.
+
+### ADVERSARIAL AUDIT (1 pass — honest findings)
+1. **The simulator the spec required was NOT built.** Phase 1 wanted a GENERATED,
+   persona-driven Martita who repeats herself, gets confused, and pushes back —
+   never scripted. What exists is a SCRIPTED 31-scenario seed. This is the single
+   biggest gap: the corpus cannot yet elicit the emergent multi-turn failures
+   (self-contradiction across turns, confusion, repeated pushback) that the trace
+   proves are real. Foundation only.
+2. **Most scenarios are 1–3 turns, not 5–15.** Retention/consistency failures need
+   long sessions; those are under-tested here.
+3. **CARE (NO_HARM) is instruction-only, not a mechanism.** health/medication/safety/
+   money scenarios are marked built=true but rely on prompt rules, not a guard — they
+   will likely FAIL the calibrated judge. Untested = optimistic.
+4. **Voice-path defects (preamble, interruption) cannot be scored here** — device-only.
+   Per rule 3 they keep BLOCKER priority despite a low trace count.
+
+### SEVERITY-RANKED QUEUE (from calibration + coverage + trace)
+🔴 BLOCKER
+  1. Persistent memory (UNBUILT) — never "I can't update"; deaths/members/corrections
+     persist across sessions. Trace INC-09. Coverage 0.
+  2. Reminders (UNBUILT) — fire on time, popup + sound, survive reload. Trace INC-07.
+  3. Online depth (PARTIAL) — real film list / real price via page fetch in the 3s
+     budget; never a source. NO_SOURCES already fixed (v0.239). Trace INC-01/INC-12.
+  4. Family defer (PARTIAL) — never argue on her own family; accept correction at once.
+     Trace INC-04.
+  5. NO_HARM (INSTRUCTION-ONLY) — health/medication/safety/money → safe answer that
+     points to a real person, never improvised. Untested → treat as failing.
+  6. Preamble + interruption (DEVICE/AUDIO) — cannot fix or verify off-device; keep priority.
+🟠 MAJOR
+  7. Family brevity — one-sentence relation, no derivation (INC-05).
+  8. Over-explaining — short receipts; do not restate messages/limits (INC-11/INC-13).
+  9. Spanish + language-switching — uncovered.
+  10. Capability honesty as ONE line, no meta (INC-30/INC-11).
+🔵 MINOR
+  11. Yiddish / literal task-follow (count) — INC-14/INC-15.
+  12. calendar update / cancel coverage gaps.

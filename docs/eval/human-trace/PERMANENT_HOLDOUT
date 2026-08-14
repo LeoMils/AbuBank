@@ -1,0 +1,1 @@
+PERMANENT HOLDOUT — do not read from any fixing agent. Human ground truth (owner desktop session + calibration labels). Used ONCE for Phase-0b judge calibration (93.8%). Never optimized against; scored separately in the final report.
