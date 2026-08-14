@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.254.0-lookup-cue')
-    expect(APP_VERSION.buildLabel).toContain('M4 non-verbal in-flight cue')
+    expect(APP_VERSION.version).toBe('0.255.0-classified-monitor')
+    expect(APP_VERSION.buildLabel).toContain('M2 classified checks')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

@@ -40,11 +40,17 @@ import type { CalendarDraft } from '../screens/AbuAI/realtime/calendarDraft'
 import { extractFunctionCall, safeParseArgs, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 import { FlightRecorder, downloadTrace } from './liveTrace'
 import { monitorTurn, repairableViolations, buildRepairInstruction, type Violation } from './monitor/outputMonitor'
+import { classifyTurn, buildClassifiedRepair, type ClassifiedViolation } from './monitor/classifiedMonitor'
 
 /** M2 output monitor. The detectors ALWAYS run post-turn as observation (logged, zero risk).
  *  The one-attempt next-turn REPAIR (a corrective redo for a hard violation) is gated OFF by
  *  default — flip to measure off/on, enable only when proven never worse (BRIEF flag discipline). */
 export const LIVE_OUTPUT_MONITOR_REPAIR = false
+
+/** M2 CLASSIFIED layer (distress→menu, method narration, ungrounded entity). Heuristic and
+ *  FP-risky, so it is OFF by default: nothing runs live until its low FP rate is confirmed on
+ *  a device (classifiedCorpus proves 0 FP over the generated clean set; device warmth pending). */
+export const LIVE_CLASSIFIED_MONITOR = false
 
 // ─── Configuration (M1 defaults; M2 tunes these by listening) ──────────────
 
@@ -320,6 +326,10 @@ export interface LiveCallbacks {
   /** M2 output monitor: deterministic violations detected in Abu's just-spoken turn
    *  (observation for the UI/telemetry; the repair, if any, is handled inside the session). */
   onMonitorViolations?: (violations: Violation[]) => void
+  /** M2 CLASSIFIED violations in Abu's just-spoken turn (observation for UI/telemetry; only
+   *  emitted when LIVE_CLASSIFIED_MONITOR is on). Separate from the deterministic ones because
+   *  these are heuristic/FP-risky and must never quietly gate output until proven. */
+  onClassifiedViolations?: (violations: ClassifiedViolation[]) => void
 }
 
 /** Injected browser seams — real defaults in the browser, fakes in tests. */
@@ -412,6 +422,10 @@ export class LiveSession {
   private monitorOnScreen = ''
   private monitorRepairedTurn = false
   private monitorRepairInstruction: string | null = null
+  /** Names of grounding tools that returned this turn (people_lookup / history_lookup /
+   *  resolve_contact / get_current_info). The classified UNGROUNDED_ENTITY check uses this to
+   *  tell a grounded family fact from one asserted with no tool result. Reset each user turn. */
+  private monitorGroundedTools: string[] = []
   /** Flight recorder — OBSERVATION ONLY. Records my/her speech + every tool call,
    *  and surfaces silent-turn (C.3) + truncation-evidence (C.2) flags. It never
    *  changes turn/VAD/audio behaviour; the live session only appends to it.
@@ -674,6 +688,7 @@ export class LiveSession {
       case 'input_audio_buffer.speech_started':
         this.recorder.onUserSpeechStart()  // observation only — records truncation evidence
         this.monitorRepairedTurn = false   // a new user turn → the one-repair budget resets
+        this.monitorGroundedTools = []     // …and the per-turn grounded-tool set clears
         this.clearAudioWatchdog()
         this.setState('listening')
         break
@@ -758,6 +773,9 @@ export class LiveSession {
     // (the UI auto-clears it on the next state change, exactly like the thinking hint). This
     // never speaks and never touches the turn/audio machinery — observation only.
     if (fc.name === 'get_current_info') { try { this.cb.onLookup?.() } catch { /* isolate UI */ } }
+    // A grounding tool fired this turn → an entity fact spoken after this is grounded, not invented
+    // (feeds the classified UNGROUNDED_ENTITY check). Observation only.
+    if (['people_lookup', 'history_lookup', 'resolve_contact', 'get_current_info'].includes(fc.name)) this.monitorGroundedTools.push(fc.name)
     if (LiveTools.owns(fc.name)) this.liveTools.handleFunctionCall(fc)
   }
 
@@ -773,6 +791,10 @@ export class LiveSession {
    *  the audio already played, so a redo is an audible self-correction and must be proven never
    *  worse before it ships. Soft violations are logged for the interception metric, never repaired. */
   private runOutputMonitor(spoken: string): void {
+    // Classified layer runs FIRST and independently (it must not be skipped when the
+    // deterministic set is clean). It only OBSERVES (emit + log) — proven 0 FP on the
+    // generated clean corpus, so observation is safe; any REPAIR is gated (see below).
+    this.runClassifiedMonitor(spoken)
     let violations: Violation[] = []
     try {
       violations = monitorTurn(spoken, { userText: this.monitorUserText, onScreenText: this.monitorOnScreen })
@@ -786,6 +808,25 @@ export class LiveSession {
     if (!LIVE_OUTPUT_MONITOR_REPAIR || this.monitorRepairedTurn) return
     if (repairableViolations(violations).length === 0) return
     this.monitorRepairInstruction = buildRepairInstruction(repairableViolations(violations))
+  }
+
+  /** M2 CLASSIFIED layer (heuristic, FP-risky). Always OBSERVES (emit + log) — it cannot block
+   *  or change output. A one-attempt corrective REPAIR for a HARD classified violation is stashed
+   *  ONLY when BOTH LIVE_CLASSIFIED_MONITOR and LIVE_OUTPUT_MONITOR_REPAIR are on (doubly gated
+   *  OFF): the classified heuristics must earn device warmth proof before they ever drive a redo. */
+  private runClassifiedMonitor(spoken: string): void {
+    let violations: ClassifiedViolation[] = []
+    try {
+      violations = classifyTurn(spoken, { userText: this.monitorUserText, groundedTools: this.monitorGroundedTools })
+    } catch { return }
+    if (violations.length === 0) return
+    this.cb.onClassifiedViolations?.(violations)
+    // eslint-disable-next-line no-console
+    try { console.info('[abu-classified-monitor]', JSON.stringify(violations.map((v) => `${v.kind}:${v.severity}`))) } catch { /* */ }
+    if (!LIVE_CLASSIFIED_MONITOR || !LIVE_OUTPUT_MONITOR_REPAIR || this.monitorRepairedTurn) return
+    if (this.monitorRepairInstruction) return // a deterministic repair already claimed this turn
+    const instr = buildClassifiedRepair(violations)
+    if (instr) this.monitorRepairInstruction = instr
   }
 
   /** Fire the stashed one-attempt repair once the turn's response is fully done (wire free). */

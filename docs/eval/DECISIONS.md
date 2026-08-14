@@ -271,6 +271,32 @@ discipline as D-UISTATE-01). EVIDENCE: liveSession.test (pulse only on get_curre
 pulse), presenceState.test (מחפשת… + speaking-wins), sounds.test (fail-silent) are CODE; the audible
 tone and the on-screen render are DEVICE evidence (OWNER_CHECKLIST #6), logged open — not claimed here.
 
+## D-M2-04 · Classified checks kept SEPARATE from the deterministic zero-FP module; FP measured first
+The three classified checks judge INTENT (distress→menu, method narration, ungrounded entity), so
+they carry real false-positive risk — unlike outputMonitor.ts's surface-form detectors which have a
+zero-FP guarantee. DECISION: put them in a SEPARATE module (classifiedMonitor.ts) with their own
+type + callback, so the deterministic module keeps its guarantee and the FP-risky layer is judged on
+its own numbers. Same rigor as the deterministic set: classifiedCorpus generates 82 cases (40 defects
++ 42 warm-correct engineered to be MISTAKEN for a defect), nothing verbatim from the source. MEASURED
+100% interception, 0 FP over 42 clean. Wired into liveSession as OBSERVATION ONLY (emit + log — it can
+never block or change output; proven 0 FP makes observation safe), with per-turn grounded-tool tracking
+so UNGROUNDED_ENTITY distinguishes a tool-grounded family fact from one asserted from thin air. The
+one-attempt classified REPAIR (buildClassifiedRepair) is built but DOUBLY gated OFF
+(LIVE_CLASSIFIED_MONITOR && LIVE_OUTPUT_MONITOR_REPAIR): a redo that could blank a warm correct answer
+must earn DEVICE warmth proof first. What is NOT claimed (no API spent this session, honest per the
+brief): the repair round-trip latency p50/p95 and warmth off-vs-on need the realtime instrument —
+logged open. Low-FP tuning: DISTRESS_MENU requires ≥2 enumerated options (a single caring
+"רוצה שאתקשר ללאו?" is correct, not a menu); UNGROUNDED_ENTITY is SOFT (working memory can restate).
+
+## D-M2-05 · Latent Hebrew \b bug found + fixed while building the classified checks
+Building the entity regexes surfaced a real defect: JS \b is defined on ASCII \w only, so a \b placed
+next to a Hebrew letter is a NON-boundary and the pattern silently never matches. The first cut of
+ENTITY_QUESTION / ENTITY_ASSERTION / the "אני יכולה" menu check used \b and therefore missed every
+Hebrew case (the corpus caught it — the value of generated tests over hand-picked ones). FIX: dropped
+\b around Hebrew and used explicit space/character anchors instead (e.g. "ב[ןת] \\d+", "ה(בת|בן|…) של").
+Logged so the same trap is not reintroduced elsewhere (outputMonitor.ts was audited — it does not rely
+on \b around Hebrew).
+
 ## D-M2-03 · Four regex-uncatchable gaps reported as GAPS, not silently passed
 The deterministic SOURCE_NAMED / READ_BACK regexes structurally cannot catch: a spoken domain with
 the dots dropped by STT ("seret co il"), a Hebrew-transliterated source name with no TLD ("בוויקיפדיה

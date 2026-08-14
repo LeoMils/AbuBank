@@ -85,6 +85,7 @@ interface Harness {
   userTranscripts: string[]
   abuTranscripts: string[]
   lookups: number[]
+  classified: string[]
   getUserMediaCalls: number
   createPCCalls: number
   session: LiveSession
@@ -113,6 +114,7 @@ function makeHarness(opts: {
   const userTranscripts: string[] = []
   const abuTranscripts: string[] = []
   const lookups: number[] = []
+  const classified: string[] = []
 
   const deps: LiveDeps = {
     fetch: vi.fn(async (url: string) => {
@@ -143,6 +145,7 @@ function makeHarness(opts: {
       onAbuTranscript: (t) => abuTranscripts.push(t),
       onError: (msg, code) => errors.push({ msg, code }),
       onLookup: () => lookups.push(1),
+      onClassifiedViolations: (vs) => vs.forEach((v) => classified.push(v.kind)),
     },
     conversationId,
     opts.isReconnect ?? false,
@@ -150,7 +153,7 @@ function makeHarness(opts: {
   )
 
   return {
-    deps, pc, states, errors, userTranscripts, abuTranscripts, lookups,
+    deps, pc, states, errors, userTranscripts, abuTranscripts, lookups, classified,
     get getUserMediaCalls() { return h.getUserMediaCalls },
     get createPCCalls() { return h.createPCCalls },
     session,
@@ -422,6 +425,25 @@ describe('LiveSession', () => {
     // The same call delivered again (duplicate completion shape) must not double-pulse.
     h.pc.dc!.fire({ type: 'response.output_item.done', item: { type: 'function_call', name: 'get_current_info', call_id: 'gci1', arguments: '{"query":"מזג האוויר"}' } })
     expect(h.lookups.length).toBe(1) // dedup by call_id → still one
+    h.session.teardown()
+  })
+
+  it('M2 classified: observes method-narration; a grounding tool this turn suppresses ungrounded-entity', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    // Turn 1: a person-fact question, NO grounding tool, answer narrates its method + asserts a fact.
+    h.pc.dc!.fire({ type: 'conversation.item.input_audio_transcription.completed', transcript: 'מי זאת מור?' })
+    h.pc.dc!.fire({ type: 'response.output_audio_transcript.done', transcript: 'רגע חיפשתי לך במאגר, מור היא הבת של פפי' })
+    expect(h.classified).toContain('METHOD_NARRATION')
+    expect(h.classified).toContain('UNGROUNDED_ENTITY') // no grounding tool → flagged
+    // Turn 2: a NEW user turn resets the grounded-tool set; this time people_lookup grounds the fact.
+    h.classified.length = 0
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_started' }) // new user turn → resets per-turn state
+    h.pc.dc!.fire({ type: 'conversation.item.input_audio_transcription.completed', transcript: 'מי זאת מור?' })
+    h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'people_lookup', call_id: 'pl1', arguments: '{"want":"who","name":"מור"}' })
+    h.pc.dc!.fire({ type: 'response.output_audio_transcript.done', transcript: 'מור היא הבת שלך, מרתה' })
+    expect(h.classified).not.toContain('UNGROUNDED_ENTITY') // grounded → not flagged
     h.session.teardown()
   })
 
