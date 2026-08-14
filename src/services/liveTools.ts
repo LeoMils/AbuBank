@@ -26,7 +26,7 @@ import {
   type CalendarDraft, type CalendarReceipt,
 } from '../screens/AbuAI/realtime/calendarDraft'
 import { resolveCalendarParticipant, resolveContact, contactLabel, isDeceasedContact } from './liveContacts'
-import { whoIs, relationshipBetween, relativesByKind, resolveContactTarget } from './people/peopleLookup'
+import { whoIs, relationshipBetween, relativesByKind, resolveContactTarget, suggestClosestPerson } from './people/peopleLookup'
 import type { KinKind } from './people/kinship'
 import { historyLookup } from './history/historyLookup'
 import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
@@ -522,13 +522,30 @@ export class LiveTools {
       const r = resolveContactTarget(person) // resolved | ambiguous | deceased | not_found — no number
       if (r.status === 'ambiguous') return { ...r, allowed_to_say: ['ask which specific person she means'] }
       if (r.status === 'deceased') return { status: 'deceased', label: r.label, allowed_to_say: ['gently say this person is no longer with us, so there is no way to call or message them', 'do NOT answer about a different family relationship'] }
-      if (r.status === 'not_found') return { status: 'not_found', allowed_to_say: ['say you do not have that person'] }
+      if (r.status === 'not_found') return this.peopleMiss(person)
       return { ...r, allowed_to_say: ['use this id to message or call — never read a number aloud'] }
     }
     const w = whoIs(person)
     return w.status === 'ok'
       ? { ...w, allowed_to_say: ['say who this is and how they relate to Martita'] }
-      : { status: 'not_found', allowed_to_say: ['say you do not know that person'] }
+      : this.peopleMiss(person)
+  }
+
+  /** A name did not resolve — the misheard-word P0. Offer the closest person to CONFIRM
+   *  ("התכוונת ל…?"); if nothing is close it is garble → ask her to say it again. NEVER lecture
+   *  about an unrelated meaning of the word, and never re-answer about something else. */
+  private peopleMiss(person: string): Record<string, unknown> {
+    const sug = suggestClosestPerson(person)
+    if (sug) {
+      return {
+        status: 'suggest', suggestion: sug.label,
+        allowed_to_say: [`gently ASK if she meant this person, by name: "התכוונת ל${sug.label}?"`, 'ask only — do NOT state a relationship or any fact yet', 'do NOT look up or talk about anything else, and never lecture about an unrelated meaning of the word'],
+      }
+    }
+    return {
+      status: 'not_found',
+      allowed_to_say: ['say warmly you did not catch the name and ask her to say it again: "לא שמעתי טוב, תגידי לי שוב?"', 'never guess, and never lecture about an unrelated meaning of a word when she clearly means a person'],
+    }
   }
 
   // ─── resolve_contact ───────────────────────────────────────────────────────

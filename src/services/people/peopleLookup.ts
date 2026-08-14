@@ -11,7 +11,39 @@
  */
 import { loadPeople, resolvePersonId, personById, subsetResolve, type Person, type Gender } from './peopleModel'
 import { relationshipOf, relativesOfKind, hebrewTerm, describePathBetween, type KinKind } from './kinship'
-import { fuzzyResolvePersonId, fuzzyCandidates, skeletonMatchIds } from './fuzzyMatch'
+import { fuzzyResolvePersonId, fuzzyCandidates, skeletonMatchIds, hebrewPhonetic, similarity } from './fuzzyMatch'
+import { normalizeName } from './peopleModel'
+
+/**
+ * SUGGEST the closest person for a name that did NOT resolve — the misheard-word P0. When STT
+ * mangles a name ("טוצ'י" → "טורקי") the resolver correctly declines, but declining SILENTLY made
+ * Abu lecture about "Turkish coffee". Instead, offer the closest candidate so she can ASK
+ * "התכוונת ל…?". A suggestion is looser than a resolution (it does NOT need to be unambiguous — a
+ * question is safe), but it still needs real closeness so genuine GARBLE gets no suggestion (→ the
+ * caller says "לא שמעתי טוב, תגידי שוב" instead of confirming noise). Returns the best if its
+ * similarity ≥ 0.5, else null. Never used to ANSWER — only to ask.
+ */
+export function suggestClosestPerson(
+  name: string,
+  people: Person[] = loadPeople(),
+  minSimilarity = 0.5,
+): { id: string; label: string; score: number } | null {
+  const q = normalizeName(name)
+  if (!q || q.length < 2) return null
+  const qp = hebrewPhonetic(name)
+  let best: { id: string; score: number } | null = null
+  for (const c of fuzzyCandidates(people)) {
+    let s = 0
+    for (const k of c.keys) {
+      s = Math.max(s, similarity(q, normalizeName(k)))
+      if (qp.length >= 2) s = Math.max(s, similarity(qp, hebrewPhonetic(k)) * 0.98)
+    }
+    if (!best || s > best.score) best = { id: c.id, score: s }
+  }
+  if (!best || best.score < minSimilarity) return null
+  const p = personById(best.id, people)
+  return p ? { id: p.id, label: p.hebrewName, score: best.score } : null
+}
 
 /** A misheard direct name → a person id, or null (P8). Confident + unambiguous only; never a
  *  wrong guess. Used ONLY after an exact match AND descriptive-phrase parse have both missed. */

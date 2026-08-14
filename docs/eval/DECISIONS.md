@@ -271,6 +271,22 @@ discipline as D-UISTATE-01). EVIDENCE: liveSession.test (pulse only on get_curre
 pulse), presenceState.test (מחפשת… + speaking-wins), sounds.test (fail-silent) are CODE; the audible
 tone and the on-screen render are DEVICE evidence (OWNER_CHECKLIST #6), logged open — not claimed here.
 
+## D-P0-MISHEAR · A misheard name ASKS "did you mean…?"; garble asks to repeat — never a silent lecture
+Device P0: STT mangled a spoken nickname to "טורקי"; the resolver correctly declined, but declining
+SILENTLY let Abu answer the wrong sense of the word (a lecture about Turkish coffee), then fail the
+same lookup again. DECISION: add `suggestClosestPerson` — when a name does NOT resolve, find the
+closest entity by phonetic+edit similarity; if best ≥ 0.5 return a SUGGESTION (looser than a
+resolution — a question is safe, so it need not be unambiguous), else null. Wired into people_lookup
+(who + contact) as a new `suggest` status whose allowed_to_say is "ask 'התכוונת ל<name>?' ONLY — state
+no fact, look up nothing else, never lecture about an unrelated meaning of the word"; a null suggestion
+(genuine garble) becomes "לא שמעתי טוב, תגידי שוב" so Abu never confirms noise. This is asymmetric on
+purpose: SUGGEST asks (safe even if wrong), RESOLVE asserts (must be confident) — so a weak 0.6 match
+that must not become an identity can still become a question. Regression mishearSuggest.test: a
+one-letter-mangled name suggests that person; garble → null. HONEST LIMIT (logged): the "never repeat
+the same failed lookup twice" is session state (a per-session failed-name set in liveSession), not
+deterministic here; and "never lecture" is instruction-enforced — no deterministic guard catches a
+model that lectures anyway. The deterministic core (suggest vs garble) is the shippable part.
+
 ## D-P0-FULLNAME · Subset matching — a known given name + an unknown surname must resolve, never not_found
 Device P0: people_lookup("גלעד אבורדי") returned not_found though גלעד is in the dataset. Mechanism
 (confirmed in code): the name index holds "גלעד", not the full "גלעד אבורדי", and the edit-distance
