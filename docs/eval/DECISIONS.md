@@ -121,6 +121,37 @@ the face/aura read the RECONCILED `presenceState` — the two could disagree. Fi
 presenceState.test.ts. Legacy realtimeVoice.ts has the same class of issue (response_done → immediate
 listening) but is off the hub path → logged as remainder, not touched this session.
 
+## D-INSTRUMENT-01 · Realtime stays the behavioral instrument; throttle solved by pacing (owner correction)
+An earlier decision proposed demoting to the gpt-4o CHAT harness as the volume workhorse after
+the realtime WS throttled under a ~60-call noise floor. Owner corrected: DO NOT demote — the chat
+harness produced 36.7% and hid the preamble failure; it may be used ONLY for provably
+model-independent numbers, each labelled "not measuring Abu". The throttle is a VOLUME problem,
+solved by: pacing + exponential backoff on connect failure; reusing ONE connection across turns;
+detecting a sub-500ms empty response as a CONNECT ERROR (never a score of 0 — `isTransportFailure`
+in scoredEval.ts EXCLUDES it and retries); and shrinking volume (noise floor = 3 runs × 6-case
+subset, not 60). scoredEval defaults to `instrument:'realtime'`; noiseFloor defaults to realtime,
+6 cases × 3 iters. The throttled NOISE_FLOOR.json artifact was deleted (untrusted).
+
+## D-GD-01 · G/D proceed on DETERMINISTIC acceptance + a small realtime probe (owner correction)
+Owner corrected: G/D do NOT need a full noise floor first (that is the convergence-loop ratchet's
+prerequisite, not G/D's). Most of G/D acceptance is deterministic and needs no model: bundle size
+(pure measurement + a ratchet test), the full Hebrew pair matrix against the resolver (pure unit
+test, relationMatrix.test), and the no-URL payload assertion. The ONE model question — does a
+relation query now produce a people_lookup call — is a handful of realtime probe calls
+(relationProbe.ts, one reused connection). Baseline "before" = 0 tool calls (already proven).
+
+## D-GD-02 · Remove the family portrait ENTIRELY; per-intent re-injection = the tool itself
+The 10,902-char `buildFamilyPortrait()` (44% of the instructions) was the reason relation queries
+answered from the prompt. Decision: delete it entirely (module + import + call + its test — it had
+no other importer) rather than gate it, because "re-inject per-intent at call time" in the realtime
+architecture IS the tool: people_lookup returns the family facts only when a family intent fires,
+and history_lookup for life story. The # Family and People + # Tools sections were rewritten from
+"answer from what you KNOW (the portrait)" to "call people_lookup silently, speak one sentence, the
+relation only, no derivation; accept a correction about her own family at once, never argue." Tests
+that asserted the portrait was IN the bundle were flipped to assert it is GONE and the tool is forced
+(new truth, not weakened). The standing safety-guard phrase "you are Martita's FRIEND, not Martita"
+was preserved verbatim (companionSafety.guard). RESULT (realtime): relation tool-call rate 0/5→5/5.
+
 ## D-UISTATE-02 · QA badge gated to DEV, not removed
 The Home `home-qa-version` "QA: v…" badge was always visible (incl. production). Owner: hide outside
 development. DECISION: gate the JSX behind `import.meta.env.DEV` (matches the existing AbuCalendar

@@ -18,7 +18,10 @@ import {
   assertNoPhoneNumbers,
   auditInstructionsVsTools,
   assertInstructionsWithinLimit,
+  assertInstructionsRatchet,
   REALTIME_INSTRUCTIONS_MAX,
+  REALTIME_INSTRUCTIONS_RATCHET,
+  REALTIME_INSTRUCTIONS_TARGET,
   assertTranscriptionWithinLimit,
   assertSessionPayloadWithinLimits,
   TRANSCRIPTION_PROMPT_MAX,
@@ -91,18 +94,35 @@ describe('buildLiveInstructions', () => {
     }
   })
 
-  it('the family is IN HER HEAD — the generated portrait is embedded (Companion Brain, Phase 3)', () => {
-    // The durable family/friends/history now lives in the instructions (measured limit ≥200k).
-    // people_lookup stays, but only to REACH someone or double-check — not to learn who family is.
-    expect(out).toContain('# Family and People — you KNOW them')
-    expect(out).toContain('מי המשפחה של מרתה')  // the portrait's family section
-    expect(out).toContain('החברים של מרתה')      // "who are my friends" is answerable from the head
-    expect(out).toContain('מור')                  // real people are held, in warmth
-    expect(out).toContain('סוזי רז')
-    expect(out).toMatch(/you KNOW them/i)
-    expect(out).not.toContain(ABU_FAMILY)         // NOT the legacy abu-family.md prose — generated from data
-    expect(out).toContain('people_lookup')        // still present, for reaching/verifying
+  it('the family facts are NOT in the prompt — they are re-injected per-intent via people_lookup (agent G)', () => {
+    // Agent G removed the 10,902-char duplicated family portrait ENTIRELY: family facts are
+    // the deterministic people store's job (people_lookup), re-injected per-intent at call
+    // time — so relation queries MUST hit the resolver instead of answering from the prompt.
+    expect(out).not.toContain('מי המשפחה של מרתה')   // the portrait's family heading is GONE
+    expect(out).not.toContain('החברים של מרתה')       // the friends list is GONE from the prompt
+    expect(out).not.toContain('סוזי רז')              // no enumerated person is inlined any more
+    expect(out).not.toMatch(/you KNOW them/i)          // the "answer from the prompt" framing is gone
+    expect(out).not.toContain(ABU_FAMILY)              // the legacy abu-family.md prose is not embedded either
+    // The family section now FORCES the tool and demands a one-sentence, no-derivation answer.
+    expect(out).toContain('# Family and People')
+    expect(out).toContain('people_lookup')
+    expect(out).toMatch(/GROUND every family answer by calling it/i)
+    expect(out).toMatch(/ONE short sentence/i)
+    expect(out).toMatch(/NEVER walk the derivation/i)
+    expect(out).toMatch(/accept it AT ONCE/i)          // corrected on her own family → never argue
     expect(out.indexOf('# Personality and Tone')).toBeLessThan(out.indexOf('# Family and People'))
+  })
+
+  it('bundle-shrink RATCHET — the duplicated family portrait removal is locked (agent G)', () => {
+    // Before G: 24,513 chars (10,902 of it the duplicated portrait). After: well under the
+    // ratchet. The lower bound catches an accidental truncation of the safety/persona frame.
+    expect(out.length).toBeLessThanOrEqual(REALTIME_INSTRUCTIONS_RATCHET)
+    expect(out.length).toBeGreaterThan(8_000)          // safety + persona + tools must still be present
+    expect(out.length).toBeLessThan(15_000)            // hard regression guard vs the 24,513 pre-G size
+    expect(() => assertInstructionsRatchet(out)).not.toThrow()
+    expect(() => assertInstructionsRatchet('x'.repeat(REALTIME_INSTRUCTIONS_RATCHET + 1))).toThrow(/shrink ratchet/)
+    // the target we are ratcheting toward is documented
+    expect(REALTIME_INSTRUCTIONS_TARGET).toBe(5_000)
   })
 
   it('embeds Martita\'s own profile verbatim (family graph excluded)', () => {

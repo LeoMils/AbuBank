@@ -249,3 +249,46 @@ queries MUST hit the resolver); A online-depth first-wins + prefetch warm-store 
 in-flight cue (needs live fetch + realtime before/after); I persona simulator (5–15 turn,
 self-contradicting, Spanish/switching). Legacy `realtimeVoice.ts` has the same state-mismatch
 class (`response_done`→immediate listening) but is off the hub path (`?legacy=1` only).
+
+═══════════════════════════════════════════════════════════════════════════════
+## AGENT: G+D · CLASS: family-answered-from-prompt (0 tool calls) · v0.245.0
+
+**Owner corrections applied** (see DECISIONS D-INSTRUMENT-01, D-GD-01/02): realtime stays THE
+behavioral instrument (throttle solved by pacing + backoff + connect-error EXCLUSION, not by
+demoting to the chat harness — the noise floor moves to the convergence loop); and G/D proceed on
+DETERMINISTIC acceptance + a small realtime probe, no full noise floor first.
+
+**Failure class:** a relation query ("מה הקשר בין עדי ללאו?") made ZERO tool calls and answered
+from the in-bundle family portrait with a derivation chain ("עדי הוא הבן של לאו. הוא התאום של
+נועם, והבן של לאו ורותי…"). MECHANISM: `buildLiveInstructions()` inlined a 10,902-char
+`buildFamilyPortrait()` — 44% of the 24,513-char bundle — AND told the model to "answer from what
+you KNOW (the portrait), people_lookup is NOT how you learn about family". It had the data in
+context and was told not to call the resolver.
+
+**Fix (structural):** the portrait is removed ENTIRELY (module `services/portrait/familyPortrait.ts`
++ its test deleted; import + call gone — no other importer). The # Family and People section is
+rewritten to GROUND every who/relationship/relatives answer through people_lookup (silently,
+per-intent — the tool IS the per-intent re-injection), one short sentence, the relation only, no
+derivation; life story through history_lookup; and to accept a correction about her OWN family AT
+ONCE, never argue. # Tools and Actions bullets flipped from answer-from-prompt to call-the-tool.
+The standing safety phrase "you are Martita's FRIEND, not Martita" is preserved verbatim.
+
+**Bundle (deterministic):** instructions **24,513 → 13,855** chars (−43.5%); payload **36,863 →
+26,188**. A shrink-RATCHET (`assertInstructionsRatchet`, 14,000) locks the cut and enforces the
+ratchet toward the 5,000 target; wired into the build-time guard.
+
+**Deterministic acceptance (pure, no model):** bundle-size ratchet asserted (liveInstructions.test);
+full Hebrew pair matrix green (relationMatrix.test — every close-blood ordered pair resolves to a
+single "X <rel> של Y", incl. the trace pair עדי→לאו = "עדי בן של לאו"); one-sentence, relation-only.
+
+**Realtime probe (post-G, one reused connection, paced — relationProbe.ts):**
+relation tool-call rate **0/5 → 5/5** (people_lookup on every relation/who/relatives turn):
+  • מה הקשר בין עדי ללאו? → people_lookup(relationship) → "עדי בן של לאו."  (1398ms)
+  • מה הקשר בין מור ללאו? → "מור אחות של לאו."  · מי זאת מור? → "מור היא הבת שלך, מרתיטה."
+  • מי הילדים של מור? → "…אופיר, איילון, עילי ואדר."  · אופיר↔עדי → "אופיר בת דודה של עדי."
+Collateral spot-check (no regression from the removal): online→get_current_info (real films),
+calendar→read_calendar, comm→whatsapp_draft+people_lookup. All OK.
+
+**Gates:** typecheck 0 · full suite 12,759 passed (489 files; the 1 `persistenceTrace` flake is a
+wall-clock `/972/` coincidence, not this change) · build ✓. Evidence: CODE (deterministic) +
+realtime-instrument before/after (the tool-call rate). Physical-device audibility not claimed.
