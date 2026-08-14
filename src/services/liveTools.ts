@@ -243,6 +243,26 @@ function str(a: Record<string, unknown>, k: string): string | undefined {
   return typeof a[k] === 'string' && (a[k] as string).trim() ? (a[k] as string).trim() : undefined
 }
 
+/** Remove anything the model could cite as a source from the online answer BEFORE it
+ *  reaches the model: markdown links (keep the link text), bare URLs, and any
+ *  "source:/מקור:" trailer. The model can only speak what it is given, so stripping
+ *  the machinery here makes source-citing structurally harder than an instruction alone. */
+export function scrubForSpeech(text: string): string {
+  return text
+    .replace(/\[([^\]]+)\]\((?:https?:)?\/\/[^)]*\)/g, '$1')          // [t](url) → t
+    .replace(/https?:\/\/\S+/gi, '')                                   // bare URLs
+    .replace(/\bwww\.[^\s)]+/gi, '')                                   // bare www.
+    .replace(/(?:\n|^)\s*(?:מקור|מקורות|source|sources)\s*:.*$/gim, '') // "source:" trailers
+    // bare domain tokens in prose (e.g. "Seret.co.il", "ynet.co.il") — a source name
+    // the model could read aloud. Common TLDs only, to avoid touching ordinary words.
+    .replace(/[-\w]+\.(?:co\.il|org\.il|gov\.il|ac\.il|com|net|org|io|ai|co|tv)\b/gi, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+[ו]?-?(?=[.,!?])/g, '')                              // drop a connector (" ו-") left dangling before punctuation
+    .replace(/\s+([.,!?])/g, '$1')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+}
+
 export class LiveTools {
   private draft: CalendarDraft | null = null
   private comm: LiveCommDraft | null = null
@@ -315,8 +335,13 @@ export class LiveTools {
         return
       }
       const r = raced
+      // STRUCTURAL (Phase 2A): the model must never RECEIVE a URL or a source title —
+      // it cannot cite what it does not have. We send ONLY the scrubbed fact, no
+      // `sources` array, and the permitted-speech line FORBIDS naming any source.
+      // (Root cause of the device source-citing: this used to send `sources` AND say
+      // "mention the source".)
       const output = r && r.ok && r.answer
-        ? { status: 'ok', answer: r.answer, sources: r.sources ?? [], allowed_to_say: ['say ONLY this grounded answer, and mention the source', 'never add a fact it did not give'] }
+        ? { status: 'ok', answer: scrubForSpeech(r.answer), allowed_to_say: ['speak ONLY this fact, in your own warm words', 'NEVER name a website, app, brand of source, or say where it came from', 'never add a fact it did not give'] }
         : { status: 'no_result', allowed_to_say: ['say plainly you could not check current information right now', 'never answer a current fact from memory'] }
       const json = JSON.stringify(output)
       this.handled.set(fc.callId, json)

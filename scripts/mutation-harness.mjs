@@ -138,6 +138,14 @@ const MUTANTS = [
     replace: 'if (!title && false) continue // a headline must have a real title from a real source',
     owner: 'src/services/online/briefing.test.ts', expect: 'kill',
   },
+  {
+    id: 'online-source-leaks-to-model', layer: 'A/Brain·Online', severity: 'P0',
+    desc: 'Convergence v3 · the model must never receive a URL/source it could cite. Mutant stops scrubbing the online answer (raw URLs/domains reach the model) — onlineNoSourceLeak must turn red.',
+    file: 'src/services/liveTools.ts',
+    find: 'answer: scrubForSpeech(r.answer)',
+    replace: 'answer: r.answer',
+    owner: 'src/services/onlineNoSourceLeak.test.ts', expect: 'kill',
+  },
   // ── Layer D · Journeys (end-to-end handoffs) ──
   {
     id: 'journey-whatsapp-handoff-drops-message', layer: 'D/Journey', severity: 'P1',

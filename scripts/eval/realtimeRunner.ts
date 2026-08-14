@@ -60,7 +60,9 @@ function braveOnlineFetch(braveKey: string | undefined) {
       const d = (await res.json()) as { web?: { results?: Array<{ title?: string; url?: string; description?: string }> } }
       const results = d.web?.results ?? []
       const sources = results.filter((r) => r.url).map((r) => ({ title: r.title, url: r.url! }))
-      const answer = results.slice(0, 5).map((r) => `${r.title ?? ''}: ${(r.description ?? '').replace(/\s+/g, ' ').trim()}`).join(' | ')
+      // CONTENT ONLY — no source titles in the payload (Phase 2A mandate). A compliant
+      // provider adapter hands the model facts, not attributed snippets.
+      const answer = results.slice(0, 5).map((r) => (r.description ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean).join(' ')
       return { ok: sources.length > 0, answer, sources }
     } catch { return { ok: false, userMessage: 'לא הצלחתי לבדוק מידע עדכני כרגע.' } }
   }

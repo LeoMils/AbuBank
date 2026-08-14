@@ -71,3 +71,38 @@ on a physical device with audio.
 reproduction report, make the highest-leverage STRUCTURAL fix the instrument proved
 (and that is model-independent), re-measure it on the real instrument, and hand back
 a precise ranked remainder — rather than grind a fabricated loop.
+
+═══════════════════════════════════════════════════════════════════════════════
+## ITER 1 — CLASS: source-citing (NO_SOURCES) · MECHANISM fix · v0.239.0
+
+**Failure class:** the model names the websites it "checked" (reproduced on the
+device AND on the gpt-realtime harness: cinema → "מאתר סינמה סיטי ומאתר Seret.co.il";
+price → four store names).
+
+**Root cause (structural, self-inflicted):** `liveTools.handleOnline` handed the
+model a `sources` array AND `allowed_to_say: ['... and mention the source']`. It was
+TOLD to cite, and given the material to cite with.
+
+**Fix (mechanism, not instruction — the model cannot cite what it never receives):**
+the `function_call_output` for get_current_info now carries NO `sources`, and the
+answer is passed through `scrubForSpeech()` (strips markdown links → keep text, bare
+URLs, `www.`, "מקור:/source:" trailers, and bare domain tokens like `seret.co.il`).
+`allowed_to_say` now FORBIDS naming any website/source. The provider adapter in the
+harness was also aligned to hand CONTENT only (no titles) per the Phase 2A mandate.
+
+**Before → after on the REAL realtime instrument (`reproduce.ts`):**
+- cinema — before: "…מבוסס על המידע מאתר סינמה סיטי ומאתר Seret.co.il"; after: no site
+  names ("…כדאי לבדוק את השעות המדויקות בבית הקולנוע").
+- price — before: named לה אסנס / PerfumeIL / טופ פארם / TERMINAL X; after: no store
+  or site names.
+**Delta: NO_SOURCES eliminated on both online probes.** Mechanism, not instruction
+(the ~35k bundle was NOT grown).
+
+**Guard + mutant:** `onlineNoSourceLeak.test.ts` (6) — the payload the model receives
+has no `sources`, no URL, no bare domain; `scrubForSpeech` unit-tested. Mutant
+`online-source-leaks-to-model` (stop scrubbing) → the test turns red.
+
+**Residual (NOT hidden):** the online answer is still a search SNIPPET, not fetched
+page content — so a real PRICE is still missing (price probe gave stores, not a
+number). That is the Phase 2A depth build (fetch + synthesize within budget) and is
+listed in the remainder, NOT claimed done.
