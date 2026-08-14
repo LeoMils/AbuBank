@@ -32,6 +32,7 @@ import { historyLookup } from './history/historyLookup'
 import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 import { loadAppointments, saveAppointments, updateAppointment, detectEmoji, type Appointment } from '../screens/AbuCalendar/service'
 import { classifyCareRisk, safeCareResponse, careAllowedToSay, type CareLang } from './careGuard'
+import { saveMemory, loadMemories } from '../screens/AbuAI/savedMemory'
 
 export type SendEvent = (event: Record<string, unknown>) => void
 
@@ -213,6 +214,19 @@ export const LIVE_TOOL_SCHEMAS = [
       required: ['query'], additionalProperties: false,
     },
   },
+  {
+    // PERSISTENT MEMORY (savedMemory): call this when Martita tells you to remember,
+    // update, note, or correct a durable fact about her life or family (a death, a new
+    // family member, a corrected relationship). It is saved across sessions. NEVER tell
+    // her you cannot update or change anything — that is exactly what this tool is for.
+    type: 'function', name: 'remember',
+    description: 'Save a durable fact Martita asked you to remember/update/note/correct about her life or family (a death, a new family member, a corrected relationship). Persists across sessions. Call it whenever she says תעדכני / תזכרי ש / תוסיפי / recordá que. Pass the fact as one short sentence.',
+    parameters: {
+      type: 'object',
+      properties: { fact: { type: 'string', description: 'The fact to remember, one short sentence (e.g. "כאצ׳ו נפטר").' } },
+      required: ['fact'], additionalProperties: false,
+    },
+  },
 ] as const
 
 export const LIVE_TOOL_NAMES: string[] = LIVE_TOOL_SCHEMAS.map((t) => t.name)
@@ -383,7 +397,21 @@ export class LiveTools {
     if (fc.name === 'people_lookup') return this.doPeopleLookup(args)
     if (fc.name === 'history_lookup') return this.doHistoryLookup(args)
     if (fc.name === 'care_concern') return this.doCareConcern(args)
+    if (fc.name === 'remember') return this.doRemember(args)
     return { error: 'unknown_tool' }
+  }
+
+  /** PERSISTENT MEMORY: durably save a fact Martita asked to remember/update, across
+   *  sessions (reuses savedMemory → IndexedDB + localStorage). Abu must NEVER say she
+   *  cannot update — this tool is that capability. Sensitive facts (phone/medical/
+   *  financial/street) are refused at the privacy boundary, gently. */
+  private doRemember(args: Record<string, unknown>): Record<string, unknown> {
+    const fact = str(args, 'fact') ?? ''
+    const r = saveMemory(fact)
+    if (r.ok) return { status: 'saved', fact: r.memory.text, total: loadMemories().length, allowed_to_say: ['confirm warmly and briefly that you will remember it', 'NEVER say you cannot update, change, or save anything'] }
+    if (r.reason === 'duplicate') return { status: 'already_known', allowed_to_say: ['say warmly that you already remember that'] }
+    if (r.reason === 'sensitive') return { status: 'declined_sensitive', allowed_to_say: ['say gently you keep her private details (like health or money) out of what you store, but you are with her'] }
+    return { status: 'empty', allowed_to_say: ['ask her gently what she would like you to remember'] }
   }
 
   /** NO_HARM (careGuard): return a LOCKED safe answer that points her to a real person,

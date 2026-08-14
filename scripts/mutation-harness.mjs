@@ -154,6 +154,14 @@ const MUTANTS = [
     replace: 'if (false && SAFETY.test(t)) return { risk: \'safety\' }',
     owner: 'src/services/careGuard.test.ts', expect: 'kill',
   },
+  {
+    id: 'live-memory-not-persisted', layer: 'A/Brain·Memory', severity: 'P0',
+    desc: 'PERSISTENT MEMORY: a fact Martita asks to remember must actually persist. Mutant drops the write (saves the old list without the new memory) — persistentMemoryLive.test must turn red.',
+    file: 'src/screens/AbuAI/savedMemory.ts',
+    find: 'persist([...list, memory])',
+    replace: 'persist(list)',
+    owner: 'src/services/persistentMemoryLive.test.ts', expect: 'kill',
+  },
   // ── Layer D · Journeys (end-to-end handoffs) ──
   {
     id: 'journey-whatsapp-handoff-drops-message', layer: 'D/Journey', severity: 'P1',

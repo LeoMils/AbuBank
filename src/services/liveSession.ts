@@ -26,6 +26,7 @@
  * the SDP call, so the client and mint can never drift.
  */
 import { buildLiveInstructions, buildTranscriptionPrompt, assertSessionPayloadWithinLimits } from './liveInstructions'
+import { formatSavedMemoriesForLLM } from '../screens/AbuAI/savedMemory'
 import { LiveTools, LIVE_TOOL_SCHEMAS, durableCalendarStore, type LiveCalendarStore, type LiveCommDraft, type LiveEvent } from './liveTools'
 import type { CalendarDraft } from '../screens/AbuAI/realtime/calendarDraft'
 import { extractFunctionCall, safeParseArgs, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
@@ -140,7 +141,11 @@ export function buildSessionUpdate(now: number = Date.now()): Record<string, unk
   // on the EXACT values sent over the data channel. Over ANY cap, the whole session.update
   // is rejected with string_above_max_length and voice connects then dies ~500ms later.
   // The device blocker was NOT instructions — it was transcription.prompt (1034 > 1024).
-  const instructions = buildLiveInstructions() + '\n' + todayInstruction(now)
+  // PERSISTENT MEMORY (agent C): durable facts Martita asked Abu to remember are
+  // injected every session, so a death / new family member / correction saved via the
+  // `remember` tool is KNOWN next session. Empty string when nothing is saved.
+  const savedMemories = formatSavedMemoriesForLLM()
+  const instructions = buildLiveInstructions() + '\n' + todayInstruction(now) + (savedMemories ? '\n' + savedMemories : '')
   const transcriptionPrompt = buildTranscriptionPrompt()
   assertSessionPayloadWithinLimits({ instructions, transcriptionPrompt })
   return {
