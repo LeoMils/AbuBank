@@ -1,0 +1,49 @@
+{
+  "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
+  "branch": "rc5/cognitive-architecture-and-acceptance",
+  "headSha": "a2072a0",
+  "rollbackTag": "known-good-pre-qa-run (6324bfc)",
+  "updated": "session-qa-part1",
+  "part1Mechanisms": [
+    {
+      "id": "M3", "title": "family layer — never null / accept correction / participant resolution",
+      "status": "partially_closed", "sha": "a2072a0", "layer": "L1-deterministic",
+      "closed": ["relationToMartita never null for a connected entity (grandchild_in_law + describePathBetween fallback)", "FAMILY_GROUND_TRUTH oracle generated: 65 people, 0 gaps, 0 not_found pairs", "relationNeverNull.test 100% of entities", "full Hebrew pair matrix green (relationMatrix.test)"],
+      "verified": "instrument v0.245 relation tool-call 0/5->5/5; deterministic never-null this run",
+      "open": ["participant substitution ('פגישה עם אח של מור' instead of Leo) — model/title behaviour, Layer 3", "accept-correction-never-argue — instruction only, needs a Layer-3 multi-turn probe"]
+    },
+    {
+      "id": "M1", "title": "response lifecycle — one active response / silence between tool call and result / barge-in truncation",
+      "status": "partially_closed", "sha": "a2072a0", "layer": "device",
+      "closed": ["deleted the dead '# Before a Tool Call' instruction text (disobeyed 100% on device); bundle -630 chars", "kept the instantAcknowledgement code-seed guard"],
+      "open": ["structural silence (cancel early response between tool call and result) — DEVICE-only, unmeasurable on the text instrument", "barge-in truncate-to-playback — CONFLICTS with LIVE_INTERRUPT_RESPONSE=false echo fix; needs device pairing (BRIEF_AUDIT A3)", "two-concurrent-responses / conversation_already_has_active_response — verify on device"]
+    },
+    {
+      "id": "M2", "title": "output validation layer (deterministic + classified)",
+      "status": "open", "sha": null, "layer": "L1+L3",
+      "note": "On the realtime AUDIO path the model streams speech directly — there is NO pre-delivery interception point (BRIEF_AUDIT). Real form = a post-turn MONITOR + next-turn repair (a bounded-monitor pattern already exists as sliceController in the legacy path). Deterministic detectors (language purity, length, URL/source, read-back, literal-count) are the reusable core; classified checks need a false-positive measurement before enabling.",
+      "open": ["build the deterministic detector library + post-turn monitor", "next-turn repair with a one-attempt latency budget", "warmth off/on regression measurement"]
+    },
+    {
+      "id": "M4", "title": "online — prefetch warm store + non-verbal in-flight cue",
+      "status": "partially_closed", "sha": "6324bfc", "layer": "instrument+device",
+      "closed": ["price half: first-wins page fetch, real range, ttft ~3.0s (v0.246, verified on instrument + on the Preview endpoint with ONLINE_DEEP_FETCH=1)"],
+      "open": ["prefetch warm store (cinema/weather/headlines/transit on a schedule) -> <1s prefetched", "non-verbal in-flight cue (sound + lookup state, no words) — coordinates with M1 silence"]
+    },
+    {
+      "id": "M5", "title": "session weight + startup — <3s connect, bundle <5,000 chars",
+      "status": "open", "sha": "a2072a0", "layer": "instrument+device",
+      "note": "Bundle is 13,221 instruction chars / 25,521 payload after removing the portrait (v0.245) + anti-preamble text (v0.247). <5,000 is NOT reachable by deletion alone (safety/persona/tool-schemas dominate) — needs per-intent instruction injection or tool-description trimming (BRIEF_AUDIT A4). Startup <3s (pre-warm connection, parallelize) not started.",
+      "open": ["structural bundle shrink toward 5,000", "pre-warm connection + parallelize setup -> <3s (device-measured)"]
+    }
+  ],
+  "alreadyBuiltVerifyList": [
+    { "id": "v0.239-no-sources", "status": "verified", "sha": "6324bfc", "how": "instrument reproduce: no site names on cinema/price" },
+    { "id": "v0.241-persistent-memory", "status": "not_reverified_this_run", "sha": null },
+    { "id": "v0.242-care-safety", "status": "not_reverified_this_run", "sha": null },
+    { "id": "v0.243-reminders", "status": "verified", "sha": "6324bfc", "how": "instrument reproduce: set_reminder fired at a concrete time" },
+    { "id": "v0.244-ui-state+qa-badge", "status": "verified", "sha": "a2072a0", "how": "presenceState.test + version.visibility.test (CODE); render is device" },
+    { "id": "v0.245-family-portrait-removed", "status": "verified", "sha": "a2072a0", "how": "relation tool-call 0/5->5/5 instrument + relationMatrix.test" },
+    { "id": "v0.246-price-first-wins", "status": "verified", "sha": "6324bfc", "how": "priceProbe before/after + Preview endpoint real ₪ range" }
+  ]
+}
