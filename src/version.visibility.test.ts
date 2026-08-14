@@ -24,11 +24,14 @@ describe('version is exported + visible', () => {
     expect(store).toMatch(/appVersion:\s*APP_VERSION\.version/)
   })
 
-  it('Home renders a visible version badge sourced from appVersion', () => {
+  it('Home renders the QA version badge sourced from appVersion, gated to DEV only', () => {
     const home = read('./screens/Home/index.tsx')
     expect(home).toContain('data-testid="home-qa-version"')
     expect(home).toMatch(/QA: v\{appVersion\}/)
     expect(home).toMatch(/const appVersion = useAppStore\(s => s\.appVersion\)/)
+    // Martita must NOT see the QA badge in production — it renders only in development.
+    // The badge JSX must sit inside an import.meta.env.DEV guard.
+    expect(home).toMatch(/import\.meta\.env\.DEV &&[\s\S]*data-testid="home-qa-version"/)
   })
 
   it('Settings About shows the build label + version + branch', () => {

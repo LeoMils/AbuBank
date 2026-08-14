@@ -45,14 +45,6 @@ import { useOutputAmplitude } from '../AbuAI/presence/useOutputAmplitude'
 const waHandoff: Handoff = (name, text) => whatsappAdapter.buildHandoff(name, text)
 const telHandoff: Handoff = (name) => phoneAdapter.buildHandoff(name, '')
 
-const STATE_LABEL: Record<LiveState, string> = {
-  idle: 'מוכנה',
-  connecting: 'מתחברת…',
-  listening: 'מקשיבה',
-  speaking: 'מדברת',
-  error: 'שגיאה',
-}
-
 /** Map the live session state (+ the transient thinking hint) to a presence state. */
 export function toPresenceState(state: LiveState, thinking: boolean): PresenceState {
   if (state === 'connecting') return 'thinking'
@@ -62,6 +54,29 @@ export function toPresenceState(state: LiveState, thinking: boolean): PresenceSt
   if (thinking) return 'thinking'
   if (state === 'listening') return 'listening'
   return 'waiting' // idle / error
+}
+
+/** The spelled-out Hebrew word for each RECONCILED presence state. Keyed by
+ *  PresenceState (NOT the raw LiveState) so the word Martita reads is the SAME source
+ *  of truth as her face and aura — they can never disagree. */
+const PRESENCE_LABEL: Record<PresenceState, string> = {
+  listening: 'מקשיבה',
+  thinking: 'חושבת',
+  speaking: 'מדברת',
+  waiting: 'מוכנה',
+}
+
+/**
+ * The ONE state word shown to Martita, large and unambiguous. It is driven by the
+ * RECONCILED presence state — never by the raw session state — so it can never claim
+ * "מקשיבה" (listening) while Abu is actually speaking or thinking (the trace defect:
+ * "you are speaking while the screen says you are listening"). During an active turn it
+ * is therefore always exactly one of מקשיבה / חושבת / מדברת. `connecting` is the one
+ * honest pre-conversation transient ("מתחברת…") before any turn has begun.
+ */
+export function liveStateWord(state: LiveState, presence: PresenceState): string {
+  if (state === 'connecting') return 'מתחברת…'
+  return PRESENCE_LABEL[presence]
 }
 
 export function LiveScreen({ onClose }: { onClose: () => void }) {
@@ -198,9 +213,15 @@ export function LiveScreen({ onClose }: { onClose: () => void }) {
       >
         <AbuPresence state={presenceState} amplitude={amplitude} size={230} />
 
-        {/* State: colour-coded via the aura AND spelled out here (never colour-only). */}
-        <div style={{ fontSize: 20, fontWeight: 700, color: isError ? '#F5A9A0' : t.gold, letterSpacing: 0.3 }}>
-          {isError ? 'שגיאה' : STATE_LABEL[state]}
+        {/* The ONE state indicator — colour-coded via the aura AND spelled out here (never
+            colour-only), large for an 80-year-old, and driven by the SAME reconciled presence
+            state as her face so the word can never disagree with what she is actually doing. */}
+        <div
+          data-testid="live-state-word"
+          aria-live="polite"
+          style={{ fontSize: 30, fontWeight: 800, color: isError ? '#F5A9A0' : t.gold, letterSpacing: 0.3 }}
+        >
+          {isError ? 'שגיאה' : liveStateWord(state, presenceState)}
         </div>
 
         {abuText && !isError && (

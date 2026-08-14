@@ -95,3 +95,35 @@ this Phase-0b calibration. The final report scores the human trace SEPARATELY. M
   1200 in the live session), RECENCY-first (reverse+stable-sort so same-ms ties keep
   newest-first), with an honest "+N older kept" note. Relevance-per-turn is not possible
   at session-build time (built once) → recency is the honest bound; logged as a known limit.
+
+## D-SCOPE-01 · This session executes as a sequence of small, gated, per-agent commits
+The controlling message is a multi-agent program (A online-depth, UI-STATE, G bundle-shrink,
+D family-resolver, I simulator) whose G/D/A/I agents are gated on the live realtime instrument
+(slow, non-deterministic network calls) + the full suite + build + a per-agent commit. A single
+foreground writer cannot honestly complete all of it with real before/after instrument evidence
+in one session, and the codebase rules forbid fabricating measurements. DECISION (stricter/
+honest reading): execute the highest-ROI, cleanly-correct, fully-verifiable agent(s) FIRST with
+real gates + commit, establish the instrument baseline, and hand back a precise ranked remainder
+— never a fabricated convergence number. First agent: UI-STATE (client-UI only, verifiable by
+tests+build, fixes a named trace defect). Instrument-gated architectural agents each get their
+own careful cycle. Mirrors the CONVERGENCE_LOG CLOSE precedent.
+
+## D-UISTATE-01 · Fixed the LIVE path (LiveScreen), not the legacy AbuAI screen
+Two live UIs exist: `screens/Live/LiveScreen.tsx` (backed by `services/liveSession.ts`) and the
+legacy `screens/AbuAI/index.tsx` (backed by `services/realtimeVoice.ts`). Traced routing:
+Home AI tile → `action:{kind:'live'}` → `openLiveAbu()` → `window.__abubankOpenLive` → App renders
+`<LiveScreen>`. The legacy screen is reachable ONLY via `?legacy=1` and never from the hub. So the
+state indicator was fixed in LiveScreen (which also matches the eval instrument — both use
+liveSession.ts), NOT in realtimeVoice.ts. Mechanism of the "screen said listening while she spoke"
+defect: LiveScreen's spelled-out word read the RAW `STATE_LABEL[state]` (no `thinking` key), while
+the face/aura read the RECONCILED `presenceState` — the two could disagree. Fix: one reconciled
+`liveStateWord(state, presenceState)` drives the word, enlarged to 30px. Regression in
+presenceState.test.ts. Legacy realtimeVoice.ts has the same class of issue (response_done → immediate
+listening) but is off the hub path → logged as remainder, not touched this session.
+
+## D-UISTATE-02 · QA badge gated to DEV, not removed
+The Home `home-qa-version` "QA: v…" badge was always visible (incl. production). Owner: hide outside
+development. DECISION: gate the JSX behind `import.meta.env.DEV` (matches the existing AbuCalendar
+`dev-version-badge` pattern) rather than delete it — the running build stays confirmable in
+production via Settings→About + the operator diagnostic panel, so no diagnostic capability is lost.
+version.visibility.test.ts strengthened to assert the DEV gate (new truth locked, not weakened).

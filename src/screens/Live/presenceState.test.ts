@@ -6,7 +6,7 @@
  * (a pure mapping); on-device timing of the thinking window is not claimed here.
  */
 import { describe, it, expect } from 'vitest'
-import { toPresenceState } from './LiveScreen'
+import { toPresenceState, liveStateWord } from './LiveScreen'
 
 describe('toPresenceState — session state drives the presence', () => {
   it('connecting → thinking', () => {
@@ -27,5 +27,42 @@ describe('toPresenceState — session state drives the presence', () => {
     expect(toPresenceState('listening', true)).toBe('thinking')
     // … but her audio starting (speaking) wins over a stale hint.
     expect(toPresenceState('speaking', true)).toBe('speaking')
+  })
+})
+
+describe('liveStateWord — the ONE spelled-out indicator matches the face, never the raw state', () => {
+  // Helper: the word Martita actually reads for a given session state + thinking hint,
+  // going through the SAME reconciliation the screen uses.
+  const word = (state: Parameters<typeof toPresenceState>[0], thinking: boolean) =>
+    liveStateWord(state, toPresenceState(state, thinking))
+
+  it('REGRESSION (trace: "speaking while the screen says listening") — never shows מקשיבה while she speaks', () => {
+    // Her audio is flowing (speaking). The raw session state is "speaking", but the earlier
+    // bug read STATE_LABEL[state] directly; here we prove the reconciled word is מדברת.
+    expect(word('speaking', false)).toBe('מדברת')
+    expect(word('speaking', true)).toBe('מדברת') // even with a stale thinking hint
+    expect(word('speaking', false)).not.toBe('מקשיבה')
+  })
+
+  it('REGRESSION — during the thinking window it says חושבת, never מקשיבה', () => {
+    // Session state is still "listening" (VAD has not fired her next turn) but she just
+    // finished and Abu is composing. The old label read the raw state → "מקשיבה" (a lie).
+    expect(word('listening', true)).toBe('חושבת')
+    expect(word('listening', true)).not.toBe('מקשיבה')
+  })
+
+  it('plain listening shows מקשיבה; idle shows מוכנה; connecting shows מתחברת…', () => {
+    expect(word('listening', false)).toBe('מקשיבה')
+    expect(word('idle', false)).toBe('מוכנה')
+    expect(word('connecting', false)).toBe('מתחברת…')
+  })
+
+  it('during an active turn the word is ALWAYS exactly one of the three real states', () => {
+    const active = new Set(['מקשיבה', 'חושבת', 'מדברת'])
+    for (const thinking of [false, true]) {
+      for (const state of ['listening', 'speaking'] as const) {
+        expect(active.has(word(state, thinking))).toBe(true)
+      }
+    }
   })
 })

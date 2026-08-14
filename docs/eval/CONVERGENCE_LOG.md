@@ -206,3 +206,46 @@ scenarios excluded from scoring until built). Cap 200 did NOT bind.
 🔵 MINOR
   11. Yiddish / literal task-follow (count) — INC-14/INC-15.
   12. calendar update / cancel coverage gaps.
+
+═══════════════════════════════════════════════════════════════════════════════
+## AGENT: UI-STATE · CLASS: state-mismatch + QA-badge-in-prod · v0.244.0
+
+**Baseline captured (deterministic, no instrument needed):** assembled live instructions
+= **24,513 chars**; the duplicated family portrait inside them (`buildFamilyPortrait()`)
+= **10,902 chars**; full session.update payload = **36,863 chars / 49,368 bytes**. This
+is the G-shrink starting point (target <5,000 via per-intent re-injection — its own cycle).
+
+**Failure class 1 — the screen lied.** Owner (device): "you are speaking while the screen
+says you are listening." MECHANISM (first divergence): in `LiveScreen.tsx` the spelled-out
+state WORD read the RAW session state (`STATE_LABEL[state]`, which has no `thinking` key),
+while Abu's face + aura read the RECONCILED `presenceState` (`toPresenceState`, where
+speaking wins over a stale thinking hint and `onState` clears `thinking` on every
+transition). So the word could disagree with the face, and during the thinking window it
+showed "מקשיבה" (listening) while she was composing.
+
+**Fix (one reconciled source of truth):** added `liveStateWord(state, presenceState)` — the
+one word is now derived from the SAME reconciled `presenceState` as the face, so they can
+never disagree. During an active turn it is always exactly one of מקשיבה / חושבת / מדברת
+(`connecting` is the one honest pre-turn transient "מתחברת…"). Enlarged 20px→30px, bold, for
+an 80-year-old; `aria-live="polite"`. It is driven by real session events, never optimistic.
+
+**Failure class 2 — QA badge in production.** The Home `home-qa-version` "QA: v…" badge was
+always visible. Gated behind `import.meta.env.DEV` (build stays confirmable in prod via
+Settings→About + operator diag). `version.visibility.test.ts` strengthened to assert the gate.
+
+**Regression + evidence:** `presenceState.test.ts` now proves the word is driven by the
+reconciled state and can NEVER say מקשיבה while speaking (raw state=speaking) or during the
+thinking window (raw state=listening + thinking hint) — red against the old `STATE_LABEL[state]`.
+Gates: typecheck 0 · full suite **12,762 passed** (1 skip, 2 todo) · build ✓.
+**Evidence class: CODE.** The on-screen render (that Martita actually reads the larger word,
+and the badge is truly absent in a prod build on device) is a BROWSER/PHYSICAL_DEVICE item —
+NOT claimed here. The realtime instrument measures MODEL output; this is client-UI chrome, so
+that instrument is not the applicable before/after here (logged, not skipped silently).
+
+**Instrument-gated remainder (each its own careful cycle; none faked this session):**
+G bundle-shrink to <5k via per-intent re-injection (needs the 5× noise-floor baseline first);
+D family-resolver full pair matrix (depends on G removing the 10,902-char portrait so relation
+queries MUST hit the resolver); A online-depth first-wins + prefetch warm-store + non-verbal
+in-flight cue (needs live fetch + realtime before/after); I persona simulator (5–15 turn,
+self-contradicting, Spanish/switching). Legacy `realtimeVoice.ts` has the same state-mismatch
+class (`response_done`→immediate listening) but is off the hub path (`?legacy=1` only).

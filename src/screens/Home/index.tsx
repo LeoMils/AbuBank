@@ -107,8 +107,14 @@ export function Home() {
         </button>
       </header>
 
-      {/* QA build marker — single visible-version source (kept; asserted by version.test.ts) */}
-      <div data-testid="home-qa-version" style={{ position: 'absolute', top: 6, left: 10, zIndex: 5, fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: 'rgba(201,168,76,0.65)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', background: 'rgba(201,168,76,0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(201,168,76,0.18)' }}>QA: v{appVersion}</div>
+      {/* QA build marker — DEV-ONLY. Martita must never see a "QA: v…" badge on her home
+          screen in a production build; the running build stays confirmable in production via
+          Settings → About and the operator diagnostic panel. Gated on import.meta.env.DEV so it
+          is present in the source (asserted by version.test.ts / version.visibility.test.ts) but
+          renders only in development. */}
+      {import.meta.env.DEV && (
+        <div data-testid="home-qa-version" style={{ position: 'absolute', top: 6, left: 10, zIndex: 5, fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: 'rgba(201,168,76,0.65)', fontFamily: "'DM Sans',monospace", pointerEvents: 'none', background: 'rgba(201,168,76,0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(201,168,76,0.18)' }}>QA: v{appVersion}</div>
+      )}
 
       {/* ─── THE HUB — the Abu family of apps, and nothing else ─── */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, padding: '6px 16px calc(14px + env(safe-area-inset-bottom,0px))', overflow: 'hidden' }}>
