@@ -46,6 +46,25 @@ Newest first. Every finding logged as discovered. Severity: 🔴P0 🟠P1 🟡P2
   calendar card. Capability-equivalent (Abu creates/reads/edits on the same store) but it IS a screen
   change to feel on device — added to LEO-TESTS-ONLY.
 
+### Item 2 · COST — the first real number — DONE (v0.237.0) · commit pending
+- **Measured (CODE model, real OpenAI Realtime rates; see `docs/warroom/COST_REPORT.md`):** a
+  representative 20-min companion session costs **~$2.26/₪8.34 BEFORE** the O-LIFECYCLE idle-stop
+  (mic streams the whole call) vs **~$1.45/₪5.37 AFTER** → **$0.80/₪2.97 = 35.7% saving**. The cut is
+  ONLY idle mic-input minutes; Abu audio-output + text are byte-identical (tested) — so quality cannot
+  drop. Quality bugs (stalls→repeats, repeated formulations) cost **~$0.24/₪0.90 per session** on top.
+  All headline numbers PINNED by `aiCostModel.test.ts`. Evidence class: CODE (real billed = device).
+- **Controls built + tested (`costMeter.ts`):** persisted session/day/month counter (rollover tested);
+  70%-of-ceiling **alert to Leo** (once per tier, via the existing `sendNotification` sink); at the
+  ceiling a **graceful DEGRADE** (gpt-4o-mini-realtime + shorter replies) that **NEVER disconnects**
+  Martita and NEVER tells her — `connected:true`/`martitaMessage:null` hold at 100% and 10× ceiling.
+  This fixes the old `aiSpendGuard.checkSpendAllowed` (which cut her off at the cap — and was UNWIRED).
+- **Mutant:** `cost-ceiling-disconnects-instead-of-degrades` (ceiling keeps the expensive model) →
+  `costMeter.test.ts` red. Adversarial pass: verified no false savings (busy session saves $0), output
+  cost invariant under the lifecycle, degraded replies still ≥200 tokens (not terse-to-rude).
+- **Honest boundary:** the measurement + control LOGIC are CODE-proven; LIVE wiring into the WebRTC
+  `response.done` usage + mid-session model swap is documented (COST_REPORT) but NOT rushed into the
+  device-sensitive voice path pre-ship (per `.claude/rules/voice.md`). Real billed number = device.
+
 ## Run 1 — 2026-08-13 · branch `rc5/cognitive-architecture-and-acceptance`
 
 ### Baseline (verified this session)

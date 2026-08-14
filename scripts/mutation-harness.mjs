@@ -122,6 +122,14 @@ const MUTANTS = [
     replace: 'aria-label="לדבר עם Abu כדי להוסיף אירוע" /* navigator.mediaDevices.getUserMedia reintroduced */',
     owner: 'src/screens/AbuCalendar/singleVoiceEntry.test.ts', expect: 'kill',
   },
+  {
+    id: 'cost-ceiling-disconnects-instead-of-degrades', layer: 'B/App·Cost', severity: 'P0',
+    desc: 'Item 2 budget policy: at the daily ceiling the session must DEGRADE (cheaper model) and NEVER disconnect Martita. Mutant removes the degrade (keeps the normal model at the ceiling) — costMeter must turn red.',
+    file: 'src/screens/AbuAI/costMeter.ts',
+    find: 'realtimeModel: REALTIME_MODEL_CHEAP,',
+    replace: 'realtimeModel: REALTIME_MODEL_NORMAL,',
+    owner: 'src/screens/AbuAI/costMeter.test.ts', expect: 'kill',
+  },
   // ── Layer D · Journeys (end-to-end handoffs) ──
   {
     id: 'journey-whatsapp-handoff-drops-message', layer: 'D/Journey', severity: 'P1',

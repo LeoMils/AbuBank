@@ -10,8 +10,10 @@ my commits; I stage only files I touch (never `git add -A`).
       (harness 16/16). 3 named behavior tests green. Full suite 12679 / build 0. See LOG Run 2 + D7.
       🟡 **O-VOICE-ORPHANS** follow-up: ~7 now-unreferenced voice modules (tree-shaken from bundle);
       delete them + their unit tests in a separate safe PR (not rushed into the rip commit).
-- [ ] **2 · Cost** — measure 20-min conversation before/after lifecycle; counter + budget alert;
-      graceful degrade at ceiling, never disconnect. Quality must not drop.
+- [x] **2 · Cost** — DONE (v0.237.0). 20-min session ~$2.26/₪8.34 BEFORE → ~$1.45/₪5.37 AFTER =
+      35.7% saving (idle mic only; output byte-identical). Quality bugs ~$0.24/session. Persisted
+      counter + 70% Leo alert + graceful degrade (never disconnect). Mutant KILLED. See COST_REPORT.md.
+      Boundary: live WebRTC wiring documented, not rushed (device voice path).
 - [ ] **3 · Online depth** — use full Tavily results, fan-out briefing ≥10 headlines w/ sources,
       session cache for follow-ups, cinema verdict, provider-key health. PREVIEW-class evidence.
 - [ ] **4 · Production gate** — run it; ranked blocker list (code/iPhone/judgement); update
