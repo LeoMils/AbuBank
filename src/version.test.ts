@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.256.0-scope-inventory')
-    expect(APP_VERSION.buildLabel).toContain('deferred QA build-out')
+    expect(APP_VERSION.version).toBe('0.257.0-audio-trackA')
+    expect(APP_VERSION.buildLabel).toContain('TRACK A audio')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

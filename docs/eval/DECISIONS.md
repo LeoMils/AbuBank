@@ -271,6 +271,26 @@ discipline as D-UISTATE-01). EVIDENCE: liveSession.test (pulse only on get_curre
 pulse), presenceState.test (מחפשת… + speaking-wins), sounds.test (fail-silent) are CODE; the audible
 tone and the on-screen render are DEVICE evidence (OWNER_CHECKLIST #6), logged open — not claimed here.
 
+## D-A-01 · Audio was CANNOT-VERIFY, not CANNOT-BUILD — build it now, flag-gated, owner hears the diff
+Every prior session deferred audio as "device-only". The brief is right that this conflated two
+things: the AUDIBLE result needs his ear, but the MECHANISM is fully buildable and unit-testable now.
+DECISION: build the two documented fixes behind env-overridable flags, OFF by default, payload
+byte-identical when off. (1) far-field noise_reduction on audio.input (VITE_LIVE_AUDIO_TUNE_V2) — the
+documented fix for a speakerphone whose mic hears its own loudspeaker (the second-voice / self-
+interruption root). (2) client barge-in truncate (VITE_LIVE_BARGE_IN_TRUNCATE) — the model streams
+audio far ahead of playback, so on a real barge-in the client must response.cancel + conversation.item.
+truncate the assistant item to the PLAYED position (estimated from the first audio-delta clock),
+or client and server diverge and the next turn collides (conversation_already_has_active_response —
+the likely "only the first sentence is audible"). RECONCILED with LIVE_INTERRUPT_RESPONSE per
+BRIEF_AUDIT A3: it stays FALSE so the SERVER never auto-truncates on echo; the CLIENT truncates only
+on a barge-in it actually observes. That is the correct COMBINED behaviour, not a blind flip. The two
+must be enabled TOGETHER — far-field NR tames the echo BEFORE the client truncate is safe (otherwise
+Abu's own echo would trigger the truncate = the exact "one word then silence" regression). Env flags
+(mirroring D-ONLINE-02) so the owner enables them on a Preview build with no code change; I deploy an
+A/B pair (off vs on) so he can hear the difference. Pure logic (bargeInEvents, far-field payload) is
+unit-tested; audibility + echo-regression are the owner's ear (docs/eval/AUDIO_CHECK.md). NOT claimed
+heard. If ON reintroduces echo-truncation, the fix is a client-side echo gate, logged open.
+
 ## D-QA-03 · SCOPE derived MECHANICALLY from the code, and Layer-1 is the CONTRACT (executed), not seeded
 The deferred QA build-out's first honest slice is the SCOPE inventory, and the brief is explicit:
 "derive it mechanically from the code." DECISION: scopeInventory.ts imports the SAME structured

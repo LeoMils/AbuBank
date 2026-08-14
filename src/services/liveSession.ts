@@ -93,6 +93,33 @@ export const LIVE_INTERRUPT_RESPONSE = false
  *  onset is not clipped. Exported so it is tunable alongside the other VAD knobs. */
 export const LIVE_VAD_PREFIX_PADDING_MS = 300
 
+/** TRACK A · audio config v2 (flag, default OFF). When ON, the session declares
+ *  `audio.input.noise_reduction: far_field` — the documented fix for a speakerphone that
+ *  hears ITS OWN loudspeaker (self-interruption + a second overlapping voice at start):
+ *  the server applies far-field noise reduction to the mic before VAD, so Abu's echo is far
+ *  less likely to read as `speech_started`. Config before architecture. Measured off vs on
+ *  on a real device; pairs with LIVE_BARGE_IN_TRUNCATE (the echo must be tamed BEFORE any
+ *  client-side truncate is safe). ENV-overridable (VITE_LIVE_AUDIO_TUNE_V2=1) so the owner can
+ *  enable it on a Preview build without a code change — mirrors the ONLINE_DEEP_FETCH staging. */
+const envOn = (key: string): boolean => {
+  try {
+    const env = (import.meta as { env?: Record<string, string | undefined> }).env
+    return env?.[key] === '1' || env?.[key] === 'true'
+  } catch { return false }
+}
+export const LIVE_AUDIO_TUNE_V2 = envOn('VITE_LIVE_AUDIO_TUNE_V2')
+
+/** TRACK A · barge-in truncate (flag, default OFF). The model streams audio FAR ahead of
+ *  playback; on a genuine user barge-in the client must (1) stop local playback and (2)
+ *  `conversation.item.truncate` the assistant item to the ACTUAL played position, or client
+ *  and server diverge and the NEXT response collides (conversation_already_has_active_response)
+ *  — the likely cause of "only the first sentence is audible". This is the CORRECT combined
+ *  behaviour that keeps LIVE_INTERRUPT_RESPONSE=false (so the SERVER never auto-truncates on
+ *  echo) while the CLIENT truncates only on a barge-in we actually observe. MUST ship with
+ *  LIVE_AUDIO_TUNE_V2 so echo is tamed first; device echo-regression check required before default-on.
+ *  ENV-overridable (VITE_LIVE_BARGE_IN_TRUNCATE=1) — enable it TOGETHER with VITE_LIVE_AUDIO_TUNE_V2. */
+export const LIVE_BARGE_IN_TRUNCATE = envOn('VITE_LIVE_BARGE_IN_TRUNCATE')
+
 /** Input-audio transcription model for the Hebrew side-channel. Upgraded from
  *  gpt-4o-mini-transcribe to the full gpt-4o-transcribe after a device trace showed
  *  badly mis-heard Hebrew (and even wrong-language output). More accurate on Hebrew;
@@ -156,7 +183,11 @@ export function todayInstruction(now: number): string {
 /** The FULL-DUPLEX session config sent ONCE over the data channel on open. The
  *  model owns the turn (create_response TRUE) and reasons natively. Pure so it
  *  can be regression-locked. `now` seeds the runtime "today" line. */
-export function buildSessionUpdate(now: number = Date.now()): Record<string, unknown> {
+export function buildSessionUpdate(
+  now: number = Date.now(),
+  opts: { farField?: boolean } = {},
+): Record<string, unknown> {
+  const farField = opts.farField ?? LIVE_AUDIO_TUNE_V2
   // Every provider-capped STRING field is guarded here against its documented maximum,
   // on the EXACT values sent over the data channel. Over ANY cap, the whole session.update
   // is rejected with string_above_max_length and voice connects then dies ~500ms later.
@@ -183,6 +214,9 @@ export function buildSessionUpdate(now: number = Date.now()): Record<string, unk
           // Hebrew is set EXPLICITLY and a bias prompt (family names + common request
           // phrasings) steers the transcriber toward the words Martita actually uses.
           transcription: { model: LIVE_TRANSCRIBE_MODEL, language: 'he', prompt: transcriptionPrompt },
+          // TRACK A: far-field noise reduction for a speakerphone that hears its own output
+          // (flag-gated; omitted entirely when off so the payload is byte-identical to before).
+          ...(farField ? { noise_reduction: { type: 'far_field' } } : {}),
           turn_detection: {
             type: 'server_vad',
             threshold: LIVE_VAD_THRESHOLD,
@@ -206,6 +240,20 @@ export function sessionPayloadSize(now: number = Date.now()): { chars: number; b
   // eslint-disable-next-line no-restricted-globals
   const bytes = typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(json).length : json.length
   return { chars: json.length, bytes }
+}
+
+/** TRACK A · the exact wire events for a client-side barge-in (pure, so it is unit-tested
+ *  without WebRTC). Order matters: cancel the in-flight response FIRST, then truncate the
+ *  assistant item to the audio the user actually heard (audio_end_ms), so the server's copy
+ *  of the item matches the client's and the next user turn does not collide with a stale one.
+ *  `audioEndMs` is the played position (clamped ≥0). Returns [] if there is no item to truncate. */
+export function bargeInEvents(itemId: string | null, audioEndMs: number): Array<Record<string, unknown>> {
+  if (!itemId) return []
+  const endMs = Math.max(0, Math.round(audioEndMs))
+  return [
+    { type: 'response.cancel' },
+    { type: 'conversation.item.truncate', item_id: itemId, content_index: 0, audio_end_ms: endMs },
+  ]
 }
 
 /** The ONE proactive greeting. Sent exactly once per conversation id (see
@@ -426,6 +474,11 @@ export class LiveSession {
    *  resolve_contact / get_current_info). The classified UNGROUNDED_ENTITY check uses this to
    *  tell a grounded family fact from one asserted with no tool result. Reset each user turn. */
   private monitorGroundedTools: string[] = []
+  /** TRACK A barge-in tracking: the assistant item currently producing audio and the clock
+   *  when its first audio delta arrived — together they estimate the played position to
+   *  truncate to. Both reset when the response ends. Observation only unless the flag is on. */
+  private currentAssistantItemId: string | null = null
+  private audioStartedAt: number | null = null
   /** Flight recorder — OBSERVATION ONLY. Records my/her speech + every tool call,
    *  and surfaces silent-turn (C.3) + truncation-evidence (C.2) flags. It never
    *  changes turn/VAD/audio behaviour; the live session only appends to it.
@@ -687,6 +740,10 @@ export class LiveSession {
     switch (type) {
       case 'input_audio_buffer.speech_started':
         this.recorder.onUserSpeechStart()  // observation only — records truncation evidence
+        // TRACK A: if the user barges in WHILE Abu is speaking, keep client + server in sync —
+        // cancel the in-flight response and truncate her item to the audio actually heard. Only
+        // when the flag is on; interrupt_response stays FALSE so the SERVER never truncates on echo.
+        if (LIVE_BARGE_IN_TRUNCATE && this.activeResponse && this.currentAssistantItemId) this.handleBargeIn()
         this.monitorRepairedTurn = false   // a new user turn → the one-repair budget resets
         this.monitorGroundedTools = []     // …and the per-turn grounded-tool set clears
         this.clearAudioWatchdog()
@@ -704,6 +761,10 @@ export class LiveSession {
       case 'response.output_audio.delta':
       case 'response.audio.delta':
         this.recorder.onAudioDelta()       // observation only
+        // TRACK A: remember which item is producing audio + when it started, to estimate the
+        // played position for a barge-in truncate. item_id is on the delta event.
+        if (typeof e.item_id === 'string') this.currentAssistantItemId = e.item_id
+        if (this.audioStartedAt === null) this.audioStartedAt = this.deps.now()
         this.clearAudioWatchdog()
         this.setState('speaking')
         break
@@ -727,6 +788,7 @@ export class LiveSession {
         // speech lands in the SAME turn. Ending here would flip to listening early AND
         // make the recorder see a silent turn — the turn ends on the SPOKEN done.
         if (isEndOfTurn(event) && !fc) { this.recorder.onTurnEnd(); this.clearAudioWatchdog(); if (myEpoch === liveEpoch) this.setState('listening') }
+        this.currentAssistantItemId = null; this.audioStartedAt = null // TRACK A: item done
         this.flushPendingResponse()
         this.flushMonitorRepair(myEpoch)   // M2: one-attempt corrective redo (flag-gated), wire now free
         break
@@ -750,6 +812,19 @@ export class LiveSession {
       default:
         break
     }
+  }
+
+  /** TRACK A: the user barged in while Abu was mid-response. Cancel the in-flight response
+   *  and truncate her item to the audio actually heard, so client and server agree and the
+   *  user's new turn does not collide with a stale active response (the "first sentence only"
+   *  + "already_has_active_response" pair). The played position is estimated from the first
+   *  audio delta's clock. Flag-gated by the caller; interrupt_response stays FALSE. */
+  private handleBargeIn(): void {
+    const playedMs = this.audioStartedAt === null ? 0 : this.deps.now() - this.audioStartedAt
+    for (const ev of bargeInEvents(this.currentAssistantItemId, playedMs)) this.send(ev)
+    this.recorder.onRecoverableError('client_barge_in_truncate') // observation: a truncate was issued
+    this.currentAssistantItemId = null; this.audioStartedAt = null
+    this.activeResponse = false // the response is being cancelled; the wire will be free
   }
 
   /** Route a completed function call. wait_for_user is a turn-taking no-op handled

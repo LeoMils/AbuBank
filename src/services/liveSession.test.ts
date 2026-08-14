@@ -412,6 +412,20 @@ describe('LiveSession', () => {
     h.session.teardown()
   })
 
+  it('TRACK A default-off: a user barge-in mid-response does NOT truncate (flag off, echo-safe)', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.created' })
+    h.pc.dc!.fire({ type: 'response.output_audio.delta', item_id: 'it1' }) // Abu is speaking
+    h.pc.dc!.sent.length = 0
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_started' }) // user talks over her
+    const types = h.pc.dc!.sent.map((e) => e.type)
+    expect(types).not.toContain('conversation.item.truncate') // default OFF → no client truncate
+    expect(types).not.toContain('response.cancel')
+    h.session.teardown()
+  })
+
   it('M4 non-verbal cue: a get_current_info lookup pulses onLookup; other tools do NOT', async () => {
     const h = makeHarness({ isReconnect: true })
     await h.session.connect()
