@@ -203,6 +203,24 @@ flip `LIVE_INTERRUPT_RESPONSE` back to true for barge-in truncation: it is false
 echo-truncation fix). Flipping it blind would reintroduce "one word then silence". See BRIEF_AUDIT A3.
 The instantAcknowledgement code-seed guard is kept (it guards a real code path).
 
+## D-INPUT-01 · Input oracle: skeleton + base/prefix dual-index; ambiguous→ask; principled bar
+The device miss "גילעד"→not_found is the oracle problem on the input side. Fixes: (1) a
+matres-lectionis SKELETON (drops optional yud/vav) resolves STT-mangled names; (2) resolvePersonId
+indexes+tries BOTH the base and prefix-stripped forms so prefix-initial names (לאו/מור/מרתה) match
+by their true spelling; (3) hebrewSkeleton uses normalizeBASE (a name's own initial ל/מ is not a
+prefix — לואיס must stay "לס", not "ס"); (4) the reach path returns AMBIGUOUS (asks, naming a
+deceased match too) rather than not_found or a wrong edit-distance guess; the whoIs/fuzzy internal
+skeleton stays conservative (≥2 chars) so a non-name is still an honest not_found. The oracle
+(inputOracle.test) asserts not_found=0 AND wrong=0 over generated variants, EXCLUDING genuinely
+indistinguishable ones (empty skeleton, or a skeleton that belongs to another person after a single
+STT mutation) — a principled bar, documented, not overfitting the generator. No runtime flag
+(deterministic correctness vs the generated oracle; D-QA-02).
+
+## D-TEAM-01 · Single foreground writer (repo V4 rule); Workflow tool not opted in
+The brief invites "as much parallelism as the rules permit." The repo V4 rule forbids
+subagents/parallel writers, and the Workflow tool requires explicit opt-in (not given). So this
+overnight run is a single sequential foreground writer, commit+push per mechanism. Reported.
+
 ## D-UISTATE-02 · QA badge gated to DEV, not removed
 The Home `home-qa-version` "QA: v…" badge was always visible (incl. production). Owner: hide outside
 development. DECISION: gate the JSX behind `import.meta.env.DEV` (matches the existing AbuCalendar

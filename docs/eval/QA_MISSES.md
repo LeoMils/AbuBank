@@ -3,7 +3,21 @@
 Standing law (Part 2): each entry is a PROCESS failure on the QA side — what it was, why
 nothing caught it, and the check added so it cannot recur. The goal is an EMPTY file.
 
-Length: 2 entries (both now have a closing check).
+Length: 3 entries (all now have a closing check).
+
+---
+
+## QM-003 · people_lookup("גילעד") returned not_found — STT added a yud; dataset spells "גלעד"
+- **What:** on the device, a misheard name (an inserted yud) returned not_found for a real family
+  member. The Gilad problem again, on the INPUT side.
+- **Why nothing caught it (input-side oracle problem):** the ground-truth matrix fed names spelled
+  exactly as the dataset stores them, so it never exercised what speech recognition actually returns.
+  A test that types the stored spelling proves nothing about a spoken lookup.
+- **Check added (v0.248):** matres-lectionis skeleton + base/prefix dual-index in the resolver
+  (misheard name resolves; prefix-initial names לאו/מור/מרתה match; ambiguous→ask, never not_found);
+  `sttVariants()` generates realistic STT variants; `inputOracle.test.ts` runs all 65 names through
+  generated variants (never verbatim) and asserts not_found=0 and wrong=0 on the recoverable set.
+  STANDING Layer-1 rule now in force: no test feeds a value verbatim from the source it validates.
 
 ---
 

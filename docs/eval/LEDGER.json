@@ -1,15 +1,22 @@
 {
   "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "headSha": "a2072a0",
+  "headSha": "PENDING-input-oracle",
   "rollbackTag": "known-good-pre-qa-run (6324bfc)",
-  "updated": "session-qa-part1",
+  "updated": "session-overnight-input-oracle",
   "part1Mechanisms": [
+    {
+      "id": "P0-input-oracle", "title": "misheard name resolution (STT variants) — the input-side oracle",
+      "status": "closed", "sha": "PENDING-input-oracle", "layer": "L1-deterministic",
+      "closed": ["matres-lectionis skeleton resolves STT yud/vav mangling (גילעד->גלעד)", "resolvePersonId base+prefix dual-index (לאו/מור/מרתה match by true spelling; prefixed forms reduce)", "reach path ambiguous->ask (names deceased match too), never not_found / wrong guess", "sttVariants() generator + inputOracle.test: not_found=0, wrong=0 over 739 generated variants", "STANDING rule: no Layer-1 test feeds a value verbatim from its source"],
+      "verified": "deterministic oracle 739 variants; instrument spot-check blocked by the .env safety hook (deterministic proof stands)",
+      "open": ["harvest real-transcript variants when a real trace is provided (P0.4)"]
+    },
     {
       "id": "M3", "title": "family layer — never null / accept correction / participant resolution",
       "status": "partially_closed", "sha": "a2072a0", "layer": "L1-deterministic",
-      "closed": ["relationToMartita never null for a connected entity (grandchild_in_law + describePathBetween fallback)", "FAMILY_GROUND_TRUTH oracle generated: 65 people, 0 gaps, 0 not_found pairs", "relationNeverNull.test 100% of entities", "full Hebrew pair matrix green (relationMatrix.test)"],
-      "verified": "instrument v0.245 relation tool-call 0/5->5/5; deterministic never-null this run",
+      "closed": ["relationToMartita never null for a connected entity (grandchild_in_law + describePathBetween fallback)", "FAMILY_GROUND_TRUTH oracle generated: 65 people, 0 gaps, 0 not_found pairs", "relationNeverNull.test 100% of entities", "full Hebrew pair matrix green (relationMatrix.test)", "INPUT side closed — see P0-input-oracle"],
+      "verified": "instrument v0.245 relation tool-call 0/5->5/5; deterministic never-null + input-oracle",
       "open": ["participant substitution ('פגישה עם אח של מור' instead of Leo) — model/title behaviour, Layer 3", "accept-correction-never-argue — instruction only, needs a Layer-3 multi-turn probe"]
     },
     {

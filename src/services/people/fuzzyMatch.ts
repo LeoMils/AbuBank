@@ -9,7 +9,7 @@
  * enough AND unambiguously closer than the runner-up — so it finds the intended person without
  * ever silently resolving to the wrong one (which would be worse than not_found).
  */
-import { normalizeName, type Person } from './peopleModel'
+import { normalizeName, normalizeBase, type Person } from './peopleModel'
 
 /** Collapse Hebrew letters the transcriber confuses into one class, strip niqqud and final forms,
  *  so phonetically-equal spellings normalise together. Deterministic and conservative. */
@@ -24,6 +24,26 @@ export function hebrewPhonetic(s: string): string {
   n = n.replace(/ו/g, 'ב').replace(/ק/g, 'כ').replace(/ח/g, 'כ').replace(/ט/g, 'ת')
   n = n.replace(/[אעה]/g, '') // silent/guttural carriers
   n = n.replace(/(.)\1+/g, '$1') // collapse doubled letters
+  n = n.replace(/\s+/g, '')
+  return n
+}
+
+/** Matres-lectionis SKELETON: on top of the phonetic collapse, drop the optional vowel
+ *  letters yud (י) and vav (ו) that speech recognition freely ADDS or DROPS — the exact
+ *  device defect where "גלעד" was heard as "גילעד" (an inserted yud) and returned not_found.
+ *  גלעד↔גילעד, שלמה↔שלומה, רבקה↔ריבקה all collapse to the same skeleton. More aggressive than
+ *  hebrewPhonetic, so it is used ONLY for an exact-UNIQUE fallback; a collision asks (ambiguous)
+ *  rather than guessing. Applied identically to query and candidate, so variants match. */
+export function hebrewSkeleton(s: string): string {
+  // normalizeBASE (not normalizeName): do NOT strip a name-initial prefix letter, or a name that
+  // starts with ל/מ/ב (לואיס, מור) loses its first consonant and collides (לואיס→"ס" hit susi/ceci).
+  let n = normalizeBase(s)
+  n = n.replace(/[֑-ׇ]/g, '') // niqqud / cantillation
+  n = n.replace(/ך/g, 'כ').replace(/ם/g, 'מ').replace(/ן/g, 'נ').replace(/ף/g, 'פ').replace(/ץ/g, 'צ')
+  n = n.replace(/[זש]/g, 'ס').replace(/צ/g, 'ס')      // sibilants the STT swaps
+  n = n.replace(/ק/g, 'כ').replace(/ח/g, 'כ').replace(/ט/g, 'ת') // k/kh, t collapses
+  n = n.replace(/[אעהיו]/g, '')                        // silent/guttural AND matres lectionis (yud+vav)
+  n = n.replace(/(.)\1+/g, '$1')                        // collapse doubled letters
   n = n.replace(/\s+/g, '')
   return n
 }
@@ -60,7 +80,21 @@ export function fuzzyCandidates(people: Person[]): Candidate[] {
   return people.map((p) => ({ id: p.id, keys: [p.hebrewName, p.canonicalName, ...p.latinNames, ...p.hebrewAliases].filter(Boolean) }))
 }
 
-export interface FuzzyResult { id: string; score: number; via: 'phonetic' | 'edit' }
+export interface FuzzyResult { id: string; score: number; via: 'phonetic' | 'edit' | 'skeleton' }
+
+/** Every person id whose ANY name-key shares the matres-lectionis skeleton of `name`. Zero,
+ *  one, or many. The resolver uses this to answer a misheard name: one → resolve; many → ask
+ *  (ambiguous, never not_found); zero → fall through to edit-distance. */
+export function skeletonMatchIds(name: string, candidates: Candidate[]): string[] {
+  const qs = hebrewSkeleton(name)
+  // Allow a 1-char skeleton: matres-heavy short names (אבו→"ב", עדי→"ד", לאו→"ל") reduce to a
+  // single consonant, and a UNIQUE 1-char match is still the right person; a collision becomes an
+  // ambiguous "which one" (the reach path asks) rather than an edit-distance guess to the WRONG one.
+  if (qs.length < 1) return []
+  const hits = new Set<string>()
+  for (const c of candidates) if (c.keys.some((k) => hebrewSkeleton(k) === qs)) hits.add(c.id)
+  return [...hits]
+}
 
 /**
  * Resolve a MISHEARD name to a person id, or null. Used ONLY as a fallback after an exact match
@@ -85,6 +119,15 @@ export function fuzzyResolvePersonId(
     const phoneticHits = new Set<string>()
     for (const c of candidates) if (c.keys.some((k) => hebrewPhonetic(k) === qp)) phoneticHits.add(c.id)
     if (phoneticHits.size === 1) return { id: [...phoneticHits][0]!, score: 1, via: 'phonetic' }
+  }
+
+  // 1b) matres-lectionis skeleton exact, UNIQUE — the "גילעד" (inserted yud) device defect.
+  // CONSERVATIVE here (this feeds whoIs, which must stay honest-not_found for a non-name): require
+  // a skeleton of ≥2 chars, so a 1-char skeleton cannot make a random token resolve to a person.
+  // The reach path (resolveContactTarget) uses skeletonMatchIds directly with the 1-char + ask rule.
+  if (hebrewSkeleton(name).length >= 2) {
+    const skel = skeletonMatchIds(name, candidates)
+    if (skel.length === 1) return { id: skel[0]!, score: 1, via: 'skeleton' }
   }
 
   // 2) best edit-similarity over BOTH raw and phonetic forms; require a clear winner

@@ -11,7 +11,7 @@
  */
 import { loadPeople, resolvePersonId, personById, type Person, type Gender } from './peopleModel'
 import { relationshipOf, relativesOfKind, hebrewTerm, describePathBetween, type KinKind } from './kinship'
-import { fuzzyResolvePersonId, fuzzyCandidates } from './fuzzyMatch'
+import { fuzzyResolvePersonId, fuzzyCandidates, skeletonMatchIds } from './fuzzyMatch'
 
 /** A misheard direct name → a person id, or null (P8). Confident + unambiguous only; never a
  *  wrong guess. Used ONLY after an exact match AND descriptive-phrase parse have both missed. */
@@ -166,7 +166,26 @@ export function resolveContactTarget(phrase: string, people: Person[] = loadPeop
   }
   const desc = resolveDescriptive(phrase, people)
   if (desc === null) {
-    // not a descriptive phrase and no exact match → one confident fuzzy/phonetic try (P8) before not_found
+    // A misheard DIRECT name (no exact match, not a phrase). Exhaust normalization before
+    // not_found (the "גילעד" defect): the matres-lectionis SKELETON collapses STT yud/vav noise.
+    // Several living people share a skeleton (short names like רון/רוני) → ASK which one, never
+    // not_found and never a silent wrong guess. Exactly one → the fuzzy layer resolves it below.
+    // Skeleton takes PRECEDENCE over edit-distance: a unique match resolves, several ASK. This
+    // recovers the matres-mangled name AND prevents an edit-distance guess to the wrong person
+    // (the "עדי→lydia"/"ארי→mor" class). The unique/ambiguous decision is made on the FULL set
+    // INCLUDING deceased — otherwise a mishearing of a deceased person (פפי→"פופי") whose skeleton
+    // also matches a living one (פופה) would drop the deceased and silently resolve to the living
+    // person. Edit-distance runs only when the skeleton gives no signal at all.
+    const skel = skeletonMatchIds(phrase, fuzzyCandidates(people)).map((id) => personById(id, people)!).filter(Boolean)
+    if (skel.length === 1) { const p = skel[0]!; return p.deceased ? { status: 'deceased', label: p.hebrewName } : { status: 'resolved', id: p.id, label: p.hebrewName } }
+    if (skel.length >= 2) {
+      // Ambiguous → ask, offering ALL matches INCLUDING the deceased. Filtering the deceased here
+      // hid the intended person when a mishearing of a deceased name (פפי/Pepe → "פופי") also
+      // matched a living one (פופה) — it silently offered only the living one. Naming both keeps
+      // the clarifying question honest ("did you mean Pepe, who passed, or Pupa?").
+      return { status: 'ambiguous', candidates: skel.map((p) => ({ id: p.id, label: p.hebrewName })) }
+    }
+    // no skeleton signal → one confident edit-distance try (P8) before not_found
     const fid = fuzzyId(phrase, people)
     if (fid) { const p = personById(fid, people)!; return p.deceased ? { status: 'deceased', label: p.hebrewName } : { status: 'resolved', id: p.id, label: p.hebrewName } }
     return { status: 'not_found' }

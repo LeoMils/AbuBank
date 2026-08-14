@@ -85,15 +85,25 @@ function toId(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
-/** Normalise a spoken/written name for matching (NFC, lowercase, strip one Hebrew prefix). */
+/** NFC / lowercase / single-spaced — the base form, NO prefix stripping. */
+export function normalizeBase(s: string): string {
+  return s.normalize('NFC').trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+/** Strip ONE leading grammatical prefix (ל/ב/מ/ה/ו/כ) so "למור"/"במור" reduce to "מור".
+ *  ש is EXCLUDED (name-initial: שרון/שאול/שושנה). Returns the input unchanged if no prefix. */
+export function stripHebrewPrefix(base: string): string {
+  const m = base.match(/^([לבמהוכ])(.{2,})$/)
+  return m ? m[2]! : base
+}
+
+/** Normalise a spoken/written name for matching (base + strip one prefix). NOTE: a name that
+ *  itself STARTS with a prefix letter (לאו, מור, מרתה) is wrongly shortened by this — which is
+ *  why resolution (resolvePersonId) indexes BOTH the base and the stripped form and tries the
+ *  base FIRST, so "לאו" matches by its true form and "ללאו" still reduces to it. Kept for the
+ *  phonetic/skeleton layers, which apply it consistently to query and candidate. */
 export function normalizeName(s: string): string {
-  const n = s.normalize('NFC').trim().toLowerCase().replace(/\s+/g, ' ')
-  // Strip ONE leading grammatical prefix (ל/ב/מ/ה/ו/כ) so "למור"/"במור" match "מור".
-  // ש is deliberately EXCLUDED: it is a name-initial (שרון/Sharon, שאול/Saul, שושנה),
-  // and stripping it collapsed "שרון" → "רון" (a different person). No one addresses a
-  // person as "ש<name>" ("that-<name>"), so excluding ש never costs a real match.
-  const m = n.match(/^([לבמהוכ])(.{2,})$/)
-  return m ? m[2]! : n
+  return stripHebrewPrefix(normalizeBase(s))
 }
 
 interface RawPersonEntry { group: string; raw: RawPerson }
@@ -181,14 +191,25 @@ export function loadPeople(data: { family: Record<string, unknown> } = familyDat
 
 function buildNameIndex(people: Person[]): Map<string, string> {
   const idx = new Map<string, string>()
-  for (const p of people) for (const key of [p.hebrewName, p.canonicalName, ...p.latinNames, ...p.hebrewAliases]) if (key) idx.set(normalizeName(key), p.id)
+  // Index each key under BOTH its true base form AND its prefix-stripped form, so a name that
+  // starts with a prefix letter (לאו/מור/מרתה) is findable by its real spelling, and a prefixed
+  // query still reduces onto it. A collision keeps the FIRST binding (base wins over stripped).
+  for (const p of people) for (const key of [p.hebrewName, p.canonicalName, ...p.latinNames, ...p.hebrewAliases]) {
+    if (!key) continue
+    const base = normalizeBase(key), stripped = stripHebrewPrefix(base)
+    if (!idx.has(base)) idx.set(base, p.id)
+    if (!idx.has(stripped)) idx.set(stripped, p.id)
+  }
   return idx
 }
 
-/** Resolve a spoken/written name to exactly one person id, or null (never guesses). */
+/** Resolve a spoken/written name to exactly one person id, or null (never guesses). Tries the
+ *  BASE form first (so a prefix-initial name matches by its true spelling), then the
+ *  prefix-stripped form (so "ללאו"/"המרתה"/"למור" reduce onto the name). */
 export function resolvePersonId(name: string, people: Person[] = loadPeople()): string | null {
   const idx = people === (CACHE?.people) ? CACHE!.byName : buildNameIndex(people)
-  return idx.get(normalizeName(name)) ?? null
+  const base = normalizeBase(name)
+  return idx.get(base) ?? idx.get(stripHebrewPrefix(base)) ?? null
 }
 
 export function personById(id: string, people: Person[] = loadPeople()): Person | null {
