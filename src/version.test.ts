@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.251.0-prefetch-warm')
-    expect(APP_VERSION.buildLabel).toBe('AbuBank 0.251.0 — M4 prefetch warm store. One user, predictable interests, cinema listings changing about once a day. warmStore.ts caches the high-frequency topics (cinema, weather, headlines, transit) with a per-topic TTL; a matching question is served WARM from cache when fresh (zero network, under 1s) and falls through to the live first-wins fetch on a miss or when stale — a miss is never cached. prefetchWarmTopics warms all four in the background on session open, so a later cinema question is served warm (this also covers the earlier cinema no_answer). Wired into liveSession behind LIVE_PREFETCH_WARM (default OFF — serving cache trades a little freshness for latency; enables after off/on measurement). MEASURED deterministically (warmStore.test 6): a warm+fresh hit makes ZERO network calls (the <1s path); stale/miss/one-off fall through and repopulate; a miss is never cached. STILL TODO in M4: the non-verbal in-flight cue (sound + lookup screen state) — a device/UI item. Gates: typecheck 0, full suite 12,787 passed, build ok. Prior: output monitor (v0.250).')
+    expect(APP_VERSION.version).toBe('0.252.0-monitor-adversarial')
+    expect(APP_VERSION.buildLabel).toContain('M2 adversarial interception proof')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

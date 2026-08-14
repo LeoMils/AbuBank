@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.251.0-prefetch-warm',
-  buildLabel: 'AbuBank 0.251.0 — M4 prefetch warm store. One user, predictable interests, cinema listings changing about once a day. warmStore.ts caches the high-frequency topics (cinema, weather, headlines, transit) with a per-topic TTL; a matching question is served WARM from cache when fresh (zero network, under 1s) and falls through to the live first-wins fetch on a miss or when stale — a miss is never cached. prefetchWarmTopics warms all four in the background on session open, so a later cinema question is served warm (this also covers the earlier cinema no_answer). Wired into liveSession behind LIVE_PREFETCH_WARM (default OFF — serving cache trades a little freshness for latency; enables after off/on measurement). MEASURED deterministically (warmStore.test 6): a warm+fresh hit makes ZERO network calls (the <1s path); stale/miss/one-off fall through and repopulate; a miss is never cached. STILL TODO in M4: the non-verbal in-flight cue (sound + lookup screen state) — a device/UI item. Gates: typecheck 0, full suite 12,787 passed, build ok. Prior: output monitor (v0.250).',
-  buildDate:  '2026-08-14',
+  version:    '0.252.0-monitor-adversarial',
+  buildLabel: 'AbuBank 0.252.0 — M2 adversarial interception proof. The prior monitorProbe caught 0/5 real turns — five clean turns prove nothing about whether the detectors FIRE. adversarialCorpus.ts GENERATES 364 model-free cases (232 engineered violations + 132 clean/borderline built to fool each detector; no value taken verbatim from outputMonitor.ts — anti-circularity). MEASURED per detector: LANGUAGE_IMPURE 65/65, SOURCE_NAMED 105/105, TOO_LONG 25/25, READ_BACK 9/9, LITERAL_COUNT 28/28 = 100% interception, 0 false positives over 128 clean cases. Four regex-uncatchable defects reported honestly as GAPS (a dot-less spoken domain, a Hebrew-transliterated source, an "אתר של" with no domain, a punctuation-broken read-back) — documented not hidden, asserted so a future change that closes one is flagged. Proves the detectors are perfect-not-broken on the engineered corpus. Report: docs/eval/MONITOR_ADVERSARIAL_REPORT.md. Prior: prefetch warm store (v0.251).',
+  buildDate:  '2026-08-15',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time
   // (Vercel VERCEL_GIT_COMMIT_SHA → VITE_COMMIT_SHA). Falls back to 'local' only for
