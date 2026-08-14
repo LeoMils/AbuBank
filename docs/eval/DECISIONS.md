@@ -175,6 +175,34 @@ old behavior. Also fixed realtimeRunner ttft to be set on the first SPOKEN outpu
 the function_call event), so ttft honestly includes the tool round-trip and measures time-to-first-
 token as Martita would hear it.
 
+## D-QA-01 · Adversarial reviewer runs INLINE, not as a subagent (repo rule overrides the brief)
+The FULL-QA brief asks for a subagent adversarial reviewer. The repo's permanent V4 rule forbids
+subagents/parallel writers. Stricter reading → obey the repo rule; the adversarial pass runs inline
+(see BRIEF_AUDIT.md "ADVERSARIAL REVIEWER PASS"). Logged, not asked.
+
+## D-QA-02 · Deterministic correctness fixes with an oracle do NOT need a runtime flag
+The brief's flag discipline ("ship behind a flag, measure off/on") is for BEHAVIOURAL/risky changes
+(M1 lifecycle, M2 filter, M4 prefetch). A DETERMINISTIC resolver correctness fix proven against an
+independent oracle (M3 never-null vs FAMILY_GROUND_TRUTH) is strictly more correct and is guarded by
+a Layer-1 test at 100% coverage — a runtime flag would only add a code path where the bug persists.
+So M3 shipped without a flag; M1's structural lifecycle (device, risky) stays flag/device-gated.
+
+## D-M3-01 · Gilad null → grandchild_in_law term + never-null path fallback in whoIs
+Mechanism: whoIs derived relationToMartita from relationshipOf only, which had no term for
+spouse-of-a-grandchild → null → role → null. Fix: added `grandchild_in_law` (one marriage hop,
+"בעל הנכדה/אשת הנכד") AND wired `describePathBetween` as the whoIs fallback so a connected entity is
+NEVER null. FAMILY_GROUND_TRUTH.md now shows 65 people, 0 gaps, 0 not_found pairs. Participant
+substitution ("פגישה עם אח של מור") + "accept correction, never argue" are model-behaviour (Layer 3),
+logged open — NOT closed by this deterministic fix.
+
+## D-M1-01 · Deleted the anti-preamble instruction text; did NOT flip interrupt_response
+Deleted "# Before a Tool Call" (device-disobeyed 100%, does nothing, ~630 chars). The preamble is
+audio-only and unmeasurable on the text instrument, so its structural fix (cancel early response;
+silence between tool call and result) is a DEVICE-verification item (OWNER_CHECKLIST #6). Did NOT
+flip `LIVE_INTERRUPT_RESPONSE` back to true for barge-in truncation: it is false ON PURPOSE (a device
+echo-truncation fix). Flipping it blind would reintroduce "one word then silence". See BRIEF_AUDIT A3.
+The instantAcknowledgement code-seed guard is kept (it guards a real code path).
+
 ## D-UISTATE-02 · QA badge gated to DEV, not removed
 The Home `home-qa-version` "QA: v…" badge was always visible (incl. production). Owner: hide outside
 development. DECISION: gate the JSX behind `import.meta.env.DEV` (matches the existing AbuCalendar

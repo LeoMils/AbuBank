@@ -16,7 +16,7 @@ export type KinKind =
   | 'parent' | 'child' | 'sibling'
   | 'grandparent' | 'grandchild' | 'great_grandchild'
   | 'uncle_aunt' | 'nephew_niece' | 'cousin'
-  | 'sibling_in_law' | 'child_in_law' | 'parent_in_law' | 'co_in_law'
+  | 'sibling_in_law' | 'child_in_law' | 'parent_in_law' | 'co_in_law' | 'grandchild_in_law'
 
 const TERMS: Record<KinKind, { m: string; f: string }> = {
   spouse: { m: 'בעל', f: 'אישה' },
@@ -35,6 +35,9 @@ const TERMS: Record<KinKind, { m: string; f: string }> = {
   child_in_law: { m: 'חתן', f: 'כלה' },
   parent_in_law: { m: 'חם', f: 'חמות' },
   co_in_law: { m: 'מחותן', f: 'מחותנת' },
+  // spouse of a grandchild — "בעל הנכדה" / "אשת הנכד". Hebrew has no one-word term, but this
+  // reads naturally as "X בעל הנכדה של מרטיטה" (X, the husband of Martita's granddaughter).
+  grandchild_in_law: { m: 'בעל הנכדה', f: 'אשת הנכד' },
 }
 
 export function hebrewTerm(kind: KinKind, gender: Gender): string {
@@ -92,6 +95,9 @@ export function relationshipOf(xId: string, yId: string, people: Person[] = load
   for (const sibId of sibsY) { const sib = byId.get(sibId); if (sib && [...sib.spouses, ...sib.formerSpouses].includes(xId)) return R('sibling_in_law') }
   // son/daughter-in-law: X is a spouse of one of Y's children
   for (const chId of Y.children) { const ch = byId.get(chId); if (ch && [...ch.spouses, ...ch.formerSpouses].includes(xId)) return R('child_in_law') }
+  // grandchild-in-law: X is a spouse of one of Y's GRANDchildren (the Gilad→Martita gap:
+  // Gilad is the husband of Ofir, Martita's granddaughter → never null again). One marriage hop.
+  for (const chId of Y.children) for (const gcId of byId.get(chId)?.children ?? []) { const gc = byId.get(gcId); if (gc && [...gc.spouses, ...gc.formerSpouses].includes(xId)) return R('grandchild_in_law') }
   // father/mother-in-law: X is a parent of one of Y's spouses
   for (const spId of spousesY) if (byId.get(spId)?.parents.includes(xId)) return R('parent_in_law')
   // co-in-laws (מחותנים): a child of X married a child of Y

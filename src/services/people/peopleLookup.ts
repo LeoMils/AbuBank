@@ -52,10 +52,19 @@ export function whoIs(name: string, people: Person[] = loadPeople()): WhoIs | No
   }
   const p = id ? personById(id, people) : null
   if (!p) return { status: 'not_found' }
-  const relRec = p.id === SELF ? null : relationshipOf(p.id, SELF, people)
+  // relationToMartita is NEVER null for a connected entity (the Gilad defect: the resolver
+  // returned null and an 81-year-old had to name her own grandson-in-law). Order: a single
+  // derived kinship term → else the shortest structural PATH (by-marriage ties like a
+  // grandchild's spouse read "X בעל הנכדה של מרטיטה") → else the person's stated role.
+  let relationToMartita: string | null = null
+  if (p.id !== SELF) {
+    const relRec = relationshipOf(p.id, SELF, people)
+    if (relRec) relationToMartita = `${relRec.he} של מרטיטה`
+    else relationToMartita = describePathBetween(p.id, SELF, people) ?? p.role ?? null
+  }
   return {
     status: 'ok', name: p.hebrewName, gender: p.gender,
-    relationToMartita: relRec ? `${relRec.he} של מרטיטה` : (p.role ?? null),
+    relationToMartita,
     ...(p.notes ? { notes: p.notes } : {}),
   }
 }

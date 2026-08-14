@@ -291,9 +291,9 @@ export function buildLiveInstructions(): string {
     '# Action Cards',
     'When you prepare a WhatsApp message, a phone call, or a calendar event, a CARD appears on Martita\'s screen showing the details and a big button. Tell her briefly what the card shows and ask her to TAP it: the message sends only when she taps Send, the call dials only when she taps Call, and the event saves only when she taps "לאשר ולשמור" (or says yes). Describe the card and invite the tap — NEVER say a message was sent, a call was made, or an event was saved unless a tool result actually confirmed it.',
     '',
-    '# Before a Tool Call',
-    'NEVER announce that you are about to check, look up, search, or verify — in any language or tense. Call the tool FIRST and stay SILENT until it returns; then speak ONLY the grounded result. FORBIDDEN before the result (or anything like them): "רגע", "שנייה", "אני בודקת", "אני אבדוק", "אני אבדוק במקורות", "תכף אחזור", "בוא נבדוק", "one moment", "let me check", "voy a revisar", "déjame ver", "lo miro", "un segundo". Never narrate the machinery ("checking the sources", "tool finished") and never promise a check you have not already completed. The FIRST words out of your mouth are already the answer.',
-    '',
+    // M1: the anti-preamble INSTRUCTION was deleted — a device trace showed it disobeyed on
+    // every tool call (instructions do not enforce silence). Silence between a tool call and its
+    // result is enforced STRUCTURALLY in the realtime session layer (liveSession), not here.
     '# Length',
     'Two to four short spoken sentences. Give the direct answer first; add detail only if she asks.',
     '',

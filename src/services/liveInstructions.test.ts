@@ -86,7 +86,6 @@ describe('buildLiveInstructions', () => {
       '# Family and People',
       '# עוד על מרתה עצמה',
       '# Tools and Actions',
-      '# Before a Tool Call',
       '# Length',
       '# Unclear Audio',
     ]) {
