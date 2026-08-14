@@ -31,6 +31,12 @@ import { LiveTools, LIVE_TOOL_SCHEMAS, durableCalendarStore, type LiveCalendarSt
 import type { CalendarDraft } from '../screens/AbuAI/realtime/calendarDraft'
 import { extractFunctionCall, safeParseArgs, type ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
 import { FlightRecorder, downloadTrace } from './liveTrace'
+import { monitorTurn, repairableViolations, buildRepairInstruction, type Violation } from './monitor/outputMonitor'
+
+/** M2 output monitor. The detectors ALWAYS run post-turn as observation (logged, zero risk).
+ *  The one-attempt next-turn REPAIR (a corrective redo for a hard violation) is gated OFF by
+ *  default — flip to measure off/on, enable only when proven never worse (BRIEF flag discipline). */
+export const LIVE_OUTPUT_MONITOR_REPAIR = false
 
 // ─── Configuration (M1 defaults; M2 tunes these by listening) ──────────────
 
@@ -298,6 +304,9 @@ export interface LiveCallbacks {
   onCalendarSaved?: (e: LiveEvent) => void
   /** A WhatsApp/call preparation changed (whatsapp_draft/phone_call/cancel). */
   onCommDraft?: (d: LiveCommDraft | null) => void
+  /** M2 output monitor: deterministic violations detected in Abu's just-spoken turn
+   *  (observation for the UI/telemetry; the repair, if any, is handled inside the session). */
+  onMonitorViolations?: (violations: Violation[]) => void
 }
 
 /** Injected browser seams — real defaults in the browser, fakes in tests. */
@@ -384,6 +393,12 @@ export class LiveSession {
    *  the next turn instead of crashing the session. */
   private activeResponse = false
   private pendingResponseCreate = false
+  /** M2 monitor context: last thing Martita said + last on-screen prepared message (for the
+   *  read-back check), and a one-repair-per-turn guard so a redo can never loop. */
+  private monitorUserText = ''
+  private monitorOnScreen = ''
+  private monitorRepairedTurn = false
+  private monitorRepairInstruction: string | null = null
   /** Flight recorder — OBSERVATION ONLY. Records my/her speech + every tool call,
    *  and surfaces silent-turn (C.3) + truncation-evidence (C.2) flags. It never
    *  changes turn/VAD/audio behaviour; the live session only appends to it.
@@ -411,7 +426,7 @@ export class LiveSession {
       {
         onCalendarDraft: (d) => this.cb.onCalendarDraft?.(d),
         onCalendarSaved: (e) => this.cb.onCalendarSaved?.(e),
-        onCommDraft: (d) => this.cb.onCommDraft?.(d),
+        onCommDraft: (d) => { if (d && d.intent) this.monitorOnScreen = d.intent; this.cb.onCommDraft?.(d) },
         onToolIssue: (name, reason) => this.recorder.onToolIssue(name, reason), // FIX 5: log a non-returning tool
       },
     )
@@ -636,6 +651,7 @@ export class LiveSession {
     switch (type) {
       case 'input_audio_buffer.speech_started':
         this.recorder.onUserSpeechStart()  // observation only — records truncation evidence
+        this.monitorRepairedTurn = false   // a new user turn → the one-repair budget resets
         this.clearAudioWatchdog()
         this.setState('listening')
         break
@@ -646,7 +662,7 @@ export class LiveSession {
         break
       case 'conversation.item.input_audio_transcription.completed':
         // Side-channel ONLY: hand the UI the Hebrew transcript. Nothing routes on it.
-        if (typeof e.transcript === 'string') { this.cb.onUserTranscript?.(e.transcript); this.recorder.onUserText(e.transcript) }
+        if (typeof e.transcript === 'string') { this.monitorUserText = e.transcript; this.cb.onUserTranscript?.(e.transcript); this.recorder.onUserText(e.transcript) }
         break
       case 'response.output_audio.delta':
       case 'response.audio.delta':
@@ -656,7 +672,7 @@ export class LiveSession {
         break
       case 'response.output_audio_transcript.done':
       case 'response.audio_transcript.done':
-        if (typeof e.transcript === 'string') { this.cb.onAbuTranscript?.(e.transcript); this.recorder.onAbuText(e.transcript) }
+        if (typeof e.transcript === 'string') { this.cb.onAbuTranscript?.(e.transcript); this.recorder.onAbuText(e.transcript); this.runOutputMonitor(e.transcript) }
         break
       case 'response.created':
         // A response is now in flight (ours or a server VAD auto-create). FIX 4: mark it so
@@ -675,6 +691,7 @@ export class LiveSession {
         // make the recorder see a silent turn — the turn ends on the SPOKEN done.
         if (isEndOfTurn(event) && !fc) { this.recorder.onTurnEnd(); this.clearAudioWatchdog(); if (myEpoch === liveEpoch) this.setState('listening') }
         this.flushPendingResponse()
+        this.flushMonitorRepair(myEpoch)   // M2: one-attempt corrective redo (flag-gated), wire now free
         break
       case 'error': {
         const code = String((e.error as { code?: string })?.code ?? 'SERVER_ERROR')
@@ -722,6 +739,36 @@ export class LiveSession {
   exportTrace(filename?: string): void { downloadTrace(this.recorder, filename) }
   /** The flight recorder (for tests / diagnostics). */
   getRecorder(): FlightRecorder { return this.recorder }
+
+  /** M2: run the deterministic output monitor on Abu's just-spoken transcript. Detectors ALWAYS
+   *  run (observation → recorder + callback + console). A HARD violation triggers ONE next-turn
+   *  corrective redo, but ONLY when LIVE_OUTPUT_MONITOR_REPAIR is enabled (flag off by default) —
+   *  the audio already played, so a redo is an audible self-correction and must be proven never
+   *  worse before it ships. Soft violations are logged for the interception metric, never repaired. */
+  private runOutputMonitor(spoken: string): void {
+    let violations: Violation[] = []
+    try {
+      violations = monitorTurn(spoken, { userText: this.monitorUserText, onScreenText: this.monitorOnScreen })
+    } catch { return }
+    if (violations.length === 0) return
+    this.cb.onMonitorViolations?.(violations)
+    // eslint-disable-next-line no-console
+    try { console.info('[abu-output-monitor]', JSON.stringify(violations.map((v) => `${v.kind}:${v.severity}`))) } catch { /* */ }
+    // STASH a repair for response.done (the wire is free there; sending a response.create now,
+    // mid-response, would be deferred and flushed as a bare create, LOSING these instructions).
+    if (!LIVE_OUTPUT_MONITOR_REPAIR || this.monitorRepairedTurn) return
+    if (repairableViolations(violations).length === 0) return
+    this.monitorRepairInstruction = buildRepairInstruction(repairableViolations(violations))
+  }
+
+  /** Fire the stashed one-attempt repair once the turn's response is fully done (wire free). */
+  private flushMonitorRepair(myEpoch: number): void {
+    if (!this.monitorRepairInstruction || this.monitorRepairedTurn || myEpoch !== liveEpoch) return
+    const instructions = this.monitorRepairInstruction
+    this.monitorRepairInstruction = null
+    this.monitorRepairedTurn = true // one attempt per turn, never a loop
+    this.send({ type: 'response.create', response: { instructions } })
+  }
 
   private armAudioWatchdog(myEpoch: number): void {
     this.clearAudioWatchdog()

@@ -1,7 +1,7 @@
 {
   "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "headSha": "f6c1920",
+  "headSha": "PENDING-output-monitor",
   "rollbackTag": "known-good-pre-qa-run (6324bfc)",
   "updated": "session-overnight-online-relevance",
   "part1Mechanisms": [
@@ -26,10 +26,11 @@
       "open": ["structural silence (cancel early response between tool call and result) — DEVICE-only, unmeasurable on the text instrument", "barge-in truncate-to-playback — CONFLICTS with LIVE_INTERRUPT_RESPONSE=false echo fix; needs device pairing (BRIEF_AUDIT A3)", "two-concurrent-responses / conversation_already_has_active_response — verify on device"]
     },
     {
-      "id": "M2", "title": "output validation layer (deterministic + classified)",
-      "status": "open", "sha": null, "layer": "L1+L3",
-      "note": "On the realtime AUDIO path the model streams speech directly — there is NO pre-delivery interception point (BRIEF_AUDIT). Real form = a post-turn MONITOR + next-turn repair (a bounded-monitor pattern already exists as sliceController in the legacy path). Deterministic detectors (language purity, length, URL/source, read-back, literal-count) are the reusable core; classified checks need a false-positive measurement before enabling.",
-      "open": ["build the deterministic detector library + post-turn monitor", "next-turn repair with a one-attempt latency budget", "warmth off/on regression measurement"]
+      "id": "M2", "title": "output validation layer (deterministic monitor done; classified + repair-enable open)",
+      "status": "partially_closed", "sha": "PENDING-output-monitor", "layer": "L1+device",
+      "closed": ["deterministic detectors: language purity, length, source/URL, read-back, literal-count (outputMonitor.ts, 9 tests, zero FP)", "post-turn monitor wired into liveSession as OBSERVATION (always on, ~0ms, no output change, onMonitorViolations)", "one-attempt next-turn repair for hard violations, stashed + fired on response.done, gated behind LIVE_OUTPUT_MONITOR_REPAIR (default OFF)", "interception measured on instrument: 0/5 real turns (root-cause fixes already clean)"],
+      "verified": "outputMonitor.test 9; monitorProbe 0/5 interception on the instrument (clean output, zero FP)",
+      "open": ["ENABLE the repair by default — needs device measurement (audible self-correction; warmth off/on)", "CLASSIFIED checks (distress->menu, method narration, invented entity) — measure false-positive rate first"]
     },
     {
       "id": "M4", "title": "online — relevance + synthesis (done) / prefetch + non-verbal cue (open)",
