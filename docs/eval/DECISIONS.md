@@ -271,6 +271,23 @@ discipline as D-UISTATE-01). EVIDENCE: liveSession.test (pulse only on get_curre
 pulse), presenceState.test (מחפשת… + speaking-wins), sounds.test (fail-silent) are CODE; the audible
 tone and the on-screen render are DEVICE evidence (OWNER_CHECKLIST #6), logged open — not claimed here.
 
+## D-QA-03 · SCOPE derived MECHANICALLY from the code, and Layer-1 is the CONTRACT (executed), not seeded
+The deferred QA build-out's first honest slice is the SCOPE inventory, and the brief is explicit:
+"derive it mechanically from the code." DECISION: scopeInventory.ts imports the SAME structured
+sources the product uses (LIVE_TOOL_SCHEMAS, the Screen enum, family_data.json, and the liveSession
+event switch parsed from source) — never a hand-maintained list — so a tool/screen/event added there
+appears in the inventory automatically and the ledger cannot silently fall behind. The Layer-1 cells
+are the tool CONTRACT the model is handed (valid types, non-empty descriptions, required⊆properties,
+additionalProperties:false so unknown params are rejected, well-formed enums); these are EXECUTED
+(97/97 pass), which is what moves cell-level coverage off zero honestly — not a pile of not_run rows.
+The ordered entity-pair space (4160) is SIZED here but not re-run — it is already covered by
+relationMatrix.test; double-counting it as new coverage would be dishonest. What is deliberately left
+not_run and NAMED as next: Layer-2 failure-path BEHAVIOUR must feed GENERATED args to the handlers
+(missing-required, out-of-enum, unknown-param, wrong-type) — never values verbatim from the schema,
+which is the exact circularity that hid the Gilad defect — plus realtime-event invariants and every
+screen via a browser harness; Layer-3 samples the unbuilt-capability declines. 56.4% is the true seeded
+coverage today; the report states plainly which layer each cell belongs to.
+
 ## D-M2-04 · Classified checks kept SEPARATE from the deterministic zero-FP module; FP measured first
 The three classified checks judge INTENT (distress→menu, method narration, ungrounded entity), so
 they carry real false-positive risk — unlike outputMonitor.ts's surface-form detectors which have a

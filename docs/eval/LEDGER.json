@@ -48,6 +48,18 @@
       "open": ["WIRE the ON-path into liveSession behind a flag (default OFF): buildCoreInstructions + inject intentGuidance(intent) per response.create — DEVICE-gated (warmth/parity off vs on, no regression beyond noise floor)", "condense persona toward core <5,000 — device-measured off/on only", "tool-description trimming (the other half of A4) — deterministic to measure, routing-behaviour to verify on instrument", "pre-warm connection + parallelize setup -> <3s (device-measured)"]
     }
   ],
+  "qaBuildOut": {
+    "status": "seeded",
+    "sha": "PENDING-scope",
+    "note": "Cell-level QA moved off 0%. SCOPE derived MECHANICALLY from the code (scopeInventory.ts): 17 tools, 30 param cells, 35 failure paths, 15 screens, 19 realtime event types, 65 entities (4160 ordered pairs covered by relationMatrix.test), 6 declared-unbuilt capabilities. Ledger seeded: 172 cells; Layer-1 tool-schema CONTRACT cells EXECUTED 97/97 pass (valid types, non-empty descriptions, required subset of properties, unknown-param rejection additionalProperties:false, well-formed enums) => 56.4% cell coverage. scopeInventory.test 7. Reports: docs/eval/SCOPE_INVENTORY.json + .md",
+    "open": [
+      "Layer-2 tool FAILURE-PATH behaviour: feed GENERATED args (missing-required, out-of-enum, unknown-param, wrong-type) to each handler, assert deterministic handling — never values verbatim from the schema (Gilad circularity)",
+      "Layer-2 realtime EVENT invariants: one assertion per event type (19) on the liveSession switch",
+      "every SCREEN via a browser harness: render, navigation, RTL, >=16px text for an 80yo, NO dev text in a production build",
+      "uncovered-by-any-domain: multi-tool in one turn; 50+ turn sessions; time-passing (fast-forward, never wait)",
+      "Layer-3 sampled: declared-unbuilt-capability declines (taxi/email/med-alarm/money/navigate/game)"
+    ]
+  },
   "alreadyBuiltVerifyList": [
     { "id": "v0.239-no-sources", "status": "verified", "sha": "6324bfc", "how": "instrument reproduce: no site names on cinema/price" },
     { "id": "v0.241-persistent-memory", "status": "verified", "sha": "9110489", "how": "instrument verifyBuilt: remember tool fired on a death update, warm confirm (cross-session durability is unit-tested/device)" },
