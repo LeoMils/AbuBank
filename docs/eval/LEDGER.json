@@ -1,9 +1,9 @@
 {
   "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "headSha": "c49445e",
+  "headSha": "313123b",
   "rollbackTag": "known-good-pre-qa-run (6324bfc)",
-  "updated": "session-m2-classified",
+  "updated": "session-scope-inventory",
   "part1Mechanisms": [
     {
       "id": "P0-input-oracle", "title": "misheard name resolution (STT variants) — the input-side oracle",
@@ -50,7 +50,7 @@
   ],
   "qaBuildOut": {
     "status": "seeded",
-    "sha": "PENDING-scope",
+    "sha": "313123b",
     "note": "Cell-level QA moved off 0%. SCOPE derived MECHANICALLY from the code (scopeInventory.ts): 17 tools, 30 param cells, 35 failure paths, 15 screens, 19 realtime event types, 65 entities (4160 ordered pairs covered by relationMatrix.test), 6 declared-unbuilt capabilities. Ledger seeded: 172 cells; Layer-1 tool-schema CONTRACT cells EXECUTED 97/97 pass (valid types, non-empty descriptions, required subset of properties, unknown-param rejection additionalProperties:false, well-formed enums) => 56.4% cell coverage. scopeInventory.test 7. Reports: docs/eval/SCOPE_INVENTORY.json + .md",
     "open": [
       "Layer-2 tool FAILURE-PATH behaviour: feed GENERATED args (missing-required, out-of-enum, unknown-param, wrong-type) to each handler, assert deterministic handling — never values verbatim from the schema (Gilad circularity)",
