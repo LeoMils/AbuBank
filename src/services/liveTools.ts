@@ -33,6 +33,8 @@ import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunct
 import { loadAppointments, saveAppointments, updateAppointment, detectEmoji, type Appointment } from '../screens/AbuCalendar/service'
 import { classifyCareRisk, safeCareResponse, careAllowedToSay, type CareLang } from './careGuard'
 import { saveMemory, loadMemories, sensitiveKind, type SensitiveKind } from '../screens/AbuAI/savedMemory'
+import { parseReminder } from '../screens/AbuCalendar/reminders/reminderParser'
+import { createReminder } from '../screens/AbuCalendar/reminders/reminderStore'
 
 export type SendEvent = (event: Record<string, unknown>) => void
 
@@ -227,6 +229,19 @@ export const LIVE_TOOL_SCHEMAS = [
       required: ['fact'], additionalProperties: false,
     },
   },
+  {
+    // REMINDERS (queue #2): call this when Martita asks to be reminded of something at a
+    // time — relative ("בעוד דקה", "עוד שעה") or absolute ("מחר בארבע", "כל בוקר בשמונה").
+    // It creates a durable reminder that fires with a popup + sound. NEVER say you cannot
+    // set a reminder or a timer — that is what this tool is for.
+    type: 'function', name: 'set_reminder',
+    description: 'Create a reminder that will fire at a time. Call it whenever Martita says תזכירי לי / זכרי להזכיר, with a time — relative (בעוד דקה, עוד שעה) or absolute (מחר בארבע, כל בוקר בשמונה). Pass her whole sentence as text. Never claim you cannot set a reminder or timer.',
+    parameters: {
+      type: 'object',
+      properties: { text: { type: 'string', description: 'What Martita said, verbatim (the thing + the time).' } },
+      required: ['text'], additionalProperties: false,
+    },
+  },
 ] as const
 
 export const LIVE_TOOL_NAMES: string[] = LIVE_TOOL_SCHEMAS.map((t) => t.name)
@@ -399,7 +414,38 @@ export class LiveTools {
     if (fc.name === 'history_lookup') return this.doHistoryLookup(args)
     if (fc.name === 'care_concern') return this.doCareConcern(args)
     if (fc.name === 'remember') return this.doRemember(args)
+    if (fc.name === 'set_reminder') return this.doSetReminder(args)
     return { error: 'unknown_tool' }
+  }
+
+  /** REMINDERS: parse Martita's phrasing (relative/absolute Hebrew) via the existing
+   *  reminders estate and create a DURABLE reminder that fires with popup + sound
+   *  (ReminderDueEngine + reminderSound — device-verified). Abu must NEVER say she
+   *  cannot set a reminder — this is that capability. Missing a time ⇒ ask, not refuse. */
+  private doSetReminder(args: Record<string, unknown>): Record<string, unknown> {
+    const raw = str(args, 'text') ?? str(args, 'query') ?? ''
+    // The estate parser handles "בעוד חמש דקות"/"בעוד שעה" but not the bare singular
+    // "בעוד דקה" (the exact trace phrase, INC-07). Normalize singular minute/hour to a
+    // quantified form the parser understands — a local fix, not an edit to the shared parser.
+    const text = raw
+      .replace(/(בעוד|עוד)\s+דקה(?![֐-׿])/g, '$1 1 דקות')
+      .replace(/(בעוד|עוד)\s+שעה(?![֐-׿])/g, '$1 1 שעות')
+    const today = new Date().toISOString().slice(0, 10)
+    const draft = parseReminder(text, today)
+    if (!draft.dueAt || draft.missingFields.includes('time') || draft.missingFields.includes('date')) {
+      return { status: 'needs_detail', missing: draft.missingFields, allowed_to_say: ['ask her briefly for the missing time or day, warmly', 'NEVER say you cannot set a reminder — you only need the time'] }
+    }
+    const { reminder, saved } = createReminder({
+      category: draft.category,
+      title: draft.title || 'תזכורת',
+      dueAt: draft.dueAt,
+      displayDateLabel: draft.displayDateLabel ?? '',
+      displayTimeLabel: draft.displayTimeLabel ?? '',
+      ...(draft.recurrence ? { recurrence: draft.recurrence } : {}),
+    })
+    if (!saved) return { status: 'not_saved', allowed_to_say: ['be honest the reminder did not save this time, and offer to try again'] }
+    const when = `${reminder.displayDateLabel} ${reminder.displayTimeLabel}`.trim()
+    return { status: 'reminder_set', title: reminder.title, when, allowed_to_say: ['confirm warmly and briefly that you will remind her, and say WHEN', 'NEVER say you cannot set a reminder, timer, or alarm'] }
   }
 
   /** PERSISTENT MEMORY: durably save a fact Martita asked to remember/update, across

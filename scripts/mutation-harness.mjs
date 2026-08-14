@@ -162,6 +162,14 @@ const MUTANTS = [
     replace: 'persist(list)',
     owner: 'src/services/persistentMemoryLive.test.ts', expect: 'kill',
   },
+  {
+    id: 'live-reminder-not-persisted', layer: 'A/Brain·Reminders', severity: 'P0',
+    desc: 'REMINDERS: a reminder Martita asks for must actually be created + persisted. Mutant drops the store write in createReminder — reminderLive.test must turn red.',
+    file: 'src/screens/AbuCalendar/reminders/reminderStore.ts',
+    find: 'items.push(reminder)',
+    replace: 'if (false) items.push(reminder)',
+    owner: 'src/services/reminderLive.test.ts', expect: 'kill',
+  },
   // ── Layer D · Journeys (end-to-end handoffs) ──
   {
     id: 'journey-whatsapp-handoff-drops-message', layer: 'D/Journey', severity: 'P1',
