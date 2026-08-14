@@ -1,6 +1,9 @@
 # AUDIO_CHECK — 5 minutes on your phone, out loud, in Hebrew
 
-Open BOTH links (reported at the end of the session): the **OFF** one and the **ON** one.
+Open BOTH links (v0.259.0):
+- **OFF** (audio flags off): https://abu-bank-fylxol5mz-leos-projects-d3c04c09.vercel.app
+- **ON**  (audio flags on):  https://abu-bank-hsej28ty2-leos-projects-d3c04c09.vercel.app
+
 The ON build has the two audio flags enabled (far-field noise reduction + barge-in truncate).
 Do each step on OFF, then the SAME step on ON, and note which sounds better.
 
