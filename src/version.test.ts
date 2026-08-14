@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.260.0-general-search')
-    expect(APP_VERSION.buildLabel).toContain('ONE GENERAL online search loop')
+    expect(APP_VERSION.version).toBe('0.261.0-fullname-p0')
+    expect(APP_VERSION.buildLabel).toContain('DEVICE P0: full-name lookup fixed')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

@@ -72,3 +72,59 @@ Attacking the current plan + check set:
    false-positive measurement before enabling.
 7. **Online device path depends on ONLINE_DEEP_FETCH being set** — real price on the phone requires
    the Preview env flag (now set on Preview only). Production still snippet. FLAGGED.
+
+---
+
+## AUDIT · OVERNIGHT BRIEF (from the v0.259.0 device session) vs the actual code
+
+The brief + its amendments were written from the v0.259.0 device session. The branch HEAD is
+already **v0.260.0** (my prior session). Checked against the code:
+
+### B1 · Track 1 (general online loop) is ALREADY BUILT + MEASURED — the brief's core ask is done
+FALSE that it is unbuilt. `src/services/online/generalSearch.ts` (v0.260) is the general loop:
+SEARCH → FETCH first-wins → cheap-model JUDGE+SYNTHESIZE (no type heuristic) → REFINE once →
+honest no_answer. Measured over 63 diverse he/es questions: 87.3% pass, 0 hard fails, 0 source
+leaks, latency p95 5237ms/max 5622ms (in the 6s ceiling). The brief's own latency warning was
+already handled — a synth-time RESERVE keeps fetch+judge under the ceiling (the first run hit
+7335ms, was measured, then fixed). Report: docs/eval/ONLINE_ACCEPTANCE.md.
+
+### B2 · "Do not delete the price path before the replacement wins" — already satisfied by measurement
+The brief says keep the price gate until head-to-head proves the loop is at least as good. That
+head-to-head WAS run: off-vs-on gave OFF-only=0 (the general loop never loses where the snippet
+wins) and ON-only=2 (strictly better); price questions (597₪, milk, Nespresso) pass on the general
+loop. So the deletion of isPriceQuery/priceNearProduct was evidence-based, not a blind guess. The
+amendment's own note ("price 505₪ clean, cinema returned the meta description") is exactly the
+per-topic-patchwork failure the general loop removes — cinema now goes through the same judge.
+
+### B3 · Track 2 flag (ONLINE_DEEP_FETCH) — already moved to code (v0.260), full audit still owed
+The dangerous Preview-only env var is gone: `flags.ts` `ONLINE_GENERAL_SEARCH_DEFAULT=true` is a
+CODE default that survives a merge; env is now an ops kill-switch only. The FULL flag audit (every
+flag: evidence, default, survives-merge) is the remaining Track-2 work — done as ONLINE_FLAG_AUDIT.md.
+
+### B4 · The NEW device P0s are the real remaining work (correctly prioritised over re-doing Track 1)
+- **full-name lookup** ("גלעד אבורדי"→not_found): REAL, confirmed in code (the name index holds
+  "גלעד" not the full string, and edit-distance is too far). FIXED this session (subsetResolve).
+- **misheard→no clarification** ("טוצ'י"→"טורקי"→lecture): REAL. The resolver has phonetic/skeleton
+  matching but no "did you mean…?" SUGGEST path, and no session-level "don't repeat a failed lookup".
+  Partly deterministic (closest-candidate), partly model/session — scoped honestly, not overclaimed.
+- **M1 preambles 5/5**: REAL and matches my prior A2 finding — the preamble is AUDIO-path and does
+  NOT reproduce on the text instrument. Deleting the dead instruction text was necessary-not-
+  sufficient. The HARD truth: the realtime API streams the tool-calling response's audio as it is
+  generated, so by the time the client sees the function_call event the preamble has ALREADY played
+  — there is no clean client-side "cancel audio before the tool result" in this architecture (the
+  same no-pre-delivery-interception-point finding as M2). A real fix needs either a provider-side
+  "silent tool call" affordance or a two-response structure; NOT a blind instruction. Flagged as
+  device/architecture work, not claimed fixed. The "exactly one active response" half IS buildable
+  (Track A barge-in + the deferred-create logic) and is the tractable part.
+
+### ADVERSARIAL REVIEWER (this track) — what nothing here would catch
+1. subsetResolve resolves a UNIQUE given name even if the surname the user gave is WRONG (belongs
+   to a different family) — it ignores the surname entirely. Low harm (she meant that person) but it
+   would also resolve "גלעד <someone-else's-surname>" to Gilad. Acceptable per the P0, noted.
+2. A given name shared by a living AND a deceased person → subsetResolve returns them as ambiguous;
+   whoIs's subset path only takes the RESOLVED (unique) case, so a shared name still falls to
+   not_found in whoIs (contact path does ask). Minor asymmetry, logged.
+3. The misheard P0 is only half-addressable in code; the "never lecture about an unrelated word when
+   the context is a person" is model behaviour — no deterministic guard catches a model that lectures.
+4. M1 preamble remains heard on every tool call until the architecture-level fix — the single most
+   frequent thing the owner experiences is still open. Stated plainly, not buried.

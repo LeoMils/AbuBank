@@ -10,7 +10,9 @@
       "status": "closed", "sha": "eb1b26e", "layer": "L1-deterministic",
       "closed": ["matres-lectionis skeleton resolves STT yud/vav mangling (גילעד->גלעד)", "resolvePersonId base+prefix dual-index (לאו/מור/מרתה match by true spelling; prefixed forms reduce)", "reach path ambiguous->ask (names deceased match too), never not_found / wrong guess", "sttVariants() generator + inputOracle.test: not_found=0, wrong=0 over 739 generated variants", "STANDING rule: no Layer-1 test feeds a value verbatim from its source"],
       "verified": "deterministic oracle 739 variants; instrument spot-check blocked by the .env safety hook (deterministic proof stands)",
-      "open": ["harvest real-transcript variants when a real trace is provided (P0.4)"]
+      "open": ["harvest real-transcript variants when a real trace is provided (P0.4)"],
+      "closed_fullname": ["DEVICE P0 (v0.261): full-name 'גלעד אבורדי'->not_found FIXED. subsetResolve: a spoken multi-word name where exactly ONE person is named by any word wins even with an unknown surname; several people->ambiguous(ask), never a silent pick; also matches the FIRST token of a multi-word display name. Wired into whoIs + resolveContactTarget. fullNameLookup.test: גלעד אבורדי->Gilad, EVERY living person findable by givenName+surname (miss 0), 'מור לאו'->ambiguous. 272 people tests green"],
+      "open_p0_misheard": ["MISHEARD->CLARIFY (device P0, PARTIAL): resolver has phonetic/skeleton but no 'did you mean...?' SUGGEST path + no session 'don't repeat a failed lookup twice' + no garble->'לא שמעתי טוב'. Deterministic core (closest candidate) is buildable; the 'never lecture on an unrelated word' + 'ask on repeat' are model/session. NOT done this run — next"]
     },
     {
       "id": "M3", "title": "family layer — never null / accept correction / participant resolution",

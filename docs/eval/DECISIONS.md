@@ -271,6 +271,23 @@ discipline as D-UISTATE-01). EVIDENCE: liveSession.test (pulse only on get_curre
 pulse), presenceState.test (מחפשת… + speaking-wins), sounds.test (fail-silent) are CODE; the audible
 tone and the on-screen render are DEVICE evidence (OWNER_CHECKLIST #6), logged open — not claimed here.
 
+## D-P0-FULLNAME · Subset matching — a known given name + an unknown surname must resolve, never not_found
+Device P0: people_lookup("גלעד אבורדי") returned not_found though גלעד is in the dataset. Mechanism
+(confirmed in code): the name index holds "גלעד", not the full "גלעד אבורדי", and the edit-distance
+fuzzy fallback is too far (a whole extra word). The 739-variant oracle covered given-name SPELLING
+variants, never "given name + surname where the surname is absent from the data". DECISION: add
+`subsetResolve` — split the spoken name into words; if exactly ONE person in the dataset is named by
+any word (the rest an unknown surname), that person WINS; if several DIFFERENT people are named,
+return ambiguous (the caller asks), never a silent wrong pick; a single word is left to the exact/
+fuzzy paths. Also match a word against the FIRST token of a multi-word display name so someone
+indexed as "אריאל (בן טאבלה)" is findable by "אריאל". Wired into whoIs + resolveContactTarget.
+Regression fullNameLookup.test: גלעד אבורדי→Gilad, EVERY living person findable by givenName+surname
+(miss 0), "מור לאו"→ambiguous (never a silent pick). Deterministic correctness fix, no flag (D-QA-02).
+Known limit (logged, adversarial pass): subset ignores the surname, so a wrong surname still resolves
+the unique given name — acceptable for the P0 (she meant that person); and a given name shared by a
+living+deceased person still falls to not_found in whoIs (the contact path asks). Surname-bearing
+oracle variants for the generated set are the follow-up.
+
 ## D-ONLINE-04 · One GENERAL search loop replaces the per-topic gates; the cheap model IS the judge
 The online path had a relevance gate for PRICES, with a plan to add one for news, one for weather,
 one for film. An 81-year-old asks ANYTHING, so that patchwork never covers her. DECISION: delete the

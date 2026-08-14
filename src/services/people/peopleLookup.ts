@@ -9,7 +9,7 @@
  * Numbers NEVER enter the model — contact resolution returns an id + label; the UI
  * layer turns an id into a phone number, exactly as the card system already does.
  */
-import { loadPeople, resolvePersonId, personById, type Person, type Gender } from './peopleModel'
+import { loadPeople, resolvePersonId, personById, subsetResolve, type Person, type Gender } from './peopleModel'
 import { relationshipOf, relativesOfKind, hebrewTerm, describePathBetween, type KinKind } from './kinship'
 import { fuzzyResolvePersonId, fuzzyCandidates, skeletonMatchIds } from './fuzzyMatch'
 
@@ -50,6 +50,10 @@ export function whoIs(name: string, people: Person[] = loadPeople()): WhoIs | No
     // phrase gets one confident fuzzy/phonetic try before we give up (P8).
     id = desc === null ? fuzzyId(name, people) : desc.length === 1 ? desc[0]! : null
   }
+  // SUBSET fallback (device P0): "גלעד אבורדי" = a known given name + an unknown surname. If the
+  // spoken name uniquely names ONE person in the dataset, that person wins — never not_found for
+  // someone who IS in the dataset. (Ambiguous across several people falls through to not_found.)
+  if (!id) { const sub = subsetResolve(name, people); if (sub.status === 'resolved') id = sub.id }
   const p = id ? personById(id, people) : null
   if (!p) return { status: 'not_found' }
   // relationToMartita is NEVER null for a connected entity (the Gilad defect: the resolver
@@ -188,6 +192,10 @@ export function resolveContactTarget(phrase: string, people: Person[] = loadPeop
     // no skeleton signal → one confident edit-distance try (P8) before not_found
     const fid = fuzzyId(phrase, people)
     if (fid) { const p = personById(fid, people)!; return p.deceased ? { status: 'deceased', label: p.hebrewName } : { status: 'resolved', id: p.id, label: p.hebrewName } }
+    // SUBSET fallback (device P0): "גלעד אבורדי" — a known given name + an unknown surname.
+    const sub = subsetResolve(phrase, people)
+    if (sub.status === 'resolved') { const p = personById(sub.id, people)!; return p.deceased ? { status: 'deceased', label: p.hebrewName } : { status: 'resolved', id: p.id, label: p.hebrewName } }
+    if (sub.status === 'ambiguous') return { status: 'ambiguous', candidates: sub.ids.map((id) => ({ id, label: personById(id, people)!.hebrewName })) }
     return { status: 'not_found' }
   }
   const matches = desc.map((id) => personById(id, people)!)

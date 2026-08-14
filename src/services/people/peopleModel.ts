@@ -215,3 +215,44 @@ export function resolvePersonId(name: string, people: Person[] = loadPeople()): 
 export function personById(id: string, people: Person[] = loadPeople()): Person | null {
   return people.find((p) => p.id === id) ?? null
 }
+
+/** Every person id whose ANY name-key EXACTLY equals this single word (base or prefix-stripped).
+ *  Used for SUBSET matching of a spoken "given name + surname" where the surname is absent from
+ *  the dataset — a device P0: people_lookup("גלעד אבורדי") returned not_found though גלעד exists. */
+export function peopleIdsMatchingWord(word: string, people: Person[] = loadPeople()): string[] {
+  const w = normalizeBase(word).replace(/[()]/g, ''), ws = stripHebrewPrefix(w)
+  if (w.length < 2) return []
+  const ids = new Set<string>()
+  const hit = (t: string): boolean => { const ts = stripHebrewPrefix(t); return t === w || ts === w || t === ws || ts === ws }
+  for (const p of people) {
+    for (const key of [p.hebrewName, p.canonicalName, ...p.latinNames, ...p.hebrewAliases]) {
+      if (!key) continue
+      const kb = normalizeBase(key)
+      // Match the whole key OR its FIRST token — so a person indexed under a multi-word display
+      // name ("אריאל (בן טאבלה)", "אחיו הגדול") is still findable by their given name. Only the
+      // first token (not interior words), so a kinship word inside the name is not a false match.
+      const firstTok = kb.replace(/[()]/g, ' ').trim().split(/\s+/)[0] ?? ''
+      if (hit(kb) || (firstTok && hit(firstTok))) { ids.add(p.id); break }
+    }
+  }
+  return [...ids]
+}
+
+/**
+ * SUBSET resolve a multi-word spoken name ("given name + surname"). If exactly ONE person in the
+ * dataset is named by any of the words (the others being an unknown surname), that person WINS.
+ * If the words name SEVERAL different people, it is ambiguous (the caller asks). A single word or
+ * no match returns 'none' (the exact/fuzzy paths own those). Never guesses across different people.
+ */
+export function subsetResolve(
+  name: string,
+  people: Person[] = loadPeople(),
+): { status: 'resolved'; id: string } | { status: 'ambiguous'; ids: string[] } | { status: 'none' } {
+  const words = normalizeBase(name).split(' ').map((w) => w.trim()).filter((w) => w.length >= 2)
+  if (words.length < 2) return { status: 'none' } // single word → exact/fuzzy handle it
+  const union = new Set<string>()
+  for (const w of words) for (const id of peopleIdsMatchingWord(w, people)) union.add(id)
+  if (union.size === 0) return { status: 'none' }
+  if (union.size === 1) return { status: 'resolved', id: [...union][0]! }
+  return { status: 'ambiguous', ids: [...union] }
+}
