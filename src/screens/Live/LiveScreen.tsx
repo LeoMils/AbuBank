@@ -32,6 +32,7 @@ import {
 } from '../../services/liveActionCards'
 import { whatsappAdapter } from '../AbuWhatsApp/whatsappAdapter'
 import { phoneAdapter } from '../AbuWhatsApp/phoneAdapter'
+import { soundLookup } from '../../services/sounds'
 import { ActionCard } from './ActionCard'
 import { BUILD_ID } from '../../version'
 import { PAGE_BG, t } from '../../design/theme'
@@ -45,13 +46,15 @@ import { useOutputAmplitude } from '../AbuAI/presence/useOutputAmplitude'
 const waHandoff: Handoff = (name, text) => whatsappAdapter.buildHandoff(name, text)
 const telHandoff: Handoff = (name) => phoneAdapter.buildHandoff(name, '')
 
-/** Map the live session state (+ the transient thinking hint) to a presence state. */
-export function toPresenceState(state: LiveState, thinking: boolean): PresenceState {
+/** Map the live session state (+ the transient thinking / looking hints) to a presence
+ *  state. A live lookup reuses the 'thinking' aura (no new visual) — only the spelled-out
+ *  word differs (see liveStateWord), so Martita sees she is being looked-after, not frozen. */
+export function toPresenceState(state: LiveState, thinking: boolean, looking = false): PresenceState {
   if (state === 'connecting') return 'thinking'
-  // Her audio starting always wins over a (possibly stale) thinking hint — belt and
-  // suspenders alongside the runtime clear of `thinking` on every state transition.
+  // Her audio starting always wins over a (possibly stale) thinking/looking hint — belt and
+  // suspenders alongside the runtime clear of both hints on every state transition.
   if (state === 'speaking') return 'speaking'
-  if (thinking) return 'thinking'
+  if (looking || thinking) return 'thinking'
   if (state === 'listening') return 'listening'
   return 'waiting' // idle / error
 }
@@ -74,8 +77,12 @@ const PRESENCE_LABEL: Record<PresenceState, string> = {
  * is therefore always exactly one of מקשיבה / חושבת / מדברת. `connecting` is the one
  * honest pre-conversation transient ("מתחברת…") before any turn has begun.
  */
-export function liveStateWord(state: LiveState, presence: PresenceState): string {
+export function liveStateWord(state: LiveState, presence: PresenceState, looking = false): string {
   if (state === 'connecting') return 'מתחברת…'
+  // Her speaking always wins; otherwise an in-flight lookup shows a distinct, honest word
+  // ("מחפשת…") so the silent wait reads as "looking it up for you", not a frozen screen.
+  if (presence === 'speaking') return PRESENCE_LABEL.speaking
+  if (looking) return 'מחפשת…'
   return PRESENCE_LABEL[presence]
 }
 
@@ -91,15 +98,17 @@ export function LiveScreen({ onClose }: { onClose: () => void }) {
   const [audioCtx, setAudioCtx] = useState<AudioContext | null>(null)
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
   const [thinking, setThinking] = useState(false)
+  const [looking, setLooking] = useState(false)
 
   const amplitude = useOutputAmplitude(audioCtx, remoteStream)
-  const presenceState = toPresenceState(state, thinking)
+  const presenceState = toPresenceState(state, thinking, looking)
 
   const teardown = useCallback(() => {
     sessionRef.current?.teardown()
     sessionRef.current = null
     setRemoteStream(null)
     setThinking(false)
+    setLooking(false)
   }, [])
 
   // Start (or retry) a session. MUST run inside a user gesture so the AudioContext
@@ -137,13 +146,16 @@ export function LiveScreen({ onClose }: { onClose: () => void }) {
 
     const session = new LiveSession(
       {
-        onState: (s) => { setState(s); setThinking(false) },
+        onState: (s) => { setState(s); setThinking(false); setLooking(false) },
         onAbuTranscript: (t2) => setAbuText(t2),
         onError: (messageHe) => { setErrorMsg(messageHe) },
         // Presence: the realtime stream drives the mouth; the thinking hint bridges
         // the gap between the user finishing and Abu's first audio.
         onRemoteStream: (stream) => setRemoteStream(stream),
         onThinking: () => setThinking(true),
+        // Non-verbal in-flight cue (M4): a live lookup started — soft tone + "מחפשת…" state,
+        // no words (M1 owns the silence rule). Cleared on the next state transition, like thinking.
+        onLookup: () => { setLooking(true); soundLookup() },
         // Action-card receipts (Part B) — the card is the proof, never speech alone.
         onCommDraft: (d) => {
           if (!d || d.status === 'CANCELLED') { setCard(null); return }
@@ -221,7 +233,7 @@ export function LiveScreen({ onClose }: { onClose: () => void }) {
           aria-live="polite"
           style={{ fontSize: 30, fontWeight: 800, color: isError ? '#F5A9A0' : t.gold, letterSpacing: 0.3 }}
         >
-          {isError ? 'שגיאה' : liveStateWord(state, presenceState)}
+          {isError ? 'שגיאה' : liveStateWord(state, presenceState, looking)}
         </div>
 
         {abuText && !isError && (

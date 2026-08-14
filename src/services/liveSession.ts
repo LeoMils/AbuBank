@@ -303,6 +303,11 @@ export interface LiveCallbacks {
   /** The user's turn just ended (server-VAD speech_stopped): a UI 'thinking' hint
    *  for the window before Abu speaks. Observation only — changes no VAD/turn/audio. */
   onThinking?: () => void
+  /** A live/current-info LOOKUP just started (get_current_info in flight): a UI
+   *  cue (soft sound + a "מחפשת…" state) so the silent wait feels intentional. M1
+   *  owns the silence rule — NO words; this is a non-verbal cue only. A pulse, like
+   *  onThinking: the UI clears it on the next state transition. Observation only. */
+  onLookup?: () => void
   /** A truthful, human error line (Hebrew). Fail closed — there is no fallback. */
   onError?: (messageHe: string, code: string) => void
   // ─── Action-card signals (Part B): the overlay renders a card as the receipt ──
@@ -748,6 +753,11 @@ export class LiveSession {
       this.setState('listening')
       return
     }
+    // Non-verbal in-flight cue (M4): a live/current-info lookup has a real network delay.
+    // Pulse onLookup so the UI can play a soft tone + show "מחפשת…" during the silent wait
+    // (the UI auto-clears it on the next state change, exactly like the thinking hint). This
+    // never speaks and never touches the turn/audio machinery — observation only.
+    if (fc.name === 'get_current_info') { try { this.cb.onLookup?.() } catch { /* isolate UI */ } }
     if (LiveTools.owns(fc.name)) this.liveTools.handleFunctionCall(fc)
   }
 

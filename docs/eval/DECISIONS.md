@@ -254,6 +254,23 @@ into liveSession (buildCoreInstructions + per-response intentGuidance injection,
 flag) and startup pre-warm are the device gates, logged open with exact numbers — never a fabricated
 convergence number.
 
+## D-M4-01 · Non-verbal in-flight cue = a soft tone + a distinct word, reusing the thinking aura
+OWNER_CHECKLIST #6: while Abu looks something up she must STAY SILENT (M1 owns "no words before the
+answer"), but a soft cue/tone while she looks is explicitly fine — a frozen-looking screen is the
+defect. DECISION: fire onLookup ONLY on get_current_info (the tool with a real network wait); family/
+contact lookups are silent-grounded and instant, so they do NOT cue (a tone on every resolve_contact
+would be noise). The cue is a pulse mirroring the existing onThinking hint: liveSession fires it in
+handleToolCall (after the call_id dedup, so a duplicate completion shape never double-pulses),
+observation-only — it touches no VAD/turn/audio machinery. The UI plays soundLookup (soft two-note,
+self-gated by canPlay so it is silent while she speaks and respects mute) and shows a DISTINCT honest
+word "מחפשת…", REUSING the 'thinking' aura rather than adding a new AbuPresence visual (smallest safe
+change; a new presence asset would need its own device/browser proof). It clears on the next state
+transition exactly like thinking, and her speaking always wins in both the aura and the word, so the
+screen can never claim she is still searching after she has started to answer (the same anti-lie
+discipline as D-UISTATE-01). EVIDENCE: liveSession.test (pulse only on get_current_info, no double-
+pulse), presenceState.test (מחפשת… + speaking-wins), sounds.test (fail-silent) are CODE; the audible
+tone and the on-screen render are DEVICE evidence (OWNER_CHECKLIST #6), logged open — not claimed here.
+
 ## D-M2-03 · Four regex-uncatchable gaps reported as GAPS, not silently passed
 The deterministic SOURCE_NAMED / READ_BACK regexes structurally cannot catch: a spoken domain with
 the dots dropped by STT ("seret co il"), a Hebrew-transliterated source name with no TLD ("בוויקיפדיה

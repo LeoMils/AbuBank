@@ -28,6 +28,27 @@ describe('toPresenceState — session state drives the presence', () => {
     // … but her audio starting (speaking) wins over a stale hint.
     expect(toPresenceState('speaking', true)).toBe('speaking')
   })
+  it('M4: a lookup reuses the thinking aura (no new visual), speaking still wins', () => {
+    expect(toPresenceState('listening', false, true)).toBe('thinking')
+    expect(toPresenceState('speaking', false, true)).toBe('speaking') // her audio wins over a lookup hint
+  })
+})
+
+describe('liveStateWord — the M4 non-verbal lookup cue shows a distinct, honest word', () => {
+  it('during an in-flight lookup the word is מחפשת… (not frozen, not מקשיבה)', () => {
+    const presence = toPresenceState('listening', false, true)
+    expect(liveStateWord('listening', presence, true)).toBe('מחפשת…')
+    expect(liveStateWord('listening', presence, true)).not.toBe('מקשיבה')
+  })
+  it('her speaking always wins over a stale lookup hint (says מדברת, never מחפשת…)', () => {
+    // If audio has started, the lookup is over — the word must not lie that she is still searching.
+    expect(liveStateWord('speaking', 'speaking', true)).toBe('מדברת')
+  })
+  it('with no lookup, the word is unchanged (מקשיבה / חושבת / מוכנה)', () => {
+    expect(liveStateWord('listening', toPresenceState('listening', false), false)).toBe('מקשיבה')
+    expect(liveStateWord('listening', toPresenceState('listening', true), false)).toBe('חושבת')
+    expect(liveStateWord('idle', toPresenceState('idle', false), false)).toBe('מוכנה')
+  })
 })
 
 describe('liveStateWord — the ONE spelled-out indicator matches the face, never the raw state', () => {

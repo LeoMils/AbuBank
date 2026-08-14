@@ -372,6 +372,24 @@ export function soundRecordStop(): void {
   } catch { /* silent */ }
 }
 
+/**
+ * Abu is looking something up (a live/current-info lookup is in flight) — a soft,
+ * warm, NON-VERBAL cue so the silent wait feels intentional, never frozen. M1 owns
+ * the silence rule (no WORDS before the answer); this is only a gentle tone + an
+ * on-screen "מחפשת…" state. Deliberately quiet and unhurried for an 80+ user, and
+ * distinct from the record/navigate cues. canPlay() already suppresses it if Abu is
+ * speaking — during a lookup she is silent, so it plays. Fire-and-forget, one tone.
+ */
+export function soundLookup(): void {
+  if (!canPlay()) return
+  try {
+    const c = getCtx()
+    if (!c) return
+    playTone(587, 90, 0.05, 0.000, c)   // D5 — soft
+    playTone(659, 110, 0.05, 0.100, c)  // E5 — a gentle step up, "let me look"
+  } catch { /* silent */ }
+}
+
 /** Toast / notification appears — one very soft, high, brief tone. */
 export function soundToast(): void {
   if (!canPlay()) return

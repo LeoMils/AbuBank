@@ -20,6 +20,7 @@ import {
   soundGameTap,
   soundRecordStart,
   soundRecordStop,
+  soundLookup,
   soundToast,
   soundComplete,
   unlockAudio,
@@ -115,7 +116,7 @@ describe('fail-silent: every sound is a safe no-op without a browser', () => {
   const allSounds = [
     soundTap, soundSuccess, soundSend, soundAlert, soundCopy, soundProcessing,
     soundOpen, soundNavigate, soundError, soundSaveCalendar, soundGameTap,
-    soundRecordStart, soundRecordStop, soundToast, soundComplete, haptic,
+    soundRecordStart, soundRecordStop, soundLookup, soundToast, soundComplete, haptic,
     unlockAudio,
   ]
 

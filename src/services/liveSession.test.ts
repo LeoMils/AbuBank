@@ -84,6 +84,7 @@ interface Harness {
   errors: Array<{ msg: string; code: string }>
   userTranscripts: string[]
   abuTranscripts: string[]
+  lookups: number[]
   getUserMediaCalls: number
   createPCCalls: number
   session: LiveSession
@@ -111,6 +112,7 @@ function makeHarness(opts: {
   const errors: Array<{ msg: string; code: string }> = []
   const userTranscripts: string[] = []
   const abuTranscripts: string[] = []
+  const lookups: number[] = []
 
   const deps: LiveDeps = {
     fetch: vi.fn(async (url: string) => {
@@ -140,6 +142,7 @@ function makeHarness(opts: {
       onUserTranscript: (t) => userTranscripts.push(t),
       onAbuTranscript: (t) => abuTranscripts.push(t),
       onError: (msg, code) => errors.push({ msg, code }),
+      onLookup: () => lookups.push(1),
     },
     conversationId,
     opts.isReconnect ?? false,
@@ -147,7 +150,7 @@ function makeHarness(opts: {
   )
 
   return {
-    deps, pc, states, errors, userTranscripts, abuTranscripts,
+    deps, pc, states, errors, userTranscripts, abuTranscripts, lookups,
     get getUserMediaCalls() { return h.getUserMediaCalls },
     get createPCCalls() { return h.createPCCalls },
     session,
@@ -403,6 +406,22 @@ describe('LiveSession', () => {
     expect(h.pc.dc!.sent.map((e) => e.type)).not.toContain('response.create') // nothing yet — she is still speaking
     h.pc.dc!.fire({ type: 'response.done', response: { phase: 'final_answer' } })
     expect(h.pc.dc!.sent.map((e) => e.type)).toContain('response.create')      // her turn ended → answer the buffered turn
+    h.session.teardown()
+  })
+
+  it('M4 non-verbal cue: a get_current_info lookup pulses onLookup; other tools do NOT', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    // A live/current-info lookup is dispatched → the UI gets ONE lookup pulse (soft tone + "מחפשת…").
+    h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'get_current_info', call_id: 'gci1', arguments: '{"query":"מזג האוויר"}' })
+    expect(h.lookups.length).toBe(1)
+    // A family lookup is silent-grounded, not a "searching" wait → NO cue.
+    h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'resolve_contact', call_id: 'rc1', arguments: '{"name":"מור"}' })
+    expect(h.lookups.length).toBe(1) // unchanged
+    // The same call delivered again (duplicate completion shape) must not double-pulse.
+    h.pc.dc!.fire({ type: 'response.output_item.done', item: { type: 'function_call', name: 'get_current_info', call_id: 'gci1', arguments: '{"query":"מזג האוויר"}' } })
+    expect(h.lookups.length).toBe(1) // dedup by call_id → still one
     h.session.teardown()
   })
 
