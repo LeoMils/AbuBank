@@ -271,6 +271,21 @@ discipline as D-UISTATE-01). EVIDENCE: liveSession.test (pulse only on get_curre
 pulse), presenceState.test (מחפשת… + speaking-wins), sounds.test (fail-silent) are CODE; the audible
 tone and the on-screen render are DEVICE evidence (OWNER_CHECKLIST #6), logged open — not claimed here.
 
+## D-C-01 · Track C: spend the authorized budget on the layer the owner feels — measure, fix, re-measure
+Three prior sessions spent $0, leaving Layer-3 (model behaviour) almost untested. With budget
+authorized (cap $5, actual ~20 text-mode realtime turns << $1), the M3 probe found a REAL intermittent
+defect the deterministic layer could never catch: asked to schedule "פגישה עם אח של מור", the model
+resolves the person correctly (people_lookup → Leo) but 1/2 runs wrote the RAW relationship phrase into
+the calendar TITLE. FIX (instruction, not a flag — a correctness clarification per D-QA-02): the # Tools
+calendar rule + the prepare_calendar_event `title` description now require the resolved NAME everywhere.
+RE-MEASURED on the instrument: 0/3 wrote the phrase (was 1/2). This is the failure→fix→re-measure loop
+the brief asks for, with the probe itself as the durable regression harness (a model-behaviour defect
+cannot be a deterministic unit test; scripts/eval/m3Probe.ts is re-run after any calendar-titling edit).
+Accept-correction PASSED as-is (5/5 conceded, 0 argued) — no change needed, logged as verified not
+assumed. Honest limit: an instruction change is measured-to-help, never a guarantee; the number is 0/3,
+not "solved". Discipline held: paced calls, 0 transport failures, sub-500ms empties would have been
+retried not scored.
+
 ## D-A-01 · Audio was CANNOT-VERIFY, not CANNOT-BUILD — build it now, flag-gated, owner hears the diff
 Every prior session deferred audio as "device-only". The brief is right that this conflated two
 things: the AUDIBLE result needs his ear, but the MECHANISM is fully buildable and unit-testable now.

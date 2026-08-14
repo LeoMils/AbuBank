@@ -16,8 +16,9 @@
       "id": "M3", "title": "family layer — never null / accept correction / participant resolution",
       "status": "partially_closed", "sha": "a2072a0", "layer": "L1-deterministic",
       "closed": ["relationToMartita never null for a connected entity (grandchild_in_law + describePathBetween fallback)", "FAMILY_GROUND_TRUTH oracle generated: 65 people, 0 gaps, 0 not_found pairs", "relationNeverNull.test 100% of entities", "full Hebrew pair matrix green (relationMatrix.test)", "INPUT side closed — see P0-input-oracle"],
-      "verified": "instrument v0.245 relation tool-call 0/5->5/5; deterministic never-null + input-oracle",
-      "open": ["participant substitution ('פגישה עם אח של מור' instead of Leo) — model/title behaviour, Layer 3", "accept-correction-never-argue — instruction only, needs a Layer-3 multi-turn probe"]
+      "verified": "instrument v0.245 relation tool-call 0/5->5/5; deterministic never-null + input-oracle; TRACK C m3Probe (real instrument, v0.258)",
+      "closed_layer3": ["PARTICIPANT SUBSTITUTION measured + FIXED (v0.258): on the REAL model, 'פגישה עם אח של מור' resolved to Leo but the TITLE carried the raw phrase 1/2 runs. Fixed the # Tools calendar rule + prepare_calendar_event title description to require the resolved NAME everywhere. Re-measured 0/3 wrote the phrase, 3/3 wrote 'פגישה עם לאו'. Harness scripts/eval/m3Probe.ts, report docs/eval/M3_PROBE_REPORT.md", "ACCEPT-CORRECTION verified on the real instrument: 5/5 conceded ('כן, נכון'), 0 argued"],
+      "open": ["re-run m3Probe after ANY calendar-titling instruction edit (model behaviour, not a deterministic guarantee)", "wider participant cases (several people, a name that is ALSO a relationship) — sample when budget allows"]
     },
     {
       "id": "M1", "title": "response lifecycle — one active response / silence between tool call and result / barge-in truncation",

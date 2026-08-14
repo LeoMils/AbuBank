@@ -112,7 +112,7 @@ export const LIVE_TOOL_SCHEMAS = [
     parameters: {
       type: 'object',
       properties: {
-        title: { type: 'string', description: 'What the event is (e.g. "פגישה עם מור").' },
+        title: { type: 'string', description: 'What the event is (e.g. "פגישה עם מור"). If the person was given by a relationship ("אח של מור") and resolved to one person, use their NAME here ("פגישה עם לאו"), never the relationship phrase.' },
         date: { type: 'string', description: 'A REAL date YYYY-MM-DD (already resolved — never "מחר").' },
         time: { type: 'string', description: 'HH:MM 24h, optional.' },
         participant: { type: 'string', description: 'Who is coming, as spoken — optional. May be SEVERAL people ("מור ואופיר", "מור, אופיר ורבקה"); a name does NOT have to be a saved contact (an ordinary spoken name is written on the event as-is). Only a relationship phrase ("אח של מור") is NOT accepted — resolve it with Martita to a name first.' },
