@@ -271,6 +271,33 @@ discipline as D-UISTATE-01). EVIDENCE: liveSession.test (pulse only on get_curre
 pulse), presenceState.test (מחפשת… + speaking-wins), sounds.test (fail-silent) are CODE; the audible
 tone and the on-screen render are DEVICE evidence (OWNER_CHECKLIST #6), logged open — not claimed here.
 
+## D-ONLINE-04 · One GENERAL search loop replaces the per-topic gates; the cheap model IS the judge
+The online path had a relevance gate for PRICES, with a plan to add one for news, one for weather,
+one for film. An 81-year-old asks ANYTHING, so that patchwork never covers her. DECISION: delete the
+price-specific logic (isPriceQuery / priceNearProduct / price-token extraction) and build ONE general
+agentic loop (generalSearch.ts): SEARCH → FETCH pages first-wins → JUDGE+SYNTHESIZE with a cheap model
+→ REFINE the query once (budget permitting) → HONEST no_answer. The key insight: the cheap model in
+synthesize.ts ALREADY makes a general judgment — "does this text answer THIS question?" returning a
+clean answer or no_answer — so the JUDGE and SYNTHESIZE are the SAME call, with NO type heuristic
+("has a currency symbol") anywhere. REFINE (reformulate to the content words, general across he/es/en)
+is what makes it self-correct instead of returning a page description. Budget honoured: a synth-time
+RESERVE is subtracted from the fetch ceiling so fetch+judge together stay under 6s (the first run hit
+7335ms because synthesize ran AFTER the fetch ceiling — measured, then fixed; max is now 5622ms).
+MEASURED over 63 diverse he/es questions: 87.3% pass, 0 hard fails, 0 source-name leaks, 8 HONEST
+misses (JS-rendered listings / live widgets — a no_answer, never a dump). ORACLE LIMIT stated in the
+report: there is no independent oracle for the web, so a pass asserts only a real answer of the
+requested KIND + no source named + in-budget + consistency + honest-miss — never the VALUE's correctness.
+
+## D-ONLINE-05 · ONLINE_DEEP_FETCH moved from a Preview env var to a CODE flag — this blocked the merge
+A Preview-scoped env var does NOT survive a merge to production: Martita would silently get shallow
+snippet answers with nobody noticing. DECISION: the DEFAULT belongs in CODE (flags.ts) with the
+measurement that justifies it; the env name stays ONLY as an ops override (kill-switch / force-on).
+Default is ON because "never worse than the snippet" was MEASURED (off vs on: OFF-only=0 — the loop
+never loses where the snippet wins; ON-only=2 — it is strictly better on some). The prefetch warm store
+is already a code-level const; its default stays OFF pending the on-device freshness-vs-latency
+measurement (warmStore.test proves the <1s warm hit but the freshness trade is a device judgment).
+Reported exactly which flag is ON with what evidence, and which stays OFF and why.
+
 ## D-C-01 · Track C: spend the authorized budget on the layer the owner feels — measure, fix, re-measure
 Three prior sessions spent $0, leaving Layer-3 (model behaviour) almost untested. With budget
 authorized (cap $5, actual ~20 text-mode realtime turns << $1), the M3 probe found a REAL intermittent

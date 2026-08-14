@@ -17,19 +17,19 @@
 
 import { selectProvider } from '../src/services/online/registry'
 import { buildBriefing, speakableBriefing, type Briefing } from '../src/services/online/briefing'
-import { firstWins } from '../src/services/online/firstWins'
+import { generalSearchLoop } from '../src/services/online/generalSearch'
 import { synthesizeAnswer } from '../src/services/online/synthesize'
+import { onlineGeneralSearchEnabled } from '../src/services/online/flags'
 
 export const config = { runtime: 'edge' }
 
-// ── Agent A · online DEPTH: first-wins PAGE fetch (opt-in via ONLINE_DEEP_FETCH) ──
-// A search SNIPPET rarely carries a real price. When ONLINE_DEEP_FETCH is set, fetch the
-// top result PAGES in parallel and speak from the FIRST page that actually contains the
-// answer (a real price token), cancelling the rest — within a 4s soft / 6s hard budget.
-// DEFAULT OFF: with the flag unset this is a no-op and the endpoint behaves EXACTLY as
-// before (existing tests + current prod unchanged). Activation is one Vercel env step,
-// like ONLINE_PROVIDER. Never worse than the snippet: page content is used ONLY when a
-// page truly contained the answer (r.hadAnswer); otherwise the existing answer stands.
+// ── GENERAL search loop (one mechanism for EVERY question, no per-topic gate) ──
+// A search SNIPPET rarely carries the real answer. The general loop fetches the top result
+// PAGES in parallel and lets a CHEAP MODEL judge+synthesize ONE clean answer — for a price, a
+// film list, the weather, a bus route, a recipe, anything. DEFAULT ON via a CODE flag
+// (onlineGeneralSearchEnabled) with a measured never-worse-than-snippet basis — NOT a
+// Preview-only env var that vanishes on a merge to production. Never worse than the snippet:
+// a no_answer keeps the provider's own answer, never a raw dump.
 const DEEP_FETCH_UA = 'Mozilla/5.0 (compatible; AbuBank/1.0)'
 async function deepenAnswer(
   query: string,
@@ -37,11 +37,14 @@ async function deepenAnswer(
   currentAnswer: string,
   env: Record<string, string | undefined>,
 ): Promise<string> {
-  if (!env.ONLINE_DEEP_FETCH || sources.length === 0) return currentAnswer
+  if (!onlineGeneralSearchEnabled(env) || sources.length === 0) return currentAnswer
+  const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
+  if (!apiKey) return currentAnswer
   try {
-    const r = await firstWins(query, {
-      topN: 4, softBudgetMs: 4000, hardCeilingMs: 6000,
+    const r = await generalSearchLoop(query, {
+      topN: 4, softBudgetMs: 4000, hardCeilingMs: 6000, maxAttempts: 1, // provider already searched; one judged pass over its pages
       search: async () => sources.filter((s) => s.url).slice(0, 4).map((s) => (s.title ? { url: s.url!, title: s.title } : { url: s.url! })),
+      synthesize: (oq, pt) => synthesizeAnswer(oq, pt, { openaiKey: apiKey }),
       fetchPage: async (url, signal) => {
         const per = new AbortController()
         const onAbort = () => per.abort()
@@ -54,14 +57,8 @@ async function deepenAnswer(
         } finally { clearTimeout(timer); signal.removeEventListener('abort', onAbort) }
       },
     })
-    if (!(r.ok && r.hadAnswer && r.answer)) return currentAnswer
-    // SYNTHESIZE the fetched page text into one clean answer for the QUERIED product — never hand
-    // a raw page dump (cart/filter/marketing text) to the realtime model, and never a different
-    // product's price. A synthesis no_answer keeps the provider's own answer rather than a dump.
-    const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
-    if (!apiKey) return r.answer
-    const syn = await synthesizeAnswer(query, r.answer, { openaiKey: apiKey })
-    return syn.status === 'answer' && syn.answer ? syn.answer : currentAnswer
+    // Never worse than the provider's own answer: a no_answer keeps it rather than dumping.
+    return r.status === 'answer' && r.answer ? r.answer : currentAnswer
   } catch { return currentAnswer }
 }
 

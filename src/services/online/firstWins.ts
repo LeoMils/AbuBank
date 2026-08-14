@@ -58,69 +58,42 @@ export function htmlToText(html: string, maxChars = 20_000): string {
   return t.length > maxChars ? t.slice(0, maxChars) : t
 }
 
-/** A price question in Hebrew / Spanish / English. */
-export function isPriceQuery(query: string): boolean {
-  return /כמה\s*עולה|כמה\s*זה\s*עולה|המחיר|מחיר\s|בכמה|price|how much|cu[aá]nto\s+(?:cuesta|sale|vale)|precio/i.test(query)
-}
+/*
+ * GENERAL, not per-topic. The old build had isPriceQuery / priceNearProduct / price-token
+ * extraction here — a relevance gate that only worked for prices, with a plan to add one for
+ * news, one for weather, one for film. That patchwork is DELETED. The real relevance judgment
+ * is a cheap-MODEL judge (synthesize) in the general search loop (generalSearch.ts); this module
+ * only screens out empty/off-topic pages so a substantial page is worth handing to the model.
+ */
 
-/** A real price token: a currency symbol/word adjacent to a number (either order). */
-const PRICE_TOKEN = /(?:₪|\$|€|£)\s?\d[\d.,]*|\d[\d.,]*\s?(?:₪|\$|€|£|ש["״]?ח|שקל(?:ים)?|ILS|USD|EUR|dollars?|euros?|shekels?)/i
+/** General stopwords (question + filler words, he/es/en) dropped so the discriminating CONTENT
+ *  words of a query remain. NOT type-specific — no price/news/weather knowledge, just language. */
+const GENERAL_STOP = new Set([
+  'כמה', 'עולה', 'מה', 'מי', 'איזה', 'איפה', 'מתי', 'למה', 'איך', 'זה', 'של', 'את', 'על', 'יש', 'לי', 'הוא', 'היא', 'הם', 'כאן', 'היום', 'עכשיו', 'דה',
+  'cuanto', 'cuánto', 'cuesta', 'vale', 'que', 'qué', 'cual', 'cuál', 'como', 'cómo', 'donde', 'dónde', 'cuando', 'cuándo', 'quien', 'quién', 'de', 'la', 'el', 'los', 'las', 'un', 'una', 'hoy', 'ahora', 'precio',
+  'how', 'much', 'what', 'which', 'where', 'when', 'who', 'why', 'is', 'are', 'the', 'and', 'for', 'price', 'cost', 'today', 'now',
+])
 
-/** Words that carry no product identity — dropped so the discriminating product name remains. */
-const QUERY_STOP = new Set(['כמה', 'עולה', 'המחיר', 'מחיר', 'בכמה', 'זה', 'של', 'דה', 'the', 'how', 'much', 'price', 'cost', 'cuanto', 'cuánto', 'cuesta', 'vale', 'precio', 'de'])
-
-/** The discriminating product terms in a query ("כמה עולה בלו דה שאנל" → ["בלו","שאנל"]). */
-export function productTerms(query: string): string[] {
+/** The discriminating CONTENT words of a query (drop question/filler) — general, no type logic.
+ *  Used by the general page screen AND by query reformulation in the search loop. */
+export function contentWords(query: string): string[] {
   return query.normalize('NFC').replace(/[?？.,!"״]/g, ' ').split(/\s+/)
-    .map((w) => w.trim()).filter((w) => w.length >= 3 && !QUERY_STOP.has(w.toLowerCase()))
+    .map((w) => w.trim()).filter((w) => w.length >= 3 && !GENERAL_STOP.has(w.toLowerCase()))
 }
 
-/** For a price query, is there a price token NEAR a product term on the page? The relevance gate:
- *  a store pricing a hundred OTHER perfumes must NOT pass a Chanel query. Requires a price token
- *  within `window` chars of a discriminating product term (the queried entity), not merely
- *  ANY price on the page (the "Clive Christian / Fugazzi prices for a Chanel question" defect). */
-export function priceNearProduct(text: string, query: string, window = 160): boolean {
-  const terms = productTerms(query)
-  if (!terms.length) return PRICE_TOKEN.test(text) // no discriminating term → any price is the best we can require
-  const re = new RegExp(PRICE_TOKEN.source, 'gi')
-  let m: RegExpExecArray | null
-  while ((m = re.exec(text))) {
-    const s = Math.max(0, m.index - window), e = Math.min(text.length, m.index + m[0].length + window)
-    const win = text.slice(s, e)
-    if (terms.some((t) => win.includes(t))) return true
-  }
-  return false
-}
-
-/** Default "does the page contain the answer": for a price query, a real price token BELONGING to
- *  the queried product (proximity); else a non-trivial page that shares a meaningful word. */
+/** GENERAL page screen: substantial readable content that shares a discriminating word with the
+ *  question. This is NOT the answer judgment — the cheap-model JUDGE (synthesize) decides that
+ *  downstream; this only rejects empty/clearly-off-topic pages before spending a model call. */
 export function defaultHasAnswer(text: string, query: string): boolean {
-  if (isPriceQuery(query)) return priceNearProduct(text, query)
   if (text.length < 200) return false
-  const words = query.replace(/[?？.,!]/g, ' ').split(/\s+/).filter((w) => w.length >= 3)
+  const words = contentWords(query)
+  if (!words.length) return text.length >= 400 // no discriminating word → any substantial page
   return words.some((w) => text.includes(w))
 }
 
-/** Default salient extraction: for a price query, stitch the windows around the first few
- *  price tokens (so the model reads a range, not a whole page); else the readable head.
- *  Always bounded (≤ ~1400 chars) so the grounded tool payload stays small. */
-export function defaultExtract(text: string, query: string, maxChars = 1400): string {
-  if (isPriceQuery(query)) {
-    const terms = productTerms(query)
-    const near: string[] = []   // price windows that mention the queried product
-    const any: string[] = []    // any price window (fallback)
-    const re = new RegExp(PRICE_TOKEN.source, 'gi')
-    let m: RegExpExecArray | null
-    while ((m = re.exec(text)) && any.length < 8) {
-      const start = Math.max(0, m.index - 110)
-      const end = Math.min(text.length, m.index + m[0].length + 110)
-      const w = text.slice(start, end).replace(/\s+/g, ' ').trim()
-      any.push(w)
-      if (terms.length && terms.some((t) => w.includes(t))) near.push(w)
-    }
-    const chosen = near.length ? near : any
-    if (chosen.length) return chosen.slice(0, 6).join(' … ').slice(0, maxChars)
-  }
+/** GENERAL extraction: the readable head, bounded, so the synthesizer has enough context to judge
+ *  and answer. No price windows, no type-specific stitching — one general path for every question. */
+export function defaultExtract(text: string, _query: string, maxChars = 3500): string {
   return text.replace(/\s+/g, ' ').trim().slice(0, maxChars)
 }
 

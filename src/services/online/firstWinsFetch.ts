@@ -8,7 +8,7 @@
  * text anyway). This is the SAME first-wins module the live endpoint uses, so the eval
  * instrument measures the real capability, not a parallel one.
  */
-import { firstWins } from './firstWins'
+import { generalSearchLoop } from './generalSearch'
 import { braveProvider } from './adapters'
 import { synthesizeAnswer } from './synthesize'
 import type { OnlineAnswer, OnlineFetch } from '../liveTools'
@@ -50,35 +50,48 @@ export function firstWinsOnlineFetch(opts: FirstWinsFetchOpts = {}): OnlineFetch
     }
   }
 
+  const MISS = 'לא הצלחתי לבדוק מידע עדכני כרגע.'
   return async (query: string): Promise<OnlineAnswer> => {
     try {
-      if (!opts.braveKey) return { ok: false, userMessage: 'לא הצלחתי לבדוק מידע עדכני כרגע.' }
-      // ONE search up front: its URLs feed first-wins, and its snippets are the fallback.
-      const searched = await braveProvider.search(query, 'he', { BRAVE_API_KEY: opts.braveKey })
-      const sources = searched.sources
-      const snippet = sources.map((s) => s.content).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
+      if (!opts.braveKey) return { ok: false, userMessage: MISS }
+      const braveKey = opts.braveKey
+      // The GENERAL loop searches (per attempt, so a refine re-searches), fetches pages first-wins,
+      // and lets the cheap-model JUDGE decide + synthesize — one path for EVERY question, no
+      // per-topic gate. The search seam also captures the first snippet for the "never worse than
+      // the snippet" fallback (e.g. a JS-rendered listing whose static HTML has no film list).
+      let firstSnippet = ''
+      const search = async (q: string) => {
+        const searched = await braveProvider.search(q, 'he', { BRAVE_API_KEY: braveKey })
+        if (!firstSnippet) firstSnippet = searched.sources.map((s) => s.content).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
+        return searched.sources.map((s) => (s.title ? { url: s.url, title: s.title } : { url: s.url }))
+      }
 
-      const r = await firstWins(query, {
-        search: async () => sources.map((s) => (s.title ? { url: s.url, title: s.title } : { url: s.url })),
-        fetchPage,
+      // Without a model there is no general judge → fall back to the raw first snippet (legacy).
+      if (!opts.openaiKey) {
+        await search(query)
+        return firstSnippet ? { ok: true, answer: firstSnippet.slice(0, 1400), sources: [] } : { ok: false, userMessage: MISS }
+      }
+      const openaiKey = opts.openaiKey
+      const synthesize = (originalQuery: string, pageText: string) =>
+        synthesizeAnswer(originalQuery, pageText, { openaiKey, fetchImpl: doFetch })
+
+      const r = await generalSearchLoop(query, {
+        search, fetchPage, synthesize,
         topN: opts.topN ?? 4,
         softBudgetMs: opts.softBudgetMs ?? 4000,
         hardCeilingMs: opts.hardCeilingMs ?? 6000,
       })
-      // Use PAGE content when a page actually contained the answer (r.hadAnswer) — the depth win;
-      // else fall back to the search SNIPPET (never WORSE than before on e.g. a JS-rendered cinema
-      // listing). Either way, if we can SYNTHESIZE, hand the model ONE clean answer, never a raw
-      // dump — and a synthesis no_answer is an honest miss, not a partial dump.
-      const raw = (r.ok && r.hadAnswer && r.answer) ? r.answer : snippet
-      if (!raw) return { ok: false, userMessage: 'לא הצלחתי לבדוק מידע עדכני כרגע.' }
-      if (opts.openaiKey) {
-        const syn = await synthesizeAnswer(query, raw, { openaiKey: opts.openaiKey, fetchImpl: doFetch })
+      if (r.status === 'answer' && r.answer) return { ok: true, answer: r.answer, sources: [] }
+
+      // NEVER WORSE THAN THE SNIPPET: if page-fetch found nothing usable (JS-rendered pages), run
+      // the search snippet through the same general judge before an honest miss.
+      if (firstSnippet) {
+        const syn = await synthesizeAnswer(query, firstSnippet, { openaiKey, fetchImpl: doFetch })
         if (syn.status === 'answer' && syn.answer) return { ok: true, answer: syn.answer, sources: [] }
-        return { ok: false, userMessage: 'לא הצלחתי לבדוק מידע עדכני כרגע.' }
       }
-      return { ok: true, answer: raw, sources: [] }
+      return { ok: false, userMessage: MISS }
     } catch {
-      return { ok: false, userMessage: 'לא הצלחתי לבדוק מידע עדכני כרגע.' }
+      return { ok: false, userMessage: MISS }
     }
   }
 }

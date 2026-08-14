@@ -11,8 +11,13 @@
 export interface Synthesis { status: 'answer' | 'no_answer'; answer: string }
 export interface SynthesizeOpts { openaiKey: string; model?: string; fetchImpl?: typeof fetch; timeoutMs?: number }
 
-const SYS = `You are given TEXT fetched from web pages and a user QUESTION (Hebrew or Spanish). Extract ONLY the answer to the question about the SPECIFIC product/place/thing asked — not a different product that also appears on the page. Return STRICT JSON: {"status":"answer"|"no_answer","answer":"..."}.
-Rules for "answer": ONE short natural sentence in the QUESTION'S language; a real concrete value (a price or price RANGE with its currency, a real list of names, a real time) taken from the TEXT; NEVER a website/store/app/source name; no URLs; no marketing copy; no cart/filter text. If the TEXT does not actually contain the answer FOR THE ASKED thing, return {"status":"no_answer","answer":""}. Never invent a value.`
+// GENERAL judge + synthesizer for EVERY kind of question (price, cinema, news, weather, a bus
+// route, opening hours, a recipe, what a medicine is for, a holiday date, a fact, a definition,
+// a person). It makes ONE general judgment — does this TEXT answer THIS question? — with no
+// type-specific rule ("has a currency symbol"). If yes it returns one clean answer; if not,
+// no_answer (the loop then refines or the caller says one honest sentence).
+const SYS = `You are given TEXT fetched from web pages and a user QUESTION (Hebrew, Spanish, or English). Decide ONE thing: does the TEXT actually answer THIS question about the specific thing asked (not a different thing that merely appears on the page)? Return STRICT JSON: {"status":"answer"|"no_answer","answer":"..."}.
+If it does, "answer" is ONE short natural sentence in the QUESTION'S language, stating the real concrete answer taken from the TEXT — whatever kind the question needs (a price or price range with its currency, a list of films/names, a time or date, a temperature, a bus line, opening hours, a step, a fact, a definition). NEVER name a website/store/app/source; no URLs; no marketing, cart, filter, or navigation text; no raw page dump. If the TEXT does NOT actually answer the asked thing, return {"status":"no_answer","answer":""}. Never invent or guess a value — a wrong confident answer is worse than an honest miss.`
 
 /** Synthesize one clean answer from fetched page text, or no_answer. Never throws — a failure
  *  is an honest no_answer (the caller then declines rather than speaking a dump). */
