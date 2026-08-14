@@ -7,7 +7,14 @@
  * client never imports this. The honesty gate lives at the endpoint: a result with
  * zero sources is NOT a grounded answer.
  */
-export interface ProviderSource { title?: string; url: string }
+export interface ProviderSource {
+  title?: string
+  url: string
+  /** Per-source snippet/content from the provider results array. This is the DEPTH
+   *  that a one-line synthesized `answer` throws away — a briefing and follow-ups
+   *  ("tell me more about #3") are built from these, not just the headline. */
+  content?: string
+}
 
 export interface ProviderResult {
   /** true only if the call completed (not that it was grounded — check sources). */

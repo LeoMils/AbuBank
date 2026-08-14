@@ -1,0 +1,70 @@
+{
+  "generatedNote": "real keyed calls; secrets never printed",
+  "providerHealth": {
+    "tavily": {
+      "key": true,
+      "healthy": false,
+      "note": "HTTP_401"
+    },
+    "brave": {
+      "key": true,
+      "healthy": true,
+      "note": "3 results"
+    },
+    "perplexity": {
+      "key": true,
+      "healthy": true,
+      "note": "ok"
+    },
+    "openaiKeyPresent": true
+  },
+  "before": {
+    "query": "מה חדש היום",
+    "ok": true,
+    "answerLength": 318,
+    "distinctHeadlines": 6,
+    "note": "the old path surfaced ~one synthesized line; sources were url+title only (content discarded)"
+  },
+  "after": {
+    "categoriesQueried": 6,
+    "categoriesFailed": [],
+    "distinctHeadlines": 12,
+    "headlinesWithSnippet": 12,
+    "distinctHosts": 9,
+    "categoriesCovered": [
+      "israel",
+      "world",
+      "culture",
+      "entertainment",
+      "society",
+      "health"
+    ],
+    "sampleTitles": [
+      "[israel] חדשות היום - כל העדכונים, דיווחים והכתבות המובילות בארץ ובעו",
+      "[world] חדשות בעולם | N12 אתר החדשות של ישראל",
+      "[culture] תרבות ובידור - חדשות, עדכונים וסיקורים | היום",
+      "[entertainment] לוח שידורים - IsraMedia",
+      "[society] ערוץ 14 | C14 - החדשות של ישראל",
+      "[health] ynet - בריאות - חדשות, מחקרים והתפתחויות בתחומי הרפואה",
+      "[israel] הארץ - חדשות, ידיעות מהארץ והעולם - עיתון הארץ",
+      "[world] חדשות בעולם - מידע ועדכונים מרחבי העולם - הידברות",
+      "[culture] אמנות - כל החדשות, עדכונים וכל מה שחדש | ישראל היום",
+      "[entertainment] קטגוריה:תוכניות טלוויזיה ישראליות – ויקיפדיה",
+      "[society] ynet - חדשות - סיקורים, מבזקים וכתבות מהארץ והעולם",
+      "[health] Medical and health information | MedicalNewsToday"
+    ]
+  },
+  "cinema": {
+    "ok": true,
+    "resultCount": 10,
+    "hasShowtimeLikeContent": true,
+    "hosts": [
+      "seret.co.il",
+      "edb.co.il",
+      "cinema-city.co.il",
+      "easy.co.il"
+    ],
+    "verdict": "see ONLINE_DEPTH_REPORT.md — general web search vs a structured listings source"
+  },
+  "usedProvider": "brave"
+}

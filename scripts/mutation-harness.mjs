@@ -130,6 +130,14 @@ const MUTANTS = [
     replace: 'realtimeModel: REALTIME_MODEL_NORMAL,',
     owner: 'src/screens/AbuAI/costMeter.test.ts', expect: 'kill',
   },
+  {
+    id: 'briefing-headline-without-a-source', layer: 'A/Brain·Online', severity: 'P0',
+    desc: 'Item 3 online-depth honesty: a briefing headline must be backed by a real titled source. Mutant lets untitled sources become headlines (a claim with no source) — briefing.test must turn red.',
+    file: 'src/services/online/briefing.ts',
+    find: 'if (!title) continue // a headline must have a real title from a real source',
+    replace: 'if (!title && false) continue // a headline must have a real title from a real source',
+    owner: 'src/services/online/briefing.test.ts', expect: 'kill',
+  },
   // ── Layer D · Journeys (end-to-end handoffs) ──
   {
     id: 'journey-whatsapp-handoff-drops-message', layer: 'D/Journey', severity: 'P1',

@@ -65,6 +65,28 @@ Newest first. Every finding logged as discovered. Severity: 🔴P0 🟠P1 🟡P2
   `response.done` usage + mid-session model swap is documented (COST_REPORT) but NOT rushed into the
   device-sensitive voice path pre-ship (per `.claude/rules/voice.md`). Real billed number = device.
 
+### Item 3 · ONLINE DEPTH — DONE (v0.238.0) · commit pending · see `ONLINE_DEPTH_REPORT.md`
+- **Root cause fixed:** `ProviderSource` now carries per-source `content` (the depth the one-line
+  answer discarded); Tavily adapter keeps each result `content` + `max_results` 6→10; Brave carries
+  its `description`. New `briefing.ts` fans out across Israel/world/culture/entertainment/society/
+  health (NO sports, NO economics), dedups by URL, returns 10+ headlines each with source + held
+  snippet, and answers a follow-up from the SAME retrieval (`detailFor`) or says so honestly. Wired
+  into `api/abuai-online.ts` behind a briefing intent + the SAME zero-source honesty gate.
+- **REAL keyed probe (PREVIEW, `scripts/online-depth-probe.mjs` → `docs/eval/ONLINE_DEPTH_PROBE.json`):**
+  BEFORE = 1 synthesized line + 6 url-only sources; **AFTER = 12 distinct headlines, 12/12 with
+  snippets, 9 hosts, all 6 categories** (N12, Haaretz, ynet, Israel Hayom, C14, MedicalNewsToday…).
+- **Provider health (real calls, brief asked):** 🔴 **Tavily key DEAD — HTTP 401, needs rotation**;
+  🟢 Brave LIVE; 🟢 Perplexity LIVE; OpenAI key present. Briefing is provider-agnostic — proven live on
+  Brave. **Action for Leo:** rotate `TAVILY_API_KEY` OR set `ONLINE_PROVIDER=brave` (works today).
+- **Cinema verdict (honest):** real sources exist (cinema-city.co.il Kfar Saba, seret.co.il) with
+  showtime-like content, but general search returns landing pages, not parseable showtimes+plots.
+  Reliable structured listings need a DEDICATED adapter; until then Abu points her to the cinema and
+  must not recite times as fact. An honest "cannot promise exact times" is correct; 3 vague results not.
+- **Mutant:** `briefing-headline-without-a-source` (untitled source becomes a headline) →
+  `briefing.test.ts` red. Adversarial pass: dedup across categories proven, excluded sports/econ,
+  titleless sources dropped, `no_detail_held` never fabricates depth.
+- **Evidence:** online + grounding-gate tests green (28) + real keyed probe (PREVIEW) + full suite + build.
+
 ## Run 1 — 2026-08-13 · branch `rc5/cognitive-architecture-and-acceptance`
 
 ### Baseline (verified this session)

@@ -79,13 +79,21 @@ export const tavilyProvider: OnlineProvider = {
       // dates). Zero results ⇒ the honesty gate declines ⇒ looks identical to a real
       // "found nothing". A general search still answers news queries AND those. (regression:
       // adapters.test.ts asserts no topic:'news' pin.)
+      // Use the FULL results, not just the one-line answer: raise max_results and
+      // KEEP each result's `content` snippet — that per-source depth is what turns a
+      // headline into a briefing and answers a follow-up ("tell me more about #3")
+      // from the SAME retrieval instead of a new query. (Item 3 · online depth.)
       const res = await fetchWithTimeout('https://api.tavily.com/search', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ query, search_depth: 'basic', include_answer: true, max_results: 6 }),
+        body: JSON.stringify({ query, search_depth: 'basic', include_answer: true, max_results: 10 }),
       })
       if (!res.ok) return fail(started, 'PROVIDER_FAILED')
-      const d = (await res.json()) as { answer?: string; results?: Array<{ title?: string; url?: string }> }
-      const sources: ProviderSource[] = (d.results ?? []).filter((r) => typeof r.url === 'string').map((r) => ({ url: r.url!, ...(r.title ? { title: r.title } : {}) }))
+      const d = (await res.json()) as { answer?: string; results?: Array<{ title?: string; url?: string; content?: string }> }
+      const sources: ProviderSource[] = (d.results ?? []).filter((r) => typeof r.url === 'string').map((r) => ({
+        url: r.url!,
+        ...(r.title ? { title: r.title } : {}),
+        ...(r.content ? { content: String(r.content).replace(/\s+/g, ' ').trim() } : {}),
+      }))
       return { ok: true, answer: typeof d.answer === 'string' ? d.answer.trim() : '', sources, latencyMs: Math.round(nowMs() - started) }
     } catch (e) { return fail(started, (e as { name?: string })?.name === 'AbortError' ? 'TIMEOUT' : 'PROVIDER_FAILED') }
   },
@@ -108,7 +116,11 @@ export const braveProvider: OnlineProvider = {
       if (!res.ok) return fail(started, 'PROVIDER_FAILED')
       const d = (await res.json()) as { web?: { results?: Array<{ title?: string; url?: string; description?: string }> } }
       const results = d.web?.results ?? []
-      const sources: ProviderSource[] = results.filter((r) => typeof r.url === 'string').map((r) => ({ url: r.url!, ...(r.title ? { title: r.title } : {}) }))
+      const sources: ProviderSource[] = results.filter((r) => typeof r.url === 'string').map((r) => ({
+        url: r.url!,
+        ...(r.title ? { title: r.title } : {}),
+        ...(r.description ? { content: String(r.description).replace(/\s+/g, ' ').trim() } : {}),
+      }))
       // Brave returns no synthesized answer; hand back the top snippet as context.
       const answer = results[0]?.description ? String(results[0].description).trim() : ''
       return { ok: true, answer, sources, latencyMs: Math.round(nowMs() - started) }

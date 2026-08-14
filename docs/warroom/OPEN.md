@@ -14,8 +14,11 @@ my commits; I stage only files I touch (never `git add -A`).
       35.7% saving (idle mic only; output byte-identical). Quality bugs ~$0.24/session. Persisted
       counter + 70% Leo alert + graceful degrade (never disconnect). Mutant KILLED. See COST_REPORT.md.
       Boundary: live WebRTC wiring documented, not rushed (device voice path).
-- [ ] **3 · Online depth** — use full Tavily results, fan-out briefing ≥10 headlines w/ sources,
-      session cache for follow-ups, cinema verdict, provider-key health. PREVIEW-class evidence.
+- [x] **3 · Online depth** — DONE (v0.238.0). Per-source content kept (root cause); briefing fan-out
+      6 categories → **12 distinct headlines / 12 snippets / 9 hosts** (real Brave probe, BEFORE=6/1-line).
+      detailFor depth-on-demand. Cinema: honest "needs dedicated adapter". Provider health: 🔴 Tavily
+      key DEAD (401 — rotate), 🟢 Brave, 🟢 Perplexity. Mutant KILLED. See ONLINE_DEPTH_REPORT.md.
+      🟡 **O-TAVILY-KEY** (Leo): rotate `TAVILY_API_KEY` or set `ONLINE_PROVIDER=brave`.
 - [ ] **4 · Production gate** — run it; ranked blocker list (code/iPhone/judgement); update
       LEO-TESTS-ONLY.md; confirm deploy path + rollback.
 

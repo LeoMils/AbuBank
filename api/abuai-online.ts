@@ -16,6 +16,7 @@
  */
 
 import { selectProvider } from '../src/services/online/registry'
+import { buildBriefing, speakableBriefing, type Briefing } from '../src/services/online/briefing'
 
 export const config = { runtime: 'edge' }
 
@@ -24,6 +25,15 @@ interface OnlinePayload {
   lang?: 'he' | 'es' | 'en' | 'mixed'
   kind?: string
   locationHint?: string
+}
+
+// A briefing is NOT one query: "what is new", "מה חדש", "novedades" ⇒ fan out across
+// Israel/world/culture/entertainment/society/health and return 10+ headlines with
+// sources, holding the per-source snippets for a follow-up. Detected here so a plain
+// current-info question still takes the fast single-answer path.
+const BRIEFING_INTENT = /מה\s*(?:חדש|קורה|נשמע|מתחדש)|מה\s*החדשות|חדשות\s*היום|תעדכני\s*אותי|what\s*is\s*new|what'?s\s*new|latest\s*news|catch\s*me\s*up|qu[eé]\s*hay\s*de\s*nuevo|novedades|noticias\s*de\s*hoy/i
+function isBriefingIntent(text: string, kind?: string): boolean {
+  return kind === 'briefing' || BRIEFING_INTENT.test(text)
 }
 
 interface OnlineSource {
@@ -68,6 +78,8 @@ interface OnlineSuccess {
   ok: true
   answer: string
   sources?: OnlineSource[]
+  /** Present for briefing-intent queries: 10+ distinct headlines with held snippets. */
+  briefing?: Briefing
   diag?: OnlineDiag
 }
 interface OnlineFailure {
@@ -180,6 +192,22 @@ export default async function handler(req: Request): Promise<Response> {
   // Server-side personal guard
   if (isPersonal(query)) {
     return respond({ ok: false, errorCode: 'ONLINE_QUERY_BLOCKED_PERSONAL', userMessage: userMessageFor('ONLINE_QUERY_BLOCKED_PERSONAL', lang) }, 200)
+  }
+
+  // ── BRIEFING branch (Item 3 · online depth) ────────────────────────────────
+  // "What is new?" fans out across 6 topics and returns 10+ deduped headlines WITH
+  // held snippets — provider-agnostic (uses the selected provider), behind the SAME
+  // honesty gate: zero headlines ⇒ decline (never speak stale memory as fact). Only
+  // runs when the selected provider is a real search provider with a present key.
+  if (isBriefingIntent(query, payload.kind) && selected.id !== 'openai' && selected.available(env)) {
+    diag.reached = true
+    const briefing = await buildBriefing((q, l, e) => selected.search(q, l, e), env, { lang })
+    diag.sourceCount = briefing.count
+    if (briefing.count === 0) {
+      return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
+    }
+    const sources: OnlineSource[] = briefing.headlines.map((h) => (h.title ? { url: h.url, title: h.title } : { url: h.url }))
+    return respond({ ok: true, answer: speakableBriefing(briefing), sources, briefing })
   }
 
   // ── Bake-off winner path (M2), selectable via ONLINE_PROVIDER ──────────────
