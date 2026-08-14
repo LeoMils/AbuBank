@@ -106,3 +106,51 @@ has no `sources`, no URL, no bare domain; `scrubForSpeech` unit-tested. Mutant
 page content — so a real PRICE is still missing (price probe gave stores, not a
 number). That is the Phase 2A depth build (fetch + synthesize within budget) and is
 listed in the remainder, NOT claimed done.
+
+═══════════════════════════════════════════════════════════════════════════════
+## CLOSE — honest status of the run
+
+**Delivered (real, verified):**
+- The CORRECT instrument: `gpt-realtime` over GA WebSocket with text, Abu's real
+  `buildSessionUpdate()` + tools + `LiveTools`. Reproduces 3 of 4 named failure classes.
+- ITER 1: a mechanism (not instruction) fix for NO_SOURCES, re-measured on the real
+  instrument (source-naming eliminated), regression-tested, mutant killed (harness 19/19).
+- Gates green at HEAD: typecheck 0 · full suite 12723 · build 0 · mutation 19/19.
+
+**NOT delivered, and why (no fabricated numbers):**
+- **Phase 0b judge calibration — BLOCKED.** The owner's ~15 "הערה לקלוד" human labels
+  are absent from the repo. There is nothing to calibrate the judge against, and the
+  spec forbids entering the loop with an uncalibrated judge. The synthetic judge is
+  therefore UNTRUSTED taste; do not treat its 1–5 scores as the owner's taste.
+- **Phase 0c noise floor, Phase 1 simulator (120 scenarios), 1b two-judge ensemble,
+  Phase 3 40-iteration loop — NOT run.** A single agent in one session cannot execute
+  thousands of realtime calls over many hours. Reporting a convergence % from a run
+  that did not happen would be a fabrication. Not done.
+- **Preamble criterion — UNTRUSTED off-device.** It did not reproduce even on
+  gpt-realtime text (0/4 probes). It is likely audio-output- or reasoning-tied.
+
+**Ranked remainder (what each needs) — the real Phase-2 work, none faked:**
+1. G · INSTRUCTION SHRINK to <5k chars (remove the duplicated family data; per-intent
+   injection). Highest leverage: the family-relation error persists because the model
+   answers from the bundle instead of calling the family tool. Assert size in a test.
+2. D · FAMILY RELATIONS — force the family tool (make the bundle carry no family data
+   so relation queries MUST resolve via the deterministic resolver). Resolver exists.
+3. A · ONLINE DEPTH (second half) — fetch result-page CONTENT in parallel within a 3s
+   budget + synthesize sans attribution. The NO_SOURCES half is done; the "real price"
+   half needs this. Never pass the model a URL/title (already enforced).
+4. F · CAPABILITY REFUSALS — the model refuses actions it holds tools for; fix
+   structurally (tool descriptions / tool_choice pressure / a refusal guard).
+5. B · REMINDERS (live path) — a reminder tool + durable store + large audible popup,
+   fires on time, survives reload. (The calendar screen has reminders; the LIVE path
+   has no reminder tool — device offered a calendar event, honestly.)
+6. C · PERSISTENT MEMORY — a memory tool + durable store so a death/new-member/
+   correction survives sessions; "never says she cannot update anything."
+7. E · AUDIO — session config (noise_reduction far_field, VAD tuning) + barge-in
+   truncation to playback position. PHYSICAL-DEVICE validation only.
+8. The evaluation scaffold: noise floor, 120-scenario multi-turn simulator, two-judge
+   ensemble, and the ratcheted loop — buildable, but each is a real body of work.
+
+**Merge readiness:** all convergence-v3 work is on `rc5/cognitive-architecture-and-
+acceptance`, tagged `known-good-pre-convergence` at the run's start. NOT merged to
+main (main still serves the Aug 5 build). Before a merge is safe: rebase on main +
+resolve conflicts, run the full gate on the rebase, and a human must approve `--prod`.
