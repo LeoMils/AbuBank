@@ -19,7 +19,7 @@
 import './nodeShim'
 import WebSocket from 'ws'
 import { buildSessionUpdate } from '../../src/services/liveSession'
-import { LiveTools, type OnlineAnswer, type LiveEvent, type LiveCalendarStore } from '../../src/services/liveTools'
+import { LiveTools, type OnlineAnswer, type OnlineFetch, type LiveEvent, type LiveCalendarStore } from '../../src/services/liveTools'
 import { safeParseArgs, type ParsedFunctionCall } from '../../src/screens/AbuAI/realtime/realtimeFunctionBridge'
 
 export interface TurnRecord {
@@ -38,6 +38,9 @@ export interface RealtimeOpts {
   braveKey?: string
   model?: string
   nowMs?: number
+  /** Inject the online seam (e.g. first-wins PAGE fetch). Defaults to the Brave snippet
+   *  fetch below, so existing callers are unchanged. */
+  onlineFetch?: OnlineFetch
 }
 
 function makeStore(): LiveCalendarStore {
@@ -106,7 +109,7 @@ export async function runConversationRealtime(turns: string[], opts: RealtimeOpt
       if (it?.type === 'function_call_output' && it.call_id) outputs.set(it.call_id, it.output ?? '{}')
     }
   }
-  const liveTools = new LiveTools(sendToolOutputHolder, store, {}, braveOnlineFetch(opts.braveKey))
+  const liveTools = new LiveTools(sendToolOutputHolder, store, {}, opts.onlineFetch ?? braveOnlineFetch(opts.braveKey))
 
   const records: TurnRecord[] = []
   let conn: Conn
@@ -151,6 +154,10 @@ function driveTurn(
       if (type === 'error' || type === 'response.error') { rec.error = JSON.stringify((ev as { error?: unknown }).error ?? ev).slice(0, 200); clearTimeout(hardTimeout); done(); return }
       if (type === 'response.output_text.delta' || type === 'response.text.delta') {
         const delta = (ev as { delta?: string }).delta ?? ''
+        // ttft = time to first SPOKEN token. The FIRST output-text delta of the turn is the
+        // first thing Martita would hear — whether it lands before a tool (a preamble, which
+        // the product forbids) or after the tool result returns (the grounded answer). It is
+        // NOT set on a function_call event (that is a silent decision, not speech).
         if (rec.ttftMs === null) rec.ttftMs = Date.now() - t0
         textBuf += delta; curResponseText += delta
         return
@@ -158,7 +165,9 @@ function driveTurn(
       if (type === 'response.function_call_arguments.done') {
         const name = (ev as { name?: string }).name ?? 'unknown'
         const callId = (ev as { call_id?: string }).call_id ?? (ev as { item_id?: string }).item_id ?? `c${pendingFc.length}`
-        if (rec.ttftMs === null) rec.ttftMs = Date.now() - t0
+        // NOTE: a tool call is NOT a spoken token — do not set ttft here (ttft = first spoken
+        // token only). The tool round-trip time is correctly INCLUDED in ttft because the first
+        // spoken delta only arrives after the tool result returns on a no-preamble turn.
         // Any text accumulated in this response BEFORE the tool call is a preamble.
         if (curResponseText.trim()) { rec.emittedTextBeforeToolResult = true; rec.preambleText += curResponseText.trim() + ' ' }
         sawFunctionCallThisResponse = true

@@ -17,8 +17,45 @@
 
 import { selectProvider } from '../src/services/online/registry'
 import { buildBriefing, speakableBriefing, type Briefing } from '../src/services/online/briefing'
+import { firstWins } from '../src/services/online/firstWins'
 
 export const config = { runtime: 'edge' }
+
+// ── Agent A · online DEPTH: first-wins PAGE fetch (opt-in via ONLINE_DEEP_FETCH) ──
+// A search SNIPPET rarely carries a real price. When ONLINE_DEEP_FETCH is set, fetch the
+// top result PAGES in parallel and speak from the FIRST page that actually contains the
+// answer (a real price token), cancelling the rest — within a 4s soft / 6s hard budget.
+// DEFAULT OFF: with the flag unset this is a no-op and the endpoint behaves EXACTLY as
+// before (existing tests + current prod unchanged). Activation is one Vercel env step,
+// like ONLINE_PROVIDER. Never worse than the snippet: page content is used ONLY when a
+// page truly contained the answer (r.hadAnswer); otherwise the existing answer stands.
+const DEEP_FETCH_UA = 'Mozilla/5.0 (compatible; AbuBank/1.0)'
+async function deepenAnswer(
+  query: string,
+  sources: OnlineSource[],
+  currentAnswer: string,
+  env: Record<string, string | undefined>,
+): Promise<string> {
+  if (!env.ONLINE_DEEP_FETCH || sources.length === 0) return currentAnswer
+  try {
+    const r = await firstWins(query, {
+      topN: 4, softBudgetMs: 4000, hardCeilingMs: 6000,
+      search: async () => sources.filter((s) => s.url).slice(0, 4).map((s) => (s.title ? { url: s.url!, title: s.title } : { url: s.url! })),
+      fetchPage: async (url, signal) => {
+        const per = new AbortController()
+        const onAbort = () => per.abort()
+        signal.addEventListener('abort', onAbort)
+        const timer = setTimeout(() => per.abort(), 3500)
+        try {
+          const res = await fetch(url, { signal: per.signal, headers: { 'User-Agent': DEEP_FETCH_UA, Accept: 'text/html,*/*' } })
+          if (!res.ok) throw new Error(`http ${res.status}`)
+          return await res.text()
+        } finally { clearTimeout(timer); signal.removeEventListener('abort', onAbort) }
+      },
+    })
+    return (r.ok && r.hadAnswer && r.answer) ? r.answer : currentAnswer
+  } catch { return currentAnswer }
+}
 
 interface OnlinePayload {
   query?: string
@@ -246,7 +283,8 @@ export default async function handler(req: Request): Promise<Response> {
         return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
       }
       const winnerSources: OnlineSource[] = r.sources.map((s) => (s.title ? { url: s.url, title: s.title } : { url: s.url }))
-      return respond({ ok: true, answer: winnerAnswer, sources: winnerSources })
+      const deepenedWinner = await deepenAnswer(query, winnerSources, winnerAnswer, env)
+      return respond({ ok: true, answer: deepenedWinner, sources: winnerSources })
     }
   }
 
@@ -325,7 +363,8 @@ export default async function handler(req: Request): Promise<Response> {
     return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
   }
 
-  return respond({ ok: true, answer, sources })
+  const deepened = await deepenAnswer(query, sources, answer, env)
+  return respond({ ok: true, answer: deepened, sources })
 }
 
 // ─── Helpers (loose typing — Responses API shape stabilising) ──────────────

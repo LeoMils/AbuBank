@@ -152,6 +152,29 @@ that asserted the portrait was IN the bundle were flipped to assert it is GONE a
 (new truth, not weakened). The standing safety-guard phrase "you are Martita's FRIEND, not Martita"
 was preserved verbatim (companionSafety.guard). RESULT (realtime): relation tool-call rate 0/5→5/5.
 
+## D-ONLINE-01 · Price half of A: first-wins PAGE fetch, shared module, one behavior
+The perfume price never surfaced because the online path spoke from a search SNIPPET. Built
+`src/services/online/firstWins.ts` (pure, injected search + fetchPage seams): fetch top-N result
+PAGES in parallel, speak from the FIRST whose text contains the answer (price token), abort the
+rest; 4s soft / 6s hard budget; below the ceiling return what is known. ONE module serves both the
+eval instrument (firstWinsOnlineFetch) and the live endpoint — no second online path.
+
+## D-ONLINE-02 · Endpoint page-fetch behind default-OFF ONLINE_DEEP_FETCH (no test/prod change)
+Wired first-wins into api/abuai-online.ts (both the provider and openai answer paths) behind
+`env.ONLINE_DEEP_FETCH`, DEFAULT OFF. Rationale (stricter/safe reading): with the flag unset the
+endpoint runs identical code to before, so all three endpoint tests + current prod behavior are
+unchanged; device activation is one Vercel env step, mirroring the existing ONLINE_PROVIDER staging
+pattern this repo already uses. The capability is PROVEN on the realtime instrument now; device is a
+documented deploy step, not claimed live.
+
+## D-ONLINE-03 · Never worse than the snippet (protect cinema) + ttft = first spoken token
+First measurement showed first-wins REGRESSED cinema (JS-rendered listing pages have no film list in
+static HTML, while the Brave snippet did). Fix: use page content ONLY when a page truly contained the
+answer (`r.hadAnswer`); otherwise fall back to the search snippet — so page-fetch is strictly ≥ the
+old behavior. Also fixed realtimeRunner ttft to be set on the first SPOKEN output-text delta (not on
+the function_call event), so ttft honestly includes the tool round-trip and measures time-to-first-
+token as Martita would hear it.
+
 ## D-UISTATE-02 · QA badge gated to DEV, not removed
 The Home `home-qa-version` "QA: v…" badge was always visible (incl. production). Owner: hide outside
 development. DECISION: gate the JSX behind `import.meta.env.DEV` (matches the existing AbuCalendar

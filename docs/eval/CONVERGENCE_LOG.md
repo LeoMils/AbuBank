@@ -292,3 +292,40 @@ calendar→read_calendar, comm→whatsapp_draft+people_lookup. All OK.
 **Gates:** typecheck 0 · full suite 12,759 passed (489 files; the 1 `persistenceTrace` flake is a
 wall-clock `/972/` coincidence, not this change) · build ✓. Evidence: CODE (deterministic) +
 realtime-instrument before/after (the tool-call rate). Physical-device audibility not claimed.
+
+═══════════════════════════════════════════════════════════════════════════════
+## AGENT: A (online DEPTH · price half) · CLASS: snippet-not-page-content · v0.246.0
+
+**Failure class:** "כמה עולה בלו דה שאנל?" returned stores + "go check", NEVER a real price —
+the online path spoke from a search SNIPPET (title + one-line description), which rarely carries
+a number. (Cinema already returned films because the snippet happened to list them.)
+
+**Fix (first-wins PAGE fetch):** new shared `src/services/online/firstWins.ts` — fetch the top-N
+result PAGES in parallel, extract readable text (htmlToText), speak from the FIRST page that
+actually contains the answer (a real price token for a price query), ABORT the losers; 4s soft /
+6s hard budget, below the ceiling return what is known. Pure over injected seams (search +
+fetchPage) → one module for both the eval instrument (firstWinsOnlineFetch) and the live endpoint
+(api/abuai-online, behind default-OFF ONLINE_DEEP_FETCH — flag off = current behavior + all
+endpoint tests unchanged; device activation is one Vercel env step, like ONLINE_PROVIDER).
+
+**Anti-regression:** page content is used ONLY when a page truly contained the answer (hadAnswer);
+otherwise it falls back to the search snippet — so first-wins is strictly ≥ the old behavior. First
+measurement had REGRESSED cinema (JS-rendered listing pages carry no film list in static HTML); the
+hadAnswer gate + snippet fallback fixed it. Also fixed the instrument ttft to mean first SPOKEN
+token (not the function_call event), so it honestly includes the tool round-trip.
+
+**MEASURED on the real gpt-realtime instrument (priceProbe.ts, before/after, one reused connection):**
+  • perfume — BEFORE: "המחירים משתנים… שווה לבדוק" (NO price).
+             AFTER: "בערך 597 שקלים… E.D.T בערך 499… 150 מ״ל בערך 749" (REAL price range).
+             ttft ~3.0s, total ~3.8s — within the 4s live-fetch budget.
+  • cinema — unchanged (snippet fallback; never worse than before).
+
+**Deterministic acceptance:** firstWins.test (8) — first qualifying page wins + losers aborted;
+hard-ceiling returns what is known; price detection/extraction; non-price keyword win.
+**Gates:** typecheck 0 · full suite 12,767 passed (490 files) · build ✓.
+**Evidence:** CODE (firstWins.test) + realtime-instrument before/after (the real price). The device
+gets it once ONLINE_DEEP_FETCH is set in Vercel — a documented deploy step, not claimed live.
+
+**STILL TODO in A (next sub-commit):** the PREFETCH warm-store (cinema/weather/headlines/transit on
+a schedule → <1s for a prefetched topic) and the NON-VERBAL in-flight cue (soft sound + a lookup
+screen state, no words — the anti-preamble rule stands). Then PRIORITY 3 (simulator).
