@@ -844,6 +844,15 @@ export class LiveSession {
     if (this.dispatchedCalls.has(fc.callId)) return
     this.dispatchedCalls.add(fc.callId)
     this.recorder.onToolCall(fc.name, safeParseArgs(fc.argsJson))  // observation only
+    // M1 preamble measurement (DEVICE): if audio already started this response, Abu spoke a
+    // preamble before this tool call — record the gap so a real device session builds the
+    // distribution that DERIVES the commit window (or proves it cannot work). Observation only.
+    if (this.audioStartedAt !== null) {
+      const gap = this.deps.now() - this.audioStartedAt
+      try { this.recorder.onPreambleGap(gap) } catch { /* */ }
+      // eslint-disable-next-line no-console
+      try { console.info('[abu-preamble-gap-ms]', gap) } catch { /* */ }
+    }
     if (fc.name === 'wait_for_user') {
       this.send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: fc.callId, output: '{"status":"waiting"}' } })
       this.setState('listening')

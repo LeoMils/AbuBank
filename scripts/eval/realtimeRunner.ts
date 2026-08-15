@@ -29,6 +29,10 @@ export interface TurnRecord {
   emittedTextBeforeToolResult: boolean
   preambleText: string
   ttftMs: number | null
+  /** M1 preamble measurement: ms from turn start to the FIRST function_call event (or null if
+   *  the turn made no tool call). Combined with ttftMs (first spoken token) this gives the gap
+   *  between the first preamble audio and the tool call — the number that sets the commit window. */
+  functionCallAtMs: number | null
   totalMs: number
   error?: string
 }
@@ -113,7 +117,7 @@ export async function runConversationRealtime(turns: string[], opts: RealtimeOpt
 
   const records: TurnRecord[] = []
   let conn: Conn
-  try { conn = await connect(model, opts.openaiKey) } catch (e) { return turns.map((u) => ({ user: u, text: '', toolCalls: [], emittedTextBeforeToolResult: false, preambleText: '', ttftMs: null, totalMs: 0, error: `connect: ${(e as Error).message}` })) }
+  try { conn = await connect(model, opts.openaiKey) } catch (e) { return turns.map((u) => ({ user: u, text: '', toolCalls: [], emittedTextBeforeToolResult: false, preambleText: '', ttftMs: null, functionCallAtMs: null, totalMs: 0, error: `connect: ${(e as Error).message}` })) }
   const { ws, send } = conn
   send({ type: 'session.update', session })
 
@@ -140,7 +144,7 @@ function driveTurn(
   setHandler: (h: (ev: Record<string, unknown>) => void) => void,
 ): Promise<TurnRecord> {
   return new Promise((resolve) => {
-    const rec: TurnRecord = { user, text: '', toolCalls: [], emittedTextBeforeToolResult: false, preambleText: '', ttftMs: null, totalMs: 0 }
+    const rec: TurnRecord = { user, text: '', toolCalls: [], emittedTextBeforeToolResult: false, preambleText: '', ttftMs: null, functionCallAtMs: null, totalMs: 0 }
     const t0 = Date.now()
     let textBuf = ''
     let curResponseText = '' // text within the CURRENT response, before any function call
@@ -170,6 +174,7 @@ function driveTurn(
         // spoken delta only arrives after the tool result returns on a no-preamble turn.
         // Any text accumulated in this response BEFORE the tool call is a preamble.
         if (curResponseText.trim()) { rec.emittedTextBeforeToolResult = true; rec.preambleText += curResponseText.trim() + ' ' }
+        if (rec.functionCallAtMs === null) rec.functionCallAtMs = Date.now() - t0 // M1: first tool call time
         sawFunctionCallThisResponse = true
         pendingFc.push({ callId, name, args: (ev as { arguments?: string }).arguments ?? '{}' })
         return

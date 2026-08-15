@@ -111,6 +111,15 @@ export class FlightRecorder {
   /** Abu audio began playing — she is speaking (used for truncation detection). */
   onAudioDelta(): void { this.speaking = true; this.spokeSinceFinal = true; this.lastUserInput = null }
 
+  /** M1 preamble measurement (DEVICE): the ms between the first audio of a response and the
+   *  function_call in that SAME response — i.e. how long Abu spoke ("רגע, אני בודקת…") before the
+   *  tool call. On a real device session this fills the distribution that SETS the commit window
+   *  (or proves the window cannot work and two-response is needed). 0/absent = no preamble. */
+  private readonly preambleGaps: Array<{ t: number; gapMs: number }> = []
+  onPreambleGap(gapMs: number): void { this.preambleGaps.push({ t: this.now() - this.startWall, gapMs }) }
+  /** The measured preamble gaps (ms) this session — read from the downloaded trace / diagnostics. */
+  getPreambleGaps(): number[] { return this.preambleGaps.map((g) => g.gapMs) }
+
   /** The mic opened (server VAD detected user speech). If this happens WHILE Abu is
    *  speaking, it is the likely truncation cause — record it as evidence (no fix). */
   onUserSpeechStart(): void {

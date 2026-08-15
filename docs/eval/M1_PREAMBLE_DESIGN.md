@@ -42,3 +42,32 @@ PreambleGate in LiveScreen; (b) confirm on the owner's ear that the preamble is 
 answer is not clipped or unnaturally delayed; (c) tune windowMs against real preamble lengths (a
 preamble longer than the window would leak its tail — measure real preamble durations on device).
 This is the honest boundary: the mechanism + latency are decided and tested; audibility is the ear.
+
+---
+
+## MEASUREMENT UPDATE — the window cannot be DERIVED from the text instrument (amendment)
+
+The owner is right that the 400ms window must be derived, not chosen, and that the real risk is a
+LONG preamble ("שנייה, אני בודקת את המחיר העדכני בארץ, כדי לא לנחש" ≈ 4s): if the function_call lands
+a second-plus after audio starts, a small window catches nothing and taxes every plain answer for free.
+
+Attempt to measure on the realtime instrument (scripts/eval/preambleGapProbe.ts):
+- BLOCKED two ways. (1) The realtime WS is currently transport-failing (100% sub-500ms empty on both
+  preambleGapProbe and m3Probe) — a connection/throttle failure, never a defect score; not hammered.
+- (2) MORE FUNDAMENTAL: the preamble is an AUDIO-PATH behavior that the TEXT instrument does not
+  reproduce (BRIEF_AUDIT A2: preTool=false on text mode). So the first-audio-delta→function_call gap
+  is not observable on the text instrument even when the WS is healthy. It can only be measured with
+  DEVICE audio (or an audio-mode realtime session the runner does not do).
+
+Response (make it measurable where it actually lives): shipped DEVICE instrumentation —
+`FlightRecorder.onPreambleGap(ms)` records, per turn, the gap between the first audio delta and the
+function_call in that same response; liveSession logs `[abu-preamble-gap-ms]` and the downloaded trace
+carries the distribution. The owner's NEXT device session produces median/p95/max — the window is then
+set from that data (or the approach is switched).
+
+## Recommendation pending the device numbers
+The owner's own evidence (≈4s preambles) already suggests the client commit window likely CANNOT both
+suppress and stay in budget — a 4s delay on every plain answer is unaffordable. So the leading choice
+is the **two-response pattern** (a round-trip on TOOL turns only) over a delay on EVERY turn. Final
+decision is made on the device gap distribution the new instrumentation captures — not chosen here.
+The preambleGate core stays available (flag OFF) for the case where the measured gap turns out small.
