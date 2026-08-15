@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.264.0-surname-guard',
-  buildLabel: 'AbuBank 0.264.0 — AMENDMENT: subsetResolve fabrication guard. The prior full-name fix resolved a unique given name even with a WRONG surname, so a public figure sharing a given name (Yitzhak Rabin) would confidently return the family member — fabrication, not helpfulness. Fix: a spoken surname is EVIDENCE. subsetResolve now returns CONFLICT when an extra word (a surname) is not a confirmed token of the entity own names; whoIs then does not silently assert identity and resolveContactTarget asks (single-candidate ambiguous) instead of resolving; suggestForMiss offers the exact candidate so Abu asks did-you-mean by name. A CONFIRMED surname still resolves. Regression fullNameLookup.test: family given name + a public-figure surname never resolves; no living person is silently resolved by givenName + an unknown surname. 313 people/tools tests green. Prior: mishear suggest (v0.263).',
+  version:    '0.265.0-preamble-design',
+  buildLabel: 'AbuBank 0.265.0 — M1 PREAMBLE design pass (the most frequent thing the owner hears, 5/5 tool calls). WebRTC streams the tool-selecting response audio before the client sees the function_call, so there is no server-side interception. Chose the CLIENT COMMIT WINDOW (owner option 2) over the two-response server pattern (option 1 fights create_response:true and adds a round-trip to every turn). preambleGate.ts is the pure decision core (5 tests): audio then a function_call inside the window -> SUPPRESS the preamble; window elapses with no tool call -> PLAY; a tool call after real speech never retro-mutes the answer. MEASURED latency by construction: +400ms to the first word of a PLAIN answer (well inside the 4s budget), +0 on a tool turn. Ships behind LIVE_PREAMBLE_GATE (default OFF); the WebAudio DelayNode wiring + audibility are the device-validated remainder. Report docs/eval/M1_PREAMBLE_DESIGN.md. Prior: surname guard (v0.264).',
   buildDate:  '2026-08-15',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time
