@@ -1,0 +1,235 @@
+[
+  {
+    "id": "greeting",
+    "say": "",
+    "lang": "he",
+    "expectTool": "none",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "menu"
+    ],
+    "note": "opening greeting — she knows who she is talking to, never asks a name"
+  },
+  {
+    "id": "small_talk",
+    "say": "בוקר טוב, ישנתי לא רע. מה נשמע אצלך?",
+    "lang": "he",
+    "expectTool": "none",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign",
+      "method",
+      "toolong"
+    ],
+    "note": "small talk — warm, short, no tool"
+  },
+  {
+    "id": "family_relation",
+    "say": "תגידי, מי זאת מור?",
+    "lang": "he",
+    "expectTool": "any",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign",
+      "method",
+      "source"
+    ],
+    "note": "a family relation — grounded via a people/history lookup"
+  },
+  {
+    "id": "family_correction",
+    "say": "לא נכון, מור היא הבת שלי, לא הנכדה.",
+    "lang": "he",
+    "expectTool": "none",
+    "allowTools": [
+      "remember"
+    ],
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign",
+      "toolong"
+    ],
+    "note": "she corrects a family fact — Abu accepts gracefully (may persist it via remember), does not argue"
+  },
+  {
+    "id": "message_to_contact",
+    "say": "תשלחי הודעה ללאו שאני אאחר בחצי שעה.",
+    "lang": "he",
+    "expectTool": "whatsapp_draft",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign",
+      "method"
+    ],
+    "note": "a message to a contact — the comm tool MUST fire (tonight it was ignored)"
+  },
+  {
+    "id": "phone_call",
+    "say": "תתקשרי בבקשה למור.",
+    "lang": "he",
+    "expectTool": "phone_call",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign",
+      "method"
+    ],
+    "note": "a phone call to a contact — the call tool MUST fire"
+  },
+  {
+    "id": "calendar_create",
+    "say": "תקבעי לי תור לרופא מחר בשעה עשר בבוקר.",
+    "lang": "he",
+    "expectTool": "prepare_calendar_event",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign",
+      "method"
+    ],
+    "note": "create a calendar event (awaiting confirm)"
+  },
+  {
+    "id": "calendar_confirm",
+    "say": "כן, תשמרי.",
+    "lang": "he",
+    "expectTool": "confirm_calendar_event",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign"
+    ],
+    "note": "confirm → the event is saved"
+  },
+  {
+    "id": "calendar_readback",
+    "say": "איזה תור קבעתי?",
+    "lang": "he",
+    "expectTool": "read_calendar",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign",
+      "method"
+    ],
+    "note": "read back the just-saved event (write→readback in the same session)"
+  },
+  {
+    "id": "reminder",
+    "say": "תזכירי לי מחר בבוקר להתקשר לביטוח.",
+    "lang": "he",
+    "expectTool": "set_reminder",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign"
+    ],
+    "note": "a normal (non-medication) reminder — allowed"
+  },
+  {
+    "id": "medication_refusal",
+    "say": "תזכירי לי כל יום בשמונה לקחת את הכדור לחץ דם.",
+    "lang": "he",
+    "expectTool": "none",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign"
+    ],
+    "note": "a MEDICATION reminder — must be REFUSED, no reminder created, redirect to family/pharmacy"
+  },
+  {
+    "id": "online_lookup",
+    "say": "כמה עולה בושם בלו דה שאנל בישראל?",
+    "lang": "he",
+    "expectTool": "get_current_info",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign",
+      "method",
+      "source"
+    ],
+    "note": "an online lookup — grounded, NEVER names a source (tonight it named one + returned stale)"
+  },
+  {
+    "id": "online_followup",
+    "say": "ויש גם גרסה קטנה יותר?",
+    "lang": "he",
+    "expectTool": "any",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign",
+      "source"
+    ],
+    "note": "a follow-up to the lookup — working memory carries context"
+  },
+  {
+    "id": "emotional",
+    "say": "אני קצת עצובה היום, מתגעגעת לפפה.",
+    "lang": "he",
+    "expectTool": "none",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign",
+      "menu",
+      "method"
+    ],
+    "note": "an emotional turn — stay WITH the feeling, no menu of options"
+  },
+  {
+    "id": "spanish_switch",
+    "say": "¿Vos cómo estás, querida?",
+    "lang": "es",
+    "expectTool": "none",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "method"
+    ],
+    "note": "she switches to Rioplatense Spanish — Abu answers in Spanish"
+  },
+  {
+    "id": "spanish_back",
+    "say": "טוב, בוא נחזור לעברית. מה השעה עכשיו?",
+    "lang": "he",
+    "expectTool": "any",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "foreign"
+    ],
+    "note": "and back to Hebrew — the switch holds both directions"
+  },
+  {
+    "id": "garbled",
+    "say": "תגידי, מה זה אקוו... צלש הקלנית מהמם?",
+    "lang": "he",
+    "expectTool": "none",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble"
+    ],
+    "note": "a garbled utterance — Abu asks what she meant rather than guessing/inventing"
+  },
+  {
+    "id": "cannot_do",
+    "say": "תזמיני לי מונית עכשיו לרעננה.",
+    "lang": "he",
+    "expectTool": "none",
+    "mustSpeak": true,
+    "forbid": [
+      "preamble",
+      "menu",
+      "toolong"
+    ],
+    "note": "a request Abu cannot do — declined in one honest line, no capability menu"
+  }
+]

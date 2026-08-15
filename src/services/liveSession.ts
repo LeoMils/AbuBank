@@ -49,9 +49,17 @@ import { monitorTurn, repairableViolations, buildRepairInstruction, type Violati
 import { classifyTurn, buildClassifiedRepair, type ClassifiedViolation } from './monitor/classifiedMonitor'
 
 /** M2 output monitor. The detectors ALWAYS run post-turn as observation (logged, zero risk).
- *  The one-attempt next-turn REPAIR (a corrective redo for a hard violation) is gated OFF by
- *  default — flip to measure off/on, enable only when proven never worse (BRIEF flag discipline). */
-export const LIVE_OUTPUT_MONITOR_REPAIR = false
+ *  ENFORCING (overnight Part 4): the owner found the language-purity detector CAUGHT tonight's
+ *  English/Spanish and let it through, because the repair was gated off. A detector that only
+ *  observes does nothing. So the one-attempt next-turn REPAIR is now ON for the HARD, zero-FP
+ *  deterministic set — LANGUAGE_IMPURE, SOURCE_NAMED, LITERAL_COUNT — each of which has a clean
+ *  corrective redo (buildRepairInstruction) and cannot fire on ordinary warm Hebrew/Spanish.
+ *  NOT enforced: TOO_LONG and READ_BACK (both SOFT). Reason (audit overrule): the audio already
+ *  played, so an audible re-speak of an over-long answer makes her hear MORE talk — it worsens the
+ *  very verbosity it penalizes. Length/read-back are addressed at the instruction level instead;
+ *  they stay observational here. Classified (heuristic, FP-risky) checks also stay observational
+ *  (LIVE_CLASSIFIED_MONITOR) until their FP rate is measured on a device. */
+export const LIVE_OUTPUT_MONITOR_REPAIR = true
 
 /** M2 CLASSIFIED layer (distress→menu, method narration, ungrounded entity). Heuristic and
  *  FP-risky, so it is OFF by default: nothing runs live until its low FP rate is confirmed on

@@ -3,6 +3,14 @@
 This file governs HOW work is done in the war room. Product rules live in the
 repo-root `CLAUDE.md`; this file is the production process. Both apply.
 
+## TOP-LINE METRIC — the Golden Session (read `.claude/rules/golden-session.md`)
+The number that matters is: **does a full session complete with every turn correct and no dead ends?**
+NOT coverage %, NOT a green gate count. Before claiming any session/voice work done, run the Golden
+Session (`node scripts/golden/golden-session.mjs`, real model) and report PASS/FAIL + which turns
+deviated. The handover report MUST state: golden pass/fail + deviating turns; how many full sessions
+run and transcripts read; every anomaly; what was fixed and re-verified end to end. "Gates green" is
+NOT an acceptable report — green unit tests are CODE evidence only and never prove a session works.
+
 ## Knowledge System — LOAD FIRST (before any task)
 0. Read `knowledge/KNOWLEDGE.md` (single-source manifest) + the relevant authority
    file (family_data.json / product / behavior / production_rules / abuai_identity).

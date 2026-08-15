@@ -12,7 +12,7 @@ const full = buildLiveInstructions()
 
 describe('the shipped assembly is untouched (decomposition is derivation only)', () => {
   it('buildLiveInstructions still assembles the full always-on bundle', () => {
-    expect(full.length).toBe(13490) // if this changes, update deliberately — it is the flag-OFF payload
+    expect(full.length).toBe(13764) // deliberate change v0.278: calendar-decisiveness + online-follow-up nudges (still under the 14000 ratchet) — it is the flag-OFF payload
   })
 })
 

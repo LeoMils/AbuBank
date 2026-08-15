@@ -717,6 +717,43 @@ describe('two-response preamble wiring (flag-gated, client-driven turns)', () =>
   })
 })
 
+describe('output monitor ENFORCEMENT (Part 4 — hard detectors repair, not just observe)', () => {
+  it('a Hebrew turn spoken as an English paragraph triggers a one-shot Hebrew repair', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    const english = 'I understand your frustration and I really want to help you find the right movies playing near you today.'
+    h.pc.dc!.fire({ type: 'response.output_audio_transcript.done', transcript: english })
+    const mark = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'response.done', response: { status: 'completed' } })
+    const repair = h.pc.dc!.sent.slice(mark).filter((e) => e.type === 'response.create' && typeof (e.response as { instructions?: string } | undefined)?.instructions === 'string')
+    expect(repair.length).toBe(1) // enforcement fired (was OFF before Part 4)
+    expect((repair[0]!.response as { instructions: string }).instructions).toContain('עברית')
+    h.session.teardown()
+  })
+
+  it('a clean warm Hebrew turn triggers NO repair (zero false positive)', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.output_audio_transcript.done', transcript: 'כן מרטיטה, אני כאן. מה תרצי לשאול?' })
+    const mark = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'response.done', response: { status: 'completed' } })
+    const repair = h.pc.dc!.sent.slice(mark).filter((e) => e.type === 'response.create' && typeof (e.response as { instructions?: string } | undefined)?.instructions === 'string')
+    expect(repair.length).toBe(0)
+    h.session.teardown()
+  })
+
+  it('a spoken source name (dot-less domain) triggers a repair', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.output_audio_transcript.done', transcript: 'מצאתי את זה באתר seret co il, המחיר בערך 450 שקל.' })
+    const mark = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'response.done', response: { status: 'completed' } })
+    const repair = h.pc.dc!.sent.slice(mark).filter((e) => e.type === 'response.create' && typeof (e.response as { instructions?: string } | undefined)?.instructions === 'string')
+    expect(repair.length).toBe(1)
+    h.session.teardown()
+  })
+})
+
 describe('tool-result speech guarantee (Part 3 #1 — a tool result must NEVER end in silence)', () => {
   it('forces a response if no audio follows a tool result (baseline path too — the guarantee is universal)', async () => {
     vi.useFakeTimers()

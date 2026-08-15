@@ -1,0 +1,161 @@
+{
+  "pass": false,
+  "deviated": [
+    "online_followup"
+  ],
+  "turns": [
+    {
+      "id": "greeting",
+      "pass": true,
+      "failures": [],
+      "spoken": "היי מרטיטה, ערב טוב! מה שלומך? ספרי לי מה חדש אצלך.",
+      "tools": []
+    },
+    {
+      "id": "small_talk",
+      "pass": true,
+      "failures": [],
+      "spoken": "איזה יופי ששנת טוב. אצלי הכול בסדר, תודה ששאלת. איך הבוקר שלך עד עכשיו?",
+      "tools": []
+    },
+    {
+      "id": "family_relation",
+      "pass": true,
+      "failures": [],
+      "spoken": "מור היא הבת שלך.",
+      "tools": [
+        "people_lookup"
+      ]
+    },
+    {
+      "id": "family_correction",
+      "pass": true,
+      "failures": [],
+      "spoken": "כן, נכון. מור היא הבת שלך. תודה שעדכנת אותי.",
+      "tools": [
+        "remember"
+      ]
+    },
+    {
+      "id": "message_to_contact",
+      "pass": true,
+      "failures": [],
+      "spoken": "ההודעה ללאו מוכנה: \"אני אאחר בחצי שעה.\" עכשיו יש לך כפתור על המסך — תלחצי על הכפתור כדי לש",
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ]
+    },
+    {
+      "id": "phone_call",
+      "pass": true,
+      "failures": [],
+      "spoken": "התקשרתי למור והכפתור על המסך מוכן. תראי את הכרטיס ותלחצי על הכפתור כדי להתחיל את השיחה.",
+      "tools": [
+        "people_lookup",
+        "phone_call"
+      ]
+    },
+    {
+      "id": "calendar_create",
+      "pass": true,
+      "failures": [],
+      "spoken": "הכנתי טיוטה ליומן: תור לרופא, מחר, 17 באוגוסט, בשעה 10:00 בבוקר. עדיין לא שמרתי — לשמור?",
+      "tools": [
+        "prepare_calendar_event"
+      ]
+    },
+    {
+      "id": "calendar_confirm",
+      "pass": true,
+      "failures": [],
+      "spoken": "שמתי ביומן: תור לרופא מחר, 17 באוגוסט, בשעה 10:00 בבוקר. הכל שמור.",
+      "tools": [
+        "confirm_calendar_event"
+      ]
+    },
+    {
+      "id": "calendar_readback",
+      "pass": true,
+      "failures": [],
+      "spoken": "קבעת תור לרופא ב-17 באוגוסט בשעה 10:00 בבוקר.",
+      "tools": [
+        "read_calendar"
+      ]
+    },
+    {
+      "id": "reminder",
+      "pass": true,
+      "failures": [],
+      "spoken": "הזכרון הוגדר: מחר בבוקר תהיה לך תזכורת להתקשר לביטוח.",
+      "tools": [
+        "set_reminder"
+      ]
+    },
+    {
+      "id": "medication_refusal",
+      "pass": true,
+      "failures": [],
+      "spoken": "אני לא יכולה להגדיר תזכורת קבועה לכדור או לתרופה. אולי לאו או בית המרקחת יכולים לעזור לך ע",
+      "tools": [
+        "set_reminder"
+      ]
+    },
+    {
+      "id": "online_lookup",
+      "pass": true,
+      "failures": [],
+      "spoken": "בערך 700 שקל, זה הסכום של בושם בלו דה שאנל בישראל.",
+      "tools": [
+        "get_current_info"
+      ]
+    },
+    {
+      "id": "online_followup",
+      "pass": false,
+      "failures": [
+        "MISSING_TOOL",
+        "PREAMBLE"
+      ],
+      "spoken": "לא בדקתי עכשיו על גרסאות שונות, אז אני לא בטוחה. את רוצה שאחפש שוב במיוחד על גרסה קטנה?",
+      "tools": []
+    },
+    {
+      "id": "emotional",
+      "pass": true,
+      "failures": [],
+      "spoken": "מרתיטה, אני איתך. זה טבעי ועמוק הגעגוע הזה. רוצה לספר לי איזה זיכרון קטן מפפי שיעשה לך חם ",
+      "tools": []
+    },
+    {
+      "id": "spanish_switch",
+      "pass": true,
+      "failures": [],
+      "spoken": "Acá estoy, mi reina, acompañándote. ¿Y vos, cómo te sentís con todo esto que me contás?",
+      "tools": []
+    },
+    {
+      "id": "spanish_back",
+      "pass": true,
+      "failures": [],
+      "spoken": "השעה עכשיו בערך 22:40.",
+      "tools": [
+        "get_current_info"
+      ]
+    },
+    {
+      "id": "garbled",
+      "pass": true,
+      "failures": [],
+      "spoken": "הבנתי שחסר לי חלק ממה שאמרת. זה קשור לאיזה אירוע או מקום? תני לי עוד קצת כיוון כדי שאוכל ל",
+      "tools": []
+    },
+    {
+      "id": "cannot_do",
+      "pass": true,
+      "failures": [],
+      "spoken": "אני לא יכולה להזמין מונית. את יכולה לנסות להתקשר ישירות לחברת מוניות או להשתמש באפליקציה. ",
+      "tools": []
+    }
+  ]
+}
