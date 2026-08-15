@@ -15,8 +15,8 @@
   },
   "realtimeEventCount": 19,
   "totalRows": 172,
-  "executedRows": 151,
-  "cellCoveragePct": 87.8,
+  "executedRows": 153,
+  "cellCoveragePct": 89,
   "rows": [
     {
       "cell": "wait_for_user.required_subset",
@@ -946,106 +946,106 @@
       "cell": "screen.Home",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview)"
     },
     {
       "cell": "screen.Opening",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.Offline",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.Error",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.Admin",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.AbuAI",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.AbuWhatsApp",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.Settings",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview)"
     },
     {
       "cell": "screen.AbuGames",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.AbuWeather",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.AbuCalendar",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.AbuBank",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.AbuNews",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.FamilyGallery",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "screen.FamilyRecord",
       "dimension": "screen_render",
       "layer": 2,
       "status": "not_run",
-      "detail": "browser harness: render, RTL, ≥16px text, no dev text in prod"
+      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
     },
     {
       "cell": "event.AUDIO_ROUTE_ENDED",

@@ -32,7 +32,12 @@ for (const c of l1) rows.push({ cell: c.id, dimension: 'tool_schema_contract', l
 // tool_failure_path cells are EXECUTED by src/services/toolArgFuzz.test.ts (Layer-2 wiring: generated
 // malformed args to every handler; contract = never throws / always replies / valid JSON / no phone leak).
 for (const t of tools) for (const fp of t.failurePaths) rows.push({ cell: `${t.name}.${fp}`, dimension: 'tool_failure_path', layer: 2, status: 'pass', detail: 'executed by toolArgFuzz.test (generated args, contract holds)' })
-for (const s of screenInventory()) rows.push({ cell: `screen.${s}`, dimension: 'screen_render', layer: 2, status: 'not_run', detail: 'browser harness: render, RTL, ≥16px text, no dev text in prod' })
+// screen_render: Home + Settings are EXECUTED by e2e/screen-invariants.spec (real browser vs a
+// production Preview: render, RTL, >=16px, no QA/dev text). The DEV-gated "QA: v" badge being ABSENT
+// is a GLOBAL production invariant that holds for ALL screens; per-screen navigation for the other 13
+// is the mechanical remainder. Marked pass only where actually driven.
+const SCREENS_BROWSER_COVERED = new Set(['Home', 'Settings'])
+for (const s of screenInventory()) rows.push({ cell: `screen.${s}`, dimension: 'screen_render', layer: 2, status: SCREENS_BROWSER_COVERED.has(s) ? 'pass' : 'not_run', detail: SCREENS_BROWSER_COVERED.has(s) ? 'executed by e2e/screen-invariants.spec (browser vs prod preview)' : 'browser harness nav pending (global no-dev-text invariant already proven)' })
 // realtime_event_invariant cells are EXECUTED by liveSession.test "Layer 2 — realtime event +
 // connection-code invariants" (9 codes → truthful Hebrew reason; 10 server events → driven invariant).
 for (const e of events) rows.push({ cell: `event.${e}`, dimension: 'realtime_event_invariant', layer: 2, status: 'pass', detail: 'executed by liveSession.test event-invariant block' })
