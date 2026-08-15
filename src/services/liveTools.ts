@@ -281,8 +281,15 @@ export function defaultOnlineFetch(): OnlineFetch {
   }
 }
 
+/** Max length of any tool STRING argument. Real args are short (a name, a query, a fact); an
+ *  oversized value is malformed input, and letting it reach a date/time/name parser can be
+ *  pathologically slow (a fuzz-found Layer-2 defect). Bound it here so EVERY handler is protected. */
+const MAX_TOOL_STR = 4000
 function str(a: Record<string, unknown>, k: string): string | undefined {
-  return typeof a[k] === 'string' && (a[k] as string).trim() ? (a[k] as string).trim() : undefined
+  const v = a[k]
+  if (typeof v !== 'string') return undefined
+  const bounded = v.length > MAX_TOOL_STR ? v.slice(0, MAX_TOOL_STR) : v
+  return bounded.trim() ? bounded.trim() : undefined
 }
 
 /** Remove anything the model could cite as a source from the online answer BEFORE it

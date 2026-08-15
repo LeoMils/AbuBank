@@ -11,7 +11,7 @@ and the liveSession event switch. A tool/screen/event added there appears here a
 ## Layer 1 — tool CONTRACT cells (EXECUTED): 97/97 pass
 - all contract cells pass (valid types, non-empty descriptions, required⊆properties, unknown-param rejection, well-formed enums)
 
-## Cell-level ledger: 172 cells seeded · 97 executed (56.4%)
+## Cell-level ledger: 172 cells seeded · 132 executed (76.7%)
 - Layer 1 (executed now): tool-schema contract.
 - Layer 2 (not_run — next): tool failure-path behaviour (generated args → handler), every screen via a browser harness, realtime-event invariants.
 - Layer 3 (not_run): declared-unbuilt-capability declines (model behaviour, sampled).

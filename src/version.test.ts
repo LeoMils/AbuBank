@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.266.0-preamble-gap-instr')
-    expect(APP_VERSION.buildLabel).toContain('the commit window must be DERIVED')
+    expect(APP_VERSION.version).toBe('0.267.0-layer2-toolfuzz')
+    expect(APP_VERSION.buildLabel).toContain('Layer-2 tool-arg wiring')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

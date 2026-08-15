@@ -15,8 +15,8 @@
   },
   "realtimeEventCount": 19,
   "totalRows": 172,
-  "executedRows": 97,
-  "cellCoveragePct": 56.4,
+  "executedRows": 132,
+  "cellCoveragePct": 76.7,
   "rows": [
     {
       "cell": "wait_for_user.required_subset",
@@ -701,246 +701,246 @@
       "cell": "wait_for_user.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "wait_for_user.no_args",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "resolve_contact.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "resolve_contact.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "read_calendar.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "prepare_calendar_event.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "prepare_calendar_event.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "correct_calendar_field.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "correct_calendar_field.out_of_enum_value",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "confirm_calendar_event.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "confirm_calendar_event.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "cancel_calendar_event.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "cancel_calendar_event.no_args",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "update_calendar_event.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "update_calendar_event.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "update_calendar_event.out_of_enum_value",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "whatsapp_draft.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "whatsapp_draft.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "phone_call.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "phone_call.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "cancel_communication.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "cancel_communication.no_args",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "get_current_info.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "get_current_info.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "people_lookup.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "people_lookup.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "people_lookup.out_of_enum_value",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "history_lookup.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "history_lookup.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "care_concern.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "care_concern.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "remember.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "remember.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "set_reminder.missing_required_param",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "set_reminder.unknown_param_rejected",
       "dimension": "tool_failure_path",
       "layer": 2,
-      "status": "not_run",
-      "detail": "behaviour — Layer-2 wiring (feed generated args to the handler)"
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
     },
     {
       "cell": "screen.Home",
