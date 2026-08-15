@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.276.0-earonly',
-  buildLabel: 'AbuBank 0.276.0 — VOICE-INVALID-VALUE FIX: the device died on the FIRST user turn (v0.275.0, two-response ON) with code=invalid_value on param response.output_modalities. Root cause PROVEN on the real gpt-realtime instrument (docs/eval/MODALITY_VALIDATION_PROBE.json): the model rejects output_modalities [audio,text] — Supported combinations are [text] and [audio] only; [text] and [audio] alone are accepted. FIX: the two-response spoken-answer response now sends [audio] (single element, which already carries a text transcript), removing the only payload the single-response path never sent. Added a red-first regression on the exact rejected value, and a SAFE-CONFIG FALLBACK so a fatal server error is never a dead end for an 81-year-old: the session reconnects ONCE on the known-good baseline (experimental flags OFF, server owns the turn) and keeps talking instead of showing an error screen. Prior: LAYER3-SAFETY medication guard (v0.275). Do NOT merge (production serves Aug 5).',
+  version:    '0.277.0-earonly',
+  buildLabel: 'AbuBank 0.277.0 — TOOL-RESULT-HANG FIX (overnight P0): a tool result must ALWAYS produce speech. Owner device trace showed the cinema lookup returned and Abu then went silent for 60s (screen stuck on מחפשת). FIRST DIVERGENCE: in two-response mode the grounded response.create that LiveTools sends after a tool result was DEFERRED (FIX 4, decision response still active), and the two-response decision-done branch broke WITHOUT flushing it — a regression from our own v0.276 two-response fix. FIX: the decision-done branch now flushes the deferred grounded response on a tool turn, and a universal WATCHDOG (LIVE_TOOL_RESULT_AUDIO_TIMEOUT_MS=4s) forces a response if no audio follows any tool result, on every path. Red-first regressions for both. Prior: VOICE-INVALID-VALUE (v0.276), LAYER3-SAFETY (v0.275). Do NOT merge (production serves Aug 5).',
   buildDate:  '2026-08-16',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time

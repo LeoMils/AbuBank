@@ -24,6 +24,7 @@ import {
   LIVE_VAD_THRESHOLD,
   LIVE_VAD_PREFIX_PADDING_MS,
   LIVE_INTERRUPT_RESPONSE,
+  LIVE_TOOL_RESULT_AUDIO_TIMEOUT_MS,
   LIVE_TRANSCRIBE_MODEL,
   LIVE_REASONING_EFFORT,
   connectionReasonHe,
@@ -690,6 +691,22 @@ describe('two-response preamble wiring (flag-gated, client-driven turns)', () =>
     h.session.teardown()
   })
 
+  it('REGRESSION (device hang, Part 3 #1): a TOOL turn flushes the grounded response so a tool result ALWAYS produces speech', async () => {
+    const h = makeHarness({ twoResponse: true, isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' }) // text decision → activeResponse optimistic
+    // The decision response calls a tool. LiveTools sends function_call_output + response.create, and
+    // that create is DEFERRED because the decision response is still active (FIX 4).
+    h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'people_lookup', call_id: 'call_hang', arguments: '{"want":"contact","person":"לאו"}' })
+    const mark = h.pc.dc!.sent.length
+    // Decision finishes. The OLD code broke here without flushing → the grounded create was orphaned
+    // and Abu never spoke after the tool result (the cinema hang). Now it is flushed.
+    h.pc.dc!.fire({ type: 'response.done', response: { status: 'completed' } })
+    const grounded = h.pc.dc!.sent.slice(mark).filter((e) => e.type === 'response.create' && !e.response)
+    expect(grounded.length).toBeGreaterThanOrEqual(1) // the grounded answer IS created → she speaks
+    h.session.teardown()
+  })
+
   it('with the flag OFF the client sends NO decision response on speech_stopped (server owns the turn)', async () => {
     const h = makeHarness({ twoResponse: false })
     await h.session.connect(); h.pc.dc!.fireOpen()
@@ -697,5 +714,38 @@ describe('two-response preamble wiring (flag-gated, client-driven turns)', () =>
     h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' })
     expect(h.pc.dc!.sent.slice(before).filter((e) => e.type === 'response.create').length).toBe(0)
     h.session.teardown()
+  })
+})
+
+describe('tool-result speech guarantee (Part 3 #1 — a tool result must NEVER end in silence)', () => {
+  it('forces a response if no audio follows a tool result (baseline path too — the guarantee is universal)', async () => {
+    vi.useFakeTimers()
+    try {
+      const h = makeHarness({ isReconnect: true }) // two-response OFF: the guarantee holds on every path
+      await h.session.connect(); h.pc.dc!.fireOpen()
+      // A tool call → LiveTools sends function_call_output (arms the watchdog) + its own response.create.
+      h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'people_lookup', call_id: 'wd1', arguments: '{"want":"contact","person":"לאו"}' })
+      const before = h.pc.dc!.sent.length
+      // No audio delta ever arrives (the device hang shape). Advance past the budget.
+      vi.advanceTimersByTime(LIVE_TOOL_RESULT_AUDIO_TIMEOUT_MS + 50)
+      const forced = h.pc.dc!.sent.slice(before).filter((e) => e.type === 'response.create')
+      expect(forced.length).toBeGreaterThanOrEqual(1) // the watchdog forced speech
+      h.session.teardown()
+    } finally { vi.useRealTimers() }
+  })
+
+  it('does NOT fire when audio DOES follow the tool result (no spurious double-speak)', async () => {
+    vi.useFakeTimers()
+    try {
+      const h = makeHarness({ isReconnect: true })
+      await h.session.connect(); h.pc.dc!.fireOpen()
+      h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'people_lookup', call_id: 'wd2', arguments: '{"want":"contact","person":"לאו"}' })
+      const before = h.pc.dc!.sent.length
+      h.pc.dc!.fire({ type: 'response.output_audio.delta', item_id: 'it1' }) // audio started → guarantee satisfied
+      vi.advanceTimersByTime(LIVE_TOOL_RESULT_AUDIO_TIMEOUT_MS + 50)
+      const forced = h.pc.dc!.sent.slice(before).filter((e) => e.type === 'response.create')
+      expect(forced.length).toBe(0) // watchdog cleared by the audio → no forced extra response
+      h.session.teardown()
+    } finally { vi.useRealTimers() }
   })
 })

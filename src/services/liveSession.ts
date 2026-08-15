@@ -150,6 +150,13 @@ export const LIVE_REASONING_EFFORT = 'low' as const
  *  (fail closed — there is no TTS fallback in M1). */
 export const LIVE_AUDIO_TIMEOUT_MS = 6000
 
+/** GUARANTEE (Part 3 #1): after a tool RESULT goes out (function_call_output), Abu MUST speak the
+ *  grounded answer. If no output audio begins within this budget, the session FORCES a fresh
+ *  response so a tool result can never end in silence — an 81-year-old cannot recover from an
+ *  assistant that returns a result and then stops existing. Cleared the instant audio arrives. The
+ *  online round-trip itself is ~1–1.5s on the trace, so 4s is safe headroom above a real answer. */
+export const LIVE_TOOL_RESULT_AUDIO_TIMEOUT_MS = 4000
+
 /** SDP call target for the WebRTC offer/answer exchange. */
 export const REALTIME_CALLS_URL = 'https://api.openai.com/v1/realtime/calls'
 
@@ -469,6 +476,9 @@ export class LiveSession {
   private epoch = 0
   private torn = false
   private audioWatchdog: ReturnType<typeof setTimeout> | null = null
+  /** GUARANTEE watchdog: armed when a tool RESULT is sent, cleared when Abu's audio starts. If it
+   *  fires, no audio came after the tool result → force a response so the turn cannot end in silence. */
+  private toolResultWatchdog: ReturnType<typeof setTimeout> | null = null
   private _state: LiveState = 'idle'
   /** The ONE tool executor for this session (contacts, calendar, whatsapp/call). */
   private readonly liveTools: LiveTools
@@ -820,6 +830,7 @@ export class LiveSession {
         if (typeof e.item_id === 'string') this.currentAssistantItemId = e.item_id
         if (this.audioStartedAt === null) this.audioStartedAt = this.deps.now()
         this.clearAudioWatchdog()
+        this.clearToolResultWatchdog() // audio arrived → the tool-result guarantee is satisfied
         this.setState('speaking')
         break
       case 'response.output_audio_transcript.done':
@@ -847,8 +858,15 @@ export class LiveSession {
             // 'audio' already carries a text transcript, so ['audio'] loses nothing.
             this.send({ type: 'response.create', response: { output_modalities: ['audio'] } })
           }
+          // TOOL TURN (the device hang, Part 3 #1 — a REGRESSION from this very two-response fix):
+          // LiveTools already sent the grounded response.create, but because the TEXT decision
+          // response was still active at that moment, send()'s FIX-4 guard DEFERRED it into
+          // pendingResponseCreate. The old code broke here WITHOUT flushing → the grounded answer
+          // was orphaned and never spoken (screen stuck on "מחפשת…" forever). Flush it now so a tool
+          // result ALWAYS produces speech. (The watchdog below is the belt-and-suspenders guarantee.)
+          if (this.twoRespToolThisTurn) this.flushPendingResponse()
           this.currentAssistantItemId = null; this.audioStartedAt = null
-          break // the answer response's own response.done ends the turn
+          break // the answer/grounded response's own response.done ends the turn
         }
         if (this.twoResponseEnabled && this.twoRespPhase === 'answer') this.twoRespPhase = 'idle' // answer done → turn complete
         // Only a FINAL answer (or a phaseless done) ends the turn. A `commentary`
@@ -857,7 +875,7 @@ export class LiveSession {
         // spoken (LiveTools sends the output + a response.create), so the grounded
         // speech lands in the SAME turn. Ending here would flip to listening early AND
         // make the recorder see a silent turn — the turn ends on the SPOKEN done.
-        if (isEndOfTurn(event) && !fc) { this.recorder.onTurnEnd(); this.clearAudioWatchdog(); if (myEpoch === liveEpoch) this.setState('listening') }
+        if (isEndOfTurn(event) && !fc) { this.recorder.onTurnEnd(); this.clearAudioWatchdog(); this.clearToolResultWatchdog(); if (myEpoch === liveEpoch) this.setState('listening') }
         this.currentAssistantItemId = null; this.audioStartedAt = null // TRACK A: item done
         this.flushPendingResponse()
         this.flushMonitorRepair(myEpoch)   // M2: one-attempt corrective redo (flag-gated), wire now free
@@ -1034,6 +1052,26 @@ export class LiveSession {
     if (this.audioWatchdog) { clearTimeout(this.audioWatchdog); this.audioWatchdog = null }
   }
 
+  /** GUARANTEE (Part 3 #1): arm the tool-result watchdog. If no output audio arrives within the
+   *  budget, FORCE a fresh response so the grounded answer is always voiced — a tool result can
+   *  never end in silence. Idempotent: re-arming resets the timer (multiple tool results in a turn
+   *  extend the guarantee). Cleared by the first audio delta and by teardown. */
+  private armToolResultWatchdog(myEpoch: number): void {
+    this.clearToolResultWatchdog()
+    this.toolResultWatchdog = setTimeout(() => {
+      if (myEpoch !== liveEpoch || this.torn) return
+      // No audio after the tool result. Clear any stuck/text-only active response, then force one.
+      this.recorder.onRecoverableError('tool_result_no_audio_forced_response')
+      if (this.activeResponse) { if (this.dc && this.dc.readyState === 'open') this.dc.send(JSON.stringify({ type: 'response.cancel' })) }
+      this.activeResponse = false
+      this.pendingResponseCreate = false
+      this.send({ type: 'response.create' }) // bare = session default (audio) → the grounded answer is spoken
+    }, LIVE_TOOL_RESULT_AUDIO_TIMEOUT_MS)
+  }
+  private clearToolResultWatchdog(): void {
+    if (this.toolResultWatchdog) { clearTimeout(this.toolResultWatchdog); this.toolResultWatchdog = null }
+  }
+
   /** The single wire-send. A closed channel is a no-op (fail closed). */
   private send(event: Record<string, unknown>): void {
     // Observation only: record the grounded tool result as it goes out.
@@ -1041,6 +1079,8 @@ export class LiveSession {
       const item = event.item as { type?: string; output?: string } | undefined
       if (item?.type === 'function_call_output' && typeof item.output === 'string') {
         try { this.recorder.onToolResult('', JSON.parse(item.output)) } catch { /* */ }
+        // GUARANTEE: a tool result must produce speech. Arm the watchdog; audio clears it.
+        this.armToolResultWatchdog(this.epoch)
       }
     }
     // FIX 4: never send a second response.create while one is active — that race is the
@@ -1080,6 +1120,7 @@ export class LiveSession {
     this.torn = true
     liveEpoch++ // invalidate every handler closed over this session's epoch
     this.clearAudioWatchdog()
+    this.clearToolResultWatchdog()
     if (this.dc) { try { this.dc.close() } catch { /* */ } this.dc = null }
     if (this.micStream) { this.micStream.getTracks().forEach((t) => { try { t.stop() } catch { /* */ } }); this.micStream = null }
     if (this.sourceNode) { try { this.sourceNode.disconnect() } catch { /* */ } this.sourceNode = null }
