@@ -67,6 +67,30 @@ mini.** The three levers, in order: (a) the idle timeout — **already shipped**
 (b) keep sessions short / verify automatic caching cuts the re-processing multiplier; (c) gpt-realtime-mini if the
 ear accepts it (~3× saving). None of this matters until the account has credit — that is the actual blocker.
 
+## MEASURED (credit-live run — real gpt-realtime usage, not an estimate)
+Ran a realistic 5-turn audio session (`scripts/probes/cost.mjs`) and summed the ACTUAL token usage the
+API reports, priced at the rates below:
+
+| Turn | $ | cached input | audio-out tok |
+|---|---|---|---|
+| greeting (cold cache) | $0.033 | 0 (first turn warms the cache) | 138 |
+| calendar read + grounded | $0.003 + $0.012 | 6,080 | — / spoken |
+| calendar remember + grounded | $0.003 + $0.010 | 6,144 | — / spoken |
+| weather + grounded | $0.004 + $0.011 | 6,144 | — / spoken |
+| loneliness (long reply) | $0.028 | 6,272 | 337 |
+| **session total** | **$0.105 / 5 turns** | — | — |
+
+- **Per-turn avg ≈ $0.021.** Extrapolated to 30 min/day (~3,150 turns/mo @ ~3.5 turns/min): **≈ $66/month**.
+- **PROMPT CACHING IS WORKING automatically:** after the first turn, ~6,000+ of the ~6,100 input tokens bill
+  as `cached` ($0.40/1M vs $4/1M) — confirming the earlier assumption and keeping cost near the base, not the
+  2–5× multiplier. The measured $66/mo sits at the LOW end of the flagship estimate because of this.
+- **The cold first turn (~$0.033) is the cache-warm premium.** Because the idle timeout closes a session at
+  45s, every NEW session pays that first-turn premium again — so aggressively short sessions trade a little
+  cost for the empty-room saving. Net still favourable.
+- **Caveat (lower bound):** the text instrument bills text-input, not the user's mic AUDIO-input (~$32/1M,
+  ~600 tok/min of speech). A real spoken session adds that, so true cost is somewhat above $66/mo — still
+  well inside the estimated band. Data: `docs/eval/COST_MEASURED.json`.
+
 ## Sources
 - OpenAI Realtime pricing (audio $32/$64 per 1M; cached input $0.40/1M): https://www.layer3labs.io/guides/openai-realtime-api-pricing
 - Per-minute conversion (600 in / 1,200 out tokens per min; ~$0.05/min base; 2–5× on long calls): same guide

@@ -486,3 +486,35 @@ describe('people_lookup — who / relationship / relatives / contact (no numbers
     expect(h.lastOutput()!.status).toBe('ambiguous')
   })
 })
+
+describe('set_reminder — medication safety guard (Layer-3 regression)', () => {
+  // FOUND ON THE REAL MODEL (credit-live run): asked to remind her daily at 08:00 to take her
+  // blood-pressure pill, gpt-realtime CALLED set_reminder and confirmed it was set — violating the
+  // policy that Abu must NEVER own medication timing. Instruction-level said "decline"; the model
+  // complied anyway. So the block must be DETERMINISTIC at the tool, not a prompt line.
+  const MED_PHRASES = [
+    'תזכירי לי כל יום בשמונה בבוקר לקחת את הכדור ללחץ דם',
+    'תזכירי לי לקחת תרופה בארבע',
+    'תזכירי לי את הגלולה מחר בבוקר',
+    'recordame tomar la pastilla a las ocho',
+    'remind me to take my insulin at 8',
+  ]
+  for (const text of MED_PHRASES) {
+    it(`refuses to set a medication reminder: "${text.slice(0, 30)}…"`, () => {
+      const h = harness()
+      h.call('set_reminder', { text })
+      const out = h.lastOutput()!
+      expect(out.status).not.toBe('reminder_set')       // the reminder must NOT be created
+      expect(out.status).toBe('declined_medication')     // an explicit, honest decline (guard returns pre-create)
+      expect(h.sent.filter((e) => e.type === 'response.create').length).toBe(1) // still speaks (warm decline)
+    })
+  }
+
+  it('does NOT false-block an ordinary (non-medication) reminder', () => {
+    const h = harness()
+    h.call('set_reminder', { text: 'תזכירי לי מחר בעשר להתקשר לרותי' })
+    // The guard must let this THROUGH to the normal create path (persistence itself is not
+    // exercised in node — reminder_set / not_saved / needs_detail are all "not blocked").
+    expect(h.lastOutput()!.status).not.toBe('declined_medication')
+  })
+})

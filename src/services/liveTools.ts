@@ -38,6 +38,12 @@ import { createReminder } from '../screens/AbuCalendar/reminders/reminderStore'
 
 export type SendEvent = (event: Record<string, unknown>) => void
 
+/** Medication intent in a reminder request (Hebrew + Spanish + English). Matches the unambiguous
+ *  medicine words and "take the pill" / "pill for <condition>" phrasings, while NOT matching a
+ *  football (כדורגל) or a plain ball — so an ordinary reminder is never falsely blocked. Used to
+ *  refuse a medication reminder deterministically (see doSetReminder). */
+const MEDICATION_REMINDER = /(תרופ|גלול|זריק|אינסולין|מרשם|מינון|טיפות|כדור\s*(ל|של)\s*(לחץ|סוכר|לב|כולסטרול|בלוטה)|לקחת\s+(את\s+)?(ה)?כדור|pastilla|medicament|medicina|remedio|insulin|\bdosis\b|\bdose\b|\bpill\b|\btablet\b|\bmedication\b|\bmedicine\b)/i
+
 /** The calendar event shape the live path reads and writes. Carries every field the
  *  prepare_calendar_event tool accepts, so a created event round-trips losslessly
  *  (title/date/time/participant/location/notes) through persist → read → update. */
@@ -431,6 +437,18 @@ export class LiveTools {
    *  cannot set a reminder — this is that capability. Missing a time ⇒ ask, not refuse. */
   private doSetReminder(args: Record<string, unknown>): Record<string, unknown> {
     const raw = str(args, 'text') ?? str(args, 'query') ?? ''
+    // MEDICATION SAFETY (Layer-3 regression): the real model WILL call set_reminder for a
+    // blood-pressure pill despite the instruction to decline. Abu must NEVER own medication
+    // timing — a missed/duplicated dose is a real harm. Block it DETERMINISTICALLY here (a prompt
+    // line was proven insufficient) and hand the model an honest, warm decline. Non-medication
+    // reminders are unaffected.
+    if (MEDICATION_REMINDER.test(raw)) {
+      return { status: 'declined_medication', allowed_to_say: [
+        'warmly explain you cannot be responsible for medication reminders — getting a dose or a time wrong is too important to risk',
+        'suggest she ask a family member, or use a dedicated pill reminder / her pharmacy',
+        'do NOT confirm any reminder was set, and do NOT ask for the time as if you could',
+      ] }
+    }
     // The estate parser handles "בעוד חמש דקות"/"בעוד שעה" but not the bare singular
     // "בעוד דקה" (the exact trace phrase, INC-07). Normalize singular minute/hour to a
     // quantified form the parser understands — a local fix, not an edit to the shared parser.
