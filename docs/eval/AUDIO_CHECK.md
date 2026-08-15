@@ -1,37 +1,35 @@
-# AUDIO_CHECK — 5 minutes on your phone, out loud, in Hebrew
+# AUDIO_CHECK — 5 minutes, one link, one pass
 
-Open BOTH links (v0.259.0):
-- **OFF** (audio flags off): https://abu-bank-fylxol5mz-leos-projects-d3c04c09.vercel.app
-- **ON**  (audio flags on):  https://abu-bank-hsej28ty2-leos-projects-d3c04c09.vercel.app
+ONE link, every audio flag already enabled (far-field noise reduction + barge-in truncate + prefetch):
 
-The ON build has the two audio flags enabled (far-field noise reduction + barge-in truncate).
-Do each step on OFF, then the SAME step on ON, and note which sounds better.
+  https://abu-bank-m6a90tdhe-leos-projects-d3c04c09.vercel.app   (v0.266.0)
 
-Speakerphone, not the earpiece — this is a speakerphone fix.
+Open Abu AI on your phone, speakerphone (not the earpiece), out loud, in Hebrew. Five things to
+listen for. For each: one line of what you heard, and OK or NOT.
 
 ---
 
-1. **No second voice at the start.** Open Abu AI and just listen for the first 3 seconds.
-   · Listen: is there ever a doubled / echoey / overlapping voice as she greets? ·
-   PASS: exactly one clean voice. (This is what far-field noise reduction should fix.)
+1. **Full sentence audible.** Ask: "מה שלומך היום?"
+   · PASS: the WHOLE reply plays start to finish, matching the text on screen — not just the first
+   sentence while more text appears.
 
-2. **She stops when you talk over her.** While she is speaking a sentence, start talking.
-   · Listen: does she stop cleanly and listen — not keep going, not cut to one word then go
-   silent? · PASS on ON: she yields and hears you. (If ON cuts her to one word and then silence,
-   that is the echo returning — note it, that is the key thing to tell me.)
+2. **No second voice.** Open Abu AI and listen to the first few seconds as she greets.
+   · PASS: exactly one clean voice — never a doubled / echoey / overlapping voice.
 
-3. **The WHOLE answer is audible.** Ask: "מה שלומך היום?"
-   · Listen: does the full reply play start to finish, matching the text on screen — or does only
-   the first sentence play while more text appears? · PASS: the audio matches the whole text.
+3. **She stops when you talk.** While she is speaking, start talking over her.
+   · PASS: she stops cleanly and listens. FAIL (important — tell me): she cuts to one word then goes
+   silent (that is the echo returning; note it).
 
 4. **Silence while she looks something up.** Ask: "כמה עולה הבושם בלו דה שאנל?"
-   · Listen: the first WORDS you hear should be the answer. A soft tone while she looks is fine.
-   Words like "רגע, אני אבדוק" before the answer are a FAIL — note it.
+   · PASS: the first WORDS you hear are the answer. A soft tone while she looks is fine.
 
-5. **She does not talk to herself.** Have a normal 4–5 turn chat, then stay quiet for 10 seconds.
-   · Listen: in the quiet, does she start talking on her own / repeat a greeting? ·
-   PASS: she stays quiet until you speak.
+5. **No "אני בודקת" before an answer.** Ask anything that makes her look something up
+   (a price, the weather, "מה יש לי מחר"). Listen to her FIRST words.
+   · PASS: she goes straight to the answer. FAIL: she says "רגע, אני בודקת" / "שנייה, אני מבררת"
+   first. **This one is expected to still FAIL** — it is not fixed yet; your report of HOW LONG she
+   talks before the answer is exactly the measurement we need (the app also logs it). Just note
+   roughly how many seconds of "אני בודקת…" you hear before the real answer.
 
 ---
-For each: was OFF or ON better, and one line of what you heard. Any FAIL on ON step 2 (one word
-then silence) is the most important line — it tells me the echo needs more taming before this ships.
+Items 1–4 test the audio flags that are now on. Item 5 is the preamble — not yet fixed; your ear on
+it feeds the fix. One line each is enough.
