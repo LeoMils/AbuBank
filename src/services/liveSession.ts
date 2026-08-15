@@ -200,9 +200,14 @@ export function todayInstruction(now: number): string {
  *  can be regression-locked. `now` seeds the runtime "today" line. */
 export function buildSessionUpdate(
   now: number = Date.now(),
-  opts: { farField?: boolean } = {},
+  opts: { farField?: boolean; twoResponse?: boolean } = {},
 ): Record<string, unknown> {
   const farField = opts.farField ?? LIVE_AUDIO_TUNE_V2
+  // TWO-RESPONSE (M1b, flag-gated): when on, the SERVER must NOT auto-create the turn's response
+  // (that response uses the session's audio modality and can voice a preamble). Instead the CLIENT
+  // drives a TEXT-ONLY decision response then a spoken answer (see the handler). Default: server
+  // auto-create (create_response:true) — byte-identical to the current behaviour when the flag is off.
+  const twoResponse = opts.twoResponse ?? LIVE_PREAMBLE_TWO_RESPONSE
   // Every provider-capped STRING field is guarded here against its documented maximum,
   // on the EXACT values sent over the data channel. Over ANY cap, the whole session.update
   // is rejected with string_above_max_length and voice connects then dies ~500ms later.
@@ -237,7 +242,7 @@ export function buildSessionUpdate(
             threshold: LIVE_VAD_THRESHOLD,
             prefix_padding_ms: LIVE_VAD_PREFIX_PADDING_MS,
             silence_duration_ms: LIVE_VAD_SILENCE_MS,
-            create_response: true,
+            create_response: !twoResponse,
             interrupt_response: LIVE_INTERRUPT_RESPONSE,
           },
         },
@@ -409,6 +414,9 @@ export interface LiveDeps {
   /** Optional: the durable calendar store the live tools read/write (real one by default;
    *  tests inject an in-memory store to prove read-after-write without a browser). */
   calendarStore?: LiveCalendarStore
+  /** Optional: force the two-response preamble path on/off (default = the LIVE_PREAMBLE_TWO_RESPONSE
+   *  flag). Lets a test exercise the client-driven turn wiring without a build-time env var. */
+  twoResponseOverride?: boolean
 }
 
 // A minimal in-memory storage so the module never throws when constructed
@@ -494,6 +502,14 @@ export class LiveSession {
    *  truncate to. Both reset when the response ends. Observation only unless the flag is on. */
   private currentAssistantItemId: string | null = null
   private audioStartedAt: number | null = null
+  /** TWO-RESPONSE (M1b, flag-gated) per-turn state. 'decision' = the client-driven TEXT-ONLY
+   *  tool-selecting response is in flight (never voiced); 'answer' = the spoken response is in
+   *  flight. `twoRespToolThisTurn` records whether the decision called a tool (tool turn speaks via
+   *  LiveTools; a plain turn is spoken by an explicit answer response). Idle unless the flag is on. */
+  private twoRespPhase: 'idle' | 'decision' | 'answer' = 'idle'
+  private twoRespToolThisTurn = false
+  /** Whether the two-response path is active for THIS session (deps override, else the flag). */
+  private readonly twoResponseEnabled: boolean
   /** Flight recorder — OBSERVATION ONLY. Records my/her speech + every tool call,
    *  and surfaces silent-turn (C.3) + truncation-evidence (C.2) flags. It never
    *  changes turn/VAD/audio behaviour; the live session only appends to it.
@@ -509,6 +525,7 @@ export class LiveSession {
     this.conversationId = conversationId
     this.isReconnect = isReconnect
     this.deps = { ...defaultDeps(), ...deps }
+    this.twoResponseEnabled = this.deps.twoResponseOverride ?? LIVE_PREAMBLE_TWO_RESPONSE
     this.recorder = new FlightRecorder(() => this.deps.now())
     // ONE tool executor, wired to send over this session's data channel and to the
     // durable calendar store (or an injected one in tests). No conversation state.
@@ -651,7 +668,7 @@ export class LiveSession {
         // turn_detection, reasoning.effort, and the tool set. Build it ONCE and record its
         // size on the trace connection line, so an over-limit field (string_above_max_length)
         // shows up as a number in the trace instead of only failing on a device.
-        const payload = buildSessionUpdate(this.deps.now())
+        const payload = buildSessionUpdate(this.deps.now(), { twoResponse: this.twoResponseEnabled })
         const json = JSON.stringify(payload)
         const bytes = typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(json).length : json.length
         this.recorder.onConnectOk(model, { chars: json.length, bytes })
@@ -768,6 +785,14 @@ export class LiveSession {
         // UI hint only: the user finished; show 'thinking' until Abu's audio starts.
         // No state/VAD/turn change — the model owns turn-taking.
         this.cb.onThinking?.()
+        // TWO-RESPONSE (flag-gated): the server no longer auto-creates the turn (create_response
+        // is false), so the CLIENT drives it — a TEXT-ONLY decision response first, so a preamble
+        // can never be voiced. The answer is spoken as a second response (see response.done).
+        if (this.twoResponseEnabled && this.twoRespPhase === 'idle') {
+          this.twoRespPhase = 'decision'
+          this.twoRespToolThisTurn = false
+          this.send({ type: 'response.create', response: { output_modalities: ['text'] } })
+        }
         break
       case 'conversation.item.input_audio_transcription.completed':
         // Side-channel ONLY: hand the UI the Hebrew transcript. Nothing routes on it.
@@ -796,6 +821,18 @@ export class LiveSession {
         // The active response finished — FIX 4: the wire is free, so flush any create we
         // deferred (a tool result, a typed confirm, or a barged-in user turn) now.
         this.activeResponse = false
+        // TWO-RESPONSE (flag-gated): the TEXT-ONLY decision response just finished. This is NOT
+        // end-of-turn — the answer is still to be spoken. A tool turn is spoken by LiveTools'
+        // grounded response; a plain turn (no tool) we speak now as an explicit AUDIO response.
+        if (this.twoResponseEnabled && this.twoRespPhase === 'decision') {
+          this.twoRespPhase = 'answer'
+          if (!this.twoRespToolThisTurn && !fc) {
+            this.send({ type: 'response.create', response: { output_modalities: ['audio', 'text'] } })
+          }
+          this.currentAssistantItemId = null; this.audioStartedAt = null
+          break // the answer response's own response.done ends the turn
+        }
+        if (this.twoResponseEnabled && this.twoRespPhase === 'answer') this.twoRespPhase = 'idle' // answer done → turn complete
         // Only a FINAL answer (or a phaseless done) ends the turn. A `commentary`
         // done is mid-turn — keep speaking; more audio is coming. A done that CARRIED
         // a function call (fc truthy) is ALSO mid-turn: the tool result is about to be
@@ -852,6 +889,9 @@ export class LiveSession {
     // record a second call, ack twice, or (critically) commit a calendar event twice.
     if (this.dispatchedCalls.has(fc.callId)) return
     this.dispatchedCalls.add(fc.callId)
+    // TWO-RESPONSE: this turn called a tool → the grounded answer is spoken by LiveTools' response
+    // (no separate plain-answer response needed). Only meaningful while the flag is on.
+    this.twoRespToolThisTurn = true
     this.recorder.onToolCall(fc.name, safeParseArgs(fc.argsJson))  // observation only
     // M1 preamble measurement (DEVICE): if audio already started this response, Abu spoke a
     // preamble before this tool call — record the gap so a real device session builds the

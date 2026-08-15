@@ -36,7 +36,7 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.272.0-earonly')
+    expect(APP_VERSION.version).toBe('0.273.0-earonly')
     expect(APP_VERSION.buildLabel).toContain('TWO-RESPONSE')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)

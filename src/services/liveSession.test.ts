@@ -98,6 +98,7 @@ function makeHarness(opts: {
   conversationId?: string
   storage?: Map<string, string>
   micOverride?: FakeTrack
+  twoResponse?: boolean
 } = {}): Harness {
   const pc = new FakePeerConnection()
   const storageMap = opts.storage ?? new Map<string, string>()
@@ -135,6 +136,7 @@ function makeHarness(opts: {
     storage,
     now: () => 1_000_000,
     ...(opts.micOverride ? { micTrackOverride: () => opts.micOverride as unknown as MediaStreamTrack } : {}),
+    ...(opts.twoResponse !== undefined ? { twoResponseOverride: opts.twoResponse } : {}),
   }
 
   const conversationId = opts.conversationId ?? 'conv_test'
@@ -606,6 +608,47 @@ describe('Layer 2 — realtime event + connection-code invariants', () => {
     expect(h.session.state).not.toBe('error') // recoverable
     h.pc.dc!.fire({ type: 'error', error: { code: 'server_meltdown' } })
     expect(h.session.state).toBe('error') // fatal → truthful error state
+    h.session.teardown()
+  })
+})
+
+describe('two-response preamble wiring (flag-gated, client-driven turns)', () => {
+  it('buildSessionUpdate sets create_response:false when two-response is on (server no longer auto-creates)', () => {
+    const off = buildSessionUpdate(1_000_000, { twoResponse: false }) as { session: { audio: { input: { turn_detection: { create_response: boolean } } } } }
+    const on = buildSessionUpdate(1_000_000, { twoResponse: true }) as { session: { audio: { input: { turn_detection: { create_response: boolean } } } } }
+    expect(off.session.audio.input.turn_detection.create_response).toBe(true)
+    expect(on.session.audio.input.turn_detection.create_response).toBe(false)
+  })
+
+  it('speech_stopped drives a TEXT-ONLY decision response (no preamble can be voiced)', async () => {
+    const h = makeHarness({ twoResponse: true, isReconnect: true }) // reconnect → no greeting occupying the wire
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    const before = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' })
+    const created = h.pc.dc!.sent.slice(before).filter((e) => e.type === 'response.create')
+    expect(created.length).toBe(1)
+    expect((created[0]!.response as { output_modalities: string[] }).output_modalities).toEqual(['text'])
+    h.session.teardown()
+  })
+
+  it('a PLAIN turn (no tool): decision.done triggers a spoken AUDIO answer response', async () => {
+    const h = makeHarness({ twoResponse: true, isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' }) // → text decision
+    const mark = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'response.done', response: { status: 'completed', output: [{ type: 'message' }] } })
+    const created = h.pc.dc!.sent.slice(mark).filter((e) => e.type === 'response.create')
+    expect(created.length).toBe(1)
+    expect((created[0]!.response as { output_modalities: string[] }).output_modalities).toEqual(['audio', 'text'])
+    h.session.teardown()
+  })
+
+  it('with the flag OFF the client sends NO decision response on speech_stopped (server owns the turn)', async () => {
+    const h = makeHarness({ twoResponse: false })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    const before = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' })
+    expect(h.pc.dc!.sent.slice(before).filter((e) => e.type === 'response.create').length).toBe(0)
     h.session.teardown()
   })
 })
