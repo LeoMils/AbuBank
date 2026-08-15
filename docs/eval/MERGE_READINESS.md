@@ -40,4 +40,21 @@ and the still-open preamble ("אני בודקת") whose gap the app now records 
 The instructions TELL her to decline taxi / email / medication-alarm / money-transfer / navigation / games
 (deterministically present + guarded), but that she ACTUALLY declines warmly is a device/ear check.
 
+### D · DEVICE-GATED FLAG PROMOTIONS — machine-enforced, happen AFTER the ear (overnight item 1)
+These live capabilities ship **OFF today, which is correct** — each is gated on the owner's ear, not code.
+The hazard is not that they are off; it is that they get silently forgotten after the ear says yes (the
+ONLINE_DEEP_FETCH failure). `src/services/deviceGatedFlags.ts` now makes that impossible: each flag carries
+`promotionConfirmed`, and `assertDeviceGatedFlagIntegrity()` (run at boot in `main.tsx` AND in
+`deviceGatedFlags.test.ts`) HARD-FAILS if a flag is confirmed but still OFF. The boot log lists every dark
+capability. Promotion sequence, per flag, AFTER AUDIO_CHECK.md passes on device:
+
+| Flag | Ships | Promote when the ear confirms | How to promote |
+|---|---|---|---|
+| `LIVE_AUDIO_TUNE_V2` | OFF | AUDIO_CHECK #2 (no second voice) + #3 (no "one word then silence") | set `promotionConfirmed:true` AND flip the code default ON (or the boot check throws) |
+| `LIVE_BARGE_IN_TRUNCATE` | OFF | AUDIO_CHECK #3 (she stops cleanly) — enable WITH audio-tune | same; must not ship without audio-tune |
+| `LIVE_PREFETCH_WARM` | OFF | device freshness-vs-latency off/on feels fresh | same |
+
+Preamble two-response (`LIVE_PREAMBLE_TWO_RESPONSE`) is the same shape once its gap number is measured on device
+(see AUDIO_CHECK #5). It is built behind a flag but stays OFF until the ~4s gap is confirmed improved.
+
 Nothing else remains. Do NOT merge — production still serves Aug 5; promotion is the owner's call.

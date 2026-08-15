@@ -717,14 +717,28 @@ export class RealtimeVoiceSession {
         if (this.pendingGoodbyeClose) { this.pendingGoodbyeClose = false; this.disconnect() }
         break
 
-      case 'error':
+      case 'error': {
         console.error('[Realtime] Server error:', event.error)
-        if (event.error?.code === 'session_expired' || event.error?.code === 'invalid_session') {
+        const errCode = event.error?.code
+        // CREDIT WALL (overnight item 2): the mint is free so the session OPENS, then the
+        // first inference returns insufficient_quota / credit_balance_exhausted. Proven
+        // against the real account this night. Surface it LOUDLY + distinctly (never the raw
+        // English to Martita, never a mystery ~$0 "transport failure") and fall back to the
+        // pipeline — no reconnect, credit does not return mid-session.
+        if (errCode === 'insufficient_quota' || errCode === 'credit_balance_exhausted') {
+          console.error('[Realtime] CREDIT EXHAUSTED — the OpenAI project has no credit balance. Add credits at platform.openai.com. The realtime transport is fine; this is billing.')
+          this.stage('REALTIME_CREDIT_EXHAUSTED', 'fail', { errorCode: errCode })
+          this.cb.onError('מצב הקול לא זמין כרגע. עוברת למצב חלופי.')
+          this.setState('error')
+          this.cleanup()
+          this.onFatalError?.() // fall back to the pipeline — do not retry
+        } else if (errCode === 'session_expired' || errCode === 'invalid_session') {
           this.attemptReconnect()
         } else {
           this.cb.onError(event.error?.message || 'שגיאה בשרת')
         }
         break
+      }
 
       case 'rate_limits':
         break

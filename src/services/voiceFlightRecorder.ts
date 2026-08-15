@@ -21,6 +21,11 @@ export const VOICE_STAGES = [
   'TRANSCRIPT_LANGUAGE_RESOLVED', 'ABUAI_BRAIN_STARTED', 'ABUAI_BRAIN_COMPLETED',
   'RESPONSE_CREATE_SENT', 'OUTPUT_AUDIO_EVENT_RECEIVED', 'REMOTE_AUDIO_TRACK_RECEIVED',
   'AUDIO_PLAY_REQUESTED', 'AUDIO_PLAY_STARTED', 'AUDIO_PLAY_COMPLETED',
+  // Distinct, searchable operator signal: the OpenAI project has no credit. The mint
+  // is free (200) so the session OPENS, but the first inference returns a session
+  // error insufficient_quota/credit_balance_exhausted → this stage names the wall so a
+  // ~$0 session is never mistaken for a "transport failure" again (overnight item 2).
+  'REALTIME_CREDIT_EXHAUSTED',
 ] as const
 
 export type VoiceStage = typeof VOICE_STAGES[number]

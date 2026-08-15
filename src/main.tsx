@@ -8,11 +8,24 @@ import { APP_VERSION } from './version'
 import { durable } from './services/durableStore'
 import { initPersistenceTrace, traceStage } from './services/persistenceTrace'
 import { initTheme } from './design/theme'
+import { assertDeviceGatedFlagIntegrity, deviceGatedFlagStartupReport } from './services/deviceGatedFlags'
 
 // Apply the persisted Abu-ela theme (Night Garden default; Bright Day is one flip away).
 initTheme()
 
 console.info('[AbuBank Build]', APP_VERSION)
+
+// LOUD, not silent (overnight item 1): report which device-gated live capabilities are
+// dark at boot, and HARD-FAIL if any was ear-confirmed yet still ships OFF (a silently
+// dropped promotion — the ONLINE_DEEP_FETCH hazard). Off-and-awaiting-ear is the correct
+// pre-check state and only logs a visible line.
+try {
+  assertDeviceGatedFlagIntegrity()
+  for (const line of deviceGatedFlagStartupReport()) console.info(line)
+} catch (e) {
+  console.error('[AbuBank Build] DEVICE-GATED FLAG INTEGRITY FAILURE —', (e as Error).message)
+  throw e
+}
 
 // Dev-only self-heal: unregister any prior service worker so the Vite
 // dev server is never shadowed by a stale production cache. Production

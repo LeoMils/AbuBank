@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { VoiceFlightRecorder, VOICE_STAGES } from './voiceFlightRecorder'
 
 describe('Voice Flight Recorder — first missing stage is identifiable (§ recorder, test #14)', () => {
-  it('records all 28 stages and starts pending', () => {
+  it('records all 29 stages and starts pending', () => {
     const r = new VoiceFlightRecorder('t1', 0)
-    expect(VOICE_STAGES.length).toBe(28)
+    expect(VOICE_STAGES.length).toBe(29)
     expect(r.snapshot().stages.every(s => s.status === 'pending')).toBe(true)
   })
   it('identifies the first missing stage where the turn stalled', () => {
