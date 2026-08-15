@@ -161,6 +161,17 @@ export function App() {
     } catch { /* */ }
   }, [setScreen])
 
+  // Diagnostic/test affordance: ?screen=<Screen> renders any screen directly, so the screen-invariant
+  // browser harness can verify EVERY screen (incl. state screens like Offline/Error) for render, RTL,
+  // >=16px text, and no dev/QA text in a production build. Only a VALID Screen enum value is honoured
+  // (junk is ignored); Admin is already tap-reachable, so this exposes nothing new.
+  useEffect(() => {
+    try {
+      const want = new URL(window.location.href).searchParams.get('screen')
+      if (want && (Object.values(Screen) as string[]).includes(want)) setScreen(want as Screen)
+    } catch { /* */ }
+  }, [setScreen])
+
   // P0.3 — app-wide diagnostic overlay. Visible whenever the user
   // navigates to ?diagnostics=1 / ?diagnostic=1 / #diagnostics, or when
   // any entry point (Settings top button, Home pill) opens it.

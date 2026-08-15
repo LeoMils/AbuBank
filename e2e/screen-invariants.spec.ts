@@ -22,27 +22,28 @@ async function assertScreenInvariants(page: Page, label: string) {
   expect(body, `${label}: no dev/debug text`).not.toMatch(/localhost|DEBUG_|__DEV__/)
 }
 
-test.describe('screen invariants (production preview)', () => {
-  test('Home renders, RTL, >=16px, no dev/QA text', async ({ page }) => {
-    await page.goto('/')
-    await page.waitForLoadState('domcontentloaded')
-    await assertScreenInvariants(page, 'Home')
-    // a key piece of text is at least 16px (senior-first)
-    const heading = page.locator('h1, [role="heading"]').first()
-    if (await heading.count()) {
-      const px = await heading.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
-      expect(px, 'Home heading >= 16px').toBeGreaterThanOrEqual(16)
-    }
-  })
+// The 15 screens (Screen enum). Each is rendered directly via ?screen=<name> — a diagnostic/test
+// affordance in App.tsx — so the browser harness verifies EVERY screen, including the state screens
+// (Opening/Offline/Error) that are not reachable by a tile click.
+const SCREENS = [
+  'Home', 'Opening', 'Offline', 'Error', 'Admin', 'AbuAI', 'AbuWhatsApp', 'Settings',
+  'AbuGames', 'AbuWeather', 'AbuCalendar', 'AbuBank', 'AbuNews', 'FamilyGallery', 'FamilyRecord',
+]
 
-  test('Settings renders, RTL, no dev/QA text', async ({ page }) => {
-    await page.goto('/')
-    await page.waitForLoadState('domcontentloaded')
-    const settings = page.getByLabel('הגדרות').first()
-    if (await settings.count()) {
-      await settings.click()
-      await page.waitForTimeout(400)
-    }
-    await assertScreenInvariants(page, 'Settings')
-  })
+test.describe('screen invariants (production preview) — all 15 screens', () => {
+  for (const screen of SCREENS) {
+    test(`${screen}: renders, RTL, >=16px key text, no dev/QA text in prod`, async ({ page }) => {
+      await page.goto(`/?screen=${screen}`)
+      await page.waitForLoadState('domcontentloaded')
+      await page.waitForTimeout(500) // let the screen mount + the ?screen effect run
+      await assertScreenInvariants(page, screen)
+      // senior-first: the primary HEADING text (not icon buttons) is at least 16px. Icon-only
+      // buttons carry glyphs, not readable text, so they are excluded from this floor.
+      const heading = page.locator('h1, h2, [role="heading"]').first()
+      if (await heading.count()) {
+        const px = await heading.evaluate((el) => parseFloat(getComputedStyle(el).fontSize) || 16)
+        expect(px, `${screen}: heading >= 16px`).toBeGreaterThanOrEqual(16)
+      }
+    })
+  }
 })

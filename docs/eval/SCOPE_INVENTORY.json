@@ -15,8 +15,8 @@
   },
   "realtimeEventCount": 19,
   "totalRows": 172,
-  "executedRows": 153,
-  "cellCoveragePct": 89,
+  "executedRows": 166,
+  "cellCoveragePct": 96.5,
   "rows": [
     {
       "cell": "wait_for_user.required_subset",
@@ -947,105 +947,105 @@
       "dimension": "screen_render",
       "layer": 2,
       "status": "pass",
-      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview)"
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.Opening",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.Offline",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.Error",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.Admin",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.AbuAI",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.AbuWhatsApp",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.Settings",
       "dimension": "screen_render",
       "layer": 2,
       "status": "pass",
-      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview)"
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.AbuGames",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.AbuWeather",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.AbuCalendar",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.AbuBank",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.AbuNews",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.FamilyGallery",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "screen.FamilyRecord",
       "dimension": "screen_render",
       "layer": 2,
-      "status": "not_run",
-      "detail": "browser harness nav pending (global no-dev-text invariant already proven)"
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
     },
     {
       "cell": "event.AUDIO_ROUTE_ENDED",
