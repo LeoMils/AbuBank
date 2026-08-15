@@ -602,12 +602,16 @@ describe('Layer 2 — realtime event + connection-code invariants', () => {
     const h = await connected(); h.pc.dc!.fire({ type: 'response.created' }); h.pc.dc!.fire({ type: 'response.done', response: { phase: 'final_answer' } })
     expect(h.session.state).toBe('listening'); h.session.teardown()
   })
-  it('error (recoverable) → NON-fatal; error (fatal) → error state', async () => {
+  it('error (recoverable) → NON-fatal; FIRST fatal → safe-config fallback (recovering, not a dead end)', async () => {
     const h = await connected()
     h.pc.dc!.fire({ type: 'error', error: { code: 'conversation_already_has_active_response' } })
-    expect(h.session.state).not.toBe('error') // recoverable
+    expect(h.session.state).not.toBe('error') // recoverable — session continues
+    // A fatal server error is no longer an immediate dead end: the FIRST one auto-reconnects on the
+    // known-good baseline (safe-config fallback), so Martita is never dropped to an error screen she
+    // cannot debug. The "second fatal → honest error, no loop" bound is covered in the two-response block.
     h.pc.dc!.fire({ type: 'error', error: { code: 'server_meltdown' } })
-    expect(h.session.state).toBe('error') // fatal → truthful error state
+    expect(h.session.state).not.toBe('error') // recovering (connecting), not error
+    expect(h.errors.length).toBe(0)
     h.session.teardown()
   })
 })
@@ -639,7 +643,50 @@ describe('two-response preamble wiring (flag-gated, client-driven turns)', () =>
     h.pc.dc!.fire({ type: 'response.done', response: { status: 'completed', output: [{ type: 'message' }] } })
     const created = h.pc.dc!.sent.slice(mark).filter((e) => e.type === 'response.create')
     expect(created.length).toBe(1)
-    expect((created[0]!.response as { output_modalities: string[] }).output_modalities).toEqual(['audio', 'text'])
+    // REGRESSION (device death v0.275.0, code=invalid_value on param response.output_modalities):
+    // the real gpt-realtime rejects ['audio','text'] — "Supported combinations are: ['text'] and
+    // ['audio']" (proven on the instrument, docs/eval/MODALITY_VALIDATION_PROBE.json). The spoken
+    // answer MUST be a single-element ['audio'] (which already carries a text transcript).
+    const mods = (created[0]!.response as { output_modalities: string[] }).output_modalities
+    expect(mods).toEqual(['audio'])
+    expect(mods.length).toBe(1) // never a multi-element array — that IS the invalid_value the device hit
+    h.session.teardown()
+  })
+
+  it('SAFE-CONFIG FALLBACK: a fatal server error does NOT dead-end — it reconnects on the baseline (two-response OFF)', async () => {
+    const h = makeHarness({ twoResponse: true, isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' }) // two-response drives a text decision
+    // The server fatally rejects a payload (the exact device class: invalid_value on output_modalities).
+    h.pc.dc!.fire({ type: 'error', error: { code: 'invalid_value', param: 'response.output_modalities' } })
+    // NOT an error screen for an 81-year-old — the session is recovering, not dead.
+    expect(h.session.state).not.toBe('error')
+    expect(h.errors.length).toBe(0)
+    // Let the internal reconnect run far enough to create the new data channel, then open it.
+    await new Promise((r) => setTimeout(r))
+    h.pc.dc!.fireOpen()
+    // The rebuilt session.update is the known-good baseline: the SERVER owns the turn again.
+    const su = h.pc.dc!.sent.find((e) => e.type === 'session.update') as
+      | { session: { audio: { input: { turn_detection: { create_response: boolean } } } } }
+      | undefined
+    expect(su?.session.audio.input.turn_detection.create_response).toBe(true)
+    // …and on the next user turn the client sends NO two-response decision (baseline, server-driven).
+    const before = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' })
+    expect(h.pc.dc!.sent.slice(before).filter((e) => e.type === 'response.create').length).toBe(0)
+    h.session.teardown()
+  })
+
+  it('SAFE-CONFIG FALLBACK is spent at most ONCE — a second fatal error surfaces honestly', async () => {
+    const h = makeHarness({ twoResponse: true, isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'error', error: { code: 'invalid_value' } }) // 1st → fallback (recovering)
+    expect(h.session.state).not.toBe('error')
+    await new Promise((r) => setTimeout(r))
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'error', error: { code: 'invalid_value' } }) // 2nd → honest error, no loop
+    expect(h.session.state).toBe('error')
+    expect(h.errors.length).toBe(1)
     h.session.teardown()
   })
 

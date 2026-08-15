@@ -508,8 +508,18 @@ export class LiveSession {
    *  LiveTools; a plain turn is spoken by an explicit answer response). Idle unless the flag is on. */
   private twoRespPhase: 'idle' | 'decision' | 'answer' = 'idle'
   private twoRespToolThisTurn = false
-  /** Whether the two-response path is active for THIS session (deps override, else the flag). */
-  private readonly twoResponseEnabled: boolean
+  /** Whether the two-response path is active for THIS session (deps override, else the flag).
+   *  Cleared by the safe-config fallback (below) so a reconnect after a server error runs the
+   *  known-good single-response baseline. */
+  private twoResponseEnabled: boolean
+  /** SAFE-CONFIG FALLBACK (never a dead end for an 81-year-old). A fatal server error (e.g. the
+   *  two-response invalid_value) must NOT drop Martita to an error screen she cannot debug. On the
+   *  FIRST fatal server error we tear down and reconnect ONCE with every experimental device-gated
+   *  behaviour OFF (the baseline config that shipped and works), keeping the same conversation (no
+   *  re-greet). `safeMode` = this session is running that baseline; `fellBack` = we already spent the
+   *  one automatic recovery attempt (a second fatal error is then surfaced honestly). */
+  private safeMode = false
+  private fellBack = false
   /** Flight recorder — OBSERVATION ONLY. Records my/her speech + every tool call,
    *  and surfaces silent-turn (C.3) + truncation-evidence (C.2) flags. It never
    *  changes turn/VAD/audio behaviour; the live session only appends to it.
@@ -668,7 +678,11 @@ export class LiveSession {
         // turn_detection, reasoning.effort, and the tool set. Build it ONCE and record its
         // size on the trace connection line, so an over-limit field (string_above_max_length)
         // shows up as a number in the trace instead of only failing on a device.
-        const payload = buildSessionUpdate(this.deps.now(), { twoResponse: this.twoResponseEnabled })
+        // In safe mode (after a fatal-error fallback) force the known-good baseline: two-response OFF
+        // and far-field OFF, so the reconnect cannot re-send whatever the server just rejected.
+        const payload = this.safeMode
+          ? buildSessionUpdate(this.deps.now(), { twoResponse: false, farField: false })
+          : buildSessionUpdate(this.deps.now(), { twoResponse: this.twoResponseEnabled })
         const json = JSON.stringify(payload)
         const bytes = typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(json).length : json.length
         this.recorder.onConnectOk(model, { chars: json.length, bytes })
@@ -827,7 +841,11 @@ export class LiveSession {
         if (this.twoResponseEnabled && this.twoRespPhase === 'decision') {
           this.twoRespPhase = 'answer'
           if (!this.twoRespToolThisTurn && !fc) {
-            this.send({ type: 'response.create', response: { output_modalities: ['audio', 'text'] } })
+            // The spoken answer is AUDIO. output_modalities MUST be a single-element value for
+            // gpt-realtime: the model rejects ['audio','text'] with invalid_value (device death on
+            // the first user turn, v0.275.0 — proven on the instrument, MODALITY_VALIDATION_PROBE.json).
+            // 'audio' already carries a text transcript, so ['audio'] loses nothing.
+            this.send({ type: 'response.create', response: { output_modalities: ['audio'] } })
           }
           this.currentAssistantItemId = null; this.audioStartedAt = null
           break // the answer response's own response.done ends the turn
@@ -858,6 +876,11 @@ export class LiveSession {
           break
         }
         if (code === 'response_cancel_not_active') { this.recorder.onRecoverableError(code); break }
+        // SAFE-CONFIG FALLBACK: a fatal server error must never be a dead end. Spend ONE automatic
+        // recovery attempt — reconnect with the baseline config (experimental flags OFF) and keep
+        // talking — before showing Martita an error she cannot act on. The two-response invalid_value
+        // is exactly this class: the baseline single-response path is known-good.
+        if (!this.fellBack && myEpoch === liveEpoch && !this.torn) { this.fallbackToSafeConfig(code); break }
         this.fail('שגיאה בשרת הקול.', code)
         break
       }
@@ -877,6 +900,27 @@ export class LiveSession {
     this.recorder.onRecoverableError('client_barge_in_truncate') // observation: a truncate was issued
     this.currentAssistantItemId = null; this.audioStartedAt = null
     this.activeResponse = false // the response is being cancelled; the wire will be free
+  }
+
+  /** SAFE-CONFIG FALLBACK: reconnect ONCE with the known-good baseline after a fatal server error,
+   *  so a config the server rejects (e.g. two-response's invalid_value) does not strand Martita on an
+   *  error screen. We disable every experimental device-gated behaviour, keep the SAME conversation id
+   *  (so no re-greeting — she just keeps talking), and reconnect. `fellBack` guarantees this happens at
+   *  most once; a second fatal error then surfaces honestly via fail(). teardown() bumps the epoch, so
+   *  the handler that triggered this returns immediately; connect() claims a fresh epoch. */
+  private fallbackToSafeConfig(code: string): void {
+    this.recorder.onRecoverableError('server_error_fallback_safe_config:' + code)
+    this.fellBack = true
+    this.safeMode = true
+    this.twoResponseEnabled = false
+    this.twoRespPhase = 'idle'
+    this.twoRespToolThisTurn = false
+    this.pendingResponseCreate = false
+    this.activeResponse = false
+    this.teardown()                   // closes the failed pc/dc, bumps the epoch
+    // connect() resets `torn`, claims a fresh epoch, and sets state → 'connecting' (truthful:
+    // recovering, not dead). It fails closed via fail() on its own if the reconnect also fails.
+    void this.connect().catch(() => { /* handled inside connect() */ })
   }
 
   /** Route a completed function call. wait_for_user is a turn-taking no-op handled

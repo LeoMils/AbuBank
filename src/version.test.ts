@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.275.0-earonly')
-    expect(APP_VERSION.buildLabel).toContain('LAYER3-SAFETY')
+    expect(APP_VERSION.version).toBe('0.276.0-earonly')
+    expect(APP_VERSION.buildLabel).toContain('VOICE-INVALID-VALUE')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
