@@ -26,7 +26,7 @@ import {
   type CalendarDraft, type CalendarReceipt,
 } from '../screens/AbuAI/realtime/calendarDraft'
 import { resolveCalendarParticipant, resolveContact, contactLabel, isDeceasedContact } from './liveContacts'
-import { whoIs, relationshipBetween, relativesByKind, resolveContactTarget, suggestClosestPerson } from './people/peopleLookup'
+import { whoIs, relationshipBetween, relativesByKind, resolveContactTarget, suggestForMiss } from './people/peopleLookup'
 import type { KinKind } from './people/kinship'
 import { historyLookup } from './history/historyLookup'
 import type { ParsedFunctionCall } from '../screens/AbuAI/realtime/realtimeFunctionBridge'
@@ -535,7 +535,7 @@ export class LiveTools {
    *  ("התכוונת ל…?"); if nothing is close it is garble → ask her to say it again. NEVER lecture
    *  about an unrelated meaning of the word, and never re-answer about something else. */
   private peopleMiss(person: string): Record<string, unknown> {
-    const sug = suggestClosestPerson(person)
+    const sug = suggestForMiss(person)
     if (sug) {
       return {
         status: 'suggest', suggestion: sug.label,

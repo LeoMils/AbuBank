@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.263.0-mishear-suggest',
-  buildLabel: 'AbuBank 0.263.0 — DEVICE P0: a misheard name gets a "did you mean…?" instead of a silent decline + a lecture. STT mangled a nickname to "טורקי" and Abu lectured about Turkish coffee, then failed the same lookup again. Fix: suggestClosestPerson — when a name does NOT resolve, offer the closest entity by phonetic+edit similarity (≥0.5) so Abu ASKS "התכוונת ל…?"; if nothing is close it is GARBLE → she says "לא שמעתי טוב, תגידי שוב" and never confirms noise. Wired into people_lookup (who + contact) via a new suggest status; allowed_to_say forbids stating any fact and forbids lecturing about an unrelated meaning of the word. Regression mishearSuggest.test: a one-letter-mangled name suggests that person, garble → null. PARTIAL: the session-level "never repeat the same failed lookup twice" is model/session state, logged open. 275 people tests green. Prior: flag audit (v0.262).',
+  version:    '0.264.0-surname-guard',
+  buildLabel: 'AbuBank 0.264.0 — AMENDMENT: subsetResolve fabrication guard. The prior full-name fix resolved a unique given name even with a WRONG surname, so a public figure sharing a given name (Yitzhak Rabin) would confidently return the family member — fabrication, not helpfulness. Fix: a spoken surname is EVIDENCE. subsetResolve now returns CONFLICT when an extra word (a surname) is not a confirmed token of the entity own names; whoIs then does not silently assert identity and resolveContactTarget asks (single-candidate ambiguous) instead of resolving; suggestForMiss offers the exact candidate so Abu asks did-you-mean by name. A CONFIRMED surname still resolves. Regression fullNameLookup.test: family given name + a public-figure surname never resolves; no living person is silently resolved by givenName + an unknown surname. 313 people/tools tests green. Prior: mishear suggest (v0.263).',
   buildDate:  '2026-08-15',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time

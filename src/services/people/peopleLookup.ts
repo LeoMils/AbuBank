@@ -45,6 +45,16 @@ export function suggestClosestPerson(
   return p ? { id: p.id, label: p.hebrewName, score: best.score } : null
 }
 
+/** The person to ASK about when a name did not resolve. A subset CONFLICT ("given name + an
+ *  unconfirmed surname") names its exact candidate — ask about THAT person by name; otherwise fall
+ *  back to the closest phonetic match. Null → genuine garble (the caller asks her to repeat). */
+export function suggestForMiss(name: string, people: Person[] = loadPeople()): { id: string; label: string } | null {
+  const sub = subsetResolve(name, people)
+  if (sub.status === 'conflict') { const p = personById(sub.id, people); if (p) return { id: p.id, label: p.hebrewName } }
+  const sug = suggestClosestPerson(name, people)
+  return sug ? { id: sug.id, label: sug.label } : null
+}
+
 /** A misheard direct name → a person id, or null (P8). Confident + unambiguous only; never a
  *  wrong guess. Used ONLY after an exact match AND descriptive-phrase parse have both missed. */
 function fuzzyId(name: string, people: Person[]): string | null {
@@ -224,10 +234,13 @@ export function resolveContactTarget(phrase: string, people: Person[] = loadPeop
     // no skeleton signal → one confident edit-distance try (P8) before not_found
     const fid = fuzzyId(phrase, people)
     if (fid) { const p = personById(fid, people)!; return p.deceased ? { status: 'deceased', label: p.hebrewName } : { status: 'resolved', id: p.id, label: p.hebrewName } }
-    // SUBSET fallback (device P0): "גלעד אבורדי" — a known given name + an unknown surname.
+    // SUBSET fallback (device P0): "given name + surname". A CONFIRMED surname resolves; an
+    // UNCONFIRMED/conflicting surname (a public figure sharing a given name) is NOT resolved
+    // silently — it becomes an ask ("did you mean <the one person by that given name>?").
     const sub = subsetResolve(phrase, people)
     if (sub.status === 'resolved') { const p = personById(sub.id, people)!; return p.deceased ? { status: 'deceased', label: p.hebrewName } : { status: 'resolved', id: p.id, label: p.hebrewName } }
     if (sub.status === 'ambiguous') return { status: 'ambiguous', candidates: sub.ids.map((id) => ({ id, label: personById(id, people)!.hebrewName })) }
+    if (sub.status === 'conflict') return { status: 'ambiguous', candidates: [{ id: sub.id, label: personById(sub.id, people)!.hebrewName }] }
     return { status: 'not_found' }
   }
   const matches = desc.map((id) => personById(id, people)!)

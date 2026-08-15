@@ -247,12 +247,27 @@ export function peopleIdsMatchingWord(word: string, people: Person[] = loadPeopl
 export function subsetResolve(
   name: string,
   people: Person[] = loadPeople(),
-): { status: 'resolved'; id: string } | { status: 'ambiguous'; ids: string[] } | { status: 'none' } {
+): { status: 'resolved'; id: string } | { status: 'ambiguous'; ids: string[] } | { status: 'conflict'; id: string } | { status: 'none' } {
   const words = normalizeBase(name).split(' ').map((w) => w.trim()).filter((w) => w.length >= 2)
   if (words.length < 2) return { status: 'none' } // single word → exact/fuzzy handle it
+  const matchedByWord = words.map((w) => new Set(peopleIdsMatchingWord(w, people)))
   const union = new Set<string>()
-  for (const w of words) for (const id of peopleIdsMatchingWord(w, people)) union.add(id)
+  for (const s of matchedByWord) for (const id of s) union.add(id)
   if (union.size === 0) return { status: 'none' }
-  if (union.size === 1) return { status: 'resolved', id: [...union][0]! }
-  return { status: 'ambiguous', ids: [...union] }
+  if (union.size > 1) return { status: 'ambiguous', ids: [...union] }
+  const id = [...union][0]!
+  // Words that matched NO entity are candidate SURNAMES. A surname is EVIDENCE — if it is not a
+  // token of THIS entity's own names, it is evidence AGAINST the match (a public figure who shares
+  // a given name, e.g. "יצחק רבין" → family Yitzhak, is fabrication). Confirmed surname → resolve;
+  // unconfirmed/conflicting surname → 'conflict' so the caller ASKS instead of silently resolving.
+  const extras = words.filter((_, i) => matchedByWord[i]!.size === 0)
+  if (extras.length === 0) return { status: 'resolved', id }
+  const E = personById(id, people)!
+  const tokens = new Set<string>()
+  for (const key of [E.hebrewName, E.canonicalName, ...E.latinNames, ...E.hebrewAliases]) {
+    if (!key) continue
+    for (const t of normalizeBase(key).replace(/[()]/g, ' ').split(/\s+/)) { if (t) { tokens.add(t); tokens.add(stripHebrewPrefix(t)) } }
+  }
+  const confirmed = extras.every((e) => tokens.has(e) || tokens.has(stripHebrewPrefix(e)))
+  return confirmed ? { status: 'resolved', id } : { status: 'conflict', id }
 }

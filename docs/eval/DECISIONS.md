@@ -271,6 +271,24 @@ discipline as D-UISTATE-01). EVIDENCE: liveSession.test (pulse only on get_curre
 pulse), presenceState.test (מחפשת… + speaking-wins), sounds.test (fail-silent) are CODE; the audible
 tone and the on-screen render are DEVICE evidence (OWNER_CHECKLIST #6), logged open — not claimed here.
 
+## D-P0-SURNAME-GUARD · A spoken surname is EVIDENCE — an unconfirmed one ASKS, never silently resolves (fabrication fix)
+Owner amendment (correcting my own adversarial finding #1): the v0.261 subsetResolve resolved a
+unique given name even when the spoken SURNAME belonged to someone else — so "יצחק רבין" would
+confidently return the family Yitzhak. That is FABRICATION. ORDERING DECISION (logged, deviates from
+the owner's "apply after Layer-2"): I fixed this BEFORE starting Layer-2 because it is a live
+fabrication risk in shipped production-candidate code, and a wrong confident answer is worse than a
+miss (the repo's own standard) — a correctness bug outranks net-new coverage; the "after Layer-2"
+ordering assumed Layer-2 was in flight, which it was not. FIX: a surname (a spoken word matching no
+entity) is evidence. subsetResolve returns CONFLICT unless the surname is a confirmed token of the
+matched entity's OWN names; whoIs no longer silently asserts identity on a conflict (falls to
+not_found → the tool asks), resolveContactTarget returns a single-candidate ambiguous (ask), and
+suggestForMiss names the exact candidate so Abu asks "did you mean <given name>?". A CONFIRMED surname
+still resolves. This supersedes the v0.261 assertion that "גלעד אבורדי" resolves silently — it now
+ASKS, which is exactly the owner's remedy ("do not resolve silently. Ask one short question"). Regression
+fullNameLookup.test: family given name + a public-figure surname NEVER resolves; 0 silent resolves by
+givenName+unknown-surname across all living people. Reuses the misheard-suggest ask path — one uniform
+"did you mean…?" for both a misheard name and an unconfirmed surname.
+
 ## D-P0-MISHEAR · A misheard name ASKS "did you mean…?"; garble asks to repeat — never a silent lecture
 Device P0: STT mangled a spoken nickname to "טורקי"; the resolver correctly declined, but declining
 SILENTLY let Abu answer the wrong sense of the word (a lecture about Turkish coffee), then fail the

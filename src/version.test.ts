@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.263.0-mishear-suggest')
-    expect(APP_VERSION.buildLabel).toContain('a misheard name gets a')
+    expect(APP_VERSION.version).toBe('0.264.0-surname-guard')
+    expect(APP_VERSION.buildLabel).toContain('subsetResolve fabrication guard')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')
