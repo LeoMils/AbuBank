@@ -1,9 +1,9 @@
 {
   "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
   "branch": "rc5/cognitive-architecture-and-acceptance",
-  "headSha": "0a90be6",
+  "headSha": "1c34ab1",
   "rollbackTag": "known-good-pre-qa-run (6324bfc)",
-  "updated": "session-amendments-preamble-surname",
+  "updated": "session-preamble-gap-measure",
   "part1Mechanisms": [
     {
       "id": "P0-input-oracle", "title": "misheard name resolution (STT variants) — the input-side oracle",
