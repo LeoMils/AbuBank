@@ -19,7 +19,7 @@
  * the promotion step, machine-checked, that MERGE_READINESS.md points at. Nothing here reads
  * a secret or a network; it is a pure snapshot of the shipping defaults.
  */
-import { LIVE_AUDIO_TUNE_V2, LIVE_BARGE_IN_TRUNCATE, LIVE_PREFETCH_WARM } from './liveSession'
+import { LIVE_AUDIO_TUNE_V2, LIVE_BARGE_IN_TRUNCATE, LIVE_PREFETCH_WARM, LIVE_PREAMBLE_TWO_RESPONSE } from './liveSession'
 
 export interface DeviceGatedFlag {
   /** Stable id (matches the code constant / FLAG_AUDIT.md row). */
@@ -61,6 +61,14 @@ export const DEVICE_GATED_FLAGS: readonly DeviceGatedFlag[] = [
     capability: 'sub-1s cached cinema/weather/headlines/transit answers',
     earCheck: 'device freshness-vs-latency off/on — a cached answer must not feel stale',
     effective: LIVE_PREFETCH_WARM,
+    promotionConfirmed: false,
+  },
+  {
+    id: 'LIVE_PREAMBLE_TWO_RESPONSE',
+    envVar: 'VITE_LIVE_PREAMBLE_TWO_RESPONSE',
+    capability: 'no spoken "רגע, אני בודקת…" before a looked-up answer (long-preamble fix)',
+    earCheck: 'AUDIO_CHECK.md #5 — first words are the answer; the ~4s preamble gap is gone',
+    effective: LIVE_PREAMBLE_TWO_RESPONSE,
     promotionConfirmed: false,
   },
 ]

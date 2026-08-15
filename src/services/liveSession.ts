@@ -126,6 +126,15 @@ export const LIVE_AUDIO_TUNE_V2 = envOn('VITE_LIVE_AUDIO_TUNE_V2')
  *  ENV-overridable (VITE_LIVE_BARGE_IN_TRUNCATE=1) — enable it TOGETHER with VITE_LIVE_AUDIO_TUNE_V2. */
 export const LIVE_BARGE_IN_TRUNCATE = envOn('VITE_LIVE_BARGE_IN_TRUNCATE')
 
+/** M1b · two-response preamble suppression (flag, default OFF). The tool-selecting response is
+ *  requested TEXT-ONLY so a spoken preamble ("רגע, אני בודקת…") is structurally impossible; the
+ *  grounded answer is a second AUDIO response after the tool result. Fixes the LONG (~4s) preamble
+ *  the client commit-window (preambleGate) cannot catch — at the cost of one extra round-trip on a
+ *  plain answer. Device-gated on AUDIO_CHECK #5 (the owner's ear on the gap). Decision logic lives in
+ *  preambleTwoResponse.ts (pure, tested); the session wiring is the device-validated remainder.
+ *  ENV-overridable (VITE_LIVE_PREAMBLE_TWO_RESPONSE=1) so the owner can A/B it on a Preview build. */
+export const LIVE_PREAMBLE_TWO_RESPONSE = envOn('VITE_LIVE_PREAMBLE_TWO_RESPONSE')
+
 /** Input-audio transcription model for the Hebrew side-channel. Upgraded from
  *  gpt-4o-mini-transcribe to the full gpt-4o-transcribe after a device trace showed
  *  badly mis-heard Hebrew (and even wrong-language output). More accurate on Hebrew;
