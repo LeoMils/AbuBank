@@ -59,3 +59,32 @@ must be ADDED before the harness can claim to probe item 3 — named here so the
 ## The single highest-leverage action
 **Add OpenAI credit.** It unblocks the real voice (product), Layer 3 (the whole thin layer), the two-response
 wiring validation, and the cost measurement. Everything expensive and unknown is downstream of that one step.
+
+---
+
+# ADDENDUM — credit-live run (v0.275.0). What is STILL uncaught after running the real model.
+Credit is added; Layer 3 ran; a safety defect was found+fixed. New/updated risks, worst first:
+
+1. **The medication guard is a regex — it will miss phrasings it does not enumerate.** It now catches generic
+   pill/dose/insulin terms + common Israeli brands, but a drug it does not list, described obliquely ("my
+   morning white one", a niche brand), would slip through and the model WILL set the reminder (proven behaviour).
+   A regex is the right emergency fix; a durable fix is a small classifier or an allow-list-of-safe-reminder-
+   categories. **Every un-listed medication name is a live gap.** Tests cover only the enumerated set.
+2. **Two-response is wired but its BENEFIT is unproven** — the instrument showed the model speaks no preamble
+   at all, so the fix targets a device-only behaviour I could not reproduce or measure. It could (a) do nothing
+   if the ~4s is tool latency not speech, or (b) subtly break turn-taking on the device in a way no test caught
+   (the flag is off by default, so production is safe, but the A/B could surprise).
+3. **50+ turn drift / self-contradiction / latency-creep was NOT run.** Long-session degradation — the thing
+   most likely to make Abu feel "off" over a real half-hour call — remains unmeasured.
+4. **The Spanish calendar flow returned empty once** on the instrument. Whether that is a probe artifact or a
+   real dropped-turn in Spanish is unresolved — a Spanish speaker relying on the calendar could hit silence.
+5. **Cost is a lower bound.** ~$66/mo measured with TEXT input; a real mic session also bills audio-input
+   (~$32/1M). A talkative user, or many short sessions each paying the cold-cache first turn, pushes it higher.
+6. **The guard refuses via a tool RESULT the model must honour.** It creates no reminder (safe), but the model
+   is only INSTRUCTED to decline — if a future prompt change made it ignore the result and improvise a
+   confirmation, the user could THINK a medication reminder was set when none exists. The safe state (no
+   reminder) holds; the spoken message is the model's, not guaranteed.
+7. **Deploy is unverified.** No flagged Preview was produced (Vercel auth). The device build the owner tests
+   must be confirmed to actually carry the four flags (the boot log now lists them — check it).
+
+Highest-leverage next: run the 50+ turn drift probe, and broaden the medication block beyond a name list.

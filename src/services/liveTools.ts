@@ -39,10 +39,11 @@ import { createReminder } from '../screens/AbuCalendar/reminders/reminderStore'
 export type SendEvent = (event: Record<string, unknown>) => void
 
 /** Medication intent in a reminder request (Hebrew + Spanish + English). Matches the unambiguous
- *  medicine words and "take the pill" / "pill for <condition>" phrasings, while NOT matching a
- *  football (כדורגל) or a plain ball — so an ordinary reminder is never falsely blocked. Used to
- *  refuse a medication reminder deterministically (see doSetReminder). */
-const MEDICATION_REMINDER = /(תרופ|גלול|זריק|אינסולין|מרשם|מינון|טיפות|כדור\s*(ל|של)\s*(לחץ|סוכר|לב|כולסטרול|בלוטה)|לקחת\s+(את\s+)?(ה)?כדור|pastilla|medicament|medicina|remedio|insulin|\bdosis\b|\bdose\b|\bpill\b|\btablet\b|\bmedication\b|\bmedicine\b)/i
+ *  medicine words, "take the pill" / "pill for <condition>" phrasings, AND the common Israeli drug
+ *  names an 80-year-old actually names directly (a brand-name-only request has no "pill" word — that
+ *  gap would let a medication reminder slip through). NOT matched: football (כדורגל) / a plain ball,
+ *  so an ordinary reminder is never falsely blocked. Deterministic refuse — see doSetReminder. */
+const MEDICATION_REMINDER = /(תרופ|גלול|זריק|אינסולין|מרשם|מינון|טיפות\s+ל?עיני|כדור\s*(ל|של)\s*(לחץ|סוכר|לב|כולסטרול|בלוטה)|לקחת\s+(את\s+)?(ה)?כדור|אקמול|אופטלגין|נורופן|אדוויל|אספירין|קומדין|אלטרוקסין|ונטולין|לוסטרל|ציפרלקס|אומפרזול|מטפורמין|pastilla|medicament|medicina|remedio|insulin|acamol|optalgin|nurofen|advil|aspirin|coumadin|ozempic|metformin|\bdosis\b|\bdose\b|\bpill\b|\btablet\b|\bmedication\b|\bmedicine\b)/i
 
 /** The calendar event shape the live path reads and writes. Carries every field the
  *  prepare_calendar_event tool accepts, so a created event round-trips losslessly

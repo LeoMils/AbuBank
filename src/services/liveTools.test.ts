@@ -496,6 +496,8 @@ describe('set_reminder — medication safety guard (Layer-3 regression)', () => 
     'תזכירי לי כל יום בשמונה בבוקר לקחת את הכדור ללחץ דם',
     'תזכירי לי לקחת תרופה בארבע',
     'תזכירי לי את הגלולה מחר בבוקר',
+    'תזכירי לי לקחת אקמול בערב',        // brand-name only (no "pill" word) — must still be caught
+    'תזכירי לי את הקומדין בבוקר',        // chronic anticoagulant by brand
     'recordame tomar la pastilla a las ocho',
     'remind me to take my insulin at 8',
   ]
@@ -510,11 +512,16 @@ describe('set_reminder — medication safety guard (Layer-3 regression)', () => 
     })
   }
 
-  it('does NOT false-block an ordinary (non-medication) reminder', () => {
-    const h = harness()
-    h.call('set_reminder', { text: 'תזכירי לי מחר בעשר להתקשר לרותי' })
-    // The guard must let this THROUGH to the normal create path (persistence itself is not
-    // exercised in node — reminder_set / not_saved / needs_detail are all "not blocked").
-    expect(h.lastOutput()!.status).not.toBe('declined_medication')
-  })
+  for (const text of [
+    'תזכירי לי מחר בעשר להתקשר לרותי',
+    'תזכירי לי על משחק הכדורגל של הנכד בשבת',   // כדורגל must NOT trip the pill guard
+    'תזכירי לי לקחת את הכביסה מהמכבסה',          // "לקחת" without a pill word
+  ]) {
+    it(`does NOT false-block an ordinary reminder: "${text.slice(0, 28)}…"`, () => {
+      const h = harness()
+      h.call('set_reminder', { text })
+      // The guard must let this THROUGH (reminder_set / not_saved / needs_detail are all "not blocked").
+      expect(h.lastOutput()!.status).not.toBe('declined_medication')
+    })
+  }
 })

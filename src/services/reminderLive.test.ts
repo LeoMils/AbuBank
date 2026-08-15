@@ -43,16 +43,18 @@ describe('set_reminder tool — durable reminders on the live path (queue #2)', 
     expect(new Date(loadReminders()[0]!.dueAt).getTime()).toBeGreaterThan(Date.now() - 5000)
   })
 
+  // NOTE: reminder text is deliberately NON-medication — a medication reminder is now refused by the
+  // safety guard (see liveTools medication block). These test absolute/recurring CREATION, not content.
   it('an ABSOLUTE reminder ("מחר בשמונה בבוקר") is created', () => {
     clearReminders()
-    const o = fire('תזכירי לי מחר בשמונה בבוקר לקחת את הכדור')
+    const o = fire('תזכירי לי מחר בשמונה בבוקר להתקשר לרותי')
     expect(o.status).toBe('reminder_set')
     expect(loadReminders().length).toBe(1)
   })
 
   it('a recurring reminder ("כל בוקר בשמונה") is created with recurrence', () => {
     clearReminders()
-    const o = fire('תזכירי לי כל בוקר בשמונה לקחת תרופה')
+    const o = fire('תזכירי לי כל בוקר בשמונה לשתות כוס מים')
     expect(o.status).toBe('reminder_set')
     expect(loadReminders()[0]!.recurrence).toBeTruthy()
   })
