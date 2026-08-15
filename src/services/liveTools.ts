@@ -541,7 +541,26 @@ export class LiveTools {
   /** A name did not resolve — the misheard-word P0. Offer the closest person to CONFIRM
    *  ("התכוונת ל…?"); if nothing is close it is garble → ask her to say it again. NEVER lecture
    *  about an unrelated meaning of the word, and never re-answer about something else. */
+  /** Names that already FAILED a lookup this session — never repeat the same failed lookup twice
+   *  (device P0: "טוצ'י" heard as "טורקי" was looked up + failed twice). On the SECOND failure of the
+   *  same name, escalate: stop retrying the same string, ask her to spell it or say who in the family. */
+  private readonly failedNames = new Set<string>()
+
   private peopleMiss(person: string): Record<string, unknown> {
+    const key = person.normalize('NFC').trim().toLowerCase().replace(/\s+/g, ' ')
+    const repeat = key.length > 0 && this.failedNames.has(key)
+    if (key.length > 0) this.failedNames.add(key)
+    if (repeat) {
+      // Same name failed already this session — do NOT run the identical failing lookup again.
+      const sug = suggestForMiss(person)
+      return {
+        status: 'ask_different', ...(sug ? { suggestion: sug.label } : {}),
+        allowed_to_say: [
+          sug ? `you have already tried this name and it did not match; ask ONCE more, clearly, if she means ${sug.label} — or ask her to SPELL it or say who it is in the family` : 'you have already tried this name and could not catch it; ask her to SPELL it slowly or to say who it is in the family',
+          'do NOT run the same lookup again and do NOT lecture about an unrelated meaning of the word',
+        ],
+      }
+    }
     const sug = suggestForMiss(person)
     if (sug) {
       return {

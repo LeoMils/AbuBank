@@ -549,3 +549,63 @@ describe('LiveSession', () => {
     h.session.teardown()
   })
 })
+
+// ─── LAYER 2 · all 19 realtime event/connection invariants (merge blocker) ───
+describe('Layer 2 — realtime event + connection-code invariants', () => {
+  // 9 connection/error CODES → a truthful non-empty Hebrew reason, never a throw.
+  const CODES = ['OPENAI_API_KEY_MISSING', 'OPENAI_API_KEY_INVALID', 'REALTIME_QUOTA', 'REALTIME_PROVIDER_FAILED', 'MIC_PERMISSION_DENIED', 'MIC_NOT_FOUND', 'TOKEN_NETWORK_ERROR', 'NO_AUDIO_EVENT', 'AUDIO_ROUTE_ENDED']
+  for (const code of CODES) {
+    it(`code ${code} → a non-empty Hebrew reason (never a throw or a blank)`, () => {
+      const msg = connectionReasonHe(code)
+      expect(typeof msg).toBe('string')
+      expect(msg.trim().length).toBeGreaterThan(0)
+      expect(/[֐-׿]/.test(msg)).toBe(true) // Hebrew, so Martita gets a real message
+    })
+  }
+  it('an UNKNOWN code still returns a safe Hebrew fallback', () => {
+    expect(/[֐-׿]/.test(connectionReasonHe('SOMETHING_NEW'))).toBe(true)
+  })
+
+  // 10 server EVENTS → each drives its invariant with no crash/error-fail.
+  const connected = async () => { const h = makeHarness({ isReconnect: true }); await h.session.connect(); h.pc.dc!.fireOpen(); return h }
+  it('input_audio_buffer.speech_started → listening', async () => {
+    const h = await connected(); h.pc.dc!.fire({ type: 'input_audio_buffer.speech_started' })
+    expect(h.session.state).toBe('listening'); expect(h.errors).toEqual([]); h.session.teardown()
+  })
+  it('input_audio_buffer.speech_stopped → no error, session survives', async () => {
+    const h = await connected(); h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' })
+    expect(h.session.state).not.toBe('error'); h.session.teardown()
+  })
+  it('conversation.item.input_audio_transcription.completed → surfaced as a user transcript', async () => {
+    const h = await connected(); h.pc.dc!.fire({ type: 'conversation.item.input_audio_transcription.completed', transcript: 'שלום' })
+    expect(h.userTranscripts).toContain('שלום'); h.session.teardown()
+  })
+  for (const type of ['response.output_audio.delta', 'response.audio.delta']) {
+    it(`${type} → speaking`, async () => {
+      const h = await connected(); h.pc.dc!.fire({ type, item_id: 'i1' })
+      expect(h.session.state).toBe('speaking'); h.session.teardown()
+    })
+  }
+  for (const type of ['response.output_audio_transcript.done', 'response.audio_transcript.done']) {
+    it(`${type} → surfaced as Abu's transcript`, async () => {
+      const h = await connected(); h.pc.dc!.fire({ type, transcript: 'שלום מרתה' })
+      expect(h.abuTranscripts).toContain('שלום מרתה'); h.session.teardown()
+    })
+  }
+  it('response.created → no error (an active response is tracked)', async () => {
+    const h = await connected(); h.pc.dc!.fire({ type: 'response.created' })
+    expect(h.session.state).not.toBe('error'); expect(h.errors).toEqual([]); h.session.teardown()
+  })
+  it('response.done (final) → back to listening at end of turn', async () => {
+    const h = await connected(); h.pc.dc!.fire({ type: 'response.created' }); h.pc.dc!.fire({ type: 'response.done', response: { phase: 'final_answer' } })
+    expect(h.session.state).toBe('listening'); h.session.teardown()
+  })
+  it('error (recoverable) → NON-fatal; error (fatal) → error state', async () => {
+    const h = await connected()
+    h.pc.dc!.fire({ type: 'error', error: { code: 'conversation_already_has_active_response' } })
+    expect(h.session.state).not.toBe('error') // recoverable
+    h.pc.dc!.fire({ type: 'error', error: { code: 'server_meltdown' } })
+    expect(h.session.state).toBe('error') // fatal → truthful error state
+    h.session.teardown()
+  })
+})

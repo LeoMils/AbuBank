@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.267.0-layer2-toolfuzz')
-    expect(APP_VERSION.buildLabel).toContain('Layer-2 tool-arg wiring')
+    expect(APP_VERSION.version).toBe('0.268.0-layer2-events-repeat')
+    expect(APP_VERSION.buildLabel).toContain('MERGE BLOCKER 1b + repeat-guard')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

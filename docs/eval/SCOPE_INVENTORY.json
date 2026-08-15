@@ -15,8 +15,8 @@
   },
   "realtimeEventCount": 19,
   "totalRows": 172,
-  "executedRows": 132,
-  "cellCoveragePct": 76.7,
+  "executedRows": 151,
+  "cellCoveragePct": 87.8,
   "rows": [
     {
       "cell": "wait_for_user.required_subset",
@@ -1051,134 +1051,134 @@
       "cell": "event.AUDIO_ROUTE_ENDED",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.MIC_NOT_FOUND",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.MIC_PERMISSION_DENIED",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.NO_AUDIO_EVENT",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.OPENAI_API_KEY_INVALID",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.OPENAI_API_KEY_MISSING",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.REALTIME_PROVIDER_FAILED",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.REALTIME_QUOTA",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.TOKEN_NETWORK_ERROR",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.conversation.item.input_audio_transcription.completed",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.error",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.input_audio_buffer.speech_started",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.input_audio_buffer.speech_stopped",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.response.audio.delta",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.response.audio_transcript.done",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.response.created",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.response.done",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.response.output_audio.delta",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "event.response.output_audio_transcript.done",
       "dimension": "realtime_event_invariant",
       "layer": 2,
-      "status": "not_run",
-      "detail": "invariant on this server event"
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
     },
     {
       "cell": "decline.order_a_taxi",
