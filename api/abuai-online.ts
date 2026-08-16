@@ -20,6 +20,7 @@ import { buildBriefing, speakableBriefing, type Briefing } from '../src/services
 import { generalSearchLoop } from '../src/services/online/generalSearch'
 import { synthesizeAnswer } from '../src/services/online/synthesize'
 import { onlineGeneralSearchEnabled } from '../src/services/online/flags'
+import { isTemporalQuery } from '../src/engineering-os/temporalFreshness'
 
 export const config = { runtime: 'edge' }
 
@@ -153,6 +154,13 @@ interface OnlineDiag {
   answerPath?: string
   /** TEMP diagnostic: which judge sub-path ran + its status (deep/snippet/synth), for root-causing. */
   answerDetail?: string
+  /** §16 owner-correction #2 (GROUNDED ≠ CURRENT): did the query carry temporal intent
+   *  (current/latest/last/today/…)? A temporal answer must be fresh, not merely grounded. The
+   *  runtime cannot certify semantic freshness (no source-publication dates are available on the
+   *  retrieval path), so this flag is surfaced honestly for the acceptance layer (evaluateFreshness)
+   *  to grade — it does NOT itself change the returned answer (that would regress correct temporal
+   *  facts like the current office-holder, which lack source dates too). */
+  temporalIntent?: boolean
 }
 
 interface OnlineSuccess {
@@ -277,6 +285,11 @@ export default async function handler(req: Request): Promise<Response> {
     return respond({ ok: false, errorCode: 'BAD_REQUEST', userMessage: userMessageFor('BAD_REQUEST', lang) }, 400)
   }
 
+  // §16 (GROUNDED ≠ CURRENT): mark temporal intent on EVERY response so the acceptance layer can
+  // require freshness (not just grounding) for current/latest/last/today questions.
+  const temporalIntent = isTemporalQuery(query)
+  diag.temporalIntent = temporalIntent
+
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
 
   // Resolve the provider + key presence up front so the diagnostic is accurate on
@@ -385,7 +398,14 @@ export default async function handler(req: Request): Promise<Response> {
     `Answer current/live questions (weather, news, cinema, "this week", "open now") in 2–4 sentences in the language of the question. ` +
     `Cite sources briefly when relevant. ` +
     `If the question is about family / personal calendar / contacts, refuse and redirect: "I do not look up personal information online." ` +
-    `If web_search returns nothing useful, say honestly that you could not find current information.`
+    `If web_search returns nothing useful, say honestly that you could not find current information.` +
+    // §16 owner-correction #2: GROUNDED ≠ CURRENT. For a temporal question (current/latest/last/
+    // recent/today), the stale-memory failure was answering with a superseded event (the "last super
+    // bowl → Seattle Seahawks" incident). Force recency: report the MOST RECENT occurrence as of today
+    // and state its date/timeframe; never answer a "latest/last" question from an older event.
+    (temporalIntent
+      ? ` IMPORTANT: this is a time-sensitive question. Use web_search to find the MOST RECENT information as of today (${new Date().toISOString().slice(0, 10)}). Report the latest occurrence and state its date or timeframe explicitly. Do NOT answer "latest/last/current" from an older or superseded event.`
+      : '')
 
   // Call OpenAI Responses API with the built-in web_search tool.
   const controller = new AbortController()

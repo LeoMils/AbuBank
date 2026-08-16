@@ -93,6 +93,10 @@ const COMPONENTS = {
   constitutionCoverageSuite: 'src/engineering-os/constitutionCoverage.test.ts',
   capabilityManifest: 'src/engineering-os/capabilityManifest.ts',
   capabilityManifestSuite: 'src/engineering-os/capabilityManifest.test.ts',
+  // §16 owner-correction #2: TEMPORAL FRESHNESS oracle — GROUNDED ≠ CURRENT. A stale-but-sourced
+  // answer must not satisfy a current-info claim; this is release-critical from now on.
+  temporalFreshness: 'src/engineering-os/temporalFreshness.ts',
+  temporalFreshnessSuite: 'src/engineering-os/temporalFreshness.test.ts',
 }
 // Freeze requires BOTH adversarial suites to have passed (Stage 1 gate + Stage 2 adapter).
 const ADVERSARIAL_ARTIFACTS = [

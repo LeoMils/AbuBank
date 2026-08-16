@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/control-plane-identity",
-  "controlPlaneId": "cp_8ed6c773",
-  "frozenAt": "2026-08-16T22:17:00.033Z",
+  "controlPlaneId": "cp_bfccc899",
+  "frozenAt": "2026-08-16T23:15:24.543Z",
   "eligibility": "33/33 adversarial cases passed across 2 suites",
   "components": {
     "releaseGate": "src/engineering-os/releaseGate.ts",
@@ -53,7 +53,9 @@
     "constitutionCoverage": "src/engineering-os/constitutionCoverage.ts",
     "constitutionCoverageSuite": "src/engineering-os/constitutionCoverage.test.ts",
     "capabilityManifest": "src/engineering-os/capabilityManifest.ts",
-    "capabilityManifestSuite": "src/engineering-os/capabilityManifest.test.ts"
+    "capabilityManifestSuite": "src/engineering-os/capabilityManifest.test.ts",
+    "temporalFreshness": "src/engineering-os/temporalFreshness.ts",
+    "temporalFreshnessSuite": "src/engineering-os/temporalFreshness.test.ts"
   },
   "componentHashes": {
     "releaseGate": "f72797b921d15edf",
@@ -105,7 +107,9 @@
     "constitutionCoverage": "0bc422afffd19121",
     "constitutionCoverageSuite": "2410758e08555451",
     "capabilityManifest": "24bd493f510d958f",
-    "capabilityManifestSuite": "fd340757a2c9b5d1"
+    "capabilityManifestSuite": "fd340757a2c9b5d1",
+    "temporalFreshness": "760ed1ec21bc03b4",
+    "temporalFreshnessSuite": "a17e4f728ef2ebc0"
   },
   "note": "Evidence produced under a DIFFERENT controlPlaneId may not silently certify this one. A change to any component changes the id and expires affected certification."
 }
