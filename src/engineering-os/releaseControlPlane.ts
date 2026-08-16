@@ -28,6 +28,7 @@
 
 import { evaluateRelease, type ReleaseState, type ReleaseBlocker } from './releaseGate'
 import { evaluateControlCompleteness, type ControlCompletenessInput } from './controlCompleteness'
+import { evaluateObligationCompleteness, type ObligationCompletenessInput } from './obligationCompleteness'
 
 // ── Verdicts & non-binary harness states ────────────────────────────────────
 // A control-plane verdict is NEVER a bare boolean. Absence, crash, and "not run"
@@ -187,6 +188,11 @@ export interface ControlPlaneInput {
    * release cannot GO. This converts prose-known control gaps into machine state.
    */
   controlCompleteness?: ControlCompletenessInput
+  /**
+   * The obligation-first model (§7–12): constitution → obligations → implementation.
+   * Detects NEGATIVE-SPACE gaps — a control that SHOULD exist but is entirely absent.
+   */
+  obligationCompleteness?: ObligationCompletenessInput
 }
 
 // ── Stage-2 source health ────────────────────────────────────────────────────
@@ -416,6 +422,10 @@ export function evaluateControlPlane(input: ControlPlaneInput): ControlPlaneStat
   if (input.controlCompleteness) {
     const cc = evaluateControlCompleteness(input.controlCompleteness)
     for (const bl of cc.blockers) { add(bl.code, bl.reason); cannotCertify = true }
+  }
+  if (input.obligationCompleteness) {
+    const oc = evaluateObligationCompleteness(input.obligationCompleteness)
+    for (const bl of oc.blockers) { add(bl.code, bl.reason); cannotCertify = true }
   }
 
   // (I) Time-of-check drift — the reality judged no longer exists.

@@ -1,19 +1,19 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T15:19:18.060Z",
-  "candidateSha": "866777a9e8efbcfc41a5c190ecd4fba02240e6f6",
+  "generatedAt": "2026-08-16T16:19:11.484Z",
+  "candidateSha": "a66b078d2eb03d0ff7abd0c93fb10ef3ac7da54b",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_89211d09",
-  "frozenControlPlaneId": "cp_89211d09",
-  "controlPlaneInputHash": "in_f0d1c7c7",
+  "controlPlaneId": "cp_dd2eb577",
+  "frozenControlPlaneId": "cp_dd2eb577",
+  "controlPlaneInputHash": "in_c4c49a70",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "7b5026ce51d389b1",
+    "dirtyStateHash": "6a61cdcd08b8dc3d",
     "dirtyRuntime": [
-      "src/engineering-os/liveSnapshot.ts",
       "src/engineering-os/releaseControlPlane.ts",
-      "src/engineering-os/controlCompleteness.ts"
+      "src/engineering-os/executionState.ts",
+      "src/engineering-os/obligationCompleteness.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -117,7 +117,7 @@
   "releaseBlockers": [
     {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/liveSnapshot.ts, src/engineering-os/releaseControlPlane.ts, src/engineering-os/controlCompleteness.ts"
+      "reason": "src/engineering-os/releaseControlPlane.ts, src/engineering-os/executionState.ts, src/engineering-os/obligationCompleteness.ts"
     }
   ],
   "controlBlockers": [
@@ -176,6 +176,42 @@
     {
       "code": "CONTROL_MODEL_INCOMPLETE",
       "reason": "release-critical control claim 'privacy-control-proven' is NOT_PROVEN (invariant: required privacy/security control executed + current)"
+    },
+    {
+      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
+      "reason": "release-critical obligation 'o-capability' (static+dynamic capability manifest) is UNIMPLEMENTED"
+    },
+    {
+      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
+      "reason": "release-critical obligation 'o-denominator' (certified acceptance denominator) is UNIMPLEMENTED"
+    },
+    {
+      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
+      "reason": "release-critical obligation 'o-claimstate' (non-collapsible claim-state model) is UNIMPLEMENTED"
+    },
+    {
+      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
+      "reason": "release-critical obligation 'o-labcert' (scope-bound lab certification) is UNIMPLEMENTED"
+    },
+    {
+      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
+      "reason": "release-critical obligation 'o-producers' (reproducible evidence producers + lineage) is UNIMPLEMENTED"
+    },
+    {
+      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
+      "reason": "release-critical obligation 'o-attest' (source→build→deploy attestation) is UNIMPLEMENTED"
+    },
+    {
+      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
+      "reason": "release-critical obligation 'o-sw' (warm PWA runtime provenance) is UNIMPLEMENTED"
+    },
+    {
+      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
+      "reason": "release-critical obligation 'o-privacy' (privacy/security release control) is UNIMPLEMENTED"
+    },
+    {
+      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
+      "reason": "release-critical obligation 'o-ci' (remote release-certification enforcement) is UNIMPLEMENTED"
     }
   ],
   "ownerHandoff": {

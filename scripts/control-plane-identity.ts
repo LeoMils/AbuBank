@@ -41,6 +41,11 @@ const COMPONENTS = {
   // control model itself is complete enough to certify anything.
   controlCompleteness: 'src/engineering-os/controlCompleteness.ts',
   controlCompletenessSuite: 'src/engineering-os/controlCompleteness.test.ts',
+  // Stage 3C: obligation-first (negative-space) completeness + execution-continuity gate.
+  obligationCompleteness: 'src/engineering-os/obligationCompleteness.ts',
+  obligationCompletenessSuite: 'src/engineering-os/obligationCompleteness.test.ts',
+  executionState: 'src/engineering-os/executionState.ts',
+  executionStateSuite: 'src/engineering-os/executionState.test.ts',
 }
 // Freeze requires BOTH adversarial suites to have passed (Stage 1 gate + Stage 2 adapter).
 const ADVERSARIAL_ARTIFACTS = [

@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url'
 import { buildLiveSnapshot, toControlPlaneInput, computeInputHash, type LiveDeps, type SourceReadResult } from '../src/engineering-os/liveSnapshot.ts'
 import { evaluateControlPlane, computeControlPlaneIdentity, type EvaluatorRun } from '../src/engineering-os/releaseControlPlane.ts'
 import { defaultControlModel, type ControlClaimState } from '../src/engineering-os/controlCompleteness.ts'
+import { defaultConstitution } from '../src/engineering-os/obligationCompleteness.ts'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const p = (rel: string) => resolve(ROOT, rel)
@@ -186,7 +187,9 @@ async function main() {
 
   const snapshot = buildLiveSnapshot(deps)
   const inputHash = computeInputHash(snapshot)
-  let result = evaluateControlPlane(toControlPlaneInput(snapshot))
+  const cpInput = (opts?: { inputDriftDuringEvaluation?: boolean }) =>
+    ({ ...toControlPlaneInput(snapshot, opts), obligationCompleteness: defaultConstitution() })
+  let result = evaluateControlPlane(cpInput())
 
   // ── Re-read volatile identities: defeat time-of-check drift (§6). ──────────
   const git2 = gitState()
@@ -198,7 +201,7 @@ async function main() {
     deployed2 !== deployed ||
     id2.current !== id.current
   if (drift) {
-    result = evaluateControlPlane(toControlPlaneInput(snapshot, { inputDriftDuringEvaluation: true }))
+    result = evaluateControlPlane(cpInput({ inputDriftDuringEvaluation: true }))
   }
 
   const verdictRecord = {

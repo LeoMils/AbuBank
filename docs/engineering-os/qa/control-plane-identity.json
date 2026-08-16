@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/control-plane-identity",
-  "controlPlaneId": "cp_89211d09",
-  "frozenAt": "2026-08-16T15:19:15.806Z",
+  "controlPlaneId": "cp_dd2eb577",
+  "frozenAt": "2026-08-16T16:19:01.354Z",
   "eligibility": "33/33 adversarial cases passed across 2 suites",
   "components": {
     "releaseGate": "src/engineering-os/releaseGate.ts",
@@ -15,21 +15,29 @@
     "liveVerdictCli": "scripts/control-plane-live.ts",
     "adapterAdversarialSuite": "src/engineering-os/liveSnapshot.adversarial.test.ts",
     "controlCompleteness": "src/engineering-os/controlCompleteness.ts",
-    "controlCompletenessSuite": "src/engineering-os/controlCompleteness.test.ts"
+    "controlCompletenessSuite": "src/engineering-os/controlCompleteness.test.ts",
+    "obligationCompleteness": "src/engineering-os/obligationCompleteness.ts",
+    "obligationCompletenessSuite": "src/engineering-os/obligationCompleteness.test.ts",
+    "executionState": "src/engineering-os/executionState.ts",
+    "executionStateSuite": "src/engineering-os/executionState.test.ts"
   },
   "componentHashes": {
     "releaseGate": "f72797b921d15edf",
-    "releaseControlPlane": "a2a26a369d4aa708",
+    "releaseControlPlane": "269a80da55966e66",
     "evidenceSchema": "f92d2773874bf943",
     "productionGate": "52099a846c305281",
     "rcVerifyCli": "4e48342636efae22",
     "adversarialSuite": "08fc04507fc2b426",
     "releaseGateTest": "8792b8f1ebcc494e",
     "liveSnapshotAdapter": "455bc9cbf6ae94d0",
-    "liveVerdictCli": "536075c000d59fdc",
+    "liveVerdictCli": "227846c56017d922",
     "adapterAdversarialSuite": "9b69ef73b85db013",
     "controlCompleteness": "be6a00b9411378c7",
-    "controlCompletenessSuite": "d8eb4a69371384a6"
+    "controlCompletenessSuite": "d8eb4a69371384a6",
+    "obligationCompleteness": "13d26b47d30ad5b5",
+    "obligationCompletenessSuite": "db35eadc641097bc",
+    "executionState": "113beccc1884aab3",
+    "executionStateSuite": "3508cb29fa2589ed"
   },
   "note": "Evidence produced under a DIFFERENT controlPlaneId may not silently certify this one. A change to any component changes the id and expires affected certification."
 }
