@@ -1,0 +1,86 @@
+{
+  "base": "https://abu-bank-dcavmo6kk-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-16",
+  "allOk": true,
+  "anyStale": false,
+  "anySourceNamed": true,
+  "maxLatencyMs": 3973,
+  "rows": [
+    {
+      "id": "cinema",
+      "ms": 3973,
+      "ok": true,
+      "http": 200,
+      "answerLen": 159,
+      "answer": "סרטים המוקרנים עכשיו בקולנוע בישראל כוללים את \"ספיידרמן: יום חדש\", \"חג מולד מר\", \"בוסית בהפרעה\", \"גבעה 338\", \"האודיסאה\", \"התגלית\", \"ערך סנטי",
+      "sourceNamed": false,
+      "diag": {
+        "provider": "brave",
+        "reached": true,
+        "sourceCount": 6,
+        "outcome": "ok"
+      },
+      "freshness": {
+        "hasDate": false
+      },
+      "latencyOk": true
+    },
+    {
+      "id": "price",
+      "ms": 2183,
+      "ok": true,
+      "http": 200,
+      "answerLen": 54,
+      "answer": "מחיר הבושם בלו דה שאנל בישראל הוא 749 ₪ לגודל 100 מ\"ל.",
+      "sourceNamed": false,
+      "diag": {
+        "provider": "brave",
+        "reached": true,
+        "sourceCount": 6,
+        "outcome": "ok"
+      },
+      "freshness": {
+        "hasDate": false
+      },
+      "latencyOk": true
+    },
+    {
+      "id": "news",
+      "ms": 979,
+      "ok": true,
+      "http": 200,
+      "answerLen": 829,
+      "answer": "1. חדשות היום - כל העדכונים, דיווחים והכתבות המובילות בארץ ובעולם (israelhayom.co.il)\n2. חדשות בעולם: חדשות חוץ ועדכונים מרחבי העולם- כאן 11",
+      "sourceNamed": true,
+      "diag": {
+        "provider": "brave",
+        "reached": true,
+        "sourceCount": 12,
+        "outcome": "ok"
+      },
+      "freshness": {
+        "hasDate": false
+      },
+      "latencyOk": true
+    },
+    {
+      "id": "followup",
+      "ms": 1649,
+      "ok": true,
+      "http": 200,
+      "answerLen": 137,
+      "answer": "ריבוד ניחוחות לא חייב להיות יקר יותר וייתכן שהוא אפילו יעזור לכן לחסוך כסף כי תוכלו להתיז כמות קטנה יותר של בושם, מה שאומר שהוא יספיק ...",
+      "sourceNamed": false,
+      "diag": {
+        "provider": "brave",
+        "reached": true,
+        "sourceCount": 6,
+        "outcome": "ok"
+      },
+      "freshness": {
+        "hasDate": false
+      },
+      "latencyOk": true
+    }
+  ]
+}

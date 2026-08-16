@@ -1,0 +1,22 @@
+{
+  "base": "https://abu-bank-dcavmo6kk-leos-projects-d3c04c09.vercel.app",
+  "expectVersion": "0.279.0-earonly",
+  "checks": {
+    "health": {
+      "buildVersion": "0.279.0-earonly",
+      "ok": true,
+      "matches": true,
+      "openai": "present"
+    },
+    "bundle": {
+      "scriptsScanned": 1,
+      "found": {
+        "the time or weather right now": true,
+        "is STILL a current question": true,
+        "NEVER send her to a shop": true
+      },
+      "allFragmentsPresent": true
+    }
+  },
+  "deployedIsThisBuild": true
+}
