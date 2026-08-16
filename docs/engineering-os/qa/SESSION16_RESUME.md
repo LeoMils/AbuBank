@@ -22,6 +22,25 @@ production without explicit owner authorization).
   NO_IMPACT to primary (only client-direct fallback tiers degrade). Production redeploy REQUIRED to stop
   shipping the old bundle. Do NOT deploy production without explicit authorization.
 
+## RESUME PROGRESS (this context — commits 17ebe37 → 2eeac25, branch unchanged; RC NOT redeployed)
+- **Step A DONE** (17ebe37): `temporalFreshness` registered as a control-plane component + identity
+  re-frozen (33/33 adversarial). `api/abuai-online.ts` surfaces `diag.temporalIntent`; recency
+  directive added to the OpenAI web_search path. **CAVEAT/finding:** the deployed clean RC answers
+  current-info via the deep/judge path (`answerPath=deep/snippet`), NOT the OpenAI path — so this
+  recency wiring does NOT change deployed temporal behavior. Freshness on the deployed path is
+  unchanged (see temporal matrix). Step A is therefore PARTIAL for the deployed capability.
+- **Calendar acceptance DONE** (76d8b00): `scripts/rc-acceptance-calendar.mjs` — 7/7 PROVEN_PASS on
+  the deployed clean RC. Real UI write→readback→modify→readback→full-reload; real IndexedDB round-trip.
+  Closes the historical physical write-can't-be-read-back failure at PREVIEW class.
+- **WhatsApp acceptance DONE** (6217728): `scripts/rc-acceptance-whatsapp.mjs` — 5/5 PROVEN_PASS.
+  Deployed compose (gpt-4o via proxy) + real verifyDraft fact-preservation (+ sensitivity control) +
+  safe send boundary (real buildWhatsAppPersonUrl, MOCK phone, wa.me prefill-only, zero real send).
+- **Temporal matrix DONE** (2eeac25): `scripts/rc-acceptance-temporal.mjs` — honest 2-dimensional grade:
+  GROUNDING honesty = PROVEN_PASS; FRESHNESS certification = NOT_CERTIFIED (0/5 temporal rows; no
+  source dates). Deterministic findings: super-bowl now "Philadelphia Eagles" (documented Seahawks
+  marker gone; still uncertifiable); **decline→answer DRIFT** — weather (+28°) & USD/ILS (2.96) now
+  ANSWER with freshness-uncertified values instead of declining; **2.96 accuracy-watch** (implausible).
+
 ## ACCEPTANCE CLAIMS — PASS / FAIL / UNKNOWN (with owner's 2 semantic corrections applied)
 PROVEN_PASS (deployed, transcript-read; see rc-acceptance-evaluated.json + rc-acceptance-abuai.json):
 - AbuAI general-knowledge, family-truth, STATEFUL follow-up (she→Mor + refused to invent age),
@@ -46,29 +65,36 @@ UNKNOWN / machine-closable-NEXT (NOT device boundaries — owner item #9):
 HUMAN_RESIDUAL: voice audible/perceptual quality (device/ear only).
 
 ## ACTIVE DEFECT QUEUE (priority order) — updated
-1. DONE (committed 67e7505) · CURRENT-INFO FRESHNESS oracle — `src/engineering-os/temporalFreshness.ts`
-   (+test, 8 green). GROUNDED≠CURRENT; super-bowl re-classified STALE/FAIL. STILL TO DO: register it as a
-   control-plane component (add to scripts/control-plane-identity.ts COMPONENTS + `--freeze`) and WIRE it
-   into the online answer path (api/abuai-online.ts) so temporal answers must pass freshness, not just grounding.
-2. P1 · LIVE_CURRENT_DATA_CAPABILITY = NOT_PROVEN gap — weather/exchange unanswerable (live JS-rendered
-   data not in fetchPageText; Brave snippets lack it). Investigate ONLINE_PROVIDER=tavily + Tavily
-   include_answer for live data, within the EXISTING architecture (no unnecessary providers).
-3. Calendar write→readback→modify machine acceptance (AbuCalendar UI, deployed RC).
-4. WhatsApp compose machine acceptance (+ mocked send boundary).
-5. Bounded TEMPORAL acceptance matrix: current office-holder / latest major event / current weather /
-   current exchange rate / recent news / static-fact control / insufficient-evidence case — evaluate each
-   with evaluateFreshness() (grounding AND freshness).
+1. DONE (67e7505 oracle · 17ebe37 register+freeze+partial-wire). Freshness oracle is a frozen
+   control-plane component. Deployed-path wiring is PARTIAL (recency only on the unused OpenAI path).
+2. **P1 · CURRENT-INFO FRESHNESS on the DEPLOYED deep/judge path** (the real open item). Two coupled
+   problems, both PROVEN on the deployed RC by the temporal matrix:
+   (a) FRESHNESS NOT CERTIFIABLE — the deep/judge path exposes no source publication dates, so no
+       temporal answer can be certified current (0/5). Real capability gap (owner correction #1).
+   (b) DECLINE→ANSWER DRIFT + accuracy — weather/exchange now ANSWER with freshness-uncertified
+       values (USD/ILS 2.96 is implausible) instead of the documented honest decline. This is closer
+       to a fabrication-risk than an honest miss.
+   FIX DIRECTION (needs a product-policy steer + is a medium-risk change to the SHARED online answer
+   path → deploy-gated): either (i) for temporal live-data classes the judge must STATE the timeframe/
+   date (transparency, keeps answers) and/or (ii) decline when freshness can't be verified, and/or
+   (iii) adopt a dated provider (Tavily include_answer + published dates) so evaluateFreshness has a
+   real signal. Extend recency/date instruction to `src/services/online/synthesize.ts` (gated to
+   temporal) — NOT just the OpenAI path. Then redeploy a NEW clean RC and re-run the temporal matrix.
+3. DONE (76d8b00) · Calendar write→readback→modify — 7/7 PROVEN_PASS (deployed RC, real IndexedDB).
+4. DONE (6217728) · WhatsApp compose + fact-preservation + safe send boundary — 5/5 PROVEN_PASS.
+5. DONE (2eeac25) · Temporal acceptance matrix — grounding-honest, freshness-not-certified (see #2).
 
 ## EXACT NEXT EXECUTABLE ACTION (for the resuming context)
-1. Register temporalFreshness in control-plane COMPONENTS + `npx tsx scripts/control-plane-identity.ts --freeze`.
-2. Build `scripts/rc-acceptance-calendar.mjs` (Playwright vs the clean RC): open AbuCalendar, CREATE an
-   event, verify READBACK, MODIFY it, verify again — a write→readback→modify round-trip on IndexedDB
-   (the historical physical-acceptance failure). Read the real UI state; PASS only on a real round-trip.
-3. `scripts/rc-acceptance-whatsapp.mjs`: compose via the AbuWhatsApp UI; assert a message is generated +
-   fact-preserving (verifyDraft); mock the send boundary (never a real send).
-4. Build the temporal acceptance matrix (item 5 above) using evaluateFreshness().
-Run the full defect-closure loop (reproduce→root cause→fix→regression→QA-of-QA→redeploy clean RC→deployed
-proof→claim closure) for each. Do not merge main / deploy production without owner authorization.
+Machine-closable ACCEPTANCE for Calendar / WhatsApp / temporal is COMPLETE. The remaining substantive
+work is defect-queue #2 (deployed current-info freshness), which is (a) a medium-risk change to the
+shared online answer path, (b) deploy-gated (new certification candidate → must re-run calendar +
+whatsapp + temporal + secret-scan on it), and (c) entangled with a PRODUCT-POLICY decision the owner
+previously documented (weather/exchange = honest decline) that deployed reality now contradicts.
+NEXT: (1) get the owner's steer on live-data current-info policy (decline vs dated/timeframed answer);
+(2) implement the chosen freshness treatment in `src/services/online/{synthesize,generalSearch}.ts`
+gated to temporal queries; (3) redeploy a clean RC via `npx vercel deploy --force --yes`; (4) re-run
+all four deployed acceptances + `scripts/scan-deployed-secrets.ts` on the new candidate; (5) close #2.
+Do not merge main / deploy production without owner authorization.
 
 ## KEY TOOLING (all committed)
 - Deploy: `npx vercel deploy --force --yes`  · Secret scan: `npx tsx scripts/scan-deployed-secrets.ts`
