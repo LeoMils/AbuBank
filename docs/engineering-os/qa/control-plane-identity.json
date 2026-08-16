@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/control-plane-identity",
-  "controlPlaneId": "cp_49967e12",
-  "frozenAt": "2026-08-16T20:00:55.576Z",
+  "controlPlaneId": "cp_2d910333",
+  "frozenAt": "2026-08-16T20:30:10.424Z",
   "eligibility": "33/33 adversarial cases passed across 2 suites",
   "components": {
     "releaseGate": "src/engineering-os/releaseGate.ts",
@@ -37,6 +37,7 @@
     "attestationSuite": "src/engineering-os/attestation.test.ts",
     "clientSecretFallback": "src/engineering-os/clientSecretFallback.ts",
     "clientSecretFallbackSuite": "src/engineering-os/clientSecretFallback.test.ts",
+    "clientSecretFallbackGate": "src/engineering-os/clientSecretFallbackGate.test.ts",
     "labCertification": "src/engineering-os/labCertification.ts",
     "labCertificationSuite": "src/engineering-os/labCertification.test.ts",
     "evidenceProducers": "src/engineering-os/evidenceProducers.ts",
@@ -86,8 +87,9 @@
     "privacyControlSuite": "f2a3f98f097cbee9",
     "attestation": "6dfd4ddc8694a3a9",
     "attestationSuite": "c3c704bed7b4cdb5",
-    "clientSecretFallback": "86e5bfa80901ba56",
+    "clientSecretFallback": "78c308d1dae2129c",
     "clientSecretFallbackSuite": "f16a0f2cddfdc724",
+    "clientSecretFallbackGate": "2295a4edea2cec6d",
     "labCertification": "fa02789897d90e6d",
     "labCertificationSuite": "5584c2afe89e43e7",
     "evidenceProducers": "3eebbc0a6f44caaf",

@@ -1,18 +1,21 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T20:00:58.543Z",
-  "candidateSha": "c82513a66f760fe70b66b355ea70397c187b35c9",
+  "generatedAt": "2026-08-16T20:30:13.412Z",
+  "candidateSha": "f87fa3dafce3b0b98a41508f74c046d71d89f8ed",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_49967e12",
-  "frozenControlPlaneId": "cp_49967e12",
-  "controlPlaneInputHash": "in_5df43b24",
+  "controlPlaneId": "cp_2d910333",
+  "frozenControlPlaneId": "cp_2d910333",
+  "controlPlaneInputHash": "in_10e8f21c",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "88ddd1839b6bd18a",
+    "dirtyStateHash": "4a2763aa6d2af581",
     "dirtyRuntime": [
-      "src/engineering-os/liveSnapshot.ts",
-      "src/engineering-os/clientSecretFallback.ts"
+      "src/engineering-os/clientSecretFallback.ts",
+      "src/screens/AbuAI/service.ts",
+      "src/screens/AbuAI/whatsappCompose.ts",
+      "src/screens/AbuWhatsApp/service.ts",
+      "src/services/voice.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -120,7 +123,7 @@
   "releaseBlockers": [
     {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/liveSnapshot.ts, src/engineering-os/clientSecretFallback.ts"
+      "reason": "src/engineering-os/clientSecretFallback.ts, src/screens/AbuAI/service.ts, src/screens/AbuAI/whatsappCompose.ts, src/screens/AbuWhatsApp/service.ts, src/services/voice.ts"
     }
   ],
   "controlBlockers": [

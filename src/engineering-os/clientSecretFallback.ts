@@ -42,9 +42,12 @@ export const CLIENT_PROVIDER_SECRETS: Record<string, ProviderTier> = {
   VITE_GROQ_API_KEY: 'FREE_TIER',
 }
 
-/** Strip line + block comments so a doc mention doesn't false-positive. */
+/** Strip line + block comments so a doc mention doesn't false-positive. Block comments are
+ *  blanked in place (newlines preserved) so reported line numbers stay accurate. */
 function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n')
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+    .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n')
 }
 
 /**

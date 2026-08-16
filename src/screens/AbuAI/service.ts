@@ -782,17 +782,14 @@ const OPENAI_PROXY_URL = '/api/abuai-chat'
 const OPENAI_MODEL_TEXT  = 'gpt-4o'          // text mode: reliable, high quality
 const OPENAI_MODEL_VOICE = 'gpt-4o-mini'     // voice mode (pipeline fallback): speed + cost
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
-const GEMINI_MODEL = 'gemini-2.0-flash'
-
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
+// P0 remediation: the Gemini and Groq CLIENT-direct fallback providers were REMOVED
+// (they read VITE_GEMINI_API_KEY / VITE_GROQ_API_KEY, client-exposed secrets). The ONLY
+// provider is the server-side OpenAI proxy (OPENAI_API_KEY, server-only). When it genuinely
+// fails, the engine yields NOTHING (honest empty) — it never fabricates a fallback answer.
 
 interface Provider {
-  /** Provider kind drives the fetch shape: server-proxy uses
-   *  POST /api/abuai-chat with a `body` envelope; client-direct
-   *  posts to the upstream URL with an Authorization header. */
-  kind: 'openai-server' | 'gemini-client' | 'groq-client'
+  /** Only 'openai-server' remains — the server proxy (POST /api/abuai-chat). */
+  kind: 'openai-server'
   url: string
   model: string
   /** Only set for client-direct providers (Gemini / Groq). */
@@ -805,13 +802,9 @@ interface Provider {
 // Cooldown durations: OpenAI 5 min (quota), Groq/Gemini 60s (rate limit).
 const COOLDOWN_KEYS: Record<Provider['kind'], string> = {
   'openai-server': 'abu-openai-quota-failed',
-  'groq-client':   'abu-groq-cooldown',
-  'gemini-client': 'abu-gemini-cooldown',
 }
 const COOLDOWN_MS: Record<Provider['kind'], number> = {
   'openai-server': 300_000,  // 5 min — server quota / key missing
-  'groq-client':   60_000,   // 60s — free-tier rate limit
-  'gemini-client': 60_000,   // 60s — free-tier rate limit
 }
 
 function isProviderCoolingDown(kind: Provider['kind']): boolean {
@@ -827,46 +820,13 @@ function markProviderCooldown(kind: Provider['kind']): void {
 }
 
 function getProviders(voiceMode = false): Provider[] {
-  const providers: Provider[] = []
-  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-  const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-
-  const openaiAvailable = !isProviderCoolingDown('openai-server')
-  const groqAvailable   = !isProviderCoolingDown('groq-client')
-  const geminiAvailable = !isProviderCoolingDown('gemini-client')
-
-  if (voiceMode) {
-    // Voice mode: QUALITY FIRST — OpenAI (gpt-4o-mini, fast+quality) → Groq (free) → Gemini.
-    // Groq/Llama produces formulaic Hebrew; OpenAI is dramatically better for natural conversation.
-    if (openaiAvailable)             providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_VOICE })
-    if (groqKey && groqAvailable)     providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
-    if (geminiKey && geminiAvailable) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
-  } else {
-    // Text mode: OpenAI server-proxy → Gemini (free, client) → Groq (free, client)
-    if (openaiAvailable)             providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_TEXT })
-    if (geminiKey && geminiAvailable) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
-    if (groqKey && groqAvailable)     providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
-  }
-
-  // All providers in cooldown — force-add them anyway (expired cooldown
-  // is better than zero providers). The cooldowns are short enough that
-  // this path is rare.
-  if (providers.length === 0) {
-    if (voiceMode) {
-      providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_VOICE })
-      if (groqKey)   providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
-      if (geminiKey) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
-    } else {
-      providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_TEXT })
-      if (geminiKey) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
-      if (groqKey)   providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
-    }
-  }
-
-  if (providers.length === 0) {
-    throw new Error('יש בעיה בשירות. דברי עם לאו והוא יסדר את זה.')
-  }
-  console.log(`[AbuAI:providers] ${voiceMode ? 'VOICE' : 'TEXT'} → ${providers.map(p => p.kind).join(' → ')}`)
+  // Single provider: the server-side OpenAI proxy (OPENAI_API_KEY, server-only). The Gemini/Groq
+  // client fallbacks were removed (no client-side provider secret). A cooldown does NOT drop the
+  // provider — an expired cooldown is better than zero providers, and an honest empty stream on
+  // real failure is better than a fabricated fallback.
+  const model = voiceMode ? OPENAI_MODEL_VOICE : OPENAI_MODEL_TEXT
+  const providers: Provider[] = [{ kind: 'openai-server', url: OPENAI_PROXY_URL, model }]
+  console.log(`[AbuAI:providers] ${voiceMode ? 'VOICE' : 'TEXT'} → openai-server`)
   return providers
 }
 
@@ -1116,16 +1076,9 @@ function stripMarkdown(text: string): string {
     .trim()
 }
 
-// ─── Voice transcription (Whisper STT with fallback) ───
-
-const GROQ_WHISPER_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
-// Groq deprecated whisper-large-v3-turbo in some regions; use the stable model
-const GROQ_WHISPER_MODEL = 'whisper-large-v3'
-
-// STT provider health — disable broken providers for the session
-let _sttGroqDisabled = false
-let _sttGroqDisabledAt = 0
-const STT_COOLDOWN_MS = 120_000 // 2 min cooldown after 400
+// ─── Voice transcription (Whisper STT via the server proxy only) ───
+// The Groq client-Whisper fallback was REMOVED (client-side VITE_GROQ_API_KEY). STT goes
+// through /api/abuai-stt (OPENAI_API_KEY, server-only). On failure it throws honestly.
 
 // Consecutive STT failure counter — prevents infinite listen→fail loop
 let _sttConsecutiveFailures = 0
@@ -1160,40 +1113,8 @@ function buildSttFormData(audioBlob: Blob, model: string): FormData {
   return formData
 }
 
-async function tryWhisperProvider(
-  url: string, apiKey: string, model: string, audioBlob: Blob,
-): Promise<{ text: string | null; status: number; errorBody: string }> {
-  const formData = buildSttFormData(audioBlob, model)
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 12000)
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: formData,
-      signal: controller.signal,
-    })
-    clearTimeout(timeout)
-    if (!res.ok) {
-      let errorBody = ''
-      try { errorBody = await res.text() } catch {}
-      console.warn(`[STT] ${url} returned ${res.status}:`, errorBody)
-      return { text: null, status: res.status, errorBody }
-    }
-    const data = await res.json()
-    return { text: data?.text?.trim() || null, status: 200, errorBody: '' }
-  } catch (err: unknown) {
-    clearTimeout(timeout)
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      return { text: null, status: 0, errorBody: 'timeout' }
-    }
-    return { text: null, status: 0, errorBody: String(err) }
-  }
-}
 
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {
-  const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-
   // Guard: too many consecutive failures → stop trying
   if (_sttConsecutiveFailures >= STT_MAX_CONSECUTIVE) {
     throw new SttExhaustedError('התמלול לא עובד כרגע. תנסי לכתוב במקום.')
@@ -1202,28 +1123,9 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   const mimeType = audioBlob.type
   console.log(`[STT] blob: ${audioBlob.size} bytes, type: ${mimeType}`)
 
-  // iPhone records audio/mp4 which Groq often rejects (400 invalid media).
-  // Route mp4 to OpenAI server STT first for reliability.
-  const isIphoneMp4 = mimeType.includes('mp4') || mimeType.includes('m4a')
-
-  // Provider 1: Groq Whisper (free, fast) — skip for iPhone mp4
-  const groqCooledDown = _sttGroqDisabled && (Date.now() - _sttGroqDisabledAt) < STT_COOLDOWN_MS
-  if (groqKey && !groqCooledDown && !isIphoneMp4) {
-    const r = await tryWhisperProvider(GROQ_WHISPER_URL, groqKey, GROQ_WHISPER_MODEL, audioBlob)
-    if (r.text) { _sttConsecutiveFailures = 0; return r.text }
-    if (r.status === 400) {
-      _sttGroqDisabled = true
-      _sttGroqDisabledAt = Date.now()
-      console.warn(`[STT] Groq disabled after 400:`, r.errorBody)
-      // Don't exhaust — try OpenAI server fallback
-    }
-    if (r.status === 429) {
-      console.warn('[STT] Groq rate-limited, trying OpenAI server')
-    }
-  }
-
-  // Provider 2: OpenAI Whisper via server proxy (/api/abuai-stt)
-  // Works with iPhone mp4 and doesn't expose API key to client.
+  // The ONLY STT provider is the OpenAI server proxy (/api/abuai-stt, OPENAI_API_KEY server-only).
+  // The Groq client-Whisper fallback was removed (client-side VITE_GROQ_API_KEY). On failure we
+  // throw honestly — never a fabricated transcript.
   try {
     console.log('[STT] Trying OpenAI server proxy...')
     const formData = buildSttFormData(audioBlob, 'whisper-1')
@@ -1273,69 +1175,21 @@ async function tryProvider(
   provider: Provider,
   body: object,
 ): Promise<{ result: string | null; retryAfter: number; toolCalls?: ToolCall[]; rawMessage?: any }> {
-  // B2.1: OpenAI provider goes through the server proxy. The browser
-  // never sees the OpenAI key; missing-key / quota errors return null
-  // (caller falls through to Gemini / Groq).
-  if (provider.kind === 'openai-server') {
-    const r = await sendServerChat({ model: provider.model, ...body })
-    if (!r.ok) {
-      // Tag a quota-skip cool-down only when the server reports the
-      // dedicated key-missing code; transient failures keep trying.
-      if (r.errorCode === 'OPENAI_API_KEY_MISSING') {
-        markProviderCooldown('openai-server')
-      }
-      return { result: null, retryAfter: 0 }
-    }
-    const data = r.openai as { choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }> } | null
-    const message = data?.choices?.[0]?.message
-    const toolCalls = message?.tool_calls
-    if (toolCalls?.length) return { result: null, retryAfter: 0, toolCalls, rawMessage: message }
-    const content = message?.content
-    if (!content) return { result: null, retryAfter: 0 }
-    return { result: stripMarkdown(content), retryAfter: 0 }
+  // The ONLY provider is the server OpenAI proxy. The browser never sees the key; missing-key /
+  // quota / transient errors return null — the caller then fails HONESTLY (empty), never a
+  // fabricated fallback (Gemini/Groq client fallbacks were removed).
+  const r = await sendServerChat({ model: provider.model, ...body })
+  if (!r.ok) {
+    if (r.errorCode === 'OPENAI_API_KEY_MISSING') markProviderCooldown('openai-server')
+    return { result: null, retryAfter: 0 }
   }
-
-  // Gemini can be slow — give it more time than Groq
-  const timeoutMs = provider.kind === 'gemini-client' ? 18000 : 12000
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const res = await fetch(provider.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${provider.apiKey ?? ''}`,
-      },
-      body: JSON.stringify({ model: provider.model, ...body }),
-      signal: controller.signal,
-    })
-    if (!res.ok) {
-      if (res.status === 429) {
-        // Rate limited — mark cooldown so getProviders() skips this
-        // provider on subsequent calls until cooldown expires.
-        markProviderCooldown(provider.kind)
-        const ra = parseInt(res.headers.get('retry-after') ?? '0', 10)
-        const retryAfter = Math.min(ra || 3, 10) // default 3s, max 10s
-        console.warn(`[AbuAI] ${provider.kind} rate-limited (429), cooldown set, retry-after ${retryAfter}s`)
-        return { result: null, retryAfter }
-      }
-      if (res.status === 402 || res.status >= 500) return { result: null, retryAfter: 0 }
-      return { result: null, retryAfter: 0 }
-    }
-    const data = await res.json()
-    const message = data?.choices?.[0]?.message
-    const toolCalls = message?.tool_calls as Array<{ id: string; function: { name: string; arguments: string } }> | undefined
-    if (toolCalls?.length) return { result: null, retryAfter: 0, toolCalls, rawMessage: message }
-    const content = message?.content
-    if (!content) return { result: null, retryAfter: 0 }
-    return { result: stripMarkdown(content), retryAfter: 0 }
-  } catch (err: unknown) {
-    if (err instanceof DOMException && err.name === 'AbortError') return { result: null, retryAfter: 0 }
-    if (err instanceof TypeError) return { result: null, retryAfter: 0 } // network error, try next
-    throw err
-  } finally {
-    clearTimeout(timeout)
-  }
+  const data = r.openai as { choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }> } | null
+  const message = data?.choices?.[0]?.message
+  const toolCalls = message?.tool_calls
+  if (toolCalls?.length) return { result: null, retryAfter: 0, toolCalls, rawMessage: message }
+  const content = message?.content
+  if (!content) return { result: null, retryAfter: 0 }
+  return { result: stripMarkdown(content), retryAfter: 0 }
 }
 
 function wait(ms: number): Promise<void> {
@@ -1372,6 +1226,13 @@ export function chatTerminalFallback(messages: ChatMessage[], opts: { offline?: 
     if (lang === 'es') return 'No tengo conexión ahora. Probá cuando vuelva el internet.'
     if (lang === 'en') return 'No connection right now. Try again when the internet is back.'
     return 'אין לי חיבור עכשיו. נסי כשהאינטרנט יחזור.'
+  }
+  // A missing server key is a CONFIG issue only the owner can fix (no client fallback exists now).
+  // Warm, no technical jargon, directs to Leo — an HONEST failure, never a fabricated answer.
+  if (checkServerChatHealth().lastErrorCode === 'OPENAI_API_KEY_MISSING') {
+    if (lang === 'es') return 'Hay un problemita chico. Hablá con Leo y lo arregla enseguida.'
+    if (lang === 'en') return "There's a small setup issue. Talk to Leo and he'll sort it out."
+    return 'יש בעיה קטנה בהגדרות — דברי עם לאו והוא יסדר את זה.'
   }
   if (lang === 'es') return 'No puedo responder ahora. Probá de nuevo en un momento.'
   if (lang === 'en') return "I couldn't get it just now. Try again in a moment."
@@ -1454,78 +1315,7 @@ export async function* streamMessage(
         if (health.lastErrorCode === 'OPENAI_API_KEY_MISSING') {
           markProviderCooldown('openai-server')
         }
-        continue // server proxy failed → next provider
-      }
-
-      const controller = new AbortController()
-      const combinedSignal = signal
-        ? AbortSignal.any?.([signal, controller.signal]) ?? controller.signal
-        : controller.signal
-      const timeout = setTimeout(() => controller.abort(), voiceMode ? 6000 : 12000)
-
-      try {
-        const res = await fetch(provider.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${provider.apiKey ?? ''}`,
-          },
-          body: JSON.stringify(body),
-          signal: combinedSignal,
-        })
-
-        if (!res.ok) {
-          clearTimeout(timeout)
-          failedKinds.add(provider.kind)
-          if (res.status === 429) {
-            markProviderCooldown(provider.kind)
-          }
-          continue // try next provider
-        }
-
-        const reader = res.body?.getReader()
-        if (!reader) { clearTimeout(timeout); continue }
-
-        const decoder = new TextDecoder()
-        let buffer = ''
-        let yieldedAny = false
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() ?? ''
-
-          for (const line of lines) {
-            const trimmed = line.trim()
-            if (!trimmed.startsWith('data: ')) continue
-            const data = trimmed.slice(6)
-            if (data === '[DONE]') break
-
-            try {
-              const parsed = JSON.parse(data)
-              const token = parsed?.choices?.[0]?.delta?.content
-              if (token) {
-                yieldedAny = true
-                yield token
-              }
-            } catch {
-              // malformed SSE chunk — skip
-            }
-          }
-        }
-
-        clearTimeout(timeout)
-        if (yieldedAny) { console.log(`[AbuAI:stream] ✅ ${provider.kind} delivered tokens`); return }
-        console.log(`[AbuAI:stream] ❌ ${provider.kind} yielded nothing`)
-        // No tokens yielded — try next provider
-      } catch {
-        clearTimeout(timeout)
-        console.log(`[AbuAI:stream] ❌ ${provider.kind} threw error`)
-        failedKinds.add(provider.kind)
-        continue // try next provider
+        continue // server proxy failed → honest empty (no client fallback)
       }
     } catch {
       failedKinds.add(provider.kind)

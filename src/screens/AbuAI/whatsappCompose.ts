@@ -636,41 +636,12 @@ function extractContent(openai: unknown): string | null {
   return c ? c.trim() : null
 }
 
-// Free-tier client fallbacks (same providers AbuAI/AbuWhatsApp already use).
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
-const GEMINI_MODEL = 'gemini-2.0-flash'
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
-
-async function tryClientProvider(
-  url: string, model: string, apiKey: string,
-  messages: Array<{ role: string; content: string }>,
-  signal?: AbortSignal,
-): Promise<string | null> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 20000)
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages, temperature: 1.0, max_tokens: 400 }),
-      signal: signal ? AbortSignal.any?.([signal, controller.signal]) ?? controller.signal : controller.signal,
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    const content = data?.choices?.[0]?.message?.content
-    return content ? String(content).trim() : null
-  } catch {
-    return null
-  } finally {
-    clearTimeout(timeout)
-  }
-}
+// (Gemini/Groq client fallbacks + tryClientProvider REMOVED — client-side VITE_ secrets.)
 
 export interface ComposeResult {
   message: string
   /** Which path produced the message. */
-  path: 'openai-server' | 'gemini-client' | 'groq-client' | 'local-fallback'
+  path: 'openai-server' | 'local-fallback'
   verdict: DraftVerdict
 }
 
@@ -709,17 +680,9 @@ export async function composeWhatsAppMessageDetailed(
     }
   } catch { /* fall through */ }
 
-  // 2) Free client fallbacks (only when keys are present in the bundle).
-  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-  if (geminiKey) {
-    const r = accept(await tryClientProvider(GEMINI_URL, GEMINI_MODEL, geminiKey, messages, opts.signal), 'gemini-client')
-    if (r) return r
-  }
-  const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-  if (groqKey) {
-    const r = accept(await tryClientProvider(GROQ_URL, GROQ_MODEL, groqKey, messages, opts.signal), 'groq-client')
-    if (r) return r
-  }
+  // (Gemini/Groq client fallbacks REMOVED — client-side VITE_ secrets. The server proxy above is
+  //  the sole model provider; on failure we fall to the deterministic local composer below, which
+  //  is fact-preserving — never a fabricated model answer.)
 
   // 3) Local deterministic composer — always succeeds, always fact-preserving.
   const local = localCompose(cmd, opts)

@@ -20,39 +20,16 @@ function buildFamilySummary(): string {
   return lines.join('\n')
 }
 
-// Provider priority: OpenAI GPT-4o (server-proxied, paid) > Gemini 2.0 Flash (free) > Groq Llama (free)
+// Provider: OpenAI GPT-4o via the server proxy (OPENAI_API_KEY, server-only). The Gemini/Groq
+// CLIENT fallbacks were REMOVED (client-side VITE_ secrets). STT also goes through the server
+// proxy (/api/abuai-stt). No client provider secret remains here. On model failure the caller
+// surfaces an honest error — never a fabricated answer.
 const OPENAI_MODEL = 'gpt-4o'
-
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
-const GEMINI_MODEL = 'gemini-2.0-flash'
-
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
-
-const WHISPER_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
-const WHISPER_MODEL = 'whisper-large-v3-turbo'
 
 interface ChatProvider { url: string; model: string; apiKey: string; serverProxy?: boolean }
 
 function getChatProviders(): ChatProvider[] {
-  const providers: ChatProvider[] = []
-  // OpenAI GPT-4o via the server proxy — the OpenAI key lives server-side only
-  // (OPENAI_API_KEY) and never reaches the client bundle. If the server has no
-  // key it returns a structured error and we fall through to the free tiers.
-  providers.push({ url: '/api/abuai-chat', model: OPENAI_MODEL, apiKey: '', serverProxy: true })
-  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-  if (geminiKey) providers.push({ url: GEMINI_URL, model: GEMINI_MODEL, apiKey: geminiKey })
-  const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-  if (groqKey) providers.push({ url: GROQ_URL, model: GROQ_MODEL, apiKey: groqKey })
-  return providers
-}
-
-function getGroqKey(): string {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-  if (!apiKey) {
-    throw new Error('מפתח API לא הוגדר. פנה לבן המשפחה שהתקין את האפליקציה.')
-  }
-  return apiKey
+  return [{ url: '/api/abuai-chat', model: OPENAI_MODEL, apiKey: '', serverProxy: true }]
 }
 
 // ─── SYSTEM PROMPT — based on 1,388 real messages from Martita's WhatsApp ───
@@ -164,40 +141,11 @@ async function tryProvider(
   provider: ChatProvider,
   body: object,
 ): Promise<string | null> {
-  if (provider.serverProxy) {
-    // OpenAI tier through /api/abuai-chat — no client key. Returns wrapped { ok, openai }.
-    const result = await sendServerChat({ model: provider.model, ...body }, { lang: 'he', timeoutMs: 20000 })
-    if (!result.ok) return null
-    const content = (result.openai as { choices?: Array<{ message?: { content?: string } }> } | undefined)?.choices?.[0]?.message?.content
-    return content ? content.trim() : null
-  }
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 20000)
-  try {
-    const res = await fetch(provider.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${provider.apiKey}`,
-      },
-      body: JSON.stringify({ model: provider.model, ...body }),
-      signal: controller.signal,
-    })
-    if (!res.ok) {
-      if (res.status === 401 || res.status === 429 || res.status >= 500) return null
-      throw new Error(`שגיאה מהשרת (${res.status}).`)
-    }
-    const data = await res.json()
-    const content = data?.choices?.[0]?.message?.content
-    if (!content) return null
-    return content.trim()
-  } catch (err: unknown) {
-    if (err instanceof DOMException && err.name === 'AbortError') return null
-    if (err instanceof TypeError) return null
-    throw err
-  } finally {
-    clearTimeout(timeout)
-  }
+  // OpenAI tier through /api/abuai-chat — no client key. Returns wrapped { ok, openai }.
+  const result = await sendServerChat({ model: provider.model, ...body }, { lang: 'he', timeoutMs: 20000 })
+  if (!result.ok) return null
+  const content = (result.openai as { choices?: Array<{ message?: { content?: string } }> } | undefined)?.choices?.[0]?.message?.content
+  return content ? content.trim() : null
 }
 
 export async function generateMessage(
@@ -236,8 +184,9 @@ export async function generateMessage(
 
 // Whisper transcription stays on Groq (excellent + free for audio)
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {
-  const apiKey = getGroqKey()
-
+  // STT through the server proxy (/api/abuai-stt, OPENAI_API_KEY server-only). The Groq client
+  // Whisper path was REMOVED (client-side VITE_GROQ_API_KEY). On failure we throw honestly —
+  // never a fabricated transcript.
   const formData = new FormData()
   const t = audioBlob.type
   const ext = t.includes('mp4') || t.includes('m4a') || t.includes('aac') ? 'm4a'
@@ -246,29 +195,25 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     : t.includes('wav')  ? 'wav'
     : 'webm'
   formData.append('file', audioBlob, `recording.${ext}`)
-  formData.append('model', WHISPER_MODEL)
-  // Prime Whisper for Hebrew + Spanish — auto-detect handles both
-  formData.append('prompt', 'שלום מרטיטה, בוקר טוב, מה שלומך, תודה. Hola Martita, buenos días, gracias, cómo estás.')
+  formData.append('model', 'whisper-1')
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30000)
 
   try {
-    const res = await fetch(WHISPER_URL, {
+    const res = await fetch('/api/abuai-stt', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
       body: formData,
       signal: controller.signal,
     })
 
     if (!res.ok) {
-      if (res.status === 401) throw new Error('מפתח API לא תקין. פנה לבן המשפחה.')
       if (res.status === 429) throw new Error('יותר מדי בקשות. נסי שוב בעוד דקה.')
       throw new Error(`שגיאה בתמלול (${res.status}).`)
     }
 
     const data = await res.json()
-    const text = data?.text
+    const text = data?.ok ? data?.text : null
     if (!text) throw new Error('לא הצלחתי להבין את ההקלטה. נסי שוב.')
     return text.trim()
   } catch (err: unknown) {

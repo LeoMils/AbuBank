@@ -272,76 +272,8 @@ async function speakAzureTTS(text: string): Promise<boolean> {
   return true
 }
 
-// ─── 2. Gemini TTS ─────────────────────────────────────────
-// Uses existing VITE_GEMINI_API_KEY.
-// Returns L16 raw PCM → we convert to WAV before playback.
-
-const GEMINI_TTS_MODELS = [
-  'gemini-2.5-flash-preview-tts',
-  'gemini-2.0-flash',            // fallback: standard flash also supports TTS
-]
-
-async function speakGemini(text: string): Promise<boolean> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-  if (!apiKey) return false
-
-  // For voice, keep text short and natural. No instruction prefix — just the text.
-  for (const model of GEMINI_TTS_MODELS) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text }] }],
-            generationConfig: {
-              responseModalities: ['AUDIO'],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: 'Kore' },  // T4.2: Kore better for Hebrew than Aoede
-                },
-              },
-            },
-          }),
-        }
-      )
-
-      if (!res.ok) {
-        console.log(`[TTS] Gemini (${model}) status:`, res.status)
-        continue  // try next model
-      }
-
-      const data = await res.json()
-      const audioPart = data?.candidates?.[0]?.content?.parts?.find(
-        (p: { inlineData?: { mimeType?: string; data?: string } }) => p.inlineData?.mimeType?.startsWith('audio/')
-      )
-
-      if (!audioPart?.inlineData?.data) {
-        console.log(`[TTS] Gemini (${model}): no audio in response`)
-        continue
-      }
-
-      const { mimeType, data: b64 } = audioPart.inlineData
-      const rawBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
-
-      // Gemini returns raw PCM (audio/L16; codec=pcm; rate=24000) — must wrap in WAV
-      const isRawPcm = mimeType.includes('L16') || mimeType.includes('pcm') || mimeType.includes('raw')
-      const sampleRate = (() => {
-        const m = mimeType.match(/rate=(\d+)/i)
-        return m ? parseInt(m[1]!) : 24000
-      })()
-      const blob = isRawPcm ? pcmToWav(rawBytes, sampleRate) : new Blob([rawBytes], { type: mimeType })
-
-      console.log(`[TTS] Gemini (${model}): ${rawBytes.length} bytes, mimeType=${mimeType}`)
-      const ok = await playBlob(blob)
-      if (ok) return true
-    } catch (e) {
-      console.log(`[TTS] Gemini (${model}) error:`, e)
-    }
-  }
-  return false
-}
+// ─── 2. Gemini TTS — REMOVED (client-side VITE_GEMINI_API_KEY secret; P0 remediation).
+//    OpenAI TTS is primary; Google Translate / Edge / Web Speech remain as free fallbacks.
 
 // ─── 3. Google Translate TTS ───────────────────────────────
 // Free, clear Hebrew female voice. Proxy via Vite dev middleware (/api/gtts).
@@ -508,11 +440,8 @@ export async function speakVoiceMode(text: string): Promise<boolean> {
     ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: 0, fallback: true, status: `⏭ skipped: quotaOk=false` })
   }
 
-  // 2) Gemini TTS (FREE with existing key)
-  if (await speakGeminiViaAudioCtx(text)) {
-    ttsTrace({ provider: 'Gemini', model: 'gemini-2.5-flash-preview-tts', voice: 'Kore', latencyMs: Date.now() - ttsStart, fallback: true, status: '✅ Gemini TTS' })
-    return true
-  }
+  // (Gemini TTS tier REMOVED — it read a client-side VITE_GEMINI_API_KEY. OpenAI TTS above is
+  //  primary; Web Speech below is the free last-resort. No client provider secret remains.)
 
   // 3) Web Speech API (FREE, last audible resort). Voice mode PREVIOUSLY skipped
   //    this and returned "text only" — a SILENT failure (visible text, no voice).
@@ -531,51 +460,7 @@ export async function speakVoiceMode(text: string): Promise<boolean> {
   return false
 }
 
-// Gemini TTS via AudioContext for voice mode (bypasses iOS audio restrictions)
-async function speakGeminiViaAudioCtx(text: string): Promise<boolean> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-  if (!apiKey) return false
-
-  for (const model of GEMINI_TTS_MODELS) {
-    try {
-      const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 10000)
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text }] }],
-            generationConfig: {
-              responseModalities: ['AUDIO'],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: 'Kore' },  // T4.2: Kore better for Hebrew than Aoede
-                },
-              },
-            },
-          }),
-          signal: controller.signal,
-        }
-      )
-      clearTimeout(t)
-      if (!res.ok) continue
-      const json = await res.json()
-      const audioData = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
-      if (!audioData) continue
-
-      // Convert base64 L16 PCM to WAV blob
-      const raw = Uint8Array.from(atob(audioData), c => c.charCodeAt(0))
-      const wavBlob = pcmToWav(raw, 24000)
-      const ok = await playBlobViaAudioCtx(wavBlob)
-      if (ok) return true
-    } catch {
-      continue
-    }
-  }
-  return false
-}
+// (speakGeminiViaAudioCtx REMOVED — client-side Gemini TTS used a VITE_GEMINI_API_KEY secret.)
 
 // speak — for TEXT CHAT and other non-realtime uses
 // v24.3: OpenAI (paid) → Gemini (FREE) → Web Speech (FREE)
@@ -593,10 +478,9 @@ export async function speak(text: string): Promise<void> {
         // 1) OpenAI TTS (paid, best quality)
         if (await speakOpenAI(text)) return
 
-        // 2) Gemini TTS (FREE)
-        if (await speakGemini(text)) return
+        // (Gemini TTS tier REMOVED — client-side VITE_GEMINI_API_KEY secret.)
 
-        // 3) Web Speech API (FREE, last resort)
+        // 2) Web Speech API (FREE, last resort)
         await speakWebAPI(text)
       })(),
       timeout,
@@ -771,33 +655,7 @@ export async function streamSpeakVoiceMode(
       if (error === 'TTS_QUOTA') { try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {} }
       if (blob && blob.size > 100) { queue.enqueue(blob); return }
     }
-    // Gemini TTS (FREE) — convert to blob and enqueue
-    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-    if (geminiKey) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text }] }],
-              generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } },
-            }),
-          }
-        )
-        if (res.ok) {
-          const json = await res.json()
-          const audioData = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
-          if (audioData) {
-            const raw = Uint8Array.from(atob(audioData), c => c.charCodeAt(0))
-            const wavBlob = pcmToWav(raw, 24000)
-            queue.enqueue(wavBlob)
-            return
-          }
-        }
-      } catch { /* try fallback */ }
-    }
+    // (Gemini TTS tier REMOVED — client-side VITE_GEMINI_API_KEY secret. OpenAI above is primary.)
     // Web Speech (FREE, last resort)
     speakWebAPI(text).catch(() => {})
   }
