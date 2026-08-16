@@ -60,10 +60,12 @@ async function judgedAnswer(
   first: { sources: Array<{ url?: string; title?: string; content?: string }> },
   lang: OnlinePayload['lang'],
   env: Record<string, string | undefined>,
-): Promise<{ status: 'answer' | 'no_answer'; answer: string; path: string }> {
+): Promise<{ status: 'answer' | 'no_answer'; answer: string; path: string; detail?: string }> {
   const apiKey = env.OPENAI_API_KEY
-  if (!apiKey) return { status: 'no_answer', answer: '', path: 'none' } // no judge → honest miss, never an unjudged snippet
+  if (!apiKey) return { status: 'no_answer', answer: '', path: 'none', detail: 'no_openai_key' } // no judge → honest miss
+  const detail: string[] = []
   // (1) general agentic loop with a FRESH search on refine
+  detail.push(`deepEnabled=${onlineGeneralSearchEnabled(env)}`)
   if (onlineGeneralSearchEnabled(env)) {
     try {
       const loop = await generalSearchLoop(query, {
@@ -75,18 +77,21 @@ async function judgedAnswer(
         synthesize: (oq, pt) => synthesizeAnswer(oq, pt, { openaiKey: apiKey }),
         fetchPage: fetchPageText,
       })
-      if (loop.status === 'answer' && loop.answer.trim()) return { status: 'answer', answer: loop.answer.trim(), path: 'deep' }
-    } catch { /* fall through to the snippet judge */ }
+      detail.push(`deepStatus=${loop.status}`)
+      if (loop.status === 'answer' && loop.answer.trim()) return { status: 'answer', answer: loop.answer.trim(), path: 'deep', detail: detail.join(',') }
+    } catch (e) { detail.push(`deepThrew=${String((e as Error)?.message || e).slice(0, 60)}`) }
   }
   // (2) judge the provider's OWN snippets — a good snippet passes, a category list fails
   try {
     const snippetText = first.sources.map((s) => [s.title, s.content].filter(Boolean).join(' — ')).filter(Boolean).join('\n').slice(0, 5000)
+    detail.push(`snippetChars=${snippetText.trim().length}`)
     if (snippetText.trim()) {
       const syn = await synthesizeAnswer(query, snippetText, { openaiKey: apiKey })
-      if (syn.status === 'answer' && syn.answer.trim()) return { status: 'answer', answer: syn.answer.trim(), path: 'snippet' }
+      detail.push(`snippetSyn=${syn.status}`)
+      if (syn.status === 'answer' && syn.answer.trim()) return { status: 'answer', answer: syn.answer.trim(), path: 'snippet', detail: detail.join(',') }
     }
-  } catch { /* honest miss */ }
-  return { status: 'no_answer', answer: '', path: 'none' }
+  } catch (e) { detail.push(`snippetThrew=${String((e as Error)?.message || e).slice(0, 60)}`) }
+  return { status: 'no_answer', answer: '', path: 'none', detail: detail.join(',') }
 }
 
 interface OnlinePayload {
@@ -146,6 +151,8 @@ interface OnlineDiag {
    *  'briefing' (synthesized headlines), 'openai' (incumbent), or 'none' (honest miss). A raw UNJUDGED
    *  provider description is NEVER an answerPath — that was the garbage the device heard. */
   answerPath?: string
+  /** TEMP diagnostic: which judge sub-path ran + its status (deep/snippet/synth), for root-causing. */
+  answerDetail?: string
 }
 
 interface OnlineSuccess {
@@ -172,10 +179,15 @@ const REQUEST_TIMEOUT_MS = 12_000
 // so the endpoint refuses personal queries even if a buggy client calls
 // it without running the client-side intent check.
 const PERSONAL_HE = /מה יש לי|תור שלי|שלי ביומן|בן\s*משפחה|הנכד שלי|הנכדה שלי|הבן שלי|הבת שלי|מתי הרופא הבא שלי|פפי|לאו|מור|אופיר|איילון|עילי|אדר|עדי|נועם|רפי|ירדן|גלעד|יעל/
-const PERSONAL_ES = /qu[eé]\s+tengo\s+hoy|qu[eé]\s+tengo\s+ma[nñ]ana|h[aá]blame\s+de|cu[eé]ntame\s+de|qui[eé]n\s+es|mi\s+(?:nieto|nieta|hijo|hija)|mi\s+familia|mi\s+m[eé]dico/i
-const PERSONAL_EN = /\bwhat\s+do\s+i\s+have\b|\btell\s+me\s+about\s+(?!italy|argentina|spain|france|germany|japan)|\bwho\s+is\s+(?!the\s+president|the\s+prime\s+minister)|\bmy\s+(?:grandson|granddaughter|son|daughter|family|doctor|appointment)\b/i
+// STRUCTURAL (P1 fix): personal ⇔ a POSSESSIVE marker (my/mi/שלי) + a family/calendar term, NOT a
+// generic interrogative. A public/current-info question ("who is the current president", "exchange
+// rate", "weather") must NEVER be classified personal merely for containing person-like language.
+// The old `who is …` / `quién es …` / `tell me about …` clauses over-blocked (an adjective like
+// "current" defeated the exact-match exception) — removed. Family NAMES stay personal via PERSONAL_HE.
+const PERSONAL_ES = /qu[eé]\s+tengo\s+(?:hoy|ma[nñ]ana)|\bmi\s+(?:nieto|nieta|hijo|hija|familia|m[eé]dico|agenda|calendario|cita)\b/i
+const PERSONAL_EN = /\bwhat\s+do\s+i\s+have\b|\bmy\s+(?:grandson|granddaughter|son|daughter|family|doctor|appointment|calendar|schedule)\b/i
 
-function isPersonal(text: string): boolean {
+export function isPersonal(text: string): boolean {
   return PERSONAL_HE.test(text) || PERSONAL_ES.test(text) || PERSONAL_EN.test(text)
 }
 
@@ -353,6 +365,7 @@ export default async function handler(req: Request): Promise<Response> {
       // → honest miss. A raw unjudged description is NEVER returned.
       const judged = await judgedAnswer(query, provider, r, lang, env)
       diag.answerPath = judged.path
+      if (judged.detail) diag.answerDetail = judged.detail
       if (judged.status === 'answer') return respond({ ok: true, answer: judged.answer, sources: winnerSources })
       return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
     }
