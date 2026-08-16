@@ -1,17 +1,18 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T17:12:22.168Z",
-  "candidateSha": "11f3b21d5b085ca2119ec627cc40e19184a24d54",
+  "generatedAt": "2026-08-16T17:17:05.329Z",
+  "candidateSha": "e0257270b995f9242c3d73cf1bf69b783beef3cd",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_19391d6f",
-  "frozenControlPlaneId": "cp_19391d6f",
-  "controlPlaneInputHash": "in_4398ca86",
+  "controlPlaneId": "cp_c8d12214",
+  "frozenControlPlaneId": "cp_c8d12214",
+  "controlPlaneInputHash": "in_e89d3e2b",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "ffc9f164f0b568f5",
+    "dirtyStateHash": "645c88449033f3fe",
     "dirtyRuntime": [
-      "src/engineering-os/capabilityDiscoverySource.ts"
+      "src/engineering-os/capabilityDiscoverySource.ts",
+      "src/engineering-os/capabilityManifest.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -118,11 +119,11 @@
   "releaseBlockers": [
     {
       "code": "UNPUSHED_COMMIT",
-      "reason": "head 11f3b21d5b085ca2119ec627cc40e19184a24d54 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
+      "reason": "head e0257270b995f9242c3d73cf1bf69b783beef3cd != remote afda67291f51fc68c4969a6c856151cccf57bed5"
     },
     {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/capabilityDiscoverySource.ts"
+      "reason": "src/engineering-os/capabilityDiscoverySource.ts, src/engineering-os/capabilityManifest.ts"
     }
   ],
   "controlBlockers": [

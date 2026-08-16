@@ -9,27 +9,14 @@
     "public/manifest.json"
   ],
   "note": "Source-class coverage oracle for the static capability producer. UNCOVERED release-relevant classes mean the static capability set is NOT yet complete — this is a PREREQUISITE for o-capability, which also still needs the dynamic differential (deploy-scoped).",
-  "complete": false,
+  "complete": true,
   "distribution": {
-    "COVERED": 3,
-    "UNCOVERED_RELEASE": 3,
+    "COVERED": 6,
+    "UNCOVERED_RELEASE": 0,
     "EXCLUDED_WITH_PROOF": 3,
     "UNKNOWN": 0
   },
-  "blockers": [
-    {
-      "code": "CAPABILITY_DISCOVERY_SOURCE_UNCOVERED",
-      "reason": "release-relevant source class 'DEVICE_GATED_FLAG' (src/services/deviceGatedFlags.ts — DEVICE_GATED_FLAGS registry) is NOT consumed by the capability producer (e.g. LIVE_AUDIO_TUNE_V2, LIVE_BARGE_IN_TRUNCATE, LIVE_PREFETCH_WARM, LIVE_PREAMBLE_TWO_RESPONSE, LIVE_CLASSIFIED_MONITOR) — static discovery cannot be trusted complete"
-    },
-    {
-      "code": "CAPABILITY_DISCOVERY_SOURCE_UNCOVERED",
-      "reason": "release-relevant source class 'ONLINE_FLAG' (src/services/online/flags.ts — online search/prefetch capability gates) is NOT consumed by the capability producer (e.g. ONLINE_GENERAL_SEARCH, ONLINE_PREFETCH_WARM) — static discovery cannot be trusted complete"
-    },
-    {
-      "code": "CAPABILITY_DISCOVERY_SOURCE_UNCOVERED",
-      "reason": "release-relevant source class 'DEEP_LINK_ROUTE' (src/App.tsx query-param/path/hash routing (?live=1, /settings/family-phones, ?diagnostics=1, ?screen=, ?legacy=1)) is NOT consumed by the capability producer (e.g. DiagnosticOverlay (?diagnostics / #diagnostics)) — static discovery cannot be trusted complete"
-    }
-  ],
+  "blockers": [],
   "sourceClasses": [
     {
       "id": "SCREEN_DIR",
@@ -51,9 +38,9 @@
     },
     {
       "id": "DEVICE_GATED_FLAG",
-      "mechanism": "src/services/deviceGatedFlags.ts — DEVICE_GATED_FLAGS registry",
+      "mechanism": "src/services/deviceGatedFlags.ts — DEVICE_GATED_FLAGS registry (SIGNAL 4)",
       "relevance": "RELEASE_RELEVANT",
-      "coveredByProducer": false,
+      "coveredByProducer": true,
       "exampleUncoveredCapabilities": [
         "LIVE_AUDIO_TUNE_V2",
         "LIVE_BARGE_IN_TRUNCATE",
@@ -64,9 +51,9 @@
     },
     {
       "id": "ONLINE_FLAG",
-      "mechanism": "src/services/online/flags.ts — online search/prefetch capability gates",
+      "mechanism": "src/services/online/flags.ts — online search/prefetch capability gates (SIGNAL 5)",
       "relevance": "RELEASE_RELEVANT",
-      "coveredByProducer": false,
+      "coveredByProducer": true,
       "exampleUncoveredCapabilities": [
         "ONLINE_GENERAL_SEARCH",
         "ONLINE_PREFETCH_WARM"
@@ -74,9 +61,9 @@
     },
     {
       "id": "DEEP_LINK_ROUTE",
-      "mechanism": "src/App.tsx query-param/path/hash routing (?live=1, /settings/family-phones, ?diagnostics=1, ?screen=, ?legacy=1)",
+      "mechanism": "src/App.tsx query-param/path/hash routing (?live=1, /settings/family-phones, ?diagnostics=1, ?screen=, ?legacy=1) (SIGNAL 6)",
       "relevance": "RELEASE_RELEVANT",
-      "coveredByProducer": false,
+      "coveredByProducer": true,
       "exampleUncoveredCapabilities": [
         "DiagnosticOverlay (?diagnostics / #diagnostics)"
       ]

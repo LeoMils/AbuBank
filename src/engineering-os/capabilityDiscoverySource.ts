@@ -110,40 +110,41 @@ export function evaluateSourceCompleteness(input: SourceCompletenessInput): Sour
 /**
  * The source-class manifest as it ACTUALLY stands for AbuBank at 0.286 — derived from a
  * real repository inspection (App.tsx routing, deviceGatedFlags.ts, online/flags.ts,
- * api/*, public/manifest.json, vite-plugin-pwa). This is the honest current state:
- *  COVERED  : SCREEN_DIR, SCREEN_ENUM, TOOL_REGISTRY (the producer's 3 signals).
- *  UNCOVERED (release-relevant, real): DEVICE_GATED_FLAG, ONLINE_FLAG, DEEP_LINK_ROUTE.
+ * api/*, public/manifest.json, vite-plugin-pwa). Current state after the producer was
+ * extended to 6 source classes (Stage 3C §3):
+ *  COVERED  : SCREEN_DIR, SCREEN_ENUM, TOOL_REGISTRY, DEVICE_GATED_FLAG, ONLINE_FLAG,
+ *             DEEP_LINK_ROUTE — the producer now consumes all six.
  *  EXCLUDED-with-proof: API_ROUTE, PWA_MANIFEST, SERVICE_WORKER.
- * The three UNCOVERED classes are why the static 33 is NOT yet source-complete.
+ * Static discovery is now source-complete; the remaining o-capability gap is the
+ * DYNAMIC reachability differential (deploy-scoped), tracked separately.
  */
 export function currentDiscoverySourceManifest(): DiscoverySourceClass[] {
   return [
-    // ── Covered by the producer today ──────────────────────────────────────────
+    // ── Covered by the producer (6 signals) ────────────────────────────────────
     { id: 'SCREEN_DIR', mechanism: 'src/screens/* directories', relevance: 'RELEASE_RELEVANT', coveredByProducer: true },
     { id: 'SCREEN_ENUM', mechanism: 'Screen union in src/state/types.ts', relevance: 'RELEASE_RELEVANT', coveredByProducer: true },
     { id: 'TOOL_REGISTRY', mechanism: 'src/services/liveTools.ts name: registrations', relevance: 'RELEASE_RELEVANT', coveredByProducer: true },
-    // ── Discovered but NOT covered (real static gaps) ──────────────────────────
     {
       id: 'DEVICE_GATED_FLAG',
-      mechanism: 'src/services/deviceGatedFlags.ts — DEVICE_GATED_FLAGS registry',
+      mechanism: 'src/services/deviceGatedFlags.ts — DEVICE_GATED_FLAGS registry (SIGNAL 4)',
       relevance: 'RELEASE_RELEVANT',
-      coveredByProducer: false,
+      coveredByProducer: true,
       exampleUncoveredCapabilities: ['LIVE_AUDIO_TUNE_V2', 'LIVE_BARGE_IN_TRUNCATE', 'LIVE_PREFETCH_WARM', 'LIVE_PREAMBLE_TWO_RESPONSE', 'LIVE_CLASSIFIED_MONITOR'],
     },
     {
       id: 'ONLINE_FLAG',
-      mechanism: 'src/services/online/flags.ts — online search/prefetch capability gates',
+      mechanism: 'src/services/online/flags.ts — online search/prefetch capability gates (SIGNAL 5)',
       relevance: 'RELEASE_RELEVANT',
-      coveredByProducer: false,
+      coveredByProducer: true,
       exampleUncoveredCapabilities: ['ONLINE_GENERAL_SEARCH', 'ONLINE_PREFETCH_WARM'],
     },
     {
       id: 'DEEP_LINK_ROUTE',
-      mechanism: 'src/App.tsx query-param/path/hash routing (?live=1, /settings/family-phones, ?diagnostics=1, ?screen=, ?legacy=1)',
+      mechanism: 'src/App.tsx query-param/path/hash routing (?live=1, /settings/family-phones, ?diagnostics=1, ?screen=, ?legacy=1) (SIGNAL 6)',
       relevance: 'RELEASE_RELEVANT',
-      coveredByProducer: false,
+      coveredByProducer: true,
       // The diagnostics overlay is user-reachable but is NOT a src/screens/* dir and NOT
-      // in the Screen enum — the producer's SCREEN_DIR/SCREEN_ENUM signals cannot see it.
+      // in the Screen enum — now surfaced via the ROUTE signal.
       exampleUncoveredCapabilities: ['DiagnosticOverlay (?diagnostics / #diagnostics)'],
     },
     // ── Mechanisms that exist but register NO new user capability (proof-backed) ─

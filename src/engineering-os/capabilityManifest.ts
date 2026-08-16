@@ -11,9 +11,9 @@
  * UNKNOWN on a high-risk capability may NOT shrink the denominator.
  */
 
-export type CapabilityType = 'UI_SURFACE' | 'VOICE_CHANNEL' | 'ACTION_CAPABILITY' | 'INTEGRATION_CAPABILITY' | 'BACKGROUND_CAPABILITY'
+export type CapabilityType = 'UI_SURFACE' | 'VOICE_CHANNEL' | 'ACTION_CAPABILITY' | 'INTEGRATION_CAPABILITY' | 'BACKGROUND_CAPABILITY' | 'FEATURE_CAPABILITY'
 export type Reachability = 'USER_REACHABLE' | 'USER_INVOKABLE' | 'INTERNAL' | 'EXPERIMENTAL' | 'ORPHAN' | 'UNKNOWN'
-export type SignalSource = 'SCREEN_DIR' | 'SCREEN_ENUM' | 'ROUTE' | 'NAV' | 'TOOL_REGISTRY' | 'ACTION_REGISTRY' | 'VOICE_ENTRY' | 'INTEGRATION' | 'DYNAMIC_OBSERVED'
+export type SignalSource = 'SCREEN_DIR' | 'SCREEN_ENUM' | 'ROUTE' | 'NAV' | 'TOOL_REGISTRY' | 'ACTION_REGISTRY' | 'VOICE_ENTRY' | 'INTEGRATION' | 'FEATURE_FLAG' | 'DYNAMIC_OBSERVED'
 
 export interface CapabilitySignal { id: string; source: SignalSource; type: CapabilityType }
 

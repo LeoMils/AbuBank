@@ -4,15 +4,19 @@
   "producedFrom": [
     "src/screens/*",
     "src/state/types.ts",
-    "src/services/liveTools.ts"
+    "src/services/liveTools.ts",
+    "src/services/deviceGatedFlags.ts",
+    "src/services/online/flags.ts",
+    "src/App.tsx"
   ],
-  "candidateNote": "static discovery only; DYNAMIC reachability differential vs deployed RC is PENDING (o-capability stays UNIMPLEMENTED until dynamic + drift proof).",
-  "totalCapabilities": 33,
+  "candidateNote": "static discovery now source-complete (6 source classes; verified by capabilityDiscoverySource oracle). DYNAMIC reachability differential vs deployed RC is PENDING (o-capability stays UNIMPLEMENTED until dynamic + drift proof).",
+  "totalCapabilities": 41,
   "byType": {
-    "UI_SURFACE": 17,
+    "UI_SURFACE": 18,
     "ACTION_CAPABILITY": 12,
     "INTEGRATION_CAPABILITY": 3,
-    "VOICE_CHANNEL": 1
+    "VOICE_CHANNEL": 1,
+    "FEATURE_CAPABILITY": 7
   },
   "staticBlockers": [],
   "capabilities": {
@@ -87,6 +91,14 @@
       "reachability": "USER_REACHABLE",
       "riskTier": "medium"
     },
+    "DiagnosticOverlay": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "ROUTE"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
     "Error": {
       "type": "UI_SURFACE",
       "sources": [
@@ -131,6 +143,46 @@
       "reachability": "USER_REACHABLE",
       "riskTier": "medium"
     },
+    "LIVE_AUDIO_TUNE_V2": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "LIVE_BARGE_IN_TRUNCATE": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "LIVE_CLASSIFIED_MONITOR": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "LIVE_PREAMBLE_TWO_RESPONSE": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "LIVE_PREFETCH_WARM": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
     "Live": {
       "type": "UI_SURFACE",
       "sources": [
@@ -138,6 +190,22 @@
       ],
       "reachability": "USER_REACHABLE",
       "riskTier": "high"
+    },
+    "ONLINE_GENERAL_SEARCH": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "ONLINE_PREFETCH_WARM": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
     },
     "Offline": {
       "type": "UI_SURFACE",

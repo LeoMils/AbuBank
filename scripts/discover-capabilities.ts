@@ -41,6 +41,29 @@ for (const m of toolsSrc.matchAll(/name:\s*'([a-z_]+)'/g)) {
   signals.push({ id, source: 'TOOL_REGISTRY', type })
 }
 
+// SIGNAL 4: device-gated feature flags — each registers a distinct HEARD capability
+// (deviceGatedFlags.ts DEVICE_GATED_FLAGS registry). Missed by the 3 legacy signals.
+const flagsSrc = read('src/services/deviceGatedFlags.ts')
+for (const m of flagsSrc.matchAll(/id:\s*'(LIVE_[A-Z0-9_]+)'/g)) {
+  signals.push({ id: m[1]!, source: 'FEATURE_FLAG', type: 'FEATURE_CAPABILITY' })
+}
+
+// SIGNAL 5: online capability flags (online/flags.ts *_DEFAULT constants gate the
+// online search/prefetch capabilities).
+const onlineFlagsSrc = read('src/services/online/flags.ts')
+for (const m of onlineFlagsSrc.matchAll(/export const (ONLINE_[A-Z0-9_]+)_DEFAULT\b/g)) {
+  signals.push({ id: m[1]!, source: 'FEATURE_FLAG', type: 'FEATURE_CAPABILITY' })
+}
+
+// SIGNAL 6: deep-link/query-param routes (App.tsx). Most targets overlap existing
+// screens (?live=1→Live, /settings/family-phones→FamilyPhones), but ?diagnostics opens
+// DiagnosticOverlay — a user-reachable overlay that is NOT a src/screens/* dir and NOT
+// in the Screen enum, so SCREEN_DIR/SCREEN_ENUM cannot see it.
+const appSrc = read('src/App.tsx')
+if (/diagnostics'|#diagnostics/.test(appSrc) && /DiagnosticOverlay/.test(appSrc)) {
+  signals.push({ id: 'DiagnosticOverlay', source: 'ROUTE', type: 'UI_SURFACE' })
+}
+
 // Conservative default classification: every discovered capability is provisionally
 // USER_REACHABLE/USER_INVOKABLE (never shrink the denominator without proof, §16).
 // Non-user classification must be ADDED later with a machine-verifiable exclusion proof.
@@ -60,8 +83,8 @@ for (const c of result.capabilities) unique.set(c.id, { type: c.type, sources: c
 const manifest = {
   $schema: 'internal://abu/capability-manifest',
   producer: 'scripts/discover-capabilities.ts',
-  producedFrom: ['src/screens/*', 'src/state/types.ts', 'src/services/liveTools.ts'],
-  candidateNote: 'static discovery only; DYNAMIC reachability differential vs deployed RC is PENDING (o-capability stays UNIMPLEMENTED until dynamic + drift proof).',
+  producedFrom: ['src/screens/*', 'src/state/types.ts', 'src/services/liveTools.ts', 'src/services/deviceGatedFlags.ts', 'src/services/online/flags.ts', 'src/App.tsx'],
+  candidateNote: 'static discovery now source-complete (6 source classes; verified by capabilityDiscoverySource oracle). DYNAMIC reachability differential vs deployed RC is PENDING (o-capability stays UNIMPLEMENTED until dynamic + drift proof).',
   totalCapabilities: unique.size,
   byType: [...unique.values()].reduce((a, c) => { a[c.type] = (a[c.type] ?? 0) + 1; return a }, {} as Record<string, number>),
   staticBlockers: result.blockers,

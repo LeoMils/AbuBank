@@ -73,14 +73,15 @@ describe('source-completeness adversarial SC1–SC7', () => {
 })
 
 describe('source-completeness — the REAL current-repo manifest (0.286)', () => {
-  it('proves the static 33 is NOT source-complete: DEVICE_GATED_FLAG, ONLINE_FLAG, DEEP_LINK_ROUTE are uncovered', () => {
+  it('is now source-complete after the producer was extended to 6 source classes', () => {
     const r = evaluateSourceCompleteness({ sourceClasses: currentDiscoverySourceManifest() })
-    expect(r.complete).toBe(false)
-    const uncovered = r.blockers.filter((b) => b.code === 'CAPABILITY_DISCOVERY_SOURCE_UNCOVERED')
-    expect(uncovered.length).toBe(3)
-    // The exclusion-proof classes (API_ROUTE, PWA_MANIFEST, SERVICE_WORKER) must NOT block.
-    expect(r.blockers.some((b) => b.code === 'INVALID_SOURCE_EXCLUSION')).toBe(false)
+    // The producer now consumes DEVICE_GATED_FLAG, ONLINE_FLAG and DEEP_LINK_ROUTE.
+    expect(r.complete).toBe(true)
+    expect(r.blockers).toEqual([])
+    // 6 release-relevant classes covered; API_ROUTE/PWA_MANIFEST/SERVICE_WORKER excluded w/ proof.
+    expect(r.distribution.COVERED).toBe(6)
     expect(r.distribution.EXCLUDED_WITH_PROOF).toBe(3)
-    expect(r.distribution.COVERED).toBe(3)
+    expect(r.distribution.UNCOVERED_RELEASE).toBe(0)
+    expect(r.distribution.UNKNOWN).toBe(0)
   })
 })

@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/control-plane-identity",
-  "controlPlaneId": "cp_19391d6f",
-  "frozenAt": "2026-08-16T17:12:14.938Z",
+  "controlPlaneId": "cp_c8d12214",
+  "frozenAt": "2026-08-16T17:17:03.528Z",
   "eligibility": "33/33 adversarial cases passed across 2 suites",
   "components": {
     "releaseGate": "src/engineering-os/releaseGate.ts",
@@ -50,13 +50,13 @@
     "executionStateSuite": "3508cb29fa2589ed",
     "yieldGate": "f992de9b8a270e1c",
     "yieldGateSuite": "0eb1787e703fb225",
-    "capabilityDiscoverySource": "744a2e7d07e84acc",
-    "capabilityDiscoverySourceSuite": "6a3a9c7a9a1ef97b",
+    "capabilityDiscoverySource": "aa5c9020a046e027",
+    "capabilityDiscoverySourceSuite": "86da3ec4e50fdf83",
     "contextExecutionState": "72bcb5f2e38a0da1",
     "contextExecutionStateSuite": "d81f753cbb3c809c",
     "constitutionCoverage": "0bc422afffd19121",
     "constitutionCoverageSuite": "2410758e08555451",
-    "capabilityManifest": "5401678e2dbe2a57",
+    "capabilityManifest": "24bd493f510d958f",
     "capabilityManifestSuite": "fd340757a2c9b5d1"
   },
   "note": "Evidence produced under a DIFFERENT controlPlaneId may not silently certify this one. A change to any component changes the id and expires affected certification."
