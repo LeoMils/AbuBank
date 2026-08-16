@@ -1,16 +1,18 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T18:30:24.654Z",
-  "candidateSha": "8a5dc39e13ac0465d0b8553556046582fc11c9ab",
+  "generatedAt": "2026-08-16T18:55:05.406Z",
+  "candidateSha": "a0e8b8c70c112a7685cbe9cc95079bc5ba43bde1",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_fb121607",
-  "frozenControlPlaneId": "cp_fb121607",
-  "controlPlaneInputHash": "in_42bd3e24",
+  "controlPlaneId": "cp_94d70ca2",
+  "frozenControlPlaneId": "cp_94d70ca2",
+  "controlPlaneInputHash": "in_79c9fdf2",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "8cc139dfaed08182",
-    "dirtyRuntime": []
+    "dirtyStateHash": "fc5d4f576274997b",
+    "dirtyRuntime": [
+      "src/engineering-os/bundleSecretScan.ts"
+    ]
   },
   "deployedCandidateIdentity": {
     "fingerprint": "0.286.0-earonly",
@@ -110,6 +112,7 @@
       "docs/engineering-os/qa/capability-discovery-source-manifest.json",
       "docs/engineering-os/qa/capability-manifest.json",
       "docs/engineering-os/qa/capability-reconciliation.json",
+      "docs/engineering-os/qa/deployed-secret-exposure.json",
       "docs/engineering-os/qa/rc-reachability-observation.json"
     ]
   },
@@ -118,7 +121,11 @@
   "releaseBlockers": [
     {
       "code": "UNPUSHED_COMMIT",
-      "reason": "head 8a5dc39e13ac0465d0b8553556046582fc11c9ab != remote afda67291f51fc68c4969a6c856151cccf57bed5"
+      "reason": "head a0e8b8c70c112a7685cbe9cc95079bc5ba43bde1 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
+    },
+    {
+      "code": "UNCOMMITTED_RUNTIME",
+      "reason": "src/engineering-os/bundleSecretScan.ts"
     }
   ],
   "controlBlockers": [
@@ -165,6 +172,10 @@
     {
       "code": "SOURCE_COVERAGE_UNKNOWN",
       "reason": "authoritative source 'docs/engineering-os/qa/capability-reconciliation.json' is neither consumed nor classified — the adapter cannot be trusted complete"
+    },
+    {
+      "code": "SOURCE_COVERAGE_UNKNOWN",
+      "reason": "authoritative source 'docs/engineering-os/qa/deployed-secret-exposure.json' is neither consumed nor classified — the adapter cannot be trusted complete"
     },
     {
       "code": "SOURCE_COVERAGE_UNKNOWN",

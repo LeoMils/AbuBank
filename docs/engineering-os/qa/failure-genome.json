@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/failure-genome",
   "purpose": "Every meaningful AUTOMATABLE failure observed across the Abu project, mapped to its regression test, its mutation proof (a deliberate defect the test catches), a deployed-path replay where applicable, and an evidence level. Replayed before every RC — failure coverage, not code coverage.",
-  "updated": "2026-08-03",
+  "updated": "2026-08-16",
   "evidenceLevels": "CODE < MOCK < BROWSER < PREVIEW < PHYSICAL_DEVICE < PRODUCTION",
   "failures": [
     {
@@ -270,6 +270,20 @@
       "evidenceLevel": "CODE",
       "recurrenceRisk": "low",
       "prevention": "migrateContactsOnClone atomic commit."
+    },
+    {
+      "failureId": "F21-billable-key-in-shipped-bundle",
+      "symptom": "The deployed 0.286 client bundle (RC + canonical alias) ships real VITE_AZURE_TTS_KEY, VITE_OPENAI_API_KEY and VITE_GEMINI_API_KEY values — publicly extractable.",
+      "trigger": "A billable/server-only key set with a VITE_ prefix in the Vercel build env; Vite inlines every VITE_ var into the client bundle.",
+      "class": "input-checked-output-unverified",
+      "rootCause": "Release controls inspected the build ENV and client SOURCE, but NO release-critical control inspected the actual SHIPPED client artifact for credential material.",
+      "invariant": "No credential-shaped private value may appear in a shipped client asset; a server-only key must never carry a VITE_ prefix or be set in the build env.",
+      "regressionTest": "src/engineering-os/bundleSecretScan.test.ts (classifyShippedKeys: billable value -> CONFIRMED_SECRET_EXPOSED; public region/version -> PUBLIC_CLIENT_CONFIGURATION; absent -> NOT_PRESENT)",
+      "mutationProof": "Building with a SYNTHETIC VITE_AZURE_TTS_KEY bakes it into dist/assets; the scanner fails for that exact reason. Removing it -> clean.",
+      "deployedReplay": "scripts/scan-deployed-secrets.ts against the deployed RC + canonical bundles (read-only, redacted fingerprints).",
+      "evidenceLevel": "PREVIEW + CODE",
+      "recurrenceRisk": "high-until-gated",
+      "prevention": "bundleSecretScan as a release-critical shipped-artifact gate (fail closed); non-VITE server-only secret names; no VITE_-secret fallback in release code."
     }
   ]
 }
