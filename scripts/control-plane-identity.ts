@@ -63,6 +63,11 @@ const COMPONENTS = {
   // Stage 3C §7: acceptance denominator (risk assigned here) → o-denominator.
   denominator: 'src/engineering-os/denominator.ts',
   denominatorSuite: 'src/engineering-os/denominator.test.ts',
+  // Stage 3C §10: privacy/security release control (o-privacy) + deploy attestation (o-attest).
+  privacyControl: 'src/engineering-os/privacyControl.ts',
+  privacyControlSuite: 'src/engineering-os/privacyControl.test.ts',
+  attestation: 'src/engineering-os/attestation.ts',
+  attestationSuite: 'src/engineering-os/attestation.test.ts',
   // P0 incident gate: scan the shipped bundle for a billable key (o-privacy prerequisite).
   bundleSecretScan: 'src/engineering-os/bundleSecretScan.ts',
   bundleSecretScanSuite: 'src/engineering-os/bundleSecretScan.test.ts',

@@ -164,9 +164,9 @@ export function defaultConstitution(): ObligationCompletenessInput {
     ob('o-claimstate', 'claim-state-model', 'non-collapsible claim-state model', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/claimState.ts', 'claim-state-model-proven'),
     ob('o-labcert', 'lab-certification', 'scope-bound lab certification', 'UNIMPLEMENTED'),
     ob('o-producers', 'evidence-producers', 'reproducible evidence producers + lineage', 'UNIMPLEMENTED'),
-    ob('o-attest', 'deployment-attestation', 'source→build→deploy attestation', 'UNIMPLEMENTED'),
+    ob('o-attest', 'deployment-attestation', 'source→build→deploy attestation', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/attestation.ts', 'deployment-attested'),
     ob('o-sw', 'sw-runtime-provenance', 'warm PWA runtime provenance', 'UNIMPLEMENTED'),
-    ob('o-privacy', 'privacy-security', 'privacy/security release control', 'UNIMPLEMENTED'),
+    ob('o-privacy', 'privacy-security', 'privacy/security release control', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/privacyControl.ts', 'privacy-control-proven'),
     ob('o-ci', 'release-ci-enforcement', 'remote release-certification enforcement', 'UNIMPLEMENTED'),
   ]
   const decisionPathComponents = [

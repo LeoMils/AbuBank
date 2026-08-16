@@ -1,18 +1,19 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T19:29:06.103Z",
-  "candidateSha": "6e5310395da45bdd74a2c5a2cc7cb441266f5ae5",
+  "generatedAt": "2026-08-16T19:32:13.015Z",
+  "candidateSha": "2856804ef3ab2a7e8f5683625d420e26d6dc22b4",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_c3d7b297",
-  "frozenControlPlaneId": "cp_c3d7b297",
-  "controlPlaneInputHash": "in_0618fbf6",
+  "controlPlaneId": "cp_050ef79a",
+  "frozenControlPlaneId": "cp_050ef79a",
+  "controlPlaneInputHash": "in_bfa026bf",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "5b680342659aaef1",
+    "dirtyStateHash": "39780d6bf9bf3f94",
     "dirtyRuntime": [
       "src/engineering-os/obligationCompleteness.ts",
-      "src/engineering-os/denominator.ts"
+      "src/engineering-os/attestation.ts",
+      "src/engineering-os/privacyControl.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -123,11 +124,11 @@
   "releaseBlockers": [
     {
       "code": "UNPUSHED_COMMIT",
-      "reason": "head 6e5310395da45bdd74a2c5a2cc7cb441266f5ae5 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
+      "reason": "head 2856804ef3ab2a7e8f5683625d420e26d6dc22b4 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
     },
     {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/obligationCompleteness.ts, src/engineering-os/denominator.ts"
+      "reason": "src/engineering-os/obligationCompleteness.ts, src/engineering-os/attestation.ts, src/engineering-os/privacyControl.ts"
     }
   ],
   "controlBlockers": [
@@ -221,15 +222,7 @@
     },
     {
       "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
-      "reason": "release-critical obligation 'o-attest' (source→build→deploy attestation) is UNIMPLEMENTED"
-    },
-    {
-      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
       "reason": "release-critical obligation 'o-sw' (warm PWA runtime provenance) is UNIMPLEMENTED"
-    },
-    {
-      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
-      "reason": "release-critical obligation 'o-privacy' (privacy/security release control) is UNIMPLEMENTED"
     },
     {
       "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
