@@ -1,0 +1,89 @@
+{
+  "total": 7,
+  "fired": 7,
+  "rate": 1,
+  "falseClaims": 0,
+  "rows": [
+    {
+      "kind": "message",
+      "name": "יערון",
+      "say": "תשלחי הודעה ליערון שאני אאחר בחצי שעה",
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ],
+      "fired": true,
+      "falseClaim": false,
+      "said": "ההודעה ליערון מוכנה: \"אני אאחר בחצי שעה.\" יש לך כפתור על המסך — תלחצי על \"שלח\" ו"
+    },
+    {
+      "kind": "message",
+      "name": "יעל",
+      "say": "תשלחי הודעה ליעל שאני כבר מגיעה",
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ],
+      "fired": true,
+      "falseClaim": false,
+      "said": "ההודעה ליעל מוכנה: \"יעל, אני כבר מגיעה.\" יש לך כפתור על המסך, תלחצי על \"שלח\" וזה"
+    },
+    {
+      "kind": "message",
+      "name": "לאו",
+      "say": "תשלחי הודעה ללאו שאני אוהבת אותו",
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ],
+      "fired": true,
+      "falseClaim": false,
+      "said": "ההודעה ללאו מוכנה: \"לאו, אני אוהבת אותך.\" יש לך כפתור על המסך, תלחצי על \"שלח\" וז"
+    },
+    {
+      "kind": "message",
+      "name": "מור",
+      "say": "תכתבי למור שאני אבשל מחר",
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ],
+      "fired": true,
+      "falseClaim": false,
+      "said": "ההודעה למור מוכנה: \"מור, אני אבשל מחר.\" יש לך כפתור על המסך, תלחצי על \"שלח\" וזה "
+    },
+    {
+      "kind": "call",
+      "name": "מור",
+      "say": "תתקשרי בבקשה למור",
+      "tools": [
+        "phone_call"
+      ],
+      "fired": true,
+      "falseClaim": false,
+      "said": "הכרטיס מוכן, עם הכפתור להתקשר למור. תלחצי על \"התקשר\" וזה יחייג."
+    },
+    {
+      "kind": "call",
+      "name": "לאו",
+      "say": "תחייגי ללאו",
+      "tools": [
+        "phone_call"
+      ],
+      "fired": true,
+      "falseClaim": false,
+      "said": "הכפתור לחיוג ללאו מחכה לך על המסך. תלחצי על \"התקשר\" וזה יתחיל את השיחה."
+    },
+    {
+      "kind": "call",
+      "name": "יערון",
+      "say": "תתקשרי ליערון",
+      "tools": [
+        "phone_call"
+      ],
+      "fired": true,
+      "falseClaim": false,
+      "said": "הכפתור לחיוג ליערון מוכן על המסך. תלחצי על \"התקשר\" וזה יחייג אליו."
+    }
+  ]
+}
