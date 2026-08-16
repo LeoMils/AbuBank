@@ -81,7 +81,8 @@ export default async function handler(req: Request): Promise<Response> {
   const limit = Math.min(Math.max(Number(payload.limit) || MAX_STORIES, 1), MAX_STORIES)
 
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
-  const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
+  // SERVER-ONLY name only — no VITE_ fallback (fail closed). See P0 incident 2026-08-16.
+  const apiKey = env.OPENAI_API_KEY
   if (!apiKey) return jsonResponse({ ok: false, errorCode: 'OPENAI_API_KEY_MISSING', userMessage: userMessageFor('OPENAI_API_KEY_MISSING', lang) }, 200)
 
   const instruction =

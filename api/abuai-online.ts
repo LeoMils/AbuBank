@@ -61,7 +61,7 @@ async function judgedAnswer(
   lang: OnlinePayload['lang'],
   env: Record<string, string | undefined>,
 ): Promise<{ status: 'answer' | 'no_answer'; answer: string; path: string }> {
-  const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
+  const apiKey = env.OPENAI_API_KEY
   if (!apiKey) return { status: 'no_answer', answer: '', path: 'none' } // no judge → honest miss, never an unjudged snippet
   // (1) general agentic loop with a FRESH search on refine
   if (onlineGeneralSearchEnabled(env)) {
@@ -274,7 +274,7 @@ export default async function handler(req: Request): Promise<Response> {
   diag.requested = env.ONLINE_PROVIDER ? providerId : 'unset'
   diag.provider = selected.id
   diag.providerKeyPresent = selected.available(env)
-  diag.openaiKeyPresent = !!(env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY)
+  diag.openaiKeyPresent = !!(env.OPENAI_API_KEY)
 
   // Server-side personal guard
   if (isPersonal(query)) {
@@ -303,7 +303,7 @@ export default async function handler(req: Request): Promise<Response> {
     // The device heard a list of website CATEGORY NAMES ("חדשות היום", "לוח שידורים", "Medical…").
     // Those are homepage TITLES, not events. JUDGE the headlines' held snippets: the model returns 3-4
     // real spoken headlines about actual events, or no_answer if it is just categories → honest miss.
-    const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
+    const apiKey = env.OPENAI_API_KEY
     const newsText = briefing.headlines.map((h) => [h.title, h.snippet].filter(Boolean).join(' — ')).filter(Boolean).join('\n').slice(0, 5000)
     if (apiKey && newsText.trim()) {
       try {
@@ -358,12 +358,10 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
-  // Read API key from server env. Never sent to the client.
-  // We accept either OPENAI_API_KEY (preferred for server) or
-  // VITE_OPENAI_API_KEY (legacy carry-over) so existing Vercel projects
-  // that already configured the VITE_ name keep working without
-  // re-deploy.
-  const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
+  // Read API key from server env. Never sent to the client. SERVER-ONLY name only —
+  // a VITE_-prefixed billable key would be baked into the client bundle (P0 incident
+  // 2026-08-16). No VITE_ fallback: fail closed if OPENAI_API_KEY is absent.
+  const apiKey = env.OPENAI_API_KEY
   if (!apiKey) {
     return respond({ ok: false, errorCode: 'OPENAI_API_KEY_MISSING', userMessage: userMessageFor('OPENAI_API_KEY_MISSING', lang) }, 200)
   }

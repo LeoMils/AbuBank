@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/control-plane-identity",
-  "controlPlaneId": "cp_94d70ca2",
-  "frozenAt": "2026-08-16T18:54:48.778Z",
+  "controlPlaneId": "cp_e0ec0cec",
+  "frozenAt": "2026-08-16T19:17:19.379Z",
   "eligibility": "33/33 adversarial cases passed across 2 suites",
   "components": {
     "releaseGate": "src/engineering-os/releaseGate.ts",
@@ -30,6 +30,7 @@
     "dynamicReachabilitySuite": "src/engineering-os/dynamicReachability.test.ts",
     "bundleSecretScan": "src/engineering-os/bundleSecretScan.ts",
     "bundleSecretScanSuite": "src/engineering-os/bundleSecretScan.test.ts",
+    "serverCredentialContractSuite": "src/engineering-os/serverCredentialContract.test.ts",
     "contextExecutionState": "src/engineering-os/contextExecutionState.ts",
     "contextExecutionStateSuite": "src/engineering-os/contextExecutionState.test.ts",
     "constitutionCoverage": "src/engineering-os/constitutionCoverage.ts",
@@ -64,6 +65,7 @@
     "dynamicReachabilitySuite": "2378be1c828e3699",
     "bundleSecretScan": "c47b27690f40cc5d",
     "bundleSecretScanSuite": "8b5675cc6f358b0b",
+    "serverCredentialContractSuite": "f9d38d5504765907",
     "contextExecutionState": "72bcb5f2e38a0da1",
     "contextExecutionStateSuite": "d81f753cbb3c809c",
     "constitutionCoverage": "0bc422afffd19121",

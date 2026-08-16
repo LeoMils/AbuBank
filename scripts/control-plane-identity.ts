@@ -61,6 +61,8 @@ const COMPONENTS = {
   // P0 incident gate: scan the shipped bundle for a billable key (o-privacy prerequisite).
   bundleSecretScan: 'src/engineering-os/bundleSecretScan.ts',
   bundleSecretScanSuite: 'src/engineering-os/bundleSecretScan.test.ts',
+  // P0 follow-up: server-only credentials must never carry a VITE_ prefix (fail-closed).
+  serverCredentialContractSuite: 'src/engineering-os/serverCredentialContract.test.ts',
   // Stage 3C resume: context-stop honesty, constitution calibration, capability universe.
   contextExecutionState: 'src/engineering-os/contextExecutionState.ts',
   contextExecutionStateSuite: 'src/engineering-os/contextExecutionState.test.ts',
