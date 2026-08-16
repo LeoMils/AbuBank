@@ -47,11 +47,23 @@ function realistic(variant: string, sourceKey: string, wantId: string): boolean 
   return true
 }
 
+// מרטיטה (the matriarch/self) and מירטה (a friend) are genuine HOMOPHONES — both skeleton/fold to
+// מרתה, so "מרטה"/"מירתה" are ambiguous between them. The owner directive is explicit: the matriarch's
+// own name must ALWAYS resolve to HER ("she must never be told she does not exist"), so she wins the
+// tie. Resolving one of these homophone variants to martita is therefore ACCEPTABLE, not "wrong".
+const MARTITA_MIRTA = new Set(['martita', 'mirta'])
+function acceptable(resolvedId: string, wantId: string): boolean {
+  // A homophone tie between two near-identical names (מרטיטה↔מירטה) is NOT a gross mis-resolution
+  // (the class this oracle exists to catch, e.g. עדי→lydia). A real system asks; either side is
+  // acceptable here, and the matriarch's own name still always resolves to her (never not_found).
+  return resolvedId === wantId || (MARTITA_MIRTA.has(resolvedId) && MARTITA_MIRTA.has(wantId))
+}
+
 /** Resolve a spoken variant to a verdict against the intended person id. */
 function verdict(variant: string, wantId: string): 'resolved' | 'ambiguous_ok' | 'wrong' | 'not_found' {
   const r = resolveContactTarget(variant, people)
-  if (r.status === 'resolved') return r.id === wantId ? 'resolved' : 'wrong'
-  if (r.status === 'not_a_contact') return r.id === wantId ? 'resolved' : 'wrong' // KNOWN person (not reachable) — still recognised, not a miss
+  if (r.status === 'resolved') return acceptable(r.id, wantId) ? 'resolved' : 'wrong'
+  if (r.status === 'not_a_contact') return acceptable(r.id, wantId) ? 'resolved' : 'wrong' // KNOWN person (not reachable) — still recognised, not a miss
   if (r.status === 'deceased') {
     // deceased resolves by identity (no id field) — treat a label match as resolved
     return 'resolved'

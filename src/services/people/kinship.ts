@@ -161,6 +161,56 @@ function shortestPath(xId: string, yId: string, byId: Map<string, Person>, maxHo
  * present edge — nothing is invented. Null only when the two are genuinely disconnected (or
  * further apart than we will narrate). Death never removes a path (genealogy persists).
  */
+/**
+ * The relation BETWEEN X and Y as ONE natural possessive phrase — NEVER routed through Martita, never
+ * a generic "בני משפחה" bucket (both were owner rejections). Walks the shortest path X→…→Y and renders
+ * it as a nested possessive that names ONLY Y at the end, dropping intermediate names:
+ *   ירדן→עילי→לאו   →  "האישה של האחיין של לאו"   (Yarden is the wife of the nephew of Leo)
+ *   עדי→אופיר→גלעד  →  "בן הדוד של האישה של גלעד"  (Adi is the cousin of the wife of Gilad)
+ * Each hop is a real structural edge with its gendered term; nothing is invented. Null only when the
+ * two are genuinely disconnected.
+ */
+export function possessivePathBetween(xId: string, yId: string, people: Person[] = loadPeople()): string | null {
+  const byId = new Map(people.map((p) => [p.id, p]))
+  // SEMANTIC adjacency: two people are one hop apart when a SINGLE derived kinship term connects them
+  // (cousin, nephew, uncle…), not only a raw blood/marriage edge. This gives the SHORT relation the
+  // owner wants — "cousin of his wife", "wife of the nephew" — instead of a long parent/child chain.
+  const SELF = 'martita'
+  const semanticNeighbours = (id: string): string[] =>
+    people.filter((q) => q.id !== id && relationshipOf(id, q.id, people) !== null).map((q) => q.id)
+  const path = ((): string[] | null => {
+    if (xId === yId) return null
+    const prev = new Map<string, string>(); const seen = new Set<string>([xId]); let frontier = [xId]
+    for (let depth = 0; depth < 4 && frontier.length; depth++) {
+      const next: string[] = []
+      for (const id of frontier) for (const nb of semanticNeighbours(id)) {
+        if (seen.has(nb)) continue
+        // NEVER route the relation BETWEEN two people THROUGH Martita (owner: she is not in the answer
+        // unless she is one of the two asked about). She may still be an endpoint.
+        if (nb === SELF && nb !== yId) { seen.add(nb); continue }
+        seen.add(nb); prev.set(nb, id)
+        if (nb === yId) { const p = [yId]; let cur = yId; while (cur !== xId) { cur = prev.get(cur)!; p.unshift(cur) } return p }
+        next.push(nb)
+      }
+      frontier = next
+    }
+    return null
+  })()
+  if (!path || path.length < 2) return null
+  const terms: string[] = []
+  for (let i = 0; i < path.length - 1; i++) {
+    const rel = relationshipOf(path[i]!, path[i + 1]!, people)
+    if (!rel) return null // adjacent nodes must have a direct term (safety)
+    terms.push(rel.he)
+  }
+  const yName = byId.get(yId)!.hebrewName
+  // ה-prefix each term (article), join with " של ", end at Y's name. Multi-word terms take the ה on the
+  // HEAD noun ("בן דוד"→"בן הדוד", "בת זוג"→"בת הזוג"). Collapse any accidental doubled ה.
+  const withArticle = (t: string): string => (t.includes(' ') ? t.replace(/ (\S+)$/, ' ה$1') : `ה${t}`)
+  const chain = terms.map(withArticle).join(' של ') + ` של ${yName}`
+  return chain.replace(/הה+/g, 'ה')
+}
+
 export function describePathBetween(xId: string, yId: string, people: Person[] = loadPeople()): string | null {
   const byId = new Map(people.map((p) => [p.id, p]))
   const path = shortestPath(xId, yId, byId)

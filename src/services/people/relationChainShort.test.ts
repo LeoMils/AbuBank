@@ -1,33 +1,39 @@
 /*
- * relationChainShort.test.ts — device regression (transcript item 2): "גלעד לעדי" returned a
- * sprawling chain ("husband of Ofir who is daughter of Mor who is sister of Leo who is father of
- * Adi"). Martita wants the relation as ONE short phrase — a derived term, or the shortest true
- * thing anchored to her — NEVER a transitive hop chain. This locks that.
+ * relationChainShort.test.ts — the relation BETWEEN two people (owner device round 3): compute the
+ * relation between X and Y DIRECTLY, as one natural possessive phrase. NEVER route through Martita
+ * ("both of their relations to her" was rejected), NEVER return the generic "בני משפחה" bucket, and
+ * NEVER a pronoun hop-chain ("שהיא… שהוא…"). A direct single term is still returned as-is.
  */
 import { describe, it, expect } from 'vitest'
 import { relationshipBetween } from './peopleLookup'
 
-const CHAIN = /שהיא|שהוא|, ש/ // the multi-hop connectors a chain uses
+const PRONOUN_CHAIN = /שהיא|שהוא|, ש/          // the old sprawling pronoun chain
+const THROUGH_MARTITA = /מרטיטה|מרתיטה|שלך/     // routed through / anchored to Martita (rejected)
 
-describe('relationshipBetween never returns a transitive chain', () => {
-  it('גלעד ↔ עדי is one short phrase anchored to Martita, not a chain', () => {
-    const r = relationshipBetween('גלעד', 'עדי')
+describe('relationshipBetween computes the relation BETWEEN the two people', () => {
+  it('Yael ↔ Leo is a direct possessive phrase, NOT "בני משפחה" (he pushed 3× on this)', () => {
+    const r = relationshipBetween('יעל', 'לאו')
     expect(r.status).toBe('ok')
     if (r.status === 'ok') {
-      expect(r.text).not.toMatch(CHAIN)
-      // both anchored to Martita: Gilad is her granddaughter's husband, Adi her grandson
-      expect(r.text).toContain('גלעד')
-      expect(r.text).toContain('עדי')
-      expect(r.text).toContain('שלך')
-      expect(r.text.split(/\s+/).length).toBeLessThanOrEqual(12) // short, not a sprawl
+      expect(r.text).not.toBe('יעל ולאו בני משפחה')
+      expect(r.text).not.toMatch(/בני משפחה/)
+      expect(r.text).not.toMatch(THROUGH_MARTITA)
+      expect(r.text).toContain('לאו')
+      // Yael is the partner of Leo's sister (Mor): a real, direct path.
+      expect(r.text).toMatch(/בת הזוג של האחות של לאו/)
     }
   })
 
-  it('a still-distant pair says "בני משפחה", never a chain', () => {
-    // ירדן (Eili's wife) ↔ עדי (Leo's son): no single term, ירדן has no clean kin term to Martita
-    const r = relationshipBetween('ירדן', 'עדי')
+  it('a distant pair (עדי ↔ גלעד) gives the relation between THEM, never through Martita, never a chain', () => {
+    const r = relationshipBetween('עדי', 'גלעד')
     expect(r.status).toBe('ok')
-    if (r.status === 'ok') expect(r.text).not.toMatch(CHAIN)
+    if (r.status === 'ok') {
+      expect(r.text).not.toMatch(PRONOUN_CHAIN)
+      expect(r.text).not.toMatch(THROUGH_MARTITA)
+      expect(r.text).not.toMatch(/בני משפחה/)
+      expect(r.text).toContain('עדי')
+      expect(r.text).toContain('גלעד')
+    }
   })
 
   it('a direct single term is still returned as-is (גלעד גיס של עילי)', () => {

@@ -31,35 +31,62 @@ export const config = { runtime: 'edge' }
 // Preview-only env var that vanishes on a merge to production. Never worse than the snippet:
 // a no_answer keeps the provider's own answer, never a raw dump.
 const DEEP_FETCH_UA = 'Mozilla/5.0 (compatible; AbuBank/1.0)'
-async function deepenAnswer(
-  query: string,
-  sources: OnlineSource[],
-  currentAnswer: string,
-  env: Record<string, string | undefined>,
-): Promise<string> {
-  if (!onlineGeneralSearchEnabled(env) || sources.length === 0) return currentAnswer
-  const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
-  if (!apiKey) return currentAnswer
+async function fetchPageText(url: string, signal: AbortSignal): Promise<string> {
+  const per = new AbortController()
+  const onAbort = () => per.abort()
+  signal.addEventListener('abort', onAbort)
+  const timer = setTimeout(() => per.abort(), 3500)
   try {
-    const r = await generalSearchLoop(query, {
-      topN: 4, softBudgetMs: 4000, hardCeilingMs: 6000, maxAttempts: 1, // provider already searched; one judged pass over its pages
-      search: async () => sources.filter((s) => s.url).slice(0, 4).map((s) => (s.title ? { url: s.url!, title: s.title } : { url: s.url! })),
-      synthesize: (oq, pt) => synthesizeAnswer(oq, pt, { openaiKey: apiKey }),
-      fetchPage: async (url, signal) => {
-        const per = new AbortController()
-        const onAbort = () => per.abort()
-        signal.addEventListener('abort', onAbort)
-        const timer = setTimeout(() => per.abort(), 3500)
-        try {
-          const res = await fetch(url, { signal: per.signal, headers: { 'User-Agent': DEEP_FETCH_UA, Accept: 'text/html,*/*' } })
-          if (!res.ok) throw new Error(`http ${res.status}`)
-          return await res.text()
-        } finally { clearTimeout(timer); signal.removeEventListener('abort', onAbort) }
-      },
-    })
-    // Never worse than the provider's own answer: a no_answer keeps it rather than dumping.
-    return r.status === 'answer' && r.answer ? r.answer : currentAnswer
-  } catch { return currentAnswer }
+    const res = await fetch(url, { signal: per.signal, headers: { 'User-Agent': DEEP_FETCH_UA, Accept: 'text/html,*/*' } })
+    if (!res.ok) throw new Error(`http ${res.status}`)
+    return await res.text()
+  } finally { clearTimeout(timer); signal.removeEventListener('abort', onAbort) }
+}
+
+interface SearchProvider { search: (q: string, lang: string, env: Record<string, string | undefined>) => Promise<{ ok: boolean; answer?: string; sources: Array<{ url?: string; title?: string; content?: string }>; error?: string }> }
+
+/**
+ * The JUDGE gates every spoken answer (the fix for the device garbage). Three ordered chances, each
+ * judged by the cheap model — NEVER a raw provider description:
+ *   1. GENERAL LOOP — fetch result pages + judge; on a miss REFINE with a FRESH search (a bad first
+ *      result self-corrects instead of being spoken).
+ *   2. SNIPPET JUDGE — judge the provider's OWN snippets (title+description). A real price/fact in a
+ *      snippet still passes; a list of homepage/category names fails.
+ *   3. HONEST MISS — neither answered → no_answer; the caller says one honest sentence.
+ */
+async function judgedAnswer(
+  query: string,
+  provider: SearchProvider,
+  first: { sources: Array<{ url?: string; title?: string; content?: string }> },
+  lang: OnlinePayload['lang'],
+  env: Record<string, string | undefined>,
+): Promise<{ status: 'answer' | 'no_answer'; answer: string; path: string }> {
+  const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
+  if (!apiKey) return { status: 'no_answer', answer: '', path: 'none' } // no judge → honest miss, never an unjudged snippet
+  // (1) general agentic loop with a FRESH search on refine
+  if (onlineGeneralSearchEnabled(env)) {
+    try {
+      const loop = await generalSearchLoop(query, {
+        topN: 4, softBudgetMs: 4000, hardCeilingMs: 7000, maxAttempts: 2,
+        search: async (q) => {
+          const rr = q.trim() === query.trim() ? { ok: true, sources: first.sources } : await provider.search(q, lang ?? 'he', env)
+          return (rr.ok ? rr.sources : []).filter((s) => s.url).slice(0, 4).map((s) => (s.title ? { url: s.url!, title: s.title } : { url: s.url! }))
+        },
+        synthesize: (oq, pt) => synthesizeAnswer(oq, pt, { openaiKey: apiKey }),
+        fetchPage: fetchPageText,
+      })
+      if (loop.status === 'answer' && loop.answer.trim()) return { status: 'answer', answer: loop.answer.trim(), path: 'deep' }
+    } catch { /* fall through to the snippet judge */ }
+  }
+  // (2) judge the provider's OWN snippets — a good snippet passes, a category list fails
+  try {
+    const snippetText = first.sources.map((s) => [s.title, s.content].filter(Boolean).join(' — ')).filter(Boolean).join('\n').slice(0, 5000)
+    if (snippetText.trim()) {
+      const syn = await synthesizeAnswer(query, snippetText, { openaiKey: apiKey })
+      if (syn.status === 'answer' && syn.answer.trim()) return { status: 'answer', answer: syn.answer.trim(), path: 'snippet' }
+    }
+  } catch { /* honest miss */ }
+  return { status: 'no_answer', answer: '', path: 'none' }
 }
 
 interface OnlinePayload {
@@ -114,6 +141,11 @@ interface OnlineDiag {
   sourceCount: number
   /** 'ok' or the OnlineErrorCode this request resolved to. */
   outcome: string
+  /** WHICH path produced the spoken answer — provable from the deployed endpoint (no source reading):
+   *  'time' (deterministic clock), 'deep' (judged fetched page), 'snippet' (judged provider snippets),
+   *  'briefing' (synthesized headlines), 'openai' (incumbent), or 'none' (honest miss). A raw UNJUDGED
+   *  provider description is NEVER an answerPath — that was the garbage the device heard. */
+  answerPath?: string
 }
 
 interface OnlineSuccess {
@@ -145,6 +177,19 @@ const PERSONAL_EN = /\bwhat\s+do\s+i\s+have\b|\btell\s+me\s+about\s+(?!italy|arg
 
 function isPersonal(text: string): boolean {
   return PERSONAL_HE.test(text) || PERSONAL_ES.test(text) || PERSONAL_EN.test(text)
+}
+
+// TIME is NOT a web-search question. Searching it returned the Vercel edge datacenter's clock
+// ("06:08 in Ashburn, Virginia") on the device. Answer it DETERMINISTICALLY from the server clock
+// in Martita's timezone (Asia/Jerusalem) — always correct, no source, no latency.
+const TIME_QUERY = /מה\s*השעה|השעה\s*עכשיו|איזו\s*שעה|qu[eé]\s*hora|what\s*time|what'?s\s*the\s*time|current\s*time|hora\s*es/i
+function isTimeQuery(text: string): boolean { return TIME_QUERY.test(text) && !/פתוח|פתיחה|open|opening|יסגר|סוגר|close|טיסה|flight|רכבת|אוטובוס|bus|train|film|סרט|movie/i.test(text) }
+function israelTimeAnswer(lang: OnlinePayload['lang']): string {
+  const now = new Date()
+  const hm = new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hour12: false }).format(now)
+  if (lang === 'es') return `Ahora en Israel son las ${hm}.`
+  if (lang === 'en') return `It is ${hm} now in Israel.`
+  return `השעה עכשיו בישראל היא ${hm}.`
 }
 
 function userMessageFor(code: OnlineErrorCode, lang: OnlinePayload['lang'] = 'he'): string {
@@ -236,6 +281,12 @@ export default async function handler(req: Request): Promise<Response> {
     return respond({ ok: false, errorCode: 'ONLINE_QUERY_BLOCKED_PERSONAL', userMessage: userMessageFor('ONLINE_QUERY_BLOCKED_PERSONAL', lang) }, 200)
   }
 
+  // TIME is deterministic, never a web search (device: it returned the Ashburn datacenter clock).
+  if (isTimeQuery(query)) {
+    diag.answerPath = 'time'
+    return respond({ ok: true, answer: israelTimeAnswer(lang), sources: [] })
+  }
+
   // ── BRIEFING branch (Item 3 · online depth) ────────────────────────────────
   // "What is new?" fans out across 6 topics and returns 10+ deduped headlines WITH
   // held snippets — provider-agnostic (uses the selected provider), behind the SAME
@@ -249,7 +300,19 @@ export default async function handler(req: Request): Promise<Response> {
       return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
     }
     const sources: OnlineSource[] = briefing.headlines.map((h) => (h.title ? { url: h.url, title: h.title } : { url: h.url }))
-    return respond({ ok: true, answer: speakableBriefing(briefing), sources, briefing })
+    // The device heard a list of website CATEGORY NAMES ("חדשות היום", "לוח שידורים", "Medical…").
+    // Those are homepage TITLES, not events. JUDGE the headlines' held snippets: the model returns 3-4
+    // real spoken headlines about actual events, or no_answer if it is just categories → honest miss.
+    const apiKey = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
+    const newsText = briefing.headlines.map((h) => [h.title, h.snippet].filter(Boolean).join(' — ')).filter(Boolean).join('\n').slice(0, 5000)
+    if (apiKey && newsText.trim()) {
+      try {
+        const syn = await synthesizeAnswer('מה החדשות האמיתיות והאירועים של היום? תני 3-4 כותרות אמיתיות על אירועים, לא שמות של אתרים או קטגוריות', newsText, { openaiKey: apiKey })
+        if (syn.status === 'answer' && syn.answer.trim()) { diag.answerPath = 'briefing'; return respond({ ok: true, answer: syn.answer.trim(), sources, briefing }) }
+      } catch { /* fall through to honest miss */ }
+    }
+    diag.answerPath = 'none'
+    return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
   }
 
   // ── Bake-off winner path (M2), selectable via ONLINE_PROVIDER ──────────────
@@ -278,18 +341,20 @@ export default async function handler(req: Request): Promise<Response> {
         return respond({ ok: false, errorCode: code, userMessage: userMessageFor(code, lang) }, 200)
       }
       diag.sourceCount = r.sources.length
-      // Grounding gate — identical rule to the OpenAI path below.
       if (r.sources.length === 0) {
         return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
       }
-      // Strip any provider HTML so the answer is safe to speak (TTS), then require text.
-      const winnerAnswer = (r.answer ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-      if (!winnerAnswer) {
-        return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
-      }
       const winnerSources: OnlineSource[] = r.sources.map((s) => (s.title ? { url: s.url, title: s.title } : { url: s.url }))
-      const deepenedWinner = await deepenAnswer(query, winnerSources, winnerAnswer, env)
-      return respond({ ok: true, answer: deepenedWinner, sources: winnerSources })
+      // EVERY spoken answer must pass the JUDGE. The device heard garbage because the raw provider
+      // DESCRIPTION (results[0].description — a homepage/category snippet) was spoken UNJUDGED whenever
+      // the deep-fetch loop missed. Now: (1) the general loop fetches pages + JUDGES, REFINING with a
+      // FRESH search on a miss (a bad first result self-corrects); (2) on a loop miss, the JUDGE runs
+      // over the provider's own SNIPPETS (a good snippet like a real price still passes); (3) neither
+      // → honest miss. A raw unjudged description is NEVER returned.
+      const judged = await judgedAnswer(query, provider, r, lang, env)
+      diag.answerPath = judged.path
+      if (judged.status === 'answer') return respond({ ok: true, answer: judged.answer, sources: winnerSources })
+      return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
     }
   }
 
@@ -368,8 +433,9 @@ export default async function handler(req: Request): Promise<Response> {
     return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
   }
 
-  const deepened = await deepenAnswer(query, sources, answer, env)
-  return respond({ ok: true, answer: deepened, sources })
+  // OpenAI web_search already returns a synthesized answer (not a raw snippet), so it is spoken as-is.
+  diag.answerPath = 'openai'
+  return respond({ ok: true, answer, sources })
 }
 
 // ─── Helpers (loose typing — Responses API shape stabilising) ──────────────

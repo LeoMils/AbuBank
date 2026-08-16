@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.282.0-earonly',
-  buildLabel: 'AbuBank 0.282.0 — ONE EAR BUILD: all four device-gated audio flags ship ON in a single A/B build (LIVE_AUDIO_TUNE_V2 + LIVE_BARGE_IN_TRUNCATE + LIVE_PREFETCH_WARM + LIVE_CLASSIFIED_MONITOR) plus the preamble fix; EAR_CHECK.md is four items in five minutes. FIX CLASSES not instances (CLASS_AUDIT.md): whoIs no longer speaks a raw relationship hop chain (class C); the one dark flag without a promotion criterion, classified-monitor, now has one and is machine-enforced (class B); family answers may be WARM and add one true known detail, still grounded (class F). GOLDEN-SESSION 18/18. Companion score now runs BESIDE it: heuristic 100/100, gpt-4o-mini judge 90/100 (golden correctness 18/18) — she reads as a warm friend, not an assistant. REACHABILITY_LIST.md lets the owner confirm contacts in one pass; flagged a data gap (Dora/Jacobo appear living). Only outstanding = the four EAR items on the phone. Do NOT merge (production serves Aug 5).',
+  version:    '0.283.0-earonly',
+  buildLabel: 'AbuBank 0.283.0 — GOLDEN-SESSION. ONLINE REBUILT (device: every query returned garbage). The JUDGE now gates EVERY spoken answer — a raw provider snippet is NEVER spoken; on a miss it REFINES with a fresh search, then judges the snippets, else an honest miss. TIME is deterministic (Asia/Jerusalem), never web-searched (it had returned the Ashburn datacenter clock). News is synthesized, not category names. diag.answerPath proves which path answered from the deployed endpoint. NAME fixed: her own name failed on ט/ת homophones — folded, so she ALWAYS resolves and is never told she does not exist. RELATIONSHIPS: the relation BETWEEN two people as one natural possessive phrase (Yael is the partner of Leo sister), never routed through Martita, never the בני משפחה non-answer. Do NOT merge (production serves Aug 5).',
   buildDate:  '2026-08-16',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time

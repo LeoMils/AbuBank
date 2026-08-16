@@ -101,6 +101,14 @@ export function normalizeBase(s: string): string {
   return s.normalize('NFC').trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
+/** Fold Hebrew HOMOPHONES that STT/typing swap freely: ט↔ת (both /t/), כ/ך final form. This is why
+ *  the owner's own name failed — "מרטה"/"מרטיטה" (tet) missed while "מרתה"/"מרתיתה" (tav) resolved.
+ *  Verified collision-free across the whole roster (peopleModel homophone test). Applied to BOTH the
+ *  index keys and the query so every resolver path (resolvePersonId, subset, whoIs) agrees. */
+export function foldHomophones(s: string): string {
+  return normalizeBase(s).replace(/ט/g, 'ת').replace(/ך/g, 'כ')
+}
+
 /** Strip ONE leading grammatical prefix (ל/ב/מ/ה/ו/כ) so "למור"/"במור" reduce to "מור".
  *  ש is EXCLUDED (name-initial: שרון/שאול/שושנה). Returns the input unchanged if no prefix. */
 export function stripHebrewPrefix(base: string): string {
@@ -213,6 +221,11 @@ function buildNameIndex(people: Person[]): Map<string, string> {
     const base = normalizeBase(key), stripped = stripHebrewPrefix(base)
     if (!idx.has(base)) idx.set(base, p.id)
     if (!idx.has(stripped)) idx.set(stripped, p.id)
+    // Homophone-folded keys (ט↔ת) so a tet/tav variant of a name resolves the SAME as the canonical
+    // spelling (the owner's-name defect). Collision-free across the roster; base wins on any clash.
+    const fBase = foldHomophones(base), fStripped = foldHomophones(stripped)
+    if (!idx.has(fBase)) idx.set(fBase, p.id)
+    if (!idx.has(fStripped)) idx.set(fStripped, p.id)
   }
   return idx
 }
@@ -223,7 +236,8 @@ function buildNameIndex(people: Person[]): Map<string, string> {
 export function resolvePersonId(name: string, people: Person[] = loadPeople()): string | null {
   const idx = people === (CACHE?.people) ? CACHE!.byName : buildNameIndex(people)
   const base = normalizeBase(name)
-  return idx.get(base) ?? idx.get(stripHebrewPrefix(base)) ?? null
+  return idx.get(base) ?? idx.get(stripHebrewPrefix(base))
+    ?? idx.get(foldHomophones(base)) ?? idx.get(foldHomophones(stripHebrewPrefix(base))) ?? null
 }
 
 export function personById(id: string, people: Person[] = loadPeople()): Person | null {
