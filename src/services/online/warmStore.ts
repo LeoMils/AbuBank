@@ -27,8 +27,17 @@ const TOPIC_RE: Array<{ topic: WarmTopic; re: RegExp }> = [
   { topic: 'transit', re: /אוטובוס|רכבת|תחבורה|קו\s*\d|מתי\s+מגיע|תחנה|מונית|transit|bus|train/i },
 ]
 
-/** Classify a query into a warm topic, or null (a one-off query fetches live as before). */
+// A SPECIFIC-INTENT query is NOT the generic topic answer and MUST NOT be served from the topic cache
+// (device P0: three queries for one film's PLOT/CAST returned the whole cinema LISTING — the previous,
+// generic answer). Asking ABOUT a particular item, a detail (plot/cast/price), or a follow-up reference
+// ("that one", "the same", "a smaller one") is a NEW intent → cache MISS → fetch live. The warm cache
+// serves ONLY the broad "what is on / what is new" question its key can actually represent.
+const SPECIFIC_INTENT = /עלילה|שחקנים|מי\s*מככב|מי\s*משחק|על\s*מה|ספרי?\s*לי\s*על|תספרי\s*על|כמה\s*עולה|מחיר|אותו|אותה|אותם|הזה|ההוא|ההיא|גרסה|יותר|plot|cast|starring|about\s+the|how\s+much|price|same\s+one|smaller/i
+
+/** Classify a query into a warm topic, or null. A SPECIFIC-intent query returns null so it fetches
+ *  live — the topic key cannot represent "the plot of film X", only "what films are on". */
 export function topicOf(query: string): WarmTopic | null {
+  if (SPECIFIC_INTENT.test(query)) return null // a specific item/detail/follow-up is a new intent, not the topic
   for (const { topic, re } of TOPIC_RE) if (re.test(query)) return topic
   return null
 }

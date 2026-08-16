@@ -34,6 +34,10 @@ const EXPECTED: Array<[string, string, string]> = [
   // ── direct in-law terms ──
   ['גלעד', 'מור', 'גלעד חתן של מור'],               // son-in-law
   ['ירדן', 'מור', 'ירדן כלה של מור'],               // daughter-in-law
+  // ── generational distance via a PARENT (the nephew/niece line — the Martin contradiction) ──
+  ['מרטין', 'מרטיטה', 'מרטין בן האחיין של מרטיטה'],   // great-nephew = son of her nephew (NOT "great-grandson of her mother")
+  ['פאבי', 'מרטיטה', 'פאבי בן האחיין של מרטיטה'],
+  ['מרטיטה', 'מרטין', 'מרטיטה דודה של האבא של מרטין'],
   // ── term via a spouse (both directions) ──
   ['ירדן', 'לאו', 'ירדן אשת האחיין של לאו'],
   ['ירדן', 'גלעד', 'ירדן גיסה של אשתו של גלעד'],
@@ -50,13 +54,20 @@ describe('relationBetween — the human kinship term, not a path (authored expec
     })
   }
 
-  it('a genuinely term-absent pair states the shortest path and is FLAGGED (auditable)', () => {
-    // Nili (Rafi's partner) ↔ Yael (Mor's partner): no Hebrew term for this distant affinity.
-    const r = rel('נילי', 'יעל')
-    expect(r).not.toBeNull()
-    expect(r!.termAbsent).toBe(true)      // flagged, not silently passed as a "term"
-    expect(r!.text).not.toMatch(/בני משפחה/)
-  })
+  it('term-absent pairs (if any) are FLAGGED, ≤2 hops, and never "בני משפחה"', () => {
+    // No hardcoded pair — scan the matrix. Every term-ABSENT result must be an auditable, ≤2-hop path,
+    // never the generic bucket. (Most 2-hop pairs now derive a real term via parent/spouse expansion.)
+    let sawAbsent = 0
+    for (const x of P) for (const y of P) {
+      if (x.id === y.id || x.deceased || y.deceased) continue
+      const r = relationBetween(x.id, y.id, P)
+      if (!r || !r.termAbsent) continue
+      sawAbsent++
+      expect((r.text.match(/ של /g) ?? []).length, r.text).toBeLessThanOrEqual(2)
+      expect(r.text).not.toMatch(/בני משפחה/)
+    }
+    expect(sawAbsent).toBeGreaterThan(0) // the term-absent path IS exercised somewhere
+  }, 30_000)
 })
 
 describe('universal invariants over the FULL ordered pair matrix', () => {
@@ -72,6 +83,8 @@ describe('universal invariants over the FULL ordered pair matrix', () => {
       expect(r.text, `${x.hebrewName}↔${y.hebrewName}`).not.toMatch(/בני משפחה/)
       // Martita is not in the answer unless she is one of the two asked about.
       for (const m of MARTITA) expect(r.text.includes(m), `${x.hebrewName}↔${y.hebrewName} routed through ${m}`).toBe(false)
+      // NEVER a chain of 3+ hops (a traversal artifact) — at most two "של" (owner: max two hops).
+      expect((r.text.match(/ של /g) ?? []).length, `${x.hebrewName}↔${y.hebrewName} is a chain: ${r.text}`).toBeLessThanOrEqual(2)
     }
     expect(checked).toBeGreaterThan(200)
   }, 30_000) // the full matrix + term-absent path BFS is O(n^2); generous ceiling

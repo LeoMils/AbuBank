@@ -79,7 +79,7 @@ export const GOLDEN_TURNS: readonly GoldenTurn[] = [
   { id: 'online_followup', say: 'ויש גם גרסה קטנה יותר?', lang: 'he', expectTool: 'any', mustSpeak: true, forbid: ['preamble', 'foreign', 'source'], note: 'a follow-up to the lookup — working memory carries context' },
   { id: 'emotional', say: 'אני קצת עצובה היום, מתגעגעת לפפה.', lang: 'he', expectTool: 'none', mustSpeak: true, forbid: ['preamble', 'foreign', 'menu', 'method'], note: 'an emotional turn — stay WITH the feeling, no menu of options' },
   { id: 'spanish_switch', say: '¿Vos cómo estás, querida?', lang: 'es', expectTool: 'none', mustSpeak: true, forbid: ['preamble', 'method'], note: 'she switches to Rioplatense Spanish — Abu answers in Spanish' },
-  { id: 'spanish_back', say: 'טוב, בוא נחזור לעברית. מה השעה עכשיו?', lang: 'he', expectTool: 'any', mustSpeak: true, forbid: ['preamble', 'foreign'], note: 'and back to Hebrew — the switch holds both directions' },
+  { id: 'spanish_back', say: 'טוב, בוא נחזור לעברית. מה השעה עכשיו?', lang: 'he', expectTool: 'none', mustSpeak: true, forbid: ['preamble', 'foreign'], note: 'back to Hebrew + the TIME is answered from the injected session time — NEVER a tool call (owner: time is not a web search)' },
   { id: 'garbled', say: 'תגידי, מה זה אקוו... צלש הקלנית מהמם?', lang: 'he', expectTool: 'none', mustSpeak: true, forbid: ['preamble'], note: 'a garbled utterance — Abu asks what she meant rather than guessing/inventing' },
   { id: 'cannot_do', say: 'תזמיני לי מונית עכשיו לרעננה.', lang: 'he', expectTool: 'none', mustSpeak: true, forbid: ['preamble', 'menu', 'toolong'], note: 'a request Abu cannot do — declined in one honest line, no capability menu' },
 ] as const

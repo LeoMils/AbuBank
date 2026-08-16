@@ -3,7 +3,42 @@
 Standing law (Part 2): each entry is a PROCESS failure on the QA side — what it was, why
 nothing caught it, and the check added so it cannot recur. The goal is an EMPTY file.
 
-Length: 4 entries (all now have a closing check).
+Length: 8 entries (all now have a closing check).
+
+## QM-005 · TIME was a web search — returned the datacenter clock; "deterministic" was at the wrong layer
+- **What:** "מה השעה?" fired get_current_info and returned the Vercel edge (Ashburn) clock in UTC, 3h off.
+- **Why nothing caught it:** the "deterministic time" fix was at the ENDPOINT (still a tool call), and no
+  gate asserted that a time query fires NO tool. The golden `spanish_back` turn even expected `any` tool.
+- **Check added (v0.286):** the current Israel time is INJECTED into the session (`todayInstruction`),
+  time is removed from the get_current_info trigger + tool description, and the golden turn now asserts
+  `expectTool:'none'` — a tool call on a time query FAILS the session.
+
+## QM-006 · the family graph narrated a PATH for distant kin, inconsistent with the one-hop term
+- **What:** Jorge→Martita="אחיין" (nephew, a term) but Martin (Jorge's son)→Martita="great-grandson of her
+  mother" (a path through Dora) — the human answer is "great-nephew". 435 pairs rendered a 3+ hop chain.
+- **Why nothing caught it:** no invariant bounded the derivation — a resolver returning a 5-hop chain
+  passed because the test asserted its own output (the QM-004 oracle class again, on generational lines).
+- **Check added (v0.286):** parent-expansion derives the nephew/niece line ("בן האחיין" = great-nephew);
+  a hard invariant over the FULL matrix — ≤2 hops, never "בני משפחה", never through Martita; a diagnostic
+  (`kinship-audit.mjs`) reports long-chains/term-absent/contradictions. Long chains 435→0.
+
+## QM-007 · the warm cache served the previous, GENERIC answer for a SPECIFIC follow-up
+- **What:** three queries for one film's PLOT/CAST returned the whole cinema LISTING — the cache was keyed
+  by TOPIC ('cinema'), so any film-shaped query got the generic topic answer.
+- **Why nothing caught it:** `topicOf` classified on topic keywords only; no test exercised a SPECIFIC-item
+  query against the topic cache, so intent-collapse was invisible.
+- **Check added (v0.286):** a SPECIFIC-intent guard (plot/cast/price/"about"/follow-up refs) forces a cache
+  MISS → live fetch; `warmStore.test` asserts a film-plot/follow-up query is null (LIVE), generic is cached.
+
+## QM-008 · the tool-result watchdog MASKED a clean-path failure (7 forced responses in one session)
+- **What:** `tool_result_no_audio_forced_response` fired 7× — the clean path failed to speak after a tool
+  result 7 times and the watchdog forced one each time, which also duplicated the answer.
+- **Why nothing caught it:** the watchdog's own activation was treated as recovery, never as a signal that
+  the clean path failed. No assertion that clean-path forced-activation is ZERO.
+- **Check added / status (v0.284–v0.286):** the watchdog now RE-ARMS on response.created (progress) so it
+  no longer force-duplicates a slow two-response/online answer. STILL OPEN (device): a genuine clean-path
+  no-speak (no response at all) is a PHYSICAL_DEVICE root-cause — the owner's trace is needed to see which
+  response event is missing. Logged honestly as device-open, not closed.
 
 ---
 

@@ -155,9 +155,24 @@ export function relationBetween(xId: string, yId: string, people: Person[] = loa
       if (ts) return { text: `${X.hebrewName} ${spousalNoun(X.gender)} ${withArticle(ts.he)} של ${Y.hebrewName}`, termAbsent: false }
     }
   }
-  // 4. no Hebrew term exists — the shortest path in one natural phrase, FLAGGED term-absent
+  // 4. GENERATIONAL DISTANCE via X's PARENT — the nephew/niece line: X is the CHILD of someone who has
+  // a term to Y. "מרטין בן האחיין של מרטיטה" (Martin, son of Martita's nephew = her great-nephew). This
+  // is why Martin was wrongly "great-grandson of Martita's mother" — there was no great-nephew derivation.
+  for (const paId of X.parents) {
+    const t = relationshipOf(paId, yId, people)
+    if (t) return { text: `${X.hebrewName} ${X.gender === 'female' ? 'בת' : 'בן'} ${withArticle(t.he)} של ${Y.hebrewName}`, termAbsent: false }
+  }
+  // 5. via Y's PARENT — "X [term] של ה[Y's parent's term] של Y" ("מרטיטה הדודה של האבא של מרטין").
+  for (const paId of Y.parents) {
+    const tx = relationshipOf(xId, paId, people)
+    const pa = relationshipOf(paId, yId, people)
+    if (tx && pa) return { text: `${X.hebrewName} ${tx.he} של ${withArticle(pa.he)} של ${Y.hebrewName}`, termAbsent: false }
+  }
+  // 6. no Hebrew term — a path of AT MOST TWO hops, FLAGGED term-absent. A longer path is a traversal
+  // artifact (the 5-hop "אשת הנכד של הסבתא של החמות") → we do NOT narrate it; the caller says it cannot
+  // pin the exact relation rather than read a chain aloud.
   const path = possessivePathBetween(xId, yId, people)
-  if (path) return { text: `${X.hebrewName} ${X.gender === 'female' ? 'היא' : 'הוא'} ${path}`, termAbsent: true }
+  if (path && (path.match(/ של /g) ?? []).length <= 2) return { text: `${X.hebrewName} ${X.gender === 'female' ? 'היא' : 'הוא'} ${path}`, termAbsent: true }
   return null
 }
 

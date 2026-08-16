@@ -215,10 +215,15 @@ export function todayInstruction(now: number): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   const weekday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()]
+  // The current local time is INJECTED so "מה השעה?" is answered DIRECTLY from the session — TIME is
+  // NOT a web search (it returned the Ashburn datacenter clock; get_current_info must never fire for it).
+  let hhmm: string
+  try { hhmm = new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hour12: false }).format(d) }
+  catch { hhmm = `${pad(d.getHours())}:${pad(d.getMinutes())}` }
   return [
     '',
     '# Today',
-    `Today is ${iso} (${weekday}). Resolve any relative date ("מחר", "היום", "יום שישי") to a real YYYY-MM-DD before calling a calendar tool — never pass a relative word.`,
+    `Today is ${iso} (${weekday}). The current local time in Israel is about ${hhmm}. When Martita asks the time ("מה השעה", "השעה עכשיו"), answer from THIS time directly, warmly and approximately ("עכשיו בערך ${hhmm}") — NEVER call get_current_info for the time; you already know it. Resolve any relative date ("מחר", "היום", "יום שישי") to a real YYYY-MM-DD before calling a calendar tool — never pass a relative word.`,
   ].join('\n')
 }
 

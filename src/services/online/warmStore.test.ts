@@ -18,6 +18,14 @@ describe('topicOf', () => {
     expect(topicOf('מתי מגיע האוטובוס?')).toBe('transit')
     expect(topicOf('כמה עולה בלו דה שאנל?')).toBeNull()
   })
+
+  it('a SPECIFIC-intent query is a cache MISS (device P0: a film plot returned the whole cinema listing)', () => {
+    // Generic "what is on" → cached; asking ABOUT one film / its plot / cast / a follow-up → LIVE.
+    expect(topicOf('איזה סרטים מוקרנים בקולנוע?')).toBe('cinema')      // generic → warm
+    expect(topicOf('ספרי לי על הסרט האודיסאה — עלילה ושחקנים')).toBeNull() // specific film → live, NOT the listing
+    expect(topicOf('מה העלילה של הסרט הזה?')).toBeNull()               // a follow-up about one item → live
+    expect(topicOf('ויש גם גרסה קטנה יותר?')).toBeNull()               // a follow-up reference → live
+  })
 })
 
 describe('serveWarm', () => {
