@@ -378,6 +378,7 @@ export function buildLiveSnapshot(deps: LiveDeps): LiveSnapshot {
       { name: 'production-convergence/*', reason: 'per-experiment scorecard lane for a prior candidate (0.177); superseded by the live candidate. Recorded as stale, not a gate input.' },
       { name: 'realtime-vertical-slice/*', reason: 'prior vertical-slice lane; historical, not current-candidate evidence.' },
       { name: 'e2e/screenshots/*', reason: 'visual artifacts, not machine gate inputs.' },
+      { name: 'capability/denominator/evidence producer outputs (capability-manifest, capability-discovery-source-manifest, capability-reconciliation, rc-reachability-observation, tool-firing-evidence, acceptance-denominator, deployed-secret-exposure)', reason: "the control plane's OWN Stage-3C producer outputs — surfaced via the obligation model + reconciliation, not independent release-evidence inputs; consuming them here would be circular." },
     ]
     const notApplicable = [
       { name: 'gate-a-result.json', reason: 'A→B→C lab output already surfaced via mission.gatesReady.aToC.' },
@@ -386,7 +387,7 @@ export function buildLiveSnapshot(deps: LiveDeps): LiveSnapshot {
     // The control plane's own outputs and per-candidate forensic outputs are NOT
     // release-evidence inputs. Recognizing them prevents the coverage detector from
     // false-flagging the plane's own artifacts (a defect the real run exposed).
-    const OWN_OUTPUT_OR_FORENSIC = /(-result\.json|control-plane-identity\.json|control-plane-live-verdict\.json|lifecycle-forensics-result\.json|gate-a-result\.json)$/
+    const OWN_OUTPUT_OR_FORENSIC = /(-result\.json|control-plane-identity\.json|control-plane-live-verdict\.json|lifecycle-forensics-result\.json|gate-a-result\.json|capability-manifest\.json|capability-discovery-source-manifest\.json|capability-reconciliation\.json|rc-reachability-observation\.json|tool-firing-evidence\.json|acceptance-denominator\.json|deployed-secret-exposure\.json)$/
     const IGNORED_LANE = /(production-convergence|realtime-vertical-slice)\//
     const classified = new Set<string>([...consumed, ...SOURCE_REGISTRY.map((s) => s.path)])
     const matchesClassified = (d: string) =>

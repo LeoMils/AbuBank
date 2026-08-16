@@ -1,20 +1,17 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T19:35:41.746Z",
-  "candidateSha": "c0c4b3389ff4d37bfaf529eaae06e84f82cbaef0",
+  "generatedAt": "2026-08-16T19:39:14.387Z",
+  "candidateSha": "d8f597362bbb25958a35c6e2066f0a15354099e5",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_e96bd5ca",
-  "frozenControlPlaneId": "cp_e96bd5ca",
-  "controlPlaneInputHash": "in_dafabd25",
+  "controlPlaneId": "cp_255b2a1f",
+  "frozenControlPlaneId": "cp_255b2a1f",
+  "controlPlaneInputHash": "in_caf2427e",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "541512255a7203af",
+    "dirtyStateHash": "5582f761613b7ed2",
     "dirtyRuntime": [
-      "src/engineering-os/obligationCompleteness.ts",
-      "src/engineering-os/evidenceProducers.ts",
-      "src/engineering-os/labCertification.ts",
-      "src/engineering-os/swProvenance.ts"
+      "src/engineering-os/liveSnapshot.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -103,6 +100,10 @@
       {
         "name": "e2e/screenshots/*",
         "reason": "visual artifacts, not machine gate inputs."
+      },
+      {
+        "name": "capability/denominator/evidence producer outputs (capability-manifest, capability-discovery-source-manifest, capability-reconciliation, rc-reachability-observation, tool-firing-evidence, acceptance-denominator, deployed-secret-exposure)",
+        "reason": "the control plane's OWN Stage-3C producer outputs — surfaced via the obligation model + reconciliation, not independent release-evidence inputs; consuming them here would be circular."
       }
     ],
     "notApplicable": [
@@ -111,25 +112,14 @@
         "reason": "A→B→C lab output already surfaced via mission.gatesReady.aToC."
       }
     ],
-    "unknown": [
-      "docs/engineering-os/qa/acceptance-denominator.json",
-      "docs/engineering-os/qa/capability-discovery-source-manifest.json",
-      "docs/engineering-os/qa/capability-manifest.json",
-      "docs/engineering-os/qa/capability-reconciliation.json",
-      "docs/engineering-os/qa/deployed-secret-exposure.json",
-      "docs/engineering-os/qa/rc-reachability-observation.json"
-    ]
+    "unknown": []
   },
   "requiredClaimCount": 28,
   "presentClaimCount": 25,
   "releaseBlockers": [
     {
-      "code": "UNPUSHED_COMMIT",
-      "reason": "head c0c4b3389ff4d37bfaf529eaae06e84f82cbaef0 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
-    },
-    {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/obligationCompleteness.ts, src/engineering-os/evidenceProducers.ts, src/engineering-os/labCertification.ts, src/engineering-os/swProvenance.ts"
+      "reason": "src/engineering-os/liveSnapshot.ts"
     }
   ],
   "controlBlockers": [
@@ -164,30 +154,6 @@
     {
       "code": "EVIDENCE_STALE",
       "reason": "source 'master-matrix' is stale for the current candidate — cannot satisfy a required-evidence gate"
-    },
-    {
-      "code": "SOURCE_COVERAGE_UNKNOWN",
-      "reason": "authoritative source 'docs/engineering-os/qa/acceptance-denominator.json' is neither consumed nor classified — the adapter cannot be trusted complete"
-    },
-    {
-      "code": "SOURCE_COVERAGE_UNKNOWN",
-      "reason": "authoritative source 'docs/engineering-os/qa/capability-discovery-source-manifest.json' is neither consumed nor classified — the adapter cannot be trusted complete"
-    },
-    {
-      "code": "SOURCE_COVERAGE_UNKNOWN",
-      "reason": "authoritative source 'docs/engineering-os/qa/capability-manifest.json' is neither consumed nor classified — the adapter cannot be trusted complete"
-    },
-    {
-      "code": "SOURCE_COVERAGE_UNKNOWN",
-      "reason": "authoritative source 'docs/engineering-os/qa/capability-reconciliation.json' is neither consumed nor classified — the adapter cannot be trusted complete"
-    },
-    {
-      "code": "SOURCE_COVERAGE_UNKNOWN",
-      "reason": "authoritative source 'docs/engineering-os/qa/deployed-secret-exposure.json' is neither consumed nor classified — the adapter cannot be trusted complete"
-    },
-    {
-      "code": "SOURCE_COVERAGE_UNKNOWN",
-      "reason": "authoritative source 'docs/engineering-os/qa/rc-reachability-observation.json' is neither consumed nor classified — the adapter cannot be trusted complete"
     },
     {
       "code": "CONTROL_MODEL_INCOMPLETE",

@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/control-plane-identity",
-  "controlPlaneId": "cp_e96bd5ca",
-  "frozenAt": "2026-08-16T19:35:40.231Z",
+  "controlPlaneId": "cp_255b2a1f",
+  "frozenAt": "2026-08-16T19:38:36.435Z",
   "eligibility": "33/33 adversarial cases passed across 2 suites",
   "components": {
     "releaseGate": "src/engineering-os/releaseGate.ts",
@@ -60,7 +60,7 @@
     "rcVerifyCli": "4e48342636efae22",
     "adversarialSuite": "08fc04507fc2b426",
     "releaseGateTest": "8792b8f1ebcc494e",
-    "liveSnapshotAdapter": "455bc9cbf6ae94d0",
+    "liveSnapshotAdapter": "b3fce1456e7cd148",
     "liveVerdictCli": "227846c56017d922",
     "adapterAdversarialSuite": "9b69ef73b85db013",
     "controlCompleteness": "be6a00b9411378c7",
