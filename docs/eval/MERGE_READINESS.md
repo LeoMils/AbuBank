@@ -11,16 +11,24 @@ tool source-naming, preamble shipped ON (machine-verifiable at `/build-flags.jso
 the session (invariant test), **E5b** never narrates internals (model-verified), and **contact
 reachability** (a known-but-not-a-contact person is answered but never offered a message/call).
 
-**Still OUTSTANDING (now genuinely device/ear, plus one data task):**
-- **Device re-verification** of every fix above — preamble two-response, ICE reconnect, presence word,
-  card-dedup and no-repeat are CODE/instrument evidence; only the owner's phone can confirm them heard.
-- **Reachability DATA** — the code default is conservative (immediate family reachable; others opt-in
-  via a `reachable:true` field). The owner should mark which friends/extended relatives are real
-  contacts (via `add-family-member`), else Abu under-offers to reach them.
-- **The ear-gated audio flags** below (audio-tune, barge-in, prefetch, classified-monitor) — unchanged.
+Plus v0.282: ONE EAR build ships all four device-gated audio flags ON (audio-tune, barge-in, prefetch,
+classified-monitor) + preamble; defect CLASSES audited and fixed structurally where safe (CLASS_AUDIT.md);
+a companion score runs beside golden (heuristic 100, judge 90); a one-pass reachability list is ready.
 
-So: no longer new deterministic CODE work from the transcript, BUT not merge-ready until the device
-re-confirms the round-2 fixes and the reachability data is set. Not "ear-only" in the old sense.
+**THE ONLY DEVICE GATE IS NOW THE FOUR EAR ITEMS** (EAR_CHECK.md, one build, five minutes):
+1. full sentence audible · 2. one clean voice · 3. she stops when you speak · 4. accent correct.
+Confirm the build via `/build-flags.json` (all four `true`). Each flag has a written promotion criterion
+(PROMOTION_CRITERIA.md); promoting is a one-line flip after the ear.
+
+**Non-ear items that remain (NOT device gates, do not block the ear check):**
+- Reachability DATA — tick REACHABILITY_LIST.md (one pass) so friends/extended relatives who are real
+  contacts get `reachable:true`; and verify the Dora/Jacobo `deceased` data gap. Data, not code.
+- Logged next-code-improvements (not regressions): briefing model-synthesized headlines, structural
+  spoken-repeat (now possible via the text-only two-response decision), calendar-draft dedup, the
+  two contact-resolver merge, and the empty-lookup warmth turn (D-COMPANION-01). All in DECISIONS.md.
+
+So: the transcript's CODE defects are fixed; the remaining **device** work is exactly the four EAR
+items. Do NOT merge (production serves Aug 5); promotion is the owner's call after the ear.
 
 | Requirement | State | Evidence |
 |---|---|---|
