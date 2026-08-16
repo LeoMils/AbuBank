@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/control-plane-identity",
-  "controlPlaneId": "cp_cdad6f84",
-  "frozenAt": "2026-08-16T17:20:56.507Z",
+  "controlPlaneId": "cp_6459574b",
+  "frozenAt": "2026-08-16T18:02:26.909Z",
   "eligibility": "33/33 adversarial cases passed across 2 suites",
   "components": {
     "releaseGate": "src/engineering-os/releaseGate.ts",
@@ -50,8 +50,8 @@
     "obligationCompletenessSuite": "db35eadc641097bc",
     "executionState": "113beccc1884aab3",
     "executionStateSuite": "3508cb29fa2589ed",
-    "yieldGate": "f992de9b8a270e1c",
-    "yieldGateSuite": "0eb1787e703fb225",
+    "yieldGate": "c97849110510cec5",
+    "yieldGateSuite": "0c65df888d4309e7",
     "capabilityDiscoverySource": "aa5c9020a046e027",
     "capabilityDiscoverySourceSuite": "86da3ec4e50fdf83",
     "claimState": "eb9ea4f4d7cc8faf",

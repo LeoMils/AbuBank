@@ -146,3 +146,71 @@ export function classifyPastYield(
     verdict: isEscape ? 'YIELD_CONTROL_ESCAPE' : 'JUSTIFIED_YIELD',
   }
 }
+
+/*
+ * STANDING-AUTHORITY FIREWALL. (Stage 3C §1 correction)
+ * ════════════════════════════════════════════════════════════════════════════════
+ * A prior yield emitted AUTHORITY_REQUIRED for "deployment-related work" that was in
+ * fact already covered by standing Stage-3C authorization (read-only runtime testing,
+ * non-main commits/pushes, ephemeral/preview deploys, RC redeploy on a real fix, safe
+ * provider calls). That is an AUTHORITY_CLASSIFICATION_FALSE_POSITIVE: difficulty,
+ * ordering, or mere dependence on deployment infrastructure is NOT new authority.
+ *
+ * AUTHORITY_REQUIRED is valid ONLY for a genuinely NEW permission not already granted:
+ * production deploy, merge to main, destructive git/fs, or an unintended real external
+ * side effect. This firewall makes that distinction deterministic.
+ */
+export type AuthorityAction =
+  // ── Covered by standing Stage-3C authorization ──
+  | 'READ_ONLY_RUNTIME_TEST'
+  | 'SAFE_RC_INSPECTION'
+  | 'NON_MAIN_COMMIT_PUSH'
+  | 'EPHEMERAL_PREVIEW_DEPLOY'
+  | 'RC_PREVIEW_REDEPLOY_ON_FIX'
+  | 'SAFE_PROVIDER_CALL'
+  // ── Genuinely NEW permission — always requires authority ──
+  | 'PRODUCTION_DEPLOY'
+  | 'MERGE_MAIN'
+  | 'DESTRUCTIVE_GIT_FS'
+  | 'UNINTENDED_EXTERNAL_SIDE_EFFECT'
+
+/** The set of actions the standing Stage-3C authorization already grants. */
+export const STANDING_AUTHORITY_ACTIONS: readonly AuthorityAction[] = [
+  'READ_ONLY_RUNTIME_TEST', 'SAFE_RC_INSPECTION', 'NON_MAIN_COMMIT_PUSH',
+  'EPHEMERAL_PREVIEW_DEPLOY', 'RC_PREVIEW_REDEPLOY_ON_FIX', 'SAFE_PROVIDER_CALL',
+]
+
+/**
+ * True iff the action needs a genuinely NEW permission not already granted. Standing
+ * actions → false (must NOT emit AUTHORITY_REQUIRED). Production/main/destructive/
+ * external-side-effect → true (specificity: real new permission still gates).
+ */
+export function requiresNewAuthority(action: AuthorityAction): boolean {
+  return !STANDING_AUTHORITY_ACTIONS.includes(action)
+}
+
+export interface AuthorityClassification {
+  action: AuthorityAction
+  requiresNew: boolean
+  verdict: 'AUTHORITY_REQUIRED' | 'AUTHORITY_CLASSIFICATION_FALSE_POSITIVE' | 'WITHIN_STANDING_AUTHORITY'
+  reason: string
+}
+
+/**
+ * Classify an authority need. If a past decision emitted AUTHORITY_REQUIRED for a
+ * standing action, that is recorded as AUTHORITY_CLASSIFICATION_FALSE_POSITIVE.
+ */
+export function classifyAuthority(action: AuthorityAction, wasEscalatedToAuthorityRequired: boolean): AuthorityClassification {
+  const requiresNew = requiresNewAuthority(action)
+  if (requiresNew) {
+    return { action, requiresNew, verdict: 'AUTHORITY_REQUIRED', reason: `'${action}' is a genuinely new permission not covered by standing authority` }
+  }
+  return {
+    action,
+    requiresNew,
+    verdict: wasEscalatedToAuthorityRequired ? 'AUTHORITY_CLASSIFICATION_FALSE_POSITIVE' : 'WITHIN_STANDING_AUTHORITY',
+    reason: wasEscalatedToAuthorityRequired
+      ? `'${action}' is covered by standing Stage-3C authority — escalating it to AUTHORITY_REQUIRED was a false positive`
+      : `'${action}' is covered by standing Stage-3C authority — continue without yielding`,
+  }
+}

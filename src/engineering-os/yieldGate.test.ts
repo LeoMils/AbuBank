@@ -5,7 +5,7 @@
  * Non-vacuity: a self-declared (unevidenced) hard stop does NOT unlock a yield.
  */
 import { describe, it, expect } from 'vitest'
-import { deriveYieldDecision, classifyPastYield, type YieldGateInput } from './yieldGate'
+import { deriveYieldDecision, classifyPastYield, classifyAuthority, requiresNewAuthority, type YieldGateInput } from './yieldGate'
 
 const cont: YieldGateInput = {
   executionState: 'CONTINUE_MACHINE_WORK',
@@ -95,6 +95,22 @@ describe('yield-gate specificity + non-vacuity', () => {
     const denied = deriveYieldDecision(cont)
     expect(allowed.mayYield).toBe(true)
     expect(denied.mayYield).toBe(false)
+  })
+})
+
+describe('standing-authority firewall (Stage 3C §1 correction — AUTHORITY_CLASSIFICATION_FALSE_POSITIVE)', () => {
+  it('REGRESSION · a standing RC/preview action escalated to AUTHORITY_REQUIRED → FALSE_POSITIVE', () => {
+    for (const a of ['READ_ONLY_RUNTIME_TEST', 'SAFE_RC_INSPECTION', 'NON_MAIN_COMMIT_PUSH', 'EPHEMERAL_PREVIEW_DEPLOY', 'RC_PREVIEW_REDEPLOY_ON_FIX', 'SAFE_PROVIDER_CALL'] as const) {
+      expect(requiresNewAuthority(a)).toBe(false)
+      expect(classifyAuthority(a, true).verdict).toBe('AUTHORITY_CLASSIFICATION_FALSE_POSITIVE')
+      expect(classifyAuthority(a, false).verdict).toBe('WITHIN_STANDING_AUTHORITY')
+    }
+  })
+  it('SPECIFICITY · a genuinely new production/main/destructive/external permission → AUTHORITY_REQUIRED', () => {
+    for (const a of ['PRODUCTION_DEPLOY', 'MERGE_MAIN', 'DESTRUCTIVE_GIT_FS', 'UNINTENDED_EXTERNAL_SIDE_EFFECT'] as const) {
+      expect(requiresNewAuthority(a)).toBe(true)
+      expect(classifyAuthority(a, false).verdict).toBe('AUTHORITY_REQUIRED')
+    }
   })
 })
 

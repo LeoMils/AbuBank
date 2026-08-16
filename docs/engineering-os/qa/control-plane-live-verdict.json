@@ -1,18 +1,17 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T17:20:58.569Z",
-  "candidateSha": "29ca461231e89659e0a8715056d9a080f42f557e",
+  "generatedAt": "2026-08-16T18:02:28.820Z",
+  "candidateSha": "5f3ead743b6f463c299b213ee4702a5d0191c089",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_cdad6f84",
-  "frozenControlPlaneId": "cp_cdad6f84",
-  "controlPlaneInputHash": "in_12ad3f4b",
+  "controlPlaneId": "cp_6459574b",
+  "frozenControlPlaneId": "cp_6459574b",
+  "controlPlaneInputHash": "in_c5c0df17",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "884f7e5d743799a1",
+    "dirtyStateHash": "6787f90b81fd1a3a",
     "dirtyRuntime": [
-      "src/engineering-os/obligationCompleteness.ts",
-      "src/engineering-os/claimState.ts"
+      "src/engineering-os/yieldGate.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -119,11 +118,11 @@
   "releaseBlockers": [
     {
       "code": "UNPUSHED_COMMIT",
-      "reason": "head 29ca461231e89659e0a8715056d9a080f42f557e != remote afda67291f51fc68c4969a6c856151cccf57bed5"
+      "reason": "head 5f3ead743b6f463c299b213ee4702a5d0191c089 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
     },
     {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/obligationCompleteness.ts, src/engineering-os/claimState.ts"
+      "reason": "src/engineering-os/yieldGate.ts"
     }
   ],
   "controlBlockers": [
