@@ -1,0 +1,12 @@
+# SECURITY: Vercel CLI does NOT respect .gitignore. Without this file, `vercel deploy`
+# uploads the local .env, and Vite bakes those secrets into the client bundle (a real
+# leak). Exclude all local secret/dev files so a CLI deploy uses ONLY the Vercel env vars.
+.env
+.env.*
+!.env.example
+*.local.json
+private/
+dist/
+coverage/
+test-results/
+playwright-report/
