@@ -1,0 +1,106 @@
+{
+  "$schema": "internal://abu/capability-discovery-source-manifest",
+  "producer": "scripts/discover-source-completeness.ts",
+  "producedFrom": [
+    "src/App.tsx",
+    "src/services/deviceGatedFlags.ts",
+    "src/services/online/flags.ts",
+    "api/*",
+    "public/manifest.json"
+  ],
+  "note": "Source-class coverage oracle for the static capability producer. UNCOVERED release-relevant classes mean the static capability set is NOT yet complete — this is a PREREQUISITE for o-capability, which also still needs the dynamic differential (deploy-scoped).",
+  "complete": false,
+  "distribution": {
+    "COVERED": 3,
+    "UNCOVERED_RELEASE": 3,
+    "EXCLUDED_WITH_PROOF": 3,
+    "UNKNOWN": 0
+  },
+  "blockers": [
+    {
+      "code": "CAPABILITY_DISCOVERY_SOURCE_UNCOVERED",
+      "reason": "release-relevant source class 'DEVICE_GATED_FLAG' (src/services/deviceGatedFlags.ts — DEVICE_GATED_FLAGS registry) is NOT consumed by the capability producer (e.g. LIVE_AUDIO_TUNE_V2, LIVE_BARGE_IN_TRUNCATE, LIVE_PREFETCH_WARM, LIVE_PREAMBLE_TWO_RESPONSE, LIVE_CLASSIFIED_MONITOR) — static discovery cannot be trusted complete"
+    },
+    {
+      "code": "CAPABILITY_DISCOVERY_SOURCE_UNCOVERED",
+      "reason": "release-relevant source class 'ONLINE_FLAG' (src/services/online/flags.ts — online search/prefetch capability gates) is NOT consumed by the capability producer (e.g. ONLINE_GENERAL_SEARCH, ONLINE_PREFETCH_WARM) — static discovery cannot be trusted complete"
+    },
+    {
+      "code": "CAPABILITY_DISCOVERY_SOURCE_UNCOVERED",
+      "reason": "release-relevant source class 'DEEP_LINK_ROUTE' (src/App.tsx query-param/path/hash routing (?live=1, /settings/family-phones, ?diagnostics=1, ?screen=, ?legacy=1)) is NOT consumed by the capability producer (e.g. DiagnosticOverlay (?diagnostics / #diagnostics)) — static discovery cannot be trusted complete"
+    }
+  ],
+  "sourceClasses": [
+    {
+      "id": "SCREEN_DIR",
+      "mechanism": "src/screens/* directories",
+      "relevance": "RELEASE_RELEVANT",
+      "coveredByProducer": true
+    },
+    {
+      "id": "SCREEN_ENUM",
+      "mechanism": "Screen union in src/state/types.ts",
+      "relevance": "RELEASE_RELEVANT",
+      "coveredByProducer": true
+    },
+    {
+      "id": "TOOL_REGISTRY",
+      "mechanism": "src/services/liveTools.ts name: registrations",
+      "relevance": "RELEASE_RELEVANT",
+      "coveredByProducer": true
+    },
+    {
+      "id": "DEVICE_GATED_FLAG",
+      "mechanism": "src/services/deviceGatedFlags.ts — DEVICE_GATED_FLAGS registry",
+      "relevance": "RELEASE_RELEVANT",
+      "coveredByProducer": false,
+      "exampleUncoveredCapabilities": [
+        "LIVE_AUDIO_TUNE_V2",
+        "LIVE_BARGE_IN_TRUNCATE",
+        "LIVE_PREFETCH_WARM",
+        "LIVE_PREAMBLE_TWO_RESPONSE",
+        "LIVE_CLASSIFIED_MONITOR"
+      ]
+    },
+    {
+      "id": "ONLINE_FLAG",
+      "mechanism": "src/services/online/flags.ts — online search/prefetch capability gates",
+      "relevance": "RELEASE_RELEVANT",
+      "coveredByProducer": false,
+      "exampleUncoveredCapabilities": [
+        "ONLINE_GENERAL_SEARCH",
+        "ONLINE_PREFETCH_WARM"
+      ]
+    },
+    {
+      "id": "DEEP_LINK_ROUTE",
+      "mechanism": "src/App.tsx query-param/path/hash routing (?live=1, /settings/family-phones, ?diagnostics=1, ?screen=, ?legacy=1)",
+      "relevance": "RELEASE_RELEVANT",
+      "coveredByProducer": false,
+      "exampleUncoveredCapabilities": [
+        "DiagnosticOverlay (?diagnostics / #diagnostics)"
+      ]
+    },
+    {
+      "id": "API_ROUTE",
+      "mechanism": "api/*.ts serverless endpoints",
+      "relevance": "NON_RELEASE_RELEVANT_WITH_PROOF",
+      "coveredByProducer": false,
+      "exclusionProof": "each user-facing endpoint is the server side of an already-registered capability: abuai-chat/tts/stt/realtime-token back Live+AbuAI; abuai-online backs get_current_info; abuai-news backs AbuNews. health/cron are infra, not user-invokable capabilities."
+    },
+    {
+      "id": "PWA_MANIFEST",
+      "mechanism": "public/manifest.json",
+      "relevance": "NON_RELEASE_RELEVANT_WITH_PROOF",
+      "coveredByProducer": false,
+      "exclusionProof": "manifest declares no shortcuts, share_target, or protocol_handlers; start_url is \"/\" only — it registers no user-entry capability beyond the SPA root already covered."
+    },
+    {
+      "id": "SERVICE_WORKER",
+      "mechanism": "vite-plugin-pwa service worker + src/hooks/useSWUpdate.ts",
+      "relevance": "NON_RELEASE_RELEVANT_WITH_PROOF",
+      "coveredByProducer": false,
+      "exclusionProof": "the SW provides offline caching and the update lifecycle, not a distinct user capability; its only user-visible surface is UpdateToast, an existing UI affordance. (Warm-runtime provenance is separately governed by obligation o-sw.)"
+    }
+  ]
+}

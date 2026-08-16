@@ -49,6 +49,9 @@ const COMPONENTS = {
   // Stage 3C §1: the YIELD GATE — CONTINUE_MACHINE_WORK is not permission to yield.
   yieldGate: 'src/engineering-os/yieldGate.ts',
   yieldGateSuite: 'src/engineering-os/yieldGate.test.ts',
+  // Stage 3C §3–4: capability-discovery SOURCE-COMPLETENESS oracle (prerequisite for o-capability).
+  capabilityDiscoverySource: 'src/engineering-os/capabilityDiscoverySource.ts',
+  capabilityDiscoverySourceSuite: 'src/engineering-os/capabilityDiscoverySource.test.ts',
   // Stage 3C resume: context-stop honesty, constitution calibration, capability universe.
   contextExecutionState: 'src/engineering-os/contextExecutionState.ts',
   contextExecutionStateSuite: 'src/engineering-os/contextExecutionState.test.ts',
