@@ -3,7 +3,7 @@
 Standing law (Part 2): each entry is a PROCESS failure on the QA side — what it was, why
 nothing caught it, and the check added so it cannot recur. The goal is an EMPTY file.
 
-Length: 3 entries (all now have a closing check).
+Length: 4 entries (all now have a closing check).
 
 ---
 
@@ -44,3 +44,25 @@ Length: 3 entries (all now have a closing check).
   the guard now locks only the real code-seed (instantAcknowledgement). The BEHAVIOURAL fix is
   structural in the realtime session layer and is a PHYSICAL_DEVICE verification item (OWNER_CHECKLIST
   item) — it cannot be closed by a text-instrument check. Logged honestly as device-open, not "fixed".
+
+## QM-004 · relationshipBetween narrated a graph PATH, not the kinship TERM — and the tests could not tell (ORACLE-FROM-IMPLEMENTATION)
+- **What:** the owner rejected the relation output THREE times. It returned a path traversal artifact
+  ("עדי הוא האחיין של החמות של גלעד") instead of the term a Hebrew speaker says ("עדי בן דוד של אשתו של
+  גלעד"). Both are TRUE; the path names whichever node the search passed through (the mother-in-law),
+  not the relationship (cousin — via the SPOUSE). Rafi↔Leo must be one word, גיס — not "the husband of
+  my mother's daughter", equally true and absurd.
+- **Why nothing caught it (the class):** the tests asserted `relationshipBetween(a,b)` against WHATEVER
+  THE RESOLVER RETURNED. The expected value was derived FROM the implementation, so the oracle was the
+  code — structurally incapable of detecting the code was wrong. `relationChainShort.test.ts` locked in
+  the current output as "correct" twice in a row ("בני משפחה", then a path), each an implementation
+  artifact, never what a person would say. **An oracle derived from the implementation cannot detect that
+  the implementation is wrong.**
+- **Check added (v0.285):** (1) MECHANISM — a term-first resolver `relationBetween` (kinship term →
+  term via the SPOUSE, spouse-expansion both directions → only then a path, FLAGGED `termAbsent`); the
+  in-law derivation now covers partners + former spouses (Yael is Leo's גיסה). (2) ORACLE — 
+  `relationTermMatrix.test.ts` asserts HAND-AUTHORED human answers (בן דוד של אשתו, גיס, גיסה, אשת בן
+  הדוד…), authored from what a family member says, NOT read from the resolver. (3) INVARIANTS — over the
+  FULL ordered pair matrix: never "בני משפחה", never routed through Martita unless she is one of the two.
+- **Standing rule:** audit for expected values COPIED FROM A RUN (snapshot/golden/characterization tests
+  regenerated from the code). Those validate the implementation, not the requirement, and cannot fail on
+  a wrong implementation. A correctness oracle must be authored from the spec/real answer.

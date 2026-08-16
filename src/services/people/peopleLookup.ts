@@ -10,7 +10,7 @@
  * layer turns an id into a phone number, exactly as the card system already does.
  */
 import { loadPeople, resolvePersonId, personById, subsetResolve, type Person, type Gender } from './peopleModel'
-import { relationshipOf, relativesOfKind, hebrewTerm, describePathBetween, possessivePathBetween, type KinKind } from './kinship'
+import { relationshipOf, relativesOfKind, hebrewTerm, describePathBetween, possessivePathBetween, relationBetween, type KinKind } from './kinship'
 import { fuzzyResolvePersonId, fuzzyCandidates, skeletonMatchIds, hebrewPhonetic, similarity } from './fuzzyMatch'
 import { normalizeName } from './peopleModel'
 
@@ -135,14 +135,10 @@ export function whoIs(name: string, people: Person[] = loadPeople()): WhoIs | No
 export function relationshipBetween(nameX: string, nameY: string, people: Person[] = loadPeople()): { status: 'ok'; text: string } | { status: 'unrelated' } | NotFound {
   const x = resolvePersonId(nameX, people), y = resolvePersonId(nameY, people)
   if (!x || !y) return { status: 'not_found' }
-  const r = relationshipOf(x, y, people)
-  if (r) return { status: 'ok', text: `${personById(x, people)!.hebrewName} ${r.he} של ${personById(y, people)!.hebrewName}` }
-  // No single kinship term. The owner wants the relation BETWEEN the two people — NOT both of their
-  // relations to Martita, and NEVER the generic "בני משפחה" bucket (both were explicit rejections).
-  // Walk the actual path and state it as ONE natural possessive phrase ("אשת האחיין של לאו").
-  const X = personById(x, people)!
-  const path = possessivePathBetween(x, y, people)
-  if (path) return { status: 'ok', text: `${X.hebrewName} ${X.gender === 'female' ? 'היא' : 'הוא'} ${path}` }
+  // TERM-FIRST: name the Hebrew kinship term (via the spouse where needed — "בן דוד של אשתו"), and
+  // only fall to a path when NO term exists. NEVER through Martita, never "בני משפחה" (owner, 3rd time).
+  const rel = relationBetween(x, y, people)
+  if (rel) return { status: 'ok', text: rel.text }
   return { status: 'unrelated' }
 }
 

@@ -89,20 +89,75 @@ export function relationshipOf(xId: string, yId: string, people: Person[] = load
   for (const parId of Y.parents) for (const uncleId of siblingsOf(byId.get(parId)!, byId)) if (byId.get(uncleId)?.children.includes(xId)) return R('cousin')
 
   // ── affinity (in-law) ties ──
-  // brother/sister-in-law: X is a sibling of Y's spouse, OR X is a spouse of Y's sibling
-  const spousesY = [...Y.spouses, ...Y.formerSpouses]
+  // A committed PARTNER confers the same in-law terms a spouse does (Yael is Mor's partner, so Yael
+  // is Leo's גיסה) — an 81-year-old names the couple, not the marriage certificate. Former spouses too.
+  const marriedTo = (p: Person | undefined): string[] => [...(p?.spouses ?? []), ...(p?.formerSpouses ?? []), ...(p?.partners ?? [])]
+  // brother/sister-in-law: X is a sibling of Y's spouse/partner, OR X is a spouse/partner of Y's sibling
+  const spousesY = marriedTo(Y)
   for (const spId of spousesY) if (siblingsOf(byId.get(spId)!, byId).has(xId)) return R('sibling_in_law')
-  for (const sibId of sibsY) { const sib = byId.get(sibId); if (sib && [...sib.spouses, ...sib.formerSpouses].includes(xId)) return R('sibling_in_law') }
-  // son/daughter-in-law: X is a spouse of one of Y's children
-  for (const chId of Y.children) { const ch = byId.get(chId); if (ch && [...ch.spouses, ...ch.formerSpouses].includes(xId)) return R('child_in_law') }
-  // grandchild-in-law: X is a spouse of one of Y's GRANDchildren (the Gilad→Martita gap:
+  for (const sibId of sibsY) { const sib = byId.get(sibId); if (sib && marriedTo(sib).includes(xId)) return R('sibling_in_law') }
+  // son/daughter-in-law: X is a spouse/partner of one of Y's children
+  for (const chId of Y.children) { const ch = byId.get(chId); if (ch && marriedTo(ch).includes(xId)) return R('child_in_law') }
+  // grandchild-in-law: X is a spouse/partner of one of Y's GRANDchildren (the Gilad→Martita gap:
   // Gilad is the husband of Ofir, Martita's granddaughter → never null again). One marriage hop.
-  for (const chId of Y.children) for (const gcId of byId.get(chId)?.children ?? []) { const gc = byId.get(gcId); if (gc && [...gc.spouses, ...gc.formerSpouses].includes(xId)) return R('grandchild_in_law') }
+  for (const chId of Y.children) for (const gcId of byId.get(chId)?.children ?? []) { const gc = byId.get(gcId); if (gc && marriedTo(gc).includes(xId)) return R('grandchild_in_law') }
   // father/mother-in-law: X is a parent of one of Y's spouses
   for (const spId of spousesY) if (byId.get(spId)?.parents.includes(xId)) return R('parent_in_law')
   // co-in-laws (מחותנים): a child of X married a child of Y
   for (const cx of X.children) { const cxp = byId.get(cx); const married = new Set([...(cxp?.spouses ?? []), ...(cxp?.formerSpouses ?? [])]); for (const cy of Y.children) if (married.has(cy)) return R('co_in_law') }
 
+  return null
+}
+
+/** Put the definite article on a term's HEAD noun: "נכד"→"הנכד", "בן דוד"→"בן הדוד". */
+export function withArticle(term: string): string {
+  return term.includes(' ') ? term.replace(/ (\S+)$/, ' ה$1') : `ה${term}`
+}
+/** S (a spouse/partner of Y) expressed possessively relative to Y — "אשתו של גלעד", "בעלה של רותי",
+ *  "בן זוגו של Y". The noun agrees with S's gender; the possessive suffix agrees with the POSSESSOR Y. */
+function spouseOfPhrase(sGender: Gender, yGender: Gender, yName: string, partner: boolean): string {
+  const suf = yGender === 'female' ? 'ה' : 'ו'
+  const noun = partner ? (sGender === 'female' ? 'בת זוג' : 'בן זוג') : (sGender === 'female' ? 'אשת' : 'בעל')
+  return `${noun}${suf} של ${yName}`
+}
+/** How X (the spouse/partner of someone) is named in construct: "אשת"/"בעל"/"בן זוג"/"בת זוג". */
+function spousalNoun(g: Gender): string { return g === 'female' ? 'אשת' : g === 'male' ? 'בעל' : 'בן זוג' }
+
+/**
+ * relationBetween — the TERM-FIRST relation between X and Y, the way a Hebrew-speaking family member
+ * would actually say it. Order is the owner's rule, NOT the graph's shortest path:
+ *   1. a single kinship term (relationshipOf) — "רפי גיס של לאו", "יעל גיסה של לאו".
+ *   2. a term via the SPOUSE/partner — the connecting person is the spouse, not whatever node a search
+ *      passed: "עדי בן דוד של אשתו של גלעד" (Adi is the cousin of Gilad's WIFE); or via X's own spouse
+ *      "ירדן אשת בן הדוד של עדי" (Yarden is the WIFE of Adi's cousin).
+ *   3. ONLY if no term exists: the shortest path in one phrase, flagged `termAbsent` so QA can audit it.
+ * Never routes through Martita (possessivePathBetween excludes her as an intermediate). Never "בני משפחה".
+ */
+export function relationBetween(xId: string, yId: string, people: Person[] = loadPeople()): { text: string; termAbsent: boolean } | null {
+  const byId = new Map(people.map((p) => [p.id, p]))
+  const X = byId.get(xId), Y = byId.get(yId)
+  if (!X || !Y || xId === yId) return null
+  // 1. a direct kinship term
+  const direct = relationshipOf(xId, yId, people)
+  if (direct) return { text: `${X.hebrewName} ${direct.he} של ${Y.hebrewName}`, termAbsent: false }
+  // 2. a term reached through Y's spouse/partner — expressed relative to that spouse
+  for (const [ids, partner] of [[Y.spouses, false], [Y.formerSpouses, false], [Y.partners, true]] as const) {
+    for (const sId of ids) {
+      const s = byId.get(sId); if (!s) continue
+      const t = relationshipOf(xId, sId, people)
+      if (t) return { text: `${X.hebrewName} ${t.he} של ${spouseOfPhrase(s.gender, Y.gender, Y.hebrewName, partner)}`, termAbsent: false }
+    }
+  }
+  // 3. a term reached through X's OWN spouse/partner — "X [אשת/בעל] [the spouse's term] של Y"
+  for (const ids of [X.spouses, X.formerSpouses, X.partners]) {
+    for (const sId of ids) {
+      const ts = relationshipOf(sId, yId, people)
+      if (ts) return { text: `${X.hebrewName} ${spousalNoun(X.gender)} ${withArticle(ts.he)} של ${Y.hebrewName}`, termAbsent: false }
+    }
+  }
+  // 4. no Hebrew term exists — the shortest path in one natural phrase, FLAGGED term-absent
+  const path = possessivePathBetween(xId, yId, people)
+  if (path) return { text: `${X.hebrewName} ${X.gender === 'female' ? 'היא' : 'הוא'} ${path}`, termAbsent: true }
   return null
 }
 

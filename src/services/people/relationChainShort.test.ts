@@ -19,8 +19,8 @@ describe('relationshipBetween computes the relation BETWEEN the two people', () 
       expect(r.text).not.toMatch(/בני משפחה/)
       expect(r.text).not.toMatch(THROUGH_MARTITA)
       expect(r.text).toContain('לאו')
-      // Yael is the partner of Leo's sister (Mor): a real, direct path.
-      expect(r.text).toMatch(/בת הזוג של האחות של לאו/)
+      // Yael is Mor's partner; Mor is Leo's sister → Yael is Leo's גיסה (a real TERM, not a path).
+      expect(r.text).toBe('יעל גיסה של לאו')
     }
   })
 
