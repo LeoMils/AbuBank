@@ -1,19 +1,18 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T16:19:11.484Z",
-  "candidateSha": "a66b078d2eb03d0ff7abd0c93fb10ef3ac7da54b",
+  "generatedAt": "2026-08-16T17:06:57.256Z",
+  "candidateSha": "afda67291f51fc68c4969a6c856151cccf57bed5",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_dd2eb577",
-  "frozenControlPlaneId": "cp_dd2eb577",
-  "controlPlaneInputHash": "in_c4c49a70",
+  "controlPlaneId": "cp_51a78d53",
+  "frozenControlPlaneId": "cp_51a78d53",
+  "controlPlaneInputHash": "in_70d2f5e0",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "6a61cdcd08b8dc3d",
+    "dirtyStateHash": "7d507f48d6150ff4",
     "dirtyRuntime": [
-      "src/engineering-os/releaseControlPlane.ts",
-      "src/engineering-os/executionState.ts",
-      "src/engineering-os/obligationCompleteness.ts"
+      "src/engineering-os/obligationCompleteness.ts",
+      "src/engineering-os/yieldGate.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -110,14 +109,16 @@
         "reason": "A→B→C lab output already surfaced via mission.gatesReady.aToC."
       }
     ],
-    "unknown": []
+    "unknown": [
+      "docs/engineering-os/qa/capability-manifest.json"
+    ]
   },
   "requiredClaimCount": 28,
   "presentClaimCount": 25,
   "releaseBlockers": [
     {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/releaseControlPlane.ts, src/engineering-os/executionState.ts, src/engineering-os/obligationCompleteness.ts"
+      "reason": "src/engineering-os/obligationCompleteness.ts, src/engineering-os/yieldGate.ts"
     }
   ],
   "controlBlockers": [
@@ -152,6 +153,10 @@
     {
       "code": "EVIDENCE_STALE",
       "reason": "source 'master-matrix' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "SOURCE_COVERAGE_UNKNOWN",
+      "reason": "authoritative source 'docs/engineering-os/qa/capability-manifest.json' is neither consumed nor classified — the adapter cannot be trusted complete"
     },
     {
       "code": "CONTROL_MODEL_INCOMPLETE",

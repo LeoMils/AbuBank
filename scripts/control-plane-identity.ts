@@ -46,6 +46,9 @@ const COMPONENTS = {
   obligationCompletenessSuite: 'src/engineering-os/obligationCompleteness.test.ts',
   executionState: 'src/engineering-os/executionState.ts',
   executionStateSuite: 'src/engineering-os/executionState.test.ts',
+  // Stage 3C §1: the YIELD GATE — CONTINUE_MACHINE_WORK is not permission to yield.
+  yieldGate: 'src/engineering-os/yieldGate.ts',
+  yieldGateSuite: 'src/engineering-os/yieldGate.test.ts',
   // Stage 3C resume: context-stop honesty, constitution calibration, capability universe.
   contextExecutionState: 'src/engineering-os/contextExecutionState.ts',
   contextExecutionStateSuite: 'src/engineering-os/contextExecutionState.test.ts',

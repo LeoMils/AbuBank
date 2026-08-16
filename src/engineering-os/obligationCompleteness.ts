@@ -136,6 +136,7 @@ export function defaultConstitution(): ObligationCompletenessInput {
     inv('live-no-silent-default', 'live state must never normalize missing/malformed/stale sources into false green'),
     inv('control-completeness', 'no release-critical control component may be omitted from the claim model'),
     inv('execution-continuity', 'a NO_GO/BLOCKED release must not stop machine work while machine-closable work remains'),
+    inv('yield-continuity', 'the agent must not yield to the user while EXECUTION_STATE=CONTINUE_MACHINE_WORK and a machine-executable next action exists without a genuine boundary'),
     inv('capability-universe', 'the full product capability universe must be discovered (not just screens) and drift-controlled'),
     inv('denominator', 'the acceptance denominator must be complete, monotonic and specificity-proven'),
     inv('claim-state-model', 'claim execution states must be explicit and non-collapsible'),
@@ -155,6 +156,7 @@ export function defaultConstitution(): ObligationCompletenessInput {
     ob('o-live', 'live-no-silent-default', 'strict live adapter', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/liveSnapshot.ts', 'live-adapter-falsifiable'),
     ob('o-cc', 'control-completeness', 'component completeness', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/controlCompleteness.ts', 'control-completeness-falsifiable'),
     ob('o-exec', 'execution-continuity', 'execution-continuity gate', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/executionState.ts', 'execution-continuity-proven'),
+    ob('o-yield', 'yield-continuity', 'yield gate (CONTINUE_MACHINE_WORK is not a yield)', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/yieldGate.ts', 'yield-continuity-proven'),
     ob('o-owner', 'owner-firewall', 'machine-derived owner firewall', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/releaseControlPlane.ts', 'owner-firewall-machine-derived'),
     // ── The honest negative space: obligations that SHOULD exist but do not yet. ──
     ob('o-capability', 'capability-universe', 'static+dynamic capability manifest', 'UNIMPLEMENTED'),
