@@ -47,6 +47,7 @@ import { extractFunctionCall, safeParseArgs, type ParsedFunctionCall } from '../
 import { FlightRecorder, downloadTrace } from './liveTrace'
 import { monitorTurn, repairableViolations, buildRepairInstruction, type Violation } from './monitor/outputMonitor'
 import { classifyTurn, buildClassifiedRepair, type ClassifiedViolation } from './monitor/classifiedMonitor'
+import { SessionRepetitionGuard } from './sessionRepetition'
 
 /** M2 output monitor. The detectors ALWAYS run post-turn as observation (logged, zero risk).
  *  ENFORCING (overnight Part 4): the owner found the language-purity detector CAUGHT tonight's
@@ -545,6 +546,8 @@ export class LiveSession {
   /** ICE 'disconnected' is usually a TRANSIENT blip that self-recovers. This grace timer holds the
    *  session while we wait for recovery instead of killing it on the blip (E4: "died at 443s"). */
   private iceGraceTimer: ReturnType<typeof setTimeout> | null = null
+  /** E3: remembers what Abu has already said this session so a verbatim repeat is flagged. */
+  private readonly repetition = new SessionRepetitionGuard()
   /** Flight recorder — OBSERVATION ONLY. Records my/her speech + every tool call,
    *  and surfaces silent-turn (C.3) + truncation-evidence (C.2) flags. It never
    *  changes turn/VAD/audio behaviour; the live session only appends to it.
@@ -874,7 +877,7 @@ export class LiveSession {
         break
       case 'response.output_audio_transcript.done':
       case 'response.audio_transcript.done':
-        if (typeof e.transcript === 'string') { this.cb.onAbuTranscript?.(e.transcript); this.recorder.onAbuText(e.transcript); this.runOutputMonitor(e.transcript) }
+        if (typeof e.transcript === 'string') { this.cb.onAbuTranscript?.(e.transcript); this.recorder.onAbuText(e.transcript); this.runOutputMonitor(e.transcript); const rep = this.repetition.noteSpoken(e.transcript); if (rep.repeats.length) this.recorder.onRecoverableError('spoken_repetition:' + rep.repeats.length) }
         break
       case 'response.created':
         // A response is now in flight (ours or a server VAD auto-create). FIX 4: mark it so

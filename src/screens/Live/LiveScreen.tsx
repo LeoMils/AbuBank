@@ -50,13 +50,18 @@ const telHandoff: Handoff = (name) => phoneAdapter.buildHandoff(name, '')
  *  state. A live lookup reuses the 'thinking' aura (no new visual) — only the spelled-out
  *  word differs (see liveStateWord), so Martita sees she is being looked-after, not frozen. */
 export function toPresenceState(state: LiveState, thinking: boolean, looking = false): PresenceState {
-  if (state === 'connecting') return 'thinking'
-  // Her audio starting always wins over a (possibly stale) thinking/looking hint — belt and
-  // suspenders alongside the runtime clear of both hints on every state transition.
+  // The ACTUAL session state is authoritative and can NEVER be contradicted by a hint (E5a device
+  // defect: "חושבת while she was listening"). 'speaking' and 'listening' are real session states →
+  // shown as-is. The one exception is a REAL in-flight lookup (`looking`): it is a genuine operation
+  // with its own distinct word ('מחפשת…'), so it may show the working aura while the wire is still
+  // listening. A GENERIC 'thinking' hint (the "user just finished" bridge) may NEVER override real
+  // listening/speaking — that stale-hint override was the bug.
   if (state === 'speaking') return 'speaking'
+  if (state === 'connecting') return 'thinking'
+  if (state === 'listening') return looking ? 'thinking' : 'listening'
+  // idle / error: no active session state to contradict — a hint may show 'thinking', else waiting.
   if (looking || thinking) return 'thinking'
-  if (state === 'listening') return 'listening'
-  return 'waiting' // idle / error
+  return 'waiting'
 }
 
 /** The spelled-out Hebrew word for each RECONCILED presence state. Keyed by

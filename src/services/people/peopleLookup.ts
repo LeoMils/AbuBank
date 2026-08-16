@@ -79,7 +79,18 @@ export type ContactResult =
   | { status: 'resolved'; id: string; label: string }
   | { status: 'ambiguous'; candidates: Array<{ id: string; label: string }> }
   | { status: 'deceased'; label: string }
+  /** KNOWN person, but not an actual contact (no phone) — Abu says who they are, never offers to reach. */
+  | { status: 'not_a_contact'; id: string; label: string }
   | { status: 'not_found' }
+
+/** Resolve a matched person to a REACH status: deceased (gone) > not_a_contact (known, no phone) >
+ *  resolved (a real contact). Every resolveContactTarget success path goes through this so the
+ *  reachability gate is applied uniformly (a name, a nickname, a fuzzy/subset match — all identical). */
+function contactStatusFor(p: Person): ContactResult {
+  if (p.deceased) return { status: 'deceased', label: p.hebrewName }
+  if (!p.reachable) return { status: 'not_a_contact', id: p.id, label: p.hebrewName }
+  return { status: 'resolved', id: p.id, label: p.hebrewName }
+}
 
 export function whoIs(name: string, people: Person[] = loadPeople()): WhoIs | NotFound {
   // Direct name first (a real person named like a kinship word stays that person).
@@ -220,9 +231,9 @@ export function resolveContactTarget(phrase: string, people: Person[] = loadPeop
   const direct = resolvePersonId(phrase, people)
   if (direct) {
     const p = personById(direct, people)!
-    // A deceased person is an identity, not a reachable contact — never a call/message.
-    if (p.deceased) return { status: 'deceased', label: p.hebrewName }
-    return { status: 'resolved', id: p.id, label: p.hebrewName }
+    // A deceased person is an identity, not a reachable contact; a known-but-not-a-contact person
+    // (a friend's care-facility son, a Vancouver relative) is answered but never offered to reach.
+    return contactStatusFor(p)
   }
   const desc = resolveDescriptive(phrase, people)
   if (desc === null) {
@@ -237,7 +248,7 @@ export function resolveContactTarget(phrase: string, people: Person[] = loadPeop
     // also matches a living one (פופה) would drop the deceased and silently resolve to the living
     // person. Edit-distance runs only when the skeleton gives no signal at all.
     const skel = skeletonMatchIds(phrase, fuzzyCandidates(people)).map((id) => personById(id, people)!).filter(Boolean)
-    if (skel.length === 1) { const p = skel[0]!; return p.deceased ? { status: 'deceased', label: p.hebrewName } : { status: 'resolved', id: p.id, label: p.hebrewName } }
+    if (skel.length === 1) { const p = skel[0]!; return contactStatusFor(p) }
     if (skel.length >= 2) {
       // Ambiguous → ask, offering ALL matches INCLUDING the deceased. Filtering the deceased here
       // hid the intended person when a mishearing of a deceased name (פפי/Pepe → "פופי") also
@@ -247,12 +258,12 @@ export function resolveContactTarget(phrase: string, people: Person[] = loadPeop
     }
     // no skeleton signal → one confident edit-distance try (P8) before not_found
     const fid = fuzzyId(phrase, people)
-    if (fid) { const p = personById(fid, people)!; return p.deceased ? { status: 'deceased', label: p.hebrewName } : { status: 'resolved', id: p.id, label: p.hebrewName } }
+    if (fid) { const p = personById(fid, people)!; return contactStatusFor(p) }
     // SUBSET fallback (device P0): "given name + surname". A CONFIRMED surname resolves; an
     // UNCONFIRMED/conflicting surname (a public figure sharing a given name) is NOT resolved
     // silently — it becomes an ask ("did you mean <the one person by that given name>?").
     const sub = subsetResolve(phrase, people)
-    if (sub.status === 'resolved') { const p = personById(sub.id, people)!; return p.deceased ? { status: 'deceased', label: p.hebrewName } : { status: 'resolved', id: p.id, label: p.hebrewName } }
+    if (sub.status === 'resolved') { const p = personById(sub.id, people)!; return contactStatusFor(p) }
     if (sub.status === 'ambiguous') return { status: 'ambiguous', candidates: sub.ids.map((id) => ({ id, label: personById(id, people)!.hebrewName })) }
     if (sub.status === 'conflict') return { status: 'ambiguous', candidates: [{ id: sub.id, label: personById(sub.id, people)!.hebrewName }] }
     return { status: 'not_found' }
@@ -260,8 +271,7 @@ export function resolveContactTarget(phrase: string, people: Person[] = loadPeop
   const matches = desc.map((id) => personById(id, people)!)
   if (matches.length === 1) {
     const p = matches[0]!
-    if (p.deceased) return { status: 'deceased', label: p.hebrewName }
-    return { status: 'resolved', id: p.id, label: p.hebrewName }
+    return contactStatusFor(p)
   }
   if (matches.length > 1) return { status: 'ambiguous', candidates: matches.map((p) => ({ id: p.id, label: p.hebrewName })) }
   return { status: 'not_found' }

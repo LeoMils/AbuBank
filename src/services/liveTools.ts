@@ -25,7 +25,7 @@ import {
   applyCalendarFunctionCall, isCalendarTool,
   type CalendarDraft, type CalendarReceipt,
 } from '../screens/AbuAI/realtime/calendarDraft'
-import { resolveCalendarParticipant, resolveContact, contactLabel, isDeceasedContact } from './liveContacts'
+import { resolveCalendarParticipant, resolveContact, contactLabel, isDeceasedContact, isReachableContact } from './liveContacts'
 import { whoIs, relationshipBetween, relativesByKind, resolveContactTarget, suggestForMiss } from './people/peopleLookup'
 import type { KinKind } from './people/kinship'
 import { historyLookup } from './history/historyLookup'
@@ -548,6 +548,7 @@ export class LiveTools {
       const r = resolveContactTarget(person) // resolved | ambiguous | deceased | not_found — no number
       if (r.status === 'ambiguous') return { ...r, allowed_to_say: ['ask which specific person she means'] }
       if (r.status === 'deceased') return { status: 'deceased', label: r.label, allowed_to_say: ['gently say this person is no longer with us, so there is no way to call or message them', 'do NOT answer about a different family relationship'] }
+      if (r.status === 'not_a_contact') return { status: 'not_a_contact', label: r.label, allowed_to_say: ['warmly say you know who this is, but you do not have them as a contact to message or call', 'do NOT offer to send a message or place a call to them', 'if she wants to reach them, suggest she asks someone in the family who has their number'] }
       if (r.status === 'not_found') return this.peopleMiss(person)
       return { ...r, allowed_to_say: ['use this id to message or call — never read a number aloud'] }
     }
@@ -759,11 +760,39 @@ export class LiveTools {
           : ['say you do not have that person as a contact'],
       }
     }
+    // A KNOWN person who is not an actual contact (a friend's care-facility son, a Vancouver
+    // relative): Abu knows who they are but has no phone to reach them. No card, warm and honest.
+    if (!isReachableContact(res.id)) {
+      return {
+        status: 'not_a_contact',
+        label: contactLabel(res.id) ?? res.label,
+        allowed_to_say: [
+          'warmly say you know who this is, but you do not have them as a contact to message or call',
+          'never create a message or a call and never claim one; do NOT ask for their number',
+          'if she wants to reach them, gently suggest someone in the family who would have their number',
+        ],
+      }
+    }
+    const intent = kind === 'message' ? (str(args, 'message') ?? '') : null
+    // E3: never RE-ANNOUNCE a card already on her screen. If the identical card (same recipient,
+    // same kind, still awaiting her tap — and same message text for a message) is already the active
+    // draft, do not create a second one; tell her it is already there, waiting for her tap.
+    const active = this.comm
+    const READY = new Set(['READY_TO_CALL', 'READY_TO_SEND'])
+    if (active && READY.has(active.status) && active.recipientId === res.id && active.kind === kind && (kind === 'call' || active.intent === intent)) {
+      return {
+        status: 'already_on_screen', kind, recipient: active.recipientLabel,
+        allowed_to_say: [
+          kind === 'call' ? 'the call card is ALREADY on her screen — gently point to it, do not make a new one' : 'the message card is ALREADY on her screen — gently point to it, do not make a new one',
+          'do NOT repeat yourself; just remind her once to tap it',
+        ],
+      }
+    }
     this.comm = {
       kind,
       recipientId: res.id,
       recipientLabel: contactLabel(res.id) ?? res.label,
-      intent: kind === 'message' ? (str(args, 'message') ?? '') : null,
+      intent,
       status: kind === 'call' ? 'READY_TO_CALL' : 'READY_TO_SEND',
     }
     this.cb.onCommDraft?.(this.comm)

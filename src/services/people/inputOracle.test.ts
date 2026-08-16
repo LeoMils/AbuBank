@@ -51,6 +51,7 @@ function realistic(variant: string, sourceKey: string, wantId: string): boolean 
 function verdict(variant: string, wantId: string): 'resolved' | 'ambiguous_ok' | 'wrong' | 'not_found' {
   const r = resolveContactTarget(variant, people)
   if (r.status === 'resolved') return r.id === wantId ? 'resolved' : 'wrong'
+  if (r.status === 'not_a_contact') return r.id === wantId ? 'resolved' : 'wrong' // KNOWN person (not reachable) — still recognised, not a miss
   if (r.status === 'deceased') {
     // deceased resolves by identity (no id field) — treat a label match as resolved
     return 'resolved'

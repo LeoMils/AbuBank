@@ -36,6 +36,11 @@ export interface Person {
   /** Non-family people carry a role instead of kinship (doctor, neighbour, friend). */
   role?: string
   deceased?: boolean
+  /** Is this person an ACTUAL reachable contact (has a real phone), so Abu may message/call them?
+   *  Conservative: immediate family by default; friends/extended relatives are opt-in via the data's
+   *  `reachable` field. A graph-only entry (a friend's care-facility son, a Vancouver relative) is
+   *  KNOWN (whoIs answers) but NOT reachable — Abu never offers to message/call them. */
+  reachable: boolean
   // direct edges (hebrew names resolved to ids)
   parents: string[]
   children: string[]
@@ -62,6 +67,7 @@ interface RawPerson {
   notes?: string
   role?: string
   deceased?: boolean
+  reachable?: boolean
 }
 
 const FAMILY_GROUPS = ['matriarch', 'deceased', 'children', 'children_related', 'grandchildren_mor', 'grandchildren_leo', 'grandchildren_spouses', 'great_grandchildren'] as const
@@ -69,6 +75,11 @@ const FAMILY_GROUPS = ['matriarch', 'deceased', 'children', 'children_related', 
 // their `role`/relationship_hebrew, NOT derived through the kinship graph (keeps the
 // derived graph stable while still making the extended family + friends known in speech).
 const NONFAMILY_GROUPS = ['close_friends', 'extended_family'] as const
+// Groups whose members are ACTUAL contacts Martita messages/calls by default (immediate family).
+// Everyone else (friends, extended/distant relatives) is reachable ONLY if the data opts them in
+// with `reachable: true` — so Abu never offers to message a friend's care-facility son or a
+// Vancouver relative. Great-grandchildren (infants) and the deceased are never reachable.
+const REACHABLE_GROUPS = ['children', 'children_related', 'grandchildren_mor', 'grandchildren_leo', 'grandchildren_spouses'] as const
 const HEBREW = /[֐-׿]/
 
 const GENDER_BY_RELATIONSHIP: Record<string, Gender> = {
@@ -147,6 +158,9 @@ export function loadPeople(data: { family: Record<string, unknown> } = familyDat
       // Deceased is the canonical `deceased` group OR any person carrying deceased:true
       // (extended relatives/friends who have passed) — so reaching them is declined gently.
       ...(group === 'deceased' || raw.deceased ? { deceased: true } : {}),
+      // Reachable = an actual contact Abu may message/call. Immediate-family groups by default;
+      // anyone else opts in via data `reachable:true`. Never the deceased.
+      reachable: !(group === 'deceased' || raw.deceased) && (raw.reachable ?? (REACHABLE_GROUPS as readonly string[]).includes(group)),
       parents: [], children: [], spouses: [], formerSpouses: [], partners: [], cohabitsWith: [],
     }
   })

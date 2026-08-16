@@ -37,6 +37,10 @@ interface PersonRecord {
   /** True for a person in the `deceased` group — resolvable for who/remember, but
    *  NEVER reachable (call/message). Reaching them is a gentle decline, not a card. */
   deceased: boolean
+  /** True for an ACTUAL contact (a real phone): immediate family by default, or a friend/relative
+   *  the data opts in with `reachable:true`. A known-but-not-a-contact person is answered for
+   *  who-they-are but NEVER offered a message/call card (device: a friend's care-facility son). */
+  reachable: boolean
 }
 
 interface RawPerson {
@@ -44,7 +48,11 @@ interface RawPerson {
   hebrew_name?: string
   aliases?: string[]
   deceased?: boolean
+  reachable?: boolean
 }
+
+/** Immediate-family groups whose members are real contacts by default; everyone else is opt-in. */
+const REACHABLE_GROUPS: readonly string[] = ['children', 'children_related', 'grandchildren_mor', 'grandchildren_leo', 'grandchildren_spouses']
 
 /** The person-bearing groups of family_data.json. Pets are intentionally excluded. */
 const PERSON_GROUPS = [
@@ -76,7 +84,8 @@ function collectPeople(): PersonRecord[] {
       if (p.hebrew_name) keys.add(normalize(p.hebrew_name))
       if (p.canonical_name) keys.add(normalize(p.canonical_name))
       for (const a of p.aliases ?? []) if (a) keys.add(normalize(a))
-      out.push({ id: toId(canonical), label, canonical, keys: [...keys], deceased: group === 'deceased' || !!p.deceased })
+      const deceased = group === 'deceased' || !!p.deceased
+      out.push({ id: toId(canonical), label, canonical, keys: [...keys], deceased, reachable: !deceased && (p.reachable ?? REACHABLE_GROUPS.includes(group)) })
     }
   }
   return out
@@ -113,6 +122,12 @@ export function contactLabel(id: string): string | null {
  *  message) must be a gentle "he is no longer with us", never a call/message card. */
 export function isDeceasedContact(id: string): boolean {
   return registry().find((r) => r.id === id)?.deceased ?? false
+}
+
+/** True if a resolved contact id is an ACTUAL contact Abu may message/call. A known person who is
+ *  NOT a contact (no phone) is answered for who-they-are but never offered a message/call card. */
+export function isReachableContact(id: string): boolean {
+  return registry().find((r) => r.id === id)?.reachable ?? false
 }
 
 // ─── Normalization ───────────────────────────────────────────────────────────
