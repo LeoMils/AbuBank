@@ -13,6 +13,7 @@ import {
   evaluateGoldenSession,
   detectPreamble,
   detectCapabilityMenu,
+  detectAsksIdentity,
   type GoldenTurn,
   type TurnResult,
 } from './goldenSession'
@@ -51,6 +52,16 @@ describe('golden session — the preamble & menu detectors', () => {
   it('flags a capability menu, passes one warm action', () => {
     expect(detectCapabilityMenu('רוצה שאתקשר ללאו? או שאני אכין הודעה? או שאני אבדוק?')).toBe(true)
     expect(detectCapabilityMenu('רוצה שאתקשר ללאו?')).toBe(false)
+  })
+  it('flags a greeting that asks who she is (#4), passes a warm named greeting', () => {
+    expect(detectAsksIdentity('שלום, עם מי אני מדבר?')).toBe(true)
+    expect(detectAsksIdentity('מה השם שלך?')).toBe(true)
+    expect(detectAsksIdentity('בוקר טוב מרטיטה יקרה, טוב לשמוע אותך!')).toBe(false)
+  })
+  it('greeting turn FAILS when Abu asks who she is', () => {
+    const greeting = GOLDEN_TURNS.find((t) => t.id === 'greeting')!
+    expect(evaluateGoldenTurn(greeting, { spoken: 'שלום, עם מי אני מדבר?', toolsCalled: [] }).pass).toBe(false)
+    expect(evaluateGoldenTurn(greeting, { spoken: 'בוקר טוב מרטיטה, טוב לשמוע אותך.', toolsCalled: [] }).pass).toBe(true)
   })
 })
 

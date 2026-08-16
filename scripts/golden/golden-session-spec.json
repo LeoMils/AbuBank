@@ -7,9 +7,10 @@
     "mustSpeak": true,
     "forbid": [
       "preamble",
-      "menu"
+      "menu",
+      "asks_identity"
     ],
-    "note": "opening greeting — she knows who she is talking to, never asks a name"
+    "note": "opening greeting — she knows who she is talking to, never asks a name (tonight #4)"
   },
   {
     "id": "small_talk",

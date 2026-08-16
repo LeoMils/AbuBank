@@ -32,6 +32,7 @@ const SRC_NAMED = /ויקיפדיה|בגוגל|לפי\s*גוגל|וואלה|וו
 const SRC_NARR = /(לפי\s+ה?אתר|מצאתי\s+ב|בדקתי\s+ב|ראיתי\s+באתר|באתר\s+של|according to|found (?:it )?on|per the site)/i
 const METHOD = /חיפשתי|עשיתי חיפוש|בדקתי ב|בדקתי את|במאגר|ברשימת אנשי|רשימת הקשר|השתמשתי ב|הפעלתי את|לפי הכלי|שלחתי שאיל|לפי המערכת|עשיתי בדיק|לפי מה שבדקתי|חיפשתי לך/i
 const MENU = (s) => ((s.match(/רוצה ש|אפשר ש|שאני|תרצי ש/g) ?? []).length >= 2) || (/אני יכולה/.test(s) && (s.match(/[,]| או /g) ?? []).length >= 2)
+const ASKS_ID = /מה שמך|מה השם שלך|מי את\b|עם מי אני מדבר|למי אני מדבר|איך קוראים לך|מי מדבר|מי זה על הקו|¿con quién|cómo te llamas|tu nombre/i
 const sourceNamed = (s) => SRC_URL.test(s) || SRC_DOTLESS.test(s) || SRC_NAMED.test(s) || SRC_NARR.test(s)
 const tooLong = (s) => s.trim().split(/\s+/).filter(Boolean).length > 45
 const MED = /כדור|כדורים|תרופה|תרופות|לחץ דם|אינסולין|insulin|כadור|גלולה|antibiot|אקמול|נורופן|כמוסה|מ"ג|מיליגרם/i
@@ -133,6 +134,7 @@ function grade(turn, obs) {
     if (r === 'method' && METHOD.test(s)) failures.push('METHOD')
     if (r === 'foreign' && turn.lang === 'he' && latinLeak(s).length >= 3) failures.push(`FOREIGN[${latinLeak(s).slice(0, 3).join(',')}]`)
     if (r === 'toolong' && tooLong(s)) failures.push('TOO_LONG')
+    if (r === 'asks_identity' && ASKS_ID.test(s)) failures.push('ASKS_IDENTITY')
   }
   return { id: turn.id, pass: failures.length === 0, failures, spoken: s.slice(0, 90), tools }
 }

@@ -34,8 +34,13 @@ export function detectCapabilityMenu(spoken: string): boolean {
   return false
 }
 
+/** Abu asking WHO she is talking to — she knows Martita at session start and must never ask
+ *  (tonight's #4: "You were just about to say your name"). Guards the greeting/identity contract. */
+const ASKS_IDENTITY_RE = /מה שמך|מה השם שלך|מי את\b|עם מי אני מדבר|למי אני מדבר|איך קוראים לך|מי מדבר|מי זאת|מי זה על הקו|¿con quién|cómo te llamas|tu nombre/i
+export function detectAsksIdentity(spoken: string): boolean { return ASKS_IDENTITY_RE.test(spoken) }
+
 /** The properties a turn can forbid in the spoken answer. */
-export type ForbidRule = 'preamble' | 'source' | 'menu' | 'method' | 'foreign' | 'toolong'
+export type ForbidRule = 'preamble' | 'source' | 'menu' | 'method' | 'foreign' | 'toolong' | 'asks_identity'
 
 export interface GoldenTurn {
   /** Stable id (used in the result table + as an assertion name). */
@@ -59,7 +64,7 @@ export interface GoldenTurn {
 
 /** THE canonical arc — one unbroken session covering every capability the owner named. */
 export const GOLDEN_TURNS: readonly GoldenTurn[] = [
-  { id: 'greeting', say: '', lang: 'he', expectTool: 'none', mustSpeak: true, forbid: ['preamble', 'menu'], note: 'opening greeting — she knows who she is talking to, never asks a name' },
+  { id: 'greeting', say: '', lang: 'he', expectTool: 'none', mustSpeak: true, forbid: ['preamble', 'menu', 'asks_identity'], note: 'opening greeting — she knows who she is talking to, never asks a name (tonight #4)' },
   { id: 'small_talk', say: 'בוקר טוב, ישנתי לא רע. מה נשמע אצלך?', lang: 'he', expectTool: 'none', mustSpeak: true, forbid: ['preamble', 'foreign', 'method', 'toolong'], note: 'small talk — warm, short, no tool' },
   { id: 'family_relation', say: 'תגידי, מי זאת מור?', lang: 'he', expectTool: 'any', mustSpeak: true, forbid: ['preamble', 'foreign', 'method', 'source'], note: 'a family relation — grounded via a people/history lookup' },
   { id: 'family_correction', say: 'לא נכון, מור היא הבת שלי, לא הנכדה.', lang: 'he', expectTool: 'none', allowTools: ['remember'], mustSpeak: true, forbid: ['preamble', 'foreign', 'toolong'], note: 'she corrects a family fact — Abu accepts gracefully (may persist it via remember), does not argue' },
@@ -122,6 +127,7 @@ export function evaluateGoldenTurn(turn: GoldenTurn, obs: TurnObservation): Turn
     if (rule === 'method' && detectMethodNarration(spoken)) failures.push('METHOD: narrated its own lookup/method')
     if (rule === 'foreign' && turn.lang === 'he' && detectLanguageImpurity(spoken, 'שלום')) failures.push('FOREIGN: a run of foreign words in a Hebrew turn')
     if (rule === 'toolong' && detectTooLong(spoken, false, 45)) failures.push('TOO_LONG: over the length budget')
+    if (rule === 'asks_identity' && detectAsksIdentity(spoken)) failures.push('ASKS_IDENTITY: asked who she is (she is known at session start)')
   }
 
   return { id: turn.id, pass: failures.length === 0, failures }
