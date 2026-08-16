@@ -493,6 +493,8 @@ export class LiveSession {
   // it is also consumed by a media element. We route AUDIBLE output through
   // WebAudio and keep this element muted purely to keep the track flowing.
   private keepAliveEl: HTMLAudioElement | null = null
+  /** True while local playback is muted by a barge-in — restored when the next response's audio starts. */
+  private localMuted = false
   private epoch = 0
   private torn = false
   private audioWatchdog: ReturnType<typeof setTimeout> | null = null
@@ -890,6 +892,13 @@ export class LiveSession {
         // A response is now in flight (ours or a server VAD auto-create). FIX 4: mark it so
         // we never create a second one concurrently.
         this.activeResponse = true
+        this.restoreLocalPlayback() // a genuinely NEW response → un-mute after any barge-in silence
+        // A new response STARTING is real progress after a tool result — RE-ARM the tool-result
+        // watchdog so it only forces a response when genuinely STUCK (no progress), not while a
+        // slow but progressing answer is still coming. This was the 7× forced-response + the "same
+        // sentence 3× in 6s" repetition: the 4s watchdog (cleared only by AUDIO) fired during the
+        // TEXT-only two-response decision + online latency and forced a DUPLICATE response.
+        this.bumpToolResultWatchdog()
         break
       case 'response.done':
         // The active response finished — FIX 4: the wire is free, so flush any create we
@@ -962,11 +971,30 @@ export class LiveSession {
    *  + "already_has_active_response" pair). The played position is estimated from the first
    *  audio delta's clock. Flag-gated by the caller; interrupt_response stays FALSE. */
   private handleBargeIn(): void {
+    // STOP THE HEARD AUDIO FIRST. A server cancel/truncate does NOT stop the buffered WebRTC audio
+    // already flowing to the speaker — that is why "she does not stop" even with the flag on. Mute
+    // local playback synchronously on speech_started so she goes silent immediately (measured
+    // speech→stop = this handler's latency, effectively one event tick). Restored on the next response.
+    this.silenceLocalPlayback()
     const playedMs = this.audioStartedAt === null ? 0 : this.deps.now() - this.audioStartedAt
     for (const ev of bargeInEvents(this.currentAssistantItemId, playedMs)) this.send(ev)
     this.recorder.onRecoverableError('client_barge_in_truncate') // observation: a truncate was issued
     this.currentAssistantItemId = null; this.audioStartedAt = null
     this.activeResponse = false // the response is being cancelled; the wire will be free
+  }
+
+  /** Silence LOCAL playback instantly (barge-in): gain to 0 + mute the keep-alive element. The RTP
+   *  stream keeps flowing but nothing is heard; restored when the next response's audio begins. */
+  private silenceLocalPlayback(): void {
+    try { if (this.gainNode) this.gainNode.gain.value = 0 } catch { /* */ }
+    try { if (this.keepAliveEl) this.keepAliveEl.muted = true } catch { /* */ }
+    this.localMuted = true
+  }
+  private restoreLocalPlayback(): void {
+    if (!this.localMuted) return
+    try { if (this.gainNode) this.gainNode.gain.value = 1 } catch { /* */ }
+    try { if (this.keepAliveEl) this.keepAliveEl.muted = false } catch { /* */ }
+    this.localMuted = false
   }
 
   /** SAFE-CONFIG FALLBACK: reconnect ONCE with the known-good baseline after a fatal server error,
@@ -1129,6 +1157,12 @@ export class LiveSession {
   }
   private clearToolResultWatchdog(): void {
     if (this.toolResultWatchdog) { clearTimeout(this.toolResultWatchdog); this.toolResultWatchdog = null }
+  }
+  /** RE-ARM the tool-result watchdog IFF it is currently armed — resets the 4s window on real
+   *  progress (a new response starting) so a slow-but-progressing answer is not force-duplicated.
+   *  A no-op when the watchdog is not armed (so it never arms a watchdog outside a tool turn). */
+  private bumpToolResultWatchdog(): void {
+    if (this.toolResultWatchdog) this.armToolResultWatchdog(this.epoch)
   }
 
   /** The single wire-send. A closed channel is a no-op (fail closed). */
