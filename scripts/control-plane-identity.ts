@@ -52,6 +52,9 @@ const COMPONENTS = {
   // Stage 3C §3–4: capability-discovery SOURCE-COMPLETENESS oracle (prerequisite for o-capability).
   capabilityDiscoverySource: 'src/engineering-os/capabilityDiscoverySource.ts',
   capabilityDiscoverySourceSuite: 'src/engineering-os/capabilityDiscoverySource.test.ts',
+  // Stage 3C §10: non-collapsible CLAIM-STATE model (o-claimstate).
+  claimState: 'src/engineering-os/claimState.ts',
+  claimStateSuite: 'src/engineering-os/claimState.test.ts',
   // Stage 3C resume: context-stop honesty, constitution calibration, capability universe.
   contextExecutionState: 'src/engineering-os/contextExecutionState.ts',
   contextExecutionStateSuite: 'src/engineering-os/contextExecutionState.test.ts',

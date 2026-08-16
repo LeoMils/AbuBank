@@ -161,7 +161,7 @@ export function defaultConstitution(): ObligationCompletenessInput {
     // ── The honest negative space: obligations that SHOULD exist but do not yet. ──
     ob('o-capability', 'capability-universe', 'static+dynamic capability manifest', 'UNIMPLEMENTED'),
     ob('o-denominator', 'denominator', 'certified acceptance denominator', 'UNIMPLEMENTED'),
-    ob('o-claimstate', 'claim-state-model', 'non-collapsible claim-state model', 'UNIMPLEMENTED'),
+    ob('o-claimstate', 'claim-state-model', 'non-collapsible claim-state model', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/claimState.ts', 'claim-state-model-proven'),
     ob('o-labcert', 'lab-certification', 'scope-bound lab certification', 'UNIMPLEMENTED'),
     ob('o-producers', 'evidence-producers', 'reproducible evidence producers + lineage', 'UNIMPLEMENTED'),
     ob('o-attest', 'deployment-attestation', 'source→build→deploy attestation', 'UNIMPLEMENTED'),

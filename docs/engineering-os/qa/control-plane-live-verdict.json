@@ -1,18 +1,18 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T17:17:05.329Z",
-  "candidateSha": "e0257270b995f9242c3d73cf1bf69b783beef3cd",
+  "generatedAt": "2026-08-16T17:20:58.569Z",
+  "candidateSha": "29ca461231e89659e0a8715056d9a080f42f557e",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_c8d12214",
-  "frozenControlPlaneId": "cp_c8d12214",
-  "controlPlaneInputHash": "in_e89d3e2b",
+  "controlPlaneId": "cp_cdad6f84",
+  "frozenControlPlaneId": "cp_cdad6f84",
+  "controlPlaneInputHash": "in_12ad3f4b",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "645c88449033f3fe",
+    "dirtyStateHash": "884f7e5d743799a1",
     "dirtyRuntime": [
-      "src/engineering-os/capabilityDiscoverySource.ts",
-      "src/engineering-os/capabilityManifest.ts"
+      "src/engineering-os/obligationCompleteness.ts",
+      "src/engineering-os/claimState.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -119,11 +119,11 @@
   "releaseBlockers": [
     {
       "code": "UNPUSHED_COMMIT",
-      "reason": "head e0257270b995f9242c3d73cf1bf69b783beef3cd != remote afda67291f51fc68c4969a6c856151cccf57bed5"
+      "reason": "head 29ca461231e89659e0a8715056d9a080f42f557e != remote afda67291f51fc68c4969a6c856151cccf57bed5"
     },
     {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/capabilityDiscoverySource.ts, src/engineering-os/capabilityManifest.ts"
+      "reason": "src/engineering-os/obligationCompleteness.ts, src/engineering-os/claimState.ts"
     }
   ],
   "controlBlockers": [
@@ -198,10 +198,6 @@
     {
       "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
       "reason": "release-critical obligation 'o-denominator' (certified acceptance denominator) is UNIMPLEMENTED"
-    },
-    {
-      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
-      "reason": "release-critical obligation 'o-claimstate' (non-collapsible claim-state model) is UNIMPLEMENTED"
     },
     {
       "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
