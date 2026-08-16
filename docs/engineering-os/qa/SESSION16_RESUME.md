@@ -45,24 +45,30 @@ UNKNOWN / machine-closable-NEXT (NOT device boundaries — owner item #9):
 
 HUMAN_RESIDUAL: voice audible/perceptual quality (device/ear only).
 
-## ACTIVE DEFECT QUEUE (priority order)
-1. P1 · LIVE_CURRENT_DATA_CAPABILITY gap — weather/exchange unanswerable (needs a supported live-data
-   path within the EXISTING architecture; do not add unnecessary providers). Root cause: live JS-rendered
-   data not in fetchPageText output; Brave snippets lack it. Investigate ONLINE_PROVIDER=tavily path +
-   whether Tavily's include_answer gives live data; or a supported structured source.
-2. P1 · CURRENT-INFO FRESHNESS — add freshness semantics to the acceptance oracle + the online answer
-   path: for temporal queries (current/latest/last/today/now/this week/most recent), require temporal
-   relevance, not just grounding. Re-evaluate super-bowl as FAIL.
-3. Calendar write→readback→modify machine acceptance (AbuCalendar UI).
-4. WhatsApp compose machine acceptance (+ mocked send).
-5. Build the bounded TEMPORAL acceptance matrix: current office-holder / latest major event / current
-   weather / current exchange rate / recent news / static-fact control / insufficient-evidence case.
+## ACTIVE DEFECT QUEUE (priority order) — updated
+1. DONE (committed 67e7505) · CURRENT-INFO FRESHNESS oracle — `src/engineering-os/temporalFreshness.ts`
+   (+test, 8 green). GROUNDED≠CURRENT; super-bowl re-classified STALE/FAIL. STILL TO DO: register it as a
+   control-plane component (add to scripts/control-plane-identity.ts COMPONENTS + `--freeze`) and WIRE it
+   into the online answer path (api/abuai-online.ts) so temporal answers must pass freshness, not just grounding.
+2. P1 · LIVE_CURRENT_DATA_CAPABILITY = NOT_PROVEN gap — weather/exchange unanswerable (live JS-rendered
+   data not in fetchPageText; Brave snippets lack it). Investigate ONLINE_PROVIDER=tavily + Tavily
+   include_answer for live data, within the EXISTING architecture (no unnecessary providers).
+3. Calendar write→readback→modify machine acceptance (AbuCalendar UI, deployed RC).
+4. WhatsApp compose machine acceptance (+ mocked send boundary).
+5. Bounded TEMPORAL acceptance matrix: current office-holder / latest major event / current weather /
+   current exchange rate / recent news / static-fact control / insufficient-evidence case — evaluate each
+   with evaluateFreshness() (grounding AND freshness).
 
-## EXACT NEXT EXECUTABLE ACTION
-Build `scripts/rc-acceptance-calendar.mjs` (Playwright, deployed clean RC): open AbuCalendar, create an
-event, verify readback, modify it, verify — a write→readback→modify round-trip on IndexedDB. Then
-`scripts/rc-acceptance-whatsapp.mjs` (compose via UI; assert message generated + fact-preserving; mock
-send). Then the temporal matrix + freshness oracle. Run the full defect-closure loop for each.
+## EXACT NEXT EXECUTABLE ACTION (for the resuming context)
+1. Register temporalFreshness in control-plane COMPONENTS + `npx tsx scripts/control-plane-identity.ts --freeze`.
+2. Build `scripts/rc-acceptance-calendar.mjs` (Playwright vs the clean RC): open AbuCalendar, CREATE an
+   event, verify READBACK, MODIFY it, verify again — a write→readback→modify round-trip on IndexedDB
+   (the historical physical-acceptance failure). Read the real UI state; PASS only on a real round-trip.
+3. `scripts/rc-acceptance-whatsapp.mjs`: compose via the AbuWhatsApp UI; assert a message is generated +
+   fact-preserving (verifyDraft); mock the send boundary (never a real send).
+4. Build the temporal acceptance matrix (item 5 above) using evaluateFreshness().
+Run the full defect-closure loop (reproduce→root cause→fix→regression→QA-of-QA→redeploy clean RC→deployed
+proof→claim closure) for each. Do not merge main / deploy production without owner authorization.
 
 ## KEY TOOLING (all committed)
 - Deploy: `npx vercel deploy --force --yes`  · Secret scan: `npx tsx scripts/scan-deployed-secrets.ts`
