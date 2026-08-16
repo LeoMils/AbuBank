@@ -1,0 +1,52 @@
+{
+  "$schema": "internal://abu/rc-acceptance-calendar",
+  "rc": "https://abu-bank-4jtx4wp7b-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-16T23:23:35.131Z",
+  "event": {
+    "title": "בדיקת יומן QA606388",
+    "date": "2026-08-22",
+    "time1": "16:00",
+    "time2": "18:30"
+  },
+  "verdict": "PROVEN_PASS",
+  "evidenceClass": "PREVIEW",
+  "passed": 7,
+  "total": 7,
+  "steps": [
+    {
+      "id": "write.store",
+      "pass": true,
+      "detail": "stored date=2026-08-22 time=16:00"
+    },
+    {
+      "id": "write.indexeddb",
+      "pass": true,
+      "detail": "present in abu-durable/kv"
+    },
+    {
+      "id": "readback.ui",
+      "pass": true,
+      "detail": "card shows \"בדיקת יומן QA606388\" @ 16:00"
+    },
+    {
+      "id": "modify.store",
+      "pass": true,
+      "detail": "time now 18:30 (single record, no duplicate)"
+    },
+    {
+      "id": "readback2.ui",
+      "pass": true,
+      "detail": "new 18:30 shown=true, old 16:00 gone=true"
+    },
+    {
+      "id": "reload.persist",
+      "pass": true,
+      "detail": "survived reload @ 18:30"
+    },
+    {
+      "id": "reload.ui",
+      "pass": true,
+      "detail": "still rendered after reload"
+    }
+  ]
+}
