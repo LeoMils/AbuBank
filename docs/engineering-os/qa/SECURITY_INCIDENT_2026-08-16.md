@@ -46,3 +46,12 @@ object (incl. these keys) into the bundle. `ENV_CONTRACT.md` line 27 already war
 
 ## Post-rotation verification claim (do NOT claim "removed from the Internet")
 - `COMPROMISED_CREDENTIAL_REVOKED` (owner) + `NEW_DEPLOYMENT_DOES_NOT_EXPOSE_REPLACEMENT` (agent, scan).
+
+## §8 sibling "input-checked / output-unverified" findings (evidence-backed)
+- **Source maps are publicly shipped** — `GET /assets/index-*.js.map` → **200**. MEDIUM: full source
+  disclosure, and it makes extracting the exposed keys trivial. Same class as F21 (build config
+  assumed, shipped artifact not verified). Fix: do not ship `.map` to public deployments (or restrict).
+- **PII phones: clean** — 0 Israeli mobile numbers in the bundle (privacy rule holds; not a finding).
+- **WhatsApp family group invite** (`chat.whatsapp.com/…`) is in the bundle — `SUSPICIOUS_NEEDS_CLASSIFICATION`:
+  likely intentional (the app's purpose is family connection), but anyone with the bundle can join the
+  family group. Owner **product decision**, not a confirmed leak.
