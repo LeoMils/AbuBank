@@ -499,3 +499,12 @@ automatic attempt (fellBack), then an honest error. Unit-tested (heal / reconnec
 What ONLY a device can prove: that a real network drop's ICE actually transitions as modelled and that
 audio RESUMES after the reconnect on the phone. No further code hardening is safe without that signal
 (a second unbounded reconnect risks a loop). Named, not hidden.
+
+## D-COMPANION-01 · a companion score now runs beside golden; empty-lookup warmth is the next gap
+Golden cannot fail a correct-but-cold session (the owner's 3/100 film). scripts/eval/companion-score.mjs
+drives real-model sessions and scores warmth two ways: heuristic markers (name, life/family reference,
+phrasing variety, stays-with-feeling, non-robotic) and a gpt-4o-mini judge on "would an 81-year-old want
+to talk again". v0.281: heuristic 100/100, judge 90/100 (lonely 95, family 85). SOFT SPOT found: when a
+grounded lookup returns nothing on a LIFE/FAMILY topic, the decline is flat ("אין לי מספיק פרטים") — the
+warm move is to turn back to HER and invite the memory. Logged as the next warmth change; not a correctness
+bug. The score ships beside golden from now on — a warmth drop is a regression even when 18/18.
