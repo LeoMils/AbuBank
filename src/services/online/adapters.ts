@@ -47,10 +47,10 @@ function openaiExtract(data: unknown): { answer: string; sources: ProviderSource
 
 export const openaiProvider: OnlineProvider = {
   id: 'openai', keyEnv: 'OPENAI_API_KEY',
-  available: (env) => !!(env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY),
+  available: (env) => !!env.OPENAI_API_KEY,
   async search(query, lang, env) {
     const started = nowMs()
-    const key = env.OPENAI_API_KEY ?? env.VITE_OPENAI_API_KEY
+    const key = env.OPENAI_API_KEY // server-only name; no VITE_ fallback (P0 remediation)
     if (!key) return fail(started, 'NO_KEY')
     try {
       const res = await fetchWithTimeout('https://api.openai.com/v1/responses', {

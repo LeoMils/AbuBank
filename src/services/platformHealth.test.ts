@@ -323,15 +323,15 @@ describe('P0 — hard rules preserved', () => {
     }
   })
 
-  it('platformHealth source never reads or surfaces secret values', () => {
+  it('platformHealth source reads NO client provider secret (P0: Groq presence-check removed)', () => {
     const src = fs.readFileSync(path.resolve(__dirname, 'platformHealth.ts'), 'utf8')
-    // Forbidden: writing/storing any env value beyond presence boolean.
+    // Forbidden: reading any provider secret from process.env or a client env.
     expect(/process\.env\.[A-Z_]+/.test(src)).toBe(false)
-    // Permitted: reading import.meta.env.VITE_GROQ_API_KEY to check presence ONLY.
-    expect(src.includes('VITE_GROQ_API_KEY')).toBe(true)
-    // The presence check uses length only — value is never returned.
-    expect(src.includes('groqKeyPresent')).toBe(true)
-    expect(/return\s+groqKey/.test(src)).toBe(false) // never returns the key
+    // P0 remediation: the VITE_GROQ_API_KEY presence-check was REMOVED. STT is server-side now;
+    // voice capability no longer depends on a client provider key.
+    const access = /[.[]\s*['"]?VITE_GROQ_API_KEY/
+    expect(access.test(src)).toBe(false)
+    expect(src.includes('groqKeyPresent')).toBe(false)
   })
 
   it('AbuWhatsApp / AbuGames screens are not modified on this branch (no platformHealth import inside them)', () => {

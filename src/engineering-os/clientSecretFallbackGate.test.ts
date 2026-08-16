@@ -13,13 +13,16 @@ import { scanClientSource, summarizeClientSecretReads, type ClientSecretRead } f
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
+// Only CLIENT-shipped source. Exclude engineering-os (holds the detector's own provider-secret
+// NAME list; never ships to the client bundle) and tests.
+const EXCLUDED_DIRS = new Set(['engineering-os', 'eval'])
 function clientFiles(): string[] {
   const out: string[] = []
   const walk = (dir: string) => {
     for (const d of readdirSync(dir, { withFileTypes: true })) {
+      if (d.isDirectory()) { if (!EXCLUDED_DIRS.has(d.name)) walk(resolve(dir, d.name)); continue }
       const full = resolve(dir, d.name)
-      if (d.isDirectory()) walk(full)
-      else if ((d.name.endsWith('.ts') || d.name.endsWith('.tsx')) && !/\.test\.tsx?$/.test(d.name)) out.push(full)
+      if ((d.name.endsWith('.ts') || d.name.endsWith('.tsx')) && !/\.test\.tsx?$/.test(d.name)) out.push(full)
     }
   }
   walk(resolve(ROOT, 'src'))

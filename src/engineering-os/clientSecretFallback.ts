@@ -59,12 +59,13 @@ export function scanClientSource(file: string, source: string): ClientSecretRead
   const lines = stripComments(source).split('\n')
   for (let i = 0; i < lines.length; i++) {
     for (const [envName, tier] of Object.entries(CLIENT_PROVIDER_SECRETS)) {
-      // Catch BOTH dot access (import.meta.env.VITE_X) AND bracket/cast access
-      // ((import.meta as ...).env?.['VITE_X'] / import.meta.env['VITE_X']). The bracket+cast
-      // form slipped past a dot-only detector (calendarTranscribe.ts Groq read) — fail closed.
-      const dot = new RegExp(`import\\.meta\\.env\\.${envName}\\b`)
-      const bracket = new RegExp(`\\.env\\s*\\??\\.?\\s*\\[\\s*['"]${envName}['"]`)
-      if (dot.test(lines[i]!) || bracket.test(lines[i]!)) {
+      // Flag the name ONLY when it follows an ACCESS operator: `.NAME` (dot — import.meta.env.NAME
+      // or an aliased env.NAME) or `['NAME'`/`["NAME"` (bracket — env['NAME'], including cast forms).
+      // This catches dot, bracket, and variable-aliased reads (the blind spots that shipped the
+      // calendarTranscribe + platformHealth reads) while NOT flagging prose comments that merely
+      // mention the name. (Non-shipped engineering-os/eval/tests are excluded by the producer/gate.)
+      const access = new RegExp(`[.\\[]\\s*['"]?${envName}\\b`)
+      if (access.test(lines[i]!)) {
         reads.push({ file, line: i + 1, envName, tier })
       }
     }
