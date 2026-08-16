@@ -111,13 +111,16 @@ export function whoIs(name: string, people: Person[] = loadPeople()): WhoIs | No
   if (!p) return { status: 'not_found' }
   // relationToMartita is NEVER null for a connected entity (the Gilad defect: the resolver
   // returned null and an 81-year-old had to name her own grandson-in-law). Order: a single
-  // derived kinship term → else the shortest structural PATH (by-marriage ties like a
-  // grandchild's spouse read "X בעל הנכדה של מרטיטה") → else the person's stated role.
+  // derived kinship term → else the person's stated role (a short, human phrase like
+  // "אחייניתו של פפי") → else, if they are connected at all, a plain "family member". We NEVER
+  // hand the raw multi-hop PATH to speech (class RAW-TOOL-OUTPUT: the same sprawl fixed for
+  // relationshipBetween) — a "who is X" answer needs one phrase, not a chain of hops.
   let relationToMartita: string | null = null
   if (p.id !== SELF) {
     const relRec = relationshipOf(p.id, SELF, people)
     if (relRec) relationToMartita = `${relRec.he} של מרטיטה`
-    else relationToMartita = describePathBetween(p.id, SELF, people) ?? p.role ?? null
+    else if (p.role) relationToMartita = p.role
+    else if (describePathBetween(p.id, SELF, people)) relationToMartita = p.gender === 'female' ? 'בת משפחה של מרטיטה' : 'בן משפחה של מרטיטה'
   }
   return {
     status: 'ok', name: p.hebrewName, gender: p.gender,

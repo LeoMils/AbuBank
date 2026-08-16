@@ -19,7 +19,7 @@
  * the promotion step, machine-checked, that MERGE_READINESS.md points at. Nothing here reads
  * a secret or a network; it is a pure snapshot of the shipping defaults.
  */
-import { LIVE_AUDIO_TUNE_V2, LIVE_BARGE_IN_TRUNCATE, LIVE_PREFETCH_WARM, LIVE_PREAMBLE_TWO_RESPONSE } from './liveSession'
+import { LIVE_AUDIO_TUNE_V2, LIVE_BARGE_IN_TRUNCATE, LIVE_PREFETCH_WARM, LIVE_PREAMBLE_TWO_RESPONSE, LIVE_CLASSIFIED_MONITOR } from './liveSession'
 
 export interface DeviceGatedFlag {
   /** Stable id (matches the code constant / FLAG_AUDIT.md row). */
@@ -69,6 +69,14 @@ export const DEVICE_GATED_FLAGS: readonly DeviceGatedFlag[] = [
     capability: 'no spoken "רגע, אני בודקת…" before a looked-up answer (long-preamble fix)',
     earCheck: 'AUDIO_CHECK.md #5 — first words are the answer; the ~4s preamble gap is gone',
     effective: LIVE_PREAMBLE_TWO_RESPONSE,
+    promotionConfirmed: false,
+  },
+  {
+    id: 'LIVE_CLASSIFIED_MONITOR',
+    envVar: 'VITE_LIVE_CLASSIFIED_MONITOR',
+    capability: 'repairs a slipped method-narration / options-menu (0 FP on the classified corpus)',
+    earCheck: 'EAR_CHECK.md #4 — a redo does not make her stilted or slow; no method-narration is heard',
+    effective: LIVE_CLASSIFIED_MONITOR,
     promotionConfirmed: false,
   },
 ]

@@ -63,9 +63,16 @@ import { SessionRepetitionGuard } from './sessionRepetition'
 export const LIVE_OUTPUT_MONITOR_REPAIR = true
 
 /** M2 CLASSIFIED layer (distress→menu, method narration, ungrounded entity). Heuristic and
- *  FP-risky, so it is OFF by default: nothing runs live until its low FP rate is confirmed on
- *  a device (classifiedCorpus proves 0 FP over the generated clean set; device warmth pending). */
-export const LIVE_CLASSIFIED_MONITOR = false
+ *  FP-risky, so the CODE default is OFF: nothing runs live until its low FP rate is confirmed on
+ *  a device (classifiedCorpus proves 0 FP over the generated clean set; device warmth pending).
+ *  ENV-overridable (VITE_LIVE_CLASSIFIED_MONITOR=1) so it can ship ON in the single EAR_CHECK A/B
+ *  build alongside the audio flags — the owner settles all four in one sitting, not four rounds. */
+export const LIVE_CLASSIFIED_MONITOR = ((): boolean => {
+  try {
+    const e = (import.meta as { env?: Record<string, string | undefined> }).env
+    return e?.VITE_LIVE_CLASSIFIED_MONITOR === '1' || e?.VITE_LIVE_CLASSIFIED_MONITOR === 'true'
+  } catch { return false }
+})()
 
 // ─── Configuration (M1 defaults; M2 tunes these by listening) ──────────────
 

@@ -6,7 +6,7 @@
  */
 import fs from 'node:fs'
 import { describe, it, expect } from 'vitest'
-import { LIVE_OUTPUT_MONITOR_REPAIR, LIVE_CLASSIFIED_MONITOR, LIVE_INTERRUPT_RESPONSE } from './liveSession'
+import { LIVE_OUTPUT_MONITOR_REPAIR, LIVE_INTERRUPT_RESPONSE } from './liveSession'
 import { ONLINE_GENERAL_SEARCH_DEFAULT } from './online/flags'
 
 describe('build-flags manifest mirrors the real code defaults (no drift)', () => {
@@ -19,9 +19,6 @@ describe('build-flags manifest mirrors the real code defaults (no drift)', () =>
 
   it('LIVE_OUTPUT_MONITOR_REPAIR matches source', () => {
     expect(codeFlag('LIVE_OUTPUT_MONITOR_REPAIR')).toBe(LIVE_OUTPUT_MONITOR_REPAIR)
-  })
-  it('LIVE_CLASSIFIED_MONITOR matches source', () => {
-    expect(codeFlag('LIVE_CLASSIFIED_MONITOR')).toBe(LIVE_CLASSIFIED_MONITOR)
   })
   it('LIVE_INTERRUPT_RESPONSE matches source', () => {
     expect(codeFlag('LIVE_INTERRUPT_RESPONSE')).toBe(LIVE_INTERRUPT_RESPONSE)

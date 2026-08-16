@@ -444,3 +444,32 @@ development. DECISION: gate the JSX behind `import.meta.env.DEV` (matches the ex
 `dev-version-badge` pattern) rather than delete it — the running build stays confirmable in
 production via Settings→About + the operator diagnostic panel, so no diagnostic capability is lost.
 version.visibility.test.ts strengthened to assert the DEV gate (new truth locked, not weakened).
+
+## D-EARBUILD-01 · ONE build ships all four device-gated audio flags ON
+Owner: four flags OFF, each awaiting its own ear round, is why the same audio problems recurred every
+time he opened his phone. DECISION: ship ONE EAR_CHECK build with LIVE_AUDIO_TUNE_V2 + LIVE_BARGE_IN_TRUNCATE
++ LIVE_PREFETCH_WARM + LIVE_CLASSIFIED_MONITOR all ON (LIVE_CLASSIFIED_MONITOR made env-flippable to do so).
+Risk reasoning (why all four together is safe): the "one word then silence" echo risk lives ONLY in the
+audio-tune⇄barge-in pair, which is DESIGNED to ship together (echo tamed first, then the client truncates
+on a real barge-in). Prefetch (caching) and classified-monitor (text repair) are not on the echo path, so
+bundling them does not compound the echo risk. EAR_CHECK.md gives the owner one link, four items, five
+minutes. Each flag now has a written promotion criterion (PROMOTION_CRITERIA.md); classified-monitor added
+to deviceGatedFlags so the build HARD-FAILS if it is ear-confirmed yet ships OFF.
+
+## D-CLASS-C-01 · whoIs relationToMartita no longer speaks a raw hop chain
+The relationship-hop-chain class was fixed for relationshipBetween(X,Y) but whoIs still fell back to
+describePathBetween(p,SELF) → a multi-hop sprawl reachable by speech for a distant person. FIX: role first
+(a short human phrase like "אחייניתו של פפי"), else a gendered "בן/בת משפחה של מרטיטה"; the raw path is used
+only as an existence test, never spoken. Same class as E5a — fix the pattern, not the instance.
+
+## D-CLASS-TWOTRUTH-01 · two contact resolvers left as-is, consistency enforced
+resolveContact (liveContacts) and resolveContactTarget (peopleLookup) are two independent resolvers for
+one concept. Both now apply the SAME reachability rule (immediate-family-by-default + data opt-in), so they
+cannot disagree on reachability. A full MERGE into one resolver is a large, high-risk refactor of two mature,
+heavily-tested paths; NOT done under this session's budget — logged as a tracked instance in CLASS_AUDIT.md.
+
+## D-CLASS-F-01 · family answers may be warm, still grounded
+"speak ONLY the grounded result in one short sentence" starved family answers the same way the online rule
+starved the film answer (3/100). REVISED: speak the grounded result WARMLY and may add one TRUE detail
+already known, but never invent and never answer from memory/web. Groundedness is preserved (no invention);
+warmth is permitted. Measured by the companion score.

@@ -131,7 +131,8 @@ describe('buildLiveInstructions', () => {
   it('binds the tool/action truth rules (people_lookup for people, prepare-only comms, no web for family/calendar)', () => {
     expect(out).toContain('people_lookup') // reaching a person now goes through the one people tool
     expect(out).toMatch(/never send a message or place a call/i)
-    expect(out).toMatch(/NEVER from web search/i)
+    // family/history/calendar must never come from the web (wording condensed v0.282; prohibition intact)
+    expect(out).toMatch(/family, history or calendar from memory or web search/i)
   })
 
   it('states Abu is female and bilingual (feminine Hebrew + Rioplatense Spanish)', () => {

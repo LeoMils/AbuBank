@@ -20,13 +20,13 @@ const envFlags = {
   LIVE_AUDIO_TUNE_V2: on(env.VITE_LIVE_AUDIO_TUNE_V2),
   LIVE_BARGE_IN_TRUNCATE: on(env.VITE_LIVE_BARGE_IN_TRUNCATE),
   LIVE_PREFETCH_WARM: on(env.VITE_LIVE_PREFETCH_WARM),
+  LIVE_CLASSIFIED_MONITOR: on(env.VITE_LIVE_CLASSIFIED_MONITOR),
 }
 
 // CODE-default flags (defined in source; mirrored here, asserted by buildFlags.test.ts). These are
 // the values shipped unless a future source edit changes them — the test catches drift.
 const codeFlags = {
   LIVE_OUTPUT_MONITOR_REPAIR: true,   // src/services/liveSession.ts
-  LIVE_CLASSIFIED_MONITOR: false,     // src/services/liveSession.ts
   LIVE_INTERRUPT_RESPONSE: false,     // src/services/liveSession.ts (correct permanent default)
   ONLINE_GENERAL_SEARCH: true,        // src/services/online/flags.ts
 }
