@@ -32,6 +32,24 @@ index; the machine truth is the committed artifacts.
 - **16 STATE_COVERAGE_INCOMPLETE** = the tool capabilities. All 16 are **deployed-artifact-present**
   in the RC bundle (read-only fingerprint), but live-conversation FIRING was not driven. NOT dropped.
 
+## SECURITY (RELEASE_STATE = BLOCKED_P0_SECURITY) — see SECURITY_INCIDENT_2026-08-16.md
+- 3 credentials CONFIRMED exposed in the shipped bundle of BOTH deployments (RC + canonical
+  `abu-ela-rc.vercel.app`): `VITE_AZURE_TTS_KEY` (fp:3009af2e), `VITE_OPENAI_API_KEY` (fp:e39ef3b7),
+  `VITE_GEMINI_API_KEY` (fp:69150fc4). `VITE_GROQ_API_KEY` NOT present. Region/version/commit = public config.
+- Gate: `bundleSecretScan.ts` (`classifyShippedKeys`, certified). Producer: `scan-deployed-secrets.ts`.
+  Failure genome F21 (class `input-checked-output-unverified`). Sibling: source maps ship publicly (200).
+- OWNER (not agent): rotate all 3; drop VITE_ prefix for billable keys in Vercel build env; redeploy;
+  agent re-runs `scan-deployed-secrets` to verify. EXECUTION continues in parallel (rotation is independent).
+
+## Tool-firing plumbing (mapped this session)
+- The 16 tools are PURE SCHEMAS in `liveTools.ts` (`LIVE_TOOL_SCHEMAS`); no callable handlers.
+- Execution lives in `liveSession.ts` inside the realtime event stream (`response.done` → function_call
+  → client dispatch; grounding tools tracked at liveSession.ts:1071). `tools.ts:executeTool` is the
+  LEGACY chat executor (different names) — not the realtime path.
+- Firing harness = instantiate `liveSession` with a MOCK transport + inject a synthetic `response.done`
+  function_call per tool (mocked side-effects for phone/whatsapp/calendar-write per §12). Feasibility
+  caveat: liveSession may require browser/WebRTC/AudioContext mocks in vitest — probe before building.
+
 ## EXACT next action (critical path)
 Close the 16 tool-firing states → then o-capability can be PROVEN and the universe canonical.
 1. Build a realtime tool-firing harness driving the deployed RC's cognitive controller.
