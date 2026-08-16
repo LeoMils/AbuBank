@@ -3,6 +3,23 @@
 **Resume from EVIDENCE (the JSON artifacts + git), not this prose.** This file is a human-readable
 index; the machine truth is the committed artifacts.
 
+## STATUS (end of session): ALL 15 control obligations IMPLEMENTED (0 UNIMPLEMENTED)
+- The entire negative-space is closed: o-yield, o-capability, o-denominator, o-claimstate, o-labcert,
+  o-producers, o-attest, o-sw, o-privacy, o-ci (+ the 5 pre-existing). 264 engineering-os tests green.
+- Release verdict stays **BLOCKED — correctly** — on REAL things, not missing machinery:
+  1. **P0 SECURITY** (owner-gated): 3 credentials exposed in shipped bundle (Azure/OpenAI/Gemini).
+     Owner must rotate + remove VITE_ build-env vars + redeploy. Ongoing until then. Code-side
+     fail-closed rename already landed (c4b71cc). See SECURITY_INCIDENT_2026-08-16.md.
+  2. **§16 REAL PRODUCT ACCEPTANCE** (next phase): surface claims AbuAI/AbuWhatsApp/AbuCalendar need
+     conversation-level acceptance vs the deployed realtime. Capability+tool firing already PROVEN
+     (tool-firing-evidence.json, 16/16). A RELEASABLE candidate is gated on the owner's P0 remediation
+     (a clean bundle can't exist until the VITE_ build-env vars are removed).
+  3. 6 control CLAIMS are hardcoded NOT_PROVEN in controlCompleteness.defaultControlModel — they must be
+     DERIVED from a real evidence run (o-producers→o-claimstate wiring), NOT hand-flipped. 3 of them
+     (privacy-control-proven [P0 found], deployment-attested [not deployed], sw-runtime-proven [device])
+     must STAY not-proven honestly.
+- All 19 session commits pushed to origin/rc5/cognitive-architecture-and-acceptance. None merged to main.
+
 ## Control-plane identity
 - Frozen control plane: see `control-plane-identity.json` (`controlPlaneId`) — re-frozen after every
   release-critical component change this session.
