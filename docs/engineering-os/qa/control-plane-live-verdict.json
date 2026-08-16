@@ -1,18 +1,16 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T18:10:50.162Z",
-  "candidateSha": "95586e1d022fa11937bc9667f784a3c2e4449837",
+  "generatedAt": "2026-08-16T18:30:24.654Z",
+  "candidateSha": "8a5dc39e13ac0465d0b8553556046582fc11c9ab",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_7d56968a",
-  "frozenControlPlaneId": "cp_7d56968a",
-  "controlPlaneInputHash": "in_fdefffd4",
+  "controlPlaneId": "cp_fb121607",
+  "frozenControlPlaneId": "cp_fb121607",
+  "controlPlaneInputHash": "in_42bd3e24",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "6af722e05304aec9",
-    "dirtyRuntime": [
-      "src/engineering-os/dynamicReachability.ts"
-    ]
+    "dirtyStateHash": "8cc139dfaed08182",
+    "dirtyRuntime": []
   },
   "deployedCandidateIdentity": {
     "fingerprint": "0.286.0-earonly",
@@ -120,11 +118,7 @@
   "releaseBlockers": [
     {
       "code": "UNPUSHED_COMMIT",
-      "reason": "head 95586e1d022fa11937bc9667f784a3c2e4449837 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
-    },
-    {
-      "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/dynamicReachability.ts"
+      "reason": "head 8a5dc39e13ac0465d0b8553556046582fc11c9ab != remote afda67291f51fc68c4969a6c856151cccf57bed5"
     }
   ],
   "controlBlockers": [

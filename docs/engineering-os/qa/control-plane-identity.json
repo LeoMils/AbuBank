@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/control-plane-identity",
-  "controlPlaneId": "cp_7d56968a",
-  "frozenAt": "2026-08-16T18:10:28.688Z",
+  "controlPlaneId": "cp_fb121607",
+  "frozenAt": "2026-08-16T18:30:22.511Z",
   "eligibility": "33/33 adversarial cases passed across 2 suites",
   "components": {
     "releaseGate": "src/engineering-os/releaseGate.ts",
@@ -28,6 +28,8 @@
     "claimStateSuite": "src/engineering-os/claimState.test.ts",
     "dynamicReachability": "src/engineering-os/dynamicReachability.ts",
     "dynamicReachabilitySuite": "src/engineering-os/dynamicReachability.test.ts",
+    "bundleSecretScan": "src/engineering-os/bundleSecretScan.ts",
+    "bundleSecretScanSuite": "src/engineering-os/bundleSecretScan.test.ts",
     "contextExecutionState": "src/engineering-os/contextExecutionState.ts",
     "contextExecutionStateSuite": "src/engineering-os/contextExecutionState.test.ts",
     "constitutionCoverage": "src/engineering-os/constitutionCoverage.ts",
@@ -60,6 +62,8 @@
     "claimStateSuite": "c1aeabeebcd8e780",
     "dynamicReachability": "745afa14e0d9a87c",
     "dynamicReachabilitySuite": "2378be1c828e3699",
+    "bundleSecretScan": "fe2a6c06d552f0e3",
+    "bundleSecretScanSuite": "062ec6f8c5e331b4",
     "contextExecutionState": "72bcb5f2e38a0da1",
     "contextExecutionStateSuite": "d81f753cbb3c809c",
     "constitutionCoverage": "0bc422afffd19121",
