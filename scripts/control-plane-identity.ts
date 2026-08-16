@@ -68,6 +68,9 @@ const COMPONENTS = {
   privacyControlSuite: 'src/engineering-os/privacyControl.test.ts',
   attestation: 'src/engineering-os/attestation.ts',
   attestationSuite: 'src/engineering-os/attestation.test.ts',
+  // Stage 3C P0 follow-up: client-side secret-fallback detector (mirror of serverCredentialContract).
+  clientSecretFallback: 'src/engineering-os/clientSecretFallback.ts',
+  clientSecretFallbackSuite: 'src/engineering-os/clientSecretFallback.test.ts',
   // Stage 3C §10-11: lab certification, evidence producers, SW provenance, CI enforcement.
   labCertification: 'src/engineering-os/labCertification.ts',
   labCertificationSuite: 'src/engineering-os/labCertification.test.ts',

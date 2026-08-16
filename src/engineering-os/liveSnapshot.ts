@@ -387,7 +387,7 @@ export function buildLiveSnapshot(deps: LiveDeps): LiveSnapshot {
     // The control plane's own outputs and per-candidate forensic outputs are NOT
     // release-evidence inputs. Recognizing them prevents the coverage detector from
     // false-flagging the plane's own artifacts (a defect the real run exposed).
-    const OWN_OUTPUT_OR_FORENSIC = /(-result\.json|control-plane-identity\.json|control-plane-live-verdict\.json|lifecycle-forensics-result\.json|gate-a-result\.json|capability-manifest\.json|capability-discovery-source-manifest\.json|capability-reconciliation\.json|rc-reachability-observation\.json|tool-firing-evidence\.json|acceptance-denominator\.json|deployed-secret-exposure\.json)$/
+    const OWN_OUTPUT_OR_FORENSIC = /(-result\.json|control-plane-identity\.json|control-plane-live-verdict\.json|lifecycle-forensics-result\.json|gate-a-result\.json|capability-manifest\.json|capability-discovery-source-manifest\.json|capability-reconciliation\.json|rc-reachability-observation\.json|tool-firing-evidence\.json|acceptance-denominator\.json|deployed-secret-exposure\.json|client-secret-fallbacks\.json)$/
     const IGNORED_LANE = /(production-convergence|realtime-vertical-slice)\//
     const classified = new Set<string>([...consumed, ...SOURCE_REGISTRY.map((s) => s.path)])
     const matchesClassified = (d: string) =>

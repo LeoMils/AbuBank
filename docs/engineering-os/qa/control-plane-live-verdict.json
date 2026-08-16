@@ -1,17 +1,18 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T19:39:14.387Z",
-  "candidateSha": "d8f597362bbb25958a35c6e2066f0a15354099e5",
+  "generatedAt": "2026-08-16T20:00:58.543Z",
+  "candidateSha": "c82513a66f760fe70b66b355ea70397c187b35c9",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_255b2a1f",
-  "frozenControlPlaneId": "cp_255b2a1f",
-  "controlPlaneInputHash": "in_caf2427e",
+  "controlPlaneId": "cp_49967e12",
+  "frozenControlPlaneId": "cp_49967e12",
+  "controlPlaneInputHash": "in_5df43b24",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "5582f761613b7ed2",
+    "dirtyStateHash": "88ddd1839b6bd18a",
     "dirtyRuntime": [
-      "src/engineering-os/liveSnapshot.ts"
+      "src/engineering-os/liveSnapshot.ts",
+      "src/engineering-os/clientSecretFallback.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -119,7 +120,7 @@
   "releaseBlockers": [
     {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/liveSnapshot.ts"
+      "reason": "src/engineering-os/liveSnapshot.ts, src/engineering-os/clientSecretFallback.ts"
     }
   ],
   "controlBlockers": [
