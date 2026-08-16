@@ -58,6 +58,9 @@ const COMPONENTS = {
   // Stage 3C §4–5: static↔dynamic reachability reconciliation core (o-capability dynamic).
   dynamicReachability: 'src/engineering-os/dynamicReachability.ts',
   dynamicReachabilitySuite: 'src/engineering-os/dynamicReachability.test.ts',
+  // P0 incident gate: scan the shipped bundle for a billable key (o-privacy prerequisite).
+  bundleSecretScan: 'src/engineering-os/bundleSecretScan.ts',
+  bundleSecretScanSuite: 'src/engineering-os/bundleSecretScan.test.ts',
   // Stage 3C resume: context-stop honesty, constitution calibration, capability universe.
   contextExecutionState: 'src/engineering-os/contextExecutionState.ts',
   contextExecutionStateSuite: 'src/engineering-os/contextExecutionState.test.ts',

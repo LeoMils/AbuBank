@@ -34,7 +34,14 @@ export interface TurnObservation {
 
 // Evolution OS config, resolved once. Env can only ever make it SAFER (kill switch),
 // never escalate past OBSERVE_ONLY — that is a code + human-approval change by design.
-const EVOLUTION_CFG = resolveConfig(import.meta.env as unknown as Record<string, string | undefined>)
+// HYGIENE: pass ONLY the specific kill-switch key, never the whole `import.meta.env`
+// object. (NB: this narrowing alone does NOT stop a billable-key leak — Vite exposes ALL
+// VITE_-prefixed vars to the client regardless. The real fix for the 0.286 VITE_AZURE_TTS_KEY
+// leak is env-level: a server-only billable key must NOT carry the VITE_ prefix / be set in
+// the build env. See docs/abuai/ENV_CONTRACT.md and bundleSecretScan.ts.)
+const EVOLUTION_CFG = resolveConfig({
+  VITE_EVOLUTION_KILL: import.meta.env.VITE_EVOLUTION_KILL as string | undefined,
+})
 
 export interface ExecutiveDecision extends FullTurnResult {
   controller: 'executive-cognitive-controller'
