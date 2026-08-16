@@ -1,18 +1,17 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T19:17:20.789Z",
-  "candidateSha": "a6a4165c5a8fce3e8453df2d68650c610da2a6b8",
+  "generatedAt": "2026-08-16T19:26:04.757Z",
+  "candidateSha": "e2a10250af1bd6b57b5270ec0cb657b8d3b16230",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_e0ec0cec",
-  "frozenControlPlaneId": "cp_e0ec0cec",
-  "controlPlaneInputHash": "in_40e22d61",
+  "controlPlaneId": "cp_bfb22750",
+  "frozenControlPlaneId": "cp_bfb22750",
+  "controlPlaneInputHash": "in_072ae3e5",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "d177c9969fc2a0dc",
+    "dirtyStateHash": "12aca089eb2c3903",
     "dirtyRuntime": [
-      "api/abuai-news.ts",
-      "api/abuai-online.ts"
+      "src/engineering-os/obligationCompleteness.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -122,11 +121,11 @@
   "releaseBlockers": [
     {
       "code": "UNPUSHED_COMMIT",
-      "reason": "head a6a4165c5a8fce3e8453df2d68650c610da2a6b8 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
+      "reason": "head e2a10250af1bd6b57b5270ec0cb657b8d3b16230 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
     },
     {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "api/abuai-news.ts, api/abuai-online.ts"
+      "reason": "src/engineering-os/obligationCompleteness.ts"
     }
   ],
   "controlBlockers": [
@@ -205,10 +204,6 @@
     {
       "code": "CONTROL_MODEL_INCOMPLETE",
       "reason": "release-critical control claim 'privacy-control-proven' is NOT_PROVEN (invariant: required privacy/security control executed + current)"
-    },
-    {
-      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
-      "reason": "release-critical obligation 'o-capability' (static+dynamic capability manifest) is UNIMPLEMENTED"
     },
     {
       "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",

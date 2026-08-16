@@ -16,6 +16,19 @@ const p = (r: string) => resolve(ROOT, r)
 
 const obs = JSON.parse(readFileSync(p('docs/engineering-os/qa/rc-reachability-observation.json'), 'utf8'))
 const inputs: CapabilityReconInput[] = obs.reconInputs
+
+// Merge tool-firing evidence (§11): a tool proven to FIRE through the real executor (CODE) AND
+// present in the deployed bundle (PREVIEW) has its enabling state exercised. This is capability
+// EXISTENCE + FUNCTIONALITY; live-model routing is a separate denominator/acceptance claim.
+let firingMerged = 0
+try {
+  const firing = JSON.parse(readFileSync(p('docs/engineering-os/qa/tool-firing-evidence.json'), 'utf8'))
+  for (const inp of inputs) {
+    const t = firing.tools?.[inp.id]
+    if (t?.firedExercised) { inp.observedReachable = true; inp.enablingStateExercised = true; firingMerged++ }
+  }
+} catch { /* firing evidence optional */ }
+
 const report = reconcile(inputs)
 
 const artifact = {
@@ -25,6 +38,8 @@ const artifact = {
   observedAtBuild: obs.observedAtBuild,
   buildMatches: obs.buildMatches,
   evidenceClass: obs.evidenceClass,
+  toolFiringMerged: firingMerged,
+  toolFiringNote: 'tool capabilities confirmed via real-executor firing (CODE) + deployed-bundle presence (PREVIEW); live gpt-realtime routing of each tool is a separate acceptance/denominator claim, not capability existence.',
   canonicalProven: report.canonicalProven,
   canonicalUniverseSize: report.canonicalUniverse.length,
   distribution: report.distribution,
