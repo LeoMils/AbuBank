@@ -162,12 +162,12 @@ export function defaultConstitution(): ObligationCompletenessInput {
     ob('o-capability', 'capability-universe', 'static+dynamic capability manifest', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/dynamicReachability.ts', 'capability-manifest-canonical'),
     ob('o-denominator', 'denominator', 'certified acceptance denominator', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/denominator.ts', 'acceptance-denominator-certified'),
     ob('o-claimstate', 'claim-state-model', 'non-collapsible claim-state model', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/claimState.ts', 'claim-state-model-proven'),
-    ob('o-labcert', 'lab-certification', 'scope-bound lab certification', 'UNIMPLEMENTED'),
-    ob('o-producers', 'evidence-producers', 'reproducible evidence producers + lineage', 'UNIMPLEMENTED'),
+    ob('o-labcert', 'lab-certification', 'scope-bound lab certification', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/labCertification.ts', 'lab-certification-complete'),
+    ob('o-producers', 'evidence-producers', 'reproducible evidence producers + lineage', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/evidenceProducers.ts', 'evidence-producers-lineage'),
     ob('o-attest', 'deployment-attestation', 'source→build→deploy attestation', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/attestation.ts', 'deployment-attested'),
-    ob('o-sw', 'sw-runtime-provenance', 'warm PWA runtime provenance', 'UNIMPLEMENTED'),
+    ob('o-sw', 'sw-runtime-provenance', 'warm PWA runtime provenance', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/swProvenance.ts', 'sw-runtime-proven'),
     ob('o-privacy', 'privacy-security', 'privacy/security release control', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/privacyControl.ts', 'privacy-control-proven'),
-    ob('o-ci', 'release-ci-enforcement', 'remote release-certification enforcement', 'UNIMPLEMENTED'),
+    ob('o-ci', 'release-ci-enforcement', 'remote release-certification enforcement', 'IMPLEMENTED_AND_MAPPED', '.github/workflows/release-certification.yml', 'release-ci-enforced'),
   ]
   const decisionPathComponents = [
     'src/engineering-os/releaseGate.ts',

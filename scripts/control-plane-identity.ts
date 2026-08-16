@@ -68,6 +68,14 @@ const COMPONENTS = {
   privacyControlSuite: 'src/engineering-os/privacyControl.test.ts',
   attestation: 'src/engineering-os/attestation.ts',
   attestationSuite: 'src/engineering-os/attestation.test.ts',
+  // Stage 3C §10-11: lab certification, evidence producers, SW provenance, CI enforcement.
+  labCertification: 'src/engineering-os/labCertification.ts',
+  labCertificationSuite: 'src/engineering-os/labCertification.test.ts',
+  evidenceProducers: 'src/engineering-os/evidenceProducers.ts',
+  evidenceProducersSuite: 'src/engineering-os/evidenceProducers.test.ts',
+  swProvenance: 'src/engineering-os/swProvenance.ts',
+  swProvenanceSuite: 'src/engineering-os/swProvenance.test.ts',
+  releaseCiWorkflow: '.github/workflows/release-certification.yml',
   // P0 incident gate: scan the shipped bundle for a billable key (o-privacy prerequisite).
   bundleSecretScan: 'src/engineering-os/bundleSecretScan.ts',
   bundleSecretScanSuite: 'src/engineering-os/bundleSecretScan.test.ts',
