@@ -473,3 +473,29 @@ heavily-tested paths; NOT done under this session's budget — logged as a track
 starved the film answer (3/100). REVISED: speak the grounded result WARMLY and may add one TRUE detail
 already known, but never invent and never answer from memory/web. Groundedness is preserved (no invention);
 warmth is permitted. Measured by the companion score.
+
+## D-ITEM3-01 · briefing model-synthesized headlines — specified, not implemented under budget
+The news briefing still embeds outlet names because its content is SEO homepage TITLES (ynet, הארץ,
+ערוץ 14, ויקיפדיה) in every position. Stripping is whack-a-mole; the durable fix is to run the retrieved
+titles+snippets through the cheap-model synthesizer (src/services/online/synthesize.ts, already used by
+the general-search loop) to PRODUCE clean spoken Hebrew headlines with no outlet name. NOT implemented
+this session: it adds a model call + latency to the briefing path and needs careful testing on a
+lower-frequency feature; risking the news path under this budget is the wrong trade. Exact mechanism is
+logged so the next session implements it directly. The SPEAKING model is already instructed never to name
+a source, and the gate reports the endpoint residue as a WARN (not a deploy block).
+
+## D-ITEM3-02 · spoken-repeat CAN become structural now that two-response is ON — not yet wired
+With LIVE_PREAMBLE_TWO_RESPONSE ON, the tool-select/decision response is TEXT-ONLY and completes BEFORE
+the audio answer. That means a verbatim repeat can be caught on the decision text and regenerated WITHOUT
+muting streaming speech (the audio has not started) — the structural guard the earlier session said needed
+the audio path. NOT wired this session: it is a change to the hot two-response orchestration (liveSession
+823–879) that needs device verification before it can be trusted. Today the SessionRepetitionGuard OBSERVES
+(records a repeat on the trace) and the instruction forbids it. Logged as the precise next structural step.
+
+## D-ITEM3-03 · ICE auto-reconnect — hardened as far as code allows; device is the remaining proof
+Code path: transient 'disconnected' gets a grace window (self-heal, no teardown); a real 'failed' or a
+grace-expiry reuses the PROVEN safe-config reconnect (same conversation id → no re-greet), bounded to one
+automatic attempt (fellBack), then an honest error. Unit-tested (heal / reconnect / honest-second-failure).
+What ONLY a device can prove: that a real network drop's ICE actually transitions as modelled and that
+audio RESUMES after the reconnect on the phone. No further code hardening is safe without that signal
+(a second unbounded reconnect risks a loop). Named, not hidden.
