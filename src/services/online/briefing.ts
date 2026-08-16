@@ -175,15 +175,17 @@ export function detailFor(b: Briefing, indexOneBased: number): DetailResult {
 
 /** Common Israeli news outlets/broadcasters — a source NAME that must not be spoken (the instruction
  *  forbids naming a source; scrubForSpeech only removes domains, not bare outlet names in a title). */
-const OUTLET = /ynet|וואלה|walla|כאן ?11|מאקו|mako|n12|כלכליסט|globes|גלובס|הארץ|haaretz|מעריב|ישראל ?היום|israel ?hayom|רשת ?13|reshet|ערוץ ?\d+|the ?marker|דה ?מרקר/i
+const OUTLET = /ynet|וואלה|walla|כאן ?11|מאקו|mako|n12|c1[0-9]|כלכליסט|globes|גלובס|הארץ|haaretz|מעריב|ישראל ?היום|israel ?hayom|רשת ?13|reshet|ערוץ ?\d+|the ?marker|דה ?מרקר|הידברות|ויקיפדיה|wikipedia|isramedia|ישראמדיה|medicalnewstoday|\bnews ?today\b/i
 
 /** Strip a trailing source/outlet attribution a search-result title carries — "(domain)", a dangling
  *  separator, or a trailing outlet name ("… - כאן 11", "… | ynet") — so a spoken headline never names
  *  a source. Conservative: only the TRAILING attribution is removed; the headline text is preserved. */
 export function cleanHeadlineTitle(title: string): string {
-  let t = title.replace(/\s*[([][^)\]]*[)\]]\s*$/g, '')                    // trailing (…)/[…] (usually the source)
-  t = t.replace(new RegExp(`\\s*[-|–—]?\\s*(?:${OUTLET.source})\\s*$`, 'i'), '') // trailing outlet tag
-  t = t.replace(/\s*[-|–—]\s*$/g, '').trim()                                // dangling separator
+  let t = title.replace(/\s*[([][^)\]]*[)\]]\s*$/g, '')                     // trailing (…)/[…] (usually the source)
+  t = t.replace(new RegExp(`(?:${OUTLET.source})`, 'gi'), '')               // outlet name ANYWHERE (start/mid/end)
+  t = t.replace(/\s*[-|–—:]\s*(?=[-|–—:]|$)/g, ' ')                         // collapse separators left dangling
+  t = t.replace(/^[\s\-|–—:]+|[\s\-|–—:]+$/g, '')                           // trim leading/trailing separators
+  t = t.replace(/\s{2,}/g, ' ').trim()
   return t || title.trim()                                                  // never return empty
 }
 

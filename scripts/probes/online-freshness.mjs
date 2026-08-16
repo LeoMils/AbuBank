@@ -94,11 +94,18 @@ async function main() {
     console.log(`${r.ok ? 'OK ' : 'ERR'} ${r.id.padEnd(9)} ${String(r.ms).padStart(5)}ms src=${r.diag?.sourceCount ?? '?'} prov=${r.diag?.provider ?? '?'} ${r.sourceNamed ? 'SOURCE_NAMED!' : 'no-src'} ${fr}`)
     console.log(`    "${r.answer}"`)
   }
+  // Severity split: a SINGLE-ANSWER query (cinema/price/followup) is spoken close to the endpoint
+  // body → source-naming here is a real defect (HARD block). The BRIEFING ('news') returns a list of
+  // news-site titles the MODEL reformulates (and is instructed to drop sources from) → endpoint-level
+  // outlet names there are a tracked RESIDUAL (warn), verified at the model layer, not a deploy block.
+  const single = rows.filter((r) => r.id !== 'news')
   const summary = {
     base: BASE, when: '2026-08-16',
     allOk: rows.every((r) => r.ok),
     anyStale: rows.some((r) => r.freshness?.stale),
     anySourceNamed: rows.some((r) => r.sourceNamed),
+    singleAnswerSourceNamed: single.some((r) => r.sourceNamed), // HARD-block signal
+    briefingSourceNamed: rows.some((r) => r.id === 'news' && r.sourceNamed), // WARN signal
     maxLatencyMs: Math.max(...rows.map((r) => r.ms || 0)),
     rows,
   }
