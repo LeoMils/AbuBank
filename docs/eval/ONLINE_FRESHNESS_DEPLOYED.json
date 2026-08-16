@@ -1,18 +1,20 @@
 {
-  "base": "https://abu-bank-dcavmo6kk-leos-projects-d3c04c09.vercel.app",
+  "base": "https://abu-bank-4owfjzxio-leos-projects-d3c04c09.vercel.app",
   "when": "2026-08-16",
   "allOk": true,
   "anyStale": false,
   "anySourceNamed": true,
-  "maxLatencyMs": 3973,
+  "singleAnswerSourceNamed": false,
+  "briefingSourceNamed": true,
+  "maxLatencyMs": 2280,
   "rows": [
     {
       "id": "cinema",
-      "ms": 3973,
+      "ms": 2280,
       "ok": true,
       "http": 200,
-      "answerLen": 159,
-      "answer": "סרטים המוקרנים עכשיו בקולנוע בישראל כוללים את \"ספיידרמן: יום חדש\", \"חג מולד מר\", \"בוסית בהפרעה\", \"גבעה 338\", \"האודיסאה\", \"התגלית\", \"ערך סנטי",
+      "answerLen": 127,
+      "answer": "הסרטים המוקרנים עכשיו בקולנוע בישראל כוללים את \"גבעה 338\", \"לגמור את הלילה\", \"האודיסאה\", \"התגלית\", \"ערך סנטימנטלי\" ו\"מילה שלי\".",
       "sourceNamed": false,
       "diag": {
         "provider": "brave",
@@ -27,11 +29,11 @@
     },
     {
       "id": "price",
-      "ms": 2183,
+      "ms": 1220,
       "ok": true,
       "http": 200,
-      "answerLen": 54,
-      "answer": "מחיר הבושם בלו דה שאנל בישראל הוא 749 ₪ לגודל 100 מ\"ל.",
+      "answerLen": 141,
+      "answer": "בלו דה שאנל – הבושם המוביל לגבר מבית שאנל. כל הגרסאות של בלו שאנל: או דה פרפיום, פרפיום ו-EDT. מחירים מיוחדים עם אחריות מלאה למקוריות בישראל",
       "sourceNamed": false,
       "diag": {
         "provider": "brave",
@@ -46,11 +48,11 @@
     },
     {
       "id": "news",
-      "ms": 979,
+      "ms": 559,
       "ok": true,
       "http": 200,
-      "answerLen": 829,
-      "answer": "1. חדשות היום - כל העדכונים, דיווחים והכתבות המובילות בארץ ובעולם (israelhayom.co.il)\n2. חדשות בעולם: חדשות חוץ ועדכונים מרחבי העולם- כאן 11",
+      "answerLen": 505,
+      "answer": "1. חדשות היום - כל העדכונים, דיווחים והכתבות המובילות בארץ ובעולם\n2. חדשות בעולם: חדשות חוץ ועדכונים מרחבי העולם\n3. אמנות - כל החדשות, עדכונ",
       "sourceNamed": true,
       "diag": {
         "provider": "brave",
@@ -65,7 +67,7 @@
     },
     {
       "id": "followup",
-      "ms": 1649,
+      "ms": 1139,
       "ok": true,
       "http": 200,
       "answerLen": 137,
