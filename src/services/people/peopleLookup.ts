@@ -123,8 +123,22 @@ export function relationshipBetween(nameX: string, nameY: string, people: Person
   if (!x || !y) return { status: 'not_found' }
   const r = relationshipOf(x, y, people)
   if (r) return { status: 'ok', text: `${personById(x, people)!.hebrewName} ${r.he} של ${personById(y, people)!.hebrewName}` }
-  const path = describePathBetween(x, y, people)
-  if (path) return { status: 'ok', text: path }
+  // No single kinship term for the pair. Martita wants the relation as ONE short phrase, never a
+  // transitive chain ("גלעד הבעל של אופיר, שהיא הבת של מור, שהיא…") — that sprawl was the device
+  // defect. Anchor BOTH to the person she knows best, herself: if each relates to Martita by a real
+  // term, say exactly that. It is the shortest true thing and it never narrates a hop chain to her.
+  if (x !== SELF && y !== SELF) {
+    const rx = relationshipOf(x, SELF, people), ry = relationshipOf(y, SELF, people)
+    if (rx && ry) {
+      const X = personById(x, people)!, Y = personById(y, people)!
+      return { status: 'ok', text: `${X.hebrewName} ${rx.he} שלך ו${Y.hebrewName} ${ry.he} שלך` }
+    }
+  }
+  // One side is only reachable by a longer path (no clean anchor term) — still never a chain: say the
+  // shortest honest thing, that they are family. describePathBetween is used only as an EXISTENCE test.
+  if (describePathBetween(x, y, people)) {
+    return { status: 'ok', text: `${personById(x, people)!.hebrewName} ו${personById(y, people)!.hebrewName} בני משפחה` }
+  }
   return { status: 'unrelated' }
 }
 

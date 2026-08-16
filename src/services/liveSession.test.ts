@@ -786,3 +786,46 @@ describe('tool-result speech guarantee (Part 3 #1 — a tool result must NEVER e
     } finally { vi.useRealTimers() }
   })
 })
+
+// ─── E4: ICE loss must AUTO-RECONNECT and resume, never a dead error screen ─────
+const flush = async () => { for (let i = 0; i < 6; i++) await Promise.resolve() }
+describe('E4 · ICE recovery (device transcript: "ICE_DISCONNECTED killed the session at 443s")', () => {
+  beforeEach(() => { vi.useRealTimers() })
+
+  it('a TRANSIENT ICE disconnect that recovers does NOT error and does NOT reconnect', async () => {
+    const h = makeHarness()
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.iceConnectionState = 'disconnected'; h.pc.oniceconnectionstatechange!() // blip
+    h.pc.iceConnectionState = 'connected'; h.pc.oniceconnectionstatechange!()     // recovered in-grace
+    expect(h.session.state).not.toBe('error')
+    expect(h.errors.length).toBe(0)
+    expect(h.createPCCalls).toBe(1) // no reconnect — the blip self-healed
+    h.session.teardown()
+  })
+
+  it('ICE failed AUTO-RECONNECTS (same session) instead of a dead error', async () => {
+    const h = makeHarness()
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.iceConnectionState = 'failed'; h.pc.oniceconnectionstatechange!()
+    await flush()
+    expect(h.createPCCalls).toBe(2)      // reconnected
+    expect(h.session.state).not.toBe('error')
+    h.session.teardown()
+  })
+
+  it('a SECOND ICE failure (recovery budget spent) surfaces honestly', async () => {
+    const h = makeHarness()
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.iceConnectionState = 'failed'; h.pc.oniceconnectionstatechange!()
+    await flush()
+    h.pc.dc!.fireOpen()                  // the reconnected session opens
+    h.pc.iceConnectionState = 'failed'; h.pc.oniceconnectionstatechange!()
+    await flush()
+    expect(h.session.state).toBe('error')
+    expect(h.errors.some((e) => e.code === 'ICE_FAILED')).toBe(true)
+    h.session.teardown()
+  })
+})

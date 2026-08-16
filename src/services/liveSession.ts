@@ -143,6 +143,10 @@ export const LIVE_BARGE_IN_TRUNCATE = envOn('VITE_LIVE_BARGE_IN_TRUNCATE')
  *  ENV-overridable (VITE_LIVE_PREAMBLE_TWO_RESPONSE=1) so the owner can A/B it on a Preview build. */
 export const LIVE_PREAMBLE_TWO_RESPONSE = envOn('VITE_LIVE_PREAMBLE_TWO_RESPONSE')
 
+/** E4: grace window for a TRANSIENT ICE 'disconnected' to self-recover before we spend the one
+ *  automatic reconnect. WebRTC routinely blips to 'disconnected' and returns within a few seconds. */
+export const ICE_GRACE_MS = 4000
+
 /** Input-audio transcription model for the Hebrew side-channel. Upgraded from
  *  gpt-4o-mini-transcribe to the full gpt-4o-transcribe after a device trace showed
  *  badly mis-heard Hebrew (and even wrong-language output). More accurate on Hebrew;
@@ -538,6 +542,9 @@ export class LiveSession {
    *  one automatic recovery attempt (a second fatal error is then surfaced honestly). */
   private safeMode = false
   private fellBack = false
+  /** ICE 'disconnected' is usually a TRANSIENT blip that self-recovers. This grace timer holds the
+   *  session while we wait for recovery instead of killing it on the blip (E4: "died at 443s"). */
+  private iceGraceTimer: ReturnType<typeof setTimeout> | null = null
   /** Flight recorder — OBSERVATION ONLY. Records my/her speech + every tool call,
    *  and surfaces silent-turn (C.3) + truncation-evidence (C.2) flags. It never
    *  changes turn/VAD/audio behaviour; the live session only appends to it.
@@ -655,7 +662,31 @@ export class LiveSession {
       pc.oniceconnectionstatechange = () => {
         if (myEpoch !== liveEpoch) return
         const st = pc.iceConnectionState
-        if (st === 'failed' || st === 'disconnected') { const code = `ICE_${st.toUpperCase()}`; this.fail(connectionReasonHe(code), code) }
+        // RECOVERED (or held): a blip that came back on its own clears the grace timer.
+        if (st === 'connected' || st === 'completed') {
+          if (this.iceGraceTimer) { clearTimeout(this.iceGraceTimer); this.iceGraceTimer = null }
+          return
+        }
+        // E4: ICE 'disconnected' is usually a TRANSIENT network blip that self-recovers within a few
+        // seconds. Killing the session on it is the "died at 443s" dead-end. Hold it for a grace
+        // window; only if it is STILL down do we spend the one automatic reconnect (same conversation,
+        // silent — she just keeps talking). 'failed' is terminal for this pc → reconnect right away.
+        if (st === 'disconnected') {
+          if (this.iceGraceTimer) return
+          this.recorder.onRecoverableError('ice_disconnected_grace')
+          this.iceGraceTimer = setTimeout(() => {
+            this.iceGraceTimer = null
+            if (myEpoch !== liveEpoch) return
+            const now = pc.iceConnectionState
+            if (now === 'connected' || now === 'completed') return // recovered on its own
+            this.recoverFromIce(`ICE_${now.toUpperCase()}`)
+          }, ICE_GRACE_MS)
+          return
+        }
+        if (st === 'failed') {
+          if (this.iceGraceTimer) { clearTimeout(this.iceGraceTimer); this.iceGraceTimer = null }
+          this.recoverFromIce('ICE_FAILED')
+        }
       }
 
       // 4. One mic track (all cleanups on) — or the replay override. The replay
@@ -949,6 +980,16 @@ export class LiveSession {
     void this.connect().catch(() => { /* handled inside connect() */ })
   }
 
+  /** E4: a genuine ICE loss (failed, or 'disconnected' that did not recover within the grace window)
+   *  must AUTO-RECONNECT and resume — never a dead error screen. Reuse the proven safe-config
+   *  reconnect (same conversation id → no re-greeting; baseline config → no re-sent bad payload),
+   *  sharing its ONE-recovery budget (`fellBack`). If that budget is already spent, surface honestly. */
+  private recoverFromIce(code: string): void {
+    if (this.torn) return
+    if (this.fellBack) { this.fail(connectionReasonHe(code), code); return } // already spent the one auto-recovery → honest
+    this.fallbackToSafeConfig(code)
+  }
+
   /** Route a completed function call. wait_for_user is a turn-taking no-op handled
    *  here (acknowledge, stay SILENT — no response.create). Every other tool is owned
    *  by the LiveTools executor (which sends the safe output + a response.create so the
@@ -1129,6 +1170,7 @@ export class LiveSession {
     liveEpoch++ // invalidate every handler closed over this session's epoch
     this.clearAudioWatchdog()
     this.clearToolResultWatchdog()
+    if (this.iceGraceTimer) { clearTimeout(this.iceGraceTimer); this.iceGraceTimer = null }
     if (this.dc) { try { this.dc.close() } catch { /* */ } this.dc = null }
     if (this.micStream) { this.micStream.getTracks().forEach((t) => { try { t.stop() } catch { /* */ } }); this.micStream = null }
     if (this.sourceNode) { try { this.sourceNode.disconnect() } catch { /* */ } this.sourceNode = null }
