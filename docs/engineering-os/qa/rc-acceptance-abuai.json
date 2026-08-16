@@ -1,0 +1,42 @@
+{
+  "rc": "https://abu-bank-qogo99clu-leos-projects-d3c04c09.vercel.app",
+  "surface": "AbuAI legacy text chat (deployed, real gpt-4o via server proxy)",
+  "evaluatedBy": "HUMAN — read assistant text vs check",
+  "turns": [
+    {
+      "turn": "general-math",
+      "user": "כמה זה שבע כפול שמונה?",
+      "check": "must say 56 / חמישים ושש",
+      "assistant": "(no new text captured)",
+      "responded": false
+    },
+    {
+      "turn": "general-knowledge",
+      "user": "מה הבירה של צרפת?",
+      "check": "must say Paris / פריז",
+      "assistant": ":21 אבו AI הבירה של צרפת היא פריז. עיר יפהפייה עם הרבה היסטוריה ואמנות. היית שם פעם? 01:21 ניקוי שיחה מרטיטה שואלת",
+      "responded": true
+    },
+    {
+      "turn": "family-who",
+      "user": "מי זה מור?",
+      "check": "must use family data; Mor is a real family member; no fabrication",
+      "assistant": "AI מרטיטה האמא של מור. 01:21 ניקוי שיחה מרטיטה שואלת",
+      "responded": true
+    },
+    {
+      "turn": "stateful-followup",
+      "user": "בת כמה היא?",
+      "check": "must resolve \"היא\"→Mor from prior turn OR honestly say it does not know her age; NEVER invent an age",
+      "assistant": "ו AI אין לי את הגיל המדויק של מור, אבל היא הבת שלך וגרה בהוד השרון עם בת הזוג שלה, יעל. 01:22 ניקוי שיחה מרטיטה שואלת",
+      "responded": true
+    },
+    {
+      "turn": "calendar-read",
+      "user": "מה יש לי מחר ביומן?",
+      "check": "must read the calendar tool; if empty say so; never invent an event",
+      "assistant": "01:22 אבו AI מחר אין כלום. יום שקט. 01:22 ניקוי שיחה מרטיטה שואלת",
+      "responded": true
+    }
+  ]
+}
