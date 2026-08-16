@@ -1,8 +1,21 @@
-# MERGE READINESS — EAR-ONLY (do NOT execute; production serves the Aug 5 build)
+# MERGE READINESS — NOT ear-only anymore (do NOT execute; production serves the Aug 5 build)
 
-Branch `rc5/cognitive-architecture-and-acceptance` @ HEAD (v0.270.0).
-Mechanical state vs `origin/main`: **0 behind, 0 conflicts** — a clean merge is possible.
-Every NON-DEVICE row is now green. The only work left is on the owner's phone.
+Branch `rc5/cognitive-architecture-and-acceptance` @ HEAD (v0.280.0-earonly).
+
+## ⚠ RE-ENUMERATION after the owner's on-device test of v0.279 (2026-08-16)
+The earlier "EAR-ONLY" verdict is **no longer true**. A real device session surfaced defects a test
+could not, so CODE-level work reopened. Fixed + verified this session (instrument/unit, NOT device):
+online richness (film 1→5 sentences), relationship-chain collapse, ICE auto-reconnect, the briefing
+naming its source, the latent "mention the source" tool text, and the preamble fix now shipped ON +
+machine-verifiable at `/build-flags.json`. **Still OUTSTANDING and NOT mere ear checks:**
+- **E3 · repetition** — she repeated the Sharon answer verbatim and the Mor card twice. No session-level
+  spoken/card de-dup exists (repeatLookupGuard covers lookups, not spoken sentences). CODE work.
+- **E5a · UI state** — the screen showed "thinking" during listening. A presence state-machine bug. CODE work.
+- **E5b · "just a technical sign"** — Abu narrated app internals instead of being present. Instruction work.
+- **Re-verification on device** of every fix above (preamble/ICE are CODE/needs-device; audio flags still ear).
+
+So the outstanding set = the ear checks below **PLUS** E3 + E5a + E5b + device re-verification. Do not
+claim ear-only until those three are fixed and the device confirms the new build.
 
 | Requirement | State | Evidence |
 |---|---|---|
@@ -17,9 +30,9 @@ Every NON-DEVICE row is now green. The only work left is on the owner's phone.
 | typecheck / build / full suite | ✅ | 0 / ok / 13,000+ tests pass |
 | Cell-level coverage | ✅ 96.5% | 166/172; the 6 not_run are Layer-3 model-behaviour declines = device/ear (below) |
 
-## Verdict: EAR-ONLY. Every non-device row is green.
-Cell coverage 56.4% → **96.5%** across this run. The only outstanding items require the owner's
-phone — there is no remaining deterministic, browser, or instrument work.
+## Verdict: NOT ear-only. Deterministic/instrument work remains (E3, E5a, E5b) + device re-verification.
+The device test reopened code work; see the re-enumeration at the top. The rows below are still the
+device/ear items, but they are no longer the ONLY outstanding work.
 
 ## THE COMPLETE OWNER TO-DO — this list + AUDIO_CHECK.md is everything left
 
