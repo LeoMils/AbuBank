@@ -9,7 +9,7 @@
 import { writeFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { classifyShippedKeys } from '../src/engineering-os/bundleSecretScan.ts'
+import { classifyShippedKeys, scanBundleForCredentialMaterial } from '../src/engineering-os/bundleSecretScan.ts'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const p = (r: string) => resolve(ROOT, r)
@@ -42,14 +42,20 @@ async function main() {
       const { text, buildVersion, assets } = await fetchBundle(t.url)
       const classes = classifyShippedKeys(text)
       const confirmed = classes.filter((c) => c.exposure === 'CONFIRMED_SECRET_EXPOSED')
+      // AUTHORITATIVE: raw credential-material scan (format-agnostic). Catches a renamed/inlined/
+      // minified secret that the VITE_-name classification misses (the production false-pass).
+      const raw = scanBundleForCredentialMaterial(text)
       targets.push({
         label: t.label, url: t.url, buildVersion, bundleBytes: text.length, assets,
-        confirmedSecretCount: confirmed.length,
+        authoritativeRawCredentialMaterial: { clean: raw.clean, findings: raw.findings },
+        nameBasedConfirmedSecretCount: confirmed.length,
         classifications: classes.filter((c) => c.exposure !== 'NOT_PRESENT_IN_SHIPPED_BUNDLE'),
       })
       console.log(`── ${t.label} (${buildVersion ?? '??'}) ${text.length}B`)
+      console.log(`   AUTHORITATIVE raw-credential scan: ${raw.clean ? 'CLEAN' : `${raw.findings.length} SECRET(S) EXPOSED`}`)
+      for (const f of raw.findings) console.log(`     [CONFIRMED_SECRET_EXPOSED] ${f.provider} ${f.redactedFingerprint} (${f.length} chars)`)
       for (const c of classes) if (c.exposure !== 'NOT_PRESENT_IN_SHIPPED_BUNDLE') {
-        console.log(`   [${c.exposure}] ${c.name} (${c.kind}) ${c.redactedSample ?? ''}`)
+        console.log(`   [name-scan ${c.exposure}] ${c.name} (${c.kind}) ${c.redactedSample ?? ''}`)
       }
     } catch (e) {
       targets.push({ label: t.label, url: t.url, error: String((e as Error).message || e) })

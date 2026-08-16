@@ -4,7 +4,7 @@
  * that was missing would catch it. No real secret is stored in this test.
  */
 import { describe, it, expect } from 'vitest'
-import { scanBundleForBillableSecrets, classifyShippedKeys } from './bundleSecretScan'
+import { scanBundleForBillableSecrets, classifyShippedKeys, scanBundleForCredentialMaterial } from './bundleSecretScan'
 
 describe('bundle secret scan — the missing gate (P0 regression)', () => {
   it('DETECTS the observed leak shape: VITE_AZURE_TTS_KEY inlined with a real value', () => {
@@ -36,6 +36,31 @@ describe('bundle secret scan — the missing gate (P0 regression)', () => {
 
   it('NON-VACUITY · the scanner is not always-dirty (clean input is clean)', () => {
     expect(scanBundleForBillableSecrets('no secrets here at all').clean).toBe(true)
+  })
+})
+
+describe('scanBundleForCredentialMaterial — AUTHORITATIVE raw-token scan (QA-of-QA regression)', () => {
+  // The production scan FALSE-PASSED by searching VITE_ NAMES; the same secret inlined WITHOUT a
+  // VITE_ name (renamed/minified) was missed. The raw scan must catch it by token SHAPE.
+  it('REGRESSION · a secret with NO VITE_ name (minified var) is still detected', () => {
+    // Name-only scan sees no `VITE_*:"value"` here; raw scan must still flag the sk-/AIza/gsk_ token.
+    const minified = 'const a="sk-proj-REDACTEDsynthetic0123456789abcdefghij",b="AIzaSyREDACTEDsynthetic0123456789ABCDE",c="gsk_REDACTEDsynthetic0123456789abcdefghijklmnopqrst";'
+    expect(scanBundleForBillableSecrets(minified).clean, 'name-scan blind to renamed secret').toBe(true) // proves the OLD gap
+    const raw = scanBundleForCredentialMaterial(minified)
+    expect(raw.clean).toBe(false)
+    expect(raw.findings.map((f) => f.provider).sort()).toEqual(['Google/Gemini', 'Groq', 'OpenAI'])
+    // Never echoes the secret — fingerprint only.
+    expect(raw.findings.every((f) => /^fp:[0-9a-f]{8}$/.test(f.redactedFingerprint))).toBe(true)
+    expect(JSON.stringify(raw.findings)).not.toContain('synthetic0123456789')
+  })
+  it('SPECIFICITY · a clean bundle (versions, urls, free words) → clean', () => {
+    expect(scanBundleForCredentialMaterial('APP_VERSION="30.14.0";url="https://api.openai.com/v1/chat";region="eastus"').clean).toBe(true)
+  })
+  it('CORRELATION · the same secret yields the same fingerprint across inputs (cross-deploy match)', () => {
+    const s = 'sk-proj-REDACTEDsynthetic0123456789abcdefghij'
+    const a = scanBundleForCredentialMaterial(`x ${s} y`).findings[0]!.redactedFingerprint
+    const b = scanBundleForCredentialMaterial(`const k="${s}"`).findings[0]!.redactedFingerprint
+    expect(a).toBe(b)
   })
 })
 
