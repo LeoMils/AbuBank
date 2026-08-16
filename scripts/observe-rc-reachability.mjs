@@ -57,6 +57,19 @@ async function main() {
   try { buildFlags = await (await fetch(`${BASE}/build-flags.json`)).json() } catch { /* leave empty */ }
   const flagActive = (id) => buildFlags.env?.[id] === true || buildFlags.code?.[id] === true
 
+  // 1c. deployed bundle → read-only fingerprint of tool-capability presence (the tool
+  // code paths ship in the exact RC even though live-conversation firing is not driven).
+  const deployedArtifactPresent = {}
+  try {
+    const html = await (await fetch(`${BASE}/`)).text()
+    const assets = [...html.matchAll(/\/assets\/[^"']+\.js/g)].map((m) => m[0])
+    let bundle = ''
+    for (const a of [...new Set(assets)]) bundle += await (await fetch(`${BASE}${a}`)).text()
+    for (const [id, c] of Object.entries(caps)) {
+      if (c.type !== 'UI_SURFACE' && c.type !== 'FEATURE_CAPABILITY') deployedArtifactPresent[id] = bundle.includes(id)
+    }
+  } catch { /* leave empty; recorded as unknown */ }
+
   const browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 412, height: 870 } })
 
@@ -78,10 +91,14 @@ async function main() {
       if (!active) explanation[id] = 'ships OFF by measured code default / awaiting owner-ear promotion (deviceGatedFlags.ts / online/flags.ts)'
       notes[id] = active ? 'active in deployed build-flags.json' : 'OFF in deployed build-flags.json (by design)'
     } else {
-      // Tool capabilities: firing needs a driven realtime conversation — NOT exercised here.
+      // Tool capabilities: the code path IS present in the deployed bundle (read-only
+      // fingerprint), but live-conversation FIRING was not exercised here.
       observed[id] = false
       exercised[id] = false
-      notes[id] = 'tool firing not exercised (requires driven realtime conversation)'
+      const present = deployedArtifactPresent[id]
+      notes[id] = present === true
+        ? 'deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)'
+        : 'tool firing not exercised; deployed-artifact presence unverified'
     }
   }
   await browser.close()
@@ -103,8 +120,9 @@ async function main() {
     observedAtBuild: health.buildVersion,
     evidenceClass: 'PREVIEW_READ_ONLY',
     uiSurfacesObserved: Object.entries(caps).filter(([, c]) => c.type === 'UI_SURFACE').length,
+    toolsDeployedArtifactPresent: Object.values(deployedArtifactPresent).filter(Boolean).length,
     reconInputs,
-    observed, exercised, notes,
+    observed, exercised, deployedArtifactPresent, notes,
   }
   writeFileSync(p('docs/engineering-os/qa/rc-reachability-observation.json'), JSON.stringify(out, null, 2) + '\n')
 
