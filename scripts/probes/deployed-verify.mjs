@@ -18,7 +18,7 @@ const EXPECT_VERSION = process.argv[3] || '0.279.0-earonly'
 if (!BASE) { console.error('usage: node scripts/probes/deployed-verify.mjs https://<url> <version>'); process.exit(2) }
 
 const FRAGMENTS = [
-  'the time or weather right now',                 // time-query fix
+  'you already know the current time from the session', // v0.286 time-is-not-a-search fix (tool desc)
   'is STILL a current question',                   // online follow-up re-ground fix
   'NEVER send her to a shop',                       // follow-up anti-deflection
 ]
