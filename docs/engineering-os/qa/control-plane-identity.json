@@ -1,0 +1,31 @@
+{
+  "$schema": "internal://abu/control-plane-identity",
+  "controlPlaneId": "cp_80920fa0",
+  "frozenAt": "2026-08-16T13:56:21.996Z",
+  "eligibility": "33/33 adversarial cases passed across 2 suites",
+  "components": {
+    "releaseGate": "src/engineering-os/releaseGate.ts",
+    "releaseControlPlane": "src/engineering-os/releaseControlPlane.ts",
+    "evidenceSchema": "src/engineering-os/evidence.ts",
+    "productionGate": "src/engineering-os/productionGate.ts",
+    "rcVerifyCli": "scripts/rc-verify.ts",
+    "adversarialSuite": "src/engineering-os/releaseControlPlane.adversarial.test.ts",
+    "releaseGateTest": "src/engineering-os/releaseGate.test.ts",
+    "liveSnapshotAdapter": "src/engineering-os/liveSnapshot.ts",
+    "liveVerdictCli": "scripts/control-plane-live.ts",
+    "adapterAdversarialSuite": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+  },
+  "componentHashes": {
+    "releaseGate": "f72797b921d15edf",
+    "releaseControlPlane": "3df127fca7af0713",
+    "evidenceSchema": "f92d2773874bf943",
+    "productionGate": "52099a846c305281",
+    "rcVerifyCli": "4e48342636efae22",
+    "adversarialSuite": "08fc04507fc2b426",
+    "releaseGateTest": "8792b8f1ebcc494e",
+    "liveSnapshotAdapter": "14cdad8bbf2b94ad",
+    "liveVerdictCli": "8f9698fd78cc9fbc",
+    "adapterAdversarialSuite": "9b69ef73b85db013"
+  },
+  "note": "Evidence produced under a DIFFERENT controlPlaneId may not silently certify this one. A change to any component changes the id and expires affected certification."
+}

@@ -1,0 +1,175 @@
+{
+  "$schema": "internal://abu/control-plane-live-verdict",
+  "generatedAt": "2026-08-16T13:56:28.691Z",
+  "candidateSha": "114938afc6e11b37d4b29e38cff5f36b6da8d0a7",
+  "candidateBuild": "0.286.0-earonly",
+  "controlPlaneId": "cp_80920fa0",
+  "frozenControlPlaneId": "cp_80920fa0",
+  "controlPlaneInputHash": "in_2c7e49ce",
+  "verdict": "NO-GO",
+  "inputDriftDuringEvaluation": false,
+  "workingTreeIdentity": {
+    "dirtyStateHash": "806ab04f9ac7e50e",
+    "dirtyRuntime": [
+      "src/engineering-os/liveSnapshot.ts",
+      "src/engineering-os/releaseControlPlane.ts"
+    ]
+  },
+  "deployedCandidateIdentity": {
+    "fingerprint": "0.179.0-gpt-live-parity-rc1",
+    "aliasOk": false
+  },
+  "sources": [
+    {
+      "name": "qa-ownership",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "UNKNOWN",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "evidence",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "STALE",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "meta-qa",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "STALE",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "failure-genome",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "UNKNOWN",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "mission",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "STALE",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "product-universe",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "STALE",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "master-matrix",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "STALE",
+      "feedsRequiredEvidence": true
+    }
+  ],
+  "sourceConflicts": [],
+  "sourceCoverage": {
+    "consumed": [
+      "qa-ownership",
+      "evidence",
+      "meta-qa",
+      "failure-genome",
+      "mission",
+      "product-universe",
+      "master-matrix"
+    ],
+    "intentionallyIgnored": [
+      {
+        "name": "control-plane own outputs (*-result.json, control-plane-identity.json, control-plane-live-verdict.json)",
+        "reason": "the control plane's OWN outputs, not release-evidence inputs — consuming them would be circular."
+      },
+      {
+        "name": "lifecycle-forensics-result.json",
+        "reason": "forensic output for a prior candidate; superseded, not a current-candidate gate input."
+      },
+      {
+        "name": "production-convergence/*",
+        "reason": "per-experiment scorecard lane for a prior candidate (0.177); superseded by the live candidate. Recorded as stale, not a gate input."
+      },
+      {
+        "name": "realtime-vertical-slice/*",
+        "reason": "prior vertical-slice lane; historical, not current-candidate evidence."
+      },
+      {
+        "name": "e2e/screenshots/*",
+        "reason": "visual artifacts, not machine gate inputs."
+      }
+    ],
+    "notApplicable": [
+      {
+        "name": "gate-a-result.json",
+        "reason": "A→B→C lab output already surfaced via mission.gatesReady.aToC."
+      }
+    ],
+    "unknown": []
+  },
+  "requiredClaimCount": 28,
+  "presentClaimCount": 25,
+  "releaseBlockers": [
+    {
+      "code": "UNPUSHED_COMMIT",
+      "reason": "head 114938afc6e11b37d4b29e38cff5f36b6da8d0a7 != remote d79a5c3ab8aee5e06fcfbd6a762bb9f542e02214"
+    },
+    {
+      "code": "UNCOMMITTED_RUNTIME",
+      "reason": "src/engineering-os/liveSnapshot.ts, src/engineering-os/releaseControlPlane.ts"
+    },
+    {
+      "code": "FINGERPRINT_MISMATCH",
+      "reason": "health 0.179.0-gpt-live-parity-rc1 != tested 0.286.0-earonly"
+    },
+    {
+      "code": "ALIAS_MISMATCH",
+      "reason": "stable alias does not point to the tested deployment"
+    }
+  ],
+  "controlBlockers": [
+    {
+      "code": "EXPECTED_CLAIM_ABSENT",
+      "reason": "required claim 'surface:AbuAI' (P0) is absent from the present claim set"
+    },
+    {
+      "code": "EXPECTED_CLAIM_ABSENT",
+      "reason": "required claim 'surface:AbuWhatsApp' (P0) is absent from the present claim set"
+    },
+    {
+      "code": "EXPECTED_CLAIM_ABSENT",
+      "reason": "required claim 'surface:AbuCalendar' (P0) is absent from the present claim set"
+    },
+    {
+      "code": "EVIDENCE_STALE",
+      "reason": "source 'evidence' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "EVIDENCE_STALE",
+      "reason": "source 'meta-qa' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "EVIDENCE_STALE",
+      "reason": "source 'mission' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "EVIDENCE_STALE",
+      "reason": "source 'product-universe' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "EVIDENCE_STALE",
+      "reason": "source 'master-matrix' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    }
+  ],
+  "ownerHandoff": {
+    "eligible": false,
+    "reason": "no owner action requested"
+  },
+  "assumptions": [
+    "privacyScan not executed by the wiring CLI (recorded, not claimed)"
+  ]
+}

@@ -25,5 +25,24 @@ jobs:
       - name: Unit tests
         run: npx vitest run
 
+      # ── Control plane (Stage 1 + 2) — invokes the SAME canonical implementation
+      #    as local; no release logic is reimplemented in YAML. ──────────────────
+      - name: Control-plane self-test (kernel + adversarial + adapter)
+        run: npx vitest run src/engineering-os/releaseControlPlane.adversarial.test.ts src/engineering-os/liveSnapshot.adversarial.test.ts
+
+      - name: Control-plane identity (drift gate)
+        run: npx tsx scripts/control-plane-identity.ts
+
+      - name: Control-plane CI sentinel (refusal → non-zero exit)
+        run: npx tsx scripts/control-plane-sentinel.ts
+
+      # Live candidate verdict is INFORMATIONAL during Stage 2: the current
+      # candidate is legitimately not-GO (stale QA sources, malformed meta-qa,
+      # deployed fingerprint mismatch), so it must not block unrelated main CI.
+      # Product certification (Stage 4) makes this a blocking gate.
+      - name: Control-plane live verdict (informational)
+        continue-on-error: true
+        run: npx tsx scripts/control-plane-live.ts
+
       - name: Build
         run: npx vite build
