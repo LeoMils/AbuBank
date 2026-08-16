@@ -3,19 +3,24 @@
 Branch `rc5/cognitive-architecture-and-acceptance` @ HEAD (v0.280.0-earonly).
 
 ## ⚠ RE-ENUMERATION after the owner's on-device test of v0.279 (2026-08-16)
-The earlier "EAR-ONLY" verdict is **no longer true**. A real device session surfaced defects a test
-could not, so CODE-level work reopened. Fixed + verified this session (instrument/unit, NOT device):
-online richness (film 1→5 sentences), relationship-chain collapse, ICE auto-reconnect, the briefing
-naming its source, the latent "mention the source" tool text, and the preamble fix now shipped ON +
-machine-verifiable at `/build-flags.json`. **Still OUTSTANDING and NOT mere ear checks:**
-- **E3 · repetition** — she repeated the Sharon answer verbatim and the Mor card twice. No session-level
-  spoken/card de-dup exists (repeatLookupGuard covers lookups, not spoken sentences). CODE work.
-- **E5a · UI state** — the screen showed "thinking" during listening. A presence state-machine bug. CODE work.
-- **E5b · "just a technical sign"** — Abu narrated app internals instead of being present. Instruction work.
-- **Re-verification on device** of every fix above (preamble/ICE are CODE/needs-device; audio flags still ear).
+The earlier "EAR-ONLY" verdict was retired when a real device session surfaced defects a test could
+not. Those CODE defects are now FIXED + verified (instrument/unit, NOT device) across v0.279–v0.281:
+online richness (film 1→5 sentences), relationship-chain collapse, ICE auto-reconnect, briefing/
+tool source-naming, preamble shipped ON (machine-verifiable at `/build-flags.json`), **E3** repetition
+(deterministic card-dedup + spoken-repeat guard + instruction), **E5a** presence can never contradict
+the session (invariant test), **E5b** never narrates internals (model-verified), and **contact
+reachability** (a known-but-not-a-contact person is answered but never offered a message/call).
 
-So the outstanding set = the ear checks below **PLUS** E3 + E5a + E5b + device re-verification. Do not
-claim ear-only until those three are fixed and the device confirms the new build.
+**Still OUTSTANDING (now genuinely device/ear, plus one data task):**
+- **Device re-verification** of every fix above — preamble two-response, ICE reconnect, presence word,
+  card-dedup and no-repeat are CODE/instrument evidence; only the owner's phone can confirm them heard.
+- **Reachability DATA** — the code default is conservative (immediate family reachable; others opt-in
+  via a `reachable:true` field). The owner should mark which friends/extended relatives are real
+  contacts (via `add-family-member`), else Abu under-offers to reach them.
+- **The ear-gated audio flags** below (audio-tune, barge-in, prefetch, classified-monitor) — unchanged.
+
+So: no longer new deterministic CODE work from the transcript, BUT not merge-ready until the device
+re-confirms the round-2 fixes and the reachability data is set. Not "ear-only" in the old sense.
 
 | Requirement | State | Evidence |
 |---|---|---|
