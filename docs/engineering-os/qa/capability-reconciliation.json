@@ -1,0 +1,333 @@
+{
+  "$schema": "internal://abu/capability-reconciliation",
+  "producer": "scripts/reconcile-capability-universe.ts",
+  "observedFrom": "https://abu-bank-f3dpms0ta-leos-projects-d3c04c09.vercel.app",
+  "observedAtBuild": "0.286.0-earonly",
+  "buildMatches": true,
+  "evidenceClass": "PREVIEW_READ_ONLY",
+  "canonicalProven": false,
+  "canonicalUniverseSize": 41,
+  "distribution": {
+    "STATIC_AND_DYNAMIC_CONFIRMED": 24,
+    "STATIC_ONLY_WITH_VALID_EXPLANATION": 1,
+    "DYNAMIC_ONLY_CAPABILITY_OMISSION": 0,
+    "STATE_COVERAGE_INCOMPLETE": 16,
+    "INTERNAL_WITH_PROOF": 0,
+    "UNKNOWN": 0
+  },
+  "blockers": [
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "cancel_calendar_event: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "cancel_communication: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "care_concern: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "confirm_calendar_event: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "correct_calendar_field: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "get_current_info: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "history_lookup: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "people_lookup: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "phone_call: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "prepare_calendar_event: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "read_calendar: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "remember: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "resolve_contact: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "set_reminder: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "update_calendar_event: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "code": "STATE_COVERAGE_INCOMPLETE",
+      "reason": "whatsapp_draft: static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    }
+  ],
+  "note": "o-capability stays UNIMPLEMENTED: some capabilities are STATE_COVERAGE_INCOMPLETE (their enabling state was not exercised — e.g. tool firing needs a driven realtime conversation). NOT dropped; still in the universe. Expand state coverage to close.",
+  "results": [
+    {
+      "id": "AbuAI",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuBank",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuCalendar",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuGames",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuNews",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuWeather",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuWhatsApp",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Admin",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "DiagnosticOverlay",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Error",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "FamilyGallery",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "FamilyPhones",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "FamilyRecord",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Home",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "LIVE_AUDIO_TUNE_V2",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "LIVE_BARGE_IN_TRUNCATE",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "LIVE_CLASSIFIED_MONITOR",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "LIVE_PREAMBLE_TWO_RESPONSE",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "LIVE_PREFETCH_WARM",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Live",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "ONLINE_GENERAL_SEARCH",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "ONLINE_PREFETCH_WARM",
+      "state": "STATIC_ONLY_WITH_VALID_EXPLANATION",
+      "inCanonicalUniverse": true,
+      "reason": "exercised but not observed, with explanation: ships OFF by measured code default / awaiting owner-ear promotion (deviceGatedFlags.ts / online/flags.ts)"
+    },
+    {
+      "id": "Offline",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Opening",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Settings",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "cancel_calendar_event",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "cancel_communication",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "care_concern",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "confirm_calendar_event",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "correct_calendar_field",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "get_current_info",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "history_lookup",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "people_lookup",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "phone_call",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "prepare_calendar_event",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "read_calendar",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "remember",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "resolve_contact",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "set_reminder",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "update_calendar_event",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    },
+    {
+      "id": "whatsapp_draft",
+      "state": "STATE_COVERAGE_INCOMPLETE",
+      "inCanonicalUniverse": true,
+      "reason": "static capability whose enabling state was not exercised — expand coverage; NOT proof of internal"
+    }
+  ]
+}

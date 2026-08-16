@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/control-plane-identity",
-  "controlPlaneId": "cp_6459574b",
-  "frozenAt": "2026-08-16T18:02:26.909Z",
+  "controlPlaneId": "cp_7d56968a",
+  "frozenAt": "2026-08-16T18:10:28.688Z",
   "eligibility": "33/33 adversarial cases passed across 2 suites",
   "components": {
     "releaseGate": "src/engineering-os/releaseGate.ts",
@@ -26,6 +26,8 @@
     "capabilityDiscoverySourceSuite": "src/engineering-os/capabilityDiscoverySource.test.ts",
     "claimState": "src/engineering-os/claimState.ts",
     "claimStateSuite": "src/engineering-os/claimState.test.ts",
+    "dynamicReachability": "src/engineering-os/dynamicReachability.ts",
+    "dynamicReachabilitySuite": "src/engineering-os/dynamicReachability.test.ts",
     "contextExecutionState": "src/engineering-os/contextExecutionState.ts",
     "contextExecutionStateSuite": "src/engineering-os/contextExecutionState.test.ts",
     "constitutionCoverage": "src/engineering-os/constitutionCoverage.ts",
@@ -56,6 +58,8 @@
     "capabilityDiscoverySourceSuite": "86da3ec4e50fdf83",
     "claimState": "eb9ea4f4d7cc8faf",
     "claimStateSuite": "c1aeabeebcd8e780",
+    "dynamicReachability": "745afa14e0d9a87c",
+    "dynamicReachabilitySuite": "2378be1c828e3699",
     "contextExecutionState": "72bcb5f2e38a0da1",
     "contextExecutionStateSuite": "d81f753cbb3c809c",
     "constitutionCoverage": "0bc422afffd19121",

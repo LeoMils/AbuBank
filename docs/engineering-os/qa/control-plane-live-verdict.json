@@ -1,17 +1,17 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T18:02:28.820Z",
-  "candidateSha": "5f3ead743b6f463c299b213ee4702a5d0191c089",
+  "generatedAt": "2026-08-16T18:10:50.162Z",
+  "candidateSha": "95586e1d022fa11937bc9667f784a3c2e4449837",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_6459574b",
-  "frozenControlPlaneId": "cp_6459574b",
-  "controlPlaneInputHash": "in_c5c0df17",
+  "controlPlaneId": "cp_7d56968a",
+  "frozenControlPlaneId": "cp_7d56968a",
+  "controlPlaneInputHash": "in_fdefffd4",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "6787f90b81fd1a3a",
+    "dirtyStateHash": "6af722e05304aec9",
     "dirtyRuntime": [
-      "src/engineering-os/yieldGate.ts"
+      "src/engineering-os/dynamicReachability.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -110,7 +110,9 @@
     ],
     "unknown": [
       "docs/engineering-os/qa/capability-discovery-source-manifest.json",
-      "docs/engineering-os/qa/capability-manifest.json"
+      "docs/engineering-os/qa/capability-manifest.json",
+      "docs/engineering-os/qa/capability-reconciliation.json",
+      "docs/engineering-os/qa/rc-reachability-observation.json"
     ]
   },
   "requiredClaimCount": 28,
@@ -118,11 +120,11 @@
   "releaseBlockers": [
     {
       "code": "UNPUSHED_COMMIT",
-      "reason": "head 5f3ead743b6f463c299b213ee4702a5d0191c089 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
+      "reason": "head 95586e1d022fa11937bc9667f784a3c2e4449837 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
     },
     {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/yieldGate.ts"
+      "reason": "src/engineering-os/dynamicReachability.ts"
     }
   ],
   "controlBlockers": [
@@ -165,6 +167,14 @@
     {
       "code": "SOURCE_COVERAGE_UNKNOWN",
       "reason": "authoritative source 'docs/engineering-os/qa/capability-manifest.json' is neither consumed nor classified — the adapter cannot be trusted complete"
+    },
+    {
+      "code": "SOURCE_COVERAGE_UNKNOWN",
+      "reason": "authoritative source 'docs/engineering-os/qa/capability-reconciliation.json' is neither consumed nor classified — the adapter cannot be trusted complete"
+    },
+    {
+      "code": "SOURCE_COVERAGE_UNKNOWN",
+      "reason": "authoritative source 'docs/engineering-os/qa/rc-reachability-observation.json' is neither consumed nor classified — the adapter cannot be trusted complete"
     },
     {
       "code": "CONTROL_MODEL_INCOMPLETE",

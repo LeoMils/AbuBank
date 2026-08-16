@@ -55,6 +55,9 @@ const COMPONENTS = {
   // Stage 3C §10: non-collapsible CLAIM-STATE model (o-claimstate).
   claimState: 'src/engineering-os/claimState.ts',
   claimStateSuite: 'src/engineering-os/claimState.test.ts',
+  // Stage 3C §4–5: static↔dynamic reachability reconciliation core (o-capability dynamic).
+  dynamicReachability: 'src/engineering-os/dynamicReachability.ts',
+  dynamicReachabilitySuite: 'src/engineering-os/dynamicReachability.test.ts',
   // Stage 3C resume: context-stop honesty, constitution calibration, capability universe.
   contextExecutionState: 'src/engineering-os/contextExecutionState.ts',
   contextExecutionStateSuite: 'src/engineering-os/contextExecutionState.test.ts',
