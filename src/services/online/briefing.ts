@@ -173,9 +173,24 @@ export function detailFor(b: Briefing, indexOneBased: number): DetailResult {
   return { ok: true, headline: h, text: h.snippet, source: h.host }
 }
 
-/** A speakable one-line-per-headline briefing for TTS (numbered, source-tagged). */
+/** Common Israeli news outlets/broadcasters — a source NAME that must not be spoken (the instruction
+ *  forbids naming a source; scrubForSpeech only removes domains, not bare outlet names in a title). */
+const OUTLET = /ynet|וואלה|walla|כאן ?11|מאקו|mako|n12|כלכליסט|globes|גלובס|הארץ|haaretz|מעריב|ישראל ?היום|israel ?hayom|רשת ?13|reshet|ערוץ ?\d+|the ?marker|דה ?מרקר/i
+
+/** Strip a trailing source/outlet attribution a search-result title carries — "(domain)", a dangling
+ *  separator, or a trailing outlet name ("… - כאן 11", "… | ynet") — so a spoken headline never names
+ *  a source. Conservative: only the TRAILING attribution is removed; the headline text is preserved. */
+export function cleanHeadlineTitle(title: string): string {
+  let t = title.replace(/\s*[([][^)\]]*[)\]]\s*$/g, '')                    // trailing (…)/[…] (usually the source)
+  t = t.replace(new RegExp(`\\s*[-|–—]?\\s*(?:${OUTLET.source})\\s*$`, 'i'), '') // trailing outlet tag
+  t = t.replace(/\s*[-|–—]\s*$/g, '').trim()                                // dangling separator
+  return t || title.trim()                                                  // never return empty
+}
+
+/** A speakable one-line-per-headline briefing for TTS (numbered). NEVER tags a source: the host is
+ *  dropped and any trailing outlet name is stripped (device: a briefing must not name where it came from). */
 export function speakableBriefing(b: Briefing): string {
   if (b.count === 0) return ''
-  const lines = b.headlines.map((h, i) => `${i + 1}. ${h.title} (${h.host})`)
+  const lines = b.headlines.map((h, i) => `${i + 1}. ${cleanHeadlineTitle(h.title)}`)
   return `${lines.join('\n')}\n${b.offer}`
 }

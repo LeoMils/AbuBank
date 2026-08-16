@@ -19,6 +19,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "rc:verify": "npx tsx scripts/rc-verify.ts",
+    "acceptance:deployed": "node scripts/acceptance/post-deploy.mjs",
+    "acceptance:online": "node scripts/probes/online-freshness.mjs",
     "qa:text-harness": "npx tsx scripts/text-harness-report.ts",
     "eval:behavior": "npx vite-node scripts/eval/report.ts",
     "qa:production-gate": "npx tsx scripts/text-harness-report.ts && npx tsx scripts/qa-production-gate.ts",

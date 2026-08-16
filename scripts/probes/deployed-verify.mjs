@@ -53,6 +53,15 @@ async function main() {
     console.log(`bundle: all instruction fixes present = ${allFound}`)
   } catch (e) { out.checks.bundle = { error: String(e.message || e) }; console.log('bundle: ERROR', e.message) }
 
+  // 3. build-flags manifest — which fixes are ACTUALLY ON in this specific deployed build.
+  try {
+    const bf = await (await fetch(`${BASE}/build-flags.json`)).json()
+    const on = [...Object.entries(bf.env || {}), ...Object.entries(bf.code || {})].filter(([, v]) => v).map(([k]) => k)
+    out.checks.buildFlags = { version: bf.version, env: bf.env, code: bf.code, on }
+    console.log(`build-flags: v${bf.version} · ON: ${on.join(', ')}`)
+    console.log(`  LIVE_PREAMBLE_TWO_RESPONSE = ${bf.env?.LIVE_PREAMBLE_TWO_RESPONSE ? 'ON (preamble fix live)' : 'OFF — preamble WILL be heard'}`)
+  } catch (e) { out.checks.buildFlags = { error: String(e.message || e) }; console.log('build-flags: ERROR (manifest missing?)', e.message) }
+
   out.deployedIsThisBuild = out.checks.health?.matches === true && out.checks.bundle?.allFragmentsPresent === true
   fs.writeFileSync('docs/eval/DEPLOYED_VERIFY.json', JSON.stringify(out, null, 2))
   console.log(`\n=== DEPLOYED IS THIS BUILD (version match + fixes in bundle): ${out.deployedIsThisBuild} ===`)

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  buildBriefing, detailFor, urlKey, hostOf, speakableBriefing, OFFER_HE,
+  buildBriefing, detailFor, urlKey, hostOf, speakableBriefing, cleanHeadlineTitle, OFFER_HE,
   BRIEFING_QUERIES, type SearchFn,
 } from './briefing'
 import type { ProviderResult } from './providerTypes'
@@ -129,10 +129,19 @@ describe('briefing — helpers', () => {
   it('hostOf extracts the host', () => {
     expect(hostOf('https://www.ynet.co.il/news/article/123')).toBe('ynet.co.il')
   })
-  it('speakableBriefing numbers each headline, tags the source, and ends with the offer', async () => {
+  it('speakableBriefing numbers each headline and ends with the offer, but NEVER names a source', async () => {
     const b = await buildBriefing(mockSearch(4), {})
     const spoken = speakableBriefing(b)
     expect(spoken).toMatch(/^1\. /)
     expect(spoken).toContain(OFFER_HE)
+    // device fix: a briefing must not speak the source — no "(host)" tag, no bare domain.
+    expect(spoken).not.toMatch(/\([^)]*\.(?:co\.il|com|net|org)\)/)
+    expect(spoken).not.toMatch(/[-\w]+\.(?:co\.il|com|net|org)\b/)
+  })
+
+  it('cleanHeadlineTitle strips a trailing source/outlet but keeps the headline', () => {
+    expect(cleanHeadlineTitle('חדשות בעולם: עדכונים מרחבי העולם - כאן 11')).toBe('חדשות בעולם: עדכונים מרחבי העולם')
+    expect(cleanHeadlineTitle('מחירי הדלק עולים (ynet.co.il)')).toBe('מחירי הדלק עולים')
+    expect(cleanHeadlineTitle('כותרת רגילה בלי מקור')).toBe('כותרת רגילה בלי מקור')
   })
 })

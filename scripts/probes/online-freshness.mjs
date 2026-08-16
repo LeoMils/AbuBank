@@ -24,7 +24,15 @@ const LAT_BUDGET_MS = 13_000
 
 const SRC_URL = /https?:\/\/\S+|\bwww\.\S+|[-\w]+\.(?:co\.il|org\.il|gov\.il|ac\.il|com|net|org|io|ai|co|tv)\b/i
 const SRC_NAMED = /ויקיפדיה|בגוגל|וואלה|וויז|ynet|בוקינג|טריפאדווייזר|seret|wisebuy|\bzap\b/i
-const namesSource = (s) => SRC_URL.test(s) || SRC_NAMED.test(s)
+// Mimic the client scrubForSpeech (liveTools.ts) — the model NEVER sees the raw endpoint body; the
+// client strips URLs/domains first. Judge source-naming on what Martita would actually HEAR.
+const scrubForSpeech = (t) => t
+  .replace(/\[([^\]]+)\]\((?:https?:)?\/\/[^)]*\)/g, '$1')
+  .replace(/https?:\/\/\S+/gi, '')
+  .replace(/\bwww\.[^\s)]+/gi, '')
+  .replace(/[-\w]+\.(?:co\.il|org\.il|gov\.il|ac\.il|com|net|org|io|ai|co|tv)\b/gi, '')
+  .replace(/[ \t]{2,}/g, ' ').trim()
+const namesSource = (raw) => { const s = scrubForSpeech(raw); return SRC_URL.test(s) || SRC_NAMED.test(s) }
 
 // crude date extraction (dd/mm, dd.mm, ISO, Hebrew month names) → how many days from today
 const HEB_MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
