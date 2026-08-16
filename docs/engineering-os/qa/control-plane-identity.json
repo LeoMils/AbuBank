@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/control-plane-identity",
-  "controlPlaneId": "cp_dd2eb577",
-  "frozenAt": "2026-08-16T16:19:01.354Z",
+  "controlPlaneId": "cp_10f8832a",
+  "frozenAt": "2026-08-16T16:41:55.799Z",
   "eligibility": "33/33 adversarial cases passed across 2 suites",
   "components": {
     "releaseGate": "src/engineering-os/releaseGate.ts",
@@ -19,7 +19,13 @@
     "obligationCompleteness": "src/engineering-os/obligationCompleteness.ts",
     "obligationCompletenessSuite": "src/engineering-os/obligationCompleteness.test.ts",
     "executionState": "src/engineering-os/executionState.ts",
-    "executionStateSuite": "src/engineering-os/executionState.test.ts"
+    "executionStateSuite": "src/engineering-os/executionState.test.ts",
+    "contextExecutionState": "src/engineering-os/contextExecutionState.ts",
+    "contextExecutionStateSuite": "src/engineering-os/contextExecutionState.test.ts",
+    "constitutionCoverage": "src/engineering-os/constitutionCoverage.ts",
+    "constitutionCoverageSuite": "src/engineering-os/constitutionCoverage.test.ts",
+    "capabilityManifest": "src/engineering-os/capabilityManifest.ts",
+    "capabilityManifestSuite": "src/engineering-os/capabilityManifest.test.ts"
   },
   "componentHashes": {
     "releaseGate": "f72797b921d15edf",
@@ -37,7 +43,13 @@
     "obligationCompleteness": "13d26b47d30ad5b5",
     "obligationCompletenessSuite": "db35eadc641097bc",
     "executionState": "113beccc1884aab3",
-    "executionStateSuite": "3508cb29fa2589ed"
+    "executionStateSuite": "3508cb29fa2589ed",
+    "contextExecutionState": "72bcb5f2e38a0da1",
+    "contextExecutionStateSuite": "d81f753cbb3c809c",
+    "constitutionCoverage": "0bc422afffd19121",
+    "constitutionCoverageSuite": "2410758e08555451",
+    "capabilityManifest": "5401678e2dbe2a57",
+    "capabilityManifestSuite": "fd340757a2c9b5d1"
   },
   "note": "Evidence produced under a DIFFERENT controlPlaneId may not silently certify this one. A change to any component changes the id and expires affected certification."
 }

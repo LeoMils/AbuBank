@@ -46,6 +46,13 @@ const COMPONENTS = {
   obligationCompletenessSuite: 'src/engineering-os/obligationCompleteness.test.ts',
   executionState: 'src/engineering-os/executionState.ts',
   executionStateSuite: 'src/engineering-os/executionState.test.ts',
+  // Stage 3C resume: context-stop honesty, constitution calibration, capability universe.
+  contextExecutionState: 'src/engineering-os/contextExecutionState.ts',
+  contextExecutionStateSuite: 'src/engineering-os/contextExecutionState.test.ts',
+  constitutionCoverage: 'src/engineering-os/constitutionCoverage.ts',
+  constitutionCoverageSuite: 'src/engineering-os/constitutionCoverage.test.ts',
+  capabilityManifest: 'src/engineering-os/capabilityManifest.ts',
+  capabilityManifestSuite: 'src/engineering-os/capabilityManifest.test.ts',
 }
 // Freeze requires BOTH adversarial suites to have passed (Stage 1 gate + Stage 2 adapter).
 const ADVERSARIAL_ARTIFACTS = [
