@@ -20,6 +20,7 @@ import type {
   ControlPlaneInput, SourceHealth, SourceConflict, SourceParseStatus,
   RequiredClaim, PresentClaim, RiskArea, ChangeImpact, EvaluatorRun, Severity,
 } from './releaseControlPlane'
+import type { ControlCompletenessInput } from './controlCompleteness'
 import type { ReleaseState, EvidenceClaim } from './releaseGate'
 
 // ── Source reader (DI boundary) ──────────────────────────────────────────────
@@ -98,6 +99,8 @@ export interface LiveDeps {
    * UNKNOWN → blocks confidence in the adapter's completeness.
    */
   discoveredSources?: string[]
+  /** The control-invariant/component model (§9–12), passed straight through. */
+  controlModel?: ControlCompletenessInput
 }
 
 // ── The immutable snapshot ───────────────────────────────────────────────────
@@ -120,6 +123,7 @@ export interface LiveSnapshot {
   evaluators: EvaluatorRun[]
   release: ReleaseState
   ownerRequested: boolean
+  controlModel?: ControlCompletenessInput
 }
 
 export interface SourceCoverage {
@@ -364,6 +368,7 @@ export function buildLiveSnapshot(deps: LiveDeps): LiveSnapshot {
     evaluators: deps.evaluatorStatuses,
     release,
     ownerRequested: !!deps.ownerRequested,
+    ...(deps.controlModel ? { controlModel: deps.controlModel } : {}),
   }
 
   function computeSourceCoverage(): SourceCoverage {
@@ -432,6 +437,7 @@ export function toControlPlaneInput(s: LiveSnapshot, opts?: { inputDriftDuringEv
     sourceConflicts: s.sourceConflicts,
     unknownSources: s.sourceCoverage.unknown,
     inputDriftDuringEvaluation: opts?.inputDriftDuringEvaluation ?? false,
+    ...(s.controlModel ? { controlCompleteness: s.controlModel } : {}),
   }
 }
 

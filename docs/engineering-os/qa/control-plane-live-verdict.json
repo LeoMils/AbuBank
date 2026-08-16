@@ -1,23 +1,24 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T13:56:28.691Z",
-  "candidateSha": "114938afc6e11b37d4b29e38cff5f36b6da8d0a7",
+  "generatedAt": "2026-08-16T15:19:18.060Z",
+  "candidateSha": "866777a9e8efbcfc41a5c190ecd4fba02240e6f6",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_80920fa0",
-  "frozenControlPlaneId": "cp_80920fa0",
-  "controlPlaneInputHash": "in_2c7e49ce",
-  "verdict": "NO-GO",
+  "controlPlaneId": "cp_89211d09",
+  "frozenControlPlaneId": "cp_89211d09",
+  "controlPlaneInputHash": "in_f0d1c7c7",
+  "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "806ab04f9ac7e50e",
+    "dirtyStateHash": "7b5026ce51d389b1",
     "dirtyRuntime": [
       "src/engineering-os/liveSnapshot.ts",
-      "src/engineering-os/releaseControlPlane.ts"
+      "src/engineering-os/releaseControlPlane.ts",
+      "src/engineering-os/controlCompleteness.ts"
     ]
   },
   "deployedCandidateIdentity": {
-    "fingerprint": "0.179.0-gpt-live-parity-rc1",
-    "aliasOk": false
+    "fingerprint": "0.286.0-earonly",
+    "aliasOk": true
   },
   "sources": [
     {
@@ -115,20 +116,8 @@
   "presentClaimCount": 25,
   "releaseBlockers": [
     {
-      "code": "UNPUSHED_COMMIT",
-      "reason": "head 114938afc6e11b37d4b29e38cff5f36b6da8d0a7 != remote d79a5c3ab8aee5e06fcfbd6a762bb9f542e02214"
-    },
-    {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/liveSnapshot.ts, src/engineering-os/releaseControlPlane.ts"
-    },
-    {
-      "code": "FINGERPRINT_MISMATCH",
-      "reason": "health 0.179.0-gpt-live-parity-rc1 != tested 0.286.0-earonly"
-    },
-    {
-      "code": "ALIAS_MISMATCH",
-      "reason": "stable alias does not point to the tested deployment"
+      "reason": "src/engineering-os/liveSnapshot.ts, src/engineering-os/releaseControlPlane.ts, src/engineering-os/controlCompleteness.ts"
     }
   ],
   "controlBlockers": [
@@ -163,6 +152,30 @@
     {
       "code": "EVIDENCE_STALE",
       "reason": "source 'master-matrix' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'capability-manifest-certified' is NOT_PROVEN (invariant: canonical product capability manifest is discovered + drift-proven)"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'denominator-certified' is NOT_PROVEN (invariant: acceptance denominator is complete + monotonic + specificity-proven)"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'lab-certification-complete' is NOT_PROVEN (invariant: every release-critical lab has PROVEN sensitivity/restoration/specificity)"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'deployment-attested' is NOT_PROVEN (invariant: deployed source identity binds to the certified candidate SHA)"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'sw-runtime-proven' is NOT_PROVEN (invariant: the warm/fresh PWA client actually serves the certified bundle)"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'privacy-control-proven' is NOT_PROVEN (invariant: required privacy/security control executed + current)"
     }
   ],
   "ownerHandoff": {

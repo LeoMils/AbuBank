@@ -37,6 +37,10 @@ const COMPONENTS = {
   liveSnapshotAdapter: 'src/engineering-os/liveSnapshot.ts',
   liveVerdictCli: 'scripts/control-plane-live.ts',
   adapterAdversarialSuite: 'src/engineering-os/liveSnapshot.adversarial.test.ts',
+  // Stage 3C: control-completeness is release-critical — it decides whether the
+  // control model itself is complete enough to certify anything.
+  controlCompleteness: 'src/engineering-os/controlCompleteness.ts',
+  controlCompletenessSuite: 'src/engineering-os/controlCompleteness.test.ts',
 }
 // Freeze requires BOTH adversarial suites to have passed (Stage 1 gate + Stage 2 adapter).
 const ADVERSARIAL_ARTIFACTS = [

@@ -27,6 +27,7 @@
  */
 
 import { evaluateRelease, type ReleaseState, type ReleaseBlocker } from './releaseGate'
+import { evaluateControlCompleteness, type ControlCompletenessInput } from './controlCompleteness'
 
 // ── Verdicts & non-binary harness states ────────────────────────────────────
 // A control-plane verdict is NEVER a bare boolean. Absence, crash, and "not run"
@@ -180,6 +181,12 @@ export interface ControlPlaneInput {
    * The verdict then describes a reality that no longer exists → INVALID.
    */
   inputDriftDuringEvaluation?: boolean
+  /**
+   * The control-invariant/component model (§9–12). When present, an unproven
+   * release-critical control prerequisite makes the control model INCOMPLETE →
+   * release cannot GO. This converts prose-known control gaps into machine state.
+   */
+  controlCompleteness?: ControlCompletenessInput
 }
 
 // ── Stage-2 source health ────────────────────────────────────────────────────
@@ -401,6 +408,14 @@ export function evaluateControlPlane(input: ControlPlaneInput): ControlPlaneStat
   for (const u of input.unknownSources ?? []) {
     add('SOURCE_COVERAGE_UNKNOWN', `authoritative source '${u}' is neither consumed nor classified — the adapter cannot be trusted complete`)
     cannotCertify = true
+  }
+
+  // (I2) CONTROL COMPLETENESS (§9–12). An uncovered/orphan/undeclared/invalidated
+  // control component, or any unproven release-critical control prerequisite, means
+  // the release TRUST is incomplete — the control plane cannot certify GO.
+  if (input.controlCompleteness) {
+    const cc = evaluateControlCompleteness(input.controlCompleteness)
+    for (const bl of cc.blockers) { add(bl.code, bl.reason); cannotCertify = true }
   }
 
   // (I) Time-of-check drift — the reality judged no longer exists.

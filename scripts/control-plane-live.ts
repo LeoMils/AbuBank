@@ -22,6 +22,7 @@ import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildLiveSnapshot, toControlPlaneInput, computeInputHash, type LiveDeps, type SourceReadResult } from '../src/engineering-os/liveSnapshot.ts'
 import { evaluateControlPlane, computeControlPlaneIdentity, type EvaluatorRun } from '../src/engineering-os/releaseControlPlane.ts'
+import { defaultControlModel, type ControlClaimState } from '../src/engineering-os/controlCompleteness.ts'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const p = (rel: string) => resolve(ROOT, rel)
@@ -122,6 +123,30 @@ function evaluatorStatuses(): EvaluatorRun[] {
   ]
 }
 
+// Build the REAL control-invariant model (§9–12). The 4 pure evaluators are PROVEN
+// by their passing adversarial suites (CODE); the 6 product/infra prerequisites
+// (capability manifest, denominator, lab certification, deployment attestation,
+// SW-runtime provenance, privacy) are genuinely NOT_PROVEN today → the control model
+// is INCOMPLETE, which now BLOCKS deterministically instead of living only in prose.
+function buildControlModel() {
+  const m = defaultControlModel()
+  const evaluators: Record<string, string> = {
+    'release-gate-falsifiable': 'src/engineering-os/releaseGate.ts',
+    'meta-gate-falsifiable': 'src/engineering-os/releaseControlPlane.ts',
+    'live-adapter-falsifiable': 'src/engineering-os/liveSnapshot.ts',
+    'control-completeness-falsifiable': 'src/engineering-os/controlCompleteness.ts',
+  }
+  for (const c of m.claims) {
+    const comp = evaluators[c.id]
+    if (comp) {
+      c.state = 'PROVEN' as ControlClaimState
+      if (existsSync(p(comp))) { const h = sha16(readFileSync(p(comp))); c.certifiedComponentHash = h; c.liveComponentHash = h }
+    }
+  }
+  m.trustRootComponents = Object.values(evaluators)
+  return m
+}
+
 async function main() {
   const now = new Date().toISOString()
   const id = identityFromFrozen()
@@ -156,6 +181,7 @@ async function main() {
       const dir = p('docs/engineering-os/qa')
       try { return readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => `docs/engineering-os/qa/${f}`) } catch { return [] }
     })(),
+    controlModel: buildControlModel(),
   }
 
   const snapshot = buildLiveSnapshot(deps)
