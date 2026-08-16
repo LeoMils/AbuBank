@@ -160,7 +160,7 @@ export function defaultConstitution(): ObligationCompletenessInput {
     ob('o-owner', 'owner-firewall', 'machine-derived owner firewall', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/releaseControlPlane.ts', 'owner-firewall-machine-derived'),
     // ── The honest negative space: obligations that SHOULD exist but do not yet. ──
     ob('o-capability', 'capability-universe', 'static+dynamic capability manifest', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/dynamicReachability.ts', 'capability-manifest-canonical'),
-    ob('o-denominator', 'denominator', 'certified acceptance denominator', 'UNIMPLEMENTED'),
+    ob('o-denominator', 'denominator', 'certified acceptance denominator', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/denominator.ts', 'acceptance-denominator-certified'),
     ob('o-claimstate', 'claim-state-model', 'non-collapsible claim-state model', 'IMPLEMENTED_AND_MAPPED', 'src/engineering-os/claimState.ts', 'claim-state-model-proven'),
     ob('o-labcert', 'lab-certification', 'scope-bound lab certification', 'UNIMPLEMENTED'),
     ob('o-producers', 'evidence-producers', 'reproducible evidence producers + lineage', 'UNIMPLEMENTED'),

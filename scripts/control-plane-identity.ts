@@ -60,6 +60,9 @@ const COMPONENTS = {
   dynamicReachabilitySuite: 'src/engineering-os/dynamicReachability.test.ts',
   // Stage 3C §11: 16-tool firing harness (real executor, mocked side-effects) → o-capability.
   toolFiringHarness: 'src/services/toolFiringHarness.test.ts',
+  // Stage 3C §7: acceptance denominator (risk assigned here) → o-denominator.
+  denominator: 'src/engineering-os/denominator.ts',
+  denominatorSuite: 'src/engineering-os/denominator.test.ts',
   // P0 incident gate: scan the shipped bundle for a billable key (o-privacy prerequisite).
   bundleSecretScan: 'src/engineering-os/bundleSecretScan.ts',
   bundleSecretScanSuite: 'src/engineering-os/bundleSecretScan.test.ts',

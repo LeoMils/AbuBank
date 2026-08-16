@@ -1,17 +1,18 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T19:26:04.757Z",
-  "candidateSha": "e2a10250af1bd6b57b5270ec0cb657b8d3b16230",
+  "generatedAt": "2026-08-16T19:29:06.103Z",
+  "candidateSha": "6e5310395da45bdd74a2c5a2cc7cb441266f5ae5",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_bfb22750",
-  "frozenControlPlaneId": "cp_bfb22750",
-  "controlPlaneInputHash": "in_072ae3e5",
+  "controlPlaneId": "cp_c3d7b297",
+  "frozenControlPlaneId": "cp_c3d7b297",
+  "controlPlaneInputHash": "in_0618fbf6",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "12aca089eb2c3903",
+    "dirtyStateHash": "5b680342659aaef1",
     "dirtyRuntime": [
-      "src/engineering-os/obligationCompleteness.ts"
+      "src/engineering-os/obligationCompleteness.ts",
+      "src/engineering-os/denominator.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -109,6 +110,7 @@
       }
     ],
     "unknown": [
+      "docs/engineering-os/qa/acceptance-denominator.json",
       "docs/engineering-os/qa/capability-discovery-source-manifest.json",
       "docs/engineering-os/qa/capability-manifest.json",
       "docs/engineering-os/qa/capability-reconciliation.json",
@@ -121,11 +123,11 @@
   "releaseBlockers": [
     {
       "code": "UNPUSHED_COMMIT",
-      "reason": "head e2a10250af1bd6b57b5270ec0cb657b8d3b16230 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
+      "reason": "head 6e5310395da45bdd74a2c5a2cc7cb441266f5ae5 != remote afda67291f51fc68c4969a6c856151cccf57bed5"
     },
     {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/obligationCompleteness.ts"
+      "reason": "src/engineering-os/obligationCompleteness.ts, src/engineering-os/denominator.ts"
     }
   ],
   "controlBlockers": [
@@ -160,6 +162,10 @@
     {
       "code": "EVIDENCE_STALE",
       "reason": "source 'master-matrix' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "SOURCE_COVERAGE_UNKNOWN",
+      "reason": "authoritative source 'docs/engineering-os/qa/acceptance-denominator.json' is neither consumed nor classified — the adapter cannot be trusted complete"
     },
     {
       "code": "SOURCE_COVERAGE_UNKNOWN",
@@ -204,10 +210,6 @@
     {
       "code": "CONTROL_MODEL_INCOMPLETE",
       "reason": "release-critical control claim 'privacy-control-proven' is NOT_PROVEN (invariant: required privacy/security control executed + current)"
-    },
-    {
-      "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
-      "reason": "release-critical obligation 'o-denominator' (certified acceptance denominator) is UNIMPLEMENTED"
     },
     {
       "code": "CONTROL_OBLIGATION_UNIMPLEMENTED",
