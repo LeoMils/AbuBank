@@ -352,13 +352,14 @@ describe('P0.7 — hard rules preserved', () => {
     }
   })
 
-  it('no secrets / api key values committed anywhere in source', () => {
-    // The Groq key is read from import.meta.env.VITE_GROQ_API_KEY and
-    // never written to any committed file. Confirm the file used by
-    // tests resolves the key via the options.resolveKey override.
+  it('no client provider secret read (P0: VITE_GROQ removed; key only via injected resolver)', () => {
+    // P0 remediation: the client-side VITE_GROQ_API_KEY read was REMOVED. The key must come
+    // ONLY from an injected options.resolveKey (tests), never from import.meta.env in the client.
     const src = fs.readFileSync(path.resolve(__dirname, 'calendarTranscribe.ts'), 'utf8')
-    expect(src.includes('VITE_GROQ_API_KEY')).toBe(true)
+    const noComments = src.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l: string) => l.replace(/\/\/.*$/, '')).join('\n')
+    expect(/import\.meta[\s\S]{0,40}VITE_GROQ_API_KEY|\.env\s*\??\.?\s*\[\s*['"]VITE_GROQ_API_KEY/.test(noComments)).toBe(false)
     expect(/const\s+(apiKey|GROQ_KEY)\s*=\s*['"]/.test(src)).toBe(false) // no hardcoded value
+    expect(src.includes('options.resolveKey')).toBe(true) // key comes from the injected resolver only
   })
 })
 

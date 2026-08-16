@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/control-plane-identity",
-  "controlPlaneId": "cp_2d910333",
-  "frozenAt": "2026-08-16T20:30:10.424Z",
+  "controlPlaneId": "cp_eec25993",
+  "frozenAt": "2026-08-16T21:41:28.413Z",
   "eligibility": "33/33 adversarial cases passed across 2 suites",
   "components": {
     "releaseGate": "src/engineering-os/releaseGate.ts",
@@ -87,7 +87,7 @@
     "privacyControlSuite": "f2a3f98f097cbee9",
     "attestation": "6dfd4ddc8694a3a9",
     "attestationSuite": "c3c704bed7b4cdb5",
-    "clientSecretFallback": "78c308d1dae2129c",
+    "clientSecretFallback": "e85c05c2c289fdfd",
     "clientSecretFallbackSuite": "f16a0f2cddfdc724",
     "clientSecretFallbackGate": "2295a4edea2cec6d",
     "labCertification": "fa02789897d90e6d",

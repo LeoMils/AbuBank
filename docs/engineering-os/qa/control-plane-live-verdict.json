@@ -1,21 +1,18 @@
 {
   "$schema": "internal://abu/control-plane-live-verdict",
-  "generatedAt": "2026-08-16T20:30:13.412Z",
-  "candidateSha": "f87fa3dafce3b0b98a41508f74c046d71d89f8ed",
+  "generatedAt": "2026-08-16T21:41:30.719Z",
+  "candidateSha": "07718759232633c24a7220f9c78dc80a5a014e67",
   "candidateBuild": "0.286.0-earonly",
-  "controlPlaneId": "cp_2d910333",
-  "frozenControlPlaneId": "cp_2d910333",
-  "controlPlaneInputHash": "in_10e8f21c",
+  "controlPlaneId": "cp_eec25993",
+  "frozenControlPlaneId": "cp_eec25993",
+  "controlPlaneInputHash": "in_86ed78ce",
   "verdict": "BLOCKED",
   "inputDriftDuringEvaluation": false,
   "workingTreeIdentity": {
-    "dirtyStateHash": "4a2763aa6d2af581",
+    "dirtyStateHash": "0086e030c66bd8fb",
     "dirtyRuntime": [
       "src/engineering-os/clientSecretFallback.ts",
-      "src/screens/AbuAI/service.ts",
-      "src/screens/AbuAI/whatsappCompose.ts",
-      "src/screens/AbuWhatsApp/service.ts",
-      "src/services/voice.ts"
+      "src/screens/AbuCalendar/calendarTranscribe.ts"
     ]
   },
   "deployedCandidateIdentity": {
@@ -122,8 +119,12 @@
   "presentClaimCount": 25,
   "releaseBlockers": [
     {
+      "code": "UNPUSHED_COMMIT",
+      "reason": "head 07718759232633c24a7220f9c78dc80a5a014e67 != remote 8e7d7dbb2bea450c5c8292b056aeded441e9dbce"
+    },
+    {
       "code": "UNCOMMITTED_RUNTIME",
-      "reason": "src/engineering-os/clientSecretFallback.ts, src/screens/AbuAI/service.ts, src/screens/AbuAI/whatsappCompose.ts, src/screens/AbuWhatsApp/service.ts, src/services/voice.ts"
+      "reason": "src/engineering-os/clientSecretFallback.ts, src/screens/AbuCalendar/calendarTranscribe.ts"
     }
   ],
   "controlBlockers": [

@@ -59,7 +59,12 @@ export function scanClientSource(file: string, source: string): ClientSecretRead
   const lines = stripComments(source).split('\n')
   for (let i = 0; i < lines.length; i++) {
     for (const [envName, tier] of Object.entries(CLIENT_PROVIDER_SECRETS)) {
-      if (new RegExp(`import\\.meta\\.env\\.${envName}\\b`).test(lines[i]!)) {
+      // Catch BOTH dot access (import.meta.env.VITE_X) AND bracket/cast access
+      // ((import.meta as ...).env?.['VITE_X'] / import.meta.env['VITE_X']). The bracket+cast
+      // form slipped past a dot-only detector (calendarTranscribe.ts Groq read) — fail closed.
+      const dot = new RegExp(`import\\.meta\\.env\\.${envName}\\b`)
+      const bracket = new RegExp(`\\.env\\s*\\??\\.?\\s*\\[\\s*['"]${envName}['"]`)
+      if (dot.test(lines[i]!) || bracket.test(lines[i]!)) {
         reads.push({ file, line: i + 1, envName, tier })
       }
     }
