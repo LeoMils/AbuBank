@@ -3,7 +3,7 @@
 This is the ONLY thing left that a test cannot do. One preview build ships **all four** device-gated
 audio behaviours ON at once, so you settle them in a single sitting instead of four separate rounds.
 
-**Build:** _(the deployed preview URL from the latest run — see docs/eval/DEPLOYED_VERIFY.json → base)_
+**Build:** https://abu-bank-6q2mrzcso-leos-projects-d3c04c09.vercel.app  (v0.282.0-earonly)
 Confirm the build is the right one: open `<url>/build-flags.json` — all four must read `true`:
 `LIVE_AUDIO_TUNE_V2`, `LIVE_BARGE_IN_TRUNCATE`, `LIVE_PREFETCH_WARM`, `LIVE_CLASSIFIED_MONITOR`
 (plus `LIVE_PREAMBLE_TWO_RESPONSE: true`, already confirmed).

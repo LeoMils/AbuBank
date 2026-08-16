@@ -1,16 +1,16 @@
 {
-  "base": "https://abu-bank-4owfjzxio-leos-projects-d3c04c09.vercel.app",
+  "base": "https://abu-bank-6q2mrzcso-leos-projects-d3c04c09.vercel.app",
   "when": "2026-08-16",
   "allOk": true,
   "anyStale": false,
   "anySourceNamed": true,
   "singleAnswerSourceNamed": false,
   "briefingSourceNamed": true,
-  "maxLatencyMs": 2280,
+  "maxLatencyMs": 2564,
   "rows": [
     {
       "id": "cinema",
-      "ms": 2280,
+      "ms": 2564,
       "ok": true,
       "http": 200,
       "answerLen": 127,
@@ -29,11 +29,11 @@
     },
     {
       "id": "price",
-      "ms": 1220,
+      "ms": 1731,
       "ok": true,
       "http": 200,
-      "answerLen": 141,
-      "answer": "בלו דה שאנל – הבושם המוביל לגבר מבית שאנל. כל הגרסאות של בלו שאנל: או דה פרפיום, פרפיום ו-EDT. מחירים מיוחדים עם אחריות מלאה למקוריות בישראל",
+      "answerLen": 43,
+      "answer": "המחיר של בושם בלו דה שאנל בישראל הוא 749 ₪.",
       "sourceNamed": false,
       "diag": {
         "provider": "brave",
@@ -48,7 +48,7 @@
     },
     {
       "id": "news",
-      "ms": 559,
+      "ms": 1187,
       "ok": true,
       "http": 200,
       "answerLen": 505,
@@ -67,7 +67,7 @@
     },
     {
       "id": "followup",
-      "ms": 1139,
+      "ms": 1663,
       "ok": true,
       "http": 200,
       "answerLen": 137,
