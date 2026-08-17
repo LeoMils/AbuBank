@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/rc-historical-corpus",
-  "rc": "https://abu-bank-73o7i62wf-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T12:27:26.732Z",
+  "rc": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-17T13:10:29.082Z",
   "pathEquivalenceRule": "A clean replay closes a historical defect ONLY with material path-equivalence. Voice-audio escapes replayed via text = NOT_PROVEN → never closed by a text replay.",
   "score": {
     "HISTORICAL_OWNER_ESCAPES_TOTAL": 9,
@@ -73,7 +73,7 @@
         },
         {
           "in": "את שוב לא מבינה אותי",
-          "out": "מחר אין לך שום דבר מתוכנן ביומן. זה זמן טוב לנוח או למצוא משהו נחמד לעשות.",
+          "out": "מחר באמת אין כלום ביומן שלך. אם יש משהו אחר שאת רוצה לדבר עליו או לעשות, אני כאן איתך.",
           "ok": true
         }
       ]
@@ -90,12 +90,12 @@
       "evidence": [
         {
           "in": "ספרי לי על המהפכה הצרפתית",
-          "out": "המהפכה הצרפתית התרחשה בין 1789 ל-1799 ושינתה את פני צרפת והעולם כולו. היא החלה כמחאה נגד ה",
+          "out": "המהפכה הצרפתית התחילה ב-1789 ונמשכה עד 1799. היא הייתה תקופה של שינוי חברתי ופוליטי עמוק ב",
           "ok": true
         },
         {
           "in": "תמשיכי",
-          "out": "אירועים מרכזיים כללו את הסתערות על הבסטיליה ב-14 ביולי 1789, מה שנחשב כתחילת המהפכה, ואת ה",
+          "out": "הסיבות למהפכה כללו את אי-השוויון הכלכלי, חוסר צדק חברתי, וחוסר שביעות רצון מהשלטון המלוכני",
           "ok": true
         },
         {
@@ -117,7 +117,7 @@
       "evidence": [
         {
           "in": "מי ניצח במונדיאל האחרון",
-          "out": "ספרד ניצחה במונדיאל האחרון.",
+          "out": "ספרד ניצחה את ארגנטינה 0:1 במונדיאל האחרון.",
           "ok": true
         }
       ]

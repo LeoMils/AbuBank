@@ -1,34 +1,34 @@
 {
   "$schema": "internal://abu/release-lock",
-  "when": "2026-08-17T12:27:59.819Z",
-  "verdict": "MACHINE_CLEAN_PENDING_OWNER",
-  "sourceSHA": "e134a1547b470a4e174c2f54cbbe57110f57ace7",
-  "buildVersion": "0.290.0-earonly",
-  "candidateRC": "https://abu-bank-73o7i62wf-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-17T13:11:01.677Z",
+  "verdict": "MACHINE_CLEAN_PENDING_OWNER_AND_TRACKB",
+  "sourceSHA": "d2e811ca704125256abe98fc3e38187968570fe1",
+  "buildVersion": "0.291.0-earonly",
+  "candidateRC": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
   "bundleFingerprint": {
     "chunks": 27,
-    "bytes": 1257109,
+    "bytes": 1256553,
     "secretClean": true
   },
-  "envContractByName": [
-    "OPENAI_API_KEY",
-    "BRAVE_API_KEY",
-    "TAVILY_API_KEY",
-    "ONLINE_PROVIDER",
-    "ONLINE_DEEP_FETCH",
-    "VITE_AZURE_TTS_REGION(public)",
-    "VITE_APP_VERSION(public)",
-    "VITE_COMMIT_SHA(public)"
-  ],
   "controlPlaneId": "cp_bfccc899",
   "canonicalSecretScannerCertified": true,
   "qaMonsterRc": "GO 9/9",
   "northStar_AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0,
-  "rollbackSafety": "this candidate is the only P0/P1-clean + secret-clean target; the exposed 0.5.0 production/abu-ela-rc is NOT an acceptable rollback target",
+  "fullSuite": "GREEN 555 files / 13441",
+  "architecturalChallenges": {
+    "A_idempotency": "operation-identity (callId) PRIMARY, persisted; content-match removed; 6 scenarios proven",
+    "B_rateLimiting": "per-IP + circuit breaker on 4 proxies + STT 5MB cap; in-memory best-effort (distributed KV = infra/owner)"
+  },
+  "rollbackSafety": "only P0/P1-clean + secret-clean target; exposed 0.5.0 production is NOT acceptable rollback",
+  "machineClosableRemaining": [
+    "A5 stochastic sampling",
+    "Track B B2-B13 productization"
+  ],
   "ownerActionsOpen": [
     "REVOKE OpenAI fp:e39ef3b7",
     "REVOKE Gemini fp:69150fc4",
     "REVOKE Groq fp:a2f25d13",
-    "AUTHORIZE clean production deploy"
+    "AUTHORIZE clean production deploy",
+    "DECIDE distributed rate-limit infra (KV) vs in-memory best-effort"
   ]
 }
