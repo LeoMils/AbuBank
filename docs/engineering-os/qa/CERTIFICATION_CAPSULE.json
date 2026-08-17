@@ -1,0 +1,134 @@
+{
+  "schemaVersion": "capsule/1",
+  "when": "2026-08-17T13:30:58.187Z",
+  "qaMonsterVersion": "qa-monster/1",
+  "constitutionVersion": "monster-qa/unified-master",
+  "identity": {
+    "RUNTIME_SOURCE_SHA": "237bef9",
+    "DEPLOYED_ARTIFACT_ID": "abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
+    "DEPLOYED_BUILD_ID": "0.291.0-earonly",
+    "CERTIFICATION_HARNESS_SHA": "79de94feaf459debd1b4a2afc3fb9de7a561710c",
+    "EVIDENCE_GENERATION_SHA": "ef87ae03e3d198c5627beb9ba4d1f4671e7b0005",
+    "CONTROL_PLANE_VERSION": "cp_bfccc899"
+  },
+  "verdicts": {
+    "PRODUCT_CANDIDATE_VERDICT": "GO",
+    "QA_SYSTEM_VERDICT": "INCOMPLETE_PRODUCTIZATION",
+    "RELEASE_PROMOTION_VERDICT": "NOT_YET"
+  },
+  "exit": null,
+  "worktree": {
+    "WORKTREE_RUNTIME_CLEAN": true,
+    "WORKTREE_HARNESS_CLEAN": false,
+    "dirtyRuntime": [],
+    "dirtyHarness": [
+      "scripts/gate-a-abc.mjs",
+      "scripts/golden/golden-session-spec.json",
+      "src/screens/AbuAI/finalYellowToGreen.test.ts",
+      "src/screens/AbuAI/nonVoiceGreenProduction.test.ts",
+      "src/screens/AbuAI/nonVoiceProductionClosure.test.ts",
+      "src/screens/AbuAI/totalProductClosure.test.ts",
+      "src/screens/AbuGames/wowGame.test.ts",
+      "src/screens/AbuWhatsApp/familyContactsStorage.test.ts",
+      "src/eval/martitaRedTeam.test.ts",
+      "vite-dev.err.log",
+      "vite-dev.log"
+    ]
+  },
+  "runtimeProvenance": {
+    "identity": "PROVEN",
+    "method": "deployed buildVersion ↔ version-introducing commit in api/health.ts; zero non-test runtime drift since",
+    "RUNTIME_SOURCE_SHA": "237bef9",
+    "DEPLOYED_BUILD_ID": "0.291.0-earonly"
+  },
+  "economy": null,
+  "northStar_AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0,
+  "ownerActionsOpen": [
+    "REVOKE OpenAI fp:e39ef3b7",
+    "REVOKE Gemini fp:69150fc4",
+    "REVOKE Groq fp:a2f25d13",
+    "AUTHORIZE clean production deploy",
+    "DECIDE distributed rate-limit infra (shared KV)",
+    "DECIDE no-login PWA auth policy"
+  ],
+  "machineClosableRemaining": [
+    "A5 stochastic sampling",
+    "Track B B2-B13"
+  ],
+  "evidence": [
+    {
+      "id": "release-lock",
+      "path": "docs/engineering-os/qa/RELEASE_LOCK.json",
+      "producer": "RELEASE_LOCK",
+      "schema": "internal://abu/release-lock",
+      "digest": "e753f140802bcb2157643f6dbd916756670747419bd3302f32a874f3008e8e0d"
+    },
+    {
+      "id": "qa-monster-report",
+      "path": "docs/eval/QA_MONSTER_REPORT.json",
+      "producer": "qa-monster.mjs",
+      "schema": "internal://abu/qa-monster",
+      "digest": "1b8593d82745bb3eebcc8a37fe92a7c9e3a499fb9232111bdd421c8cf45ebf62"
+    },
+    {
+      "id": "historical-corpus",
+      "path": "docs/eval/RC_HISTORICAL_CORPUS.json",
+      "producer": "rc-acceptance-historical-corpus.mjs",
+      "schema": "internal://abu/historical-corpus",
+      "digest": "7bf566c146d95f46d1d726ec8357cf07f08ea6c36b916a2b0415554a88fde2a2"
+    },
+    {
+      "id": "calendar",
+      "path": "docs/eval/RC_ACCEPTANCE_CALENDAR.json",
+      "producer": "rc-acceptance-calendar.mjs",
+      "schema": "internal://abu/rc-calendar",
+      "digest": "4d7745bfe8ac7bb4290bdb6a85d77cca62e03e9ae0682c836dd43680f7c4a6b9"
+    },
+    {
+      "id": "whatsapp",
+      "path": "docs/eval/RC_ACCEPTANCE_WHATSAPP.json",
+      "producer": "rc-acceptance-whatsapp.mjs",
+      "schema": "internal://abu/rc-whatsapp",
+      "digest": "02fcfe22c6c12b075aa8c97e65538058bc7d21aac126f28534349ddb548b0de6"
+    },
+    {
+      "id": "temporal",
+      "path": "docs/eval/RC_ACCEPTANCE_TEMPORAL.json",
+      "producer": "rc-acceptance-temporal.mjs",
+      "schema": "internal://abu/rc-temporal",
+      "digest": "8f0fa26d6c7e191eaeaccfbeace0786bd5d5d6bce81865c92702df1c2188a242"
+    },
+    {
+      "id": "replacement-paths",
+      "path": "docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json",
+      "producer": "rc-acceptance-replacement-paths.mjs",
+      "schema": "internal://abu/rc-replacement",
+      "digest": "1c68621009642f0c9d7057a2b9e156e5b01389b6f331c005d89717150a845496"
+    },
+    {
+      "id": "tool-sequencing",
+      "path": "docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json",
+      "producer": "rc-acceptance-tool-sequencing.mjs",
+      "schema": "internal://abu/rc-tool-sequencing",
+      "digest": "1c5a70fdd32579968bdc2d8cee727fb1ba9c9e16c1047e803927f69422944f8d"
+    },
+    {
+      "id": "secret-scan",
+      "path": "docs/engineering-os/qa/deployed-secret-exposure.json",
+      "producer": "scan-deployed-secrets.ts",
+      "schema": "internal://abu/deployed-secret-exposure",
+      "digest": "146cb6e54a51d2c1d43a0f72069912035a1ae61bcf6ba3c6c7f911a6acccf15d"
+    }
+  ],
+  "requiredClaims": [
+    "secret-scan",
+    "calendar",
+    "whatsapp",
+    "temporal",
+    "replacement-paths",
+    "tool-sequencing",
+    "historical-corpus"
+  ],
+  "whyCertified": "Sealed from existing machine state. Verdicts are copied verbatim from QA_MONSTER_REPORT.json; this capsule cannot promote them. A reader reconstructs the certified artifact, harness, evidence digests and provenance from this file alone; verify with scripts/verify-capsule.mjs.",
+  "capsuleId": "938c296f5375c829140172783259372149959d19f8b589bf669d01deff3e9d84"
+}
