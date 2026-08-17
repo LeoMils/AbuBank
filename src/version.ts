@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.288.0-earonly',
-  buildLabel: 'AbuBank 0.288.0 — FINAL MACHINE-CLOSURE PASS. (1) YARDEN ESCAPE CLASS FIX: spouse-of-descendant in-laws (grandchild-in-law כלה/חתן) are first-class relative to Martita on BOTH paths (shapeFamilyAnswer + describeRelation.detectSpouseOfDescendant); ירדן+גלעד resolve, gendered, no invented relation. (2) 13 red voice/STT tests RESOLVED: classified (stale-after-Groq/Gemini-client-removal) + updated to assert the NEW server-only architecture, not weakened; full suite green. (3) DATED-SEARCH: news/latest-result freshness is now a real GROUNDED+FRESH capability (Tavily published_date / Brave page_age carried to the freshness oracle; answer only ≤21d dated, else decline). Priors: TEMPORAL=GROUNDED+FRESH weather/FX dated APIs; tool-sequencing RAW-EVENT oracle; replacement-path proofs (TTS→STT round-trip). Do NOT merge (production serves an older build; 3 old keys await owner revocation).',
+  version:    '0.289.0-earonly',
+  buildLabel: 'AbuBank 0.289.0 — MONSTER QA HARDENING (distinct RC identity; supersedes 0.288.0). RUNTIME change: (A6) retrieved web content is UNTRUSTED DATA — retrievalGuard neutralizes injection directives (override-instructions / reveal-secret / tool-call / recipient-exfil / forged-authority) BEFORE online synthesis; the online path executes nothing from content. QA machinery (not shipped runtime): (A2) deployed-secret scanner REPAIRED + calibrated — explicit target, fail-closed, chunk-graph, credential-material; (B1) canonical qa:monster orchestrator. Priors (still shipped): Yarden spouse-of-descendant CLASS fix (corpus north-star=0); 13 red voice/STT tests resolved to server-only arch; TEMPORAL=GROUNDED+FRESH weather/FX dated + dated-search for latest-result; tool-sequencing RAW-EVENT oracle; replacement-path proofs. Do NOT merge (production serves an older build; 3 old keys await owner revocation).',
   buildDate:  '2026-08-17',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time
