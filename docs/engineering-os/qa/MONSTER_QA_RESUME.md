@@ -4,12 +4,14 @@
 `rc5/cognitive-architecture-and-acceptance` · never merge main · never deploy production without
 explicit owner authorization. Repository truth > any prompt. Machine evidence > narrative.
 
-## CANDIDATE (locked-clean; qa:monster rc = GO 9/9; RELEASE_LOCK.json frozen)
-- **CURRENT RC: `https://abu-bank-73o7i62wf-leos-projects-d3c04c09.vercel.app` · `0.290.0-earonly`** ·
-  Preview. Contains RUNTIME A6 (retrieval guard) + A7 (proxy caps) + A8 (idempotent create).
-  SUPERSEDES njy2ocyw1 (0.288.0) and ridxlew2v (0.289.0) — those predate later runtime changes; do NOT
-  certify them. RECONCILIATION LESSON: a runtime change (synthesize.ts / api/*) invalidates the RC —
-  re-deploy + re-run `qa:monster rc` and use the new identity.
+## CANDIDATE (locked-clean; area roll-up GO 9/9; RELEASE_LOCK.json frozen — AUTHORITATIVE)
+- **CURRENT RC: `https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app` · `0.291.0-earonly`** ·
+  Preview. RUNTIME_SOURCE_SHA `237bef9`. (Earlier notes referencing 73o7i62wf/0.290, njy2ocyw1/0.288,
+  ridxlew2v/0.289 are SUPERSEDED — read RELEASE_LOCK.json, not prose.) RECONCILIATION LESSON: a runtime
+  change (synthesize.ts / api/*) invalidates the RC — re-deploy + re-run `qa:monster rc`, use the new id.
+- **EXIT CONTRACT (I3) now truthful:** the 9/9 area roll-up is GO but `qa:monster rc` correctly **exits 3
+  (RC_REJECTED)** because `QA_SYSTEM=INCOMPLETE_PRODUCTIZATION` (Track B pending). Legacy `pass?0:1` would
+  have exited 0 — that false-success is closed. See `docs/engineering-os/qa/QA_MONSTER_OPERATOR.md`.
 - Bundle secret-clean via the REPAIRED calibrated scanner (explicit target, fail-closed): 27 chunks / 0 tokens.
 - HEAD `0e37e5f`; pushed. Full suite GREEN (13429). control-plane `cp_bfccc899`. Lock: RELEASE_LOCK.json.
 - NORTH-STAR AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO = 0.
@@ -37,6 +39,20 @@ explicit owner authorization. Repository truth > any prompt. Machine evidence > 
 - **A2** scanner repaired+calibrated (7534cbf). **A6** injection guard (fe339a2). **A7** proxy cost caps
   (e134a15). **A8** idempotent create — full-content dedup (e134a15). **A9** RELEASE_LOCK.json (0e37e5f).
   **A10** `qa:monster rc` = GO 9/9 on 73o7i62wf (0e37e5f). **B1** orchestrator (18ea4bc).
+
+## DONE this checkpoint (exit-contract hardening — harness-only, runtime UNCHANGED)
+- **I3 mode-aware fail-closed exit contract.** Extracted the release decision into a PURE module
+  `scripts/qa-monster-verdict.mjs` (imported by the orchestrator AND its test — one code path). Exit now
+  derives from the release state machine, never the area roll-up: `0` success / `2` usage / `3`
+  RELEASE_REJECTED (NO_GO/NOT_READY/remaining>0) / `4` INTEGRITY_FAIL (missing/malformed report, denominator
+  shrink, crashed/indeterminate area, pass-by-omission). RC success requires PRODUCT=GO ∧ QA_SYSTEM=READY ∧
+  remaining=0; production requires PRODUCTION-class evidence. `qa-monster.mjs` records `exit.{code,state,
+  reason,machineClosableUnknown,machineClosableRemaining}` into the report.
+- **B11 (partial) exit-contract self-mutation** `src/engineering-os/qaMonsterExitContract.test.ts` — 13
+  planted defects (false-success, NO_GO, dirty runtime, denominator shrink, pass-by-omission, crashed area,
+  unknown corpus, PREVIEW-not-PRODUCTION, bad mode) each fail for the RIGHT code. Part of the enforced suite
+  (13454 green). Feature-mode orchestrator exit proven 0; frozen-RC-data proven → new exit 3.
+- `npm run qa:monster <feature|rc|production> [url]` script + `QA_MONSTER_OPERATOR.md` (fresh-session).
 
 ## REMAINING MACHINE-CLOSABLE (ordered; exact next actions)
 Track A:

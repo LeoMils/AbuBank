@@ -25,8 +25,17 @@
     "RELEASE_PROMOTION_VERDICT": "NOT_YET",
     "productizationFloor": {
       "B1_orchestrator": "DONE",
+      "B11_exitContract_selfMutation": "DONE",
       "B2_B13": "PENDING"
     }
+  },
+  "exitContract": {
+    "integrity": "I3",
+    "hardened": true,
+    "note": "harness-only change; RUNTIME_SOURCE_SHA unchanged. Exit derives from the release state machine (scripts/qa-monster-verdict.mjs), never the area roll-up. Legacy pass?0:1 would have exited 0 on this GO 9/9 candidate; the contract now exits 3 (RC_REJECTED) because QA_SYSTEM=INCOMPLETE_PRODUCTIZATION.",
+    "codes": { "0": "success", "2": "usage", "3": "RELEASE_REJECTED", "4": "INTEGRITY_FAIL(fail-closed)" },
+    "proof": "src/engineering-os/qaMonsterExitContract.test.ts (13 planted-defect mutations, enforced suite); feature-mode orchestrator exit=0; frozen-RC-data → exit=3",
+    "operatorGuide": "docs/engineering-os/qa/QA_MONSTER_OPERATOR.md"
   },
   "worktree": {
     "dirtyTotal": 81,

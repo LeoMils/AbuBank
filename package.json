@@ -25,6 +25,7 @@
     "eval:behavior": "npx vite-node scripts/eval/report.ts",
     "qa:production-gate": "npx tsx scripts/text-harness-report.ts && npx tsx scripts/qa-production-gate.ts",
     "qa:seal": "node scripts/seal-scorecard.mjs",
+    "qa:monster": "node scripts/qa-monster.mjs",
     "abu:goal:arm": "node scripts/abu-goal.mjs arm",
     "abu:goal:status": "node scripts/abu-goal.mjs status",
     "abu:goal:disarm": "node scripts/abu-goal.mjs disarm",

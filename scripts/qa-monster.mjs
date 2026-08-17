@@ -20,13 +20,14 @@
 import { execSync } from 'node:child_process'
 import { readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { deriveExit, EXIT } from './qa-monster-verdict.mjs'
 
 const [mode, url] = [process.argv[2], process.argv[3]]
 if (!mode || !['rc', 'production', 'feature'].includes(mode)) {
-  console.error('usage: node scripts/qa-monster.mjs <feature|rc|production> [url]'); process.exit(2)
+  console.error('usage: node scripts/qa-monster.mjs <feature|rc|production> [url]'); process.exit(EXIT.USAGE)
 }
 if ((mode === 'rc' || mode === 'production') && !/^https?:\/\//.test(url || '')) {
-  console.error(`mode ${mode} requires an explicit http(s) URL`); process.exit(2)
+  console.error(`mode ${mode} requires an explicit http(s) URL`); process.exit(EXIT.USAGE)
 }
 
 const areas = []
@@ -40,9 +41,12 @@ function step(area, cmd, { json, evidence } = {}) {
   let detail = null
   if (json && existsSync(resolve(json))) { try { detail = JSON.parse(readFileSync(resolve(json), 'utf8')) } catch {} }
   const pass = exit === 0
+  // evidencePresent: an area that declares a json result must have produced a readable one. When it
+  // claims pass but the evidence did not materialize, the integrity scan flags pass-by-omission.
+  const evidencePresent = json ? detail !== null : true
   areas.push({ area, cmd, pass, exit, evidence: evidence ?? 'CODE', ms: Date.now() - start,
     verdict: detail?.verdict ?? detail?.score ?? (pass ? 'PASS' : 'FAIL'),
-    resultFile: json ?? null,
+    resultFile: json ?? null, evidencePresent,
     tail: out.trim().split('\n').slice(-3).join(' | ').slice(0, 300) })
   console.log(`${pass ? 'PASS' : 'FAIL'}  ${area.padEnd(26)} exit=${exit}  ${(Date.now() - start)}ms`)
   return pass
@@ -90,19 +94,18 @@ const dirty = (git('git status --short', '') || '').split('\n').filter(Boolean).
 const dirtyRuntime = dirty.filter((f) => /^(api\/|src\/)/.test(f) && !/\.test\.(ts|tsx)$/.test(f) && !/^src\/(eval|.*\/diagnostics)\//.test(f))
 const WORKTREE_RUNTIME_CLEAN = dirtyRuntime.length === 0
 
-const productAreas = areas.filter((a) => ['security-scan', 'calendar', 'whatsapp', 'current-info-freshness', 'replacement-paths', 'tool-sequencing', 'historical-corpus'].includes(a.area))
-const qaGateAreas = areas.filter((a) => ['typecheck', 'unit-suite'].includes(a.area))
-const pass = areas.every((a) => a.pass)
+const pass = areas.every((a) => a.pass) // legacy area-level roll-up (back-compat field only)
 
-// ── Integrity #5 · SPLIT the verdicts (never let one GO imply more than its denominator proves) ──
-// Productization floor: B1 done; B2–B13 pending (updated as they land). QA_SYSTEM is READY only when the
-// gates pass AND the runtime worktree is clean AND productization is complete.
+// ── Integrity #3 + #5 · mode-aware, fail-closed exit contract (one shared code path) ─────────────
+// Verdicts and the process exit code are BOTH derived from scripts/qa-monster-verdict.mjs — the same
+// pure module the self-mutation test (src/engineering-os/qaMonsterExitContract.test.ts) exercises.
+// Productization floor: B1 done; B2–B13 pending (flip productizationComplete when they land).
 const PRODUCTIZATION = { B1_orchestrator: 'DONE', B2_B13: 'PENDING' }
-const PRODUCT_CANDIDATE_VERDICT = (mode === 'feature') ? 'N/A' : (productAreas.length > 0 && productAreas.every((a) => a.pass) && (corpus?.score?.STILL_OPEN ?? 1) === 0 ? 'GO' : 'NO_GO')
-const QA_SYSTEM_VERDICT = (qaGateAreas.every((a) => a.pass) && WORKTREE_RUNTIME_CLEAN)
-  ? (PRODUCTIZATION.B2_B13 === 'DONE' ? 'READY' : 'INCOMPLETE_PRODUCTIZATION')
-  : 'NOT_READY'
-const RELEASE_PROMOTION_VERDICT = (PRODUCT_CANDIDATE_VERDICT === 'GO' && QA_SYSTEM_VERDICT === 'READY') ? 'ELIGIBLE_PENDING_OWNER' : 'NOT_YET'
+const productizationComplete = PRODUCTIZATION.B2_B13 === 'DONE'
+const corpusStillOpen = corpus?.score?.STILL_OPEN ?? null
+const decision = deriveExit({ mode, areas, corpusStillOpen, worktreeRuntimeClean: WORKTREE_RUNTIME_CLEAN, productizationComplete })
+const { PRODUCT_CANDIDATE_VERDICT, QA_SYSTEM_VERDICT, RELEASE_PROMOTION_VERDICT } = decision.verdicts
+  ?? { PRODUCT_CANDIDATE_VERDICT: 'NOT_PROVEN', QA_SYSTEM_VERDICT: 'NOT_READY', RELEASE_PROMOTION_VERDICT: 'BLOCKED' }
 
 const report = {
   $schema: 'internal://abu/qa-monster', mode, target: url ?? null, when: new Date().toISOString(),
@@ -113,7 +116,9 @@ const report = {
   },
   worktree: { dirtyTotal: dirty.length, dirtyRuntime, WORKTREE_RUNTIME_CLEAN },
   verdicts: { PRODUCT_CANDIDATE_VERDICT, QA_SYSTEM_VERDICT, RELEASE_PROMOTION_VERDICT, productizationFloor: PRODUCTIZATION },
-  verdict: pass ? 'GO' : 'NO_GO', // legacy area-level roll-up (kept for back-compat; see verdicts.* for release semantics)
+  exit: { code: decision.code, state: decision.state, reason: decision.reason,
+    machineClosableUnknown: decision.machineClosableUnknown, machineClosableRemaining: decision.machineClosableRemaining },
+  verdict: pass ? 'GO' : 'NO_GO', // legacy area-level roll-up (kept for back-compat; see verdicts.* + exit.* for release semantics)
   counts: {
     areas: areas.length, pass: areas.filter((a) => a.pass).length, fail: areas.filter((a) => !a.pass).length,
     AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO: corpus?.score?.STILL_OPEN ?? null,
@@ -125,5 +130,8 @@ const report = {
 writeFileSync(resolve('docs/eval/QA_MONSTER_REPORT.json'), JSON.stringify(report, null, 2) + '\n')
 console.log(`\n=== areas ${report.counts.pass}/${report.counts.areas} · PRODUCT=${PRODUCT_CANDIDATE_VERDICT} · QA_SYSTEM=${QA_SYSTEM_VERDICT} · RELEASE=${RELEASE_PROMOTION_VERDICT} · ${Math.round(report.runtimeMs / 1000)}s ===`)
 console.log(`identity: runtime=${RUNTIME_SOURCE_SHA} harness=${HARNESS_SHA?.slice(0, 8)} build=${DEPLOYED_BUILD_ID} · worktree runtime-clean=${WORKTREE_RUNTIME_CLEAN}`)
+console.log(`exit: code=${decision.code} state=${decision.state} · ${decision.reason}`)
 console.log('wrote docs/eval/QA_MONSTER_REPORT.json')
-process.exit(pass ? 0 : 1)
+// Fail-closed, mode-aware exit. NEVER `pass ? 0 : 1` — success derives from the release state machine,
+// and a missing/malformed/incomplete report yields INTEGRITY_FAIL (exit 4), never a default success.
+process.exit(decision.code)
