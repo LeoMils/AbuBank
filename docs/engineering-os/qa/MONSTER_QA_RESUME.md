@@ -4,10 +4,15 @@
 `rc5/cognitive-architecture-and-acceptance` · never merge main · never deploy production without
 explicit owner authorization. Repository truth > any prompt. Machine evidence > narrative.
 
-## CANDIDATE (locked-clean, all deployed acceptance passed on it)
-- RC: `https://abu-bank-njy2ocyw1-leos-projects-d3c04c09.vercel.app` · build `0.288.0-earonly` · Preview.
-- Bundle secret-clean via the REPAIRED scanner (explicit target, fail-closed): 27 chunks / 0 tokens.
-- HEAD at last commit: `18ea4bc` (qa-monster + fixes). Full suite GREEN (552 files / 13421 tests).
+## CANDIDATE (locked-clean; qa:monster rc = GO 9/9; RELEASE_LOCK.json frozen)
+- **CURRENT RC: `https://abu-bank-73o7i62wf-leos-projects-d3c04c09.vercel.app` · `0.290.0-earonly`** ·
+  Preview. Contains RUNTIME A6 (retrieval guard) + A7 (proxy caps) + A8 (idempotent create).
+  SUPERSEDES njy2ocyw1 (0.288.0) and ridxlew2v (0.289.0) — those predate later runtime changes; do NOT
+  certify them. RECONCILIATION LESSON: a runtime change (synthesize.ts / api/*) invalidates the RC —
+  re-deploy + re-run `qa:monster rc` and use the new identity.
+- Bundle secret-clean via the REPAIRED calibrated scanner (explicit target, fail-closed): 27 chunks / 0 tokens.
+- HEAD `0e37e5f`; pushed. Full suite GREEN (13429). control-plane `cp_bfccc899`. Lock: RELEASE_LOCK.json.
+- NORTH-STAR AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO = 0.
 
 ## DONE (do NOT redo — frozen/committed; reuse the mechanisms)
 - **A0** reconciled (branch/HEAD/RC/build verified from git + /api/health).
@@ -28,25 +33,21 @@ explicit owner authorization. Repository truth > any prompt. Machine evidence > 
 - **B1** canonical orchestrator (18ea4bc): `node scripts/qa-monster.mjs <feature|rc|production> [url]`
   → `docs/eval/QA_MONSTER_REPORT.json`. Reuses all frozen scripts. `feature` = GO.
 
+## DONE since last checkpoint
+- **A2** scanner repaired+calibrated (7534cbf). **A6** injection guard (fe339a2). **A7** proxy cost caps
+  (e134a15). **A8** idempotent create — full-content dedup (e134a15). **A9** RELEASE_LOCK.json (0e37e5f).
+  **A10** `qa:monster rc` = GO 9/9 on 73o7i62wf (0e37e5f). **B1** orchestrator (18ea4bc).
+
 ## REMAINING MACHINE-CLOSABLE (ordered; exact next actions)
 Track A:
 - **A5 stochastic reliability** — pre-registered risk-based sampling for stochastic claims (golden
   session, online freshness, family resolution). Define sample plan/stopping/pass-rule BEFORE running;
   record the full distribution; a critical single failure is not averaged away. Budget from MEASURED
-  wall-time/provider-calls (do NOT invent Leo's spend). Suggest: N=5–10 golden runs + N per online class.
-- **A7 billing-abuse** — the 4 server proxies (`/api/abuai-{chat,online,stt,tts}`) are UNAUTHENTICATED
-  billable relays. Intended access model = no-login personal PWA (Martita 80+), so auth is a real
-  PRODUCT/OWNER decision, NOT a machine defect. Machine-closable NOW: bounded per-request LIMITS
-  (TTS input length cap, STT audio-size cap, chat max_tokens/messages cap) to cut cost-amplification
-  without auth. Add + test; keep the auth/rate-limit question as an owner decision.
-- **A8 idempotency + PWA** — prove a duplicate tool-result / network retry / resumed turn does NOT
-  create duplicate Calendar events or messages (safe-isolated). Certify PWA states (fresh/warm/SW
-  update/activation/cache convergence) via e2e/service-worker + persistence specs against the RC.
-- **A9 candidate freeze** — emit an exact freeze record (source SHA, build id, deploy id, bundle
-  fingerprint, env-contract fingerprint by NAME only, control-plane id, capability manifest id).
-- **A10 full canonical denominator** — run `node scripts/qa-monster.mjs rc <njy2ocyw1>` end-to-end
-  (~15 min: it re-runs calendar Playwright + all acceptance) to get the consolidated GO/NO_GO on the
-  full set, not the representative sample. (feature-mode GO already proven.)
+  wall-time/provider-calls (do NOT invent Leo's spend). Suggest N=5–10 golden runs + N per online class.
+  NOTE: `generativeMarathon` (random-seed) + `relationTermMatrix` (O(n²), 90s) are the borderline tests
+  — a qa:monster `unit-suite` flake cleared on re-run; a real pre-registered policy would formalize this.
+- **A8-extra PWA** — certify PWA states (fresh/warm/SW update/activation/cache convergence) via
+  e2e/service-worker + persistence specs against the RC (idempotency + persisted-state already proven).
 Track B (productization floor; after A):
 - **B2** measure per-tier cost/runtime; **B3** capability contract/admission+retirement; **B4** change-
   impact→evidence-invalidation; **B5** test-integrity (sensitivity/specificity on co-changed detectors);
