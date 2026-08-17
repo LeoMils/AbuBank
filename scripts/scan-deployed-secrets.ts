@@ -1,69 +1,49 @@
 /*
- * scan-deployed-secrets.ts — READ-ONLY secret-exposure scoping of shipped bundles. (Stage 3C §2,§9)
- *   npx tsx scripts/scan-deployed-secrets.ts
+ * scan-deployed-secrets.ts — READ-ONLY deployed-bundle credential scan (canonical release authority).
+ *   npx tsx scripts/scan-deployed-secrets.ts <url> [<url> ...]
  * ════════════════════════════════════════════════════════════════════════════════════════════════
- * Fetches the ACTUAL shipped HTML/JS of each target and classifies every contract key by exposure.
- * REDACTED only — never prints or persists a real secret value. Distinguishes a confirmed credential
- * leak from legitimate public client configuration (region/version/commit).
+ * FIXED (A2): the URL argument is now REQUIRED and materially honored — no hidden hardcoded target, so
+ * certification can never silently inspect the wrong deployment. Unreachable targets FAIL CLOSED
+ * (UNREACHABLE, never CLEAN). Scans the real HTML + reachable client chunk graph for credential
+ * MATERIAL (raw token shapes), not VITE_ names. Redacted fingerprints only. The scan logic is the
+ * calibrated src/engineering-os/deployedSecretScan.ts (QA-of-QA: deployedSecretScan.test.ts).
+ * Exit: 0 = every target CLEAN · 1 = a target EXPOSED · 2 = a target UNREACHABLE / usage error.
  */
 import { writeFileSync } from 'node:fs'
-import { resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { classifyShippedKeys, scanBundleForCredentialMaterial } from '../src/engineering-os/bundleSecretScan.ts'
+import { resolve } from 'node:path'
+import { scanTargets, type ScanFetch } from '../src/engineering-os/deployedSecretScan.ts'
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const p = (r: string) => resolve(ROOT, r)
-
-const TARGETS = [
-  { label: 'RC (0.286 tested)', url: 'https://abu-bank-f3dpms0ta-leos-projects-d3c04c09.vercel.app' },
-  { label: 'canonical alias', url: 'https://abu-ela-rc.vercel.app' },
-]
-
-async function fetchBundle(base: string): Promise<{ text: string; buildVersion?: string; assets: string[] }> {
-  let buildVersion: string | undefined
-  try { buildVersion = (await (await fetch(`${base}/api/health`)).json())?.buildVersion } catch { /* */ }
-  const html = await (await fetch(`${base}/`)).text()
-  const assets = [...new Set([...html.matchAll(/\/assets\/[^"']+\.js/g)].map((m) => m[0]))]
-  let text = html
-  for (const a of assets) { try { text += await (await fetch(`${base}${a}`)).text() } catch { /* */ } }
-  return { text, buildVersion, assets }
+const targets = process.argv.slice(2).filter((a) => /^https?:\/\//.test(a))
+if (targets.length === 0) {
+  console.error('usage: npx tsx scripts/scan-deployed-secrets.ts <url> [<url> ...]  (explicit target(s) REQUIRED — no default)')
+  process.exit(2)
 }
 
-async function main() {
-  const report: Record<string, unknown> = {
-    $schema: 'internal://abu/deployed-secret-exposure',
-    scanner: 'scripts/scan-deployed-secrets.ts (classifyShippedKeys)',
-    note: 'READ-ONLY. Redacted values only. CONFIRMED_SECRET_EXPOSED = a credential-kind key shipped with a real value. PUBLIC_CLIENT_CONFIGURATION = legitimate public config.',
-    targets: [],
-  }
-  const targets: unknown[] = []
-  for (const t of TARGETS) {
-    try {
-      const { text, buildVersion, assets } = await fetchBundle(t.url)
-      const classes = classifyShippedKeys(text)
-      const confirmed = classes.filter((c) => c.exposure === 'CONFIRMED_SECRET_EXPOSED')
-      // AUTHORITATIVE: raw credential-material scan (format-agnostic). Catches a renamed/inlined/
-      // minified secret that the VITE_-name classification misses (the production false-pass).
-      const raw = scanBundleForCredentialMaterial(text)
-      targets.push({
-        label: t.label, url: t.url, buildVersion, bundleBytes: text.length, assets,
-        authoritativeRawCredentialMaterial: { clean: raw.clean, findings: raw.findings },
-        nameBasedConfirmedSecretCount: confirmed.length,
-        classifications: classes.filter((c) => c.exposure !== 'NOT_PRESENT_IN_SHIPPED_BUNDLE'),
-      })
-      console.log(`── ${t.label} (${buildVersion ?? '??'}) ${text.length}B`)
-      console.log(`   AUTHORITATIVE raw-credential scan: ${raw.clean ? 'CLEAN' : `${raw.findings.length} SECRET(S) EXPOSED`}`)
-      for (const f of raw.findings) console.log(`     [CONFIRMED_SECRET_EXPOSED] ${f.provider} ${f.redactedFingerprint} (${f.length} chars)`)
-      for (const c of classes) if (c.exposure !== 'NOT_PRESENT_IN_SHIPPED_BUNDLE') {
-        console.log(`   [name-scan ${c.exposure}] ${c.name} (${c.kind}) ${c.redactedSample ?? ''}`)
-      }
-    } catch (e) {
-      targets.push({ label: t.label, url: t.url, error: String((e as Error).message || e) })
-      console.log(`── ${t.label}: FETCH ERROR ${(e as Error).message}`)
-    }
-  }
-  report.targets = targets
-  writeFileSync(p('docs/engineering-os/qa/deployed-secret-exposure.json'), JSON.stringify(report, null, 2) + '\n')
-  console.log('→ wrote docs/engineering-os/qa/deployed-secret-exposure.json')
+const realFetch: ScanFetch = async (url) => {
+  const r = await fetch(url)
+  return { ok: r.ok, text: () => r.text() }
 }
-main().catch((e) => { console.error('SCAN FAILED:', e); process.exit(1) })
+
+const { pass, targets: results } = await scanTargets(targets, realFetch)
+
+for (const t of results) {
+  console.log(`── ${t.target}  [${t.verdict}]  chunks=${t.chunks} bytes=${t.bytes}`)
+  if (t.verdict === 'UNREACHABLE') console.log(`   ✗ ${t.error}`)
+  for (const f of t.findings) console.log(`   [CONFIRMED_SECRET_EXPOSED] ${f.provider} ${f.redactedFingerprint} (${f.length} chars)`)
+  for (const n of t.confirmedSecretNames) console.log(`   [name-scan CONFIRMED_SECRET_EXPOSED] ${n}`)
+  if (t.publicConfig.length) console.log(`   [public config] ${t.publicConfig.join(', ')}`)
+}
+
+const report = {
+  $schema: 'internal://abu/deployed-secret-exposure',
+  scanner: 'src/engineering-os/deployedSecretScan.ts (calibrated; explicit target; fail-closed)',
+  note: 'READ-ONLY. Redacted fingerprints only. Explicit target(s) honored; unreachable → UNREACHABLE (never CLEAN).',
+  when: new Date().toISOString(),
+  pass, targets: results,
+}
+writeFileSync(resolve('docs/engineering-os/qa/deployed-secret-exposure.json'), JSON.stringify(report, null, 2) + '\n')
+console.log(`\n=== ${pass ? 'ALL CLEAN' : 'NOT CLEAN'} (${results.filter((r) => r.verdict === 'CLEAN').length}/${results.length} clean) ===`)
+console.log('wrote docs/engineering-os/qa/deployed-secret-exposure.json')
+const anyExposed = results.some((r) => r.verdict === 'EXPOSED')
+const anyUnreachable = results.some((r) => r.verdict === 'UNREACHABLE')
+process.exit(anyUnreachable ? 2 : anyExposed ? 1 : 0)
