@@ -37,7 +37,11 @@
     "abu:goal:disarm": "node scripts/abu-goal.mjs disarm",
     "check": "tsc --noEmit && vitest run",
     "workbench": "node scripts/ai-workbench.js",
-    "qa:production-verdict": "npx tsx scripts/qa-production-verdict.ts"
+    "qa:production-verdict": "npx tsx scripts/qa-production-verdict.ts",
+    "qa:rehearsal": "node scripts/promotion-rehearsal.mjs",
+    "qa:clean-room": "node scripts/clean-room-drill.mjs",
+    "qa:prod-synthetic": "node scripts/prod-synthetic.mjs",
+    "qa:escape": "node scripts/escape-to-detector.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",

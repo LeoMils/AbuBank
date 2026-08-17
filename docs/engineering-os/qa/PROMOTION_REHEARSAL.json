@@ -1,0 +1,46 @@
+{
+  "$schema": "internal://abu/promotion-rehearsal",
+  "when": "2026-08-17T22:58:09.419Z",
+  "PROMOTION_REHEARSAL": "PASS",
+  "PRODUCTION_PROMOTION_ELIGIBLE": "PENDING_OWNER_AUTHORIZATION_AND_OWNER_ACTIONS",
+  "EXACT_LOCKED_CANDIDATE": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
+  "CERTIFICATION_CAPSULE_ID": "7deb4300695b800eac7e07e5e281b55afa49e6f53616201200c5313aac22efe8",
+  "note": "No Production deploy performed. Owner actions (key revocation, prod auth, no-login policy) remain per OWNER_HUMAN_AUTHORITY.json. Env presence is verified at the actual Production deploy.",
+  "checks": [
+    {
+      "name": "candidate-unique",
+      "pass": true,
+      "detail": "PROVEN"
+    },
+    {
+      "name": "capsule-verifies",
+      "pass": true,
+      "detail": "integrity=true completeness=true"
+    },
+    {
+      "name": "runtime-provenance",
+      "pass": true,
+      "detail": "PROVEN"
+    },
+    {
+      "name": "rollback-target-valid",
+      "pass": true,
+      "detail": "clean"
+    },
+    {
+      "name": "prod-env-contract-known",
+      "pass": true,
+      "detail": "required names defined: OPENAI_API_KEY,VITE_AZURE_TTS_KEY (presence verified at prod deploy)"
+    },
+    {
+      "name": "authority-clean",
+      "pass": true,
+      "detail": "ownerNoProof=0"
+    },
+    {
+      "name": "promotion-mechanism-known",
+      "pass": true,
+      "detail": "exact-artifact promote if supported else new candidate (DEPLOYED_UNVERIFIED); qa:monster production ready; Production capsule dest = CERTIFICATION_CAPSULE.json"
+    }
+  ]
+}
