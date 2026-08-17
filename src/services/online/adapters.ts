@@ -88,11 +88,13 @@ export const tavilyProvider: OnlineProvider = {
         body: JSON.stringify({ query, search_depth: 'basic', include_answer: true, max_results: 10 }),
       })
       if (!res.ok) return fail(started, 'PROVIDER_FAILED')
-      const d = (await res.json()) as { answer?: string; results?: Array<{ title?: string; url?: string; content?: string }> }
+      const d = (await res.json()) as { answer?: string; results?: Array<{ title?: string; url?: string; content?: string; published_date?: string }> }
       const sources: ProviderSource[] = (d.results ?? []).filter((r) => typeof r.url === 'string').map((r) => ({
         url: r.url!,
         ...(r.title ? { title: r.title } : {}),
         ...(r.content ? { content: String(r.content).replace(/\s+/g, ' ').trim() } : {}),
+        // Freshness evidence: Tavily returns `published_date` (esp. for news) — carry it verbatim.
+        ...(r.published_date ? { publishedDate: String(r.published_date) } : {}),
       }))
       return { ok: true, answer: typeof d.answer === 'string' ? d.answer.trim() : '', sources, latencyMs: Math.round(nowMs() - started) }
     } catch (e) { return fail(started, (e as { name?: string })?.name === 'AbortError' ? 'TIMEOUT' : 'PROVIDER_FAILED') }
@@ -114,12 +116,14 @@ export const braveProvider: OnlineProvider = {
       const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&search_lang=he&count=6`
       const res = await fetchWithTimeout(url, { method: 'GET', headers: { Accept: 'application/json', 'X-Subscription-Token': key } })
       if (!res.ok) return fail(started, 'PROVIDER_FAILED')
-      const d = (await res.json()) as { web?: { results?: Array<{ title?: string; url?: string; description?: string }> } }
+      const d = (await res.json()) as { web?: { results?: Array<{ title?: string; url?: string; description?: string; page_age?: string; age?: string }> } }
       const results = d.web?.results ?? []
       const sources: ProviderSource[] = results.filter((r) => typeof r.url === 'string').map((r) => ({
         url: r.url!,
         ...(r.title ? { title: r.title } : {}),
         ...(r.description ? { content: String(r.description).replace(/\s+/g, ' ').trim() } : {}),
+        // Freshness evidence: Brave returns `page_age` (ISO) and/or `age` (human). Prefer the ISO age.
+        ...(r.page_age || r.age ? { publishedDate: String(r.page_age ?? r.age) } : {}),
       }))
       // Brave returns no synthesized answer; hand back the top snippet as context.
       const answer = results[0]?.description ? String(results[0].description).trim() : ''

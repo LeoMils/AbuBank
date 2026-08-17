@@ -54,6 +54,37 @@ export function classifyLiveDomain(query: string): LiveDomain | null {
   return null
 }
 
+// ── DATED-SEARCH freshness evidence (news / latest results) ────────────────────
+// A latest/news answer is only CURRENT when a recent DATED source supports it. Provider results carry
+// a publication date (Tavily published_date, Brave page_age); this normalizes them (ISO, "Aug 15 2026",
+// or relative "2 days ago") and returns the freshest — the evidence the freshness oracle grades. Never
+// invents a date: an unparseable/absent date contributes nothing (→ the caller declines, not certifies).
+export function parseProviderDate(raw: string | undefined, nowIso: string): string | null {
+  if (!raw || typeof raw !== 'string') return null
+  const rel = /(\d+)\s*(second|minute|hour|day|week|month|year)s?\s*ago/i.exec(raw)
+  if (rel) {
+    const n = Number(rel[1])
+    const ms: Record<string, number> = { second: 1e3, minute: 6e4, hour: 36e5, day: 864e5, week: 6.048e8, month: 2.592e9, year: 3.1536e10 }
+    const step = ms[rel[2]!.toLowerCase()]
+    if (step) return new Date(Date.parse(nowIso) - n * step).toISOString()
+  }
+  const t = Date.parse(raw)
+  return Number.isNaN(t) ? null : new Date(t).toISOString()
+}
+
+export function freshestPublishedDate(
+  sources: Array<{ publishedDate?: string }>,
+  nowIso: string,
+): { iso: string; ageDays: number } | null {
+  const dates = sources.map((s) => parseProviderDate(s.publishedDate, nowIso)).filter((d): d is string => !!d)
+  if (dates.length === 0) return null
+  const freshest = dates.reduce((a, b) => (Date.parse(a) >= Date.parse(b) ? a : b))
+  return { iso: freshest, ageDays: (Date.parse(nowIso) - Date.parse(freshest)) / 86_400_000 }
+}
+
+/** Max age (days) for a "latest result / recent news" answer to count as CURRENT. */
+export const RESULT_MAX_AGE_DAYS = 21
+
 // ── small dated-JSON fetch (edge; never throws) ────────────────────────────────
 async function fetchJson<T>(url: string, ms = 4000): Promise<T | null> {
   const c = new AbortController()

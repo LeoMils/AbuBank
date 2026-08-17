@@ -47,13 +47,33 @@ describe('/api/abuai-online — live-fact freshness gate', () => {
     expect(j.diag?.answerPath).toBe('live-fx')
   })
 
-  it('latest RESULT → honest decline (no dated source), never a fabricated/stale answer', async () => {
+  it('latest RESULT → honest decline (no search provider / no dated source), never fabricated/stale', async () => {
     (globalThis as unknown as { process: { env: Record<string, string> } }).process = { env: { OPENAI_API_KEY: 'k' } }
     routeFetch(() => null)
     const j = await (await handler(post({ query: 'מי ניצח בסופרבול האחרון?', lang: 'he' }))).json() as OnlineResp
     expect(j.ok).toBe(false)
     expect(j.errorCode).toBe('ONLINE_NO_RESULTS')
     expect(j.answer).toBeUndefined()
+    expect(j.diag?.answerPath).toBe('live-decline-result')
+  })
+
+  it('latest RESULT with a FRESH dated source → ANSWERS (dated-search capability), path=live-result-dated', async () => {
+    (globalThis as unknown as { process: { env: Record<string, string> } }).process = { env: { ONLINE_PROVIDER: 'tavily', TAVILY_API_KEY: 'k', OPENAI_API_KEY: 'k', ONLINE_DEEP_FETCH: '0' } }
+    routeFetch((u) => {
+      if (u.includes('api.tavily.com')) return { ok: true, json: { answer: '', results: [{ url: 'https://sports.example', title: 'Final score', content: 'Team A won 30-27', published_date: TODAY }] } }
+      if (u.includes('api.openai.com')) return { ok: true, json: { choices: [{ message: { content: JSON.stringify({ status: 'answer', answer: 'קבוצה A ניצחה שלושים למול עשרים ושבע.' }) } }] } }
+      return null
+    })
+    const j = await (await handler(post({ query: 'מי ניצח במשחק האחרון?', lang: 'he' }))).json() as OnlineResp
+    expect(j.ok).toBe(true)
+    expect(j.diag?.answerPath).toBe('live-result-dated')
+  })
+
+  it('latest RESULT with only a STALE dated source → honest decline (never certify stale)', async () => {
+    (globalThis as unknown as { process: { env: Record<string, string> } }).process = { env: { ONLINE_PROVIDER: 'tavily', TAVILY_API_KEY: 'k', OPENAI_API_KEY: 'k', ONLINE_DEEP_FETCH: '0' } }
+    routeFetch((u) => u.includes('api.tavily.com') ? { ok: true, json: { results: [{ url: 'https://old.example', title: 'old', content: 'x', published_date: '2020-01-01' }] } } : null)
+    const j = await (await handler(post({ query: 'מי ניצח בסופרבול האחרון?', lang: 'he' }))).json() as OnlineResp
+    expect(j.ok).toBe(false)
     expect(j.diag?.answerPath).toBe('live-decline-result')
   })
 

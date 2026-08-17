@@ -5,7 +5,7 @@
  * structurally impossible — an FX value comes from the authoritative API, never page text.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { classifyLiveDomain, resolveWeather, resolveFx, resolveLiveFact } from './liveFacts'
+import { classifyLiveDomain, resolveWeather, resolveFx, resolveLiveFact, parseProviderDate, freshestPublishedDate } from './liveFacts'
 import { evaluateFreshness } from '../../engineering-os/temporalFreshness'
 
 const NOW = '2026-08-17T00:00:00Z'
@@ -111,9 +111,28 @@ describe('resolveLiveFact — routing + honest decline for undatable results', (
   it('non-live-fact queries hand back to the existing path', async () => {
     expect((await resolveLiveFact('מי ראש הממשלה עכשיו?', 'he', NOW)).kind).toBe('not_live_fact')
   })
-  it('latest RESULT declines (no dated source) rather than return a possibly-stale grounded value', async () => {
+  it('latest RESULT declines from the PURE resolver (dated-search is done at the endpoint with a provider)', async () => {
     const r = await resolveLiveFact('מי ניצח בסופרבול האחרון?', 'he', NOW)
     expect(r.kind).toBe('decline')
     if (r.kind === 'decline') expect(r.domain).toBe('result')
+  })
+})
+
+describe('DATED-SEARCH freshness evidence (news / latest results)', () => {
+  it('parseProviderDate handles ISO, plain date, and relative "N days ago"; never invents', () => {
+    expect(parseProviderDate('2026-08-15', NOW)!.slice(0, 10)).toBe('2026-08-15')
+    expect(parseProviderDate('2026-08-15T09:00:00Z', NOW)!.slice(0, 10)).toBe('2026-08-15')
+    expect(parseProviderDate('2 days ago', NOW)!.slice(0, 10)).toBe('2026-08-15') // NOW=08-17
+    expect(parseProviderDate('not a date', NOW)).toBeNull()
+    expect(parseProviderDate(undefined, NOW)).toBeNull()
+  })
+  it('freshestPublishedDate picks the most recent parseable source date, ignoring undated ones', () => {
+    const f = freshestPublishedDate([{ publishedDate: '2026-08-10' }, { publishedDate: '2026-08-16' }, { publishedDate: undefined }, { publishedDate: 'junk' }], NOW)
+    expect(f).not.toBeNull()
+    expect(f!.iso.slice(0, 10)).toBe('2026-08-16')
+    expect(Math.round(f!.ageDays)).toBe(1)
+  })
+  it('returns null when NO source carries a parseable date (→ caller declines, never certifies)', () => {
+    expect(freshestPublishedDate([{ publishedDate: undefined }, { publishedDate: 'yesterday-ish' }], NOW)).toBeNull()
   })
 })

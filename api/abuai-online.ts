@@ -21,7 +21,7 @@ import { generalSearchLoop } from '../src/services/online/generalSearch'
 import { synthesizeAnswer } from '../src/services/online/synthesize'
 import { onlineGeneralSearchEnabled } from '../src/services/online/flags'
 import { isTemporalQuery, evaluateFreshness } from '../src/engineering-os/temporalFreshness'
-import { classifyLiveDomain, resolveLiveFact } from '../src/services/online/liveFacts'
+import { classifyLiveDomain, resolveLiveFact, freshestPublishedDate, RESULT_MAX_AGE_DAYS } from '../src/services/online/liveFacts'
 
 export const config = { runtime: 'edge' }
 
@@ -324,6 +324,38 @@ export default async function handler(req: Request): Promise<Response> {
   const liveDomain = classifyLiveDomain(query)
   if (liveDomain) {
     const nowIso = new Date().toISOString()
+
+    // 'result' (latest sports/election result) → DATED-SEARCH: answer ONLY when a recent DATED source
+    // supports it (carry the provider's publication date → freshness oracle), else decline honestly.
+    // This turns "grounded but undatable → decline" into a real capability WITHOUT ever certifying a
+    // stale/undated result. Requires a real search provider (Tavily/Brave) + the judge (OpenAI key).
+    if (liveDomain === 'result') {
+      const provider = selectProvider(env)
+      if (provider.id !== 'openai' && provider.available(env)) {
+        diag.reached = true
+        const r = await provider.search(query, lang, env)
+        if (r.ok && r.sources.length > 0) {
+          diag.sourceCount = r.sources.length
+          const fresh = freshestPublishedDate(r.sources, nowIso)
+          if (fresh && fresh.ageDays <= RESULT_MAX_AGE_DAYS) {
+            const judged = await judgedAnswer(query, provider, r, lang, env)
+            if (judged.status === 'answer') {
+              const f = evaluateFreshness({ query, answered: true, nowIso, sourceDatesIso: [fresh.iso], maxAgeDays: RESULT_MAX_AGE_DAYS })
+              if (f.satisfiesCurrentInfoClaim) {
+                diag.answerPath = 'live-result-dated'
+                diag.answerDetail = `observedAt=${fresh.iso},ageDays=${Math.round(fresh.ageDays)},verdict=${f.verdict}`
+                const srcs: OnlineSource[] = r.sources.map((s) => (s.title ? { url: s.url, title: s.title } : { url: s.url }))
+                return respond({ ok: true, answer: judged.answer, sources: srcs })
+              }
+            }
+          }
+        }
+      }
+      // No recent DATED evidence (or no search provider) → decline honestly; never certify a stale result.
+      diag.answerPath = 'live-decline-result'
+      return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
+    }
+
     const live = await resolveLiveFact(query, lang, nowIso)
     if (live.kind === 'answer') {
       const fresh = evaluateFreshness({ query, answered: true, nowIso, sourceDatesIso: [live.evidence.observedAt], maxAgeDays: live.evidence.maxAgeDays })

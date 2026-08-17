@@ -14,6 +14,11 @@ export interface ProviderSource {
    *  that a one-line synthesized `answer` throws away — a briefing and follow-ups
    *  ("tell me more about #3") are built from these, not just the headline. */
   content?: string
+  /** Publication/update timestamp from the provider (Tavily `published_date`, Brave `page_age`),
+   *  when present. This is the FRESHNESS EVIDENCE a temporal/latest/news answer needs: it is carried
+   *  search → evidence → synthesis → answer → freshness oracle so "grounded" can become "current"
+   *  only when a recent dated source supports it. Raw provider string (ISO or date); never invented. */
+  publishedDate?: string
 }
 
 export interface ProviderResult {
