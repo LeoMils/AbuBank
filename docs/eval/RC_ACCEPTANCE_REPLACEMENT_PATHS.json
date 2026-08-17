@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/rc-acceptance-replacement-paths",
   "rc": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T22:38:32.320Z",
+  "when": "2026-08-17T23:12:27.306Z",
   "rerouted": {
     "STT": "client Groq Whisper → /api/abuai-stt (OpenAI whisper-1)",
     "TTS": "Gemini client tier removed → /api/abuai-tts (OpenAI gpt-4o-mini-tts) → WebSpeech fallback",
@@ -16,7 +16,7 @@
     {
       "id": "tts.replacement",
       "pass": true,
-      "detail": "OpenAI TTS → audio/mpeg, 63360 bytes"
+      "detail": "OpenAI TTS → audio/mpeg, 73728 bytes"
     },
     {
       "id": "stt.replacement",

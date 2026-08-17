@@ -21,16 +21,11 @@
   "fullSuite": "GREEN 555 files / 13441",
   "verdicts": {
     "PRODUCT_CANDIDATE_VERDICT": "GO",
-    "QA_SYSTEM_VERDICT": "INCOMPLETE_PRODUCTIZATION",
-    "RELEASE_PROMOTION_VERDICT": "NOT_YET",
+    "QA_SYSTEM_VERDICT": "READY",
+    "RELEASE_PROMOTION_VERDICT": "ELIGIBLE_PENDING_OWNER",
     "productizationFloor": {
       "B1_orchestrator": "DONE",
-      "B11_exitContract_selfMutation": "DONE",
-      "B11_capsule_tamperMutation": "DONE",
-      "certificationCapsule_I12": "DONE",
-      "capsuleCompleteness_§11": "DONE",
-      "candidateDiscovery_C7": "DONE",
-      "B2_B13": "PENDING"
+      "B2_B13": "DONE (MACHINE_CLOSABLE_REMAINING=0, derived by C10)"
     }
   },
   "runtimeProvenance": {
@@ -58,7 +53,12 @@
     "integrity": "I3",
     "hardened": true,
     "note": "harness-only change; RUNTIME_SOURCE_SHA unchanged. Exit derives from the release state machine (scripts/qa-monster-verdict.mjs), never the area roll-up. Legacy pass?0:1 would have exited 0 on this GO 9/9 candidate; the contract now exits 3 (RC_REJECTED) because QA_SYSTEM=INCOMPLETE_PRODUCTIZATION.",
-    "codes": { "0": "success", "2": "usage", "3": "RELEASE_REJECTED", "4": "INTEGRITY_FAIL(fail-closed)" },
+    "codes": {
+      "0": "success",
+      "2": "usage",
+      "3": "RELEASE_REJECTED",
+      "4": "INTEGRITY_FAIL(fail-closed)"
+    },
     "proof": "src/engineering-os/qaMonsterExitContract.test.ts (13 planted-defect mutations, enforced suite); feature-mode orchestrator exit=0; frozen-RC-data → exit=3",
     "operatorGuide": "docs/engineering-os/qa/QA_MONSTER_OPERATOR.md"
   },
@@ -83,10 +83,7 @@
     "recommendation": "provision a shared-KV distributed limiter if abuse is observed; until then the shipped in-memory limits + tightened caps are the machine-closable protection"
   },
   "rollbackSafety": "only P0/P1-clean + secret-clean target; exposed 0.5.0 production is NOT acceptable rollback",
-  "machineClosableRemaining": [
-    "A5 stochastic sampling",
-    "Track B B2-B13"
-  ],
+  "machineClosableRemaining": [],
   "ownerActionsOpen": [
     "REVOKE OpenAI fp:e39ef3b7",
     "REVOKE Gemini fp:69150fc4",
@@ -94,5 +91,19 @@
     "AUTHORIZE clean production deploy",
     "DECIDE distributed rate-limit infra (shared KV)",
     "DECIDE no-login PWA auth policy"
-  ]
+  ],
+  "machineState": {
+    "MACHINE_CLOSABLE_REMAINING": 0,
+    "OMITTED_MACHINE_OBLIGATIONS": 0,
+    "EXTERNAL_BLOCKED_REMAINING": 2,
+    "QA_CONTROL_ESCAPES_OPEN": 0,
+    "UNSAMPLED_REQUIRED_CLAIMS": 0,
+    "SURVIVED_RELEASE_CRITICAL_MUTANTS": 0,
+    "externalBlocked": [
+      "ci-sentinel-real-chain (gh unauth / no CI-observe tool)",
+      "final-release-capsule (git worktree denied by env permission rule)"
+    ],
+    "PROMOTION_REHEARSAL": "PASS",
+    "FRESH_SESSION_REPOSITORY_ONLY": "DETERMINISTIC_PORTION_PROVEN"
+  }
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/rc-historical-corpus",
   "rc": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T22:39:04.005Z",
+  "when": "2026-08-17T23:12:57.821Z",
   "pathEquivalenceRule": "A clean replay closes a historical defect ONLY with material path-equivalence. Voice-audio escapes replayed via text = NOT_PROVEN → never closed by a text replay.",
   "score": {
     "HISTORICAL_OWNER_ESCAPES_TOTAL": 9,
@@ -73,7 +73,7 @@
         },
         {
           "in": "את שוב לא מבינה אותי",
-          "out": "סליחה על הבלבול. בדקתי שוב, ומחר באמת אין כלום ביומן שלך. אם את רוצה לקבוע משהו או סתם לדב",
+          "out": "מחר אין כלום ביומן. אם יש משהו מסוים שאת מחפשת או רוצה לתכנן, תגידי לי. אני כאן לעזור.",
           "ok": true
         }
       ]
@@ -90,12 +90,12 @@
       "evidence": [
         {
           "in": "ספרי לי על המהפכה הצרפתית",
-          "out": "המהפכה הצרפתית הייתה אירוע מרכזי בהיסטוריה העולמית שהתרחש בין השנים 1789 ל-1799. זה התחיל ",
+          "out": "המהפכה הצרפתית הייתה תקופה של שינוי פוליטי וחברתי משמעותי בצרפת שהתרחשה בין 1789 ל-1799. ה",
           "ok": true
         },
         {
           "in": "תמשיכי",
-          "out": "ב-14 ביולי 1789, ההמון הסתער על הבסטיליה, מבצר שהיה סמל לדיכוי המלוכני. האירוע הזה סימן את",
+          "out": "במהלך המהפכה, המלך לואי ה-16 הודח והוצא להורג, והוקמה הרפובליקה הצרפתית הראשונה.",
           "ok": true
         },
         {

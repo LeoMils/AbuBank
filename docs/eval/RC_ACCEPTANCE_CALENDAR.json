@@ -1,9 +1,9 @@
 {
   "$schema": "internal://abu/rc-acceptance-calendar",
   "rc": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T22:40:53.861Z",
+  "when": "2026-08-17T23:11:54.666Z",
   "event": {
-    "title": "בדיקת יומן QA445613",
+    "title": "בדיקת יומן QA300844",
     "date": "2026-08-23",
     "time1": "16:00",
     "time2": "18:30"
@@ -26,7 +26,7 @@
     {
       "id": "readback.ui",
       "pass": true,
-      "detail": "card shows \"בדיקת יומן QA445613\" @ 16:00"
+      "detail": "card shows \"בדיקת יומן QA300844\" @ 16:00"
     },
     {
       "id": "modify.store",

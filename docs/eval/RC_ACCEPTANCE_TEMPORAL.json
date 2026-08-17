@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/rc-acceptance-temporal",
   "rc": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T22:40:19.097Z",
+  "when": "2026-08-17T23:12:03.322Z",
   "evidenceClass": "PREVIEW (deployed /api/abuai-online)",
   "freshnessSemantics": "GROUNDED != CURRENT — a temporal answer needs BOTH grounding AND certifiable freshness (evaluateFreshness). Live-fact domains (weather/fx) certify from a DATED authoritative source; domains without a dated source decline honestly.",
   "groundingHonesty": "PROVEN_PASS",
@@ -11,7 +11,7 @@
     "total": 7,
     "honestBehaviourPass": 7,
     "staleFail": 0,
-    "capabilityGap": 2,
+    "capabilityGap": 1,
     "temporalRows": 5,
     "temporalFreshnessCertified": 2,
     "freshCertifiedLiveFacts": 2
@@ -25,8 +25,8 @@
     "LIVE_FACT_FRESHNESS": [
       {
         "id": "current-weather",
-        "answer": "מזג האוויר עכשיו בכפר סבא: 24°, מעונן חלקית. (נכון ל-01:30)",
-        "note": "dated weather source observedAt=2026-08-18T01:30:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 24°, מעונן חלקית. (נכון\""
+        "answer": "מזג האוויר עכשיו בכפר סבא: 23°, מעונן חלקית. (נכון ל-02:00)",
+        "note": "dated weather source observedAt=2026-08-18T02:00:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 23°, מעונן חלקית. (נכון\""
       },
       {
         "id": "current-exchange",
@@ -50,7 +50,7 @@
       "pass": true,
       "note": "non-temporal fact · answerPath=deep src=6",
       "http": 200,
-      "ms": 1699,
+      "ms": 2894,
       "ok": true,
       "answerPath": "deep",
       "temporalIntentDiag": false,
@@ -68,14 +68,14 @@
       "class": "GROUNDED_FRESHNESS_UNCERTIFIED",
       "pass": true,
       "capabilityGap": true,
-      "note": "grounded+cited, but freshness UNCERTIFIED (no source dates) → NOT a current-info PASS: \"ראש הממשלה של ישראל עכשיו הוא בנימין נתניהו.\"",
+      "note": "grounded+cited, but freshness UNCERTIFIED (no source dates) → NOT a current-info PASS: \"ראש ממשלת ישראל עכשיו הוא בנימין נתניהו.\"",
       "http": 200,
-      "ms": 1577,
+      "ms": 1857,
       "ok": true,
       "answerPath": "deep",
       "temporalIntentDiag": true,
       "sourceCount": 6,
-      "answer": "ראש הממשלה של ישראל עכשיו הוא בנימין נתניהו.",
+      "answer": "ראש ממשלת ישראל עכשיו הוא בנימין נתניהו.",
       "userMessage": ""
     },
     {
@@ -89,7 +89,7 @@
       "pass": true,
       "note": "declined honestly rather than answer stale (acceptable)",
       "http": 200,
-      "ms": 353,
+      "ms": 854,
       "ok": false,
       "errorCode": "ONLINE_NO_RESULTS",
       "answerPath": "live-decline-result",
@@ -107,14 +107,14 @@
       "currentInfoCertified": true,
       "class": "FRESH_CERTIFIED",
       "pass": true,
-      "note": "dated weather source observedAt=2026-08-18T01:30:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 24°, מעונן חלקית. (נכון\"",
+      "note": "dated weather source observedAt=2026-08-18T02:00:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 23°, מעונן חלקית. (נכון\"",
       "http": 200,
-      "ms": 660,
+      "ms": 629,
       "ok": true,
       "answerPath": "live-weather",
       "temporalIntentDiag": true,
       "sourceCount": 1,
-      "answer": "מזג האוויר עכשיו בכפר סבא: 24°, מעונן חלקית. (נכון ל-01:30)",
+      "answer": "מזג האוויר עכשיו בכפר סבא: 23°, מעונן חלקית. (נכון ל-02:00)",
       "userMessage": ""
     },
     {
@@ -128,7 +128,7 @@
       "pass": true,
       "note": "dated fx source observedAt=2026-08-17T00:00:00Z → FRESH: \"שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-17).\"",
       "http": 200,
-      "ms": 340,
+      "ms": 5149,
       "ok": true,
       "answerPath": "live-fx",
       "temporalIntentDiag": true,
@@ -141,20 +141,20 @@
       "q": "מה חדש היום בחדשות?",
       "expect": "grounded-temporal",
       "temporal": true,
-      "grounded": true,
+      "grounded": false,
       "currentInfoCertified": false,
-      "class": "GROUNDED_FRESHNESS_UNCERTIFIED",
+      "class": "HONEST_DECLINE",
       "pass": true,
-      "capabilityGap": true,
-      "note": "grounded+cited, but freshness UNCERTIFIED (no source dates) → NOT a current-info PASS: \"קטטה פרצה בסביון, ברית הגנה בין סעודיה, טורקיה ופקיסטן נחתמה\"",
+      "note": "declined honestly rather than answer stale (acceptable)",
       "http": 200,
-      "ms": 2131,
-      "ok": true,
-      "answerPath": "briefing",
+      "ms": 1888,
+      "ok": false,
+      "errorCode": "ONLINE_NO_RESULTS",
+      "answerPath": "none",
       "temporalIntentDiag": true,
       "sourceCount": 12,
-      "answer": "קטטה פרצה בסביון, ברית הגנה בין סעודיה, טורקיה ופקיסטן נחתמה, ונשיא לבנון ג'וזף עאון גינה את התקיפות האיראניות בבחריין ו",
-      "userMessage": ""
+      "answer": "",
+      "userMessage": "לא מצאתי מידע עדכני על זה כרגע. אני מעדיפה להגיד לך את זה מאשר להמציא."
     },
     {
       "id": "insufficient-evidence",
@@ -165,13 +165,16 @@
       "currentInfoCertified": false,
       "class": "HONEST_DECLINE_PASS",
       "pass": true,
-      "note": "ok=false code=ONLINE_TIMEOUT \"החיפוש האונליין לקח יותר מדי זמן. נסי שוב.\"",
-      "http": 429,
-      "ms": 223,
+      "note": "ok=false code=ONLINE_NO_RESULTS \"לא מצאתי מידע עדכני על זה כרגע. אני מעדיפה להגיד ל\"",
+      "http": 200,
+      "ms": 5890,
       "ok": false,
-      "errorCode": "ONLINE_TIMEOUT",
+      "errorCode": "ONLINE_NO_RESULTS",
+      "answerPath": "none",
+      "temporalIntentDiag": false,
+      "sourceCount": 6,
       "answer": "",
-      "userMessage": "החיפוש האונליין לקח יותר מדי זמן. נסי שוב."
+      "userMessage": "לא מצאתי מידע עדכני על זה כרגע. אני מעדיפה להגיד לך את זה מאשר להמציא."
     }
   ]
 }

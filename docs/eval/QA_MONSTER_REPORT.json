@@ -2,11 +2,11 @@
   "$schema": "internal://abu/qa-monster",
   "mode": "rc",
   "target": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T22:39:04.677Z",
+  "when": "2026-08-17T23:12:58.660Z",
   "identity": {
     "RUNTIME_SOURCE_SHA": "237bef9",
-    "CERTIFICATION_HARNESS_SHA": "ba5a78388032c3a7629c40e5dff2628c723c144b",
-    "EVIDENCE_GENERATION_SHA": "ba5a78388032c3a7629c40e5dff2628c723c144b",
+    "CERTIFICATION_HARNESS_SHA": "d0e3c4325b47149af9ed26ebb5c24ab2de3b019d",
+    "EVIDENCE_GENERATION_SHA": "d0e3c4325b47149af9ed26ebb5c24ab2de3b019d",
     "DEPLOYED_BUILD_ID": "0.291.0-earonly",
     "DEPLOYED_ARTIFACT_HOST": "abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
     "CONTROL_PLANE_VERSION": "cp_bfccc899",
@@ -19,19 +19,22 @@
   },
   "verdicts": {
     "PRODUCT_CANDIDATE_VERDICT": "GO",
-    "QA_SYSTEM_VERDICT": "INCOMPLETE_PRODUCTIZATION",
-    "RELEASE_PROMOTION_VERDICT": "NOT_YET",
+    "QA_SYSTEM_VERDICT": "READY",
+    "RELEASE_PROMOTION_VERDICT": "ELIGIBLE_PENDING_OWNER",
     "productizationFloor": {
       "B1_orchestrator": "DONE",
-      "B2_B13": "PENDING"
+      "machineClosableRemaining": 0,
+      "omitted": 0,
+      "externalBlocked": 2,
+      "B2_B13": "DONE"
     }
   },
   "exit": {
-    "code": 3,
-    "state": "RC_REJECTED",
-    "reason": "not RC-eligible: PRODUCT=GO QA_SYSTEM=INCOMPLETE_PRODUCTIZATION machineClosableRemaining=1",
+    "code": 0,
+    "state": "RC_ELIGIBLE",
+    "reason": "PRODUCT=GO QA_SYSTEM=READY remaining=0 → ELIGIBLE_PENDING_OWNER",
     "machineClosableUnknown": 0,
-    "machineClosableRemaining": 1
+    "machineClosableRemaining": 0
   },
   "verdict": "GO",
   "counts": {
@@ -47,7 +50,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "CODE",
-      "ms": 17684,
+      "ms": 19048,
       "verdict": "PASS",
       "resultFile": null,
       "evidencePresent": true,
@@ -59,11 +62,11 @@
       "pass": true,
       "exit": 0,
       "evidence": "CODE",
-      "ms": 46020,
+      "ms": 44648,
       "verdict": "PASS",
       "resultFile": null,
       "evidencePresent": true,
-      "tail": "      Tests  13514 passed | 1 skipped | 2 todo (13517) |    Start at  01:36:52 |    Duration  43.47s (transform 45.98s, setup 0ms, import 147.04s, tests 200.01s, environment 170ms)"
+      "tail": "      Tests  13561 passed | 1 skipped | 2 todo (13564) |    Start at  02:10:50 |    Duration  42.05s (transform 46.71s, setup 0ms, import 145.03s, tests 201.86s, environment 137ms)"
     },
     {
       "area": "security-scan",
@@ -71,7 +74,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 10012,
+      "ms": 7180,
       "verdict": "PASS",
       "resultFile": "docs/engineering-os/qa/deployed-secret-exposure.json",
       "evidencePresent": true,
@@ -83,7 +86,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 18961,
+      "ms": 14822,
       "verdict": "PROVEN_PASS",
       "resultFile": "docs/eval/RC_ACCEPTANCE_CALENDAR.json",
       "evidencePresent": true,
@@ -95,7 +98,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 5740,
+      "ms": 6166,
       "verdict": "PROVEN_PASS",
       "resultFile": "docs/eval/RC_ACCEPTANCE_WHATSAPP.json",
       "evidencePresent": true,
@@ -107,7 +110,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 15024,
+      "ms": 21691,
       "verdict": "GROUNDING_HONEST · LIVE-FACT FRESHNESS CERTIFIED (weather/fx) · other temporal = decline-or-gap",
       "resultFile": "docs/eval/RC_ACCEPTANCE_TEMPORAL.json",
       "evidencePresent": true,
@@ -119,7 +122,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 6158,
+      "ms": 4777,
       "verdict": "PROVEN_PASS",
       "resultFile": "docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json",
       "evidencePresent": true,
@@ -131,7 +134,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "CODE+golden",
-      "ms": 2720,
+      "ms": 2687,
       "verdict": "CONTRACT_HELD (oracle proven; real golden corroborates)",
       "resultFile": "docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json",
       "evidencePresent": true,
@@ -143,7 +146,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 28942,
+      "ms": 27830,
       "verdict": {
         "HISTORICAL_OWNER_ESCAPES_TOTAL": 9,
         "NOW_MACHINE_DETECTABLE": 9,
@@ -159,23 +162,23 @@
   ],
   "economy": {
     "tier": "rc",
-    "wallClockMs": 151929,
-    "deterministicMs": 66424,
-    "networkMs": 84837,
+    "wallClockMs": 149668,
+    "deterministicMs": 66383,
+    "networkMs": 82466,
     "networkAreaCount": 6,
     "perAreaMs": {
-      "typecheck": 17684,
-      "unit-suite": 46020,
-      "security-scan": 10012,
-      "calendar": 18961,
-      "whatsapp": 5740,
-      "current-info-freshness": 15024,
-      "replacement-paths": 6158,
-      "tool-sequencing": 2720,
-      "historical-corpus": 28942
+      "typecheck": 19048,
+      "unit-suite": 44648,
+      "security-scan": 7180,
+      "calendar": 14822,
+      "whatsapp": 6166,
+      "current-info-freshness": 21691,
+      "replacement-paths": 4777,
+      "tool-sequencing": 2687,
+      "historical-corpus": 27830
     },
     "note": "MEASURED wall-clock/area timings from THIS run. No monetary SLO is asserted (OWNER sets spend). Wall-clock targets are configurable; a tier over target is a QA-system finding, not a license to reduce assurance."
   },
   "note": "Machine state is authoritative. Prose is generated FROM this and cannot promote a NO_GO / NOT_YET. A green area roll-up is NOT release promotion — see verdicts.RELEASE_PROMOTION_VERDICT. Production deploy + old-credential revocation are OWNER actions.",
-  "runtimeMs": 151930
+  "runtimeMs": 149670
 }
