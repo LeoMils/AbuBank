@@ -7,7 +7,7 @@
     "RUNTIME_SOURCE_SHA": "237bef9",
     "DEPLOYED_ARTIFACT_ID": "abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
     "DEPLOYED_BUILD_ID": "0.291.0-earonly",
-    "CERTIFICATION_HARNESS_SHA": "79de94feaf459debd1b4a2afc3fb9de7a561710c",
+    "CERTIFICATION_HARNESS_SHA": "97e9a60addba2e766eb00808736ca34a289e9a48",
     "EVIDENCE_GENERATION_SHA": "ef87ae03e3d198c5627beb9ba4d1f4671e7b0005",
     "CONTROL_PLANE_VERSION": "cp_bfccc899"
   },
@@ -61,7 +61,7 @@
       "path": "docs/engineering-os/qa/RELEASE_LOCK.json",
       "producer": "RELEASE_LOCK",
       "schema": "internal://abu/release-lock",
-      "digest": "e753f140802bcb2157643f6dbd916756670747419bd3302f32a874f3008e8e0d"
+      "digest": "dbf9e285dc6c08e386826de39bfb3d42cff9971087594572ed284e935e440a7e"
     },
     {
       "id": "qa-monster-report",
@@ -129,6 +129,7 @@
     "tool-sequencing",
     "historical-corpus"
   ],
+  "denominatorId": "f29f94e3195a2727cee010256607d7f7e30038137230ff7983f5ed73ac2456d7",
   "whyCertified": "Sealed from existing machine state. Verdicts are copied verbatim from QA_MONSTER_REPORT.json; this capsule cannot promote them. A reader reconstructs the certified artifact, harness, evidence digests and provenance from this file alone; verify with scripts/verify-capsule.mjs.",
-  "capsuleId": "938c296f5375c829140172783259372149959d19f8b589bf669d01deff3e9d84"
+  "capsuleId": "ed9be2825e7eb44a018980420515296a00fd6e75de06d3b319b85a0e91bb8bf2"
 }
