@@ -31,6 +31,7 @@
     "qa:verify-capsule": "node scripts/verify-capsule.mjs",
     "qa:machine-work": "node scripts/machine-work.mjs",
     "qa:authority": "node scripts/authority-check.mjs",
+    "qa:a5": "node scripts/a5-stochastic-run.mjs",
     "abu:goal:arm": "node scripts/abu-goal.mjs arm",
     "abu:goal:status": "node scripts/abu-goal.mjs status",
     "abu:goal:disarm": "node scripts/abu-goal.mjs disarm",

@@ -1,0 +1,64 @@
+{
+  "$schema": "internal://abu/a5-stochastic-result",
+  "when": "2026-08-17T22:40:53.890Z",
+  "target": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
+  "note": "BOUNDED pre-registered A5 run of the two highest-risk stochastic claims with an external ground truth. N fixed by plan (not run-until-green). A single failure in any class = NOT_PROVEN for that class.",
+  "envelope": {
+    "MACHINE_PRE_REGISTERED_SAMPLING_ENVELOPE": "≤ 60 total provider calls across all classes per certification",
+    "separationFromOwnerSpend": "This machine envelope is independent of OWNER_MONETARY_SPEND_CEILING; the owner sets the dollar ceiling, the machine sets the call bound."
+  },
+  "totalProviderProbeInvocations": 6,
+  "results": [
+    {
+      "claim": "temporal",
+      "N": 3,
+      "passes": 3,
+      "failures": 0,
+      "criticalSingleFailureRule": "one fabricated date/stale-as-fresh = NOT_PROVEN",
+      "trials": [
+        {
+          "trial": 1,
+          "pass": true,
+          "verdict": "GROUNDING_HONEST · LIVE-FACT FRESHNESS CERTIFIED (weather/fx) · other temporal = decline-or-gap"
+        },
+        {
+          "trial": 2,
+          "pass": true,
+          "verdict": "GROUNDING_HONEST · LIVE-FACT FRESHNESS CERTIFIED (weather/fx) · other temporal = decline-or-gap"
+        },
+        {
+          "trial": 3,
+          "pass": true,
+          "verdict": "GROUNDING_HONEST · LIVE-FACT FRESHNESS CERTIFIED (weather/fx) · other temporal = decline-or-gap"
+        }
+      ],
+      "claimVerdict": "PROVEN_STABLE"
+    },
+    {
+      "claim": "calendar",
+      "N": 3,
+      "passes": 3,
+      "failures": 0,
+      "criticalSingleFailureRule": "any wrong-date or unreadable-write is an immediate NOT_PROVEN (not averaged)",
+      "trials": [
+        {
+          "trial": 1,
+          "pass": true,
+          "verdict": "PROVEN_PASS"
+        },
+        {
+          "trial": 2,
+          "pass": true,
+          "verdict": "PROVEN_PASS"
+        },
+        {
+          "trial": 3,
+          "pass": true,
+          "verdict": "PROVEN_PASS"
+        }
+      ],
+      "claimVerdict": "PROVEN_STABLE"
+    }
+  ],
+  "A5_VERDICT": "STABLE_SAMPLED"
+}

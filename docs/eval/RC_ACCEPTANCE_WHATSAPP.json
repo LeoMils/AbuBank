@@ -1,11 +1,11 @@
 {
   "$schema": "internal://abu/rc-acceptance-whatsapp",
   "rc": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T13:29:51.786Z",
+  "when": "2026-08-17T22:38:11.104Z",
   "intent": "ארוחת שישי בשעה 19:00 אצל סבתא",
   "requiredFact": "19:00",
   "composePath": "openai-server",
-  "finalMessage": "אדר חמוד שלי, מחכה לך לארוחת שישי בשעה 19:00 אצלי! תגיע רעב ועם חיוך גדול ❤️ Que rico יהיה לנו ביחד. אוהבת אתכם מאוד מאוד מאוד! סבתא💋",
+  "finalMessage": "אדר, חמוד שלנו, מחכה לך בארוחת שישי בשעה 19:00. יהיה מאוד טעים וכיף! ❤️ תשאיר מקום בבטן, Que rico! אוהבת אותך מאוד. סבתא 💋",
   "verdict": "PROVEN_PASS",
   "evidence": {
     "compose.deployed": "PREVIEW (deployed proxy + gpt-4o)",
@@ -18,7 +18,7 @@
     {
       "id": "compose.deployed",
       "pass": true,
-      "detail": "gpt-4o via proxy · 134 chars"
+      "detail": "gpt-4o via proxy · 123 chars"
     },
     {
       "id": "compose.factPreserved",

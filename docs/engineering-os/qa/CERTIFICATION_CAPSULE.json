@@ -1,14 +1,14 @@
 {
   "schemaVersion": "capsule/1",
-  "when": "2026-08-17T13:30:58.187Z",
+  "when": "2026-08-17T22:39:04.677Z",
   "qaMonsterVersion": "qa-monster/1",
   "constitutionVersion": "monster-qa/unified-master",
   "identity": {
     "RUNTIME_SOURCE_SHA": "237bef9",
     "DEPLOYED_ARTIFACT_ID": "abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
     "DEPLOYED_BUILD_ID": "0.291.0-earonly",
-    "CERTIFICATION_HARNESS_SHA": "97e9a60addba2e766eb00808736ca34a289e9a48",
-    "EVIDENCE_GENERATION_SHA": "ef87ae03e3d198c5627beb9ba4d1f4671e7b0005",
+    "CERTIFICATION_HARNESS_SHA": "ba5a78388032c3a7629c40e5dff2628c723c144b",
+    "EVIDENCE_GENERATION_SHA": "ba5a78388032c3a7629c40e5dff2628c723c144b",
     "CONTROL_PLANE_VERSION": "cp_bfccc899"
   },
   "verdicts": {
@@ -16,7 +16,13 @@
     "QA_SYSTEM_VERDICT": "INCOMPLETE_PRODUCTIZATION",
     "RELEASE_PROMOTION_VERDICT": "NOT_YET"
   },
-  "exit": null,
+  "exit": {
+    "code": 3,
+    "state": "RC_REJECTED",
+    "reason": "not RC-eligible: PRODUCT=GO QA_SYSTEM=INCOMPLETE_PRODUCTIZATION machineClosableRemaining=1",
+    "machineClosableUnknown": 0,
+    "machineClosableRemaining": 1
+  },
   "worktree": {
     "WORKTREE_RUNTIME_CLEAN": true,
     "WORKTREE_HARNESS_CLEAN": false,
@@ -30,6 +36,7 @@
       "src/screens/AbuAI/totalProductClosure.test.ts",
       "src/screens/AbuGames/wowGame.test.ts",
       "src/screens/AbuWhatsApp/familyContactsStorage.test.ts",
+      "scripts/a5-stochastic-run.mjs",
       "src/eval/martitaRedTeam.test.ts",
       "vite-dev.err.log",
       "vite-dev.log"
@@ -41,7 +48,25 @@
     "RUNTIME_SOURCE_SHA": "237bef9",
     "DEPLOYED_BUILD_ID": "0.291.0-earonly"
   },
-  "economy": null,
+  "economy": {
+    "tier": "rc",
+    "wallClockMs": 151929,
+    "deterministicMs": 66424,
+    "networkMs": 84837,
+    "networkAreaCount": 6,
+    "perAreaMs": {
+      "typecheck": 17684,
+      "unit-suite": 46020,
+      "security-scan": 10012,
+      "calendar": 18961,
+      "whatsapp": 5740,
+      "current-info-freshness": 15024,
+      "replacement-paths": 6158,
+      "tool-sequencing": 2720,
+      "historical-corpus": 28942
+    },
+    "note": "MEASURED wall-clock/area timings from THIS run. No monetary SLO is asserted (OWNER sets spend). Wall-clock targets are configurable; a tier over target is a QA-system finding, not a license to reduce assurance."
+  },
   "northStar_AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0,
   "ownerActionsOpen": [
     "REVOKE OpenAI fp:e39ef3b7",
@@ -68,56 +93,56 @@
       "path": "docs/eval/QA_MONSTER_REPORT.json",
       "producer": "qa-monster.mjs",
       "schema": "internal://abu/qa-monster",
-      "digest": "1b8593d82745bb3eebcc8a37fe92a7c9e3a499fb9232111bdd421c8cf45ebf62"
+      "digest": "e8712d3e6caf4176274758ac24d332b6002d99d704cbeb11e33093734f0362f0"
     },
     {
       "id": "historical-corpus",
       "path": "docs/eval/RC_HISTORICAL_CORPUS.json",
       "producer": "rc-acceptance-historical-corpus.mjs",
       "schema": "internal://abu/historical-corpus",
-      "digest": "7bf566c146d95f46d1d726ec8357cf07f08ea6c36b916a2b0415554a88fde2a2"
+      "digest": "7609f5b8d503698633e4ae6f51504d8bad8eb8666f0cc5ae958d786e8886eff2"
     },
     {
       "id": "calendar",
       "path": "docs/eval/RC_ACCEPTANCE_CALENDAR.json",
       "producer": "rc-acceptance-calendar.mjs",
       "schema": "internal://abu/rc-calendar",
-      "digest": "4d7745bfe8ac7bb4290bdb6a85d77cca62e03e9ae0682c836dd43680f7c4a6b9"
+      "digest": "63b1f5004e13dfd7e3d7c396ba86f09b621515b5a41c38954d03b36a1830cc46"
     },
     {
       "id": "whatsapp",
       "path": "docs/eval/RC_ACCEPTANCE_WHATSAPP.json",
       "producer": "rc-acceptance-whatsapp.mjs",
       "schema": "internal://abu/rc-whatsapp",
-      "digest": "02fcfe22c6c12b075aa8c97e65538058bc7d21aac126f28534349ddb548b0de6"
+      "digest": "7b6f4a15036439e5843b89bb52706d5a5a53c1a318a244200e9b28dcada0344c"
     },
     {
       "id": "temporal",
       "path": "docs/eval/RC_ACCEPTANCE_TEMPORAL.json",
       "producer": "rc-acceptance-temporal.mjs",
       "schema": "internal://abu/rc-temporal",
-      "digest": "8f0fa26d6c7e191eaeaccfbeace0786bd5d5d6bce81865c92702df1c2188a242"
+      "digest": "d349004a1dc6d41e453f91ecbc622e9ace647b067c4d646b9b302cdfdf1da34b"
     },
     {
       "id": "replacement-paths",
       "path": "docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json",
       "producer": "rc-acceptance-replacement-paths.mjs",
       "schema": "internal://abu/rc-replacement",
-      "digest": "1c68621009642f0c9d7057a2b9e156e5b01389b6f331c005d89717150a845496"
+      "digest": "1ee49f738f6944ce8d5654e72f81c782ef77e321b478123d6c6e5a781be4b9c3"
     },
     {
       "id": "tool-sequencing",
       "path": "docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json",
       "producer": "rc-acceptance-tool-sequencing.mjs",
       "schema": "internal://abu/rc-tool-sequencing",
-      "digest": "1c5a70fdd32579968bdc2d8cee727fb1ba9c9e16c1047e803927f69422944f8d"
+      "digest": "0b844b1e8289141fcb9fbb24302dedf8caaa60232c3ba04bb4024917e42c32b8"
     },
     {
       "id": "secret-scan",
       "path": "docs/engineering-os/qa/deployed-secret-exposure.json",
       "producer": "scan-deployed-secrets.ts",
       "schema": "internal://abu/deployed-secret-exposure",
-      "digest": "146cb6e54a51d2c1d43a0f72069912035a1ae61bcf6ba3c6c7f911a6acccf15d"
+      "digest": "ecd3eeeb246f47e72f3020410b5137121c939e68ca8c9d9bf7775df322550e4e"
     }
   ],
   "requiredClaims": [
@@ -131,5 +156,5 @@
   ],
   "denominatorId": "f29f94e3195a2727cee010256607d7f7e30038137230ff7983f5ed73ac2456d7",
   "whyCertified": "Sealed from existing machine state. Verdicts are copied verbatim from QA_MONSTER_REPORT.json; this capsule cannot promote them. A reader reconstructs the certified artifact, harness, evidence digests and provenance from this file alone; verify with scripts/verify-capsule.mjs.",
-  "capsuleId": "ed9be2825e7eb44a018980420515296a00fd6e75de06d3b319b85a0e91bb8bf2"
+  "capsuleId": "7deb4300695b800eac7e07e5e281b55afa49e6f53616201200c5313aac22efe8"
 }

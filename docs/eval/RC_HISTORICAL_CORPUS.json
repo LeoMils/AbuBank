@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/rc-historical-corpus",
   "rc": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T13:30:57.446Z",
+  "when": "2026-08-17T22:39:04.005Z",
   "pathEquivalenceRule": "A clean replay closes a historical defect ONLY with material path-equivalence. Voice-audio escapes replayed via text = NOT_PROVEN → never closed by a text replay.",
   "score": {
     "HISTORICAL_OWNER_ESCAPES_TOTAL": 9,
@@ -73,7 +73,7 @@
         },
         {
           "in": "את שוב לא מבינה אותי",
-          "out": "מחר אין כלום ביומן. אם את רוצה לשנות או להוסיף משהו, אני כאן לעזור.",
+          "out": "סליחה על הבלבול. בדקתי שוב, ומחר באמת אין כלום ביומן שלך. אם את רוצה לקבוע משהו או סתם לדב",
           "ok": true
         }
       ]
@@ -90,12 +90,12 @@
       "evidence": [
         {
           "in": "ספרי לי על המהפכה הצרפתית",
-          "out": "המהפכה הצרפתית התחילה ב-1789 ונמשכה עד 1799. זו הייתה תקופה של שינוי פוליטי וחברתי משמעותי",
+          "out": "המהפכה הצרפתית הייתה אירוע מרכזי בהיסטוריה העולמית שהתרחש בין השנים 1789 ל-1799. זה התחיל ",
           "ok": true
         },
         {
           "in": "תמשיכי",
-          "out": "המהפכה התחילה כתוצאה ממספר גורמים: משבר כלכלי, אי שביעות רצון מהשלטון המונרכי של לואי ה-16",
+          "out": "ב-14 ביולי 1789, ההמון הסתער על הבסטיליה, מבצר שהיה סמל לדיכוי המלוכני. האירוע הזה סימן את",
           "ok": true
         },
         {

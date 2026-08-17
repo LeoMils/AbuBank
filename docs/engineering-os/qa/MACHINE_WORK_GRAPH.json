@@ -18,7 +18,7 @@
     { "id": "evidence-budget", "terminalState": "NONTERMINAL", "machineClosable": true, "source": "§13" },
     { "id": "qa-economy-slo", "terminalState": "PROVEN_PASS", "evidence": "docs/engineering-os/qa/QA_ECONOMY_SLO.json (pre-declared feature/rc/production targets) + scripts/economy-slo-lib.mjs + src/engineering-os/economySlo.test.ts", "source": "§16/C8/B2" },
     { "id": "stochastic-completeness-oracle", "terminalState": "PROVEN_PASS", "evidence": "scripts/stochastic-completeness-lib.mjs + STOCHASTIC_PLAN.json + src/engineering-os/stochasticCompleteness.test.ts", "source": "§14/C6" },
-    { "id": "stochastic-sampling-run", "terminalState": "NONTERMINAL", "machineClosable": true, "note": "RECLASSIFIED: the RC is live and safe provider calls are pre-approved — ordinary provider cost is NOT an owner boundary. Bounded run per STOCHASTIC_PLAN.json within the ≤60-call machine envelope is machine-authorized.", "source": "§15/A5" },
+    { "id": "stochastic-sampling-run", "terminalState": "PROVEN_PASS", "evidence": "docs/eval/A5_STOCHASTIC_RESULT.json — bounded run vs LIVE RC: temporal 3/3 + calendar 3/3 STABLE (A5_VERDICT=STABLE_SAMPLED, 6 probe invocations, critical-single-failure rule applied). scripts/a5-stochastic-run.mjs.", "source": "§15/A5" },
     { "id": "capability-admission", "terminalState": "NONTERMINAL", "machineClosable": true, "source": "§17/B3" },
     { "id": "capability-retirement", "terminalState": "NONTERMINAL", "machineClosable": true, "source": "§18" },
     { "id": "change-impact-proof-cache", "terminalState": "NONTERMINAL", "machineClosable": true, "source": "§19/B4" },
@@ -54,6 +54,6 @@
     { "id": "yield-discipline", "terminalState": "PROVEN_PASS", "evidence": "scripts/yield-discipline-lib.mjs + src/engineering-os/yieldDiscipline.test.ts (encodes the real ce-premature-yield incident: worked-around tool error / high-ctx quality-hedge = INVALID yield)", "source": "§9/C9" },
     { "id": "promotion-rehearsal", "terminalState": "NONTERMINAL", "machineClosable": true, "source": "§51" },
     { "id": "final-feature-run", "terminalState": "NONTERMINAL", "machineClosable": true, "note": "feature mode run green this session; a FINAL run against committed clean harness is the closing step", "source": "§52" },
-    { "id": "final-rc-run", "terminalState": "NONTERMINAL", "machineClosable": true, "note": "RECLASSIFIED: RC live (/api/health = 0.291.0-earonly). Run qa:monster rc against it (auto-seals capsule).", "source": "§52" }
+    { "id": "final-rc-run", "terminalState": "PROVEN_PASS", "evidence": "qa:monster rc vs LIVE RC at harness ba5a783: areas 9/9 PASS, PRODUCT=GO, capsule auto-sealed 26c29e09 (integrity+completeness OK). docs/eval/QA_MONSTER_REPORT.json.", "source": "§52" }
   ]
 }
