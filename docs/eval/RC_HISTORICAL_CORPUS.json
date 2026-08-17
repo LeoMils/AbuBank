@@ -1,15 +1,15 @@
 {
   "$schema": "internal://abu/rc-historical-corpus",
-  "rc": "https://abu-bank-eiyl4n2r7-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T05:12:12.642Z",
+  "rc": "https://abu-bank-njy2ocyw1-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-17T06:36:10.594Z",
   "pathEquivalenceRule": "A clean replay closes a historical defect ONLY with material path-equivalence. Voice-audio escapes replayed via text = NOT_PROVEN → never closed by a text replay.",
   "score": {
     "HISTORICAL_OWNER_ESCAPES_TOTAL": 9,
     "NOW_MACHINE_DETECTABLE": 9,
-    "REPLAYED_AND_CLOSED": 5,
+    "REPLAYED_AND_CLOSED": 6,
     "NOT_REPLAYABLE_WITH_REASON": 3,
-    "STILL_OPEN": 1,
-    "AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 1
+    "STILL_OPEN": 0,
+    "AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0
   },
   "corpus": [
     {
@@ -19,8 +19,8 @@
       "nowMachineDetectable": true,
       "detector": "deployed text-chat replay + turn assertion (family-relations)",
       "pathEquivalence": "PROVEN_FOR_COGNITION (typed & voice share the cognitive controller; NOT the realtime audio layer)",
-      "replayedClean": false,
-      "status": "STILL_OPEN",
+      "replayedClean": true,
+      "status": "REPLAYED_AND_CLOSED",
       "evidence": [
         {
           "in": "מי זה רפי",
@@ -34,8 +34,8 @@
         },
         {
           "in": "מי זאת ירדן",
-          "out": "אני לא בטוחה בקשר הזה, אז לא אנחש. תגידי לי מי ואני אזכור.",
-          "ok": false
+          "out": "ירדן נשואה לעילי, הנכד של מרטיטה.",
+          "ok": true
         }
       ]
     },
@@ -73,7 +73,7 @@
         },
         {
           "in": "את שוב לא מבינה אותי",
-          "out": "מחר אין שום דבר ביומן. אם יש משהו שאת רוצה לעשות או לתכנן, אני כאן לעזור.",
+          "out": "בואי נבדוק ביומן ביחד מה קבוע — אני לא רוצה להגיד לך תאריך או שעה שאני לא בטוחה בהם.",
           "ok": true
         }
       ]
@@ -90,12 +90,12 @@
       "evidence": [
         {
           "in": "ספרי לי על המהפכה הצרפתית",
-          "out": "המהפכה הצרפתית התחילה בשנת 1789 ושינתה את פני צרפת והעולם. היא פרצה בגלל חוסר שביעות רצון ",
+          "out": "המהפכה הצרפתית הייתה תקופה של שינוי פוליטי וחברתי בצרפת בין השנים 1789 ל-1799. היא התחילה ",
           "ok": true
         },
         {
           "in": "תמשיכי",
-          "out": "במהלך המהפכה, המלך לואי ה-16 והמלכה מארי אנטואנט הוצאו להורג, והוקמה רפובליקה.",
+          "out": "אירועים מרכזיים כוללים את כיבוש הבסטיליה ב-14 ביולי 1789, והצהרת זכויות האדם והאזרח. המהפכ",
           "ok": true
         },
         {
@@ -117,7 +117,7 @@
       "evidence": [
         {
           "in": "מי ניצח במונדיאל האחרון",
-          "out": "לא הצלחתי לבדוק את זה עכשיו. שננסה שוב?",
+          "out": "ספרד ניצחה במונדיאל האחרון.",
           "ok": true
         }
       ]
