@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.286.0-earonly',
-  buildLabel: 'AbuBank 0.286.0 — GOLDEN-SESSION. Device round 4: THREE P0 wrong-answers fixed. TIME is injected into the session and answered directly — no tool call, no more datacenter clock; the golden turn now asserts expectTool none. GRAPH: generational kinship terms are derived (Martin is Martita great-nephew = בן האחיין, not great-grandson of her mother); long chains 435->0, at most two hops, never routed through Martita; a human-authored matrix oracle + a kinship-audit diagnostic. CACHE: a specific-item or follow-up query (a film plot or cast) now MISSES the topic cache and fetches live — it was returning the whole cinema listing. Priors: online judge-gated (no garbage), relationships are the kinship TERM not a path, her own name resolves on every spelling, barge-in mutes local playback, the tool-result watchdog re-arms on progress. Open (device): forced-response clean-path no-speak, machinery narration, unprompted opening. Do NOT merge (production serves Aug 5).',
-  buildDate:  '2026-08-16',
+  version:    '0.287.0-earonly',
+  buildLabel: 'AbuBank 0.287.0 — YARDEN ESCAPE CLASS FIX. Spouse-of-descendant in-laws (grandchild-in-law: כלה/חתן of a grandchild) are now FIRST-CLASS relative to Martita on BOTH resolution paths — the text tool (shapeFamilyAnswer: "ירדן, אשת עילי הנכד שלך") and the canonical two-name reasoning (describeRelation: detectSpouseOfDescendant at depth ≥2). ירדן (granddaughter-in-law) AND גלעד (grandson-in-law) both resolve, correctly gendered, with no invented blood relation; direct relations + depth-1 son/daughter-in-law unchanged. Keyed on the relationship CLASS, never a name. Priors: TEMPORAL=GROUNDED+FRESH dated live-fact architecture (weather/FX certified, results decline honestly); tool-sequencing RAW-EVENT oracle; Gemini/Groq replacement-path proofs (TTS→STT round-trip). Do NOT merge (production serves an older build; 3 old keys await owner revocation).',
+  buildDate:  '2026-08-17',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time
   // (Vercel VERCEL_GIT_COMMIT_SHA → VITE_COMMIT_SHA). Falls back to 'local' only for

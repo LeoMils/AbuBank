@@ -140,9 +140,15 @@ export function describeRelation(aQuery: string, bQuery: string, lang: Lang): st
   const inLaw = detectSiblingOfSpouse(a, b)
   if (inLaw) return phraseSiblingOfSpouse(inLaw, lang)
 
-  // 5) Parent-of-spouse (mother/father-in-law) or spouse-of-child.
+  // 5) Parent-of-spouse (mother/father-in-law) or spouse-of-child (depth-1 in-law: חתן/כלה).
   const parentOfSpouse = detectParentOfSpouse(a, b)
   if (parentOfSpouse) return phraseParentOfSpouse(parentOfSpouse, lang)
+
+  // 5b) Spouse of a DESCENDANT at depth ≥2 (grandchild-in-law and deeper). Generalizes the depth-1
+  //     in-law above so a descendant's spouse is first-class RELATIVE TO THE MATRIARCH, not only to
+  //     their partner — the "מי זאת ירדן" / "מי זה גלעד" decline class. Covers both genders.
+  const spouseOfDesc = detectSpouseOfDescendant(a, b)
+  if (spouseOfDesc) return phraseSpouseOfDescendant(spouseOfDesc, lang)
 
   // 6) Aunt / uncle: A is a sibling of a parent of B (or vice versa).
   const auntUncle = detectAuntUncle(a, b)
@@ -321,6 +327,39 @@ function detectParentOfSpouse(a: GraphNode, b: GraphNode): ParentOfSpouseHit | n
   return null
 }
 
+interface SpouseOfDescendantHit {
+  /** The in-law — the (ex-)spouse/partner of the descendant. */
+  inlaw: GraphNode
+  /** The descendant they married (the matriarch's grandchild / great-grandchild). */
+  descendant: GraphNode
+  /** The matriarch/ancestor the relation is expressed relative to (B). */
+  matriarch: GraphNode
+  /** Generational distance matriarch→descendant (2 = grandchild, 3 = great-grandchild). */
+  distance: number
+  edgeType: 'spouse' | 'partner' | 'ex_spouse'
+}
+
+/** A is the (ex-)spouse/partner of C, and C is a DESCENDANT of B at distance ≥2 (grandchild or deeper).
+ *  This is the class the depth-1 parent-of-spouse detector missed: a grandchild's spouse (ירדן→עילי,
+ *  גלעד→אופיר) is kin to the matriarch as "אשת/בעל הנכד/ה", not "no relation". Symmetric in A/B. */
+function detectSpouseOfDescendant(a: GraphNode, b: GraphNode): SpouseOfDescendantHit | null {
+  const oneWay = (x: GraphNode, y: GraphNode): SpouseOfDescendantHit | null => {
+    const tries: Array<[string[], 'spouse' | 'partner' | 'ex_spouse']> = [
+      [x.spousesHe, 'spouse'], [x.partnersHe, 'partner'], [x.exSpousesHe, 'ex_spouse'],
+    ]
+    for (const [list, edgeType] of tries) {
+      for (const cHe of list) {
+        const c = nodeByHebrew(cHe)
+        if (!c) continue
+        const anc = findAncestor(c, y) // is y an ancestor of c, and how far?
+        if (anc && anc.distance >= 2) return { inlaw: x, descendant: c, matriarch: y, distance: anc.distance, edgeType }
+      }
+    }
+    return null
+  }
+  return oneWay(a, b) ?? oneWay(b, a)
+}
+
 // ─── Phrase shapers (semantic, kinship-labelled) ───────────────────────────
 
 function phraseSpouse(a: GraphNode, b: GraphNode, lang: Lang): string {
@@ -467,6 +506,32 @@ function phraseParentOfSpouse(hit: ParentOfSpouseHit, lang: Lang): string {
     ? 'is the partner of'
     : (isFormer ? 'was married to' : 'is married to')
   return `${P} is the ${parentLabel} of ${C}, and ${C} ${verb} ${S}.`
+}
+
+function phraseSpouseOfDescendant(hit: SpouseOfDescendantHit, lang: Lang): string {
+  const { inlaw, descendant, matriarch, distance, edgeType } = hit
+  const IL = displayName(inlaw, lang), D = displayName(descendant, lang), M = displayName(matriarch, lang)
+  const female = inlaw.gender === 'female'
+  const dFemale = descendant.gender === 'female'
+
+  if (lang === 'es') {
+    const rel = edgeType === 'partner' ? 'es pareja de'
+      : edgeType === 'ex_spouse' ? (female ? 'estuvo casada con' : 'estuvo casado con')
+      : (female ? 'está casada con' : 'está casado con')
+    const dRole = distance >= 3 ? (dFemale ? 'bisnieta' : 'bisnieto') : (dFemale ? 'nieta' : 'nieto')
+    return `${IL} ${rel} ${D}, ${dRole} de ${M}.`
+  }
+  if (lang === 'en') {
+    const rel = edgeType === 'partner' ? 'is the partner of' : edgeType === 'ex_spouse' ? 'was married to' : 'is married to'
+    const dRole = distance >= 3 ? (dFemale ? 'great-granddaughter' : 'great-grandson') : (dFemale ? 'granddaughter' : 'grandson')
+    return `${IL} ${rel} ${D}, ${M}'s ${dRole}.`
+  }
+  const dRole = distance >= 3 ? (dFemale ? 'הנינה' : 'הנין') : (dFemale ? 'הנכדה' : 'הנכד')
+  // marriage verbs end in ל (prefix onto the name); partner needs "בת/בן הזוג של".
+  const rel = edgeType === 'partner'
+    ? `${female ? 'בת הזוג' : 'בן הזוג'} של ${D}`
+    : `${female ? (edgeType === 'ex_spouse' ? 'הייתה נשואה' : 'נשואה') : (edgeType === 'ex_spouse' ? 'היה נשוי' : 'נשוי')} ל${D}`
+  return `${IL} ${rel}, ${dRole} של ${M}.`
 }
 
 function phraseAuntUncle(hit: AuntUncleHit, lang: Lang): string {

@@ -48,6 +48,16 @@ function extractPartner(rel: string): string | null {
   return m ? (m[1] ?? m[2] ?? m[3] ?? null) : null
 }
 
+// The spouse-of-descendant in-law CLASS → its first-class relation to Martita, stated VIA the
+// descendant partner. The enum already encodes the tie (a granddaughter-in-law married a grandson),
+// so this maps the class deterministically — no per-name special-casing. Extend here for deeper tiers.
+const DESCENDANT_INLAW: Record<string, { spouseWord: string; via: string }> = {
+  granddaughter_in_law:       { spouseWord: 'אשת', via: 'הנכד שלך' },   // she married your grandson
+  grandson_in_law:            { spouseWord: 'בעל', via: 'הנכדה שלך' },  // he married your granddaughter
+  great_granddaughter_in_law: { spouseWord: 'אשת', via: 'הנין שלך' },
+  great_grandson_in_law:      { spouseWord: 'בעל', via: 'הנינה שלך' },
+}
+
 const COUNT_HE: Record<number, string> = { 1: 'ילד אחד', 2: 'שני ילדים', 3: 'שלושה ילדים', 4: 'ארבעה ילדים' }
 
 function joinHe(names: string[]): string {
@@ -69,11 +79,17 @@ export function shapeFamilyAnswer(m: FamilyMember, rich = false): string {
   const partner = m.spouse ?? extractPartner(rel)
 
   let role: string
+  // SPOUSE-OF-DESCENDANT in-laws are first-class relative to MARTITA, not only to their partner.
+  // A granddaughter-in-law married your GRANDSON, so say so — the old "אשת עילי" (relation to the
+  // partner only) left the reader/LLM unsure of the tie to Martita and it declined ("מי זאת ירדן").
+  // Keyed on the relationship CLASS (the enum), never a person's name — covers ירדן AND גלעד alike.
+  const descIL = DESCENDANT_INLAW[m.relationship]
+  if (descIL && partner) role = `${m.hebrew}, ${descIL.spouseWord} ${partner} ${descIL.via}`
   // An ex-spouse / in-law whose DESCRIPTION mentions grandchildren ("הגרוש של מור,
   // אבא של הנכדים") must keep its verbatim descriptor — never be mislabelled a
   // grandchild by a substring match on "נכד". Role words are matched at the START
   // of the description (the primary role), not anywhere inside it.
-  if (/^ה?גרוש|^ה?גרושה|^ה?חתן|^ה?כלה\b|אבא של ה?נכד|אמא של ה?נכד/.test(rel)) role = `${m.hebrew} — ${rel}`
+  else if (/^ה?גרוש|^ה?גרושה|^ה?חתן|^ה?כלה\b|אבא של ה?נכד|אמא של ה?נכד/.test(rel)) role = `${m.hebrew} — ${rel}`
   else if (/^ה?בת(?!\s+זוג)/.test(rel)) role = `${m.hebrew}, הבת שלך`
   else if (/^ה?בן/.test(rel)) role = `${m.hebrew}, הבן שלך`
   else if (/^ה?נכדה/.test(rel)) role = `${m.hebrew}, הנכדה שלך`
