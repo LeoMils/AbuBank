@@ -8,6 +8,8 @@
  * explicit no_answer. Never a partial dump. Deterministic (temperature 0, JSON only), and the
  * answer must name no website/source (the no-sources rule) — scrubForSpeech still runs after.
  */
+import { sanitizeRetrievedText } from './retrievalGuard'
+
 export interface Synthesis { status: 'answer' | 'no_answer'; answer: string }
 export interface SynthesizeOpts { openaiKey: string; model?: string; fetchImpl?: typeof fetch; timeoutMs?: number }
 
@@ -22,7 +24,10 @@ If it does, "answer" is ONE short natural sentence in the QUESTION'S language, s
 /** Synthesize one clean answer from fetched page text, or no_answer. Never throws — a failure
  *  is an honest no_answer (the caller then declines rather than speaking a dump). */
 export async function synthesizeAnswer(query: string, pageText: string, opts: SynthesizeOpts): Promise<Synthesis> {
-  const text = (pageText ?? '').slice(0, 6000).trim()
+  // Retrieved content is UNTRUSTED DATA (A6): neutralize injection directives (override-instructions,
+  // reveal-secret, tool-call, recipient-change, forged authority/freshness) BEFORE the model sees it —
+  // it may inform the answer, never become control-plane authority. Facts are preserved.
+  const text = sanitizeRetrievedText((pageText ?? '')).sanitized.slice(0, 6000).trim()
   if (!text) return { status: 'no_answer', answer: '' }
   const fetchImpl = opts.fetchImpl ?? fetch
   const model = opts.model ?? 'gpt-4o-mini'
