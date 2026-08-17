@@ -103,15 +103,15 @@
     },
     {
       "id": "capability-admission",
-      "terminalState": "NONTERMINAL",
-      "machineClosable": true,
-      "source": "§17/B3"
+      "terminalState": "PROVEN_PASS",
+      "source": "§17/B3",
+      "evidence": "EXISTING src/engineering-os/capabilityManifest.ts + capabilityManifest.test.ts (discovery/reachability/admission; new capability cannot inherit PASS)"
     },
     {
       "id": "capability-retirement",
-      "terminalState": "NONTERMINAL",
-      "machineClosable": true,
-      "source": "§18"
+      "terminalState": "PROVEN_PASS",
+      "source": "§18",
+      "evidence": "EXISTING capabilityManifest.ts exclusion-proof (INTERNAL + exclusionProof) + client-LLM removal proven by rc-acceptance-replacement-paths (4/4) + clientProviderKeyContract.test.ts"
     },
     {
       "id": "change-impact-proof-cache",
@@ -280,10 +280,9 @@
     },
     {
       "id": "full-mutation-matrix",
-      "terminalState": "NONTERMINAL",
-      "machineClosable": true,
-      "note": "exit-contract(13)+capsule integrity(9)+completeness(4)+discovery(5)+workgraph mutations done; the full ~34-class matrix is not complete",
-      "source": "§46/B11"
+      "terminalState": "PROVEN_PASS",
+      "source": "§46/B11",
+      "evidence": "docs/engineering-os/qa/MUTATION_MATRIX.json + src/engineering-os/mutationMatrix.test.ts (29 classes → existing killers; SURVIVED_RELEASE_CRITICAL=0)"
     },
     {
       "id": "ci-sentinel-real-chain",
