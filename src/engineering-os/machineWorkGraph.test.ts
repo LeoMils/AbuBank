@@ -1,0 +1,68 @@
+/*
+ * machineWorkGraph.test.ts — proof of the Machine Work Completeness Oracle. (C10 / §43 / B11)
+ * ════════════════════════════════════════════════════════════════════════════════════════════════
+ * The keystone attack (§43 mutation): removing a required obligation from the registry while everything
+ * else is green must NOT make MACHINE_CLOSABLE_REMAINING look like 0 — it must surface as OMITTED.
+ * Also verifies the REAL registry has zero omissions (the denominator is fully covered).
+ */
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+// @ts-expect-error — pure ESM sibling of the CLI; shared verbatim, no types.
+import { deriveWorkGraphState, REQUIRED_OBLIGATION_IDS, TERMINAL_STATES } from '../../scripts/machine-work-graph-lib.mjs'
+
+const realRegistry = () =>
+  JSON.parse(readFileSync(resolve('docs/engineering-os/qa/MACHINE_WORK_GRAPH.json'), 'utf8')).obligations
+
+describe('Machine Work Completeness Oracle (C10/§43)', () => {
+  it('the committed registry covers EVERY required obligation (OMITTED=0, no invalid states)', () => {
+    const s = deriveWorkGraphState(realRegistry(), REQUIRED_OBLIGATION_IDS)
+    expect(s.omitted).toEqual([])
+    expect(s.invalidState).toEqual([])
+    expect(s.terminalWithoutEvidence).toEqual([])
+    expect(s.ok).toBe(true)
+  })
+
+  it('MACHINE_CLOSABLE_REMAINING is DERIVED and currently > 0 (honest: work remains)', () => {
+    const s = deriveWorkGraphState(realRegistry(), REQUIRED_OBLIGATION_IDS)
+    expect(s.MACHINE_CLOSABLE_REMAINING).toBeGreaterThan(0)
+    expect(s.REQUIRED_MACHINE_OBLIGATIONS_TOTAL).toBe(REQUIRED_OBLIGATION_IDS.length)
+  })
+
+  it('THE §43 ATTACK: dropping a required obligation from the registry → OMITTED>0, never a false 0', () => {
+    const trimmed = realRegistry().filter((o: { id: string }) => o.id !== 'capsule-integrity')
+    const s = deriveWorkGraphState(trimmed, REQUIRED_OBLIGATION_IDS)
+    expect(s.omitted).toContain('capsule-integrity')
+    expect(s.OMITTED_MACHINE_OBLIGATIONS).toBeGreaterThan(0)
+    expect(s.ok).toBe(false)
+  })
+
+  it('MUTATION: a PROVEN_PASS obligation with no evidence → pass-by-omission defect', () => {
+    const reg = realRegistry().map((o: Record<string, unknown>) =>
+      o.id === 'exit-contract' ? { id: 'exit-contract', terminalState: 'PROVEN_PASS' } : o)
+    const s = deriveWorkGraphState(reg, REQUIRED_OBLIGATION_IDS)
+    expect(s.terminalWithoutEvidence).toContain('exit-contract')
+    expect(s.ok).toBe(false)
+  })
+
+  it('MUTATION: an invalid terminalState is rejected (not silently treated as terminal)', () => {
+    const reg = realRegistry().map((o: Record<string, unknown>) =>
+      o.id === 'p2-enumeration' ? { ...o, terminalState: 'DEFINITELY_DONE_TRUST_ME' } : o)
+    const s = deriveWorkGraphState(reg, REQUIRED_OBLIGATION_IDS)
+    expect(s.invalidState).toContain('p2-enumeration')
+    expect(s.ok).toBe(false)
+  })
+
+  it('MUTATION: duplicate registry entry for one id is a defect', () => {
+    const reg = [...realRegistry(), { id: 'p2-enumeration', terminalState: 'PROVEN_PASS', evidence: 'fake' }]
+    const s = deriveWorkGraphState(reg, REQUIRED_OBLIGATION_IDS)
+    expect(s.duplicates).toContain('p2-enumeration')
+    expect(s.ok).toBe(false)
+  })
+
+  it('BLOCKED_EXTERNAL / OWNER / HUMAN residual are terminal-for-machine (do not inflate REMAINING)', () => {
+    for (const st of ['BLOCKED_EXTERNAL_WITH_EVIDENCE', 'OWNER_AUTHORITY_REQUIRED_WITH_PROOF', 'HUMAN_RESIDUAL_WITH_NEGATIVE_PROOF', 'N/A_WITH_PROOF']) {
+      expect(TERMINAL_STATES.has(st)).toBe(true)
+    }
+  })
+})

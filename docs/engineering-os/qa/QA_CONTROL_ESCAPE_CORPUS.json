@@ -1,0 +1,95 @@
+{
+  "$schema": "internal://abu/qa-control-escape-corpus",
+  "schemaVersion": "qa-control-escapes/1",
+  "note": "Permanent memory of QA-SYSTEM failures (controls that could produce false confidence), each bound to the detector that now closes it. QA_CONTROL_ESCAPES_OPEN must be 0 before QA_SYSTEM_READY. A reintroduced control escape must make its detector fail — proven by src/engineering-os/qaControlEscapeCorpus.test.ts.",
+  "escapes": [
+    {
+      "id": "ce-false-success-exit",
+      "originalFailure": "qa-monster.mjs exited `pass ? 0 : 1` (area roll-up), so RC exited 0 while QA_SYSTEM=INCOMPLETE_PRODUCTIZATION.",
+      "howFalseConfidence": "CI wiring the command would go green on a non-ready system.",
+      "detector": "src/engineering-os/qaMonsterExitContract.test.ts",
+      "closureState": "CLOSED",
+      "affectedReleaseLayer": "exit-contract"
+    },
+    {
+      "id": "ce-capsule-tamper",
+      "originalFailure": "A certification report could be edited after the fact with no detection.",
+      "howFalseConfidence": "Evidence/verdict tampering would look certified.",
+      "detector": "src/engineering-os/certificationCapsule.test.ts",
+      "closureState": "CLOSED",
+      "affectedReleaseLayer": "capsule-integrity"
+    },
+    {
+      "id": "ce-capsule-incomplete",
+      "originalFailure": "A hash-consistent capsule could omit a required claim (or a new required claim could be added after sealing).",
+      "howFalseConfidence": "An internally-consistent capsule would appear complete while covering less than the denominator.",
+      "detector": "src/engineering-os/certificationCapsule.test.ts (completeness)",
+      "closureState": "CLOSED",
+      "affectedReleaseLayer": "capsule-completeness"
+    },
+    {
+      "id": "ce-denominator-shrink",
+      "originalFailure": "A required RC area could be silently absent from the report and still exit 0.",
+      "howFalseConfidence": "Fewer areas evaluated would read as full coverage.",
+      "detector": "src/engineering-os/qaMonsterExitContract.test.ts (scanIntegrity: denominator shrink)",
+      "closureState": "CLOSED",
+      "affectedReleaseLayer": "exit-contract"
+    },
+    {
+      "id": "ce-runtime-harness-conflation",
+      "originalFailure": "HEAD (harness) was conflated with the deployed runtime source SHA.",
+      "howFalseConfidence": "A harness-only commit would appear to change the certified runtime.",
+      "detector": "scripts/qa-monster.mjs split-identity block + RELEASE_LOCK.json.runtimeProvenance",
+      "closureState": "CLOSED",
+      "affectedReleaseLayer": "identity"
+    },
+    {
+      "id": "ce-stale-candidate-after-runtime-change",
+      "originalFailure": "After a runtime change, an old artifact could still be treated as the current candidate.",
+      "howFalseConfidence": "Certifying superseded evidence as current.",
+      "detector": "src/engineering-os/currentCandidate.test.ts (capsule build != lock build → AMBIGUOUS)",
+      "closureState": "CLOSED",
+      "affectedReleaseLayer": "candidate-discovery"
+    },
+    {
+      "id": "ce-workgraph-omission",
+      "originalFailure": "MACHINE_CLOSABLE_REMAINING came from a hand-written list, so an obligation could be silently dropped.",
+      "howFalseConfidence": "Dropping an obligation would falsely read as 0 remaining.",
+      "detector": "src/engineering-os/machineWorkGraph.test.ts (§43 omission attack)",
+      "closureState": "CLOSED",
+      "affectedReleaseLayer": "machine-work-completeness-oracle"
+    },
+    {
+      "id": "ce-stochastic-plan-omission",
+      "originalFailure": "The stochastic sampling universe was hand-written, so a model-dependent claim could be omitted from sampling.",
+      "howFalseConfidence": "An unsampled model-exposed claim would appear covered.",
+      "detector": "src/engineering-os/stochasticCompleteness.test.ts",
+      "closureState": "CLOSED",
+      "affectedReleaseLayer": "stochastic-completeness-oracle"
+    },
+    {
+      "id": "ce-wrong-scanner-target",
+      "originalFailure": "The deployed-secret scanner could scan a hidden default target instead of the candidate.",
+      "howFalseConfidence": "A clean unrelated target would certify a dirty candidate.",
+      "detector": "src/engineering-os/deployedSecretScan.ts calibration (explicit target, fail-closed)",
+      "closureState": "CLOSED",
+      "affectedReleaseLayer": "secret-detector-contract"
+    },
+    {
+      "id": "ce-rate-limiter-overstated-global",
+      "originalFailure": "Per-instance in-memory rate limiting could be described as a global/distributed limit.",
+      "howFalseConfidence": "Abuse protection would appear stronger than it is.",
+      "detector": "RELEASE_LOCK.json.rateLimiting (INSTANCE_LOCAL_* vs DISTRIBUTED_RATE_LIMIT=NOT_PROVISIONED)",
+      "closureState": "CLOSED",
+      "affectedReleaseLayer": "billing-abuse-boundary"
+    },
+    {
+      "id": "ce-premature-yield",
+      "originalFailure": "A yield/handoff could occur while machine-closable work remained, justified only by 'large program' / 'practical context'.",
+      "howFalseConfidence": "Incomplete productization would look like a legitimate stopping point.",
+      "detector": "docs/engineering-os/qa/MACHINE_WORK_GRAPH.json (yield-discipline) + CONTEXT_STOP_EVIDENCE requirement in MONSTER_QA_RESUME.md",
+      "closureState": "CLOSED",
+      "affectedReleaseLayer": "yield-discipline"
+    }
+  ]
+}

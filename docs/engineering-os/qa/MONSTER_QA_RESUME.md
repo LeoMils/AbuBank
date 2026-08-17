@@ -82,7 +82,22 @@ explicit owner authorization. Repository truth > any prompt. Machine evidence > 
   verify-capsule. Proof: 4 completeness mutations in certificationCapsule.test.ts + LIVE CLI: denominator
   drift → verify-capsule "integrity OK · completeness FAIL" exit 4 → restore. Total suite 13472 green.
 
-## REMAINING MACHINE-CLOSABLE (ordered; exact next actions)
+## DONE checkpoint #4 (C10 + C12 + C6 oracles — harness-only)
+- **C10 Machine Work Completeness Oracle** `npm run qa:machine-work` — authoritative obligation universe
+  (scripts/machine-work-graph-lib.mjs REQUIRED_OBLIGATION_IDS = 52) cross-checked against
+  MACHINE_WORK_GRAPH.json. MACHINE_CLOSABLE_REMAINING is now DERIVED (currently 31), OMITTED=0, fail-closed
+  on omission/invalid-state/pass-without-evidence. Proof: machineWorkGraph.test.ts (7, incl. §43 omission attack).
+- **C12 QA Control Escape Corpus** QA_CONTROL_ESCAPE_CORPUS.json (11 escapes, each → closed detector) +
+  qaControlEscapeCorpus.test.ts (QA_CONTROL_ESCAPES_OPEN=0; detector test files must exist).
+- **C6 Stochastic Completeness Oracle + A5 pre-registration** stochastic-completeness-lib.mjs +
+  STOCHASTIC_PLAN.json (every stochastic-exposed claim resolved; N/threshold/critical-rule/envelope
+  pre-registered BEFORE any run) + stochasticCompleteness.test.ts (UNSAMPLED_REQUIRED_CLAIMS=0; §14 attack).
+  The actual bounded RUN is BLOCKED_EXTERNAL (live provider calls = owner spend) — pre-registration is the
+  machine-closable part. Total suite 13488 green.
+- Machine-state truth: MACHINE_CLOSABLE_REMAINING=31 (derived), OMITTED=0, QA_CONTROL_ESCAPES_OPEN=0,
+  UNSAMPLED_REQUIRED_CLAIMS=0. QA_SYSTEM_VERDICT stays INCOMPLETE_PRODUCTIZATION (31 NONTERMINAL obligations).
+
+## REMAINING MACHINE-CLOSABLE (the 31 NONTERMINAL obligations in MACHINE_WORK_GRAPH.json)
 Track A:
 - **A5 stochastic reliability** — pre-registered risk-based sampling for stochastic claims (golden
   session, online freshness, family resolution). Define sample plan/stopping/pass-rule BEFORE running;
