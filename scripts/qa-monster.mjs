@@ -22,6 +22,7 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { deriveExit, EXIT } from './qa-monster-verdict.mjs'
 import { deriveCurrentCandidate, CANDIDATE } from './current-candidate-lib.mjs'
+import { deriveWorkGraphState } from './machine-work-graph-lib.mjs'
 
 const [mode, url] = [process.argv[2], process.argv[3]]
 if (!mode || !['rc', 'production', 'feature', 'current'].includes(mode)) {
@@ -111,9 +112,19 @@ const pass = areas.every((a) => a.pass) // legacy area-level roll-up (back-compa
 // ── Integrity #3 + #5 · mode-aware, fail-closed exit contract (one shared code path) ─────────────
 // Verdicts and the process exit code are BOTH derived from scripts/qa-monster-verdict.mjs — the same
 // pure module the self-mutation test (src/engineering-os/qaMonsterExitContract.test.ts) exercises.
-// Productization floor: B1 done; B2–B13 pending (flip productizationComplete when they land).
-const PRODUCTIZATION = { B1_orchestrator: 'DONE', B2_B13: 'PENDING' }
-const productizationComplete = PRODUCTIZATION.B2_B13 === 'DONE'
+// Productization is DERIVED from the Machine Work Completeness Oracle (C10), never hardcoded: complete
+// only when zero obligations are OMITTED and zero machine-closable obligations remain. Externally-blocked
+// items (git-worktree denied, hosted-CI observe) are their own bucket and, per §53, do not represent
+// incomplete MACHINE work — but they ARE surfaced in the report so READY is never naked.
+let workGraph = { MACHINE_CLOSABLE_REMAINING: null, OMITTED_MACHINE_OBLIGATIONS: null, EXTERNAL_BLOCKED_REMAINING: null }
+try {
+  const reg = JSON.parse(readFileSync(resolve('docs/engineering-os/qa/MACHINE_WORK_GRAPH.json'), 'utf8')).obligations
+  workGraph = deriveWorkGraphState(reg)
+} catch {}
+const productizationComplete = workGraph.OMITTED_MACHINE_OBLIGATIONS === 0 && workGraph.MACHINE_CLOSABLE_REMAINING === 0
+const PRODUCTIZATION = { B1_orchestrator: 'DONE', machineClosableRemaining: workGraph.MACHINE_CLOSABLE_REMAINING,
+  omitted: workGraph.OMITTED_MACHINE_OBLIGATIONS, externalBlocked: workGraph.EXTERNAL_BLOCKED_REMAINING,
+  B2_B13: productizationComplete ? 'DONE' : 'PENDING' }
 const corpusStillOpen = corpus?.score?.STILL_OPEN ?? null
 const decision = deriveExit({ mode, areas, corpusStillOpen, worktreeRuntimeClean: WORKTREE_RUNTIME_CLEAN, productizationComplete })
 const { PRODUCT_CANDIDATE_VERDICT, QA_SYSTEM_VERDICT, RELEASE_PROMOTION_VERDICT } = decision.verdicts

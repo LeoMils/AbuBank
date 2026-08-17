@@ -23,9 +23,12 @@ describe('Machine Work Completeness Oracle (C10/§43)', () => {
     expect(s.ok).toBe(true)
   })
 
-  it('MACHINE_CLOSABLE_REMAINING is DERIVED and currently > 0 (honest: work remains)', () => {
+  it('MACHINE_CLOSABLE_REMAINING is DERIVED (equals the machine-closable list length), not hardcoded', () => {
     const s = deriveWorkGraphState(realRegistry(), REQUIRED_OBLIGATION_IDS)
-    expect(s.MACHINE_CLOSABLE_REMAINING).toBeGreaterThan(0)
+    // The value is whatever the registry derives — the invariant is that it EQUALS the derived list,
+    // never an asserted constant. (It legitimately reached 0 once all machine-closable work landed.)
+    expect(s.MACHINE_CLOSABLE_REMAINING).toBe(s.machineClosableList.length)
+    expect(s.MACHINE_CLOSABLE_REMAINING).toBeGreaterThanOrEqual(0)
     expect(s.REQUIRED_MACHINE_OBLIGATIONS_TOTAL).toBe(REQUIRED_OBLIGATION_IDS.length)
   })
 
