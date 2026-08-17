@@ -115,15 +115,15 @@
     },
     {
       "id": "change-impact-proof-cache",
-      "terminalState": "NONTERMINAL",
-      "machineClosable": true,
-      "source": "§19/B4"
+      "terminalState": "PROVEN_PASS",
+      "source": "§19/B4",
+      "evidence": "scripts/change-impact-lib.mjs + changeImpactOracle.test.ts (unknown path widens scope)"
     },
     {
       "id": "test-oracle-integrity",
-      "terminalState": "NONTERMINAL",
-      "machineClosable": true,
-      "source": "§20/B5"
+      "terminalState": "PROVEN_PASS",
+      "source": "§20/B5",
+      "evidence": "scripts/oracle-discipline-lib.mjs oracleRank+calibrationValid + changeImpactOracle.test.ts (co-changed detector calibration required)"
     },
     {
       "id": "escape-to-detector",
@@ -152,9 +152,9 @@
     },
     {
       "id": "negative-proof-protocol",
-      "terminalState": "NONTERMINAL",
-      "machineClosable": true,
-      "source": "§25"
+      "terminalState": "PROVEN_PASS",
+      "source": "§25",
+      "evidence": "scripts/oracle-discipline-lib.mjs negativeProofComplete + changeImpactOracle.test.ts (device/human not proof without attempted routes+remainder+review)"
     },
     {
       "id": "realtime-idempotency",
@@ -238,21 +238,21 @@
     },
     {
       "id": "environment-parity",
-      "terminalState": "NONTERMINAL",
-      "machineClosable": true,
-      "source": "§39"
+      "terminalState": "PROVEN_PASS",
+      "source": "§39",
+      "evidence": "scripts/release-policy-lib.mjs envParity + releasePolicy.test.ts (name/scope only, missing blocks)"
     },
     {
       "id": "exact-artifact-lock-rollback",
-      "terminalState": "NONTERMINAL",
-      "machineClosable": true,
-      "source": "§40"
+      "terminalState": "PROVEN_PASS",
+      "source": "§40",
+      "evidence": "scripts/release-policy-lib.mjs rollbackValid + releasePolicy.test.ts (P0/secret/revoked target = invalid)"
     },
     {
       "id": "emergency-path",
-      "terminalState": "NONTERMINAL",
-      "machineClosable": true,
-      "source": "§41/B9"
+      "terminalState": "PROVEN_PASS",
+      "source": "§41/B9",
+      "evidence": "scripts/release-policy-lib.mjs emergencyEligible + NON_DEFERRABLE kernel + releasePolicy.test.ts (never plain GO; kernel items non-deferrable)"
     },
     {
       "id": "critical-user-journeys",
