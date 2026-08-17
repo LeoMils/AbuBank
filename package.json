@@ -26,6 +26,8 @@
     "qa:production-gate": "npx tsx scripts/text-harness-report.ts && npx tsx scripts/qa-production-gate.ts",
     "qa:seal": "node scripts/seal-scorecard.mjs",
     "qa:monster": "node scripts/qa-monster.mjs",
+    "qa:capsule": "node scripts/certification-capsule.mjs",
+    "qa:verify-capsule": "node scripts/verify-capsule.mjs",
     "abu:goal:arm": "node scripts/abu-goal.mjs arm",
     "abu:goal:status": "node scripts/abu-goal.mjs status",
     "abu:goal:disarm": "node scripts/abu-goal.mjs disarm",

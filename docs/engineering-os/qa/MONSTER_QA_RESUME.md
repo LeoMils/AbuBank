@@ -54,6 +54,21 @@ explicit owner authorization. Repository truth > any prompt. Machine evidence > 
   (13454 green). Feature-mode orchestrator exit proven 0; frozen-RC-data proven → new exit 3.
 - `npm run qa:monster <feature|rc|production> [url]` script + `QA_MONSTER_OPERATOR.md` (fresh-session).
 
+## DONE this checkpoint #2 (Certification Capsule + provenance + harness-clean — harness-only)
+- **§12 Certification Capsule.** `scripts/certification-capsule-lib.mjs` (pure: canonicalize + sha256 +
+  buildCapsule + verifyCapsule) → `scripts/certification-capsule.mjs` (seal) + `scripts/verify-capsule.mjs`
+  (check). CAPSULE_ID = sha256(canonical contents); seals runtime/artifact/harness identities, both
+  worktree-clean flags, all 3 verdicts, runtime provenance, and a digest of all 9 evidence artifacts.
+  Verify fails closed (exit 4) on content-address mismatch, evidence drift/removal, dropped required
+  claim, or NOT_PROVEN provenance. Wired into `qa:monster rc|production` (auto-seals). npm: `qa:capsule`,
+  `qa:verify-capsule`. Proven: `src/engineering-os/certificationCapsule.test.ts` (9 tamper mutations,
+  enforced suite; total 13463 green).
+- **§7 runtime-source provenance = PROVEN.** deployed buildVersion 0.291.0-earonly ↔ the sole commit that
+  set that BUILD_VERSION in api/health.ts (237bef9); zero non-test runtime drift since. (/api/health has no
+  commit SHA — version-string binding is the authoritative in-repo provenance.) Recorded in the lock.
+- **§5/§6 WORKTREE_HARNESS_CLEAN** now classified alongside RUNTIME_CLEAN (dirty test/oracle/evaluator/
+  runner/config/control-plane/workflow path ⇒ harness-dirty). Both flags sealed into the capsule.
+
 ## REMAINING MACHINE-CLOSABLE (ordered; exact next actions)
 Track A:
 - **A5 stochastic reliability** — pre-registered risk-based sampling for stochastic claims (golden

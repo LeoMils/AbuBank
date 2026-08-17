@@ -29,6 +29,24 @@ machine in `scripts/qa-monster-verdict.mjs`, not from an area roll-up. That modu
 `src/engineering-os/qaMonsterExitContract.test.ts` (13 planted-defect mutations, part of the enforced
 suite) — if you change the contract, that test must still pass.
 
+## Certification Capsule (the proof package — §12)
+
+An `rc`/`production` run automatically seals a content-addressed proof package to
+`docs/engineering-os/qa/CERTIFICATION_CAPSULE.json` (`CAPSULE_ID = sha256(canonical contents)`). It
+records the certified runtime/artifact/harness identities, runtime-source provenance, both worktree
+cleanliness flags, all three verdicts, and a digest of every referenced evidence file — so a future
+operator can answer *what was certified, by which harness, with which evidence, and why* from that
+file alone. Regenerate/verify manually with:
+
+```
+npm run qa:capsule            # seal a capsule from current machine state
+npm run qa:verify-capsule     # exit 0 = intact; exit 4 = tampered/evidence-drift/unproven provenance
+```
+
+`verify-capsule` fails closed (exit 4) if the content address does not recompute, any referenced
+evidence file changed or vanished, a required claim is missing, or runtime provenance is `NOT_PROVEN`.
+Tamper detection is proven by `src/engineering-os/certificationCapsule.test.ts` (enforced suite).
+
 ## Interpreting the three verdicts (never conflate them)
 
 - `PRODUCT_CANDIDATE_VERDICT`: `GO` / `NO_GO` / `NOT_PROVEN` — is the *product* good?

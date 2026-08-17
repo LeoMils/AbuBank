@@ -148,6 +148,16 @@ console.log(`\n=== areas ${report.counts.pass}/${report.counts.areas} · PRODUCT
 console.log(`identity: runtime=${RUNTIME_SOURCE_SHA} harness=${HARNESS_SHA?.slice(0, 8)} build=${DEPLOYED_BUILD_ID} · worktree runtime-clean=${WORKTREE_RUNTIME_CLEAN}`)
 console.log(`exit: code=${decision.code} state=${decision.state} · ${decision.reason}`)
 console.log('wrote docs/eval/QA_MONSTER_REPORT.json')
+
+// ── §12 · seal a content-addressed Certification Capsule from the evidence just written ───────────
+// Only for rc/production (feature has no deployed evidence to seal). Additive: capsule failure is
+// surfaced but does not alter the proven release exit code — verify-capsule is the release-time gate.
+if (mode === 'rc' || mode === 'production') {
+  try {
+    const out = execSync('node scripts/certification-capsule.mjs', { encoding: 'utf8' })
+    console.log(out.trim().split('\n').filter((l) => /CAPSULE_ID|self-verify|provenance/.test(l)).join('\n'))
+  } catch (e) { console.log('capsule generation FAILED: ' + ((e.stdout ?? '') + (e.stderr ?? e.message))) }
+}
 // Fail-closed, mode-aware exit. NEVER `pass ? 0 : 1` — success derives from the release state machine,
 // and a missing/malformed/incomplete report yields INTEGRITY_FAIL (exit 4), never a default success.
 process.exit(decision.code)

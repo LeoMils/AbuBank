@@ -26,8 +26,24 @@
     "productizationFloor": {
       "B1_orchestrator": "DONE",
       "B11_exitContract_selfMutation": "DONE",
+      "B11_capsule_tamperMutation": "DONE",
+      "certificationCapsule_I12": "DONE",
       "B2_B13": "PENDING"
     }
+  },
+  "runtimeProvenance": {
+    "identity": "PROVEN",
+    "method": "deployed buildVersion 0.291.0-earonly ↔ the sole commit that introduced that exact BUILD_VERSION string in api/health.ts (237bef9); zero non-test runtime drift since — verified by git",
+    "RUNTIME_SOURCE_SHA": "237bef9",
+    "note": "Stronger than the last-runtime-commit heuristic: ties the deployed artifact's advertised version to its source commit. /api/health does NOT inject a commit SHA (only buildVersion), so this version-string binding is the authoritative in-repo provenance available."
+  },
+  "certificationCapsule": {
+    "path": "docs/engineering-os/qa/CERTIFICATION_CAPSULE.json",
+    "contentAddressed": "CAPSULE_ID = sha256(canonical(contents))",
+    "generator": "scripts/certification-capsule.mjs (npm run qa:capsule)",
+    "verifier": "scripts/verify-capsule.mjs (npm run qa:verify-capsule) — exit 4 on tamper/drift/NOT_PROVEN",
+    "tamperProof": "src/engineering-os/certificationCapsule.test.ts (9 mutations, enforced suite)",
+    "note": "Seals the existing evidence; copies verdicts verbatim and cannot promote them."
   },
   "exitContract": {
     "integrity": "I3",
