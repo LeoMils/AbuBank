@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.287.0-earonly',
-  buildLabel: 'AbuBank 0.287.0 — YARDEN ESCAPE CLASS FIX. Spouse-of-descendant in-laws (grandchild-in-law: כלה/חתן of a grandchild) are now FIRST-CLASS relative to Martita on BOTH resolution paths — the text tool (shapeFamilyAnswer: "ירדן, אשת עילי הנכד שלך") and the canonical two-name reasoning (describeRelation: detectSpouseOfDescendant at depth ≥2). ירדן (granddaughter-in-law) AND גלעד (grandson-in-law) both resolve, correctly gendered, with no invented blood relation; direct relations + depth-1 son/daughter-in-law unchanged. Keyed on the relationship CLASS, never a name. Priors: TEMPORAL=GROUNDED+FRESH dated live-fact architecture (weather/FX certified, results decline honestly); tool-sequencing RAW-EVENT oracle; Gemini/Groq replacement-path proofs (TTS→STT round-trip). Do NOT merge (production serves an older build; 3 old keys await owner revocation).',
+  version:    '0.288.0-earonly',
+  buildLabel: 'AbuBank 0.288.0 — FINAL MACHINE-CLOSURE PASS. (1) YARDEN ESCAPE CLASS FIX: spouse-of-descendant in-laws (grandchild-in-law כלה/חתן) are first-class relative to Martita on BOTH paths (shapeFamilyAnswer + describeRelation.detectSpouseOfDescendant); ירדן+גלעד resolve, gendered, no invented relation. (2) 13 red voice/STT tests RESOLVED: classified (stale-after-Groq/Gemini-client-removal) + updated to assert the NEW server-only architecture, not weakened; full suite green. (3) DATED-SEARCH: news/latest-result freshness is now a real GROUNDED+FRESH capability (Tavily published_date / Brave page_age carried to the freshness oracle; answer only ≤21d dated, else decline). Priors: TEMPORAL=GROUNDED+FRESH weather/FX dated APIs; tool-sequencing RAW-EVENT oracle; replacement-path proofs (TTS→STT round-trip). Do NOT merge (production serves an older build; 3 old keys await owner revocation).',
   buildDate:  '2026-08-17',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time

@@ -127,12 +127,12 @@ describe('DATED-SEARCH freshness evidence (news / latest results)', () => {
     expect(parseProviderDate(undefined, NOW)).toBeNull()
   })
   it('freshestPublishedDate picks the most recent parseable source date, ignoring undated ones', () => {
-    const f = freshestPublishedDate([{ publishedDate: '2026-08-10' }, { publishedDate: '2026-08-16' }, { publishedDate: undefined }, { publishedDate: 'junk' }], NOW)
+    const f = freshestPublishedDate([{ publishedDate: '2026-08-10' }, { publishedDate: '2026-08-16' }, {}, { publishedDate: 'junk' }], NOW)
     expect(f).not.toBeNull()
     expect(f!.iso.slice(0, 10)).toBe('2026-08-16')
     expect(Math.round(f!.ageDays)).toBe(1)
   })
   it('returns null when NO source carries a parseable date (→ caller declines, never certifies)', () => {
-    expect(freshestPublishedDate([{ publishedDate: undefined }, { publishedDate: 'yesterday-ish' }], NOW)).toBeNull()
+    expect(freshestPublishedDate([{}, { publishedDate: 'yesterday-ish' }], NOW)).toBeNull()
   })
 })
