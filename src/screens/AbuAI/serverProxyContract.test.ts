@@ -94,7 +94,7 @@ describe('User-facing copy does not instruct anyone to set VITE_OPENAI_API_KEY',
       }
     }
     expect(offenders, `instructional reference found in: ${offenders.join(', ')}`).toEqual([])
-  })
+  }, 30_000) // walks all of src/api/docs — a filesystem-bound test; generous budget so it never flakes on load
 
   it('AbuAI runtime "API not set" copy does NOT leak technical jargon to the user', () => {
     const svc = read('src/screens/AbuAI/service.ts')
