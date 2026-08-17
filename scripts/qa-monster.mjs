@@ -107,6 +107,21 @@ const decision = deriveExit({ mode, areas, corpusStillOpen, worktreeRuntimeClean
 const { PRODUCT_CANDIDATE_VERDICT, QA_SYSTEM_VERDICT, RELEASE_PROMOTION_VERDICT } = decision.verdicts
   ?? { PRODUCT_CANDIDATE_VERDICT: 'NOT_PROVEN', QA_SYSTEM_VERDICT: 'NOT_READY', RELEASE_PROMOTION_VERDICT: 'BLOCKED' }
 
+// ── B2 · QA economy (MEASURED, this run) ─────────────────────────────────────────────────────────
+// Timings come from the areas we just ran — no invented monetary SLO (owner sets spend). Deterministic
+// gates vs network/provider-touching acceptance are split so a tier's cost profile is legible. A tier
+// exceeding a *configured* wall-clock target is a QA-system finding, never a reason to drop assurance.
+const NETWORK_AREAS = ['security-scan', 'calendar', 'whatsapp', 'current-info-freshness', 'replacement-paths', 'historical-corpus']
+const economy = {
+  tier: mode,
+  wallClockMs: Date.now() - t0,
+  deterministicMs: areas.filter((a) => !NETWORK_AREAS.includes(a.area)).reduce((s, a) => s + a.ms, 0),
+  networkMs: areas.filter((a) => NETWORK_AREAS.includes(a.area)).reduce((s, a) => s + a.ms, 0),
+  networkAreaCount: areas.filter((a) => NETWORK_AREAS.includes(a.area)).length,
+  perAreaMs: Object.fromEntries(areas.map((a) => [a.area, a.ms])),
+  note: 'MEASURED wall-clock/area timings from THIS run. No monetary SLO is asserted (OWNER sets spend). Wall-clock targets are configurable; a tier over target is a QA-system finding, not a license to reduce assurance.',
+}
+
 const report = {
   $schema: 'internal://abu/qa-monster', mode, target: url ?? null, when: new Date().toISOString(),
   identity: {
@@ -124,6 +139,7 @@ const report = {
     AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO: corpus?.score?.STILL_OPEN ?? null,
   },
   areas,
+  economy,
   note: 'Machine state is authoritative. Prose is generated FROM this and cannot promote a NO_GO / NOT_YET. A green area roll-up is NOT release promotion — see verdicts.RELEASE_PROMOTION_VERDICT. Production deploy + old-credential revocation are OWNER actions.',
   runtimeMs: Date.now() - t0,
 }
