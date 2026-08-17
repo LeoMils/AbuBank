@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/rc-historical-corpus",
-  "rc": "https://abu-bank-njy2ocyw1-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T06:36:10.594Z",
+  "rc": "https://abu-bank-ridxlew2v-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-17T12:06:58.097Z",
   "pathEquivalenceRule": "A clean replay closes a historical defect ONLY with material path-equivalence. Voice-audio escapes replayed via text = NOT_PROVEN → never closed by a text replay.",
   "score": {
     "HISTORICAL_OWNER_ESCAPES_TOTAL": 9,
@@ -73,7 +73,7 @@
         },
         {
           "in": "את שוב לא מבינה אותי",
-          "out": "בואי נבדוק ביומן ביחד מה קבוע — אני לא רוצה להגיד לך תאריך או שעה שאני לא בטוחה בהם.",
+          "out": "מחר אין כלום ביומן. את רוצה לנצל את היום למשהו מיוחד?",
           "ok": true
         }
       ]
@@ -90,12 +90,12 @@
       "evidence": [
         {
           "in": "ספרי לי על המהפכה הצרפתית",
-          "out": "המהפכה הצרפתית הייתה תקופה של שינוי פוליטי וחברתי בצרפת בין השנים 1789 ל-1799. היא התחילה ",
+          "out": "המהפכה הצרפתית הייתה תקופה של שינוי פוליטי וחברתי דרמטי בצרפת בין השנים 1789 ל-1799. היא ה",
           "ok": true
         },
         {
           "in": "תמשיכי",
-          "out": "אירועים מרכזיים כוללים את כיבוש הבסטיליה ב-14 ביולי 1789, והצהרת זכויות האדם והאזרח. המהפכ",
+          "out": "במהלך המהפכה נשמעו רעיונות חדשים של חירות, שוויון ואחווה, והתרחשו אירועים חשובים כמו ההסתע",
           "ok": true
         },
         {

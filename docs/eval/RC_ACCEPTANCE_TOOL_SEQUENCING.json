@@ -1,6 +1,6 @@
 {
   "$schema": "internal://abu/rc-acceptance-tool-sequencing",
-  "when": "2026-08-17T06:36:50.073Z",
+  "when": "2026-08-17T12:06:09.703Z",
   "contract": "tool_call → (no assistant semantic output) → tool_result → final grounded answer",
   "rawEventOracle": {
     "class": "CODE (unit-proven) — DEVICE when a real FlightRecorder trace is supplied",

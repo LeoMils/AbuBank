@@ -1,13 +1,13 @@
 {
   "$schema": "internal://abu/qa-monster",
-  "mode": "feature",
-  "target": null,
-  "when": "2026-08-17T11:14:17.758Z",
-  "gitHead": "fe339a29fe13439744d9eb4a73ba223013229aec",
+  "mode": "rc",
+  "target": "https://abu-bank-ridxlew2v-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-17T12:06:58.124Z",
+  "gitHead": "e34514adb1f6f344c345c584ef445307c7f924ed",
   "verdict": "GO",
   "counts": {
-    "areas": 2,
-    "pass": 2,
+    "areas": 9,
+    "pass": 9,
     "fail": 0,
     "AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0
   },
@@ -18,7 +18,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "CODE",
-      "ms": 18664,
+      "ms": 22534,
       "verdict": "PASS",
       "resultFile": null,
       "tail": "> abu-bank@30.14.0 typecheck | > tsc --noEmit"
@@ -29,12 +29,96 @@
       "pass": true,
       "exit": 0,
       "evidence": "CODE",
-      "ms": 58241,
+      "ms": 47128,
       "verdict": "PASS",
       "resultFile": null,
-      "tail": "      Tests  13420 passed | 1 skipped | 2 todo (13423) |    Start at  14:13:21 |    Duration  55.77s (transform 64.27s, setup 0ms, import 233.83s, tests 267.80s, environment 231ms)"
+      "tail": "      Tests  13420 passed | 1 skipped | 2 todo (13423) |    Start at  15:04:19 |    Duration  44.44s (transform 47.78s, setup 0ms, import 157.37s, tests 216.90s, environment 163ms)"
+    },
+    {
+      "area": "security-scan",
+      "cmd": "npx tsx scripts/scan-deployed-secrets.ts https://abu-bank-ridxlew2v-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 4909,
+      "verdict": "PASS",
+      "resultFile": "docs/engineering-os/qa/deployed-secret-exposure.json",
+      "tail": " | === ALL CLEAN (1/1 clean) === | wrote docs/engineering-os/qa/deployed-secret-exposure.json"
+    },
+    {
+      "area": "calendar",
+      "cmd": "node scripts/rc-acceptance-calendar.mjs https://abu-bank-ridxlew2v-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 15619,
+      "verdict": "PROVEN_PASS",
+      "resultFile": "docs/eval/RC_ACCEPTANCE_CALENDAR.json",
+      "tail": " | === PROVEN_PASS  7/7 === | wrote docs/eval/RC_ACCEPTANCE_CALENDAR.json"
+    },
+    {
+      "area": "whatsapp",
+      "cmd": "npx tsx scripts/rc-acceptance-whatsapp.mjs https://abu-bank-ridxlew2v-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 7886,
+      "verdict": "PROVEN_PASS",
+      "resultFile": "docs/eval/RC_ACCEPTANCE_WHATSAPP.json",
+      "tail": " | === PROVEN_PASS  5/5 === | wrote docs/eval/RC_ACCEPTANCE_WHATSAPP.json"
+    },
+    {
+      "area": "current-info-freshness",
+      "cmd": "npx tsx scripts/rc-acceptance-temporal.mjs https://abu-bank-ridxlew2v-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 24178,
+      "verdict": "GROUNDING_HONEST · LIVE-FACT FRESHNESS CERTIFIED (weather/fx) · other temporal = decline-or-gap",
+      "resultFile": "docs/eval/RC_ACCEPTANCE_TEMPORAL.json",
+      "tail": "super-bowl: HONEST_DECLINE (no dated source → declines, never stale) | === GROUNDING_HONEST · LIVE-FACT FRESHNESS CERTIFIED (weather/fx) · other temporal = decline-or-gap === | wrote docs/eval/RC_ACCEPTANCE_TEMPORAL.json"
+    },
+    {
+      "area": "replacement-paths",
+      "cmd": "node scripts/rc-acceptance-replacement-paths.mjs https://abu-bank-ridxlew2v-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 10856,
+      "verdict": "PROVEN_PASS",
+      "resultFile": "docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json",
+      "tail": " | === PROVEN_PASS  4/4 === | wrote docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json"
+    },
+    {
+      "area": "tool-sequencing",
+      "cmd": "npx tsx scripts/rc-acceptance-tool-sequencing.mjs",
+      "pass": true,
+      "exit": 0,
+      "evidence": "CODE+golden",
+      "ms": 1896,
+      "verdict": "CONTRACT_HELD (oracle proven; real golden corroborates)",
+      "resultFile": "docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json",
+      "tail": "real golden: 12 tool-turns · preamble-in-tool-turn=0 · repeated=0 · goldenPass=true | === CONTRACT_HELD (oracle proven; real golden corroborates) === | wrote docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json"
+    },
+    {
+      "area": "historical-corpus",
+      "cmd": "node scripts/rc-acceptance-historical-corpus.mjs https://abu-bank-ridxlew2v-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 48368,
+      "verdict": {
+        "HISTORICAL_OWNER_ESCAPES_TOTAL": 9,
+        "NOW_MACHINE_DETECTABLE": 9,
+        "REPLAYED_AND_CLOSED": 6,
+        "NOT_REPLAYABLE_WITH_REASON": 3,
+        "STILL_OPEN": 0,
+        "AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0
+      },
+      "resultFile": "docs/eval/RC_HISTORICAL_CORPUS.json",
+      "tail": "ESCAPES total=9  detectable=9  closed=6  not-replayable=3  STILL_OPEN=0 | north-star AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO (still open) = 0 | wrote docs/eval/RC_HISTORICAL_CORPUS.json"
     }
   ],
   "note": "Machine state is authoritative. Prose is generated FROM this. Prose cannot promote a NO_GO. Production deploy requires explicit owner authorization; old-credential revocation is OWNER_ACTION_OPEN until confirmed.",
-  "runtimeMs": 76980
+  "runtimeMs": 183437
 }
