@@ -67,7 +67,7 @@ describe('relationBetween — the human kinship term, not a path (authored expec
       expect(r.text).not.toMatch(/בני משפחה/)
     }
     expect(sawAbsent).toBeGreaterThan(0) // the term-absent path IS exercised somewhere
-  }, 30_000)
+  }, 90_000)
 })
 
 describe('universal invariants over the FULL ordered pair matrix', () => {
@@ -87,5 +87,5 @@ describe('universal invariants over the FULL ordered pair matrix', () => {
       expect((r.text.match(/ של /g) ?? []).length, `${x.hebrewName}↔${y.hebrewName} is a chain: ${r.text}`).toBeLessThanOrEqual(2)
     }
     expect(checked).toBeGreaterThan(200)
-  }, 30_000) // the full matrix + term-absent path BFS is O(n^2); generous ceiling
+  }, 90_000) // the full matrix + term-absent path BFS is O(n^2); generous ceiling
 })

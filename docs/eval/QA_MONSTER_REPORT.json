@@ -1,0 +1,40 @@
+{
+  "$schema": "internal://abu/qa-monster",
+  "mode": "feature",
+  "target": null,
+  "when": "2026-08-17T11:14:17.758Z",
+  "gitHead": "fe339a29fe13439744d9eb4a73ba223013229aec",
+  "verdict": "GO",
+  "counts": {
+    "areas": 2,
+    "pass": 2,
+    "fail": 0,
+    "AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0
+  },
+  "areas": [
+    {
+      "area": "typecheck",
+      "cmd": "npm run typecheck",
+      "pass": true,
+      "exit": 0,
+      "evidence": "CODE",
+      "ms": 18664,
+      "verdict": "PASS",
+      "resultFile": null,
+      "tail": "> abu-bank@30.14.0 typecheck | > tsc --noEmit"
+    },
+    {
+      "area": "unit-suite",
+      "cmd": "npx vitest run",
+      "pass": true,
+      "exit": 0,
+      "evidence": "CODE",
+      "ms": 58241,
+      "verdict": "PASS",
+      "resultFile": null,
+      "tail": "      Tests  13420 passed | 1 skipped | 2 todo (13423) |    Start at  14:13:21 |    Duration  55.77s (transform 64.27s, setup 0ms, import 233.83s, tests 267.80s, environment 231ms)"
+    }
+  ],
+  "note": "Machine state is authoritative. Prose is generated FROM this. Prose cannot promote a NO_GO. Production deploy requires explicit owner authorization; old-credential revocation is OWNER_ACTION_OPEN until confirmed.",
+  "runtimeMs": 76980
+}
