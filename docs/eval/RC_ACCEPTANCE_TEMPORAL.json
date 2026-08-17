@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/rc-acceptance-temporal",
-  "rc": "https://abu-bank-ridxlew2v-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T12:05:34.466Z",
+  "rc": "https://abu-bank-73o7i62wf-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-17T12:26:36.470Z",
   "evidenceClass": "PREVIEW (deployed /api/abuai-online)",
   "freshnessSemantics": "GROUNDED != CURRENT — a temporal answer needs BOTH grounding AND certifiable freshness (evaluateFreshness). Live-fact domains (weather/fx) certify from a DATED authoritative source; domains without a dated source decline honestly.",
   "groundingHonesty": "PROVEN_PASS",
@@ -25,13 +25,13 @@
     "LIVE_FACT_FRESHNESS": [
       {
         "id": "current-weather",
-        "answer": "מזג האוויר עכשיו בכפר סבא: 31°, בהיר בעיקר. (נכון ל-15:00)",
-        "note": "dated weather source observedAt=2026-08-17T15:00:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 31°, בהיר בעיקר. (נכון \""
+        "answer": "מזג האוויר עכשיו בכפר סבא: 31°, מעונן חלקית. (נכון ל-15:15)",
+        "note": "dated weather source observedAt=2026-08-17T15:15:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 31°, מעונן חלקית. (נכון\""
       },
       {
         "id": "current-exchange",
-        "answer": "שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-17).",
-        "note": "dated fx source observedAt=2026-08-17T00:02:31.000Z → FRESH: \"שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-17).\""
+        "answer": "שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-14).",
+        "note": "dated fx source observedAt=2026-08-14T00:00:00Z → FRESH: \"שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-14).\""
       }
     ],
     "RESULT_DECLINES": [
@@ -50,7 +50,7 @@
       "pass": true,
       "note": "non-temporal fact · answerPath=deep src=6",
       "http": 200,
-      "ms": 5189,
+      "ms": 2088,
       "ok": true,
       "answerPath": "deep",
       "temporalIntentDiag": false,
@@ -70,7 +70,7 @@
       "capabilityGap": true,
       "note": "grounded+cited, but freshness UNCERTIFIED (no source dates) → NOT a current-info PASS: \"ראש הממשלה של ישראל עכשיו הוא בנימין נתניהו.\"",
       "http": 200,
-      "ms": 4740,
+      "ms": 1866,
       "ok": true,
       "answerPath": "deep",
       "temporalIntentDiag": true,
@@ -89,7 +89,7 @@
       "pass": true,
       "note": "declined honestly rather than answer stale (acceptable)",
       "http": 200,
-      "ms": 933,
+      "ms": 401,
       "ok": false,
       "errorCode": "ONLINE_NO_RESULTS",
       "answerPath": "live-decline-result",
@@ -107,14 +107,14 @@
       "currentInfoCertified": true,
       "class": "FRESH_CERTIFIED",
       "pass": true,
-      "note": "dated weather source observedAt=2026-08-17T15:00:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 31°, בהיר בעיקר. (נכון \"",
+      "note": "dated weather source observedAt=2026-08-17T15:15:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 31°, מעונן חלקית. (נכון\"",
       "http": 200,
-      "ms": 625,
+      "ms": 665,
       "ok": true,
       "answerPath": "live-weather",
       "temporalIntentDiag": true,
       "sourceCount": 1,
-      "answer": "מזג האוויר עכשיו בכפר סבא: 31°, בהיר בעיקר. (נכון ל-15:00)",
+      "answer": "מזג האוויר עכשיו בכפר סבא: 31°, מעונן חלקית. (נכון ל-15:15)",
       "userMessage": ""
     },
     {
@@ -126,14 +126,14 @@
       "currentInfoCertified": true,
       "class": "FRESH_CERTIFIED",
       "pass": true,
-      "note": "dated fx source observedAt=2026-08-17T00:02:31.000Z → FRESH: \"שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-17).\"",
+      "note": "dated fx source observedAt=2026-08-14T00:00:00Z → FRESH: \"שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-14).\"",
       "http": 200,
-      "ms": 5307,
+      "ms": 505,
       "ok": true,
       "answerPath": "live-fx",
       "temporalIntentDiag": true,
       "sourceCount": 1,
-      "answer": "שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-17).",
+      "answer": "שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-14).",
       "userMessage": ""
     },
     {
@@ -147,7 +147,7 @@
       "pass": true,
       "note": "declined honestly rather than answer stale (acceptable)",
       "http": 200,
-      "ms": 2101,
+      "ms": 2998,
       "ok": false,
       "errorCode": "ONLINE_NO_RESULTS",
       "answerPath": "none",
@@ -167,7 +167,7 @@
       "pass": true,
       "note": "ok=false code=ONLINE_NO_RESULTS \"לא מצאתי מידע עדכני על זה כרגע. אני מעדיפה להגיד ל\"",
       "http": 200,
-      "ms": 3600,
+      "ms": 4767,
       "ok": false,
       "errorCode": "ONLINE_NO_RESULTS",
       "answerPath": "none",

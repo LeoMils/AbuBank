@@ -1,11 +1,11 @@
 {
   "$schema": "internal://abu/rc-acceptance-whatsapp",
-  "rc": "https://abu-bank-ridxlew2v-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T12:05:32.785Z",
+  "rc": "https://abu-bank-73o7i62wf-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-17T12:26:34.893Z",
   "intent": "ארוחת שישי בשעה 19:00 אצל סבתא",
   "requiredFact": "19:00",
   "composePath": "openai-server",
-  "finalMessage": "אדר יקירי! מחכה לך לארוחת שישי ב-19:00 אצל סבתא 💚. אני מכינה את המאכלים שאתה הכי אוהב ❤️. אוהבת אותך מאוד מאוד, אבו.",
+  "finalMessage": "אדר חמוד שלי, מוזמן לארוחת שישי בשעה 19:00 אצלי בבית. יש אוכל טעים ואהבה לכולם ❤️🍾 תשמרו על עצמכם ותגיעו רעבים. נשיקות מאבו 💋",
   "verdict": "PROVEN_PASS",
   "evidence": {
     "compose.deployed": "PREVIEW (deployed proxy + gpt-4o)",
@@ -18,7 +18,7 @@
     {
       "id": "compose.deployed",
       "pass": true,
-      "detail": "gpt-4o via proxy · 117 chars"
+      "detail": "gpt-4o via proxy · 127 chars"
     },
     {
       "id": "compose.factPreserved",
@@ -38,7 +38,7 @@
     {
       "id": "send.noRealSend",
       "pass": true,
-      "detail": "hosts contacted: [abu-bank-ridxlew2v-leos-projects-d3c04c09.vercel.app] (mock recipient, no send tap performed)"
+      "detail": "hosts contacted: [abu-bank-73o7i62wf-leos-projects-d3c04c09.vercel.app] (mock recipient, no send tap performed)"
     }
   ]
 }
