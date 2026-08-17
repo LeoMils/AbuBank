@@ -89,7 +89,15 @@
       "howFalseConfidence": "Incomplete productization would look like a legitimate stopping point.",
       "detector": "docs/engineering-os/qa/MACHINE_WORK_GRAPH.json (yield-discipline) + CONTEXT_STOP_EVIDENCE requirement in MONSTER_QA_RESUME.md",
       "closureState": "CLOSED",
-      "affectedReleaseLayer": "yield-discipline"
+      "affectedReleaseLayer": "yield-discipline",
+      "confirmedInstances": [
+        {
+          "when": "checkpoint after b8bc412",
+          "whatHappened": "Yielded with YIELD_REASON_CODE=NEAR_HARD_CONTEXT_LIMIT_WITH_MEASURED_SIGNAL while ctx≈38% and after the Git Bash fork failure had ALREADY been worked around via PowerShell. The cited 'signal' (fork error) was resolved, so it was not a hard boundary; 'starting more work may produce shallow stubs' is not CONTEXT_STOP_EVIDENCE.",
+          "correction": "Reclassified as premature yield; resumed the closure loop. Rule reinforced: a worked-around tool error is NOT a boundary; NEAR_HARD_CONTEXT requires an actual measured context signal, not a quality-hedge.",
+          "regression": "src/engineering-os/yieldDiscipline.test.ts"
+        }
+      ]
     }
   ]
 }

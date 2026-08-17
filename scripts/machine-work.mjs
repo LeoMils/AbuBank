@@ -21,9 +21,14 @@ console.log(JSON.stringify({
   NONTERMINAL_MACHINE_OBLIGATIONS: s.NONTERMINAL_MACHINE_OBLIGATIONS,
   OMITTED_MACHINE_OBLIGATIONS: s.OMITTED_MACHINE_OBLIGATIONS,
   MACHINE_CLOSABLE_REMAINING: s.MACHINE_CLOSABLE_REMAINING,
+  EXTERNAL_BLOCKED_REMAINING: s.EXTERNAL_BLOCKED_REMAINING,
+  OWNER_AUTHORITY_REMAINING: s.OWNER_AUTHORITY_REMAINING,
+  HUMAN_RESIDUAL_REMAINING: s.HUMAN_RESIDUAL_REMAINING,
   omitted: s.omitted, duplicates: s.duplicates, invalidState: s.invalidState,
+  nonTerminalNotMachineClosable: s.nonTerminalNotMachineClosable,
   terminalWithoutEvidence: s.terminalWithoutEvidence,
-  nonTerminal: s.nonTerminal,
+  machineClosableList: s.machineClosableList,
+  externalBlockedList: s.externalBlockedList,
 }, null, 2))
-console.log(`\n=== work-graph: OMITTED=${s.OMITTED_MACHINE_OBLIGATIONS} · NONTERMINAL=${s.NONTERMINAL_MACHINE_OBLIGATIONS} · MACHINE_CLOSABLE_REMAINING=${s.MACHINE_CLOSABLE_REMAINING} · integrity ${s.ok ? 'OK' : 'FAIL'} ===`)
+console.log(`\n=== work-graph: OMITTED=${s.OMITTED_MACHINE_OBLIGATIONS} · MACHINE_CLOSABLE_REMAINING=${s.MACHINE_CLOSABLE_REMAINING} · EXTERNAL_BLOCKED=${s.EXTERNAL_BLOCKED_REMAINING} · OWNER=${s.OWNER_AUTHORITY_REMAINING} · HUMAN=${s.HUMAN_RESIDUAL_REMAINING} · integrity ${s.ok ? 'OK' : 'FAIL'} ===`)
 process.exit(s.ok ? 0 : 4)

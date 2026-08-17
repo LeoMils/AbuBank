@@ -83,9 +83,22 @@ export function deriveWorkGraphState(registry, requiredIds = REQUIRED_OBLIGATION
   const REQUIRED_MACHINE_OBLIGATIONS_TOTAL = requiredIds.length
   const OMITTED_MACHINE_OBLIGATIONS = omitted.length + duplicates.length + terminalWithoutEvidence.length
   const NONTERMINAL_MACHINE_OBLIGATIONS = nonTerminal.length
-  // MACHINE_CLOSABLE_REMAINING counts only obligations that are machine-closable AND not yet terminal.
-  // BLOCKED_EXTERNAL / OWNER / HUMAN_RESIDUAL are terminal-for-the-machine (not machine-closable).
-  const MACHINE_CLOSABLE_REMAINING = present.filter((o) => o.terminalState === 'NONTERMINAL' && o.machineClosable !== false).map((o) => o.id).length
+
+  // DISTINCT remaining buckets — never conflate them (control-integrity fix). MACHINE_CLOSABLE_REMAINING
+  // is ONLY the machine-closable non-terminal work; externally-blocked / owner / human items are their
+  // own terminal-for-the-machine buckets and must NOT inflate it.
+  const machineClosableList = present.filter((o) => o.terminalState === 'NONTERMINAL' && o.machineClosable !== false).map((o) => o.id)
+  const externalBlockedList = present.filter((o) => o.terminalState === 'BLOCKED_EXTERNAL_WITH_EVIDENCE').map((o) => o.id)
+  const ownerAuthorityList = present.filter((o) => o.terminalState === 'OWNER_AUTHORITY_REQUIRED_WITH_PROOF').map((o) => o.id)
+  const humanResidualList = present.filter((o) => o.terminalState === 'HUMAN_RESIDUAL_WITH_NEGATIVE_PROOF').map((o) => o.id)
+  // A NONTERMINAL obligation explicitly flagged machineClosable:false is a classification error — it must
+  // be given a real terminal state (BLOCKED_EXTERNAL/OWNER/HUMAN), not left as non-terminal-but-not-mine.
+  const nonTerminalNotMachineClosable = present.filter((o) => o.terminalState === 'NONTERMINAL' && o.machineClosable === false).map((o) => o.id)
+
+  const MACHINE_CLOSABLE_REMAINING = machineClosableList.length
+  const EXTERNAL_BLOCKED_REMAINING = externalBlockedList.length
+  const OWNER_AUTHORITY_REMAINING = ownerAuthorityList.length
+  const HUMAN_RESIDUAL_REMAINING = humanResidualList.length
 
   return {
     REQUIRED_MACHINE_OBLIGATIONS_TOTAL,
@@ -93,7 +106,12 @@ export function deriveWorkGraphState(registry, requiredIds = REQUIRED_OBLIGATION
     NONTERMINAL_MACHINE_OBLIGATIONS,
     OMITTED_MACHINE_OBLIGATIONS,
     MACHINE_CLOSABLE_REMAINING,
+    EXTERNAL_BLOCKED_REMAINING,
+    OWNER_AUTHORITY_REMAINING,
+    HUMAN_RESIDUAL_REMAINING,
+    machineClosableList, externalBlockedList, ownerAuthorityList, humanResidualList, nonTerminalNotMachineClosable,
     omitted, duplicates, terminalWithoutEvidence, nonTerminal, invalidState,
-    ok: OMITTED_MACHINE_OBLIGATIONS === 0 && invalidState.length === 0,
+    // ok requires: no omission, no invalid state, and no "non-terminal but not-machine-closable" limbo.
+    ok: OMITTED_MACHINE_OBLIGATIONS === 0 && invalidState.length === 0 && nonTerminalNotMachineClosable.length === 0,
   }
 }

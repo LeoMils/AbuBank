@@ -29,6 +29,25 @@ describe('Machine Work Completeness Oracle (C10/§43)', () => {
     expect(s.REQUIRED_MACHINE_OBLIGATIONS_TOTAL).toBe(REQUIRED_OBLIGATION_IDS.length)
   })
 
+  it('remaining buckets are DISTINCT — external/owner/human are NOT counted as machine-closable', () => {
+    const s = deriveWorkGraphState(realRegistry(), REQUIRED_OBLIGATION_IDS)
+    // no id appears in more than one remaining bucket
+    const all = [...s.machineClosableList, ...s.externalBlockedList, ...s.ownerAuthorityList, ...s.humanResidualList]
+    expect(new Set(all).size).toBe(all.length)
+    // BLOCKED_EXTERNAL items must be in the external bucket, never the machine-closable one
+    for (const id of s.externalBlockedList) expect(s.machineClosableList).not.toContain(id)
+    expect(s.MACHINE_CLOSABLE_REMAINING).toBe(s.machineClosableList.length)
+    expect(s.EXTERNAL_BLOCKED_REMAINING).toBe(s.externalBlockedList.length)
+  })
+
+  it('a NONTERMINAL obligation flagged machineClosable:false is a classification error (limbo) → not ok', () => {
+    const reg = realRegistry().map((o: Record<string, unknown>) =>
+      o.id === 'p2-enumeration' ? { id: 'p2-enumeration', terminalState: 'NONTERMINAL', machineClosable: false } : o)
+    const s = deriveWorkGraphState(reg, REQUIRED_OBLIGATION_IDS)
+    expect(s.nonTerminalNotMachineClosable).toContain('p2-enumeration')
+    expect(s.ok).toBe(false)
+  })
+
   it('THE §43 ATTACK: dropping a required obligation from the registry → OMITTED>0, never a false 0', () => {
     const trimmed = realRegistry().filter((o: { id: string }) => o.id !== 'capsule-integrity')
     const s = deriveWorkGraphState(trimmed, REQUIRED_OBLIGATION_IDS)
