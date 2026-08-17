@@ -62,6 +62,20 @@ production without explicit owner authorization).
   Real gpt-realtime golden corroboration: 12 tool-turns, 0 preamble, 0 repeats. Oracle is DEVICE-ready
   when a downloaded device FlightRecorder trace is supplied (raw-event class > transcript).
 
+## OWNER ADDITION (3) — historical-corpus replay + PATH-EQUIVALENCE (94eefed)
+`scripts/rc-acceptance-historical-corpus.mjs` replays the real device transcript turn-structures
+against the clean RC and scores the escape corpus with a hard path-equivalence guard (a clean replay
+closes a defect ONLY on the same material path). docs/eval/RC_HISTORICAL_CORPUS.json:
+  ESCAPES=9 · DETECTABLE=9 · REPLAYED_AND_CLOSED=5 (text-cognition + online) ·
+  NOT_REPLAYABLE_WITH_REASON=3 (voice-audio: preamble/barge-in/truncation — realtime audio+VAD path not
+  exercised headlessly; detectors exist + DEVICE-ready; a text replay is NOT accepted as closure) ·
+  STILL_OPEN=1 → AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO=1.
+NORTH-STAR WORKING: machine reproduced a real escape without Leo — "מי זאת ירדן" (documented כלה/אשת
+עילי; alias Yarden.yaml) is DECLINED 2/2 while רפי→מור, אופיר→גלעד resolve. Mechanism: grandchild's-
+spouse relation surfaced only inside עילי's notes, not first-class resolvable. NEXT ROI fix (task).
+CAVEAT: replay entry is ?legacy=1 (text). Leo's sessions were VOICE; text is material-equivalent for
+COGNITION only (parity mandate) — voice-audio closure remains NOT_PROVEN without a real realtime trace.
+
 ## SECURITY RESTATEMENT (owner corrected me — no evidence of revocation)
 - The 3 old keys are NOT proven revoked (I had implied "safe"; I have no evidence). CREDENTIAL_REVOKED =
   OWNER_ACTION_OPEN. Production/canonical (abu-ela-rc.vercel.app) STILL ships OpenAI fp:e39ef3b7 /
