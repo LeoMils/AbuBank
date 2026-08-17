@@ -5,7 +5,14 @@ redo proven work.** Branch: `rc5/cognitive-architecture-and-acceptance` (never m
 production without explicit owner authorization).
 
 ## CLEAN RC IDENTITY (certification candidate)
-- Latest clean RC (with the online isPersonal fix): `https://abu-bank-4jtx4wp7b-leos-projects-d3c04c09.vercel.app`
+- **CURRENT clean RC (with the live-fact GROUNDED+FRESH architecture):**
+  `https://abu-bank-eiyl4n2r7-leos-projects-d3c04c09.vercel.app` · build `0.286.0-earonly` · Preview.
+  Secret-clean: 27 chunks crawled, 0 credential tokens, 0 CONFIRMED_SECRET_EXPOSED (only VITE_APP_VERSION
+  / VITE_COMMIT_SHA public config). NOTE: `scripts/scan-deployed-secrets.ts` has HARDCODED targets
+  (abu-bank-f3dpms0ta + canonical alias abu-ela-rc.vercel.app) and IGNORES its URL arg — the "3 exposed"
+  it prints is the OLD canonical alias (owner-side block), NOT this RC. Scan a new RC by crawling the
+  chunk graph (`assets/*.js`) + `scanBundleForCredentialMaterial` directly (see milestone log).
+- Prior clean RC (pre-freshness): `https://abu-bank-4jtx4wp7b-leos-projects-d3c04c09.vercel.app`
   · build `0.286.0-earonly` · Preview.
 - To (re)create a clean RC from the current tree: `npx vercel deploy --force --yes` (the `.vercelignore`
   now excludes local `.env`, so the build uses ONLY the clean Vercel env). Preview env has: OPENAI_API_KEY,
@@ -65,35 +72,39 @@ UNKNOWN / machine-closable-NEXT (NOT device boundaries — owner item #9):
 HUMAN_RESIDUAL: voice audible/perceptual quality (device/ear only).
 
 ## ACTIVE DEFECT QUEUE (priority order) — updated
-1. DONE (67e7505 oracle · 17ebe37 register+freeze+partial-wire). Freshness oracle is a frozen
-   control-plane component. Deployed-path wiring is PARTIAL (recency only on the unused OpenAI path).
-2. **P1 · CURRENT-INFO FRESHNESS on the DEPLOYED deep/judge path** (the real open item). Two coupled
-   problems, both PROVEN on the deployed RC by the temporal matrix:
-   (a) FRESHNESS NOT CERTIFIABLE — the deep/judge path exposes no source publication dates, so no
-       temporal answer can be certified current (0/5). Real capability gap (owner correction #1).
-   (b) DECLINE→ANSWER DRIFT + accuracy — weather/exchange now ANSWER with freshness-uncertified
-       values (USD/ILS 2.96 is implausible) instead of the documented honest decline. This is closer
-       to a fabrication-risk than an honest miss.
-   FIX DIRECTION (needs a product-policy steer + is a medium-risk change to the SHARED online answer
-   path → deploy-gated): either (i) for temporal live-data classes the judge must STATE the timeframe/
-   date (transparency, keeps answers) and/or (ii) decline when freshness can't be verified, and/or
-   (iii) adopt a dated provider (Tavily include_answer + published dates) so evaluateFreshness has a
-   real signal. Extend recency/date instruction to `src/services/online/synthesize.ts` (gated to
-   temporal) — NOT just the OpenAI path. Then redeploy a NEW clean RC and re-run the temporal matrix.
-3. DONE (76d8b00) · Calendar write→readback→modify — 7/7 PROVEN_PASS (deployed RC, real IndexedDB).
-4. DONE (6217728) · WhatsApp compose + fact-preservation + safe send boundary — 5/5 PROVEN_PASS.
-5. DONE (2eeac25) · Temporal acceptance matrix — grounding-honest, freshness-not-certified (see #2).
+1. DONE (67e7505 oracle · 17ebe37 register+freeze). Freshness oracle is a frozen control-plane component.
+2. **CLOSED (87675e7 architecture · a-fx-fallback · deployed-proven on RC eiyl4n2r7)** · CURRENT-INFO
+   FRESHNESS. Owner directive implemented as a GENERAL live-fact architecture (TEMPORAL = GROUNDED +
+   FRESH): `src/services/online/liveFacts.ts` routes fast-changing current-VALUE domains to dedicated
+   DATED authoritative sources — weather → Open-Meteo (obs time), fx → frankfurter/ECB + open.er-api
+   fallback (rate date). `api/abuai-online.ts` freshness gate certifies via evaluateFreshness or
+   declines honestly; the FX page mis-extraction class is structurally impossible (value from the rate
+   API, never a scraped page). DEPLOYED PROOF (temporal matrix on eiyl4n2r7): weather + exchange =
+   FRESH_CERTIFIED (observedAt today / 2026-08-14); super-bowl = HONEST_DECLINE (no dated source →
+   never stale); 0 fabrication, 0 honest-behaviour fails. RETRACTION: the earlier "2.96 implausible"
+   flag was stale-cutoff bias — ECB confirms USD/ILS≈2.95 on 2026-08-14 (the "2.96" was correct).
+   REMAINING (tracked, lower priority): office-holder + news/results are NOT date-certifiable at the
+   endpoint (office-holder = grounded slow-fact, acceptable; results/news decline honestly). A dated-
+   SEARCH resolver (Tavily published_date / Brave page_age, captured through generalSearch→synthesize)
+   is the next extension that would let results/news ANSWER freshly — the LiveFactEvidence interface is
+   the seam. adapters.ts currently drops those dates.
+3. DONE (76d8b00 · re-proven on eiyl4n2r7) · Calendar write→readback→modify — 7/7 PROVEN_PASS.
+4. DONE (6217728 · re-proven on eiyl4n2r7) · WhatsApp compose + fact-preservation + safe send — 5/5.
+5. DONE (2eeac25 · updated) · Temporal acceptance matrix — grounding-honest; weather/fx FRESH_CERTIFIED.
 
 ## EXACT NEXT EXECUTABLE ACTION (for the resuming context)
-Machine-closable ACCEPTANCE for Calendar / WhatsApp / temporal is COMPLETE. The remaining substantive
-work is defect-queue #2 (deployed current-info freshness), which is (a) a medium-risk change to the
-shared online answer path, (b) deploy-gated (new certification candidate → must re-run calendar +
-whatsapp + temporal + secret-scan on it), and (c) entangled with a PRODUCT-POLICY decision the owner
-previously documented (weather/exchange = honest decline) that deployed reality now contradicts.
-NEXT: (1) get the owner's steer on live-data current-info policy (decline vs dated/timeframed answer);
-(2) implement the chosen freshness treatment in `src/services/online/{synthesize,generalSearch}.ts`
-gated to temporal queries; (3) redeploy a clean RC via `npx vercel deploy --force --yes`; (4) re-run
-all four deployed acceptances + `scripts/scan-deployed-secrets.ts` on the new candidate; (5) close #2.
+All requested §16 machine-closable acceptance is COMPLETE and re-proven on the current clean RC
+(eiyl4n2r7): Calendar 7/7, WhatsApp 5/5, temporal matrix (weather/fx FRESH_CERTIFIED, results/news
+decline, grounding-honest, no fabrication), bundle secret-clean (27 chunks / 0 tokens). Remaining work
+is NOT blocking and is either owner-side or an optional capability extension:
+  • (owner) SECURITY: revoke the 3 old keys + authorize a clean PRODUCTION redeploy (abu-bank.vercel.app
+    / abu-ela-rc still ship old keys). Do NOT deploy production without authorization.
+  • (optional capability) dated-SEARCH resolver so news/latest-results can ANSWER freshly (capture
+    Tavily published_date / Brave page_age through generalSearch→synthesize; plug into LiveFactEvidence).
+  • (human residual) voice audible/perceptual quality — device/ear only.
+  • (pre-existing branch debt, NOT §16) 13 red static-source grep tests in AbuAI voice/STT/instruction
+    files (productionAutoProof / realityAudit / sttResilience / voicePipelineP0 / intentInstructions) —
+    present at HEAD independent of this work; out of scope (voice edits discouraged during this work).
 Do not merge main / deploy production without owner authorization.
 
 ## KEY TOOLING (all committed)
