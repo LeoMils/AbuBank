@@ -2,8 +2,30 @@
   "$schema": "internal://abu/qa-monster",
   "mode": "rc",
   "target": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T13:10:29.111Z",
-  "gitHead": "d2e811ca704125256abe98fc3e38187968570fe1",
+  "when": "2026-08-17T13:30:58.187Z",
+  "identity": {
+    "RUNTIME_SOURCE_SHA": "237bef9",
+    "CERTIFICATION_HARNESS_SHA": "ef87ae03e3d198c5627beb9ba4d1f4671e7b0005",
+    "EVIDENCE_GENERATION_SHA": "ef87ae03e3d198c5627beb9ba4d1f4671e7b0005",
+    "DEPLOYED_BUILD_ID": "0.291.0-earonly",
+    "DEPLOYED_ARTIFACT_HOST": "abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
+    "CONTROL_PLANE_VERSION": "cp_bfccc899",
+    "note": "RUNTIME_SOURCE_SHA is the last non-test runtime commit (the deployed bundle source); the harness SHA is HEAD. Test/config/doc commits after a deploy change the evaluator identity, not the runtime."
+  },
+  "worktree": {
+    "dirtyTotal": 81,
+    "dirtyRuntime": [],
+    "WORKTREE_RUNTIME_CLEAN": true
+  },
+  "verdicts": {
+    "PRODUCT_CANDIDATE_VERDICT": "GO",
+    "QA_SYSTEM_VERDICT": "INCOMPLETE_PRODUCTIZATION",
+    "RELEASE_PROMOTION_VERDICT": "NOT_YET",
+    "productizationFloor": {
+      "B1_orchestrator": "DONE",
+      "B2_B13": "PENDING"
+    }
+  },
   "verdict": "GO",
   "counts": {
     "areas": 9,
@@ -18,7 +40,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "CODE",
-      "ms": 18737,
+      "ms": 18064,
       "verdict": "PASS",
       "resultFile": null,
       "tail": "> abu-bank@30.14.0 typecheck | > tsc --noEmit"
@@ -29,10 +51,10 @@
       "pass": true,
       "exit": 0,
       "evidence": "CODE",
-      "ms": 58120,
+      "ms": 45992,
       "verdict": "PASS",
       "resultFile": null,
-      "tail": "      Tests  13441 passed | 1 skipped | 2 todo (13444) |    Start at  16:08:09 |    Duration  55.40s (transform 56.60s, setup 0ms, import 188.16s, tests 244.84s, environment 235ms)"
+      "tail": "      Tests  13441 passed | 1 skipped | 2 todo (13444) |    Start at  16:28:43 |    Duration  43.22s (transform 48.28s, setup 0ms, import 153.68s, tests 209.07s, environment 148ms)"
     },
     {
       "area": "security-scan",
@@ -40,7 +62,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 5670,
+      "ms": 5710,
       "verdict": "PASS",
       "resultFile": "docs/engineering-os/qa/deployed-secret-exposure.json",
       "tail": " | === ALL CLEAN (1/1 clean) === | wrote docs/engineering-os/qa/deployed-secret-exposure.json"
@@ -51,7 +73,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 12894,
+      "ms": 14023,
       "verdict": "PROVEN_PASS",
       "resultFile": "docs/eval/RC_ACCEPTANCE_CALENDAR.json",
       "tail": " | === PROVEN_PASS  7/7 === | wrote docs/eval/RC_ACCEPTANCE_CALENDAR.json"
@@ -62,7 +84,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 5756,
+      "ms": 5388,
       "verdict": "PROVEN_PASS",
       "resultFile": "docs/eval/RC_ACCEPTANCE_WHATSAPP.json",
       "tail": " | === PROVEN_PASS  5/5 === | wrote docs/eval/RC_ACCEPTANCE_WHATSAPP.json"
@@ -73,7 +95,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 19189,
+      "ms": 21811,
       "verdict": "GROUNDING_HONEST · LIVE-FACT FRESHNESS CERTIFIED (weather/fx) · other temporal = decline-or-gap",
       "resultFile": "docs/eval/RC_ACCEPTANCE_TEMPORAL.json",
       "tail": "super-bowl: HONEST_DECLINE (no dated source → declines, never stale) | === GROUNDING_HONEST · LIVE-FACT FRESHNESS CERTIFIED (weather/fx) · other temporal = decline-or-gap === | wrote docs/eval/RC_ACCEPTANCE_TEMPORAL.json"
@@ -84,7 +106,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 6607,
+      "ms": 6440,
       "verdict": "PROVEN_PASS",
       "resultFile": "docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json",
       "tail": " | === PROVEN_PASS  4/4 === | wrote docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json"
@@ -95,7 +117,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "CODE+golden",
-      "ms": 3030,
+      "ms": 3037,
       "verdict": "CONTRACT_HELD (oracle proven; real golden corroborates)",
       "resultFile": "docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json",
       "tail": "real golden: 12 tool-turns · preamble-in-tool-turn=0 · repeated=0 · goldenPass=true | === CONTRACT_HELD (oracle proven; real golden corroborates) === | wrote docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json"
@@ -106,7 +128,7 @@
       "pass": true,
       "exit": 0,
       "evidence": "PREVIEW",
-      "ms": 30705,
+      "ms": 34335,
       "verdict": {
         "HISTORICAL_OWNER_ESCAPES_TOTAL": 9,
         "NOW_MACHINE_DETECTABLE": 9,
@@ -119,6 +141,6 @@
       "tail": "ESCAPES total=9  detectable=9  closed=6  not-replayable=3  STILL_OPEN=0 | north-star AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO (still open) = 0 | wrote docs/eval/RC_HISTORICAL_CORPUS.json"
     }
   ],
-  "note": "Machine state is authoritative. Prose is generated FROM this. Prose cannot promote a NO_GO. Production deploy requires explicit owner authorization; old-credential revocation is OWNER_ACTION_OPEN until confirmed.",
-  "runtimeMs": 160780
+  "note": "Machine state is authoritative. Prose is generated FROM this and cannot promote a NO_GO / NOT_YET. A green area roll-up is NOT release promotion — see verdicts.RELEASE_PROMOTION_VERDICT. Production deploy + old-credential revocation are OWNER actions.",
+  "runtimeMs": 155520
 }

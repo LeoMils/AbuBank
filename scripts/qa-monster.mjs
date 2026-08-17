@@ -70,20 +70,60 @@ if (mode === 'rc' || mode === 'production') {
 }
 
 const corpus = existsSync(resolve('docs/eval/RC_HISTORICAL_CORPUS.json')) ? JSON.parse(readFileSync(resolve('docs/eval/RC_HISTORICAL_CORPUS.json'), 'utf8')) : null
+const git = (cmd, fallback = null) => { try { return execSync(cmd, { encoding: 'utf8' }).trim() } catch { return fallback } }
+
+// ── Integrity #2 · SPLIT runtime identity from harness identity ──────────────────────────────────
+// RUNTIME_SOURCE_SHA = last commit touching a NON-TEST runtime path (what the deployed bundle is built
+// from). CERTIFICATION_HARNESS_SHA = HEAD (the evaluator that produced THIS evidence). They differ when
+// test/config/doc-only commits land after a deploy — valid, but never conflate them.
+const HARNESS_SHA = git('git rev-parse HEAD')
+const RUNTIME_SOURCE_SHA = git("git log -1 --format=%h -- api/*.ts \":(exclude)api/*.test.ts\" src/services src/screens \":(exclude)**/*.test.ts\" \":(exclude)**/*.test.tsx\"")
+const CONTROL_PLANE_VERSION = (() => { try { return JSON.parse(readFileSync(resolve('docs/engineering-os/qa/control-plane-identity.json'), 'utf8')).controlPlaneId } catch { return null } })()
+let DEPLOYED_BUILD_ID = null
+if (url) { try { DEPLOYED_BUILD_ID = JSON.parse(execSync(`curl -s ${url}/api/health`, { encoding: 'utf8' })).buildVersion } catch {} }
+
+// ── Integrity #1 · deterministic worktree certification ──────────────────────────────────────────
+// Classify the dirty worktree: any uncommitted NON-TEST runtime file (api/** or src/** runtime) is a
+// release-contamination BLOCKER; generated/docs/test churn is not. Certification requires zero dirty
+// runtime files at the certified SHA.
+const dirty = (git('git status --short', '') || '').split('\n').filter(Boolean).map((l) => l.slice(3))
+const dirtyRuntime = dirty.filter((f) => /^(api\/|src\/)/.test(f) && !/\.test\.(ts|tsx)$/.test(f) && !/^src\/(eval|.*\/diagnostics)\//.test(f))
+const WORKTREE_RUNTIME_CLEAN = dirtyRuntime.length === 0
+
+const productAreas = areas.filter((a) => ['security-scan', 'calendar', 'whatsapp', 'current-info-freshness', 'replacement-paths', 'tool-sequencing', 'historical-corpus'].includes(a.area))
+const qaGateAreas = areas.filter((a) => ['typecheck', 'unit-suite'].includes(a.area))
 const pass = areas.every((a) => a.pass)
+
+// ── Integrity #5 · SPLIT the verdicts (never let one GO imply more than its denominator proves) ──
+// Productization floor: B1 done; B2–B13 pending (updated as they land). QA_SYSTEM is READY only when the
+// gates pass AND the runtime worktree is clean AND productization is complete.
+const PRODUCTIZATION = { B1_orchestrator: 'DONE', B2_B13: 'PENDING' }
+const PRODUCT_CANDIDATE_VERDICT = (mode === 'feature') ? 'N/A' : (productAreas.length > 0 && productAreas.every((a) => a.pass) && (corpus?.score?.STILL_OPEN ?? 1) === 0 ? 'GO' : 'NO_GO')
+const QA_SYSTEM_VERDICT = (qaGateAreas.every((a) => a.pass) && WORKTREE_RUNTIME_CLEAN)
+  ? (PRODUCTIZATION.B2_B13 === 'DONE' ? 'READY' : 'INCOMPLETE_PRODUCTIZATION')
+  : 'NOT_READY'
+const RELEASE_PROMOTION_VERDICT = (PRODUCT_CANDIDATE_VERDICT === 'GO' && QA_SYSTEM_VERDICT === 'READY') ? 'ELIGIBLE_PENDING_OWNER' : 'NOT_YET'
+
 const report = {
   $schema: 'internal://abu/qa-monster', mode, target: url ?? null, when: new Date().toISOString(),
-  gitHead: (() => { try { return execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim() } catch { return null } })(),
-  verdict: pass ? 'GO' : 'NO_GO',
+  identity: {
+    RUNTIME_SOURCE_SHA, CERTIFICATION_HARNESS_SHA: HARNESS_SHA, EVIDENCE_GENERATION_SHA: HARNESS_SHA,
+    DEPLOYED_BUILD_ID, DEPLOYED_ARTIFACT_HOST: url ? new URL(url).host : null, CONTROL_PLANE_VERSION,
+    note: 'RUNTIME_SOURCE_SHA is the last non-test runtime commit (the deployed bundle source); the harness SHA is HEAD. Test/config/doc commits after a deploy change the evaluator identity, not the runtime.',
+  },
+  worktree: { dirtyTotal: dirty.length, dirtyRuntime, WORKTREE_RUNTIME_CLEAN },
+  verdicts: { PRODUCT_CANDIDATE_VERDICT, QA_SYSTEM_VERDICT, RELEASE_PROMOTION_VERDICT, productizationFloor: PRODUCTIZATION },
+  verdict: pass ? 'GO' : 'NO_GO', // legacy area-level roll-up (kept for back-compat; see verdicts.* for release semantics)
   counts: {
     areas: areas.length, pass: areas.filter((a) => a.pass).length, fail: areas.filter((a) => !a.pass).length,
     AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO: corpus?.score?.STILL_OPEN ?? null,
   },
   areas,
-  note: 'Machine state is authoritative. Prose is generated FROM this. Prose cannot promote a NO_GO. Production deploy requires explicit owner authorization; old-credential revocation is OWNER_ACTION_OPEN until confirmed.',
+  note: 'Machine state is authoritative. Prose is generated FROM this and cannot promote a NO_GO / NOT_YET. A green area roll-up is NOT release promotion — see verdicts.RELEASE_PROMOTION_VERDICT. Production deploy + old-credential revocation are OWNER actions.',
   runtimeMs: Date.now() - t0,
 }
 writeFileSync(resolve('docs/eval/QA_MONSTER_REPORT.json'), JSON.stringify(report, null, 2) + '\n')
-console.log(`\n=== ${report.verdict} · ${report.counts.pass}/${report.counts.areas} areas · ${Math.round(report.runtimeMs / 1000)}s ===`)
+console.log(`\n=== areas ${report.counts.pass}/${report.counts.areas} · PRODUCT=${PRODUCT_CANDIDATE_VERDICT} · QA_SYSTEM=${QA_SYSTEM_VERDICT} · RELEASE=${RELEASE_PROMOTION_VERDICT} · ${Math.round(report.runtimeMs / 1000)}s ===`)
+console.log(`identity: runtime=${RUNTIME_SOURCE_SHA} harness=${HARNESS_SHA?.slice(0, 8)} build=${DEPLOYED_BUILD_ID} · worktree runtime-clean=${WORKTREE_RUNTIME_CLEAN}`)
 console.log('wrote docs/eval/QA_MONSTER_REPORT.json')
 process.exit(pass ? 0 : 1)

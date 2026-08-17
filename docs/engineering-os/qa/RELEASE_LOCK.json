@@ -1,34 +1,64 @@
 {
   "$schema": "internal://abu/release-lock",
-  "when": "2026-08-17T13:11:01.677Z",
-  "verdict": "MACHINE_CLEAN_PENDING_OWNER_AND_TRACKB",
-  "sourceSHA": "d2e811ca704125256abe98fc3e38187968570fe1",
-  "buildVersion": "0.291.0-earonly",
+  "when": "2026-08-17T13:31:37.093Z",
+  "identity": {
+    "RUNTIME_SOURCE_SHA": "237bef9",
+    "CERTIFICATION_HARNESS_SHA": "ef87ae03e3d198c5627beb9ba4d1f4671e7b0005",
+    "EVIDENCE_GENERATION_SHA": "ef87ae03e3d198c5627beb9ba4d1f4671e7b0005",
+    "DEPLOYED_BUILD_ID": "0.291.0-earonly",
+    "DEPLOYED_ARTIFACT_HOST": "abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
+    "CONTROL_PLANE_VERSION": "cp_bfccc899",
+    "note": "RUNTIME_SOURCE_SHA is the last non-test runtime commit (the deployed bundle source); the harness SHA is HEAD. Test/config/doc commits after a deploy change the evaluator identity, not the runtime."
+  },
   "candidateRC": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
+  "buildVersion": "0.291.0-earonly",
   "bundleFingerprint": {
     "chunks": 27,
     "bytes": 1256553,
     "secretClean": true
   },
-  "controlPlaneId": "cp_bfccc899",
   "canonicalSecretScannerCertified": true,
-  "qaMonsterRc": "GO 9/9",
-  "northStar_AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0,
   "fullSuite": "GREEN 555 files / 13441",
-  "architecturalChallenges": {
-    "A_idempotency": "operation-identity (callId) PRIMARY, persisted; content-match removed; 6 scenarios proven",
-    "B_rateLimiting": "per-IP + circuit breaker on 4 proxies + STT 5MB cap; in-memory best-effort (distributed KV = infra/owner)"
+  "verdicts": {
+    "PRODUCT_CANDIDATE_VERDICT": "GO",
+    "QA_SYSTEM_VERDICT": "INCOMPLETE_PRODUCTIZATION",
+    "RELEASE_PROMOTION_VERDICT": "NOT_YET",
+    "productizationFloor": {
+      "B1_orchestrator": "DONE",
+      "B2_B13": "PENDING"
+    }
+  },
+  "worktree": {
+    "dirtyTotal": 81,
+    "dirtyRuntime": [],
+    "WORKTREE_RUNTIME_CLEAN": true
+  },
+  "northStar_AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0,
+  "idempotency": {
+    "mechanism": "OPERATION_IDENTITY (realtime function_call callId) PRIMARY; persisted ledger; content-match removed",
+    "codeProof": "6 scenarios (idempotentCreate.test.ts)",
+    "boundaryDedup": "liveTools.handleFunctionCall + calendarDraftController dedup by callId (unit-proven)",
+    "deployedRealtimeProof": "HUMAN_RESIDUAL/DEVICE — the operationId path is realtime-tool-only, not exposed in the deployed UI create; a real duplicate-tool-result across a reconnect needs a realtime voice session (oracle-ready)"
+  },
+  "rateLimiting": {
+    "INSTANCE_LOCAL_RATE_LIMIT": "per-IP sliding window on 4 proxies (TTS/STT 30, chat 40, online 20 /min·IP)",
+    "INSTANCE_LOCAL_COST_CIRCUIT_BREAKER": "per serverless INSTANCE (NOT globally distributed)",
+    "DISTRIBUTED_RATE_LIMIT": "NOT_PROVISIONED — requires shared KV (Vercel KV/Upstash) = OWNER_INFRA_DECISION",
+    "clientKey": "first x-forwarded-for hop used ONLY as an ephemeral in-memory map key; never persisted or written to logs/evidence",
+    "residualAbuseRisk": "a distributed flood across many instances/IPs is not fully bounded per-instance; per-request caps + per-IP + per-instance circuit reduce single-source amplification",
+    "recommendation": "provision a shared-KV distributed limiter if abuse is observed; until then the shipped in-memory limits + tightened caps are the machine-closable protection"
   },
   "rollbackSafety": "only P0/P1-clean + secret-clean target; exposed 0.5.0 production is NOT acceptable rollback",
   "machineClosableRemaining": [
     "A5 stochastic sampling",
-    "Track B B2-B13 productization"
+    "Track B B2-B13"
   ],
   "ownerActionsOpen": [
     "REVOKE OpenAI fp:e39ef3b7",
     "REVOKE Gemini fp:69150fc4",
     "REVOKE Groq fp:a2f25d13",
     "AUTHORIZE clean production deploy",
-    "DECIDE distributed rate-limit infra (KV) vs in-memory best-effort"
+    "DECIDE distributed rate-limit infra (shared KV)",
+    "DECIDE no-login PWA auth policy"
   ]
 }
