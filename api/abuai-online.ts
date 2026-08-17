@@ -22,6 +22,7 @@ import { synthesizeAnswer } from '../src/services/online/synthesize'
 import { onlineGeneralSearchEnabled } from '../src/services/online/flags'
 import { isTemporalQuery, evaluateFreshness } from '../src/engineering-os/temporalFreshness'
 import { classifyLiveDomain, resolveLiveFact, freshestPublishedDate, RESULT_MAX_AGE_DAYS } from '../src/services/online/liveFacts'
+import { rateLimited, circuitTripped, clientKey } from './_rateLimit'
 
 export const config = { runtime: 'edge' }
 
@@ -267,6 +268,12 @@ export default async function handler(req: Request): Promise<Response> {
   const respond = (body: OnlineResult, status = 200): Response => {
     diag.outcome = body.ok ? 'ok' : body.errorCode
     return jsonResponse({ ...body, diag: { ...diag } }, status)
+  }
+  // A7/B rate + cost protection (online fans out to a paid search provider + a synthesis model).
+  // Envelope: a current-info question is occasional → 20/min/IP generous, abusive above. Circuit:
+  // 400 online calls/min/instance.
+  if (req.method === 'POST' && (rateLimited(`online:${clientKey(req)}`, 20, 60_000) || circuitTripped('online', 400, 60_000))) {
+    return jsonResponse({ ok: false, errorCode: 'ONLINE_TIMEOUT', userMessage: userMessageFor('ONLINE_TIMEOUT', 'he') }, 429)
   }
 
   if (req.method !== 'POST') {

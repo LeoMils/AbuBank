@@ -24,8 +24,13 @@ function jsonError(error: string, status = 200): Response {
   })
 }
 
+import { rateLimited, circuitTripped, clientKey } from './_rateLimit'
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return jsonError('BAD_REQUEST', 405)
+  // A7/B rate + cost protection (no auth needed). Envelope: a voice reply is ~1 TTS/turn, a few
+  // turns/min → 30/min/IP is generous for legitimate use, abusive above. Circuit: 600 TTS/min/instance.
+  if (rateLimited(`tts:${clientKey(req)}`, 30, 60_000) || circuitTripped('tts', 600, 60_000)) return jsonError('TTS_QUOTA', 429)
 
   let body: Record<string, unknown>
   try {

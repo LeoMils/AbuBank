@@ -92,7 +92,7 @@ export type CreateResult =
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^\d{2}:\d{2}$/
 
-export function createAppointmentSafe(input: Omit<Appointment, 'id' | 'color'>): CreateResult {
+export function createAppointmentSafe(input: Omit<Appointment, 'id' | 'color'>, opts?: { operationId?: string }): CreateResult {
   // 1) Required-field validation — no silent acceptance.
   if (!input.title || !input.title.trim()) return { ok: false, code: 'missing_title' }
   if (!input.date || !input.date.trim()) return { ok: false, code: 'missing_date' }
@@ -109,15 +109,23 @@ export function createAppointmentSafe(input: Omit<Appointment, 'id' | 'color'>):
     return { ok: false, code: 'invalid_time' }
   }
 
-  // A8 IDEMPOTENCY: a duplicated/retried tool-result or a resumed turn must NOT create a second
-  // identical event. Match a TRUE full-content duplicate (title+date+time AND location/notes/subject)
-  // so a genuine retry is deduped, but a RE-CREATE THAT ADDS INFORMATION (e.g. the same slot now with a
-  // location) is NOT collapsed into a stale copy. Covers every create path (tool/manual/voice).
-  const sig = (a: { title?: string; date?: string; time?: string; location?: string; notes?: string; subject?: string }) =>
-    [a.title?.trim() ?? '', a.date ?? '', a.time ?? '', a.location ?? '', a.notes ?? '', a.subject ?? ''].join('|')
-  const key = sig(input)
-  const dupe = loadAppointments().find((a) => sig(a) === key)
-  if (dupe) return { ok: true, appointment: dupe }
+  // A8 IDEMPOTENCY — OPERATION IDENTITY is the PRIMARY mechanism. A retried tool-result / resumed turn
+  // carries the SAME operationId (the realtime function_call `callId`); that maps to the ONE event it
+  // already produced, regardless of any content variation. Two DISTINCT operations (different ids) are
+  // NEVER collapsed, even with identical content, so a genuinely intended second event is preserved —
+  // and a re-create that adds information is not lost. Persisted (recentOps) so it survives a reload/
+  // retry boundary. Content matching is NOT used here (it both bypasses a slightly-varied retry AND
+  // wrongly collapses two distinct intents). The realtime tool boundary (liveTools.handleFunctionCall +
+  // calendarDraftController) also dedups by callId, so this is defence-in-depth for that path and the
+  // sole idempotency for any caller that supplies an operationId.
+  const opId = opts?.operationId
+  if (opId) {
+    const prior = recentOpAppointmentId(opId)
+    if (prior) {
+      const existing = loadAppointments().find((a) => a.id === prior)
+      if (existing) return { ok: true, appointment: existing }
+    }
+  }
 
   // 3) Attempt persistence. addAppointment + saveAppointments together
   //    will swallow storage errors (private-mode / quota), so we catch
@@ -133,7 +141,30 @@ export function createAppointmentSafe(input: Omit<Appointment, 'id' | 'color'>):
   const persisted = loadAppointments().find((a) => a.id === created.id)
   if (!persisted) return { ok: false, code: 'storage_failed' }
 
+  if (opId) recordOpAppointment(opId, created.id)
   return { ok: true, appointment: created }
+}
+
+// ─── A8 idempotency ledger — operationId → appointmentId, persisted + bounded ──────────────
+// The realtime function_call callId is the stable operation identity that survives the retry
+// boundary. This maps a recent op to the event it produced so a retry (same op) returns that one
+// event, never a duplicate — persisted so it holds across a reload/reconnect, bounded so it cannot grow.
+const OPS_KEY = 'abu-appt-ops-v1'
+const OPS_MAX = 100
+function loadOps(): Record<string, string> {
+  try { const raw = localStorage.getItem(OPS_KEY); const p = raw ? JSON.parse(raw) : {}; return p && typeof p === 'object' ? p : {} } catch { return {} }
+}
+export function recentOpAppointmentId(operationId: string): string | null {
+  return loadOps()[operationId] ?? null
+}
+function recordOpAppointment(operationId: string, appointmentId: string): void {
+  try {
+    const m = loadOps()
+    m[operationId] = appointmentId
+    const keys = Object.keys(m)
+    if (keys.length > OPS_MAX) for (const k of keys.slice(0, keys.length - OPS_MAX)) delete m[k] // FIFO trim
+    localStorage.setItem(OPS_KEY, JSON.stringify(m))
+  } catch { /* storage best-effort — the boundary callId dedup still holds in-session */ }
 }
 
 // ─── P0 — user-facing copy helpers (HE/ES/EN) ─────────────────────────────

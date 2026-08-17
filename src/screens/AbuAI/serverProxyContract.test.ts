@@ -28,9 +28,12 @@ function listAbuAITs(): string[] {
 function listApiTs(): string[] {
   if (!fs.existsSync(API_DIR)) return []
   return fs.readdirSync(API_DIR)
-    .filter((f) => f.endsWith('.ts'))
+    .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts')) // exclude test files (not endpoints)
     .map((f) => path.join('api', f))
 }
+// `_`-prefixed api files are shared UTILITIES (e.g. _rateLimit.ts), not provider endpoints — they need
+// not read OPENAI_API_KEY. The client-surface (import.meta.env) ban still applies to them.
+const isEndpoint = (rel: string): boolean => !path.basename(rel).startsWith('_')
 
 describe('No client-side OpenAI key reads anywhere in AbuAI source', () => {
   for (const rel of listAbuAITs()) {
@@ -49,6 +52,7 @@ describe('Server endpoints read OPENAI_API_KEY only from server env', () => {
       expect(src.includes('import.meta.env'), `${rel} must not use the client-side import.meta.env API`).toBe(false)
     })
     it(`${rel} reads env.OPENAI_API_KEY (preferred) for server-side calls`, () => {
+      if (!isEndpoint(rel)) return // a shared utility (e.g. _rateLimit.ts) is not a provider endpoint
       const src = read(rel)
       expect(/env\.OPENAI_API_KEY/.test(src), `${rel} should read OPENAI_API_KEY via process.env`).toBe(true)
     })

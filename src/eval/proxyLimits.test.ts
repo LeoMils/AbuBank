@@ -3,13 +3,15 @@
  * Each proxy rejects an abuse-sized request BEFORE the billable provider call (no user auth on this
  * PWA → bounded per-request limits are the machine-closable mitigation; auth/rate-limit = owner decision).
  */
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import ttsHandler from '../../api/abuai-tts'
 import chatHandler from '../../api/abuai-chat'
 import sttHandler from '../../api/abuai-stt'
+import { _resetRateLimit } from '../../api/_rateLimit'
 
 const setEnv = (env: Record<string, string>) => { (globalThis as unknown as { process: { env: Record<string, string> } }).process = { env } }
 const KEY = 'sk-test-0123456789abcdefghij'
+beforeEach(() => _resetRateLimit())
 afterEach(() => vi.restoreAllMocks())
 
 const postJson = (url: string, body: unknown) => new Request(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
@@ -56,13 +58,25 @@ describe('A7 · chat caps', () => {
 })
 
 describe('A7 · STT audio-size cap', () => {
-  it('rejects an oversized audio file (>20MB) before the Whisper call', async () => {
+  it('rejects an oversized audio file (>5MB) before the Whisper call', async () => {
     setEnv({ OPENAI_API_KEY: KEY })
     const spy = vi.fn(); vi.stubGlobal('fetch', spy)
     const fd = new FormData()
-    fd.append('file', new Blob([new Uint8Array(20_000_001)], { type: 'audio/mpeg' }), 'big.mp3')
+    fd.append('file', new Blob([new Uint8Array(5_000_001)], { type: 'audio/mpeg' }), 'big.mp3')
     const res = await sttHandler(new Request('http://x/api/abuai-stt', { method: 'POST', body: fd }))
     expect(res.status).toBe(413)
     expect(spy).not.toHaveBeenCalled()
+  })
+})
+
+describe('A7/B · per-IP rate limit + cost circuit breaker', () => {
+  it('a single IP flooding TTS is rejected with 429 once over the burst limit', async () => {
+    setEnv({ OPENAI_API_KEY: KEY })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Uint8Array([1]), { status: 200, headers: { 'Content-Type': 'audio/mpeg' } })))
+    const req = () => new Request('http://x/api/abuai-tts', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.9' }, body: JSON.stringify({ body: { input: 'שלום', model: 'gpt-4o-mini-tts' } }) })
+    let sawOk = 0, saw429 = 0
+    for (let i = 0; i < 35; i++) { const r = await ttsHandler(req()); if (r.status === 429) saw429++; else if (r.status === 200) sawOk++ }
+    expect(sawOk).toBe(30)     // the legitimate burst envelope
+    expect(saw429).toBe(5)     // flood beyond it is throttled
   })
 })

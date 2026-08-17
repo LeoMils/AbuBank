@@ -1,6 +1,9 @@
 /*
- * idempotentCreate.test.ts — A8: a duplicated/retried tool-result must not create a second event.
- * createAppointmentSafe is idempotent for an exact (title+date+time) duplicate.
+ * idempotentCreate.test.ts — A8 TRUE idempotency by OPERATION IDENTITY (challenge A).
+ * The realtime function_call callId is the stable operation id; createAppointmentSafe uses it as the
+ * PRIMARY dedup key (persisted). Proves: same op → one event; distinct ops (even identical content) →
+ * two; same op with content variation → one; a re-create that adds info (new op) → not collapsed; no
+ * op → each create is distinct (no content-based false collapse); reload/retry boundary holds.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createAppointmentSafe, loadAppointments } from './service'
@@ -16,27 +19,49 @@ beforeEach(() => {
   })
 })
 
-describe('createAppointmentSafe — idempotent create (A8)', () => {
-  const input = { title: 'רופא שיניים', date: '2026-09-01', time: '10:00', emoji: '🦷', notes: '' }
+const input = { title: 'רופא שיניים', date: '2026-09-01', time: '10:00', emoji: '🦷', notes: '' }
+const count = (title: string) => loadAppointments().filter((x) => x.title.trim() === title.trim()).length
 
-  it('a duplicated/retried create with identical title+date+time yields ONE event', () => {
-    const a = createAppointmentSafe(input)
-    const b = createAppointmentSafe({ ...input })      // duplicate tool-result / retry
+describe('createAppointmentSafe — operation-identity idempotency (A8)', () => {
+  it('SAME operation repeated (retry, same callId) → exactly ONE event', () => {
+    const a = createAppointmentSafe(input, { operationId: 'call_ABC' })
+    const b = createAppointmentSafe({ ...input }, { operationId: 'call_ABC' }) // retry of the same op
     expect(a.ok && b.ok).toBe(true)
-    if (a.ok && b.ok) expect(b.appointment.id).toBe(a.appointment.id) // same event, not a new one
-    expect(loadAppointments().filter((x) => x.title === input.title).length).toBe(1)
+    if (a.ok && b.ok) expect(b.appointment.id).toBe(a.appointment.id)
+    expect(count('רופא שיניים')).toBe(1)
   })
 
-  it('trims whitespace when matching (a resumed turn with padded title is still the same event)', () => {
-    createAppointmentSafe(input)
-    const b = createAppointmentSafe({ ...input, title: '  רופא שיניים  ' })
-    expect(b.ok).toBe(true)
-    expect(loadAppointments().filter((x) => x.title.trim() === 'רופא שיניים').length).toBe(1)
+  it('DISTINCT operations with IDENTICAL content → TWO events (never wrongly collapsed)', () => {
+    createAppointmentSafe(input, { operationId: 'call_ONE' })
+    createAppointmentSafe({ ...input }, { operationId: 'call_TWO' }) // a genuinely different operation
+    expect(count('רופא שיניים')).toBe(2)
   })
 
-  it('a genuinely different time is NOT deduped (two real events)', () => {
+  it('same operation with insignificant content variation → still ONE (retry, not a new intent)', () => {
+    const a = createAppointmentSafe({ ...input, notes: '' }, { operationId: 'call_X' })
+    const b = createAppointmentSafe({ ...input, notes: '  ' }, { operationId: 'call_X' }) // trivially different serialization
+    if (a.ok && b.ok) expect(b.appointment.id).toBe(a.appointment.id)
+    expect(count('רופא שיניים')).toBe(1)
+  })
+
+  it('a re-create that ADDS real information under a NEW operation is NOT collapsed', () => {
+    createAppointmentSafe(input, { operationId: 'call_P' })
+    createAppointmentSafe({ ...input, location: 'מרפאה ברחוב ויצמן' }, { operationId: 'call_Q' })
+    expect(count('רופא שיניים')).toBe(2) // the located one is preserved, not lost to a stale copy
+  })
+
+  it('NO operationId → each create is a distinct event (no content-based false collapse)', () => {
     createAppointmentSafe(input)
-    createAppointmentSafe({ ...input, time: '16:00' })
-    expect(loadAppointments().filter((x) => x.title === input.title).length).toBe(2)
+    createAppointmentSafe({ ...input })
+    expect(count('רופא שיניים')).toBe(2)
+  })
+
+  it('reload/retry boundary: the op ledger is PERSISTED, so a retry after reload still yields ONE', () => {
+    const a = createAppointmentSafe(input, { operationId: 'call_RELOAD' })
+    // simulate a reload: storage object survives (persisted), a fresh call with the same op id
+    const b = createAppointmentSafe({ ...input }, { operationId: 'call_RELOAD' })
+    if (a.ok && b.ok) expect(b.appointment.id).toBe(a.appointment.id)
+    expect(count('רופא שיניים')).toBe(1)
+    expect(JSON.parse(storage['abu-appt-ops-v1'] ?? '{}')['call_RELOAD']).toBeTruthy() // ledger persisted
   })
 })

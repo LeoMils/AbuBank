@@ -15,9 +15,16 @@ export function isPlaceholderKey(k: string | undefined): boolean {
   return !k || k.length < 20 || /^(sk-\.\.\.|sk-xxx|your_|placeholder|example|<)/i.test(k)
 }
 
+import { rateLimited, circuitTripped, clientKey } from './_rateLimit'
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ ok: false, error: 'POST only' }), { status: 405 })
+  }
+  // A7/B rate + cost protection. Envelope: ~1 STT/turn, a few turns/min → 30/min/IP generous; abusive
+  // above. Circuit: 600 STT/min/instance (Whisper is the most expensive call class here).
+  if (rateLimited(`stt:${clientKey(req)}`, 30, 60_000) || circuitTripped('stt', 600, 60_000)) {
+    return new Response(JSON.stringify({ ok: false, error: 'RATE_LIMITED' }), { status: 429, headers: { 'Content-Type': 'application/json' } })
   }
 
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
@@ -47,11 +54,12 @@ export default async function handler(req: Request): Promise<Response> {
     if (!file) {
       return new Response(JSON.stringify({ ok: false, error: 'no file' }), { status: 400 })
     }
-    // A7 cost-amplification cap: Whisper bills per audio minute. A voice turn is a few seconds / well
-    // under 1 MB; cap at 20 MB (below Whisper's 25 MB hard limit) to reject an abuse payload before the
-    // billable call. (No user auth on this PWA — bounded per-request limit; auth/rate-limit = owner decision.)
+    // A7/B cost cap tied to the LEGITIMATE envelope (not the provider hard max): a voice turn is a few
+    // seconds and well under 1 MB; 5 MB covers minutes of compressed audio yet rejects an abuse payload
+    // (a cap near Whisper's 25 MB max barely constrains cost — this one does). FALSE_REJECTION_RISK: a
+    // real turn is ~50-500 KB, so 5 MB has a >10× headroom over legitimate use.
     const size = (file as { size?: number }).size ?? 0
-    if (size > 20_000_000) {
+    if (size > 5_000_000) {
       return new Response(JSON.stringify({ ok: false, error: 'AUDIO_TOO_LARGE' }), { status: 413, headers: { 'Content-Type': 'application/json' } })
     }
     openaiForm.append('file', file)

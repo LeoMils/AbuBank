@@ -71,10 +71,15 @@ function jsonError(code: ChatProxyErrorCode, lang: ChatProxyPayload['lang'], sta
   })
 }
 
+import { rateLimited, circuitTripped, clientKey } from './_rateLimit'
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return jsonError('BAD_REQUEST', 'he', 405)
   }
+  // A7/B rate + cost protection. Envelope: a chat turn is ~1-2 calls; conversation ~a few turns/min →
+  // 40/min/IP generous, abusive above. Circuit: 800 chat calls/min/instance.
+  if (rateLimited(`chat:${clientKey(req)}`, 40, 60_000) || circuitTripped('chat', 800, 60_000)) return jsonError('CHAT_PROVIDER_FAILED', 'he', 429)
 
   let payload: ChatProxyPayload
   try {
