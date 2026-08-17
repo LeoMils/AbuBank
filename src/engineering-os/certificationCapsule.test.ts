@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest'
 // @ts-expect-error — pure ESM sibling of the capsule CLIs; shared verbatim, no types.
-import { buildCapsule, verifyCapsule, canonicalize, sha256Hex } from '../../scripts/certification-capsule-lib.mjs'
+import { buildCapsule, verifyCapsule, verifyCompleteness, canonicalize, sha256Hex } from '../../scripts/certification-capsule-lib.mjs'
 
 // Hermetic evidence: two artifacts with fixed digests. digestOf() returns exactly these → "on disk,
 // unchanged". Mutating the map models a file changing/disappearing after certification.
@@ -100,6 +100,52 @@ describe('Certification Capsule — tamper detection (§12)', () => {
     const r = verifyCapsule(cap, { digestOf })
     expect(r.ok).toBe(false)
     expect(r.failures.join(' ')).toMatch(/capsuleId mismatch/)
+  })
+
+  // ── COMPLETENESS (§11/§58) — the check that does NOT trust the capsule's own claim list. ──────
+  const CLAIM_SET = [{ id: 'calendar' }, { id: 'secret-scan' }, { id: 'temporal' }]
+  const DENOM_DIGEST = sha256Hex('denominator-v1')
+
+  it('a complete capsule (all authoritative claims covered) passes completeness', () => {
+    const c = validContents() as Record<string, unknown>
+    c.evidence = CLAIM_SET.map((cl) => ({ id: cl.id, path: 'docs/eval/A.json', digest: DISK['docs/eval/A.json'] }))
+    c.denominatorId = DENOM_DIGEST
+    const cap = buildCapsule(c)
+    const r = verifyCompleteness(cap, CLAIM_SET, DENOM_DIGEST)
+    expect(r.ok).toBe(true)
+  })
+
+  it('THE §58 ATTACK: a capsule that is hash-consistent (integrity OK) but omits a required claim is INCOMPLETE', () => {
+    const c = validContents() as Record<string, unknown>
+    // Drop "temporal" from evidence AND from the self-attested list, then recompute a VALID hash.
+    c.evidence = [{ id: 'calendar', path: 'docs/eval/A.json', digest: DISK['docs/eval/A.json'] }, { id: 'secret-scan', path: 'docs/eval/B.json', digest: DISK['docs/eval/B.json'] }]
+    c.requiredClaims = ['calendar', 'secret-scan']
+    c.denominatorId = DENOM_DIGEST
+    const cap = buildCapsule(c)
+    // Integrity PASSES (self-consistent, self-attested list satisfied)...
+    expect(verifyCapsule(cap, { digestOf }).ok).toBe(true)
+    // ...but COMPLETENESS against the authoritative denominator FAILS on the omitted claim.
+    const r = verifyCompleteness(cap, CLAIM_SET, DENOM_DIGEST)
+    expect(r.ok).toBe(false)
+    expect(r.missing).toContain('temporal')
+  })
+
+  it('MUTATION denominator drift: a new required claim added after sealing → completeness FAIL', () => {
+    const c = validContents() as Record<string, unknown>
+    c.evidence = CLAIM_SET.map((cl) => ({ id: cl.id, path: 'docs/eval/A.json', digest: DISK['docs/eval/A.json'] }))
+    c.denominatorId = DENOM_DIGEST
+    const cap = buildCapsule(c)
+    // Current authoritative denominator changed (new digest) → capsule cannot prove it covered new claims.
+    const r = verifyCompleteness(cap, CLAIM_SET, sha256Hex('denominator-v2-with-new-claim'))
+    expect(r.ok).toBe(false)
+    expect(r.failures.join(' ')).toMatch(/denominator changed since sealing/)
+  })
+
+  it('MUTATION capsule missing denominatorId entirely → completeness FAIL', () => {
+    const cap = buildCapsule(validContents()) // no denominatorId field
+    const r = verifyCompleteness(cap, CLAIM_SET, DENOM_DIGEST)
+    expect(r.ok).toBe(false)
+    expect(r.failures.join(' ')).toMatch(/no denominatorId/)
   })
 
   it('canonicalize is order-independent (stable content address)', () => {

@@ -79,9 +79,40 @@ export function verifyCapsule(capsule, deps = {}) {
     else if (current !== e.digest) failures.push(`evidence changed since certification: ${e.path}`)
   }
 
-  // 6) No required claim may have disappeared from the evidence set.
+  // 6) No SELF-ATTESTED required claim may have disappeared from the evidence set. (Integrity only —
+  //    this trusts the capsule's own requiredClaims list. COMPLETENESS below does NOT trust it.)
   const evidenceIds = new Set((contents.evidence ?? []).map((e) => e.id))
   for (const c of contents.requiredClaims ?? []) if (!evidenceIds.has(c)) failures.push(`required claim not backed by evidence: ${c}`)
 
   return { ok: failures.length === 0, failures }
+}
+
+/**
+ * COMPLETENESS (§11/§58) — the check that does NOT trust the capsule's own claim list.
+ * `requiredClaimSet` is derived from the AUTHORITATIVE denominator (REQUIRED_CLAIM_SET.json), passed in
+ * by the caller. `denominatorDigest` is the current sha256 of that file. A capsule can be perfectly
+ * hash-consistent (integrity PROVEN) yet INCOMPLETE — it dropped a claim and recomputed its own hash,
+ * or a NEW required claim was added to the denominator after sealing. Both are caught here.
+ * @returns { ok, missing[], failures[] }
+ */
+export function verifyCompleteness(capsule, requiredClaimSet, denominatorDigest) {
+  const failures = []
+  const contents = capsule ?? {}
+  const evidenceIds = new Set((contents.evidence ?? []).map((e) => e.id))
+
+  // Denominator drift: the capsule sealed a denominator digest; if the current authoritative set differs,
+  // new/changed required claims may exist that this capsule never covered.
+  if (denominatorDigest !== undefined) {
+    if (!contents.denominatorId) failures.push('capsule has no denominatorId (cannot prove completeness against the authoritative denominator)')
+    else if (contents.denominatorId !== denominatorDigest) failures.push(`denominator changed since sealing (recorded ${String(contents.denominatorId).slice(0, 12)} != current ${String(denominatorDigest).slice(0, 12)}): re-certify`)
+  }
+
+  // Coverage: EVERY authoritative required claim must be present as evidence.
+  const missing = []
+  for (const claim of requiredClaimSet ?? []) {
+    const id = typeof claim === 'string' ? claim : claim.id
+    if (!evidenceIds.has(id)) { missing.push(id); failures.push(`INCOMPLETE: required claim "${id}" absent from capsule evidence`) }
+  }
+
+  return { ok: failures.length === 0, missing, failures }
 }

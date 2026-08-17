@@ -12,7 +12,7 @@
 import { readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { execSync } from 'node:child_process'
-import { buildCapsule, sha256Hex, verifyCapsule } from './certification-capsule-lib.mjs'
+import { buildCapsule, sha256Hex, verifyCapsule, verifyCompleteness } from './certification-capsule-lib.mjs'
 
 const git = (cmd, fallback = null) => { try { return execSync(cmd, { encoding: 'utf8' }).trim() } catch { return fallback } }
 const readJson = (p) => { try { return JSON.parse(readFileSync(resolve(p), 'utf8')) } catch { return null } }
@@ -59,8 +59,13 @@ const evidence = evidenceSpecs
   .filter((e) => existsSync(resolve(e.path)))
   .map((e) => ({ ...e, digest: digestOf(e.path) }))
 
-// requiredClaims: the product-critical evidence ids that MUST be present for an RC verdict to mean anything.
-const requiredClaims = ['secret-scan', 'calendar', 'whatsapp', 'temporal', 'replacement-paths', 'tool-sequencing', 'historical-corpus']
+// requiredClaims + denominatorId: derived from the AUTHORITATIVE denominator (independent of this capsule),
+// so completeness can be checked without trusting the capsule's own list. (§11)
+const claimSetPath = 'docs/engineering-os/qa/REQUIRED_CLAIM_SET.json'
+const claimSet = readJson(claimSetPath)
+if (!claimSet) { console.error(`CAPSULE FAIL: ${claimSetPath} missing (no authoritative denominator)`); process.exit(4) }
+const requiredClaims = (claimSet.claims ?? []).map((c) => c.id)
+const denominatorId = digestOf(claimSetPath)
 
 const contents = {
   schemaVersion: 'capsule/1',
@@ -89,17 +94,21 @@ const contents = {
   machineClosableRemaining: lock.machineClosableRemaining ?? [],
   evidence,
   requiredClaims,
+  denominatorId,
   whyCertified: 'Sealed from existing machine state. Verdicts are copied verbatim from QA_MONSTER_REPORT.json; this capsule cannot promote them. A reader reconstructs the certified artifact, harness, evidence digests and provenance from this file alone; verify with scripts/verify-capsule.mjs.',
 }
 
 const capsule = buildCapsule(contents)
 // Self-verify before writing (against real files) so we never emit a capsule that fails its own contract.
 const selfCheck = verifyCapsule(capsule, { digestOf })
+const completeness = verifyCompleteness(capsule, claimSet.claims ?? [], denominatorId)
+const selfOk = selfCheck.ok && completeness.ok
 writeFileSync(resolve('docs/engineering-os/qa/CERTIFICATION_CAPSULE.json'), JSON.stringify(capsule, null, 2) + '\n')
 console.log(`CAPSULE_ID = ${capsule.capsuleId}`)
 console.log(`runtime provenance = ${runtimeProvenance.identity} (runtime=${runtimeProvenance.RUNTIME_SOURCE_SHA})`)
 console.log(`worktree: runtime-clean=${WORKTREE_RUNTIME_CLEAN} harness-clean=${WORKTREE_HARNESS_CLEAN} · evidence artifacts sealed=${evidence.length}`)
 console.log(`verdicts: PRODUCT=${contents.verdicts.PRODUCT_CANDIDATE_VERDICT} QA_SYSTEM=${contents.verdicts.QA_SYSTEM_VERDICT} RELEASE=${contents.verdicts.RELEASE_PROMOTION_VERDICT}`)
-console.log(`self-verify: ${selfCheck.ok ? 'OK' : 'FAIL — ' + selfCheck.failures.join(' ; ')}`)
+console.log(`self-verify: integrity=${selfCheck.ok ? 'OK' : 'FAIL(' + selfCheck.failures.join('; ') + ')'} · completeness=${completeness.ok ? 'OK' : 'FAIL(' + completeness.failures.join('; ') + ')'}`)
+console.log(`denominatorId=${denominatorId?.slice(0, 12)} · requiredClaims=${requiredClaims.length}`)
 console.log('wrote docs/engineering-os/qa/CERTIFICATION_CAPSULE.json')
-process.exit(selfCheck.ok ? 0 : 4)
+process.exit(selfOk ? 0 : 4)

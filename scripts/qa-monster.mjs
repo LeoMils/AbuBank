@@ -21,11 +21,23 @@ import { execSync } from 'node:child_process'
 import { readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { deriveExit, EXIT } from './qa-monster-verdict.mjs'
+import { deriveCurrentCandidate, CANDIDATE } from './current-candidate-lib.mjs'
 
 const [mode, url] = [process.argv[2], process.argv[3]]
-if (!mode || !['rc', 'production', 'feature'].includes(mode)) {
-  console.error('usage: node scripts/qa-monster.mjs <feature|rc|production> [url]'); process.exit(EXIT.USAGE)
+if (!mode || !['rc', 'production', 'feature', 'current'].includes(mode)) {
+  console.error('usage: node scripts/qa-monster.mjs <feature|rc|production|current> [url]'); process.exit(EXIT.USAGE)
 }
+
+// ── C7 · canonical current-candidate discovery (§49) — machine-readable, unique, fail-closed. ────
+// A fresh operator runs `qa:monster current` to learn WHAT to certify without being told the URL.
+if (mode === 'current') {
+  const rd = (p) => { try { return JSON.parse(readFileSync(resolve(p), 'utf8')) } catch { return null } }
+  const res = deriveCurrentCandidate(rd('docs/engineering-os/qa/RELEASE_LOCK.json'), rd('docs/engineering-os/qa/CERTIFICATION_CAPSULE.json'))
+  console.log(JSON.stringify(res, null, 2))
+  // PROVEN → 0 ; NOT_FOUND → 4 (integrity/fail-closed) ; AMBIGUOUS → 3 (release-rejected).
+  process.exit(res.status === CANDIDATE.PROVEN ? EXIT.SUCCESS : res.status === CANDIDATE.AMBIGUOUS ? EXIT.RELEASE_REJECTED : EXIT.INTEGRITY_FAIL)
+}
+
 if ((mode === 'rc' || mode === 'production') && !/^https?:\/\//.test(url || '')) {
   console.error(`mode ${mode} requires an explicit http(s) URL`); process.exit(EXIT.USAGE)
 }

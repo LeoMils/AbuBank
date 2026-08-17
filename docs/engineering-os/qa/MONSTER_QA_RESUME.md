@@ -69,6 +69,19 @@ explicit owner authorization. Repository truth > any prompt. Machine evidence > 
 - **§5/§6 WORKTREE_HARNESS_CLEAN** now classified alongside RUNTIME_CLEAN (dirty test/oracle/evaluator/
   runner/config/control-plane/workflow path ⇒ harness-dirty). Both flags sealed into the capsule.
 
+## DONE checkpoint #3 (candidate discovery + capsule completeness — harness-only)
+- **C7 canonical candidate discovery** `npm run qa:current` (`qa-monster.mjs current` +
+  `scripts/current-candidate-lib.mjs`) — derives THE current candidate from RELEASE_LOCK.json,
+  cross-checks the sealed capsule, machine-readable + fail-closed: PROVEN(0)/AMBIGUOUS(3)/NOT_FOUND(4).
+  Emits the exact certifyCommand. Unblocks clean-room I7. Proof: `src/engineering-os/currentCandidate.test.ts` (5).
+- **§11 Capsule COMPLETENESS** (separate from integrity). Authoritative denominator
+  `docs/engineering-os/qa/REQUIRED_CLAIM_SET.json` (7 claims) is the independent source; capsule seals
+  `denominatorId` (its digest). `verifyCompleteness` (in the capsule lib) proves every required claim is
+  covered AND the denominator hasn't drifted since sealing — catches the §58 "hash-consistent but
+  incomplete" attack and "new required claim added after sealing". Wired into qa:capsule self-check +
+  verify-capsule. Proof: 4 completeness mutations in certificationCapsule.test.ts + LIVE CLI: denominator
+  drift → verify-capsule "integrity OK · completeness FAIL" exit 4 → restore. Total suite 13472 green.
+
 ## REMAINING MACHINE-CLOSABLE (ordered; exact next actions)
 Track A:
 - **A5 stochastic reliability** — pre-registered risk-based sampling for stochastic claims (golden

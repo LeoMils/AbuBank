@@ -4,16 +4,28 @@ This is the single entry point to certify AbuBank. It RUNS the already-frozen ac
 gates and emits one authoritative machine state (`docs/eval/QA_MONSTER_REPORT.json`). Prose never
 promotes a machine NO-GO. **The process exit code is the truth** — CI trusts it.
 
+## Start here — discover the candidate (you do NOT need to know the URL)
+
+```
+npm run qa:current            # prints the current candidate (URL, build, runtime, capsule) as JSON
+```
+
+`qa:current` derives THE current candidate from repository truth (`RELEASE_LOCK.json`, cross-checked
+against the sealed capsule) and is fail-closed: `PROVEN` (exit 0) gives you the exact `certifyCommand`
+to run next; `CURRENT_CANDIDATE_NOT_FOUND` (exit 4) or `CURRENT_CANDIDATE_AMBIGUOUS` (exit 3) means the
+lock is missing or two artifacts disagree — fix that before certifying. This is the machine-readable
+entry point a fresh operator uses without being handed anything.
+
 ## Run it
 
 ```
 npm run qa:monster feature                 # fast local gates (typecheck + full unit suite)
-npm run qa:monster rc         <previewUrl>  # certify a deployed Preview RC candidate
+npm run qa:monster rc         <previewUrl>  # certify a deployed Preview RC candidate (auto-seals capsule)
 npm run qa:monster production <prodUrl>     # verify actual Production (read-only)
 ```
 
-`rc`/`production` require an explicit `http(s)` URL. The current locked candidate URL + build id live
-in `docs/engineering-os/qa/RELEASE_LOCK.json` (`candidateRC`, `buildVersion`).
+Take `<previewUrl>` from `qa:current` (its `candidate.url` / `certifyCommand`). It equals
+`RELEASE_LOCK.json → candidateRC`.
 
 ## Exit codes — what each means and what to do
 
@@ -43,9 +55,13 @@ npm run qa:capsule            # seal a capsule from current machine state
 npm run qa:verify-capsule     # exit 0 = intact; exit 4 = tampered/evidence-drift/unproven provenance
 ```
 
-`verify-capsule` fails closed (exit 4) if the content address does not recompute, any referenced
-evidence file changed or vanished, a required claim is missing, or runtime provenance is `NOT_PROVEN`.
-Tamper detection is proven by `src/engineering-os/certificationCapsule.test.ts` (enforced suite).
+`verify-capsule` proves BOTH **integrity** (content address intact, every referenced evidence file
+present + unchanged, provenance `PROVEN`) AND **completeness** — every claim in the authoritative
+denominator `docs/engineering-os/qa/REQUIRED_CLAIM_SET.json` is covered, and that denominator has not
+drifted since sealing. A capsule can be perfectly hash-consistent yet **incomplete** (dropped a claim,
+or a new required claim was added after sealing); completeness catches both. Fails closed (exit 4).
+Proven by `src/engineering-os/certificationCapsule.test.ts` (integrity + completeness mutations,
+enforced suite).
 
 ## Interpreting the three verdicts (never conflate them)
 

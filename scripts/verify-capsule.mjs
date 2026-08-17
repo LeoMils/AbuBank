@@ -9,18 +9,30 @@
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { sha256Hex, verifyCapsule } from './certification-capsule-lib.mjs'
+import { sha256Hex, verifyCapsule, verifyCompleteness } from './certification-capsule-lib.mjs'
 
 const path = process.argv[2] ?? 'docs/engineering-os/qa/CERTIFICATION_CAPSULE.json'
 let capsule
 try { capsule = JSON.parse(readFileSync(resolve(path), 'utf8')) } catch (e) { console.error(`CAPSULE UNREADABLE: ${path} — ${e.message}`); process.exit(4) }
 
 const digestOf = (p) => { try { return sha256Hex(readFileSync(resolve(p), 'utf8')) } catch { return null } }
-const { ok, failures } = verifyCapsule(capsule, { digestOf })
+const integrity = verifyCapsule(capsule, { digestOf })
 
+// COMPLETENESS against the AUTHORITATIVE denominator (not the capsule's own list). Missing file = fail closed.
+const claimSetPath = 'docs/engineering-os/qa/REQUIRED_CLAIM_SET.json'
+let claimSet = null
+try { claimSet = JSON.parse(readFileSync(resolve(claimSetPath), 'utf8')) } catch {}
+const completeness = claimSet
+  ? verifyCompleteness(capsule, claimSet.claims ?? [], digestOf(claimSetPath))
+  : { ok: false, missing: [], failures: [`authoritative denominator missing/unreadable: ${claimSetPath}`] }
+
+const ok = integrity.ok && completeness.ok
 console.log(`capsule: ${path}`)
 console.log(`CAPSULE_ID: ${capsule.capsuleId}`)
 console.log(`verdicts: PRODUCT=${capsule.verdicts?.PRODUCT_CANDIDATE_VERDICT} QA_SYSTEM=${capsule.verdicts?.QA_SYSTEM_VERDICT} RELEASE=${capsule.verdicts?.RELEASE_PROMOTION_VERDICT}`)
-if (ok) { console.log('=== CAPSULE VERIFIED (content address intact, all evidence present + unchanged, provenance PROVEN) ===') }
-else { console.log(`=== CAPSULE INTEGRITY FAILURE (${failures.length}) ===`); failures.forEach((f) => console.log('  ✗ ' + f)) }
+if (ok) { console.log('=== CAPSULE VERIFIED · INTEGRITY + COMPLETENESS (content address intact, all evidence present + unchanged, every authoritative required claim covered, provenance PROVEN) ===') }
+else {
+  console.log(`=== CAPSULE FAILURE — integrity ${integrity.ok ? 'OK' : 'FAIL'} · completeness ${completeness.ok ? 'OK' : 'FAIL'} ===`)
+  ;[...integrity.failures, ...completeness.failures].forEach((f) => console.log('  ✗ ' + f))
+}
 process.exit(ok ? 0 : 4)

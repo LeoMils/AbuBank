@@ -28,6 +28,8 @@
       "B11_exitContract_selfMutation": "DONE",
       "B11_capsule_tamperMutation": "DONE",
       "certificationCapsule_I12": "DONE",
+      "capsuleCompleteness_§11": "DONE",
+      "candidateDiscovery_C7": "DONE",
       "B2_B13": "PENDING"
     }
   },
@@ -42,8 +44,15 @@
     "contentAddressed": "CAPSULE_ID = sha256(canonical(contents))",
     "generator": "scripts/certification-capsule.mjs (npm run qa:capsule)",
     "verifier": "scripts/verify-capsule.mjs (npm run qa:verify-capsule) — exit 4 on tamper/drift/NOT_PROVEN",
-    "tamperProof": "src/engineering-os/certificationCapsule.test.ts (9 mutations, enforced suite)",
+    "tamperProof": "src/engineering-os/certificationCapsule.test.ts (integrity + completeness mutations, enforced suite)",
+    "completeness": "verify-capsule proves BOTH integrity AND completeness against the authoritative denominator docs/engineering-os/qa/REQUIRED_CLAIM_SET.json (capsule seals denominatorId); a hash-consistent but incomplete capsule fails (§58). Live-proven: denominator drift → exit 4.",
     "note": "Seals the existing evidence; copies verdicts verbatim and cannot promote them."
+  },
+  "candidateDiscovery": {
+    "command": "npm run qa:current (node scripts/qa-monster.mjs current)",
+    "source": "RELEASE_LOCK.json is the single canonical lock; cross-checked against the capsule",
+    "failClosed": "PROVEN(0) / CURRENT_CANDIDATE_AMBIGUOUS(3) / CURRENT_CANDIDATE_NOT_FOUND(4)",
+    "proof": "src/engineering-os/currentCandidate.test.ts (5, enforced suite)"
   },
   "exitContract": {
     "integrity": "I3",
