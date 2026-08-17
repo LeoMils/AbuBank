@@ -86,6 +86,15 @@ export default async function handler(req: Request): Promise<Response> {
   if (!payload.body || typeof payload.body !== 'object') {
     return jsonError('BAD_REQUEST', lang, 400)
   }
+  // A7 cost-amplification caps (no user auth on this PWA → bounded per-request limits are the
+  // machine-closable mitigation; a rate-limit/auth policy remains an owner decision). Reject an
+  // abuse-sized payload and clamp the completion length before the billable OpenAI call.
+  const bodyBytes = JSON.stringify(payload.body).length
+  if (bodyBytes > 200_000) return jsonError('BAD_REQUEST', lang, 413)
+  const msgs = (payload.body as { messages?: unknown }).messages
+  if (Array.isArray(msgs) && msgs.length > 60) return jsonError('BAD_REQUEST', lang, 413)
+  const mt = (payload.body as { max_tokens?: unknown }).max_tokens
+  if (typeof mt === 'number' && mt > 4096) (payload.body as { max_tokens?: number }).max_tokens = 4096
 
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
   const apiKey = env.OPENAI_API_KEY

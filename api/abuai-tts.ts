@@ -35,6 +35,10 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonError('BAD_REQUEST', 400)
   }
   if (!body.input || typeof body.input !== 'string') return jsonError('BAD_REQUEST', 400)
+  // A7 cost-amplification cap: OpenAI TTS bills per input character. A single reply is a few hundred
+  // chars; cap well above that but far below an abuse payload. (No user auth on this PWA — a bounded
+  // per-request limit is the machine-closable mitigation; a rate-limit/auth policy is an owner decision.)
+  if (body.input.length > 2000) return jsonError('BAD_REQUEST', 400)
 
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
   const apiKey = env.OPENAI_API_KEY

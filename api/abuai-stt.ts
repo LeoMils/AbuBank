@@ -47,6 +47,13 @@ export default async function handler(req: Request): Promise<Response> {
     if (!file) {
       return new Response(JSON.stringify({ ok: false, error: 'no file' }), { status: 400 })
     }
+    // A7 cost-amplification cap: Whisper bills per audio minute. A voice turn is a few seconds / well
+    // under 1 MB; cap at 20 MB (below Whisper's 25 MB hard limit) to reject an abuse payload before the
+    // billable call. (No user auth on this PWA — bounded per-request limit; auth/rate-limit = owner decision.)
+    const size = (file as { size?: number }).size ?? 0
+    if (size > 20_000_000) {
+      return new Response(JSON.stringify({ ok: false, error: 'AUDIO_TOO_LARGE' }), { status: 413, headers: { 'Content-Type': 'application/json' } })
+    }
     openaiForm.append('file', file)
     openaiForm.append('model', 'whisper-1')
     const lang = formData.get('language')

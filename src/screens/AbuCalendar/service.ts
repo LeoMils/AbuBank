@@ -109,6 +109,16 @@ export function createAppointmentSafe(input: Omit<Appointment, 'id' | 'color'>):
     return { ok: false, code: 'invalid_time' }
   }
 
+  // A8 IDEMPOTENCY: a duplicated/retried tool-result or a resumed turn must NOT create a second
+  // identical event. Match a TRUE full-content duplicate (title+date+time AND location/notes/subject)
+  // so a genuine retry is deduped, but a RE-CREATE THAT ADDS INFORMATION (e.g. the same slot now with a
+  // location) is NOT collapsed into a stale copy. Covers every create path (tool/manual/voice).
+  const sig = (a: { title?: string; date?: string; time?: string; location?: string; notes?: string; subject?: string }) =>
+    [a.title?.trim() ?? '', a.date ?? '', a.time ?? '', a.location ?? '', a.notes ?? '', a.subject ?? ''].join('|')
+  const key = sig(input)
+  const dupe = loadAppointments().find((a) => sig(a) === key)
+  if (dupe) return { ok: true, appointment: dupe }
+
   // 3) Attempt persistence. addAppointment + saveAppointments together
   //    will swallow storage errors (private-mode / quota), so we catch
   //    throws from setItem AND we read back to verify presence.
