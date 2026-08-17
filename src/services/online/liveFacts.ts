@@ -105,9 +105,13 @@ export async function resolveWeather(query: string, lang: Lang, nowIso: string):
   return { kind: 'answer', answer, evidence: { domain: 'weather', observedAt, maxAgeDays: 1, sourceLabel: 'open-meteo' }, sources: [{ url: 'https://open-meteo.com/' }] }
 }
 
-// ── FX / exchange rate (frankfurter.dev — ECB reference rates, dated) ──────────
+// ── FX / exchange rate — dedicated DATED authoritative sources, with a fallback ────────────────
+// Two independent dated sources so a single slow/unavailable endpoint degrades to the other rather
+// than to a decline: frankfurter.dev (ECB reference, `date`) → open.er-api.com (`time_last_update_utc`).
 interface Frankfurter { base?: string; date?: string; rates?: Record<string, number> }
+interface ErApi { result?: string; time_last_update_utc?: string; base_code?: string; rates?: Record<string, number> }
 const CCY_HE: Record<string, string> = { USD: 'דולר', EUR: 'יורו', GBP: 'ליש"ט', ILS: 'שקל' }
+const FX_MAX_AGE_DAYS = 5   // ECB skips weekends/holidays → allow a few days before "stale"
 
 function detectFxPair(query: string): { base: string; quote: string } {
   let base = 'USD'
@@ -118,24 +122,33 @@ function detectFxPair(query: string): { base: string; quote: string } {
   return { base, quote }
 }
 
+/** Fetch a dated rate from either authoritative source. Returns { rate, observedAt(ISO), date(label) } or null. */
+async function fetchFxRate(base: string, quote: string): Promise<{ rate: number; observedAt: string; dateLabel: string } | null> {
+  const fr = await fetchJson<Frankfurter>(`https://api.frankfurter.dev/v1/latest?base=${base}&symbols=${quote}`, 5000)
+  if (typeof fr?.rates?.[quote] === 'number' && fr?.date) return { rate: fr.rates[quote]!, observedAt: `${fr.date}T00:00:00Z`, dateLabel: fr.date }
+  const er = await fetchJson<ErApi>(`https://open.er-api.com/v6/latest/${base}`, 5000)
+  if (er?.result === 'success' && typeof er.rates?.[quote] === 'number' && er.time_last_update_utc) {
+    const observed = new Date(er.time_last_update_utc)
+    if (!Number.isNaN(observed.getTime())) return { rate: er.rates[quote]!, observedAt: observed.toISOString(), dateLabel: observed.toISOString().slice(0, 10) }
+  }
+  return null
+}
+
 export async function resolveFx(query: string, lang: Lang, nowIso: string): Promise<LiveFactResult> {
   const { base, quote } = detectFxPair(query)
   if (base === quote) return { kind: 'decline', domain: 'fx', reason: 'same currency' }
-  const d = await fetchJson<Frankfurter>(`https://api.frankfurter.dev/v1/latest?base=${base}&symbols=${quote}`)
-  const rate = d?.rates?.[quote]
-  if (typeof rate !== 'number' || !d?.date) return { kind: 'decline', domain: 'fx', reason: 'fx source unavailable' }
-  const observedAt = `${d.date}T00:00:00Z`
-  // ECB skips weekends/holidays → allow up to 5 days before the value is considered stale.
-  const ageDays = (Date.parse(nowIso) - Date.parse(observedAt)) / 86_400_000
-  if (ageDays > 5) return { kind: 'decline', domain: 'fx', reason: `fx rate ${Math.round(ageDays)}d old — stale` }
-  const rounded = Math.round(rate * 100) / 100
+  const fx = await fetchFxRate(base, quote)
+  if (!fx) return { kind: 'decline', domain: 'fx', reason: 'fx source unavailable' }
+  const ageDays = (Date.parse(nowIso) - Date.parse(fx.observedAt)) / 86_400_000
+  if (ageDays > FX_MAX_AGE_DAYS) return { kind: 'decline', domain: 'fx', reason: `fx rate ${Math.round(ageDays)}d old — stale` }
+  const rounded = Math.round(fx.rate * 100) / 100
   const baseHe = CCY_HE[base] ?? base
   const quoteHe = CCY_HE[quote] ?? quote
   const answer =
-    lang === 'es' ? `1 ${base} = ${rounded} ${quote} (al ${d.date}).`
-    : lang === 'en' ? `1 ${base} = ${rounded} ${quote} (as of ${d.date}).`
-    : `שער ה${baseHe} מול ה${quoteHe} הוא ${rounded} (נכון ל-${d.date}).`
-  return { kind: 'answer', answer, evidence: { domain: 'fx', observedAt, maxAgeDays: 5, sourceLabel: 'frankfurter/ecb' }, sources: [{ url: 'https://www.frankfurter.dev/' }] }
+    lang === 'es' ? `1 ${base} = ${rounded} ${quote} (al ${fx.dateLabel}).`
+    : lang === 'en' ? `1 ${base} = ${rounded} ${quote} (as of ${fx.dateLabel}).`
+    : `שער ה${baseHe} מול ה${quoteHe} הוא ${rounded} (נכון ל-${fx.dateLabel}).`
+  return { kind: 'answer', answer, evidence: { domain: 'fx', observedAt: fx.observedAt, maxAgeDays: FX_MAX_AGE_DAYS, sourceLabel: 'frankfurter/ecb+erapi' }, sources: [{ url: 'https://www.frankfurter.dev/' }] }
 }
 
 /**

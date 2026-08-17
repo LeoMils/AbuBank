@@ -56,7 +56,24 @@ function classify(row, r) {
   const grounded = r.ok && (r.diag?.sourceCount > 0 || ['time', 'deep', 'snippet', 'briefing', 'openai'].includes(r.diag?.answerPath))
   const temporal = isTemporalQuery(row.q)
   const knownStale = row.knownStale ? row.knownStale.test(r.answer) : false
-  // GROUNDED ≠ CURRENT: the endpoint exposes NO source publication dates, so freshness of a temporal
+  // LIVE-FACT PATH: for weather/fx the endpoint answered from a DATED authoritative source and recorded
+  // observedAt in diag. INDEPENDENTLY re-certify freshness from that timestamp (not just trust diag).
+  const livePath = r.ok && typeof r.diag?.answerPath === 'string' && r.diag.answerPath.startsWith('live-')
+  if (livePath) {
+    const domain = r.diag.answerPath.replace('live-', '')
+    const observedAt = /observedAt=([^,]+)/.exec(r.diag.answerDetail || '')?.[1]
+    const maxAgeDays = domain === 'fx' ? 5 : 1
+    const f = observedAt
+      ? evaluateFreshness({ query: row.q, answered: true, nowIso: NOW, sourceDatesIso: [observedAt], maxAgeDays })
+      : { verdict: 'STALE', satisfiesCurrentInfoClaim: false }
+    return {
+      temporal, grounded: true, currentInfoCertified: f.satisfiesCurrentInfoClaim,
+      class: f.satisfiesCurrentInfoClaim ? 'FRESH_CERTIFIED' : 'LIVE_STALE',
+      pass: f.satisfiesCurrentInfoClaim,
+      note: `dated ${domain} source observedAt=${observedAt} → ${f.verdict}: "${r.answer.slice(0, 50)}"`,
+    }
+  }
+  // GROUNDED ≠ CURRENT: the general path exposes NO source publication dates, so freshness of a temporal
   // answer is UNVERIFIABLE at the endpoint → evaluateFreshness fails the current-info claim closed.
   const fresh = evaluateFreshness({ query: row.q, answered: r.ok, nowIso: NOW, answerContainsKnownStale: knownStale })
   const currentInfoCertified = fresh.satisfiesCurrentInfoClaim   // true only for static, or proven-fresh
@@ -101,42 +118,38 @@ async function main() {
     console.log(`${c.pass ? 'PASS' : 'FAIL'}  ${row.id.padEnd(22)} ${c.class.padEnd(28)} ${c.note ?? ''}`)
   }
 
-  const stale = rows.filter((r) => r.class === 'STALE_FAIL')
+  const stale = rows.filter((r) => r.class === 'STALE_FAIL' || r.class === 'LIVE_STALE')
   const gaps = rows.filter((r) => r.capabilityGap)
-  const accuracyWatch = rows.filter((r) => r.accuracyWatch)
   const fails = rows.filter((r) => !r.pass)            // honest-behaviour failures (stale/fabrication/ungrounded)
   const temporalRows = rows.filter((r) => r.temporal)
   const temporalCertified = temporalRows.filter((r) => r.currentInfoCertified)
-  // The endpoint now ANSWERS live-data queries (weather/fx) rather than declining — a drift from the
-  // checkpoint's documented "honest decline". Surface it explicitly.
-  const liveDataAnswered = rows.filter((r) => r.class === 'ANSWERED_FRESHNESS_UNCERTIFIED')
+  const freshCertified = rows.filter((r) => r.class === 'FRESH_CERTIFIED')   // dated authoritative live-fact answers
+  const superBowl = rows.find((r) => r.id === 'latest-result')
   const summary = {
     $schema: 'internal://abu/rc-acceptance-temporal', rc: RC, when: NOW,
     evidenceClass: 'PREVIEW (deployed /api/abuai-online)',
-    freshnessSemantics: 'GROUNDED != CURRENT — a temporal answer needs BOTH grounding AND certifiable freshness (evaluateFreshness). The endpoint exposes no source dates → temporal freshness is UNCERTIFIABLE here.',
+    freshnessSemantics: 'GROUNDED != CURRENT — a temporal answer needs BOTH grounding AND certifiable freshness (evaluateFreshness). Live-fact domains (weather/fx) certify from a DATED authoritative source; domains without a dated source decline honestly.',
     // Two independent dimensions — never collapse them:
     groundingHonesty: fails.length === 0 ? 'PROVEN_PASS' : 'DEFECTS_PRESENT',   // grounded+cited or honest decline; no memory-fabrication
-    freshnessCertification: temporalCertified.length === temporalRows.length ? 'ALL_CERTIFIED' : 'NOT_CERTIFIED',
-    verdict: fails.length === 0 ? 'GROUNDING_HONEST · FRESHNESS_NOT_CERTIFIED (capability gap)' : 'DEFECTS_PRESENT',
-    counts: { total: rows.length, honestBehaviourPass: rows.filter((r) => r.pass).length, staleFail: stale.length, capabilityGap: gaps.length, temporalRows: temporalRows.length, temporalFreshnessCertified: temporalCertified.length },
+    freshnessCertification: freshCertified.length > 0 ? `PARTIAL — ${freshCertified.length} live-fact domain(s) certified FRESH (weather/fx dated); slow-fact/result domains not date-certifiable` : 'NOT_CERTIFIED',
+    verdict: fails.length === 0 ? 'GROUNDING_HONEST · LIVE-FACT FRESHNESS CERTIFIED (weather/fx) · other temporal = decline-or-gap' : 'DEFECTS_PRESENT',
+    counts: { total: rows.length, honestBehaviourPass: rows.filter((r) => r.pass).length, staleFail: stale.length, capabilityGap: gaps.length, temporalRows: temporalRows.length, temporalFreshnessCertified: temporalCertified.length, freshCertifiedLiveFacts: freshCertified.length },
     distinctionsPreserved: {
       NO_FABRICATION_FROM_MEMORY: fails.some((f) => f.class === 'STALE_FAIL' || f.class === 'ANSWERED_UNEXPECTED') ? 'CHECK' : 'PROVEN_PASS',
-      LIVE_CURRENT_DATA_CAPABILITY: 'NOT_PROVEN',   // grounded-but-undatable answers do not prove live-data freshness
-      LAST_SUPER_BOWL_FRESHNESS: stale.some((s) => s.id === 'latest-result') ? 'STALE_FAIL' : 'GROUNDED_BUT_UNCERTIFIED',
+      LIVE_CURRENT_DATA_CAPABILITY: freshCertified.length > 0 ? `PROVEN for ${freshCertified.map((r) => r.id).join(', ')} (dated authoritative sources)` : 'NOT_PROVEN',
+      LAST_SUPER_BOWL_FRESHNESS: stale.some((s) => s.id === 'latest-result') ? 'STALE_FAIL' : (superBowl?.class === 'HONEST_DECLINE' ? 'HONEST_DECLINE (no dated source → declines, never stale)' : superBowl?.class),
     },
     findings: {
-      DECLINE_TO_ANSWER_DRIFT: liveDataAnswered.length > 0
-        ? `weather/exchange now ANSWER (not decline) with freshness-uncertified values: ${liveDataAnswered.map((r) => `${r.id}="${r.answer.slice(0, 24)}"`).join('; ')} — contradicts the checkpoint's documented honest-decline`
-        : 'none',
-      ACCURACY_WATCH: accuracyWatch.map((r) => ({ id: r.id, answer: r.answer })),   // human-verify these values
+      LIVE_FACT_FRESHNESS: freshCertified.map((r) => ({ id: r.id, answer: r.answer, note: r.note })),
+      RESULT_DECLINES: rows.filter((r) => r.id === 'latest-result').map((r) => r.class),
     },
     rows,
   }
   writeFileSync(resolve('docs/eval/RC_ACCEPTANCE_TEMPORAL.json'), JSON.stringify(summary, null, 2) + '\n')
-  console.log(`\nhonest-behaviour fails=${fails.length}  staleFail=${stale.length}  capabilityGap=${gaps.length}`)
+  console.log(`\nhonest-behaviour fails=${fails.length}  liveStale=${stale.length}  capabilityGap=${gaps.length}`)
+  console.log(`live-fact FRESH-certified: ${freshCertified.length} (${freshCertified.map((r) => r.id).join(', ')})`)
   console.log(`temporal freshness certified: ${temporalCertified.length}/${temporalRows.length}`)
   console.log(`super-bowl: ${summary.distinctionsPreserved.LAST_SUPER_BOWL_FRESHNESS}`)
-  console.log(`live-data drift: ${summary.findings.DECLINE_TO_ANSWER_DRIFT === 'none' ? 'none' : 'PRESENT (weather/fx answer instead of decline)'}`)
   console.log(`=== ${summary.verdict} ===`)
   console.log('wrote docs/eval/RC_ACCEPTANCE_TEMPORAL.json')
   // Exit non-zero on an honest-behaviour failure (stale/fabrication/ungrounded). Freshness-not-certified

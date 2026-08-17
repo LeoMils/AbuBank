@@ -88,6 +88,18 @@ describe('FX — authoritative dated ECB rate; the mis-extraction class is struc
     expect(r.answer).toMatch(/2\.95/)               // only the authoritative rate
     expect(pageCalls.length).toBe(0)                // the FX path fetches NO arbitrary pages
   })
+  it('falls back to the second dated source (open.er-api) when frankfurter is unavailable', async () => {
+    mockFetch((u) => {
+      if (u.includes('frankfurter')) return null                                   // primary down
+      if (u.includes('er-api')) return { ok: true, json: { result: 'success', time_last_update_utc: 'Sun, 16 Aug 2026 00:02:31 +0000', base_code: 'USD', rates: { ILS: 2.95 } } }
+      return null
+    })
+    const r = await resolveFx('מה שער הדולר היום?', 'he', NOW)
+    expect(r.kind).toBe('answer')
+    if (r.kind !== 'answer') return
+    expect(r.answer).toMatch(/2\.95/)
+    expect(r.answer).toMatch(/2026-08-16/)   // the fallback source's update date
+  })
   it('declines when the ECB rate is too old (weekend/holiday gap exceeded)', async () => {
     mockFetch((u) => u.includes('frankfurter') ? { ok: true, json: { base: 'USD', date: '2026-07-01', rates: { ILS: 3.6 } } } : null)
     const r = await resolveFx('שער הדולר היום', 'he', NOW)   // 2026-07-01 is >5d before NOW
