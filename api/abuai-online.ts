@@ -20,7 +20,8 @@ import { buildBriefing, speakableBriefing, type Briefing } from '../src/services
 import { generalSearchLoop } from '../src/services/online/generalSearch'
 import { synthesizeAnswer } from '../src/services/online/synthesize'
 import { onlineGeneralSearchEnabled } from '../src/services/online/flags'
-import { isTemporalQuery } from '../src/engineering-os/temporalFreshness'
+import { isTemporalQuery, evaluateFreshness } from '../src/engineering-os/temporalFreshness'
+import { classifyLiveDomain, resolveLiveFact } from '../src/services/online/liveFacts'
 
 export const config = { runtime: 'edge' }
 
@@ -310,6 +311,35 @@ export default async function handler(req: Request): Promise<Response> {
   if (isTimeQuery(query)) {
     diag.answerPath = 'time'
     return respond({ ok: true, answer: israelTimeAnswer(lang), sources: [] })
+  }
+
+  // ── LIVE-FACT FRESHNESS GATE (§16 owner directive: TEMPORAL = GROUNDED + FRESH) ──
+  // Fast-changing current-VALUE domains (weather, fx, latest results) must carry machine-verifiable
+  // freshness — a value scraped/synthesized from an arbitrary page is BOTH undatable AND accuracy-
+  // unsafe (the USD/ILS "2.96"-style mis-extraction class). Route these to dedicated DATED authoritative
+  // sources that return the value WITH its observation/publication time; certify FRESH via
+  // evaluateFreshness or DECLINE honestly — never surface a stale/undated value. Non-live-fact queries
+  // (office-holder, cinema "now showing", prices, opening hours) return not_live_fact and keep the
+  // existing grounded path below (inherently current or slow-changing — not the stale-value class).
+  const liveDomain = classifyLiveDomain(query)
+  if (liveDomain) {
+    const nowIso = new Date().toISOString()
+    const live = await resolveLiveFact(query, lang, nowIso)
+    if (live.kind === 'answer') {
+      const fresh = evaluateFreshness({ query, answered: true, nowIso, sourceDatesIso: [live.evidence.observedAt], maxAgeDays: live.evidence.maxAgeDays })
+      if (fresh.satisfiesCurrentInfoClaim) {
+        diag.reached = true
+        diag.sourceCount = live.sources.length
+        diag.answerPath = `live-${live.evidence.domain}`
+        diag.answerDetail = `observedAt=${live.evidence.observedAt},verdict=${fresh.verdict}`
+        return respond({ ok: true, answer: live.answer, sources: live.sources })
+      }
+      // dated source returned but the value is STALE for this query → fall through to honest decline.
+    }
+    // Cannot certify freshness (source down, stale, or no dated source for this domain yet) → decline
+    // honestly rather than answer from a stale/undatable source (owner rule: never grounded-but-stale).
+    diag.answerPath = `live-decline-${liveDomain}`
+    return respond({ ok: false, errorCode: 'ONLINE_NO_RESULTS', userMessage: userMessageFor('ONLINE_NO_RESULTS', lang) }, 200)
   }
 
   // ── BRIEFING branch (Item 3 · online depth) ────────────────────────────────

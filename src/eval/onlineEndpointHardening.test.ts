@@ -79,7 +79,9 @@ describe('/api/abuai-online — honest failure on every branch (no verified resu
   it('no API key configured → OPENAI_API_KEY_MISSING, no provider call', async () => {
     (globalThis as unknown as { process: { env: Record<string, string> } }).process = { env: {} }
     const spy = vi.fn(); vi.stubGlobal('fetch', spy)
-    const res = await handler(post({ query: 'weather in Tel Aviv now', lang: 'he' }))
+    // Use an OpenAI-path query (office-holder — NOT a live-fact domain; weather/fx now use keyless
+    // dated sources and no longer require OPENAI_API_KEY, see liveFacts.ts).
+    const res = await handler(post({ query: 'who is the current president', lang: 'he' }))
     expectHonestFailure(await res.json() as OnlineFail, 'OPENAI_API_KEY_MISSING')
     expect(spy).not.toHaveBeenCalled()
   })
@@ -112,10 +114,12 @@ describe('/api/abuai-online — honest failure on every branch (no verified resu
   it('the honest failure message is localized (Spanish / English)', async () => {
     (globalThis as unknown as { process: { env: Record<string, string> } }).process = { env: {} }
     vi.stubGlobal('fetch', vi.fn())
-    const es = await (await handler(post({ query: '¿qué tiempo hace hoy?', lang: 'es' }))).json() as OnlineFail
+    // OpenAI-path queries (office-holder) — weather is now a keyless live-fact domain, so it would
+    // not exercise the OPENAI_API_KEY_MISSING path.
+    const es = await (await handler(post({ query: '¿quién es el presidente ahora?', lang: 'es' }))).json() as OnlineFail
     expect(es.errorCode).toBe('OPENAI_API_KEY_MISSING')
     expect(es.userMessage).toMatch(/no puedo|conexión/i)
-    const en = await (await handler(post({ query: 'weather today', lang: 'en' }))).json() as OnlineFail
+    const en = await (await handler(post({ query: 'who is the president today', lang: 'en' }))).json() as OnlineFail
     expect(en.userMessage).toMatch(/cannot check|not configured/i)
   })
 })

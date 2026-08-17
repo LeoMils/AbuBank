@@ -32,14 +32,16 @@ describe('online grounding gate — no sources ⇒ honest failure, never a confi
   afterEach(() => { vi.restoreAllMocks() })
 
   it('a GROUNDED answer (with a source) is returned ok:true with its sources', async () => {
+    // A non-live-fact current query (office-holder) — this exercises the OpenAI grounded path.
+    // (weather/fx now have dedicated dated live-fact sources, see liveFacts.ts / onlineLiveFactGate.)
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(
-      openaiResponse('בתל אביב היום שמשי, 31 מעלות.', [{ url: 'https://weather.example/tlv', title: 'Weather' }]),
+      openaiResponse('ראש עיריית תל אביב הוא רון חולדאי.', [{ url: 'https://tel-aviv.example/mayor', title: 'City' }]),
     ), { status: 200 })))
-    const res = await handler(req({ query: 'current weather in Tel Aviv', lang: 'he' }))
+    const res = await handler(req({ query: 'who is the mayor of Tel Aviv', lang: 'he' }))
     const j = await res.json() as { ok: boolean; answer?: string; sources?: unknown[] }
     expect(j.ok).toBe(true)
     expect(j.sources?.length).toBeGreaterThan(0)
-    expect(j.answer).toContain('שמשי')
+    expect(j.answer).toContain('חולדאי')
   })
 
   it('an UNGROUNDED answer (zero sources) is REJECTED as ONLINE_NO_RESULTS — never surfaced', async () => {

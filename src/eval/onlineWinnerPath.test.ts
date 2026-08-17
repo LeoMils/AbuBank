@@ -29,16 +29,24 @@ function tavilyResponse(answer: string, results: Array<{ url: string; title?: st
 describe('online endpoint — bake-off winner path (ONLINE_PROVIDER=tavily)', () => {
   afterEach(() => { vi.restoreAllMocks() })
 
+  // Mock the snippet-judge's OpenAI synthesize call (the winner path judges every spoken answer).
+  const openaiSynth = (answer: string) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ status: 'answer', answer }) } }] }), { status: 200 })
+
   it('routes to Tavily and returns its grounded answer + sources', async () => {
-    setEnv({ ONLINE_PROVIDER: 'tavily', TAVILY_API_KEY: 'k' })
-    const fetchSpy = vi.fn(async (..._a: unknown[]) => tavilyResponse('הדולר נסחר היום בכ-3.00 שקלים.', [{ url: 'https://boi.example', title: 'בנק ישראל' }]))
+    // Non-live-fact current query (cinema listings) — exercises the provider path. FX/weather now
+    // route to dedicated dated live-fact sources (liveFacts.ts), not the general provider path.
+    // DEEP_FETCH off → the snippet judge runs; mock its OpenAI call so the winner answer is spoken.
+    setEnv({ ONLINE_PROVIDER: 'tavily', TAVILY_API_KEY: 'k', OPENAI_API_KEY: 'k', ONLINE_DEEP_FETCH: '0' })
+    const fetchSpy = vi.fn(async (url: unknown) => String(url).includes('api.openai.com')
+      ? openaiSynth('היום מוקרנים כמה סרטים חדשים בקולנוע.')
+      : tavilyResponse('cinema', [{ url: 'https://cinema.example', title: 'קולנוע' }]))
     vi.stubGlobal('fetch', fetchSpy)
-    const res = await handler(req({ query: 'כמה עולה דולר היום', lang: 'he' }))
+    const res = await handler(req({ query: 'אילו סרטים מוקרנים היום בקולנוע', lang: 'he' }))
     const j = await res.json() as { ok: boolean; answer?: string; sources?: Array<{ url: string }> }
     expect(j.ok).toBe(true)
-    expect(j.answer).toContain('דולר')
-    expect(j.sources?.[0]!.url).toBe('https://boi.example')
-    // It called Tavily, NOT OpenAI.
+    expect(j.answer).toContain('סרטים')
+    expect(j.sources?.[0]!.url).toBe('https://cinema.example')
+    // It called Tavily first (provider search), NOT OpenAI.
     expect(String(fetchSpy.mock.calls[0]![0])).toContain('api.tavily.com')
   })
 
@@ -66,9 +74,11 @@ describe('online endpoint — bake-off winner path (ONLINE_PROVIDER=tavily)', ()
 
   // ── The diagnostic: a misconfigured provider must NEVER look like an empty search ──
   it('diag reports the SELECTED provider + key present + reached on the winner happy path', async () => {
-    setEnv({ ONLINE_PROVIDER: 'tavily', TAVILY_API_KEY: 'k' })
-    vi.stubGlobal('fetch', vi.fn(async () => tavilyResponse('הדולר ~3.00 שקלים.', [{ url: 'https://boi.example' }])))
-    const res = await handler(req({ query: 'כמה עולה דולר היום', lang: 'he' }))
+    setEnv({ ONLINE_PROVIDER: 'tavily', TAVILY_API_KEY: 'k', OPENAI_API_KEY: 'k', ONLINE_DEEP_FETCH: '0' })
+    vi.stubGlobal('fetch', vi.fn(async (url: unknown) => String(url).includes('api.openai.com')
+      ? openaiSynth('היום מוקרנים סרטים חדשים.')
+      : tavilyResponse('cinema', [{ url: 'https://cinema.example', title: 'קולנוע' }])))
+    const res = await handler(req({ query: 'אילו סרטים מוקרנים היום בקולנוע', lang: 'he' }))
     const j = await res.json() as { ok: boolean; diag?: Record<string, unknown> }
     expect(j.diag).toBeDefined()
     expect(j.diag!.requested).toBe('tavily')
@@ -102,7 +112,8 @@ describe('online endpoint — bake-off winner path (ONLINE_PROVIDER=tavily)', ()
   it('diag shows requested:unset when ONLINE_PROVIDER is not set (defaulted to openai)', async () => {
     setEnv({ OPENAI_API_KEY: 'k' }) // no ONLINE_PROVIDER
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ output_text: 'x', output: [] }), { status: 200 })))
-    const j = await (await handler(req({ query: 'מה מזג האוויר היום', lang: 'he' }))).json() as { diag?: Record<string, unknown> }
+    // Non-live-fact query (cinema) so it exercises the OpenAI path, not the dated live-fact gate.
+    const j = await (await handler(req({ query: 'אילו סרטים מוקרנים היום בקולנוע', lang: 'he' }))).json() as { diag?: Record<string, unknown> }
     expect(j.diag!.requested).toBe('unset')
     expect(j.diag!.provider).toBe('openai')
     expect(j.diag!.openaiKeyPresent).toBe(true)
