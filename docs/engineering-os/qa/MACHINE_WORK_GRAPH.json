@@ -35,7 +35,7 @@
     { "id": "current-info-freshness", "terminalState": "PROVEN_PASS", "evidence": "RC temporal acceptance (weather/fx FRESH_CERTIFIED; grounding≠freshness held)", "source": "§30" },
     { "id": "retrieval-injection-boundary", "terminalState": "PROVEN_PASS", "evidence": "retrievalGuard.sanitizeRetrievedText (A6) + 13 tests", "source": "§31" },
     { "id": "secret-detector-contract", "terminalState": "PROVEN_PASS", "evidence": "src/engineering-os/deployedSecretScan.ts calibrated + QA-of-QA (A2)", "source": "§32" },
-    { "id": "credential-state-distinctness", "terminalState": "NONTERMINAL", "machineClosable": true, "note": "documented in RELEASE_LOCK; a machine assertion keeping the 4 states distinct is not yet a test", "source": "§33" },
+    { "id": "credential-state-distinctness", "terminalState": "PROVEN_PASS", "evidence": "scripts/credential-states-lib.mjs + src/engineering-os/credentialStates.test.ts (no non-owner observation infers revocation)", "source": "§33" },
     { "id": "privacy-session-isolation", "terminalState": "NONTERMINAL", "machineClosable": true, "source": "§34" },
     { "id": "billing-abuse-boundary", "terminalState": "NONTERMINAL", "machineClosable": true, "note": "instance-local limits shipped + labelled precisely; distributed limiter = owner infra", "source": "§35" },
     { "id": "side-effect-idempotency", "terminalState": "PROVEN_PASS", "evidence": "idempotentCreate.test.ts (operationId primary; distinct-op no false collapse)", "source": "§36" },
