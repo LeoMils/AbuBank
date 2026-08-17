@@ -1,10 +1,10 @@
 {
   "$schema": "internal://abu/promotion-rehearsal",
-  "when": "2026-08-17T22:58:09.419Z",
+  "when": "2026-08-17T23:14:03.670Z",
   "PROMOTION_REHEARSAL": "PASS",
   "PRODUCTION_PROMOTION_ELIGIBLE": "PENDING_OWNER_AUTHORIZATION_AND_OWNER_ACTIONS",
   "EXACT_LOCKED_CANDIDATE": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "CERTIFICATION_CAPSULE_ID": "7deb4300695b800eac7e07e5e281b55afa49e6f53616201200c5313aac22efe8",
+  "CERTIFICATION_CAPSULE_ID": "703422cb131b90fcb9e23b320ed724390811334536ce0260e28534b64a00509c",
   "note": "No Production deploy performed. Owner actions (key revocation, prod auth, no-login policy) remain per OWNER_HUMAN_AUTHORITY.json. Env presence is verified at the actual Production deploy.",
   "checks": [
     {
