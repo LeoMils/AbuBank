@@ -48,6 +48,26 @@ production without explicit owner authorization).
   marker gone; still uncertifiable); **decline→answer DRIFT** — weather (+28°) & USD/ILS (2.96) now
   ANSWER with freshness-uncertified values instead of declining; **2.96 accuracy-watch** (implausible).
 
+## OWNER ADDITIONS (2) — DONE this context
+- **ADD-1 · replacement-path proofs** (4a4a528): the Gemini/Groq CLIENT removal REROUTED live paths; a
+  STALE-test disposition is not CLOSED without proving the REPLACEMENT at runtime-visible class.
+  `scripts/rc-acceptance-replacement-paths.mjs` on RC eiyl4n2r7 (PREVIEW) — 4/4: TTS (/api/abuai-tts
+  gpt-4o-mini-tts) → STT (/api/abuai-stt whisper-1) TTS→STT ROUND-TRIP transcribed the Hebrew back;
+  CHAT (/api/abuai-chat gpt-4o) correct; WhatsApp compose proven separately (5/5).
+- **ADD-2 · tool-backed interaction contract from RAW EVENT ORDERING** (e3e8ff9): the most-reported
+  device defect (spoken "רגע אני בודקת" filler around a lookup; pending-after-result; repeated
+  sentences). `src/services/toolSequencingOracle.ts` grades tool_call → silence → tool_result → answer
+  from the FlightRecorder raw stream: INTERLEAVE_SEMANTIC / SPOKEN_PREAMBLE / PENDING_AFTER_RESULT /
+  REPEATED_SENTENCE / MASKED_FALLBACK. 14 tests (synthetic + REAL FlightRecorder; sensitivity proven).
+  Real gpt-realtime golden corroboration: 12 tool-turns, 0 preamble, 0 repeats. Oracle is DEVICE-ready
+  when a downloaded device FlightRecorder trace is supplied (raw-event class > transcript).
+
+## SECURITY RESTATEMENT (owner corrected me — no evidence of revocation)
+- The 3 old keys are NOT proven revoked (I had implied "safe"; I have no evidence). CREDENTIAL_REVOKED =
+  OWNER_ACTION_OPEN. Production/canonical (abu-ela-rc.vercel.app) STILL ships OpenAI fp:e39ef3b7 /
+  Gemini fp:69150fc4 / Groq fp:a2f25d13 (re-confirmed by scan). **Deleting them at the provider consoles
+  is the most urgent open item — only deletion makes the shipped bundle worthless.** Owner-only action.
+
 ## ACCEPTANCE CLAIMS — PASS / FAIL / UNKNOWN (with owner's 2 semantic corrections applied)
 PROVEN_PASS (deployed, transcript-read; see rc-acceptance-evaluated.json + rc-acceptance-abuai.json):
 - AbuAI general-knowledge, family-truth, STATEFUL follow-up (she→Mor + refused to invent age),
