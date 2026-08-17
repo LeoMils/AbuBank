@@ -16,7 +16,7 @@
     { "id": "fresh-session-clean-room", "terminalState": "NONTERMINAL", "machineClosable": true, "note": "qa:current + operator guide support it; the zero-knowledge clean-room DRILL from a clean checkout has not been executed and CLEAN_ROOM_FIRST_HIDDEN_DEPENDENCY not recorded", "source": "§50/I7" },
     { "id": "proof-provenance-key", "terminalState": "NONTERMINAL", "machineClosable": true, "source": "§12/B4" },
     { "id": "evidence-budget", "terminalState": "NONTERMINAL", "machineClosable": true, "source": "§13" },
-    { "id": "qa-economy-slo", "terminalState": "NONTERMINAL", "machineClosable": true, "note": "economy block MEASURED per run; pre-declared configurable SLO targets not yet persisted", "source": "§16/C8/B2" },
+    { "id": "qa-economy-slo", "terminalState": "PROVEN_PASS", "evidence": "docs/engineering-os/qa/QA_ECONOMY_SLO.json (pre-declared feature/rc/production targets) + scripts/economy-slo-lib.mjs + src/engineering-os/economySlo.test.ts", "source": "§16/C8/B2" },
     { "id": "stochastic-completeness-oracle", "terminalState": "PROVEN_PASS", "evidence": "scripts/stochastic-completeness-lib.mjs + STOCHASTIC_PLAN.json + src/engineering-os/stochasticCompleteness.test.ts", "source": "§14/C6" },
     { "id": "stochastic-sampling-run", "terminalState": "BLOCKED_EXTERNAL_WITH_EVIDENCE", "machineClosable": false, "evidence": "pre-registered plan persisted (STOCHASTIC_PLAN.json); the actual bounded run needs live provider calls against the deployed RC (provider budget = OWNER_MONETARY_SPEND_CEILING). Pre-registration done; execution external.", "source": "§15/A5" },
     { "id": "capability-admission", "terminalState": "NONTERMINAL", "machineClosable": true, "source": "§17/B3" },
