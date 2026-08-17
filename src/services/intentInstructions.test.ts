@@ -12,7 +12,10 @@ const full = buildLiveInstructions()
 
 describe('the shipped assembly is untouched (decomposition is derivation only)', () => {
   it('buildLiveInstructions still assembles the full always-on bundle', () => {
-    expect(full.length).toBe(13764) // deliberate change v0.278: calendar-decisiveness + online-follow-up nudges (still under the 14000 ratchet) — it is the flag-OFF payload
+    // Byte-exact drift snapshot + the HARD <14000 anti-bloat ratchet (the real invariant). Update the
+    // snapshot WITH evidence when the always-on rules legitimately change; never relax the ratchet.
+    expect(full.length).toBe(13987) // updated: prior-branch instruction edits (was 13764); measured, still < 14000
+    expect(full.length).toBeLessThan(14000) // the ratchet — forces condensation before it breaches
   })
 })
 

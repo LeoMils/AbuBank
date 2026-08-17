@@ -68,14 +68,15 @@ describe('Provider loop elimination — source contracts', () => {
   })
 
   it('429 in streaming always adds to failedKinds AND marks cooldown', () => {
-    // After a 429, both failedKinds and cooldown must be set
+    // After a 429, both failedKinds and cooldown must be set. With the single server provider
+    // (Gemini/Groq client providers removed) there are fewer add() sites, but the invariant is
+    // unchanged: a 429 both records the failed kind AND marks a provider cooldown.
     const streamFn = SERVICE_SRC.slice(
       SERVICE_SRC.indexOf('export async function* streamMessage'),
       SERVICE_SRC.indexOf('export const VOICE_SUFFIX')
     )
-    // Count failedKinds.add calls — should be at least 3 (openai, 429, catch)
-    const addCalls = (streamFn.match(/failedKinds\.add\(/g) || []).length
-    expect(addCalls).toBeGreaterThanOrEqual(3)
+    expect((streamFn.match(/failedKinds\.add\(/g) || []).length).toBeGreaterThanOrEqual(1)
+    expect(streamFn).toContain('markProviderCooldown')
   })
 
   it('no more than 4 provider calls per user utterance', () => {
@@ -789,29 +790,25 @@ describe('Family gender audit — correct pronouns and wording', () => {
 // PHASE 3 — PROVIDER POLICY: OpenAI first in both modes
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('Provider policy — OpenAI first in voice AND text', () => {
-  it('voice mode puts OpenAI first, not Groq', () => {
-    // Find the voice mode provider block
-    const voiceBlock = SERVICE_SRC.slice(
-      SERVICE_SRC.indexOf('if (voiceMode) {'),
-      SERVICE_SRC.indexOf('} else {', SERVICE_SRC.indexOf('if (voiceMode) {'))
-    )
-    const openaiIdx = voiceBlock.indexOf('openai-server')
-    const groqIdx = voiceBlock.indexOf('groq-client')
-    expect(openaiIdx).toBeGreaterThan(0)
-    expect(groqIdx).toBeGreaterThan(0)
-    expect(openaiIdx).toBeLessThan(groqIdx)
+// Provider policy: the Gemini/Groq CLIENT providers were intentionally removed (client VITE_ secrets).
+// getProviders now returns a SINGLE server-side OpenAI provider (openai-server) for both voice and
+// text — so "OpenAI first, not Groq" is now "OpenAI ONLY" (a strictly stronger invariant, not weaker).
+// Chat replacement is deployed-proven (rc-acceptance-replacement-paths: /api/abuai-chat gpt-4o).
+describe('Provider policy — server OpenAI is the SOLE provider (client Groq/Gemini removed)', () => {
+  const getProvidersBody = SERVICE_SRC.slice(
+    SERVICE_SRC.indexOf('function getProviders'),
+    SERVICE_SRC.indexOf('function getProviders') + 600,
+  )
+  it('getProviders returns openai-server and NO client Groq/Gemini provider (voice AND text)', () => {
+    expect(getProvidersBody).toContain("kind: 'openai-server'")
+    expect(getProvidersBody).not.toContain('groq-client')
+    expect(getProvidersBody).not.toContain('gemini-client')
   })
 
-  it('text mode puts OpenAI first', () => {
-    const textBlock = SERVICE_SRC.slice(
-      SERVICE_SRC.indexOf('} else {', SERVICE_SRC.indexOf('if (voiceMode) {')),
-      SERVICE_SRC.indexOf('// All providers in cooldown')
-    )
-    const openaiIdx = textBlock.indexOf('openai-server')
-    const groqIdx = textBlock.indexOf('groq-client')
-    expect(openaiIdx).toBeGreaterThan(0)
-    expect(openaiIdx).toBeLessThan(groqIdx)
+  it('the only Provider kind in the union is openai-server', () => {
+    expect(SERVICE_SRC).toContain("kind: 'openai-server'")
+    expect(SERVICE_SRC).not.toContain("kind: 'groq-client'")
+    expect(SERVICE_SRC).not.toContain("kind: 'gemini-client'")
   })
 
   it('diagnostic logging present for provider selection', () => {

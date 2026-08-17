@@ -51,48 +51,33 @@ describe('Self-listening guard', () => {
   })
 })
 
-// ═══ iPhone audio/mp4 → OpenAI STT ═══
+// ═══ STT is SERVER-PROXY-ONLY (the Groq client-Whisper path was intentionally removed) ═══
+// ARCHITECTURE CHANGE (P0 remediation): the client-side Groq/Gemini STT providers were removed —
+// they required a client VITE_GROQ_API_KEY (a billable client secret). STT now goes through the
+// server proxy /api/abuai-stt (OPENAI_API_KEY server-only, whisper-1). The prior Groq-400/429/iPhone-
+// mp4-skip tests asserted that removed client path; they are updated here to assert the NEW single
+// server-only architecture (NOT weakened). Replacement is DEPLOYED-PROVEN — a real TTS→STT round-trip
+// on the clean RC (scripts/rc-acceptance-replacement-paths.mjs, PREVIEW class).
 
-describe('iPhone mp4 routes to OpenAI STT', () => {
-  it('service.ts detects iPhone mp4 mime type', () => {
-    expect(SERVICE_SRC).toContain("isIphoneMp4")
-    expect(SERVICE_SRC).toContain("mp4")
-    expect(SERVICE_SRC).toContain("m4a")
-  })
-
-  it('iPhone mp4 skips Groq (routes to OpenAI server)', () => {
-    // The condition: if groqKey && !groqCooledDown && !isIphoneMp4
-    expect(SERVICE_SRC).toContain('!isIphoneMp4')
-  })
-
-  it('OpenAI server STT endpoint exists', () => {
-    const sttEndpoint = fs.existsSync(path.resolve(__dirname, '../../../api/abuai-stt.ts'))
-    expect(sttEndpoint).toBe(true)
-  })
-
-  it('client calls /api/abuai-stt as fallback', () => {
+describe('STT: single server-proxy path, no client Groq/Gemini', () => {
+  it('transcribeAudio calls ONLY the /api/abuai-stt server proxy (OpenAI whisper-1)', () => {
     expect(SERVICE_SRC).toContain("'/api/abuai-stt'")
-    expect(SERVICE_SRC).toContain('OpenAI server STT succeeded')
+    expect(SERVICE_SRC).toContain("'whisper-1'")
+    expect(SERVICE_SRC).toContain('Trying OpenAI server proxy')
   })
-})
 
-// ═══ Groq 400 → OpenAI fallback ═══
-
-describe('Groq 400 falls back to OpenAI STT', () => {
-  it('Groq 400 does not exhaust — continues to OpenAI', () => {
-    // After Groq 400, the code disables Groq but does NOT increment
-    // _sttConsecutiveFailures — it tries OpenAI server next.
-    expect(SERVICE_SRC).toContain("Groq disabled after 400")
-    // The OpenAI server call comes AFTER the Groq block
-    expect(SERVICE_SRC).toContain("Trying OpenAI server proxy")
+  it('the removed client-Groq STT path is GONE (no client secret, no client provider call)', () => {
+    // No client-direct Groq transcription: no api.groq.com STT call, no deprecated Groq model.
+    expect(SERVICE_SRC).not.toContain('api.groq.com/openai/v1/audio')
+    expect(SERVICE_SRC).not.toContain("'whisper-large-v3'")
+    // The Groq client key is never READ (its name may appear in the removal-documentation comment).
+    expect(SERVICE_SRC).not.toMatch(/import\.meta\.env\.VITE_GROQ_API_KEY|\benv\.VITE_GROQ_API_KEY/)
+    // The removal is documented as intentional (server-only), not an accidental drop.
+    expect(SERVICE_SRC).toMatch(/Groq client-Whisper fallback was removed/i)
   })
-})
 
-// ═══ Groq 429 → OpenAI fallback ═══
-
-describe('Groq 429 falls back to OpenAI STT', () => {
-  it('Groq 429 logs and continues to OpenAI', () => {
-    expect(SERVICE_SRC).toContain("Groq rate-limited, trying OpenAI server")
+  it('the OpenAI server STT endpoint exists', () => {
+    expect(fs.existsSync(path.resolve(__dirname, '../../../api/abuai-stt.ts'))).toBe(true)
   })
 })
 
