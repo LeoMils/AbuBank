@@ -41,7 +41,8 @@
     "qa:rehearsal": "node scripts/promotion-rehearsal.mjs",
     "qa:clean-room": "node scripts/clean-room-drill.mjs",
     "qa:prod-synthetic": "node scripts/prod-synthetic.mjs",
-    "qa:escape": "node scripts/escape-to-detector.mjs"
+    "qa:escape": "node scripts/escape-to-detector.mjs",
+    "qa:release-state": "node scripts/release-state.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",

@@ -13,6 +13,7 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { execSync } from 'node:child_process'
 import { buildCapsule, sha256Hex, verifyCapsule, verifyCompleteness } from './certification-capsule-lib.mjs'
+import { classifyDirty } from './worktree-classify-lib.mjs'
 
 const git = (cmd, fallback = null) => { try { return execSync(cmd, { encoding: 'utf8' }).trim() } catch { return fallback } }
 const readJson = (p) => { try { return JSON.parse(readFileSync(resolve(p), 'utf8')) } catch { return null } }
@@ -37,14 +38,9 @@ const runtimeProvenance = (versionCommit && (runtimeDrift ?? '').trim() === '')
   ? { identity: 'PROVEN', method: 'deployed buildVersion ↔ version-introducing commit in api/health.ts; zero non-test runtime drift since', RUNTIME_SOURCE_SHA: versionCommit, DEPLOYED_BUILD_ID: deployedBuild }
   : { identity: 'NOT_PROVEN', method: 'could not tie deployed buildVersion to a unique commit with zero runtime drift', RUNTIME_SOURCE_SHA: versionCommit, DEPLOYED_BUILD_ID: deployedBuild, runtimeDriftSample: (runtimeDrift ?? '').trim().split('\n').slice(0, 5) }
 
-// ── Worktree cleanliness (§5/§6): runtime vs harness, classified. ────────────────────────────────
+// ── Worktree cleanliness (§5/§6): runtime vs harness, classified (shared pure lib). ──────────────
 const dirty = (git('git status --short', '') || '').split('\n').filter(Boolean).map((l) => l.slice(3))
-const isRuntime = (f) => /^(api\/|src\/)/.test(f) && !/\.test\.(ts|tsx)$/.test(f) && !/^src\/(eval|.*\/diagnostics)\//.test(f)
-const isHarness = (f) => /\.test\.(ts|tsx)$/.test(f) || /^scripts\//.test(f) || /^src\/engineering-os\//.test(f) || /^\.github\/workflows\//.test(f) || /^(vitest|vite|tsconfig)/.test(f)
-const dirtyRuntime = dirty.filter(isRuntime)
-const dirtyHarness = dirty.filter((f) => isHarness(f) && !isRuntime(f))
-const WORKTREE_RUNTIME_CLEAN = dirtyRuntime.length === 0
-const WORKTREE_HARNESS_CLEAN = dirtyHarness.length === 0
+const { dirtyRuntime, dirtyHarness, WORKTREE_RUNTIME_CLEAN, WORKTREE_HARNESS_CLEAN } = classifyDirty(dirty)
 
 // ── Evidence set: the RC acceptance artifacts + the two machine-state files, each content-digested. ──
 const evidenceSpecs = [

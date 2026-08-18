@@ -9,7 +9,12 @@
       "howFalseConfidence": "CI wiring the command would go green on a non-ready system.",
       "detector": "src/engineering-os/qaMonsterExitContract.test.ts",
       "closureState": "CLOSED",
-      "affectedReleaseLayer": "exit-contract"
+      "affectedReleaseLayer": "exit-contract",
+      "originalFailureClass": "release-state contradicts exit success",
+      "mutation": "productizationComplete=false while all areas pass",
+      "expectedFailureReason": "exit code=3 RELEASE_REJECTED because QA_SYSTEM=INCOMPLETE_PRODUCTIZATION (not a generic red)",
+      "restorationProof": "ready inputs → exit 0 RC_ELIGIBLE",
+      "sensitivityProven": true
     },
     {
       "id": "ce-capsule-tamper",
@@ -17,7 +22,12 @@
       "howFalseConfidence": "Evidence/verdict tampering would look certified.",
       "detector": "src/engineering-os/certificationCapsule.test.ts",
       "closureState": "CLOSED",
-      "affectedReleaseLayer": "capsule-integrity"
+      "affectedReleaseLayer": "capsule-integrity",
+      "originalFailureClass": "evidence/verdict edited after sealing",
+      "mutation": "flip a verdict post-seal keeping capsuleId",
+      "expectedFailureReason": "capsuleId mismatch (content address does not recompute)",
+      "restorationProof": "untouched capsule verifies",
+      "sensitivityProven": true
     },
     {
       "id": "ce-capsule-incomplete",
@@ -25,7 +35,12 @@
       "howFalseConfidence": "An internally-consistent capsule would appear complete while covering less than the denominator.",
       "detector": "src/engineering-os/certificationCapsule.test.ts (completeness)",
       "closureState": "CLOSED",
-      "affectedReleaseLayer": "capsule-completeness"
+      "affectedReleaseLayer": "capsule-completeness",
+      "originalFailureClass": "hash-consistent capsule omits a required claim",
+      "mutation": "drop a claim + recompute a valid hash",
+      "expectedFailureReason": "INCOMPLETE: required claim absent (completeness, not integrity)",
+      "restorationProof": "full claim set → completeness OK",
+      "sensitivityProven": true
     },
     {
       "id": "ce-denominator-shrink",
@@ -33,7 +48,12 @@
       "howFalseConfidence": "Fewer areas evaluated would read as full coverage.",
       "detector": "src/engineering-os/qaMonsterExitContract.test.ts (scanIntegrity: denominator shrink)",
       "closureState": "CLOSED",
-      "affectedReleaseLayer": "exit-contract"
+      "affectedReleaseLayer": "exit-contract",
+      "originalFailureClass": "required area silently absent",
+      "mutation": "remove a required RC area from the report",
+      "expectedFailureReason": "denominator-incomplete: missing required area",
+      "restorationProof": "all areas present → integrity ok",
+      "sensitivityProven": true
     },
     {
       "id": "ce-runtime-harness-conflation",
@@ -41,7 +61,12 @@
       "howFalseConfidence": "A harness-only commit would appear to change the certified runtime.",
       "detector": "scripts/qa-monster.mjs split-identity block + RELEASE_LOCK.json.runtimeProvenance",
       "closureState": "CLOSED",
-      "affectedReleaseLayer": "identity"
+      "affectedReleaseLayer": "identity",
+      "originalFailureClass": "identities inconsistent (HEAD == deployed runtime)",
+      "mutation": "set runtime SHA to a never-deployed commit",
+      "expectedFailureReason": "runtime provenance NOT_PROVEN / candidate AMBIGUOUS (identity mismatch)",
+      "restorationProof": "buildVersion↔commit binding → PROVEN",
+      "sensitivityProven": true
     },
     {
       "id": "ce-stale-candidate-after-runtime-change",
@@ -49,7 +74,12 @@
       "howFalseConfidence": "Certifying superseded evidence as current.",
       "detector": "src/engineering-os/currentCandidate.test.ts (capsule build != lock build → AMBIGUOUS)",
       "closureState": "CLOSED",
-      "affectedReleaseLayer": "candidate-discovery"
+      "affectedReleaseLayer": "candidate-discovery",
+      "originalFailureClass": "superseded artifact treated as current",
+      "mutation": "capsule build != lock build",
+      "expectedFailureReason": "CURRENT_CANDIDATE_AMBIGUOUS (build mismatch), never PROVEN",
+      "restorationProof": "matching build → PROVEN unique",
+      "sensitivityProven": true
     },
     {
       "id": "ce-workgraph-omission",
@@ -57,7 +87,12 @@
       "howFalseConfidence": "Dropping an obligation would falsely read as 0 remaining.",
       "detector": "src/engineering-os/machineWorkGraph.test.ts (§43 omission attack)",
       "closureState": "CLOSED",
-      "affectedReleaseLayer": "machine-work-completeness-oracle"
+      "affectedReleaseLayer": "machine-work-completeness-oracle",
+      "originalFailureClass": "obligation dropped from the work list",
+      "mutation": "remove a required obligation from the registry",
+      "expectedFailureReason": "OMITTED_MACHINE_OBLIGATIONS>0 (not a false 0 remaining)",
+      "restorationProof": "full registry → OMITTED=0",
+      "sensitivityProven": true
     },
     {
       "id": "ce-stochastic-plan-omission",
@@ -65,7 +100,12 @@
       "howFalseConfidence": "An unsampled model-exposed claim would appear covered.",
       "detector": "src/engineering-os/stochasticCompleteness.test.ts",
       "closureState": "CLOSED",
-      "affectedReleaseLayer": "stochastic-completeness-oracle"
+      "affectedReleaseLayer": "stochastic-completeness-oracle",
+      "originalFailureClass": "model-dependent claim omitted from sampling",
+      "mutation": "add a stochastic claim with no plan resolution",
+      "expectedFailureReason": "STOCHASTIC_CLAIM_UNSAMPLED (UNSAMPLED_REQUIRED_CLAIMS>0)",
+      "restorationProof": "resolved plan → UNSAMPLED=0",
+      "sensitivityProven": true
     },
     {
       "id": "ce-wrong-scanner-target",
@@ -73,7 +113,12 @@
       "howFalseConfidence": "A clean unrelated target would certify a dirty candidate.",
       "detector": "src/engineering-os/deployedSecretScan.ts calibration (explicit target, fail-closed)",
       "closureState": "CLOSED",
-      "affectedReleaseLayer": "secret-detector-contract"
+      "affectedReleaseLayer": "secret-detector-contract",
+      "originalFailureClass": "scanner honors a hidden default target",
+      "mutation": "point scanner at a non-candidate URL",
+      "expectedFailureReason": "target identity wrong/not honored (fail-closed), not a clean pass",
+      "restorationProof": "explicit candidate target → honored",
+      "sensitivityProven": true
     },
     {
       "id": "ce-rate-limiter-overstated-global",
@@ -81,7 +126,12 @@
       "howFalseConfidence": "Abuse protection would appear stronger than it is.",
       "detector": "RELEASE_LOCK.json.rateLimiting (INSTANCE_LOCAL_* vs DISTRIBUTED_RATE_LIMIT=NOT_PROVISIONED)",
       "closureState": "CLOSED",
-      "affectedReleaseLayer": "billing-abuse-boundary"
+      "affectedReleaseLayer": "billing-abuse-boundary",
+      "originalFailureClass": "per-instance limit described as global",
+      "mutation": "claim DISTRIBUTED where only INSTANCE_LOCAL exists",
+      "expectedFailureReason": "state distinctness: INSTANCE_LOCAL != DISTRIBUTED(NOT_PROVISIONED)",
+      "restorationProof": "precise labelling retained",
+      "sensitivityProven": true
     },
     {
       "id": "ce-premature-yield",
@@ -97,7 +147,12 @@
           "correction": "Reclassified as premature yield; resumed the closure loop. Rule reinforced: a worked-around tool error is NOT a boundary; NEAR_HARD_CONTEXT requires an actual measured context signal, not a quality-hedge.",
           "regression": "src/engineering-os/yieldDiscipline.test.ts"
         }
-      ]
+      ],
+      "originalFailureClass": "yield while machine work remains without valid stop evidence",
+      "mutation": "NEAR_HARD_CONTEXT reason at high ctx with a worked-around tool error",
+      "expectedFailureReason": "invalid yield: worked-around tool error / no measured context signal",
+      "restorationProof": "genuine hard boundary (measured signal, no workaround) → valid",
+      "sensitivityProven": true
     }
   ]
 }

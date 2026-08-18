@@ -52,6 +52,8 @@ export const REQUIRED_OBLIGATION_IDS = [
   'yield-discipline',
   // Final runs / rehearsal
   'promotion-rehearsal', 'final-feature-run', 'final-rc-run',
+  // Release-integrity reconciliation controls (final checks)
+  'obligation-universe-completeness', 'release-eligibility-state-machine', 'qa-control-escape-sensitivity',
 ]
 
 /**

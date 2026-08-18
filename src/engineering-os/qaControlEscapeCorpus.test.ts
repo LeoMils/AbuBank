@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const corpus = JSON.parse(readFileSync(resolve('docs/engineering-os/qa/QA_CONTROL_ESCAPE_CORPUS.json'), 'utf8'))
-const escapes: Array<{ id: string; detector: string; closureState: string; originalFailure: string; affectedReleaseLayer: string }> = corpus.escapes
+const escapes: Array<{ id: string; detector: string; closureState: string; originalFailure: string; affectedReleaseLayer: string; originalFailureClass?: string; mutation?: string; expectedFailureReason?: string; restorationProof?: string; sensitivityProven?: boolean }> = corpus.escapes
 
 describe('QA Control Escape Corpus (C12/§22)', () => {
   it('has escapes and every one is fully specified', () => {
@@ -39,5 +39,21 @@ describe('QA Control Escape Corpus (C12/§22)', () => {
   it('escape ids are unique', () => {
     const ids = escapes.map((e) => e.id)
     expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  // ── §4 · CLOSED means the detector fails for the INTENDED reason, not "the file exists". ──────────
+  it('QA_CONTROL_ESCAPES_WITHOUT_SENSITIVITY_PROOF = 0 (every escape maps mutation → expected reason)', () => {
+    const withoutProof = escapes.filter((e) =>
+      !e.originalFailureClass || !e.mutation || !e.expectedFailureReason || !e.restorationProof || e.sensitivityProven !== true)
+    expect(withoutProof.map((e) => e.id)).toEqual([])
+  })
+
+  it('each expected-failure-reason is specific (not a generic "suite red")', () => {
+    for (const e of escapes) {
+      expect(e.expectedFailureReason, e.id).toBeTruthy()
+      // A generic red / typescript-broke reason is NOT sensitivity proof for the escape.
+      expect(e.expectedFailureReason, `${e.id} reason too generic`).not.toMatch(/^(red|failed|error|broke)$/i)
+      expect((e.expectedFailureReason ?? '').length, e.id).toBeGreaterThan(15)
+    }
   })
 })

@@ -7,7 +7,7 @@
     "RUNTIME_SOURCE_SHA": "237bef9",
     "DEPLOYED_ARTIFACT_ID": "abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
     "DEPLOYED_BUILD_ID": "0.291.0-earonly",
-    "CERTIFICATION_HARNESS_SHA": "871c841442e62247023d39a512c0c6ce2bb8da71",
+    "CERTIFICATION_HARNESS_SHA": "3a64d85d49ad28218797e03c354ebc193319693a",
     "EVIDENCE_GENERATION_SHA": "d0e3c4325b47149af9ed26ebb5c24ab2de3b019d",
     "CONTROL_PLANE_VERSION": "cp_bfccc899"
   },
@@ -31,14 +31,21 @@
       "scripts/certification-capsule.mjs",
       "scripts/gate-a-abc.mjs",
       "scripts/golden/golden-session-spec.json",
-      "scripts/promotion-rehearsal.mjs",
-      "scripts/verify-capsule.mjs",
+      "scripts/machine-work-graph-lib.mjs",
+      "src/engineering-os/qaControlEscapeCorpus.test.ts",
       "src/screens/AbuAI/finalYellowToGreen.test.ts",
       "src/screens/AbuAI/nonVoiceGreenProduction.test.ts",
       "src/screens/AbuAI/nonVoiceProductionClosure.test.ts",
       "src/screens/AbuAI/totalProductClosure.test.ts",
       "src/screens/AbuGames/wowGame.test.ts",
       "src/screens/AbuWhatsApp/familyContactsStorage.test.ts",
+      "scripts/obligation-universe-lib.mjs",
+      "scripts/release-eligibility-lib.mjs",
+      "scripts/release-state.mjs",
+      "scripts/worktree-classify-lib.mjs",
+      "src/engineering-os/obligationUniverse.test.ts",
+      "src/engineering-os/releaseEligibility.test.ts",
+      "src/engineering-os/worktreeClassify.test.ts",
       "src/eval/martitaRedTeam.test.ts",
       "vite-dev.err.log",
       "vite-dev.log"
@@ -85,7 +92,7 @@
       "path": "docs/engineering-os/qa/RELEASE_LOCK.json",
       "producer": "RELEASE_LOCK",
       "schema": "internal://abu/release-lock",
-      "digest": "9411e5f06254d55dcbe3dca48a98c040444b15e88f3ee5d78696059502795e2f"
+      "digest": "fe2ad4b398ee7791acd7c8b7dbb31feff02f44d5c2016fefcb6972d1056e792c"
     },
     {
       "id": "qa-monster-report",
@@ -155,5 +162,5 @@
   ],
   "denominatorId": "f29f94e3195a2727cee010256607d7f7e30038137230ff7983f5ed73ac2456d7",
   "whyCertified": "Sealed from existing machine state. Verdicts are copied verbatim from QA_MONSTER_REPORT.json; this capsule cannot promote them. A reader reconstructs the certified artifact, harness, evidence digests and provenance from this file alone; verify with scripts/verify-capsule.mjs.",
-  "capsuleId": "19df27c26c32fcca8ce28a1948751f4963e712ecd25e259593ded79b291436c8"
+  "capsuleId": "f8baa0a186d47765a4e79057f233c7e544b2be8c0c3f65155c2410151cfed4fa"
 }
