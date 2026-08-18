@@ -13,7 +13,7 @@ import { rollbackValid, envParity } from './release-policy-lib.mjs'
 import { deriveAuthorityState } from './authority-oracle-lib.mjs'
 
 const rd = (p) => { try { return JSON.parse(readFileSync(resolve(p), 'utf8')) } catch { return null } }
-const digestOf = (p) => { try { return sha256Hex(readFileSync(resolve(p), 'utf8')) } catch { return null } }
+const digestOf = (p) => { try { return sha256Hex(readFileSync(resolve(p), 'utf8').replace(/\r/g, '')) } catch { return null } }
 
 const lock = rd('docs/engineering-os/qa/RELEASE_LOCK.json')
 const capsule = rd('docs/engineering-os/qa/CERTIFICATION_CAPSULE.json')

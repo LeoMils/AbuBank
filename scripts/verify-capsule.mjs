@@ -15,7 +15,8 @@ const path = process.argv[2] ?? 'docs/engineering-os/qa/CERTIFICATION_CAPSULE.js
 let capsule
 try { capsule = JSON.parse(readFileSync(resolve(path), 'utf8')) } catch (e) { console.error(`CAPSULE UNREADABLE: ${path} — ${e.message}`); process.exit(4) }
 
-const digestOf = (p) => { try { return sha256Hex(readFileSync(resolve(p), 'utf8')) } catch { return null } }
+// LF-normalized digest — reproducible across CRLF/LF checkouts (matches certification-capsule.mjs).
+const digestOf = (p) => { try { return sha256Hex(readFileSync(resolve(p), 'utf8').replace(/\r/g, '')) } catch { return null } }
 const integrity = verifyCapsule(capsule, { digestOf })
 
 // COMPLETENESS against the AUTHORITATIVE denominator (not the capsule's own list). Missing file = fail closed.

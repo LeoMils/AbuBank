@@ -16,7 +16,10 @@ import { buildCapsule, sha256Hex, verifyCapsule, verifyCompleteness } from './ce
 
 const git = (cmd, fallback = null) => { try { return execSync(cmd, { encoding: 'utf8' }).trim() } catch { return fallback } }
 const readJson = (p) => { try { return JSON.parse(readFileSync(resolve(p), 'utf8')) } catch { return null } }
-const digestOf = (p) => { try { return sha256Hex(readFileSync(resolve(p), 'utf8')) } catch { return null } }
+// Digest over LF-normalized content so a capsule is reproducible across CRLF/LF checkouts (a clean
+// clone checks out CRLF under autocrlf; the working tree may be LF). Line-ending normalization is a
+// reproducibility STRENGTHENING — the certified content is identical, only the byte encoding differs.
+const digestOf = (p) => { try { return sha256Hex(readFileSync(resolve(p), 'utf8').replace(/\r/g, '')) } catch { return null } }
 
 const lock = readJson('docs/engineering-os/qa/RELEASE_LOCK.json')
 const report = readJson('docs/eval/QA_MONSTER_REPORT.json')

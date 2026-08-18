@@ -7,7 +7,7 @@
     "RUNTIME_SOURCE_SHA": "237bef9",
     "DEPLOYED_ARTIFACT_ID": "abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
     "DEPLOYED_BUILD_ID": "0.291.0-earonly",
-    "CERTIFICATION_HARNESS_SHA": "d0e3c4325b47149af9ed26ebb5c24ab2de3b019d",
+    "CERTIFICATION_HARNESS_SHA": "871c841442e62247023d39a512c0c6ce2bb8da71",
     "EVIDENCE_GENERATION_SHA": "d0e3c4325b47149af9ed26ebb5c24ab2de3b019d",
     "CONTROL_PLANE_VERSION": "cp_bfccc899"
   },
@@ -28,8 +28,11 @@
     "WORKTREE_HARNESS_CLEAN": false,
     "dirtyRuntime": [],
     "dirtyHarness": [
+      "scripts/certification-capsule.mjs",
       "scripts/gate-a-abc.mjs",
       "scripts/golden/golden-session-spec.json",
+      "scripts/promotion-rehearsal.mjs",
+      "scripts/verify-capsule.mjs",
       "src/screens/AbuAI/finalYellowToGreen.test.ts",
       "src/screens/AbuAI/nonVoiceGreenProduction.test.ts",
       "src/screens/AbuAI/nonVoiceProductionClosure.test.ts",
@@ -152,5 +155,5 @@
   ],
   "denominatorId": "f29f94e3195a2727cee010256607d7f7e30038137230ff7983f5ed73ac2456d7",
   "whyCertified": "Sealed from existing machine state. Verdicts are copied verbatim from QA_MONSTER_REPORT.json; this capsule cannot promote them. A reader reconstructs the certified artifact, harness, evidence digests and provenance from this file alone; verify with scripts/verify-capsule.mjs.",
-  "capsuleId": "703422cb131b90fcb9e23b320ed724390811334536ce0260e28534b64a00509c"
+  "capsuleId": "19df27c26c32fcca8ce28a1948751f4963e712ecd25e259593ded79b291436c8"
 }
