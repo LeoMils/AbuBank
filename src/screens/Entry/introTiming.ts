@@ -4,14 +4,14 @@
  * the orchestrator + the sound all read the same numbers.
  */
 export const INTRO = {
-  /** Handwritten reveal (clip sweep) duration. */
-  drawMs: 1400,
-  /** Beat the finished word rests before handing off to auth. */
-  holdMs: 350,
+  /** Handwritten stroke-by-stroke reveal duration. */
+  drawMs: 1500,
+  /** Beat the finished signature rests before handing off to auth. */
+  holdMs: 380,
   /** Cross-fade out of the splash. */
   fadeMs: 300,
   /** Reduced-motion: no draw — the word is shown, held briefly, then fades. */
-  reducedHoldMs: 600,
+  reducedHoldMs: 620,
 } as const
 
 /** Total wall-time of the intro, honoring reduced-motion. Target window: 1.4–2.2s. */

@@ -11,30 +11,37 @@ import {
 import { IntroSplash } from './IntroSplash'
 import { AuthGate } from './AuthGate'
 
-type Phase = 'boot' | 'intro' | 'auth' | 'open'
+type Phase = 'boot' | 'intro' | 'setup' | 'auth' | 'open'
 
-/** Automation bypass: keep Playwright/e2e (and an explicit ?nointro=1) out of the gate. */
-function shouldBypass(): boolean {
+/**
+ * DEV-ONLY bypass so local Playwright/visual runs can reach inner screens.
+ * Deliberately compiled OUT of production builds (`import.meta.env.DEV` is
+ * statically false there) — a shipped build has NO gate bypass whatsoever.
+ */
+function devBypass(): boolean {
   try {
-    if (typeof navigator !== 'undefined' && (navigator as { webdriver?: boolean }).webdriver) return true
+    if (!(import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV) return false
     const p = new URL(window.location.href).searchParams
-    return p.get('nointro') === '1' || p.get('e2e') === '1'
+    return p.get('e2e') === '1' || p.get('nointro') === '1'
   } catch {
     return false
   }
 }
 
 /**
- * The premium entry gate. Wraps the whole app: on a cold launch it plays the
- * intro then (if protection is on) authenticates before revealing `children`.
- * On resume it never replays the intro and only re-locks after real inactivity.
- * Fail-OPEN: any error path resolves to showing the app, never a locked-out
- * blank screen.
+ * The premium entry gate. Wraps the whole app: a cold launch plays the intro
+ * then presents a gate (`setup` on first run, `auth` when protected) before
+ * revealing `children`. Resume never replays the intro and re-locks only after
+ * real inactivity.
+ *
+ * FAIL-CLOSED: the app is only revealed via a real success path (completed
+ * setup, biometric verified, or a valid PIN). Any error while DECIDING resolves
+ * toward a gate (never a silent open): an unprotected device is sent to
+ * mandatory setup, a protected one to auth.
  */
 export function EntryGate({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<Phase>('boot')
-  const [authMode, setAuthMode] = useState<'unlock' | 'setup'>('unlock')
-  const decisionRef = useRef<EntryDecision>({ showIntro: false, requireAuth: false, offerSetup: false })
+  const decisionRef = useRef<EntryDecision>({ showIntro: false, gate: 'none' })
   const phaseRef = useRef<Phase>('boot')
   phaseRef.current = phase
 
@@ -43,9 +50,12 @@ export function EntryGate({ children }: { children: ReactNode }) {
     setPhase('open')
   }
 
+  const gateToPhase = (gate: EntryDecision['gate']): Phase =>
+    gate === 'setup' ? 'setup' : gate === 'auth' ? 'auth' : 'open'
+
   // Decide once, on mount.
   useEffect(() => {
-    if (shouldBypass()) {
+    if (devBypass()) {
       openApp()
       return
     }
@@ -57,32 +67,31 @@ export function EntryGate({ children }: { children: ReactNode }) {
         awayMs: readAwayMs(Date.now()),
       })
     } catch {
-      decision = { showIntro: false, requireAuth: false, offerSetup: false }
+      // Fail-closed: never silently open. Force a gate based on protection state.
+      let isProtected = false
+      try {
+        isProtected = readLockConfig().protectionEnabled
+      } catch {
+        isProtected = false
+      }
+      decision = { showIntro: false, gate: isProtected ? 'auth' : 'setup' }
     }
     decisionRef.current = decision
 
     if (decision.showIntro) {
       setPhase('intro')
-    } else if (decision.requireAuth) {
-      setAuthMode('unlock')
-      setPhase('auth')
-    } else {
+    } else if (decision.gate === 'none') {
       openApp()
+    } else {
+      setPhase(gateToPhase(decision.gate))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const onIntroDone = () => {
     const d = decisionRef.current
-    if (d.requireAuth) {
-      setAuthMode('unlock')
-      setPhase('auth')
-    } else if (d.offerSetup) {
-      setAuthMode('setup')
-      setPhase('auth')
-    } else {
-      openApp()
-    }
+    if (d.gate === 'none') openApp()
+    else setPhase(gateToPhase(d.gate))
   }
 
   // Re-lock on resume after real inactivity — no intro replay.
@@ -99,12 +108,10 @@ export function EntryGate({ children }: { children: ReactNode }) {
           config: readLockConfig(),
           awayMs: readAwayMs(Date.now()),
         })
-        if (d.requireAuth) {
-          setAuthMode('unlock')
-          setPhase('auth')
-        }
+        if (d.gate !== 'none') setPhase(gateToPhase(d.gate))
       } catch {
-        /* never let the lock brick a resume */
+        // On any resume-decision error, fail closed by requiring auth.
+        if (phaseRef.current === 'open') setPhase('auth')
       }
     }
     document.addEventListener('visibilitychange', onVisibility)
@@ -113,6 +120,7 @@ export function EntryGate({ children }: { children: ReactNode }) {
 
   if (phase === 'boot') return null // one black frame before we decide — on-brand, no flash of Home
   if (phase === 'intro') return <IntroSplash onDone={onIntroDone} />
-  if (phase === 'auth') return <AuthGate mode={authMode} onAuthed={openApp} />
+  if (phase === 'setup') return <AuthGate mode="setup" onAuthed={openApp} />
+  if (phase === 'auth') return <AuthGate mode="unlock" onAuthed={openApp} />
   return <>{children}</>
 }

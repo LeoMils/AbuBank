@@ -1,7 +1,7 @@
 /*
  * IntroSplash — black-luxury cold-open. Warm matte black, centered champagne
- * script "Abu Ela" unveiled left-to-right (reads as handwriting), a restrained
- * ink-gleam, and a whisper of grain for depth. No flashy gold, no particles.
+ * calligraphic "Abu Ela" written stroke by stroke (see IntroSignature), a
+ * whisper of grain for depth. No flashy gold, no particles.
  */
 .root {
   position: fixed;
@@ -11,8 +11,7 @@
   align-items: center;
   justify-content: center;
   /* Rich, slightly warm deep black — not a flat #000. Radial lift toward center. */
-  background:
-    radial-gradient(120% 90% at 50% 42%, #14110c 0%, #0b0906 45%, #050403 100%);
+  background: radial-gradient(120% 90% at 50% 44%, #14110c 0%, #0b0906 45%, #050403 100%);
   overflow: hidden;
   opacity: 1;
   transition: opacity var(--intro-fade, 300ms) ease;
@@ -34,100 +33,25 @@
 
 .brandWrap {
   position: relative;
-  display: inline-block;
-  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  /* A soft settle as the signature completes — restrained, not flashy. */
+  animation: settle 900ms ease both;
 }
 
-.brand {
-  display: inline-block;
-  /* Elegant connected script; graceful fallbacks. A bundled licensed script
-     font would elevate this further (noted in the handover). */
-  font-family: 'Snell Roundhand', 'Apple Chancery', 'Segoe Script',
-    'Bradley Hand', 'Brush Script MT', cursive;
-  font-style: italic;
-  font-weight: 500;
-  font-size: clamp(52px, 17vw, 108px);
-  line-height: 1.1;
-  letter-spacing: 0.01em;
-  /* Warm ivory → soft champagne, very restrained. */
-  background: linear-gradient(180deg, #f6efe0 0%, #efe2c8 55%, #e4d2ad 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  /* Soft depth glow — tasteful, not a shine. */
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5))
-    drop-shadow(0 0 18px rgba(230, 210, 170, 0.16));
-  /* The "being written" reveal: unveil left → right. */
-  -webkit-clip-path: inset(-20% 100% -20% -6%);
-  clip-path: inset(-20% 100% -20% -6%);
-  animation: reveal var(--intro-draw, 1400ms) cubic-bezier(0.62, 0.03, 0.2, 1) forwards;
-}
-
-/* A slim champagne gleam that travels with the writing edge — the wet-ink hint. */
-.gleam {
-  position: absolute;
-  top: -8%;
-  bottom: -8%;
-  left: 0;
-  width: 16%;
-  pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 246, 224, 0.5) 50%,
-    transparent 100%
-  );
-  filter: blur(6px);
-  opacity: 0;
-  animation: gleam var(--intro-draw, 1400ms) cubic-bezier(0.62, 0.03, 0.2, 1) forwards;
-}
-
-@keyframes reveal {
+@keyframes settle {
   0% {
-    -webkit-clip-path: inset(-20% 100% -20% -6%);
-    clip-path: inset(-20% 100% -20% -6%);
+    transform: translateY(4px);
+    opacity: 0.82;
   }
   100% {
-    -webkit-clip-path: inset(-20% -6% -20% -6%);
-    clip-path: inset(-20% -6% -20% -6%);
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
-@keyframes gleam {
-  0% {
-    left: -10%;
-    opacity: 0;
-  }
-  12% {
-    opacity: 0.9;
-  }
-  88% {
-    opacity: 0.9;
-  }
-  100% {
-    left: 100%;
-    opacity: 0;
-  }
-}
-
-/* Reduced motion: no draw, no gleam — the finished word, quietly. */
-.reduced .brand {
+.reduced .brandWrap {
   animation: none;
-  -webkit-clip-path: none;
-  clip-path: none;
-}
-.reduced .gleam {
-  display: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .brand {
-    animation: none;
-    -webkit-clip-path: none;
-    clip-path: none;
-  }
-  .gleam {
-    display: none;
-  }
 }

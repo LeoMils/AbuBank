@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { INTRO, introTotalMs } from './introTiming'
 import { playIntroSound } from './introSound'
+import { IntroSignature } from './IntroSignature'
 import styles from './IntroSplash.module.css'
 
 interface IntroSplashProps {
@@ -61,14 +62,11 @@ export function IntroSplash({ onDone, forceReducedMotion }: IntroSplashProps) {
     <div
       className={`${styles.root} ${leaving ? styles.leaving : ''} ${reduced ? styles.reduced : ''}`}
       style={rootStyle}
-      role="img"
-      aria-label="Abu Ela"
       data-testid="intro-splash"
     >
       <div className={styles.grain} aria-hidden="true" />
-      <div className={styles.brandWrap} aria-hidden="true">
-        <span className={styles.brand}>Abu Ela</span>
-        <span className={styles.gleam} />
+      <div className={styles.brandWrap}>
+        <IntroSignature drawMs={INTRO.drawMs} reduced={reduced} />
       </div>
     </div>
   )

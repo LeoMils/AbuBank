@@ -13,7 +13,7 @@
  */
 
 /** Play the intro sound over `totalMs`. Returns a cancel fn (tears down the graph). */
-export function playIntroSound(totalMs = 1400): () => void {
+export function playIntroSound(totalMs = 1500): () => void {
   const noop = () => {}
   let ctx: AudioContext | null = null
   try {
@@ -30,60 +30,63 @@ export function playIntroSound(totalMs = 1400): () => void {
     const dur = Math.max(0.4, totalMs / 1000)
 
     const master = ctx.createGain()
-    master.gain.value = 0.9 // overall ceiling — the layer gains below are already low
+    master.gain.value = 0.85
     master.connect(ctx.destination)
 
-    // 1) airy tonal pad — a warm, quiet major third (A3 + C#4), slow in/out.
-    for (const [i, f] of [220, 277.18].entries()) {
+    // 1) airy tonal bed — almost inaudible warm fifth (A2 + E3), slow swell.
+    for (const [i, f] of [110, 164.81].entries()) {
       const o = ctx.createOscillator()
       o.type = 'sine'
       o.frequency.value = f
       const g = ctx.createGain()
+      const peak = 0.03 - i * 0.012
       g.gain.setValueAtTime(0.0001, now)
-      g.gain.linearRampToValueAtTime(0.05 - i * 0.015, now + 0.45)
-      g.gain.setValueAtTime(0.05 - i * 0.015, now + dur - 0.25)
-      g.gain.exponentialRampToValueAtTime(0.0001, now + dur + 0.25)
+      g.gain.linearRampToValueAtTime(peak, now + 0.6)
+      g.gain.setValueAtTime(peak, now + dur - 0.3)
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur + 0.3)
       o.connect(g)
       g.connect(master)
       o.start(now)
-      o.stop(now + dur + 0.3)
+      o.stop(now + dur + 0.35)
     }
 
-    // 2) ink/brush texture — low-passed noise that swells with the stroke.
+    // 2) ink/brush texture — band-passed noise, a soft dry whisper under the strokes.
     const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate)
-    const ch = buf.getChannelData(0)
-    for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * 0.5
+    const chd = buf.getChannelData(0)
+    for (let i = 0; i < chd.length; i++) chd[i] = (Math.random() * 2 - 1) * 0.5
     const noise = ctx.createBufferSource()
     noise.buffer = buf
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.frequency.value = 1100
-    lp.Q.value = 0.25
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = 2600
+    bp.Q.value = 0.7
     const ng = ctx.createGain()
     ng.gain.setValueAtTime(0.0001, now)
-    ng.gain.linearRampToValueAtTime(0.028, now + 0.22)
-    ng.gain.linearRampToValueAtTime(0.018, now + dur - 0.22)
+    ng.gain.linearRampToValueAtTime(0.016, now + 0.25)
+    ng.gain.linearRampToValueAtTime(0.012, now + dur - 0.25)
     ng.gain.exponentialRampToValueAtTime(0.0001, now + dur)
-    noise.connect(lp)
-    lp.connect(ng)
+    noise.connect(bp)
+    bp.connect(ng)
     ng.connect(master)
     noise.start(now)
     noise.stop(now + dur)
 
-    // 3) finishing chime — a soft bell (A5 + a quiet E6 shimmer) as the word rests.
-    const chimeAt = now + dur - 0.04
-    for (const [i, f] of [880, 1318.51].entries()) {
+    // 3) completion signature — ONE refined soft bell (F#5) with a whisper of its
+    //    octave, a graceful long decay. The luxury "signature moment", never a chime.
+    const sigAt = now + dur - 0.02
+    for (const [i, f] of [739.99, 1479.98].entries()) {
       const o = ctx.createOscillator()
       o.type = 'sine'
       o.frequency.value = f
       const g = ctx.createGain()
-      g.gain.setValueAtTime(0.0001, chimeAt)
-      g.gain.linearRampToValueAtTime(0.075 - i * 0.04, chimeAt + 0.02)
-      g.gain.exponentialRampToValueAtTime(0.0001, chimeAt + 0.9)
+      const peak = 0.06 - i * 0.045
+      g.gain.setValueAtTime(0.0001, sigAt)
+      g.gain.linearRampToValueAtTime(peak, sigAt + 0.03)
+      g.gain.exponentialRampToValueAtTime(0.0001, sigAt + 1.35)
       o.connect(g)
       g.connect(master)
-      o.start(chimeAt)
-      o.stop(chimeAt + 1.0)
+      o.start(sigAt)
+      o.stop(sigAt + 1.45)
     }
   } catch {
     return noop

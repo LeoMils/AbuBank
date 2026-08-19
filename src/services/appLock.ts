@@ -23,39 +23,45 @@ const WARM_KEY = 'abu-entry-warm-v1'        // sessionStorage: set once this app
 const HIDDEN_AT_KEY = 'abu-entry-hidden-at-v1' // sessionStorage: epoch ms the app was last hidden
 
 export interface LockConfig {
-  /** True once the user has enabled ANY protection (PIN and/or biometric). */
+  /** True once protection is established (a PIN is set). Mandatory after first run. */
   protectionEnabled: boolean
   /** True once a platform biometric credential is enrolled (see biometricAuth). */
   biometricEnrolled: boolean
   /** Salted SHA-256 PIN digest (hex) + its salt. Absent = no PIN set. */
   pinHash?: string
   pinSalt?: string
-  /** True once the one-time "Protect Abu Ela" setup card has been shown/dismissed. */
-  setupPromptSeen: boolean
 }
 
 const DEFAULT_CONFIG: LockConfig = {
   protectionEnabled: false,
   biometricEnrolled: false,
-  setupPromptSeen: false,
 }
+
+/** What gate (if any) the entry flow must present before the app is revealed. */
+export type EntryGateKind =
+  | 'none' // reveal the app immediately
+  | 'setup' // MANDATORY first-run protection setup (establish a PIN)
+  | 'auth' // unlock with biometric → PIN
 
 export interface EntryDecision {
   /** Play the cold-open handwritten intro. */
   showIntro: boolean
-  /** Require biometric/PIN before revealing the app. */
-  requireAuth: boolean
-  /** Offer the one-time opt-in protection setup (first run only). */
-  offerSetup: boolean
+  /** The gate to clear before the app is revealed. */
+  gate: EntryGateKind
 }
 
 /**
  * The one rule that governs the entry experience. Pure — no storage, no DOM.
  *
- * - Cold launch always shows the intro. It requires auth only if protection is
- *   enabled; on the very first run it instead offers (skippable) setup.
- * - A resume never replays the intro. It re-locks only when protection is on AND
- *   the app was backgrounded past the inactivity threshold.
+ * FAIL-CLOSED: the app is NEVER revealed to an unprotected device without first
+ * establishing protection, and a resume never opens a protected app without
+ * re-auth once the inactivity threshold is crossed.
+ *
+ * - Cold launch always shows the intro, then a gate: `auth` if protection is
+ *   already set, otherwise MANDATORY `setup` (no skip / no "Later").
+ * - A resume never replays the intro. If protection is somehow not yet
+ *   established it forces `setup`; if protected, it re-locks (`auth`) only after
+ *   the inactivity threshold; otherwise `none`.
  */
 export function decideEntry(input: {
   coldLaunch: boolean
@@ -63,16 +69,16 @@ export function decideEntry(input: {
   awayMs: number | null
 }): EntryDecision {
   const { coldLaunch, config, awayMs } = input
+  const isProtected = config.protectionEnabled
   if (coldLaunch) {
-    return {
-      showIntro: true,
-      requireAuth: config.protectionEnabled,
-      offerSetup: !config.protectionEnabled && !config.setupPromptSeen,
-    }
+    return { showIntro: true, gate: isProtected ? 'auth' : 'setup' }
   }
-  const requireAuth =
-    config.protectionEnabled && awayMs !== null && awayMs >= RELOCK_AFTER_MS
-  return { showIntro: false, requireAuth, offerSetup: false }
+  if (!isProtected) {
+    // A protected device must never be entered unprotected — force setup.
+    return { showIntro: false, gate: 'setup' }
+  }
+  const relock = awayMs !== null && awayMs >= RELOCK_AFTER_MS
+  return { showIntro: false, gate: relock ? 'auth' : 'none' }
 }
 
 // ── storage (all guarded; degrade to defaults) ──────────────────────────────

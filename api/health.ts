@@ -40,8 +40,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.292.0-entry'
-const BUILD_LABEL = 'AbuBank 0.292.0 — PREMIUM ENTRY EXPERIENCE (supersedes 0.291.0-earonly). NEW: cold-open black-luxury intro (handwritten "Abu Ela" reveal + synthesized boutique sound), platform biometric unlock (WebAuthn Face ID/Touch ID) primary with local salted-PIN fallback, and a fail-open session-lock policy (cold launch → intro+auth; resume <60s skips; re-auth after 5min inactivity, no intro replay). Entry is an isolated top-level gate — no existing screen changed; degrades gracefully (audio autoplay/biometric unavailability fall back cleanly). Device-check pending: real Face ID sheet + audible chime are PHYSICAL_DEVICE truths. Priors (deployed 0.291): TRUE IDEMPOTENCY + ABUSE THROTTLING; A6 retrieval guard; Yarden CLASS fix; TEMPORAL=GROUNDED+FRESH. Do NOT merge (3 old keys await owner revocation).'
+const BUILD_VERSION = '0.292.1-entry'
+const BUILD_LABEL = 'AbuBank 0.292.1 — PREMIUM ENTRY EXPERIENCE (hardened; supersedes 0.291.0-earonly). Auth is now FAIL-CLOSED: mandatory first-run PIN + optional Face ID/Touch ID enroll (no "Later" bypass); a wrong PIN or any auth-subsystem error stays LOCKED — no silent open. Intro upgraded to a purpose-built calligraphic "Abu Ela" signature drawn stroke-by-stroke (SVG stroke-dashoffset) with a refined ink/airy-bed/completion-signature sound. Home/shell polished into the black-luxury system: warm graphite base, champagne/ivory type, unified tiles (feature colour kept only in the icons). Entry is an isolated top-level gate; production build has NO gate bypass. Device-check pending: real Face ID sheet + audible chime are PHYSICAL_DEVICE truths. Priors (deployed 0.291): TRUE IDEMPOTENCY + ABUSE THROTTLING. Do NOT merge (3 old keys await owner revocation).'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}

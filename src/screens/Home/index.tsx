@@ -6,13 +6,19 @@ import { HUB_APPS, openLiveAbu, type HubApp, type HubAction } from './hub';
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos';
 import { injectSharedKeyframes } from '../../design/animations';
 import { AbuLogo, type AbuAppId } from '../../design/logos/AbuLogo';
-import { t, PAGE_BG } from '../../design/theme';
+import { t } from '../../design/theme';
 
 /** Turn an rgba/hex-ish accent into an "r,g,b" triple for glow shadows. */
 function accentRgb(hex: string): string {
   const h = hex.replace('#', '');
   return `${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)}`;
 }
+
+// Premium visual system (shared with the black-luxury entry): a warm graphite/
+// black base and one restrained champagne accent, instead of the old blue nebula
+// + multi-colour wordmark. Feature icons keep their own colour for recognition.
+const WARM_BG = 'radial-gradient(125% 90% at 50% -8%, #17140f 0%, #100d0a 44%, #070605 100%)';
+const CHAMPAGNE_TEXT = 'linear-gradient(135deg,#F7F0E1 0%,#ECDBB7 52%,#E1C793 100%)';
 
 export function Home() {
   const [pressed, setPressed] = useState<string | null>(null);
@@ -49,13 +55,13 @@ export function Home() {
   return (
     <div dir="rtl" style={{
       height: '100%', width: '100%', overflow: 'hidden',
-      background: PAGE_BG,
+      background: WARM_BG,
       display: 'flex', flexDirection: 'column',
       fontFamily: "'Heebo','DM Sans',sans-serif", userSelect: 'none', WebkitUserSelect: 'none',
     }}>
       {/* ─── HERO HEADER — the Abu-ela brand identity (kept) ─── */}
       <header style={{ display: 'flex', alignItems: 'center', direction: 'ltr', flexShrink: 0, padding: '14px 8px 8px', gap: 8, position: 'relative' }}>
-        <div aria-hidden="true" style={{ position: 'absolute', top: '30%', left: '55%', transform: 'translate(-50%,-50%)', width: '90%', height: '200%', background: 'radial-gradient(ellipse at center, rgba(201,168,76,0.06) 0%, rgba(20,184,166,0.03) 35%, transparent 65%)', pointerEvents: 'none' }} />
+        <div aria-hidden="true" style={{ position: 'absolute', top: '30%', left: '55%', transform: 'translate(-50%,-50%)', width: '90%', height: '200%', background: 'radial-gradient(ellipse at center, rgba(212,184,122,0.05) 0%, transparent 62%)', pointerEvents: 'none' }} />
 
         {/* Martita portrait → family gallery */}
         <div
@@ -78,23 +84,23 @@ export function Home() {
           <div style={{ display: 'flex', alignItems: 'baseline', direction: 'ltr', gap: 3, position: 'relative' }}>
             <span style={{
               fontFamily: "'Cormorant Garamond',Georgia,serif", fontSize: 44, fontWeight: 600, letterSpacing: '2.5px',
-              background: 'linear-gradient(135deg,#5EEAD4 0%,#2DD4BF 14%,#0D9488 28%,#5EEAD4 42%,#14B8A6 58%,#0F766E 74%,#5EEAD4 88%,#2DD4BF 100%)',
+              background: CHAMPAGNE_TEXT,
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-              filter: 'drop-shadow(0 0 14px rgba(94,234,212,0.40)) drop-shadow(0 2px 3px rgba(0,0,0,0.65))',
+              filter: 'drop-shadow(0 0 12px rgba(226,205,159,0.22)) drop-shadow(0 2px 3px rgba(0,0,0,0.65))',
             } as React.CSSProperties}>Abu</span>
-            <span aria-hidden="true" style={{ alignSelf: 'center', transform: 'translateY(-4px)', width: 22, height: 1.5, borderRadius: 1, marginInline: 6, background: 'linear-gradient(90deg, rgba(94,234,212,0) 0%, rgba(94,234,212,0.75) 30%, rgba(233,168,124,0.95) 70%, rgba(233,168,124,0) 100%)', boxShadow: '0 0 9px rgba(217,128,99,0.35)', display: 'inline-block', flexShrink: 0 }} />
+            <span aria-hidden="true" style={{ alignSelf: 'center', transform: 'translateY(-4px)', width: 22, height: 1.5, borderRadius: 1, marginInline: 6, background: 'linear-gradient(90deg, rgba(226,205,159,0) 0%, rgba(226,205,159,0.85) 50%, rgba(226,205,159,0) 100%)', display: 'inline-block', flexShrink: 0 }} />
             <span style={{
               fontFamily: "'Cormorant Garamond',Georgia,serif", fontStyle: 'italic', fontSize: 45, fontWeight: 600, letterSpacing: '0.5px', textTransform: 'lowercase', paddingRight: 3,
-              background: 'linear-gradient(135deg,#FFF1D9 0%,#F6C99A 18%,#E8A87C 36%,#F2BE92 50%,#D98063 63%,#E7A574 77%,#F7DCB0 91%,#E8B77E 100%)',
+              background: CHAMPAGNE_TEXT,
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-              filter: 'drop-shadow(0 0 13px rgba(232,168,124,0.45)) drop-shadow(0 2px 3px rgba(0,0,0,0.60))',
+              filter: 'drop-shadow(0 0 12px rgba(226,205,159,0.22)) drop-shadow(0 2px 3px rgba(0,0,0,0.60))',
             } as React.CSSProperties}>ela</span>
           </div>
-          <div aria-hidden="true" style={{ width: '72%', height: 1, background: 'linear-gradient(90deg, transparent 0%, rgba(201,168,76,0.50) 20%, rgba(94,234,212,0.35) 50%, rgba(201,168,76,0.50) 80%, transparent 100%)', marginTop: 4, borderRadius: 1 }} />
+          <div aria-hidden="true" style={{ width: '72%', height: 1, background: 'linear-gradient(90deg, transparent 0%, rgba(212,184,122,0.45) 50%, transparent 100%)', marginTop: 4, borderRadius: 1 }} />
           <div style={{ direction: 'rtl', textAlign: 'center', maxWidth: '100%', marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 21, fontWeight: 700, whiteSpace: 'nowrap' }}>
             <span style={{ fontSize: 22 }}>{greeting.emoji}</span>
-            <span style={{ background: 'linear-gradient(135deg,#5EEAD4 0%,#14B8A6 65%,#5EEAD4 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' } as React.CSSProperties}>{greeting.text},</span>
-            <span style={{ fontFamily: "'Cormorant Garamond',Georgia,serif", fontWeight: 700, fontStyle: 'italic', fontSize: 24, letterSpacing: '1.5px', background: 'linear-gradient(135deg,#FDE68A 0%,#F59E0B 26%,#FBBF24 40%,#D4A843 68%,#FDE68A 92%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' } as React.CSSProperties}>Martita</span>
+            <span style={{ color: 'rgba(245,240,232,0.90)' }}>{greeting.text},</span>
+            <span style={{ fontFamily: "'Cormorant Garamond',Georgia,serif", fontWeight: 700, fontStyle: 'italic', fontSize: 24, letterSpacing: '1.5px', background: CHAMPAGNE_TEXT, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' } as React.CSSProperties}>Martita</span>
           </div>
         </div>
 
@@ -152,12 +158,16 @@ function HubTile({ app, hero = false, pressed, setPressed, loaded, index, onOpen
         justifyContent: 'center', gap: hero ? 16 : 10,
         minHeight: hero ? 92 : 56, width: '100%', height: '100%',
         padding: hero ? '0 24px' : '10px', borderRadius: 22, cursor: 'pointer',
-        // themeable surface + a per-app accent wash (constellation colour)
-        background: `linear-gradient(150deg, rgba(${rgb},0.14) 0%, ${t.surface} 60%)`,
-        border: `1px solid rgba(${rgb},${isPressed ? 0.55 : 0.28})`,
+        // Calm, unified graphite glass + a restrained champagne hairline. The
+        // per-app accent colour survives ONLY in the icon (recognition) and as a
+        // whisper of glow on press — no six-colour competition at rest.
+        background: hero
+          ? 'linear-gradient(150deg, rgba(226,205,159,0.06) 0%, rgba(255,255,255,0.022) 62%)'
+          : 'linear-gradient(150deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.018) 62%)',
+        border: `1px solid rgba(216,196,150,${isPressed ? 0.5 : hero ? 0.24 : 0.14})`,
         boxShadow: isPressed
-          ? `0 0 0 1px rgba(${rgb},0.30) inset`
-          : `0 0 22px rgba(${rgb},0.12), 0 10px 30px ${t.shadow}`,
+          ? `0 0 0 1px rgba(${rgb},0.32) inset, 0 0 18px rgba(${rgb},0.14)`
+          : `0 10px 30px rgba(0,0,0,0.5)`,
         backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
         transform: isPressed ? 'scale(0.97)' : (loaded ? 'scale(1)' : 'scale(0.9)'),
         opacity: loaded ? 1 : 0,

@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  hasPin,
-  setPin as persistPin,
-  verifyPin,
-  writeLockConfig,
-} from '../../services/appLock'
+import { hasPin, setPin as persistPin, verifyPin, writeLockConfig } from '../../services/appLock'
 import {
   enrollBiometric,
   isBiometricEnrolled,
@@ -17,21 +12,37 @@ type Mode = 'unlock' | 'setup'
 
 interface AuthGateProps {
   mode: Mode
-  /** Called once the user is authenticated (or opts out of first-run setup). */
+  /** Called ONLY on genuine success: biometric verified, or a valid PIN, or a
+   *  completed first-run setup. There is no path that calls this on failure. */
   onAuthed: () => void
 }
 
 const PIN_LEN = 4
 
-/** A calm, high-contrast biometric-first lock. PIN is the always-works backup. */
+/**
+ * The Abu Ela lock — FAIL-CLOSED.
+ *
+ * unlock: biometric (if enrolled) runs first; on anything other than success it
+ * falls back to the PIN. A wrong PIN stays locked; a subsystem error is treated
+ * as a failure (never an open). `onAuthed` fires only on real success.
+ *
+ * setup (first run, MANDATORY): establish a PIN (set + confirm) — this is the
+ * floor, there is no "Later". If the platform supports biometrics we then offer
+ * to enroll Face ID/Touch ID (skippable, because the PIN already protects the
+ * app). If biometrics are unavailable, the PIN alone is sufficient.
+ */
 export function AuthGate({ mode, onAuthed }: AuthGateProps) {
-  const [view, setView] = useState<'bio' | 'pin' | 'choose'>(
-    mode === 'setup' ? 'choose' : isBiometricEnrolled() ? 'bio' : 'pin',
-  )
+  type Step = 'bioUnlock' | 'pinEnter' | 'pinSet' | 'pinConfirm' | 'bioOffer'
+  const initialStep: Step =
+    mode === 'setup' ? 'pinSet' : isBiometricEnrolled() ? 'bioUnlock' : 'pinEnter'
+
+  const [step, setStep] = useState<Step>(initialStep)
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [bioAvailable, setBioAvailable] = useState(false)
   const authedRef = useRef(false)
+  // Holds the first PIN across the set → confirm steps (never rendered).
+  const pendingPin = useRef('')
 
   const finish = useCallback(() => {
     if (authedRef.current) return
@@ -49,7 +60,7 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
     }
   }, [])
 
-  // ── UNLOCK: try the platform biometric immediately, then fall back to PIN ──
+  // ── UNLOCK: platform biometric first, then PIN. Never opens on failure. ──
   const runBiometric = useCallback(async () => {
     setError('')
     setStatus('מזהה אותך…')
@@ -58,25 +69,32 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
       finish()
       return
     }
-    // Fall back gracefully. If we genuinely cannot use biometrics and there is
-    // no PIN, degrade OPEN rather than trap the user (fail-open by design).
+    setStatus('')
+    // Every non-success path falls to the PIN — a protected device always has one.
     if (hasPin()) {
-      setView('pin')
-      setStatus('')
-      if (r === 'cancelled') setError('')
-      else setError('לא הצלחתי לזהות. אפשר להיכנס עם הקוד.')
-    } else if (r === 'unavailable') {
-      finish()
+      setStep('pinEnter')
+      setError(r === 'cancelled' ? '' : 'לא זיהיתי. אפשר להיכנס עם הקוד.')
     } else {
-      setStatus('')
+      // Should be unreachable (setup always sets a PIN). Stay locked, never open.
       setError('לא הצלחתי לזהות. נסי שוב.')
     }
   }, [finish])
 
   useEffect(() => {
-    if (mode === 'unlock' && view === 'bio') void runBiometric()
+    if (step === 'bioUnlock') void runBiometric()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // After the PIN is set (setup), enroll biometrics if the platform supports it.
+  const afterPinSet = useCallback(() => {
+    if (bioAvailable) {
+      setError('')
+      setStatus('')
+      setStep('bioOffer')
+    } else {
+      finish()
+    }
+  }, [bioAvailable, finish])
 
   return (
     <div className={styles.root} data-testid="auth-gate" dir="rtl">
@@ -86,47 +104,84 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
           Abu Ela
         </div>
 
-        {view === 'bio' && (
-          <BiometricView
+        {step === 'bioUnlock' && (
+          <BiometricUnlock
             status={status}
             error={error}
             onRetry={() => void runBiometric()}
-            {...(hasPin() ? { onUsePin: () => { setError(''); setView('pin') } } : {})}
+            {...(hasPin() ? { onUsePin: () => { setError(''); setStatus(''); setStep('pinEnter') } } : {})}
           />
         )}
 
-        {view === 'pin' && (
-          <PinView
-            mode={mode === 'setup' ? 'set' : 'enter'}
-            onDone={finish}
+        {step === 'pinEnter' && (
+          <PinPad
+            title="הזיני את הקוד"
+            onSubmit={async (code) => {
+              // verifyPin is guarded and returns false on any error → fail-closed.
+              const ok = await verifyPin(code)
+              if (ok) {
+                finish()
+                return { ok: true }
+              }
+              return { ok: false, message: 'הקוד לא נכון, נסי שוב' }
+            }}
           />
         )}
 
-        {view === 'choose' && (
-          <SetupChoose
-            bioAvailable={bioAvailable}
-            onEnableBiometric={async () => {
+        {step === 'pinSet' && (
+          <PinPad
+            key="set"
+            title="בחרי קוד בן 4 ספרות"
+            sub="הקוד ישמור על Abu Ela"
+            onSubmit={async (code) => {
+              pendingPin.current = code
+              setStep('pinConfirm')
+              return { ok: true }
+            }}
+          />
+        )}
+
+        {step === 'pinConfirm' && (
+          <PinPad
+            key="confirm"
+            title="הזיני שוב לאישור"
+            onSubmit={async (code) => {
+              if (code !== pendingPin.current) {
+                pendingPin.current = ''
+                setStep('pinSet')
+                return { ok: false, message: 'הקודים לא תואמים, ננסה שוב' }
+              }
+              const saved = await persistPin(code)
+              if (!saved) {
+                setStep('pinSet')
+                return { ok: false, message: 'לא הצלחתי לשמור, ננסה שוב' }
+              }
+              afterPinSet()
+              return { ok: true }
+            }}
+          />
+        )}
+
+        {step === 'bioOffer' && (
+          <BiometricOffer
+            status={status}
+            error={error}
+            onEnable={async () => {
               setError('')
               setStatus('מפעילה זיהוי פנים…')
               const r = await enrollBiometric()
               setStatus('')
               if (r.ok) {
-                writeLockConfig({ biometricEnrolled: true, protectionEnabled: true, setupPromptSeen: true })
-                // Offer a backup PIN (recommended), skippable.
-                setView('pin')
+                writeLockConfig({ biometricEnrolled: true, protectionEnabled: true })
+                finish()
               } else if (r.reason === 'cancelled') {
                 setError('')
               } else {
                 setError('לא הצלחתי להפעיל זיהוי פנים במכשיר הזה.')
               }
             }}
-            onSetPin={() => { setError(''); setView('pin') }}
-            onLater={() => {
-              writeLockConfig({ setupPromptSeen: true })
-              finish()
-            }}
-            status={status}
-            error={error}
+            // Skipping biometrics is safe — the PIN already protects the app.
+            onSkip={finish}
           />
         )}
       </div>
@@ -134,8 +189,8 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
   )
 }
 
-// ── biometric view ──────────────────────────────────────────────────────────
-function BiometricView({
+// ── biometric unlock view ────────────────────────────────────────────────────
+function BiometricUnlock({
   status,
   error,
   onRetry,
@@ -163,65 +218,78 @@ function BiometricView({
   )
 }
 
-// ── PIN view (enter existing, or set + confirm) ──────────────────────────────
-function PinView({ mode, onDone }: { mode: 'enter' | 'set'; onDone: () => void }) {
-  // 'set' walks set → confirm; 'enter' verifies the stored PIN.
-  const [stage, setStage] = useState<'enter' | 'set' | 'confirm'>(mode === 'set' ? 'set' : 'enter')
-  const [first, setFirst] = useState('')
+// ── biometric enroll offer (setup only; PIN already set) ─────────────────────
+function BiometricOffer({
+  status,
+  error,
+  onEnable,
+  onSkip,
+}: {
+  status: string
+  error: string
+  onEnable: () => void
+  onSkip: () => void
+}) {
+  return (
+    <>
+      <FaceGlyph />
+      <p className={styles.status}>להיכנס עם זיהוי פנים?</p>
+      <p className={styles.sub}>מהיר יותר מהקוד — הקוד יישאר לגיבוי</p>
+      {status && <p className={styles.status}>{status}</p>}
+      {error && <p className={styles.error}>{error}</p>}
+      <button className={styles.primary} onClick={onEnable}>
+        הפעלת זיהוי פנים
+      </button>
+      <button className={styles.ghost} onClick={onSkip}>
+        להמשיך עם הקוד
+      </button>
+    </>
+  )
+}
+
+// ── reusable numeric pad ─────────────────────────────────────────────────────
+type SubmitResult = { ok: boolean; message?: string }
+function PinPad({
+  title,
+  sub,
+  onSubmit,
+}: {
+  title: string
+  sub?: string
+  onSubmit: (code: string) => Promise<SubmitResult>
+}) {
   const [digits, setDigits] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-
-  const title =
-    stage === 'enter' ? 'הזיני את הקוד' : stage === 'set' ? 'בחרי קוד בן 4 ספרות' : 'הזיני שוב לאישור'
-
-  const submit = useCallback(
-    async (code: string) => {
-      setBusy(true)
-      try {
-        if (stage === 'enter') {
-          const ok = await verifyPin(code)
-          if (ok) return onDone()
-          setError('הקוד לא נכון, נסי שוב')
-          setDigits('')
-        } else if (stage === 'set') {
-          setFirst(code)
-          setDigits('')
-          setError('')
-          setStage('confirm')
-        } else {
-          if (code === first) {
-            const ok = await persistPin(code)
-            if (ok) return onDone()
-            setError('לא הצלחתי לשמור את הקוד')
-            setDigits('')
-            setStage('set')
-          } else {
-            setError('הקודים לא תואמים, ננסה שוב')
-            setDigits('')
-            setFirst('')
-            setStage('set')
-          }
-        }
-      } finally {
-        setBusy(false)
-      }
-    },
-    [stage, first, onDone],
-  )
 
   const press = (d: string) => {
     if (busy || digits.length >= PIN_LEN) return
     const next = digits + d
     setDigits(next)
     setError('')
-    if (next.length === PIN_LEN) void submit(next)
+    if (next.length === PIN_LEN) {
+      setBusy(true)
+      void onSubmit(next)
+        .then((r) => {
+          if (!r.ok) {
+            setDigits('')
+            if (r.message) setError(r.message)
+          }
+        })
+        .catch(() => {
+          // Any handler error is a failure — clear + stay, never proceed.
+          setDigits('')
+          setError('משהו השתבש, נסי שוב')
+        })
+        .finally(() => setBusy(false))
+    }
   }
   const back = () => setDigits((d) => d.slice(0, -1))
 
   return (
     <>
       <p className={styles.status}>{title}</p>
+      {sub && <p className={styles.sub}>{sub}</p>}
       {/* Numeric pad is LTR even in Hebrew — phone keypads are never mirrored. */}
       <div className={styles.dots} dir="ltr" aria-hidden="true">
         {Array.from({ length: PIN_LEN }).map((_, i) => (
@@ -243,49 +311,6 @@ function PinView({ mode, onDone }: { mode: 'enter' | 'set'; onDone: () => void }
           ⌫
         </button>
       </div>
-      {mode === 'set' && (
-        <button className={styles.ghost} onClick={onDone}>
-          דלגי בינתיים
-        </button>
-      )}
-    </>
-  )
-}
-
-// ── first-run setup choices ──────────────────────────────────────────────────
-function SetupChoose({
-  bioAvailable,
-  onEnableBiometric,
-  onSetPin,
-  onLater,
-  status,
-  error,
-}: {
-  bioAvailable: boolean
-  onEnableBiometric: () => void
-  onSetPin: () => void
-  onLater: () => void
-  status: string
-  error: string
-}) {
-  return (
-    <>
-      <FaceGlyph />
-      <p className={styles.status}>הגנה על Abu Ela</p>
-      <p className={styles.sub}>כדי לשמור על הפרטיות שלך</p>
-      {status && <p className={styles.status}>{status}</p>}
-      {error && <p className={styles.error}>{error}</p>}
-      {bioAvailable && (
-        <button className={styles.primary} onClick={onEnableBiometric}>
-          הפעלת זיהוי פנים
-        </button>
-      )}
-      <button className={bioAvailable ? styles.secondary : styles.primary} onClick={onSetPin}>
-        הגדרת קוד סודי
-      </button>
-      <button className={styles.ghost} onClick={onLater}>
-        אחר כך
-      </button>
     </>
   )
 }

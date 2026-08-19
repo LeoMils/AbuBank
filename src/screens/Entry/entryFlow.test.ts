@@ -1,12 +1,13 @@
 /**
  * entryFlow.test.ts — the deterministic core of the premium entry gate.
  *
- * Evidence class: CODE. This proves the LOGIC (decision rules, timing budget,
- * local-PIN roundtrip, session/away bookkeeping). It does NOT and cannot prove
- * the real Face ID sheet, audible sound, or on-device feel — those are
- * PHYSICAL_DEVICE truths verified on an iPhone (see the handover notes).
+ * Evidence class: CODE. This proves the LOGIC (fail-closed decision rules,
+ * timing budget, local-PIN roundtrip + fail-closed verification, session
+ * bookkeeping). It does NOT and cannot prove the real Face ID sheet, audible
+ * sound, or on-device feel — those are PHYSICAL_DEVICE truths verified on an
+ * iPhone (see the handover notes).
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   decideEntry,
   RELOCK_AFTER_MS,
@@ -38,65 +39,73 @@ beforeEach(() => {
   ;(globalThis as unknown as { sessionStorage: MemStore }).sessionStorage = new MemStore()
 })
 
-const OFF: LockConfig = { protectionEnabled: false, biometricEnrolled: false, setupPromptSeen: false }
-const ON: LockConfig = { protectionEnabled: true, biometricEnrolled: true, setupPromptSeen: true }
+const OFF: LockConfig = { protectionEnabled: false, biometricEnrolled: false }
+const ON: LockConfig = { protectionEnabled: true, biometricEnrolled: true }
 
-describe('decideEntry — the one entry rule', () => {
-  it('first-ever cold launch: intro + offer setup, no forced auth', () => {
+describe('decideEntry — the one entry rule (fail-closed)', () => {
+  it('first-ever cold launch: intro then MANDATORY setup (never a silent open)', () => {
     expect(decideEntry({ coldLaunch: true, config: OFF, awayMs: null })).toEqual({
       showIntro: true,
-      requireAuth: false,
-      offerSetup: true,
+      gate: 'setup',
     })
   })
 
-  it('cold launch with protection on: intro + require auth, no setup', () => {
+  it('cold launch when protected: intro then auth', () => {
     expect(decideEntry({ coldLaunch: true, config: ON, awayMs: null })).toEqual({
       showIntro: true,
-      requireAuth: true,
-      offerSetup: false,
+      gate: 'auth',
     })
   })
 
-  it('cold launch after setup already dismissed (still unprotected): intro only', () => {
-    const seen: LockConfig = { ...OFF, setupPromptSeen: true }
-    expect(decideEntry({ coldLaunch: true, config: seen, awayMs: null })).toEqual({
-      showIntro: true,
-      requireAuth: false,
-      offerSetup: false,
-    })
-  })
-
-  it('resume within the window: no intro, no auth', () => {
+  it('resume within the window (protected): straight in, no intro, no auth', () => {
     expect(decideEntry({ coldLaunch: false, config: ON, awayMs: 5_000 })).toEqual({
       showIntro: false,
-      requireAuth: false,
-      offerSetup: false,
+      gate: 'none',
     })
   })
 
-  it('resume after the inactivity threshold: re-auth, never re-intro', () => {
+  it('resume after inactivity (protected): re-auth, never re-intro', () => {
     const d = decideEntry({ coldLaunch: false, config: ON, awayMs: RELOCK_AFTER_MS + 1 })
     expect(d.showIntro).toBe(false)
-    expect(d.requireAuth).toBe(true)
+    expect(d.gate).toBe('auth')
   })
 
-  it('resume never re-locks when protection is off', () => {
-    const d = decideEntry({ coldLaunch: false, config: OFF, awayMs: RELOCK_AFTER_MS * 10 })
-    expect(d.requireAuth).toBe(false)
+  it('resume while NOT protected forces setup (cannot enter unprotected)', () => {
+    const d = decideEntry({ coldLaunch: false, config: OFF, awayMs: 5_000 })
+    expect(d.gate).toBe('setup')
   })
 
-  it('resume with unknown away-time does not force auth', () => {
-    const d = decideEntry({ coldLaunch: false, config: ON, awayMs: null })
-    expect(d.requireAuth).toBe(false)
+  it('exactly at the threshold re-locks', () => {
+    expect(decideEntry({ coldLaunch: false, config: ON, awayMs: RELOCK_AFTER_MS }).gate).toBe('auth')
+  })
+})
+
+describe('NO SILENT OPEN — the security invariant across the whole matrix', () => {
+  it('an unprotected device is NEVER revealed without setup', () => {
+    for (const cold of [true, false]) {
+      for (const away of [null, 0, 1_000, RELOCK_AFTER_MS, RELOCK_AFTER_MS * 100]) {
+        const d = decideEntry({ coldLaunch: cold, config: OFF, awayMs: away })
+        expect(d.gate).toBe('setup') // never 'none', never 'auth-without-credential'
+      }
+    }
+  })
+
+  it('the ONLY way a protected device opens with gate "none" is a fresh resume', () => {
+    // gate 'none' (no auth) must require: resume (not cold) AND within the window.
+    const opens = (cold: boolean, away: number | null) =>
+      decideEntry({ coldLaunch: cold, config: ON, awayMs: away }).gate === 'none'
+    expect(opens(true, null)).toBe(false) // cold never opens without auth
+    expect(opens(true, 0)).toBe(false)
+    expect(opens(false, RELOCK_AFTER_MS)).toBe(false) // stale resume re-locks
+    expect(opens(false, 0)).toBe(true) // fresh resume within window is the only pass
   })
 })
 
 describe('intro timing budget', () => {
-  it('normal intro rests inside the 1.4s–2.2s target window', () => {
+  it('normal intro rests inside the 1.5s–2.2s target window', () => {
     const total = introTotalMs(false)
     expect(total).toBe(INTRO.drawMs + INTRO.holdMs + INTRO.fadeMs)
-    expect(total).toBeGreaterThanOrEqual(1400)
+    expect(total).toBeGreaterThanOrEqual(1500)
     expect(total).toBeLessThanOrEqual(2200)
   })
 
@@ -105,7 +114,7 @@ describe('intro timing budget', () => {
   })
 })
 
-describe('local PIN (salted SHA-256; never plaintext)', () => {
+describe('local PIN — set → verify, fail-closed', () => {
   it('set → verify roundtrip succeeds and enables protection', async () => {
     expect(hasPin()).toBe(false)
     const ok = await setPin('2468')
@@ -113,14 +122,24 @@ describe('local PIN (salted SHA-256; never plaintext)', () => {
     expect(hasPin()).toBe(true)
     expect(readLockConfig().protectionEnabled).toBe(true)
     expect(await verifyPin('2468')).toBe(true)
+  })
+
+  it('a WRONG pin never verifies (stays locked)', async () => {
+    await setPin('2468')
     expect(await verifyPin('0000')).toBe(false)
+    expect(await verifyPin('')).toBe(false)
+    expect(await verifyPin('24680')).toBe(false)
+  })
+
+  it('verifyPin is fail-closed when NO pin is configured', async () => {
+    expect(hasPin()).toBe(false)
+    expect(await verifyPin('1234')).toBe(false)
   })
 
   it('never stores the PIN in plaintext', async () => {
     await setPin('1357')
     const cfg = readLockConfig()
     expect(cfg.pinHash).toBeDefined()
-    expect(cfg.pinHash).not.toContain('1357')
     expect(JSON.stringify(cfg)).not.toContain('1357')
   })
 
@@ -131,6 +150,20 @@ describe('local PIN (salted SHA-256; never plaintext)', () => {
     expect(a).toBe(b)
     expect(a).not.toBe(c)
     expect(a).toMatch(/^[0-9a-f]{64}$/)
+  })
+})
+
+describe('PIN verification is fail-closed on a subsystem error', () => {
+  it('a hashing/crypto failure resolves to FALSE, not an open', async () => {
+    await setPin('2468')
+    expect(await verifyPin('2468')).toBe(true) // sanity with real crypto
+    // Break the crypto subsystem — verification must DENY, never throw-open.
+    const spy = vi.spyOn(crypto.subtle, 'digest').mockRejectedValue(new Error('subsystem down'))
+    try {
+      expect(await verifyPin('2468')).toBe(false)
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
 
@@ -148,11 +181,11 @@ describe('session warmth + away bookkeeping', () => {
   })
 
   it('writeLockConfig merges patches', () => {
-    writeLockConfig({ setupPromptSeen: true })
-    expect(readLockConfig().setupPromptSeen).toBe(true)
+    writeLockConfig({ biometricEnrolled: true })
+    expect(readLockConfig().biometricEnrolled).toBe(true)
     expect(readLockConfig().protectionEnabled).toBe(false)
     writeLockConfig({ protectionEnabled: true })
-    expect(readLockConfig().setupPromptSeen).toBe(true)
+    expect(readLockConfig().biometricEnrolled).toBe(true)
     expect(readLockConfig().protectionEnabled).toBe(true)
   })
 })
