@@ -7,7 +7,7 @@
     "RUNTIME_SOURCE_SHA": "3621a58",
     "DEPLOYED_ARTIFACT_ID": "abu-bank-qm9webd4s-leos-projects-d3c04c09.vercel.app",
     "DEPLOYED_BUILD_ID": "0.292.1-entry",
-    "CERTIFICATION_HARNESS_SHA": "e07338ef20ec4698dbb5214231c71822dee81afb",
+    "CERTIFICATION_HARNESS_SHA": "2016acd0366020ee0b152a2558aec190d989105c",
     "EVIDENCE_GENERATION_SHA": "e07338ef20ec4698dbb5214231c71822dee81afb",
     "CONTROL_PLANE_VERSION": "cp_bfccc899"
   },
@@ -37,6 +37,7 @@
       "src/screens/AbuGames/wowGame.test.ts",
       "src/screens/AbuWhatsApp/familyContactsStorage.test.ts",
       "src/eval/martitaRedTeam.test.ts",
+      "src/screens/AbuAI/birthdayResolverTruth.test.ts",
       "vite-dev.err.log",
       "vite-dev.log"
     ]
@@ -82,7 +83,7 @@
       "path": "docs/engineering-os/qa/RELEASE_LOCK.json",
       "producer": "RELEASE_LOCK",
       "schema": "internal://abu/release-lock",
-      "digest": "fe2ad4b398ee7791acd7c8b7dbb31feff02f44d5c2016fefcb6972d1056e792c"
+      "digest": "ebe4d2632d904c60ce153b9c9a920dd0f7d86d6b2761f72ebe8a88be58cf5a22"
     },
     {
       "id": "qa-monster-report",
@@ -152,5 +153,5 @@
   ],
   "denominatorId": "f29f94e3195a2727cee010256607d7f7e30038137230ff7983f5ed73ac2456d7",
   "whyCertified": "Sealed from existing machine state. Verdicts are copied verbatim from QA_MONSTER_REPORT.json; this capsule cannot promote them. A reader reconstructs the certified artifact, harness, evidence digests and provenance from this file alone; verify with scripts/verify-capsule.mjs.",
-  "capsuleId": "64e71f986f5185b65a3578a71c353297f4611178e00a22a3481be42f06c6e99d"
+  "capsuleId": "aa7bbe0e3b6dd233d4f9f24d0aa44a8dd071eb49ee26ce078bebffd01819e8b1"
 }
