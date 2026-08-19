@@ -1,14 +1,14 @@
 {
   "schemaVersion": "capsule/1",
-  "when": "2026-08-19T07:41:11.227Z",
+  "when": "2026-08-19T12:36:56.067Z",
   "qaMonsterVersion": "qa-monster/1",
   "constitutionVersion": "monster-qa/unified-master",
   "identity": {
-    "RUNTIME_SOURCE_SHA": "0703f5b",
-    "DEPLOYED_ARTIFACT_ID": "abu-bank-ey26bn0p5-leos-projects-d3c04c09.vercel.app",
-    "DEPLOYED_BUILD_ID": "0.293.0-auth",
-    "CERTIFICATION_HARNESS_SHA": "e71bb7b36420e2796c100e99448bb918a7ad9ded",
-    "EVIDENCE_GENERATION_SHA": "e71bb7b36420e2796c100e99448bb918a7ad9ded",
+    "RUNTIME_SOURCE_SHA": "4bb263e",
+    "DEPLOYED_ARTIFACT_ID": "abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+    "DEPLOYED_BUILD_ID": "0.294.0-privauth",
+    "CERTIFICATION_HARNESS_SHA": "df12de8b472b2f35f292b23e7e1dd928eb2190e3",
+    "EVIDENCE_GENERATION_SHA": "df12de8b472b2f35f292b23e7e1dd928eb2190e3",
     "CONTROL_PLANE_VERSION": "cp_bfccc899"
   },
   "verdicts": {
@@ -45,25 +45,25 @@
   "runtimeProvenance": {
     "identity": "PROVEN",
     "method": "deployed buildVersion ↔ version-introducing commit in api/health.ts; zero non-test runtime drift since",
-    "RUNTIME_SOURCE_SHA": "0703f5b",
-    "DEPLOYED_BUILD_ID": "0.293.0-auth"
+    "RUNTIME_SOURCE_SHA": "4bb263e",
+    "DEPLOYED_BUILD_ID": "0.294.0-privauth"
   },
   "economy": {
     "tier": "rc",
-    "wallClockMs": 187200,
-    "deterministicMs": 52275,
-    "networkMs": 134295,
+    "wallClockMs": 172529,
+    "deterministicMs": 51521,
+    "networkMs": 120410,
     "networkAreaCount": 6,
     "perAreaMs": {
-      "typecheck": 12033,
-      "unit-suite": 39042,
-      "security-scan": 4413,
-      "calendar": 10962,
-      "whatsapp": 3202,
-      "current-info-freshness": 13982,
-      "replacement-paths": 8017,
-      "tool-sequencing": 1200,
-      "historical-corpus": 93719
+      "typecheck": 10761,
+      "unit-suite": 39307,
+      "security-scan": 4263,
+      "calendar": 10716,
+      "whatsapp": 4373,
+      "current-info-freshness": 12734,
+      "replacement-paths": 5045,
+      "tool-sequencing": 1453,
+      "historical-corpus": 83279
     },
     "note": "MEASURED wall-clock/area timings from THIS run. No monetary SLO is asserted (OWNER sets spend). Wall-clock targets are configurable; a tier over target is a QA-system finding, not a license to reduce assurance."
   },
@@ -74,9 +74,10 @@
     "REVOKE Groq fp:a2f25d13",
     "AUTHORIZE clean production deploy",
     "DECIDE distributed rate-limit infra (shared KV)",
-    "SET durable project env AUTH_SIGNING_SECRET + ENROLLMENT_SECRET (server-auth enforcement is currently only on this Preview's deploy env; without them a future deploy has authEnforced=false)",
-    "DECIDE private-family-data exposure (no-login closure): migrate the family knowledge behind the new authenticated server access, OR explicitly approve names/relationships/birthdays/city (PII already stripped) as public-by-policy — see docs/engineering-os/qa/PRIVATE_DATA_EXPOSURE.md",
-    "no-login PWA auth policy: server-verified WebAuthn/passkey auth is IMPLEMENTED + PROVEN (billable endpoints 401 unauthenticated on the Preview); remaining to CLOSE = the two items above"
+    "SET durable PRODUCTION env AUTH_SIGNING_SECRET + ENROLLMENT_SECRET (PREVIEW scope is now set; PRODUCTION scope is NOT — the build gate blocks a prod deploy until it is, and a future prod deploy cannot run authEnforced=false)",
+    "MIGRATE the WhatsApp contacts-seed (familyContacts.private) behind authenticated access to reach PUBLIC_PRIVATE_DATA_EXPOSURES=0 (family_data.json is already done) — plan in PRIVATE_DATA_EXPOSURE.md (owner-approved direction: migrate, not public-by-policy)",
+    "OPTIONAL: provision a free KV (KV_REST_API_URL/TOKEN) to upgrade replay single-use + rate-limit from per-instance to distributed",
+    "no-login PWA auth policy: server-verified WebAuthn/passkey auth + replay hardening + fail-closed prod are IMPLEMENTED + PROVEN; the billable/API + family_data.json exposure is CLOSED; remaining to fully CLOSE = durable PRODUCTION env + the contacts-seed migration"
   ],
   "machineClosableRemaining": [],
   "evidence": [
@@ -85,63 +86,63 @@
       "path": "docs/engineering-os/qa/RELEASE_LOCK.json",
       "producer": "RELEASE_LOCK",
       "schema": "internal://abu/release-lock",
-      "digest": "3a73f94b34d829eb85b527f2b4a10b3d30abf111df2be217076e0cd4e88a7e17"
+      "digest": "b5293fcf724871e3c4391de184bba77176662830a0ea5dcdbd9b31805279e722"
     },
     {
       "id": "qa-monster-report",
       "path": "docs/eval/QA_MONSTER_REPORT.json",
       "producer": "qa-monster.mjs",
       "schema": "internal://abu/qa-monster",
-      "digest": "b5a6224a674d26e526721d348804e235dc59fe00855f523fd242a5fe52be5bc8"
+      "digest": "97a84f4335a801071ba8f9c95ca02c3e2e4528751f47d3a0db008b7c08dd773e"
     },
     {
       "id": "historical-corpus",
       "path": "docs/eval/RC_HISTORICAL_CORPUS.json",
       "producer": "rc-acceptance-historical-corpus.mjs",
       "schema": "internal://abu/historical-corpus",
-      "digest": "04e5ff5eb3cac75321137a17dad2996229dbb2fdf62d974043d0679e4c72b5ad"
+      "digest": "5e8de5b1374a822a1629b3c980839ddfc6b60b17966ad3754cc17ab1b1c47d21"
     },
     {
       "id": "calendar",
       "path": "docs/eval/RC_ACCEPTANCE_CALENDAR.json",
       "producer": "rc-acceptance-calendar.mjs",
       "schema": "internal://abu/rc-calendar",
-      "digest": "e2c9d1bf8a745ce66a8c074484ca9f6269880008a673f02e03c35e020318886d"
+      "digest": "a888a9321c2f856e38b65759603e9d8634e2d0cfd33cf24cc7e11da76443d0bd"
     },
     {
       "id": "whatsapp",
       "path": "docs/eval/RC_ACCEPTANCE_WHATSAPP.json",
       "producer": "rc-acceptance-whatsapp.mjs",
       "schema": "internal://abu/rc-whatsapp",
-      "digest": "0d80965a140d7c54f7072b59d2e9dd6e462b6b48005401d8c87227d6e3738df4"
+      "digest": "3a296f7fada154f7e618ec5834166af3deef7ee58fedcd93b88c439263ca4dfe"
     },
     {
       "id": "temporal",
       "path": "docs/eval/RC_ACCEPTANCE_TEMPORAL.json",
       "producer": "rc-acceptance-temporal.mjs",
       "schema": "internal://abu/rc-temporal",
-      "digest": "a2006070891796cfa364b02eed765578690850c276490ed5d06216a9b901f524"
+      "digest": "29379e02409fc42e764048b195a032257506babe3dfc369015e7d347fa9c3237"
     },
     {
       "id": "replacement-paths",
       "path": "docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json",
       "producer": "rc-acceptance-replacement-paths.mjs",
       "schema": "internal://abu/rc-replacement",
-      "digest": "1b8314fd2df88c6a03a588a0c01355a51733733634ab4e586fee5f8dd6021014"
+      "digest": "fe066308e6d5a9721950a3da456e55a6216eb17a8055710e34fe1184e1fbf5f0"
     },
     {
       "id": "tool-sequencing",
       "path": "docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json",
       "producer": "rc-acceptance-tool-sequencing.mjs",
       "schema": "internal://abu/rc-tool-sequencing",
-      "digest": "4231335b5d9df9098069beabbfe5047b452722e8a30a11fbcbb045d0f21952f3"
+      "digest": "1e4248fe24fb45b24d592649bd108322bde13d5a36e262f002e3769d205eb539"
     },
     {
       "id": "secret-scan",
       "path": "docs/engineering-os/qa/deployed-secret-exposure.json",
       "producer": "scan-deployed-secrets.ts",
       "schema": "internal://abu/deployed-secret-exposure",
-      "digest": "47a8a4f5517406dc1182ecd88c7655fa483f0f0538851af64878e189cd1c854c"
+      "digest": "19c8e62657158d167cdb5acb08729fdd1e06f24359836d172f463395eec75463"
     }
   ],
   "requiredClaims": [
@@ -155,5 +156,5 @@
   ],
   "denominatorId": "f29f94e3195a2727cee010256607d7f7e30038137230ff7983f5ed73ac2456d7",
   "whyCertified": "Sealed from existing machine state. Verdicts are copied verbatim from QA_MONSTER_REPORT.json; this capsule cannot promote them. A reader reconstructs the certified artifact, harness, evidence digests and provenance from this file alone; verify with scripts/verify-capsule.mjs.",
-  "capsuleId": "053fbb00a39d4d36c9edb269bb142fc4980bbee39c1ecfd8d43784cb43e0cb81"
+  "capsuleId": "bcbded935c063086009043045e75aee8f74ac25f17a30273eb30ab71e1ef9e68"
 }
