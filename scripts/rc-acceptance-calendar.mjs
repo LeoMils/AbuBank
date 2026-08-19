@@ -18,6 +18,7 @@
 import { chromium } from 'playwright'
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { playwrightSessionCookie } from './lib/acceptance-session.mjs'
 
 const RC = (process.argv[2] || '').replace(/\/$/, '')
 if (!RC) { console.error('usage: node scripts/rc-acceptance-calendar.mjs <rcUrl>'); process.exit(2) }
@@ -72,7 +73,7 @@ async function ensureUnlocked(page) {
 }
 
 async function openCalendarFresh(page, { clear }) {
-  await page.goto(`${RC}/?screen=AbuCalendar`, { waitUntil: 'networkidle', timeout: 45_000 })
+  await page.goto(`${RC}/?screen=AbuCalendar`, { waitUntil: 'domcontentloaded', timeout: 45_000 })
   await ensureUnlocked(page)
   if (clear) {
     // Wipe BOTH tiers so the run starts from genuine empty state (no seeded appointments).
@@ -82,7 +83,7 @@ async function openCalendarFresh(page, { clear }) {
       del.onsuccess = del.onerror = del.onblocked = () => res(true)
       setTimeout(() => res(true), 1500)
     }), CAL_KEY)
-    await page.goto(`${RC}/?screen=AbuCalendar`, { waitUntil: 'networkidle', timeout: 45_000 })
+    await page.goto(`${RC}/?screen=AbuCalendar`, { waitUntil: 'domcontentloaded', timeout: 45_000 })
     await ensureUnlocked(page)
   }
   // The add button proves the calendar screen actually rendered (past any splash).
@@ -120,6 +121,10 @@ async function main() {
   console.log(`=== RC CALENDAR ACCEPTANCE · ${RC} ===\n`)
   const browser = await chromium.launch()
   const context = await browser.newContext({ viewport: { width: 412, height: 870 }, locale: 'he-IL' })
+  // Authenticate like a real user so /api/family hydrates (family birthdays/memorials render).
+  // No-op without AUTH_SIGNING_SECRET in env.
+  const sessionCookie = playwrightSessionCookie(RC)
+  if (sessionCookie) await context.addCookies([sessionCookie])
   const page = await context.newPage()
   const runTag = `QA${Date.now().toString().slice(-6)}`
   const title = `בדיקת יומן ${runTag}`          // unique, plain (no family/holiday collision)
@@ -155,7 +160,9 @@ async function main() {
     rec('readback.ui', readbackTimeShown, readbackTimeShown ? `card shows "${title}" @ ${TIME1}` : `title shown but time ${TIME1} not visible`)
 
     // ── MODIFY (tap card → editing modal → change time → save) ─────────────────
-    await page.getByText(title).first().click()                 // ApptCard onClick → editing modal
+    // Scope to the OPEN day sheet (role=dialog): the page also has a "next event" banner
+    // ("title · date") that is unclickable behind the sheet overlay — the actionable card is here.
+    await page.getByRole('dialog').getByText(title).first().click()  // ApptCard onClick → editing modal
     await page.getByTestId('manual-save').waitFor({ state: 'visible', timeout: 10_000 })  // modal open
     await page.locator('input[type="time"]').fill(TIME2)
     await saveThroughConfirm(page)
