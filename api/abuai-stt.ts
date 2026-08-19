@@ -16,12 +16,15 @@ export function isPlaceholderKey(k: string | undefined): boolean {
 }
 
 import { rateLimited, circuitTripped, clientKey } from './_rateLimit'
+import { guardBillable } from './_session'
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ ok: false, error: 'POST only' }), { status: 405 })
   }
-  // A7/B rate + cost protection. Envelope: ~1 STT/turn, a few turns/min → 30/min/IP generous; abusive
+  // Server-verifiable auth (when configured): an unauthenticated caller gets 401 BEFORE any provider call.
+  { const denied = await guardBillable(req); if (denied) return denied }
+  // A7/B rate + cost protection (defense-in-depth). Envelope: ~1 STT/turn, a few turns/min → 30/min/IP generous; abusive
   // above. Circuit: 600 STT/min/instance (Whisper is the most expensive call class here).
   if (rateLimited(`stt:${clientKey(req)}`, 30, 60_000) || circuitTripped('stt', 600, 60_000)) {
     return new Response(JSON.stringify({ ok: false, error: 'RATE_LIMITED' }), { status: 429, headers: { 'Content-Type': 'application/json' } })

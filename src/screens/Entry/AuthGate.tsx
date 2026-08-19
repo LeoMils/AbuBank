@@ -6,42 +6,45 @@ import {
   isPlatformBiometricAvailable,
   verifyBiometric,
 } from '../../services/biometricAuth'
+import { authStatus, passkeyLogin, passkeyRegister } from '../../services/serverAuth'
 import styles from './AuthGate.module.css'
 
 type Mode = 'unlock' | 'setup'
 
 interface AuthGateProps {
   mode: Mode
-  /** Called ONLY on genuine success: biometric verified, or a valid PIN, or a
-   *  completed first-run setup. There is no path that calls this on failure. */
+  /** Called ONLY on genuine success: a verified passkey/biometric, a valid PIN,
+   *  or a completed first-run setup. No path calls this on an auth failure. */
   onAuthed: () => void
 }
 
 const PIN_LEN = 4
 
 /**
- * The Abu Ela lock — FAIL-CLOSED.
+ * The Abu Ela lock — FAIL-CLOSED, and now backed by SERVER-VERIFIED passkeys.
  *
- * unlock: biometric (if enrolled) runs first; on anything other than success it
- * falls back to the PIN. A wrong PIN stays locked; a subsystem error is treated
- * as a failure (never an open). `onAuthed` fires only on real success.
+ * When the server has auth configured and this device is enrolled, the biometric
+ * gesture IS a WebAuthn assertion (Face ID) that the server verifies and answers
+ * with a session — so the billable APIs accept the device. The local PIN remains
+ * the fallback that unlocks the UI (a wrong PIN stays locked, a subsystem error
+ * is treated as failure — never an open); a PIN-only unlock does NOT mint a
+ * server session, so billable features stay unauthenticated until a passkey
+ * succeeds. If server auth is unconfigured or the platform lacks an
+ * authenticator, it degrades to the local-only lock.
  *
- * setup (first run, MANDATORY): establish a PIN (set + confirm) — this is the
- * floor, there is no "Later". If the platform supports biometrics we then offer
- * to enroll Face ID/Touch ID (skippable, because the PIN already protects the
- * app). If biometrics are unavailable, the PIN alone is sufficient.
+ * setup (first run): establish a PIN (mandatory, no "Later"), then — if the
+ * server is configured — offer owner-bootstrapped passkey enrollment (the owner
+ * enters a one-time activation code); otherwise offer local biometric enroll.
  */
 export function AuthGate({ mode, onAuthed }: AuthGateProps) {
-  type Step = 'bioUnlock' | 'pinEnter' | 'pinSet' | 'pinConfirm' | 'bioOffer'
-  const initialStep: Step =
-    mode === 'setup' ? 'pinSet' : isBiometricEnrolled() ? 'bioUnlock' : 'pinEnter'
-
-  const [step, setStep] = useState<Step>(initialStep)
+  type Step = 'loading' | 'bioUnlock' | 'pinEnter' | 'pinSet' | 'pinConfirm' | 'enroll' | 'bioOffer'
+  const [step, setStep] = useState<Step>(mode === 'setup' ? 'pinSet' : 'loading')
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [bioAvailable, setBioAvailable] = useState(false)
+  const serverConfigured = useRef(false)
+  const serverEnrolled = useRef(false)
   const authedRef = useRef(false)
-  // Holds the first PIN across the set → confirm steps (never rendered).
   const pendingPin = useRef('')
 
   const finish = useCallback(() => {
@@ -50,32 +53,49 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
     onAuthed()
   }, [onAuthed])
 
+  // Discover server auth + platform capability once.
   useEffect(() => {
     let alive = true
-    void isPlatformBiometricAvailable().then((a) => {
-      if (alive) setBioAvailable(a)
-    })
+    void (async () => {
+      const [s, a] = await Promise.all([authStatus(), isPlatformBiometricAvailable()])
+      if (!alive) return
+      serverConfigured.current = s.configured
+      serverEnrolled.current = s.enrolled
+      setBioAvailable(a)
+      if (mode === 'unlock') {
+        if (s.authed) {
+          finish()
+          return
+        }
+        const canBio = (s.configured && s.enrolled) || isBiometricEnrolled()
+        setStep(canBio ? 'bioUnlock' : 'pinEnter')
+      }
+    })()
     return () => {
       alive = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── UNLOCK: platform biometric first, then PIN. Never opens on failure. ──
+  // ── UNLOCK: passkey (server session) if enrolled, else local biometric; then PIN. ──
   const runBiometric = useCallback(async () => {
     setError('')
     setStatus('מזהה אותך…')
-    const r = await verifyBiometric()
-    if (r === 'ok') {
+    let ok = false
+    if (serverConfigured.current && serverEnrolled.current) {
+      ok = (await passkeyLogin()) === 'ok'
+    } else {
+      ok = (await verifyBiometric()) === 'ok'
+    }
+    if (ok) {
       finish()
       return
     }
     setStatus('')
-    // Every non-success path falls to the PIN — a protected device always has one.
     if (hasPin()) {
       setStep('pinEnter')
-      setError(r === 'cancelled' ? '' : 'לא זיהיתי. אפשר להיכנס עם הקוד.')
+      setError('לא זיהיתי. אפשר להיכנס עם הקוד.')
     } else {
-      // Should be unreachable (setup always sets a PIN). Stay locked, never open.
       setError('לא הצלחתי לזהות. נסי שוב.')
     }
   }, [finish])
@@ -83,17 +103,16 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
   useEffect(() => {
     if (step === 'bioUnlock') void runBiometric()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [step])
 
-  // After the PIN is set (setup), enroll biometrics if the platform supports it.
+  // After the PIN is set (setup): enrol a passkey (owner code) if the server is
+  // configured; else offer local biometric; else just enter.
   const afterPinSet = useCallback(() => {
-    if (bioAvailable) {
-      setError('')
-      setStatus('')
-      setStep('bioOffer')
-    } else {
-      finish()
-    }
+    setError('')
+    setStatus('')
+    if (serverConfigured.current) setStep('enroll')
+    else if (bioAvailable) setStep('bioOffer')
+    else finish()
   }, [bioAvailable, finish])
 
   return (
@@ -103,6 +122,8 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
         <div className={styles.brand} aria-hidden="true">
           Abu Ela
         </div>
+
+        {step === 'loading' && <p className={styles.status}>רגע…</p>}
 
         {step === 'bioUnlock' && (
           <BiometricUnlock
@@ -117,9 +138,11 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
           <PinPad
             title="הזיני את הקוד"
             onSubmit={async (code) => {
-              // verifyPin is guarded and returns false on any error → fail-closed.
-              const ok = await verifyPin(code)
-              if (ok) {
+              const okPin = await verifyPin(code) // guarded; false on any error → fail-closed
+              if (okPin) {
+                // Local unlock succeeded. Opportunistically obtain a server session
+                // if this device is passkey-enrolled (transparent; never blocks entry).
+                if (serverConfigured.current && serverEnrolled.current) void passkeyLogin()
                 finish()
                 return { ok: true }
               }
@@ -162,6 +185,13 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
           />
         )}
 
+        {step === 'enroll' && (
+          <EnrollStep
+            onEnrolled={finish}
+            onSkip={finish}
+          />
+        )}
+
         {step === 'bioOffer' && (
           <BiometricOffer
             status={status}
@@ -180,7 +210,6 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
                 setError('לא הצלחתי להפעיל זיהוי פנים במכשיר הזה.')
               }
             }}
-            // Skipping biometrics is safe — the PIN already protects the app.
             onSkip={finish}
           />
         )}
@@ -189,7 +218,7 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
   )
 }
 
-// ── biometric unlock view ────────────────────────────────────────────────────
+// ── biometric unlock view (passkey or local) ─────────────────────────────────
 function BiometricUnlock({
   status,
   error,
@@ -218,7 +247,56 @@ function BiometricUnlock({
   )
 }
 
-// ── biometric enroll offer (setup only; PIN already set) ─────────────────────
+// ── owner-bootstrapped passkey enrollment (setup only; PIN already set) ───────
+function EnrollStep({ onEnrolled, onSkip }: { onEnrolled: () => void; onSkip: () => void }) {
+  const [code, setCode] = useState('')
+  const [status, setStatus] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const enable = async () => {
+    if (busy || !code.trim()) return
+    setBusy(true)
+    setError('')
+    setStatus('מפעילה כניסה מאובטחת…')
+    const r = await passkeyRegister(code.trim())
+    setStatus('')
+    setBusy(false)
+    if (r === 'ok') return onEnrolled()
+    if (r === 'denied') setError('קוד הפעלה לא נכון')
+    else if (r === 'cancelled') setError('')
+    else if (r === 'unavailable') setError('המכשיר לא תומך בכניסה מאובטחת')
+    else if (r === 'not-configured') setError('כניסה מאובטחת עדיין לא מוגדרת בשרת')
+    else setError('לא הצליח, נסו שוב')
+  }
+
+  return (
+    <>
+      <FaceGlyph />
+      <p className={styles.status}>הפעלת כניסה מאובטחת</p>
+      <p className={styles.sub}>לאו מזין קוד הפעלה חד-פעמי במכשיר הזה</p>
+      <input
+        className={styles.codeInput}
+        type="password"
+        inputMode="text"
+        autoComplete="off"
+        placeholder="קוד הפעלה"
+        value={code}
+        onChange={(e) => { setCode(e.target.value); setError('') }}
+        dir="ltr"
+      />
+      {error && <p className={styles.error}>{error}</p>}
+      <button className={styles.primary} onClick={() => void enable()} disabled={busy}>
+        הפעלה עם זיהוי פנים
+      </button>
+      <button className={styles.ghost} onClick={onSkip}>
+        להמשיך עם הקוד בלבד
+      </button>
+    </>
+  )
+}
+
+// ── local biometric enroll offer (fallback when the server has no auth) ───────
 function BiometricOffer({
   status,
   error,
@@ -277,7 +355,6 @@ function PinPad({
           }
         })
         .catch(() => {
-          // Any handler error is a failure — clear + stay, never proceed.
           setDigits('')
           setError('משהו השתבש, נסי שוב')
         })

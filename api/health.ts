@@ -17,6 +17,7 @@
  */
 
 import { REALTIME_MODEL } from '../src/services/realtimeModel'
+import { authEnforced } from './_session'
 
 export const config = { runtime: 'edge' }
 
@@ -26,6 +27,9 @@ interface HealthResponse {
   buildLabel: string
   serverTime: string
   realtimeModel: string
+  /** Whether the billable endpoints enforce a server-verified session (LOUD signal:
+   *  false ⇒ AUTH_SIGNING_SECRET not provisioned ⇒ NO_LOGIN_PWA_AUTH_POLICY not closed). */
+  authEnforced: boolean
   env: {
     OPENAI_API_KEY: 'present' | 'missing'
   }
@@ -40,8 +44,8 @@ interface HealthResponse {
 // with src/version.ts at deploy time. The client diagnostic panel
 // compares this to its bundled version to detect a stale PWA on the
 // user's phone.
-const BUILD_VERSION = '0.292.1-entry'
-const BUILD_LABEL = 'AbuBank 0.292.1 — PREMIUM ENTRY EXPERIENCE (hardened; supersedes 0.291.0-earonly). Auth is now FAIL-CLOSED: mandatory first-run PIN + optional Face ID/Touch ID enroll (no "Later" bypass); a wrong PIN or any auth-subsystem error stays LOCKED — no silent open. Intro upgraded to a purpose-built calligraphic "Abu Ela" signature drawn stroke-by-stroke (SVG stroke-dashoffset) with a refined ink/airy-bed/completion-signature sound. Home/shell polished into the black-luxury system: warm graphite base, champagne/ivory type, unified tiles (feature colour kept only in the icons). Entry is an isolated top-level gate; production build has NO gate bypass. Device-check pending: real Face ID sheet + audible chime are PHYSICAL_DEVICE truths. Priors (deployed 0.291): TRUE IDEMPOTENCY + ABUSE THROTTLING. Do NOT merge (3 old keys await owner revocation).'
+const BUILD_VERSION = '0.293.0-auth'
+const BUILD_LABEL = 'AbuBank 0.293.0 — SERVER-VERIFIED AUTH (supersedes 0.292.1-entry). Closes the no-login exposure: the billable Abu APIs (chat/tts/stt/online/news/realtime-token) now REQUIRE a server-verified session — an unauthenticated caller gets 401 with ZERO provider call, so the internet can no longer spend the owner keys. Real WebAuthn/passkey: server-generated challenge → navigator.credentials → SimpleWebAuthn verifies challenge/origin/RP/signature/UV → HttpOnly session cookie. Enrollment is owner-bootstrapped (ENROLLMENT_SECRET; no self-enrol). Stateless HMAC-signed session + device-cert cookies (no shared KV). PIN stays the LOCAL fallback (PIN-only unlock grants no server session — server stays protected). Entry UX unchanged: intro → Face ID → app. RESIDUAL: private family data still bundled in public client assets (materially larger migration — reported, not closed). Device-check pending: real Face ID passkey ceremony is PHYSICAL_DEVICE. Do NOT merge (3 old keys await owner revocation).'
 
 export default function handler(_req: Request): Response {
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
@@ -52,6 +56,7 @@ export default function handler(_req: Request): Response {
     buildLabel: BUILD_LABEL,
     serverTime: new Date().toISOString(),
     realtimeModel: REALTIME_MODEL,
+    authEnforced: authEnforced(),
     env: {
       OPENAI_API_KEY: openaiPresent ? 'present' : 'missing',
     },

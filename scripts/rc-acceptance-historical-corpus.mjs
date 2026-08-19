@@ -17,6 +17,7 @@
 import { chromium } from 'playwright'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { playwrightSessionCookie } from './lib/acceptance-session.mjs'
 
 const RC = (process.argv[2] || '').replace(/\/$/, '')
 if (!RC) { console.error('usage: node scripts/rc-acceptance-historical-corpus.mjs <rcUrl>'); process.exit(2) }
@@ -47,10 +48,27 @@ const TEXT_CONVOS = [
   ] },
 ]
 
+// The app now ships a mandatory entry lock. Authenticate like a real user (PIN;
+// headless has no platform biometric) to reach the screen behind it.
+async function ensureUnlocked(page) {
+  const gate = page.getByTestId('auth-gate')
+  try { await gate.waitFor({ state: 'visible', timeout: 12_000 }) } catch { return }
+  const tap = async (seq) => { for (const d of seq) await page.getByRole('button', { name: d, exact: true }).click() }
+  await tap(['1', '2', '3', '4'])
+  await page.waitForTimeout(250)
+  await tap(['1', '2', '3', '4'])
+  // Skip any enroll / biometric-offer step (label variants both contain "להמשיך עם הקוד").
+  const skip = page.getByRole('button', { name: /להמשיך עם הקוד/ })
+  try { await skip.waitFor({ state: 'visible', timeout: 2000 }); await skip.click() } catch { /* none */ }
+  await gate.waitFor({ state: 'detached', timeout: 8_000 }).catch(() => {})
+}
+
 async function enter(page) {
   await page.goto(`${RC}/?legacy=1`, { waitUntil: 'networkidle', timeout: 45_000 })
+  await ensureUnlocked(page)
   await page.evaluate(() => { try { localStorage.clear() } catch {} })
   await page.goto(`${RC}/?legacy=1`, { waitUntil: 'networkidle', timeout: 45_000 })
+  await ensureUnlocked(page)
   await page.locator('textarea[placeholder]').first().waitFor({ state: 'visible', timeout: 20_000 })
 }
 async function send(page, text) {
@@ -112,7 +130,11 @@ async function main() {
   console.log(`=== HISTORICAL CORPUS REPLAY · ${RC} ===\n`)
   const textResults = []
   const browser = await chromium.launch()
-  const page = await (await browser.newContext({ viewport: { width: 412, height: 870 }, locale: 'he-IL' })).newPage()
+  const ctx = await browser.newContext({ viewport: { width: 412, height: 870 }, locale: 'he-IL' })
+  // Server session for the now-authenticated billable endpoints (/api/abuai-*). No-op without the secret.
+  const sessionCookie = playwrightSessionCookie(RC)
+  if (sessionCookie) await ctx.addCookies([sessionCookie])
+  const page = await ctx.newPage()
   try {
     for (const convo of TEXT_CONVOS) {
       await enter(page)

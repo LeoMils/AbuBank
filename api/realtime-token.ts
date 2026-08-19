@@ -34,8 +34,13 @@ function jsonError(error: string, status = 200, detail?: string): Response {
   })
 }
 
+import { guardBillable } from './_session'
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return jsonError('BAD_REQUEST', 405)
+  // Server-verifiable auth (when configured): this endpoint MINTS a billable OpenAI Realtime session,
+  // so it must NEVER do so for an unauthenticated caller. 401 before any provider call / token mint.
+  { const denied = await guardBillable(req); if (denied) return denied }
 
   let payload: { instructions?: string; voice?: string; turnDetection?: unknown }
   try {

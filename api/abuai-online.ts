@@ -23,6 +23,7 @@ import { onlineGeneralSearchEnabled } from '../src/services/online/flags'
 import { isTemporalQuery, evaluateFreshness } from '../src/engineering-os/temporalFreshness'
 import { classifyLiveDomain, resolveLiveFact, freshestPublishedDate, RESULT_MAX_AGE_DAYS } from '../src/services/online/liveFacts'
 import { rateLimited, circuitTripped, clientKey } from './_rateLimit'
+import { guardBillable } from './_session'
 
 export const config = { runtime: 'edge' }
 
@@ -269,6 +270,8 @@ export default async function handler(req: Request): Promise<Response> {
     diag.outcome = body.ok ? 'ok' : body.errorCode
     return jsonResponse({ ...body, diag: { ...diag } }, status)
   }
+  // Server-verifiable auth (when configured): the billable POST path requires a session — 401 first.
+  if (req.method === 'POST') { const denied = await guardBillable(req); if (denied) return denied }
   // A7/B rate + cost protection (online fans out to a paid search provider + a synthesis model).
   // Envelope: a current-info question is occasional → 20/min/IP generous, abusive above. Circuit:
   // 400 online calls/min/instance.

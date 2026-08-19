@@ -36,8 +36,8 @@ const VISIBLE_UI_FILES = [
 
 describe('APP_VERSION shape', () => {
   it('exposes version, buildLabel, buildDate, branchHint, commitHint', () => {
-    expect(APP_VERSION.version).toBe('0.292.1-entry')
-    expect(APP_VERSION.buildLabel).toContain('PREMIUM ENTRY EXPERIENCE')
+    expect(APP_VERSION.version).toBe('0.293.0-auth')
+    expect(APP_VERSION.buildLabel).toContain('SERVER-VERIFIED AUTH')
     expect(typeof APP_VERSION.buildDate).toBe('string')
     expect(APP_VERSION.buildDate.length).toBeGreaterThan(0)
     expect(typeof APP_VERSION.branchHint).toBe('string')

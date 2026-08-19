@@ -16,8 +16,10 @@
  */
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { installNodeFetchAuth } from './lib/acceptance-session.mjs'
 
 const RC = (process.argv[2] || '').replace(/\/$/, '')
+installNodeFetchAuth() // CI session header for the now-authenticated billable endpoints
 if (!RC) { console.error('usage: node scripts/rc-acceptance-replacement-paths.mjs <rcUrl>'); process.exit(2) }
 
 const steps = []

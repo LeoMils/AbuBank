@@ -21,8 +21,10 @@ import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { verifyDraft, buildComposePrompt, localCompose } from '../src/screens/AbuAI/whatsappCompose.ts'
 import { buildWhatsAppPersonUrl } from '../src/screens/AbuWhatsApp/familyQuickFaces.tsx'
+import { installNodeFetchAuth } from './lib/acceptance-session.mjs'
 
 const RC = (process.argv[2] || '').replace(/\/$/, '')
+installNodeFetchAuth() // CI session header for the now-authenticated billable endpoints
 if (!RC) { console.error('usage: npx tsx scripts/rc-acceptance-whatsapp.mjs <rcUrl>'); process.exit(2) }
 
 const steps = []

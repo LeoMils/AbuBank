@@ -12,8 +12,8 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.292.1-entry',
-  buildLabel: 'AbuBank 0.292.1 — PREMIUM ENTRY EXPERIENCE (hardened; supersedes 0.291.0-earonly). Auth is now FAIL-CLOSED: mandatory first-run PIN + optional Face ID/Touch ID enroll (no "Later" bypass); a wrong PIN or any auth-subsystem error stays LOCKED — no silent open. Intro upgraded to a purpose-built calligraphic "Abu Ela" signature drawn stroke-by-stroke (SVG stroke-dashoffset) with a refined ink/airy-bed/completion-signature sound. Home/shell polished into the black-luxury system: warm graphite base, champagne/ivory type, unified tiles (feature colour kept only in the icons). Entry is an isolated top-level gate; production build has NO gate bypass. Device-check pending: real Face ID sheet + audible chime are PHYSICAL_DEVICE truths. Priors (deployed 0.291): TRUE IDEMPOTENCY + ABUSE THROTTLING. Do NOT merge (3 old keys await owner revocation).',
+  version:    '0.293.0-auth',
+  buildLabel: 'AbuBank 0.293.0 — SERVER-VERIFIED AUTH (supersedes 0.292.1-entry). Closes the no-login exposure: the billable Abu APIs (chat/tts/stt/online/news/realtime-token) now REQUIRE a server-verified session — an unauthenticated caller gets 401 with ZERO provider call, so the internet can no longer spend the owner keys. Real WebAuthn/passkey: server-generated challenge → navigator.credentials → SimpleWebAuthn verifies challenge/origin/RP/signature/UV → HttpOnly session cookie. Enrollment is owner-bootstrapped (ENROLLMENT_SECRET; no self-enrol). Stateless HMAC-signed session + device-cert cookies (no shared KV). PIN stays the LOCAL fallback (PIN-only unlock grants no server session — server stays protected). Entry UX unchanged: intro → Face ID → app. RESIDUAL: private family data still bundled in public client assets (materially larger migration — reported, not closed). Device-check pending: real Face ID passkey ceremony is PHYSICAL_DEVICE. Do NOT merge (3 old keys await owner revocation).',
   buildDate:  '2026-08-19',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time

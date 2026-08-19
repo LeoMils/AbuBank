@@ -65,6 +65,22 @@
   font-weight: 500;
   color: rgba(246, 239, 224, 0.94);
 }
+.codeInput {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 14px;
+  border: 1px solid rgba(232, 220, 192, 0.22);
+  background: rgba(246, 239, 224, 0.05);
+  color: rgba(246, 239, 224, 0.96);
+  font-size: 18px;
+  letter-spacing: 2px;
+  text-align: center;
+  padding: 0 14px;
+  outline: none;
+}
+.codeInput:focus {
+  border-color: rgba(226, 205, 159, 0.5);
+}
 .sub {
   margin: -6px 0 0;
   font-size: 15px;

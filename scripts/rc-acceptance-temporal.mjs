@@ -23,8 +23,10 @@
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { evaluateFreshness, isTemporalQuery } from '../src/engineering-os/temporalFreshness.ts'
+import { installNodeFetchAuth } from './lib/acceptance-session.mjs'
 
 const RC = (process.argv[2] || '').replace(/\/$/, '')
+installNodeFetchAuth() // CI session header for the now-authenticated billable endpoints
 if (!RC) { console.error('usage: npx tsx scripts/rc-acceptance-temporal.mjs <rcUrl>'); process.exit(2) }
 const NOW = new Date().toISOString()
 

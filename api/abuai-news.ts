@@ -71,8 +71,12 @@ function jsonResponse(body: NewsResult, status = 200): Response {
   })
 }
 
+import { guardBillable } from './_session'
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return jsonResponse({ ok: false, errorCode: 'BAD_REQUEST', userMessage: userMessageFor('BAD_REQUEST', 'he') }, 405)
+  // Server-verifiable auth (when configured): an unauthenticated caller gets 401 BEFORE any provider call.
+  { const denied = await guardBillable(req); if (denied) return denied }
 
   let payload: NewsPayload
   try { payload = (await req.json()) as NewsPayload }
