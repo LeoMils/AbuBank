@@ -19,6 +19,7 @@
  */
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import './lib/hydrate-family-node.ts' // family_data.json is no longer bundled — hydrate for this node script
 import { verifyDraft, buildComposePrompt, localCompose } from '../src/screens/AbuAI/whatsappCompose.ts'
 import { buildWhatsAppPersonUrl } from '../src/screens/AbuWhatsApp/familyQuickFaces.tsx'
 import { installNodeFetchAuth } from './lib/acceptance-session.mjs'

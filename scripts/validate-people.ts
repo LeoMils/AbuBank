@@ -3,6 +3,7 @@
  * A broken family file must never reach a build: this runs in prebuild and exits 1
  * on any error. It also locks the three named kinship relationships as a regression.
  */
+import './lib/hydrate-family-node' // hydrate familyData for this build-time script (not bundled)
 import { loadPeople, resolvePersonId, normalizeName } from '../src/services/people/peopleModel'
 import { relationshipOf, type KinKind } from '../src/services/people/kinship'
 
