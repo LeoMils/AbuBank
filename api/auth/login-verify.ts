@@ -14,6 +14,7 @@ import {
   COOKIE, TTL, authConfigured, bytesFromB64url, clearCookie, deriveRp,
   jsonResponse, parseCookies, serializeCookie, signToken, unauthorized, verifyToken,
 } from '../_session'
+import { consumeNonce, recordCounter, serverCounterBaseline } from '../_replayStore'
 
 export const config = { runtime: 'edge' }
 
@@ -37,10 +38,15 @@ export default async function handler(req: Request): Promise<Response> {
 
   const chalClaims = await verifyToken('login_challenge', parseCookies(req)[COOKIE.loginChallenge])
   const expectedChallenge = typeof chalClaims?.challenge === 'string' ? chalClaims.challenge : ''
-  if (!expectedChallenge) return jsonResponse({ ok: false, error: 'CHALLENGE_MISSING' }, 400)
+  const nonce = typeof chalClaims?.nonce === 'string' ? chalClaims.nonce : ''
+  if (!expectedChallenge || !nonce) return jsonResponse({ ok: false, error: 'CHALLENGE_MISSING' }, 400)
 
   const { rpID, origin } = deriveRp(req)
-  const counter = typeof device?.counter === 'number' ? device.counter : 0
+  // Counter baseline is the SERVER's stored max (not the client-held cert value), so rolling
+  // back to an older device cert cannot lower it. signCount===0 authenticators are handled by
+  // single-use challenge consumption below (the counter is advisory for platform passkeys).
+  const certCounter = typeof device?.counter === 'number' ? device.counter : 0
+  const baseline = Math.max(certCounter, await serverCounterBaseline(credId))
   const transports = Array.isArray(device?.transports) ? (device.transports as AuthenticatorTransportFuture[]) : undefined
 
   let verification
@@ -51,7 +57,7 @@ export default async function handler(req: Request): Promise<Response> {
       expectedOrigin: origin,
       expectedRPID: rpID,
       requireUserVerification: true,
-      credential: { id: credId, publicKey: bytesFromB64url(publicKeyB64), counter, ...(transports ? { transports } : {}) },
+      credential: { id: credId, publicKey: bytesFromB64url(publicKeyB64), counter: baseline, ...(transports ? { transports } : {}) },
     })
   } catch {
     return jsonResponse({ ok: false, error: 'ASSERTION_INVALID' }, 401, [clearCookie(COOKIE.loginChallenge)])
@@ -59,6 +65,13 @@ export default async function handler(req: Request): Promise<Response> {
   if (!verification.verified) {
     return jsonResponse({ ok: false, error: 'ASSERTION_INVALID' }, 401, [clearCookie(COOKIE.loginChallenge)])
   }
+
+  // SINGLE-USE: consume the challenge nonce AFTER a valid assertion. A replay of the exact
+  // same assertion + challenge cookie finds the nonce already consumed → DENIED.
+  if (!(await consumeNonce(nonce, TTL.challengeMs))) {
+    return jsonResponse({ ok: false, error: 'ASSERTION_REPLAY' }, 401, [clearCookie(COOKIE.loginChallenge)])
+  }
+  await recordCounter(credId, verification.authenticationInfo.newCounter)
 
   const sessionToken = await signToken('session', { deviceId }, TTL.sessionMs)
   if (!sessionToken) return jsonResponse({ ok: false, error: 'AUTH_NOT_CONFIGURED' }, 503)

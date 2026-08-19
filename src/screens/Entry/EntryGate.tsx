@@ -47,6 +47,9 @@ export function EntryGate({ children }: { children: ReactNode }) {
 
   const openApp = () => {
     markSessionWarm()
+    // A fresh unlock may have just established the session — (re)hydrate the private
+    // family knowledge from /api/family now (best-effort; non-blocking).
+    void import('../../services/familyHydration').then((m) => m.hydrateFamilyFromServer()).catch(() => {})
     setPhase('open')
   }
 

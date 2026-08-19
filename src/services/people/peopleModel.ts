@@ -18,7 +18,7 @@
  * Gender is set only where the data encodes it (relationship / explicit field);
  * otherwise 'unknown' — never guessed.
  */
-import familyData from '../../../knowledge/family_data.json'
+import { getFamilyRaw } from '../familyData'
 
 export type Gender = 'male' | 'female' | 'unknown'
 
@@ -140,8 +140,8 @@ function collectRaw(data: { family: Record<string, unknown> }): RawPersonEntry[]
 let CACHE: { people: Person[]; byId: Map<string, Person>; byName: Map<string, string> } | null = null
 
 /** Build (cached) the canonical people model from the source of truth. */
-export function loadPeople(data: { family: Record<string, unknown> } = familyData as { family: Record<string, unknown> }): Person[] {
-  if (data === (familyData as unknown) && CACHE) return CACHE.people
+export function loadPeople(data: { family: Record<string, unknown> } = getFamilyRaw() as { family: Record<string, unknown> }): Person[] {
+  if (data === (getFamilyRaw() as unknown) && CACHE) return CACHE.people
   const entries = collectRaw(data)
   const hebToId = new Map<string, string>()
   for (const { raw } of entries) {
@@ -207,7 +207,7 @@ export function loadPeople(data: { family: Record<string, unknown> } = familyDat
     for (const parent of [matriarch, deceased]) { link(parent, 'children', kid); link(kid, 'parents', parent) }
   }
 
-  if (data === (familyData as unknown)) CACHE = { people, byId, byName: buildNameIndex(people) }
+  if (data === (getFamilyRaw() as unknown)) CACHE = { people, byId, byName: buildNameIndex(people) }
   return people
 }
 

@@ -31,9 +31,12 @@ function listApiTs(): string[] {
     .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts')) // exclude test files (not endpoints)
     .map((f) => path.join('api', f))
 }
-// `_`-prefixed api files are shared UTILITIES (e.g. _rateLimit.ts), not provider endpoints — they need
-// not read OPENAI_API_KEY. The client-surface (import.meta.env) ban still applies to them.
-const isEndpoint = (rel: string): boolean => !path.basename(rel).startsWith('_')
+// `_`-prefixed api files are shared UTILITIES (e.g. _rateLimit.ts, _session.ts), not provider endpoints;
+// and some endpoints are non-provider by design (family.ts serves the authenticated family dataset — no
+// OpenAI call). None of these need read OPENAI_API_KEY. The client-surface (import.meta.env) ban still applies.
+const NON_PROVIDER_ENDPOINTS = new Set(['family.ts'])
+const isEndpoint = (rel: string): boolean =>
+  !path.basename(rel).startsWith('_') && !NON_PROVIDER_ENDPOINTS.has(path.basename(rel))
 
 describe('No client-side OpenAI key reads anywhere in AbuAI source', () => {
   for (const rel of listAbuAITs()) {

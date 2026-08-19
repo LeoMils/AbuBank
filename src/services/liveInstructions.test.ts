@@ -27,7 +27,7 @@ import {
   TRANSCRIPTION_PROMPT_MAX,
   TOOLLESS_CAPABILITY_GUARD,
   ABU_PERSONA,
-  ABU_FAMILY,
+  getAbuFamily,
   ABU_KNOWLEDGE,
 } from './liveInstructions'
 import { buildSessionUpdate, sessionPayloadSize } from './liveSession'
@@ -101,7 +101,7 @@ describe('buildLiveInstructions', () => {
     expect(out).not.toContain('החברים של מרתה')       // the friends list is GONE from the prompt
     expect(out).not.toContain('סוזי רז')              // no enumerated person is inlined any more
     expect(out).not.toMatch(/you KNOW them/i)          // the "answer from the prompt" framing is gone
-    expect(out).not.toContain(ABU_FAMILY)              // the legacy abu-family.md prose is not embedded either
+    expect(out).not.toContain(getAbuFamily())          // the legacy abu-family.md prose is not embedded either
     // The family section now FORCES the tool and demands a one-sentence, no-derivation answer.
     expect(out).toContain('# Family and People')
     expect(out).toContain('people_lookup')

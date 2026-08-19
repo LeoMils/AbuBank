@@ -8,7 +8,13 @@
  */
 import { generateAuthenticationOptions } from '@simplewebauthn/server'
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/server'
-import { COOKIE, TTL, authConfigured, deriveRp, jsonResponse, parseCookies, serializeCookie, signToken, unauthorized, verifyToken } from '../_session'
+import { COOKIE, TTL, authConfigured, b64urlFromBytes, deriveRp, jsonResponse, parseCookies, serializeCookie, signToken, unauthorized, verifyToken } from '../_session'
+
+function newNonce(): string {
+  const a = new Uint8Array(16)
+  crypto.getRandomValues(a)
+  return b64urlFromBytes(a)
+}
 
 export const config = { runtime: 'edge' }
 
@@ -31,7 +37,8 @@ export default async function handler(req: Request): Promise<Response> {
 
   const chalCookie = serializeCookie(
     COOKIE.loginChallenge,
-    (await signToken('login_challenge', { challenge: options.challenge }, TTL.challengeMs)) ?? '',
+    // The nonce makes the challenge SINGLE-USE (consumed server-side on -verify).
+    (await signToken('login_challenge', { challenge: options.challenge, nonce: newNonce() }, TTL.challengeMs)) ?? '',
     TTL.challengeMs,
   )
   return jsonResponse({ ok: true, options }, 200, [chalCookie])

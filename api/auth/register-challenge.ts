@@ -8,7 +8,13 @@
  * signed HttpOnly cookie (stateless replay protection; verified on -verify).
  */
 import { generateRegistrationOptions } from '@simplewebauthn/server'
-import { COOKIE, TTL, authConfigured, deriveRp, enrollmentSecretOk, jsonResponse, serializeCookie, signToken } from '../_session'
+import { COOKIE, TTL, authConfigured, b64urlFromBytes, deriveRp, enrollmentSecretOk, jsonResponse, serializeCookie, signToken } from '../_session'
+
+function newNonce(): string {
+  const a = new Uint8Array(16)
+  crypto.getRandomValues(a)
+  return b64urlFromBytes(a)
+}
 
 export const config = { runtime: 'edge' }
 
@@ -42,7 +48,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   const chalCookie = serializeCookie(
     COOKIE.regChallenge,
-    (await signToken('reg_challenge', { challenge: options.challenge }, TTL.challengeMs)) ?? '',
+    (await signToken('reg_challenge', { challenge: options.challenge, nonce: newNonce() }, TTL.challengeMs)) ?? '',
     TTL.challengeMs,
   )
   return jsonResponse({ ok: true, options }, 200, [chalCookie])

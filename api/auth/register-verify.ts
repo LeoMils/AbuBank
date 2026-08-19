@@ -15,6 +15,7 @@ import {
   COOKIE, TTL, authConfigured, b64urlFromBytes, clearCookie, deriveRp, jsonResponse,
   parseCookies, serializeCookie, signToken, verifyToken,
 } from '../_session'
+import { consumeNonce } from '../_replayStore'
 
 export const config = { runtime: 'edge' }
 
@@ -32,7 +33,8 @@ export default async function handler(req: Request): Promise<Response> {
 
   const chalClaims = await verifyToken('reg_challenge', parseCookies(req)[COOKIE.regChallenge])
   const expectedChallenge = typeof chalClaims?.challenge === 'string' ? chalClaims.challenge : ''
-  if (!expectedChallenge) return jsonResponse({ ok: false, error: 'CHALLENGE_MISSING' }, 400)
+  const nonce = typeof chalClaims?.nonce === 'string' ? chalClaims.nonce : ''
+  if (!expectedChallenge || !nonce) return jsonResponse({ ok: false, error: 'CHALLENGE_MISSING' }, 400)
 
   const { rpID, origin } = deriveRp(req)
   let verification
@@ -49,6 +51,10 @@ export default async function handler(req: Request): Promise<Response> {
   }
   if (!verification.verified || !verification.registrationInfo) {
     return jsonResponse({ ok: false, error: 'REGISTRATION_INVALID' }, 401, [clearCookie(COOKIE.regChallenge)])
+  }
+  // SINGLE-USE: a replayed registration (same attestation + challenge) is denied.
+  if (!(await consumeNonce(nonce, TTL.challengeMs))) {
+    return jsonResponse({ ok: false, error: 'REGISTRATION_REPLAY' }, 401, [clearCookie(COOKIE.regChallenge)])
   }
 
   const cred = verification.registrationInfo.credential

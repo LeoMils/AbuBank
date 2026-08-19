@@ -1,69 +1,42 @@
-# Private family data in the public bundle — release-blocking residual
+# Private family data — bundle exposure status
 
-**Status:** OPEN (materially larger migration than the auth closure; reported here, not
-closed in the 0.293.0-auth security pass). This is the remaining reason
-`NO_LOGIN_PWA_AUTH_POLICY` is not declared fully CLOSED — unless the owner explicitly
-approves the exposure below as product policy.
+## 1) knowledge/family_data.json — MIGRATED (0.294.0-privauth)
+The ~70-person structured family dataset is **no longer bundled** into the public client.
 
-## What is exposed
-`knowledge/family_data.json` (~30 KB) is imported **synchronously** by runtime modules and
-is therefore compiled into the **public client JS bundle**. Anyone who loads the app URL can
-download and read it — the client entry lock does not (and cannot) protect it, because the
-bundle is already on the wire before any gate renders.
+- No client-runtime module statically imports it (proven by `familyBundlePrivacy.test.ts`).
+- Served only from the **authenticated** `/api/family` (`guardBillable`: 401 unauthenticated,
+  503 if production-misconfigured), with `Cache-Control: private, no-store`; the service worker
+  never caches it (`runtimeCaching: []`). Proven by `api/familyEndpoint.test.ts`.
+- The client hydrates it at boot from `/api/family` + a **device-local IndexedDB** copy
+  (`familyHydration.ts`) for offline — never a public/cacheable asset.
+- Empirical proof: `node scripts/scan-bundle-privacy.mjs dist` →
+  `FAMILY_DATA_JSON_DATASET: ABSENT (clean)` (markers pii_excluded/resolved_notes/open_questions absent).
+- All family reasoning / aliases / relationships / birthdays / calendar / whatsapp behaviour is
+  preserved (full suite green; tests hydrate via the `src/test/hydrateFamily.ts` setup file).
 
-Contents (≈70 real people):
+Refactored consumers: `familyLoader`, `liveInstructions` (+ `getAbuFamily()`), `liveContacts`,
+`people/peopleModel`, `qa/scopeInventory`, `AbuCalendar/familyEvents` → all read `getFamilyRaw()`.
 
-| Class | Fields | Classification |
-|---|---|---|
-| Identities & relationships | `canonical_name`, `hebrew_name`, `aliases`, `relationship(_hebrew)`, `spouse`/`partner`/`ex_spouse`, `father`/`children` links | **PRIVATE** |
-| Dates | `birthday`, `birth_year`, deceased `date_of_passing` / `memorial_date` | **PRIVATE** (birthdays of living people) / **SENSITIVE** (memorial) |
-| Coarse location | `location` = **city only** (Kfar Saba); `origin` | PRIVATE (low sensitivity) |
-| Other | `occupation`, free-text `notes`, `pronunciation`, `gender`, `pets` | PRIVATE; `notes` **potentially SENSITIVE** |
+## 2) familyContacts.private.ts (WhatsApp contacts seed) — RESIDUAL (separate source)
+Discovered during the audit: `src/screens/AbuWhatsApp/familyContacts.private.ts` (the contacts-board
+scaffold, ~36 people with names + photo ids) is a **different** private-data source that is still
+bundled. `scan-bundle-privacy.mjs` reports it (`PUBLIC_PRIVATE_DATA_EXPOSURES: 1`).
 
-Already **excluded** by design (`pii_excluded` in the file): exact street address / floor /
-apartment / parking, gate-opening method, Martita's phone number, ID number, and specific
-health details. So the hardest PII is NOT present; what remains is identifiable
-names/relationships/birthdays of living family + friends.
+**Why not in this pass (materially larger):** `FAMILY_QUICK_FACES` is imported by 7 client modules
+(`familyQuickFaces`, `familyContactsStorage`, `ContactManagement`, `FamilyContactsSetup`, `index`,
+`VoiceCompose`, `whatsappAdapter`) with ~15 **module-top** usages (`SEED_PERSON_FACES`,
+`FAMILY_GROUP_FACE`, `DEFAULT_SEED_CONTACTS`) and drives **offline-first first-run seeding** of the
+contacts board. Moving it behind auth is a separate refactor with real regression surface on the
+WhatsApp contacts feature; rushing it alongside the family_data.json + auth-replay work would risk
+that feature and a red recert.
 
-## Risk
-- **Privacy**: a stranger with the URL can enumerate Martita's family graph (names, who is
-  married to whom, birthdays, city, occupations, free-text notes). Identifiable personal data
-  about living individuals, published without access control.
-- **Not a billing/keys risk** — that is fully closed by 0.293.0 server auth. This residual is
-  purely a *data-confidentiality* exposure.
+**Migration plan (next pass):**
+1. Serve the seed from `/api/family` (extend the payload) behind the same session.
+2. Route the 7 importers through a hydrated `getQuickFaces()` accessor; convert the module-top
+   consts (`FAMILY_GROUP_FACE`, `SEED_PERSON_FACES`, `DEFAULT_SEED_CONTACTS`) to lazy getters.
+3. First-run seeding happens **after auth** (post-hydration); persist to IndexedDB for offline.
+4. Extend `scan-bundle-privacy.mjs` to require the contacts names absent too; add a bundle test.
+5. Re-run WhatsApp acceptance + the contacts-storage suite; fresh RC + Monster recert.
 
-## Why it was not closed in this pass (materially larger)
-The data is consumed by **many** runtime modules, several importing the JSON **directly**
-(not via a single loader): `familyLoader.ts`, `screens/AbuAI/{familyGraph,familyReasoning,
-service,tools,router,responseShaper,whatsappCompose}`, `screens/AbuCalendar/{familyEvents,
-familyResolve,service}`, `screens/AbuWhatsApp/{service,familyQuickFaces}`,
-`services/{liveContacts,liveInstructions,people/peopleModel,qa/scopeInventory}`. Family
-reasoning, calendar family events, contacts and live-voice instructions all read it
-**synchronously and offline**. Converting that to an authenticated async fetch is a broad,
-regression-prone change (family reasoning + calendar + contacts + the 13k-test corpus that
-encodes family behavior), and would need offline caching (PWA) after first authed fetch. That
-is a distinct, larger workstream than the billable-endpoint auth this pass delivered.
-
-## Migration plan (minimum safe)
-1. **Serve `/api/family`** behind the same server session (`guardBillable` / `requireSession`)
-   — returns `family_data.json` only to an authenticated device. 401 otherwise.
-2. **Stop bundling the JSON**: replace the static `import familyRaw from '…/family_data.json'`
-   sites with a single `familyLoader` that hydrates from `/api/family` at boot (after the
-   passkey session is obtained) into a module cache the existing **synchronous** `loadFamilyData()`
-   API reads — so downstream modules stay unchanged. Persist the fetched copy in IndexedDB for
-   offline/PWA use (encrypted-at-rest optional; device is already locked).
-3. **Tests**: the 13k-test corpus imports the JSON directly for fixtures — keep a *test-only*
-   fixture import (dev/test), gate the *bundle* import out of production via the loader. Add a
-   bundle-scan test asserting no family name string appears in `dist/**` client assets.
-4. **Evidence**: redeploy → `curl /api/family` unauthenticated → 401; grep the built bundle for
-   a known family name → absent; family reasoning / calendar / whatsapp acceptance still pass.
-
-Estimated blast radius: ~15 runtime modules + the loader + a new endpoint + offline cache +
-new bundle-scan test. Should be its own scoped pass with a fresh RC + Monster recert.
-
-## The fast alternative (owner decision)
-If the owner judges that **names + relationships + birthdays + city** (PII already stripped)
-are acceptable to ship in the client for this private, install-only family app, record that as
-explicit **product policy** and `NO_LOGIN_PWA_AUTH_POLICY` can be marked CLOSED on the strength
-of the server-auth billing/data-API protection alone. Do not mark it CLOSED by default while
-this data is intentionally public without that approval.
+Until then: `PUBLIC_PRIVATE_DATA_EXPOSURES = 1` (the contacts seed). The owner-approved direction is
+**migrate** (not public-by-policy).

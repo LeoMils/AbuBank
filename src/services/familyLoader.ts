@@ -1,4 +1,4 @@
-import familyRaw from '../../knowledge/family_data.json'
+import { getFamilyRaw, isFamilyHydrated } from './familyData'
 
 export interface FamilyMember {
   canonicalName: string
@@ -52,7 +52,7 @@ function toFamilyMember(m: FamilyJsonMember): FamilyMember {
 export function loadFamilyData(): FamilyMember[] {
   if (_cache) return _cache
 
-  const f = familyRaw.family
+  const f = getFamilyRaw().family as Record<string, any> // hydrated from /api/family; empty shape until then
   const members: FamilyMember[] = []
 
   // Matriarch
@@ -115,7 +115,8 @@ export function loadFamilyData(): FamilyMember[] {
     members.push(toFamilyMember(fr as FamilyJsonMember))
   }
 
-  _cache = members
+  // Only cache once the real dataset is hydrated, so a pre-hydration call (empty) never sticks.
+  if (isFamilyHydrated()) _cache = members
   return members
 }
 

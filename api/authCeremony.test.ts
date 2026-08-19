@@ -13,6 +13,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import * as swa from '@simplewebauthn/server'
 import { signToken, COOKIE, TTL } from './_session'
+import { _resetReplayStore } from './_replayStore'
 
 vi.mock('@simplewebauthn/server', () => ({
   generateRegistrationOptions: vi.fn(async () => ({ challenge: 'srv-reg-chal', rp: {}, user: {}, pubKeyCredParams: [] })),
@@ -37,6 +38,8 @@ const ORIGIN = 'https://abu-ela.example.com'
 beforeEach(() => {
   process.env.AUTH_SIGNING_SECRET = SECRET
   process.env.ENROLLMENT_SECRET = ENROLL
+  delete process.env.VERCEL_ENV
+  _resetReplayStore()
   vi.clearAllMocks()
 })
 
@@ -74,7 +77,7 @@ describe('register-verify — challenge required, verification enforced', () => 
     expect(res.status).toBe(400)
   })
   it('verifies against the SERVER challenge/origin/RP, then issues device + session', async () => {
-    const chal = (await signToken('reg_challenge', { challenge: 'srv-reg-chal' }, TTL.challengeMs))!
+    const chal = (await signToken('reg_challenge', { challenge: 'srv-reg-chal', nonce: 'rn' }, TTL.challengeMs))!
     const res = await registerVerify(post({ response: { id: 'x' } }, { [COOKIE.regChallenge]: chal }))
     expect(res.status).toBe(200)
     const args = vi.mocked(swa.verifyRegistrationResponse).mock.calls[0]![0]
@@ -88,7 +91,7 @@ describe('register-verify — challenge required, verification enforced', () => 
   })
   it('401 when the attestation does not verify', async () => {
     vi.mocked(swa.verifyRegistrationResponse).mockResolvedValueOnce({ verified: false } as never)
-    const chal = (await signToken('reg_challenge', { challenge: 'srv-reg-chal' }, TTL.challengeMs))!
+    const chal = (await signToken('reg_challenge', { challenge: 'srv-reg-chal', nonce: 'rn' }, TTL.challengeMs))!
     const res = await registerVerify(post({ response: { id: 'x' } }, { [COOKIE.regChallenge]: chal }))
     expect(res.status).toBe(401)
   })
@@ -107,14 +110,14 @@ describe('login — requires an enrolled device', () => {
     expect(setCookies(res).some((c) => c.startsWith(COOKIE.loginChallenge))).toBe(true)
   })
   it('login-verify 401 without a device cert', async () => {
-    const chal = (await signToken('login_challenge', { challenge: 'srv-login-chal' }, TTL.challengeMs))!
+    const chal = (await signToken('login_challenge', { challenge: 'srv-login-chal', nonce: 'ln' }, TTL.challengeMs))!
     expect((await loginVerify(post({ response: {} }, { [COOKIE.loginChallenge]: chal }))).status).toBe(401)
   })
   it('login-verify 400 without a challenge cookie', async () => {
     expect((await loginVerify(post({ response: {} }, { [COOKIE.device]: await deviceCookie() }))).status).toBe(400)
   })
   it('verifies assertion vs SERVER challenge/origin/RP + enrolled credential → session', async () => {
-    const chal = (await signToken('login_challenge', { challenge: 'srv-login-chal' }, TTL.challengeMs))!
+    const chal = (await signToken('login_challenge', { challenge: 'srv-login-chal', nonce: 'ln' }, TTL.challengeMs))!
     const res = await loginVerify(post({ response: { id: 'cred1' } }, { [COOKIE.device]: await deviceCookie(), [COOKIE.loginChallenge]: chal }))
     expect(res.status).toBe(200)
     const args = vi.mocked(swa.verifyAuthenticationResponse).mock.calls[0]![0]
@@ -127,7 +130,7 @@ describe('login — requires an enrolled device', () => {
   })
   it('login-verify 401 when the assertion does not verify (e.g. wrong challenge/replay)', async () => {
     vi.mocked(swa.verifyAuthenticationResponse).mockResolvedValueOnce({ verified: false } as never)
-    const chal = (await signToken('login_challenge', { challenge: 'srv-login-chal' }, TTL.challengeMs))!
+    const chal = (await signToken('login_challenge', { challenge: 'srv-login-chal', nonce: 'ln' }, TTL.challengeMs))!
     const res = await loginVerify(post({ response: { id: 'cred1' } }, { [COOKIE.device]: await deviceCookie(), [COOKIE.loginChallenge]: chal }))
     expect(res.status).toBe(401)
   })

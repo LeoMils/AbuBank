@@ -42,8 +42,8 @@ export const TTL = {
   sessionMs: 15 * 60_000,
   /** Long-lived enrolled-credential cert (client re-enrolls after this, or on secret rotation). */
   deviceMs: 400 * 24 * 60 * 60_000,
-  /** WebAuthn challenge validity — tight, single-ceremony. */
-  challengeMs: 5 * 60_000,
+  /** WebAuthn challenge validity — tight, single-ceremony (also single-USE via _replayStore). */
+  challengeMs: 2 * 60_000,
 } as const
 
 export type Purpose = 'session' | 'device' | 'reg_challenge' | 'login_challenge'
@@ -179,25 +179,43 @@ export function unauthorized(): Response {
   })
 }
 
-/**
- * Whether the deployment ENFORCES auth on the billable endpoints. Enforcement is
- * active exactly when the signing secret is configured. If it is absent (secret
- * not provisioned) the endpoints keep their prior rate-limited behavior rather
- * than bricking — and /api/health reports `authEnforced:false` LOUDLY so a
- * misconfigured deployment is detectable. Closing NO_LOGIN_PWA_AUTH_POLICY
- * therefore requires AUTH_SIGNING_SECRET set on the deployment (an owner gate).
- */
-export function authEnforced(): boolean {
-  return authSecret() !== null
+/** True on a Vercel PRODUCTION deployment (VERCEL_ENV=production). Preview/dev are not. */
+export function isProduction(): boolean {
+  return env().VERCEL_ENV === 'production'
+}
+
+/** PRODUCTION requires BOTH secrets; running without them is a misconfiguration that must fail closed. */
+export function productionMisconfigured(): boolean {
+  return isProduction() && !authConfigured()
 }
 
 /**
- * The single billable-endpoint guard. Returns a 401 Response to short-circuit an
- * unauthenticated request (BEFORE any provider call), or null to proceed.
+ * Whether the billable endpoints are gated (require a verified session) OR denied.
+ * True when the signing secret is present (enforce) or in production (fail closed).
+ * Only a NON-production deployment WITHOUT a signing secret runs open (dev/test).
+ */
+export function authEnforced(): boolean {
+  return authSecret() !== null || isProduction()
+}
+
+function serviceUnavailable(): Response {
+  return new Response(JSON.stringify({ ok: false, error: 'AUTH_NOT_CONFIGURED' }), {
+    status: 503,
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+  })
+}
+
+/**
+ * The single billable-endpoint guard. Returns a Response to short-circuit the
+ * request (BEFORE any provider call), or null to proceed.
+ *  • production without BOTH secrets → 503 FAIL-CLOSED (never falls back to open),
+ *  • signing secret present → require a valid session (401 otherwise),
+ *  • non-production without a signing secret → open (explicit dev/test mode).
  */
 export async function guardBillable(req: Request, now = Date.now()): Promise<Response | null> {
-  if (!authEnforced()) return null
-  return (await requireSession(req, now)) ? null : unauthorized()
+  if (productionMisconfigured()) return serviceUnavailable()
+  if (authSecret()) return (await requireSession(req, now)) ? null : unauthorized()
+  return null
 }
 
 // ── WebAuthn relying-party derivation + owner enrollment bootstrap ─────────────

@@ -14,7 +14,7 @@
     "validate:knowledge": "npx tsx scripts/validate-knowledge.ts",
     "validate:people": "npx tsx scripts/validate-people.ts",
     "prebuild": "npm run generate:memory && npm run generate:knowledge && npm run validate:family && npm run validate:knowledge && npm run validate:people",
-    "build": "tsc && node scripts/gen-build-flags.mjs && vite build",
+    "build": "node scripts/check-prod-auth-config.mjs && tsc && node scripts/gen-build-flags.mjs && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

@@ -55,6 +55,14 @@ async function boot() {
   try { initPersistenceTrace() } catch { /* tracing must never block boot */ }
   try { await durable.init() } catch { /* best-effort; degrade to localStorage */ }
   try { traceStage('post-init') } catch { /* best-effort */ }
+  // Private family knowledge is NOT bundled — hydrate it from the device-local cache
+  // (instant/offline) and refresh from the authenticated /api/family (works now only
+  // if a session cookie already exists; a fresh login re-triggers this via EntryGate).
+  try {
+    const { hydrateFamilyFromCache, hydrateFamilyFromServer } = await import('./services/familyHydration')
+    hydrateFamilyFromCache()
+    void hydrateFamilyFromServer()
+  } catch { /* best-effort — family consumers stay safe-empty until hydrated */ }
   // Seed the default family into the contact store on first-ever run (the store
   // is the single source of truth for the family board; the scaffold is only
   // initial data). No-op once the store exists — a deleted contact stays deleted.

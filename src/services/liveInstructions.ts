@@ -30,9 +30,10 @@
  * never in Abu's knowledge or instructions.
  */
 import personaRaw from '../../knowledge/abu-persona.md?raw'
-import familyRaw from '../../knowledge/abu-family.md?raw'
 import knowledgeRaw from '../../knowledge/abu-knowledge.md?raw'
-import familyData from '../../knowledge/family_data.json'
+// Private family knowledge (family_data.json + abu-family.md) is NOT bundled — it is
+// hydrated at boot from the authenticated /api/family endpoint. See familyData.ts.
+import { getFamilyRaw, getAbuFamilyMd } from './familyData'
 
 /**
  * Drop the editor-facing preamble: everything up to and INCLUDING the first
@@ -80,14 +81,18 @@ export function assertNoPhoneNumbers(text: string, source: string): void {
 // throws if any source file carries a phone number. Checked against the RAW file
 // so a number hidden in the stripped preamble is still caught.
 assertNoPhoneNumbers(personaRaw, 'knowledge/abu-persona.md')
-assertNoPhoneNumbers(familyRaw, 'knowledge/abu-family.md')
 assertNoPhoneNumbers(knowledgeRaw, 'knowledge/abu-knowledge.md')
+// (abu-family.md is no longer bundled here; its phone-safety is checked in
+//  liveInstructions.test.ts, which reads the file directly.)
 
 /** Abu's persona, verbatim after its editor preamble. */
 export const ABU_PERSONA = stripEditorPreamble(personaRaw)
 
-/** Canonical family truth, verbatim after its editor preamble. */
-export const ABU_FAMILY = stripEditorPreamble(familyRaw)
+/** Canonical family truth, verbatim after its editor preamble. Hydrated at boot
+ *  (returns '' until then) — never statically bundled into the public client. */
+export function getAbuFamily(): string {
+  return stripEditorPreamble(getAbuFamilyMd())
+}
 
 /** Martita's own profile, verbatim after its editor preamble (may be sparse). */
 export const ABU_KNOWLEDGE = stripEditorPreamble(knowledgeRaw)
@@ -124,7 +129,7 @@ interface PronouncedPerson {
  * has a pronunciation, so the section is omitted rather than left empty.
  */
 export function buildPronunciationGuidance(
-  data: { family: Record<string, unknown> } = familyData as { family: Record<string, unknown> },
+  data: { family: Record<string, unknown> } = getFamilyRaw() as { family: Record<string, unknown> },
 ): string {
   const lines: string[] = []
   for (const group of PRONUNCIATION_GROUPS) {
@@ -191,7 +196,7 @@ const TRANSCRIPTION_PROMPT_BUDGET = 1000
  *  dropped once the budget is reached — the field is a weak STT hint, never a source of
  *  truth, so a bounded subset is correct (and a build guard proves it stays ≤ the cap). */
 export function buildTranscriptionPrompt(
-  data: { family: Record<string, unknown> } = familyData as { family: Record<string, unknown> },
+  data: { family: Record<string, unknown> } = getFamilyRaw() as { family: Record<string, unknown> },
 ): string {
   const names: string[] = []
   const seen = new Set<string>()

@@ -20,7 +20,7 @@
  * The registry is a flat name→id map. ids are opaque, stable handles derived from
  * each person's canonical (Latin) name; they carry no private data.
  */
-import familyData from '../../knowledge/family_data.json'
+import { getFamilyRaw } from './familyData'
 
 export type ContactResolution =
   | { status: 'resolved'; id: string; label: string }
@@ -71,7 +71,7 @@ function toId(canonical: string): string {
 let DATA_OVERRIDE: { family: Record<string, unknown> } | null = null
 
 function collectPeople(): PersonRecord[] {
-  const fam = (DATA_OVERRIDE ?? (familyData as { family: Record<string, unknown> })).family
+  const fam = (DATA_OVERRIDE ?? (getFamilyRaw() as { family: Record<string, unknown> })).family
   const out: PersonRecord[] = []
   for (const group of PERSON_GROUPS) {
     const raw = fam[group]

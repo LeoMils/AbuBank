@@ -18,7 +18,7 @@
  */
 import { LIVE_TOOL_SCHEMAS } from '../liveTools'
 import { Screen } from '../../state/types'
-import familyData from '../../../knowledge/family_data.json'
+import { getFamilyRaw } from '../familyData'
 
 // wait_for_user is sent first by liveSession (buildSessionUpdate) — included so the tool
 // inventory equals what the model actually receives. It takes no arguments.
@@ -67,7 +67,7 @@ const PERSON_GROUPS = ['matriarch', 'deceased', 'children', 'children_related', 
 
 export interface EntityInventory { count: number; orderedPairs: number; groups: Record<string, number> }
 /** Count of family entities + the size of the ordered relationship-pair space (N·(N−1)). */
-export function entityInventory(data: { family: Record<string, unknown> } = familyData as { family: Record<string, unknown> }): EntityInventory {
+export function entityInventory(data: { family: Record<string, unknown> } = getFamilyRaw() as { family: Record<string, unknown> }): EntityInventory {
   const groups: Record<string, number> = {}
   let count = 0
   for (const g of PERSON_GROUPS) {
