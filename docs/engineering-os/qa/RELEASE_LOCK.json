@@ -1,24 +1,24 @@
 {
   "$schema": "internal://abu/release-lock",
-  "when": "2026-08-17T13:31:37.093Z",
+  "when": "2026-08-19T06:34:59.431Z",
   "identity": {
-    "RUNTIME_SOURCE_SHA": "237bef9",
-    "CERTIFICATION_HARNESS_SHA": "ef87ae03e3d198c5627beb9ba4d1f4671e7b0005",
-    "EVIDENCE_GENERATION_SHA": "ef87ae03e3d198c5627beb9ba4d1f4671e7b0005",
-    "DEPLOYED_BUILD_ID": "0.291.0-earonly",
-    "DEPLOYED_ARTIFACT_HOST": "abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
+    "RUNTIME_SOURCE_SHA": "3621a58",
+    "CERTIFICATION_HARNESS_SHA": "e07338ef20ec4698dbb5214231c71822dee81afb",
+    "EVIDENCE_GENERATION_SHA": "e07338ef20ec4698dbb5214231c71822dee81afb",
+    "DEPLOYED_BUILD_ID": "0.292.1-entry",
+    "DEPLOYED_ARTIFACT_HOST": "abu-bank-qm9webd4s-leos-projects-d3c04c09.vercel.app",
     "CONTROL_PLANE_VERSION": "cp_bfccc899",
-    "note": "RUNTIME_SOURCE_SHA is the last non-test runtime commit (the deployed bundle source); the harness SHA is HEAD. Test/config/doc commits after a deploy change the evaluator identity, not the runtime."
+    "note": "0.292.1-entry PREMIUM ENTRY EXPERIENCE (hardened) supersedes the 0.291.0-earonly candidate. RUNTIME_SOURCE_SHA is the commit that set BUILD_VERSION 0.292.1-entry in api/health.ts (the deployed bundle source); the harness SHA is HEAD (adds the calendar-acceptance unlock step). Recertified 9/9 against the new Preview; prior 0.291 PREVIEW evidence was invalidated by change-impact (App.tsx/Entry/Home = unknown mechanism → widen)."
   },
-  "candidateRC": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "buildVersion": "0.291.0-earonly",
+  "candidateRC": "https://abu-bank-qm9webd4s-leos-projects-d3c04c09.vercel.app",
+  "buildVersion": "0.292.1-entry",
   "bundleFingerprint": {
     "chunks": 27,
-    "bytes": 1256553,
+    "bytes": 1269776,
     "secretClean": true
   },
   "canonicalSecretScannerCertified": true,
-  "fullSuite": "GREEN 555 files / 13441",
+  "fullSuite": "GREEN via qa:monster rc (unit-suite 13599; local HEAD incl. entry security tests 13629)",
   "verdicts": {
     "PRODUCT_CANDIDATE_VERDICT": "GO",
     "QA_SYSTEM_VERDICT": "READY",
@@ -30,9 +30,9 @@
   },
   "runtimeProvenance": {
     "identity": "PROVEN",
-    "method": "deployed buildVersion 0.291.0-earonly ↔ the sole commit that introduced that exact BUILD_VERSION string in api/health.ts (237bef9); zero non-test runtime drift since — verified by git",
-    "RUNTIME_SOURCE_SHA": "237bef9",
-    "note": "Stronger than the last-runtime-commit heuristic: ties the deployed artifact's advertised version to its source commit. /api/health does NOT inject a commit SHA (only buildVersion), so this version-string binding is the authoritative in-repo provenance available."
+    "method": "deployed buildVersion 0.292.1-entry ↔ the sole commit that introduced that exact BUILD_VERSION string in api/health.ts (3621a58); /api/health on the Preview returns 0.292.1-entry (fingerprint == tested commit) — verified by git + live health check",
+    "RUNTIME_SOURCE_SHA": "3621a58",
+    "note": "Ties the deployed artifact's advertised version to its source commit. /api/health does NOT inject a commit SHA (only buildVersion), so this version-string binding is the authoritative in-repo provenance available. The e07338e harness commit is test-only (calendar unlock step) — evaluator identity, not runtime."
   },
   "certificationCapsule": {
     "path": "docs/engineering-os/qa/CERTIFICATION_CAPSULE.json",

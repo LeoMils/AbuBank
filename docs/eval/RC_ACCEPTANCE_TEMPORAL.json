@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/rc-acceptance-temporal",
-  "rc": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T23:12:03.322Z",
+  "rc": "https://abu-bank-qm9webd4s-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-19T06:34:13.863Z",
   "evidenceClass": "PREVIEW (deployed /api/abuai-online)",
   "freshnessSemantics": "GROUNDED != CURRENT — a temporal answer needs BOTH grounding AND certifiable freshness (evaluateFreshness). Live-fact domains (weather/fx) certify from a DATED authoritative source; domains without a dated source decline honestly.",
   "groundingHonesty": "PROVEN_PASS",
@@ -25,13 +25,13 @@
     "LIVE_FACT_FRESHNESS": [
       {
         "id": "current-weather",
-        "answer": "מזג האוויר עכשיו בכפר סבא: 23°, מעונן חלקית. (נכון ל-02:00)",
-        "note": "dated weather source observedAt=2026-08-18T02:00:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 23°, מעונן חלקית. (נכון\""
+        "answer": "מזג האוויר עכשיו בכפר סבא: 28°, בהיר בעיקר. (נכון ל-09:30)",
+        "note": "dated weather source observedAt=2026-08-19T09:30:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 28°, בהיר בעיקר. (נכון \""
       },
       {
         "id": "current-exchange",
-        "answer": "שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-17).",
-        "note": "dated fx source observedAt=2026-08-17T00:00:00Z → FRESH: \"שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-17).\""
+        "answer": "שער הדולר מול השקל הוא 2.99 (נכון ל-2026-08-18).",
+        "note": "dated fx source observedAt=2026-08-18T00:00:00Z → FRESH: \"שער הדולר מול השקל הוא 2.99 (נכון ל-2026-08-18).\""
       }
     ],
     "RESULT_DECLINES": [
@@ -50,7 +50,7 @@
       "pass": true,
       "note": "non-temporal fact · answerPath=deep src=6",
       "http": 200,
-      "ms": 2894,
+      "ms": 2176,
       "ok": true,
       "answerPath": "deep",
       "temporalIntentDiag": false,
@@ -68,14 +68,14 @@
       "class": "GROUNDED_FRESHNESS_UNCERTIFIED",
       "pass": true,
       "capabilityGap": true,
-      "note": "grounded+cited, but freshness UNCERTIFIED (no source dates) → NOT a current-info PASS: \"ראש ממשלת ישראל עכשיו הוא בנימין נתניהו.\"",
+      "note": "grounded+cited, but freshness UNCERTIFIED (no source dates) → NOT a current-info PASS: \"ראש הממשלה של ישראל עכשיו הוא בנימין נתניהו.\"",
       "http": 200,
-      "ms": 1857,
+      "ms": 1886,
       "ok": true,
       "answerPath": "deep",
       "temporalIntentDiag": true,
       "sourceCount": 6,
-      "answer": "ראש ממשלת ישראל עכשיו הוא בנימין נתניהו.",
+      "answer": "ראש הממשלה של ישראל עכשיו הוא בנימין נתניהו.",
       "userMessage": ""
     },
     {
@@ -89,7 +89,7 @@
       "pass": true,
       "note": "declined honestly rather than answer stale (acceptable)",
       "http": 200,
-      "ms": 854,
+      "ms": 821,
       "ok": false,
       "errorCode": "ONLINE_NO_RESULTS",
       "answerPath": "live-decline-result",
@@ -107,14 +107,14 @@
       "currentInfoCertified": true,
       "class": "FRESH_CERTIFIED",
       "pass": true,
-      "note": "dated weather source observedAt=2026-08-18T02:00:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 23°, מעונן חלקית. (נכון\"",
+      "note": "dated weather source observedAt=2026-08-19T09:30:00+03:00 → FRESH: \"מזג האוויר עכשיו בכפר סבא: 28°, בהיר בעיקר. (נכון \"",
       "http": 200,
-      "ms": 629,
+      "ms": 719,
       "ok": true,
       "answerPath": "live-weather",
       "temporalIntentDiag": true,
       "sourceCount": 1,
-      "answer": "מזג האוויר עכשיו בכפר סבא: 23°, מעונן חלקית. (נכון ל-02:00)",
+      "answer": "מזג האוויר עכשיו בכפר סבא: 28°, בהיר בעיקר. (נכון ל-09:30)",
       "userMessage": ""
     },
     {
@@ -126,14 +126,14 @@
       "currentInfoCertified": true,
       "class": "FRESH_CERTIFIED",
       "pass": true,
-      "note": "dated fx source observedAt=2026-08-17T00:00:00Z → FRESH: \"שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-17).\"",
+      "note": "dated fx source observedAt=2026-08-18T00:00:00Z → FRESH: \"שער הדולר מול השקל הוא 2.99 (נכון ל-2026-08-18).\"",
       "http": 200,
-      "ms": 5149,
+      "ms": 507,
       "ok": true,
       "answerPath": "live-fx",
       "temporalIntentDiag": true,
       "sourceCount": 1,
-      "answer": "שער הדולר מול השקל הוא 2.95 (נכון ל-2026-08-17).",
+      "answer": "שער הדולר מול השקל הוא 2.99 (נכון ל-2026-08-18).",
       "userMessage": ""
     },
     {
@@ -147,7 +147,7 @@
       "pass": true,
       "note": "declined honestly rather than answer stale (acceptable)",
       "http": 200,
-      "ms": 1888,
+      "ms": 1868,
       "ok": false,
       "errorCode": "ONLINE_NO_RESULTS",
       "answerPath": "none",
@@ -167,7 +167,7 @@
       "pass": true,
       "note": "ok=false code=ONLINE_NO_RESULTS \"לא מצאתי מידע עדכני על זה כרגע. אני מעדיפה להגיד ל\"",
       "http": 200,
-      "ms": 5890,
+      "ms": 3574,
       "ok": false,
       "errorCode": "ONLINE_NO_RESULTS",
       "answerPath": "none",

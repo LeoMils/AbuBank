@@ -1,7 +1,7 @@
 {
   "$schema": "internal://abu/rc-acceptance-replacement-paths",
-  "rc": "https://abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-  "when": "2026-08-17T23:12:27.306Z",
+  "rc": "https://abu-bank-qm9webd4s-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-19T06:34:32.231Z",
   "rerouted": {
     "STT": "client Groq Whisper → /api/abuai-stt (OpenAI whisper-1)",
     "TTS": "Gemini client tier removed → /api/abuai-tts (OpenAI gpt-4o-mini-tts) → WebSpeech fallback",
@@ -16,12 +16,12 @@
     {
       "id": "tts.replacement",
       "pass": true,
-      "detail": "OpenAI TTS → audio/mpeg, 73728 bytes"
+      "detail": "OpenAI TTS → audio/mpeg, 61824 bytes"
     },
     {
       "id": "stt.replacement",
       "pass": true,
-      "detail": "whisper-1 → \"שלום, אני מרטיטה. זאת בדיקה קטנה.\""
+      "detail": "whisper-1 → \"שלום. אני מרטיטה. זאת בדיקה קטנה.\""
     },
     {
       "id": "stt.roundtrip",

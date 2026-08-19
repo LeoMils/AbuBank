@@ -1,14 +1,14 @@
 {
   "schemaVersion": "capsule/1",
-  "when": "2026-08-17T23:12:58.660Z",
+  "when": "2026-08-19T06:34:59.431Z",
   "qaMonsterVersion": "qa-monster/1",
   "constitutionVersion": "monster-qa/unified-master",
   "identity": {
-    "RUNTIME_SOURCE_SHA": "237bef9",
-    "DEPLOYED_ARTIFACT_ID": "abu-bank-353hxn1ha-leos-projects-d3c04c09.vercel.app",
-    "DEPLOYED_BUILD_ID": "0.291.0-earonly",
-    "CERTIFICATION_HARNESS_SHA": "0798bb7e23ad3f10dcf2970164668b6e2bb58b1a",
-    "EVIDENCE_GENERATION_SHA": "d0e3c4325b47149af9ed26ebb5c24ab2de3b019d",
+    "RUNTIME_SOURCE_SHA": "3621a58",
+    "DEPLOYED_ARTIFACT_ID": "abu-bank-qm9webd4s-leos-projects-d3c04c09.vercel.app",
+    "DEPLOYED_BUILD_ID": "0.292.1-entry",
+    "CERTIFICATION_HARNESS_SHA": "e07338ef20ec4698dbb5214231c71822dee81afb",
+    "EVIDENCE_GENERATION_SHA": "e07338ef20ec4698dbb5214231c71822dee81afb",
     "CONTROL_PLANE_VERSION": "cp_bfccc899"
   },
   "verdicts": {
@@ -25,32 +25,44 @@
   },
   "worktree": {
     "WORKTREE_RUNTIME_CLEAN": true,
-    "WORKTREE_HARNESS_CLEAN": true,
+    "WORKTREE_HARNESS_CLEAN": false,
     "dirtyRuntime": [],
-    "dirtyHarness": []
+    "dirtyHarness": [
+      "scripts/gate-a-abc.mjs",
+      "scripts/golden/golden-session-spec.json",
+      "src/screens/AbuAI/finalYellowToGreen.test.ts",
+      "src/screens/AbuAI/nonVoiceGreenProduction.test.ts",
+      "src/screens/AbuAI/nonVoiceProductionClosure.test.ts",
+      "src/screens/AbuAI/totalProductClosure.test.ts",
+      "src/screens/AbuGames/wowGame.test.ts",
+      "src/screens/AbuWhatsApp/familyContactsStorage.test.ts",
+      "src/eval/martitaRedTeam.test.ts",
+      "vite-dev.err.log",
+      "vite-dev.log"
+    ]
   },
   "runtimeProvenance": {
     "identity": "PROVEN",
     "method": "deployed buildVersion ↔ version-introducing commit in api/health.ts; zero non-test runtime drift since",
-    "RUNTIME_SOURCE_SHA": "237bef9",
-    "DEPLOYED_BUILD_ID": "0.291.0-earonly"
+    "RUNTIME_SOURCE_SHA": "3621a58",
+    "DEPLOYED_BUILD_ID": "0.292.1-entry"
   },
   "economy": {
     "tier": "rc",
-    "wallClockMs": 149668,
-    "deterministicMs": 66383,
-    "networkMs": 82466,
+    "wallClockMs": 135784,
+    "deterministicMs": 64865,
+    "networkMs": 70110,
     "networkAreaCount": 6,
     "perAreaMs": {
-      "typecheck": 19048,
-      "unit-suite": 44648,
-      "security-scan": 7180,
-      "calendar": 14822,
-      "whatsapp": 6166,
-      "current-info-freshness": 21691,
-      "replacement-paths": 4777,
-      "tool-sequencing": 2687,
-      "historical-corpus": 27830
+      "typecheck": 16948,
+      "unit-suite": 45004,
+      "security-scan": 6567,
+      "calendar": 13417,
+      "whatsapp": 5692,
+      "current-info-freshness": 14208,
+      "replacement-paths": 6780,
+      "tool-sequencing": 2913,
+      "historical-corpus": 23446
     },
     "note": "MEASURED wall-clock/area timings from THIS run. No monetary SLO is asserted (OWNER sets spend). Wall-clock targets are configurable; a tier over target is a QA-system finding, not a license to reduce assurance."
   },
@@ -77,56 +89,56 @@
       "path": "docs/eval/QA_MONSTER_REPORT.json",
       "producer": "qa-monster.mjs",
       "schema": "internal://abu/qa-monster",
-      "digest": "4922c87f358ce40f98a1f926dfbfc96e42247c90a523fc57a830b0f971474510"
+      "digest": "1b7f4276a2e443146c96d6faca774f8a385777a4cfc6fbfadc774a24b9927422"
     },
     {
       "id": "historical-corpus",
       "path": "docs/eval/RC_HISTORICAL_CORPUS.json",
       "producer": "rc-acceptance-historical-corpus.mjs",
       "schema": "internal://abu/historical-corpus",
-      "digest": "a8764b898ee80b017b5a1e05587b53ecf09476e57779ee91f8bad787b967795b"
+      "digest": "a7262b47dd44c413d840deafea874d890d95c60db72504ccd4420d7396e55976"
     },
     {
       "id": "calendar",
       "path": "docs/eval/RC_ACCEPTANCE_CALENDAR.json",
       "producer": "rc-acceptance-calendar.mjs",
       "schema": "internal://abu/rc-calendar",
-      "digest": "b845669aad0bb7c798b2adba5c4a8caaeeae8d7486aa5bb59f0e73206ee74a13"
+      "digest": "ebc323f190b433ab2a8bd7f2834cd40dbdd3377f2d69f10a917bf52723bfec16"
     },
     {
       "id": "whatsapp",
       "path": "docs/eval/RC_ACCEPTANCE_WHATSAPP.json",
       "producer": "rc-acceptance-whatsapp.mjs",
       "schema": "internal://abu/rc-whatsapp",
-      "digest": "db70e4cef3ae58125f31564d44a5a5764681d59ec3ac93c6ddb7f8a29d4d8089"
+      "digest": "233054c9ed2f2b6032535fe3e19eeaa91fd5226c41d1cc416e365d890f15f000"
     },
     {
       "id": "temporal",
       "path": "docs/eval/RC_ACCEPTANCE_TEMPORAL.json",
       "producer": "rc-acceptance-temporal.mjs",
       "schema": "internal://abu/rc-temporal",
-      "digest": "3db000cf1c9479abb513aae747b67ce61a51c4a5e9bf17ce5957488bc6d76bca"
+      "digest": "37f6390ee950e68f02c66e77d26023e6ebc9e365259639c926995e19b2ef9131"
     },
     {
       "id": "replacement-paths",
       "path": "docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json",
       "producer": "rc-acceptance-replacement-paths.mjs",
       "schema": "internal://abu/rc-replacement",
-      "digest": "239c557b6eae2e1cd245ff16beeca2d7f1721099cf912e3522521887096173a2"
+      "digest": "cd0b636a517235b44e1128de0a3644f633e73803cdacdb80e8837a9021ccae6b"
     },
     {
       "id": "tool-sequencing",
       "path": "docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json",
       "producer": "rc-acceptance-tool-sequencing.mjs",
       "schema": "internal://abu/rc-tool-sequencing",
-      "digest": "08fa533c8155cfe8862de1bca935afeec2333d5c76b28385e39808357bebc8c6"
+      "digest": "6f57a524647a5db1d91fce86cde2307f531d03e902d95558d13c0b00c265a912"
     },
     {
       "id": "secret-scan",
       "path": "docs/engineering-os/qa/deployed-secret-exposure.json",
       "producer": "scan-deployed-secrets.ts",
       "schema": "internal://abu/deployed-secret-exposure",
-      "digest": "3fa0688cbf909cb066410cb21040c5d7f66bf1e266c31d3ecf286eba0a6cb171"
+      "digest": "fe4594af677dd4386b227ab76976951e6e3bb953c7c3a859bfcdd363077845e8"
     }
   ],
   "requiredClaims": [
@@ -140,5 +152,5 @@
   ],
   "denominatorId": "f29f94e3195a2727cee010256607d7f7e30038137230ff7983f5ed73ac2456d7",
   "whyCertified": "Sealed from existing machine state. Verdicts are copied verbatim from QA_MONSTER_REPORT.json; this capsule cannot promote them. A reader reconstructs the certified artifact, harness, evidence digests and provenance from this file alone; verify with scripts/verify-capsule.mjs.",
-  "capsuleId": "74b4e8c6051a5eeaa4b1747a6e532f7d636303755c7e3539e4070fe8d813a347"
+  "capsuleId": "64e71f986f5185b65a3578a71c353297f4611178e00a22a3481be42f06c6e99d"
 }
