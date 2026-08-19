@@ -46,8 +46,34 @@ async function readIndexedDb(page) {
   }), CAL_KEY)
 }
 
+// The app now ships a MANDATORY, fail-closed entry lock (0.292.x). A real user
+// establishes a PIN on first run and enters it thereafter; there is NO production
+// bypass. So this harness authenticates exactly like Martita would — which makes
+// the calendar round-trip evidence STRONGER (it now traverses the real gate). In
+// headless there is no platform biometric, so setup resolves to PIN-only.
+async function ensureUnlocked(page) {
+  const gate = page.getByTestId('auth-gate')
+  const addBtn = page.getByRole('button', { name: /הוספה ידנית/ }).first()
+  // Race: as soon as EITHER the gate or the in-app add button is visible we know
+  // the state (fast on a warm/no-gate reload; waits out the intro on a cold one).
+  const seen = await Promise.race([
+    gate.waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'gate').catch(() => null),
+    addBtn.waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'app').catch(() => null),
+  ])
+  if (seen !== 'gate') return // already unlocked (warm session) or app already shown
+  const tap = async (seq) => { for (const d of seq) await page.getByRole('button', { name: d, exact: true }).click() }
+  await tap(['1', '2', '3', '4'])       // set PIN (first-run) OR enter it (re-lock)
+  await page.waitForTimeout(250)
+  await tap(['1', '2', '3', '4'])       // confirm (first-run); a no-op-safe second entry otherwise
+  // If a biometric-enroll offer appears (only when a platform authenticator exists), keep the PIN.
+  const skip = page.getByRole('button', { name: /להמשיך עם הקוד/ })
+  try { await skip.waitFor({ state: 'visible', timeout: 1500 }); await skip.click() } catch { /* no offer */ }
+  await gate.waitFor({ state: 'detached', timeout: 8_000 }).catch(() => {})
+}
+
 async function openCalendarFresh(page, { clear }) {
   await page.goto(`${RC}/?screen=AbuCalendar`, { waitUntil: 'networkidle', timeout: 45_000 })
+  await ensureUnlocked(page)
   if (clear) {
     // Wipe BOTH tiers so the run starts from genuine empty state (no seeded appointments).
     await page.evaluate((k) => new Promise((res) => {
@@ -57,6 +83,7 @@ async function openCalendarFresh(page, { clear }) {
       setTimeout(() => res(true), 1500)
     }), CAL_KEY)
     await page.goto(`${RC}/?screen=AbuCalendar`, { waitUntil: 'networkidle', timeout: 45_000 })
+    await ensureUnlocked(page)
   }
   // The add button proves the calendar screen actually rendered (past any splash).
   await page.getByRole('button', { name: /הוספה ידנית/ }).first().waitFor({ state: 'visible', timeout: 30_000 })
