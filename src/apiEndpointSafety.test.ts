@@ -5,7 +5,7 @@
  * returns ONLY the short-lived ephemeral secret (never the long-lived key), and no
  * response ever leaks the key or a raw provider body.
  */
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import ttsHandler from '../api/abuai-tts'
 import realtimeHandler from '../api/realtime-token'
 
@@ -20,6 +20,12 @@ function envKey(v: string | undefined) {
 function post(body: unknown): Request {
   return new Request('https://x/api', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
 }
+
+// This suite verifies the provider/key-safety contract, which is downstream of and
+// orthogonal to the auth gate. Disable auth enforcement deterministically (regardless
+// of ambient AUTH_SIGNING_SECRET, e.g. under the Monster's env) — the auth gate itself
+// is proven exhaustively in api/billableAuthGuard.test.ts.
+beforeEach(() => { delete (globalThis as { process: { env: Record<string, string | undefined> } }).process.env.AUTH_SIGNING_SECRET })
 
 afterEach(() => { vi.unstubAllGlobals(); envKey(undefined) })
 
