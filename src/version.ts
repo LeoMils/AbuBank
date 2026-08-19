@@ -12,9 +12,9 @@
 
 export const APP_VERSION = {
   appName:    'AbuBank',
-  version:    '0.291.0-earonly',
-  buildLabel: 'AbuBank 0.291.0 — TRUE IDEMPOTENCY + ABUSE THROTTLING (supersedes 0.290.0). RUNTIME: (A) calendar create is idempotent by OPERATION IDENTITY — the realtime function_call callId is the primary key (persisted ledger), so a retry returns the one event while two DISTINCT operations with identical content create two (no false collapse); content matching removed. The realtime boundaries (liveTools + calendarDraftController) already dedup by callId. (B) billable proxies get per-IP sliding-window rate limits + a global cost circuit breaker + a tightened STT cap (5MB), rejected before the provider call; in-memory best-effort per instance (a fully distributed limit needs shared KV = infra/owner). Priors: A6 retrieval guard; A7 per-request caps; Yarden CLASS fix; TEMPORAL=GROUNDED+FRESH; tool-sequencing oracle. Do NOT merge (3 old keys await owner revocation).',
-  buildDate:  '2026-08-17',
+  version:    '0.292.0-entry',
+  buildLabel: 'AbuBank 0.292.0 — PREMIUM ENTRY EXPERIENCE (supersedes 0.291.0-earonly). NEW: cold-open black-luxury intro (handwritten "Abu Ela" reveal + synthesized boutique sound), platform biometric unlock (WebAuthn Face ID/Touch ID) primary with local salted-PIN fallback, and a fail-open session-lock policy (cold launch → intro+auth; resume <60s skips; re-auth after 5min inactivity, no intro replay). Entry is an isolated top-level gate — no existing screen changed; degrades gracefully (audio autoplay/biometric unavailability fall back cleanly). Device-check pending: real Face ID sheet + audible chime are PHYSICAL_DEVICE truths. Priors (deployed 0.291): TRUE IDEMPOTENCY + ABUSE THROTTLING; A6 retrieval guard; Yarden CLASS fix; TEMPORAL=GROUNDED+FRESH. Do NOT merge (3 old keys await owner revocation).',
+  buildDate:  '2026-08-19',
   branchHint: 'rc5/cognitive-architecture-and-acceptance',
   // DIAGNOSTIC-INTEGRITY: the real deployed commit SHA is injected at build time
   // (Vercel VERCEL_GIT_COMMIT_SHA → VITE_COMMIT_SHA). Falls back to 'local' only for

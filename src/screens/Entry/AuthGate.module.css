@@ -1,0 +1,188 @@
+/*
+ * AuthGate — the calm luxury lock. Same warm matte black as the intro for a
+ * seamless handoff. High-contrast champagne/ivory on black, senior-first touch
+ * targets (≥ 56px), quiet hierarchy.
+ */
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 3900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(120% 90% at 50% 38%, #14110c 0%, #0b0906 46%, #050403 100%);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  animation: fadeIn 320ms ease both;
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.brand {
+  font-family: 'Snell Roundhand', 'Apple Chancery', 'Segoe Script', 'Brush Script MT', cursive;
+  font-style: italic;
+  font-size: 40px;
+  line-height: 1;
+  margin-bottom: 8px;
+  background: linear-gradient(180deg, #f6efe0 0%, #e7d6b4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 14px rgba(230, 210, 170, 0.14));
+}
+
+.face {
+  width: 68px;
+  height: 68px;
+  color: #e8dcc0;
+  opacity: 0.92;
+  margin-bottom: 4px;
+}
+
+.status {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 500;
+  color: rgba(246, 239, 224, 0.94);
+}
+.sub {
+  margin: -6px 0 0;
+  font-size: 15px;
+  color: rgba(246, 239, 224, 0.6);
+}
+.error {
+  margin: 0;
+  font-size: 15px;
+  color: #e8b4a0;
+  min-height: 18px;
+}
+
+/* PIN dots */
+.dots {
+  display: flex;
+  gap: 16px;
+  margin: 6px 0;
+}
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(232, 220, 192, 0.5);
+  transition: background 160ms ease, transform 160ms ease;
+}
+.dotOn {
+  background: #e7d6b4;
+  border-color: #e7d6b4;
+  transform: scale(1.06);
+}
+
+/* Keypad — senior-first: large, calm, quiet borders. */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  width: 100%;
+  max-width: 300px;
+  margin-top: 4px;
+}
+.key {
+  height: 64px;
+  border-radius: 16px;
+  border: 1px solid rgba(232, 220, 192, 0.14);
+  background: rgba(246, 239, 224, 0.04);
+  color: rgba(246, 239, 224, 0.96);
+  font-size: 26px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 140ms ease, transform 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.key:active {
+  background: rgba(246, 239, 224, 0.12);
+  transform: scale(0.96);
+}
+.keyAux {
+  font-size: 22px;
+  color: rgba(246, 239, 224, 0.7);
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Buttons */
+.primary,
+.secondary,
+.ghost {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 120ms ease, background 140ms ease, border-color 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.primary {
+  border: none;
+  color: #1a1509;
+  background: linear-gradient(180deg, #f0e2c4 0%, #e2cd9f 100%);
+  box-shadow: 0 6px 22px rgba(226, 205, 159, 0.18);
+}
+.secondary {
+  color: rgba(246, 239, 224, 0.95);
+  background: rgba(246, 239, 224, 0.06);
+  border: 1px solid rgba(232, 220, 192, 0.2);
+}
+.ghost {
+  min-height: 48px;
+  background: transparent;
+  border: none;
+  color: rgba(246, 239, 224, 0.6);
+  font-weight: 500;
+  font-size: 16px;
+}
+.primary:active,
+.secondary:active,
+.ghost:active {
+  transform: scale(0.98);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    animation: none;
+  }
+  .key:active,
+  .primary:active,
+  .secondary:active,
+  .ghost:active {
+    transform: none;
+  }
+}
