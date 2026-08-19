@@ -31,25 +31,28 @@ describe('timeInWords', () => {
 // ─── Family ─────────────────────────────────────────────────────────────────
 
 describe('shapeFamilyAnswer', () => {
-  it('Mor: natural pronoun sentence', () => {
-    const answer = shapeFamilyAnswer(makeMember({
-      children: ['אופיר', 'איילון', 'עילי', 'אדר'],
-    }))
-    expect(answer).toContain('מור, הבת שלך.')
-    expect(answer).toContain('אופיר, איילון, עילי ואדר.')
+  it('terse ("מי זאת") gives role only; rich ("ספרי לי על") adds children — they DIFFER', () => {
+    const member = makeMember({ children: ['אופיר', 'איילון', 'עילי', 'אדר'] })
+    const terse = shapeFamilyAnswer(member, false)
+    const rich = shapeFamilyAnswer(member, true)
+    expect(terse).toContain('מור, הבת שלך.')
+    expect(terse).not.toContain('אופיר, איילון, עילי ואדר.') // terse omits the children list
+    expect(rich).toContain('אופיר, איילון, עילי ואדר.')       // rich includes it
+    expect(rich).not.toBe(terse)                              // RC4: the two answers must differ
   })
 
-  it('grandson uses dash format', () => {
+  it('grandson uses warm role phrasing, not a dash dump', () => {
     const answer = shapeFamilyAnswer(makeMember({ relationshipHebrew: 'נכד (בן של מור ורפי)' }))
-    expect(answer).toContain('מור —')
+    expect(answer).toContain('מור, הנכד שלך')
+    expect(answer).not.toContain('מור —')
   })
 
-  it('children list uses ו before last name', () => {
-    expect(shapeFamilyAnswer(makeMember({ children: ['א', 'ב', 'ג'] }))).toContain('א, ב וג')
+  it('rich children list uses ו before last name', () => {
+    expect(shapeFamilyAnswer(makeMember({ children: ['א', 'ב', 'ג'] }), true)).toContain('א, ב וג')
   })
 
-  it('single child — no ו', () => {
-    expect(shapeFamilyAnswer(makeMember({ children: ['נועם'] }))).toContain('ילד אחד — נועם')
+  it('rich single child — no ו', () => {
+    expect(shapeFamilyAnswer(makeMember({ children: ['נועם'] }), true)).toContain('ילד אחד — נועם')
   })
 
   it('no notes in new format', () => {
@@ -220,7 +223,7 @@ describe('shapeCreateConfirm', () => {
   })
 
   it('says מחר for tomorrow date', () => {
-    const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+    const tmrw = new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
     const msg = shapeCreateConfirm({ title: 'קניות', date: tmrw, time: '10:00', emoji: '🛒' })
     expect(msg).toContain('מחר')
   })
@@ -235,7 +238,7 @@ describe('shapeCreateConfirm', () => {
   it('default shapeCreateConfirm output is unchanged for the baseline fixture', () => {
     // Pin the existing wording so the readback variant cannot accidentally
     // alter it via shared helpers.
-    const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+    const tmrw = new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
     const msg = shapeCreateConfirm({ title: 'תור לרופא', date: tmrw, time: '10:00', emoji: '🏥' })
     expect(msg).toContain('תור לרופא')
     expect(msg).toContain('מחר')
@@ -244,12 +247,40 @@ describe('shapeCreateConfirm', () => {
     expect(msg).not.toContain('הבנתי')
     expect(msg).not.toContain('לקבוע?')
   })
+
+  // ── Regression: rambling-story confirm restated the subject twice ──────────
+  // Real Leo flow (docs/eval/LEO_DEVICE_FAILURES_REPRO.json → create-rambling-story):
+  // "…רוצים להיפגש מחר בשלוש … כדי לדבר על הטיול המשפחתי" extracted subject
+  // "טיול המשפחתי" AND notes "לדבר על הטיול המשפחתי" — the confirm rendered BOTH
+  // ("בנושא טיול המשפחתי. (לדבר על הטיול המשפחתי).") which is a duplicate that
+  // blows the brevity budget. The subject clause wins; the redundant notes drop.
+  it('drops the notes parenthetical when it merely restates the subject', () => {
+    const tmrw = new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
+    const msg = shapeCreateConfirm({
+      title: 'פגישה עם גלעד', date: tmrw, time: '15:00', emoji: '📅',
+      subject: 'טיול המשפחתי', notes: 'לדבר על הטיול המשפחתי',
+    })
+    expect(msg).toContain('בנושא טיול המשפחתי')      // subject clause kept
+    expect(msg).not.toContain('(לדבר על הטיול המשפחתי)') // redundant notes dropped
+    expect(msg).not.toContain('הטיול המשפחתי)')          // no restated parenthetical at all
+    expect(msg.trim().endsWith('נכון?')).toBe(true)
+  })
+
+  it('keeps a genuinely distinct notes parenthetical (no over-suppression)', () => {
+    const tmrw = new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
+    const msg = shapeCreateConfirm({
+      title: 'פגישה עם דנה', date: tmrw, time: '16:00', emoji: '📅',
+      subject: 'הטיול לאיטליה', notes: 'להביא את הדרכונים',
+    })
+    expect(msg).toContain('בנושא הטיול לאיטליה')
+    expect(msg).toContain('(להביא את הדרכונים)') // unrelated note stays
+  })
 })
 
 // ─── Calendar Create Read-back ──────────────────────────────────────────────
 
 describe('shapeCreateConfirmReadback', () => {
-  const tmrw = () => new Date(Date.now() + 86400000).toISOString().split('T')[0]!
+  const tmrw = () => new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')
 
   it('happy path — all fields → ends with לקבוע? and includes every clause', () => {
     const msg = shapeCreateConfirmReadback({

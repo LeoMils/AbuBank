@@ -171,9 +171,9 @@ export function VoiceCard({
 
         {voiceError && (
           <div data-testid="voice-error" style={{
-            fontSize: 14, color: '#fca5a5', fontFamily: "'Heebo',sans-serif",
-            padding: '8px 10px', borderRadius: 10,
-            background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.30)',
+            fontSize: 15, fontWeight: 600, color: '#ffb4b4', fontFamily: "'Heebo',sans-serif",
+            padding: '10px 12px', borderRadius: 10, lineHeight: 1.5,
+            background: 'rgba(239,68,68,0.14)', border: '1px solid rgba(239,68,68,0.38)',
           }}>{voiceError}</div>
         )}
 

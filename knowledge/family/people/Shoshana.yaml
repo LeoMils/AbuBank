@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Shoshana
+hebrew_name: שושנה
+aliases:
+- Shoshana Barbers
+- שושנה ברברס
+relationship: close_friend
+relationship_hebrew: חברה קרובה
+role: חברה קרובה של מרטיטה
+location: כפר סבא
+gender: female
+notes: שושנה ברברס, גרה בכפר סבא, ארגנטינאית. בעלה כאצ'ו ברברס. איות 'Barbers' אושר על ידי לאו.
+pronunciation:
+  es: shoshana

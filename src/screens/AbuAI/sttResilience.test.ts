@@ -20,13 +20,16 @@ describe('STT exhaustion guard', () => {
   })
 })
 
-describe('STT model change', () => {
-  it('service.ts uses whisper-large-v3 (not turbo)', () => {
-    // The turbo model was deprecated by Groq causing 400 errors
+describe('STT model', () => {
+  it('service.ts uses the OpenAI server model whisper-1 (Groq client models removed)', () => {
+    // The client-Groq STT path (whisper-large-v3 / the deprecated turbo that 400'd) was intentionally
+    // removed; STT now uses OpenAI whisper-1 via /api/abuai-stt (server-only). Not weakened — asserts
+    // the NEW model + absence of the old client models. Replacement deployed-proven (round-trip).
     const fs = require('fs')
     const path = require('path')
     const src = fs.readFileSync(path.resolve(__dirname, 'service.ts'), 'utf8')
-    expect(src).toContain("'whisper-large-v3'")
+    expect(src).toContain("'whisper-1'")
+    expect(src).not.toContain("'whisper-large-v3'")
     expect(src).not.toContain("'whisper-large-v3-turbo'")
   })
 })

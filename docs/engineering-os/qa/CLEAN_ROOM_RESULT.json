@@ -1,0 +1,38 @@
+{
+  "$schema": "internal://abu/clean-room-result",
+  "when": "2026-08-17T23:14:04.206Z",
+  "operatorGuidePresent": true,
+  "CLEAN_ROOM_FIRST_HIDDEN_DEPENDENCY": null,
+  "FRESH_SESSION_REPOSITORY_ONLY": "DETERMINISTIC_PORTION_PROVEN",
+  "exactRemainingLimitation": "A genuinely independent fresh model/session cannot be instantiated from this environment; the repository-only deterministic operability (discovery + oracle gates from repo state, no conversation) is proven here.",
+  "steps": [
+    {
+      "step": "discover-candidate",
+      "cmd": "node scripts/qa-monster.mjs current",
+      "doc": "QA_MONSTER_OPERATOR.md §\"Start here\"",
+      "exit": 0,
+      "ok": true
+    },
+    {
+      "step": "verify-capsule",
+      "cmd": "node scripts/verify-capsule.mjs",
+      "doc": "QA_MONSTER_OPERATOR.md §Capsule",
+      "exit": 0,
+      "ok": true
+    },
+    {
+      "step": "work-completeness",
+      "cmd": "node scripts/machine-work.mjs",
+      "doc": "MACHINE_WORK_GRAPH.json",
+      "exit": 0,
+      "ok": true
+    },
+    {
+      "step": "authority",
+      "cmd": "node scripts/authority-check.mjs",
+      "doc": "OWNER_HUMAN_AUTHORITY.json",
+      "exit": 0,
+      "ok": true
+    }
+  ]
+}

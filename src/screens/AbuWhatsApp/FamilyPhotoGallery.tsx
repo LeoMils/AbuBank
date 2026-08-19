@@ -15,7 +15,6 @@
 import { useEffect } from 'react'
 import { getFamilyGalleryPhotos, type FamilyGalleryPhoto } from './familyQuickFaces'
 import { getLocalContacts } from './familyContactsStorage'
-import { FAMILY_QUICK_FACES } from './familyContacts.private'
 
 const TEAL = '#14b8a6'
 const WA_GREEN = '#25D366'
@@ -48,7 +47,7 @@ export function FamilyPhotoGallery({ open, onClose, extras, photosOverride }: Fa
   if (!open) return null
 
   const photos: ReadonlyArray<FamilyGalleryPhoto> = photosOverride
-    ?? getFamilyGalleryPhotos(FAMILY_QUICK_FACES, getLocalContacts(), extras ?? [])
+    ?? getFamilyGalleryPhotos(getLocalContacts(), extras ?? [])
 
   return (
     <div

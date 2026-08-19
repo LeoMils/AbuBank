@@ -154,7 +154,7 @@ describe('P0.4 — AbuWhatsApp / AbuGames screens unchanged', () => {
 describe('P0.4 — hard rules', () => {
   it('AbuAI useRealtime is enabled with grounding', () => {
     const src = read('screens/AbuAI/index.tsx')
-    expect(src.includes('const useRealtime = true')).toBe(true)
+    expect(src.includes('const useRealtime = isRealtimeBetaEnabled()')).toBe(true)
   })
 
   it('no AbuAI production source reads VITE_OPENAI_API_KEY', () => {

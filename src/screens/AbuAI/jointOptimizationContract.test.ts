@@ -249,7 +249,7 @@ describe('B2.3 joint-opt — both online call sites pass the static Kfar Saba lo
 
 describe('B2.3 joint-opt — hard-rule envelope preserved', () => {
   it('useRealtime is enabled with grounding in index.tsx', () => {
-    expect(INDEX.includes('const useRealtime = true')).toBe(true)
+    expect(INDEX.includes('const useRealtime = isRealtimeBetaEnabled()')).toBe(true)
   })
 
   it('no production AbuAI source reads VITE_OPENAI_API_KEY', () => {

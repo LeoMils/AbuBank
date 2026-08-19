@@ -1,0 +1,1239 @@
+{
+  "generatedNote": "behavioral eval baseline; secrets never stored",
+  "pipelineModel": "gpt-4o",
+  "judgeModel": "gpt-4o-mini",
+  "total": 60,
+  "overallPassPct": 36.7,
+  "perCriterion": {
+    "PREAMBLE_FREE": 81.7,
+    "NO_SOURCES": 83.3,
+    "NO_META": 88.3,
+    "DIRECT": 65,
+    "CONCISE": 51.7,
+    "CORRECT": 76.7
+  },
+  "perCategory": {
+    "online": {
+      "passAll": 0,
+      "n": 10
+    },
+    "family": {
+      "passAll": 20,
+      "n": 10
+    },
+    "calendar": {
+      "passAll": 30,
+      "n": 10
+    },
+    "comm": {
+      "passAll": 100,
+      "n": 10
+    },
+    "chat": {
+      "passAll": 60,
+      "n": 10
+    },
+    "cannot": {
+      "passAll": 10,
+      "n": 10
+    }
+  },
+  "preToolPreamblePct": 0,
+  "cases": [
+    {
+      "id": "online-01",
+      "category": "online",
+      "user": "אילו סרטים מוקרנים היום בקולנוע בכפר סבא?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": false,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Abu provided a list of films but also named sources for more information."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "get_current_info"
+      ],
+      "preamble": [],
+      "said": "בכפר סבא מוקרנים היום מספר סרטים, ביניהם: \"חג מולד מר\", \"יחידת הצללים\", \"סוף רחוב האלון\", \"פיוז\", \"בחזרה מההימלאיה\", \"האחד והיחיד שלי\", \"המשפחה האיטלקית שלי\", \"הרוע שבפנים: מחוץ למעבר\", \"ויהי גשם\", \"ספא וויקנד\", \"צריך שניים לטנגו\", \"מהיר ועצבני: חגיגות 25 שנה\", ו\"דג ושמו באסה\". \n\nלפרטים נוספים, את יכולה לבדוק את [Seret.co.il](https://m.seret.co.il/s_theatres.asp?TID=178) או [בתי קולנוע בכפר סבא - אידיבי](https://www.edb.co.il/showtimes/city/%D7%9B%D7%A4%D7%A8%20%D7%A1%D7%91%D7%90/).",
+      "latencyMs": 4076
+    },
+    {
+      "id": "online-02",
+      "category": "online",
+      "user": "כמה עולה דולר היום בשקלים?",
+      "scores": {
+        "PREAMBLE_FREE": false,
+        "NO_SOURCES": false,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a source for the dollar rate, violating criteria."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "get_current_info"
+      ],
+      "preamble": [],
+      "said": "היום שער הדולר לשקל הוא 2.9639. המידע הזה מגיע מ-Investing.com.",
+      "latencyMs": 2701
+    },
+    {
+      "id": "online-03",
+      "category": "online",
+      "user": "מה מזג האוויר בכפר סבא היום?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": false,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Abu provided the weather but cited a source."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "get_current_info"
+      ],
+      "preamble": [],
+      "said": "היום בכפר סבא הטמפרטורה היא 27 מעלות. התחזית למזג האוויר כוללת ראות טובה ולחץ ברומטרי סטנדרטי. [מקור: AccuWeather](https://www.accuweather.com/he/il/kefar-sava/212472/weather-forecast/212472).",
+      "latencyMs": 2472
+    },
+    {
+      "id": "online-04",
+      "category": "online",
+      "user": "מתי האוטובוס הבא מכפר סבא לתל אביב?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": false,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Abu provided bus information but cited a source, violating NO_SOURCES."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "get_current_info"
+      ],
+      "preamble": [],
+      "said": "האוטובוס הבא מכפר סבא לתל אביב הוא קו 567 של מטרופולין. הקו עובר בתחנה מרכזית כפר סבא ומשך הנסיעה הוא כ-49 דקות. מידע נוסף אפשר למצוא ב[Moovit](https://moovitapp.com/index/he/dir/%D7%AA%D7%9C_%D7%90%D7%91%D7%99%D7%91_%D7%99%D7%A4%D7%95-city_37-city_114517-1).",
+      "latencyMs": 2681
+    },
+    {
+      "id": "online-05",
+      "category": "online",
+      "user": "מה החדשות הכי חשובות היום בארץ?",
+      "scores": {
+        "PREAMBLE_FREE": false,
+        "NO_SOURCES": false,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": false,
+        "rationale": "Abu provided sources and did not give a specific current headline."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "get_current_info"
+      ],
+      "preamble": [],
+      "said": "החדשות היום כוללות מגוון נושאים כמו פוליטיקה, ביטחון, כלכלה, תרבות וספורט. למשל, יש דיווחים על עסקת ענק בתחום הכלכלה, דיונים פוליטיים לקראת הבחירות הקרובות לכנסת, והתפתחויות בתחום הביטחון. למידע נוסף, אפשר לבדוק באתרי החדשות כמו [N12](https://www.n12.co.il/) או [ynet](https://www.ynet.co.il/news).",
+      "latencyMs": 3172
+    },
+    {
+      "id": "online-06",
+      "category": "online",
+      "user": "מי ניצח אתמול בבחירות בארצות הברית?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": false,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a sourced answer with current information."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "get_current_info"
+      ],
+      "preamble": [],
+      "said": "דונלד טראמפ ניצח בבחירות לנשיאות בארצות הברית, וזכה ל-312 אלקטורים לעומת 226 שקיבלה המועמדת האחרת. [מקור](https://www.israelhayom.co.il/news/world-news/usa/article/16752203)",
+      "latencyMs": 2320
+    },
+    {
+      "id": "online-07",
+      "category": "online",
+      "user": "מה השעה עכשיו בבואנוס איירס?",
+      "scores": {
+        "PREAMBLE_FREE": false,
+        "NO_SOURCES": false,
+        "NO_META": false,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": false,
+        "rationale": "Abu explained her limits and provided a source, failing multiple criteria."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "get_current_info"
+      ],
+      "preamble": [],
+      "said": "אני לא יכולה לבדוק את השעה הנוכחית בבואנוס איירס כרגע. אם תרצי, תוכלי לבדוק את השעה באתרי זמן כמו [Time.is](https://time.is/he/Buenos_Aires).",
+      "latencyMs": 3041
+    },
+    {
+      "id": "online-08",
+      "category": "online",
+      "user": "כמה עולה כרטיס לקולנוע סינמה סיטי?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": false,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Abu provided detailed pricing but referenced a source."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "get_current_info"
+      ],
+      "preamble": [],
+      "said": "כרטיס לסרט רגיל בסינמה סיטי עולה כ-45 שקלים. יש גם אפשרות לכרטיס וי.איי.פי ב-151 שקלים. לאזרחים ותיקים יש הנחה, והמחיר לסרט ישראלי הוא 29.85 שקלים. מידע נוסף אפשר למצוא ב[אתר סינמה סיטי](https://www.cinema-city.co.il/page/4).",
+      "latencyMs": 3090
+    },
+    {
+      "id": "online-09",
+      "category": "online",
+      "user": "יש היום משהו מעניין לעשות בכפר סבא?",
+      "scores": {
+        "PREAMBLE_FREE": false,
+        "NO_SOURCES": false,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Abu provided multiple sources for events, violating criteria."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "get_current_info"
+      ],
+      "preamble": [],
+      "said": "יש כמה אירועים מעניינים היום בכפר סבא. את יכולה לבדוק בלוח האירועים של עיריית כפר סבא [כאן](https://www.kfar-saba.muni.il/events/), או לראות הופעות בזמן אמת [כאן](https://live.tickchak.co.il/kfar-saba/today). אם את מחפשת משהו לעשות עם הילדים, אולי תמצאי עניין בלוח האירועים של קניון כפר סבא הירוקה [כאן](https://www.hayeruka-ks.co.il/%D7%90%D7%99%D7%A8%D7%95%D7%A2%D7%99%D7%9D).",
+      "latencyMs": 2694
+    },
+    {
+      "id": "online-10",
+      "category": "online",
+      "user": "מה חדש היום בעולם?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": false,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Abu provided current headlines but included a source link."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "get_current_info"
+      ],
+      "preamble": [],
+      "said": "היום בעולם, נשיא לבנון ג'וזף עאון גינה את התקיפות שביצעו משמרות המהפכה האיראנית בבחריין ובכוויית. האיראנים איימו להפסיק את השיחות עם ארה\"ב. בנוסף, יש דיווחים על מטען שהתפוצץ בפח האשפה וקצין הצוללות האוקראיני שערק לרוסיה חוסל. [ynet](https://www.ynet.co.il/news)",
+      "latencyMs": 2657
+    },
+    {
+      "id": "family-01",
+      "category": "family",
+      "user": "מי זאת מור?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": false,
+        "rationale": "The answer was too long and not concise, and it included extra information."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "מור היא הבת שלך ושל פפי. היא גרושה מרפי וכיום היא בת זוג של יעל. היא גרה בהוד השרון ועוסקת כדיאטנית. יש לה ארבעה ילדים עם רפי: אופיר, איילון, עילי ואדר.",
+      "latencyMs": 1117
+    },
+    {
+      "id": "family-02",
+      "category": "family",
+      "user": "מי בת הזוג של מור?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Output is correct but exceeds 40 words."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "בת הזוג של מור היא יעל. הן גרות יחד בהוד השרון.",
+      "latencyMs": 905
+    },
+    {
+      "id": "family-03",
+      "category": "family",
+      "user": "מי הגרוש של מור?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Output exceeds 40 words, but the answer is correct."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "הגרוש של מור הוא רפי. הוא אבא של הנכדים אופיר, איילון, עילי ואדר.",
+      "latencyMs": 828
+    },
+    {
+      "id": "family-04",
+      "category": "family",
+      "user": "מי הבעל של אופיר?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Output exceeds 40 words, but the answer is correct."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "בן הזוג של אופיר הוא גלעד. הוא רואה חשבון בחברת הייטק. הם ההורים של אנאבל וארי.",
+      "latencyMs": 1394
+    },
+    {
+      "id": "family-05",
+      "category": "family",
+      "user": "אופיר זה בן או בת?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "The answer was not direct and exceeded the word limit."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אופיר היא נכדה שלך, הבת של מור ורפי. היא גרה בכפר סבא ועובדת כדולה.",
+      "latencyMs": 1027
+    },
+    {
+      "id": "family-06",
+      "category": "family",
+      "user": "מי הילדים של מור?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a direct, concise, and correct answer without any filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "למור יש ארבעה ילדים: אופיר, איילון, עילי ואדר.",
+      "latencyMs": 918
+    },
+    {
+      "id": "family-07",
+      "category": "family",
+      "user": "מי זה לאו?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": false,
+        "rationale": "Output exceeds 40 words and includes additional information beyond the expected answer."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "לאו הוא הבן שלך, מרתיטה. הוא גר ברעננה והוא יד ימינך לכל דבר מעשי כמו בנקים, כספים, תקלות ובעיות בבית.",
+      "latencyMs": 980
+    },
+    {
+      "id": "family-08",
+      "category": "family",
+      "user": "כמה ילדים יש למור?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Output is correct but exceeds 40 words."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "למור יש ארבעה ילדים: אופיר, איילון, עילי, ואדר.",
+      "latencyMs": 674
+    },
+    {
+      "id": "family-09",
+      "category": "family",
+      "user": "מי ההורים של אופיר?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a direct, concise, and correct answer without any filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "ההורים של אופיר הם מור ורפי.",
+      "latencyMs": 648
+    },
+    {
+      "id": "family-10",
+      "category": "family",
+      "user": "מי היה פפי?",
+      "scores": {
+        "PREAMBLE_FREE": false,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Output contains filler and exceeds word limit."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "פפי, או בשמו ויקטור, היה בעלך האהוב. הייתם זוג מיוחד, תמיד הלכתם יד ביד ועשיתם כמעט הכל ביחד. הוא היה אבא של מור ולאו, וגדלתם יחד במנדוסה, ארגנטינה. פפי אהב מאוד יין, ועבד עד שאושפז ונפטר. החיים שלכם היו מלאים באהבה, שותפות, טיולים בעולם ובנייה מחדש בישראל.",
+      "latencyMs": 2246
+    },
+    {
+      "id": "calendar-01",
+      "category": "calendar",
+      "user": "תקבעי לי תור לרופא מחר בעשר בבוקר",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": false,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": false,
+        "rationale": "Abu explained her limits, did not prepare the event, and the response was too long."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה לקבוע תורים לרופא בשבילך. כדאי שתתקשרי ישירות למרפאה או לרופא שלך. אם יש משהו אחר שאני יכולה לעזור בו, אני כאן בשבילך.",
+      "latencyMs": 1075
+    },
+    {
+      "id": "calendar-02",
+      "category": "calendar",
+      "user": "תוסיפי פגישה עם יעל ביום ראשון בארבע אחרי הצהריים",
+      "scores": {
+        "PREAMBLE_FREE": false,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": true,
+        "CORRECT": false,
+        "rationale": "Abu asked for details before preparing the event, which is not direct."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "מה את רוצה שיהיה כתוב בפגישה? יש מקום מסוים שבו אתן נפגשות או משהו שתרצי להוסיף?",
+      "latencyMs": 1024
+    },
+    {
+      "id": "calendar-03",
+      "category": "calendar",
+      "user": "תרשמי לי תספורת ביום חמישי בשתיים בצהריים",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu directly provided the appointment details without filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "prepare_calendar_event"
+      ],
+      "preamble": [],
+      "said": "הכנתי לך תספורת ליום חמישי, ה-19 באוגוסט, בשתיים בצהריים. לשמור את זה ביומן?",
+      "latencyMs": 2149
+    },
+    {
+      "id": "calendar-04",
+      "category": "calendar",
+      "user": "מה יש לי מחר ביומן?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu answered directly and correctly about the calendar without filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "read_calendar"
+      ],
+      "preamble": [],
+      "said": "אין לך שום דבר ביומן למחר, מרתיטה. איך את מתכננת להעביר את היום?",
+      "latencyMs": 1648
+    },
+    {
+      "id": "calendar-05",
+      "category": "calendar",
+      "user": "מה הולך לי השבוע?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "The response included a follow-up question, making it not direct and too long."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "read_calendar"
+      ],
+      "preamble": [],
+      "said": "אין לך שום דבר מתוכנן ביומן לשבוע הקרוב. יש משהו שאת רוצה להוסיף או לבדוק?",
+      "latencyMs": 1947
+    },
+    {
+      "id": "calendar-06",
+      "category": "calendar",
+      "user": "תקבעי בדיקת דם ביום שלישי בשמונה בבוקר",
+      "scores": {
+        "PREAMBLE_FREE": false,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": true,
+        "CORRECT": false,
+        "rationale": "Abu provided a question instead of preparing the event."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "ביום שלישי את בדרך כלל אצל מור, נכון? את רוצה לקבוע את בדיקת הדם לפני או אחרי הביקור אצלה?",
+      "latencyMs": 769
+    },
+    {
+      "id": "calendar-07",
+      "category": "calendar",
+      "user": "תקבעי פגישה עם הרופא מחר, לא, בעצם תעשי את זה בארבע אחרי הצהריים",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": true,
+        "CORRECT": false,
+        "rationale": "Abu asked a question instead of preparing the event."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "עם איזה רופא את רוצה לקבוע פגישה?",
+      "latencyMs": 912
+    },
+    {
+      "id": "calendar-08",
+      "category": "calendar",
+      "user": "תזכירי לי לקחת תרופה כל בוקר בשמונה",
+      "scores": {
+        "PREAMBLE_FREE": false,
+        "NO_SOURCES": true,
+        "NO_META": false,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": false,
+        "rationale": "Abu explained her limits and did not provide the expected reminder."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה להגדיר תזכורות לתרופות או שעונים מעוררים. אולי כדאי לשקול להשתמש בטלפון שלך או בשעון חכם כדי להגדיר תזכורת כזו. אם יש משהו אחר שאני יכולה לעזור בו, אני כאן בשבילך.",
+      "latencyMs": 1163
+    },
+    {
+      "id": "calendar-09",
+      "category": "calendar",
+      "user": "יש לי משהו ביום שישי?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu directly answered about Friday's events without filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "read_calendar"
+      ],
+      "preamble": [],
+      "said": "אין לך שום דבר מתוכנן ליום שישי הזה. איך את מתכננת לבלות את היום?",
+      "latencyMs": 1595
+    },
+    {
+      "id": "calendar-10",
+      "category": "calendar",
+      "user": "תקבעי ארוחת ערב עם המשפחה ביום שישי בשבע",
+      "scores": {
+        "PREAMBLE_FREE": false,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": true,
+        "CORRECT": false,
+        "rationale": "Abu asked for clarification before providing the answer."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אילו בני משפחה את רוצה להזמין לארוחת הערב ביום שישי?",
+      "latencyMs": 854
+    },
+    {
+      "id": "comm-01",
+      "category": "comm",
+      "user": "תשלחי הודעה למור שאני אוהבת אותה",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a ready WhatsApp draft without filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ],
+      "preamble": [],
+      "said": "ההודעה למור מוכנה על המסך שלך: \"מור, אמא אוהבת אותך מאוד!\" את יכולה ללחוץ על \"שלח\" כדי לשלוח אותה.",
+      "latencyMs": 2766
+    },
+    {
+      "id": "comm-02",
+      "category": "comm",
+      "user": "תתקשרי ללאו",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu directly stated the call was ready without filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "people_lookup",
+        "phone_call"
+      ],
+      "preamble": [],
+      "said": "הכרטיס מוכן להתקשר ללאו. את יכולה ללחוץ על הכפתור כדי לחייג.",
+      "latencyMs": 2219
+    },
+    {
+      "id": "comm-03",
+      "category": "comm",
+      "user": "כתבי לאופיר שאבוא בשבת",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a correct WhatsApp draft without any filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ],
+      "preamble": [],
+      "said": "הודעה לאופיר מוכנה: \"אופיר יקרה, אני אבוא בשבת. מחכה כבר לראות אותך!\" כעת יש לך כרטיס על המסך. פשוט תלחצי על \"שלח\" כדי לשלוח את ההודעה.",
+      "latencyMs": 3726
+    },
+    {
+      "id": "comm-04",
+      "category": "comm",
+      "user": "תשלחי ליעל שאני חושבת עליה",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a correct and concise WhatsApp draft without any filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ],
+      "preamble": [],
+      "said": "הודעה ליעל מוכנה: \"אני חושבת עלייך.\" יש לך כפתור \"שלח\" על המסך — תלחצי עליו כדי לשלוח.",
+      "latencyMs": 3269
+    },
+    {
+      "id": "comm-05",
+      "category": "comm",
+      "user": "תתקשרי לגלעד בבקשה",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu directly stated the call was ready without filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "people_lookup",
+        "phone_call"
+      ],
+      "preamble": [],
+      "said": "הכרטיס מוכן לשיחה עם גלעד. את יכולה ללחוץ על הכפתור כדי להתקשר אליו.",
+      "latencyMs": 2465
+    },
+    {
+      "id": "comm-06",
+      "category": "comm",
+      "user": "שלחי הודעה למור, תשאלי מה שלום הילדים",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a concise and correct WhatsApp draft without any filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ],
+      "preamble": [],
+      "said": "ההודעה למור מוכנה: \"היי מור, מה שלומם של הילדים? מקווה שהכל בסדר אצלכם.\" את יכולה ללחוץ על הכפתור כדי לשלוח אותה.",
+      "latencyMs": 2849
+    },
+    {
+      "id": "comm-07",
+      "category": "comm",
+      "user": "תכתבי לאיילון שסבתא מתגעגעת",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a correct WhatsApp draft without any filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ],
+      "preamble": [],
+      "said": "הודעה לאיילון מוכנה על המסך שלך: \"סבתא מתגעגעת אליך מאוד! איך אתה מרגיש היום? נשמח לשמוע ממך בקרוב.\" כדי לשלוח, פשוט תלחצי על \"שלח\".",
+      "latencyMs": 2869
+    },
+    {
+      "id": "comm-08",
+      "category": "comm",
+      "user": "תתקשרי למור עכשיו",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu directly stated the call was ready without filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "people_lookup",
+        "phone_call"
+      ],
+      "preamble": [],
+      "said": "הכרטיס לשיחה עם מור מוכן. תלחצי על הכפתור כדי להתקשר.",
+      "latencyMs": 2403
+    },
+    {
+      "id": "comm-09",
+      "category": "comm",
+      "user": "תשלחי לכולם במשפחה שמחר יש ארוחה",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu asked for specific recipients, which is appropriate for the request."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "למי במשפחה את רוצה שאשלח את ההודעה? יש לך הרבה בני משפחה, אז תני לי שמות או קשרים ספציפיים.",
+      "latencyMs": 919
+    },
+    {
+      "id": "comm-10",
+      "category": "comm",
+      "user": "כתבי לעילי חג שמח",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a concise and correct response without any filler or source mention."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ],
+      "preamble": [],
+      "said": "הודעת חג שמח לעילי מוכנה על המסך שלך. תראי אותה ותלחצי על \"שלח\" כשאת מוכנה.",
+      "latencyMs": 3782
+    },
+    {
+      "id": "chat-01",
+      "category": "chat",
+      "user": "תספרי לי בדיחה",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu told a joke directly without preamble or filler."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "למה התוכי לא עבר את הכביש? כי הוא היה קצת... מעופף!",
+      "latencyMs": 8941
+    },
+    {
+      "id": "chat-02",
+      "category": "chat",
+      "user": "ספרי לי סיפור קצר",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": true,
+        "CORRECT": false,
+        "rationale": "Abu did not tell a story directly; she offered to recall personal experiences instead."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא מספרת סיפורים מומצאים, אבל אני יכולה להזכיר לך משהו מהחיים שלך. אולי תרצי לשמוע על התקופה שבה גרת במנדוסה עם פפי והמשפחה? או אולי על העלייה לארץ ב-1977?",
+      "latencyMs": 3930
+    },
+    {
+      "id": "chat-03",
+      "category": "chat",
+      "user": "תספרי עד עשר",
+      "scores": {
+        "PREAMBLE_FREE": false,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": true,
+        "CORRECT": false,
+        "rationale": "Abu did not count and provided an unrelated response."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא סופרת, מרתה. איך את מרגישה היום?",
+      "latencyMs": 817
+    },
+    {
+      "id": "chat-04",
+      "category": "chat",
+      "user": "מה שלומך היום?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a warm, immediate, and concise response without any preamble or filler."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני כאן בשבילך, מרתיטה. איך עובר עלייך היום?",
+      "latencyMs": 947
+    },
+    {
+      "id": "chat-05",
+      "category": "chat",
+      "user": "תגידי לי משהו יפה",
+      "scores": {
+        "PREAMBLE_FREE": false,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Output contained filler and was longer than 40 words."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "מרתיטה, את יודעת מה אני חושבת? החיים שלך מלאים באנשים שאוהבים אותך. זה כל כך יפה לראות כמה את חשובה למשפחה שלך ולחברים שלך. זה מזכיר לי כמה חשוב לשמור על קשרים קרובים ולחיות באהבה.",
+      "latencyMs": 1053
+    },
+    {
+      "id": "chat-06",
+      "category": "chat",
+      "user": "בא לי לצחוק, תעשי לי טוב",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu shared a funny family story without filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "מרתיטה, את יודעת מה תמיד מצחיק אותי? כשאני נזכרת איך פפי היה שוכח להביא יין לארוחות משפחתיות, למרות שהוא היה כזה חובב יין אדום. תמיד היה צחוק גדול סביב זה! יש לך איזה סיפור מצחיק מהמשפחה שאת אוהבת להיזכר בו?",
+      "latencyMs": 1437
+    },
+    {
+      "id": "chat-07",
+      "category": "chat",
+      "user": "תגידי לי חידה",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu posed a riddle directly without filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "מרתיטה, יש לי חידה בשבילך: אני תמיד רעב, אני תמיד צריך לאכול, אבל אם תתן לי לשתות, אני אמות. מה אני?",
+      "latencyMs": 4040
+    },
+    {
+      "id": "chat-08",
+      "category": "chat",
+      "user": "איזה יום היום?",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": false,
+        "rationale": "The date provided is incorrect; today is not August 14, 2026."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "היום יום שישי, ה-14 באוגוסט 2026.",
+      "latencyMs": 3552
+    },
+    {
+      "id": "chat-09",
+      "category": "chat",
+      "user": "תשירי לי משהו",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu offered a suggestion without preamble or filler, and the response is appropriate."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה לשיר, אבל אני יכולה להזכיר לך שיר שאת אוהבת. אולי משהו של מרסדס סוסה? יש לה שירים כל כך יפים ומרגשים.",
+      "latencyMs": 3690
+    },
+    {
+      "id": "chat-10",
+      "category": "chat",
+      "user": "אני קצת עצובה היום",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu provided a warm, empathetic response without any filler or sources."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני כאן בשבילך, מרתיטה. רוצה לספר לי מה קרה? אולי זה יעזור קצת לדבר על זה.",
+      "latencyMs": 3590
+    },
+    {
+      "id": "cannot-01",
+      "category": "cannot",
+      "user": "תזמיני לי מונית לבית חולים",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": false,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": false,
+        "rationale": "Abu provided a long explanation and did not give a concise 'cannot' response."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה להזמין לך מונית, אבל אני כאן כדי לעזור בכל דרך אחרת שאפשר. אם את צריכה להגיע לבית חולים, אולי כדאי להתקשר ללאו או למישהו מהמשפחה שיכול לעזור.",
+      "latencyMs": 1057
+    },
+    {
+      "id": "cannot-02",
+      "category": "cannot",
+      "user": "תשלמי את חשבון החשמל שלי",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Abu's response included a preamble and was over 40 words."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה לשלם חשבונות בשבילך, מרתיטה. אבל אולי לאו יכול לעזור לך עם זה. רוצה שאכין שיחה אליו?",
+      "latencyMs": 878
+    },
+    {
+      "id": "cannot-03",
+      "category": "cannot",
+      "user": "תדליקי את המזגן בסלון",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "The response is honest but exceeds the word limit."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה להדליק את המזגן בשבילך, מרתה. אולי את יכולה לבקש מאחד הילדים לעזור לך עם זה?",
+      "latencyMs": 3734
+    },
+    {
+      "id": "cannot-04",
+      "category": "cannot",
+      "user": "תזמיני לי אוכל מהמסעדה",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Abu's response was too long and not direct."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה להזמין לך אוכל מהמסעדה, אבל אולי תוכלי להתקשר למסעדה האהובה עלייך ולבצע הזמנה. אם את רוצה, אני יכולה לעזור לך למצוא את המספר של המסעדה.",
+      "latencyMs": 3999
+    },
+    {
+      "id": "cannot-05",
+      "category": "cannot",
+      "user": "תקני לי כרטיס טיסה לארגנטינה",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "The response is direct but exceeds the word limit."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה להזמין כרטיסי טיסה בשבילך, מרתיטה. אבל אולי כדאי לדבר עם לאו או אופיר, הם בטוח יוכלו לעזור לך עם זה.",
+      "latencyMs": 3687
+    },
+    {
+      "id": "cannot-06",
+      "category": "cannot",
+      "user": "תעבירי כסף למור מהחשבון שלי",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": false,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Abu explained her limits and added unnecessary information."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה להעביר כסף או לבצע פעולות בנקאיות. אולי כדאי לדבר עם לאו על זה, הוא תמיד עוזר לך עם דברים כאלה.",
+      "latencyMs": 820
+    },
+    {
+      "id": "cannot-07",
+      "category": "cannot",
+      "user": "תקבעי לי תור אמיתי אצל הרופא בקופת חולים",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": true,
+        "CORRECT": true,
+        "rationale": "Abu directly stated she cannot book the appointment, which is correct."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "לצערי, אני לא יכולה לקבוע תור לרופא בקופת חולים. אבל אולי לאו יכול לעזור לך בזה?",
+      "latencyMs": 3656
+    },
+    {
+      "id": "cannot-08",
+      "category": "cannot",
+      "user": "תשלחי מכתב בדואר בשבילי",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": false,
+        "DIRECT": false,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Abu explained her limits and provided additional options, violating NO_META and CONCISE."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה לשלוח מכתב בדואר בשבילך. אם יש משהו אחר שאני יכולה לעזור בו, כמו לקבוע פגישה או לשלוח הודעה בוואטסאפ, אני כאן בשבילך.",
+      "latencyMs": 919
+    },
+    {
+      "id": "cannot-09",
+      "category": "cannot",
+      "user": "תפתחי לי את הדלת בבית",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": false,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "Abu explained her limits, making it false for NO_META."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה לפתוח דלתות בשבילך, מרתיטה. אם את צריכה עזרה עם משהו אחר, אני כאן בשבילך.",
+      "latencyMs": 3689
+    },
+    {
+      "id": "cannot-10",
+      "category": "cannot",
+      "user": "תזמיני לי תרופה מבית המרקחת",
+      "scores": {
+        "PREAMBLE_FREE": true,
+        "NO_SOURCES": true,
+        "NO_META": true,
+        "DIRECT": true,
+        "CONCISE": false,
+        "CORRECT": true,
+        "rationale": "The response is direct and correct but exceeds the word limit."
+      },
+      "emittedTextBeforeToolResult": false,
+      "tools": [],
+      "preamble": [],
+      "said": "אני לא יכולה להזמין לך תרופה מבית המרקחת. אולי כדאי שתתקשרי ללאו או לאופיר, הם בטח יוכלו לעזור לך עם זה.",
+      "latencyMs": 3554
+    }
+  ]
+}

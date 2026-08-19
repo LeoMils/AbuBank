@@ -1,0 +1,62 @@
+{
+  "$schema": "internal://abu/owner-human-authority",
+  "schemaVersion": "authority/1",
+  "note": "OWNER_ACTION and HUMAN_RESIDUAL are escape hatches requiring proof (§44/C11). Engineering difficulty is NOT an authority class. Every owner item records why the machine cannot close it + approaches attempted; every human residual records negative-proof. DEVICE MODEL: PRIMARY = Martita on Samsung Galaxy / Android / Chrome or installed PWA; SECONDARY = Leo on iPhone / Safari or installed PWA. Canonical auth/session testing = normal Chrome/PWA on Galaxy (never Incognito for normal use).",
+  "completedOwnerActions": [
+    { "id": "revoke-openai-key", "requestedAction": "Revoke historical exposed OpenAI key fp:e39ef3b7", "status": "COMPLETED", "evidence": "owner revoked/deleted + demonstrated (2026-08-19); current RC bundle secret-clean. Do NOT re-open without concrete contradictory evidence." },
+    { "id": "revoke-gemini-key", "requestedAction": "Revoke historical exposed Gemini key fp:69150fc4", "status": "COMPLETED", "evidence": "owner revoked/deleted + demonstrated (2026-08-19)." },
+    { "id": "revoke-groq-key", "requestedAction": "Revoke historical exposed Groq key fp:a2f25d13", "status": "COMPLETED", "evidence": "owner revoked/deleted + demonstrated (2026-08-19)." }
+  ],
+  "ownerActions": [
+    {
+      "id": "authorize-production-deploy",
+      "requestedAction": "Authorize a clean Production deploy of the locked candidate",
+      "whyMachineCannotClose": "Production deployment is explicitly owner-gated by the constitution; the machine must not deploy Production.",
+      "machineApproachesAttempted": ["RC certified", "promotion rehearsal (pending) will pre-verify everything short of deploy"],
+      "authorityClass": "PRODUCTION_AUTHORIZATION",
+      "releaseBlocking": "production",
+      "requiredOwnerInput": "explicit 'Deploy Production' authorization",
+      "evidence": "constitution §57"
+    },
+    {
+      "id": "provision-distributed-auth-store",
+      "requestedAction": "Provision a free-tier durable KV (Upstash/Vercel KV) for GLOBAL WebAuthn single-use + durable counter baseline, and set KV_REST_API_URL + KV_REST_API_TOKEN (Preview+Production).",
+      "whyMachineCannotClose": "Creating the store requires an owner marketplace/install authorization; the connector cannot be provisioned from the repo without the owner accepting the (free-tier) integration once.",
+      "machineApproachesAttempted": ["KV adapter fully implemented + atomic SET-NX single-use + durable counter (api/_replayStore) — auto-activates when the env vars exist", "same-instance replay DENIED + unit-proven", "production fail-closed when a distributed store is REQUIRED but absent"],
+      "authorityClass": "INFRASTRUCTURE_SPEND",
+      "releaseBlocking": "production",
+      "requiredOwnerInput": "one action: create the free KV in the Vercel dashboard (Storage → KV/Upstash) — env vars are injected automatically",
+      "evidence": "RELEASE_LOCK.json.securityHardening; api/_replayStore.ts; replayStoreDurable.test.ts"
+    },
+    {
+      "id": "set-durable-production-auth-env",
+      "requestedAction": "Set durable PRODUCTION-scope AUTH_SIGNING_SECRET + ENROLLMENT_SECRET (Preview scope is already set).",
+      "whyMachineCannotClose": "Writing PRODUCTION secret values is an explicit owner action; the machine must not set Production env values.",
+      "machineApproachesAttempted": ["set Preview durable env", "build gate (check-prod-auth-config) BLOCKS a Production build without them so a prod deploy cannot ship authEnforced=false", "runtime 503 fail-closed"],
+      "authorityClass": "PRODUCTION_AUTHORIZATION",
+      "releaseBlocking": "production",
+      "requiredOwnerInput": "set the two Production env values",
+      "evidence": "RELEASE_LOCK.json.ownerActionsOpen; scripts/check-prod-auth-config.mjs"
+    }
+  ],
+  "humanResiduals": [
+    {
+      "id": "voice-perceptual-quality",
+      "property": "Naturalness / pleasantness / subjective latency-feel / interruption-feel / conversational parity of the spoken voice",
+      "whyNonAutomatable": "Irreducibly perceptual — requires a human ear/judgement; no machine oracle defines 'sounds warm and natural'.",
+      "machineApproachesAttempted": ["objective voice gates (TTFA, tool-order, post-cancel energy) are machine-graded via FlightRecorder", "audibility/wiring proven in code/mock/browser"],
+      "exactIrreducibleRemainder": "the subjective perceptual judgement only",
+      "negativeProofStatus": "DOCUMENTED",
+      "reviewTrigger": "any change to TTS voice/model or realtime audio route"
+    },
+    {
+      "id": "realtime-callid-reconnect-device",
+      "property": "Duplicate realtime function_call callId delivered across a real reconnect/reload on a physical device produces exactly one persisted event",
+      "whyNonAutomatable": "The operationId dedup path is realtime-tool-only and the reconnect race is only materially reproduced by a real device voice session; the deployed UI create path does not exercise it.",
+      "machineApproachesAttempted": ["operationId dedup unit-proven (idempotentCreate.test.ts, 6 scenarios)", "boundary dedup at liveTools + calendarDraftController unit-proven"],
+      "exactIrreducibleRemainder": "the on-device reconnect timing of a live realtime session",
+      "negativeProofStatus": "DOCUMENTED",
+      "reviewTrigger": "any change to the realtime reconnect/idempotency path — re-attempt FlightRecorder replay first"
+    }
+  ]
+}

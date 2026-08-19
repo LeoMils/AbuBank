@@ -1,0 +1,14 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Gabi
+hebrew_name: גבי
+aliases: []
+relationship: niece_in_law_of_husband
+relationship_hebrew: אשתו של אריאל (וונקובר)
+role: אשתו של אריאל בן טאבלה (וונקובר)
+location: ונקובר, קנדה
+gender: female
+spouse: אריאל (בן טאבלה)
+notes: אשתו של אריאל (בן טאבלה) בוונקובר; לא-יהודייה. לאו לא יודע במה היא עוסקת. שני ילדים — השמות לא סופקו.
+pronunciation:
+  es: gabi

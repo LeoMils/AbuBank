@@ -1,0 +1,9 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: pets
+canonical_name: Tutsi
+hebrew_name: טוטסי
+aliases:
+- טוצי
+type: dog
+owner: Martita
+notes: הכלב של מרטיטה. הולכת איתו לטיולים כל יום.

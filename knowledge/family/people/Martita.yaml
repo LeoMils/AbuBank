@@ -1,0 +1,32 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: matriarch
+canonical_name: Martita
+hebrew_name: מרטיטה
+aliases:
+- אבו
+- Abu
+- Abuela
+- מרתה
+- Marta
+- Abu Ela
+- אבו אלה
+- Müller
+- Muller
+- Miller
+relationship: matriarch
+relationship_hebrew: מלכת המשפחה
+maiden_name: Müller
+maiden_name_note: "שם נעורים: Müller (קנוני, אושר על ידי לאו). Muller ו-Miller הם וריאציות איות — כינויים לאותו אדם."
+birthday: 04-01
+birth_year: 1945
+location: כפר סבא
+origin: בואנוס איירס, ארגנטינה
+languages:
+- עברית
+- ספרדית
+- אנגלית (מבינה מעט)
+gender: female
+pet: טוטסי
+notes: מלכת המשפחה; הייתה המלכה של פפי והוא המלך שלה. נולדה 1 באפריל 1945 בבואנוס איירס (מתקן טעות קודמת של 01-01). חותמת הודעות כ-אבו. אוהבת לבשל, לארח, ארוחות שישי. אישה חדה, חכמה, לא פראיירית — כולם אוהבים אותה. פרטי אישיות, העדפות, שגרות ובריאות — ב-knowledge/martita_personality.yaml.
+pronunciation:
+  es: martita

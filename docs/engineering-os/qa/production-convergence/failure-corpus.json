@@ -1,0 +1,144 @@
+{
+  "note": "Real defects found this session via mechanism-first audit of the live realtime path. Each has a red-first regression test (failure-to-regression).",
+  "defects": [
+    {
+      "id": "TM-FP-001",
+      "surface": "realtime/truth-monitor",
+      "severity": "High",
+      "class": "false-positive / over-block (ADR-0001 §16 firewall)",
+      "first_divergence": "COMPLETION regex group /כבר\\s+(שלחתי|התקשרתי|חייגתי|שלחת)/ included 2nd-person 'שלחת' ('YOU sent'); the monitor exists to catch the ASSISTANT falsely claiming IT (1st person) completed an action.",
+      "reproduction": "detectForbiddenCompletion('כבר שלחת לו את זה?') returned a violation -> assistant question wrongly triggers 'fabricated_completion' repair.",
+      "fix": "Removed 2nd-person 'שלחת' from the group and wrapped the group in the 'לא ' negation guard; only 1st-person completions count.",
+      "regression_test": "src/screens/AbuAI/realtime/truthMonitor.test.ts :: 'forward-Hebrew false positive: a 2nd-person question is NOT a 1st-person completion'",
+      "status": "FIXED_AND_TESTED",
+      "evidence_class": "CODE+TEST"
+    },
+    {
+      "id": "TM-FP-002",
+      "surface": "realtime/truth-monitor",
+      "severity": "Medium",
+      "class": "false-positive / over-block",
+      "first_divergence": "/דיברתי\\s+עם/ lacked the 'לא ' negation guard that every other completion verb (שלחתי/התקשרתי/חייגתי/נשלח) carried.",
+      "reproduction": "detectForbiddenCompletion('לא דיברתי עם מור עדיין') returned a violation -> truthful negation over-blocked.",
+      "fix": "Wrapped 'דיברתי\\s+עם' in the negation guard.",
+      "regression_test": "src/screens/AbuAI/realtime/truthMonitor.test.ts :: 'forward-Hebrew false positive: negated \"דיברתי עם\" is truthful, never flagged'",
+      "status": "FIXED_AND_TESTED",
+      "evidence_class": "CODE+TEST"
+    },
+    {
+      "id": "CD-FN-001",
+      "surface": "realtime/truth-monitor",
+      "severity": "High",
+      "class": "false-negative / unsupported-denial escape",
+      "first_divergence": "CAPABILITY_DENIAL matched /לא\\s+יכולה\\s+ל(ה?תקשר|שלוח|שלח)/ — it covered 'להתקשר' (to call) but NOT 'לחייג' (to dial), a first-class call verb in a product that PREPARES calls.",
+      "reproduction": "detectUnsupportedDenial('אני לא יכולה לחייג לו', {status:'READY_FOR_HANDOFF'}) returned [] — the model could deny a READY call capability unchecked.",
+      "fix": "Added 'חייג' to the denial verb set: /לא\\s+יכולה\\s+ל(ה?תקשר|חייג|שלוח|שלח)/ (mechanism, not phrase). Genuinely-absent capability (NOT_CONFIGURED) stays truthful.",
+      "regression_test": "src/screens/AbuAI/realtime/truthMonitor.test.ts :: 'REGRESSION (CD-FN-001): לא יכולה לחייג …'",
+      "found_by": "destructive/mutation sweep (src/screens/AbuAI/realtime/destructiveSweep.test.ts)",
+      "status": "FIXED_AND_TESTED",
+      "evidence_class": "CODE+TEST"
+    }
+  ],
+  "destructive_sweep": {
+    "file": "src/screens/AbuAI/realtime/destructiveSweep.test.ts",
+    "targets_real_paths": "RealtimeCommController -> SessionOrchestrator -> control-plane reducer + dispatchTool kernel -> ActiveActionViewModel -> truthMonitor",
+    "seams_attacked": [
+      "stale generation rejection",
+      "stale revision after replace",
+      "cancel WHILE tool in flight",
+      "replace WHILE tool in flight (latest-intent-wins)",
+      "exactly-once across duplicate+reordered completion shapes",
+      "phone-in-args privacy (controller + dispatchTool)",
+      "safe-label vs local-phone resolution",
+      "fallback/reconnect not reviving cancelled action",
+      "greeting-once across reconnect",
+      "one canonical projection card==receipt revision"
+    ],
+    "mutation_proofs": [
+      "control-plane: dropped the generation check in TOOL_RESULT -> 'pre-fallback tool result REJECTED' test went RED (reverted).",
+      "truth-monitor: emptied NEG (negation guard) -> 4 negation/forward sentinels went RED (reverted)."
+    ],
+    "result": "14 sweep tests green against correct code; proven non-vacuous by injected mutations."
+  },
+  "certification": {
+    "build": "0.174.0-realtime-truthmonitor-hebrew-hardened-rc",
+    "adversarial_variants": "22 (10 MUST-FLAG 1st-person completions + 11 MUST-NOT-FLAG truthful/negated/2nd-person/offer/forward + capability-denial both ways)",
+    "dimensions_covered": [
+      "punctuation",
+      "ו/כ/ש prefixes",
+      "mixed clauses",
+      "questions",
+      "negation (leading/trailing/ש-prefixed)",
+      "future-tense offer vs past completion",
+      "capability exists vs genuinely absent"
+    ],
+    "result": "detection of real 1st-person fabrication NOT weakened; all forward-Hebrew false positives closed.",
+    "known_bounded_limits": [
+      "Deeply nested negation ('לא אמרתי ששלחתי' = 'I did not say that I sent') can still trip the bounded regex; this is an accepted ADR-0001 §7 bound (structural receipt guarantee is PRIMARY — completion is unrepresentable in a receipt; the monitor is a bounded secondary net, NOT open NLP).",
+      "Implied completion with no completion verb ('ההודעה בדרך') is not pattern-detectable and is covered structurally, not by the monitor."
+    ]
+  },
+  "conversation_convergence": {
+    "file": "src/screens/AbuAI/conversationConvergence.test.ts",
+    "note": "Adversarial INTEGRATION over the REAL conversation modules (no second brain); 10 assertions.",
+    "dialogue-quality": {
+      "module": "dialogueManager (guardDialogue/acknowledgeCorrection)",
+      "independentVerifier": "src/screens/AbuAI/conversationBrainQuality.test.ts",
+      "mutation": "disable repeated-apology detection -> 1 test fails; reverted"
+    },
+    "long-session-context": {
+      "module": "contextResolver.resolveFollowUp (bounded continuity)",
+      "independentVerifier": "src/screens/AbuAI/contextResolver.test.ts",
+      "mutation": "break bare-מחר follow-up -> 1 test fails; reverted"
+    },
+    "hebrew-corpus": {
+      "module": "correctionVerification.isFactualCorrection/shouldReverifyOnline",
+      "independentVerifier": "src/screens/AbuAI/correctionVerification.test.ts",
+      "mutation": "break factual-correction regex -> 2 tests fail; reverted"
+    }
+  },
+  "whole_product_qa": {
+    "file": "src/screens/AbuAI/wholeProductProperty.test.ts",
+    "note": "Generative property/race/fault across DISTINCT seams (privacy/truth/state-ordering); 700+ generated cases.",
+    "independentVerifiers": [
+      "src/screens/AbuAI/realtime/destructiveSweep.test.ts",
+      "src/eval/productDestructionLab.test.ts"
+    ],
+    "mutations": [
+      "privacy digit gate weakened -> property fails",
+      "control-plane generation guard dropped (destructiveSweep)",
+      "truth-monitor NEG emptied (destructiveSweep/truthMonitor)"
+    ]
+  },
+  "calendar_migration": {
+    "file": "src/screens/AbuAI/realtime/calendarDraft.ts",
+    "note": "Calendar under ADR-0001 control-plane DISCIPLINE (typed draft + revisions + same-revision confirm + isolation), delegating TRUTH (relationship/date) to an injected resolver (production: familyResolve/calendarEventBuilderV2). No second conversational brain.",
+    "class": "PRODUCTION_ADAPTER (injected calendar function-call journey, no mic)",
+    "proven": [
+      "field corrections preserve every unrelated field",
+      "relationship/gender change is a structured update",
+      "unresolved relationship (אח של מור) stays unresolved + blocks confirm (never guessed)",
+      "same-revision confirm/commit; stale confirm rejected",
+      "general/communication turns never mutate the draft (isolation)",
+      "receipt never emits a relative date (grounded)"
+    ],
+    "mutations": [
+      "field-correction clobbers unrelated fields -> 5 tests fail",
+      "allow stale confirm -> 2 tests fail"
+    ]
+  },
+  "cal_runtime_integration": {
+    "defect": "calendarDraft had ZERO non-test imports — not runtime-integrated (hostile-audit finding).",
+    "fix": "Declared calendar function-tools + a thin CalendarDraftController; RealtimeVoiceSession routes calendar calls to it (disjoint from comm); index.tsx constructs BOTH controllers under the SAME ?voice=realtime2 flag; UI projects the committed receipt (liveCalendarDraft).",
+    "failing_first": "calendarRuntimeIntegration.test.ts — 3 red before routing (calendar calls dropped).",
+    "class": "PRODUCTION_ADAPTER (real RealtimeVoiceSession.handleEvent → CalendarDraftController → calendarDraft via injectForTest), at parity with RT-CONTROLLER-001; reachable via the FEATURE-ACTIVATION-proven flag; shipped in deployed 0.177.0.",
+    "independentVerifier": "src/services/realtimeVoiceSlice.test.ts (same real-session routing mechanism for communication).",
+    "mutations": [
+      "remove calendar routing in realtimeVoice -> 3 fail",
+      "isCalendarToolName always true (isolation break) -> 1 fail",
+      "clobber unrelated field (calendarDraft) -> 5 fail",
+      "allow stale confirm (calendarDraft) -> 2 fail"
+    ],
+    "owner_resolution": "Legacy AbuCalendar remains the SCREEN/read/persistence + reminders owner; the realtime slice draft is the AUTHORITATIVE conversational calendar draft. Disjoint routing means no crossed authority; the two do not both own the draft/confirmation/commit."
+  }
+}

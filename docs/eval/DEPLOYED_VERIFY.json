@@ -1,0 +1,46 @@
+{
+  "base": "https://abu-bank-6q2mrzcso-leos-projects-d3c04c09.vercel.app",
+  "expectVersion": "0.282.0-earonly",
+  "checks": {
+    "health": {
+      "buildVersion": "0.282.0-earonly",
+      "ok": true,
+      "matches": true,
+      "openai": "present"
+    },
+    "bundle": {
+      "scriptsScanned": 1,
+      "found": {
+        "the time or weather right now": true,
+        "is STILL a current question": true,
+        "NEVER send her to a shop": true
+      },
+      "allFragmentsPresent": true
+    },
+    "buildFlags": {
+      "version": "0.282.0-earonly",
+      "env": {
+        "LIVE_PREAMBLE_TWO_RESPONSE": true,
+        "LIVE_AUDIO_TUNE_V2": true,
+        "LIVE_BARGE_IN_TRUNCATE": true,
+        "LIVE_PREFETCH_WARM": true,
+        "LIVE_CLASSIFIED_MONITOR": true
+      },
+      "code": {
+        "LIVE_OUTPUT_MONITOR_REPAIR": true,
+        "LIVE_INTERRUPT_RESPONSE": false,
+        "ONLINE_GENERAL_SEARCH": true
+      },
+      "on": [
+        "LIVE_PREAMBLE_TWO_RESPONSE",
+        "LIVE_AUDIO_TUNE_V2",
+        "LIVE_BARGE_IN_TRUNCATE",
+        "LIVE_PREFETCH_WARM",
+        "LIVE_CLASSIFIED_MONITOR",
+        "LIVE_OUTPUT_MONITOR_REPAIR",
+        "ONLINE_GENERAL_SEARCH"
+      ]
+    }
+  },
+  "deployedIsThisBuild": true
+}

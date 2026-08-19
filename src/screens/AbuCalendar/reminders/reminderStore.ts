@@ -1,5 +1,6 @@
 import type { Reminder, ReminderCategory, ReminderStatus } from './types'
 import { scheduleReminderNotification, cancelReminderNotification, rescheduleReminderNotification } from './reminderDelivery'
+import { durable } from '../../../services/durableStore'
 
 const STORE_KEY = 'abu_reminders_v1'
 
@@ -20,8 +21,9 @@ function readStore(): Reminder[] {
 function writeStore(items: Reminder[]): boolean {
   try {
     const json = JSON.stringify(items)
-    localStorage.setItem(STORE_KEY, json)
-    // Round-trip verify: read back and check length matches
+    // Durable write-through: localStorage mirror (sync) + IndexedDB (durable).
+    durable.setString(STORE_KEY, json)
+    // Round-trip verify against the synchronous mirror.
     const readback = localStorage.getItem(STORE_KEY)
     if (!readback || readback.length !== json.length) return false
     return true

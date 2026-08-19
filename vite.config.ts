@@ -74,10 +74,11 @@ async function googleTTS(text: string, lang: string): Promise<Buffer> {
 /**
  * Azure Cognitive Services TTS — official REST API.
  * Same HilaNeural / ElenaNeural voices as Edge TTS but via reliable HTTP.
- * Free tier: 500,000 chars/month. Needs VITE_AZURE_TTS_KEY (+ VITE_AZURE_TTS_REGION, default "eastus").
+ * Free tier: 500,000 chars/month. Needs AZURE_TTS_KEY (server-only; + VITE_AZURE_TTS_REGION is
+ * a PUBLIC region id, default "eastus"). The KEY must NOT carry a VITE_ prefix (P0 2026-08-16).
  */
 async function azureTTS(text: string, lang: string): Promise<Buffer> {
-  const azureKey = process.env.VITE_AZURE_TTS_KEY
+  const azureKey = process.env.AZURE_TTS_KEY
   const azureRegion = process.env.VITE_AZURE_TTS_REGION ?? 'eastus'
   if (!azureKey) throw new Error('no azure key')
 
@@ -176,8 +177,8 @@ async function edgeTTS(text: string, voice: string): Promise<Buffer> {
  */
 /**
  * Dev-only OpenAI chat proxy — replaces the Vercel serverless function
- * /api/abuai-chat locally. Reads VITE_OPENAI_API_KEY from .env and
- * forwards chat requests to OpenAI. Supports both JSON and SSE streaming.
+ * /api/abuai-chat locally. Reads OPENAI_API_KEY from .env (server-only name;
+ * never VITE_) and forwards chat requests to OpenAI. Supports JSON and SSE.
  */
 function openaiChatProxyPlugin(): Plugin {
   return {
@@ -186,7 +187,7 @@ function openaiChatProxyPlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         if (req.url !== '/api/abuai-chat' || req.method !== 'POST') return next()
-        const apiKey = process.env.VITE_OPENAI_API_KEY
+        const apiKey = process.env.OPENAI_API_KEY // server-only name (no VITE_ prefix — P0 2026-08-16)
         if (!apiKey) {
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ ok: false, errorCode: 'OPENAI_API_KEY_MISSING', userMessage: 'מפתח OpenAI לא מוגדר ב-.env' }))
@@ -317,7 +318,7 @@ function ttsProxyPlugin(): Plugin {
           const text = params.get('text') || ''
           const lang = params.get('lang') || 'he'
           if (!text) { res.writeHead(400); res.end('missing text'); return }
-          if (!process.env.VITE_AZURE_TTS_KEY) { res.writeHead(503); res.end('no azure key'); return }
+          if (!process.env.AZURE_TTS_KEY) { res.writeHead(503); res.end('no azure key'); return }
           console.log(`[azure-tts] "${text.substring(0, 40)}..." lang=${lang}`)
           try {
             const audio = await azureTTS(text, lang)
@@ -410,8 +411,8 @@ export default defineConfig({
         clientsClaim: true,             // new SW takes control of ALL open tabs/windows immediately
       },
       manifest: {
-        name: 'AbuBank',
-        short_name: 'AbuBank',
+        name: 'Abu-ela',
+        short_name: 'Abu-ela',
         description: 'הפורטל הפרטי של Martita',
         display: 'standalone',
         orientation: 'portrait',
@@ -457,6 +458,9 @@ export default defineConfig({
   },
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
+    // DIAGNOSTIC-INTEGRITY: bake the real deployed commit SHA (Vercel provides
+    // VERCEL_GIT_COMMIT_SHA at build) so live diagnostics never report commit=local.
+    'import.meta.env.VITE_COMMIT_SHA': JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA || process.env.COMMIT_SHA || 'local'),
   },
   // H6-FIX: explicit build target and minify for bundle control
   build: {

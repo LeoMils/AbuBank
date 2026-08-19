@@ -1,0 +1,19 @@
+{
+  "note": "Privacy-safe SEMANTIC failure families from the device transcript. No raw conversation, no phone numbers. Contacts abstracted to roles. Each family maps to the invariant + where it is now covered (deterministic reducer/tool/monitor) vs. requires the wired live path.",
+  "families": [
+    { "id": "F-repeated-greeting", "invariant": "exactly one greeting per genuine session", "coveredBy": "controlPlane law 8 (deterministic)", "wiredPathNeeded": "greeting emitted as a control-plane effect in the live session" },
+    { "id": "F-stale-whatsapp-swallows-call", "invariant": "latest explicit intent wins; Call<->WhatsApp atomic replace", "coveredBy": "controlPlane laws 1/2/3 (deterministic)", "wiredPathNeeded": "REPLACE_ACTION turn -> control plane -> card flip in live UI" },
+    { "id": "F-explicit-not-message-only-call", "invariant": "explicit replacement outranks a pending continuation", "coveredBy": "controlPlane REPLACE precedence", "wiredPathNeeded": "same" },
+    { "id": "F-complaint-as-clarification", "invariant": "complaints/meta never captured as action clarification", "coveredBy": "controlPlane laws 13/14 (deterministic)", "wiredPathNeeded": "turn-type classification upstream marks COMPLAINT" },
+    { "id": "F-user-name-as-recipient", "invariant": "the user (Martita) is never a recipient", "coveredBy": "kernel recipient resolution (existing) + not a MUTATES turn", "wiredPathNeeded": "tool args validation" },
+    { "id": "F-general-talk-mutates-action", "invariant": "general talk cannot mutate a pending action", "coveredBy": "controlPlane law 13", "wiredPathNeeded": "same" },
+    { "id": "F-fabricated-completion", "invariant": "no SENT/CALLED/DIALED claim ever", "coveredBy": "tool receipts have no completion status + truthMonitor completion detector", "wiredPathNeeded": "monitor runs on live model transcript; repair next turn" },
+    { "id": "F-capability-denial", "invariant": "model never denies a supported action", "coveredBy": "truthMonitor unsupported-denial (vs READY receipt)", "wiredPathNeeded": "capability answered by kernel, not model prose" },
+    { "id": "F-hallucinated-personal-fact", "invariant": "personal/relationship/calendar facts only from receipts", "coveredBy": "structural avoidance (model has no fact source) — partial in deterministic layer", "wiredPathNeeded": "instructions + receipt-grounded speech in the live session" },
+    { "id": "F-brother-of-mor-guessed", "invariant": "unresolved relationship stays structural; never coerced to a name", "coveredBy": "kernel relationship resolution (existing)", "wiredPathNeeded": "calendar draft (out of THIS slice; retained in broader corpus)" },
+    { "id": "F-hidden-card-in-live", "invariant": "action visible + usable inside the active Live Conversation", "coveredBy": "NOT YET — requires the wired in-session card", "wiredPathNeeded": "ActiveActionCard bound to committed revision in the live UI" },
+    { "id": "F-stale-late-result-speaks", "invariant": "replaced/cancelled/cross-generation results never speak/render", "coveredBy": "controlPlane laws 5/6/12 (deterministic)", "wiredPathNeeded": "tool results routed through the reducer" },
+    { "id": "F-ui-speech-disagree", "invariant": "UI and speech read one committed revision", "coveredBy": "controlPlane law 9 (deterministic)", "wiredPathNeeded": "card + spoken confirmation both read ActiveAction.revision" },
+    { "id": "F-calendar-participant-mutation", "invariant": "calendar correction updates a field without losing others", "coveredBy": "OUT OF SLICE (Calendar) — retained in broader failure-genome, not discarded", "wiredPathNeeded": "rich calendar draft (future slice)" }
+  ]
+}

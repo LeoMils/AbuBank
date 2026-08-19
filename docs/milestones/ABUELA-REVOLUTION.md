@@ -1,0 +1,318 @@
+# THE ABU-ELA REVOLUTION — durable spec + running log
+
+**This file is the resume point.** If context is cleared, read this top-to-bottom
+and continue from the first unchecked box. One commit per milestone, pushed to the
+RC branch. Never merge main. Never deploy production.
+
+## Operating protocol
+1. This spec is committed first and updated as work proceeds.
+2. Never stop to ask which part is next. Ambiguous → safest option, log it, continue.
+3. One commit per milestone, pushed.
+4. Evidence discipline: `CODE < TEST < PREVIEW < DEVICE`. Never claim green on
+   weaker evidence than the claim needs.
+5. Use specialist agents where they genuinely help; record which and what they gave.
+6. Every milestone ends green: typecheck · full suite · build · validators · gate.
+
+## Evidence legend
+`CODE` wiring exists · `TEST` automated assertion ran · `PREVIEW` real provider/
+deploy · `DEVICE` proven on Leo's iPhone · `HUMAN` needs a human eye.
+
+---
+
+## Checklist
+
+### M1 — Online provider bake-off  (do first; everything online depends on it)
+- [x] Provider abstraction (`src/services/online/`: providerTypes, adapters, registry) — key server-side
+- [x] 36-question Hebrew(+Spanish) corpus (`corpus.ts`): news/sports/weather/cinema/prices/hours/live
+- [x] Scoring harness (`scripts/online-bakeoff.ts`): citation rate · answer rate · latency (avg/p95) · by-category
+- [x] Adapters: OpenAI (incumbent, VERIFIED), Tavily, Brave, Perplexity Sonar (CODE — key-gated, unit-tested via mocks)
+- [x] Ran incumbent FOR REAL; others recorded BLOCKED (no key) — never faked
+- [x] Matrix written (`docs/eval/ONLINE_BAKEOFF.json`) — see decision D2
+- [x] Key request reported (below) — Leo must obtain 3 keys to finish the tournament
+- [x] DONE (keys arrived): ran Tavily/Brave/Perplexity FOR REAL on the 36-Q corpus. Found + fixed a Brave
+      adapter bug (country=IL → 422; removed, regression added). Matrix (real): OpenAI 61%/3941ms/8851ms ·
+      Tavily 100%/1963ms/3228ms · Brave 100%/784ms/1132ms (snippets only) · Perplexity 100%/4501ms/6860ms.
+      Winner = **Tavily** (only speakable grounded Hebrew answer inside the voice budget). See D11.
+
+### M2 — Full online, inside the conversation  ── winner wired (endpoint); UX polish staged ──
+- [x] Winner (Tavily) WIRED behind /api/abuai-online via selectProvider(ONLINE_PROVIDER). Default stays
+      openai (zero prod change until the env flips); same honesty gate (0 sources ⇒ decline); key server-side.
+- [x] personal/family/calendar never hit the web — proven on the WIRED path (calendar query blocked in 1ms).
+- [x] Failed/ungrounded retrieval = honest decline (grounding gate holds on the winner path; tested).
+- [x] Harness re-run FOR REAL through the wired endpoint against live Tavily: grounded answers 0.2–1.6s.
+- [ ] STAGED (needs deploy/env): set ONLINE_PROVIDER=tavily in the Vercel env to activate the winner in prod
+      (I cannot deploy). Client-side bounded timeout (~2.5s) + a truthful "checking…" state for Tavily p95.
+- [ ] STAGED: "states source in speech never a URL" wording + follow-ups from the SAME cached results + Abu
+      News dynamic-count polish — conversation-layer work, separate from the endpoint swap.
+
+### M3 — One people store, real Hebrew kinship  ── DONE (core) ──
+- [x] ONE canonical model (src/services/people/peopleModel) reads the single source (family_data.json);
+      direct edges only (parents/children/spouses/formerSpouses/partners/cohabits)
+- [~] Collapse 4 stores: the canonical MODEL + people_lookup are the one path; PHYSICAL retirement of
+      family_graph.json / abu-family.md (generate them FROM the one source) + contacts merge = STAGED (D4)
+- [x] Derive kinship at query time (kinship.ts) — every required Hebrew term, gendered, never stored
+- [x] Named failures pass (tests): Leo=דוד of Mor's children · Gilad=גיס of Eili · Yarden=כלה of Rafi
+- [x] ONE `people_lookup` tool wired into LiveTools (who/relationship/relatives/contact); numbers at UI only
+- [~] Retire `resolve_contact`: people_lookup supersedes it and is wired; physical removal = STAGED (D4)
+- [x] Family DATA physically REMOVED from the live prompt (D4 done): "# What Abu Knows — Family" + the
+      abu-family.md embed are gone; a "# Family and People" routing instruction sends the model to
+      people_lookup. resolve_contact references in the instructions replaced by people_lookup. Size
+      12978 → 9962 chars (−23%; pure-removal floor 9587 + the routing paragraph). abu-family.md remains
+      legacy prose only; generating it from the one source is still staged.
+- [x] Invariant tests (all 8: unknown-stays-unknown, alias→one person, spellings verbatim, death keeps
+      genealogy, former_spouse/partner distinct + partner≠parent, temporal dated, gender-only-where-known, add-by-data)
+- [x] Gate validator (scripts/validate-people.ts) — errors in plain Hebrew, in prebuild; broken file never builds
+- [x] Kinship "harness": 28 deterministic queries (kinship.test + peopleLookup.test) incl. every derived type
+      + "הבת שלי"→Mor in one turn + "הנכד שלי"→ambiguous. (Deterministic > LLM for kinship correctness.)
+
+### M4 — Brand + design revolution  ── FOUNDATION done; rollout next ──
+- [x] 2–3 hub directions proposed in words; Leo chose **B "Night Garden"** (+ light "Bright Day" flip)
+- [x] THEMEABLE tokens (condition 1): src/design/theme.css + theme.ts — dark⇄light by one attribute, no rebuild
+- [x] Per-app logo FAMILY as SVG components (src/design/logos/AbuLogo): 7 emblems, one system, distinct glyph+accent
+- [x] Applied to the HUB (logos + theme tokens + Night-Garden page bg)
+- [x] Senior-first VERIFICATION gate (both themes): WCAG AA contrast + 56px/16px, system-wide via tokens/components
+- [x] Rollout wave 1: ScreenHeader carries the per-app logo; Abu News + Abu Bank fully in the Night Garden system
+- [x] Abu AI screen DONE (M5 STEP 2, 835d9f3) — in the Night Garden system with the animated presence.
+- [x] Rollout wave 2 DONE (STEP 3, careful per-screen, ONE AT A TIME, verified not blind-swapped, one commit
+      each): **WhatsApp · Games · Calendar · Weather** all now carry the shared per-app AbuLogo emblem (one
+      logo family) and — where the screen is themeable — the Night-Garden PAGE_BG root. Each was VERIFIED by
+      rendering the REAL dev screen with Playwright at 412×870 (emblem present, bespoke design intact, zero
+      horizontal overflow) and each screen's own test suite stayed green. Design-locked / bespoke work was
+      PRESERVED, not blind-swapped (see D12): Games keeps its bright terrace (NO dark tokens, NO PAGE_BG —
+      emblem crest only); Weather keeps its dynamic sky hero + night starfield (only the flat page fills
+      became the nebula); WhatsApp keeps its WA-green wordmark + family-portrait album; Calendar keeps its
+      gold identity + month grid. Commits: 6dc2cdf WhatsApp · 87d0720 Games · 63fee8d Calendar · (Weather this
+      commit). Deep per-screen token migration of every bespoke internal colour is deliberately NOT done — it
+      fights the intentional per-app identities + the locking source-grep tests, and the senior-first minimums
+      are already guaranteed system-wide via the shared tokens/components (D8).
+
+### M5 — Abu's presence (Abu AI screen)
+- [x] 2–3 character directions proposed; Leo chose **3 "Silhouette & light"**
+- [x] STILL FRAME delivered for approval BEFORE animating (condition 2): docs/design/abu-bust-still.svg + .png
+- [x] Leo's judgement (D9): SHIP variant A now + animate; commissioned illustration is a later upgrade
+- [x] Mouth from real output-audio amplitude (AnalyserNode); 4 states; blink+breathe idle life; graceful
+      degrade — DONE as reusable components. `presence/AbuCharacterA.tsx` (variant A, named layer groups per
+      CHARACTER-ASSET-SPEC.md, transparent bg) + `presence/AbuPresence.tsx` (amplitude→mouth cross-fade,
+      irregular blink, CSS breathe, state aura, degrade loop). Evidence: TEST (presence.test.tsx, 11 assertions).
+      Frame cost REPORTED (below). Real call site = STEP 2 (screen rebuild); until then it is test-covered only.
+- [x] Screen around her (cards, transcript, trace) in the new system + remote-stream→amplitude wiring
+      (STEP 2 DONE). LiveScreen.tsx rebuilt on PAGE_BG + tokens, Abu-AI logo header, plain-Hebrew state
+      label, action-card receipts + trace export + build fingerprint preserved. liveSession exposes the
+      remote stream (onRemoteStream) + a thinking hint (onThinking), both observation-only. Presence state
+      mapped by toPresenceState (tested). Evidence: TEST (presenceState + liveEntryPoint + presence + the
+      liveSession suite). Frame cost = design budget (one rAF while speaking, GPU CSS for breathe/aura);
+      ON-DEVICE fps + whether she reads as warm = PHYSICAL_DEVICE / HUMAN-EYE — NOT claimed. Visual proof
+      rendered for Leo (four states + visemes + blink) — his judgement pending.
+
+### M6 — Device test script
+- [x] docs/DEVICE-TEST.md written for the RC build: 10 numbered items, riskiest-first, say/expect/trace, non-programmer
+
+---
+
+## Decisions log
+- **D12 (M4 STEP 3 rollout wave 2, scope + per-screen verify):** Re-themed WhatsApp · Games · Calendar ·
+  Weather one verified commit each, WITHOUT blind-swapping. The unifying change every screen got is the
+  shared per-app **AbuLogo emblem** in its header (the real point of "one product, not seven"), plus — where
+  the screen is themeable — moving the page ROOT onto the Night-Garden **PAGE_BG**. To do the root swap
+  cleanly and reversibly I added an OPTIONAL `background` prop to `PageShell` (default = the legacy BG_DEEP),
+  so WhatsApp/Calendar opt in and every other PageShell consumer is byte-for-byte unchanged. I deliberately
+  did NOT force deep token migration of each screen's bespoke internal colours: (a) those colours ARE the
+  per-app identity (WA-green wordmark, the gold calendar, the sky-driven weather hero, the bright terrace);
+  (b) several are locked by source-grep tests (familyGallery portrait, wowGame terrace design-lock); (c) the
+  senior-first minimums are already guaranteed system-wide via the shared tokens/components (D8). Games is a
+  DESIGN-LOCKED bright terrace — per the brief it was NOT forced dark and got NO PAGE_BG; it received the
+  emblem as a crest only, terrace scene fully intact. Weather's dynamic skyGrad hero + night starfield were
+  untouched; only its two flat `#050A18` page fills became PAGE_BG. VERIFY technique (as the STEP-3 spec
+  prescribed): a throwaway `e2e/_scratch-screen-visual.spec.ts` drives the REAL dev server (vite on 5175),
+  opens the hub orb by its Hebrew aria-label, asserts `scrollWidth - clientWidth === 0`, screenshots at
+  412×870, and I Read the PNG — then the spec is deleted before the commit (never staged). Each commit ended
+  green on that screen's suite + typecheck + build. NOTE for a future pass: full Bright-Day fidelity on these
+  four bespoke screens (their internal dark surfaces still don't flip) remains a larger, separate migration.
+- **D11 (M1/M2 online winner, from real numbers):** All four keys live (in `.env`, loaded via a widened
+  loadHarnessEnv allow-list — node-only, server-side). Verified reachability BEFORE measuring: Brave failed
+  422 because the adapter pinned `country=IL` (not in the Brave country enum) — removed it (keep search_lang=he),
+  regression added. Real 36-Q matrix: OpenAI 61%/3941/8851 · Tavily 100%/1963/3228 · Brave 100%/784/1132 ·
+  Perplexity 100%/4501/6860 (citation% / avg ms / p95 ms). Correctness spot-check: Perplexity + Brave nail the
+  dollar (~3.0); Tavily occasionally grabs a stale source (dollar 2.877, shabbat 19:32); OpenAI worst (3.75).
+  WINNER = **Tavily**: the ONLY provider returning a clean, speakable, grounded Hebrew answer within the voice
+  budget (Brave = snippets not speech; Perplexity/OpenAI too slow). Wired via selectProvider(ONLINE_PROVIDER),
+  DEFAULT openai (safe, reversible, no prod change until env flips), honesty gate + personal guard + server-side
+  key all preserved; SAME shape the providerTypes doc intends. Cost at one-user volume is negligible (Tavily/Brave
+  free tiers). LATENCY caveat surfaced: Tavily p95 3.2s can exceed 2s — the fix is a bounded client timeout +
+  a truthful checking state, with Brave (sub-second) as fallback; NOT a blocker for the endpoint swap itself.
+- **D10 (M5 STEP 1+2, shipped):** Animated variant A as-is (D9) and rebuilt the Abu AI screen.
+  Choices/rationale for a fresh session: (a) AbuCharacterA is a DUMB asset with an asset-agnostic prop
+  contract (mouth 0..1, eyesClosed 0..1); AbuPresence is the animation code. Swapping the commissioned
+  illustration = replace AbuCharacterA's SVG keeping the same layer-group ids + props; AbuPresence never
+  changes. (b) Mouth cross-fades the three registered visemes by opacity (continuous, no shape jump).
+  (c) The "thinking" state is signalled by a NEW observation-only liveSession callback `onThinking`
+  (server-VAD speech_stopped) — I did NOT add a `thinking` member to the LiveState union (that ripples
+  through STATE_LABEL + every consumer; the union stays idle|connecting|listening|speaking|error). The
+  UI clears the thinking hint on every onState transition, and toPresenceState lets real speaking win over
+  a stale hint. (d) `onRemoteStream` exposes the realtime stream in `ontrack` (not attachPlayback) so the
+  UI analyser is a SECOND MediaStreamSource — it does not touch the audible graph. (e) useOutputAmplitude
+  takes the REAL AudioContext (cast to the AudioCtxLike seam) so the engine stays fake-testable. (f) The
+  visual is honest-interim (refined vector, not painterly) exactly as CHARACTER-ASSET-SPEC.md documents —
+  a PNG proof was rendered for Leo; his warmth judgement + on-device fps remain PHYSICAL_DEVICE/HUMAN-EYE.
+- **D9 (M5 character, Leo's call):** SHIP variant A ("Warm Gold", docs/design/abu-bust-A.svg) as-is and
+  ANIMATE it now. "Warm and not uncanny" is the bar; a commissioned illustration is a later upgrade,
+  not a blocker. Keep CHARACTER-ASSET-SPEC.md and structure the animation so the asset swaps in later
+  WITHOUT touching animation code (the character SVG lives in ONE component with named layer groups;
+  replacing that file's SVG — same group ids — is the whole swap).
+- **D8 (M4 rollout, safest):** Verified senior-first minimums SYSTEM-WIDE (WCAG AA contrast in both
+  themes + 56/16 sizes) via the tokens + shared components every screen uses — a per-screen guarantee
+  without rushing 7 bespoke re-themes. Applied the full system to hub + News + Bank. STAGED the careful
+  re-theme of Weather/Games/Calendar/WhatsApp + the Abu AI rebuild (Weather already carries the Night
+  Garden starfield; blind bg swaps would regress bespoke layouts — the brief says fix-don't-note, which
+  means doing them properly). M6 device-test doc shipped. M2 prep: M1 registry makes the winner-swap a
+  small change, gated on a keyed winner.
+- **D7 (M5 character, honest ceiling):** Two refinement passes (variants A "Warm Gold", B "Starlight
+  Depth") warmed + softened the bust but hand-authored SVG has hit its ceiling — it reads as refined
+  vector, not painterly; more shading makes the face muddy. Stopped animation (Leo's condition). Wrote
+  docs/design/CHARACTER-ASSET-SPEC.md — the exact commissioned-illustration spec (layered SVG, named
+  groups for eyes/eyelids/mouth-visemes/brows/hair, registration, format) so the ordered asset is
+  directly animatable. Awaiting Leo: pick a variant to ship interim, or commission per the spec.
+- **D6 (M4/M5, Leo's choices + conditions):** Hub = Night Garden (B); character = Silhouette & light (3).
+  Condition 1 met — palette is CSS-variable tokens, dark⇄light by one attribute, no rebuild (Bright Day
+  wired). Condition 2 honoured — the character STILL is delivered for approval BEFORE animating. Applied the
+  system to the HUB only this pass; per the brief I REPORT before rolling logos+theme across the other 6
+  screens. Character animation is BLOCKED on Leo approving the still.
+- **D5 (D4 pass):** Physically removed family from the live prompt (12978 to 9962 chars). Fixed a
+  version-label sync bug shipped in 0.196.0: an apostrophe in the build label truncated the health.ts
+  BUILD_LABEL extraction regex in version.test — labels must stay apostrophe-free (the bump tooling now
+  guards it). The people_lookup LIVE tool remains; physically deleting the resolve_contact executor + its
+  tests is still staged (its own commit).
+- **D0 (protocol):** Wrote this spec as the first commit; it is the resume point.
+- **D1 (M1, safest):** Built the bake-off as a self-contained framework; did NOT refactor
+  the shipped endpoint internals this milestone (would risk 30+ passing online tests for a
+  swap that cannot be validated without a keyed winner). `registry.selectProvider(env)` is
+  ready; the endpoint swaps via `ONLINE_PROVIDER` once a winner is chosen + proven.
+- **D2 (M1, from real numbers):** Incumbent OpenAI web_search is INADEQUATE alone for a voice
+  product — citation 58%, and worst exactly where it matters: sports 33% / weather 33% /
+  cinema 33% (best: hours 100%, prices 75%), avg 4.5s / p95 8.2s (too slow for voice).
+  Cannot pick a winner without the other providers' keys. Recommended target = a COMPOSITION
+  (fast search API for grounding + a dedicated weather API + a sports source), to be decided
+  from real numbers once keyed. Tournament framework is ready to run them.
+- **Agents:** M1 is an empirical/measurement + architecture task — done directly, no subagent
+  (a design/review agent adds nothing to a latency/citation measurement). Agents are planned
+  for M4 (design directions) and M5 (character) where they genuinely help.
+- **D3 (M3, safest):** Built the canonical parent graph from the EXISTING data (children arrays +
+  spouse/former-spouse as co-parents, EXCLUDING partners — matches the brief's "partner implies
+  nothing about parenthood") + a group rule for the matriarch. No family_data.json edits ⇒ zero
+  generator/memory churn, zero regression to the 12k-test suite.
+- **D4 (M3, staged):** Delivered the correctness CORE (model + kinship + people_lookup + Hebrew
+  validator + 59 tests) green. Deferred the PHYSICAL store merge (generate family_graph.json /
+  abu-family.md from the one source), the full prompt-removal of family, and the physical deletion
+  of resolve_contact — each touches the embedded-family / familyReconciliation / resolve_contact
+  tests and is a migration best done as its own reviewed commit. people_lookup already supersedes
+  resolve_contact functionally; the char-count delta (−26%) is measured and reported.
+
+## Status / evidence per milestone
+- **M1 … DONE (framework + incumbent baseline). Evidence: TEST (framework, 13 tests) +
+  PREVIEW (real incumbent run, 36 queries: 58% citation / 4.5s avg). Winner selection
+  BLOCKED on Leo's keys.**
+- M2 … not started (depends on M1 winner; can proceed on the incumbent meanwhile)
+- **M3 … DONE (core). Evidence: TEST (59 tests — kinship engine, people_lookup, live-tool wiring,
+  8 invariants, 3 named failures) + gate validator (Hebrew) in prebuild. Physical store merge +
+  prompt removal STAGED (D4). On-device kinship speech = PHYSICAL_DEVICE (not claimed).**
+- M4 … not started
+- M5 … not started
+- M6 … not started
+
+## Keys Leo must obtain (running list)
+To finish the M1 tournament and unlock a better online experience, obtain and place these
+in `.env.local` (server-side; never the client bundle), then re-run `npx tsx scripts/online-bakeoff.ts`:
+- **`TAVILY_API_KEY`** — Tavily Search API (search + synthesized answer + sources). tavily.com
+- **`BRAVE_API_KEY`** — Brave Search API (note: perpetual free tier retired Feb 2026 — check current plan). brave.com/search/api
+- **`PERPLEXITY_API_KEY`** — Perplexity Sonar (answer + citations). docs.perplexity.ai
+(Weather may be better served by a dedicated API, e.g. the Israel Meteorological Service or
+OpenWeather — flagged after the search tournament runs.)
+
+## Resume pointer — DO THESE IN ORDER (fresh session starts here)
+
+Ledger so far (all pushed to RC): 7d7be99 spec · 9fd23d3 M1 · 70f157b M3 · 11d3837 D4 ·
+a904200 M4-foundation · 51774b7 character-refine · f0b2f6f rollout-w1+M6 · 68e42b4 resume-spec ·
+0cf48b4 M5-S1-engine · a44cec2 M5-STEP1 (presence components) · 835d9f3 M5-STEP2 (Abu AI screen).
+Every commit ends green: `npm run typecheck` · `npx vitest run` · `npm run build` · validators.
+Bump src/version.ts + api/health.ts + src/version.test.ts together; LABEL must have NO apostrophe
+(health BUILD_LABEL regex truncates on it — see D5). Use the escape-aware bump pattern in prior commits.
+Current version: 0.206.0-abuela-rollout-weather. STEP 3 commits (pushed to RC): 6dc2cdf WhatsApp ·
+87d0720 Games · 63fee8d Calendar · <weather> Weather (this commit, spec update included). Earlier this arc:
+cda6d7a M2 online winner · d55b653 PART 4 docs · f41e687 resume-spec. **STEP 3 is now DONE — all four
+screens (WhatsApp, Games, Calendar, Weather) carry the one AbuLogo family; see D12 for the scope + verify
+method.** Every commit ended green on that screen's suite + typecheck + build; version bumped across the three
+surfaces each time (label apostrophe-free per D5). **NEXT highest-ROI options (pick one, none is blocking):**
+(a) online winner activation — set ONLINE_PROVIDER=tavily in the Vercel env (deploy step; I cannot deploy) +
+a bounded ~2.5s client timeout + "checking…" state for Tavily p95, Brave as fallback (M2 STAGED items);
+(b) a SEPARATE, larger pass for full Bright-Day fidelity on the four bespoke screens (their internal dark
+surfaces still don't flip — D12 note); (c) run the FULL suite + release-gate before any device/preview claim.
+
+### STEP 1 — Animate character A  (D9)  ── DONE (a44cec2; engine 0cf48b4) ──
+Shipped: `src/screens/AbuAI/presence/AbuCharacterA.tsx` (variant A as named `<g>` layers, transparent
+bg, asset-agnostic props mouth 0..1 + eyesClosed 0..1) + `AbuPresence.tsx` (amplitude→mouth cross-fade,
+irregular blink, CSS breathe, 4-state aura, degrade loop) + `useOutputAmplitude.ts`. Tested by
+presence.test.tsx (11). The historic sub-notes below are kept for context.
+### STEP 1 (historic notes)
+Architecture so the commissioned asset swaps in later without touching animation code:
+- `src/screens/AbuAI/presence/AbuCharacterA.tsx` — variant A (docs/design/abu-bust-A.svg) as an SVG
+  React component, split into NAMED `<g>` layers per CHARACTER-ASSET-SPEC.md: hair-back, base,
+  cheeks, brows, eyes (eyeballs+irises+catchlights), eyelids (a shape that can lower to fully cover
+  the eyes = blink), mouth (THREE registered shapes: closed/mid/open on one origin), hair-front,
+  rim-light. A future asset = replace this file's SVG keeping the same group ids.
+- DONE ✅ the amplitude ENGINE: `src/services/outputAmplitude.ts` — createAmplitudeReader(ctx, stream)
+  → { read(): 0..1 RMS (smoothed), stop() } + amplitudeToViseme(amp)→closed|mid|open. Injectable +
+  tested (outputAmplitude.test.ts, no device). REMAINING for the screen: call it with the real remote
+  MediaStream in ONE requestAnimationFrame loop, and omit it (→ speaking-loop degrade) when no ctx/stream.
+- `src/screens/AbuAI/presence/AbuPresence.tsx` — props { state:'listening'|'thinking'|'speaking'|
+  'waiting', amplitude?:number }. Mouth = cross-fade closed→mid→open by amplitude; if amplitude is
+  undefined AND state==='speaking', a gentle mouth loop (degrade). Blink = setInterval 3–6s lowering
+  eyelids ~120ms. Breathe = CSS keyframe scale 1→1.02 on `base`. Aura/ring colour by state (listening
+  teal, thinking amber shimmer, speaking gold ripple, waiting calm). Use theme tokens; NO hardcoded bg.
+- FRAME COST: one rAF (amplitude) + CSS-composited blink/breathe (GPU). Report the design budget;
+  real fps is DEVICE-measured — do not claim it. Add a test: AbuPresence renders each state + a given
+  amplitude opens the mouth (renderToString, assert the open-mouth group is shown).
+
+### STEP 2 — Rebuild the Abu AI screen in Night Garden  ── DONE (835d9f3) ──
+Shipped: LiveScreen.tsx rebuilt on PAGE_BG + tokens + Abu-AI logo header + plain-Hebrew state label;
+liveSession got onRemoteStream + onThinking (observation-only); useOutputAmplitude feeds AbuPresence;
+toPresenceState maps the 4 states (presenceState.test). Action cards / trace / build fingerprint preserved.
+Frame cost = design budget; on-device fps + warmth = PHYSICAL_DEVICE / HUMAN-EYE (not claimed). The
+historic sub-notes below are kept for context.
+### STEP 2 (historic notes)
+- The screen is `src/screens/Live/LiveScreen.tsx` (opened via window.__abubankOpenLive → App setLiveOpen).
+- liveSession (src/services/liveSession.ts) holds `this.remoteStream` (the realtime audio) and calls
+  cb.onState('listening'|'speaking'|…). EXPOSE the remote stream to the UI: add a callback e.g.
+  `onRemoteStream?(stream)` set in LiveSession.attachPlayback (where remoteStream is assigned), and a
+  state→presence-state mapping. Feed the stream to useOutputAmplitude → AbuPresence.amplitude, and
+  onState → AbuPresence.state (thinking = between user-stop and first audio; waiting = wait_for_user).
+- Rebuild the layout in the system: PAGE_BG, theme tokens, ScreenHeader-style back, AbuPresence centre,
+  the action cards (existing ActiveActionCard / CommunicationActionCard), the transcript, the trace
+  button (session.exportTrace). All ≥56px targets, ≥16px body, both themes (seniorFirst gate covers
+  tokens/components). Keep the live cutover (liveEntryPoint.test) + the recorder intact.
+
+### STEP 3 — Re-theme WhatsApp, Games, Calendar, Weather — ONE AT A TIME, each verified  ── DONE ──
+Shipped one verified commit per screen (6dc2cdf WhatsApp · 87d0720 Games · 63fee8d Calendar · Weather this
+commit). Each screen joined the shared AbuLogo family in its header and — where themeable — moved its page
+root to PAGE_BG (via a new OPTIONAL `PageShell background` prop, default BG_DEEP so nothing else changed).
+Verified by rendering the REAL dev screen with Playwright at 412×870 and Reading the PNG (emblem present,
+bespoke layout intact, `scrollWidth - clientWidth === 0`); the throwaway spec was deleted before each commit.
+Per-screen test suites stayed green (WhatsApp 454 · Games 19 wowGame lock · Calendar 52 files/1255 · Weather
+hub+release-gate) + typecheck + build each time. See D12 for the scope decision (preserve identity, don't
+blind-swap). The historic recipe below is kept for context.
+### STEP 3 (historic recipe)
+- Per screen: root bg → PAGE_BG; header → ScreenHeader with its `app` logo (weather/games/calendar/
+  whatsapp); text/surfaces → theme tokens (t.*); buttons ≥56px. AbuWeather ALREADY has the Night
+  Garden starfield — migrate its colours to tokens without flattening the starfield. Run THAT screen's
+  tests after each; fix failures in the same pass (do not blind-swap). Commit per screen.
+- VERIFY BY EYE, not blind: the fast harness used in STEP 2 = a throwaway `scripts/*.mts` that
+  `renderToStaticMarkup`s the screen/component onto PAGE_BG and Playwright-screenshots it (chromium is
+  installed), then Read the PNG. Delete the harness before committing (do not stage it). Alternatively
+  drive the real Vite dev server if the screen needs live state. Bump the version each screen (D5 rules).
+- Order suggestion (least→most bespoke risk): WhatsApp, Games, Calendar, then Weather (starfield is
+  delicate). Each screen's tests live beside it (e.g. AbuGames/*.test, AbuCalendar/*.test).
+
+### Then M2 (still blocked on keys)
+- Keys needed: TAVILY_API_KEY, BRAVE_API_KEY, PERPLEXITY_API_KEY in .env.local (server-side).
+- Wiring the winner = refactor api/abuai-online.ts to call selectProvider(env).search() (registry is
+  built: src/services/online/registry.ts) and map to the existing {ok,answer,sources}|failure shape,
+  keeping the honesty gate. Do it WITH a keyed winner so it can be validated; re-run scripts/online-bakeoff.ts.

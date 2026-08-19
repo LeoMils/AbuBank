@@ -1,0 +1,132 @@
+{
+  "$schema": "internal://abu/control-plane-adversarial-result",
+  "generatedFor": "Stage 1 — control-plane falsification (spec-derived oracle)",
+  "now": "2026-08-16T00:00:00.000Z",
+  "controlPlaneId": "cp_frozen00",
+  "commonModeOracleRisk": "DECLARED: gate + suite authored same run; mitigated by spec-first expected reasons + green-baseline silence per detector. CODE evidence only.",
+  "totalCases": 15,
+  "passed": 15,
+  "failed": 0,
+  "cases": [
+    {
+      "scenario": "A wrong deployed SHA",
+      "expectedReason": "FINGERPRINT_MISMATCH",
+      "actualVerdict": "NO-GO",
+      "actualReason": "FINGERPRINT_MISMATCH",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "B critical UNKNOWN",
+      "expectedReason": "CRITICAL_UNKNOWN",
+      "actualVerdict": "NO-GO",
+      "actualReason": "CRITICAL_UNKNOWN",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "C owner parity missing",
+      "expectedReason": "OWNER_PARITY_MISSING",
+      "actualVerdict": "HANDOFF_REFUSED",
+      "actualReason": "OWNER_PARITY_MISSING",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "D parity wrong candidate",
+      "expectedReason": "OWNER_PARITY_CANDIDATE_MISMATCH",
+      "actualVerdict": "HANDOFF_REFUSED",
+      "actualReason": "OWNER_PARITY_CANDIDATE_MISMATCH",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "E narrative bypass",
+      "expectedReason": "NARRATIVE_BYPASS_BLOCKED",
+      "actualVerdict": "HANDOFF_REFUSED",
+      "actualReason": "NARRATIVE_BYPASS_BLOCKED",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "F severity downgrade",
+      "expectedReason": "SEVERITY_DOWNGRADE_UNPROVEN",
+      "actualVerdict": "NO-GO",
+      "actualReason": "SEVERITY_DOWNGRADE_UNPROVEN",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "G gate changed post-cert",
+      "expectedReason": "CONTROL_PLANE_MISMATCH",
+      "actualVerdict": "NO-GO",
+      "actualReason": "CONTROL_PLANE_MISMATCH",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "H required claim absent",
+      "expectedReason": "EXPECTED_CLAIM_ABSENT",
+      "actualVerdict": "NO-GO",
+      "actualReason": "EXPECTED_CLAIM_ABSENT",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "I invalid N/A",
+      "expectedReason": "INVALID_NA",
+      "actualVerdict": "NO-GO",
+      "actualReason": "INVALID_NA",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "J risk floor",
+      "expectedReason": "RISK_FLOOR_VIOLATION",
+      "actualVerdict": "NO-GO",
+      "actualReason": "RISK_FLOOR_VIOLATION",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "K change-impact omission",
+      "expectedReason": "CHANGE_IMPACT_MODULE_OMITTED",
+      "actualVerdict": "NO-GO",
+      "actualReason": "CHANGE_IMPACT_MODULE_OMITTED",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "L parity stale evidence",
+      "expectedReason": "OWNER_PARITY_STALE",
+      "actualVerdict": "HANDOFF_REFUSED",
+      "actualReason": "OWNER_PARITY_STALE",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "M control-plane drift",
+      "expectedReason": "CONTROL_PLANE_MISMATCH",
+      "actualVerdict": "NO-GO",
+      "actualReason": "CONTROL_PLANE_MISMATCH",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "N holdout not independent",
+      "expectedReason": "HOLDOUT_NOT_INDEPENDENT",
+      "actualVerdict": "NO-GO",
+      "actualReason": "HOLDOUT_NOT_INDEPENDENT",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    },
+    {
+      "scenario": "O evaluator crashed",
+      "expectedReason": "EVALUATOR_CRASHED",
+      "actualVerdict": "BLOCKED",
+      "actualReason": "EVALUATOR_CRASHED",
+      "outcome": "PASS",
+      "evidence": "src/engineering-os/releaseControlPlane.adversarial.test.ts"
+    }
+  ]
+}

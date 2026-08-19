@@ -1,0 +1,37 @@
+{
+  "$schema": "internal://abu/rc-acceptance-replacement-paths",
+  "rc": "https://abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-19T12:35:30.736Z",
+  "rerouted": {
+    "STT": "client Groq Whisper → /api/abuai-stt (OpenAI whisper-1)",
+    "TTS": "Gemini client tier removed → /api/abuai-tts (OpenAI gpt-4o-mini-tts) → WebSpeech fallback",
+    "CHAT": "Gemini/Groq client tiers → /api/abuai-chat (OpenAI gpt-4o server proxy)",
+    "WHATSAPP_COMPOSE": "Groq client → /api/abuai-chat (proven by rc-acceptance-whatsapp: 5/5)"
+  },
+  "evidenceClass": "PREVIEW (deployed RC, real OpenAI providers, TTS→STT round-trip)",
+  "verdict": "PROVEN_PASS",
+  "passed": 4,
+  "total": 4,
+  "steps": [
+    {
+      "id": "tts.replacement",
+      "pass": true,
+      "detail": "OpenAI TTS → audio/mpeg, 62592 bytes"
+    },
+    {
+      "id": "stt.replacement",
+      "pass": true,
+      "detail": "whisper-1 → \"שלום, אני מרטיטה, זאת בדיקה קטנה.\""
+    },
+    {
+      "id": "stt.roundtrip",
+      "pass": true,
+      "detail": "transcript matches the synthesized phrase (TTS→STT round-trip)"
+    },
+    {
+      "id": "chat.replacement",
+      "pass": true,
+      "detail": "gpt-4o proxy → \"פריז.\""
+    }
+  ]
+}

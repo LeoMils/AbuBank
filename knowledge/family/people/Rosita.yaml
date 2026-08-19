@@ -1,0 +1,14 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Rosita
+hebrew_name: רוסיטה
+aliases: []
+relationship: niece_of_husband
+relationship_hebrew: אחייניתו של פפי
+role: אחייניתו של פפי; יש לה יחסים טובים עם מרטיטה
+location: לוס אנג'לס, ארה"ב
+gender: female
+spouse: אוסקר
+notes: "בתו של אחיו של פפי (אחיינית של פפי). הגיעה לישראל לבד והתחתנה עם אוסקר; גרו בבת ים; רוסיטה לא אהבה לגור בישראל. שלושה בנים: ליאור, יואב, רון. אחרי כמה שנים היגרו ללוס אנג'לס; רוסיטה אוהבת לגור שם — לאו מתאר אותה כמרוצה במיוחד שיש לה כסף, ביטחון כלכלי ולא צריכה לעבוד. יש לה ולמרטיטה יחסים טובים — מדברות מדי פעם ונפגשות כשרוסיטה מבקרת בישראל; גם ללאו קשר מזדמן."
+pronunciation:
+  es: rosita

@@ -25,6 +25,20 @@ Martita, 80+, non-technical, living in Kfar Saba. Speaks Hebrew (with characteri
 - Feminine Hebrew address (את, לחצי, תגידי).
 - Spanish = Rioplatense (vos, dale, llevar).
 
+## Knowledge System — LOAD FIRST
+Before ANY implementation or evaluation task, read `knowledge/KNOWLEDGE.md` (the
+single-source manifest) and the relevant authority file. Each domain has ONE
+authority — never duplicate facts elsewhere; point to the authority instead:
+- Family → `knowledge/family_data.json` (machine source; per-person views in
+  `knowledge/family/people/*.yaml` are GENERATED) — change via skill `add-family-member`.
+- Product → `knowledge/product.yaml` · Behavior/tone → `knowledge/behavior.yaml` ·
+  Production rules → `knowledge/production_rules.yaml` · AbuAI identity →
+  `knowledge/abuai_identity.yaml` — change via skill `update-knowledge`.
+- Personality → `knowledge/martita_personality.yaml`.
+Validate with `npm run validate:knowledge` (auto-runs in `prebuild` with
+`generate:knowledge` + `validate:family`). Never hand-edit generated files
+(`memory/*`, `knowledge/family/people/*`).
+
 ## Working Rules for Claude Code
 - Diagnosis before implementation for visual changes.
 - Do not overclaim verification.
@@ -66,3 +80,33 @@ When a Workbench-generated `claude-prompt.md` is the source of the task, obey it
 - If no `core_functionality` / `main_user_flow` / `critical_bug_fix` is PROVEN with HIGH confidence, report `NO_CORE_PROOF`.
 - If `package.json` / `package-lock.json` / `.env*` / `memory/*` / a forbidden screen is touched, mark `HUMAN_APPROVAL_REQUIRED` and stop.
 - The Workbench does not auto-execute, auto-commit, auto-push, or auto-merge. It prepares evidence-based prompts and reports.
+
+## Engineering OS — Always-On Truths (Foundation Release 1)
+These are non-negotiable and always loaded. Domain specifics live in path-scoped
+`.claude/rules/*.md`; the Engineering OS process lives in `.claude/CLAUDE.md`.
+- **What this is:** AbuBank is Martita's PWA portal; AbuAI is the warm-companion
+  conversation core. Current objective: pass **physical-device** production
+  acceptance, tracked in `docs/engineering-os/PRODUCTION_ACCEPTANCE_BOARD.md`.
+- **Evidence classes (never claim a stronger one than proven):**
+  `CODE < MOCK < BROWSER < PREVIEW < PHYSICAL_DEVICE < PRODUCTION`.
+  Real user / device evidence OVERRIDES any number of passing mocks.
+- **Mechanism-first debugging.** Find the *first divergence* (the earliest point
+  where actual ≠ expected) before proposing a fix. No fix without a mechanism.
+- **One runtime path per capability.** If two engines/routers can answer the same
+  turn, that is a defect to surface — do not add a third. Never silently fork behavior.
+- **A passing test that encodes the bug is a liability.** When real evidence
+  contradicts a green test, the test is suspect — fix the truth, never weaken a test to pass.
+- **Current-info queries require verified online retrieval.** No answer to a
+  "current/latest/today" question from model memory — it must come from a real
+  tool result, or say it cannot check. (`NO TOOL RESULT = NO CLAIM`.)
+- **Calendar writes must be immediately readable and modifiable** in the same
+  session — a write that cannot be read back is a failure (see `.claude/rules/calendar.md`).
+- **Residence is not live location.** Kfar Saba is where Martita lives, not a
+  real-time GPS position; never present it as live location.
+- **Typed and voice input must reach the same cognitive controller** — parity is
+  mandatory; a fix in one modality must hold in the other.
+- **Ofir is female.** (Family truth; see `knowledge/family_data.json`.)
+- **Git/deploy safety:** never `git add -A`; never deploy to Production without
+  explicit human approval; no background agents/forks/worktrees by default.
+  Routine safe inspection/edits/tests/commits are approved. Build and full test
+  suite are run sequentially, never simultaneously.

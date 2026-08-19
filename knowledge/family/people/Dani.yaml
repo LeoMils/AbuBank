@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Dani
+hebrew_name: דני
+aliases: []
+relationship: family_friend
+relationship_hebrew: בעלה של טוצ'י
+role: בעלה של טוצ'י, חבר של המשפחה
+location: כפר סבא
+gender: male
+notes: בן זוגה/בעלה של טוצ'י, גר בכפר סבא. חבר של מרטיטה ופפי. נקרא גם דניאל — אך 'דניאל' לבדו לא ודאי (יש גם דניאל יווניר), לכן אינו כינוי מזהה.
+pronunciation:
+  es: dani

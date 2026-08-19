@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Dora
+hebrew_name: דורה
+aliases: []
+relationship: mother_of_matriarch
+relationship_hebrew: אמא של מרטיטה
+role: אמא של מרטיטה
+location: בואנוס איירס, ארגנטינה
+gender: female
+notes: אמא של מרטיטה. גדלה איתה המשפחה בבואנוס איירס. (לא צוין אם בחיים — לא להסיק.)
+pronunciation:
+  es: dora

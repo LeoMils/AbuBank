@@ -79,8 +79,11 @@ describe('AbuAI index.tsx reminder routing wiring', () => {
     expect(INDEX_SRC.includes("import { detectReminderIntent, parseReminder }")).toBe(true)
   })
 
-  it('imports createReminder from reminderStore', () => {
-    expect(INDEX_SRC.includes("import { createReminder, createDefaultAlertPolicy }")).toBe(true)
+  it('loads createReminder from reminderStore (lazy, on the reminder-confirm path)', () => {
+    // reminderStore is a heavy chunk → loaded on demand in the confirm branch,
+    // not eagerly at AbuAI first-open. Still wired to the same functions.
+    expect(INDEX_SRC).toMatch(/const \{ createReminder, createDefaultAlertPolicy \} = await import\('\.\.\/AbuCalendar\/reminders\/reminderStore'\)/)
+    expect(INDEX_SRC).toContain('createDefaultAlertPolicy()')
   })
 
   it('checks detectReminderIntent before appointment create', () => {
@@ -144,7 +147,7 @@ describe('AbuAI voice mode reminder routing', () => {
     // The voice path (handleText) must detect reminders BEFORE falling
     // through to the appointment create state machine
     const voiceReminderCheck = INDEX_SRC.indexOf("// ─── Voice reminder (before appointment create)")
-    const voiceAppointmentCheck = INDEX_SRC.indexOf("if (cs.phase !== 'idle' || isCreateIntent(effectiveText))")
+    const voiceAppointmentCheck = INDEX_SRC.indexOf("cs.phase !== 'idle' || isCreateIntent(effectiveText))")
     expect(voiceReminderCheck).toBeGreaterThan(0)
     expect(voiceAppointmentCheck).toBeGreaterThan(0)
     expect(voiceReminderCheck).toBeLessThan(voiceAppointmentCheck)

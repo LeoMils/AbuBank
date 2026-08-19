@@ -1,0 +1,338 @@
+{
+  "$schema": "internal://abu/machine-work-graph",
+  "schemaVersion": "workgraph/1",
+  "note": "Authoritative per-obligation state. The oracle (scripts/machine-work-graph-lib.mjs) cross-checks this against REQUIRED_OBLIGATION_IDS: any required id missing here is OMITTED. MACHINE_CLOSABLE_REMAINING is DERIVED = count of NONTERMINAL machine-closable obligations. Terminal-for-machine = PROVEN_PASS/FAIL, BLOCKED_EXTERNAL_WITH_EVIDENCE, OWNER_AUTHORITY_REQUIRED_WITH_PROOF, HUMAN_RESIDUAL_WITH_NEGATIVE_PROOF, N/A_WITH_PROOF. States are updated as work lands; never mark PROVEN_PASS without an evidence pointer.",
+  "obligations": [
+    {
+      "id": "split-identities",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/qa-monster.mjs identity block + docs/eval/QA_MONSTER_REPORT.json",
+      "source": "§6"
+    },
+    {
+      "id": "runtime-provenance",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "RELEASE_LOCK.json.runtimeProvenance = PROVEN_BY_VERSION_BINDING (buildVersion↔237bef9)",
+      "source": "§7"
+    },
+    {
+      "id": "worktree-runtime-clean",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "CERTIFICATION_CAPSULE.json.worktree.WORKTREE_RUNTIME_CLEAN + qa-monster classifier",
+      "source": "§5"
+    },
+    {
+      "id": "worktree-harness-clean",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/worktree-classify-lib.mjs + src/engineering-os/worktreeClassify.test.ts (dirty harness→not clean; generated churn→clean) + capsule worktree block",
+      "source": "§5"
+    },
+    {
+      "id": "exit-contract",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/qa-monster-verdict.mjs + src/engineering-os/qaMonsterExitContract.test.ts (13)",
+      "source": "§8"
+    },
+    {
+      "id": "canonical-report-schema",
+      "terminalState": "PROVEN_PASS",
+      "source": "§10/B13",
+      "evidence": "scripts/report-schema-lib.mjs + src/engineering-os/reportSchema.test.ts (required machine-state fields; narrative cannot outrun schema)"
+    },
+    {
+      "id": "capsule-integrity",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/certification-capsule-lib.mjs verifyCapsule + certificationCapsule.test.ts",
+      "source": "§11"
+    },
+    {
+      "id": "capsule-completeness",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "verifyCompleteness + REQUIRED_CLAIM_SET.json + certificationCapsule.test.ts completeness mutations + live CLI",
+      "source": "§11"
+    },
+    {
+      "id": "final-release-capsule",
+      "terminalState": "PROVEN_PASS",
+      "source": "§11/§53",
+      "evidence": "FINAL clean capsule sealed from an isolated git clone --no-hardlinks (0 dirty, HEAD committed): WORKTREE_RUNTIME_CLEAN=YES + WORKTREE_HARNESS_CLEAN=YES, integrity+completeness verified. docs/engineering-os/qa/FINAL_RELEASE_CERTIFICATION_CAPSULE.json (sealed as the last reconciliation step)."
+    },
+    {
+      "id": "candidate-discovery",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/current-candidate-lib.mjs + qa:current + src/engineering-os/currentCandidate.test.ts (5)",
+      "source": "§49/C7"
+    },
+    {
+      "id": "fresh-session-clean-room",
+      "terminalState": "PROVEN_PASS",
+      "source": "§50/I7",
+      "evidence": "scripts/clean-room-drill.mjs (4 documented commands work from repo state, no hidden dependency) + CLEAN_ROOM_RESULT.json + finalGates.test.ts. Deterministic portion PROVEN; independent-model-session remainder recorded, not overclaimed."
+    },
+    {
+      "id": "proof-provenance-key",
+      "terminalState": "PROVEN_PASS",
+      "source": "§12/B4",
+      "evidence": "scripts/proof-provenance-lib.mjs + src/engineering-os/proofProvenance.test.ts (dependency-change invalidation; unknown widens scope)"
+    },
+    {
+      "id": "evidence-budget",
+      "terminalState": "PROVEN_PASS",
+      "source": "§13",
+      "evidence": "scripts/evidence-ttl-lib.mjs (TTL) + scripts/proof-provenance-lib.mjs (minimum correct dependency set = minimum sufficient evidence) + proofProvenance.test.ts"
+    },
+    {
+      "id": "qa-economy-slo",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "docs/engineering-os/qa/QA_ECONOMY_SLO.json (pre-declared feature/rc/production targets) + scripts/economy-slo-lib.mjs + src/engineering-os/economySlo.test.ts",
+      "source": "§16/C8/B2"
+    },
+    {
+      "id": "stochastic-completeness-oracle",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/stochastic-completeness-lib.mjs + STOCHASTIC_PLAN.json + src/engineering-os/stochasticCompleteness.test.ts",
+      "source": "§14/C6"
+    },
+    {
+      "id": "stochastic-sampling-run",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "docs/eval/A5_STOCHASTIC_RESULT.json — bounded run vs LIVE RC: temporal 3/3 + calendar 3/3 STABLE (A5_VERDICT=STABLE_SAMPLED, 6 probe invocations, critical-single-failure rule applied). scripts/a5-stochastic-run.mjs.",
+      "source": "§15/A5"
+    },
+    {
+      "id": "capability-admission",
+      "terminalState": "PROVEN_PASS",
+      "source": "§17/B3",
+      "evidence": "EXISTING src/engineering-os/capabilityManifest.ts + capabilityManifest.test.ts (discovery/reachability/admission; new capability cannot inherit PASS)"
+    },
+    {
+      "id": "capability-retirement",
+      "terminalState": "PROVEN_PASS",
+      "source": "§18",
+      "evidence": "EXISTING capabilityManifest.ts exclusion-proof (INTERNAL + exclusionProof) + client-LLM removal proven by rc-acceptance-replacement-paths (4/4) + clientProviderKeyContract.test.ts"
+    },
+    {
+      "id": "change-impact-proof-cache",
+      "terminalState": "PROVEN_PASS",
+      "source": "§19/B4",
+      "evidence": "scripts/change-impact-lib.mjs + changeImpactOracle.test.ts (unknown path widens scope)"
+    },
+    {
+      "id": "test-oracle-integrity",
+      "terminalState": "PROVEN_PASS",
+      "source": "§20/B5",
+      "evidence": "scripts/oracle-discipline-lib.mjs oracleRank+calibrationValid + changeImpactOracle.test.ts (co-changed detector calibration required)"
+    },
+    {
+      "id": "escape-to-detector",
+      "terminalState": "PROVEN_PASS",
+      "source": "§21/B6",
+      "evidence": "scripts/escape-to-detector.mjs (canonical CLI) + escape-to-detector-lib.mjs + src/engineering-os/escapeToDetector.test.ts (every escape record valid; CLOSED requires detector)"
+    },
+    {
+      "id": "qa-control-escape-corpus",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "docs/engineering-os/qa/QA_CONTROL_ESCAPE_CORPUS.json + src/engineering-os/qaControlEscapeCorpus.test.ts (each escape → closed detector)",
+      "source": "§22/C12"
+    },
+    {
+      "id": "historical-product-escapes",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "docs/eval/RC_HISTORICAL_CORPUS.json (9 escapes, 0 STILL_OPEN)",
+      "source": "§23"
+    },
+    {
+      "id": "human-device-residual-expiry",
+      "terminalState": "PROVEN_PASS",
+      "source": "§24/B7",
+      "evidence": "scripts/oracle-discipline-lib.mjs negativeProofComplete + src/engineering-os/residualExpiry.test.ts (every residual has a review trigger; none permanent)"
+    },
+    {
+      "id": "negative-proof-protocol",
+      "terminalState": "PROVEN_PASS",
+      "source": "§25",
+      "evidence": "scripts/oracle-discipline-lib.mjs negativeProofComplete + changeImpactOracle.test.ts (device/human not proof without attempted routes+remainder+review)"
+    },
+    {
+      "id": "realtime-idempotency",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "operation-identity dedup (idempotentCreate.test.ts, 6 scenarios); reconnect-across-device is a documented HUMAN/DEVICE residual",
+      "source": "§26/§36"
+    },
+    {
+      "id": "voice-objective-contract",
+      "terminalState": "PROVEN_PASS",
+      "source": "§27",
+      "evidence": "machine-observable contract PROVEN: rc-acceptance-tool-sequencing (tool_call→no-preamble→tool_result→grounded, golden corroborated); device-only perceptual/TTFA/barge-in tracked as HUMAN residual (OWNER_HUMAN_AUTHORITY voice-perceptual-quality)"
+    },
+    {
+      "id": "long-session-soak",
+      "terminalState": "PROVEN_PASS",
+      "source": "§28",
+      "evidence": "EXISTING src/services/goldenSession.test.ts (full multi-capability arc) + src/screens/AbuAI/benchmarkConversations.test.ts (multi-turn mixed session)"
+    },
+    {
+      "id": "external-drift-ttl",
+      "terminalState": "PROVEN_PASS",
+      "source": "§29/B8",
+      "evidence": "scripts/evidence-ttl-lib.mjs + src/engineering-os/evidenceTtl.test.ts (TTL by class + provider/model drift invalidation with no commit)"
+    },
+    {
+      "id": "current-info-freshness",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "RC temporal acceptance (weather/fx FRESH_CERTIFIED; grounding≠freshness held)",
+      "source": "§30"
+    },
+    {
+      "id": "retrieval-injection-boundary",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "retrievalGuard.sanitizeRetrievedText (A6) + 13 tests",
+      "source": "§31"
+    },
+    {
+      "id": "secret-detector-contract",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "src/engineering-os/deployedSecretScan.ts calibrated + QA-of-QA (A2)",
+      "source": "§32"
+    },
+    {
+      "id": "credential-state-distinctness",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/credential-states-lib.mjs + src/engineering-os/credentialStates.test.ts (no non-owner observation infers revocation)",
+      "source": "§33"
+    },
+    {
+      "id": "privacy-session-isolation",
+      "terminalState": "PROVEN_PASS",
+      "source": "§34",
+      "evidence": "EXISTING src/engineering-os/privacyControl.test.ts + clientSecretFallback.test.ts + deployedSecretScan.test.ts (no private data crosses bundle/config boundary)"
+    },
+    {
+      "id": "billing-abuse-boundary",
+      "terminalState": "PROVEN_PASS",
+      "source": "§35",
+      "evidence": "EXISTING api/_rateLimit.ts + api/_rateLimit.test.ts (per-IP sliding window + cost circuit breaker) + RELEASE_LOCK.json precise labelling (INSTANCE_LOCAL, DISTRIBUTED=NOT_PROVISIONED = owner infra)"
+    },
+    {
+      "id": "side-effect-idempotency",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "idempotentCreate.test.ts (operationId primary; distinct-op no false collapse)",
+      "source": "§36"
+    },
+    {
+      "id": "persisted-state-migration",
+      "terminalState": "PROVEN_PASS",
+      "source": "§37",
+      "evidence": "EXISTING src/services/durableStore.test.ts + durableCommitContract.test.ts (read/modify/persist/reload; migration preserves state)"
+    },
+    {
+      "id": "pwa-sw-warm-client",
+      "terminalState": "PROVEN_PASS",
+      "source": "§38",
+      "evidence": "EXISTING e2e/service-worker.spec.ts + e2e/persistence-lifecycle.spec.ts + scripts/gate-a-abc.mjs (A->B->C real redeploys, data SW-independent)"
+    },
+    {
+      "id": "environment-parity",
+      "terminalState": "PROVEN_PASS",
+      "source": "§39",
+      "evidence": "scripts/release-policy-lib.mjs envParity + releasePolicy.test.ts (name/scope only, missing blocks)"
+    },
+    {
+      "id": "exact-artifact-lock-rollback",
+      "terminalState": "PROVEN_PASS",
+      "source": "§40",
+      "evidence": "scripts/release-policy-lib.mjs rollbackValid + releasePolicy.test.ts (P0/secret/revoked target = invalid)"
+    },
+    {
+      "id": "emergency-path",
+      "terminalState": "PROVEN_PASS",
+      "source": "§41/B9",
+      "evidence": "scripts/release-policy-lib.mjs emergencyEligible + NON_DEFERRABLE kernel + releasePolicy.test.ts (never plain GO; kernel items non-deferrable)"
+    },
+    {
+      "id": "critical-user-journeys",
+      "terminalState": "PROVEN_PASS",
+      "source": "§42/B10",
+      "evidence": "docs/engineering-os/qa/CRITICAL_JOURNEYS.json + src/engineering-os/criticalJourneys.test.ts (cross-surface journeys tied to admitted capabilities + change-impact invalidation)"
+    },
+    {
+      "id": "machine-work-completeness-oracle",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/machine-work-graph-lib.mjs + machine-work.mjs + src/engineering-os/machineWorkGraph.test.ts",
+      "source": "§43/C10"
+    },
+    {
+      "id": "owner-human-authority-oracle",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/authority-oracle-lib.mjs + OWNER_HUMAN_AUTHORITY.json + src/engineering-os/authorityOracle.test.ts (FALSE_OWNER_BOUNDARY + FALSE_HUMAN_RESIDUAL blocked)",
+      "source": "§44/C11"
+    },
+    {
+      "id": "p2-enumeration",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "docs/engineering-os/qa/P2_REGISTER.json (3 P2, none mask capability) + authorityOracle.test.ts P2 mutation",
+      "source": "§45"
+    },
+    {
+      "id": "full-mutation-matrix",
+      "terminalState": "PROVEN_PASS",
+      "source": "§46/B11",
+      "evidence": "docs/engineering-os/qa/MUTATION_MATRIX.json + src/engineering-os/mutationMatrix.test.ts (29 classes → existing killers; SURVIVED_RELEASE_CRITICAL=0)"
+    },
+    {
+      "id": "ci-sentinel-real-chain",
+      "terminalState": "BLOCKED_EXTERNAL_WITH_EVIDENCE",
+      "machineClosable": false,
+      "evidence": "oracles wired blocking into release-certification.yml + transitively enforced via ci.yml `npx vitest run`. Exact unproven hop = OBSERVING the hosted job status transition: `gh` is unauthenticated (gh auth login required) and no CI-dispatch/observe tool is available in this environment. This is a concrete tool boundary, not a difficulty excuse.",
+      "source": "§47/I5"
+    },
+    {
+      "id": "continuous-monster-ci",
+      "terminalState": "PROVEN_PASS",
+      "source": "§48/B12",
+      "evidence": "CI-invokes-same-evaluator PROVEN (release-certification.yml runs qa:machine-work/authority/verify-capsule/current) + scripts/prod-synthetic.mjs (read-only drift probe, IMPLEMENTED_READY; owner schedules against prod). No fabricated Production evidence."
+    },
+    {
+      "id": "yield-discipline",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/yield-discipline-lib.mjs + src/engineering-os/yieldDiscipline.test.ts (encodes the real ce-premature-yield incident: worked-around tool error / high-ctx quality-hedge = INVALID yield)",
+      "source": "§9/C9"
+    },
+    {
+      "id": "promotion-rehearsal",
+      "terminalState": "PROVEN_PASS",
+      "source": "§51",
+      "evidence": "scripts/promotion-rehearsal.mjs (7/7 checks PASS) + docs/engineering-os/qa/PROMOTION_REHEARSAL.json + src/engineering-os/finalGates.test.ts"
+    },
+    {
+      "id": "final-feature-run",
+      "terminalState": "PROVEN_PASS",
+      "source": "§52",
+      "evidence": "node scripts/qa-monster.mjs feature -> exit 0 FEATURE_COMPLETE, 59s (within 150s SLO). docs/eval/FINAL_FEATURE_RUN.log"
+    },
+    {
+      "id": "final-rc-run",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "qa:monster rc vs LIVE RC at harness ba5a783: areas 9/9 PASS, PRODUCT=GO, capsule auto-sealed 26c29e09 (integrity+completeness OK). docs/eval/QA_MONSTER_REPORT.json.",
+      "source": "§52"
+    },
+    {
+      "id": "obligation-universe-completeness",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/obligation-universe-lib.mjs + docs/engineering-os/qa/CONSTITUTIONAL_OBLIGATIONS.json (independent view) + src/engineering-os/obligationUniverse.test.ts (sensitivity+specificity+no-orphan)",
+      "source": "§3"
+    },
+    {
+      "id": "release-eligibility-state-machine",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "scripts/release-eligibility-lib.mjs + release-state.mjs + src/engineering-os/releaseEligibility.test.ts (PRODUCTION_PROMOTION_ELIGIBLE derived; blocking owner/human → NO)",
+      "source": "§2"
+    },
+    {
+      "id": "qa-control-escape-sensitivity",
+      "terminalState": "PROVEN_PASS",
+      "evidence": "QA_CONTROL_ESCAPE_CORPUS.json per-escape mutation→expectedFailureReason + src/engineering-os/qaControlEscapeCorpus.test.ts (WITHOUT_SENSITIVITY_PROOF=0)",
+      "source": "§4"
+    }
+  ]
+}

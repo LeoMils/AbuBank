@@ -1,0 +1,14 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Yoav
+hebrew_name: יואב
+aliases: []
+relationship: grandnephew_of_husband
+relationship_hebrew: בן של רוסיטה
+role: בנם של רוסיטה ואוסקר
+location: לוס אנג'לס, ארה"ב
+gender: male
+occupation: מתווך נדל"ן בלוס אנג'לס (בתי יוקרה)
+notes: בנם של רוסיטה ואוסקר; מתווך נדל"ן בלוס אנג'לס המתמחה בבתי יוקרה.
+pronunciation:
+  es: yoav

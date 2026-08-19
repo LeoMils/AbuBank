@@ -1,235 +1,494 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useAppStore } from '../../state/store'
-import { BackButton } from '../../components/BackButton'
-import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
-import { soundTap } from '../../services/sounds'
+import { Screen } from '../../state/types'
+import { soundTap, soundGameTap, haptic } from '../../services/sounds'
+import { AbuLogo } from '../../design/logos/AbuLogo'
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MARTITA'S GAMES CARNIVAL — 2026 Premium Game App
-// Apple Arcade × PlayStation Store level visual design
+// ABU GAMES — "Terrace" redesign (v40)
+// A bright, airy, first-class 2026 games lobby matching the approved mockup:
+// a sunlit terrace scene, a warm wooden podium, and three elegant glass cards —
+// WOW Words · Solitaire · Mahjong. Solitaire and Mahjong open a dedicated
+// category page (same scene) listing the top games of that family; every game
+// opens and plays in the same tab. Design-locked in wowGame.test.ts.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ─── GAMES DATA ──────────────────────────────────────────────────────────────
+// ─── Palette ──────────────────────────────────────────────────────────────────
+const TEAL_DEEP = '#1C6E7C'
+const TEAL = '#2A8FA0'
+const PINK = '#E85C8A'
+const GOLD = '#C9A84C'
+const SLATE = '#5B6E77'
+const WOOD_HI = '#E6C79A'
+const WOOD = '#C79A63'
+const WOOD_LO = '#9B6E3F'
 
+// ─── Catalog ────────────────────────────────────────────────────────────────────
+type Category = 'featured' | 'solitaire' | 'mahjong'
 interface Game {
   id: string
-  label: string
-  labelHe: string
+  label: string        // Latin / source name (a11y context)
+  labelHe: string      // Hebrew name shown on the tile
   url: string
-  accent: string
-  accentBg: string
-  gradient: string
-  category: 'featured' | 'solitaire' | 'mahjong'
+  accent: string       // brand color for the tile chip
+  category: Category
   emoji: string
-  desc?: string
-  mood?: string
 }
 
 const GAMES: Game[] = [
-  { id: 'wow', label: 'Abu WOW', labelHe: 'אבו וואו', url: 'https://www.crazygames.com/game/words-of-wonders', accent: '#FFD666', accentBg: '#FFF3D0', gradient: 'linear-gradient(135deg, #FF6B35, #FF8F5E, #FFB347, #FFD666)', category: 'featured', emoji: '🔤', desc: 'בונים מילים ← מתקדמים בשלבים', mood: 'חידת המילים של Martita' },
+  { id: 'wow', label: 'Words of Wonders', labelHe: 'אבו וואו', url: 'https://www.crazygames.com/game/words-of-wonders', accent: '#2A8FA0', category: 'featured', emoji: '🔤' },
 
-  { id: 'klondike', label: 'Clásico', labelHe: 'סוליטר קלאסי', accent: '#34D399', accentBg: '#D1FAE5', gradient: 'linear-gradient(135deg, #059669, #34D399)', category: 'solitaire', emoji: '🃏', url: 'https://www.arkadium.com/games/klondike-solitaire/', mood: 'הקלאסיקה' },
-  { id: 'spider', label: 'Spider', labelHe: 'עכביש', accent: '#A78BFA', accentBg: '#EDE9FE', gradient: 'linear-gradient(135deg, #7C3AED, #A78BFA)', category: 'solitaire', emoji: '🕷️', url: 'https://www.arkadium.com/games/spider-solitaire/', mood: 'אסטרטגיה' },
-  { id: 'freecell', label: 'FreeCell', labelHe: 'פריסל', accent: '#60A5FA', accentBg: '#DBEAFE', gradient: 'linear-gradient(135deg, #2563EB, #60A5FA)', category: 'solitaire', emoji: '💎', url: 'https://www.arkadium.com/games/freecell/', mood: 'כל משחק פתיר!' },
-  { id: 'pyramid', label: 'Pirámide', labelHe: 'פירמידה', accent: '#FBBF24', accentBg: '#FEF3C7', gradient: 'linear-gradient(135deg, #D97706, #FBBF24)', category: 'solitaire', emoji: '🔺', url: 'https://games.aarp.org/games/pyramid-solitaire', mood: 'חשבון מהנה' },
-  { id: 'tripeaks', label: 'Tri Peaks', labelHe: 'שלוש פסגות', accent: '#2DD4BF', accentBg: '#CCFBF1', gradient: 'linear-gradient(135deg, #0D9488, #2DD4BF)', category: 'solitaire', emoji: '⛰️', url: 'https://www.arkadium.com/games/tripeaks-solitaire-free/', mood: 'מהיר ומשמח' },
-  { id: 'hearts', label: 'Corazones', labelHe: 'לבבות', accent: '#FB7185', accentBg: '#FFE4E6', gradient: 'linear-gradient(135deg, #E11D48, #FB7185)', category: 'solitaire', emoji: '❤️', url: 'https://cardgames.io/hearts/', mood: 'משחק חברתי' },
-  { id: 'canfield', label: 'Canfield', labelHe: 'קאנפילד', accent: '#22D3EE', accentBg: '#CFFAFE', gradient: 'linear-gradient(135deg, #0891B2, #22D3EE)', category: 'solitaire', emoji: '🎴', url: 'https://solitaired.com/canfield', mood: 'אתגר גבוה' },
-  { id: 'golf', label: 'Golf', labelHe: 'גולף', accent: '#4ADE80', accentBg: '#DCFCE7', gradient: 'linear-gradient(135deg, #16A34A, #4ADE80)', category: 'solitaire', emoji: '⛳', url: 'https://www.solitaire-play.com/golf/', mood: 'פשוט ומרגיע' },
-  { id: 'yukon', label: 'Yukon', labelHe: 'יוקון', accent: '#38BDF8', accentBg: '#E0F2FE', gradient: 'linear-gradient(135deg, #0284C7, #38BDF8)', category: 'solitaire', emoji: '🌊', url: 'https://solitaired.com/yukon', mood: 'טוויסט מפתיע' },
-  { id: 'spider2', label: 'Spider ×2', labelHe: 'עכביש ×2', accent: '#FB923C', accentBg: '#FED7AA', gradient: 'linear-gradient(135deg, #EA580C, #FB923C)', category: 'solitaire', emoji: '🕸️', url: 'https://www.arkadium.com/games/spider-solitaire-2-suits/', mood: 'למנוסות' },
-  { id: 'forty', label: '40 Ladrones', labelHe: '40 ליסטים', accent: '#C084FC', accentBg: '#F3E8FF', gradient: 'linear-gradient(135deg, #9333EA, #C084FC)', category: 'solitaire', emoji: '⚔️', url: 'https://solitaired.com/forty-thieves', mood: 'לאמיצות!' },
+  { id: 'klondike', label: 'Clásico', labelHe: 'סוליטר קלאסי', accent: '#34D399', category: 'solitaire', emoji: '🃏', url: 'https://www.arkadium.com/games/klondike-solitaire/' },
+  { id: 'spider', label: 'Spider', labelHe: 'עכביש', accent: '#A78BFA', category: 'solitaire', emoji: '🕷️', url: 'https://www.arkadium.com/games/spider-solitaire/' },
+  { id: 'freecell', label: 'FreeCell', labelHe: 'פריסל', accent: '#60A5FA', category: 'solitaire', emoji: '💎', url: 'https://www.arkadium.com/games/freecell/' },
+  { id: 'pyramid', label: 'Pirámide', labelHe: 'פירמידה', accent: '#FBBF24', category: 'solitaire', emoji: '🔺', url: 'https://games.aarp.org/games/pyramid-solitaire' },
+  { id: 'tripeaks', label: 'Tri Peaks', labelHe: 'שלוש פסגות', accent: '#2DD4BF', category: 'solitaire', emoji: '⛰️', url: 'https://www.arkadium.com/games/tripeaks-solitaire-free/' },
+  { id: 'hearts', label: 'Corazones', labelHe: 'לבבות', accent: '#FB7185', category: 'solitaire', emoji: '❤️', url: 'https://cardgames.io/hearts/' },
+  { id: 'canfield', label: 'Canfield', labelHe: 'קאנפילד', accent: '#22D3EE', category: 'solitaire', emoji: '🎴', url: 'https://solitaired.com/canfield' },
+  { id: 'golf', label: 'Golf', labelHe: 'גולף', accent: '#4ADE80', category: 'solitaire', emoji: '⛳', url: 'https://www.solitaire-play.com/golf/' },
+  { id: 'yukon', label: 'Yukon', labelHe: 'יוקון', accent: '#38BDF8', category: 'solitaire', emoji: '🌊', url: 'https://solitaired.com/yukon' },
+  { id: 'spider2', label: 'Spider ×2', labelHe: 'עכביש ×2', accent: '#FB923C', category: 'solitaire', emoji: '🕸️', url: 'https://www.arkadium.com/games/spider-solitaire-2-suits/' },
+  { id: 'forty', label: '40 Ladrones', labelHe: '40 ליסטים', accent: '#C084FC', category: 'solitaire', emoji: '⚔️', url: 'https://solitaired.com/forty-thieves' },
 
-  { id: 'mahjong', label: 'Clásico', labelHe: "מהג'ונג קלאסי", accent: '#F87171', accentBg: '#FEE2E2', gradient: 'linear-gradient(135deg, #DC2626, #F87171)', category: 'mahjong', emoji: '🀄', url: 'https://www.arkadium.com/games/mahjongg-solitaire/', mood: 'שלווה קלאסית' },
-  { id: 'mahjong-connect', label: 'Connect', labelHe: 'חיבור', accent: '#FB923C', accentBg: '#FFEDD5', gradient: 'linear-gradient(135deg, #EA580C, #FB923C)', category: 'mahjong', emoji: '🔗', url: 'https://www.arkadium.com/games/mahjong-connect/', mood: 'מצאי זוגות' },
-  { id: 'mahjong-3d', label: 'Dimensiones', labelHe: 'תלת-מימד', accent: '#A78BFA', accentBg: '#EDE9FE', gradient: 'linear-gradient(135deg, #7C3AED, #A78BFA)', category: 'mahjong', emoji: '🧊', url: 'https://www.arkadium.com/games/mahjongg-dimensions/', mood: 'אריחים מסתובבים!' },
-  { id: 'mahjong-candy', label: 'Candy', labelHe: 'ממתקים', accent: '#F472B6', accentBg: '#FCE7F3', gradient: 'linear-gradient(135deg, #DB2777, #F472B6)', category: 'mahjong', emoji: '🍬', url: 'https://www.arkadium.com/games/mahjongg-candy/', mood: 'צבעוני ומתוק' },
-  { id: 'mahjong-dark', label: 'Dark', labelHe: "מהג'ונג לילה", accent: '#818CF8', accentBg: '#E0E7FF', gradient: 'linear-gradient(135deg, #4F46E5, #818CF8)', category: 'mahjong', emoji: '🌙', url: 'https://www.mahjong.com/games/dark-mahjong/', mood: 'שקט מסתורי' },
-  { id: 'mahjong-garden', label: 'Garden', labelHe: 'גן פורח', accent: '#4ADE80', accentBg: '#DCFCE7', gradient: 'linear-gradient(135deg, #16A34A, #4ADE80)', category: 'mahjong', emoji: '🌸', url: 'https://www.arkadium.com/games/garden-tales/', mood: 'טבע ושלווה' },
+  { id: 'mahjong', label: 'Clásico', labelHe: "מהג'ונג קלאסי", accent: '#F87171', category: 'mahjong', emoji: '🀄', url: 'https://www.arkadium.com/games/mahjongg-solitaire/' },
+  { id: 'mahjong-connect', label: 'Connect', labelHe: 'חיבור', accent: '#FB923C', category: 'mahjong', emoji: '🔗', url: 'https://www.arkadium.com/games/mahjong-connect/' },
+  { id: 'mahjong-3d', label: 'Dimensiones', labelHe: 'תלת-מימד', accent: '#A78BFA', category: 'mahjong', emoji: '🧊', url: 'https://www.arkadium.com/games/mahjongg-dimensions/' },
+  { id: 'mahjong-candy', label: 'Candy', labelHe: 'ממתקים', accent: '#F472B6', category: 'mahjong', emoji: '🍬', url: 'https://www.arkadium.com/games/mahjongg-candy/' },
+  { id: 'mahjong-dark', label: 'Dark', labelHe: "מהג'ונג לילה", accent: '#818CF8', category: 'mahjong', emoji: '🌙', url: 'https://www.mahjong.com/games/dark-mahjong/' },
+  { id: 'mahjong-garden', label: 'Garden', labelHe: 'גן פורח', accent: '#4ADE80', category: 'mahjong', emoji: '🌸', url: 'https://www.arkadium.com/games/garden-tales/' },
 ]
 
-// ─── NAVIGATION ──────────────────────────────────────────────────────────────
-
+// ─── Same-tab navigation (guarded), identical rule to Home/services ───────────
 let isNavigating = false
 let navTimer: ReturnType<typeof setTimeout> | null = null
-function handleTap(url: string): void {
+function openGame(url: string): void {
   if (isNavigating) return
   isNavigating = true
   if (navTimer) clearTimeout(navTimer)
   navTimer = setTimeout(() => { isNavigating = false }, 800)
-  soundTap()
+  soundGameTap()
   window.location.href = url
 }
 
-// ─── UTILS ───────────────────────────────────────────────────────────────────
-
-function getTimeGreeting(): string {
-  const h = new Date().getHours()
-  if (h < 5) return 'לילה טוב'
-  if (h < 12) return 'בוקר טוב'
-  if (h < 17) return 'צהריים טובים'
-  if (h < 21) return 'ערב טוב'
-  return 'לילה טוב'
-}
-
-function getTimeEmoji(): string {
-  const h = new Date().getHours()
-  if (h < 5) return '🌙'
-  if (h < 12) return '☀️'
-  if (h < 17) return '🌤️'
-  if (h < 21) return '🌅'
-  return '🌙'
-}
-
-// ─── PREMIUM CSS ENGINE ──────────────────────────────────────────────────────
-
+// ═══ Animation + reduced-motion ════════════════════════════════════════════════
 const CSS = `
-  /* ── Entrance animations ── */
-  @keyframes cg-up { from { opacity:0; transform:translateY(28px) scale(.96) } to { opacity:1; transform:translateY(0) scale(1) } }
-  @keyframes cg-pop { from { opacity:0; transform:scale(.7) } 50% { transform:scale(1.08) } to { opacity:1; transform:scale(1) } }
-  @keyframes cg-slideR { from { opacity:0; transform:translateX(40px) } to { opacity:1; transform:translateX(0) } }
-
-  /* ── Living animations ── */
-  @keyframes cg-float { 0%,100%{transform:translateY(0) rotate(0deg)} 33%{transform:translateY(-12px) rotate(4deg)} 66%{transform:translateY(-5px) rotate(-3deg)} }
-  @keyframes cg-glow { 0%,100%{box-shadow:0 0 30px var(--glow,rgba(255,214,102,.12)), 0 12px 40px rgba(0,0,0,.15)} 50%{box-shadow:0 0 70px var(--glow,rgba(255,214,102,.28)), 0 16px 50px rgba(0,0,0,.20)} }
-  @keyframes cg-shimmer { 0%{left:-100%} 100%{left:200%} }
-  @keyframes cg-shine { 0%{background-position:200% 50%} 100%{background-position:-200% 50%} }
-  @keyframes cg-breathe { 0%,100%{opacity:.4;transform:scale(1)} 50%{opacity:.7;transform:scale(1.04)} }
-  @keyframes cg-heroEmoji { 0%,100%{transform:scale(1) rotate(0)} 20%{transform:scale(1.1) rotate(-6deg)} 40%{transform:scale(1.15) rotate(4deg)} 60%{transform:scale(1.08) rotate(-3deg)} 80%{transform:scale(1.04) rotate(1deg)} }
-  @keyframes cg-rainbow { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-  @keyframes cg-photoRing { 0%,100%{border-color:rgba(255,214,102,.7);box-shadow:0 0 24px rgba(255,214,102,.25)} 33%{border-color:rgba(255,143,171,.7);box-shadow:0 0 24px rgba(255,143,171,.25)} 66%{border-color:rgba(167,139,250,.7);box-shadow:0 0 24px rgba(167,139,250,.25)} }
-  @keyframes cg-confetti { 0%{transform:translateY(0) rotate(0deg) scale(1);opacity:.6} 50%{opacity:1;transform:translateY(-15px) rotate(180deg) scale(1.2)} 100%{transform:translateY(25px) rotate(360deg) scale(.8);opacity:0} }
-  @keyframes cg-orb { 0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.5} 50%{transform:translate(-50%,-50%) scale(1.15);opacity:.8} }
-  @keyframes cg-badgeBounce { 0%{transform:scale(0) rotate(-20deg)} 60%{transform:scale(1.2) rotate(5deg)} 100%{transform:scale(1) rotate(0deg)} }
-  @keyframes cg-ctaPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.015)} }
-
-  /* ── Scrollbar ── */
-  .cg-strip::-webkit-scrollbar{display:none}
-  .cg-strip{scrollbar-width:none;-ms-overflow-style:none}
-
-  /* ── Cards — 3D spring hover ── */
-  .cg-card{
-    transition: transform .28s cubic-bezier(.34,1.56,.64,1), box-shadow .3s ease, border-color .25s ease;
-    will-change: transform;
-  }
-  .cg-card:hover{
-    transform:translateY(-8px) scale(1.05) !important;
-    box-shadow:0 16px 32px rgba(0,0,0,.25), 0 0 0 2px var(--accent,#FFD666), 0 0 30px var(--accent-glow,rgba(255,214,102,.15)) !important;
-    border-color:transparent !important;
-    z-index:2;
-  }
-  .cg-card:active{transform:scale(.94) !important}
-
-  /* ── Hero card ── */
-  .cg-hero{transition:transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .35s ease}
-  .cg-hero:hover{transform:translateY(-4px) scale(1.01);box-shadow:0 20px 60px rgba(255,107,53,.20), 0 0 80px rgba(255,214,102,.12) !important}
-  .cg-hero:active{transform:scale(.98)}
-
-  /* ── Reduced motion ── */
-  @media(prefers-reduced-motion:reduce){
-    [data-cg]{animation:none !important}
-    .cg-card,.cg-hero{transition:none !important}
+  @keyframes ag-rise { from { opacity:0; transform:translateY(22px) scale(.96) } to { opacity:1; transform:translateY(0) scale(1) } }
+  @keyframes ag-fade { from { opacity:0 } to { opacity:1 } }
+  @keyframes ag-float { 0%,100% { transform:translateY(0) } 50% { transform:translateY(-7px) } }
+  @keyframes ag-sheen { 0% { transform:translateX(-140%) rotate(18deg) } 60%,100% { transform:translateX(240%) rotate(18deg) } }
+  @keyframes ag-sway { 0%,100% { transform:rotate(-2.5deg) } 50% { transform:rotate(2.5deg) } }
+  @keyframes ag-sun { 0%,100% { opacity:.75 } 50% { opacity:1 } }
+  .ag-root::-webkit-scrollbar { width:0; height:0 }
+  .ag-root { scrollbar-width:none }
+  .ag-card { transition: transform .22s cubic-bezier(.22,1,.36,1), box-shadow .22s ease }
+  .ag-card:active { transform: scale(.955) translateY(2px) }
+  .ag-card:focus-visible { outline:3px solid ${TEAL}; outline-offset:4px }
+  .ag-tile { transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .18s ease }
+  .ag-tile:active { transform: scale(.95) }
+  .ag-tile:focus-visible { outline:3px solid ${TEAL}; outline-offset:3px }
+  .ag-back:focus-visible { outline:3px solid ${TEAL}; outline-offset:3px }
+  @media (prefers-reduced-motion: reduce) {
+    [data-ag] { animation:none !important }
+    .ag-float { animation:none !important }
+    .ag-sheen { display:none !important }
   }
 `
 
-// ─── CONFETTI SYSTEM ─────────────────────────────────────────────────────────
-
-const CONFETTI_COLORS = ['#FFD666','#FF8FAB','#A78BFA','#67E8F9','#4ADE80','#FB923C','#F472B6','#60A5FA']
-const CONFETTI = Array.from({ length: 20 }, (_, i) => ({
-  left: `${(i * 5.1 + (i % 3) * 8.7 + 2) % 96}%`,
-  top: `${(i * 4.5 + (i % 5) * 6.2 + 3) % 88}%`,
-  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length]!,
-  size: 5 + (i % 5) * 2,
-  delay: `${(i * 0.28).toFixed(1)}s`,
-  duration: `${2.5 + (i % 4) * 1.2}s`,
-  radius: i % 3 === 0 ? '50%' : i % 3 === 1 ? '2px' : '1px',
-  rotation: i * 25,
-}))
-
-// ─── GAME CARD COMPONENT ────────────────────────────────────────────────────
-
-function GameCard({ g, delay }: { g: Game; delay: number }) {
+// ═══ Scene background — sunlit terrace (sky · light · horizon · florals · podium) ═
+function FloralCluster({ side }: { side: 'left' | 'right' }) {
+  const flip = side === 'right'
   return (
-    <div
-      role="button" tabIndex={0} aria-label={g.labelHe}
-      onClick={() => handleTap(g.url)}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(g.url) } }}
-      className="cg-card"
-      data-cg
-      style={{
-        '--accent': g.accent,
-        '--accent-glow': `${g.accent}30`,
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 6, padding: '16px 8px 14px',
-        borderRadius: 22, minWidth: 118, width: 118, flexShrink: 0,
-        /* 3D elevated surface */
-        background: 'rgba(255,255,255,0.06)',
-        border: '1px solid rgba(255,255,255,0.10)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.06)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        cursor: 'pointer',
-        WebkitTapHighlightColor: 'transparent',
-        position: 'relative', overflow: 'hidden',
-        animation: `cg-slideR .4s ${delay}s cubic-bezier(.22,1,.36,1) both`,
-        opacity: 0,
-      } as React.CSSProperties}
-    >
-      {/* Top gradient accent stripe */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-        background: g.gradient, borderRadius: '22px 22px 0 0',
-      }} />
-
-      {/* Emoji with gradient backdrop */}
-      <div style={{
-        width: 56, height: 56, borderRadius: 18,
-        background: g.gradient,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 30, lineHeight: 1,
-        boxShadow: `0 4px 16px ${g.accent}35, inset 0 -2px 4px rgba(0,0,0,0.15)`,
-        position: 'relative',
-      }}>
-        <span style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,.25))' }}>{g.emoji}</span>
+    <div aria-hidden data-ag style={{
+      position: 'absolute', bottom: -6, [side]: -10, width: 190, height: 200,
+      transform: flip ? 'scaleX(-1)' : 'none', transformOrigin: 'bottom center',
+      pointerEvents: 'none', zIndex: 2,
+      animation: 'ag-fade .9s .1s both',
+    }}>
+      <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 90%', animation: 'ag-sway 7s ease-in-out infinite' }}>
+        <svg viewBox="0 0 190 200" width="190" height="200" fill="none">
+          {/* stems + leaves */}
+          <path d="M40 200 C30 150 34 110 60 84" stroke="#5E9A5B" strokeWidth="5" strokeLinecap="round" />
+          <path d="M70 200 C78 158 96 132 120 118" stroke="#4E8C55" strokeWidth="5" strokeLinecap="round" />
+          <path d="M20 200 C18 168 26 150 44 138" stroke="#6BA968" strokeWidth="4" strokeLinecap="round" />
+          {([[52, 130, 26], [96, 150, 22], [30, 158, 20]] as Array<[number, number, number]>).map(([x, y, r], i) => (
+            <ellipse key={i} cx={x} cy={y} rx={r} ry={r * 0.5} fill="#5FA05C" opacity="0.9" transform={`rotate(${-30 + i * 22} ${x} ${y})`} />
+          ))}
+          {/* blossoms */}
+          {[[60, 82, 1, '#F6A8C4', '#EC6E9C'], [122, 116, .82, '#FBC4D6', '#F48FB1'], [44, 138, .62, '#F19BB8', '#E8739E']].map(([cx, cy, s, p1, p2], i) => (
+            <g key={i} transform={`translate(${cx} ${cy}) scale(${s})`}>
+              {[0, 72, 144, 216, 288].map(a => (
+                <ellipse key={a} cx="0" cy="-17" rx="11" ry="17" fill={p1 as string}
+                  transform={`rotate(${a})`} />
+              ))}
+              {[36, 108, 180, 252, 324].map(a => (
+                <ellipse key={a} cx="0" cy="-15" rx="8" ry="14" fill={p2 as string} opacity="0.85"
+                  transform={`rotate(${a})`} />
+              ))}
+              <circle cx="0" cy="0" r="7" fill={GOLD} />
+              <circle cx="0" cy="0" r="3.4" fill="#8A6A22" />
+            </g>
+          ))}
+        </svg>
       </div>
-
-      <span style={{
-        fontSize: 14, fontWeight: 800, color: '#fff',
-        fontFamily: "'Heebo',sans-serif", textAlign: 'center', lineHeight: 1.2,
-        marginTop: 2,
-      }}>{g.labelHe}</span>
-
-      <span style={{
-        fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.40)',
-        fontFamily: "'Heebo',sans-serif", letterSpacing: '.02em',
-      }}>{g.label}</span>
-
-      {g.mood && (
-        <span style={{
-          fontSize: 10, fontWeight: 600, color: g.accent,
-          fontFamily: "'Heebo',sans-serif", textAlign: 'center',
-          lineHeight: 1.3, maxWidth: 100,
-          opacity: 0.85,
-        }}>{g.mood}</span>
-      )}
     </div>
   )
 }
 
-// ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
+function Scene({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ position: 'relative', minHeight: '100dvh', width: '100%', overflow: 'hidden' }}>
+      {/* Sky → warm terrace wash */}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, zIndex: 0,
+        background: 'linear-gradient(180deg, #9FCDEA 0%, #C4E2F0 26%, #E4F1F1 54%, #F2E8D6 80%, #EAD9BE 100%)',
+      }} />
+      {/* Warm sun bloom, top-right */}
+      <div aria-hidden data-ag style={{
+        position: 'absolute', top: '-14%', right: '-10%', width: '75%', height: 420, zIndex: 1,
+        background: 'radial-gradient(circle at 70% 30%, rgba(255,246,214,0.95) 0%, rgba(255,232,180,0.5) 30%, transparent 62%)',
+        filter: 'blur(2px)', animation: 'ag-sun 8s ease-in-out infinite', pointerEvents: 'none',
+      }} />
+      {/* Soft cloud puffs */}
+      <div aria-hidden style={{
+        position: 'absolute', top: '9%', left: '-6%', width: '70%', height: 150, zIndex: 1, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at 30% 50%, rgba(255,255,255,0.85) 0%, transparent 60%), radial-gradient(ellipse at 60% 40%, rgba(255,255,255,0.7) 0%, transparent 55%)',
+      }} />
+      {/* Distant city / sea horizon — faint, premium, not busy */}
+      <svg aria-hidden viewBox="0 0 412 120" preserveAspectRatio="none" style={{
+        position: 'absolute', top: '40%', left: 0, width: '100%', height: 120, zIndex: 1, opacity: 0.16, pointerEvents: 'none',
+      }}>
+        <g fill="#3E6E86">
+          {[18, 44, 70, 300, 330, 360, 388].map((x, i) => (
+            <rect key={i} x={x} y={40 - (i % 3) * 16} width="18" height={80 + (i % 3) * 16} rx="2" />
+          ))}
+          <rect x="96" y="64" width="10" height="56" rx="2" />
+          <rect x="278" y="58" width="12" height="62" rx="2" />
+        </g>
+        <rect x="0" y="104" width="412" height="16" fill="#78A9C4" opacity="0.6" />
+      </svg>
+
+      {/* Wooden podium */}
+      <div aria-hidden data-ag style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 200, zIndex: 1, animation: 'ag-fade .8s both' }}>
+        {/* platform top ellipse */}
+        <div style={{
+          position: 'absolute', left: '50%', bottom: 92, transform: 'translateX(-50%)',
+          width: '108%', height: 120, borderRadius: '50%',
+          background: `radial-gradient(ellipse at 50% 30%, ${WOOD_HI} 0%, ${WOOD} 48%, ${WOOD_LO} 100%)`,
+          boxShadow: '0 -2px 0 rgba(255,255,255,0.35) inset, 0 30px 60px rgba(120,80,40,0.35)',
+        }} />
+        {/* platform rim / body */}
+        <div style={{
+          position: 'absolute', left: '50%', bottom: 44, transform: 'translateX(-50%)',
+          width: '96%', height: 66, borderRadius: '0 0 40% 40% / 0 0 100% 100%',
+          background: `linear-gradient(180deg, ${WOOD_LO} 0%, #7C5630 100%)`,
+          boxShadow: '0 24px 40px rgba(90,60,30,0.4)',
+        }} />
+        {/* wood grain sheen */}
+        <div style={{
+          position: 'absolute', left: '50%', bottom: 96, transform: 'translateX(-50%)',
+          width: '90%', height: 90, borderRadius: '50%',
+          background: 'radial-gradient(ellipse at 40% 20%, rgba(255,255,255,0.28) 0%, transparent 45%)',
+          pointerEvents: 'none',
+        }} />
+      </div>
+
+      <FloralCluster side="left" />
+      <FloralCluster side="right" />
+
+      {/* Content */}
+      <div style={{ position: 'relative', zIndex: 3, minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ═══ Brand header ═══════════════════════════════════════════════════════════════
+function BrandHeader({ subtitle }: { subtitle: string }) {
+  return (
+    <header style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 20px 0', textAlign: 'center' }}>
+      {/* Shared Abu-family emblem (M4 logo system) — the one badge every app carries,
+          so this bright terrace still reads as part of one product. The dark emblem
+          disc + games accent reads as a crest above the wordmark; the terrace scene,
+          palette and locked layout are untouched. */}
+      <AbuLogo app="games" size={46} style={{ marginBottom: 4, filter: 'drop-shadow(0 4px 10px rgba(40,70,80,0.28))', animation: 'ag-rise .6s both' }} />
+      <h1 data-ag style={{
+        margin: 0, direction: 'ltr', fontFamily: "'Cormorant Garamond',Georgia,serif",
+        fontWeight: 700, fontSize: 52, lineHeight: 1.02, letterSpacing: '-0.01em',
+        background: `linear-gradient(180deg, ${TEAL} 0%, ${TEAL_DEEP} 100%)`,
+        WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+        filter: 'drop-shadow(0 2px 10px rgba(28,110,124,0.22))',
+        animation: 'ag-rise .6s .02s cubic-bezier(.22,1,.36,1) both', opacity: 0,
+      }}>AbuGames</h1>
+
+      <div data-ag style={{
+        direction: 'ltr', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8,
+        animation: 'ag-rise .6s .1s cubic-bezier(.22,1,.36,1) both', opacity: 0,
+      }}>
+        <span style={{
+          fontFamily: "'Dancing Script','Snell Roundhand','Segoe Script',cursive",
+          fontWeight: 700, fontSize: 34, color: PINK, lineHeight: 1,
+          filter: 'drop-shadow(0 2px 6px rgba(232,92,138,0.28))',
+        }}>Martita,</span>
+        <svg width="26" height="24" viewBox="0 0 26 24" aria-hidden style={{ filter: 'drop-shadow(0 2px 4px rgba(232,92,138,0.3))' }}>
+          <path d="M13 22C13 22 2 15 2 8.2 2 4.8 4.7 2.5 7.7 2.5c2 0 3.8 1.1 5.3 3 1.5-1.9 3.3-3 5.3-3C21.3 2.5 24 4.8 24 8.2 24 15 13 22 13 22z"
+            fill="none" stroke={PINK} strokeWidth="2.2" strokeLinejoin="round" />
+        </svg>
+      </div>
+
+      <div data-ag dir="rtl" style={{
+        marginTop: 8, display: 'flex', alignItems: 'center', gap: 10,
+        fontFamily: "'Heebo',sans-serif", fontSize: 17, fontWeight: 500, color: SLATE,
+        animation: 'ag-rise .6s .18s cubic-bezier(.22,1,.36,1) both', opacity: 0,
+      }}>
+        <span style={{ color: GOLD, opacity: 0.7 }}>❧</span>
+        {subtitle}
+        <span style={{ color: GOLD, opacity: 0.7, transform: 'scaleX(-1)' }}>❧</span>
+      </div>
+    </header>
+  )
+}
+
+// ═══ Landing marks (the three hero icons) ═══════════════════════════════════════
+function WowMark() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 5, color: GOLD, fontSize: 15, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.25))' }}>
+        <span style={{ transform: 'translateY(2px)' }}>★</span><span style={{ transform: 'translateY(-2px)' }}>★</span><span style={{ transform: 'translateY(2px)' }}>★</span>
+      </div>
+      <div style={{
+        direction: 'ltr', fontFamily: "'DM Sans',sans-serif", fontWeight: 800, fontSize: 34, letterSpacing: '0.02em',
+        background: 'linear-gradient(180deg, #FBEFC5 0%, #E9C86E 45%, #C9A343 100%)',
+        WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+        filter: 'drop-shadow(0 2px 1px rgba(120,84,20,0.55))',
+      }}>WOW</div>
+      <div style={{
+        direction: 'ltr', padding: '2px 12px', borderRadius: 999, background: 'rgba(255,255,255,0.9)',
+        color: TEAL_DEEP, fontWeight: 800, fontSize: 12, letterSpacing: '0.14em',
+        fontFamily: "'DM Sans',sans-serif", boxShadow: '0 2px 6px rgba(0,0,0,0.14)',
+      }}>WORDS</div>
+    </div>
+  )
+}
+
+function PlayingCard({ rank, suit, red, rotate, dx }: { rank: string; suit: string; red: boolean; rotate: number; dx: number }) {
+  return (
+    <div style={{
+      position: 'absolute', left: `calc(50% + ${dx}px)`, top: '50%',
+      transform: `translate(-50%,-50%) rotate(${rotate}deg)`,
+      width: 42, height: 58, borderRadius: 7, background: 'linear-gradient(160deg,#ffffff,#eef3f7)',
+      boxShadow: '0 6px 12px rgba(30,50,70,0.28)', border: '1px solid rgba(0,0,0,0.06)',
+      color: red ? '#D6335A' : '#25303B', fontFamily: "'DM Sans',serif", fontWeight: 700,
+    }}>
+      <span style={{ position: 'absolute', top: 3, left: 5, fontSize: 13, lineHeight: 1 }}>{rank}</span>
+      <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{suit}</span>
+    </div>
+  )
+}
+function SolitaireMark() {
+  return (
+    <div style={{ position: 'relative', width: 108, height: 70 }}>
+      <PlayingCard rank="A" suit="♦" red rotate={-16} dx={-26} />
+      <PlayingCard rank="A" suit="♦" red rotate={-1} dx={0} />
+      <PlayingCard rank="A" suit="♠" red={false} rotate={15} dx={26} />
+    </div>
+  )
+}
+
+function MahjongMark() {
+  return (
+    <div style={{
+      position: 'relative', width: 60, height: 78, borderRadius: 12,
+      background: 'linear-gradient(150deg,#FFFFFF 0%,#F1F4F2 60%,#E2E8E4 100%)',
+      boxShadow: '0 8px 16px rgba(40,60,50,0.28), inset 0 2px 0 rgba(255,255,255,0.9), inset 0 -6px 10px rgba(120,140,130,0.25)',
+      border: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <span style={{
+        fontSize: 40, fontWeight: 700, color: '#C0392B', lineHeight: 1,
+        textShadow: '0 1px 1px rgba(0,0,0,0.15)', fontFamily: "'Heebo',sans-serif",
+      }}>發</span>
+      <span aria-hidden style={{ position: 'absolute', bottom: 8, width: 16, height: 3, borderRadius: 2, background: '#3E8E5A' }} />
+    </div>
+  )
+}
+
+// ═══ Hero pill card (landing) ═══════════════════════════════════════════════════
+interface PillProps {
+  label: string
+  tintA: string
+  tintB: string
+  mark: React.ReactNode
+  onActivate: () => void
+  ariaLabel: string
+  index: number
+  hero?: boolean
+}
+function PillCard({ label, tintA, tintB, mark, onActivate, ariaLabel, index, hero }: PillProps) {
+  const h = hero ? 236 : 214
+  return (
+    <div
+      role="button" tabIndex={0} aria-label={ariaLabel}
+      className="ag-card btn-focus"
+      onClick={onActivate}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onActivate() } }}
+      data-ag
+      style={{
+        position: 'relative', flex: 1, maxWidth: 132, height: h, borderRadius: 30,
+        marginBottom: hero ? 14 : 0, cursor: 'pointer', overflow: 'hidden',
+        WebkitTapHighlightColor: 'transparent',
+        background: `linear-gradient(165deg, ${tintA} 0%, ${tintB} 100%)`,
+        boxShadow: `0 18px 34px rgba(40,70,80,0.28), 0 4px 10px rgba(40,70,80,0.16), inset 0 2px 3px rgba(255,255,255,0.7), inset 0 -10px 22px rgba(0,0,0,0.10)`,
+        border: '1px solid rgba(255,255,255,0.6)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
+        animation: `ag-rise .6s ${(0.24 + index * 0.1).toFixed(2)}s cubic-bezier(.22,1,.36,1) both`,
+        opacity: 0,
+      }}
+    >
+      {/* moving specular sheen */}
+      <span aria-hidden className="ag-sheen" style={{
+        position: 'absolute', top: -30, left: 0, width: '55%', height: '170%',
+        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)',
+        animation: `ag-sheen ${5.5 + index}s ${1 + index * 0.4}s ease-in-out infinite`, pointerEvents: 'none',
+      }} />
+      <div className="ag-float" style={{ animation: `ag-float ${4 + index * 0.5}s ${index * 0.3}s ease-in-out infinite`, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 84 }}>
+        {mark}
+      </div>
+      <span style={{
+        direction: 'ltr', fontFamily: "'Cormorant Garamond',Georgia,serif", fontWeight: 700,
+        fontSize: hero ? 23 : 21, color: '#ffffff', letterSpacing: '0.01em',
+        textShadow: '0 2px 6px rgba(0,0,0,0.28)',
+      }}>{label}</span>
+    </div>
+  )
+}
+
+// ═══ Category tile ═══════════════════════════════════════════════════════════════
+function GameTile({ g, index }: { g: Game; index: number }) {
+  return (
+    <div
+      role="button" tabIndex={0} aria-label={g.labelHe}
+      className="ag-tile btn-focus"
+      onClick={() => openGame(g.url)}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openGame(g.url) } }}
+      data-ag
+      style={{
+        position: 'relative', display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
+        borderRadius: 22, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', overflow: 'hidden',
+        background: 'linear-gradient(160deg, rgba(255,255,255,0.94) 0%, rgba(244,249,250,0.9) 100%)',
+        border: '1px solid rgba(255,255,255,0.8)',
+        boxShadow: '0 10px 22px rgba(40,70,80,0.16), inset 0 1px 2px rgba(255,255,255,0.9)',
+        animation: `ag-rise .5s ${(0.06 + index * 0.05).toFixed(2)}s cubic-bezier(.22,1,.36,1) both`, opacity: 0,
+      }}
+    >
+      <div aria-hidden style={{
+        width: 54, height: 54, borderRadius: 16, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 27,
+        background: `linear-gradient(150deg, ${g.accent}33 0%, ${g.accent}18 100%)`,
+        boxShadow: `inset 0 0 0 1px ${g.accent}44, 0 4px 10px ${g.accent}22`,
+      }}>{g.emoji}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div dir="rtl" style={{ fontFamily: "'Heebo',sans-serif", fontWeight: 700, fontSize: 18, color: '#20343B', lineHeight: 1.2 }}>{g.labelHe}</div>
+        <div dir="ltr" style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 500, fontSize: 12, color: SLATE, marginTop: 2 }}>{g.label}</div>
+      </div>
+      <span aria-hidden style={{
+        width: 34, height: 34, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: `linear-gradient(150deg, ${TEAL} 0%, ${TEAL_DEEP} 100%)`, color: '#fff', fontSize: 15,
+        boxShadow: '0 4px 10px rgba(28,110,124,0.35)',
+      }}>▸</span>
+    </div>
+  )
+}
+
+// ═══ Back control ════════════════════════════════════════════════════════════════
+function BackChevron({ onBack, label }: { onBack: () => void; label: string }) {
+  return (
+    <button
+      className="ag-back" aria-label={label} onClick={() => { soundTap(); onBack() }}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        height: 42, padding: '0 16px 0 12px', borderRadius: 999, cursor: 'pointer',
+        background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(255,255,255,0.85)', boxShadow: '0 6px 16px rgba(40,70,80,0.16)',
+        color: TEAL_DEEP, fontFamily: "'Heebo',sans-serif", fontWeight: 700, fontSize: 15,
+      }}>
+      <span style={{ fontSize: 18, lineHeight: 1 }}>›</span>
+      {label}
+    </button>
+  )
+}
+
+// ═══ Category page ═══════════════════════════════════════════════════════════════
+function CategoryPage({ title, subtitle, games, onBack }: { title: string; subtitle: string; games: Game[]; onBack: () => void }) {
+  return (
+    <Scene>
+      <div className="ag-root" dir="rtl" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-start', padding: '16px 16px 0' }}>
+          <BackChevron onBack={onBack} label="חזרה" />
+        </div>
+        <header style={{ textAlign: 'center', padding: '4px 20px 2px' }}>
+          <h1 data-ag style={{
+            margin: 0, direction: 'ltr', fontFamily: "'Cormorant Garamond',Georgia,serif", fontWeight: 700, fontSize: 42,
+            background: `linear-gradient(180deg, ${TEAL} 0%, ${TEAL_DEEP} 100%)`,
+            WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            animation: 'ag-rise .5s .02s cubic-bezier(.22,1,.36,1) both', opacity: 0,
+          }}>{title}</h1>
+          <div data-ag style={{
+            marginTop: 4, fontFamily: "'Heebo',sans-serif", fontSize: 15, fontWeight: 500, color: SLATE,
+            animation: 'ag-rise .5s .1s cubic-bezier(.22,1,.36,1) both', opacity: 0,
+          }}>{subtitle}</div>
+        </header>
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12,
+          padding: '16px 16px 40px', alignContent: 'start',
+        }}>
+          {games.map((g, i) => <GameTile key={g.id} g={g} index={i} />)}
+        </div>
+      </div>
+    </Scene>
+  )
+}
+
+// ═══ Landing page ════════════════════════════════════════════════════════════════
+function Landing({ onCategory, onWow }: { onCategory: (c: 'solitaire' | 'mahjong') => void; onWow: () => void }) {
+  return (
+    <Scene>
+      <div dir="rtl" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+        <div style={{ padding: '52px 0 6px' }}>
+          <BrandHeader subtitle="מה בא לך לשחק?" />
+        </div>
+
+        {/* Cards on the podium */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 18px 78px' }}>
+          <div style={{ direction: 'ltr', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 12, width: '100%', maxWidth: 440 }}>
+            <PillCard
+              index={0} label="WOW Words" ariaLabel="WOW Words — אבו וואו"
+              tintA="#3AA9BC" tintB="#1C6E7C" mark={<WowMark />} onActivate={onWow}
+            />
+            <PillCard
+              index={1} hero label="Solitaire" ariaLabel="Solitaire — סוליטר"
+              tintA="#5FB4D6" tintB="#2E7FA8" mark={<SolitaireMark />} onActivate={() => onCategory('solitaire')}
+            />
+            <PillCard
+              index={2} label="Mahjong" ariaLabel="Mahjong — מהג'ונג"
+              tintA="#E7A6B4" tintB="#B15C74" mark={<MahjongMark />} onActivate={() => onCategory('mahjong')}
+            />
+          </div>
+        </div>
+      </div>
+    </Scene>
+  )
+}
+
+// ═══ Screen ══════════════════════════════════════════════════════════════════════
+type View = 'home' | 'solitaire' | 'mahjong'
 
 export function AbuGames() {
-  const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
-  const featured = GAMES.find(g => g.category === 'featured')!
-  const solitaire = GAMES.filter(g => g.category === 'solitaire')
-  const mahjong = GAMES.filter(g => g.category === 'mahjong')
+  const setScreen = useAppStore(s => s.setScreen)
+  const [view, setView] = useState<View>('home')
 
-  const dailyTips = [
-    'המשחקים טובים לראש! סוליטר לריכוז, מילים לזיכרון 🧠',
-    'כל יום משחק קטן שומר על הראש חד ושמח 🌟',
-    'הרגע הזה שלך — תהני מכל שלב! 💛',
-  ]
-  const [tip] = useState<string>(() => dailyTips[Math.floor(Math.random() * dailyTips.length)] ?? dailyTips[0]!)
+  const solitaire = useMemo(() => GAMES.filter(g => g.category === 'solitaire'), [])
+  const mahjong = useMemo(() => GAMES.filter(g => g.category === 'mahjong'), [])
+  const wow = useMemo(() => GAMES.find(g => g.category === 'featured')!, [])
 
   useEffect(() => {
     const onVis = () => { if (!document.hidden) isNavigating = false }
@@ -237,397 +496,30 @@ export function AbuGames() {
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [])
 
+  const goHomeScreen = useCallback(() => { soundTap(); setScreen(Screen.Home) }, [setScreen])
+  const backToLobby = useCallback(() => setView('home'), [])
+
   return (
     <>
       <style>{CSS}</style>
-
-      <div style={{
-        display: 'flex', flexDirection: 'column', minHeight: '100dvh',
-        overflowY: 'auto', overflowX: 'hidden',
-        direction: 'rtl',
-        fontFamily: "'Heebo',sans-serif",
-        /* Premium dark with warm undertone — NOT cold blue-black */
-        background: '#110A1F',
-      }}>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            HERO — Immersive, layered, cinematic
-            ══════════════════════════════════════════════════════════════════ */}
-        <header style={{
-          position: 'relative', minHeight: 400,
-          overflow: 'hidden',
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          paddingBottom: 40,
-        }}>
-
-          {/* BG: Multi-layer gradient mesh */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'linear-gradient(160deg, #2D1566 0%, #3B1F7E 15%, #1E1040 45%, #150B30 70%, #110A1F 100%)',
-          }} />
-
-          {/* Orb 1: warm gold */}
-          <div data-cg style={{
-            position: 'absolute', top: '10%', left: '20%', width: 250, height: 250,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(255,179,71,0.25) 0%, transparent 65%)',
-            filter: 'blur(50px)',
-            animation: 'cg-orb 8s ease-in-out infinite',
-            pointerEvents: 'none',
-          }} />
-          {/* Orb 2: pink */}
-          <div data-cg style={{
-            position: 'absolute', top: '30%', right: '10%', width: 200, height: 200,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(255,143,171,0.20) 0%, transparent 60%)',
-            filter: 'blur(45px)',
-            animation: 'cg-orb 10s 2s ease-in-out infinite',
-            pointerEvents: 'none',
-          }} />
-          {/* Orb 3: purple */}
-          <div data-cg style={{
-            position: 'absolute', bottom: '15%', left: '50%', width: 300, height: 200,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(167,139,250,0.15) 0%, transparent 55%)',
-            filter: 'blur(55px)',
-            animation: 'cg-orb 12s 4s ease-in-out infinite',
-            pointerEvents: 'none',
-          }} />
-
-          {/* Confetti */}
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-            {CONFETTI.map((c, i) => (
-              <div key={i} data-cg style={{
-                position: 'absolute', left: c.left, top: c.top,
-                width: c.size, height: c.size,
-                borderRadius: c.radius, background: c.color,
-                transform: `rotate(${c.rotation}deg)`,
-                animation: `cg-confetti ${c.duration} ${c.delay} ease-in-out infinite`,
-              }} />
-            ))}
+      {view === 'home' && (
+        <div style={{ position: 'relative', minHeight: '100dvh' }}>
+          {/* Home (app) back, floating on the scene */}
+          <div style={{ position: 'absolute', top: 14, right: 14, zIndex: 5 }}>
+            <BackChevron onBack={goHomeScreen} label="לאבו בנק" />
           </div>
-
-          {/* Floating emojis */}
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 1 }}>
-            {['🎪','✨','🎯','🌟','🎲','💫','🎭','🏆'].map((e, i) => (
-              <div key={i} data-cg style={{
-                position: 'absolute',
-                left: `${6 + i * 12}%`, top: `${8 + (i % 4) * 20}%`,
-                fontSize: 18 + (i % 3) * 8,
-                opacity: 0.12 + (i % 3) * 0.05,
-                animation: `cg-float ${5 + i * 0.8}s ${i * 0.5}s ease-in-out infinite`,
-                userSelect: 'none',
-              }}>{e}</div>
-            ))}
-          </div>
-
-          {/* Nav bar */}
-          <div style={{
-            position: 'relative', zIndex: 10, width: '100%',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '14px 16px 0',
-          }}>
-            <BackButton />
-            <div style={{ width: 36 }} />
-          </div>
-
-          {/* ── Martita portrait — large, glowing, alive ── */}
-          <div data-cg style={{
-            position: 'relative', zIndex: 5, marginTop: 14,
-            animation: 'cg-pop .6s .1s cubic-bezier(.22,1,.36,1) both',
-            opacity: 0,
-          } as React.CSSProperties}>
-            {/* Glow ring behind photo */}
-            <div data-cg style={{
-              position: 'absolute', inset: -6, borderRadius: '50%',
-              background: 'conic-gradient(from 0deg, #FFD666, #FF8FAB, #A78BFA, #67E8F9, #4ADE80, #FFD666)',
-              animation: 'cg-breathe 3s ease-in-out infinite',
-              filter: 'blur(12px)',
-              opacity: 0.5,
-            }} />
-            <div data-cg style={{
-              width: 108, height: 108, borderRadius: '50%',
-              border: '4px solid rgba(255,214,102,0.7)',
-              animation: 'cg-photoRing 6s ease-in-out infinite',
-              overflow: 'hidden', position: 'relative',
-              boxShadow: '0 0 24px rgba(255,214,102,0.25), 0 8px 30px rgba(0,0,0,0.35)',
-            }}>
-              <img
-                src={martitaPhoto} alt="Martita" loading="eager"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
-                onError={handleMartitaImgError}
-              />
-            </div>
-            {/* Crown */}
-            <div data-cg style={{
-              position: 'absolute', top: -12, right: -8,
-              fontSize: 32,
-              animation: 'cg-badgeBounce .5s .7s cubic-bezier(.22,1,.36,1) both',
-              opacity: 0,
-              filter: 'drop-shadow(0 3px 6px rgba(0,0,0,.35))',
-            } as React.CSSProperties}>👑</div>
-          </div>
-
-          {/* ── Title block ── */}
-          <div data-cg style={{
-            position: 'relative', zIndex: 5, textAlign: 'center', marginTop: 16,
-            animation: 'cg-up .55s .25s cubic-bezier(.22,1,.36,1) both',
-            opacity: 0,
-          } as React.CSSProperties}>
-            <div style={{
-              fontSize: 14, fontWeight: 700, color: 'rgba(255,214,102,.92)',
-              letterSpacing: '.02em',
-            }}>
-              {getTimeGreeting()}, Martita {getTimeEmoji()}
-            </div>
-            <div style={{
-              fontSize: 36, fontWeight: 900, lineHeight: 1.1, marginTop: 8,
-              background: 'linear-gradient(135deg, #FFD666 0%, #FF8FAB 35%, #A78BFA 65%, #67E8F9 100%)',
-              backgroundSize: '300% 300%',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              animation: 'cg-rainbow 8s ease-in-out infinite',
-              filter: 'drop-shadow(0 2px 10px rgba(255,214,102,.25))',
-            } as React.CSSProperties}>
-              🎪 הקרנבל של Martita
-            </div>
-            <div style={{
-              fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,.60)', marginTop: 8,
-            }}>
-              עולם המשחקים הכי שמח שיש ✨
-            </div>
-          </div>
-
-          {/* Bottom fade */}
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: 60,
-            background: 'linear-gradient(to bottom, transparent, #110A1F)',
-            pointerEvents: 'none', zIndex: 2,
-          }} />
-        </header>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            CONTENT
-            ══════════════════════════════════════════════════════════════════ */}
-        <main style={{
-          position: 'relative', paddingBottom: 52,
-          display: 'flex', flexDirection: 'column', gap: 32,
-        }}>
-
-          {/* ★★★ WOW HERO CARD ★★★ */}
-          <div
-            role="button" tabIndex={0}
-            aria-label={`${featured.labelHe} — המשחק האהוב של Martita`}
-            onClick={() => handleTap(featured.url)}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTap(featured.url) } }}
-            className="cg-hero"
-            data-cg
-            style={{
-              '--glow': 'rgba(255,107,53,.18)',
-              position: 'relative', margin: '0 16px',
-              borderRadius: 28, overflow: 'hidden',
-              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-              animation: 'cg-up .55s .35s cubic-bezier(.22,1,.36,1) both, cg-glow 4s 2s ease-in-out infinite',
-              opacity: 0,
-              /* Deep rich card — layered gradient */
-              background: 'linear-gradient(155deg, #3B1A6E 0%, #2D1566 25%, #421F80 50%, #2D1566 75%, #1E0E4A 100%)',
-              border: '2px solid rgba(255,214,102,.30)',
-              boxShadow: '0 12px 50px rgba(255,107,53,.12), 0 0 60px rgba(167,139,250,.06)',
-              padding: '24px 20px 20px',
-            } as React.CSSProperties}
-          >
-            {/* Mesh gradient overlay */}
-            <div style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none',
-              background: 'radial-gradient(circle at 25% 15%, rgba(255,179,71,.18) 0%, transparent 40%), radial-gradient(circle at 85% 80%, rgba(255,143,171,.10) 0%, transparent 40%), radial-gradient(circle at 50% 50%, rgba(167,139,250,.06) 0%, transparent 50%)',
-            }} />
-
-            {/* Moving shine */}
-            <div data-cg style={{
-              position: 'absolute', top: 0, width: '35%', height: '100%',
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent)',
-              animation: 'cg-shimmer 4s 1.5s ease-in-out infinite',
-              pointerEvents: 'none',
-            }} />
-
-            {/* Badge */}
-            <div data-cg style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '7px 16px', borderRadius: 24,
-              background: 'linear-gradient(135deg, rgba(255,214,102,.22), rgba(255,143,171,.12))',
-              border: '1.5px solid rgba(255,214,102,.40)',
-              backdropFilter: 'blur(12px)',
-              fontSize: 13, fontWeight: 800, color: '#FFD666',
-              animation: 'cg-badgeBounce .5s .8s cubic-bezier(.22,1,.36,1) both',
-              opacity: 0,
-            } as React.CSSProperties}>
-              ⭐ האהוב של Martita
-            </div>
-
-            {/* Content */}
-            <div style={{
-              position: 'relative', zIndex: 1,
-              display: 'flex', alignItems: 'center', gap: 16, marginTop: 16,
-            }}>
-              {/* Big emoji orb */}
-              <div data-cg style={{
-                width: 100, height: 100, borderRadius: 30, flexShrink: 0,
-                background: featured.gradient,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 8px 32px rgba(255,107,53,.30), inset 0 -3px 6px rgba(0,0,0,.20), inset 0 2px 0 rgba(255,255,255,.15)',
-                animation: 'cg-heroEmoji 5s ease-in-out infinite',
-              }}>
-                <span style={{ fontSize: 56, lineHeight: 1, filter: 'drop-shadow(0 4px 8px rgba(0,0,0,.30))' }}>
-                  {featured.emoji}
-                </span>
-              </div>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 30, fontWeight: 900, color: '#fff', lineHeight: 1.1,
-                  textShadow: '0 2px 12px rgba(0,0,0,.3)',
-                }}>
-                  {featured.labelHe}
-                </div>
-                <div style={{
-                  fontSize: 15, fontWeight: 700, color: '#FFD666',
-                  marginTop: 6, lineHeight: 1.3,
-                }}>
-                  {featured.mood}
-                </div>
-                {featured.desc && (
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,.50)', marginTop: 6, lineHeight: 1.5 }}>
-                    {featured.desc}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* CTA — vivid, solid, alive */}
-            <div data-cg style={{
-              position: 'relative', zIndex: 1, marginTop: 18, overflow: 'hidden',
-              background: 'linear-gradient(135deg, #FF6B35, #FFB347, #FFD666)',
-              borderRadius: 18, padding: '17px 0',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              boxShadow: '0 6px 24px rgba(255,107,53,.35), inset 0 -2px 4px rgba(0,0,0,.10), inset 0 2px 0 rgba(255,255,255,.20)',
-              animation: 'cg-ctaPulse 3s 3s ease-in-out infinite',
-            }}>
-              {/* Shine sweep */}
-              <div data-cg style={{
-                position: 'absolute', top: 0, width: '30%', height: '100%',
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.40), transparent)',
-                animation: 'cg-shimmer 3.5s 2s ease-in-out infinite',
-                pointerEvents: 'none',
-              }} />
-              <span style={{ fontSize: 20, fontWeight: 900, color: '#1E1040' }}>
-                🎮 יאללה Martita, נשחק!
-              </span>
-            </div>
-          </div>
-
-          {/* ♠ SOLITAIRE PALACE ──────────────────────────────────────── */}
-          <section>
-            <div data-cg style={{
-              padding: '0 20px 10px',
-              animation: 'cg-up .4s .5s cubic-bezier(.22,1,.36,1) both', opacity: 0,
-            } as React.CSSProperties}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 48, height: 48, borderRadius: 16,
-                  background: 'linear-gradient(135deg, #059669, #34D399)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 26,
-                  boxShadow: '0 4px 16px rgba(52,211,153,.25)',
-                }}>🃏</div>
-                <div>
-                  <div style={{ fontSize: 21, fontWeight: 900, color: '#fff' }}>ארמון הסוליטר</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(110,231,183,.80)', marginTop: 2 }}>
-                    {solitaire.length} קלפים · שקט ושמחה 🎴
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="cg-strip" style={{
-              display: 'flex', gap: 12, overflowX: 'auto', padding: '6px 16px 12px',
-            }}>
-              {solitaire.map((g, i) => <GameCard key={g.id} g={g} delay={0.55 + i * 0.04} />)}
-            </div>
-          </section>
-
-          {/* 🌸 MAHJONG GARDEN ──────────────────────────────────────── */}
-          <section>
-            <div data-cg style={{
-              padding: '0 20px 10px',
-              animation: 'cg-up .4s .75s cubic-bezier(.22,1,.36,1) both', opacity: 0,
-            } as React.CSSProperties}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 48, height: 48, borderRadius: 16,
-                  background: 'linear-gradient(135deg, #DB2777, #F472B6)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 26,
-                  boxShadow: '0 4px 16px rgba(244,114,182,.25)',
-                }}>🌸</div>
-                <div>
-                  <div style={{ fontSize: 21, fontWeight: 900, color: '#fff' }}>גן המהג'ונג</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(249,168,212,.80)', marginTop: 2 }}>
-                    {mahjong.length} אריחים · שלווה ויופי 🧘
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="cg-strip" style={{
-              display: 'flex', gap: 12, overflowX: 'auto', padding: '6px 16px 12px',
-            }}>
-              {mahjong.map((g, i) => <GameCard key={g.id} g={g} delay={0.8 + i * 0.04} />)}
-            </div>
-          </section>
-
-          {/* ☀ DAILY JOY ─────────────────────────────────────────────── */}
-          <section data-cg style={{
-            margin: '0 16px',
-            animation: 'cg-up .4s .95s cubic-bezier(.22,1,.36,1) both', opacity: 0,
-          } as React.CSSProperties}>
-            <div style={{
-              borderRadius: 24, overflow: 'hidden',
-              background: 'linear-gradient(145deg, rgba(255,214,102,.10) 0%, rgba(255,143,171,.06) 50%, rgba(167,139,250,.04) 100%)',
-              border: '1.5px solid rgba(255,214,102,.18)',
-              backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-              padding: '20px 20px 18px',
-              boxShadow: '0 4px 24px rgba(0,0,0,.15)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: 24 }}>{getTimeEmoji()}</span>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#FFD666' }}>שמחה יומית</span>
-              </div>
-              <div style={{ fontSize: 16, lineHeight: 1.75, color: 'rgba(255,255,255,.82)', fontWeight: 500 }}>
-                {tip}
-              </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.35)', marginTop: 10 }}>
-                כל משחק נפתח בדפדפן — לחצי חזרה לחזור לכאן 💜
-              </div>
-            </div>
-          </section>
-
-          {/* FOOTER ──────────────────────────────────────────────────── */}
-          <footer data-cg style={{
-            textAlign: 'center', padding: '4px 24px 0',
-            animation: 'cg-up .4s 1.05s cubic-bezier(.22,1,.36,1) both', opacity: 0,
-          } as React.CSSProperties}>
-            <div style={{
-              fontSize: 15, fontWeight: 800,
-              background: 'linear-gradient(135deg, #FFD666, #FF8FAB, #A78BFA)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            } as React.CSSProperties}>
-              Martita's Games Carnival 🎪
-            </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.25)', marginTop: 4 }}>
-              נבנה באהבה, במיוחד בשבילך 💛
-            </div>
-          </footer>
-        </main>
-      </div>
+          <Landing
+            onWow={() => openGame(wow.url)}
+            onCategory={(c) => { soundTap(); haptic(); setView(c) }}
+          />
+        </div>
+      )}
+      {view === 'solitaire' && (
+        <CategoryPage title="Solitaire" subtitle="המשחקים המובילים · בחרי משחק" games={solitaire} onBack={backToLobby} />
+      )}
+      {view === 'mahjong' && (
+        <CategoryPage title="Mahjong" subtitle="המשחקים המובילים · בחרי משחק" games={mahjong} onBack={backToLobby} />
+      )}
     </>
   )
 }

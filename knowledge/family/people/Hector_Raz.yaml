@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Hector Raz
+hebrew_name: הקטור רז
+aliases:
+- Hector
+- הקטור
+relationship: family_friend
+relationship_hebrew: בעלה של סוזי רז ז"ל
+role: בעלה של סוזי רז ז"ל
+gender: male
+deceased: true
+notes: בעלה של סוזי רז; נפטר.
+pronunciation:
+  es: hector

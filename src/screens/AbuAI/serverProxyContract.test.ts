@@ -28,9 +28,15 @@ function listAbuAITs(): string[] {
 function listApiTs(): string[] {
   if (!fs.existsSync(API_DIR)) return []
   return fs.readdirSync(API_DIR)
-    .filter((f) => f.endsWith('.ts'))
+    .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts')) // exclude test files (not endpoints)
     .map((f) => path.join('api', f))
 }
+// `_`-prefixed api files are shared UTILITIES (e.g. _rateLimit.ts, _session.ts), not provider endpoints;
+// and some endpoints are non-provider by design (family.ts serves the authenticated family dataset — no
+// OpenAI call). None of these need read OPENAI_API_KEY. The client-surface (import.meta.env) ban still applies.
+const NON_PROVIDER_ENDPOINTS = new Set(['family.ts'])
+const isEndpoint = (rel: string): boolean =>
+  !path.basename(rel).startsWith('_') && !NON_PROVIDER_ENDPOINTS.has(path.basename(rel))
 
 describe('No client-side OpenAI key reads anywhere in AbuAI source', () => {
   for (const rel of listAbuAITs()) {
@@ -49,6 +55,7 @@ describe('Server endpoints read OPENAI_API_KEY only from server env', () => {
       expect(src.includes('import.meta.env'), `${rel} must not use the client-side import.meta.env API`).toBe(false)
     })
     it(`${rel} reads env.OPENAI_API_KEY (preferred) for server-side calls`, () => {
+      if (!isEndpoint(rel)) return // a shared utility (e.g. _rateLimit.ts) is not a provider endpoint
       const src = read(rel)
       expect(/env\.OPENAI_API_KEY/.test(src), `${rel} should read OPENAI_API_KEY via process.env`).toBe(true)
     })
@@ -90,7 +97,7 @@ describe('User-facing copy does not instruct anyone to set VITE_OPENAI_API_KEY',
       }
     }
     expect(offenders, `instructional reference found in: ${offenders.join(', ')}`).toEqual([])
-  })
+  }, 30_000) // walks all of src/api/docs — a filesystem-bound test; generous budget so it never flakes on load
 
   it('AbuAI runtime "API not set" copy does NOT leak technical jargon to the user', () => {
     const svc = read('src/screens/AbuAI/service.ts')

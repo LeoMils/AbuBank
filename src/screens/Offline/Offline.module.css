@@ -10,45 +10,49 @@
 }
 
 .icon {
-  color: var(--abu-color-text-disabled);
+  color: var(--abu-brand-gold);
 }
 
 .title {
   font-size: var(--abu-font-size-section);
   font-weight: var(--abu-font-weight-section);
   line-height: var(--abu-line-height-section);
-  color: var(--abu-color-text-primary);
+  color: var(--abu-color-text-on-dark);
 }
 
 .message {
   font-size: var(--abu-font-size-body);
   font-weight: var(--abu-font-weight-body);
   line-height: var(--abu-line-height-body);
-  color: var(--abu-color-text-secondary);
+  color: var(--abu-color-text-on-dark-secondary);
 }
 
 .retryButton {
   min-width: var(--abu-space-64);
-  min-height: var(--abu-space-64);
+  min-height: 56px;
   padding: var(--abu-space-16) var(--abu-space-32);
-  background: var(--abu-color-primary);
-  color: var(--abu-color-bg);
+  background: linear-gradient(135deg, var(--abu-brand-gold-bright) 0%, var(--abu-brand-gold) 100%);
+  color: rgba(0,0,0,0.85);
   border: none;
-  border-radius: var(--abu-radius-button);
+  border-radius: var(--abu-radius-modal);
   cursor: pointer;
-  font-size: var(--abu-font-size-label);
-  font-weight: var(--abu-font-weight-label);
+  font-size: var(--abu-font-size-section);
+  font-weight: var(--abu-font-weight-title);
   line-height: var(--abu-line-height-label);
+  box-shadow: var(--abu-shadow-gold);
+  transition: transform var(--abu-dur-tap-press) ease-out,
+              box-shadow var(--abu-dur-tap-press) ease-out;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 
 .retryButton:active {
-  background: var(--abu-color-primary-pressed);
+  transform: scale(0.97);
+  box-shadow: 0 2px 10px rgba(201,168,76,0.30);
 }
 
 .retryButton:disabled {
-  background: var(--abu-color-primary-disabled);
+  opacity: 0.5;
   cursor: default;
 }

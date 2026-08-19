@@ -135,10 +135,11 @@ describe('BubbleAvatar render path (source contract)', () => {
     expect(facesSrc.includes('Cormorant Garamond')).toBe(true)
   })
 
-  it('mergeFacesWithLocal preserves scaffold photoFile when override has none', () => {
-    // The scaffold-fallback branch is now wrapped in a photoSource tracker
-    // so per-contact crop metadata can be kept alongside the photo path.
-    expect(/else if \(f\.photoFile && f\.photoFile\.length > 0\) \{[\s\S]{0,200}merged\.photoFile = f\.photoFile/.test(facesSrc)).toBe(true)
+  it('contactsToPersonFaces resolves the tile photo by priority (dataUrl → file → default)', () => {
+    // Dynamic render from the store, with a self-healing default-photo fallback.
+    expect(facesSrc.includes('c.photoDataUrl')).toBe(true)
+    expect(facesSrc.includes('c.photoFile')).toBe(true)
+    expect(facesSrc.includes('DEFAULT_PHOTO_BY_ID')).toBe(true)
   })
 
   it('group target is WhatsApp-only — no tel/call action wired (regression guard)', () => {

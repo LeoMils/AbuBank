@@ -347,10 +347,13 @@ describe('parseReminder — family resolution', () => {
       expect(d.familyResolution.resolvedName).toBe('גלעד')
     }
   })
-  it('"הבת של מור" → missing status', () => {
+  it('"הבת של מור" → resolved to Ofir (Mor\'s only daughter)', () => {
     const d = parseReminder('תזכירי לי להתקשר לבת של מור', TODAY)
     if (d.familyResolution) {
-      expect(['missing', 'ambiguous']).toContain(d.familyResolution.status)
+      expect(d.familyResolution.status).toBe('resolved')
+      if (d.familyResolution.status === 'resolved') {
+        expect(d.familyResolution.resolvedName).toBe('אופיר')
+      }
     }
   })
   it('resolved family name appears in title', () => {

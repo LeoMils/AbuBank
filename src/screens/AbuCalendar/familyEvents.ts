@@ -7,7 +7,7 @@
 
 import type { Appointment } from './service'
 import { loadFamilyData } from '../../services/familyLoader'
-import familyRaw from '../../../knowledge/family_data.json'
+import { getFamilyRaw } from '../../services/familyData'
 
 // Local palette (kept independent of service.ts to avoid a circular import).
 // Mirrors APPT_COLORS; used only for deterministic, session-stable color choice.
@@ -67,9 +67,11 @@ export function buildFamilyBirthdays(): Appointment[] {
 }
 
 export function buildFamilyMemorials(): Appointment[] {
-  const d = familyRaw.family.deceased
-  if (!d?.memorial_date) return []
-  const name = d.hebrew_name
+  const d = getFamilyRaw().family.deceased as
+    | { memorial_date?: string; hebrew_name?: string; canonical_name?: string }
+    | undefined
+  if (!d?.memorial_date || !d.canonical_name) return []
+  const name = d.hebrew_name ?? ''
   return [{
     id: `memorial-${d.canonical_name.toLowerCase()}`,
     title: `יום הזיכרון של ${name} 🕯️`,

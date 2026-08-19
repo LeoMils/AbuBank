@@ -1,0 +1,120 @@
+{
+  "$schema": "internal://abu/evidence",
+  "build": "0.168.0-storage-taxonomy-clone-migrate-genome-rc",
+  "stableOrigin": "https://abu-ela-rc.vercel.app",
+  "evidenceClasses": "CODE < MOCK < BROWSER < PREVIEW < PHYSICAL_DEVICE < PRODUCTION",
+  "claims": [
+    {
+      "claim": "Canonical iOS container guard: two isolated jars do not share storage; an iOS Safari tab BLOCKS import with Home-Screen-icon guidance (container-guard-banner, class SAFARI_BROWSER); the canonical installed PWA shows no guard and its import persists across reopen. Classification + mutation cases (wrong-container import allowed / browser falsely canonical / 'not configured' for mismatch / container id ignored / stable-host bypass) are unit-proven.",
+      "test": "e2e/container-isolation.spec.ts + src/screens/AbuWhatsApp/iosContainer.test.ts (14/14)",
+      "codePath": "iosContainer.detectEnvironment -> classifyContainer -> isImportBlockedForContainer; ContactManagement guard banner + save-handler block + recordSaveContainer; familyQuickFaces focusedMissingMessage",
+      "mode": "Playwright, iPhone UA + navigator.standalone override, deployed canonical origin (guard engages only on canonical host)",
+      "browser": "Chromium 390x844",
+      "build": "0.169.0",
+      "result": "PASS (isolation + Safari-block + PWA-allow/persist; units 14/14)",
+      "limitation": "PREVIEW. A fresh isolated jar cannot see another jar; a never-saved PWA is indistinguishable from a first run (honest limit, not overclaimed). The physical confirmation is a single Home-Screen-icon reopen + container receipt."
+    },
+    {
+      "claim": "FORENSIC first-transition analysis: instrumenting the full import->commit->terminate->reopen lifecycle and reading localStorage AND IndexedDB DIRECTLY (independent of the app) at every boundary, there is NO phones>0->0 transition in any channel. The numbers DO become durable: IndexedDB held 3 phones at the UI-success boundary (post durable.flush()) AND at the pre-init reopen boundary (before any app code ran). Therefore the device N->0 is NOT a function/transaction/commit in this code path — it is out-of-process (iOS standalone-PWA/Safari storage partition or ITP eviction).",
+      "test": "scripts/lifecycle-forensics.mjs",
+      "codePath": "ledger B0 seed(0/0) -> B1 validate(0/0) -> B3 UI-success post-flush(ls=3,idb=3) -> B4 Board(3/3) -> TERMINATE -> B5 reopen pre-init(ls=3,idb=3) -> B6 post-init(3/3) -> B7 Board(3/3); firstDrop=null in authoritative/localStorage/indexedDB/resolver",
+      "mode": "chromium persistent profile, direct localStorage + IndexedDB reads (indexedDB.databases() to avoid probe-created shells), local build of the tested commit",
+      "build": "0.168.0",
+      "result": "NO_TRANSITION_NUMBERS_ARE_DURABLE (docs/engineering-os/qa/lifecycle-forensics-result.json)",
+      "limitation": "A single persistent profile is ONE storage partition; it cannot reproduce the iOS cross-partition (PWA vs Safari) read, which is the only remaining device-only hypothesis. Forensic caution recorded: a naive IndexedDB open(name) CREATES an empty DB and masks the real one — the probe uses databases() first."
+    },
+    {
+      "claim": "REAL A->B->C multi-deploy: contacts survive 3 distinct Vercel deployments on the same stable alias with ONE persistent profile and NO JSON re-import; an edit made under Build B survives Build C; C reopened x5 all actionable.",
+      "test": "scripts/gate-a-abc.mjs",
+      "codePath": "real deployed Contact Management import + simple-form edit; startup reconcile/seed/migrate; getLocalContacts -> Board chip-call; deploy via scripts/deploy-rc.sh (new immutable deployment + re-alias each build)",
+      "mode": "chromium persistent profile across 3 real deploys (A=1r4klv5x7, B=9y3ahu6h3, C=6mkc5o0lf)",
+      "build": "0.168.0",
+      "result": "PASS (A import call-ready=3; B-reopen 3 no-reimport; B-edit 4; C-reopen x5 actionable call-ready=4; distinctDeployments=true)",
+      "limitation": "PREVIEW. Graceful process close between builds."
+    },
+    {
+      "claim": "Contacts are independent of the service worker: with the SW blocked entirely, a real UI import persists across terminate/reopen.",
+      "test": "e2e/service-worker.spec.ts",
+      "codePath": "launchPersistentContext serviceWorkers:'block'; real import; IndexedDB/localStorage",
+      "mode": "Playwright, serviceWorkers blocked, local build of the tested commit",
+      "build": "0.168.0",
+      "result": "PASS",
+      "limitation": "BROWSER (local build). Shell-freshness SW permutations covered by vite-plugin-pwa auto-update + A->B->C."
+    },
+    {
+      "claim": "The release controller is itself falsifiable: a green state is READY and every one of the 18 deliberate mutations (skipped suite, missing/conflicting evidence, unpushed, fingerprint/alias mismatch, missing genome regression, undetected mutant, unresolved blind spot, false PHYSICAL claim, etc.) is caught; a degenerate empty state fails closed.",
+      "test": "src/engineering-os/releaseGate.test.ts (20/20)",
+      "codePath": "evaluateRelease() in src/engineering-os/releaseGate.ts; gathered by scripts/rc-verify.ts (npm run rc:verify)",
+      "mode": "node (pure evaluator, injected state)",
+      "build": "0.168.0",
+      "result": "PASS (20/20); live rc:verify correctly reports NOT READY with the real open items",
+      "limitation": "CODE. The CLI's suite-execution check runs on demand; live fingerprint check depends on origin reachability."
+    },
+    {
+      "claim": "Under every provider failure mode (timeout/abort, 429, 500, malformed JSON, empty body, contradictory 200 prose) an explicit CALL still routes to a call action and WHATSAPP to a message action; the assistant never denies a supported capability, claims completion, or switches the owned turn to Calendar/general. STT-distorted recipients stay communication.",
+      "test": "e2e/provider-matrix.spec.ts (17/17)",
+      "codePath": "deployed Abu AI UI -> reduceGoal/validateResponse (runs every turn regardless of provider); page.route intercepts /api/abuai-chat + free providers",
+      "mode": "Playwright, providers intercepted, local preview of the tested commit (code-identical)",
+      "browser": "Chromium 390x844",
+      "build": "0.168.0",
+      "result": "PASS (17/17)",
+      "limitation": "BROWSER (local build of the tested commit). Run locally because the live Vercel origin bot-challenges heavy automation; deployed behavior separately confirmed by the persistence lab + reachability."
+    },
+    {
+      "claim": "The primary Communication action stays reachable (scrolled in-viewport, elementFromPoint not-obscured, label not truncated, >=40px) at 3 iPhone viewports x text scales 100/125/150/175/200%.",
+      "test": "e2e/enlarged-text.spec.ts (15/15)",
+      "codePath": "deployed Abu AI UI; CSS zoom on documentElement; geometry measured in-page for zoom consistency",
+      "mode": "Playwright against the deployed origin",
+      "browser": "Chromium 375x667 / 390x844 / 430x932",
+      "build": "0.168.0",
+      "result": "PASS (15/15)",
+      "limitation": "PREVIEW. Browser zoom is the automatable analog of iOS Dynamic Type."
+    },
+    {
+      "claim": "Contact phones survive import -> full terminate -> reopen x5 on the same stable origin, with the Family Board Call button live and NO JSON re-import, in Chromium.",
+      "test": "e2e/persistence-lifecycle.spec.ts :: chromium persistent profile",
+      "codePath": "real deployed Contact Management import (cm-json/cm-validate/cm-merge-save) -> upsertLocalContact -> setLocalContacts -> durable.setString; startup durable.init reconcile + seedDefaultContactsIfEmpty + migrateContactPhotos; getLocalContacts -> contactsToPersonFaces -> Board chip-call",
+      "mode": "chromium.launchPersistentContext (real on-disk IndexedDB+localStorage), providers live",
+      "browser": "Chromium persistent profile, viewport 390x844",
+      "build": "0.165.0",
+      "result": "PASS (boot1 call-ready=3; reopen 1..5 board-actionable=true call-ready=3)",
+      "limitation": "PREVIEW class. Graceful ctx.close() (not a hard process kill). Not iOS."
+    },
+    {
+      "claim": "Same lifecycle also persists under the WebKit engine (closest automatable proxy to iOS Safari).",
+      "test": "e2e/persistence-lifecycle.spec.ts :: webkit persistent profile",
+      "codePath": "identical to above via the real deployed UI",
+      "mode": "webkit.launchPersistentContext",
+      "browser": "Playwright WebKit 26.5 persistent profile",
+      "build": "0.165.0",
+      "result": "PASS (boot1 call-ready=3; reopen 1..5 board-actionable=true call-ready=3)",
+      "limitation": "Desktop WebKit != iOS WebKit; does NOT reproduce iOS ITP eviction or standalone-PWA storage partitioning."
+    },
+    {
+      "claim": "The privacy-safe boot trace records counts only (never a name/number) and locates any phoneCount N->0.",
+      "test": "src/services/persistenceTrace.test.ts (4/4), e2e/persistence-trace.spec.ts",
+      "codePath": "persistenceTrace.ts stages: env, boot-start, reconcile(WON=), post-init, post-seed-migrate, persist-request, wa-read",
+      "mode": "node + browser",
+      "build": "0.165.0",
+      "result": "PASS; trace leaks no phone-like token",
+      "limitation": "CODE+BROWSER. Device trace not yet captured."
+    },
+    {
+      "claim": "Durable init makes present+valid localStorage authoritative and only recovers an evicted/corrupt key from IndexedDB (no clobber of fresh import).",
+      "test": "src/services/durableStore.test.ts (15/15)",
+      "codePath": "DurableStore.init reconcile",
+      "mode": "node (localStorage mock + MemoryBackend)",
+      "build": "0.164.0+",
+      "result": "PASS",
+      "limitation": "CODE. Proven again at PREVIEW by the persistent-profile lab."
+    }
+  ],
+  "openReleaseBlockers": [
+    "Harness 12-defect certification not yet codified (Gate 1).",
+    "Exact device N->0 transition not reproduced in-engine; residual is iOS storage-partition/eviction (needs 1 device trace capture).",
+    "Hard-process-kill kill-points (Gate 5 D1) pending.",
+    "Injected SpeechRecognition through deployed UI (Gate 6) pending.",
+    "Obscured-button (elementFromPoint) reachability (Gate 7) pending."
+  ],
+  "verdict": "NOT READY — automatable blockers remain; see openReleaseBlockers."
+}

@@ -27,18 +27,19 @@ describe('isRelationshipDescriptor', () => {
 })
 
 describe('resolvePersonPhrase', () => {
-  it('MISSING — "הבת של מור": Mor has no daughter; never invent', () => {
+  it('RESOLVED — "הבת של מור": Ofir is Mor\'s only daughter', () => {
     const r = resolvePersonPhrase('הבת של מור')
-    expect(r.status).toBe('missing')
-    if (r.status === 'missing') expect(r.phrase).toBe('הבת של מור')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('אופיר')
   })
 
-  it('AMBIGUOUS — "הבן של מור": four sons → candidates, no guess', () => {
+  it('AMBIGUOUS — "הבן של מור": three sons → candidates, no guess', () => {
     const r = resolvePersonPhrase('הבן של מור')
     expect(r.status).toBe('ambiguous')
     if (r.status === 'ambiguous') {
       expect(r.candidates.length).toBeGreaterThan(1)
-      for (const c of ['אופיר', 'איילון', 'עילי', 'אדר']) expect(r.candidates).toContain(c)
+      for (const c of ['איילון', 'עילי', 'אדר']) expect(r.candidates).toContain(c)
+      expect(r.candidates).not.toContain('אופיר')  // Ofir is a daughter now
     }
   })
 
@@ -137,23 +138,22 @@ describe('resolvePersonPhrase — P2 honest resolution', () => {
     if (r.status === 'missing') expect(r.phrase).toBe('אשתו של אילי')
   })
 
-  it('"אשתו של גלעד" → missing (Gilad\'s spouse is male — gender-filtered, never invert)', () => {
+  it('"אשתו של גלעד" → resolved to אופיר (Ofir is Gilad\'s wife)', () => {
     const r = resolvePersonPhrase('אשתו של גלעד')
-    expect(r.status).toBe('missing')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('אופיר')
   })
 
-  it('"אבא של אנאבל" → ambiguous (Ofir and Gilad are both male parents)', () => {
+  it('"אבא של אנאבל" → resolved to גלעד (Gilad is the male parent; Ofir is female)', () => {
     const r = resolvePersonPhrase('אבא של אנאבל')
-    expect(r.status).toBe('ambiguous')
-    if (r.status === 'ambiguous') {
-      expect(r.candidates).toContain('אופיר')
-      expect(r.candidates).toContain('גלעד')
-    }
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('גלעד')
   })
 
-  it('"אמא של אנאבל" → missing (both parents are male — no female parent)', () => {
+  it('"אמא של אנאבל" → resolved to אופיר (Ofir is the female parent)', () => {
     const r = resolvePersonPhrase('אמא של אנאבל')
-    expect(r.status).toBe('missing')
+    expect(r.status).toBe('resolved')
+    if (r.status === 'resolved') expect(r.name).toBe('אופיר')
   })
 
   it('"הגרוש של מור" → resolved to רפי', () => {
@@ -167,13 +167,24 @@ describe('resolvePersonPhrase — P2 honest resolution', () => {
     expect(r.status).toBe('missing')
   })
 
-  it('"חברה של מור" → missing (friend — never resolved from family data)', () => {
+  it('"חברה של מור" → resolved to יעל (partner alias — RC4 product law)', () => {
+    // Hebrew "חברה" = girlfriend/partner when the person has one. Mor's partner
+    // is Yael, so the partner alias resolves. (Platonic friends with no partner
+    // still return missing — see "חברה של מרטיטה" below.)
     const r = resolvePersonPhrase('חברה של מור')
+    expect(r.status).toBe('resolved')
+    expect(r).toMatchObject({ status: 'resolved', name: 'יעל' })
+  })
+
+  it('"חבר של מור" → missing (Mor has no male partner — never invent)', () => {
+    // "חבר" (male partner) of Mor does not exist — her partner Yael is female —
+    // so we honestly return missing rather than guess.
+    const r = resolvePersonPhrase('חבר של מור')
     expect(r.status).toBe('missing')
   })
 
-  it('"חבר של מור" → missing (friend — never resolved from family data)', () => {
-    const r = resolvePersonPhrase('חבר של מור')
+  it('"חברה של מרטיטה" → missing (no partner → platonic friend, never invented)', () => {
+    const r = resolvePersonPhrase('חברה של מרטיטה')
     expect(r.status).toBe('missing')
   })
 

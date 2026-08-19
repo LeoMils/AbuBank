@@ -193,8 +193,11 @@ describe('AbuCalendar P0 — index.tsx uses createAppointmentSafe for both manua
     // is well under that even with comments).
     expect(/function handleManualSave[\s\S]{0,1500}createAppointmentSafe\(/.test(src),
       'handleManualSave must use createAppointmentSafe').toBe(true)
-    expect(/function handleVoiceConfirm[\s\S]{0,1500}createAppointmentSafe\(/.test(src),
-      'handleVoiceConfirm must use createAppointmentSafe').toBe(true)
+    // D7 · one voice engine: the in-screen handleVoiceConfirm was removed; the voice
+    // create path now runs through Abu AI, which also persists via createAppointmentSafe
+    // on the SAME store (see AbuAI/cognitiveRuntime). The calendar screen keeps exactly
+    // one safe-create call site (manual/typed).
+    expect(src.includes('handleVoiceConfirm'), 'no in-screen voice-confirm remains').toBe(false)
   })
 
   it('source contract: failure path is wired (showFailureToast is reachable)', async () => {

@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Lior
+hebrew_name: ליאור
+aliases: []
+relationship: grandnephew_of_husband
+relationship_hebrew: בן של רוסיטה
+role: בנם של רוסיטה ואוסקר
+location: לוס אנג'לס, ארה"ב
+gender: male
+notes: בנם של רוסיטה ואוסקר.
+pronunciation:
+  es: lior

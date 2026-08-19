@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
-import { getLocalContacts, type LocalFamilyContact } from './familyContactsStorage'
+import { getLocalContacts, CONTACTS_UPDATED_EVENT, type LocalFamilyContact } from './familyContactsStorage'
+import { traceStage } from '../../services/persistenceTrace'
+import { classifyContactStorage, contactStorageMessageHebrew } from './contactStorageHealth'
+import { classifyContainer, detectEnvironment, containerMessageHebrew } from './iosContainer'
+import { matchTargetName } from '../AbuAI/whatsappCompose'
+import { loadFamilyData } from '../../services/familyLoader'
 
 const WA_GREEN = '#25D366'
 const TEAL = '#14b8a6'
@@ -20,9 +25,10 @@ export function sanitizePhoneE164(raw: string): string {
 
 /**
  * Normalize an Israeli local phone number to E.164 format.
- * "0541111111" → "+972541111111"
- * "+972541111111" → "+972541111111" (already E.164, pass through)
+ * Local "0NN-NNNNNNN" (10 digits) → "+972NN-NNNNNNN" (drop the leading 0).
+ * Already-E.164 "+972…" → passed through unchanged.
  * Non-Israeli / unrecognized → returned as-is.
+ * (Examples use N placeholders on purpose — no phone-shaped literals in source.)
  */
 export function normalizeIsraeliPhone(raw: string): string {
   if (typeof raw !== 'string') return ''
@@ -43,13 +49,186 @@ export function isValidPhoneE164(raw: string): boolean {
   return digits.length >= 8 && digits.length <= 15
 }
 
-export function buildWhatsAppPersonUrl(face: Extract<FamilyQuickFace, { type: 'person' }>): string {
+export function buildWhatsAppPersonUrl(
+  face: Extract<FamilyQuickFace, { type: 'person' }>,
+  text?: string,
+): string {
   const target = face.whatsappE164 && face.whatsappE164.length > 0 ? face.whatsappE164 : face.phoneE164
-  return `https://wa.me/${sanitizePhoneE164(target)}`
+  const base = `https://wa.me/${sanitizePhoneE164(target)}`
+  // With text → pre-FILL the chat (WhatsApp still requires a manual send tap;
+  // there is no auto-send). Without text the URL stays byte-identical to the
+  // original contract that existing tests pin.
+  if (typeof text === 'string' && text.trim().length > 0) {
+    return `${base}?text=${encodeURIComponent(text)}`
+  }
+  return base
 }
 
 export function buildTelUrl(face: Extract<FamilyQuickFace, { type: 'person' }>): string {
   return `tel:+${sanitizePhoneE164(face.phoneE164)}`
+}
+
+export interface ResolvedContact {
+  face: Extract<FamilyQuickFace, { type: 'person' }>
+  /** true when the contact has a valid, enabled phone (chat can be opened). */
+  actionable: boolean
+}
+
+// ─── RecipientEntityResolver (channel adapter half) ─────────────────────────
+//
+// Resolve a spoken/typed family name to phone-bearing CONTACT candidates. The
+// join key is the Hebrew display name — the AbuAI family graph and this
+// scaffold do NOT share ids — enriched with aliases from family_data. Fuzzy
+// scoring tolerates STT misspellings and partial names, and SURFACES ambiguity
+// (two similar names) instead of silently guessing.
+
+export type RecipientEvidence = 'exact' | 'alias' | 'prefix' | 'fuzzy'
+
+export interface RecipientCandidate {
+  face: Extract<FamilyQuickFace, { type: 'person' }>
+  /** 0..1 match confidence. */
+  confidence: number
+  evidence: RecipientEvidence
+  actionable: boolean
+}
+
+/** Levenshtein edit distance (small strings). */
+function editDistance(a: string, b: string): number {
+  const m = a.length, n = b.length
+  if (m === 0) return n
+  if (n === 0) return m
+  const dp = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0))
+  for (let i = 0; i <= m; i++) dp[i]![0] = i
+  for (let j = 0; j <= n; j++) dp[0]![j] = j
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      dp[i]![j] = Math.min(dp[i - 1]![j]! + 1, dp[i]![j - 1]! + 1, dp[i - 1]![j - 1]! + cost)
+    }
+  }
+  return dp[m]![n]!
+}
+
+function scoreName(query: string, name: string): { score: number; evidence: RecipientEvidence } {
+  const q = query.toLowerCase(), n = name.toLowerCase()
+  if (!q || !n) return { score: 0, evidence: 'fuzzy' }
+  if (q === n) return { score: 1, evidence: 'exact' }
+  const short = q.length <= n.length ? q : n
+  const long = q.length <= n.length ? n : q
+  if (short.length >= 3 && long.startsWith(short)) return { score: 0.78, evidence: 'prefix' }
+  const d = editDistance(q, n)
+  if (d === 1 && Math.max(q.length, n.length) >= 3) return { score: 0.7, evidence: 'fuzzy' }
+  if (d === 2 && Math.max(q.length, n.length) >= 5) return { score: 0.55, evidence: 'fuzzy' }
+  return { score: 0, evidence: 'fuzzy' }
+}
+
+/** Build the set of names a scaffold person answers to (display + aliases). */
+function namesForPerson(displayName: string): string[] {
+  const out = new Set<string>([displayName])
+  try {
+    const member = loadFamilyData().find(m => m.hebrew === displayName)
+    if (member) {
+      out.add(member.canonicalName)
+      for (const a of member.aliases ?? []) out.add(a)
+    }
+  } catch { /* family data optional */ }
+  return [...out].filter(Boolean)
+}
+
+/**
+ * The default family identity (names + relationship + photos, no numbers). The
+ * name RESOLVER knows the family even before the operator saves any number — so
+ * "call adar" resolves who Adar is, then reports "no number yet" if unconfigured.
+ * This is resolution knowledge ONLY; the family board renders purely from the
+ * stored contacts (getDisplayablePersons).
+ */
+const SEED_PERSON_FACES: ReadonlyArray<Extract<FamilyQuickFace, { type: 'person' }>> =
+  FAMILY_QUICK_FACES.filter((f): f is Extract<FamilyQuickFace, { type: 'person' }> => f.type === 'person')
+
+/**
+ * Faces the resolver matches against: the seed family overlaid with the store's
+ * per-contact data (a saved number makes the seed member actionable), PLUS any
+ * store-only contacts that are not part of the seed (new, dynamic contacts).
+ */
+function resolutionFaces(local: ReadonlyArray<LocalFamilyContact>): Extract<FamilyQuickFace, { type: 'person' }>[] {
+  const byId = new Map<string, LocalFamilyContact>()
+  for (const c of local) byId.set(c.id, c)
+  const seedIds = new Set(SEED_PERSON_FACES.map((f) => f.id))
+  const merged: LocalFamilyContact[] = SEED_PERSON_FACES.map((seed) => {
+    const o = byId.get(seed.id)
+    const c: LocalFamilyContact = {
+      id: seed.id,
+      enabled: o?.enabled === true,
+      phoneE164: o?.phoneE164 || '',
+      displayName: (o?.displayName && o.displayName.trim()) || seed.displayName,
+    }
+    const rel = (o?.relationshipHebrew && o.relationshipHebrew.trim()) || seed.relationshipHebrew
+    if (rel) c.relationshipHebrew = rel
+    if (o?.whatsappE164) c.whatsappE164 = o.whatsappE164
+    const photo = o?.photoDataUrl || o?.photoFile || seed.photoFile
+    if (photo) c.photoFile = photo
+    return c
+  })
+  const extra = local.filter((c) => !seedIds.has(c.id))
+  return contactsToPersonFaces([...merged, ...extra])
+}
+
+/**
+ * Return ranked recipient candidates for a spoken/typed name. Empty when no
+ * family member plausibly matches. Callers decide ambiguity policy via
+ * `isRecipientAmbiguous`.
+ */
+export function resolveContactCandidates(
+  name: string,
+  local: ReadonlyArray<LocalFamilyContact> = getLocalContacts(),
+): RecipientCandidate[] {
+  const cleaned = (name ?? '').trim()
+  if (!cleaned) return []
+  // Canonicalize a prefixed token / exact alias up-front (e.g. "לאדר" → "אדר").
+  const canon = matchTargetName(cleaned)?.hebrew ?? cleaned
+  const queries = [...new Set([cleaned.toLowerCase(), canon.toLowerCase()])]
+  const persons = resolutionFaces(local)
+  const out: RecipientCandidate[] = []
+  for (const face of persons) {
+    let best = { score: 0, evidence: 'fuzzy' as RecipientEvidence }
+    for (const nm of namesForPerson(face.displayName)) {
+      for (const q of queries) {
+        const s = scoreName(q, nm)
+        if (s.score > best.score) best = s
+      }
+    }
+    if (best.score > 0) out.push({ face, confidence: best.score, evidence: best.evidence, actionable: isPersonActionable(face) })
+  }
+  return out.sort((a, b) => b.confidence - a.confidence)
+}
+
+/**
+ * Ambiguity policy: a resolution is UNAMBIGUOUS only when there is a clear top
+ * candidate (high confidence) that is meaningfully ahead of the runner-up.
+ * Otherwise the UI must ask Martita to choose — never silently pick.
+ */
+export function isRecipientAmbiguous(candidates: RecipientCandidate[]): boolean {
+  if (candidates.length === 0) return false // "no match" is not "ambiguous"
+  const top = candidates[0]!
+  if (top.confidence < 0.85) return true
+  const second = candidates[1]
+  if (second && top.confidence - second.confidence < 0.2) return true
+  return false
+}
+
+/**
+ * Back-compat single-result resolver: returns the confident top candidate, or
+ * null when there is no match OR the match is ambiguous (caller should prompt).
+ */
+export function resolveContactForName(
+  name: string,
+  local: ReadonlyArray<LocalFamilyContact> = getLocalContacts(),
+): ResolvedContact | null {
+  const candidates = resolveContactCandidates(name, local)
+  if (candidates.length === 0) return null
+  if (isRecipientAmbiguous(candidates)) return null
+  const top = candidates[0]!
+  return { face: top.face, actionable: top.actionable }
 }
 
 // ─── Visibility & merge ─────────────────────────────────────────────────────
@@ -68,18 +247,72 @@ export function getVisibleFaces(faces: ReadonlyArray<FamilyQuickFace> = FAMILY_Q
 }
 
 /**
- * Returns every scaffold person — visible by default in the family grid.
- * Local override (if any) is merged for phone/photo/enabled so the tile can
- * render the correct photo and the tap handler can decide what to do, but
- * MISSING PHONE IS NOT A REASON TO HIDE A FAMILY MEMBER. Per Leo's product
- * direction: family members appear on screen first; configuration follows.
+ * The family group face (a fixed WhatsApp invite link — NOT a phone contact, so
+ * it is not part of the dynamic contact store). Rendered alongside the contacts.
+ */
+export const FAMILY_GROUP_FACE = FAMILY_QUICK_FACES.find((f) => f.type === 'group') as Extract<FamilyQuickFace, { type: 'group' }>
+
+/**
+ * Default-photo registry (id → bundled photo + crop), for the LAST-RESORT render
+ * fallback: a known-family contact whose stored record has no photo still shows
+ * the bundled photo instead of initials. This is self-healing — it does NOT
+ * depend on the one-time migration having run, and survives a store overwrite.
+ * It is NOT a board source: the board still renders exactly the stored contacts;
+ * this only supplies a default IMAGE for a contact already being rendered.
+ */
+const DEFAULT_PHOTO_BY_ID = new Map(SEED_PERSON_FACES.map((s) => [s.id, s]))
+
+/**
+ * Render person faces DIRECTLY from the stored contacts — the single source of
+ * truth. Photo priority per contact: valid photoDataUrl > valid photoFile >
+ * bundled default (known family, by id) > initials. No scaffold, no known-id
+ * gate on WHICH contacts render: whatever is in the store, in store order.
+ */
+export function contactsToPersonFaces(
+  contacts: ReadonlyArray<LocalFamilyContact>,
+): Extract<FamilyQuickFace, { type: 'person' }>[] {
+  return contacts.map((c) => {
+    const face: Extract<FamilyQuickFace, { type: 'person' }> = {
+      type: 'person',
+      id: c.id,
+      displayName: (c.displayName && c.displayName.trim()) || c.id,
+      phoneE164: c.phoneE164 || '',
+      enabled: c.enabled === true,
+    }
+    if (c.relationshipHebrew && c.relationshipHebrew.trim()) face.relationshipHebrew = c.relationshipHebrew.trim()
+    if (c.whatsappE164 && c.whatsappE164.length > 0) face.whatsappE164 = c.whatsappE164
+    // Photo priority: uploaded → bundled-on-contact → known default → initials.
+    let photo: string | undefined
+    let fit = c.photoFit
+    let pos = c.photoObjectPosition
+    if (c.photoDataUrl && c.photoDataUrl.length > 0) {
+      photo = c.photoDataUrl
+    } else if (c.photoFile && c.photoFile.length > 0) {
+      photo = c.photoFile
+    } else {
+      const def = DEFAULT_PHOTO_BY_ID.get(c.id)
+      if (def?.photoFile) {
+        photo = def.photoFile
+        if (fit === undefined) fit = def.photoFit
+        if (pos === undefined) pos = def.photoObjectPosition
+      }
+    }
+    if (photo) face.photoFile = photo
+    if (fit) face.photoFit = fit
+    if (pos) face.photoObjectPosition = pos
+    return face
+  })
+}
+
+/**
+ * Every displayable person = every stored contact, in store order. MISSING PHONE
+ * IS NOT A REASON TO HIDE: a contact still renders (as a non-actionable tile)
+ * until a number is added. Defaults to reading the live store.
  */
 export function getDisplayablePersons(
-  scaffold: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES,
-  local: ReadonlyArray<LocalFamilyContact> = [],
+  contacts: ReadonlyArray<LocalFamilyContact> = getLocalContacts(),
 ): Extract<FamilyQuickFace, { type: 'person' }>[] {
-  const merged = mergeFacesWithLocal(scaffold, local)
-  return merged.filter((f) => f.type === 'person') as Extract<FamilyQuickFace, { type: 'person' }>[]
+  return contactsToPersonFaces(contacts)
 }
 
 /**
@@ -102,51 +335,6 @@ export function isGroupActionable(face: Extract<FamilyQuickFace, { type: 'group'
   return typeof face.whatsappUrl === 'string' && face.whatsappUrl.length > 0
 }
 
-/**
- * Merge static scaffold (names + relationships + group URL, no real numbers)
- * with localStorage-only per-person overrides (phone/whatsapp/photo/enabled).
- */
-export function mergeFacesWithLocal(
-  scaffold: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES,
-  local: ReadonlyArray<LocalFamilyContact> = [],
-): FamilyQuickFace[] {
-  const byId = new Map<string, LocalFamilyContact>()
-  for (const c of local) byId.set(c.id, c)
-  return scaffold.map((f) => {
-    if (f.type !== 'person') return { ...f }
-    const override = byId.get(f.id)
-    if (!override) return { ...f }
-    const merged: Extract<FamilyQuickFace, { type: 'person' }> = {
-      type: 'person',
-      id: f.id,
-      displayName: f.displayName,
-      phoneE164: override.phoneE164 || '',
-      enabled: override.enabled === true,
-    }
-    if (f.relationshipHebrew !== undefined) merged.relationshipHebrew = f.relationshipHebrew
-    if (override.whatsappE164 && override.whatsappE164.length > 0) merged.whatsappE164 = override.whatsappE164
-    let photoSource: 'override-data' | 'override-file' | 'scaffold' | null = null
-    if (override.photoDataUrl && override.photoDataUrl.length > 0) {
-      merged.photoFile = override.photoDataUrl
-      photoSource = 'override-data'
-    } else if (override.photoFile && override.photoFile.length > 0) {
-      merged.photoFile = override.photoFile
-      photoSource = 'override-file'
-    } else if (f.photoFile && f.photoFile.length > 0) {
-      merged.photoFile = f.photoFile
-      photoSource = 'scaffold'
-    }
-    // Preserve per-contact crop metadata from the scaffold ONLY when the
-    // scaffold's own photo is the one we ended up rendering. Operator-
-    // supplied photos (override-data / override-file) get the default
-    // contain/center treatment because we don't know their aspect ratio.
-    if (photoSource === 'scaffold') {
-      if (f.photoFit !== undefined) merged.photoFit = f.photoFit
-      if (f.photoObjectPosition !== undefined) merged.photoObjectPosition = f.photoObjectPosition
-    }
-    return merged
-  })
-}
 
 /**
  * Public family photo gallery item — derived from the same scaffold +
@@ -174,25 +362,16 @@ export interface FamilyGalleryPhoto {
  * the user just pressed feels visually anchored at the top of the album.
  */
 export function getFamilyGalleryPhotos(
-  scaffold: ReadonlyArray<FamilyQuickFace> = FAMILY_QUICK_FACES,
-  local: ReadonlyArray<LocalFamilyContact> = [],
+  contacts: ReadonlyArray<LocalFamilyContact> = getLocalContacts(),
   extras: ReadonlyArray<FamilyGalleryPhoto> = [],
 ): FamilyGalleryPhoto[] {
-  const merged = mergeFacesWithLocal(scaffold, local)
   const items: FamilyGalleryPhoto[] = []
-  // Family group first (when a photo exists). Falls back to the public
-  // /family/FAmilly%206.JPG asset only when used by the runtime renderer;
-  // if the scaffold itself doesn't carry a photoFile, omit from the album.
-  for (const f of merged) {
-    if (f.type !== 'group') continue
-    if (f.photoFile && f.photoFile.length > 0) {
-      items.push({ id: f.id, label: f.label, photoUrl: f.photoFile })
-    }
+  // Family group first (when the group face carries a photo).
+  if (FAMILY_GROUP_FACE?.photoFile && FAMILY_GROUP_FACE.photoFile.length > 0) {
+    items.push({ id: FAMILY_GROUP_FACE.id, label: FAMILY_GROUP_FACE.label, photoUrl: FAMILY_GROUP_FACE.photoFile })
   }
-  // Every scaffold person with a non-empty photoFile (after merge with
-  // localStorage overrides — operator-set photos appear automatically).
-  for (const f of merged) {
-    if (f.type !== 'person') continue
+  // Every stored contact with a photo (dataUrl wins over file), in store order.
+  for (const f of contactsToPersonFaces(contacts)) {
     if (typeof f.photoFile !== 'string' || f.photoFile.length === 0) continue
     items.push({ id: f.id, label: f.displayName, photoUrl: f.photoFile })
   }
@@ -230,6 +409,22 @@ export function getMissingPhoneMessage(contactId: string): string {
   return GENERIC_MISSING_PHONE_TOAST
 }
 
+/** Honest missing-phone copy: when the reason is a STORAGE/recovery failure (not a
+ *  genuine unconfigured contact), show the storage-health message instead of
+ *  "no number configured" — otherwise a whole-store loss looks like a per-contact
+ *  gap. Falls back to the per-contact message on a genuine first-run. */
+export function focusedMissingMessage(contactId: string): string {
+  try {
+    // Container condition first (Safari tab / wrong host / eviction) — never show
+    // "no number" when the real cause is the wrong iOS storage jar.
+    const cc = classifyContainer(detectEnvironment())
+    if (cc !== 'NON_IOS_OK' && cc !== 'CANONICAL_PWA') return containerMessageHebrew(cc)
+    const h = classifyContactStorage()
+    if (h.code !== 'OK' && h.code !== 'CONTACT_NOT_CONFIGURED') return contactStorageMessageHebrew(h.code)
+  } catch { /* fall through to the per-contact message */ }
+  return getMissingPhoneMessage(contactId)
+}
+
 export function computeInitials(displayName: string): string {
   const trimmed = (displayName || '').trim()
   if (!trimmed) return '?'
@@ -249,7 +444,7 @@ export function computeInitials(displayName: string): string {
 
 // Visual rules — match AbuBank Home launcher's bubble system.
 const BUBBLE_SIZE = 80           // px — the circle on the front face
-const BUBBLE_LABEL_FONT = 14
+const BUBBLE_LABEL_FONT = 15
 const GRID_GAP = 12              // px — calmer vertical rhythm on iPhone
 const FLIPPED_CARD_W = 144       // px — back-face footprint (lifts above grid)
 const FLIPPED_CARD_H = 144       // px — back-face footprint
@@ -269,6 +464,8 @@ interface FamilyQuickFacesProps {
   onOpenTel: (url: string) => void
   /** Operator-only setup hand-off (long-press the screen title). */
   onOperatorSetup?: () => void
+  /** Focused-contact "כתבי הודעה בקול" — compose a voice message to this person. */
+  onComposeVoice?: (face: Extract<FamilyQuickFace, { type: 'person' }>) => void
   /** Test/Storybook hook. Defaults to localStorage at mount. */
   localContacts?: ReadonlyArray<LocalFamilyContact>
 }
@@ -291,7 +488,7 @@ function usePrefersReducedMotion(): boolean {
   return reduced
 }
 
-export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, localContacts }: FamilyQuickFacesProps) {
+export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, onComposeVoice, localContacts }: FamilyQuickFacesProps) {
   const [contacts, setContacts] = useState<ReadonlyArray<LocalFamilyContact>>(localContacts ?? [])
 
   // Re-read localStorage on mount AND whenever the page becomes visible / a
@@ -302,6 +499,9 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
     if (localContacts !== undefined) { setContacts(localContacts); return }
     const refresh = () => setContacts(getLocalContacts())
     refresh()
+    // Privacy-safe trace: record the phone count the moment Abu WhatsApp reads
+    // the contacts (once per mount). Counts only — never names/numbers.
+    try { traceStage('wa-read') } catch { /* best-effort */ }
     if (typeof window === 'undefined') return
     const onStorage = (e: StorageEvent) => {
       if (e.key === null || e.key === 'abubank.familyContacts.v1') refresh()
@@ -311,22 +511,27 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
     }
     window.addEventListener('storage', onStorage)
     window.addEventListener('focus', refresh)
+    // Same-tab signal: the operator setup writes contacts in THIS tab, where the
+    // 'storage' event never fires. This is what makes an import show up on the
+    // board immediately without a reload.
+    window.addEventListener(CONTACTS_UPDATED_EVENT, refresh)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
       window.removeEventListener('storage', onStorage)
       window.removeEventListener('focus', refresh)
+      window.removeEventListener(CONTACTS_UPDATED_EVENT, refresh)
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [localContacts])
 
-  const merged = mergeFacesWithLocal(FAMILY_QUICK_FACES, contacts)
-  const group = merged.find((f) => f.type === 'group') as Extract<FamilyQuickFace, { type: 'group' }> | undefined
-  // Visible-by-default: every scaffold person renders, even without phone.
-  const personsForGrid = getDisplayablePersons(FAMILY_QUICK_FACES, contacts)
+  // The family group is a fixed invite link; persons render from the store.
+  const group: Extract<FamilyQuickFace, { type: 'group' }> | undefined = FAMILY_GROUP_FACE
+  const personsForGrid = getDisplayablePersons(contacts)
 
-  // Single source of truth for which card is flipped to its action side.
-  // Family group uses id 'family-group'; persons use their stable id.
+  // The family GROUP still flips in place (single WhatsApp action). PERSONS now
+  // open a focused-contact state (large portrait + Call/WhatsApp) instead.
   const [activeFlippedId, setActiveFlippedId] = useState<string | null>(null)
+  const [focusedFace, setFocusedFace] = useState<Extract<FamilyQuickFace, { type: 'person' }> | null>(null)
   const [toast, setToast] = useState<string>('')
   const reducedMotion = usePrefersReducedMotion()
 
@@ -357,13 +562,13 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
   }
 
   function handleTapPerson(face: Extract<FamilyQuickFace, { type: 'person' }>) {
-    if (!isPersonActionable(face)) {
-      showToast(getMissingPhoneMessage(face.id))
-      return
-    }
-    // Toggle this card; opening a new card auto-closes any other.
-    setActiveFlippedId((prev) => (prev === face.id ? null : face.id))
+    // Expand to the focused-contact state (works for actionable AND not-yet-
+    // configured people — the focus makes it unmistakable who is selected).
+    setActiveFlippedId(null)
+    setFocusedFace(face)
   }
+
+  function closeFocus() { setFocusedFace(null) }
 
   function fireGroupWhatsApp() {
     if (!group) return
@@ -372,11 +577,11 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
   }
   function firePersonWhatsApp(p: Extract<FamilyQuickFace, { type: 'person' }>) {
     onOpenWhatsApp(buildWhatsAppPersonUrl(p))
-    setActiveFlippedId(null)
+    setFocusedFace(null)
   }
   function firePersonCall(p: Extract<FamilyQuickFace, { type: 'person' }>) {
     onOpenTel(buildTelUrl(p))
-    setActiveFlippedId(null)
+    setFocusedFace(null)
   }
 
   // Tapping outside any card (the grid wrapper background) closes the open
@@ -422,7 +627,7 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
           data-testid="abuwhatsapp-subtitle"
           style={{
             fontFamily: "'Heebo',sans-serif",
-            fontSize: 13,
+            fontSize: 15,
             color: 'rgba(255,255,255,0.50)',
           }}
         >
@@ -464,7 +669,6 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
           />
         )}
         {personsForGrid.map((p) => {
-          const actionable = isPersonActionable(p)
           return (
             <BubbleTile
               key={p.id}
@@ -475,16 +679,10 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
               photoFit={p.photoFit}
               photoObjectPosition={p.photoObjectPosition}
               initials={computeInitials(p.displayName)}
-              flipped={activeFlippedId === p.id}
+              flipped={false}
               reducedMotion={reducedMotion}
               onTap={() => handleTapPerson(p)}
               onFlipBack={closeFlip}
-              {...(actionable ? {
-                actions: {
-                  onWhatsApp: () => firePersonWhatsApp(p),
-                  onCall:     () => firePersonCall(p),
-                },
-              } : {})}
             />
           )
         })}
@@ -515,8 +713,201 @@ export function FamilyQuickFaces({ onOpenWhatsApp, onOpenTel, onOperatorSetup, l
           {toast}
         </div>
       )}
+
+      {focusedFace && (
+        <FocusedContact
+          face={focusedFace}
+          onClose={closeFocus}
+          onWhatsApp={() => firePersonWhatsApp(focusedFace)}
+          onCall={() => firePersonCall(focusedFace)}
+          onComposeVoice={onComposeVoice ? () => { const f = focusedFace; closeFocus(); onComposeVoice(f) } : undefined}
+        />
+      )}
     </div>
   )
+}
+
+/**
+ * Focused-contact state: the selected person expands into a large centred
+ * portrait with WhatsApp (left) + Call (right) primary actions and a secondary
+ * "כתבי הודעה בקול". The rest of the board is dimmed. Tap the backdrop, the
+ * close button, or Back to return. RTL, large tap targets, calm ~200ms motion.
+ * Resolution / phone numbers / adapters are untouched — it reuses the same
+ * build*Url helpers via the caller's fire handlers.
+ */
+function FocusedContact({
+  face, onClose, onWhatsApp, onCall, onComposeVoice,
+}: {
+  face: Extract<FamilyQuickFace, { type: 'person' }>
+  onClose: () => void
+  onWhatsApp: () => void
+  onCall: () => void
+  onComposeVoice?: (() => void) | undefined
+}) {
+  const actionable = isPersonActionable(face)
+  const reduced = usePrefersReducedMotion()
+  const [imgError, setImgError] = useState(false)
+  const photo = (!imgError && face.photoFile) ? face.photoFile : null
+  const resolvedFit = face.photoFit ?? 'cover'
+  const resolvedPos = face.photoObjectPosition ?? 'center 30%'
+  // Back button / Esc → return to the board.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onPop = () => onClose()
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('popstate', onPop)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('popstate', onPop) }
+  }, [onClose])
+
+  return (
+    <div
+      data-testid="focused-contact"
+      data-contact-id={face.id}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`פעולות עבור ${face.displayName}`}
+      onClick={onClose}
+      style={{
+        position: 'absolute', inset: 0, zIndex: 25, overflow: 'hidden',
+        display: 'flex', flexDirection: 'column', direction: 'rtl',
+        background: '#050A18',
+        animation: reduced ? 'none' : 'focusIn 260ms cubic-bezier(0.4,0,0.2,1)',
+      }}
+    >
+      {/* ── Full-bleed hero: the contact's photo IS the screen. ────────────── */}
+      {photo ? (
+        <img
+          src={photo} alt="" onError={() => setImgError(true)}
+          style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            objectFit: resolvedFit, objectPosition: resolvedPos, display: 'block',
+            transform: reduced ? 'none' : 'scale(1.04)',
+            animation: reduced ? 'none' : 'heroBreath 14s ease-in-out infinite alternate',
+          }}
+        />
+      ) : (
+        <div aria-hidden style={{
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(120% 90% at 50% 26%, rgba(20,184,166,0.30), rgba(11,34,32,0.55) 42%, #050A18 78%)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '20vh',
+        }}>
+          <span style={{
+            fontFamily: "'Cormorant Garamond',Georgia,serif", fontSize: 'min(46vw, 220px)', fontWeight: 600,
+            color: 'rgba(234,255,248,0.92)', textShadow: '0 6px 40px rgba(20,184,166,0.55)', userSelect: 'none',
+          }}>{computeInitials(face.displayName)}</span>
+        </div>
+      )}
+
+      {/* Legibility scrim: clear over the face, deepening toward the panel. */}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'linear-gradient(180deg, rgba(5,10,24,0.34) 0%, rgba(5,10,24,0) 26%, rgba(5,10,24,0.10) 52%, rgba(5,10,24,0.72) 78%, rgba(5,10,24,0.96) 100%)',
+      }} />
+      {/* Warm gold hairline vignette — the "luxury" cue, subtle, edges only. */}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        boxShadow: 'inset 0 0 140px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(201,168,76,0.14)',
+      }} />
+
+      {/* Close — top-left glass disc. */}
+      <button
+        type="button" data-testid="focused-close" onClick={onClose} aria-label="סגירה"
+        style={{
+          position: 'absolute', top: 'calc(14px + env(safe-area-inset-top,0px))', left: 16, zIndex: 4,
+          width: 54, height: 54, borderRadius: '50%',
+          border: '1px solid rgba(255,255,255,0.22)', background: 'rgba(8,16,28,0.5)',
+          color: 'rgba(255,255,255,0.9)', fontSize: 24, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+        }}
+      >✕</button>
+
+      {/* ── Bottom glass panel: name + big actions in the thumb zone. ──────── */}
+      {/* stopPropagation so taps on the controls never bubble to the dismiss root. */}
+      <div onClick={(e) => e.stopPropagation()} style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 3,
+        display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 16,
+        padding: '26px 22px calc(26px + env(safe-area-inset-bottom,0px))',
+        borderTopLeftRadius: 30, borderTopRightRadius: 30,
+        background: 'linear-gradient(180deg, rgba(8,16,28,0.30), rgba(6,11,22,0.82) 46%, rgba(5,10,24,0.94))',
+        backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+        borderTop: '1px solid rgba(201,168,76,0.20)',
+        boxShadow: '0 -18px 60px rgba(0,0,0,0.5)',
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div data-testid="focused-name" style={{
+            fontSize: 'min(10vw, 40px)', fontWeight: 800, color: '#ffffff', fontFamily: "'Heebo',sans-serif",
+            textShadow: '0 2px 16px rgba(0,0,0,0.7)', letterSpacing: '0.2px', lineHeight: 1.08,
+          }}>{face.displayName}</div>
+          {face.relationshipHebrew && (
+            <div data-testid="focused-relationship" style={{
+              fontSize: 18, color: 'rgba(255,255,255,0.86)', fontFamily: "'Heebo',sans-serif",
+              marginTop: 6, textShadow: '0 1px 8px rgba(0,0,0,0.6)',
+            }}>{face.relationshipHebrew}</div>
+          )}
+        </div>
+
+        {actionable ? (
+          <>
+            <div style={{ display: 'flex', gap: 14, width: '100%', maxWidth: 420, margin: '0 auto', justifyContent: 'center' }}>
+              {/* WhatsApp — LEFT (RTL: visual left) */}
+              <button
+                type="button" data-testid={`chip-whatsapp-${face.id}`} onClick={onWhatsApp}
+                aria-label={`שליחת וואטסאפ אל ${face.displayName}`}
+                style={focusActionStyle(WA_GREEN)}
+              >
+                <HubWhatsAppIcon size={36} /><span>וואטסאפ</span>
+              </button>
+              {/* Call — RIGHT */}
+              <button
+                type="button" data-testid={`chip-call-${face.id}`} onClick={onCall}
+                aria-label={`שיחה אל ${face.displayName}`}
+                style={focusActionStyle('#28C76F')}
+              >
+                <HubCallIcon size={36} /><span>שיחה</span>
+              </button>
+            </div>
+
+            {onComposeVoice && (
+              <button
+                type="button" data-testid={`focused-voice-${face.id}`} onClick={onComposeVoice}
+                style={{
+                  width: '100%', maxWidth: 420, margin: '0 auto', minHeight: 60, borderRadius: 30,
+                  border: '1.5px solid rgba(201,168,76,0.42)', background: 'rgba(8,16,28,0.5)',
+                  color: '#f4ecd4', fontSize: 18, fontWeight: 700, fontFamily: "'Heebo',sans-serif", cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >🎤 כתבי הודעה בקול</button>
+            )}
+          </>
+        ) : (
+          <div data-testid="focused-no-number" style={{
+            fontSize: 17, color: 'rgba(255,255,255,0.86)', fontFamily: "'Heebo',sans-serif",
+            textAlign: 'center', lineHeight: 1.55, whiteSpace: 'pre-line', maxWidth: 340, margin: '0 auto',
+            textShadow: '0 1px 8px rgba(0,0,0,0.6)',
+          }}>{focusedMissingMessage(face.id)}</div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes focusIn{from{opacity:0;transform:scale(0.98)}to{opacity:1;transform:scale(1)}}
+        @keyframes heroBreath{from{transform:scale(1.04)}to{transform:scale(1.10)}}
+      `}</style>
+    </div>
+  )
+}
+
+function focusActionStyle(color: string): React.CSSProperties {
+  return {
+    flex: 1, minHeight: 92, borderRadius: 24, border: 'none', cursor: 'pointer',
+    background: `linear-gradient(150deg, ${color}, ${color}cc)`, color: 'white',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
+    fontSize: 18, fontWeight: 800, fontFamily: "'Heebo',sans-serif",
+    boxShadow: `0 12px 34px ${color}55, 0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.22)`,
+    WebkitTapHighlightColor: 'transparent',
+  }
 }
 
 interface BubbleTileProps {
@@ -986,6 +1377,11 @@ function BubbleAvatar({
   // `photoFit: 'cover'` is opt-in (e.g. Adar's tall portrait).
   const resolvedFit: 'contain' | 'cover' = photoFit ?? 'contain'
   const resolvedPosition: string = photoObjectPosition ?? 'center'
+  // If a real photo fails to load, fall back to initials (never a broken-image
+  // icon). Reset the error whenever the photo changes (e.g. after a replace).
+  const [errored, setErrored] = useState(false)
+  useEffect(() => { setErrored(false) }, [photoFile])
+  const showPhoto = Boolean(photoFile) && !errored
   // Forced circle: explicit width=height, aspect-ratio:1/1, fixed flex
   // basis. Defends against parent flex/grid stretching the avatar into
   // an oval on narrow phone viewports.
@@ -1001,7 +1397,7 @@ function BubbleAvatar({
         boxSizing: 'border-box',
         borderRadius: '50%',
         border: `2px solid ${accentSoft}`,
-        background: photoFile
+        background: showPhoto
           ? 'linear-gradient(145deg, #0b2220, #050A18)'
           : `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(20,184,166,0.18) 45%, rgba(8,16,28,0.95) 100%)`,
         boxShadow: `0 0 0 2px rgba(0,0,0,0.20), 0 0 16px ${accentSoft}, 0 4px 10px rgba(0,0,0,0.32)`,
@@ -1009,13 +1405,14 @@ function BubbleAvatar({
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >
-      {photoFile ? (
+      {showPhoto ? (
         <img
+          key={photoFile}
           src={photoFile}
           alt=""
           loading="lazy"
           style={{ width: '100%', height: '100%', objectFit: resolvedFit, objectPosition: resolvedPosition, display: 'block', borderRadius: '50%' }}
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+          onError={() => setErrored(true)}
         />
       ) : (
         <span style={{

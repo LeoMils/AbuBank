@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Isidoro Kani
+hebrew_name: איסידורו קאני
+aliases:
+- Isidoro
+- איסידורו
+relationship: family_friend
+relationship_hebrew: בעלה של אולגה
+role: בעלה של אולגה קאני; חבר ממנדוסה
+location: מנדוסה, ארגנטינה
+gender: male
+notes: בעלה של אולגה, נשאר במנדוסה. איות 'Kani/קאני' לאימות.
+pronunciation:
+  es: isidoro

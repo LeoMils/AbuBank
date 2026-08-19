@@ -1,0 +1,17 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Jose Milstein
+hebrew_name: חוסה מילשטיין
+aliases:
+- José Milstein
+- José
+- חוסה
+relationship: father_of_husband
+relationship_hebrew: אביו של פפי ז"ל
+role: אביו של פפי (חמהּ של מרטיטה) ז"ל
+location: מנדוסה, ארגנטינה
+gender: male
+deceased: true
+notes: אביו של פפי. היה בעל חנות במנדוסה בשם 'Casa Milstein' ברחוב סן מרטין (San Martín), מנדוסה. חוסה ואחד מאחיו של פפי נפטרו באותו יום (הסיבות/התאריכים המדויקים לא ידועים).
+pronunciation:
+  es: jose

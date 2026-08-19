@@ -1,12 +1,12 @@
 # ⚠️ 100% GENERATED FILE — DO NOT EDIT
 # Source of truth: knowledge/family_data.json + knowledge/martita_personality.yaml
 # Regenerate with: npm run generate:memory
-# Generated: 2026-06-19
+# Generated: 2026-08-12
 
 
 matriarch:
   canonical_name: "Martita"
-  aliases: ["אבו","Abu","Abuela"]
+  aliases: ["אבו","Abu","Abuela","מרתה","Marta","Abu Ela","אבו אלה","Müller","Muller","Miller"]
   birthday: "04-01"
   location: "כפר סבא"
 
@@ -22,60 +22,85 @@ children:
     children:
       - canonical_name: "Ofir"
         hebrew: "אופיר"
-        relationship: "grandson"
+        relationship: "granddaughter"
         spouse: "גלעד"
-        notes: "אופיר וגלעד הם ההורים של אנאבל וארי."
+        notes: "אופיר וגלעד הם ההורים של אנאבל וארי. גרה בדירה בכפר סבא. ג'ינג'ית. לאו: 'מתוקה אמיתית'. מרטיטה קרובה אליה במיוחד. בהריון (נכון לאוגוסט 2026). אוהבת יין אדום."
         children:
           - { name: "Anabel", hebrew: "אנאבל", relationship: "great_granddaughter" }
           - { name: "Ari", hebrew: "ארי", relationship: "great_granddaughter" }
       - canonical_name: "Ayalon"
         hebrew: "איילון"
         relationship: "grandson"
-        notes: "עובר להוד השרון."
+        notes: "גר בהוד השרון עם אדר. ג'ינג'י, מפתח גוף (גוף רציני). מנהל מטבח ב-Nylon (לאו אמר תחילה 'מנהל מסעדה' ותיקן ל'מנהל מטבח'); מאוד אהוב בעבודה. איות המסעדה 'Nylon' לאימות. אושר על ידי לאו: 'אלון' ו'איילון' הם אותו אדם — אלון/אילון הם כינויים."
       - canonical_name: "Eili"
         hebrew: "עילי"
         relationship: "grandson"
-        notes: "עילי וירדן גרים יחד. יש להם 3 כלבים ופנסיון לכלבים בבית. טונטו הוא אחד הכלבים."
+        notes: "עילי וירדן גרים יחד. גנן עצמאי. יש להם כמה כלבים ופנסיון לכלבים בבית — ידועים: מילי (לברדור, אמא של טונטו) וטונטו (לברדור); יש כלבים נוספים ששמותיהם/גזעיהם לא ידועים כרגע (לא להמציא). ירדן בהריון, מצפים לבת (נכון לאוגוסט 2026). עילי אוהב יין אדום."
         children: []
       - canonical_name: "Adar"
         hebrew: "אדר"
         relationship: "grandson"
-        notes: "עובר להוד השרון."
+        notes: "גר בהוד השרון עם איילון (אלון). הרבה קעקועים; לרוב עם זקן. עובד בעסק של אוכל לחיות — מנהל מחסן (תיאור מתוקן של לאו). אוהב יין אדום."
 
   - canonical_name: "Leo"
     hebrew: "לאו"
     relationship: "son"
+    ex_spouse: "רותי"
+    location: "רעננה"
     birthday: "08-22"
     children:
       - canonical_name: "Adi"
         hebrew: "עדי"
         relationship: "grandson"
-        notes: "תאום של נועם. בן דוד של אופיר, איילון, עילי, אדר."
+        notes: "תאום של נועם. בן דוד של אופיר, איילון, עילי, אדר. גר בתל אביב (וגם משכיר שם דירה — ההסדר המדויק לא ברור). חגורה שחורה בקראטה; מתופף. עמוק בקריפטו, AI והייטק: שירת ביחידה 8200, עבד בשתי חברות הייטק, הקים סטארטאפ ואז עוד סטארטאפ, וכיום מעורב בסטארטאפ/פרויקט נוסף (שמות החברות לא ידועים — לא להמציא). שותף עסקי נוכחי: גד (אחיו של נתן; נתן לוחם UFC וחבר קרוב מאוד של עדי)."
       - canonical_name: "Noam"
         hebrew: "נועם"
         relationship: "grandson"
-        notes: "תאום של עדי. בן דוד של אופיר, איילון, עילי, אדר. נסע לאחרונה לבואנוס איירס."
+        notes: "תאום של עדי. בן דוד של אופיר, איילון, עילי, אדר. גר בהרצליה. מנגן גיטרה; חגורה חומה בקראטה. נסע לאחרונה לבואנוס איירס. אוהב יין אדום."
 
 deceased:
   - canonical_name: "Papi"
     hebrew: "פפי"
-    aliases: ["Pepe","פאפי"]
+    aliases: ["Pepe","פאפי","Victor","ויקטור"]
     relationship: "husband_deceased"
     birthday: "04-19"
     date_of_passing: "2025-01-01"
-    notes: "זוכרים אותו באהבה."
+    notes: "בעלה של מרטיטה, אבא של מור ולאו. זוג אוהב במיוחד — הלכו יד ביד, עשו כמעט הכל ביחד, טיילו הרבה בעולם, בנו משפחה חמה וקרובה; היו גם תקופות קשות. גדל במנדוסה, ארגנטינה; אביו חוסה מילשטיין. עבד עד שאושפז ונפטר. אהב מאוד יין אדום. זוכרים אותו באהבה. חוסה מילשטיין ואחד מאחיו של פפי נפטרו באותו יום (הסיבות/התאריכים המדויקים לא ידועים)."
 
 pets:
   - name: "Tutsi"
     hebrew: "טוטסי"
     owner: "Martita"
     notes: "הכלב של מרטיטה. הולכת איתו לטיולים כל יום."
+  - name: "Milli"
+    hebrew: "מילי"
+    owner: "Eili & Yarden"
+    notes: "כלבה של עילי וירדן; לברדור; אמא של טונטו."
   - name: "Tonto"
     hebrew: "טונטו"
     owner: "Eili & Yarden"
-    notes: "אחד מ-3 הכלבים של עילי וירדן."
+    notes: "אחד מהכלבים של עילי וירדן; לברדור; בנה של מילי."
 
 close_friends:
   - { name: "Mirta", hebrew: "מירטה", relationship: "חברה קרובה" }
   - { name: "Shoshana", hebrew: "שושנה", relationship: "חברה קרובה" }
   - { name: "Sharon", hebrew: "שרון", relationship: "חברה קרובה של המשפחה" }
+  - { name: "Cacho", hebrew: "כאצ'ו", relationship: "בעלה של שושנה" }
+  - { name: "Susi Raz", hebrew: "סוזי רז", relationship: "חברה טובה" }
+  - { name: "Hector Raz", hebrew: "הקטור רז", relationship: "בעלה של סוזי רז ז"ל" }
+  - { name: "Lydia Omansky", hebrew: "לידיה אומנסקי", relationship: "חברה קרובה מאוד" }
+  - { name: "Noah Omansky", hebrew: "נוח אומנסקי", relationship: "חבר קרוב מאוד" }
+  - { name: "Tuchi", hebrew: "טוצ'י", relationship: "חברה טובה" }
+  - { name: "Dani", hebrew: "דני", relationship: "בעלה של טוצ'י" }
+  - { name: "Elsi", hebrew: "אלסי", relationship: "חברה" }
+  - { name: "Saul", hebrew: "שאול", relationship: "בעלה של אלסי" }
+  - { name: "Oscar Minuchin", hebrew: "אוסקר מינושין", relationship: "בעלה של מירטה מינושין ז"ל" }
+  - { name: "Morian Minuchin", hebrew: "מוריאן מינושין", relationship: "חבר של לאו, בן של מירטה" }
+  - { name: "Marisa Minuchin", hebrew: "מריסה מינושין", relationship: "בת של מירטה מינושין" }
+  - { name: "Yaron Minuchin", hebrew: "יארון מינושין", relationship: "בן של מירטה מינושין" }
+  - { name: "Flori", hebrew: "פלורי", relationship: "חברה מהעולם הישן של מנדוסה" }
+  - { name: "Dviko", hebrew: "דביקו", relationship: "בעלה של פלורי" }
+  - { name: "Pupa Yavnir", hebrew: "פופה יווניר", relationship: "חברה מהמנדוסה" }
+  - { name: "Daniel Yavnir", hebrew: "דניאל יווניר", relationship: "בעלה של פופה ז"ל" }
+  - { name: "Olga Kani", hebrew: "אולגה קאני", relationship: "חברה טובה ממנדוסה" }
+  - { name: "Isidoro Kani", hebrew: "איסידורו קאני", relationship: "בעלה של אולגה" }

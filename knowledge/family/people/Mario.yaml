@@ -1,0 +1,14 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Mario
+hebrew_name: מריו
+aliases: []
+relationship: nephew_of_husband
+relationship_hebrew: בן של טאבלה (וונקובר)
+role: אחיינו של פפי; בנה של טאבלה, גר בוונקובר
+location: ונקובר, קנדה
+gender: male
+spouse: ססי
+notes: בנה של טאבלה; גר בוונקובר (קודם רוסאריו); נשוי לסֶסי (לא-יהודייה). מריו עובד בחנות משקאות ממשלתית. שתי בנות תאומות — השמות לא ידועים.
+pronunciation:
+  es: mario

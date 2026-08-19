@@ -1,7 +1,7 @@
 # ⚠️ 100% GENERATED FILE — DO NOT EDIT
 # Source of truth: knowledge/family_data.json + knowledge/martita_personality.yaml
 # Regenerate with: npm run generate:memory
-# Generated: 2026-06-19
+# Generated: 2026-08-12
 
 
 # Identity (from knowledge/family_data.json)
@@ -14,6 +14,7 @@ identity:
   languages:
     - "עברית"
     - "ספרדית"
+    - "אנגלית (מבינה מעט)"
   marital_status: "widowed"
   husband_name: "Papi"
   birthday: "04-01"
@@ -64,7 +65,7 @@ daily_life:
     - empanadas
     - orzo
     - pastels
-  favorite_drink: "red wine"
+  favorite_drink: "sweet white wine (blue bottle) and shandy — she does NOT drink red wine"
   entertainment: "Argentine telenovelas, long phone calls"
   has_caretaker: true
   friday_dinner: "the most important event of the week"
@@ -76,3 +77,148 @@ preferences:
   no_jargon: true
   no_childish_tone: true
   feminine_hebrew_address: true
+
+
+character:
+  summary: >
+    Sharp, intelligent, knowledgeable, aware of what is going on — not naive, not
+    easily taken advantage of. Hebrew phrase the family uses: "היא לא פראיירית"
+    (nobody's fool — NOT aggression). Everyone loves her.
+  family_is_everything: >
+    Family is the center of her life — one of the strongest facts about her. Deeply
+    connected to children, grandchildren, great-grandchildren, in-laws, partners and
+    their friends. Especially close with Ofir and Leo, and also with Mor (does not
+    exclude the rest of the family).
+
+languages_detail:
+  spanish: "natural, fluent (Rioplatense / Argentine)"
+  hebrew: "very well — speaks, reads and writes"
+  english: "understands a little"
+
+food:
+  loves:
+    - "Asian food, sushi, Japanese food (a strong preference)"
+    - "eating out — good restaurants and good food, but also simple food if it is delicious"
+  strong_dislikes:
+    - "cilantro / coriander / כוסברה — HATES it (not a minor preference)"
+    - "cinnamon / קינמון — HATES it (not a minor preference)"
+
+drinks:
+  sweet_white_wine: >
+    Likes sweet white wine. There is a particular one she especially likes, in a BLUE
+    bottle; the family buys it especially for her. Brand not yet supplied — do not guess.
+  shandy: >
+    Loves shandy — especially the beer + Sprite version she and Leo make together from
+    the two. A recurring shared ritual with Leo, not merely a drink preference.
+  does_not_drink_red_wine: >
+    RESOLVED (Leo, 2026-08): Martita does NOT drink red wine — never offer it to her. Her
+    only drinks are the sweet white wine (blue bottle) and shandy above.
+  red_wine_is_the_familys: >
+    Red wine is the REST of the family's drink, not hers. Papi loved red wine very much;
+    and it is drunk by Rafi, Mor, Leo, Noam, Ofir, Adar, Yael, Eili, Yarden and Gilad
+    (stored per-person in family_data.json). So Abu understands red wine as what the
+    family drinks together — while never offering it to Martita herself.
+
+cooking:
+  emotional_weight: >
+    Her cooking is a major part of the family's emotional memory. Leo describes it as
+    extraordinary. Preserve the emotional weight of these dishes, not just the names.
+  signature_dishes:
+    - "Arroz con pollo"
+    - "Acelga rellena"
+    - "Mondongo"
+    - "Repollo relleno"
+    - "Ensalada de zapallito"
+    - "Arvejas"
+    - "Soups — sopa de pollo, sopa anaranjada (orange soup), and many others"
+    - "Her sandwiches (Leo: 'wow')"
+    - "Empanadas ('wow')"
+    - "Tortas / cakes ('wow')"
+    - "Hungarian food — ñoquis húngaros, goulash"
+    - "Gefilte fish — described as unique, unique, unique, unique (an iconic family dish)"
+    - "Pastel de papa — also described as unique"
+
+entertainment_detail:
+  television: >
+    She LOVES television — it is extremely important to her. Movies, series, TV
+    generally; watches as much as she can. Services: Netflix, Amazon / Prime Video,
+    Channel 11, Channel 12, Channel 13 and other available channels. (Existing note also
+    records Argentine telenovelas + long phone calls.)
+
+weekly_activities:
+  theater_class: "Sundays"
+  yoga: "once per week"
+  exercise_fitness: "once per week"
+
+weekly_rhythm:
+  tuesday_at_mor: >
+    Every Tuesday Martita goes to Mor's house — a fixed weekly rhythm, not an occasional
+    visit. Mor's granddaughters come there too on those days.
+  home_as_gathering_place: >
+    Her own home is a gathering place. Ofir and the girls come to her often — very
+    often — to stay, to eat, to simply be there. One of the most emotionally important
+    facts about her daily life.
+  hair_treatment_at_mor: >
+    From time to time she goes to Mor for a hair treatment: a waxy, candle-like residue
+    builds up in the hair and Mor removes it with a heated stick. A recurring care
+    ritual between mother and daughter — not medical, not a beauty appointment.
+
+rituals_with_leo:
+  shandy: "Leo and Martita often order beer + Sprite and make shandy together."
+  shawarma_kitchen_island: >
+    Sometimes Leo comes over and brings shawarma; they sit and eat at the kitchen island
+    (sometimes other food too). A recurring everyday scene.
+  restaurants: >
+    They frequently go out to dinner together — especially enjoy sitting together at the
+    bar; Leo describes that time as very enjoyable.
+  practical_help: >
+    Leo is Martita's right hand — banks, financial matters, something breaking,
+    household problems, technical problems: essentially anything that needs handling.
+
+possessions:
+  car: "Hyundai i20, year 2020, colour white"
+
+home_technology:
+  living_room_tv: "smart TV"
+  papi_room_tv: "smart TV"
+  bedroom_tv: "non-smart TV"
+  computer: "in the mamad (safe room)"
+  router: "in the mamad"
+  note: "Useful when AbuAI helps her with technology."
+
+social_life:
+  summary: >
+    A large social circle; many friends are Argentine. Friendships date back to Mendoza
+    (Argentina), Ulpan Ben Yehuda (Netanya), shared travel, life with Papi, and current
+    life in Kfar Saba. Individual friends + their origins live in family_data.json
+    (close_friends). She keeps up long-distance friendships (e.g. Olga in Mendoza) mainly
+    via WhatsApp.
+
+health_appearance:
+  note: >
+    Leo says she used to be very overweight, later lost a lot of weight, and today looks
+    very good. Do NOT infer medical conditions, diagnoses or causes.
+
+privacy_note:
+  address: "City level only: Kfar Saba. Exact address / phone / national ID intentionally excluded — see family_data.json pii_excluded."
+
+life_history:
+  argentina:
+    born: "Buenos Aires, 1 April 1945 (childhood family: mother Dora, father Jacobo, brothers Luis and Bobby)."
+    youth: "~age 18 travelled to Mendoza for an end-of-high-school event; had a boyfriend in Buenos Aires, Marcos Greenberg. How she and Papi met is not yet supplied — do not invent."
+    mendoza: "Life in Mendoza with Papi's family (José Milstein's store 'Casa Milstein' on San Martín St). Many friends; country club and synagogue ('shil'). Leo attended Escuela Israelita Max Nordau."
+  aliyah_1977:
+    who: "Martita, Papi, Mor, Leo."
+    route: "~one week in Italy first — Rome and Florence — then Israel."
+    ulpan: "Ulpan Ben Yehuda, Netanya — residential, ~six months; food provided, parents studied much of the day. Several lifelong friendships began there (Lydia & Noah Omansky, Elsi & Saul)."
+  bat_yam_years:
+    first_home: "Ramat HaNasi, Bat Yam (address supplied: 29 November St 27 / כ\"ט בנובמבר 27 — verify canonical spelling)."
+    later_homes: "Balfour Street, then Jabotinsky Street (opposite the sea)."
+    business: >
+      Martita and Papi bought a galantería / haberdashery store from an Argentine family and
+      worked very long hours. Later expanded into the adjacent store (opened the wall), at some
+      point bought the neighbouring space, with an arrangement to rent part of it out; later the
+      business included clothing and bags. The EXACT sequence of purchase / wall-opening / use /
+      rental is NOT fully clear — do not invent a precise commercial sequence.
+  work_history: "Extensive retail / sales work — with Papi in their store, later a clothing store and a bag store. Recurring lifelong role: salesperson / retail sales."
+  legacy: "The themes of their shared life: love, partnership, work, immigration, rebuilding in Israel, family, travel, persistence, warmth. Difficult periods, but a warm, close, loving family."

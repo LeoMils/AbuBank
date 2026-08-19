@@ -4,7 +4,197 @@ import { Screen } from '../../state/types'
 import { BackButton } from '../../components/BackButton'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import { APP_VERSION } from '../../version'
+import { copyLastTurns } from '../AbuAI/liveTurnDiagnostics'
+import { exportStoredTranscript, serializeExport } from '../../evolution/recorderExport'
+import { isRecorderOff, setRecorderOff } from '../../evolution/recorderSwitch'
+import { setSpeechRate } from '../../services/speechProfile'
+import { isOperatorPersisted, setOperatorMode } from '../../services/operatorMode'
+import { ContactManagement } from '../AbuWhatsApp/ContactManagement'
+
+/**
+ * Persistent Operator Mode toggle. Enables the operator/diagnostics tools
+ * (Product Truth, Copy Diagnostics, contacts setup) and — unlike ?operator=1 —
+ * survives installed-PWA launches. Off by default; Martita never turns it on.
+ */
+export function OperatorModeToggle() {
+  const [on, setOn] = useState(() => isOperatorPersisted())
+  return (
+    <button
+      type="button"
+      data-testid="operator-mode-toggle"
+      data-operator-on={on ? 'true' : 'false'}
+      onClick={() => { const next = !on; setOperatorMode(next); setOn(next) }}
+      style={{
+        marginTop: 8, width: '100%', minHeight: 44, padding: '10px 16px', borderRadius: 12,
+        background: on ? 'rgba(201,168,76,0.14)' : 'transparent',
+        border: `1px solid ${on ? 'rgba(201,168,76,0.45)' : 'rgba(255,255,255,0.14)'}`,
+        color: on ? '#FFE9B3' : 'rgba(255,255,255,0.45)',
+        fontSize: 14, fontWeight: 600, fontFamily: "'Heebo',sans-serif", cursor: 'pointer', direction: 'rtl',
+      }}
+    >
+      🔧 מצב מפעיל (Operator): {on ? 'פעיל — כלי אבחון מוצגים' : 'כבוי'}
+    </button>
+  )
+}
+
+/** Visible, senior-discreet debug access: copies the last 20 AbuAI turns for support. */
+export function CopyTurnsButton() {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      type="button"
+      data-testid="copy-last-turns"
+      onClick={() => { void copyLastTurns().then(() => setCopied(true)) }}
+      style={{
+        marginTop: 8, padding: '8px 16px', borderRadius: 10,
+        background: 'transparent', border: '1px solid rgba(255,255,255,0.14)',
+        color: 'rgba(255,255,255,0.45)', fontSize: 13,
+        fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 40,
+      }}
+    >
+      {copied ? 'הועתק ✓ — שלחי ללאו' : 'העתקת 20 השיחות האחרונות (לתמיכה)'}
+    </button>
+  )
+}
+
+/**
+ * Flight Recorder controls: an OFF switch for local conversation capture + an EXPORT
+ * button that downloads the redacted, text-only transcript. Senior-first: large,
+ * plain-Hebrew, immediate state. Capture is local + privacy-safe (no audio, PII
+ * stripped) and can be turned off at any time here.
+ */
+export function FlightRecorderControls() {
+  const [off, setOff] = useState(() => isRecorderOff())
+  const [exported, setExported] = useState(false)
+  const on = !off
+
+  function doExport() {
+    try {
+      const exp = exportStoredTranscript({ appVersion: APP_VERSION.version, exportedAt: new Date().toISOString() })
+      const json = serializeExport(exp)
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `abu-flight-recorder-${APP_VERSION.version}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      setExported(true)
+    } catch { /* export must never break settings */ }
+  }
+
+  return (
+    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <button
+        type="button"
+        data-testid="flight-recorder-toggle"
+        aria-pressed={on}
+        onClick={() => { const next = !off; setRecorderOff(next); setOff(next) }}
+        style={{
+          width: '100%', minHeight: 56, padding: '12px 16px', borderRadius: 14,
+          border: `1px solid rgba(201,168,76,${on ? 0.40 : 0.20})`,
+          background: on
+            ? 'linear-gradient(135deg, rgba(201,168,76,0.14), rgba(201,168,76,0.03))'
+            : 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
+          display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
+          direction: 'rtl', textAlign: 'right',
+        }}
+      >
+        <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.06))', border: '1.5px solid rgba(201,168,76,0.26)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+          {on ? '🎙️' : '⏹️'}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: 'rgba(255,255,255,0.92)', fontFamily: "'Heebo',sans-serif" }}>
+            שמירת שיחות (למעקב איכות)
+          </div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.56)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
+            {on ? 'נשמר מקומית בלבד — טקסט, בלי הקלטות קול' : 'כבוי — שום שיחה לא נשמרת'}
+          </div>
+        </div>
+      </button>
+      <button
+        type="button"
+        data-testid="flight-recorder-export"
+        onClick={doExport}
+        style={{
+          padding: '9px 16px', borderRadius: 10, background: 'transparent',
+          border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.55)',
+          fontSize: 13, fontFamily: "'Heebo',sans-serif", cursor: 'pointer', minHeight: 40,
+        }}
+      >
+        {exported ? 'יוצא ✓' : 'ייצוא השיחות שנשמרו (קובץ)'}
+      </button>
+    </div>
+  )
+}
 import { downloadBackup, importBackup } from '../../services/backup'
+import { durable } from '../../services/durableStore'
+import { getSoundMuted, setSoundMuted, soundTap } from '../../services/sounds'
+
+/** One-tap toggle for the whole app's UI sound system. Senior-first: large,
+ *  clearly labelled in plain Hebrew, immediate visual state. */
+function SoundToggle() {
+  const [muted, setMuted] = useState(() => getSoundMuted())
+  const on = !muted
+  return (
+    <div style={{ padding: '4px 14px 0' }}>
+      <button
+        type="button"
+        data-testid="sound-toggle"
+        aria-pressed={on}
+        onClick={() => {
+          const next = !muted
+          setSoundMuted(next)
+          setMuted(next)
+          // Play a confirming tap only when turning sound ON (setSoundMuted
+          // already updated the gate, so a tap while muting stays silent).
+          if (!next) soundTap()
+        }}
+        style={{
+          width: '100%', minHeight: 64, padding: '14px 18px', borderRadius: 16,
+          border: `1px solid rgba(201,168,76,${on ? 0.45 : 0.22})`,
+          background: on
+            ? 'linear-gradient(135deg, rgba(201,168,76,0.16), rgba(201,168,76,0.04))'
+            : 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
+          display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
+          direction: 'rtl', textAlign: 'right',
+        }}
+      >
+        <div style={{
+          width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+          background: `linear-gradient(135deg, rgba(201,168,76,0.20), rgba(201,168,76,0.07))`,
+          border: `1.5px solid rgba(201,168,76,0.28)`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+        }}>
+          {on ? '🔊' : '🔕'}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 17, fontWeight: 600, color: 'rgba(255,255,255,0.94)', fontFamily: "'Heebo',sans-serif" }}>
+            צלילים
+          </div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.58)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
+            {on ? 'צלילים עדינים מופעלים' : 'הצלילים כבויים'}
+          </div>
+        </div>
+        {/* Track + knob */}
+        <div style={{
+          width: 52, height: 30, borderRadius: 15, flexShrink: 0, position: 'relative',
+          background: on ? `rgba(201,168,76,0.55)` : 'rgba(255,255,255,0.14)',
+          transition: 'background 0.2s ease',
+        }}>
+          <div style={{
+            position: 'absolute', top: 3, width: 24, height: 24, borderRadius: '50%',
+            background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            left: on ? 3 : 25, transition: 'left 0.2s ease',
+          }} />
+        </div>
+      </button>
+    </div>
+  )
+}
+
 
 const TEAL = '#14b8a6'
 const GOLD = '#C9A84C'
@@ -59,7 +249,7 @@ export function loadLocContacts(): LocContact[] {
 }
 
 function saveLocContacts(cs: LocContact[]) {
-  try { localStorage.setItem(LOC_CONTACTS_KEY, JSON.stringify(cs)) } catch { /* quota */ }
+  try { durable.setString(LOC_CONTACTS_KEY, JSON.stringify(cs)) } catch { /* quota */ }
 }
 
 function loadContacts(): Contact[] {
@@ -73,7 +263,7 @@ function loadContacts(): Contact[] {
 }
 
 function saveContacts(contacts: Contact[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts)) } catch { /* quota */ }
+  try { durable.setString(STORAGE_KEY, JSON.stringify(contacts)) } catch { /* quota */ }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -237,7 +427,7 @@ export function Settings() {
 
   // Voice settings (v20: reactive state instead of raw localStorage reads)
   const [voiceLang, setVoiceLang] = useState(() => localStorage.getItem('abu-voice-lang') || 'auto')
-  const [voiceSpeed, setVoiceSpeed] = useState(() => parseFloat(localStorage.getItem('abu-voice-speed') || '0.88'))
+  const [voiceSpeed, setVoiceSpeed] = useState(() => parseFloat(localStorage.getItem('abu-voice-speed') || '1.0'))
 
   // Backup / restore
   const [backupStatus, setBackupStatus] = useState<string | null>(null)
@@ -441,6 +631,16 @@ export function Settings() {
       ),
     },
 
+    // ── 2b. Contact Management (family board contacts, device-local) ──
+    {
+      id: 'contact-management',
+      icon: '👨‍👩‍👧',
+      color: TEAL,
+      label: 'ניהול אנשי קשר',
+      desc: 'הוספה, עריכה וגיבוי של אנשי הקשר בלוח המשפחה',
+      content: <ContactManagement />,
+    },
+
     // ── 3. Location ──────────────────────────────────────────
     {
       id: 'location',
@@ -581,11 +781,11 @@ export function Settings() {
           <div style={{ direction: 'rtl' }}>
             <div style={sectionLabel}>מהירות דיבור</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              {([0.80, 0.88, 0.95] as const).map(speed => {
-                const isActive = Math.abs(voiceSpeed - speed) < 0.02
-                const label = speed === 0.80 ? 'איטי' : speed === 0.88 ? 'רגיל' : 'מהיר'
+              {([0.90, 1.0, 1.1] as const).map(speed => {
+                const isActive = Math.abs(voiceSpeed - speed) < 0.05
+                const label = speed === 0.90 ? 'איטי' : speed === 1.0 ? 'רגיל' : 'מהיר'
                 return (
-                  <button key={speed} onClick={() => { localStorage.setItem('abu-voice-speed', String(speed)); setVoiceSpeed(speed) }}
+                  <button key={speed} onClick={() => { setSpeechRate(speed); setVoiceSpeed(speed) }}
                     style={{
                       flex: 1, padding: '10px 0', borderRadius: 10,
                       background: isActive ? 'rgba(20,184,166,0.20)' : 'rgba(255,255,255,0.05)',
@@ -612,7 +812,7 @@ export function Settings() {
       id: 'about',
       icon: '⭐',
       color: GOLD,
-      label: 'אודות AbuBank',
+      label: 'אודות Abu-ela',
       desc: 'הפורטל האישי של Martita',
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', textAlign: 'center' }}>
@@ -638,6 +838,19 @@ export function Settings() {
             <br />
             {APP_VERSION.branchHint} · {APP_VERSION.buildDate}
           </div>
+          <OperatorModeToggle />
+          <CopyTurnsButton />
+          <FlightRecorderControls />
+          <button
+            type="button"
+            data-testid="open-family-record"
+            onClick={() => setScreen(Screen.FamilyRecord)}
+            style={{
+              marginTop: 10, width: '100%', minHeight: 52, padding: '12px 16px', borderRadius: 14,
+              border: '1px solid rgba(201,168,76,0.40)', background: 'linear-gradient(135deg, rgba(201,168,76,0.14), rgba(201,168,76,0.03))',
+              color: '#FFE9B3', fontSize: 16, fontWeight: 700, fontFamily: "'Heebo',sans-serif", cursor: 'pointer', direction: 'rtl',
+            }}
+          >📜 תעודת המשפחה — לצפייה ולהוספת פרטים</button>
           {/* P0.3 — the diagnostic panel moved to a top-level button +
               full-screen overlay (impossible to miss). Tap "אבחון מערכת"
               at the top of Settings, the pill on Home, or visit
@@ -658,6 +871,22 @@ export function Settings() {
               cursor: 'pointer',
             }}
           >אבחון מערכת</button>
+          <button
+            type="button"
+            data-testid="settings-family-phones-link"
+            onClick={() => {
+              const w = window as unknown as { __abubankOpenFamilyPhones?: () => void }
+              if (typeof w.__abubankOpenFamilyPhones === 'function') w.__abubankOpenFamilyPhones()
+              else window.location.href = '/settings/family-phones'
+            }}
+            style={{
+              marginTop: 10, padding: '10px 16px', borderRadius: 12,
+              border: '1px solid rgba(37,211,102,0.45)',
+              background: 'rgba(37,211,102,0.10)',
+              color: '#bff5d3', fontSize: 14, fontWeight: 700,
+              fontFamily: "'Heebo','DM Sans',sans-serif", cursor: 'pointer',
+            }}
+          >מספרי טלפון משפחתיים</button>
         </div>
       ),
     },
@@ -744,6 +973,9 @@ export function Settings() {
           <span style={{ fontSize: 22, lineHeight: 1, color: 'rgba(201,168,76,0.85)' }}>›</span>
         </button>
       </div>
+
+      {/* ─── SOUND TOGGLE (global UI sound system) ─── */}
+      <SoundToggle />
 
       {/* ─── SECTIONS ─── */}
       <div style={{ padding: '14px 14px 40px', display: 'flex', flexDirection: 'column', gap: 10 }}>

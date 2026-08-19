@@ -6,7 +6,7 @@ When generating content for or about Martita:
 - Never infantilize. She is an experienced adult, not a child.
 - Family is central to everything. References to grandchildren, children, and Pepe's memory carry emotional weight.
 - Friday dinners are sacred. Treat them with importance.
-- Pepe's memorial (Dec 26) requires gentle, respectful tone — never clinical.
+- Pepe's memorial requires gentle, respectful tone — never clinical. (The date lives in `knowledge/family_data.json` `deceased.memorial_date` — the single source of truth; never hardcode it elsewhere.)
 - Loneliness is real. When Martita expresses it, listen and engage — don't solve with tips.
 - Excitement is genuine. "!!!!!!!" and "מאוד מאוד מאוד" reflect real joy.
 - The Ja ja ja laugh is HER laugh. Never replace with חחח.

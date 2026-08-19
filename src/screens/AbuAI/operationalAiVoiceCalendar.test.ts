@@ -40,7 +40,9 @@ function isCalendarRead(text: string): boolean {
 
 describe('A. calendar create beats family Q&A', () => {
   const cases: Array<{ text: string; title: string; day: number; time: string }> = [
-    { text: 'תקבע לי עם אמא של אופיר בשני 13:22', title: 'פגישה עם אמא של אופיר', day: 1, time: '13:22' },
+    // The relation phrase resolves to the real person via the morphology seam —
+    // the stored title carries the RESOLVED name (אמא של אופיר → מור), never the phrase.
+    { text: 'תקבע לי עם אמא של אופיר בשני 13:22', title: 'פגישה עם מור', day: 1, time: '13:22' },
     { text: 'תקבע עם מור ברביעי 4 אחהצ', title: 'פגישה עם מור', day: 3, time: '16:00' },
     { text: 'שימי לי עם יעל ביום ראשון הקרוב בשבע בערב', title: 'פגישה עם יעל', day: 0, time: '19:00' },
     { text: 'תרשמי לי עם גילעד בשלישי הבא 14:00', title: 'פגישה עם גילעד', day: 2, time: '14:00' },
@@ -172,16 +174,13 @@ describe('E. confirmation state machine', () => {
     // existing state, so the pending confirmation survives.
   })
 
-  it('19. pending create + family question → does not corrupt draft', () => {
+  it('19. pending create + family question → answers it, keeps the draft (park_keep)', () => {
     const s = startCreate('תקבע עם מור ברביעי 4 אחהצ')
     const r = resolvePendingMessage(s, 'מי זה מור?', false)
-    // Not a confirm/cancel/create/read → falls through to update; the field
-    // values stay intact (no save, no cancel).
-    expect(['update', 'clarify']).toContain(r.action)
-    if (r.action === 'update') {
-      expect(r.state.draft.title).toBe('פגישה עם מור')
-      expect(r.state.draft.time).toBe('16:00')
-    }
+    // A question mid-create is ANSWERED while the pending draft is preserved by the
+    // confirmation case (park_keep) — no save, no cancel, no corruption.
+    expect(r.action).toBe('park_keep')
+    if (r.action === 'park_keep') expect(r.parked.draft.title).toBe('פגישה עם מור')
   })
 })
 
@@ -244,8 +243,11 @@ describe('G. voice path safety (source contract)', () => {
   })
 
   it('23. transcription failure is never swallowed silently', () => {
-    // The manual-mic catch posts a mediated error instead of an empty block.
-    expect(/catch \(err\) \{\s*\/\/ Never fail silently/.test(idx)).toBe(true)
+    // The manual-mic catch posts a mediated error (and logs STT evidence) — never
+    // an empty/swallowed block. Assert the BEHAVIOUR, not a comment position.
+    expect(idx.includes("// Never fail silently")).toBe(true)
+    expect(idx.includes("mediateVoiceCaptureError(err, 'transcription')")).toBe(true)
+    expect(/STT_SUCCESS=false/.test(idx)).toBe(true)
   })
 
   it('23b. a processing watchdog prevents an infinite stuck state', () => {

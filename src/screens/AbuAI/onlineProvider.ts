@@ -43,6 +43,16 @@ export interface OnlineSource {
   url?: string
 }
 
+/** Non-secret endpoint diagnostic (mirror of api/abuai-online OnlineDiag). Provider
+ *  name + booleans + counts only — never a key value. */
+export interface OnlineDiag {
+  requested: string; provider: string; providerKeyPresent: boolean
+  openaiKeyPresent: boolean; reached: boolean; sourceCount: number; outcome: string
+}
+let _lastOnlineDiag: OnlineDiag | null = null
+/** The last non-secret online diagnostic (for the operator diagnostics surface). */
+export function lastOnlineDiag(): OnlineDiag | null { return _lastOnlineDiag }
+
 export interface OnlineSuccessResult {
   ok: true
   answer: string
@@ -143,6 +153,11 @@ export async function answerOnlineCurrentInfo(
 ): Promise<OnlineResult> {
   const lang: OnlineLang = options.lang ?? 'he'
   const queryKind = getOnlineQueryKind(query)
+  // Cache key = kind + the SPECIFIC query. Keying by kind alone collapsed different
+  // questions of the same kind ("who is the PM" vs "who is the president" → both
+  // general_current) into one cached answer — the "repeated identical answers to
+  // different questions" bug. An identical repeat still hits the cache.
+  const cacheKey = queryKind ? `${queryKind}::${query.trim().replace(/\s+/g, ' ').toLowerCase()}` : null
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const f = options.fetchImpl ?? (typeof fetch !== 'undefined' ? fetch : null)
   if (!f) {
@@ -162,9 +177,9 @@ export async function answerOnlineCurrentInfo(
       userMessage: userMessageFor('ONLINE_QUERY_BLOCKED_PERSONAL', lang),
     }
   }
-  // Stale-while-revalidate: return cached answer if fresh (weather, etc.)
-  if (queryKind) {
-    const cached = getCachedAnswer(queryKind)
+  // Stale-while-revalidate: return cached answer if fresh (same kind AND same query).
+  if (cacheKey) {
+    const cached = getCachedAnswer(cacheKey)
     if (cached) {
       return { ok: true, answer: cached.answer, userMessage: cached.answer, sources: cached.sources }
     }
@@ -210,6 +225,15 @@ export async function answerOnlineCurrentInfo(
     }
   }
 
+  // Capture + log the endpoint's non-secret diagnostic BEFORE branching on ok/failure,
+  // so a device trace records which provider ran, whether its key was present, and
+  // whether the upstream call was reached — a misconfigured provider must never look
+  // identical to a search that found nothing.
+  if (data && typeof data === 'object' && (data as Record<string, unknown>).diag) {
+    _lastOnlineDiag = (data as { diag: OnlineDiag }).diag
+    try { console.info('[abuai-online-diag]', JSON.stringify(_lastOnlineDiag)) } catch { /* */ }
+  }
+
   // Server responses are already shaped as { ok: true, answer, sources? }
   // or { ok: false, errorCode, userMessage }.
   if (data && typeof data === 'object' && (data as Record<string, unknown>).ok === true) {
@@ -222,8 +246,8 @@ export async function answerOnlineCurrentInfo(
         userMessage: body.answer.trim(),
         ...(sources && sources.length > 0 ? { sources } : {}),
       }
-      // Cache successful answer for stale-while-revalidate
-      if (queryKind) setCachedAnswer(queryKind, success.answer, sources ?? [])
+      // Cache successful answer for stale-while-revalidate (keyed by kind + query)
+      if (cacheKey) setCachedAnswer(cacheKey, success.answer, sources ?? [])
       return success
     }
   }
@@ -262,6 +286,8 @@ export interface OnlineProviderHealth {
   mode: OnlineProviderMode
   /** Last failure code observed by `answerOnlineCurrentInfo`. */
   lastErrorCode: OnlineErrorCode | null
+  /** Last non-secret endpoint diagnostic (provider selected, key present, reached). */
+  lastDiag: OnlineDiag | null
 }
 
 let _lastErrorCode: OnlineErrorCode | null = null
@@ -282,6 +308,7 @@ export function checkOnlineProviderHealth(): OnlineProviderHealth {
     provider: 'openai',
     mode: 'server',
     lastErrorCode: _lastErrorCode,
+    lastDiag: _lastOnlineDiag,
   }
 }
 

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../state/store'
 import { Screen } from '../../state/types'
 import { BackButton } from '../../components/BackButton'
+import { PAGE_BG } from '../../design/theme'
+import { AbuLogo } from '../../design/logos/AbuLogo'
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import {
   fetchWeather,
@@ -431,7 +433,8 @@ export function AbuWeather() {
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     try   { setData(await fetchWeather()) }
-    catch (e: unknown) { setError(e instanceof Error ? e.message : 'שגיאה בטעינת מזג האוויר') }
+    // Never surface the raw browser/HTTP error to Martita — always plain Hebrew.
+    catch (e: unknown) { if (import.meta.env.DEV) console.warn('[AbuWeather] load failed:', e); setError('לא הצלחתי לבדוק את מזג האוויר כרגע. ננסה שוב עוד רגע.') }
     finally { setLoading(false) }
   }, [])
 
@@ -561,7 +564,9 @@ export function AbuWeather() {
       <div style={{
         display:'flex', flexDirection:'column', minHeight:'100dvh',
         overflowY:'auto', overflowX:'hidden',
-        background:'#050A18', direction:'rtl',
+        // Page root on the themeable Night-Garden PAGE_BG (one system). The sky
+        // hero keeps its own dynamic skyGrad + starfield on top — untouched.
+        background: PAGE_BG, direction:'rtl',
         fontFamily:"'Heebo',sans-serif",
       }}>
 
@@ -595,7 +600,13 @@ export function AbuWeather() {
             padding: '16px 16px 8px',
             gap:8,
           }}>
-            <BackButton />
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+              <BackButton />
+              {/* Shared Abu-family emblem (M4 logo system) so the weather screen
+                  reads as one product with the hub. Sits on the sky hero beside
+                  the back control; the sky gradient + starfield are untouched. */}
+              <AbuLogo app="weather" size={32} style={{ flexShrink:0, filter:'drop-shadow(0 2px 6px rgba(0,0,0,0.35))' }} />
+            </div>
 
             {/* Martita portrait */}
             <div style={{
@@ -733,7 +744,8 @@ export function AbuWeather() {
         </div>
 
         {/* ═══ CONTENT SECTION ════════════════════════════════════════════ */}
-        <div style={{ background:'#050A18', paddingTop:4, paddingBottom:40 }}>
+        {/* Transparent so the root PAGE_BG nebula shows through beneath the cards. */}
+        <div style={{ background:'transparent', paddingTop:4, paddingBottom:40 }}>
 
           {/* ── Personal briefing — first thing she reads ────────────── */}
           {briefing && (

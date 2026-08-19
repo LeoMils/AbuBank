@@ -6,9 +6,12 @@ interface PageShellProps {
   dir?: 'rtl' | 'ltr'
   scrollable?: boolean
   className?: string
+  /** Page background. Defaults to the legacy deep solid; pass PAGE_BG (design/theme)
+   *  to let a screen participate in the themeable Night-Garden / Bright-Day system. */
+  background?: string
 }
 
-export function PageShell({ children, dir = 'rtl', scrollable = false, className }: PageShellProps) {
+export function PageShell({ children, dir = 'rtl', scrollable = false, className, background = BG_DEEP }: PageShellProps) {
   return (
     <div
       dir={dir}
@@ -17,7 +20,7 @@ export function PageShell({ children, dir = 'rtl', scrollable = false, className
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: BG_DEEP,
+        background,
         overflow: scrollable ? undefined : 'hidden',
         overflowY: scrollable ? 'auto' : undefined,
         overflowX: scrollable ? 'hidden' : undefined,

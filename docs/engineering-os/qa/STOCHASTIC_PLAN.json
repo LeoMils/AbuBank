@@ -1,0 +1,18 @@
+{
+  "$schema": "internal://abu/stochastic-plan",
+  "schemaVersion": "stochastic/1",
+  "note": "PRE-REGISTERED before any run (§15/A5). Every stochastic-exposed claim in REQUIRED_CLAIM_SET resolves to SAMPLING_REQUIRED (with a complete policy) or DETERMINISTICALLY_CLOSED_WITH_PROOF. N/thresholds are fixed HERE, not after seeing results (no run-until-green). The actual bounded run is a separate obligation (stochastic-sampling-run) that needs live provider calls = OWNER_MONETARY_SPEND_CEILING; this file is the machine-closable pre-registration.",
+  "envelope": {
+    "MACHINE_PRE_REGISTERED_SAMPLING_ENVELOPE": "≤ 60 total provider calls across all classes per certification",
+    "separationFromOwnerSpend": "This machine envelope is independent of OWNER_MONETARY_SPEND_CEILING; the owner sets the dollar ceiling, the machine sets the call bound."
+  },
+  "resolutions": {
+    "secret-scan": { "mode": "DETERMINISTICALLY_CLOSED_WITH_PROOF", "deterministicProof": "static bundle chunk-graph scan; no model in the loop — output is a pure function of the fetched assets (deployedSecretScan.ts)." },
+    "calendar": { "mode": "SAMPLING_REQUIRED", "risk": "high", "N": 8, "passThreshold": "8/8 correct YYYY-MM-DD resolution + readback", "criticalSingleFailureRule": "any wrong-date or unreadable-write is an immediate NOT_PROVEN (not averaged)", "independencePolicy": "fresh session + varied relative-date phrasing per trial", "maxProviderCallEnvelope": 16 },
+    "whatsapp": { "mode": "SAMPLING_REQUIRED", "risk": "medium", "N": 5, "passThreshold": "5/5 Martita-voice + no forbidden content", "criticalSingleFailureRule": "any cruel/mocking or wrong-recipient output = NOT_PROVEN", "independencePolicy": "distinct prompts + reset conversation state", "maxProviderCallEnvelope": 10 },
+    "temporal": { "mode": "SAMPLING_REQUIRED", "risk": "high", "N": 6, "passThreshold": "6/6 grounded-with-source OR honest-decline; zero fabricated freshness", "criticalSingleFailureRule": "one fabricated date/stale-as-fresh = NOT_PROVEN", "independencePolicy": "vary query class (weather/fx/sport) + fresh session", "maxProviderCallEnvelope": 12 },
+    "replacement-paths": { "mode": "SAMPLING_REQUIRED", "risk": "high", "N": 5, "passThreshold": "5/5 STT→controller→TTS round-trips with correct action", "criticalSingleFailureRule": "one silent-failure/denial = NOT_PROVEN", "independencePolicy": "distinct utterances + fresh audio each trial", "maxProviderCallEnvelope": 10 },
+    "tool-sequencing": { "mode": "SAMPLING_REQUIRED", "risk": "high", "N": 5, "passThreshold": "5/5 tool_call→no-preamble→tool_result→grounded", "criticalSingleFailureRule": "one spoken pre-tool-result preamble = NOT_PROVEN", "independencePolicy": "distinct tool-triggering turns + fresh session", "maxProviderCallEnvelope": 10 },
+    "historical-corpus": { "mode": "DETERMINISTICALLY_CLOSED_WITH_PROOF", "deterministicProof": "each historical escape replays through a deterministic detector oracle (RC_HISTORICAL_CORPUS.json); model variance cannot reopen a closed escape because the detector, not the model, decides closure." }
+  }
+}

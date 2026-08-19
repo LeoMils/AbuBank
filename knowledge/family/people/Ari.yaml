@@ -1,0 +1,14 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: great_grandchildren
+canonical_name: Ari
+hebrew_name: ארי
+aliases:
+- Ariana
+- אריאנה
+relationship: great_granddaughter
+relationship_hebrew: נינה (בת של אופיר וגלעד)
+birthday: 11-26
+gender: female
+notes: ארי הוא קיצור של אריאנה. גלעד מעדיף שיקראו לה 'ארי' ולא 'אריאנה' — להשתמש בשם המועדף במשפחה.
+pronunciation:
+  es: ari

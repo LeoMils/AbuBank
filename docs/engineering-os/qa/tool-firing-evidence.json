@@ -1,0 +1,73 @@
+{
+  "$schema": "internal://abu/tool-firing-evidence",
+  "producer": "src/services/toolFiringHarness.test.ts",
+  "note": "Each of the 16 realtime tools driven through LiveTools.handleFunctionCall with mocked side-effects (§12). fired=true means the tool emitted a grounded function_call_output. Evidence class: CODE (real executor) + PREVIEW (same code present in deployed bundle). Live-model routing (does gpt-realtime EMIT the call for a given utterance) is a separate acceptance/denominator claim.",
+  "total": 16,
+  "firedCount": 16,
+  "tools": {
+    "resolve_contact": {
+      "firedExercised": true,
+      "status": "resolved"
+    },
+    "read_calendar": {
+      "firedExercised": true,
+      "status": "ok"
+    },
+    "prepare_calendar_event": {
+      "firedExercised": true,
+      "status": "ok"
+    },
+    "correct_calendar_field": {
+      "firedExercised": true,
+      "status": "ok"
+    },
+    "confirm_calendar_event": {
+      "firedExercised": true,
+      "status": "ok"
+    },
+    "cancel_calendar_event": {
+      "firedExercised": true,
+      "status": "ok"
+    },
+    "update_calendar_event": {
+      "firedExercised": true,
+      "status": "error"
+    },
+    "whatsapp_draft": {
+      "firedExercised": true,
+      "status": "READY_TO_SEND"
+    },
+    "phone_call": {
+      "firedExercised": true,
+      "status": "not_found"
+    },
+    "cancel_communication": {
+      "firedExercised": true,
+      "status": "cancelled"
+    },
+    "get_current_info": {
+      "firedExercised": true,
+      "status": "ok"
+    },
+    "people_lookup": {
+      "firedExercised": true,
+      "status": "not_found"
+    },
+    "history_lookup": {
+      "firedExercised": true,
+      "status": "ok"
+    },
+    "care_concern": {
+      "firedExercised": true,
+      "status": "not_care"
+    },
+    "remember": {
+      "firedExercised": true,
+      "status": "saved"
+    },
+    "set_reminder": {
+      "firedExercised": true,
+      "status": "reminder_set"
+    }
+  }
+}

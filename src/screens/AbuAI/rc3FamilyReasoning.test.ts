@@ -43,6 +43,26 @@ describe('RC3: Relational role queries', () => {
     expect(answer).toContain('יעל')
   })
 
+  // RC6: single-entity great-grandparent + aunt/uncle relational resolution.
+  it('"מי סבתא רבתא של אנאבל" → מרטיטה (great-grandmother, 3-hop)', () => {
+    const answer = tryGroundedAnswer('מי סבתא רבתא של אנאבל?')
+    expect(answer).not.toBeNull()
+    expect(answer).toContain('מרטיטה')
+    expect(answer).not.toContain('נינה') // must resolve the relation, not describe Anabel
+  })
+
+  it('"מי דוד של אופיר" → לאו (uncle = sibling of parent)', () => {
+    const answer = tryGroundedAnswer('מי דוד של אופיר?')
+    expect(answer).not.toBeNull()
+    expect(answer).toContain('לאו')
+  })
+
+  it('"מי דודה של עדי" → מור (aunt)', () => {
+    const answer = tryGroundedAnswer('מי דודה של עדי?')
+    expect(answer).not.toBeNull()
+    expect(answer).toContain('מור')
+  })
+
   it('"מי הילדים של מור" routes to family group', () => {
     const route = routePersonalQuery('מי הילדים של מור?')
     expect(route.type).toBe('family_lookup')

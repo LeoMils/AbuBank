@@ -234,17 +234,15 @@ export function checkCalendarStorage(): HealthCheckResult {
 export function checkVoiceCapability(): HealthCheckResult {
   const hasMediaDevices = typeof navigator !== 'undefined' && !!navigator.mediaDevices && !!navigator.mediaDevices.getUserMedia
   const hasMediaRecorder = typeof MediaRecorder !== 'undefined'
-  // Whisper transcription is client-direct Groq — feature-flagged on the
-  // build-time env var. We only check PRESENCE, never the value.
-  const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env ?? {}
-  const groqKeyPresent = typeof env['VITE_GROQ_API_KEY'] === 'string' && (env['VITE_GROQ_API_KEY'] as string).length > 0
-  const ok = hasMediaDevices && hasMediaRecorder && groqKeyPresent
+  // STT is now SERVER-SIDE (/api/abuai-stt, OPENAI_API_KEY server-only) — there is NO client
+  // provider key. Capability depends only on the browser being able to record; STT-provider
+  // availability is covered by checkApiHealth (server OPENAI_API_KEY). (P0: zero client secrets.)
+  const ok = hasMediaDevices && hasMediaRecorder
   let detail: string
   if (!hasMediaDevices) detail = 'getUserMedia_unavailable'
   else if (!hasMediaRecorder) detail = 'MediaRecorder_unavailable'
-  else if (!groqKeyPresent) detail = 'groq_transcription_key_missing_in_client_bundle'
-  else detail = 'browser_supports_recording_and_transcription_key_present'
-  return { ok, label: 'Voice Capability', detail, meta: { hasMediaDevices, hasMediaRecorder, groqKeyPresent } }
+  else detail = 'browser_supports_recording; STT via server proxy (/api/abuai-stt)'
+  return { ok, label: 'Voice Capability', detail, meta: { hasMediaDevices, hasMediaRecorder } }
 }
 
 // ─── Report builder ──────────────────────────────────────────────────────

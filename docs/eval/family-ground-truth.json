@@ -1,0 +1,530 @@
+{
+  "people": [
+    {
+      "id": "martita",
+      "name": "מרטיטה",
+      "gender": "female",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": null
+    },
+    {
+      "id": "papi",
+      "name": "פפי",
+      "gender": "male",
+      "deceased": true,
+      "role": null,
+      "relationToMartita": "בעל של מרטיטה"
+    },
+    {
+      "id": "mor",
+      "name": "מור",
+      "gender": "female",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "בת של מרטיטה"
+    },
+    {
+      "id": "leo",
+      "name": "לאו",
+      "gender": "male",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "בן של מרטיטה"
+    },
+    {
+      "id": "raphi",
+      "name": "רפי",
+      "gender": "male",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "חתן של מרטיטה"
+    },
+    {
+      "id": "yael",
+      "name": "יעל",
+      "gender": "female",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "יעל בת זוג של מור, שהיא בת של מרטיטה"
+    },
+    {
+      "id": "ofir",
+      "name": "אופיר",
+      "gender": "female",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "נכדה של מרטיטה"
+    },
+    {
+      "id": "ayalon",
+      "name": "איילון",
+      "gender": "male",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "נכד של מרטיטה"
+    },
+    {
+      "id": "eili",
+      "name": "עילי",
+      "gender": "male",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "נכד של מרטיטה"
+    },
+    {
+      "id": "adar",
+      "name": "אדר",
+      "gender": "male",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "נכד של מרטיטה"
+    },
+    {
+      "id": "adi",
+      "name": "עדי",
+      "gender": "male",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "נכד של מרטיטה"
+    },
+    {
+      "id": "noam",
+      "name": "נועם",
+      "gender": "male",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "נכד של מרטיטה"
+    },
+    {
+      "id": "yarden",
+      "name": "ירדן",
+      "gender": "female",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "אשת הנכד של מרטיטה"
+    },
+    {
+      "id": "gilad",
+      "name": "גלעד",
+      "gender": "male",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "בעל הנכדה של מרטיטה"
+    },
+    {
+      "id": "anabel",
+      "name": "אנאבל",
+      "gender": "female",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "נינה של מרטיטה"
+    },
+    {
+      "id": "ari",
+      "name": "ארי",
+      "gender": "female",
+      "deceased": false,
+      "role": null,
+      "relationToMartita": "נינה של מרטיטה"
+    },
+    {
+      "id": "mirta",
+      "name": "מירטה",
+      "gender": "female",
+      "deceased": false,
+      "role": "חברה קרובה של מרטיטה",
+      "relationToMartita": "חברה קרובה של מרטיטה"
+    },
+    {
+      "id": "shoshana",
+      "name": "שושנה",
+      "gender": "female",
+      "deceased": false,
+      "role": "חברה קרובה של מרטיטה",
+      "relationToMartita": "חברה קרובה של מרטיטה"
+    },
+    {
+      "id": "sharon",
+      "name": "שרון",
+      "gender": "female",
+      "deceased": false,
+      "role": "חברה קרובה של המשפחה",
+      "relationToMartita": "חברה קרובה של המשפחה"
+    },
+    {
+      "id": "cacho",
+      "name": "כאצ'ו",
+      "gender": "male",
+      "deceased": false,
+      "role": "בעלה של שושנה ברברס, חבר של המשפחה",
+      "relationToMartita": "בעלה של שושנה ברברס, חבר של המשפחה"
+    },
+    {
+      "id": "susi-raz",
+      "name": "סוזי רז",
+      "gender": "female",
+      "deceased": false,
+      "role": "חברה טובה של מרטיטה",
+      "relationToMartita": "חברה טובה של מרטיטה"
+    },
+    {
+      "id": "hector-raz",
+      "name": "הקטור רז",
+      "gender": "male",
+      "deceased": true,
+      "role": "בעלה של סוזי רז ז\"ל",
+      "relationToMartita": "בעלה של סוזי רז ז\"ל"
+    },
+    {
+      "id": "lydia-omansky",
+      "name": "לידיה אומנסקי",
+      "gender": "female",
+      "deceased": false,
+      "role": "חברה קרובה מאוד של מרטיטה",
+      "relationToMartita": "חברה קרובה מאוד של מרטיטה"
+    },
+    {
+      "id": "noah-omansky",
+      "name": "נוח אומנסקי",
+      "gender": "male",
+      "deceased": false,
+      "role": "חבר קרוב מאוד של מרטיטה, בעלה של לידיה",
+      "relationToMartita": "חבר קרוב מאוד של מרטיטה, בעלה של לידיה"
+    },
+    {
+      "id": "tuchi",
+      "name": "טוצ'י",
+      "gender": "female",
+      "deceased": false,
+      "role": "חברה טובה של מרטיטה ופפי",
+      "relationToMartita": "חברה טובה של מרטיטה ופפי"
+    },
+    {
+      "id": "dani",
+      "name": "דני",
+      "gender": "male",
+      "deceased": false,
+      "role": "בעלה של טוצ'י, חבר של המשפחה",
+      "relationToMartita": "בעלה של טוצ'י, חבר של המשפחה"
+    },
+    {
+      "id": "elsi",
+      "name": "אלסי",
+      "gender": "female",
+      "deceased": false,
+      "role": "חברה של מרטיטה",
+      "relationToMartita": "חברה של מרטיטה"
+    },
+    {
+      "id": "saul",
+      "name": "שאול",
+      "gender": "male",
+      "deceased": false,
+      "role": "בעלה של אלסי, חבר של המשפחה",
+      "relationToMartita": "בעלה של אלסי, חבר של המשפחה"
+    },
+    {
+      "id": "oscar-minuchin",
+      "name": "אוסקר מינושין",
+      "gender": "male",
+      "deceased": true,
+      "role": "בעלה של מירטה מינושין ז\"ל",
+      "relationToMartita": "בעלה של מירטה מינושין ז\"ל"
+    },
+    {
+      "id": "morian-minuchin",
+      "name": "מוריאן מינושין",
+      "gender": "male",
+      "deceased": false,
+      "role": "חבר של לאו; בנם של מירטה ואוסקר מינושין",
+      "relationToMartita": "חבר של לאו; בנם של מירטה ואוסקר מינושין"
+    },
+    {
+      "id": "marisa-minuchin",
+      "name": "מריסה מינושין",
+      "gender": "female",
+      "deceased": false,
+      "role": "בתם של מירטה ואוסקר מינושין",
+      "relationToMartita": "בתם של מירטה ואוסקר מינושין"
+    },
+    {
+      "id": "yaron-minuchin",
+      "name": "יארון מינושין",
+      "gender": "male",
+      "deceased": false,
+      "role": "בנם של מירטה ואוסקר מינושין",
+      "relationToMartita": "בנם של מירטה ואוסקר מינושין"
+    },
+    {
+      "id": "flori",
+      "name": "פלורי",
+      "gender": "female",
+      "deceased": false,
+      "role": "חברה של מרטיטה ממנדוסה",
+      "relationToMartita": "חברה של מרטיטה ממנדוסה"
+    },
+    {
+      "id": "dviko",
+      "name": "דביקו",
+      "gender": "male",
+      "deceased": false,
+      "role": "בעלה של פלורי; חבר ממנדוסה",
+      "relationToMartita": "בעלה של פלורי; חבר ממנדוסה"
+    },
+    {
+      "id": "pupa-yavnir",
+      "name": "פופה יווניר",
+      "gender": "female",
+      "deceased": false,
+      "role": "חברה של מרטיטה ממנדוסה",
+      "relationToMartita": "חברה של מרטיטה ממנדוסה"
+    },
+    {
+      "id": "daniel-yavnir",
+      "name": "דניאל יווניר",
+      "gender": "male",
+      "deceased": true,
+      "role": "בעלה של פופה יווניר ז\"ל; רופא",
+      "relationToMartita": "בעלה של פופה יווניר ז\"ל; רופא"
+    },
+    {
+      "id": "olga-kani",
+      "name": "אולגה קאני",
+      "gender": "female",
+      "deceased": false,
+      "role": "חברה טובה של מרטיטה, נשארה במנדוסה",
+      "relationToMartita": "חברה טובה של מרטיטה, נשארה במנדוסה"
+    },
+    {
+      "id": "isidoro-kani",
+      "name": "איסידורו קאני",
+      "gender": "male",
+      "deceased": false,
+      "role": "בעלה של אולגה קאני; חבר ממנדוסה",
+      "relationToMartita": "בעלה של אולגה קאני; חבר ממנדוסה"
+    },
+    {
+      "id": "nili",
+      "name": "נילי",
+      "gender": "female",
+      "deceased": false,
+      "role": "בת הזוג (חברתו) של רפי",
+      "relationToMartita": "נילי בת זוג של רפי, שהוא בעל לשעבר של מור, שהיא בת של מרטיטה"
+    },
+    {
+      "id": "dora",
+      "name": "דורה",
+      "gender": "female",
+      "deceased": false,
+      "role": "אמא של מרטיטה",
+      "relationToMartita": "אמא של מרטיטה"
+    },
+    {
+      "id": "jacobo",
+      "name": "יעקב",
+      "gender": "male",
+      "deceased": false,
+      "role": "אבא של מרטיטה",
+      "relationToMartita": "אבא של מרטיטה"
+    },
+    {
+      "id": "luis",
+      "name": "לואיס",
+      "gender": "male",
+      "deceased": true,
+      "role": "אח של מרטיטה ז\"ל",
+      "relationToMartita": "אח של מרטיטה"
+    },
+    {
+      "id": "sofia",
+      "name": "סופיה",
+      "gender": "female",
+      "deceased": true,
+      "role": "אשתו של לואיס ז\"ל",
+      "relationToMartita": "גיסה של מרטיטה"
+    },
+    {
+      "id": "jorge",
+      "name": "חורחה",
+      "gender": "male",
+      "deceased": false,
+      "role": "אחיינה של מרטיטה; בנם של לואיס וסופיה",
+      "relationToMartita": "אחיין של מרטיטה"
+    },
+    {
+      "id": "achi",
+      "name": "אאצ'י",
+      "gender": "female",
+      "deceased": false,
+      "role": "אשתו של חורחה",
+      "relationToMartita": "אאצ'י אישה של חורחה, שהוא בן של לואיס, שהוא אח של מרטיטה"
+    },
+    {
+      "id": "fabi",
+      "name": "פאבי",
+      "gender": "male",
+      "deceased": false,
+      "role": "נכד-אחיין של מרטיטה; בנם של חורחה ואאצ'י",
+      "relationToMartita": "פאבי בן של חורחה, שהוא בן של לואיס, שהוא אח של מרטיטה"
+    },
+    {
+      "id": "martin",
+      "name": "מרטין",
+      "gender": "male",
+      "deceased": false,
+      "role": "נכד-אחיין של מרטיטה; בנם של חורחה ואאצ'י",
+      "relationToMartita": "מרטין בן של חורחה, שהוא בן של לואיס, שהוא אח של מרטיטה"
+    },
+    {
+      "id": "bobby",
+      "name": "בובי",
+      "gender": "male",
+      "deceased": false,
+      "role": "אח של מרטיטה",
+      "relationToMartita": "אח של מרטיטה"
+    },
+    {
+      "id": "susana",
+      "name": "סוזנה",
+      "gender": "female",
+      "deceased": false,
+      "role": "גרושתו של בובי",
+      "relationToMartita": "גיסה של מרטיטה"
+    },
+    {
+      "id": "ariel-bobby",
+      "name": "אריאל (בן בובי)",
+      "gender": "male",
+      "deceased": true,
+      "role": "אחיינה של מרטיטה; בנם של בובי וסוזנה ז\"ל",
+      "relationToMartita": "אחיין של מרטיטה"
+    },
+    {
+      "id": "marcos-greenberg",
+      "name": "מרקוס גרינברג",
+      "gender": "male",
+      "deceased": false,
+      "role": "חבר מהנעורים של מרטיטה בבואנוס איירס (היסטורי)",
+      "relationToMartita": "חבר מהנעורים של מרטיטה בבואנוס איירס (היסטורי)"
+    },
+    {
+      "id": "ruti",
+      "name": "רותי",
+      "gender": "female",
+      "deceased": false,
+      "role": "גרושתו של לאו; אמם של עדי ונועם",
+      "relationToMartita": "כלה של מרטיטה"
+    },
+    {
+      "id": "jose-milstein",
+      "name": "חוסה מילשטיין",
+      "gender": "male",
+      "deceased": true,
+      "role": "אביו של פפי (חמהּ של מרטיטה) ז\"ל",
+      "relationToMartita": "חם של מרטיטה"
+    },
+    {
+      "id": "tavela",
+      "name": "טאבלה",
+      "gender": "female",
+      "deceased": false,
+      "role": "אחותו הגדולה של פפי (גיסתה של מרטיטה)",
+      "relationToMartita": "גיסה של מרטיטה"
+    },
+    {
+      "id": "papiolderbrother",
+      "name": "אחיו הגדול",
+      "gender": "male",
+      "deceased": false,
+      "role": "אחיו הגדול של פפי",
+      "relationToMartita": "גיס של מרטיטה"
+    },
+    {
+      "id": "papichildbrother",
+      "name": "אחיו שנפטר בילדות",
+      "gender": "male",
+      "deceased": true,
+      "role": "אחיו של פפי שנפטר כילד קטן",
+      "relationToMartita": "גיס של מרטיטה"
+    },
+    {
+      "id": "rosita",
+      "name": "רוסיטה",
+      "gender": "female",
+      "deceased": false,
+      "role": "אחייניתו של פפי; יש לה יחסים טובים עם מרטיטה",
+      "relationToMartita": "רוסיטה בת של אחיו הגדול, שהוא אח של פפי, שהוא בעל של מרטיטה"
+    },
+    {
+      "id": "oscar",
+      "name": "אוסקר",
+      "gender": "male",
+      "deceased": false,
+      "role": "בעלה של רוסיטה",
+      "relationToMartita": "אוסקר בעל של רוסיטה, שהיא בת של אחיו הגדול, שהוא אח של פפי, שהוא בעל של מרטיטה"
+    },
+    {
+      "id": "lior",
+      "name": "ליאור",
+      "gender": "male",
+      "deceased": false,
+      "role": "בנם של רוסיטה ואוסקר",
+      "relationToMartita": "ליאור בן של רוסיטה, שהיא בת של אחיו הגדול, שהוא אח של פפי, שהוא בעל של מרטיטה"
+    },
+    {
+      "id": "yoav",
+      "name": "יואב",
+      "gender": "male",
+      "deceased": false,
+      "role": "בנם של רוסיטה ואוסקר",
+      "relationToMartita": "יואב בן של רוסיטה, שהיא בת של אחיו הגדול, שהוא אח של פפי, שהוא בעל של מרטיטה"
+    },
+    {
+      "id": "ron",
+      "name": "רון",
+      "gender": "male",
+      "deceased": false,
+      "role": "בנם של רוסיטה ואוסקר",
+      "relationToMartita": "רון בן של רוסיטה, שהיא בת של אחיו הגדול, שהוא אח של פפי, שהוא בעל של מרטיטה"
+    },
+    {
+      "id": "ariel-tavela",
+      "name": "אריאל (בן טאבלה)",
+      "gender": "male",
+      "deceased": false,
+      "role": "אחיינו של פפי; בנה של טאבלה, גר בוונקובר",
+      "relationToMartita": "אריאל (בן טאבלה) בן של טאבלה, שהיא אחות של פפי, שהוא בעל של מרטיטה"
+    },
+    {
+      "id": "gabi",
+      "name": "גבי",
+      "gender": "female",
+      "deceased": false,
+      "role": "אשתו של אריאל בן טאבלה (וונקובר)",
+      "relationToMartita": "גבי אישה של אריאל (בן טאבלה), שהוא בן של טאבלה, שהיא אחות של פפי, שהוא בעל של מרטיטה"
+    },
+    {
+      "id": "mario",
+      "name": "מריו",
+      "gender": "male",
+      "deceased": false,
+      "role": "אחיינו של פפי; בנה של טאבלה, גר בוונקובר",
+      "relationToMartita": "מריו בן של טאבלה, שהיא אחות של פפי, שהוא בעל של מרטיטה"
+    },
+    {
+      "id": "ceci",
+      "name": "ססי",
+      "gender": "female",
+      "deceased": false,
+      "role": "אשתו של מריו בן טאבלה (וונקובר)",
+      "relationToMartita": "ססי אישה של מריו, שהוא בן של טאבלה, שהיא אחות של פפי, שהוא בעל של מרטיטה"
+    }
+  ],
+  "gaps": [],
+  "pairs": {
+    "ok": 1186,
+    "unrelated": 2974,
+    "notFound": 0
+  }
+}

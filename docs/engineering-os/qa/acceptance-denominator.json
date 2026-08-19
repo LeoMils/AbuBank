@@ -1,0 +1,967 @@
+{
+  "$schema": "internal://abu/acceptance-denominator",
+  "producer": "scripts/build-denominator.ts",
+  "derivedFrom": "docs/engineering-os/qa/capability-manifest.json (canonical, o-capability PROVEN)",
+  "note": "Applicability derived, not Cartesian. Risk assigned by the certified model in denominator.ts. minEvidenceClass is the floor a cell must reach to count PROVEN.",
+  "capabilityCount": 41,
+  "cellCount": 118,
+  "byRisk": {
+    "P0": 64,
+    "P1": 44,
+    "P2": 10
+  },
+  "byFamily": {
+    "REACHABILITY": 59,
+    "PLAYBACK": 6,
+    "CORRECTNESS": 33,
+    "SIDE_EFFECT_SAFETY": 10,
+    "GROUNDING": 5,
+    "CROSS_SURFACE": 5
+  },
+  "cells": [
+    {
+      "capability": "AbuAI",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE AbuAI · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "AbuAI",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE AbuAI · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "AbuAI",
+      "claimFamily": "PLAYBACK",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PHYSICAL_DEVICE",
+      "rationale": "UI_SURFACE AbuAI · PLAYBACK · TYPED"
+    },
+    {
+      "capability": "AbuAI",
+      "claimFamily": "PLAYBACK",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "PHYSICAL_DEVICE",
+      "rationale": "UI_SURFACE AbuAI · PLAYBACK · VOICE"
+    },
+    {
+      "capability": "AbuBank",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P2",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE AbuBank · REACHABILITY · UI"
+    },
+    {
+      "capability": "AbuCalendar",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P1",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE AbuCalendar · REACHABILITY · UI"
+    },
+    {
+      "capability": "AbuGames",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P2",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE AbuGames · REACHABILITY · UI"
+    },
+    {
+      "capability": "AbuNews",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P1",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE AbuNews · REACHABILITY · UI"
+    },
+    {
+      "capability": "AbuWeather",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P2",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE AbuWeather · REACHABILITY · UI"
+    },
+    {
+      "capability": "AbuWhatsApp",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P1",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE AbuWhatsApp · REACHABILITY · UI"
+    },
+    {
+      "capability": "Admin",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P2",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE Admin · REACHABILITY · UI"
+    },
+    {
+      "capability": "DiagnosticOverlay",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P2",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE DiagnosticOverlay · REACHABILITY · UI"
+    },
+    {
+      "capability": "Error",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P2",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE Error · REACHABILITY · UI"
+    },
+    {
+      "capability": "FamilyGallery",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE FamilyGallery · REACHABILITY · UI"
+    },
+    {
+      "capability": "FamilyGallery",
+      "claimFamily": "CORRECTNESS",
+      "channel": "UI",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "UI_SURFACE FamilyGallery · CORRECTNESS · UI"
+    },
+    {
+      "capability": "FamilyPhones",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE FamilyPhones · REACHABILITY · UI"
+    },
+    {
+      "capability": "FamilyPhones",
+      "claimFamily": "CORRECTNESS",
+      "channel": "UI",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "UI_SURFACE FamilyPhones · CORRECTNESS · UI"
+    },
+    {
+      "capability": "FamilyRecord",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE FamilyRecord · REACHABILITY · UI"
+    },
+    {
+      "capability": "FamilyRecord",
+      "claimFamily": "CORRECTNESS",
+      "channel": "UI",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "UI_SURFACE FamilyRecord · CORRECTNESS · UI"
+    },
+    {
+      "capability": "Home",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P2",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE Home · REACHABILITY · UI"
+    },
+    {
+      "capability": "LIVE_AUDIO_TUNE_V2",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "FEATURE_CAPABILITY LIVE_AUDIO_TUNE_V2 · REACHABILITY · UI"
+    },
+    {
+      "capability": "LIVE_BARGE_IN_TRUNCATE",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "FEATURE_CAPABILITY LIVE_BARGE_IN_TRUNCATE · REACHABILITY · UI"
+    },
+    {
+      "capability": "LIVE_CLASSIFIED_MONITOR",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "FEATURE_CAPABILITY LIVE_CLASSIFIED_MONITOR · REACHABILITY · UI"
+    },
+    {
+      "capability": "LIVE_PREAMBLE_TWO_RESPONSE",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "FEATURE_CAPABILITY LIVE_PREAMBLE_TWO_RESPONSE · REACHABILITY · UI"
+    },
+    {
+      "capability": "LIVE_PREFETCH_WARM",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "FEATURE_CAPABILITY LIVE_PREFETCH_WARM · REACHABILITY · UI"
+    },
+    {
+      "capability": "Live",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE Live · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "Live",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE Live · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "Live",
+      "claimFamily": "PLAYBACK",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PHYSICAL_DEVICE",
+      "rationale": "UI_SURFACE Live · PLAYBACK · TYPED"
+    },
+    {
+      "capability": "Live",
+      "claimFamily": "PLAYBACK",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "PHYSICAL_DEVICE",
+      "rationale": "UI_SURFACE Live · PLAYBACK · VOICE"
+    },
+    {
+      "capability": "ONLINE_GENERAL_SEARCH",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "FEATURE_CAPABILITY ONLINE_GENERAL_SEARCH · REACHABILITY · UI"
+    },
+    {
+      "capability": "ONLINE_PREFETCH_WARM",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "FEATURE_CAPABILITY ONLINE_PREFETCH_WARM · REACHABILITY · UI"
+    },
+    {
+      "capability": "Offline",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P2",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE Offline · REACHABILITY · UI"
+    },
+    {
+      "capability": "Opening",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P2",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE Opening · REACHABILITY · UI"
+    },
+    {
+      "capability": "Settings",
+      "claimFamily": "REACHABILITY",
+      "channel": "UI",
+      "riskTier": "P2",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "UI_SURFACE Settings · REACHABILITY · UI"
+    },
+    {
+      "capability": "cancel_calendar_event",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY cancel_calendar_event · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "cancel_calendar_event",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY cancel_calendar_event · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "cancel_calendar_event",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY cancel_calendar_event · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "cancel_calendar_event",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY cancel_calendar_event · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "cancel_calendar_event",
+      "claimFamily": "SIDE_EFFECT_SAFETY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY cancel_calendar_event · SIDE_EFFECT_SAFETY · TYPED"
+    },
+    {
+      "capability": "cancel_communication",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY cancel_communication · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "cancel_communication",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY cancel_communication · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "cancel_communication",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY cancel_communication · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "cancel_communication",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY cancel_communication · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "cancel_communication",
+      "claimFamily": "SIDE_EFFECT_SAFETY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY cancel_communication · SIDE_EFFECT_SAFETY · TYPED"
+    },
+    {
+      "capability": "care_concern",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "VOICE_CHANNEL care_concern · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "care_concern",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "VOICE_CHANNEL care_concern · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "care_concern",
+      "claimFamily": "PLAYBACK",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PHYSICAL_DEVICE",
+      "rationale": "VOICE_CHANNEL care_concern · PLAYBACK · TYPED"
+    },
+    {
+      "capability": "care_concern",
+      "claimFamily": "PLAYBACK",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "PHYSICAL_DEVICE",
+      "rationale": "VOICE_CHANNEL care_concern · PLAYBACK · VOICE"
+    },
+    {
+      "capability": "confirm_calendar_event",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY confirm_calendar_event · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "confirm_calendar_event",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY confirm_calendar_event · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "confirm_calendar_event",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY confirm_calendar_event · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "confirm_calendar_event",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY confirm_calendar_event · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "confirm_calendar_event",
+      "claimFamily": "SIDE_EFFECT_SAFETY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY confirm_calendar_event · SIDE_EFFECT_SAFETY · TYPED"
+    },
+    {
+      "capability": "correct_calendar_field",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY correct_calendar_field · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "correct_calendar_field",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY correct_calendar_field · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "correct_calendar_field",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY correct_calendar_field · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "correct_calendar_field",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY correct_calendar_field · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "correct_calendar_field",
+      "claimFamily": "SIDE_EFFECT_SAFETY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY correct_calendar_field · SIDE_EFFECT_SAFETY · TYPED"
+    },
+    {
+      "capability": "get_current_info",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY get_current_info · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "get_current_info",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY get_current_info · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "get_current_info",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY get_current_info · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "get_current_info",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY get_current_info · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "get_current_info",
+      "claimFamily": "GROUNDING",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "INTEGRATION_CAPABILITY get_current_info · GROUNDING · TYPED"
+    },
+    {
+      "capability": "history_lookup",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY history_lookup · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "history_lookup",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY history_lookup · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "history_lookup",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY history_lookup · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "history_lookup",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY history_lookup · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "history_lookup",
+      "claimFamily": "GROUNDING",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY history_lookup · GROUNDING · TYPED"
+    },
+    {
+      "capability": "people_lookup",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY people_lookup · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "people_lookup",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY people_lookup · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "people_lookup",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY people_lookup · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "people_lookup",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY people_lookup · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "people_lookup",
+      "claimFamily": "GROUNDING",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY people_lookup · GROUNDING · TYPED"
+    },
+    {
+      "capability": "phone_call",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY phone_call · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "phone_call",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY phone_call · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "phone_call",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY phone_call · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "phone_call",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY phone_call · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "phone_call",
+      "claimFamily": "SIDE_EFFECT_SAFETY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PHYSICAL_DEVICE",
+      "rationale": "INTEGRATION_CAPABILITY phone_call · SIDE_EFFECT_SAFETY · TYPED"
+    },
+    {
+      "capability": "prepare_calendar_event",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY prepare_calendar_event · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "prepare_calendar_event",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY prepare_calendar_event · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "prepare_calendar_event",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY prepare_calendar_event · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "prepare_calendar_event",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY prepare_calendar_event · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "prepare_calendar_event",
+      "claimFamily": "SIDE_EFFECT_SAFETY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY prepare_calendar_event · SIDE_EFFECT_SAFETY · TYPED"
+    },
+    {
+      "capability": "read_calendar",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY read_calendar · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "read_calendar",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY read_calendar · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "read_calendar",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY read_calendar · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "read_calendar",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY read_calendar · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "read_calendar",
+      "claimFamily": "GROUNDING",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY read_calendar · GROUNDING · TYPED"
+    },
+    {
+      "capability": "remember",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY remember · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "remember",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY remember · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "remember",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY remember · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "remember",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY remember · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "remember",
+      "claimFamily": "SIDE_EFFECT_SAFETY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY remember · SIDE_EFFECT_SAFETY · TYPED"
+    },
+    {
+      "capability": "resolve_contact",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY resolve_contact · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "resolve_contact",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY resolve_contact · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "resolve_contact",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY resolve_contact · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "resolve_contact",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY resolve_contact · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "resolve_contact",
+      "claimFamily": "GROUNDING",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY resolve_contact · GROUNDING · TYPED"
+    },
+    {
+      "capability": "set_reminder",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY set_reminder · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "set_reminder",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY set_reminder · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "set_reminder",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY set_reminder · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "set_reminder",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY set_reminder · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "set_reminder",
+      "claimFamily": "SIDE_EFFECT_SAFETY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY set_reminder · SIDE_EFFECT_SAFETY · TYPED"
+    },
+    {
+      "capability": "update_calendar_event",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY update_calendar_event · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "update_calendar_event",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY update_calendar_event · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "update_calendar_event",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY update_calendar_event · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "update_calendar_event",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "ACTION_CAPABILITY update_calendar_event · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "update_calendar_event",
+      "claimFamily": "SIDE_EFFECT_SAFETY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "ACTION_CAPABILITY update_calendar_event · SIDE_EFFECT_SAFETY · TYPED"
+    },
+    {
+      "capability": "whatsapp_draft",
+      "claimFamily": "REACHABILITY",
+      "channel": "TYPED",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY whatsapp_draft · REACHABILITY · TYPED"
+    },
+    {
+      "capability": "whatsapp_draft",
+      "claimFamily": "REACHABILITY",
+      "channel": "VOICE",
+      "riskTier": "P1",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY whatsapp_draft · REACHABILITY · VOICE"
+    },
+    {
+      "capability": "whatsapp_draft",
+      "claimFamily": "CORRECTNESS",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY whatsapp_draft · CORRECTNESS · TYPED"
+    },
+    {
+      "capability": "whatsapp_draft",
+      "claimFamily": "CORRECTNESS",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "CODE",
+      "rationale": "INTEGRATION_CAPABILITY whatsapp_draft · CORRECTNESS · VOICE"
+    },
+    {
+      "capability": "whatsapp_draft",
+      "claimFamily": "SIDE_EFFECT_SAFETY",
+      "channel": "TYPED",
+      "riskTier": "P0",
+      "minEvidenceClass": "PHYSICAL_DEVICE",
+      "rationale": "INTEGRATION_CAPABILITY whatsapp_draft · SIDE_EFFECT_SAFETY · TYPED"
+    },
+    {
+      "capability": "family↔Live/TTS",
+      "claimFamily": "CROSS_SURFACE",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "a family/kinship fact stated in text must hold when spoken via Live/TTS"
+    },
+    {
+      "capability": "calendar-action↔persisted↔spoken",
+      "claimFamily": "CROSS_SURFACE",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "a calendar write must be persisted AND read back AND spoken consistently in one session"
+    },
+    {
+      "capability": "current-info↔cache↔follow-up",
+      "claimFamily": "CROSS_SURFACE",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "a grounded current-info answer must survive a follow-up without cache contamination"
+    },
+    {
+      "capability": "voice-cancel↔queue↔audible",
+      "claimFamily": "CROSS_SURFACE",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "a cancelled/superseded turn must not still be audible (playback truth)"
+    },
+    {
+      "capability": "deployment↔SW↔runtime",
+      "claimFamily": "CROSS_SURFACE",
+      "channel": "VOICE",
+      "riskTier": "P0",
+      "minEvidenceClass": "PREVIEW",
+      "rationale": "the warm PWA client must serve the certified deployed bundle"
+    }
+  ]
+}

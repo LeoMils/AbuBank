@@ -1,0 +1,52 @@
+# RELEASE CERTIFICATION (o-ci) — remote enforcement of the SAME canonical evaluator. (Stage 3C §10)
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# A local GO means nothing if CI does not enforce it. This job runs the SAME canonical control-plane
+# evaluator the local flow uses (scripts/control-plane-live.ts) and refuses a BLOCKED/NO_GO release —
+# the CLI exits non-zero on any verdict != GO, so a BLOCKED candidate fails the check. It also asserts
+# the control-plane identity has not drifted (evidence produced under a different id cannot certify).
+#
+# This does NOT deploy and never merges to main; it is a gate, not a release action.
+name: release-certification
+
+on:
+  pull_request:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  canonical-control-plane:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      # 1. The engineering-os control suite must be green (the labs that feed the verdict).
+      - name: engineering-os control suite
+        run: npx vitest run src/engineering-os/
+
+      # 2. Control-plane identity must not have drifted from the frozen id.
+      - name: control-plane identity (no drift)
+        run: npx tsx scripts/control-plane-identity.ts
+
+      # 3. The canonical evaluator refuses a non-GO release (exit != 0 on BLOCKED/NO_GO).
+      #    This is the fail-closed release gate: a BLOCKED candidate cannot pass CI.
+      - name: canonical release verdict (refuse BLOCKED)
+        run: npx tsx scripts/control-plane-live.ts
+
+      # 4. Monster QA proof-carrying gates — the SAME canonical evaluators the local flow uses (no
+      #    release logic reimplemented in YAML). Each exits non-zero (fail-closed) on its defect:
+      #      qa:machine-work  → OMITTED obligation / invalid state / pass-without-evidence
+      #      qa:authority     → FALSE_OWNER_BOUNDARY / FALSE_HUMAN_RESIDUAL / mis-classified P2
+      #      qa:verify-capsule→ capsule tamper / evidence drift / incompleteness / NOT_PROVEN provenance
+      #      qa:current       → CURRENT_CANDIDATE_NOT_FOUND / _AMBIGUOUS
+      - name: Monster QA oracles (work-graph · authority · capsule · candidate)
+        run: |
+          npm run qa:machine-work
+          npm run qa:authority
+          npm run qa:verify-capsule
+          npm run qa:current

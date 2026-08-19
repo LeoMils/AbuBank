@@ -1,0 +1,55 @@
+# AbuBank — Product definition (AUTHORITY: product). Do not duplicate elsewhere.
+knowledge_domain: product
+authority: true
+
+product:
+  abubank: "Hebrew/RTL PWA portal home for Martita — calm premium grid of services, family, daily help."
+  abuai: "The companion inside AbuBank: voice + text, Hebrew + Rioplatense Spanish; listens, remembers, schedules, checks online, explains honestly."
+  brand_family: [AbuBank (Home), AbuAI, AbuWhatsApp]
+
+user:
+  name_latin: Martita        # always Latin script, never Hebrew
+  age: "80+"
+  technical: false
+  city: Kfar Saba
+  origin: "Buenos Aires, Argentina"
+  languages: [Hebrew, Rioplatense Spanish]
+
+principles:
+  - Readability beats aesthetics.
+  - Premium but calm. Never flashy, never cold, never sci-fi/neon.
+  - No scroll on primary screens (Home, Calendar main, Settings collapsed, Voice).
+  - Same-tab navigation for service destinations (window.location.href).
+  - Hebrew UI throughout. "Martita" always Latin.
+  - Every change increments and displays the version number.
+
+senior_ux:
+  touch_target_min_px: 48
+  touch_target_recommended_px: 56
+  text_min_px: 16
+  interactive_text_px: "18-20"
+  contrast_min: "4.5:1"
+  rules:
+    - One-tap for all critical actions; no complex gestures.
+    - Always show app state (listening/thinking/speaking/error).
+    - Error messages in plain Hebrew, never technical.
+    - No color-only indicators — pair with shape/text.
+    - Vibration feedback (15ms) on key actions where supported.
+
+design:
+  background: "#050A18"
+  canonical_colors: { teal: "#14b8a6", gold: "#C9A84C", wa_green: "#25D366" }
+  target_device: "Galaxy S25 Edge (412 × 870 CSS px)"
+  dev_port: 5175
+
+architecture:
+  stack: [React 18, TypeScript, Vite 5, vite-plugin-pwa, Zustand]
+  backend: "Vercel serverless /api/*"
+  ai_providers: "Groq (llama-3.3-70b) + OpenAI via server; STT WebSpeech/Groq; TTS OpenAI→Azure→Gemini→WebSpeech"
+  screens_enum: [Home, Opening, Offline, Error, Admin, AbuAI, AbuWhatsApp, Settings]
+
+points_to:
+  family: knowledge/family_data.json
+  behavior: knowledge/behavior.yaml
+  identity: knowledge/abuai_identity.yaml
+  production: knowledge/production_rules.yaml

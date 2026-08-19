@@ -1,0 +1,297 @@
+{
+  "$schema": "internal://abu/constitutional-obligations",
+  "schemaVersion": "constitution/1",
+  "note": "INDEPENDENT constitutional view; cross-checked against REQUIRED_OBLIGATION_IDS by obligation-universe-lib.mjs; mismatch blocks. releaseRelevant:false items prove specificity.",
+  "obligations": [
+    {
+      "obligationId": "split-identities",
+      "section": "§6",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "runtime-provenance",
+      "section": "§7",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "worktree-runtime-clean",
+      "section": "§5",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "worktree-harness-clean",
+      "section": "§5",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "exit-contract",
+      "section": "§8",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "canonical-report-schema",
+      "section": "§10/B13",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "capsule-integrity",
+      "section": "§11",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "capsule-completeness",
+      "section": "§11",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "final-release-capsule",
+      "section": "§11/§53",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "candidate-discovery",
+      "section": "§49/C7",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "fresh-session-clean-room",
+      "section": "§50/I7",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "proof-provenance-key",
+      "section": "§12/B4",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "evidence-budget",
+      "section": "§13",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "qa-economy-slo",
+      "section": "§16/C8/B2",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "stochastic-completeness-oracle",
+      "section": "§14/C6",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "stochastic-sampling-run",
+      "section": "§15/A5",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "capability-admission",
+      "section": "§17/B3",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "capability-retirement",
+      "section": "§18",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "change-impact-proof-cache",
+      "section": "§19/B4",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "test-oracle-integrity",
+      "section": "§20/B5",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "escape-to-detector",
+      "section": "§21/B6",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "qa-control-escape-corpus",
+      "section": "§22/C12",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "historical-product-escapes",
+      "section": "§23",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "human-device-residual-expiry",
+      "section": "§24/B7",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "negative-proof-protocol",
+      "section": "§25",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "realtime-idempotency",
+      "section": "§26/§36",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "voice-objective-contract",
+      "section": "§27",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "long-session-soak",
+      "section": "§28",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "external-drift-ttl",
+      "section": "§29/B8",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "current-info-freshness",
+      "section": "§30",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "retrieval-injection-boundary",
+      "section": "§31",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "secret-detector-contract",
+      "section": "§32",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "credential-state-distinctness",
+      "section": "§33",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "privacy-session-isolation",
+      "section": "§34",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "billing-abuse-boundary",
+      "section": "§35",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "side-effect-idempotency",
+      "section": "§36",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "persisted-state-migration",
+      "section": "§37",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "pwa-sw-warm-client",
+      "section": "§38",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "environment-parity",
+      "section": "§39",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "exact-artifact-lock-rollback",
+      "section": "§40",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "emergency-path",
+      "section": "§41/B9",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "critical-user-journeys",
+      "section": "§42/B10",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "machine-work-completeness-oracle",
+      "section": "§43/C10",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "owner-human-authority-oracle",
+      "section": "§44/C11",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "p2-enumeration",
+      "section": "§45",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "full-mutation-matrix",
+      "section": "§46/B11",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "ci-sentinel-real-chain",
+      "section": "§47/I5",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "continuous-monster-ci",
+      "section": "§48/B12",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "yield-discipline",
+      "section": "§9/C9",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "promotion-rehearsal",
+      "section": "§51",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "final-feature-run",
+      "section": "§52",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "final-rc-run",
+      "section": "§52",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "obligation-universe-completeness",
+      "section": "§3",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "release-eligibility-state-machine",
+      "section": "§2",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "qa-control-escape-sensitivity",
+      "section": "§4",
+      "releaseRelevant": true
+    },
+    {
+      "obligationId": "workbench-authoring-tool",
+      "section": "n/a (dev tooling)",
+      "releaseRelevant": false
+    },
+    {
+      "obligationId": "android-debug-apk-build",
+      "section": "n/a (dev build)",
+      "releaseRelevant": false
+    },
+    {
+      "obligationId": "readme-copyedit",
+      "section": "n/a (docs)",
+      "releaseRelevant": false
+    }
+  ]
+}

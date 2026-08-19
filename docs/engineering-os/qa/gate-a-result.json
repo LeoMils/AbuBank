@@ -1,0 +1,65 @@
+{
+  "ok": true,
+  "steps": [
+    {
+      "step": "A-import",
+      "callReady": 3
+    },
+    {
+      "step": "A-reopen",
+      "actionable": true,
+      "cr": 3
+    },
+    {
+      "step": "B-reopen",
+      "actionable": true,
+      "cr": 3
+    },
+    {
+      "step": "B-edit",
+      "callReady": 4
+    },
+    {
+      "step": "C-reopen-1",
+      "actionable": true,
+      "cr": 4
+    },
+    {
+      "step": "C-reopen-2",
+      "actionable": true,
+      "cr": 4
+    },
+    {
+      "step": "C-reopen-3",
+      "actionable": true,
+      "cr": 4
+    },
+    {
+      "step": "C-reopen-4",
+      "actionable": true,
+      "cr": 4
+    },
+    {
+      "step": "C-reopen-5",
+      "actionable": true,
+      "cr": 4
+    }
+  ],
+  "deployments": {
+    "A": {
+      "dep": "https://abu-bank-1r4klv5x7-leos-projects-d3c04c09.vercel.app",
+      "ver": "0.168.0-storage-taxonomy-clone-migrate-genome-rc"
+    },
+    "B": {
+      "dep": "https://abu-bank-9y3ahu6h3-leos-projects-d3c04c09.vercel.app",
+      "ver": "0.168.0-storage-taxonomy-clone-migrate-genome-rc"
+    },
+    "C": {
+      "dep": "https://abu-bank-6mkc5o0lf-leos-projects-d3c04c09.vercel.app",
+      "ver": "0.168.0-storage-taxonomy-clone-migrate-genome-rc"
+    }
+  },
+  "distinctDeployments": true,
+  "allReopensActionable": true,
+  "callReadyNeverRegressed": true
+}

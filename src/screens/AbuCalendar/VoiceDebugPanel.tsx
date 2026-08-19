@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { MIC_GETUSERMEDIA } from '../../services/audioConstraints'
 import type { VoiceTrace } from './voiceTrace'
 import type { ReminderDraft } from './reminders/types'
 import type { QaRun } from './diagnostics/qaRunTypes'
@@ -245,9 +246,7 @@ export function MicSelfTest() {
     // 5. getUserMedia with constraints
     let stream: MediaStream | null = null
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      })
+      stream = await navigator.mediaDevices.getUserMedia(MIC_GETUSERMEDIA)
       log('getUserMedia(constraints): OK')
     } catch (e) {
       const name = e instanceof Error ? e.name : 'unknown'

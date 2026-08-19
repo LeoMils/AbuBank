@@ -21,9 +21,9 @@
  *     • fallback: whisper-large-v3-turbo if v3 fails (rate-limit /
  *       model-down) — the fallback flag is captured in the trace.
  *
- * No secrets read or logged. The Groq key is read from
- * import.meta.env.VITE_GROQ_API_KEY (same as the existing shared
- * service) so the deploy story doesn't change.
+ * No secrets read or logged. NO client-side provider key: the key resolver defaults to
+ * undefined (this Groq client-STT path is not user-wired). Tests inject a key/fetch. A real
+ * calendar-voice wiring must route through the server STT proxy (/api/abuai-stt).
  */
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
@@ -194,9 +194,11 @@ export async function transcribeCalendarAudio(
   audioBlob: Blob,
   options: CalendarTranscribeOptions = {},
 ): Promise<CalendarTranscribeResult> {
-  const resolveKey = options.resolveKey ?? (() =>
-    (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.['VITE_GROQ_API_KEY']
-  )
+  // NO client-side provider secret. The default resolver returns undefined — the Groq
+  // client-STT path here is NOT user-wired (only tests inject a key). Any production wiring
+  // of calendar voice STT must route through the server proxy (/api/abuai-stt, OPENAI_API_KEY
+  // server-only), never a client-exposed VITE_ key. (P0 remediation: zero client secrets.)
+  const resolveKey = options.resolveKey ?? (() => undefined)
   const apiKey = resolveKey()
   if (!apiKey) throw new Error('מפתח API לתמלול לא הוגדר.')
 

@@ -91,10 +91,10 @@ describe('compareQaRunToExpectation', () => {
   })
 
   it('checks ambiguous status', () => {
-    const exp8 = RELEASE_CANDIDATE_EXPECTATIONS[7]! // rc-08: אבא של אנאבל → ambiguous
+    const exp8 = RELEASE_CANDIDATE_EXPECTATIONS[7]! // rc-08: הבן של מור → ambiguous
     const run = makeRun({
       semanticRoute: 'appointment_create', time: '08:00',
-      relationPhrase: 'אבא של אנאבל', resolvedPersonStatus: 'ambiguous',
+      relationPhrase: 'הבן של מור', resolvedPersonStatus: 'ambiguous',
       saveAllowed: false,
     })
     const result = compareQaRunToExpectation(run, exp8)

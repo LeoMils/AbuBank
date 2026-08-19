@@ -76,8 +76,8 @@ describe('RC2-5: Calendar time filter', () => {
   })
 
   it('time query filters to exact time', () => {
-    addAppointment({ title: 'רופא', date: new Date().toISOString().split('T')[0]!, time: '10:00', emoji: '🏥' })
-    addAppointment({ title: 'מוטי', date: new Date().toISOString().split('T')[0]!, time: '16:00', emoji: '📌' })
+    addAppointment({ title: 'רופא', date: new Date().toLocaleDateString('sv-SE'), time: '10:00', emoji: '🏥' })
+    addAppointment({ title: 'מוטי', date: new Date().toLocaleDateString('sv-SE'), time: '16:00', emoji: '📌' })
 
     // "מה יש לי ב-4" should route to calendar_today
     const answer = tryGroundedAnswer('מה יש לי היום בארבע')

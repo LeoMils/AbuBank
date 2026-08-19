@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Olga Kani
+hebrew_name: אולגה קאני
+aliases:
+- Olga
+- אולגה
+relationship: close_friend
+relationship_hebrew: חברה טובה ממנדוסה
+role: חברה טובה של מרטיטה, נשארה במנדוסה
+location: מנדוסה, ארגנטינה
+gender: female
+notes: חברה טובה שנשארה במנדוסה. מרטיטה בקשר איתה בעיקר דרך וואטסאפ — חברות פעילה למרחקים. בעלה איסידורו קאני. איות 'Kani/קאני' לאימות.
+pronunciation:
+  es: olga

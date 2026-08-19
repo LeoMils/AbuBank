@@ -1,0 +1,831 @@
+/*
+ * liveSession.test.ts — Milestone 1 live-path evidence (CODE/MOCK class).
+ *
+ * These prove the module's construction, teardown, single-owner epoch guard,
+ * greeting-keyed-to-conversation-id, silent reconnect, single-instance resources,
+ * and correct handling of BOTH response phases — with every browser seam faked.
+ * They are CODE evidence: they prove wiring/logic, NOT that Martita heard warm
+ * Hebrew audio on the iPhone (PHYSICAL_DEVICE — reported separately, not claimed).
+ */
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import {
+  LiveSession,
+  buildSessionUpdate,
+  buildGreetingResponse,
+  parseResponsePhase,
+  isEndOfTurn,
+  shouldGreet,
+  markGreeted,
+  startConversation,
+  currentConversationId,
+  __getLiveEpoch,
+  LIVE_VOICE,
+  LIVE_VAD_SILENCE_MS,
+  LIVE_VAD_THRESHOLD,
+  LIVE_VAD_PREFIX_PADDING_MS,
+  LIVE_INTERRUPT_RESPONSE,
+  LIVE_TOOL_RESULT_AUDIO_TIMEOUT_MS,
+  LIVE_TRANSCRIBE_MODEL,
+  LIVE_REASONING_EFFORT,
+  connectionReasonHe,
+  WAIT_FOR_USER_TOOL,
+  type LiveDeps,
+  type LiveState,
+} from './liveSession'
+
+// ─── Fakes ──────────────────────────────────────────────────────────────────
+
+class FakeDataChannel {
+  readyState = 'open'
+  sent: Array<Record<string, unknown>> = []
+  onopen: (() => void) | null = null
+  onmessage: ((ev: { data: string }) => void) | null = null
+  onclose: (() => void) | null = null
+  send(s: string) { this.sent.push(JSON.parse(s)) }
+  close() { this.readyState = 'closed' }
+  fireOpen() { this.onopen?.() }
+  fire(event: unknown) { this.onmessage?.({ data: JSON.stringify(event) }) }
+}
+
+class FakeTrack {
+  kind = 'audio'
+  readyState = 'live'
+  enabled = true
+  onended: (() => void) | null = null
+  stopped = false
+  stop() { this.stopped = true }
+}
+
+class FakeStream {
+  tracks: FakeTrack[]
+  constructor(tracks: FakeTrack[]) { this.tracks = tracks }
+  getTracks() { return this.tracks }
+  getAudioTracks() { return this.tracks }
+}
+
+class FakePeerConnection {
+  dc: FakeDataChannel | null = null
+  addTrackCalls: Array<{ track: unknown }> = []
+  closed = false
+  ontrack: ((e: { streams: MediaStream[] }) => void) | null = null
+  oniceconnectionstatechange: (() => void) | null = null
+  iceConnectionState = 'new'
+  createDataChannel(_label: string) { this.dc = new FakeDataChannel(); return this.dc as unknown as RTCDataChannel }
+  addTrack(track: unknown) { this.addTrackCalls.push({ track }); return {} as RTCRtpSender }
+  createOffer() { return Promise.resolve({ type: 'offer', sdp: 'offer-sdp' } as RTCSessionDescriptionInit) }
+  setLocalDescription() { return Promise.resolve() }
+  setRemoteDescription() { return Promise.resolve() }
+  close() { this.closed = true }
+}
+
+interface Harness {
+  deps: LiveDeps
+  pc: FakePeerConnection
+  states: LiveState[]
+  errors: Array<{ msg: string; code: string }>
+  userTranscripts: string[]
+  abuTranscripts: string[]
+  lookups: number[]
+  classified: string[]
+  getUserMediaCalls: number
+  createPCCalls: number
+  session: LiveSession
+}
+
+function makeHarness(opts: {
+  tokenOk?: boolean
+  tokenError?: string
+  isReconnect?: boolean
+  conversationId?: string
+  storage?: Map<string, string>
+  micOverride?: FakeTrack
+  twoResponse?: boolean
+} = {}): Harness {
+  const pc = new FakePeerConnection()
+  const storageMap = opts.storage ?? new Map<string, string>()
+  const storage = {
+    getItem: (k: string) => (storageMap.has(k) ? storageMap.get(k)! : null),
+    setItem: (k: string, v: string) => { storageMap.set(k, v) },
+  }
+  const h: Partial<Harness> & { getUserMediaCalls: number; createPCCalls: number } = {
+    getUserMediaCalls: 0,
+    createPCCalls: 0,
+  }
+  const states: LiveState[] = []
+  const errors: Array<{ msg: string; code: string }> = []
+  const userTranscripts: string[] = []
+  const abuTranscripts: string[] = []
+  const lookups: number[] = []
+  const classified: string[] = []
+
+  const deps: LiveDeps = {
+    fetch: vi.fn(async (url: string) => {
+      if (String(url).includes('/api/realtime-token')) {
+        return {
+          ok: true,
+          json: async () => (opts.tokenOk === false
+            ? { ok: false, error: opts.tokenError ?? 'TOKEN_MINT_FAILED' }
+            : { ok: true, client_secret: 'ek_fake', model: 'gpt-realtime-2.1' }),
+        } as unknown as Response
+      }
+      // SDP calls endpoint
+      return { ok: true, text: async () => 'answer-sdp' } as unknown as Response
+    }) as unknown as typeof fetch,
+    createPeerConnection: () => { h.createPCCalls++; return pc as unknown as RTCPeerConnection },
+    getUserMedia: async () => { h.getUserMediaCalls++; return new FakeStream([new FakeTrack()]) as unknown as MediaStream },
+    createAudioContext: () => null, // skip WebAudio in node; attachPlayback guards
+    storage,
+    now: () => 1_000_000,
+    ...(opts.micOverride ? { micTrackOverride: () => opts.micOverride as unknown as MediaStreamTrack } : {}),
+    ...(opts.twoResponse !== undefined ? { twoResponseOverride: opts.twoResponse } : {}),
+  }
+
+  const conversationId = opts.conversationId ?? 'conv_test'
+  const session = new LiveSession(
+    {
+      onState: (s) => states.push(s),
+      onUserTranscript: (t) => userTranscripts.push(t),
+      onAbuTranscript: (t) => abuTranscripts.push(t),
+      onError: (msg, code) => errors.push({ msg, code }),
+      onLookup: () => lookups.push(1),
+      onClassifiedViolations: (vs) => vs.forEach((v) => classified.push(v.kind)),
+    },
+    conversationId,
+    opts.isReconnect ?? false,
+    deps,
+  )
+
+  return {
+    deps, pc, states, errors, userTranscripts, abuTranscripts, lookups, classified,
+    get getUserMediaCalls() { return h.getUserMediaCalls },
+    get createPCCalls() { return h.createPCCalls },
+    session,
+  } as Harness
+}
+
+// ─── Pure helpers ─────────────────────────────────────────────────────────────
+
+describe('liveSession pure helpers', () => {
+  it('buildSessionUpdate carries instructions, voice, raised VAD, reasoning.effort, and the wait_for_user tool', () => {
+    const u = buildSessionUpdate() as { type: string; session: Record<string, unknown> }
+    const s = u.session as unknown as {
+      instructions: string
+      reasoning: { effort: string }
+      tools: Array<{ name: string }>
+      tool_choice: string
+      audio: { input: { transcription: { language: string }; turn_detection: Record<string, unknown> }; output: { voice: string } }
+    }
+    expect(u.type).toBe('session.update')
+    expect(typeof s.instructions).toBe('string')
+    expect(s.instructions.length).toBeGreaterThan(0)
+    expect(s.reasoning.effort).toBe(LIVE_REASONING_EFFORT)
+    expect(s.tools.map((t) => t.name)).toContain('wait_for_user')
+    expect(s.tool_choice).toBe('auto')
+    expect(s.audio.output.voice).toBe(LIVE_VOICE)
+    expect(s.audio.input.transcription.language).toBe('he')
+    expect(s.audio.input.turn_detection.silence_duration_ms).toBe(LIVE_VAD_SILENCE_MS)
+    expect(s.audio.input.turn_detection.create_response).toBe(true)
+    expect(LIVE_VAD_SILENCE_MS).toBeGreaterThan(500) // above the default that cuts off elderly speech
+  })
+
+  it('transcription is explicit Hebrew with a family-name bias prompt; VAD uses the raised threshold', () => {
+    const u = buildSessionUpdate() as { session: { audio: { input: { transcription: { model: string; language: string; prompt: string }; turn_detection: Record<string, unknown> } } } }
+    const t = u.session.audio.input.transcription
+    expect(t.model).toBe(LIVE_TRANSCRIBE_MODEL)
+    expect(t.language).toBe('he')
+    expect(typeof t.prompt).toBe('string')
+    expect(t.prompt).toContain('מור')            // a family name biases the transcriber
+    expect(t.prompt).toContain('תקבעי לי תור')   // a common request phrasing
+    const vad = u.session.audio.input.turn_detection
+    expect(vad.threshold).toBe(LIVE_VAD_THRESHOLD)
+    expect(LIVE_VAD_THRESHOLD).toBeGreaterThan(0.5) // less barge-in sensitive than the 0.5 default
+    expect(vad.prefix_padding_ms).toBe(LIVE_VAD_PREFIX_PADDING_MS)
+    // Device defect 2: interrupt_response is DISABLED so a self-hearing echo (Abu's own
+    // loudspeaker audio leaking into the mic) can never trigger a server-side truncation
+    // that cuts her off after one word. Turn-taking is preserved by create_response.
+    expect(vad.interrupt_response).toBe(false)
+    expect(vad.create_response).toBe(true)          // turn-taking still fires on the user's turn end
+    expect(LIVE_INTERRUPT_RESPONSE).toBe(false)
+  })
+
+  it('connectionReasonHe gives a SPECIFIC plain-Hebrew reason per failure code (not a bare retry)', () => {
+    // No token / server key.
+    expect(connectionReasonHe('OPENAI_API_KEY_MISSING')).toContain('OPENAI_API_KEY')
+    expect(connectionReasonHe('OPENAI_API_KEY_INVALID')).toContain('לא תקין')
+    // Microphone.
+    expect(connectionReasonHe('MIC_PERMISSION_DENIED')).toContain('מיקרופון')
+    // Network.
+    expect(connectionReasonHe('TOKEN_NETWORK_ERROR')).toContain('רשת')
+    // Provider.
+    expect(connectionReasonHe('REALTIME_PROVIDER_FAILED')).toContain('שיחת קול')
+    // Each of the four families is DISTINCT — the screen can say which one it is.
+    const four = ['OPENAI_API_KEY_MISSING', 'MIC_PERMISSION_DENIED', 'TOKEN_NETWORK_ERROR', 'REALTIME_PROVIDER_FAILED']
+      .map(connectionReasonHe)
+    expect(new Set(four).size).toBe(4)
+    // SDP/ICE collapse to a general connection failure; unknown → a safe default.
+    expect(connectionReasonHe('SDP_HTTP_500')).toContain('החיבור נכשל')
+    expect(connectionReasonHe('ICE_FAILED')).toContain('החיבור נכשל')
+    expect(connectionReasonHe('SOMETHING_ELSE')).toContain('מצב הקול')
+  })
+
+  it('wait_for_user tool takes no parameters and is a function', () => {
+    expect(WAIT_FOR_USER_TOOL.type).toBe('function')
+    expect(WAIT_FOR_USER_TOOL.name).toBe('wait_for_user')
+    expect(WAIT_FOR_USER_TOOL.parameters.properties).toEqual({})
+  })
+
+  it('parseResponsePhase reads the phase from either location; unknown → null', () => {
+    expect(parseResponsePhase({ type: 'response.done', response: { phase: 'commentary' } })).toBe('commentary')
+    expect(parseResponsePhase({ type: 'response.done', phase: 'final_answer' })).toBe('final_answer')
+    expect(parseResponsePhase({ type: 'response.done', response: { metadata: { phase: 'commentary' } } })).toBe('commentary')
+    expect(parseResponsePhase({ type: 'response.done' })).toBeNull()
+  })
+
+  it('isEndOfTurn is FALSE for a commentary done and TRUE for final/phaseless', () => {
+    expect(isEndOfTurn({ response: { phase: 'commentary' } })).toBe(false)
+    expect(isEndOfTurn({ response: { phase: 'final_answer' } })).toBe(true)
+    expect(isEndOfTurn({})).toBe(true)
+  })
+
+  it('greeting storage keys off the conversation id', () => {
+    const m = new Map<string, string>()
+    const storage = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => { m.set(k, v) } }
+    expect(shouldGreet(storage, 'conv_A')).toBe(true)
+    markGreeted(storage, 'conv_A')
+    expect(shouldGreet(storage, 'conv_A')).toBe(false)
+    expect(shouldGreet(storage, 'conv_B')).toBe(true) // a different conversation greets again
+  })
+
+  it('startConversation persists a fresh id readable by currentConversationId', () => {
+    const m = new Map<string, string>()
+    const storage = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => { m.set(k, v) } }
+    let n = 0
+    const id = startConversation(storage, () => [0.1, 0.2][n++] ?? 0.3)
+    expect(id).toMatch(/^conv_/)
+    expect(currentConversationId(storage)).toBe(id)
+  })
+})
+
+// ─── Session behaviour ─────────────────────────────────────────────────────────
+
+describe('LiveSession', () => {
+  beforeEach(() => { vi.useRealTimers() })
+
+  it('constructs idle and claims a fresh module epoch on connect', async () => {
+    const before = __getLiveEpoch()
+    const h = makeHarness()
+    expect(h.session.state).toBe('idle')
+    await h.session.connect()
+    expect(h.session.claimedEpoch).toBe(before + 1)
+    h.session.teardown()
+  })
+
+  it('builds exactly ONE of each resource (pc, mic getUserMedia, data channel, addTrack)', async () => {
+    const h = makeHarness()
+    await h.session.connect()
+    expect(h.createPCCalls).toBe(1)
+    expect(h.getUserMediaCalls).toBe(1)
+    expect(h.pc.dc).not.toBeNull()
+    expect(h.pc.addTrackCalls.length).toBe(1)
+    h.session.teardown()
+  })
+
+  it('sends session.update on data-channel open', async () => {
+    const h = makeHarness({ isReconnect: true }) // suppress greeting to isolate
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    const types = h.pc.dc!.sent.map((e) => e.type)
+    expect(types).toContain('session.update')
+  })
+
+  it('greets ONCE keyed to the conversation id, and marks it greeted', async () => {
+    const storage = new Map<string, string>()
+    const h = makeHarness({ conversationId: 'conv_greet', storage })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    const types = h.pc.dc!.sent.map((e) => e.type)
+    expect(types).toContain('session.update')
+    expect(types).toContain('response.create') // the greeting
+    // A SECOND session on the same conversation id does NOT greet again.
+    const h2 = makeHarness({ conversationId: 'conv_greet', storage })
+    await h2.session.connect()
+    h2.pc.dc!.fireOpen()
+    expect(h2.pc.dc!.sent.map((e) => e.type)).not.toContain('response.create')
+    h.session.teardown(); h2.session.teardown()
+  })
+
+  it('reconnect creates NO response — resume listening silently', async () => {
+    const storage = new Map<string, string>() // never greeted
+    const h = makeHarness({ conversationId: 'conv_recon', storage, isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    const types = h.pc.dc!.sent.map((e) => e.type)
+    expect(types).toContain('session.update')
+    expect(types).not.toContain('response.create') // silent resume
+    h.session.teardown()
+  })
+
+  it('routes remote audio deltas to the speaking state; a FINAL response.done returns to listening', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.output_audio.delta', delta: 'x' })
+    expect(h.session.state).toBe('speaking')
+    h.pc.dc!.fire({ type: 'response.done', response: { phase: 'final_answer' } })
+    expect(h.session.state).toBe('listening')
+    h.session.teardown()
+  })
+
+  it('a COMMENTARY response.done does NOT end the turn (no truncation/overlap)', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.output_audio.delta', delta: 'x' })
+    expect(h.session.state).toBe('speaking')
+    h.pc.dc!.fire({ type: 'response.done', response: { phase: 'commentary' } })
+    expect(h.session.state).toBe('speaking') // still mid-turn — more audio coming
+    h.session.teardown()
+  })
+
+  it('input transcription is a UI side-channel only — surfaced, never used for state', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    const stateCountBefore = h.states.length
+    h.pc.dc!.fire({ type: 'conversation.item.input_audio_transcription.completed', transcript: 'בוקר טוב' })
+    expect(h.userTranscripts).toContain('בוקר טוב')
+    expect(h.states.length).toBe(stateCountBefore) // no state change from a transcript
+    h.session.teardown()
+  })
+
+  it('wait_for_user acknowledges and STAYS SILENT (no response.create)', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.sent.length = 0 // drop the session.update
+    h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'wait_for_user', call_id: 'c1' })
+    const types = h.pc.dc!.sent.map((e) => e.type)
+    expect(types).toContain('conversation.item.create') // the function_call_output ack
+    expect(types).not.toContain('response.create') // silence — no reply
+    h.session.teardown()
+  })
+
+  // ─── FIX 4: the conversation_already_has_active_response crash ────────────────
+  it('FIX 4: conversation_already_has_active_response is NON-FATAL — the session survives', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.created' }) // a response is in flight (Abu speaking / tool call open)
+    h.pc.dc!.fire({ type: 'error', error: { code: 'conversation_already_has_active_response' } })
+    expect(h.errors).toEqual([])                          // did NOT fail the session
+    expect(h.session.state).not.toBe('error')
+    expect(h.session.getRecorder().hasFailure()).toBe(false)
+    expect(h.session.getRecorder().recoverableErrorCount()).toBe(1) // recorded, not fatal
+    h.session.teardown()
+  })
+
+  it('FIX 4: a response.create requested while one is active is DEFERRED, then flushed on response.done', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.created' }) // a response is active
+    h.pc.dc!.sent.length = 0
+    h.session.sendUserText('כן, תשמרי')        // calendar-confirm card: item.create + response.create
+    let types = h.pc.dc!.sent.map((e) => e.type)
+    expect(types).toContain('conversation.item.create') // the user turn was submitted immediately
+    expect(types).not.toContain('response.create')      // …but the create was DEFERRED (would have crashed)
+    h.pc.dc!.sent.length = 0
+    h.pc.dc!.fire({ type: 'response.done', response: { phase: 'final_answer' } }) // active response ends
+    types = h.pc.dc!.sent.map((e) => e.type)
+    expect(types).toContain('response.create')          // deferred create flushed on the free wire
+    h.session.teardown()
+  })
+
+  it('FIX 4: a user turn buffered during the race is ANSWERED after the active response completes', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.created' }) // Abu is mid-response
+    h.pc.dc!.sent.length = 0
+    // user speaks over her → server VAD create collides → the (now non-fatal) race
+    h.pc.dc!.fire({ type: 'error', error: { code: 'conversation_already_has_active_response' } })
+    expect(h.pc.dc!.sent.map((e) => e.type)).not.toContain('response.create') // nothing yet — she is still speaking
+    h.pc.dc!.fire({ type: 'response.done', response: { phase: 'final_answer' } })
+    expect(h.pc.dc!.sent.map((e) => e.type)).toContain('response.create')      // her turn ended → answer the buffered turn
+    h.session.teardown()
+  })
+
+  it('TRACK A default-off: a user barge-in mid-response does NOT truncate (flag off, echo-safe)', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.created' })
+    h.pc.dc!.fire({ type: 'response.output_audio.delta', item_id: 'it1' }) // Abu is speaking
+    h.pc.dc!.sent.length = 0
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_started' }) // user talks over her
+    const types = h.pc.dc!.sent.map((e) => e.type)
+    expect(types).not.toContain('conversation.item.truncate') // default OFF → no client truncate
+    expect(types).not.toContain('response.cancel')
+    h.session.teardown()
+  })
+
+  it('M4 non-verbal cue: a get_current_info lookup pulses onLookup; other tools do NOT', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    // A live/current-info lookup is dispatched → the UI gets ONE lookup pulse (soft tone + "מחפשת…").
+    h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'get_current_info', call_id: 'gci1', arguments: '{"query":"מזג האוויר"}' })
+    expect(h.lookups.length).toBe(1)
+    // A family lookup is silent-grounded, not a "searching" wait → NO cue.
+    h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'resolve_contact', call_id: 'rc1', arguments: '{"name":"מור"}' })
+    expect(h.lookups.length).toBe(1) // unchanged
+    // The same call delivered again (duplicate completion shape) must not double-pulse.
+    h.pc.dc!.fire({ type: 'response.output_item.done', item: { type: 'function_call', name: 'get_current_info', call_id: 'gci1', arguments: '{"query":"מזג האוויר"}' } })
+    expect(h.lookups.length).toBe(1) // dedup by call_id → still one
+    h.session.teardown()
+  })
+
+  it('M2 classified: observes method-narration; a grounding tool this turn suppresses ungrounded-entity', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    // Turn 1: a person-fact question, NO grounding tool, answer narrates its method + asserts a fact.
+    h.pc.dc!.fire({ type: 'conversation.item.input_audio_transcription.completed', transcript: 'מי זאת מור?' })
+    h.pc.dc!.fire({ type: 'response.output_audio_transcript.done', transcript: 'רגע חיפשתי לך במאגר, מור היא הבת של פפי' })
+    expect(h.classified).toContain('METHOD_NARRATION')
+    expect(h.classified).toContain('UNGROUNDED_ENTITY') // no grounding tool → flagged
+    // Turn 2: a NEW user turn resets the grounded-tool set; this time people_lookup grounds the fact.
+    h.classified.length = 0
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_started' }) // new user turn → resets per-turn state
+    h.pc.dc!.fire({ type: 'conversation.item.input_audio_transcription.completed', transcript: 'מי זאת מור?' })
+    h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'people_lookup', call_id: 'pl1', arguments: '{"want":"who","name":"מור"}' })
+    h.pc.dc!.fire({ type: 'response.output_audio_transcript.done', transcript: 'מור היא הבת שלך, מרתה' })
+    expect(h.classified).not.toContain('UNGROUNDED_ENTITY') // grounded → not flagged
+    h.session.teardown()
+  })
+
+  it('ONE model tool call = exactly ONE execution across all three completion shapes (no triple dispatch)', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.sent.length = 0 // drop the session.update
+    const call = { name: 'resolve_contact', call_id: 'dup1', arguments: '{"name":"מור"}' }
+    // The SAME completed call, delivered in ALL THREE official shapes (the device bug).
+    h.pc.dc!.fire({ type: 'response.function_call_arguments.done', ...call })
+    h.pc.dc!.fire({ type: 'response.output_item.done', item: { type: 'function_call', ...call } })
+    h.pc.dc!.fire({ type: 'response.done', response: { output: [{ type: 'function_call', ...call }] } })
+    // Exactly ONE function_call_output for this call id → one execution (no triple confirm).
+    const outputs = h.pc.dc!.sent.filter(
+      (e) => e.type === 'conversation.item.create'
+        && (e.item as { type?: string; call_id?: string })?.type === 'function_call_output'
+        && (e.item as { call_id?: string })?.call_id === 'dup1',
+    )
+    expect(outputs.length).toBe(1)
+    // …and the flight recorder logged exactly ONE tool_call (dispatch-boundary dedup).
+    const toolCalls = h.session.getRecorder().toExport().entries.filter(
+      (e) => e.kind === 'tool_call' && e.tool === 'resolve_contact',
+    )
+    expect(toolCalls.length).toBe(1)
+    h.session.teardown()
+  })
+
+  it('a function-call response.done stays MID-TURN — grounded speech lands in the same turn, no silent turn (finding #4)', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    // Model requests phone_call, delivered as a response.done that CARRIES the call.
+    const call = { name: 'phone_call', call_id: 'p1', arguments: '{"recipient":"לאו"}' }
+    h.pc.dc!.fire({ type: 'response.done', response: { output: [{ type: 'function_call', ...call }] } })
+    // The turn has NOT ended — Abu now speaks the card description; the SPOKEN done ends it.
+    h.pc.dc!.fire({ type: 'response.output_audio.delta', delta: 'x' })
+    expect(h.session.state).toBe('speaking')
+    h.pc.dc!.fire({ type: 'response.done', response: { phase: 'final_answer' } })
+    expect(h.session.state).toBe('listening')
+    // The tool result was followed by speech in the same turn → NOT a silent turn.
+    expect(h.session.getRecorder().silentTurnCount()).toBe(0)
+    h.session.teardown()
+  })
+
+  it('the module epoch is the SINGLE owner guard: a superseded session ignores its datachannel events', async () => {
+    const a = makeHarness({ isReconnect: true })
+    await a.session.connect()
+    a.pc.dc!.fireOpen()
+    expect(a.session.state).toBe('listening')
+    // A NEW session supersedes A (bumps the module epoch).
+    const b = makeHarness({ isReconnect: true })
+    await b.session.connect()
+    // A's stale handler must now no-op.
+    a.pc.dc!.fire({ type: 'response.output_audio.delta', delta: 'x' })
+    expect(a.session.state).toBe('listening') // unchanged — event rejected by epoch check
+    a.session.teardown(); b.session.teardown()
+  })
+
+  it('teardown is idempotent, closes the resources, bumps the epoch, and returns to idle', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    const epochAfterConnect = __getLiveEpoch()
+    h.session.teardown()
+    expect(h.pc.closed).toBe(true)
+    expect(h.pc.dc!.readyState).toBe('closed')
+    expect(__getLiveEpoch()).toBe(epochAfterConnect + 1) // invalidates stale handlers
+    expect(h.session.state).toBe('idle')
+    // Second teardown is a no-op (no further epoch bump).
+    h.session.teardown()
+    expect(__getLiveEpoch()).toBe(epochAfterConnect + 1)
+  })
+
+  it('fails CLOSED on a token mint failure — error state, no peer connection, no fallback', async () => {
+    const h = makeHarness({ tokenOk: false, tokenError: 'OPENAI_API_KEY_MISSING' })
+    await h.session.connect()
+    expect(h.session.state).toBe('error')
+    expect(h.errors[h.errors.length - 1]?.code).toBe('OPENAI_API_KEY_MISSING')
+    expect(h.createPCCalls).toBe(0) // never got as far as a peer connection
+  })
+
+  it('uses the replay mic-track override instead of getUserMedia', async () => {
+    const replayTrack = new FakeTrack()
+    const h = makeHarness({ isReconnect: true, micOverride: replayTrack })
+    await h.session.connect()
+    expect(h.getUserMediaCalls).toBe(0) // mic replaced
+    expect(h.pc.addTrackCalls[0]?.track).toBe(replayTrack)
+    h.session.teardown()
+  })
+})
+
+// ─── LAYER 2 · all 19 realtime event/connection invariants (merge blocker) ───
+describe('Layer 2 — realtime event + connection-code invariants', () => {
+  // 9 connection/error CODES → a truthful non-empty Hebrew reason, never a throw.
+  const CODES = ['OPENAI_API_KEY_MISSING', 'OPENAI_API_KEY_INVALID', 'REALTIME_QUOTA', 'REALTIME_PROVIDER_FAILED', 'MIC_PERMISSION_DENIED', 'MIC_NOT_FOUND', 'TOKEN_NETWORK_ERROR', 'NO_AUDIO_EVENT', 'AUDIO_ROUTE_ENDED']
+  for (const code of CODES) {
+    it(`code ${code} → a non-empty Hebrew reason (never a throw or a blank)`, () => {
+      const msg = connectionReasonHe(code)
+      expect(typeof msg).toBe('string')
+      expect(msg.trim().length).toBeGreaterThan(0)
+      expect(/[֐-׿]/.test(msg)).toBe(true) // Hebrew, so Martita gets a real message
+    })
+  }
+  it('an UNKNOWN code still returns a safe Hebrew fallback', () => {
+    expect(/[֐-׿]/.test(connectionReasonHe('SOMETHING_NEW'))).toBe(true)
+  })
+
+  // 10 server EVENTS → each drives its invariant with no crash/error-fail.
+  const connected = async () => { const h = makeHarness({ isReconnect: true }); await h.session.connect(); h.pc.dc!.fireOpen(); return h }
+  it('input_audio_buffer.speech_started → listening', async () => {
+    const h = await connected(); h.pc.dc!.fire({ type: 'input_audio_buffer.speech_started' })
+    expect(h.session.state).toBe('listening'); expect(h.errors).toEqual([]); h.session.teardown()
+  })
+  it('input_audio_buffer.speech_stopped → no error, session survives', async () => {
+    const h = await connected(); h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' })
+    expect(h.session.state).not.toBe('error'); h.session.teardown()
+  })
+  it('conversation.item.input_audio_transcription.completed → surfaced as a user transcript', async () => {
+    const h = await connected(); h.pc.dc!.fire({ type: 'conversation.item.input_audio_transcription.completed', transcript: 'שלום' })
+    expect(h.userTranscripts).toContain('שלום'); h.session.teardown()
+  })
+  for (const type of ['response.output_audio.delta', 'response.audio.delta']) {
+    it(`${type} → speaking`, async () => {
+      const h = await connected(); h.pc.dc!.fire({ type, item_id: 'i1' })
+      expect(h.session.state).toBe('speaking'); h.session.teardown()
+    })
+  }
+  for (const type of ['response.output_audio_transcript.done', 'response.audio_transcript.done']) {
+    it(`${type} → surfaced as Abu's transcript`, async () => {
+      const h = await connected(); h.pc.dc!.fire({ type, transcript: 'שלום מרתה' })
+      expect(h.abuTranscripts).toContain('שלום מרתה'); h.session.teardown()
+    })
+  }
+  it('response.created → no error (an active response is tracked)', async () => {
+    const h = await connected(); h.pc.dc!.fire({ type: 'response.created' })
+    expect(h.session.state).not.toBe('error'); expect(h.errors).toEqual([]); h.session.teardown()
+  })
+  it('response.done (final) → back to listening at end of turn', async () => {
+    const h = await connected(); h.pc.dc!.fire({ type: 'response.created' }); h.pc.dc!.fire({ type: 'response.done', response: { phase: 'final_answer' } })
+    expect(h.session.state).toBe('listening'); h.session.teardown()
+  })
+  it('error (recoverable) → NON-fatal; FIRST fatal → safe-config fallback (recovering, not a dead end)', async () => {
+    const h = await connected()
+    h.pc.dc!.fire({ type: 'error', error: { code: 'conversation_already_has_active_response' } })
+    expect(h.session.state).not.toBe('error') // recoverable — session continues
+    // A fatal server error is no longer an immediate dead end: the FIRST one auto-reconnects on the
+    // known-good baseline (safe-config fallback), so Martita is never dropped to an error screen she
+    // cannot debug. The "second fatal → honest error, no loop" bound is covered in the two-response block.
+    h.pc.dc!.fire({ type: 'error', error: { code: 'server_meltdown' } })
+    expect(h.session.state).not.toBe('error') // recovering (connecting), not error
+    expect(h.errors.length).toBe(0)
+    h.session.teardown()
+  })
+})
+
+describe('two-response preamble wiring (flag-gated, client-driven turns)', () => {
+  it('buildSessionUpdate sets create_response:false when two-response is on (server no longer auto-creates)', () => {
+    const off = buildSessionUpdate(1_000_000, { twoResponse: false }) as { session: { audio: { input: { turn_detection: { create_response: boolean } } } } }
+    const on = buildSessionUpdate(1_000_000, { twoResponse: true }) as { session: { audio: { input: { turn_detection: { create_response: boolean } } } } }
+    expect(off.session.audio.input.turn_detection.create_response).toBe(true)
+    expect(on.session.audio.input.turn_detection.create_response).toBe(false)
+  })
+
+  it('speech_stopped drives a TEXT-ONLY decision response (no preamble can be voiced)', async () => {
+    const h = makeHarness({ twoResponse: true, isReconnect: true }) // reconnect → no greeting occupying the wire
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    const before = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' })
+    const created = h.pc.dc!.sent.slice(before).filter((e) => e.type === 'response.create')
+    expect(created.length).toBe(1)
+    expect((created[0]!.response as { output_modalities: string[] }).output_modalities).toEqual(['text'])
+    h.session.teardown()
+  })
+
+  it('a PLAIN turn (no tool): decision.done triggers a spoken AUDIO answer response', async () => {
+    const h = makeHarness({ twoResponse: true, isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' }) // → text decision
+    const mark = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'response.done', response: { status: 'completed', output: [{ type: 'message' }] } })
+    const created = h.pc.dc!.sent.slice(mark).filter((e) => e.type === 'response.create')
+    expect(created.length).toBe(1)
+    // REGRESSION (device death v0.275.0, code=invalid_value on param response.output_modalities):
+    // the real gpt-realtime rejects ['audio','text'] — "Supported combinations are: ['text'] and
+    // ['audio']" (proven on the instrument, docs/eval/MODALITY_VALIDATION_PROBE.json). The spoken
+    // answer MUST be a single-element ['audio'] (which already carries a text transcript).
+    const mods = (created[0]!.response as { output_modalities: string[] }).output_modalities
+    expect(mods).toEqual(['audio'])
+    expect(mods.length).toBe(1) // never a multi-element array — that IS the invalid_value the device hit
+    h.session.teardown()
+  })
+
+  it('SAFE-CONFIG FALLBACK: a fatal server error does NOT dead-end — it reconnects on the baseline (two-response OFF)', async () => {
+    const h = makeHarness({ twoResponse: true, isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' }) // two-response drives a text decision
+    // The server fatally rejects a payload (the exact device class: invalid_value on output_modalities).
+    h.pc.dc!.fire({ type: 'error', error: { code: 'invalid_value', param: 'response.output_modalities' } })
+    // NOT an error screen for an 81-year-old — the session is recovering, not dead.
+    expect(h.session.state).not.toBe('error')
+    expect(h.errors.length).toBe(0)
+    // Let the internal reconnect run far enough to create the new data channel, then open it.
+    await new Promise((r) => setTimeout(r))
+    h.pc.dc!.fireOpen()
+    // The rebuilt session.update is the known-good baseline: the SERVER owns the turn again.
+    const su = h.pc.dc!.sent.find((e) => e.type === 'session.update') as
+      | { session: { audio: { input: { turn_detection: { create_response: boolean } } } } }
+      | undefined
+    expect(su?.session.audio.input.turn_detection.create_response).toBe(true)
+    // …and on the next user turn the client sends NO two-response decision (baseline, server-driven).
+    const before = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' })
+    expect(h.pc.dc!.sent.slice(before).filter((e) => e.type === 'response.create').length).toBe(0)
+    h.session.teardown()
+  })
+
+  it('SAFE-CONFIG FALLBACK is spent at most ONCE — a second fatal error surfaces honestly', async () => {
+    const h = makeHarness({ twoResponse: true, isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'error', error: { code: 'invalid_value' } }) // 1st → fallback (recovering)
+    expect(h.session.state).not.toBe('error')
+    await new Promise((r) => setTimeout(r))
+    h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'error', error: { code: 'invalid_value' } }) // 2nd → honest error, no loop
+    expect(h.session.state).toBe('error')
+    expect(h.errors.length).toBe(1)
+    h.session.teardown()
+  })
+
+  it('REGRESSION (device hang, Part 3 #1): a TOOL turn flushes the grounded response so a tool result ALWAYS produces speech', async () => {
+    const h = makeHarness({ twoResponse: true, isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' }) // text decision → activeResponse optimistic
+    // The decision response calls a tool. LiveTools sends function_call_output + response.create, and
+    // that create is DEFERRED because the decision response is still active (FIX 4).
+    h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'people_lookup', call_id: 'call_hang', arguments: '{"want":"contact","person":"לאו"}' })
+    const mark = h.pc.dc!.sent.length
+    // Decision finishes. The OLD code broke here without flushing → the grounded create was orphaned
+    // and Abu never spoke after the tool result (the cinema hang). Now it is flushed.
+    h.pc.dc!.fire({ type: 'response.done', response: { status: 'completed' } })
+    const grounded = h.pc.dc!.sent.slice(mark).filter((e) => e.type === 'response.create' && !e.response)
+    expect(grounded.length).toBeGreaterThanOrEqual(1) // the grounded answer IS created → she speaks
+    h.session.teardown()
+  })
+
+  it('with the flag OFF the client sends NO decision response on speech_stopped (server owns the turn)', async () => {
+    const h = makeHarness({ twoResponse: false })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    const before = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'input_audio_buffer.speech_stopped' })
+    expect(h.pc.dc!.sent.slice(before).filter((e) => e.type === 'response.create').length).toBe(0)
+    h.session.teardown()
+  })
+})
+
+describe('output monitor ENFORCEMENT (Part 4 — hard detectors repair, not just observe)', () => {
+  it('a Hebrew turn spoken as an English paragraph triggers a one-shot Hebrew repair', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    const english = 'I understand your frustration and I really want to help you find the right movies playing near you today.'
+    h.pc.dc!.fire({ type: 'response.output_audio_transcript.done', transcript: english })
+    const mark = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'response.done', response: { status: 'completed' } })
+    const repair = h.pc.dc!.sent.slice(mark).filter((e) => e.type === 'response.create' && typeof (e.response as { instructions?: string } | undefined)?.instructions === 'string')
+    expect(repair.length).toBe(1) // enforcement fired (was OFF before Part 4)
+    expect((repair[0]!.response as { instructions: string }).instructions).toContain('עברית')
+    h.session.teardown()
+  })
+
+  it('a clean warm Hebrew turn triggers NO repair (zero false positive)', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.output_audio_transcript.done', transcript: 'כן מרטיטה, אני כאן. מה תרצי לשאול?' })
+    const mark = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'response.done', response: { status: 'completed' } })
+    const repair = h.pc.dc!.sent.slice(mark).filter((e) => e.type === 'response.create' && typeof (e.response as { instructions?: string } | undefined)?.instructions === 'string')
+    expect(repair.length).toBe(0)
+    h.session.teardown()
+  })
+
+  it('a spoken source name (dot-less domain) triggers a repair', async () => {
+    const h = makeHarness({ isReconnect: true })
+    await h.session.connect(); h.pc.dc!.fireOpen()
+    h.pc.dc!.fire({ type: 'response.output_audio_transcript.done', transcript: 'מצאתי את זה באתר seret co il, המחיר בערך 450 שקל.' })
+    const mark = h.pc.dc!.sent.length
+    h.pc.dc!.fire({ type: 'response.done', response: { status: 'completed' } })
+    const repair = h.pc.dc!.sent.slice(mark).filter((e) => e.type === 'response.create' && typeof (e.response as { instructions?: string } | undefined)?.instructions === 'string')
+    expect(repair.length).toBe(1)
+    h.session.teardown()
+  })
+})
+
+describe('tool-result speech guarantee (Part 3 #1 — a tool result must NEVER end in silence)', () => {
+  it('forces a response if no audio follows a tool result (baseline path too — the guarantee is universal)', async () => {
+    vi.useFakeTimers()
+    try {
+      const h = makeHarness({ isReconnect: true }) // two-response OFF: the guarantee holds on every path
+      await h.session.connect(); h.pc.dc!.fireOpen()
+      // A tool call → LiveTools sends function_call_output (arms the watchdog) + its own response.create.
+      h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'people_lookup', call_id: 'wd1', arguments: '{"want":"contact","person":"לאו"}' })
+      const before = h.pc.dc!.sent.length
+      // No audio delta ever arrives (the device hang shape). Advance past the budget.
+      vi.advanceTimersByTime(LIVE_TOOL_RESULT_AUDIO_TIMEOUT_MS + 50)
+      const forced = h.pc.dc!.sent.slice(before).filter((e) => e.type === 'response.create')
+      expect(forced.length).toBeGreaterThanOrEqual(1) // the watchdog forced speech
+      h.session.teardown()
+    } finally { vi.useRealTimers() }
+  })
+
+  it('does NOT fire when audio DOES follow the tool result (no spurious double-speak)', async () => {
+    vi.useFakeTimers()
+    try {
+      const h = makeHarness({ isReconnect: true })
+      await h.session.connect(); h.pc.dc!.fireOpen()
+      h.pc.dc!.fire({ type: 'response.function_call_arguments.done', name: 'people_lookup', call_id: 'wd2', arguments: '{"want":"contact","person":"לאו"}' })
+      const before = h.pc.dc!.sent.length
+      h.pc.dc!.fire({ type: 'response.output_audio.delta', item_id: 'it1' }) // audio started → guarantee satisfied
+      vi.advanceTimersByTime(LIVE_TOOL_RESULT_AUDIO_TIMEOUT_MS + 50)
+      const forced = h.pc.dc!.sent.slice(before).filter((e) => e.type === 'response.create')
+      expect(forced.length).toBe(0) // watchdog cleared by the audio → no forced extra response
+      h.session.teardown()
+    } finally { vi.useRealTimers() }
+  })
+})
+
+// ─── E4: ICE loss must AUTO-RECONNECT and resume, never a dead error screen ─────
+const flush = async () => { for (let i = 0; i < 6; i++) await Promise.resolve() }
+describe('E4 · ICE recovery (device transcript: "ICE_DISCONNECTED killed the session at 443s")', () => {
+  beforeEach(() => { vi.useRealTimers() })
+
+  it('a TRANSIENT ICE disconnect that recovers does NOT error and does NOT reconnect', async () => {
+    const h = makeHarness()
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.iceConnectionState = 'disconnected'; h.pc.oniceconnectionstatechange!() // blip
+    h.pc.iceConnectionState = 'connected'; h.pc.oniceconnectionstatechange!()     // recovered in-grace
+    expect(h.session.state).not.toBe('error')
+    expect(h.errors.length).toBe(0)
+    expect(h.createPCCalls).toBe(1) // no reconnect — the blip self-healed
+    h.session.teardown()
+  })
+
+  it('ICE failed AUTO-RECONNECTS (same session) instead of a dead error', async () => {
+    const h = makeHarness()
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.iceConnectionState = 'failed'; h.pc.oniceconnectionstatechange!()
+    await flush()
+    expect(h.createPCCalls).toBe(2)      // reconnected
+    expect(h.session.state).not.toBe('error')
+    h.session.teardown()
+  })
+
+  it('a SECOND ICE failure (recovery budget spent) surfaces honestly', async () => {
+    const h = makeHarness()
+    await h.session.connect()
+    h.pc.dc!.fireOpen()
+    h.pc.iceConnectionState = 'failed'; h.pc.oniceconnectionstatechange!()
+    await flush()
+    h.pc.dc!.fireOpen()                  // the reconnected session opens
+    h.pc.iceConnectionState = 'failed'; h.pc.oniceconnectionstatechange!()
+    await flush()
+    expect(h.session.state).toBe('error')
+    expect(h.errors.some((e) => e.code === 'ICE_FAILED')).toBe(true)
+    h.session.teardown()
+  })
+})

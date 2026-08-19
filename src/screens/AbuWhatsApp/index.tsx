@@ -12,20 +12,21 @@ import { soundTap, soundSuccess, soundSend, soundCopy } from '../../services/sou
 import type { SilenceDetector } from '../../services/voice'
 import { InfoButton } from '../../components/InfoButton'
 import { GRADIENT_TEAL } from '../../design/gradients'
+import { PAGE_BG } from '../../design/theme'
+import { AbuLogo } from '../../design/logos/AbuLogo'
 import { BackButton } from '../../components/BackButton'
 import { StyleSelector, STYLES, type Style } from './StyleSelector'
 import { Toast } from '../../components/Toast'
 import { PageShell } from '../../components/PageShell'
 import { LoadingState } from '../../components/LoadingState'
 import { FamilyQuickFaces } from './familyQuickFaces'
-import { FamilyContactsSetup } from './FamilyContactsSetup'
+import { type FamilyQuickFace } from './familyContacts.private'
+import { VoiceCompose } from './VoiceCompose'
+import { isOperatorMode } from '../../services/operatorMode'
 
 function isOperatorQueryParam(): boolean {
-  try {
-    if (typeof window === 'undefined' || !window.location) return false
-    const params = new URLSearchParams(window.location.search || '')
-    return params.get('operator') === '1'
-  } catch { return false }
+  // One canonical gate (persistent: ?operator=1 / ?operator=0 / Settings toggle).
+  return isOperatorMode()
 }
 
 type WhatsAppTab = 'family' | 'actions'
@@ -111,9 +112,11 @@ export function AbuWhatsApp() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [lastIntent, setLastIntent] = useState('')
 
-  // Operator-only setup for local family contacts. Hidden from normal use:
-  // toggled by `?operator=1` query param or a long-press on the family title.
-  const [operatorMode, setOperatorMode] = useState<boolean>(isOperatorQueryParam)
+  // Operator features unlocked (the משפחה/פעולות tab bar). Persistent gate.
+  // NOTE: the WhatsApp button ALWAYS lands on the family board — contact admin
+  // (Contact Management / JSON / import-export) lives ONLY in Settings, never as
+  // the WhatsApp destination, for normal users and operators alike.
+  const [operatorMode] = useState<boolean>(isOperatorQueryParam)
 
   // Voice conversation mode
   const [voiceMode, setVoiceMode] = useState(false)
@@ -121,6 +124,11 @@ export function AbuWhatsApp() {
   const [audioLevel, setAudioLevel] = useState(0)
   const [copyToast, setCopyToast] = useState(false)
   const [isReading, setIsReading] = useState(false)
+
+  // Voice-compose overlay (Abu-AI-composed message to a specific contact).
+  const [composeOpen, setComposeOpen] = useState(false)
+  // The contact carried in from a focused-contact "כתבי הודעה בקול" tap (context).
+  const [composeInitialFace, setComposeInitialFace] = useState<Extract<FamilyQuickFace, { type: 'person' }> | null>(null)
 
   const martitaPhoto = useMemo(() => getRandomMartitaPhoto(), [])
   const familyPhoto = useMemo(() => getRandomFamilyPhoto(), [])
@@ -581,10 +589,10 @@ export function AbuWhatsApp() {
   const ringBorderOpacity = voicePhase === 'listening' ? Math.min(0.7, 0.2 + audioLevel * 0.008) : 0.3
 
   return (
-    <PageShell>
+    <PageShell background={PAGE_BG}>
 
       {/* ══════════════════════════════════════════════════
-          HEADER — "Abu הודעות", Martita photo, back button
+          HEADER — "Abu WhatsApp", Martita photo, back button
          ══════════════════════════════════════════════════ */}
       <header style={{
         flexShrink: 0,
@@ -629,14 +637,17 @@ export function AbuWhatsApp() {
             />
           </button>
 
-          {/* Wordmark: Abu + הודעות (WA-green gradient) */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'baseline', gap: 5,
+          {/* Wordmark: the Abu-family emblem + Abu + WhatsApp (WA-green gradient).
+              The emblem is the shared logo system (M4) so this screen reads as one
+              product with the rest of the hub, not a seventh separate app. */}
+          <div data-testid="abuwhatsapp-wordmark" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
             direction: 'ltr', position: 'relative',
           }}>
+            <AbuLogo app="whatsapp" size={34} style={{ flexShrink: 0, alignSelf: 'center' }} />
             <span style={{
               fontFamily: "'Cormorant Garamond',Georgia,serif",
-              fontSize: 31, fontWeight: 600, letterSpacing: '2px',
+              fontSize: 34, fontWeight: 600, letterSpacing: '2px',
               background: GRADIENT_TEAL,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -644,13 +655,13 @@ export function AbuWhatsApp() {
             } as React.CSSProperties}>Abu</span>
             <span style={{
               fontFamily: "'DM Sans',sans-serif",
-              fontSize: 27, fontWeight: 500, letterSpacing: '0.3px',
-              direction: 'rtl',
+              fontSize: 30, fontWeight: 600, letterSpacing: '0.3px',
+              direction: 'ltr',
               background: 'linear-gradient(135deg, #86EFAC 0%, #4ADE80 12%, #25D366 24%, #16A34A 38%, #6EE7B7 52%, #15803D 66%, #34D399 78%, #86EFAC 90%, #4ADE80 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-            } as React.CSSProperties}>הודעות</span>
+            } as React.CSSProperties}>WhatsApp</span>
           </div>
 
           {/* Back button — right */}
@@ -662,7 +673,7 @@ export function AbuWhatsApp() {
       </header>
 
       <InfoButton
-        title="Abu הודעות"
+        title="Abu WhatsApp"
         lines={['כתיבת הודעות WhatsApp בסגנון של מרטיטה — כולל שגיאות אמיתיות.', 'בחרי בדיחה, חידה, או טריק לתוכן מיידי.']}
         howTo={['לחצי על בדיחה / חידה / טריק לתוכן מיידי', 'כתבי נושא בשדה ולחצי "כתבי לי" להודעה מותאמת אישית', 'לחצי "שלחי למשפחה" לשליחה קבוצת הווצאפ', 'לחצי על "תקשיבי" לשמיעת ההודעה']}
         position="top-left"
@@ -682,16 +693,44 @@ export function AbuWhatsApp() {
         position: 'relative',
       }}>
 
-        {tab === 'family' && !voiceMode && !operatorMode && (
-          <FamilyQuickFaces
-            onOpenWhatsApp={(url) => { window.location.href = url }}
-            onOpenTel={(url) => { window.location.href = url }}
-            onOperatorSetup={() => setOperatorMode(true)}
-          />
-        )}
+        {tab === 'family' && !voiceMode && (
+          <>
+            <FamilyQuickFaces
+              onOpenWhatsApp={(url) => { window.location.href = url }}
+              onOpenTel={(url) => { window.location.href = url }}
+              // Operator long-press → Settings (where Contact Management lives).
+              // The WhatsApp screen itself never shows the admin/editor surface.
+              onOperatorSetup={() => setScreen(Screen.Settings)}
+              // Focused-contact "כתבי הודעה בקול" → compose to THAT person (context).
+              onComposeVoice={(face) => { soundTap(); unlockIOSAudio(); setComposeInitialFace(face); setComposeOpen(true) }}
+            />
 
-        {tab === 'family' && !voiceMode && operatorMode && (
-          <FamilyContactsSetup onClose={() => setOperatorMode(false)} />
+            {/* Voice compose — Abu AI writes a message to a chosen contact. */}
+            <button
+              type="button"
+              data-testid="abuwhatsapp-voice-compose-cta"
+              onClick={() => { soundTap(); unlockIOSAudio(); setComposeInitialFace(null); setComposeOpen(true) }}
+              style={{
+                width: '100%', maxWidth: 370, height: 60, borderRadius: 30,
+                border: '1.5px solid rgba(37,211,102,0.42)',
+                background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 40%, #128C7E 100%)',
+                color: 'white', fontSize: 18, fontWeight: 700, fontFamily: "'Heebo',sans-serif",
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                boxShadow: '0 6px 24px rgba(20,184,166,0.24), inset 0 1px 0 rgba(255,255,255,0.16)',
+                WebkitTapHighlightColor: 'transparent', marginTop: 4,
+              }}
+              onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.97)' }}
+              onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
+              onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+            >
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+              כתבי הודעה בקול
+            </button>
+          </>
         )}
 
         {tab === 'actions' && (
@@ -1394,6 +1433,10 @@ export function AbuWhatsApp() {
         onClose={() => setGalleryOpen(false)}
         extras={galleryExtras}
       />
+
+      {/* Voice compose overlay — Abu AI writes a message to a chosen contact,
+          then opens that contact's WhatsApp with the text pre-filled. */}
+      <VoiceCompose open={composeOpen} initialFace={composeInitialFace} onClose={() => { setComposeOpen(false); setComposeInitialFace(null) }} />
     </PageShell>
   )
 }

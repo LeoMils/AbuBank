@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "capsule/1",
+  "when": "2026-08-19T12:36:56.067Z",
+  "qaMonsterVersion": "qa-monster/1",
+  "constitutionVersion": "monster-qa/unified-master",
+  "identity": {
+    "RUNTIME_SOURCE_SHA": "4bb263e",
+    "DEPLOYED_ARTIFACT_ID": "abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+    "DEPLOYED_BUILD_ID": "0.294.0-privauth",
+    "CERTIFICATION_HARNESS_SHA": "df12de8b472b2f35f292b23e7e1dd928eb2190e3",
+    "EVIDENCE_GENERATION_SHA": "df12de8b472b2f35f292b23e7e1dd928eb2190e3",
+    "CONTROL_PLANE_VERSION": "cp_bfccc899"
+  },
+  "verdicts": {
+    "PRODUCT_CANDIDATE_VERDICT": "GO",
+    "QA_SYSTEM_VERDICT": "READY",
+    "RELEASE_PROMOTION_VERDICT": "ELIGIBLE_PENDING_OWNER"
+  },
+  "exit": {
+    "code": 0,
+    "state": "RC_ELIGIBLE",
+    "reason": "PRODUCT=GO QA_SYSTEM=READY remaining=0 → ELIGIBLE_PENDING_OWNER",
+    "machineClosableUnknown": 0,
+    "machineClosableRemaining": 0
+  },
+  "worktree": {
+    "WORKTREE_RUNTIME_CLEAN": true,
+    "WORKTREE_HARNESS_CLEAN": false,
+    "dirtyRuntime": [],
+    "dirtyHarness": [
+      "scripts/gate-a-abc.mjs",
+      "scripts/golden/golden-session-spec.json",
+      "src/screens/AbuAI/finalYellowToGreen.test.ts",
+      "src/screens/AbuAI/nonVoiceGreenProduction.test.ts",
+      "src/screens/AbuAI/nonVoiceProductionClosure.test.ts",
+      "src/screens/AbuAI/totalProductClosure.test.ts",
+      "src/screens/AbuGames/wowGame.test.ts",
+      "src/screens/AbuWhatsApp/familyContactsStorage.test.ts",
+      "src/eval/martitaRedTeam.test.ts",
+      "src/screens/AbuAI/birthdayResolverTruth.test.ts",
+      "vite-dev.err.log",
+      "vite-dev.log"
+    ]
+  },
+  "runtimeProvenance": {
+    "identity": "PROVEN",
+    "method": "deployed buildVersion ↔ version-introducing commit in api/health.ts; zero non-test runtime drift since",
+    "RUNTIME_SOURCE_SHA": "4bb263e",
+    "DEPLOYED_BUILD_ID": "0.294.0-privauth"
+  },
+  "economy": {
+    "tier": "rc",
+    "wallClockMs": 172529,
+    "deterministicMs": 51521,
+    "networkMs": 120410,
+    "networkAreaCount": 6,
+    "perAreaMs": {
+      "typecheck": 10761,
+      "unit-suite": 39307,
+      "security-scan": 4263,
+      "calendar": 10716,
+      "whatsapp": 4373,
+      "current-info-freshness": 12734,
+      "replacement-paths": 5045,
+      "tool-sequencing": 1453,
+      "historical-corpus": 83279
+    },
+    "note": "MEASURED wall-clock/area timings from THIS run. No monetary SLO is asserted (OWNER sets spend). Wall-clock targets are configurable; a tier over target is a QA-system finding, not a license to reduce assurance."
+  },
+  "northStar_AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0,
+  "ownerActionsOpen": [
+    "REVOKE OpenAI fp:e39ef3b7",
+    "REVOKE Gemini fp:69150fc4",
+    "REVOKE Groq fp:a2f25d13",
+    "AUTHORIZE clean production deploy",
+    "DECIDE distributed rate-limit infra (shared KV)",
+    "SET durable PRODUCTION env AUTH_SIGNING_SECRET + ENROLLMENT_SECRET (PREVIEW scope is now set; PRODUCTION scope is NOT — the build gate blocks a prod deploy until it is, and a future prod deploy cannot run authEnforced=false)",
+    "MIGRATE the WhatsApp contacts-seed (familyContacts.private) behind authenticated access to reach PUBLIC_PRIVATE_DATA_EXPOSURES=0 (family_data.json is already done) — plan in PRIVATE_DATA_EXPOSURE.md (owner-approved direction: migrate, not public-by-policy)",
+    "OPTIONAL: provision a free KV (KV_REST_API_URL/TOKEN) to upgrade replay single-use + rate-limit from per-instance to distributed",
+    "no-login PWA auth policy: server-verified WebAuthn/passkey auth + replay hardening + fail-closed prod are IMPLEMENTED + PROVEN; the billable/API + family_data.json exposure is CLOSED; remaining to fully CLOSE = durable PRODUCTION env + the contacts-seed migration"
+  ],
+  "machineClosableRemaining": [],
+  "evidence": [
+    {
+      "id": "release-lock",
+      "path": "docs/engineering-os/qa/RELEASE_LOCK.json",
+      "producer": "RELEASE_LOCK",
+      "schema": "internal://abu/release-lock",
+      "digest": "b5293fcf724871e3c4391de184bba77176662830a0ea5dcdbd9b31805279e722"
+    },
+    {
+      "id": "qa-monster-report",
+      "path": "docs/eval/QA_MONSTER_REPORT.json",
+      "producer": "qa-monster.mjs",
+      "schema": "internal://abu/qa-monster",
+      "digest": "97a84f4335a801071ba8f9c95ca02c3e2e4528751f47d3a0db008b7c08dd773e"
+    },
+    {
+      "id": "historical-corpus",
+      "path": "docs/eval/RC_HISTORICAL_CORPUS.json",
+      "producer": "rc-acceptance-historical-corpus.mjs",
+      "schema": "internal://abu/historical-corpus",
+      "digest": "5e8de5b1374a822a1629b3c980839ddfc6b60b17966ad3754cc17ab1b1c47d21"
+    },
+    {
+      "id": "calendar",
+      "path": "docs/eval/RC_ACCEPTANCE_CALENDAR.json",
+      "producer": "rc-acceptance-calendar.mjs",
+      "schema": "internal://abu/rc-calendar",
+      "digest": "a888a9321c2f856e38b65759603e9d8634e2d0cfd33cf24cc7e11da76443d0bd"
+    },
+    {
+      "id": "whatsapp",
+      "path": "docs/eval/RC_ACCEPTANCE_WHATSAPP.json",
+      "producer": "rc-acceptance-whatsapp.mjs",
+      "schema": "internal://abu/rc-whatsapp",
+      "digest": "3a296f7fada154f7e618ec5834166af3deef7ee58fedcd93b88c439263ca4dfe"
+    },
+    {
+      "id": "temporal",
+      "path": "docs/eval/RC_ACCEPTANCE_TEMPORAL.json",
+      "producer": "rc-acceptance-temporal.mjs",
+      "schema": "internal://abu/rc-temporal",
+      "digest": "29379e02409fc42e764048b195a032257506babe3dfc369015e7d347fa9c3237"
+    },
+    {
+      "id": "replacement-paths",
+      "path": "docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json",
+      "producer": "rc-acceptance-replacement-paths.mjs",
+      "schema": "internal://abu/rc-replacement",
+      "digest": "fe066308e6d5a9721950a3da456e55a6216eb17a8055710e34fe1184e1fbf5f0"
+    },
+    {
+      "id": "tool-sequencing",
+      "path": "docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json",
+      "producer": "rc-acceptance-tool-sequencing.mjs",
+      "schema": "internal://abu/rc-tool-sequencing",
+      "digest": "1e4248fe24fb45b24d592649bd108322bde13d5a36e262f002e3769d205eb539"
+    },
+    {
+      "id": "secret-scan",
+      "path": "docs/engineering-os/qa/deployed-secret-exposure.json",
+      "producer": "scan-deployed-secrets.ts",
+      "schema": "internal://abu/deployed-secret-exposure",
+      "digest": "19c8e62657158d167cdb5acb08729fdd1e06f24359836d172f463395eec75463"
+    }
+  ],
+  "requiredClaims": [
+    "secret-scan",
+    "calendar",
+    "whatsapp",
+    "temporal",
+    "replacement-paths",
+    "tool-sequencing",
+    "historical-corpus"
+  ],
+  "denominatorId": "f29f94e3195a2727cee010256607d7f7e30038137230ff7983f5ed73ac2456d7",
+  "whyCertified": "Sealed from existing machine state. Verdicts are copied verbatim from QA_MONSTER_REPORT.json; this capsule cannot promote them. A reader reconstructs the certified artifact, harness, evidence digests and provenance from this file alone; verify with scripts/verify-capsule.mjs.",
+  "capsuleId": "bcbded935c063086009043045e75aee8f74ac25f17a30273eb30ab71e1ef9e68"
+}

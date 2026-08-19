@@ -1,0 +1,14 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Jorge
+hebrew_name: חורחה
+aliases: []
+relationship: nephew_of_matriarch
+relationship_hebrew: אחיין של מרטיטה (בן של לואיס)
+role: אחיינה של מרטיטה; בנם של לואיס וסופיה
+location: סנטה פה, ארגנטינה
+gender: male
+spouse: אאצ'י
+notes: "בנם של לואיס וסופיה. נשוי לאאצ'י (יהודייה מסנטה פה). גרים/גרו בסנטה פה. כשהתחתנו משפחתה של אאצ'י הייתה עשירה מאוד; מאוחר יותר הוריה פשטו רגל. חורחה הפך מצליח מאוד כלכלית. שני בנים: פאבי ומרטין."
+pronunciation:
+  es: jorge

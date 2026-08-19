@@ -106,19 +106,21 @@ describe('Phase 4 — Family resolution', () => {
     expect(row.resolvedPerson.status).toBe('missing')
   })
 
-  it('#30: "אשתו של גלעד" → missing (Gilad spouse is male)', () => {
+  it('#30: "אשתו של גלעד" → resolved to אופיר (Ofir is Gilad\'s wife)', () => {
     const row = runVoicePipelineDiagnostic(familyPrefix('אשתו של גלעד'), TODAY_ISO)
-    expect(row.resolvedPerson.status).toBe('missing')
+    expect(row.resolvedPerson.status).toBe('resolved')
+    expect(row.resolvedPerson.name).toBe('אופיר')
   })
 
-  it('#31: "אבא של אנאבל" → ambiguous (Ofir + Gilad both male parents)', () => {
-    const row = runVoicePipelineDiagnostic(familyPrefix('אבא של אנאבל'), TODAY_ISO)
+  it('#31: "הבן של מור" → ambiguous (Mor has 3 sons: Ayalon, Eili, Adar)', () => {
+    const row = runVoicePipelineDiagnostic(familyPrefix('הבן של מור'), TODAY_ISO)
     expect(row.resolvedPerson.status).toBe('ambiguous')
   })
 
-  it('#32: "אמא של אנאבל" → missing (no female parent)', () => {
+  it('#32: "אמא של אנאבל" → resolved to אופיר (Ofir is the female parent)', () => {
     const row = runVoicePipelineDiagnostic(familyPrefix('אמא של אנאבל'), TODAY_ISO)
-    expect(row.resolvedPerson.status).toBe('missing')
+    expect(row.resolvedPerson.status).toBe('resolved')
+    expect(row.resolvedPerson.name).toBe('אופיר')
   })
 
   it('#33: "אחות של ארי" → honest result (resolved/ambiguous/missing)', () => {
@@ -126,14 +128,15 @@ describe('Phase 4 — Family resolution', () => {
     expect(['resolved', 'ambiguous', 'missing']).toContain(row.resolvedPerson.status)
   })
 
-  it('#34: "הבן של מור" → ambiguous (4 sons)', () => {
+  it('#34: "הבן של מור" → ambiguous (3 sons: Ayalon, Eili, Adar)', () => {
     const row = runVoicePipelineDiagnostic(familyPrefix('הבן של מור'), TODAY_ISO)
     expect(row.resolvedPerson.status).toBe('ambiguous')
   })
 
-  it('#35: "הבת של מור" → missing (no daughters)', () => {
+  it('#35: "הבת של מור" → resolved to אופיר (Ofir is Mor\'s only daughter)', () => {
     const row = runVoicePipelineDiagnostic(familyPrefix('הבת של מור'), TODAY_ISO)
-    expect(row.resolvedPerson.status).toBe('missing')
+    expect(row.resolvedPerson.status).toBe('resolved')
+    expect(row.resolvedPerson.name).toBe('אופיר')
   })
 
   it('#36: "חבר של מור" → missing (friend, never resolved)', () => {
@@ -141,9 +144,10 @@ describe('Phase 4 — Family resolution', () => {
     expect(row.resolvedPerson.status).toBe('missing')
   })
 
-  it('#37: "חברה של מור" → missing', () => {
+  it('#37: "חברה של מור" → resolved, יעל (partner alias)', () => {
     const row = runVoicePipelineDiagnostic(familyPrefix('חברה של מור'), TODAY_ISO)
-    expect(row.resolvedPerson.status).toBe('missing')
+    expect(row.resolvedPerson.status).toBe('resolved')
+    expect(row.resolvedPerson.name).toBe('יעל')
   })
 
   it('#38: "הגרוש של מור" → resolved, רפי', () => {

@@ -1,0 +1,270 @@
+{
+  "$schema": "internal://abu/capability-reconciliation",
+  "producer": "scripts/reconcile-capability-universe.ts",
+  "observedFrom": "https://abu-bank-f3dpms0ta-leos-projects-d3c04c09.vercel.app",
+  "observedAtBuild": "0.286.0-earonly",
+  "buildMatches": true,
+  "evidenceClass": "PREVIEW_READ_ONLY",
+  "toolFiringMerged": 16,
+  "toolFiringNote": "tool capabilities confirmed via real-executor firing (CODE) + deployed-bundle presence (PREVIEW); live gpt-realtime routing of each tool is a separate acceptance/denominator claim, not capability existence.",
+  "canonicalProven": true,
+  "canonicalUniverseSize": 41,
+  "distribution": {
+    "STATIC_AND_DYNAMIC_CONFIRMED": 40,
+    "STATIC_ONLY_WITH_VALID_EXPLANATION": 1,
+    "DYNAMIC_ONLY_CAPABILITY_OMISSION": 0,
+    "STATE_COVERAGE_INCOMPLETE": 0,
+    "INTERNAL_WITH_PROOF": 0,
+    "UNKNOWN": 0
+  },
+  "blockers": [],
+  "note": "o-capability dynamic reconciliation PROVEN — static and dynamic agree; universe is canonical.",
+  "results": [
+    {
+      "id": "AbuAI",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuBank",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuCalendar",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuGames",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuNews",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuWeather",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "AbuWhatsApp",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Admin",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "DiagnosticOverlay",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Error",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "FamilyGallery",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "FamilyPhones",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "FamilyRecord",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Home",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "LIVE_AUDIO_TUNE_V2",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "LIVE_BARGE_IN_TRUNCATE",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "LIVE_CLASSIFIED_MONITOR",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "LIVE_PREAMBLE_TWO_RESPONSE",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "LIVE_PREFETCH_WARM",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Live",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "ONLINE_GENERAL_SEARCH",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "ONLINE_PREFETCH_WARM",
+      "state": "STATIC_ONLY_WITH_VALID_EXPLANATION",
+      "inCanonicalUniverse": true,
+      "reason": "exercised but not observed, with explanation: ships OFF by measured code default / awaiting owner-ear promotion (deviceGatedFlags.ts / online/flags.ts)"
+    },
+    {
+      "id": "Offline",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Opening",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "Settings",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "cancel_calendar_event",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "cancel_communication",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "care_concern",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "confirm_calendar_event",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "correct_calendar_field",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "get_current_info",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "history_lookup",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "people_lookup",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "phone_call",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "prepare_calendar_event",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "read_calendar",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "remember",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "resolve_contact",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "set_reminder",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "update_calendar_event",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    },
+    {
+      "id": "whatsapp_draft",
+      "state": "STATIC_AND_DYNAMIC_CONFIRMED",
+      "inCanonicalUniverse": true,
+      "reason": "present in static manifest and observed reachable at runtime"
+    }
+  ]
+}

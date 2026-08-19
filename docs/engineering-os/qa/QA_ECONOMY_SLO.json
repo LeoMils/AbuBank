@@ -1,0 +1,10 @@
+{
+  "$schema": "internal://abu/qa-economy-slo",
+  "schemaVersion": "economy-slo/1",
+  "note": "PRE-DECLARED engineering-operability targets (§16/C8), fixed BEFORE the benchmark that judges them and NOT moved retroactively. These are ENGINEERING_EXECUTION_SLOs (wall-clock / provider-call bounds), separate from OWNER_MONETARY_SPEND_CEILING (dollars, owner-set). A tier over target = QA_ECONOMY_SLO=MISSED (a QA-system finding), never a reason to drop assurance. Baselines: feature measured ~68s/0-calls; RC measured ~155s.",
+  "tiers": {
+    "feature": { "wallClockMsTarget": 150000, "providerCallTarget": 0, "evaluatorFailureRateTarget": 0, "rationale": "measured ~68s deterministic; 150s gives headroom for a growing suite while staying routinely practical for a solo builder" },
+    "rc": { "wallClockMsTarget": 360000, "providerCallTarget": 60, "evaluatorFailureRateTarget": 0, "rationale": "measured ~155s; ≤60 provider calls matches the pre-registered stochastic envelope" },
+    "production": { "wallClockMsTarget": 420000, "providerCallTarget": 80, "evaluatorFailureRateTarget": 0, "rationale": "declared/configured only — no actual Production measurement exists yet; do not fabricate" }
+  }
+}

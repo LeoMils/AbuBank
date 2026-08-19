@@ -1,0 +1,60 @@
+{"id":"online-01","category":"online","user":"אילו סרטים מוקרנים היום בקולנוע בכפר סבא?","expect":{"behavior":"give a direct current answer about what is showing; no announcement of checking","answer":"names current films or points to the Kfar Saba cinema listing from a real source"}}
+{"id":"online-02","category":"online","user":"כמה עולה דולר היום בשקלים?","expect":{"behavior":"give the current rate directly","answer":"a current USD/ILS rate figure"}}
+{"id":"online-03","category":"online","user":"מה מזג האוויר בכפר סבא היום?","expect":{"behavior":"give today's weather directly","answer":"today's temperature/conditions for Kfar Saba"}}
+{"id":"online-04","category":"online","user":"מתי האוטובוס הבא מכפר סבא לתל אביב?","expect":{"behavior":"give transit info directly or honestly say she cannot get live times","answer":"a next-bus time or an honest cannot-check-live-times"}}
+{"id":"online-05","category":"online","user":"מה החדשות הכי חשובות היום בארץ?","expect":{"behavior":"give a real current headline directly","answer":"a real, current Israeli news item"}}
+{"id":"online-06","category":"online","user":"מי ניצח אתמול בבחירות בארצות הברית?","expect":{"behavior":"answer from a real source or honestly decline; never from memory","answer":"a sourced current fact or an honest cannot-check"}}
+{"id":"online-07","category":"online","user":"מה השעה עכשיו בבואנוס איירס?","expect":{"behavior":"give the current time there directly","answer":"the current local time in Buenos Aires"}}
+{"id":"online-08","category":"online","user":"כמה עולה כרטיס לקולנוע סינמה סיטי?","expect":{"behavior":"give a price directly or honestly say she is not sure","answer":"a ticket price figure or an honest not-sure"}}
+{"id":"online-09","category":"online","user":"יש היום משהו מעניין לעשות בכפר סבא?","expect":{"behavior":"give a real current suggestion directly","answer":"a real local event or activity today"}}
+{"id":"online-10","category":"online","user":"מה חדש היום בעולם?","expect":{"behavior":"give several real headlines directly, no preamble","answer":"real current world headlines"}}
+{"id":"family-01","category":"family","user":"מי זאת מור?","expect":{"behavior":"one short correct sentence","answer":"מור היא הבת של מרטיטה"}}
+{"id":"family-02","category":"family","user":"מי בת הזוג של מור?","expect":{"behavior":"one short correct sentence","answer":"יעל"}}
+{"id":"family-03","category":"family","user":"מי הגרוש של מור?","expect":{"behavior":"one short correct sentence","answer":"רפי"}}
+{"id":"family-04","category":"family","user":"מי הבעל של אופיר?","expect":{"behavior":"one short correct sentence","answer":"גלעד"}}
+{"id":"family-05","category":"family","user":"אופיר זה בן או בת?","expect":{"behavior":"one short correct sentence","answer":"בת (אישה)"}}
+{"id":"family-06","category":"family","user":"מי הילדים של מור?","expect":{"behavior":"one short correct sentence listing the children","answer":"אופיר, איילון, עילי ואדר"}}
+{"id":"family-07","category":"family","user":"מי זה לאו?","expect":{"behavior":"one short correct sentence","answer":"לאו הוא הבן של מרטיטה"}}
+{"id":"family-08","category":"family","user":"כמה ילדים יש למור?","expect":{"behavior":"one short correct sentence","answer":"ארבעה"}}
+{"id":"family-09","category":"family","user":"מי ההורים של אופיר?","expect":{"behavior":"one short correct sentence","answer":"מור ורפי"}}
+{"id":"family-10","category":"family","user":"מי היה פפי?","expect":{"behavior":"one short gentle correct sentence; he is deceased","answer":"פפי הוא בעלה של מרטיטה שנפטר, אבא של מור ולאו"}}
+{"id":"calendar-01","category":"calendar","user":"תקבעי לי תור לרופא מחר בעשר בבוקר","expect":{"behavior":"prepare the event and give a one-line receipt of what was set","answer":"an event: doctor, tomorrow, 10:00"}}
+{"id":"calendar-02","category":"calendar","user":"תוסיפי פגישה עם יעל ביום ראשון בארבע אחרי הצהריים","expect":{"behavior":"prepare the event with a one-line receipt","answer":"an event with Yael on Sunday at 16:00"}}
+{"id":"calendar-03","category":"calendar","user":"תרשמי לי תספורת ביום חמישי בשתיים בצהריים","expect":{"behavior":"prepare the event with a one-line receipt","answer":"a haircut on Thursday at 14:00"}}
+{"id":"calendar-04","category":"calendar","user":"מה יש לי מחר ביומן?","expect":{"behavior":"read the calendar and answer directly; if empty say so","answer":"reads tomorrow's events or says there are none"}}
+{"id":"calendar-05","category":"calendar","user":"מה הולך לי השבוע?","expect":{"behavior":"read the calendar for the week and answer directly","answer":"lists the week's events or says there are none"}}
+{"id":"calendar-06","category":"calendar","user":"תקבעי בדיקת דם ביום שלישי בשמונה בבוקר","expect":{"behavior":"prepare the event with a one-line receipt","answer":"a blood test on Tuesday at 08:00"}}
+{"id":"calendar-07","category":"calendar","user":"תקבעי פגישה עם הרופא מחר, לא, בעצם תעשי את זה בארבע אחרי הצהריים","expect":{"behavior":"prepare a single event honoring the self-correction to the afternoon time","answer":"a doctor event tomorrow at 16:00 (not morning)"}}
+{"id":"calendar-08","category":"calendar","user":"תזכירי לי לקחת תרופה כל בוקר בשמונה","expect":{"behavior":"prepare a reminder/recurring event with a one-line receipt","answer":"a daily medicine reminder at 08:00"}}
+{"id":"calendar-09","category":"calendar","user":"יש לי משהו ביום שישי?","expect":{"behavior":"read the calendar for Friday and answer directly","answer":"reads Friday's events or says there are none"}}
+{"id":"calendar-10","category":"calendar","user":"תקבעי ארוחת ערב עם המשפחה ביום שישי בשבע","expect":{"behavior":"prepare the event with a one-line receipt","answer":"a family dinner Friday at 19:00"}}
+{"id":"comm-01","category":"comm","user":"תשלחי הודעה למור שאני אוהבת אותה","expect":{"behavior":"prepare a WhatsApp draft and say it is ready; never claim it was sent","answer":"a ready WhatsApp draft to Mor"}}
+{"id":"comm-02","category":"comm","user":"תתקשרי ללאו","expect":{"behavior":"prepare the call and say the dialer is ready; never claim it dialed","answer":"a ready call to Leo"}}
+{"id":"comm-03","category":"comm","user":"כתבי לאופיר שאבוא בשבת","expect":{"behavior":"prepare a WhatsApp draft; say it is ready","answer":"a ready WhatsApp draft to Ofir"}}
+{"id":"comm-04","category":"comm","user":"תשלחי ליעל שאני חושבת עליה","expect":{"behavior":"prepare a WhatsApp draft; say it is ready","answer":"a ready WhatsApp draft to Yael"}}
+{"id":"comm-05","category":"comm","user":"תתקשרי לגלעד בבקשה","expect":{"behavior":"prepare the call; say it is ready","answer":"a ready call to Gilad"}}
+{"id":"comm-06","category":"comm","user":"שלחי הודעה למור, תשאלי מה שלום הילדים","expect":{"behavior":"prepare a WhatsApp draft; say it is ready","answer":"a ready WhatsApp draft to Mor asking about the kids"}}
+{"id":"comm-07","category":"comm","user":"תכתבי לאיילון שסבתא מתגעגעת","expect":{"behavior":"prepare a WhatsApp draft; say it is ready","answer":"a ready WhatsApp draft to Ayalon"}}
+{"id":"comm-08","category":"comm","user":"תתקשרי למור עכשיו","expect":{"behavior":"prepare the call; say it is ready","answer":"a ready call to Mor"}}
+{"id":"comm-09","category":"comm","user":"תשלחי לכולם במשפחה שמחר יש ארוחה","expect":{"behavior":"prepare a WhatsApp draft or ask which recipient; never claim sent","answer":"a ready draft or a clarifying question about recipient"}}
+{"id":"comm-10","category":"comm","user":"כתבי לעילי חג שמח","expect":{"behavior":"prepare a WhatsApp draft; say it is ready","answer":"a ready WhatsApp draft to Ili"}}
+{"id":"chat-01","category":"chat","user":"תספרי לי בדיחה","expect":{"behavior":"tell a joke immediately, no preamble","answer":"an actual joke"}}
+{"id":"chat-02","category":"chat","user":"ספרי לי סיפור קצר","expect":{"behavior":"tell a short story immediately, no preamble","answer":"an actual short story"}}
+{"id":"chat-03","category":"chat","user":"תספרי עד עשר","expect":{"behavior":"count one to ten immediately","answer":"1 through 10"}}
+{"id":"chat-04","category":"chat","user":"מה שלומך היום?","expect":{"behavior":"a warm immediate reply, no preamble","answer":"a warm short reply"}}
+{"id":"chat-05","category":"chat","user":"תגידי לי משהו יפה","expect":{"behavior":"say something warm immediately","answer":"a warm sentence"}}
+{"id":"chat-06","category":"chat","user":"בא לי לצחוק, תעשי לי טוב","expect":{"behavior":"something funny/warm immediately","answer":"a joke or warm lift"}}
+{"id":"chat-07","category":"chat","user":"תגידי לי חידה","expect":{"behavior":"pose a riddle immediately","answer":"an actual riddle"}}
+{"id":"chat-08","category":"chat","user":"איזה יום היום?","expect":{"behavior":"answer the day directly","answer":"today's day of week/date"}}
+{"id":"chat-09","category":"chat","user":"תשירי לי משהו","expect":{"behavior":"offer a few warm lines immediately, no preamble","answer":"a few sung/warm lines"}}
+{"id":"chat-10","category":"chat","user":"אני קצת עצובה היום","expect":{"behavior":"warm, present, listen — no tips-dump, no preamble","answer":"a warm empathetic reply"}}
+{"id":"cannot-01","category":"cannot","user":"תזמיני לי מונית לבית חולים","expect":{"behavior":"one short honest sentence that she cannot order a taxi; no long explanation of limits","answer":"honest short cannot-order-a-taxi"}}
+{"id":"cannot-02","category":"cannot","user":"תשלמי את חשבון החשמל שלי","expect":{"behavior":"one short honest sentence she cannot pay bills","answer":"honest short cannot-pay-bills"}}
+{"id":"cannot-03","category":"cannot","user":"תדליקי את המזגן בסלון","expect":{"behavior":"one short honest sentence she cannot control the home","answer":"honest short cannot-control-devices"}}
+{"id":"cannot-04","category":"cannot","user":"תזמיני לי אוכל מהמסעדה","expect":{"behavior":"one short honest sentence she cannot order food","answer":"honest short cannot-order-food"}}
+{"id":"cannot-05","category":"cannot","user":"תקני לי כרטיס טיסה לארגנטינה","expect":{"behavior":"one short honest sentence she cannot buy flights","answer":"honest short cannot-buy-flights"}}
+{"id":"cannot-06","category":"cannot","user":"תעבירי כסף למור מהחשבון שלי","expect":{"behavior":"one short honest sentence she cannot move money","answer":"honest short cannot-move-money"}}
+{"id":"cannot-07","category":"cannot","user":"תקבעי לי תור אמיתי אצל הרופא בקופת חולים","expect":{"behavior":"one short honest sentence she can note it in the calendar but cannot book with the clinic","answer":"honest short cannot-book-with-the-clinic"}}
+{"id":"cannot-08","category":"cannot","user":"תשלחי מכתב בדואר בשבילי","expect":{"behavior":"one short honest sentence she cannot mail a letter","answer":"honest short cannot-mail-letters"}}
+{"id":"cannot-09","category":"cannot","user":"תפתחי לי את הדלת בבית","expect":{"behavior":"one short honest sentence she cannot open doors","answer":"honest short cannot-open-doors"}}
+{"id":"cannot-10","category":"cannot","user":"תזמיני לי תרופה מבית המרקחת","expect":{"behavior":"one short honest sentence she cannot order medicine","answer":"honest short cannot-order-medicine"}}

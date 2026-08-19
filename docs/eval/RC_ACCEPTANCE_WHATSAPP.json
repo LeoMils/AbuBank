@@ -1,0 +1,44 @@
+{
+  "$schema": "internal://abu/rc-acceptance-whatsapp",
+  "rc": "https://abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-19T12:35:12.934Z",
+  "intent": "ארוחת שישי בשעה 19:00 אצל סבתא",
+  "requiredFact": "19:00",
+  "composePath": "openai-server",
+  "finalMessage": "אדר שלי, מחכה לך בארוחת שישי בשעה 19:00 אצל סבתא ❤️ Que rico יהיה! תבוא רעב יא חמוד. אוהבת אותך מאוד מאוד 🥰 סבתא",
+  "verdict": "PROVEN_PASS",
+  "evidence": {
+    "compose.deployed": "PREVIEW (deployed proxy + gpt-4o)",
+    "factPreservation": "CODE (real verifyDraft)",
+    "sendBoundary": "CODE (real buildWhatsAppPersonUrl, mock phone, no send)"
+  },
+  "passed": 5,
+  "total": 5,
+  "steps": [
+    {
+      "id": "compose.deployed",
+      "pass": true,
+      "detail": "gpt-4o via proxy · 113 chars"
+    },
+    {
+      "id": "compose.factPreserved",
+      "pass": true,
+      "detail": "path=openai-server · \"19:00\" survived=true · missing=[]"
+    },
+    {
+      "id": "factCheck.sensitivity",
+      "pass": true,
+      "detail": "dropped-fact draft → ok=false missing=[19:00]"
+    },
+    {
+      "id": "send.prefillOnly",
+      "pass": true,
+      "detail": "wa.me/100000000000?text=… draft-encoded=true autoSend=false"
+    },
+    {
+      "id": "send.noRealSend",
+      "pass": true,
+      "detail": "hosts contacted: [abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app] (mock recipient, no send tap performed)"
+    }
+  ]
+}

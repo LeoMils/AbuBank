@@ -1,0 +1,18 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: grandchildren_mor
+canonical_name: Ofir
+hebrew_name: אופיר
+aliases: []
+relationship: granddaughter
+relationship_hebrew: נכדה (בת של מור ורפי)
+spouse: גלעד
+birthday: 02-15
+location: כפר סבא
+gender: female
+occupation: דולה; מסיימת הכשרה לאחות; ככל הנראה לקראת קורס למיילדת (לא מאומת — לא לומר שהיא כבר מיילדת)
+children:
+- אנאבל
+- ארי
+notes: "אופיר וגלעד הם ההורים של אנאבל וארי. גרה בדירה בכפר סבא. ג'ינג'ית. לאו: 'מתוקה אמיתית'. מרטיטה קרובה אליה במיוחד. בהריון (נכון לאוגוסט 2026). אוהבת יין אדום."
+pronunciation:
+  es: ofir

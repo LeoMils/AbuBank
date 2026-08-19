@@ -1,0 +1,10 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: pets
+canonical_name: Milli
+hebrew_name: מילי
+aliases:
+- Milly
+type: dog
+breed: לברדור
+owner: Eili & Yarden
+notes: כלבה של עילי וירדן; לברדור; אמא של טונטו.

@@ -15,7 +15,7 @@ function getFamilyMembers(): FamilyMember[] {
   return loadFamilyData()
 }
 
-export function searchFamily(query: string): { found: boolean; members: FamilyMember[]; answer: string } {
+export function searchFamily(query: string, rich = false): { found: boolean; members: FamilyMember[]; answer: string } {
   const q = query.trim().toLowerCase()
   if (!q) return { found: false, members: [], answer: 'לא הבנתי את מי את מחפשת.' }
 
@@ -24,7 +24,7 @@ export function searchFamily(query: string): { found: boolean; members: FamilyMe
     m.hebrew === q || m.canonicalName.toLowerCase() === q || m.aliases.some(a => a.toLowerCase() === q)
   )
   if (exact.length === 1) {
-    return { found: true, members: exact, answer: shapeFamilyAnswer(exact[0]!) }
+    return { found: true, members: exact, answer: shapeFamilyAnswer(exact[0]!, rich) }
   }
   if (exact.length > 1) {
     return { found: true, members: exact, answer: `יש כמה אנשים עם השם הזה: ${exact.map(m => `${m.hebrew} (${m.relationshipHebrew})`).join(', ')}. את מתכוונת למי?` }
@@ -61,7 +61,7 @@ export function getFamilyContext(): string {
   const family = getFamilyMembers()
   const kids = family.filter(m => m.relationship === 'daughter' || m.relationship === 'son')
   const grandkids = family.filter(m => m.relationship === 'grandson' || m.relationship === 'granddaughter')
-  return `הילדים — ${kids.map(m => m.hebrew).join(' ו')}. הנכדים — ${grandkids.map(m => m.hebrew).join(', ')}.`
+  return `הילדים שלך — ${kids.map(m => m.hebrew).join(' ו')}. הנכדים שלך — ${grandkids.map(m => m.hebrew).join(', ')}.`
 }
 
 /**
@@ -103,7 +103,7 @@ export function searchFamilyGroup(query: string): string | null {
     const grandkids = family.filter(m => m.relationship === 'grandson' || m.relationship === 'granddaughter')
     if (grandkids.length === 0) return 'אין לי מידע על נכדים.'
     const names = grandkids.map(m => m.hebrew).join(', ')
-    return `ל-Martita יש ${grandkids.length} נכדים: ${names}.`
+    return `יש לך ${grandkids.length} נכדים — ${names}.`
   }
   if (isChildren) {
     const kids = family.filter(m => m.relationship === 'daughter' || m.relationship === 'son')
@@ -118,9 +118,15 @@ export function searchFamilyGroup(query: string): string | null {
   return null
 }
 
-function todayStr(): string { return new Date().toISOString().split('T')[0]! }
-function tomorrowStr(): string { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]! }
-function weekEndStr(): string { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().split('T')[0]! }
+// LOCAL date (not UTC) — must match the calendar WRITE path (getTodayStr in
+// AbuCalendar/constants), or "מה יש לי היום" returns yesterday's events in the
+// early-morning UTC+2/+3 window (Israel). toISOString() would use UTC.
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function todayStr(): string { return localDateStr(new Date()) }
+function tomorrowStr(): string { const d = new Date(); d.setDate(d.getDate() + 1); return localDateStr(d) }
+function weekEndStr(): string { const d = new Date(); d.setDate(d.getDate() + 7); return localDateStr(d) }
 
 function formatEventNatural(e: Appointment): string {
   const time = e.time ? ` בשעה ${e.time}` : ''
@@ -178,13 +184,16 @@ export function getUpcomingEvents(limit = 5): { events: Appointment[]; summary: 
   return { events, summary: shapeCalendarAnswer(events, 'upcoming') }
 }
 
-export function findEventsByPerson(personName: string): { events: Appointment[]; summary: string } {
+const BIRTHDAY_EVENT_RE = /יום\s+הולדת|🎂|🕯️/u
+export function findEventsByPerson(personName: string, meetingOnly = false): { events: Appointment[]; summary: string } {
   const all = loadAppointmentsWithFamily(new Date().getFullYear())
   const today = todayStr()
   const q = personName.trim().toLowerCase()
   const events = all.filter(a =>
     a.date >= today &&
-    ((a.personName?.toLowerCase().includes(q)) || a.title.toLowerCase().includes(q) || (a.notes?.toLowerCase().includes(q)))
+    ((a.personName?.toLowerCase().includes(q)) || a.title.toLowerCase().includes(q) || (a.notes?.toLowerCase().includes(q))) &&
+    // Birthdays must NOT satisfy a meeting query (only when the user asked about a meeting).
+    (!meetingOnly || !BIRTHDAY_EVENT_RE.test(a.title))
   )
   if (events.length === 0) return { events, summary: `אין כלום ביומן עם ${personName}.` }
   return { events, summary: `מה שיש לך עם ${personName}:\n${formatEventList(events)}` }

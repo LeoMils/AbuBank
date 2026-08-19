@@ -71,10 +71,18 @@ function jsonError(code: ChatProxyErrorCode, lang: ChatProxyPayload['lang'], sta
   })
 }
 
+import { rateLimited, circuitTripped, clientKey } from './_rateLimit'
+import { guardBillable } from './_session'
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return jsonError('BAD_REQUEST', 'he', 405)
   }
+  // Server-verifiable auth (when configured): an unauthenticated caller gets 401 BEFORE any provider call.
+  { const denied = await guardBillable(req); if (denied) return denied }
+  // A7/B rate + cost protection (defense-in-depth). Envelope: a chat turn is ~1-2 calls; conversation ~a few turns/min →
+  // 40/min/IP generous, abusive above. Circuit: 800 chat calls/min/instance.
+  if (rateLimited(`chat:${clientKey(req)}`, 40, 60_000) || circuitTripped('chat', 800, 60_000)) return jsonError('CHAT_PROVIDER_FAILED', 'he', 429)
 
   let payload: ChatProxyPayload
   try {
@@ -86,6 +94,15 @@ export default async function handler(req: Request): Promise<Response> {
   if (!payload.body || typeof payload.body !== 'object') {
     return jsonError('BAD_REQUEST', lang, 400)
   }
+  // A7 cost-amplification caps (no user auth on this PWA → bounded per-request limits are the
+  // machine-closable mitigation; a rate-limit/auth policy remains an owner decision). Reject an
+  // abuse-sized payload and clamp the completion length before the billable OpenAI call.
+  const bodyBytes = JSON.stringify(payload.body).length
+  if (bodyBytes > 200_000) return jsonError('BAD_REQUEST', lang, 413)
+  const msgs = (payload.body as { messages?: unknown }).messages
+  if (Array.isArray(msgs) && msgs.length > 60) return jsonError('BAD_REQUEST', lang, 413)
+  const mt = (payload.body as { max_tokens?: unknown }).max_tokens
+  if (typeof mt === 'number' && mt > 4096) (payload.body as { max_tokens?: number }).max_tokens = 4096
 
   const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {}
   const apiKey = env.OPENAI_API_KEY

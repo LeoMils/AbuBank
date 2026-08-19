@@ -3,26 +3,40 @@
     "matriarch": {
       "canonical_name": "Martita",
       "hebrew_name": "מרטיטה",
-      "aliases": ["אבו", "Abu", "Abuela"],
+      "aliases": ["אבו", "Abu", "Abuela", "מרתה", "Marta", "Abu Ela", "אבו אלה", "Müller", "Muller", "Miller"],
       "relationship": "matriarch",
+      "relationship_hebrew": "מלכת המשפחה",
+      "spouse": "פפי",
+      "maiden_name": "Müller",
+      "maiden_name_note": "שם נעורים: Müller (קנוני, אושר על ידי לאו). Muller ו-Miller הם וריאציות איות — כינויים לאותו אדם.",
       "birthday": "04-01",
+      "birth_year": 1945,
       "location": "כפר סבא",
       "origin": "בואנוס איירס, ארגנטינה",
-      "languages": ["עברית", "ספרדית"],
+      "languages": ["עברית", "ספרדית", "אנגלית (מבינה מעט)"],
+      "gender": "female",
       "pet": "טוטסי",
-      "notes": "חותמת הודעות כ-אבו. אוהבת לבשל, לארח, ארוחות שישי."
+      "notes": "מלכת המשפחה; הייתה המלכה של פפי והוא המלך שלה. נולדה 1 באפריל 1945 בבואנוס איירס (מתקן טעות קודמת של 01-01). חותמת הודעות כ-אבו. אוהבת לבשל, לארח, ארוחות שישי. אישה חדה, חכמה, לא פראיירית — כולם אוהבים אותה. פרטי אישיות, העדפות, שגרות ובריאות — ב-knowledge/martita_personality.yaml.",
+      "pronunciation": {
+        "es": "martita"
+      }
     },
     "deceased": {
       "canonical_name": "Papi",
       "hebrew_name": "פפי",
-      "aliases": ["Pepe", "פאפי"],
+      "aliases": ["Pepe", "פאפי", "Victor", "ויקטור"],
       "relationship": "husband_deceased",
       "relationship_hebrew": "הבעל ז\"ל",
       "birthday": "04-19",
       "birth_year": 1941,
       "date_of_passing": "2025-01-01",
       "memorial_date": "01-01",
-      "notes": "זוכרים אותו באהבה."
+      "gender": "male",
+      "father": "José Milstein",
+      "notes": "בעלה של מרטיטה, אבא של מור ולאו. זוג אוהב במיוחד — הלכו יד ביד, עשו כמעט הכל ביחד, טיילו הרבה בעולם, בנו משפחה חמה וקרובה; היו גם תקופות קשות. גדל במנדוסה, ארגנטינה; אביו חוסה מילשטיין. עבד עד שאושפז ונפטר. אהב מאוד יין אדום. זוכרים אותו באהבה. חוסה מילשטיין ואחד מאחיו של פפי נפטרו באותו יום (הסיבות/התאריכים המדויקים לא ידועים).",
+      "pronunciation": {
+        "es": "papi"
+      }
     },
     "children": [
       {
@@ -36,7 +50,14 @@
         "location": "הוד השרון",
         "location_notes": "וילה עם יעל",
         "birthday": "08-10",
-        "children": ["אופיר", "איילון", "עילי", "אדר"]
+        "birth_year": 1964,
+        "gender": "female",
+        "occupation": "דיאטנית",
+        "children": ["אופיר", "איילון", "עילי", "אדר"],
+        "notes": "הבת של מרטיטה ופפי. בעבר נשואה לרפי — גרו ברֹאש העין, שם נולדו הילדים; היום גרושה וגרה בהוד השרון עם בת הזוג יעל. דיאטנית; העבירה גם קבוצות לנשים ועסקה במכירת מים עם אלקטרוליטים. הומור משפחתי: לאו אומר שהיא לא בשלנית גדולה (אמירה משפחתית, לא עובדה). אוהבת יין אדום.",
+        "pronunciation": {
+          "es": "mor"
+        }
       },
       {
         "canonical_name": "Leo",
@@ -45,7 +66,14 @@
         "relationship": "son",
         "relationship_hebrew": "הבן",
         "birthday": "08-22",
-        "children": ["עדי", "נועם"]
+        "location": "רעננה",
+        "ex_spouse": "רותי",
+        "gender": "male",
+        "children": ["עדי", "נועם"],
+        "notes": "הבן של מרטיטה ופפי. בעבר עם רותי (גרושתו, אמא של עדי ונועם); גרו בהרצליה, אחר כך רעננה והרצליה שוב וכמה בתים; היום גר ברעננה. יד ימינה של מרטיטה — היא מתקשרת אליו לכל דבר מעשי: בנקים, כספים, תקלות, בעיות בבית, טכנולוגיה. הריטואלים המשותפים (שנדי, שווארמה על אי המטבח, מסעדות) מתועדים ב-martita_personality.yaml. אוהב יין אדום.",
+        "pronunciation": {
+          "es": "leo"
+        }
       }
     ],
     "children_related": [
@@ -56,7 +84,14 @@
         "relationship": "ex_son_in_law",
         "relationship_hebrew": "הגרוש של מור, אבא של הנכדים",
         "birthday": "07-29",
-        "notes": "מור ורפי גרושים. רפי הוא אבא של אופיר, איילון, עילי, אדר."
+        "location": "רֹאש העין",
+        "gender": "male",
+        "occupation": "רואה חשבון; עובד כמנהל כספים בחברה בתחום הקוסמטיקה",
+        "partner": "נילי",
+        "notes": "מור ורפי גרושים. רפי הוא אבא של אופיר, איילון, עילי, אדר. רואה חשבון, מנהל כספים בחברה בתחום הקוסמטיקה. גר ברֹאש העין. בת זוגו נילי (ארגנטינאית, אחות). אוהב יין (אדום) ואוהב אוכל; לעיתים קרובות שוכח להביא יין; לאו אומר שהוא לא בשלן טוב.",
+        "pronunciation": {
+          "es": "rafi"
+        }
       },
       {
         "canonical_name": "Yael",
@@ -66,7 +101,11 @@
         "relationship_hebrew": "בת זוג של מור",
         "partner": "מור",
         "location": "הוד השרון",
-        "notes": "גרה עם מור בוילה בהוד השרון."
+        "gender": "female",
+        "notes": "גרה עם מור בוילה בהוד השרון. אוהבת יין אדום.",
+        "pronunciation": {
+          "es": "yael"
+        }
       }
     ],
     "grandchildren_mor": [
@@ -74,40 +113,61 @@
         "canonical_name": "Ofir",
         "hebrew_name": "אופיר",
         "aliases": [],
-        "relationship": "grandson",
-        "relationship_hebrew": "נכד (בן של מור ורפי)",
+        "relationship": "granddaughter",
+        "relationship_hebrew": "נכדה (בת של מור ורפי)",
         "spouse": "גלעד",
         "birthday": "02-15",
+        "location": "כפר סבא",
+        "gender": "female",
+        "occupation": "דולה; מסיימת הכשרה לאחות; ככל הנראה לקראת קורס למיילדת (לא מאומת — לא לומר שהיא כבר מיילדת)",
         "children": ["אנאבל", "ארי"],
-        "notes": "אופיר וגלעד הם ההורים של אנאבל וארי."
+        "notes": "אופיר וגלעד הם ההורים של אנאבל וארי. גרה בדירה בכפר סבא. ג'ינג'ית. לאו: 'מתוקה אמיתית'. מרטיטה קרובה אליה במיוחד. בהריון (נכון לאוגוסט 2026). אוהבת יין אדום.",
+        "pronunciation": {
+          "es": "ofir"
+        }
       },
       {
         "canonical_name": "Ayalon",
         "hebrew_name": "איילון",
-        "aliases": ["Eylon", "אילון"],
+        "aliases": ["Eylon", "אילון", "eilon", "Alon", "אלון"],
         "relationship": "grandson",
         "relationship_hebrew": "נכד (בן של מור ורפי)",
         "birthday": "07-31",
-        "notes": "עובר להוד השרון."
+        "gender": "male",
+        "occupation": "מנהל מטבח במסעדה 'Nylon' (מסעדה אסייתית בהוד השרון)",
+        "notes": "גר בהוד השרון עם אדר. ג'ינג'י, מפתח גוף (גוף רציני). מנהל מטבח ב-Nylon (לאו אמר תחילה 'מנהל מסעדה' ותיקן ל'מנהל מטבח'); מאוד אהוב בעבודה. איות המסעדה 'Nylon' לאימות. אושר על ידי לאו: 'אלון' ו'איילון' הם אותו אדם — אלון/אילון הם כינויים.",
+        "pronunciation": {
+          "es": "eilon"
+        }
       },
       {
         "canonical_name": "Eili",
         "hebrew_name": "עילי",
-        "aliases": ["Ilai", "עילאי"],
+        "aliases": ["Ilai", "עילאי", "איליי", "ilay"],
         "relationship": "grandson",
         "relationship_hebrew": "נכד (בן של מור ורפי), נשוי לירדן",
         "birthday": "04-08",
+        "gender": "male",
+        "occupation": "גנן, עצמאי",
         "children": [],
-        "notes": "עילי וירדן גרים יחד. יש להם 3 כלבים ופנסיון לכלבים בבית. טונטו הוא אחד הכלבים."
+        "notes": "עילי וירדן גרים יחד. גנן עצמאי. יש להם כמה כלבים ופנסיון לכלבים בבית — ידועים: מילי (לברדור, אמא של טונטו) וטונטו (לברדור); יש כלבים נוספים ששמותיהם/גזעיהם לא ידועים כרגע (לא להמציא). ירדן בהריון, מצפים לבת (נכון לאוגוסט 2026). עילי אוהב יין אדום.",
+        "pronunciation": {
+          "es": "ilay"
+        }
       },
       {
         "canonical_name": "Adar",
         "hebrew_name": "אדר",
-        "aliases": [],
+        "aliases": ["הדר"],
         "relationship": "grandson",
         "relationship_hebrew": "נכד (הצעיר של מור ורפי)",
         "birthday": "02-28",
-        "notes": "עובר להוד השרון."
+        "gender": "male",
+        "occupation": "מנהל מחסן בעסק של אוכל לחיות",
+        "notes": "גר בהוד השרון עם איילון (אלון). הרבה קעקועים; לרוב עם זקן. עובד בעסק של אוכל לחיות — מנהל מחסן (תיאור מתוקן של לאו). אוהב יין אדום.",
+        "pronunciation": {
+          "es": "adar"
+        }
       }
     ],
     "grandchildren_leo": [
@@ -119,7 +179,11 @@
         "relationship_hebrew": "נכד (בן של לאו)",
         "location": "תל אביב",
         "birthday": "04-05",
-        "notes": "תאום של נועם. בן דוד של אופיר, איילון, עילי, אדר."
+        "gender": "male",
+        "notes": "תאום של נועם. בן דוד של אופיר, איילון, עילי, אדר. גר בתל אביב (וגם משכיר שם דירה — ההסדר המדויק לא ברור). חגורה שחורה בקראטה; מתופף. עמוק בקריפטו, AI והייטק: שירת ביחידה 8200, עבד בשתי חברות הייטק, הקים סטארטאפ ואז עוד סטארטאפ, וכיום מעורב בסטארטאפ/פרויקט נוסף (שמות החברות לא ידועים — לא להמציא). שותף עסקי נוכחי: גד (אחיו של נתן; נתן לוחם UFC וחבר קרוב מאוד של עדי).",
+        "pronunciation": {
+          "es": "adi"
+        }
       },
       {
         "canonical_name": "Noam",
@@ -129,7 +193,11 @@
         "relationship_hebrew": "נכד (בן של לאו)",
         "location": "הרצליה",
         "birthday": "04-05",
-        "notes": "תאום של עדי. בן דוד של אופיר, איילון, עילי, אדר. נסע לאחרונה לבואנוס איירס."
+        "gender": "male",
+        "notes": "תאום של עדי. בן דוד של אופיר, איילון, עילי, אדר. גר בהרצליה. מנגן גיטרה; חגורה חומה בקראטה. נסע לאחרונה לבואנוס איירס. אוהב יין אדום.",
+        "pronunciation": {
+          "es": "noam"
+        }
       }
     ],
     "grandchildren_spouses": [
@@ -140,7 +208,11 @@
         "relationship": "granddaughter_in_law",
         "relationship_hebrew": "כלה (אשת עילי)",
         "spouse": "עילי",
-        "notes": "גרה עם עילי. יש להם 3 כלבים ופנסיון לכלבים."
+        "gender": "female",
+        "notes": "גרה עם עילי. בהריון, מצפים לבת (נכון לאוגוסט 2026). יש להם כמה כלבים ופנסיון לכלבים. ירדן אוהבת יין אדום.",
+        "pronunciation": {
+          "es": "yarden"
+        }
       },
       {
         "canonical_name": "Gilad",
@@ -149,25 +221,39 @@
         "relationship": "grandson_in_law",
         "relationship_hebrew": "בן זוג של אופיר",
         "spouse": "אופיר",
-        "notes": "גלעד ואופיר הם ההורים של אנאבל וארי."
+        "gender": "male",
+        "occupation": "רואה חשבון בחברת הייטק (החברה לא ידועה)",
+        "notes": "גלעד ואופיר הם ההורים של אנאבל וארי. אוהב יין אדום.",
+        "pronunciation": {
+          "es": "gilad"
+        }
       }
     ],
     "great_grandchildren": [
       {
         "canonical_name": "Anabel",
         "hebrew_name": "אנאבל",
-        "aliases": [],
+        "aliases": ["Annabel", "אנבל"],
         "relationship": "great_granddaughter",
         "relationship_hebrew": "נינה (בת של אופיר וגלעד)",
-        "birthday": "10-01"
+        "birthday": "10-01",
+        "gender": "female",
+        "pronunciation": {
+          "es": "anabel"
+        }
       },
       {
         "canonical_name": "Ari",
         "hebrew_name": "ארי",
-        "aliases": [],
+        "aliases": ["Ariana", "אריאנה"],
         "relationship": "great_granddaughter",
         "relationship_hebrew": "נינה (בת של אופיר וגלעד)",
-        "birthday": "11-26"
+        "birthday": "11-26",
+        "gender": "female",
+        "notes": "ארי הוא קיצור של אריאנה. גלעד מעדיף שיקראו לה 'ארי' ולא 'אריאנה' — להשתמש בשם המועדף במשפחה.",
+        "pronunciation": {
+          "es": "ari"
+        }
       }
     ],
     "pets": [
@@ -180,33 +266,767 @@
         "notes": "הכלב של מרטיטה. הולכת איתו לטיולים כל יום."
       },
       {
+        "canonical_name": "Milli",
+        "hebrew_name": "מילי",
+        "aliases": ["Milly"],
+        "type": "dog",
+        "breed": "לברדור",
+        "owner": "Eili & Yarden",
+        "notes": "כלבה של עילי וירדן; לברדור; אמא של טונטו."
+      },
+      {
         "canonical_name": "Tonto",
         "hebrew_name": "טונטו",
         "aliases": ["Tuntu"],
         "type": "dog",
+        "breed": "לברדור",
         "owner": "Eili & Yarden",
-        "notes": "אחד מ-3 הכלבים של עילי וירדן."
+        "notes": "אחד מהכלבים של עילי וירדן; לברדור; בנה של מילי."
       }
     ],
     "close_friends": [
       {
         "canonical_name": "Mirta",
         "hebrew_name": "מירטה",
+        "aliases": ["Mirta Minuchin", "מירטה מינושין"],
         "relationship": "close_friend",
-        "relationship_hebrew": "חברה קרובה"
+        "relationship_hebrew": "חברה קרובה",
+        "role": "חברה קרובה של מרטיטה",
+        "location": "תל אביב",
+        "gender": "female",
+        "notes": "מירטה מינושין, גרה בתל אביב. בעלה אוסקר מינושין ז\"ל. ילדים: מוריאן, מריסה ויארון מינושין. (זוהתה עם 'מירטה' הקיימת — חברה יחידה בשם זה.)",
+        "pronunciation": {
+          "es": "mirta"
+        }
       },
       {
         "canonical_name": "Shoshana",
         "hebrew_name": "שושנה",
+        "aliases": ["Shoshana Barbers", "שושנה ברברס"],
         "relationship": "close_friend",
-        "relationship_hebrew": "חברה קרובה"
+        "relationship_hebrew": "חברה קרובה",
+        "role": "חברה קרובה של מרטיטה",
+        "location": "כפר סבא",
+        "gender": "female",
+        "notes": "שושנה ברברס, גרה בכפר סבא, ארגנטינאית. בעלה כאצ'ו ברברס. איות 'Barbers' אושר על ידי לאו.",
+        "pronunciation": {
+          "es": "shoshana"
+        }
       },
       {
         "canonical_name": "Sharon",
         "hebrew_name": "שרון",
         "relationship": "family_friend",
-        "relationship_hebrew": "חברה קרובה של המשפחה"
+        "relationship_hebrew": "חברה קרובה של המשפחה",
+        "role": "חברה קרובה של המשפחה",
+        "gender": "female",
+        "notes": "מידע קיים שנשמר — לא הופיע בעדכון זה, לא להסיר."
+      },
+      {
+        "canonical_name": "Cacho",
+        "hebrew_name": "כאצ'ו",
+        "aliases": ["Cacho Barbers", "כאצ'ו ברברס"],
+        "relationship": "family_friend",
+        "relationship_hebrew": "בעלה של שושנה",
+        "role": "בעלה של שושנה ברברס, חבר של המשפחה",
+        "location": "כפר סבא",
+        "gender": "male",
+        "notes": "כאצ'ו ברברס, ארגנטינאי, גר בכפר סבא. בעלה של שושנה ברברס. איות 'Barbers' אושר.",
+        "pronunciation": {
+          "es": "cacho"
+        }
+      },
+      {
+        "canonical_name": "Susi Raz",
+        "hebrew_name": "סוזי רז",
+        "aliases": ["Susi", "סוזי", "סוסי"],
+        "relationship": "close_friend",
+        "relationship_hebrew": "חברה טובה",
+        "role": "חברה טובה של מרטיטה",
+        "location": "כפר סבא",
+        "gender": "female",
+        "notes": "חברה טובה; קוסמטיקאית. בעלה הקטור רז ז\"ל. עברה לבית דיור מוגן נעים בכפר סבא — הרבה נשים בגילה, רבות ארגנטינאיות וחברות/מכרות של מרטיטה; מרטיטה מבלה עם החוג הזה בסופי שבוע ולפעמים באמצע השבוע.",
+        "pronunciation": {
+          "es": "susi"
+        }
+      },
+      {
+        "canonical_name": "Hector Raz",
+        "hebrew_name": "הקטור רז",
+        "aliases": ["Hector", "הקטור"],
+        "relationship": "family_friend",
+        "relationship_hebrew": "בעלה של סוזי רז ז\"ל",
+        "role": "בעלה של סוזי רז ז\"ל",
+        "gender": "male",
+        "deceased": true,
+        "notes": "בעלה של סוזי רז; נפטר.",
+        "pronunciation": {
+          "es": "hector"
+        }
+      },
+      {
+        "canonical_name": "Lydia Omansky",
+        "hebrew_name": "לידיה אומנסקי",
+        "aliases": ["Lydia", "לידיה"],
+        "relationship": "close_friend",
+        "relationship_hebrew": "חברה קרובה מאוד",
+        "role": "חברה קרובה מאוד של מרטיטה",
+        "location": "כפר סבא",
+        "gender": "female",
+        "notes": "לידיה אומנסקי, גרה בכפר סבא, גיל ~85 (בקירוב). קוסמטיקאית ידועה מאוד. אשתו של נוח אומנסקי. הכירו את המשפחה באולפן בן יהודה, נתניה. חברות של עשרות שנים.",
+        "pronunciation": {
+          "es": "lidia"
+        }
+      },
+      {
+        "canonical_name": "Noah Omansky",
+        "hebrew_name": "נוח אומנסקי",
+        "aliases": ["Noah", "נוח"],
+        "relationship": "close_friend",
+        "relationship_hebrew": "חבר קרוב מאוד",
+        "role": "חבר קרוב מאוד של מרטיטה, בעלה של לידיה",
+        "location": "כפר סבא",
+        "gender": "male",
+        "notes": "נוח אומנסקי, גר בכפר סבא, גיל ~90 (בקירוב). בעלה של לידיה. הכירו את המשפחה באולפן בן יהודה, נתניה.",
+        "pronunciation": {
+          "es": "noaj"
+        }
+      },
+      {
+        "canonical_name": "Tuchi",
+        "hebrew_name": "טוצ'י",
+        "aliases": [],
+        "relationship": "close_friend",
+        "relationship_hebrew": "חברה טובה",
+        "role": "חברה טובה של מרטיטה ופפי",
+        "location": "כפר סבא",
+        "gender": "female",
+        "name_uncertain": true,
+        "notes": "גרה בכפר סבא; חברה טובה של מרטיטה, וגם של פפי. הכירו במהלך איזה טיול. איות השם 'Tuchi'/'טוצ'י' לא ודאי.",
+        "pronunciation": {
+          "es": "tuchi"
+        }
+      },
+      {
+        "canonical_name": "Dani",
+        "hebrew_name": "דני",
+        "aliases": [],
+        "relationship": "family_friend",
+        "relationship_hebrew": "בעלה של טוצ'י",
+        "role": "בעלה של טוצ'י, חבר של המשפחה",
+        "location": "כפר סבא",
+        "gender": "male",
+        "notes": "בן זוגה/בעלה של טוצ'י, גר בכפר סבא. חבר של מרטיטה ופפי. נקרא גם דניאל — אך 'דניאל' לבדו לא ודאי (יש גם דניאל יווניר), לכן אינו כינוי מזהה.",
+        "pronunciation": {
+          "es": "dani"
+        }
+      },
+      {
+        "canonical_name": "Elsi",
+        "hebrew_name": "אלסי",
+        "aliases": [],
+        "relationship": "close_friend",
+        "relationship_hebrew": "חברה",
+        "role": "חברה של מרטיטה",
+        "location": "כפר סבא",
+        "gender": "female",
+        "notes": "אלסי (איות אושר על ידי לאו), גרה בכפר סבא. אשתו של שאול. הכירו את המשפחה באולפן בן יהודה, נתניה.",
+        "pronunciation": {
+          "es": "elsi"
+        }
+      },
+      {
+        "canonical_name": "Saul",
+        "hebrew_name": "שאול",
+        "aliases": [],
+        "relationship": "family_friend",
+        "relationship_hebrew": "בעלה של אלסי",
+        "role": "בעלה של אלסי, חבר של המשפחה",
+        "location": "כפר סבא",
+        "gender": "male",
+        "notes": "בעלה של אלסי, גר בכפר סבא. הכירו באולפן בן יהודה, נתניה.",
+        "pronunciation": {
+          "es": "saul"
+        }
+      },
+      {
+        "canonical_name": "Oscar Minuchin",
+        "hebrew_name": "אוסקר מינושין",
+        "aliases": [],
+        "relationship": "family_friend",
+        "relationship_hebrew": "בעלה של מירטה מינושין ז\"ל",
+        "role": "בעלה של מירטה מינושין ז\"ל",
+        "gender": "male",
+        "deceased": true,
+        "notes": "בעלה של מירטה מינושין; נפטר. אבא של מוריאן, מריסה ויארון.",
+        "pronunciation": {
+          "es": "oscar"
+        }
+      },
+      {
+        "canonical_name": "Morian Minuchin",
+        "hebrew_name": "מוריאן מינושין",
+        "aliases": ["Morian", "מוריאן"],
+        "relationship": "family_friend",
+        "relationship_hebrew": "חבר של לאו, בן של מירטה",
+        "role": "חבר של לאו; בנם של מירטה ואוסקר מינושין",
+        "location": "תל אביב",
+        "gender": "male",
+        "notes": "אדריכל, בערך בגיל של לאו, גר בתל אביב. חבר של לאו. (פרטים אישיים רגישים נוספים הושמטו בכוונה מטעמי פרטיות.)",
+        "pronunciation": {
+          "es": "morian"
+        }
+      },
+      {
+        "canonical_name": "Marisa Minuchin",
+        "hebrew_name": "מריסה מינושין",
+        "aliases": ["Marisa", "מריסה"],
+        "relationship": "family_friend",
+        "relationship_hebrew": "בת של מירטה מינושין",
+        "role": "בתם של מירטה ואוסקר מינושין",
+        "location": "הוד השרון",
+        "gender": "female",
+        "notes": "בת של מירטה מינושין; גרה בהוד השרון.",
+        "pronunciation": {
+          "es": "marisa"
+        }
+      },
+      {
+        "canonical_name": "Yaron Minuchin",
+        "hebrew_name": "יארון מינושין",
+        "aliases": ["Yaron", "יארון"],
+        "relationship": "family_friend",
+        "relationship_hebrew": "בן של מירטה מינושין",
+        "role": "בנם של מירטה ואוסקר מינושין",
+        "gender": "male",
+        "notes": "בן של מירטה מינושין; זקוק לתמיכה מיוחדת וגר במסגרת מגורים. פרטים נוספים הושמטו בכוונה מטעמי פרטיות/בריאות.",
+        "pronunciation": {
+          "es": "yaron"
+        }
+      },
+      {
+        "canonical_name": "Flori",
+        "hebrew_name": "פלורי",
+        "aliases": [],
+        "relationship": "close_friend",
+        "relationship_hebrew": "חברה מהעולם הישן של מנדוסה",
+        "role": "חברה של מרטיטה ממנדוסה",
+        "location": "חיפה",
+        "gender": "female",
+        "notes": "חברה מ-מנדוסה, ארגנטינה. גרה בחיפה. בעלה דביקו.",
+        "pronunciation": {
+          "es": "flori"
+        }
+      },
+      {
+        "canonical_name": "Dviko",
+        "hebrew_name": "דביקו",
+        "aliases": ["Dvigo", "Duvigo"],
+        "relationship": "family_friend",
+        "relationship_hebrew": "בעלה של פלורי",
+        "role": "בעלה של פלורי; חבר ממנדוסה",
+        "location": "חיפה",
+        "gender": "male",
+        "name_uncertain": true,
+        "notes": "בעלה של פלורי, חבר ממנדוסה, גר בחיפה. איות לטיני לא ודאי (בעבר בלבול Dovigo/Duvigo).",
+        "pronunciation": {
+          "es": "dviko"
+        }
+      },
+      {
+        "canonical_name": "Pupa Yavnir",
+        "hebrew_name": "פופה יווניר",
+        "aliases": ["Pupa", "פופה"],
+        "relationship": "close_friend",
+        "relationship_hebrew": "חברה מהמנדוסה",
+        "role": "חברה של מרטיטה ממנדוסה",
+        "location": "בת ים",
+        "gender": "female",
+        "notes": "פופה יווניר, גרה בבת ים. חלק מחוג מנדוסה. בעלה דניאל יווניר ז\"ל (רופא).",
+        "pronunciation": {
+          "es": "pupa"
+        }
+      },
+      {
+        "canonical_name": "Daniel Yavnir",
+        "hebrew_name": "דניאל יווניר",
+        "aliases": [],
+        "relationship": "family_friend",
+        "relationship_hebrew": "בעלה של פופה ז\"ל",
+        "role": "בעלה של פופה יווניר ז\"ל; רופא",
+        "gender": "male",
+        "deceased": true,
+        "notes": "בעלה של פופה; רופא; נפטר. חלק מחוג מנדוסה.",
+        "pronunciation": {
+          "es": "daniel"
+        }
+      },
+      {
+        "canonical_name": "Olga Kani",
+        "hebrew_name": "אולגה קאני",
+        "aliases": ["Olga", "אולגה"],
+        "relationship": "close_friend",
+        "relationship_hebrew": "חברה טובה ממנדוסה",
+        "role": "חברה טובה של מרטיטה, נשארה במנדוסה",
+        "location": "מנדוסה, ארגנטינה",
+        "gender": "female",
+        "notes": "חברה טובה שנשארה במנדוסה. מרטיטה בקשר איתה בעיקר דרך וואטסאפ — חברות פעילה למרחקים. בעלה איסידורו קאני. איות 'Kani/קאני' לאימות.",
+        "pronunciation": {
+          "es": "olga"
+        }
+      },
+      {
+        "canonical_name": "Isidoro Kani",
+        "hebrew_name": "איסידורו קאני",
+        "aliases": ["Isidoro", "איסידורו"],
+        "relationship": "family_friend",
+        "relationship_hebrew": "בעלה של אולגה",
+        "role": "בעלה של אולגה קאני; חבר ממנדוסה",
+        "location": "מנדוסה, ארגנטינה",
+        "gender": "male",
+        "notes": "בעלה של אולגה, נשאר במנדוסה. איות 'Kani/קאני' לאימות.",
+        "pronunciation": {
+          "es": "isidoro"
+        }
+      }
+    ],
+    "extended_family": [
+      {
+        "canonical_name": "Nili",
+        "hebrew_name": "נילי",
+        "aliases": [],
+        "relationship": "partner_of_ex_son_in_law",
+        "relationship_hebrew": "בת הזוג של רפי",
+        "role": "בת הזוג (חברתו) של רפי",
+        "location": "רֹאש העין",
+        "origin": "ארגנטינה",
+        "gender": "female",
+        "occupation": "אחות",
+        "partner": "רפי",
+        "notes": "בת הזוג של רפי (הגרוש של מור). ארגנטינאית; אחות במקצועה; לאו חושב שגם היא גרה ברֹאש העין.",
+        "pronunciation": {
+          "es": "nili"
+        }
+      },
+      {
+        "canonical_name": "Dora",
+        "hebrew_name": "דורה",
+        "aliases": [],
+        "relationship": "mother_of_matriarch",
+        "relationship_hebrew": "אמא של מרטיטה",
+        "role": "אמא של מרטיטה",
+        "location": "בואנוס איירס, ארגנטינה",
+        "gender": "female",
+        "spouse": "יעקב",
+        "children": ["מרטיטה", "לואיס", "בובי"],
+        "notes": "אמא של מרטיטה. גדלה איתה המשפחה בבואנוס איירס. (לא צוין אם בחיים — לא להסיק.)",
+        "pronunciation": {
+          "es": "dora"
+        }
+      },
+      {
+        "canonical_name": "Jacobo",
+        "hebrew_name": "יעקב",
+        "aliases": ["Yaakov", "Jacobo", "יאקובו"],
+        "relationship": "father_of_matriarch",
+        "relationship_hebrew": "אבא של מרטיטה",
+        "role": "אבא של מרטיטה",
+        "location": "בואנוס איירס, ארגנטינה",
+        "gender": "male",
+        "notes": "אבא של מרטיטה (Jacobo / יעקב — איות מועדף לאימות). (לא צוין אם בחיים — לא להסיק.)",
+        "pronunciation": {
+          "es": "jacobo"
+        }
+      },
+      {
+        "canonical_name": "Luis",
+        "hebrew_name": "לואיס",
+        "aliases": [],
+        "relationship": "brother_of_matriarch",
+        "relationship_hebrew": "אח של מרטיטה ז\"ל",
+        "role": "אח של מרטיטה ז\"ל",
+        "gender": "male",
+        "deceased": true,
+        "spouse": "סופיה",
+        "children": ["חורחה"],
+        "notes": "אחיה של מרטיטה; רואה חשבון; נפטר. היה נשוי לסופיה (נפטרה). זיכרון משפחתי (לאו): אדם טוב מאוד וכן; סופיה אישה קשה — אלה זיכרונות מיוחסים, לא עובדות אובייקטיביות. בן אחד: חורחה.",
+        "pronunciation": {
+          "es": "luis"
+        }
+      },
+      {
+        "canonical_name": "Sofia",
+        "hebrew_name": "סופיה",
+        "aliases": [],
+        "relationship": "sister_in_law_of_matriarch",
+        "relationship_hebrew": "אשת לואיס ז\"ל",
+        "role": "אשתו של לואיס ז\"ל",
+        "gender": "female",
+        "deceased": true,
+        "spouse": "לואיס",
+        "notes": "אשתו של לואיס; נפטרה. אמו של חורחה. זיכרון משפחתי מיוחס (לאו): אישה קשה.",
+        "pronunciation": {
+          "es": "sofia"
+        }
+      },
+      {
+        "canonical_name": "Jorge",
+        "hebrew_name": "חורחה",
+        "aliases": [],
+        "relationship": "nephew_of_matriarch",
+        "relationship_hebrew": "אחיין של מרטיטה (בן של לואיס)",
+        "role": "אחיינה של מרטיטה; בנם של לואיס וסופיה",
+        "location": "סנטה פה, ארגנטינה",
+        "gender": "male",
+        "spouse": "אאצ'י",
+        "children": ["פאבי", "מרטין"],
+        "notes": "בנם של לואיס וסופיה. נשוי לאאצ'י (יהודייה מסנטה פה). גרים/גרו בסנטה פה. כשהתחתנו משפחתה של אאצ'י הייתה עשירה מאוד; מאוחר יותר הוריה פשטו רגל. חורחה הפך מצליח מאוד כלכלית. שני בנים: פאבי ומרטין.",
+        "pronunciation": {
+          "es": "jorge"
+        }
+      },
+      {
+        "canonical_name": "Achi",
+        "hebrew_name": "אאצ'י",
+        "aliases": [],
+        "relationship": "niece_in_law_of_matriarch",
+        "relationship_hebrew": "אשת חורחה",
+        "role": "אשתו של חורחה",
+        "location": "סנטה פה, ארגנטינה",
+        "gender": "female",
+        "spouse": "חורחה",
+        "notes": "אשתו של חורחה; יהודייה מסנטה פה, ארגנטינה. משפחתה הייתה עשירה מאוד ואז פשטה רגל. אמם של פאבי ומרטין.",
+        "pronunciation": {
+          "es": "achi"
+        }
+      },
+      {
+        "canonical_name": "Fabi",
+        "hebrew_name": "פאבי",
+        "aliases": [],
+        "relationship": "grandnephew_of_matriarch",
+        "relationship_hebrew": "בן של חורחה ואאצ'י",
+        "role": "נכד-אחיין של מרטיטה; בנם של חורחה ואאצ'י",
+        "gender": "male",
+        "notes": "בנם של חורחה ואאצ'י. התחתן לאחרונה — שם האישה לא ידוע (לא להמציא). נולדה לו בת לאחרונה — השם לא ידוע (לא להמציא).",
+        "pronunciation": {
+          "es": "fabi"
+        }
+      },
+      {
+        "canonical_name": "Martin",
+        "hebrew_name": "מרטין",
+        "aliases": ["Martín"],
+        "relationship": "grandnephew_of_matriarch",
+        "relationship_hebrew": "בן של חורחה ואאצ'י",
+        "role": "נכד-אחיין של מרטיטה; בנם של חורחה ואאצ'י",
+        "gender": "male",
+        "notes": "בנם של חורחה ואאצ'י. נשוי — שם האישה יסופק בהמשך. שני ילדים משותפים — השמות לא סופקו. לאשתו יש גם ילד גדול יותר מקשר קודם — השם לא סופק. לא להמציא.",
+        "pronunciation": {
+          "es": "martin"
+        }
+      },
+      {
+        "canonical_name": "Bobby",
+        "hebrew_name": "בובי",
+        "aliases": [],
+        "relationship": "brother_of_matriarch",
+        "relationship_hebrew": "אח של מרטיטה",
+        "role": "אח של מרטיטה",
+        "gender": "male",
+        "ex_spouse": "סוזנה",
+        "children": ["אריאל (בן בובי)"],
+        "notes": "אחיה של מרטיטה; רופא; היה נשוי לסוזנה והתגרשו. המשפחה מזמן לא בקשר איתו ולא יודעת מה קורה איתו — אין להסיק אם בחיים, היכן, בריאותו או מצבו המשפחתי הנוכחי. זיכרון של לאו פחות חיובי מזה של לואיס (לא להגזים). לבובי ולסוזנה היו שלושה ילדים; אחד היה אריאל שטבע. שמות שני הילדים האחרים לא סופקו.",
+        "pronunciation": {
+          "es": "bobi"
+        }
+      },
+      {
+        "canonical_name": "Susana",
+        "hebrew_name": "סוזנה",
+        "aliases": [],
+        "relationship": "sister_in_law_of_matriarch",
+        "relationship_hebrew": "גרושתו של בובי",
+        "role": "גרושתו של בובי",
+        "gender": "female",
+        "ex_spouse": "בובי",
+        "notes": "גרושתו של בובי. שלושה ילדים עם בובי (אחד היה אריאל שטבע; שני האחרים לא ידועים).",
+        "pronunciation": {
+          "es": "susana"
+        }
+      },
+      {
+        "canonical_name": "Ariel Bobby",
+        "hebrew_name": "אריאל (בן בובי)",
+        "aliases": [],
+        "relationship": "nephew_of_matriarch",
+        "relationship_hebrew": "בן של בובי וסוזנה ז\"ל",
+        "role": "אחיינה של מרטיטה; בנם של בובי וסוזנה ז\"ל",
+        "gender": "male",
+        "deceased": true,
+        "notes": "בנם של בובי וסוזנה; נפטר בטביעה. ⚠ אדם נפרד מ'אריאל' בן של טאבלה מונקובר — לא לאחד ביניהם למרות השם המשותף.",
+        "pronunciation": {
+          "es": "ariel"
+        }
+      },
+      {
+        "canonical_name": "Marcos Greenberg",
+        "hebrew_name": "מרקוס גרינברג",
+        "aliases": ["Marcos", "מרקוס"],
+        "relationship": "historical_acquaintance",
+        "relationship_hebrew": "חבר מהנעורים של מרטיטה (היסטורי)",
+        "role": "חבר מהנעורים של מרטיטה בבואנוס איירס (היסטורי)",
+        "gender": "male",
+        "notes": "בגיל ~18, כשמרטיטה נסעה למנדוסה לאירוע סוף תיכון, היה לה חבר בבואנוס איירס בשם מרקוס גרינברג. עובדה היסטורית. אופן ההיכרות של מרטיטה ופפי יסופק בהמשך — לא להמציא את המעבר.",
+        "pronunciation": {
+          "es": "marcos"
+        }
+      },
+      {
+        "canonical_name": "Ruti",
+        "hebrew_name": "רותי",
+        "aliases": [],
+        "relationship": "former_daughter_in_law",
+        "relationship_hebrew": "גרושתו של לאו, אמם של עדי ונועם",
+        "role": "גרושתו של לאו; אמם של עדי ונועם",
+        "gender": "female",
+        "ex_spouse": "לאו",
+        "children": ["עדי", "נועם"],
+        "notes": "גרושתו של לאו; אמם של עדי ונועם.",
+        "pronunciation": {
+          "es": "ruti"
+        }
+      },
+      {
+        "canonical_name": "Jose Milstein",
+        "hebrew_name": "חוסה מילשטיין",
+        "aliases": ["José Milstein", "José", "חוסה"],
+        "relationship": "father_of_husband",
+        "relationship_hebrew": "אביו של פפי ז\"ל",
+        "role": "אביו של פפי (חמהּ של מרטיטה) ז\"ל",
+        "location": "מנדוסה, ארגנטינה",
+        "gender": "male",
+        "deceased": true,
+        "children": ["פפי", "טאבלה", "אחיו הגדול", "אחיו שנפטר בילדות"],
+        "notes": "אביו של פפי. היה בעל חנות במנדוסה בשם 'Casa Milstein' ברחוב סן מרטין (San Martín), מנדוסה. חוסה ואחד מאחיו של פפי נפטרו באותו יום (הסיבות/התאריכים המדויקים לא ידועים).",
+        "pronunciation": {
+          "es": "jose"
+        }
+      },
+      {
+        "canonical_name": "Tavela",
+        "hebrew_name": "טאבלה",
+        "aliases": [],
+        "relationship": "sister_of_husband",
+        "relationship_hebrew": "אחותו הגדולה של פפי",
+        "role": "אחותו הגדולה של פפי (גיסתה של מרטיטה)",
+        "gender": "female",
+        "children": ["אריאל (בן טאבלה)", "מריו"],
+        "notes": "אחותו הגדולה של פפי. בניה: אריאל ומריו — שניהם עברו בסופו של דבר לוונקובר, קנדה; קודם גרו ברוסאריו, ארגנטינה; שניהם נשואים לנשים לא-יהודיות.",
+        "pronunciation": {
+          "es": "tavela"
+        }
+      },
+      {
+        "canonical_name": "PapiOlderBrother",
+        "hebrew_name": "אחיו הגדול",
+        "aliases": ["Roma?"],
+        "relationship": "brother_of_husband",
+        "relationship_hebrew": "אחיו הגדול של פפי",
+        "role": "אחיו הגדול של פפי",
+        "gender": "male",
+        "name_uncertain": true,
+        "children": ["רוסיטה"],
+        "notes": "אחיו הגדול של פפי. השם עדיין לא מאומת — בתמלול נשמע כמו 'Roma', אך אין לקבוע איות. אביה של רוסיטה (אחייניתו של פפי).",
+        "pronunciation": null
+      },
+      {
+        "canonical_name": "PapiChildBrother",
+        "hebrew_name": "אחיו שנפטר בילדות",
+        "aliases": [],
+        "relationship": "brother_of_husband",
+        "relationship_hebrew": "אחיו של פפי שנפטר בילדות",
+        "role": "אחיו של פפי שנפטר כילד קטן",
+        "gender": "male",
+        "deceased": true,
+        "name_uncertain": true,
+        "notes": "אחיו של פפי שנפטר בערך בגיל 4. לאו חושב שכנראה נפטר בתאונת דרכים אך אינו בטוח — לרשום את הסיבה רק כזיכרון משפחתי לא ודאי. לאו חושב שהיה מבוגר מפפי אך עדיין ילד קטן; לא בטוח אם פפי הכיר אותו אישית. אין לפשט ל'אחיו הצעיר של פפי נהרג בתאונת דרכים'.",
+        "pronunciation": null
+      },
+      {
+        "canonical_name": "Rosita",
+        "hebrew_name": "רוסיטה",
+        "aliases": [],
+        "relationship": "niece_of_husband",
+        "relationship_hebrew": "אחייניתו של פפי",
+        "role": "אחייניתו של פפי; יש לה יחסים טובים עם מרטיטה",
+        "location": "לוס אנג'לס, ארה\"ב",
+        "gender": "female",
+        "spouse": "אוסקר",
+        "children": ["ליאור", "יואב", "רון"],
+        "notes": "בתו של אחיו של פפי (אחיינית של פפי). הגיעה לישראל לבד והתחתנה עם אוסקר; גרו בבת ים; רוסיטה לא אהבה לגור בישראל. שלושה בנים: ליאור, יואב, רון. אחרי כמה שנים היגרו ללוס אנג'לס; רוסיטה אוהבת לגור שם — לאו מתאר אותה כמרוצה במיוחד שיש לה כסף, ביטחון כלכלי ולא צריכה לעבוד. יש לה ולמרטיטה יחסים טובים — מדברות מדי פעם ונפגשות כשרוסיטה מבקרת בישראל; גם ללאו קשר מזדמן.",
+        "pronunciation": {
+          "es": "rosita"
+        }
+      },
+      {
+        "canonical_name": "Oscar",
+        "hebrew_name": "אוסקר",
+        "aliases": [],
+        "relationship": "nephew_in_law_of_husband",
+        "relationship_hebrew": "בעלה של רוסיטה",
+        "role": "בעלה של רוסיטה",
+        "location": "לוס אנג'לס, ארה\"ב",
+        "gender": "male",
+        "spouse": "רוסיטה",
+        "name_uncertain": true,
+        "notes": "בעלה של רוסיטה. שם משפחה לא מאומת — תמלול קודם נשמע כמו 'Hastman' אך אין לקבוע. ⚠ אדם נפרד מ'אוסקר מינושין' (בעלה של מירטה) — לא לאחד.",
+        "pronunciation": {
+          "es": "oscar"
+        }
+      },
+      {
+        "canonical_name": "Lior",
+        "hebrew_name": "ליאור",
+        "aliases": [],
+        "relationship": "grandnephew_of_husband",
+        "relationship_hebrew": "בן של רוסיטה",
+        "role": "בנם של רוסיטה ואוסקר",
+        "location": "לוס אנג'לס, ארה\"ב",
+        "gender": "male",
+        "notes": "בנם של רוסיטה ואוסקר.",
+        "pronunciation": {
+          "es": "lior"
+        }
+      },
+      {
+        "canonical_name": "Yoav",
+        "hebrew_name": "יואב",
+        "aliases": [],
+        "relationship": "grandnephew_of_husband",
+        "relationship_hebrew": "בן של רוסיטה",
+        "role": "בנם של רוסיטה ואוסקר",
+        "location": "לוס אנג'לס, ארה\"ב",
+        "gender": "male",
+        "occupation": "מתווך נדל\"ן בלוס אנג'לס (בתי יוקרה)",
+        "notes": "בנם של רוסיטה ואוסקר; מתווך נדל\"ן בלוס אנג'לס המתמחה בבתי יוקרה.",
+        "pronunciation": {
+          "es": "yoav"
+        }
+      },
+      {
+        "canonical_name": "Ron",
+        "hebrew_name": "רון",
+        "aliases": [],
+        "relationship": "grandnephew_of_husband",
+        "relationship_hebrew": "בן של רוסיטה",
+        "role": "בנם של רוסיטה ואוסקר",
+        "location": "לוס אנג'לס, ארה\"ב",
+        "gender": "male",
+        "notes": "בנם של רוסיטה ואוסקר.",
+        "pronunciation": {
+          "es": "ron"
+        }
+      },
+      {
+        "canonical_name": "Ariel Tavela",
+        "hebrew_name": "אריאל (בן טאבלה)",
+        "aliases": [],
+        "relationship": "nephew_of_husband",
+        "relationship_hebrew": "בן של טאבלה (וונקובר)",
+        "role": "אחיינו של פפי; בנה של טאבלה, גר בוונקובר",
+        "location": "ונקובר, קנדה",
+        "gender": "male",
+        "spouse": "גבי",
+        "occupation": "רואה חשבון",
+        "notes": "בנה של טאבלה; רואה חשבון; גר בוונקובר (קודם רוסאריו). אשתו גבי (לאו לא יודע במה עוסקת). שני ילדים — השמות לא סופקו. ⚠ אדם נפרד מ'אריאל' בן של בובי שטבע — לא לאחד.",
+        "pronunciation": {
+          "es": "ariel"
+        }
+      },
+      {
+        "canonical_name": "Gabi",
+        "hebrew_name": "גבי",
+        "aliases": [],
+        "relationship": "niece_in_law_of_husband",
+        "relationship_hebrew": "אשתו של אריאל (וונקובר)",
+        "role": "אשתו של אריאל בן טאבלה (וונקובר)",
+        "location": "ונקובר, קנדה",
+        "gender": "female",
+        "spouse": "אריאל (בן טאבלה)",
+        "notes": "אשתו של אריאל (בן טאבלה) בוונקובר; לא-יהודייה. לאו לא יודע במה היא עוסקת. שני ילדים — השמות לא סופקו.",
+        "pronunciation": {
+          "es": "gabi"
+        }
+      },
+      {
+        "canonical_name": "Mario",
+        "hebrew_name": "מריו",
+        "aliases": [],
+        "relationship": "nephew_of_husband",
+        "relationship_hebrew": "בן של טאבלה (וונקובר)",
+        "role": "אחיינו של פפי; בנה של טאבלה, גר בוונקובר",
+        "location": "ונקובר, קנדה",
+        "gender": "male",
+        "spouse": "ססי",
+        "notes": "בנה של טאבלה; גר בוונקובר (קודם רוסאריו); נשוי לסֶסי (לא-יהודייה). מריו עובד בחנות משקאות ממשלתית. שתי בנות תאומות — השמות לא ידועים.",
+        "pronunciation": {
+          "es": "mario"
+        }
+      },
+      {
+        "canonical_name": "Ceci",
+        "hebrew_name": "ססי",
+        "aliases": [],
+        "relationship": "niece_in_law_of_husband",
+        "relationship_hebrew": "אשתו של מריו (וונקובר)",
+        "role": "אשתו של מריו בן טאבלה (וונקובר)",
+        "location": "ונקובר, קנדה",
+        "gender": "female",
+        "spouse": "מריו",
+        "occupation": "תחום השיניים (כנראה שיננית — לאמת); עסק עצמאי משלה",
+        "notes": "אשתו של מריו בוונקובר; לא-יהודייה. עובדת בתחום השיניים (תיאור לאו נשמע כמו שיננית — לאמת) ויש לה עסק משלה. שתי בנות תאומות עם מריו — השמות לא ידועים.",
+        "pronunciation": {
+          "es": "seci"
+        }
       }
     ]
+  },
+  "open_questions": [
+    { "id": "papi_older_brother_name", "question": "שם ואיות של אחיו הגדול של פפי (תמלול נשמע 'Roma')", "status": "open" },
+    { "id": "rosita_husband_surname", "question": "שם משפחה של אוסקר בעלה של רוסיטה (תמלול נשמע 'Hastman')", "status": "open" },
+    { "id": "papi_child_brother", "question": "אחיו של פפי שנפטר בגיל ~4 — גיל מדויק, סיבה, סדר לידה מול פפי, והאם פפי הכיר אותו", "status": "open" },
+    { "id": "bobby_other_children", "question": "שמות שני הילדים האחרים של בובי וסוזנה (מלבד אריאל שטבע)", "status": "open" },
+    { "id": "fabi_wife", "question": "שם אשתו של פאבי", "status": "open" },
+    { "id": "fabi_daughter", "question": "שם בתו של פאבי", "status": "open" },
+    { "id": "martin_wife", "question": "שם אשתו של מרטין", "status": "open" },
+    { "id": "martin_children", "question": "שמות שני ילדיו של מרטין", "status": "open" },
+    { "id": "martin_wife_older_child", "question": "שם הילד הגדול של אשת מרטין מקשר קודם", "status": "open" },
+    { "id": "gilad_company", "question": "החברה המדויקת שבה גלעד עובד", "status": "open" },
+    { "id": "rafi_company", "question": "שם החברה (תחום קוסמטיקה) שבה רפי עובד כמנהל כספים", "status": "open" },
+    { "id": "nylon_spelling", "question": "איות/מיתוג מדויק של המסעדה 'Nylon'", "status": "open" },
+    { "id": "eili_yarden_dogs", "question": "שמות וגזעים של כלבי עילי וירדן מעבר למילי וטונטו", "status": "open" },
+    { "id": "ofir_midwifery", "question": "השלב/השם המדויק של הכשרת המיילדות של אופיר", "status": "open" },
+    { "id": "martita_white_wine_brand", "question": "מותג היין הלבן המתוק של מרטיטה בבקבוק הכחול", "status": "open" },
+    { "id": "tuchi_spelling", "question": "איות מדויק של 'Tuchi'", "status": "open" },
+    { "id": "dviko_spelling", "question": "איות לטיני מדויק של 'Dviko'", "status": "open" },
+    { "id": "kani_spelling", "question": "איות לטיני מדויק של 'Kani'", "status": "open" },
+    { "id": "how_martita_papi_met", "question": "הסיפור המלא של איך מרטיטה ופפי הכירו", "status": "open" },
+    { "id": "more_friends", "question": "חברים נוספים שלאו יזכור בהמשך", "status": "open" }
+  ],
+  "resolved_notes": {
+    "yefi_was_rafi": "האוסף שסופק בתמלול כ'Yefi' אושר על ידי לאו כרפי (הגרוש של מור). כל העובדות (רו\"ח, מנהל כספים בחברת קוסמטיקה, רֹאש העין, בת הזוג נילי, אוהב יין ואוכל, שוכח להביא יין, לא בשלן טוב) צורפו לרפי; נילי נוספה כאדם. הרשומה הלא-פתורה הוסרה."
+  },
+  "pii_excluded": {
+    "note": "מזהים רגישים סופקו בעל-פה אך הושמטו בכוונה מבסיס הידע המשפחתי הנגיש מטעמי פרטיות (אין ארכיטקטורת PII מוגנת). ההשמטה מתועדת כדי שלא תאבד.",
+    "excluded_fields": [
+      "כתובת מדויקת של מרטיטה בכפר סבא (קומה, מספר דירה, קומת חניון)",
+      "אופן פתיחת שער החניה (אפליקציית Pal / שלט)",
+      "מספר טלפון של מרטיטה",
+      "מספר תעודת זהות של מרטיטה",
+      "פרטים אישיים רגישים על מוריאן מינושין",
+      "פרטי בריאות/מגורים של יארון מינושין מעבר להקשר המשפחתי הבסיסי"
+    ],
+    "retained_public": "עיר מגורים בלבד: כפר סבא."
   }
 }

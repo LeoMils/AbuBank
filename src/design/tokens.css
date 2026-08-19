@@ -21,9 +21,24 @@
   --abu-color-overlay:          rgba(13,17,23,0.55);
   --abu-color-focus-ring:       #0B5FFF;
 
+  /* Brand accents — canonical, single source (were scattered inline as hex) */
+  --abu-brand-gold:             #C9A84C;
+  --abu-brand-gold-bright:      #D4A853;
+  --abu-brand-teal:             #14b8a6;
+
+  /* Text ON the dark app shell (#050A18). The light --abu-color-text-* tokens
+     above are near-black and vanish on the dark shell — utility screens that
+     sit directly on the shell (Opening / Offline / Error) MUST use these. */
+  --abu-color-text-on-dark:           rgba(255,255,255,0.94);
+  --abu-color-text-on-dark-secondary: rgba(255,255,255,0.62);
+  --abu-color-cream:                  #F5F0E8;
+
   /* Spacing */
+  --abu-space-4:  4px;
   --abu-space-8:  8px;
+  --abu-space-12: 12px;
   --abu-space-16: 16px;
+  --abu-space-20: 20px;
   --abu-space-24: 24px;
   --abu-space-32: 32px;
   --abu-space-40: 40px;
@@ -42,6 +57,7 @@
   --abu-shadow-tile-hover: 0 2px 8px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05);
   --abu-shadow-modal:      0 8px 32px rgba(0,0,0,.12);
   --abu-shadow-wordmark:   0 1px 2px rgba(0,0,0,.05);
+  --abu-shadow-gold:       0 4px 20px rgba(201,168,76,.35);
 
   /* Typography sizes — ALWAYS three declarations per element, NEVER font: shorthand */
   --abu-font-size-title:      22px;

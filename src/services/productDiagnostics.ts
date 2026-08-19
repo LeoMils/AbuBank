@@ -31,6 +31,11 @@ export interface PipelineEntry {
   genderDebug: string        // 'family: מור=female' | 'n/a'
   // Calendar
   calendarSource: string     // 'localStorage' | 'none'
+  // Companion Brain plan (STEP 1-7) — computed before every response.
+  companionPlan: string      // 'frame=emotion act=listen suppress=true ...'
+  // Microphone preflight (secure-context check before any getUserMedia)
+  micPreflight: string       // '❌ insecure_context' | 'ok'
+  micPreflightDetail: string // dev-facing reason (e.g. insecure origin → use https)
 }
 
 const DIAG_KEY = 'abu-product-diagnostics'
@@ -69,6 +74,7 @@ export function diagCopyText(): string {
       `--- Turn ${i + 1} (${e.ts?.split('T')[1]?.slice(0, 8) ?? '?'}) ---`,
       `STT: ${e.sttProvider ?? '?'} | ${e.sttFileType ?? '?'} | "${e.sttTranscript?.slice(0, 50) ?? '?'}" | ${e.sttStatus ?? '?'}`,
       `Route: ${e.routeDecision ?? '?'} | Source: ${e.responseSource ?? '?'}`,
+      `Plan: ${e.companionPlan ?? '?'}`,
       `Raw: "${e.rawResponse?.slice(0, 80) ?? '?'}"`,
       `Spoken: "${e.spokenResponse?.slice(0, 80) ?? '?'}"`,
       `TTS: ${e.ttsProvider ?? '?'} | ${e.ttsModel ?? '?'} | ${e.ttsVoice ?? '?'} | ${e.ttsLatencyMs ?? '?'}ms | ${e.ttsStatus ?? '?'} | fallback=${e.ttsFallback ?? '?'}`,

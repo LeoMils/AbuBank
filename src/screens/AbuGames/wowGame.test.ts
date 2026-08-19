@@ -4,7 +4,8 @@ import { resolve } from 'node:path'
 
 const SOURCE = readFileSync(resolve(__dirname, './index.tsx'), 'utf8')
 
-describe('AbuGames WOW — core contracts', () => {
+// ─── Functional contracts (must survive any redesign) ────────────────────────
+describe('AbuGames — game catalog & navigation', () => {
   it('does not link to worldofsolitaire anywhere', () => {
     expect(SOURCE).not.toMatch(/worldofsolitaire/i)
   })
@@ -14,148 +15,110 @@ describe('AbuGames WOW — core contracts', () => {
     expect(SOURCE).toContain("labelHe: 'אבו וואו'")
   })
 
-  it('WOW is in featured category, not solitaire', () => {
+  it('WOW is the featured (favorite) game, not solitaire', () => {
     const wowLine = SOURCE.split('\n').find(l => l.includes("id: 'wow'"))
     expect(wowLine).toBeDefined()
     expect(wowLine).toContain("category: 'featured'")
     expect(wowLine).not.toContain("category: 'solitaire'")
   })
-})
 
-describe('AbuGames senior-first UX contracts', () => {
-  it('has Hebrew carnival title', () => {
-    expect(SOURCE).toContain('הקרנבל של Martita')
-  })
-
-  it('game elements have aria-label', () => {
-    expect(SOURCE).toContain('aria-label={g.labelHe}')
-  })
-
-  it('game elements have role="button"', () => {
-    expect(SOURCE).toContain('role="button"')
-  })
-
-  it('keyboard support (Enter and Space)', () => {
-    expect(SOURCE).toContain("e.key === 'Enter'")
-    expect(SOURCE).toContain("e.key === ' '")
-  })
-
-  it('uses RTL direction', () => {
-    expect(SOURCE).toContain("direction: 'rtl'")
-  })
-
-  it('does not import from AbuCalendar, AbuAI, or AbuWhatsApp', () => {
-    expect(SOURCE).not.toMatch(/from\s+['"].*AbuCalendar/)
-    expect(SOURCE).not.toMatch(/from\s+['"].*AbuAI/)
-    expect(SOURCE).not.toMatch(/from\s+['"].*AbuWhatsApp/)
-  })
-
-  it('featured card has large emoji (>= 50px)', () => {
-    expect(SOURCE).toMatch(/fontSize:\s*5[0-9]/)
-  })
-
-  it('uses Heebo font family', () => {
-    expect(SOURCE).toContain("'Heebo'")
-  })
-
-  it('has Martita greeting with time emoji', () => {
-    expect(SOURCE).toContain('Martita')
-    expect(SOURCE).toContain('getTimeGreeting')
-    expect(SOURCE).toContain('getTimeEmoji')
-  })
-
-  it('has daily joy section', () => {
-    expect(SOURCE).toContain('שמחה יומית')
-  })
-
-  it('has confetti system and floating emojis', () => {
-    expect(SOURCE).toContain('CONFETTI')
-    expect(SOURCE).toContain('cg-confetti')
-    expect(SOURCE).toContain('cg-float')
-  })
-
-  it('navigation uses handleTap with same-tab redirect', () => {
-    expect(SOURCE).toContain('window.location.href = url')
-  })
-
-  it('respects prefers-reduced-motion', () => {
-    expect(SOURCE).toContain('prefers-reduced-motion')
-  })
-})
-
-describe('AbuGames 2026 premium design', () => {
-  it('has solitaire palace with gradient icon', () => {
+  it('keeps the solitaire catalog', () => {
     expect(SOURCE).toContain("category: 'solitaire'")
-    expect(SOURCE).toContain('ארמון הסוליטר')
     expect(SOURCE).toContain('klondike')
     expect(SOURCE).toContain('spider')
     expect(SOURCE).toContain('freecell')
   })
 
-  it('has mahjong garden with gradient icon', () => {
+  it('keeps the mahjong catalog with 6 variants', () => {
     expect(SOURCE).toContain("category: 'mahjong'")
-    expect(SOURCE).toContain("גן המהג'ונג")
     expect(SOURCE).toContain('mahjong-connect')
     expect(SOURCE).toContain('mahjong-3d')
-  })
-
-  it('mahjong has 6 game variants', () => {
     const mahjongLines = SOURCE.split('\n').filter(l => l.includes("category: 'mahjong'"))
     expect(mahjongLines.length).toBe(6)
   })
 
-  it('has gradient mesh orbs in hero', () => {
-    expect(SOURCE).toContain('cg-orb')
-    expect(SOURCE).toContain('filter: \'blur(')
+  it('opens games in the same tab (service navigation rule)', () => {
+    expect(SOURCE).toContain('window.location.href = url')
+  })
+})
+
+// ─── Accessibility & senior-first ────────────────────────────────────────────
+describe('AbuGames — accessibility & senior-first', () => {
+  it('bubbles have aria-label', () => {
+    expect(SOURCE).toContain('aria-label={g.labelHe}')
+  })
+  it('bubbles are role="button"', () => {
+    expect(SOURCE).toContain('role="button"')
+  })
+  it('supports keyboard activation (Enter and Space)', () => {
+    expect(SOURCE).toContain("e.key === 'Enter'")
+    expect(SOURCE).toContain("e.key === ' '")
+  })
+  it('page is right-to-left', () => {
+    expect(SOURCE).toContain('dir="rtl"')
+  })
+  it('uses the Heebo font family', () => {
+    expect(SOURCE).toContain("'Heebo'")
+  })
+  it('respects prefers-reduced-motion', () => {
+    expect(SOURCE).toContain('prefers-reduced-motion')
+  })
+  it('does not import from AbuCalendar, AbuAI, or AbuWhatsApp', () => {
+    expect(SOURCE).not.toMatch(/from\s+['"].*AbuCalendar/)
+    expect(SOURCE).not.toMatch(/from\s+['"].*AbuAI/)
+    expect(SOURCE).not.toMatch(/from\s+['"].*AbuWhatsApp/)
+  })
+})
+
+// ─── New direction: round bubbles matching Abu Bank Home ──────────────────────
+describe('AbuGames — Home-matching bubble design', () => {
+  it('renders games as round bubbles (borderRadius 50%), not rectangular cards', () => {
+    expect(SOURCE).toContain("borderRadius: '50%'")
   })
 
-  it('each game has gradient backdrop for emoji', () => {
-    expect(SOURCE).toContain('g.gradient')
-    expect(SOURCE).toContain('g.accent')
-    expect(SOURCE).toContain('g.emoji')
-    expect(SOURCE).toContain('g.mood')
+  it('reuses the Home glossy water-drop sphere recipe', () => {
+    // Volumetric sphere built from the per-game accent + the signature speculars.
+    expect(SOURCE).toContain('radial-gradient(circle at 38% 32%')
+    expect(SOURCE).toContain('radial-gradient(ellipse at 28% 22%')
   })
 
-  it('has 3D spring hover on cards', () => {
-    expect(SOURCE).toContain('cubic-bezier(.34,1.56,.64,1)')
-    expect(SOURCE).toContain('cg-card')
+  it('shows a large premium English "Abu Games" wordmark', () => {
+    expect(SOURCE).toContain('Abu Games')
+    expect(SOURCE).toMatch(/fontSize:\s*4[0-9]/)        // large logo
+    expect(SOURCE).toContain('WebkitBackgroundClip')     // metallic gradient text
   })
 
-  it('has cinematic hero with shimmer and glow', () => {
-    expect(SOURCE).toContain('cg-shimmer')
-    expect(SOURCE).toContain('cg-glow')
-    expect(SOURCE).toContain('cg-heroEmoji')
+  it('carries the Abu Bank visual identity', () => {
+    expect(SOURCE).toContain('ABU BANK')
   })
 
-  it('has Martita photo with animated color-cycling ring', () => {
-    expect(SOURCE).toContain('👑')
-    expect(SOURCE).toContain('cg-photoRing')
-    expect(SOURCE).toContain('conic-gradient')
+  it('greets Martita time-aware with a heart (not childish titles)', () => {
+    expect(SOURCE).toContain('getTimeGreeting')
+    expect(SOURCE).toContain('Martita')
+    expect(SOURCE).toContain('💛')
+    expect(SOURCE).toContain('בוקר טוב')
+    expect(SOURCE).toContain('צהריים טובים')
+    expect(SOURCE).toContain('ערב טוב')
   })
 
-  it('has vibrant gradient CTA with shine', () => {
-    expect(SOURCE).toContain('יאללה Martita')
-    expect(SOURCE).toContain('#FF6B35')
-    expect(SOURCE).toContain('cg-ctaPulse')
+  it('presents WOW as the favorite, larger than the rest', () => {
+    expect(SOURCE).toContain('האהוב שלך')
+    expect(SOURCE).toMatch(/size=\{13[0-9]\}/) // featured ~132px vs grid 92px
   })
 
-  it('has rainbow gradient animated title', () => {
-    expect(SOURCE).toContain('cg-rainbow')
-    expect(SOURCE).toContain('WebkitBackgroundClip')
+  it('lays games in a vertical bubble grid (no horizontal-scroll dependency)', () => {
+    expect(SOURCE).toContain("gridTemplateColumns: 'repeat(3, 1fr)'")
+    expect(SOURCE).not.toContain('overflowX: \'auto\'')
   })
 
-  it('has warm personal footer', () => {
-    expect(SOURCE).toContain("Martita's Games Carnival")
-    expect(SOURCE).toContain('נבנה באהבה')
-  })
-
-  it('cards have top accent gradient stripe', () => {
-    expect(SOURCE).toContain('Top gradient accent stripe')
-    expect(SOURCE).toContain('g.gradient')
-  })
-
-  it('has backdrop blur glass effects', () => {
-    expect(SOURCE).toContain('backdropFilter')
-    expect(SOURCE).toContain('WebkitBackdropFilter')
+  // Regression guards: discarded looks must not return.
+  it('does NOT contain the carnival aesthetic or the removed greetings', () => {
+    expect(SOURCE).not.toContain('Carnival')
+    expect(SOURCE).not.toContain('הקרנבל')
+    expect(SOURCE).not.toContain('המשחקים שלך')
+    expect(SOURCE).not.toContain('המשחקים של Martita')
+    expect(SOURCE).not.toContain('👑')
+    expect(SOURCE).not.toContain('cg-confetti')
+    expect(SOURCE).not.toContain('cg-rainbow')
   })
 })

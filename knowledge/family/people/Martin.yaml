@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Martin
+hebrew_name: מרטין
+aliases:
+- Martín
+relationship: grandnephew_of_matriarch
+relationship_hebrew: בן של חורחה ואאצ'י
+role: נכד-אחיין של מרטיטה; בנם של חורחה ואאצ'י
+gender: male
+notes: בנם של חורחה ואאצ'י. נשוי — שם האישה יסופק בהמשך. שני ילדים משותפים — השמות לא סופקו. לאשתו יש גם ילד גדול יותר מקשר קודם — השם לא סופק. לא להמציא.
+pronunciation:
+  es: martin

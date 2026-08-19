@@ -7,8 +7,10 @@ import { openService } from './services/navigationService'
 import * as storageService from './services/storageService'
 import * as adminService from './services/adminService'
 import { Shell } from './components/Shell'
+import { EntryGate, RestrictedBanner } from './screens/Entry'
 import { MoreModal } from './components/MoreModal'
 import { UpdateToast } from './components/UpdateToast'
+import { StaleBuildBanner } from './components/StaleBuildBanner'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { DiagnosticOverlay } from './components/DiagnosticOverlay'
 import { useSWUpdate } from './hooks/useSWUpdate'
@@ -25,7 +27,16 @@ const Settings = lazy(() => import('./screens/Settings').then(m => ({ default: m
 const AbuGames = lazy(() => import('./screens/AbuGames').then(m => ({ default: m.AbuGames })))
 const AbuWeather = lazy(() => import('./screens/AbuWeather').then(m => ({ default: m.AbuWeather })))
 const AbuCalendar = lazy(() => import('./screens/AbuCalendar').then(m => ({ default: m.AbuCalendar })))
+const AbuBank = lazy(() => import('./screens/AbuBank').then(m => ({ default: m.AbuBank })))
+const AbuNews = lazy(() => import('./screens/AbuNews').then(m => ({ default: m.AbuNews })))
 const FamilyGallery = lazy(() => import('./screens/FamilyGallery').then(m => ({ default: m.FamilyGallery })))
+const FamilyRecord = lazy(() => import('./screens/FamilyRecord').then(m => ({ default: m.FamilyRecord })))
+const FamilyPhones = lazy(() => import('./screens/FamilyPhones').then(m => ({ default: m.FamilyPhones })))
+import { matchFamilyPhonesRoute, FAMILY_PHONES_PATH } from './screens/FamilyPhones/familyPhonesImport'
+// Milestone 1: the ISOLATED live-voice screen. Opened via ?live=1 as a top-level
+// overlay (mirrors the FamilyPhones isolation) — it uses ONLY liveSession.ts and
+// touches no existing screen or the legacy voice cascade.
+const LiveScreen = lazy(() => import('./screens/Live/LiveScreen').then(m => ({ default: m.LiveScreen })))
 import styles from './App.module.css'
 
 // T7.1: Loading fallback for lazy screens
@@ -61,7 +72,10 @@ function renderScreen(currentScreen: Screen): JSX.Element | null {
     case Screen.AbuGames:    return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuGames /></ErrorBoundary></Suspense>
     case Screen.AbuWeather:  return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuWeather /></ErrorBoundary></Suspense>
     case Screen.AbuCalendar: return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuCalendar /></ErrorBoundary></Suspense>
+    case Screen.AbuBank:     return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuBank /></ErrorBoundary></Suspense>
+    case Screen.AbuNews:     return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><AbuNews /></ErrorBoundary></Suspense>
     case Screen.FamilyGallery: return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><FamilyGallery /></ErrorBoundary></Suspense>
+    case Screen.FamilyRecord: return <Suspense fallback={<ScreenLoader />}><ErrorBoundary><FamilyRecord /></ErrorBoundary></Suspense>
     default:              return null
   }
 }
@@ -80,6 +94,84 @@ export function App() {
   const setAdminInitComplete = useAppStore(s => s.setAdminInitComplete)
   const setInstallDismissed = useAppStore(s => s.setInstallDismissed)
   const { updateReady, applyUpdate } = useSWUpdate()
+
+  // Private Family Phones page (/settings/family-phones). Path-based so it opens
+  // DIRECTLY in iPhone Safari (Vercel SPA rewrite serves index.html; this detects
+  // the path on mount). Rendered as a top-level overlay to avoid touching the Shell
+  // and the Screen enum — zero risk to existing screens (incl. the voice work).
+  const [familyPhonesOpen, setFamilyPhonesOpen] = useState<boolean>(() => {
+    try { return matchFamilyPhonesRoute(window.location.pathname, window.location.hash) } catch { return false }
+  })
+  useEffect(() => {
+    const check = () => {
+      try { setFamilyPhonesOpen(matchFamilyPhonesRoute(window.location.pathname, window.location.hash)) } catch { /* */ }
+    }
+    window.addEventListener('popstate', check)
+    window.addEventListener('hashchange', check)
+    ;(window as unknown as { __abubankOpenFamilyPhones?: () => void }).__abubankOpenFamilyPhones = () => {
+      try { window.history.pushState({}, '', FAMILY_PHONES_PATH) } catch { /* */ }
+      setFamilyPhonesOpen(true)
+    }
+    return () => {
+      window.removeEventListener('popstate', check)
+      window.removeEventListener('hashchange', check)
+      delete (window as unknown as { __abubankOpenFamilyPhones?: () => void }).__abubankOpenFamilyPhones
+    }
+  }, [])
+  const closeFamilyPhones = () => {
+    try { if (window.location.pathname === FAMILY_PHONES_PATH) window.history.pushState({}, '', '/') } catch { /* */ }
+    setFamilyPhonesOpen(false)
+  }
+
+  // Abu AI live path — now the DEFAULT and only Abu AI. The home Abu AI tile opens
+  // this overlay via the __abubankOpenLive global (no ?live=1 required anymore). The
+  // ?live=1 URL is still honored as a harmless deep-link alias, but is no longer a
+  // gate. The legacy AbuAI screen survives ONLY behind ?legacy=1 (see below).
+  const readLiveParam = () => {
+    try { return new URL(window.location.href).searchParams.get('live') === '1' } catch { return false }
+  }
+  const [liveOpen, setLiveOpen] = useState<boolean>(readLiveParam)
+  useEffect(() => {
+    const check = () => { if (readLiveParam()) setLiveOpen(true) }
+    window.addEventListener('popstate', check)
+    window.addEventListener('hashchange', check)
+    // The one entry point: any tile/button opens the live path through this global,
+    // mirroring __abubankOpenFamilyPhones / __abubankOpenDiag (no prop drilling
+    // through the Suspense/lazy boundary).
+    ;(window as unknown as { __abubankOpenLive?: () => void }).__abubankOpenLive = () => setLiveOpen(true)
+    return () => {
+      window.removeEventListener('popstate', check)
+      window.removeEventListener('hashchange', check)
+      delete (window as unknown as { __abubankOpenLive?: () => void }).__abubankOpenLive
+    }
+  }, [])
+  const closeLive = () => {
+    try {
+      const url = new URL(window.location.href)
+      if (url.searchParams.get('live') === '1') { url.searchParams.delete('live'); window.history.pushState({}, '', url.pathname + url.search) }
+    } catch { /* */ }
+    setLiveOpen(false)
+  }
+
+  // Legacy AbuAI screen — DEPRECATED, kept reachable ONLY via ?legacy=1 (never from
+  // the home tile). Routes the legacy Screen enum on mount so the old canned-string
+  // cascade cannot be reached from the default route.
+  useEffect(() => {
+    try {
+      if (new URL(window.location.href).searchParams.get('legacy') === '1') setScreen(Screen.AbuAI)
+    } catch { /* */ }
+  }, [setScreen])
+
+  // Diagnostic/test affordance: ?screen=<Screen> renders any screen directly, so the screen-invariant
+  // browser harness can verify EVERY screen (incl. state screens like Offline/Error) for render, RTL,
+  // >=16px text, and no dev/QA text in a production build. Only a VALID Screen enum value is honoured
+  // (junk is ignored); Admin is already tap-reachable, so this exposes nothing new.
+  useEffect(() => {
+    try {
+      const want = new URL(window.location.href).searchParams.get('screen')
+      if (want && (Object.values(Screen) as string[]).includes(want)) setScreen(want as Screen)
+    } catch { /* */ }
+  }, [setScreen])
 
   // P0.3 — app-wide diagnostic overlay. Visible whenever the user
   // navigates to ?diagnostics=1 / ?diagnostic=1 / #diagnostics, or when
@@ -195,21 +287,41 @@ export function App() {
 
   return (
     <>
-      <Shell>
-        {renderScreen(currentScreen)}
-      </Shell>
+      <StaleBuildBanner />
+      {/* Premium cold-open gate: black-luxury intro → biometric/PIN → app. Wraps
+          the whole shell so nothing behind it is visible until unlocked. Fail-open. */}
+      <EntryGate>
+        {/* Honest restricted-mode indicator: shows when server auth is configured but this
+            device has no live session (e.g. a PIN-only entry without device activation). */}
+        <RestrictedBanner />
+        <Shell>
+          {renderScreen(currentScreen)}
+        </Shell>
 
-      {isMoreModalOpen && ninthService && (
-        <MoreModal
-          service={ninthService}
-          onClose={() => setMoreModalOpen(false)}
-          onServiceTap={(id) => { setMoreModalOpen(false); openService(id) }}
-        />
-      )}
+        {isMoreModalOpen && ninthService && (
+          <MoreModal
+            service={ninthService}
+            onClose={() => setMoreModalOpen(false)}
+            onServiceTap={(id) => { setMoreModalOpen(false); openService(id) }}
+          />
+        )}
+
+        {diagOpen && <DiagnosticOverlay onClose={() => setDiagOpen(false)} />}
+
+        {familyPhonesOpen && (
+          <Suspense fallback={<ScreenLoader />}>
+            <ErrorBoundary><FamilyPhones onClose={closeFamilyPhones} /></ErrorBoundary>
+          </Suspense>
+        )}
+
+        {liveOpen && (
+          <Suspense fallback={<ScreenLoader />}>
+            <ErrorBoundary><LiveScreen onClose={closeLive} /></ErrorBoundary>
+          </Suspense>
+        )}
+      </EntryGate>
 
       {updateReady && <UpdateToast onUpdate={applyUpdate} />}
-
-      {diagOpen && <DiagnosticOverlay onClose={() => setDiagOpen(false)} />}
 
       <div aria-live="polite" aria-atomic="true" className={styles.srOnly}>
         {SCREEN_LABELS[currentScreen]}

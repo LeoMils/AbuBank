@@ -1,14 +1,61 @@
 import type { ChatMessage } from './types'
 
-import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, getWeekEvents, getEventsByDate, getEventsByMonth, getBirthdayFor, getMemorialFor, searchFamily, searchFamilyLocation, searchFamilyGroup } from './tools'
+import { TOOL_DEFINITIONS, executeTool, getTodayEvents, getTomorrowEvents, getUpcomingEvents, getWeekEvents, getEventsByDate, getEventsByMonth, getBirthdayFor, getMemorialFor, searchFamily, searchFamilyLocation, searchFamilyGroup, findEventsByPerson } from './tools'
 import { generateFamilyPromptSection } from '../../services/familyLoader'
 import { routePersonalQuery, type RouteResult } from './router'
 import { parseHebrewTime } from './calendarCreate'
 import { answerFromToolResult, type ToolResult } from './groundedResponse'
 import { sendServerChat, streamServerChat, checkServerChatHealth } from './serverChatProvider'
 import { describeRelation, loadGraph, type Lang } from './familyGraph'
+import { answerFamilyRelation } from './familyReasoning'
 import { detectLanguage } from './proactive'
-import { shapeFamilyAnswerES, shapeCalendarAnswerES, shapeLocationAnswerES, shapeCreateConfirmES, shapeCreateSavedES, shapeCreateCancelledES, shapeCreateClarifyES } from './responseShaper'
+import { deriveConversationMemory } from './conversationMemory'
+import { formatSavedMemoriesForLLM } from './savedMemory'
+import { shapeFamilyAnswerES, shapeCalendarAnswerES, shapeLocationAnswerES, shapeCreateConfirmES, shapeCreateSavedES, shapeCreateCancelledES, shapeCreateClarifyES, calendarEventExtras, timeInWords, dateLabel } from './responseShaper'
+import { durable } from '../../services/durableStore'
+import { resolveRelationalQuery } from './relationalResolver'
+import { preferenceFrom, resolveSttLanguage } from '../../services/languagePolicy'
+
+// ─── Boundary-time parser for READ queries ("אחרי 5" / "לפני 10" / "אחרי שבע
+// בערב" / "לפני הצהריים"). More permissive than parseHebrewTime (which needs a
+// ב/ל prefix and stays strict for CREATE) — used ONLY for before/after/exact
+// filtering, NEVER to create an event. ─────────────────────────────────────────
+const QB_HOUR_WORDS: Record<string, number> = {
+  'אחת עשרה': 11, 'שתים עשרה': 12, 'אחת': 1, 'שתיים': 2, 'שתים': 2, 'שלוש': 3,
+  'ארבע': 4, 'חמש': 5, 'שש': 6, 'שבע': 7, 'שמונה': 8, 'תשע': 9, 'עשר': 10,
+}
+function applyReadPeriod(h: number, t: string): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  if (/בבוקר|לפנות בוקר|morning/i.test(t)) return `${pad(h >= 12 ? h - 12 : h)}:00`
+  if (/בערב|בלילה|אחר[י]? הצהריים|אחה"צ|אחה״צ|אחהצ|evening|night/i.test(t)) return `${pad(h >= 1 && h <= 11 ? h + 12 : h)}:00`
+  if (/בצהריים|הצהריים|noon/i.test(t)) return `${pad(h === 12 ? 12 : h)}:00`
+  // No period word: appointment-day convention — 1-6 → afternoon/evening, 7-12 → AM.
+  return `${pad(h >= 1 && h <= 6 ? h + 12 : h)}:00`
+}
+/**
+ * Period-of-day read filter ("מה יש לי מחר בבוקר/בערב/בצהריים"). Applied ONLY when
+ * the query has no explicit boundary time/number (those go through
+ * parseQueryBoundaryTime). Morning < 12:00, noon 12:00–15:00, evening >= 17:00.
+ */
+export function filterEventsByPeriod<T extends { time?: string }>(events: T[], text: string): { filtered: T[]; applied: boolean } {
+  if (/לפני|אחרי|before|after|\d/.test(text)) return { filtered: events, applied: false }
+  if (/בבוקר|in the morning|por la ma[ñn]ana/i.test(text)) return { filtered: events.filter(e => !!e.time && e.time < '12:00'), applied: true }
+  if (/בערב|בלילה|in the evening|at night|por la noche/i.test(text)) return { filtered: events.filter(e => !!e.time && e.time >= '17:00'), applied: true }
+  if (/בצהריים|at noon|al mediod[ií]a/i.test(text)) return { filtered: events.filter(e => !!e.time && e.time >= '12:00' && e.time < '15:00'), applied: true }
+  return { filtered: events, applied: false }
+}
+
+export function parseQueryBoundaryTime(text: string): string | null {
+  const direct = parseHebrewTime(text)
+  if (direct) return direct
+  const d = text.match(/(?:לפני|אחרי|before|after)\s+(?:ה?שעה\s+)?(\d{1,2})(?!\s*[:.]?\d)/i)
+  if (d) return applyReadPeriod(parseInt(d[1]!, 10), text)
+  for (const [w, n] of Object.entries(QB_HOUR_WORDS).sort((a, b) => b[0].length - a[0].length)) {
+    if (new RegExp(`(?:לפני|אחרי)\\s+(?:ה?שעה\\s+)?${w}`).test(text)) return applyReadPeriod(n, text)
+  }
+  if (/(?:לפני|אחרי)\s+(?:ה)?צהריים/.test(text)) return '12:00'
+  return null
+}
 
 // ─── Conversation Summary ────────────────────────────────────────────────────
 
@@ -22,6 +69,10 @@ export interface ConversationSummary {
   emotionalContext: string | null
   lastUserRequest: string | null
   factsMentioned: string[]
+  /** Most-recently-mentioned person (continuity for pronouns / "עליה"). */
+  lastPerson?: string | null
+  /** Last calendar ACTION the conversation performed (not just a mention). */
+  lastCalendarAction?: 'create' | 'read' | 'delete' | null
 }
 
 export function loadSummary(): ConversationSummary | null {
@@ -32,7 +83,7 @@ export function loadSummary(): ConversationSummary | null {
 }
 
 export function saveSummary(summary: ConversationSummary): void {
-  try { localStorage.setItem(SUMMARY_KEY, JSON.stringify(summary)) } catch { /* storage full */ }
+  try { durable.setString(SUMMARY_KEY, JSON.stringify(summary)) } catch { /* storage full */ }
 }
 
 /**
@@ -90,6 +141,15 @@ export function updateSummaryFromMessages(
   summary.peopleDiscussed = [...peopleSet].slice(-10) // cap at 10
   summary.topicsDiscussed = [...topicSet].slice(-8)
   summary.appointmentsMentioned = summary.appointmentsMentioned.slice(-5)
+
+  // Continuity: last person + last calendar ACTION (create/read/delete), derived
+  // deterministically so AbuAI can answer "מה עשינו ביומן?" / follow "עליה".
+  try {
+    const mem = deriveConversationMemory(messages)
+    summary.lastPerson = mem.lastPerson
+    summary.lastCalendarAction = mem.lastCalendarAction
+  } catch { /* memory derivation is best-effort */ }
+
   summary.updatedAt = Date.now()
 
   return summary
@@ -110,29 +170,26 @@ export async function generateLLMSummary(
     const recent = messages.slice(-20)
     if (recent.length < 4) return patternSummary
 
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 6000)
+    // Go through the server-chat proxy with its real contract ({ body, lang,
+    // stream }) — NOT a bare top-level OpenAI body. The previous direct fetch
+    // posted { model, messages, … } at the top level, which the proxy rejected
+    // as BAD_REQUEST, so the LLM summary silently never ran. sendServerChat also
+    // returns the upstream JSON wrapped as { ok, openai }, so we read
+    // result.openai.choices — not res.choices.
+    const result = await sendServerChat({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'Summarize this conversation in 2-3 short Hebrew sentences. Include: who was discussed, what topics, what was decided, what emotional state. Be factual and brief. Output ONLY the summary text.' },
+        ...recent.map(m => ({ role: m.role, content: m.content })),
+      ],
+      max_tokens: 100,
+      temperature: 0.3,
+    }, { lang: 'he', timeoutMs: 6000 })
 
-    const res = await fetch('/api/abuai-chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'Summarize this conversation in 2-3 short Hebrew sentences. Include: who was discussed, what topics, what was decided, what emotional state. Be factual and brief. Output ONLY the summary text.' },
-          ...recent.map(m => ({ role: m.role, content: m.content })),
-        ],
-        max_tokens: 100,
-        temperature: 0.3,
-      }),
-      signal: controller.signal,
-    })
-    clearTimeout(timeout)
+    if (!result.ok) return patternSummary
 
-    if (!res.ok) return patternSummary
-
-    const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
-    const llmSummaryText = data?.choices?.[0]?.message?.content?.trim()
+    const openai = result.openai as { choices?: Array<{ message?: { content?: string } }> } | undefined
+    const llmSummaryText = openai?.choices?.[0]?.message?.content?.trim()
 
     if (llmSummaryText && llmSummaryText.length > 10) {
       patternSummary.factsMentioned = [llmSummaryText]
@@ -312,6 +369,24 @@ RULES:
 
 export function tryGroundedAnswer(text: string): string | null {
   const lang = detectLanguage(text) // 'he' | 'es' | 'en' | 'mixed'
+
+  // Hebrew relationship-chain query ("מי הדוד של ארי", "מי סבתא של ארי") →
+  // answered deterministically from the family graph, never the LLM (the iPhone
+  // failure was a hallucinated relation). Lists ALL correct answers; falls through
+  // (null) if it is not a relation-chain query or the subject is unknown.
+  if (lang === 'he') {
+    const fam = answerFamilyRelation(text)
+    if (fam && fam.known) {
+      const LABEL: Record<string, string> = { grandmother: 'הסבתא', grandfather: 'הסבא', uncle: 'הדוד', aunt: 'הדודה', children: 'הילדים', partner: 'בן/בת הזוג', ex_spouse: 'הגרוש/ה' }
+      const label = LABEL[fam.relation] ?? 'הקרוב'
+      const names = fam.results.length === 1
+        ? fam.results[0]!
+        : `${fam.results.slice(0, -1).join(', ')} ו${fam.results[fam.results.length - 1]}`
+      console.log(`[AbuAI:route] "${text.slice(0, 40)}" → family_relation [LOCAL] ${fam.relation}=${fam.results.join(',')}`)
+      return `${label} של ${fam.subject}: ${names}.`
+    }
+  }
+
   const route = routePersonalQuery(text)
   if (route.type === 'non_personal') {
     console.log(`[AbuAI:route] "${text.slice(0, 40)}" → non_personal (needs LLM)`)
@@ -326,37 +401,60 @@ export function tryGroundedAnswer(text: string): string | null {
       case 'calendar_today': {
         const r = getTodayEvents()
         // Filter by specific or after time ("מה יש לי בארבע" / "מה יש לי אחרי ארבע")
-        const todayRequestedTime = parseHebrewTime(text)
+        const todayRequestedTime = parseQueryBoundaryTime(text)
         let todayEvents = r.events
         const isAfterQuery = /אחרי|אחר|after/i.test(text)
+        const isBeforeQuery = /לפני|before/i.test(text)
         if (todayRequestedTime && todayEvents.length > 0) {
-          if (isAfterQuery) {
+          if (isBeforeQuery) {
+            todayEvents = todayEvents.filter(e => e.time && e.time < todayRequestedTime)
+          } else if (isAfterQuery) {
             todayEvents = todayEvents.filter(e => e.time && e.time > todayRequestedTime)
           } else {
             const filtered = todayEvents.filter(e => e.time === todayRequestedTime)
             if (filtered.length > 0) todayEvents = filtered
           }
         }
+        // Period-of-day filter ("היום בבוקר/בערב") when no explicit time was given.
+        const todayPeriod = filterEventsByPeriod(todayEvents, text)
+        todayEvents = todayPeriod.filtered
         if (lang === 'es') return shapeCalendarAnswerES(todayEvents, 'today')
-        result = { ok: true, events: todayEvents, summary: r.summary }
+        // If a time/period filter changed the set, rebuild the summary from the
+        // filtered events (the original summary is unfiltered — it would leak
+        // events outside the asked window).
+        result = (r.events.length !== todayEvents.length)
+          ? { ok: true, events: todayEvents, summary: todayEvents.length === 0
+              ? 'אין כלום בזמן הזה. יום שקט.'
+              : `היום ${todayEvents.map(e => `${e.emoji} ${e.title}${e.time ? ` ב${e.time}` : ''}`).join(', ')}.` }
+          : { ok: true, events: todayEvents, summary: r.summary }
         break
       }
       case 'calendar_tomorrow': {
         const r = getTomorrowEvents()
         // P0-5: Filter by specific time if query mentions one
-        const tmrwRequestedTime = parseHebrewTime(text)
+        const tmrwRequestedTime = parseQueryBoundaryTime(text)
         let tmrwEvents = r.events
         if (tmrwRequestedTime && tmrwEvents.length > 0) {
           const tmrwIsAfter = /אחרי|אחר|after/i.test(text)
-          if (tmrwIsAfter) {
+          const tmrwIsBefore = /לפני|before/i.test(text)
+          if (tmrwIsBefore) {
+            tmrwEvents = tmrwEvents.filter(e => e.time && e.time < tmrwRequestedTime)
+          } else if (tmrwIsAfter) {
             tmrwEvents = tmrwEvents.filter(e => e.time && e.time > tmrwRequestedTime)
           } else {
             const filtered = tmrwEvents.filter(e => e.time === tmrwRequestedTime)
             if (filtered.length > 0) tmrwEvents = filtered
           }
         }
+        // Period-of-day filter ("מחר בבוקר/בערב") when no explicit time was given.
+        const tmrwPeriod = filterEventsByPeriod(tmrwEvents, text)
+        tmrwEvents = tmrwPeriod.filtered
         if (lang === 'es') return shapeCalendarAnswerES(tmrwEvents, 'tomorrow')
-        result = { ok: true, events: tmrwEvents, summary: r.summary }
+        result = (r.events.length !== tmrwEvents.length)
+          ? { ok: true, events: tmrwEvents, summary: tmrwEvents.length === 0
+              ? 'מחר אין כלום בזמן הזה. יום שקט.'
+              : `מחר ${tmrwEvents.map(e => `${e.emoji} ${e.title}${e.time ? ` ב${e.time}` : ''}`).join(', ')}.` }
+          : { ok: true, events: tmrwEvents, summary: r.summary }
         break
       }
       case 'calendar_upcoming': {
@@ -376,6 +474,40 @@ export function tryGroundedAnswer(text: string): string | null {
       case 'calendar_month': {
         if (!route.month) return null
         const r = getEventsByMonth(route.month)
+        result = { ok: true, events: r.events, summary: r.summary }
+        break
+      }
+      case 'calendar_next': {
+        // "מה/מתי/איפה הפגישה הבאה שלי" → the single soonest upcoming event,
+        // with location + subject surfaced (the "איפה" variant needs the WHERE).
+        const r = getUpcomingEvents(1)
+        const next = r.events[0]
+        if (!next) {
+          if (lang === 'es') return 'No tenés nada próximo en el calendario.'
+          return 'אין לך פגישות קרובות ביומן.'
+        }
+        if (lang === 'es') {
+          const t = next.time ? ` a las ${next.time}` : ''
+          const loc = next.location ? ` en ${next.location}` : ''
+          return `Lo próximo: ${next.title}${t}${loc}.`
+        }
+        const when = `${dateLabel(next.date)}${next.time ? ` ${timeInWords(next.time)}` : ''}`
+        return `${next.emoji} הדבר הבא שלך: ${next.title} ${when}.${calendarEventExtras(next)}`.replace(/\s+/g, ' ').trim()
+      }
+      case 'calendar_with_person': {
+        // "מתי אני נפגשת עם אלכסנדרה" → upcoming events that mention that person.
+        const person = route.familyQuery ?? ''
+        const r = findEventsByPerson(person)
+        if (r.events.length === 0) {
+          if (lang === 'es') return `No tenés nada con ${person} en el calendario.`
+          return `אין לך כלום ביומן עם ${person}.`
+        }
+        // Single match → a full, warm line with date/time/location/subject.
+        if (r.events.length === 1) {
+          const e = r.events[0]!
+          const when = `${dateLabel(e.date)}${e.time ? ` ${timeInWords(e.time)}` : ''}`
+          return `${e.emoji} ${e.title} ${when}.${calendarEventExtras(e)}`.replace(/\s+/g, ' ').trim()
+        }
         result = { ok: true, events: r.events, summary: r.summary }
         break
       }
@@ -425,14 +557,27 @@ export function tryGroundedAnswer(text: string): string | null {
         return r.summary
       }
       case 'family_lookup': {
+        // Spanish/English relational queries ("la hija de Mor", "Ofir's mother",
+        // "quién es la tía de X") → resolve via the same graph, Latin names.
+        if (lang === 'es' || lang === 'en') {
+          const rel = resolveRelationalQuery(route.query, lang)
+          if (rel) return rel
+        }
         // Relational role queries: "מי אמא של X?", "מי בת הזוג של X?", "מי סבתא של X?"
-        const roleMatch = route.query.match(/מי\s+(אמא|אבא|סבתא|סבא|אחות|אח|בת הזוג|בן הזוג|החברה|החבר)\s+של\s+(\S+)/)
+        const roleMatch = route.query.match(/מי\s+ה?(בני הדוד|בן הדוד|בת הדוד|ההורים|הורים|אחים|אחיות|סבתא רבתא|סבא רבא|אמא|אבא|אישה|אשתו|בעלה|בעל|סבתא|סבא|דודה|דוד|אחות|אח|בת הזוג|בן הזוג|החברה|החבר)\s+של\s+(\S+)/)
         if (roleMatch) {
           const role = roleMatch[1]!
           const targetName = roleMatch[2]!.replace(/[?!.,]$/, '')
           const graph = loadGraph()
           const target = graph.find(n => n.matchNames.includes(targetName.toLowerCase()) || n.hebrew === targetName)
           if (target) {
+            // Both parents: "מי ההורים של ארי?" → "אופיר וגלעד."
+            if (role === 'הורים' || role === 'ההורים') {
+              const parents = target.parentsHe
+                .map(p => graph.find(n => n.hebrew === p))
+                .filter((n): n is NonNullable<typeof n> => !!n)
+              if (parents.length) return `${parents.map(p => p.hebrew).join(' ו')}.`
+            }
             // Resolve by role
             if (role === 'אמא' || role === 'אבא') {
               const parent = target.parentsHe
@@ -451,13 +596,85 @@ export function tryGroundedAnswer(text: string): string | null {
                 if (gp) return `${gp.hebrew}.`
               }
             }
-            if (role === 'אחות' || role === 'אח') {
+            if (role === 'סבתא רבתא' || role === 'סבא רבא') {
+              // Great-grandparent = parent of grandparent (3 hops up).
+              const wantFemale = role === 'סבתא רבתא'
+              for (const pHe of target.parentsHe) {
+                const p = graph.find(n => n.hebrew === pHe)
+                if (!p) continue
+                for (const gpHe of p.parentsHe) {
+                  const gp = graph.find(n => n.hebrew === gpHe)
+                  if (!gp) continue
+                  const ggp = gp.parentsHe
+                    .map(g => graph.find(n => n.hebrew === g))
+                    .find(n => n && (wantFemale ? n.gender === 'female' : n.gender === 'male'))
+                  if (ggp) return `${ggp.hebrew}.`
+                }
+              }
+            }
+            if (role === 'דוד' || role === 'דודה') {
+              // Aunt/uncle = a sibling of one of the target's parents.
+              const wantFemale = role === 'דודה'
+              const seen = new Set<string>()
+              const auntsUncles: string[] = []
+              for (const pHe of target.parentsHe) {
+                const p = graph.find(n => n.hebrew === pHe)
+                if (!p) continue
+                for (const gpHe of p.parentsHe) {
+                  const gp = graph.find(n => n.hebrew === gpHe)
+                  if (!gp) continue
+                  for (const sibHe of gp.childrenHe) {
+                    if (sibHe === p.hebrew || seen.has(sibHe)) continue
+                    const sib = graph.find(n => n.hebrew === sibHe)
+                    if (sib && (wantFemale ? sib.gender === 'female' : sib.gender === 'male')) {
+                      seen.add(sibHe)
+                      auntsUncles.push(sib.hebrew)
+                    }
+                  }
+                }
+              }
+              if (auntsUncles.length > 0) return auntsUncles.join(' ו') + '.'
+            }
+            if (role === 'אחות' || role === 'אח' || role === 'אחים' || role === 'אחיות') {
+              // Plural (אחים/אחיות) = all siblings; singular filters by gender.
+              const allSibs = role === 'אחים' || role === 'אחיות'
+              const wantFemaleSib = role === 'אחות' || role === 'אחיות'
               const siblings = target.parentsHe
                 .flatMap(p => graph.find(n => n.hebrew === p)?.childrenHe ?? [])
                 .filter(c => c !== target.hebrew)
                 .map(c => graph.find(n => n.hebrew === c))
-                .filter(n => n && (role === 'אחות' ? n.gender === 'female' : n.gender === 'male'))
-              if (siblings.length > 0) return siblings.map(s => s!.hebrew).join(' ו') + '.'
+                .filter((n): n is NonNullable<typeof n> => !!n && (allSibs ? true
+                  : wantFemaleSib ? n.gender === 'female' : n.gender === 'male'))
+              // de-dupe (two parents share the same children)
+              const uniq = [...new Map(siblings.map(s => [s.hebrew, s])).values()]
+              if (uniq.length > 0) return uniq.map(s => s.hebrew).join(' ו') + '.'
+            }
+            if (role === 'בן הדוד' || role === 'בת הדוד' || role === 'בני הדוד') {
+              // Cousin = child of a sibling of one of the target's parents.
+              const wantGender = role === 'בת הדוד' ? 'female' : role === 'בן הדוד' ? 'male' : null
+              const cousins = new Map<string, NonNullable<ReturnType<typeof graph.find>>>()
+              for (const pHe of target.parentsHe) {
+                const p = graph.find(n => n.hebrew === pHe); if (!p) continue
+                for (const gpHe of p.parentsHe) {
+                  const gp = graph.find(n => n.hebrew === gpHe); if (!gp) continue
+                  for (const sibHe of gp.childrenHe) {
+                    if (sibHe === p.hebrew) continue
+                    const sib = graph.find(n => n.hebrew === sibHe); if (!sib) continue
+                    for (const cHe of sib.childrenHe) {
+                      const c = graph.find(n => n.hebrew === cHe)
+                      if (c && (!wantGender || c.gender === wantGender)) cousins.set(c.hebrew, c)
+                    }
+                  }
+                }
+              }
+              if (cousins.size > 0) return [...cousins.values()].map(c => c.hebrew).join(' ו') + '.'
+            }
+            if (role === 'אישה' || role === 'אשתו' || role === 'בעל' || role === 'בעלה') {
+              const wantFemale = role === 'אישה' || role === 'אשתו'
+              const spouse = [...target.spousesHe, ...target.partnersHe]
+                .map(p => graph.find(n => n.hebrew === p))
+                .find(n => n && (wantFemale ? n.gender === 'female' : n.gender === 'male'))
+              if (spouse) return `${spouse.hebrew}.`
             }
             if (role === 'בת הזוג' || role === 'החברה') {
               const partner = [...target.partnersHe, ...target.spousesHe]
@@ -484,10 +701,12 @@ export function tryGroundedAnswer(text: string): string | null {
         // Try group query first: "הנכדים", "הילדים של מור", "ספרי לי על הנכדים"
         const groupAnswer = searchFamilyGroup(route.query)
         if (groupAnswer) return groupAnswer
-        const r = searchFamily(route.familyQuery ?? '')
+        // "ספרי לי על X" / "contame de X" → rich, warmer reply; "מי זאת X" → terse.
+        const richMode = /ספרי לי (עוד )?על|ספר לי על|תספרי לי על|ספרי עוד על|cont[aá]me (de|sobre)|h[aá]blame de/i.test(route.query)
+        const r = searchFamily(route.familyQuery ?? '', richMode)
         // Spanish: re-shape with Spanish family answer
         if (lang === 'es' && r.found && r.members.length > 0) {
-          return shapeFamilyAnswerES(r.members[0]!)
+          return shapeFamilyAnswerES(r.members[0]!, richMode)
         }
         if (lang === 'es' && !r.found) {
           return 'No conozco a nadie con ese nombre. ¿Otro nombre?'
@@ -563,17 +782,14 @@ const OPENAI_PROXY_URL = '/api/abuai-chat'
 const OPENAI_MODEL_TEXT  = 'gpt-4o'          // text mode: reliable, high quality
 const OPENAI_MODEL_VOICE = 'gpt-4o-mini'     // voice mode (pipeline fallback): speed + cost
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
-const GEMINI_MODEL = 'gemini-2.0-flash'
-
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
+// P0 remediation: the Gemini and Groq CLIENT-direct fallback providers were REMOVED
+// (they read VITE_GEMINI_API_KEY / VITE_GROQ_API_KEY, client-exposed secrets). The ONLY
+// provider is the server-side OpenAI proxy (OPENAI_API_KEY, server-only). When it genuinely
+// fails, the engine yields NOTHING (honest empty) — it never fabricates a fallback answer.
 
 interface Provider {
-  /** Provider kind drives the fetch shape: server-proxy uses
-   *  POST /api/abuai-chat with a `body` envelope; client-direct
-   *  posts to the upstream URL with an Authorization header. */
-  kind: 'openai-server' | 'gemini-client' | 'groq-client'
+  /** Only 'openai-server' remains — the server proxy (POST /api/abuai-chat). */
+  kind: 'openai-server'
   url: string
   model: string
   /** Only set for client-direct providers (Gemini / Groq). */
@@ -586,13 +802,9 @@ interface Provider {
 // Cooldown durations: OpenAI 5 min (quota), Groq/Gemini 60s (rate limit).
 const COOLDOWN_KEYS: Record<Provider['kind'], string> = {
   'openai-server': 'abu-openai-quota-failed',
-  'groq-client':   'abu-groq-cooldown',
-  'gemini-client': 'abu-gemini-cooldown',
 }
 const COOLDOWN_MS: Record<Provider['kind'], number> = {
   'openai-server': 300_000,  // 5 min — server quota / key missing
-  'groq-client':   60_000,   // 60s — free-tier rate limit
-  'gemini-client': 60_000,   // 60s — free-tier rate limit
 }
 
 function isProviderCoolingDown(kind: Provider['kind']): boolean {
@@ -608,46 +820,13 @@ function markProviderCooldown(kind: Provider['kind']): void {
 }
 
 function getProviders(voiceMode = false): Provider[] {
-  const providers: Provider[] = []
-  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-  const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-
-  const openaiAvailable = !isProviderCoolingDown('openai-server')
-  const groqAvailable   = !isProviderCoolingDown('groq-client')
-  const geminiAvailable = !isProviderCoolingDown('gemini-client')
-
-  if (voiceMode) {
-    // Voice mode: QUALITY FIRST — OpenAI (gpt-4o-mini, fast+quality) → Groq (free) → Gemini.
-    // Groq/Llama produces formulaic Hebrew; OpenAI is dramatically better for natural conversation.
-    if (openaiAvailable)             providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_VOICE })
-    if (groqKey && groqAvailable)     providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
-    if (geminiKey && geminiAvailable) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
-  } else {
-    // Text mode: OpenAI server-proxy → Gemini (free, client) → Groq (free, client)
-    if (openaiAvailable)             providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_TEXT })
-    if (geminiKey && geminiAvailable) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
-    if (groqKey && groqAvailable)     providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
-  }
-
-  // All providers in cooldown — force-add them anyway (expired cooldown
-  // is better than zero providers). The cooldowns are short enough that
-  // this path is rare.
-  if (providers.length === 0) {
-    if (voiceMode) {
-      providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_VOICE })
-      if (groqKey)   providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
-      if (geminiKey) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
-    } else {
-      providers.push({ kind: 'openai-server', url: OPENAI_PROXY_URL, model: OPENAI_MODEL_TEXT })
-      if (geminiKey) providers.push({ kind: 'gemini-client', url: GEMINI_URL,       model: GEMINI_MODEL,       apiKey: geminiKey })
-      if (groqKey)   providers.push({ kind: 'groq-client',   url: GROQ_URL,         model: GROQ_MODEL,         apiKey: groqKey })
-    }
-  }
-
-  if (providers.length === 0) {
-    throw new Error('יש בעיה בשירות. דברי עם לאו והוא יסדר את זה.')
-  }
-  console.log(`[AbuAI:providers] ${voiceMode ? 'VOICE' : 'TEXT'} → ${providers.map(p => p.kind).join(' → ')}`)
+  // Single provider: the server-side OpenAI proxy (OPENAI_API_KEY, server-only). The Gemini/Groq
+  // client fallbacks were removed (no client-side provider secret). A cooldown does NOT drop the
+  // provider — an expired cooldown is better than zero providers, and an honest empty stream on
+  // real failure is better than a fabricated fallback.
+  const model = voiceMode ? OPENAI_MODEL_VOICE : OPENAI_MODEL_TEXT
+  const providers: Provider[] = [{ kind: 'openai-server', url: OPENAI_PROXY_URL, model }]
+  console.log(`[AbuAI:providers] ${voiceMode ? 'VOICE' : 'TEXT'} → openai-server`)
   return providers
 }
 
@@ -669,7 +848,7 @@ export const SYSTEM_PROMPT =
 שאלות כלליות (לא על המשפחה או היומן) — ענני רגיל, בלי כלים.
 
 ═══ מי היא Martita ═══
-שם מלא: Martita (תמיד Latin — אף פעם לא בעברית). בת 80+ מבואנוס איירס, ארגנטינה. גרה בכפר סבא עם עוזרת/מטפלת. אלמנה — בעלה הלייט Pepe (פפי) נפטר; זוכרת אותו בחיבה. יום הזיכרון שלו: 26 בדצמבר. יום הולדתה: 1 באפריל.
+שם מלא: Martita (תמיד Latin — אף פעם לא בעברית). בת 80+ מבואנוס איירס, ארגנטינה. גרה בכפר סבא עם עוזרת/מטפלת. אלמנה — בעלה הלייט Pepe (פפי) נפטר; זוכרת אותו בחיבה. לתאריך יום הזיכרון שלו — תמיד דרך הכלי (get_memorial_for), לעולם לא מהזיכרון. יום הולדתה: 1 באפריל.
 חכמה מאוד, הומור של מבוגרים, לב של זהב. אוהבת משפחה, אוכל, שיחות, אורחים. דוברת ספרדית כשפת אם, עברית עם טעויות חמודות.
 
 ═══ רקע משפחתי (לשיחה כללית בלבד) ═══
@@ -695,6 +874,7 @@ ${generateFamilyPromptSection()}
 - להגיד "אני רק כאן לדבר על..." — את כאן לכל דבר
 - לומר "אני בינה מלאכותית" — פשוט לדבר
 - להמציא עובדות אישיות על Martita, על המשפחה, או על היומן שלה
+- לרמוז שיש לך זיכרון מהעבר. אין לך זיכרון בין שיחות — את רואה רק את השיחה הזו. אם דבר לא נאמר בשיחה הנוכחית, תגידי בכנות "לא יודעת" / "לא סיפרת לי" — לעולם לא "שכחתי" ולא "לפעמים אני מפספסת" (זה מרמז על זיכרון שאין לך). מה שכן נאמר בשיחה הזו — כן זכרי והמשיכי ממנו.
 - להגיד "יש לך..." על אירוע ביומן בלי שהכלי החזיר את המידע
 - להגיד "אני מבינה אותך" / "זה מובן" — שפת מטפלת
 - להגיד "אם יש לך שאלות נוספות" — שפת שירות לקוחות
@@ -896,16 +1076,9 @@ function stripMarkdown(text: string): string {
     .trim()
 }
 
-// ─── Voice transcription (Whisper STT with fallback) ───
-
-const GROQ_WHISPER_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
-// Groq deprecated whisper-large-v3-turbo in some regions; use the stable model
-const GROQ_WHISPER_MODEL = 'whisper-large-v3'
-
-// STT provider health — disable broken providers for the session
-let _sttGroqDisabled = false
-let _sttGroqDisabledAt = 0
-const STT_COOLDOWN_MS = 120_000 // 2 min cooldown after 400
+// ─── Voice transcription (Whisper STT via the server proxy only) ───
+// The Groq client-Whisper fallback was REMOVED (client-side VITE_GROQ_API_KEY). STT goes
+// through /api/abuai-stt (OPENAI_API_KEY, server-only). On failure it throws honestly.
 
 // Consecutive STT failure counter — prevents infinite listen→fail loop
 let _sttConsecutiveFailures = 0
@@ -924,51 +1097,24 @@ function buildSttFormData(audioBlob: Blob, model: string): FormData {
     : 'webm'
   formData.append('file', audioBlob, `recording.${ext}`)
   formData.append('model', model)
-  const voiceLang = localStorage.getItem('abu-voice-lang') || 'auto'
-  if (voiceLang === 'he' || voiceLang === 'auto') {
-    formData.append('language', 'he')
-    formData.append('prompt', 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.')
-  } else if (voiceLang === 'es') {
-    formData.append('language', 'es')
-    formData.append('prompt', 'Hola Martita, cómo estás, dale, bueno, familia, receta, empanadas, asado, Buenos Aires.')
-  }
+  // ── STT language (Hebrew-biased). ─────────────────────────────────────────────
+  // The canonical resolver pins Hebrew (Martita's primary) and NEVER pins Spanish
+  // from a stale preference (the old Hebrew→Spanish bug) nor blanket auto-detects
+  // (that misheard short Hebrew like "בוקר טוב" as Russian/Cyrillic). The preference
+  // only BIASES the prompt vocabulary (a soft spelling hint).
+  const plan = resolveSttLanguage({ preference: preferenceFrom(localStorage.getItem('abu-voice-lang')) })
+  if (plan.whisperLanguage) formData.append('language', plan.whisperLanguage)
+  const HE_PROMPT = 'פגישה עם הרופא, יום הולדת, ארוחת ערב, תזכורת, מחר, בשעה, בבוקר, אחר הצהריים, בערב, בקניון, במרפאה, בבית, שלום מרטיטה, תודה.'
+  const ES_PROMPT = 'Hola Martita, cómo estás, dale, bueno, familia, receta, empanadas, asado, Buenos Aires.'
+  // Only send a single-language prompt when the user EXPLICITLY chose a language;
+  // for 'auto' send no prompt so the audio alone drives detection (unbiased).
+  if (plan.promptBias === 'he') formData.append('prompt', HE_PROMPT)
+  else if (plan.promptBias === 'es') formData.append('prompt', ES_PROMPT)
   return formData
 }
 
-async function tryWhisperProvider(
-  url: string, apiKey: string, model: string, audioBlob: Blob,
-): Promise<{ text: string | null; status: number; errorBody: string }> {
-  const formData = buildSttFormData(audioBlob, model)
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 12000)
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: formData,
-      signal: controller.signal,
-    })
-    clearTimeout(timeout)
-    if (!res.ok) {
-      let errorBody = ''
-      try { errorBody = await res.text() } catch {}
-      console.warn(`[STT] ${url} returned ${res.status}:`, errorBody)
-      return { text: null, status: res.status, errorBody }
-    }
-    const data = await res.json()
-    return { text: data?.text?.trim() || null, status: 200, errorBody: '' }
-  } catch (err: unknown) {
-    clearTimeout(timeout)
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      return { text: null, status: 0, errorBody: 'timeout' }
-    }
-    return { text: null, status: 0, errorBody: String(err) }
-  }
-}
 
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {
-  const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-
   // Guard: too many consecutive failures → stop trying
   if (_sttConsecutiveFailures >= STT_MAX_CONSECUTIVE) {
     throw new SttExhaustedError('התמלול לא עובד כרגע. תנסי לכתוב במקום.')
@@ -977,28 +1123,9 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   const mimeType = audioBlob.type
   console.log(`[STT] blob: ${audioBlob.size} bytes, type: ${mimeType}`)
 
-  // iPhone records audio/mp4 which Groq often rejects (400 invalid media).
-  // Route mp4 to OpenAI server STT first for reliability.
-  const isIphoneMp4 = mimeType.includes('mp4') || mimeType.includes('m4a')
-
-  // Provider 1: Groq Whisper (free, fast) — skip for iPhone mp4
-  const groqCooledDown = _sttGroqDisabled && (Date.now() - _sttGroqDisabledAt) < STT_COOLDOWN_MS
-  if (groqKey && !groqCooledDown && !isIphoneMp4) {
-    const r = await tryWhisperProvider(GROQ_WHISPER_URL, groqKey, GROQ_WHISPER_MODEL, audioBlob)
-    if (r.text) { _sttConsecutiveFailures = 0; return r.text }
-    if (r.status === 400) {
-      _sttGroqDisabled = true
-      _sttGroqDisabledAt = Date.now()
-      console.warn(`[STT] Groq disabled after 400:`, r.errorBody)
-      // Don't exhaust — try OpenAI server fallback
-    }
-    if (r.status === 429) {
-      console.warn('[STT] Groq rate-limited, trying OpenAI server')
-    }
-  }
-
-  // Provider 2: OpenAI Whisper via server proxy (/api/abuai-stt)
-  // Works with iPhone mp4 and doesn't expose API key to client.
+  // The ONLY STT provider is the OpenAI server proxy (/api/abuai-stt, OPENAI_API_KEY server-only).
+  // The Groq client-Whisper fallback was removed (client-side VITE_GROQ_API_KEY). On failure we
+  // throw honestly — never a fabricated transcript.
   try {
     console.log('[STT] Trying OpenAI server proxy...')
     const formData = buildSttFormData(audioBlob, 'whisper-1')
@@ -1048,73 +1175,68 @@ async function tryProvider(
   provider: Provider,
   body: object,
 ): Promise<{ result: string | null; retryAfter: number; toolCalls?: ToolCall[]; rawMessage?: any }> {
-  // B2.1: OpenAI provider goes through the server proxy. The browser
-  // never sees the OpenAI key; missing-key / quota errors return null
-  // (caller falls through to Gemini / Groq).
-  if (provider.kind === 'openai-server') {
-    const r = await sendServerChat({ model: provider.model, ...body })
-    if (!r.ok) {
-      // Tag a quota-skip cool-down only when the server reports the
-      // dedicated key-missing code; transient failures keep trying.
-      if (r.errorCode === 'OPENAI_API_KEY_MISSING') {
-        markProviderCooldown('openai-server')
-      }
-      return { result: null, retryAfter: 0 }
-    }
-    const data = r.openai as { choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }> } | null
-    const message = data?.choices?.[0]?.message
-    const toolCalls = message?.tool_calls
-    if (toolCalls?.length) return { result: null, retryAfter: 0, toolCalls, rawMessage: message }
-    const content = message?.content
-    if (!content) return { result: null, retryAfter: 0 }
-    return { result: stripMarkdown(content), retryAfter: 0 }
+  // The ONLY provider is the server OpenAI proxy. The browser never sees the key; missing-key /
+  // quota / transient errors return null — the caller then fails HONESTLY (empty), never a
+  // fabricated fallback (Gemini/Groq client fallbacks were removed).
+  const r = await sendServerChat({ model: provider.model, ...body })
+  if (!r.ok) {
+    if (r.errorCode === 'OPENAI_API_KEY_MISSING') markProviderCooldown('openai-server')
+    return { result: null, retryAfter: 0 }
   }
-
-  // Gemini can be slow — give it more time than Groq
-  const timeoutMs = provider.kind === 'gemini-client' ? 18000 : 12000
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const res = await fetch(provider.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${provider.apiKey ?? ''}`,
-      },
-      body: JSON.stringify({ model: provider.model, ...body }),
-      signal: controller.signal,
-    })
-    if (!res.ok) {
-      if (res.status === 429) {
-        // Rate limited — mark cooldown so getProviders() skips this
-        // provider on subsequent calls until cooldown expires.
-        markProviderCooldown(provider.kind)
-        const ra = parseInt(res.headers.get('retry-after') ?? '0', 10)
-        const retryAfter = Math.min(ra || 3, 10) // default 3s, max 10s
-        console.warn(`[AbuAI] ${provider.kind} rate-limited (429), cooldown set, retry-after ${retryAfter}s`)
-        return { result: null, retryAfter }
-      }
-      if (res.status === 402 || res.status >= 500) return { result: null, retryAfter: 0 }
-      return { result: null, retryAfter: 0 }
-    }
-    const data = await res.json()
-    const message = data?.choices?.[0]?.message
-    const toolCalls = message?.tool_calls as Array<{ id: string; function: { name: string; arguments: string } }> | undefined
-    if (toolCalls?.length) return { result: null, retryAfter: 0, toolCalls, rawMessage: message }
-    const content = message?.content
-    if (!content) return { result: null, retryAfter: 0 }
-    return { result: stripMarkdown(content), retryAfter: 0 }
-  } catch (err: unknown) {
-    if (err instanceof DOMException && err.name === 'AbortError') return { result: null, retryAfter: 0 }
-    if (err instanceof TypeError) return { result: null, retryAfter: 0 } // network error, try next
-    throw err
-  } finally {
-    clearTimeout(timeout)
-  }
+  const data = r.openai as { choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }> } | null
+  const message = data?.choices?.[0]?.message
+  const toolCalls = message?.tool_calls
+  if (toolCalls?.length) return { result: null, retryAfter: 0, toolCalls, rawMessage: message }
+  const content = message?.content
+  if (!content) return { result: null, retryAfter: 0 }
+  return { result: stripMarkdown(content), retryAfter: 0 }
 }
 
 function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+// ─── Terminal failure copy (localized + offline-aware) ───
+//
+// When EVERY chat provider failed, Martita must hear a warm message in HER
+// language that says what is actually wrong — not a hardcoded Hebrew dead-end a
+// Spanish-speaking or offline 80-year-old can't act on. Mirrors the copy already
+// used by serverChatProvider/onlineProvider. The Hebrew provider-down line is kept
+// verbatim so existing behaviour (and source-contract tests) is unchanged.
+
+function lastUserText(messages: ChatMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.role === 'user') return messages[i]!.content ?? ''
+  }
+  return ''
+}
+
+function detectOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false
+}
+
+/**
+ * The warm message shown/spoken when all chat providers fail. Localized to the
+ * user's language and aware of whether the device is offline.
+ */
+export function chatTerminalFallback(messages: ChatMessage[], opts: { offline?: boolean } = {}): string {
+  const lang = detectLanguage(lastUserText(messages)) // 'he' | 'es' | 'en' | 'mixed'
+  const offline = opts.offline ?? detectOffline()
+  if (offline) {
+    if (lang === 'es') return 'No tengo conexión ahora. Probá cuando vuelva el internet.'
+    if (lang === 'en') return 'No connection right now. Try again when the internet is back.'
+    return 'אין לי חיבור עכשיו. נסי כשהאינטרנט יחזור.'
+  }
+  // A missing server key is a CONFIG issue only the owner can fix (no client fallback exists now).
+  // Warm, no technical jargon, directs to Leo — an HONEST failure, never a fabricated answer.
+  if (checkServerChatHealth().lastErrorCode === 'OPENAI_API_KEY_MISSING') {
+    if (lang === 'es') return 'Hay un problemita chico. Hablá con Leo y lo arregla enseguida.'
+    if (lang === 'en') return "There's a small setup issue. Talk to Leo and he'll sort it out."
+    return 'יש בעיה קטנה בהגדרות — דברי עם לאו והוא יסדר את זה.'
+  }
+  if (lang === 'es') return 'No puedo responder ahora. Probá de nuevo en un momento.'
+  if (lang === 'en') return "I couldn't get it just now. Try again in a moment."
+  return 'לא הצלחתי עכשיו — תנסי שוב עוד רגע.' // Hebrew default (unchanged — back-compat)
 }
 
 // ─── Streaming chat (T3: Sub-Second Responses) ───
@@ -1148,6 +1270,10 @@ export async function* streamMessage(
       chatMessages.push({ role: 'system', content: summaryText })
     }
   }
+  // Inject durable saved memories (facts Martita asked AbuAI to remember) — real
+  // grounding loaded every session, so open questions can use "she loves red wine".
+  const savedMemText = formatSavedMemoriesForLLM()
+  if (savedMemText) chatMessages.push({ role: 'system', content: savedMemText })
 
   chatMessages.push(
     ...(voiceMode ? FEW_SHOT.slice(-4) : FEW_SHOT).map(m => ({ role: m.role as string, content: m.content })),
@@ -1189,78 +1315,7 @@ export async function* streamMessage(
         if (health.lastErrorCode === 'OPENAI_API_KEY_MISSING') {
           markProviderCooldown('openai-server')
         }
-        continue // server proxy failed → next provider
-      }
-
-      const controller = new AbortController()
-      const combinedSignal = signal
-        ? AbortSignal.any?.([signal, controller.signal]) ?? controller.signal
-        : controller.signal
-      const timeout = setTimeout(() => controller.abort(), voiceMode ? 6000 : 12000)
-
-      try {
-        const res = await fetch(provider.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${provider.apiKey ?? ''}`,
-          },
-          body: JSON.stringify(body),
-          signal: combinedSignal,
-        })
-
-        if (!res.ok) {
-          clearTimeout(timeout)
-          failedKinds.add(provider.kind)
-          if (res.status === 429) {
-            markProviderCooldown(provider.kind)
-          }
-          continue // try next provider
-        }
-
-        const reader = res.body?.getReader()
-        if (!reader) { clearTimeout(timeout); continue }
-
-        const decoder = new TextDecoder()
-        let buffer = ''
-        let yieldedAny = false
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() ?? ''
-
-          for (const line of lines) {
-            const trimmed = line.trim()
-            if (!trimmed.startsWith('data: ')) continue
-            const data = trimmed.slice(6)
-            if (data === '[DONE]') break
-
-            try {
-              const parsed = JSON.parse(data)
-              const token = parsed?.choices?.[0]?.delta?.content
-              if (token) {
-                yieldedAny = true
-                yield token
-              }
-            } catch {
-              // malformed SSE chunk — skip
-            }
-          }
-        }
-
-        clearTimeout(timeout)
-        if (yieldedAny) { console.log(`[AbuAI:stream] ✅ ${provider.kind} delivered tokens`); return }
-        console.log(`[AbuAI:stream] ❌ ${provider.kind} yielded nothing`)
-        // No tokens yielded — try next provider
-      } catch {
-        clearTimeout(timeout)
-        console.log(`[AbuAI:stream] ❌ ${provider.kind} threw error`)
-        failedKinds.add(provider.kind)
-        continue // try next provider
+        continue // server proxy failed → honest empty (no client fallback)
       }
     } catch {
       failedKinds.add(provider.kind)
@@ -1271,8 +1326,8 @@ export async function* streamMessage(
 
   } // end streamAttempt loop
 
-  // All providers failed across all attempts — warm fallback
-  yield 'לא הצלחתי עכשיו — תנסי שוב עוד רגע.'
+  // All providers failed across all attempts — warm, localized, offline-aware fallback
+  yield chatTerminalFallback(messages)
 }
 
 export const VOICE_SUFFIX = `
@@ -1305,6 +1360,9 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
       conversationMessages.push({ role: 'system', content: sendSummaryText })
     }
   }
+  // Inject durable saved memories (facts Martita asked AbuAI to remember).
+  const sendSavedMemText = formatSavedMemoriesForLLM()
+  if (sendSavedMemText) conversationMessages.push({ role: 'system', content: sendSavedMemText })
 
   conversationMessages.push(
     ...FEW_SHOT.map(m => ({ role: m.role as string, content: m.content })),
@@ -1370,5 +1428,5 @@ export async function sendMessage(messages: ChatMessage[], voiceMode = false): P
   if (lastMsg?.role === 'tool') {
     throw new Error('משהו השתבש. ננסה שוב?')
   }
-  throw new Error('לא הצלחתי עכשיו — תנסי שוב עוד רגע.')
+  throw new Error(chatTerminalFallback(messages))
 }

@@ -1,0 +1,237 @@
+{
+  "version": "0.125.0-flight-recorder-ui",
+  "versionBadgeOk": true,
+  "badgeText": "QA: v0.125.0-flight-recorder-ui",
+  "previewUrl": "https://abu-bank-9vwvg4c29-leos-projects-d3c04c09.vercel.app",
+  "ran": 17,
+  "passed": 17,
+  "consoleErrors": [],
+  "results": [
+    {
+      "id": "fam-mor",
+      "input": "מי זאת מור",
+      "expected": [
+        "מרטיטה",
+        "מור"
+      ],
+      "answer": "מרטיטה האמא של מור.",
+      "latencyMs": 426,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "fam-inlaw-yarden-noam",
+      "input": "מה הקשר בין ירדן לנועם",
+      "expected": [
+        "עילי",
+        "דוד"
+      ],
+      "answer": "ירדן נשואה לעילי, ועילי בן דוד של נועם.",
+      "latencyMs": 383,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "fam-inlaw-gilad-leo",
+      "input": "מה הקשר בין גלעד ללאו",
+      "expected": [
+        "אופיר"
+      ],
+      "answer": "גלעד נשוי לאופיר, ואופיר אחיינית של לאו.",
+      "latencyMs": 322,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "fam-count",
+      "input": "כמה נכדים יש למור",
+      "expected": [
+        "אנאבל",
+        "ארי"
+      ],
+      "answer": "יש למור 2 נכדים: אנאבל וארי.",
+      "latencyMs": 329,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "date-today",
+      "input": "מה התאריך היום",
+      "expected": [
+        "2026"
+      ],
+      "answer": "היום 18 ביולי 2026, שבת.",
+      "latencyMs": 333,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "date-tomorrow",
+      "input": "איזה יום מחר",
+      "expected": [
+        "2026"
+      ],
+      "answer": "מחר יהיה יום ראשון, 19 ביולי 2026.",
+      "latencyMs": 317,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "mem-save",
+      "input": "תזכרי שאני אוהבת יין אדום",
+      "expected": [
+        "יין אדום"
+      ],
+      "answer": "בסדר, אני אזכור את זה: אני אוהבת יין אדום.",
+      "latencyMs": 340,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "mem-recall",
+      "input": "מה את זוכרת עליי",
+      "expected": [
+        "יין אדום"
+      ],
+      "answer": "הנה מה שאני זוכרת עלייך: אני אוהבת יין אדום.",
+      "latencyMs": 341,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "mem-forget",
+      "input": "תשכחי שאני אוהבת יין אדום",
+      "expected": [
+        "שכחתי"
+      ],
+      "answer": "בסדר, שכחתי את זה.",
+      "latencyMs": 378,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "cal-create",
+      "input": "תקבעי פגישה עם רפי מחר בשלוש בבית קפה מרוקו",
+      "expected": [
+        "רפי",
+        "נכון"
+      ],
+      "answer": "פגישה עם רפי מחר בשלוש אחר הצהריים. בית קפה מרוקו. נכון?",
+      "latencyMs": 357,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "cal-confirm",
+      "input": "כן",
+      "expected": [
+        "קבוע",
+        "רפי"
+      ],
+      "answer": "קבוע — פגישה עם רפי 19 ביולי 2026, יום ראשון בשעה 15:00. בית קפה מרוקו",
+      "latencyMs": 343,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "cal-referable-where",
+      "input": "איפה אני פוגשת אותו?",
+      "expected": [
+        "מרוקו"
+      ],
+      "answer": "הפגישה עם רפי בית קפה מרוקו.",
+      "latencyMs": 321,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "cal-referable-cancel",
+      "input": "תבטלי אותה",
+      "expected": [
+        "מחקתי"
+      ],
+      "answer": "מחקתי את פגישה עם רפי בשעה 15:00.",
+      "latencyMs": 330,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    },
+    {
+      "id": "math-mult",
+      "input": "כמה זה 15 כפול 4",
+      "expected": [
+        "60"
+      ],
+      "answer": "זה יוצא 60.",
+      "latencyMs": 325,
+      "pass": true,
+      "missing": [],
+      "critical": false,
+      "error": null
+    },
+    {
+      "id": "math-pct",
+      "input": "20 אחוז מ-200",
+      "expected": [
+        "40"
+      ],
+      "answer": "20% מ-200 זה 40.",
+      "latencyMs": 342,
+      "pass": true,
+      "missing": [],
+      "critical": false,
+      "error": null
+    },
+    {
+      "id": "math-es",
+      "input": "cuánto es 12 por 8",
+      "expected": [
+        "96"
+      ],
+      "answer": "Son 96.",
+      "latencyMs": 391,
+      "pass": true,
+      "missing": [],
+      "critical": false,
+      "error": null
+    },
+    {
+      "id": "date-beod-ordering",
+      "input": "בעוד 5 ימים איזה יום",
+      "expected": [
+        "יהיה"
+      ],
+      "answer": "בעוד 5 ימים יהיה יום חמישי, 23 ביולי 2026.",
+      "latencyMs": 330,
+      "pass": true,
+      "missing": [],
+      "critical": true,
+      "error": null
+    }
+  ]
+}

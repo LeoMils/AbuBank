@@ -15,7 +15,7 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
   })
 
   it('"מה יש לי היום?" returns grounded answer, never calls LLM', () => {
-    const today = new Date().toISOString().split('T')[0]!
+    const today = new Date().toLocaleDateString('sv-SE')
     storage['abubank-calendar-appointments'] = JSON.stringify([
       { id: 'a1', title: 'רופא שיניים', date: today, time: '10:00', emoji: '🏥', color: '#C9A84C' },
     ])
@@ -42,7 +42,8 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
   })
 
   it('unknown family name returns not-found message', () => {
-    const answer = tryGroundedAnswer('מי זה דניאל?')
+    // 'דניאל' is now a real person (Daniel Yavnir, Pupa's late husband); 'בוריס' is unknown.
+    const answer = tryGroundedAnswer('מי זה בוריס?')
     expect(answer).not.toBeNull()
     expect(answer).toContain('לא יודעת')
   })
@@ -92,7 +93,7 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
   })
 
   it('location query for unknown person returns not-found', () => {
-    const answer = tryGroundedAnswer('איפה דניאל גר?')
+    const answer = tryGroundedAnswer('איפה בוריס גר?') // 'דניאל' is now a real person
     expect(answer).not.toBeNull()
     expect(answer).toContain('לא יודעת')
   })
@@ -101,7 +102,7 @@ describe('tryGroundedAnswer — end-to-end grounding flow', () => {
     const source = await import('fs').then(fs =>
       fs.readFileSync(path.join(process.cwd(), 'src/screens/AbuAI/index.tsx'), 'utf-8')
     )
-    expect(source).toContain('const useRealtime = true')
+    expect(source).toContain('const useRealtime = isRealtimeBetaEnabled()')
     expect(source).not.toMatch(/const useRealtime = !![^f]/)
   })
 

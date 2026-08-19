@@ -1,0 +1,127 @@
+{
+  "$schema": "internal://abu/release-lock",
+  "when": "2026-08-19T15:30:00.000Z",
+  "identity": {
+    "RUNTIME_SOURCE_SHA": "4bb263e",
+    "CERTIFICATION_HARNESS_SHA": "df12de8b472b2f35f292b23e7e1dd928eb2190e3",
+    "EVIDENCE_GENERATION_SHA": "df12de8b472b2f35f292b23e7e1dd928eb2190e3",
+    "DEPLOYED_BUILD_ID": "0.294.0-privauth",
+    "DEPLOYED_ARTIFACT_HOST": "abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+    "CONTROL_PLANE_VERSION": "cp_bfccc899",
+    "note": "0.294.0-privauth (REPLAY-HARDENED AUTH + family_data.json server-side) supersedes 0.293.0-auth. RUNTIME_SOURCE_SHA = the commit that set BUILD_VERSION 0.294.0-privauth in api/health.ts; harness SHA is HEAD (calendar/whatsapp acceptance now hydrate family + authenticate). Recertified 9/9 with auth ENFORCED (/api/health authEnforced=true, replayStore=memory; all 6 billable + /api/family 401 unauthenticated — live-proven). NEW: WebAuthn challenges single-use (replay DENIED, CODE); production fail-closed (build gate + 503); family_data.json no longer bundled (served from authed /api/family, SW never caches). Prior 0.293 PREVIEW evidence invalidated by change-impact. Durable AUTH_SIGNING_SECRET+ENROLLMENT_SECRET now set for PREVIEW scope; PRODUCTION scope still needs them (build gate blocks a prod deploy without them)."
+  },
+  "candidateRC": "https://abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+  "buildVersion": "0.294.0-privauth",
+  "bundleFingerprint": {
+    "chunks": 27,
+    "bytes": 1249526,
+    "secretClean": true
+  },
+  "canonicalSecretScannerCertified": true,
+  "fullSuite": "GREEN via qa:monster rc (unit-suite green with auth secrets in env; local HEAD 13705 incl. +replay/fail-closed/family-privacy tests)",
+  "securityHardening_0294": {
+    "WEBAUTHN_ASSERTION_REPLAY": "DENIED (single-use nonce consumed server-side in _replayStore; exact A+C replay within TTL denied — replayProtection.test.ts)",
+    "CHALLENGE_SINGLE_USE": "PROVEN (in-memory now; auto-distributed when KV_REST_API_URL/TOKEN provisioned = free-tier owner option)",
+    "WEBAUTHN_COUNTER_ROLLBACK": "DENIED_OR_STANDARDS_JUSTIFIED (server-authoritative counter baseline defeats device-cert rollback; signCount=0 passkeys covered by single-use per WebAuthn)",
+    "PRODUCTION_AUTH_CONFIG_FAIL_CLOSED": "YES (scripts/check-prod-auth-config.mjs blocks a prod build; guardBillable returns 503 in prod without both secrets — failClosed.test.ts)",
+    "family_data_json_bundled": "NO (scan-bundle-privacy.mjs: ABSENT; /api/family authed-only, Cache-Control private,no-store; SW runtimeCaching=[])",
+    "PUBLIC_PRIVATE_DATA_EXPOSURES": "1 (familyContacts.private WhatsApp contacts-seed — separate source, migration documented in PRIVATE_DATA_EXPOSURE.md)"
+  },
+  "verdicts": {
+    "PRODUCT_CANDIDATE_VERDICT": "GO",
+    "QA_SYSTEM_VERDICT": "READY",
+    "RELEASE_PROMOTION_VERDICT": "ELIGIBLE_PENDING_OWNER",
+    "productizationFloor": {
+      "B1_orchestrator": "DONE",
+      "B2_B13": "DONE (MACHINE_CLOSABLE_REMAINING=0, derived by C10)"
+    }
+  },
+  "runtimeProvenance": {
+    "identity": "PROVEN",
+    "method": "deployed buildVersion 0.294.0-privauth ↔ the sole commit that introduced that exact BUILD_VERSION string in api/health.ts (4bb263e); /api/health on the Preview returns 0.294.0-privauth AND authEnforced=true (fingerprint == tested commit) — verified by git + live health check",
+    "RUNTIME_SOURCE_SHA": "4bb263e",
+    "note": "Ties the deployed artifact's advertised version to its source commit. /api/health also exposes authEnforced (true on this Preview → billable endpoints require a session). The e71bb7b harness commit is test-only (auth-env-robust endpoint tests) — evaluator identity, not runtime."
+  },
+  "certificationCapsule": {
+    "path": "docs/engineering-os/qa/CERTIFICATION_CAPSULE.json",
+    "contentAddressed": "CAPSULE_ID = sha256(canonical(contents))",
+    "generator": "scripts/certification-capsule.mjs (npm run qa:capsule)",
+    "verifier": "scripts/verify-capsule.mjs (npm run qa:verify-capsule) — exit 4 on tamper/drift/NOT_PROVEN",
+    "tamperProof": "src/engineering-os/certificationCapsule.test.ts (integrity + completeness mutations, enforced suite)",
+    "completeness": "verify-capsule proves BOTH integrity AND completeness against the authoritative denominator docs/engineering-os/qa/REQUIRED_CLAIM_SET.json (capsule seals denominatorId); a hash-consistent but incomplete capsule fails (§58). Live-proven: denominator drift → exit 4.",
+    "note": "Seals the existing evidence; copies verdicts verbatim and cannot promote them."
+  },
+  "candidateDiscovery": {
+    "command": "npm run qa:current (node scripts/qa-monster.mjs current)",
+    "source": "RELEASE_LOCK.json is the single canonical lock; cross-checked against the capsule",
+    "failClosed": "PROVEN(0) / CURRENT_CANDIDATE_AMBIGUOUS(3) / CURRENT_CANDIDATE_NOT_FOUND(4)",
+    "proof": "src/engineering-os/currentCandidate.test.ts (5, enforced suite)"
+  },
+  "exitContract": {
+    "integrity": "I3",
+    "hardened": true,
+    "note": "harness-only change; RUNTIME_SOURCE_SHA unchanged. Exit derives from the release state machine (scripts/qa-monster-verdict.mjs), never the area roll-up. Legacy pass?0:1 would have exited 0 on this GO 9/9 candidate; the contract now exits 3 (RC_REJECTED) because QA_SYSTEM=INCOMPLETE_PRODUCTIZATION.",
+    "codes": {
+      "0": "success",
+      "2": "usage",
+      "3": "RELEASE_REJECTED",
+      "4": "INTEGRITY_FAIL(fail-closed)"
+    },
+    "proof": "src/engineering-os/qaMonsterExitContract.test.ts (13 planted-defect mutations, enforced suite); feature-mode orchestrator exit=0; frozen-RC-data → exit=3",
+    "operatorGuide": "docs/engineering-os/qa/QA_MONSTER_OPERATOR.md"
+  },
+  "worktree": {
+    "dirtyTotal": 81,
+    "dirtyRuntime": [],
+    "WORKTREE_RUNTIME_CLEAN": true
+  },
+  "northStar_AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0,
+  "idempotency": {
+    "mechanism": "OPERATION_IDENTITY (realtime function_call callId) PRIMARY; persisted ledger; content-match removed",
+    "codeProof": "6 scenarios (idempotentCreate.test.ts)",
+    "boundaryDedup": "liveTools.handleFunctionCall + calendarDraftController dedup by callId (unit-proven)",
+    "deployedRealtimeProof": "HUMAN_RESIDUAL/DEVICE — the operationId path is realtime-tool-only, not exposed in the deployed UI create; a real duplicate-tool-result across a reconnect needs a realtime voice session (oracle-ready)"
+  },
+  "rateLimiting": {
+    "INSTANCE_LOCAL_RATE_LIMIT": "per-IP sliding window on 4 proxies (TTS/STT 30, chat 40, online 20 /min·IP)",
+    "INSTANCE_LOCAL_COST_CIRCUIT_BREAKER": "per serverless INSTANCE (NOT globally distributed)",
+    "DISTRIBUTED_RATE_LIMIT": "NOT_PROVISIONED — requires shared KV (Vercel KV/Upstash) = OWNER_INFRA_DECISION",
+    "clientKey": "first x-forwarded-for hop used ONLY as an ephemeral in-memory map key; never persisted or written to logs/evidence",
+    "residualAbuseRisk": "a distributed flood across many instances/IPs is not fully bounded per-instance; per-request caps + per-IP + per-instance circuit reduce single-source amplification",
+    "recommendation": "provision a shared-KV distributed limiter if abuse is observed; until then the shipped in-memory limits + tightened caps are the machine-closable protection"
+  },
+  "rollbackSafety": "only P0/P1-clean + secret-clean target; exposed 0.5.0 production is NOT acceptable rollback",
+  "machineClosableRemaining": [],
+  "ownerActionsOpen": [
+    "REVOKE OpenAI fp:e39ef3b7",
+    "REVOKE Gemini fp:69150fc4",
+    "REVOKE Groq fp:a2f25d13",
+    "AUTHORIZE clean production deploy",
+    "DECIDE distributed rate-limit infra (shared KV)",
+    "SET durable PRODUCTION env AUTH_SIGNING_SECRET + ENROLLMENT_SECRET (PREVIEW scope is now set; PRODUCTION scope is NOT — the build gate blocks a prod deploy until it is, and a future prod deploy cannot run authEnforced=false)",
+    "MIGRATE the WhatsApp contacts-seed (familyContacts.private) behind authenticated access to reach PUBLIC_PRIVATE_DATA_EXPOSURES=0 (family_data.json is already done) — plan in PRIVATE_DATA_EXPOSURE.md (owner-approved direction: migrate, not public-by-policy)",
+    "OPTIONAL: provision a free KV (KV_REST_API_URL/TOKEN) to upgrade replay single-use + rate-limit from per-instance to distributed",
+    "no-login PWA auth policy: server-verified WebAuthn/passkey auth + replay hardening + fail-closed prod are IMPLEMENTED + PROVEN; the billable/API + family_data.json exposure is CLOSED; remaining to fully CLOSE = durable PRODUCTION env + the contacts-seed migration"
+  ],
+  "machineState": {
+    "MACHINE_CLOSABLE_REMAINING": 0,
+    "OMITTED_MACHINE_OBLIGATIONS": 0,
+    "EXTERNAL_BLOCKED_REMAINING": 1,
+    "QA_CONTROL_ESCAPES_OPEN": 0,
+    "UNSAMPLED_REQUIRED_CLAIMS": 0,
+    "SURVIVED_RELEASE_CRITICAL_MUTANTS": 0,
+    "externalBlocked": [
+      "ci-sentinel-real-chain (gh unauth / no CI-observe tool)",
+      "final-release-capsule (git worktree denied by env permission rule)"
+    ],
+    "PROMOTION_REHEARSAL": "PASS",
+    "FRESH_SESSION_REPOSITORY_ONLY": "DETERMINISTIC_PORTION_PROVEN",
+    "MACHINE_RELEASE_READINESS": "READY",
+    "BLOCKING_OWNER_ACTIONS_REMAINING": 5,
+    "BLOCKING_HUMAN_RESIDUALS_REMAINING": 2,
+    "PRODUCTION_PROMOTION_ELIGIBLE": "NO",
+    "OBLIGATION_UNIVERSE_COMPLETENESS": "PROVEN",
+    "QA_CONTROL_ESCAPES_WITHOUT_SENSITIVITY_PROOF": 0,
+    "note": "PRODUCTION_PROMOTION_ELIGIBLE is DERIVED (release-eligibility-lib): NO while 5 blocking owner + 2 blocking human gates remain. RELEASE=ELIGIBLE_PENDING_OWNER."
+  }
+}

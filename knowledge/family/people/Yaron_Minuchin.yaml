@@ -1,0 +1,14 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Yaron Minuchin
+hebrew_name: יארון מינושין
+aliases:
+- Yaron
+- יארון
+relationship: family_friend
+relationship_hebrew: בן של מירטה מינושין
+role: בנם של מירטה ואוסקר מינושין
+gender: male
+notes: בן של מירטה מינושין; זקוק לתמיכה מיוחדת וגר במסגרת מגורים. פרטים נוספים הושמטו בכוונה מטעמי פרטיות/בריאות.
+pronunciation:
+  es: yaron

@@ -184,7 +184,7 @@ describe('30-MINUTE CONVERSATION — continuous', () => {
 
     // Minute 20-22: pronoun chain
     { input: 'מי זה אופיר?', check: (a) => { expect(a).not.toBeNull(); expect(a).toContain('אופיר') } },
-    { input: 'תזכירי לי להתקשר אליו מחר', check: (_, r) => expect(r).toContain('אופיר') },
+    { input: 'תזכירי לי להתקשר אליה מחר', check: (_, r) => expect(r).toContain('אופיר') },
 
     // Minute 23-25: open conversation (LLM)
     { input: 'ספרי לי בדיחה', check: (a) => expect(a).toBeNull() }, // goes to LLM — correct

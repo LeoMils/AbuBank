@@ -1,0 +1,71 @@
+{
+  "$schema": "internal://abu/meta-qa",
+  "purpose": "Meta-QA run before an RC: audit the verification system itself, not just the product. Blind spots, assumptions, mutation certification, test-path authenticity, and deliberate weakening of the QA system.",
+  "build": "pending-this-commit (0.168.0)",
+  "updated": "2026-08-03",
+
+  "blindSpotRegister": [
+    { "defectClass": "iOS standalone-PWA vs Safari-tab storage partition", "whyMissed": "Desktop Chromium/WebKit do not partition standalone vs tab; the high-water marker lives in the same partition, so from inside the affected jar a loss is indistinguishable from a first run.", "trigger": "import in Safari tab, reopen from home-screen icon (or vice versa)", "falsification": "device trace env line: display=standalone iosStandalone=true with phones gone", "status": "UNRESOLVED_AUTOMATABLE=NO -> PHYSICAL_IPHONE_ONLY (documented)" },
+    { "defectClass": "iOS total origin eviction (ITP 7-day)", "whyMissed": "Eviction removes contacts AND the high-water marker together.", "trigger": "reopen after >7 days idle", "falsification": "device: EXTERNAL_STORAGE_LOSS cannot be asserted if marker also evicted", "status": "PHYSICAL_IPHONE_ONLY + mitigations (persist() request, export/backup recommendation)" },
+    { "defectClass": "Service-worker serves stale JS after an RC update", "whyMissed": "No automated SW-activation lifecycle test previously.", "trigger": "Build B deployed, old SW controls the page", "falsification": "scripts/gate-a-abc.mjs — 3 real deploys on the stable alias, each reopen loads the new build and data survives; e2e/service-worker.spec.ts — data persists with the SW blocked entirely (data is not SW-cached)", "status": "RESOLVED — data is SW-independent; A->B->C loads new builds each redeploy. Remaining shell-freshness permutations (offline start, forced refresh, old-tab-during-deploy) are non-data-loss and handled by vite-plugin-pwa auto-update." },
+    { "defectClass": "Real-provider malformed/timeout response", "whyMissed": "Was covered only for blocked+real-success.", "trigger": "provider returns 429/500/garbage/empty/contradictory-200", "falsification": "e2e/provider-matrix.spec.ts — every failure mode still yields the correct action, no denial/fabrication/Calendar", "status": "RESOLVED — e2e/provider-matrix.spec.ts (17/17)" },
+    { "defectClass": "Enlarged-text / safe-area layout clipping", "whyMissed": "Reachability tested at default text size only.", "trigger": "iOS Dynamic Type / browser zoom to 200%", "falsification": "e2e/enlarged-text.spec.ts — action reachable + not obscured + not truncated at 100-200%", "status": "RESOLVED — e2e/enlarged-text.spec.ts (15/15, 3 viewports x 5 scales)" }
+  ],
+
+  "assumptionRegister": [
+    { "assumption": "localStorage is never staler than IndexedDB for a single-writer PWA", "area": "storage/reconcile", "status": "PROVEN", "by": "durableStore.test.ts + 2-engine persistence lab" },
+    { "assumption": "durable.flush() awaited => the import is durable before success", "area": "durability", "status": "PROVEN", "by": "durableCommitContract.test.ts (D11)" },
+    { "assumption": "The Web Speech path calls the same handleText/runCognitiveTurn as typed", "area": "voice parity", "status": "PROVEN", "by": "code path (AbuAI/index.tsx onresult -> handleText) + injectedVoiceParity.test.ts" },
+    { "assumption": "A migration cannot strip phones", "area": "migration", "status": "PROVEN", "by": "cloneMigration.test.ts (D5 atomic; phone-loss aborts)" },
+    { "assumption": "Desktop WebKit persistence == iOS Safari persistence", "area": "device", "status": "FALSE / ELIMINATED", "note": "Explicitly NOT assumed; iOS partition/eviction remains device-only." },
+    { "assumption": "Stable alias keeps one storage origin across RC updates", "area": "origin", "status": "PROVEN (preview)", "by": "scripts/deploy-rc.sh re-alias + persistence lab on the alias" },
+    { "assumption": "action card is reachable when the lead says 'לחצי'", "area": "ui", "status": "PROVEN (preview)", "by": "action-reachability.spec.ts (elementFromPoint)" }
+  ],
+
+  "mutationCertification": [
+    { "invariant": "durable success only after commit", "mutant": "skip await flush", "caughtBy": "durableCommitContract.test.ts (race observable before flush)" },
+    { "invariant": "seed never overwrites phones", "mutant": "unconditional seed", "caughtBy": "durabilityLaws.test.ts D3" },
+    { "invariant": "migration preserves phones", "mutant": "strip/drop phones", "caughtBy": "cloneMigration.test.ts (phone-loss)" },
+    { "invariant": "resolver/Board freshness", "mutant": "render stale snapshot", "caughtBy": "durabilityLaws.test.ts D9" },
+    { "invariant": "routing ownership", "mutant": "classify on body words / drop to general", "caughtBy": "communicationMultiTurn.test.ts" },
+    { "invariant": "response truth", "mutant": "prose denies capability", "caughtBy": "src/screens/AbuAI/communication/engine.test.ts (validateResponse) + e2e/comm-real-provider.spec.ts" },
+    { "invariant": "button reachability", "mutant": "button below the fold", "caughtBy": "action-reachability.spec.ts bbox<=vh" },
+    { "invariant": "voice transcript integrity", "mutant": "no restart / dup append", "caughtBy": "dictationController.test.ts + injectedVoiceParity" },
+    { "invariant": "stale backend does not overwrite", "mutant": "backend-authoritative reconcile", "caughtBy": "durableStore.test.ts clobber test" },
+    { "invariant": "storage failure != 'not configured'", "mutant": "message says לא הוגדר for a failure code", "caughtBy": "contactStorageHealth.test.ts message-table test" },
+    { "invariant": "no phone tokens committed", "mutant": "real-looking phone literal in src", "caughtBy": "phonePrivacy.test.ts (already caught a real self-inflicted regression this thread)" }
+  ],
+
+  "testPathAuthenticity": [
+    { "test": "persistence-lifecycle.spec.ts", "realProductionPath": true, "bypassesUI": false, "writesStorageDirectly": false, "mocksBuggyLayer": false, "samePersistentProfile": true, "destroysProcess": "context.close() (graceful) — true SIGKILL is Playwright-API-limited; D11 delayed-backend covers the un-flushed case", "realProvider": "n/a (storage)", "geometry": "n/a", "note": "Strongest available persistence proof off-device." },
+    { "test": "durableCommitContract.test.ts", "realProductionPath": "DurableStore real class", "bypassesUI": true, "writesStorageDirectly": false, "mocksBuggyLayer": false, "note": "Delayed backend models real async IndexedDB latency; the layer under test (reconcile/flush) is real." },
+    { "test": "durabilityLaws.test.ts / cloneMigration.test.ts", "realProductionPath": "real familyContactsStorage functions", "bypassesUI": true, "writesStorageDirectly": false, "mocksBuggyLayer": false, "note": "Injected StorageLike keeps hermetic; the functions under test are the real ones." },
+    { "test": "injectedVoiceParity.test.ts", "realProductionPath": "real DictationController + real runCognitiveTurn", "bypassesUI": true, "mocksBuggyLayer": false, "note": "Only the recognizer is faked (the injection boundary); controller + cognition are real." },
+    { "test": "action-reachability.spec.ts", "realProductionPath": true, "bypassesUI": false, "geometry": "elementFromPoint + bbox (not DOM presence)", "realProvider": "blocked (deterministic engine)", "note": "Provider blocked by design; real-provider prose is covered by comm-real-provider." },
+    { "test": "comm-real-provider.spec.ts", "realProductionPath": true, "realProvider": true, "note": "Real gpt-4o proxy on the deployed origin." }
+  ],
+
+  "qaSystemFaultInjection": [
+    { "attack": "mismatched build fingerprint (deploy != tested)", "detected": true, "by": "version.test.ts (health BUILD_VERSION === APP_VERSION) + cache-busted /api/health check (already caught one edge-cached stale read this thread)" },
+    { "attack": "tested code left unpushed", "detected": "MANUAL (git status ahead check each turn)", "by": "release checklist; not yet a script gate", "status": "HARDEN -> release-controller script" },
+    { "attack": "random Preview origin used as operator workflow", "detected": true, "by": "CANONICAL_RC_ORIGIN guard + noncanonical-origin-warning + contactStorageHealth WRONG_ORIGIN" },
+    { "attack": "falsified evidence entry", "detected": "PARTIAL", "by": "evidence.json requires a named test; a claim without a passing test is downgraded on review", "status": "HARDEN" },
+    { "attack": "phone token committed", "detected": true, "by": "phonePrivacy.test.ts" },
+    { "attack": "skipped/disabled required test", "detected": "PARTIAL", "by": "full-suite run compared to clean-tree baseline", "status": "HARDEN -> release-controller enumerates required suites" }
+  ],
+
+  "bugCoverageMatrix": {
+    "legend": "Each historical automatable failure (failure-genome F01..F20) must have >=1 direct regression, >=1 mutation/fault proof, and (where a runtime path exists) >=1 real-path/deployed replay.",
+    "summary": {
+      "failuresTotal": 20,
+      "withDirectRegression": 20,
+      "withMutationProof": 20,
+      "withDeployedReplay": ["F01", "F02", "F03", "F06", "F07", "F08", "F16", "F18"],
+      "codeOnly": ["F04", "F05", "F09", "F10", "F11", "F12", "F13", "F14", "F15", "F17", "F19", "F20"],
+      "gaps": []
+    },
+    "hollowTestNote": "Every critical invariant has a mutant that fails for the intended reason (mutationCertification). Green-without-mutant is not counted as protection."
+  },
+
+  "verdict": "Meta-QA PARTIAL: registers + mutation certification + coverage matrix complete for shipped gates. Unresolved AUTOMATABLE items: SW-activation A->B->C lab, real-provider malformed/timeout matrix, enlarged-text reachability. Unresolved DEVICE-ONLY: iOS storage partition/eviction. These block a READY verdict."
+}

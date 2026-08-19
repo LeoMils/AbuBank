@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Cacho
+hebrew_name: כאצ'ו
+aliases:
+- Cacho Barbers
+- כאצ'ו ברברס
+relationship: family_friend
+relationship_hebrew: בעלה של שושנה
+role: בעלה של שושנה ברברס, חבר של המשפחה
+location: כפר סבא
+gender: male
+notes: כאצ'ו ברברס, ארגנטינאי, גר בכפר סבא. בעלה של שושנה ברברס. איות 'Barbers' אושר.
+pronunciation:
+  es: cacho

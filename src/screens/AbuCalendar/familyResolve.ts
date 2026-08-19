@@ -81,12 +81,26 @@ export function resolvePersonPhrase(phraseRaw: string | null | undefined): Famil
   if (desc) {
     const kind = desc[1]!.replace(/\s+/g, ' ').trim()  // normalize "בן  הזוג" → "בן הזוג"
     const ofName = desc[2]!
-    // Friend phrases ("חברה של מור") are recognized but never resolved —
-    // family_data.json holds no friend records. UI surfaces a clear
-    // "לא מצאתי בוודאות מי…" message and lets the user save as-is.
-    if (FRIEND_KIND.has(kind)) return { status: 'missing', phrase }
     const root = findNode(ofName)
     if (!root) return { status: 'missing', phrase }
+
+    // "חבר/חברה של X" is the Hebrew partner alias (boyfriend/girlfriend) when
+    // X actually has a partner — RC4 product law: "מי החברה של מור?" → "יעל".
+    // The descriptor's gender selects the partner (חברה→female, חבר→male). If X
+    // has no partner of that gender, it's a platonic friend reference, which we
+    // never invent from family_data.json → honest `missing`.
+    if (FRIEND_KIND.has(kind)) {
+      const friendGender: 'female' | 'male' = kind === 'חברה' ? 'female' : 'male'
+      const partnerNames = [...new Set(
+        [...root.partnersHe, ...root.spousesHe]
+          .map(h => findNode(h))
+          .filter((n): n is GraphNode => !!n && n.gender === friendGender)
+          .map(n => n.hebrew),
+      )]
+      if (partnerNames.length === 1) return { status: 'resolved', name: partnerNames[0]!, phrase }
+      if (partnerNames.length > 1) return { status: 'ambiguous', candidates: partnerNames, phrase }
+      return { status: 'missing', phrase }
+    }
 
     const isSpouse = SPOUSE_MALE.has(kind) || SPOUSE_FEMALE.has(kind)
     const isSibling = kind === 'אח' || kind === 'אחות'

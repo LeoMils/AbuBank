@@ -11,6 +11,7 @@
 
 import type { ChatMessage } from './types'
 import { routePersonalQuery, type RouteType } from './router'
+import { findLastMentionedPerson } from './pronounResolver'
 
 // Short temporal fragments — bare time references that need context.
 // These are follow-ups like "ומחר?", "ובשלישי?", "והשבוע?", "ואתמול?"
@@ -51,6 +52,20 @@ function findLastContext(messages: ChatMessage[]): RouteType | null {
     }
   }
   return null
+}
+
+// Live/online context cues. If the PREVIOUS user turn was one of these, a bare
+// temporal follow-up ("ומחר?") must continue the ONLINE topic (weather-tomorrow),
+// NOT be hijacked to the calendar by the מחר token. We leave it unexpanded here so
+// the runtime's online-focus layer continues it.
+const ONLINE_CTX_RE = /מזג\s+ה?אוויר|תחזית|חדשות|סרטים|קולנוע|הצגות|משחק|כדורגל|כדורסל|מונדיאל|ליגה|גביע|נבחרת|מי\s+ניצח|תוצא|אוטובוס|רכבת|טיסה|בורסה|מני[יה]ה|דולר|שער|מחיר|כמה\s+עולה|clima|weather|noticias|pron[oó]stico|f[uú]tbol|partido/u
+function lastUserWasOnline(messages: ChatMessage[]): boolean {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]!
+    if (m.role !== 'user') continue
+    return ONLINE_CTX_RE.test(m.content)
+  }
+  return false
 }
 
 /** Like findLastContext but also returns the user message text, for follow-up extraction. */
@@ -130,9 +145,29 @@ function extractDateFromBirthdayResponse(messages: ChatMessage[]): string | null
   return null
 }
 
+/** Last substantive (non-fragment, non-family/calendar) user topic, scaffolding
+ *  stripped — e.g. "באיזה שנה הייתה המהפכה הצרפתית" → "המהפכה הצרפתית". */
+function findLastUserTopic(messages: ChatMessage[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]!
+    if (m.role !== 'user') continue
+    const t = m.content.trim()
+    if (t.split(/\s+/).length < 2) continue // fragment
+    if (/^(מי\b|מה יש לי|מתי|תקבעי|תזכירי|עליה|עליו|ו?עוד|תמשיכי|על זה|ומה עם זה)/.test(t)) continue // family/calendar/fragment
+    const topic = t
+      .replace(/^(?:באיזה|איזה|מה|מתי|איפה|כמה|למה|ספרי לי עוד על|ספרי לי על|תספרי לי על|ספרי לי)\s+/i, '')
+      .replace(/^(?:שנה|זמן|תאריך)\s+(?:הייתה|היה|הי?תה)\s+/, '')
+      .replace(/^ו?על\s+/, '') // avoid "ספרי לי עוד על על X" when the topic already starts with "על"
+      .replace(/[?？]/g, '').trim()
+    return topic.length >= 2 ? topic : null
+  }
+  return null
+}
+
 export function resolveFollowUp(
   text: string,
   recentMessages: ChatMessage[],
+  opts?: { pendingCreate?: boolean },
 ): { resolved: string; wasFollowUp: boolean } {
   const trimmed = text.trim()
 
@@ -157,6 +192,14 @@ export function resolveFollowUp(
 
   // Check for temporal follow-up: "ומחר?", "ובשלישי?", "¿Y mañana?"
   if (TEMPORAL_FRAGMENT.test(trimmed) || TEMPORAL_FRAGMENT_ES.test(trimmed)) {
+    // While collecting a calendar draft, a bare "מחר"/"בשלישי" is the DAY SLOT
+    // answer, not a "what's on my calendar" follow-up — pass it through raw so the
+    // draft folds it (otherwise it's stolen into a calendar read).
+    if (opts?.pendingCreate) return { resolved: text, wasFollowUp: false }
+    // If the prior turn was a live/online topic (weather/sports/news), do NOT
+    // hijack this to the calendar — leave it for the runtime online-focus layer
+    // to continue the online topic (weather-tomorrow).
+    if (lastUserWasOnline(recentMessages)) return { resolved: text, wasFollowUp: false }
     const lastContext = findLastContext(recentMessages)
     if (lastContext && CALENDAR_ROUTES.has(lastContext)) {
       return { resolved: expandTemporal(trimmed), wasFollowUp: true }
@@ -173,7 +216,7 @@ export function resolveFollowUp(
   }
 
   // Multi-word calendar follow-ups: "ומה אחרי זה?", "ומה בשבוע הבא?"
-  const CALENDAR_FOLLOWUP = /^ו?מה\s+(אחרי זה|אחר כך|הלאה|בשבוע הבא|בחודש הבא)\??$/i
+  const CALENDAR_FOLLOWUP = /^ו?מה\s+(אחרי זה|אחר כך|הלאה|בשבוע הבא|בחודש הבא|ביום הבא|למחרת)\??$/i
   const calFollowUp = trimmed.match(CALENDAR_FOLLOWUP)
   if (calFollowUp) {
     const lastContext = findLastContext(recentMessages)
@@ -183,8 +226,25 @@ export function resolveFollowUp(
         // "what's after that" after today → upcoming/week
         return { resolved: 'מה יש לי השבוע?', wasFollowUp: true }
       }
+      if (/ביום הבא|למחרת/.test(phrase)) {
+        // "and the next day" → tomorrow's schedule
+        return { resolved: 'מה יש לי מחר?', wasFollowUp: true }
+      }
       return { resolved: `מה יש לי ${phrase}?`, wasFollowUp: true }
     }
+  }
+
+  // Bare "עליה" / "עליו" / "עליהם" — "(tell me) about her/him/them". A
+  // continuation that must STAY on the last-mentioned person via the family
+  // graph (deterministic), never cold-start the LLM. Resolves to a family lookup.
+  // "עליה" / "ספרי לי עליה" / "תספרי לי עליו" — "(tell me) about her/him".
+  const ABOUT_PERSON_FRAG = /^(?:(?:ו?תספרי|ספרי|ספר|תספר)\s+לי\s+(?:עוד\s+)?)?(?:ו)?(עליה|עליו|עליהם|עליהן)\??$/
+  const aboutPerson = trimmed.match(ABOUT_PERSON_FRAG)
+  if (aboutPerson) {
+    const tok = aboutPerson[1]!
+    const g = /עליה|עליהן/.test(tok) ? 'female' as const : 'male' as const
+    const person = findLastMentionedPerson(recentMessages, g) ?? findLastMentionedPerson(recentMessages)
+    if (person) return { resolved: `ספרי לי על ${person}`, wasFollowUp: true }
   }
 
   // Check for name follow-up: "ומור?", "ולאו?"
@@ -203,13 +263,37 @@ export function resolveFollowUp(
           return { resolved: `ספרי לי עוד על ${nameInPrev}`, wasFollowUp: true }
         }
       }
-      return { resolved: 'ספרי לי עוד', wasFollowUp: true }
+      // Not family — continue the last general topic so the thread holds.
+      const topic = findLastUserTopic(recentMessages)
+      return { resolved: topic ? `ספרי לי עוד על ${topic}` : 'ספרי לי עוד', wasFollowUp: true }
     }
 
     // Only expand if we have family context AND the fragment is short (a name)
     const lastContext = findLastContext(recentMessages)
     if (lastContext && FAMILY_ROUTES.has(lastContext) && name.length <= 10) {
       return { resolved: expandName(name), wasFollowUp: true }
+    }
+  }
+
+  // General-topic continuation (NOT family/calendar): "תמשיכי", "עוד", "על זה",
+  // "ומה עם זה", "על ההיסטוריה" → continue the last substantive topic so the LLM
+  // keeps the thread instead of losing it. (Family/calendar already handled above.)
+  const CONTINUE_FRAG = /^(?:עוד|תמשיכי|תמשיך|המשיכי|הלאה|על זה|ועל זה|ומה עם זה)\??$/i
+  const aboutMatch = trimmed.match(/^ו?על\s+(.{2,40}?)\??$/)
+  // While a create draft is pending, "תמשיכי" means RESUME the draft — don't rewrite
+  // it into a family/topic continuation; let the runtime re-surface the pending draft.
+  if ((CONTINUE_FRAG.test(trimmed) || aboutMatch) && !opts?.pendingCreate) {
+    const lastCtx = findLastContext(recentMessages)
+    // Family context: a bare "תמשיכי" / "עוד" continues on the PERSON,
+    // deterministically (graph), instead of cold-starting the LLM.
+    if (!aboutMatch && lastCtx && FAMILY_ROUTES.has(lastCtx)) {
+      const person = findLastMentionedPerson(recentMessages)
+      if (person) return { resolved: `ספרי לי עוד על ${person}`, wasFollowUp: true }
+    }
+    const familyOrCal = !!lastCtx && (FAMILY_ROUTES.has(lastCtx) || CALENDAR_ROUTES.has(lastCtx))
+    if (!familyOrCal) {
+      const topic = (aboutMatch && !/^זה$/.test(aboutMatch[1]!.trim())) ? aboutMatch[1]!.trim() : findLastUserTopic(recentMessages)
+      if (topic) return { resolved: `ספרי לי עוד על ${topic}`, wasFollowUp: true }
     }
   }
 

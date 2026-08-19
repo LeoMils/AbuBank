@@ -1,0 +1,16 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Dviko
+hebrew_name: דביקו
+aliases:
+- Dvigo
+- Duvigo
+relationship: family_friend
+relationship_hebrew: בעלה של פלורי
+role: בעלה של פלורי; חבר ממנדוסה
+location: חיפה
+gender: male
+name_uncertain: true
+notes: בעלה של פלורי, חבר ממנדוסה, גר בחיפה. איות לטיני לא ודאי (בעבר בלבול Dovigo/Duvigo).
+pronunciation:
+  es: dviko

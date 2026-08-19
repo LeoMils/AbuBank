@@ -1,0 +1,95 @@
+{
+  "_comment": "SOURCE OF TRUTH for Martita's life history + places (FIX 3). Extracted verbatim-in-meaning from the life_history block of knowledge/martita_personality.yaml and from place facts in knowledge/family_data.json notes. NOTHING is invented; unknowns are marked and must never be filled in by the model. Read at runtime by src/services/history/historyLookup.ts behind the history_lookup tool — history/places have their OWN retrieval path, exactly like people_lookup for people. era ∈ childhood | youth | mendoza | aliyah | bat_yam | work | kfar_saba | legacy.",
+  "history": [
+    {
+      "id": "born_buenos_aires",
+      "topic": "לידה וילדות בבואנוס איירס",
+      "era": "childhood",
+      "place": "בואנוס איירס, ארגנטינה",
+      "people": ["דורה", "יעקב", "לואיס", "בובי"],
+      "summary": "מרטיטה נולדה בבואנוס איירס ב-1 באפריל 1945. משפחת ילדותה: אמא דורה, אבא יעקב (Jacobo), ושני אחים — לואיס ובובי.",
+      "confidence": "confirmed",
+      "source": "martita_personality.yaml#life_history.argentina.born"
+    },
+    {
+      "id": "youth_mendoza_trip",
+      "topic": "נעורים — הטיול למנדוסה",
+      "era": "youth",
+      "place": "מנדוסה / בואנוס איירס, ארגנטינה",
+      "people": ["מרקוס גרינברג"],
+      "summary": "בגיל ~18 מרטיטה נסעה למנדוסה לאירוע סוף תיכון. באותה תקופה היה לה חבר בבואנוס איירס בשם מרקוס גרינברג. איך היא ופפי הכירו — עדיין לא סופק; אין להמציא.",
+      "confidence": "confirmed",
+      "source": "martita_personality.yaml#life_history.argentina.youth"
+    },
+    {
+      "id": "mendoza_life",
+      "topic": "החיים במנדוסה והחנות Casa Milstein",
+      "era": "mendoza",
+      "place": "מנדוסה, ארגנטינה (רחוב סן מרטין)",
+      "people": ["פפי", "חוסה מילשטיין", "לאו"],
+      "summary": "החיים במנדוסה עם משפחתו של פפי. אביו של פפי, חוסה מילשטיין, החזיק חנות בשם 'Casa Milstein' ברחוב סן מרטין (San Martín) במנדוסה. הרבה חברים; מועדון קאנטרי ובית כנסת ('שיל'). לאו למד ב-Escuela Israelita Max Nordau.",
+      "confidence": "confirmed",
+      "source": "martita_personality.yaml#life_history.argentina.mendoza + family_data.json#jose_milstein"
+    },
+    {
+      "id": "aliyah_1977",
+      "topic": "העלייה ארצה, 1977",
+      "era": "aliyah",
+      "place": "איטליה (רומא, פירנצה) ואז ישראל",
+      "people": ["פפי", "מור", "לאו"],
+      "summary": "בשנת 1977 עלו ארצה מרטיטה, פפי, מור ולאו. בדרך שהו כשבוע באיטליה — רומא ופירנצה — ואז הגיעו לישראל.",
+      "confidence": "confirmed",
+      "source": "martita_personality.yaml#life_history.aliyah_1977"
+    },
+    {
+      "id": "ulpan_ben_yehuda",
+      "topic": "אולפן בן יהודה בנתניה",
+      "era": "aliyah",
+      "place": "אולפן בן יהודה, נתניה",
+      "people": ["לידיה אומנסקי", "נוח אומנסקי", "אלסי", "שאול"],
+      "summary": "אחרי העלייה — אולפן בן יהודה בנתניה, מגורים באולפן כחצי שנה; קיבלו אוכל וההורים למדו רוב היום. כמה חברויות לכל החיים התחילו שם: לידיה ונוח אומנסקי, אלסי ושאול.",
+      "confidence": "confirmed",
+      "source": "martita_personality.yaml#life_history.aliyah_1977.ulpan"
+    },
+    {
+      "id": "bat_yam_years",
+      "topic": "שנות בת ים",
+      "era": "bat_yam",
+      "place": "בת ים",
+      "people": ["פפי"],
+      "summary": "הבית הראשון: רמת הנשיא, בת ים (כתובת שסופקה: רחוב כ\"ט בנובמבר 27 — לאמת איות קנוני). מאוחר יותר גרו ברחוב בלפור, ואז ברחוב ז'בוטינסקי (מול הים). אלה כתובות היסטוריות שלה, לא הבית הנוכחי.",
+      "confidence": "partial",
+      "source": "martita_personality.yaml#life_history.bat_yam_years"
+    },
+    {
+      "id": "business_store",
+      "topic": "החנות והעסק בישראל",
+      "era": "work",
+      "place": "בת ים",
+      "people": ["פפי"],
+      "summary": "מרטיטה ופפי קנו חנות גלנטריה ממשפחה ארגנטינאית ועבדו שעות ארוכות מאוד. בהמשך הרחיבו לחנות הסמוכה (פתחו את הקיר); בשלב מסוים קנו את השטח השכן עם הסדר להשכיר חלק ממנו; מאוחר יותר העסק כלל גם בגדים ותיקים. הרצף המדויק של הקנייה/פתיחת הקיר/השכרה אינו ברור לגמרי — אין להמציא רצף מסחרי מדויק.",
+      "confidence": "partial",
+      "source": "martita_personality.yaml#life_history.bat_yam_years.business + work_history"
+    },
+    {
+      "id": "work_history",
+      "topic": "עבודה לאורך החיים",
+      "era": "work",
+      "place": "ישראל",
+      "people": ["פפי"],
+      "summary": "עבודת קמעונאות/מכירות ענפה — עם פפי בחנות שלהם, אחר כך חנות בגדים וחנות תיקים. תפקיד חוזר לאורך החיים: אשת מכירות / קמעונאות.",
+      "confidence": "confirmed",
+      "source": "martita_personality.yaml#life_history.work_history"
+    },
+    {
+      "id": "legacy_themes",
+      "topic": "הנושאים של חיי מרטיטה ופפי",
+      "era": "legacy",
+      "place": "ארגנטינה וישראל",
+      "people": ["פפי"],
+      "summary": "הנושאים של חייהם המשותפים: אהבה, שותפות, עבודה, הגירה, בנייה מחדש בישראל, משפחה, טיולים, התמדה וחום. היו תקופות קשות, אבל משפחה חמה, קרובה ואוהבת.",
+      "confidence": "confirmed",
+      "source": "martita_personality.yaml#life_history.legacy"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Saul
+hebrew_name: שאול
+aliases: []
+relationship: family_friend
+relationship_hebrew: בעלה של אלסי
+role: בעלה של אלסי, חבר של המשפחה
+location: כפר סבא
+gender: male
+notes: בעלה של אלסי, גר בכפר סבא. הכירו באולפן בן יהודה, נתניה.
+pronunciation:
+  es: saul

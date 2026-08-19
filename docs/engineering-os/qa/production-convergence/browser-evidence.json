@@ -1,0 +1,19 @@
+{
+  "note": "BROWSER evidence — Playwright (mobile-chrome, he-IL, 412x870) run against the DEPLOYED stable RC. Real user-visible path, not a harness.",
+  "target": "https://abu-ela-rc.vercel.app",
+  "testedBuild": "0.176.0-latency-vad-instrumentation-rc",
+  "spec": "e2e/feature-activation.spec.ts",
+  "result": "2 passed (21.2s)",
+  "feature-activation": {
+    "assertion": "?voice=realtime2 → localStorage['abu-voice-realtime-slice']='1' after AbuAI lazy-load; persists across a param-less reload; ?voice=pipeline → '0'",
+    "class": "BROWSER (against DEPLOYED_PREVIEW)",
+    "independentVerifier": "src/services/voiceModePreference.test.ts (UNIT, distinct path)",
+    "mutationProof": "flip the realtime2 branch to persist '0' → voiceModePreference.test.ts fails (1 test); reverted"
+  },
+  "pwa": {
+    "assertion": "navigator.serviceWorker.ready resolves with an active/installing/waiting registration on the deployed origin; localStorage survives a full reload (update-safe shell)",
+    "class": "BROWSER (against DEPLOYED_PREVIEW)",
+    "independentVerifier": "e2e/service-worker.spec.ts (Gate A — data survives SW permutations incl. no-SW)",
+    "mutationNote": "persistence backed by IndexedDB/localStorage (durableStore); SW caches the shell, never user data"
+  }
+}

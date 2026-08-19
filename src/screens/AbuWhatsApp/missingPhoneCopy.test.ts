@@ -77,11 +77,13 @@ describe('handleTapPerson source contract — uses getMissingPhoneMessage', () =
     'utf8',
   )
 
-  it('handleTapPerson calls getMissingPhoneMessage(face.id), not the literal toast', () => {
-    expect(facesSrc.includes('showToast(getMissingPhoneMessage(face.id))')).toBe(true)
-    // The literal generic toast text appears ONLY inside the constant
-    // declaration and any aria/source-contract use — never as a hardcoded
-    // showToast argument.
+  it('the focused card uses focusedMissingMessage(face.id); no toast hardcodes the copy', () => {
+    // The focused-contact card shows the missing-number message via the centralized
+    // helper (not a literal). focusedMissingMessage() delegates to
+    // getMissingPhoneMessage() for a genuine first-run and returns an HONEST
+    // storage-failure message otherwise (Gate 8) — the anti-hardcode contract holds.
+    expect(facesSrc.includes('focusedMissingMessage(face.id)')).toBe(true)
+    expect(facesSrc.includes('getMissingPhoneMessage(contactId)')).toBe(true) // helper still delegates
     const showToastCalls = facesSrc.match(/showToast\(\s*['"`][^'"`]+['"`]\s*\)/g) ?? []
     for (const call of showToastCalls) {
       expect(call.includes('המספר עדיין לא הוגדר'), `unexpected hardcoded toast: ${call}`).toBe(false)

@@ -21,8 +21,8 @@ describe('B2.4 — voice-safe shaper is wired into the voice path', () => {
   })
 
   it('voice path calls speakVoiceMode with shaped text, not raw response', () => {
-    // shapeVoiceSafe(response) must appear before speakVoiceMode(spokenText)
-    expect(INDEX).toContain('shapeVoiceSafe(response)')
+    // toSpokenText(response) must appear before speakVoiceMode(spokenText)
+    expect(INDEX).toContain('toSpokenText(response)')
     expect(INDEX).toContain('await speakVoiceMode(spokenText)')
   })
 
@@ -65,7 +65,7 @@ describe('B2.4 — relationship route is wired and shaped', () => {
 
 describe('B2.4 — hard-rule envelope still preserved', () => {
   it('useRealtime is enabled with grounding', () => {
-    expect(INDEX.includes('const useRealtime = true')).toBe(true)
+    expect(INDEX.includes('const useRealtime = isRealtimeBetaEnabled()')).toBe(true)
   })
 
   it('no AbuAI production source reads VITE_OPENAI_API_KEY', () => {

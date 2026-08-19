@@ -1,0 +1,30 @@
+{
+  "objective": "Wire + prove the first generalized Realtime vertical slice (ADR-0001 GRA-EDC): one continuous Hebrew Realtime conversation; one greeting/session; WhatsApp action via typed tool+kernel; in-session live card; 'לא, תתקשרי אליו' atomically replaces WhatsApp->Call; no stale speech/card; UI+speech one revision; no fabricated fact/completion; fallback preserves authorities.",
+  "governingADR": "docs/engineering-os/adr/ADR-0001-abu-realtime-conversational-architecture.md (CERTIFIED)",
+  "authorityModel": { "TALK": "gpt-realtime (model)", "STATE": "control plane (deterministic)", "TRUTH/ACTION": "kernel reduceGoal + tools", "UI": "projection of committed state" },
+  "currentCommit": "pending-this-commit (builds on 683f3c1)",
+  "completedStages": [
+    "S1 control plane (STATE authority) — src/screens/AbuAI/realtime/controlPlane.ts — 16/16",
+    "S4a tool dispatch (delegates to kernel; no completion; privacy; idempotency) — realtimeTools.ts — 9/9",
+    "S7a streaming-truth monitor (completion + unsupported-denial) — truthMonitor.ts — 6/6",
+    "S5a simulated-realtime seam: session orchestrator composing STATE+TRUTH+SPEECH-GUARD with injected events + canonical ActiveActionViewModel (§13) — sessionOrchestrator.ts — 9/9; production kernel adapter over buildCommunicationAction — kernelAdapter.ts. §18 journey provable WITHOUT a mic. 40 tests total; typecheck 0 errors.",
+    "S5b canonical ActiveActionCard (§13 projection) + realtime2 slice flag (independent, OFF by default) + self-contained mic-free RealtimeSliceHarness mounted behind isRealtimeSliceEnabled() (two gated lines; certified path untouched). Version 0.169.0->0.170.0-realtime-slice-harness-rc (version.ts+health+test synced). 81 tests (adds ActiveActionCard 5 + slice-flag 14 + version 22); typecheck 0; production build green."
+  ],
+  "activeStage": "S5-LIVE COMPLETE (automatable extent) — the ACTUAL WebRTC function-tool path is wired: session.tools + tool_choice + create_response TRUE in slice mode; RealtimeVoiceSession routes a real function_call → realtimeFunctionBridge → RealtimeCommController → SessionOrchestrator (control plane + the ONE buildCommunicationAction kernel) → SAFE function_call_output + response.create; the model's transcript is guarded by the truth monitor; the canonical ActiveActionCard renders the committed state live. Proven through a production-faithful RealtimeVoiceSession adapter test (injected real server events, no mic). Remaining is PHYSICAL-ONLY: the real mic->model->tool->audio round-trip + Hebrew naturalness (§20).",
+  "nextExactExecutableAction": "MINIMAL PHYSICAL iPHONE VALIDATION on abu-ela-rc.vercel.app (installed PWA): open with ?voice=realtime (beta) then ?voice=realtime2 (slice) both on, speak a WhatsApp request to a saved contact, then 'לא, תתקשרי אליו', and confirm the card commits + flips + no 'שלחתי/התקשרתי' is spoken. Everything automatable is proven; only device audio remains.",
+  "terminalConditions": ["COMPLETION (wired+deployed+falsified)", "EXTERNAL BLOCKER", "ADR CONTRADICTION"],
+  "sliceCompletion": {
+    "wired": "flag-gated (?voice=realtime2, OFF by default) — RealtimeSliceHarness mounts the SessionOrchestrator + canonical ActiveActionCard; certified voice path untouched",
+    "deployed": "Vercel PREVIEW abu-bank-6hhfwyqb9-leos-projects-d3c04c09.vercel.app (target=Preview, NOT production); /api/health buildVersion 0.170.0-realtime-slice-harness-rc == tested == pushed",
+    "falsified": "e2e/realtime-slice-journey.spec.ts PASSED on the live Preview (mobile-chrome, no mic): greeting-once, WhatsApp->atomic REPLACE to Call (rev 1->2, kind flip, supersedes, active=1), complaint no-mutation, fabricated-completion BLOCKED, card never shows completion",
+    "rcAlias": "abu-ela-rc.vercel.app -> this deployment (serves 0.170.0, verified via health)",
+    "unknownFailureCampaign": "sessionOrchestratorAdversarial.test.ts 9/9 — no unknown failure; generalizes beyond the supplied transcript",
+    "honestRemaining": "the ACTUAL live mic->function_call WebRTC path is NOT yet wired (session still create_response:false; brain voices answers); proven via the injectable seam + deployed harness, not a real mic turn. DEVICE mic naturalness/audibility physical-only per §20."
+  },
+  "blockers": [
+    "The live-audio conversational journey is physical-only (mic) per ADR §20 — the real mic->model->tool->audio round-trip + Hebrew naturalness need a device. Everything else is proven through the production-faithful RealtimeVoiceSession adapter (injected real server events).",
+    "HONEST LIMITATION (not a blocker; recorded post-implementation): in slice mode a mid-session realtime->pipeline fallback reverts to the certified brain-driven path (no function tools), so the control-plane live card does not advance via tools after a fallback until the session ends. Unified fallback under one control plane is ADR §17 stage 8 (out of this slice)."
+  ],
+  "rollbackPoints": ["b1e88fc (control plane only)", "this commit (control plane + tools + truth, all additive/unwired)", "de00f27 (product 0.164.0)"],
+  "verdictSoFar": "LIVE REALTIME VERTICAL SLICE WIRED AND AUTOMATICALLY PROVEN — READY FOR MINIMAL PHYSICAL IPHONE VALIDATION. The actual WebRTC function-tool path (session tools + create_response, function_call → bridge → controller → control plane + kernel → safe function_call_output + response.create → monitored grounded speech → canonical live card) is wired behind ?voice=realtime2 (+ realtime beta), OFF by default, certified path unchanged. Proven by a production-faithful RealtimeVoiceSession adapter test via injected real server events + the full slice suite; full suite 11936 passed / 0 failed; typecheck 0; build green. Campaign fix: truth monitor no longer over-blocks a negated completion. PHYSICAL-ONLY remaining: real mic->model->tool->audio round-trip + Hebrew naturalness (§20)."
+}

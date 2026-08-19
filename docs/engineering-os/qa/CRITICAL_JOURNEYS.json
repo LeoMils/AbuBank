@@ -1,0 +1,19 @@
+{
+  "$schema": "internal://abu/critical-journeys",
+  "schemaVersion": "journeys/1",
+  "note": "Cross-surface user journeys (§42/B10). Green components do not imply a green journey. Each journey lists its ordered steps and the capability ids it exercises — every one of which must be an admitted, PROVEN capability. A relevant change to any step-capability invalidates the journey proof (via change-impact).",
+  "journeys": [
+    {
+      "id": "family-stateful-to-calendar-readback",
+      "steps": ["family/stateful question", "pronoun follow-up", "current-info lookup", "calendar create", "readback", "continued conversation"],
+      "capabilities": ["escape-regression-closure", "current-info-freshness", "calendar-write-readback", "tool-call-ordering"],
+      "risk": "high"
+    },
+    {
+      "id": "voice-tool-action-interruption-recovery",
+      "steps": ["voice input", "tool call", "tool result", "downstream compose/action", "confirmation", "interruption/barge-in", "recovery", "next turn"],
+      "capabilities": ["stt-tts-roundtrip", "tool-call-ordering", "whatsapp-message-generation"],
+      "risk": "high"
+    }
+  ]
+}

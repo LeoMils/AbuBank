@@ -1,0 +1,48 @@
+{
+  "heuristicScore": 100,
+  "judgeScore": 90,
+  "of": 100,
+  "sessions": [
+    {
+      "id": "lonely",
+      "passed": 5,
+      "dims": {
+        "name_natural": true,
+        "life_family_ref": true,
+        "phrasing_variety": true,
+        "stays_with_feel": true,
+        "warm_not_robotic": true
+      },
+      "repeats": 0,
+      "judge": {
+        "score": 95,
+        "uses_name": true,
+        "references_her_life": true,
+        "varied_phrasing": true,
+        "stays_with_feeling": true,
+        "would_talk_again": true
+      }
+    },
+    {
+      "id": "family",
+      "passed": 5,
+      "dims": {
+        "name_natural": true,
+        "life_family_ref": true,
+        "phrasing_variety": true,
+        "stays_with_feel": true,
+        "warm_not_robotic": true
+      },
+      "repeats": 0,
+      "judge": {
+        "score": 85,
+        "uses_name": true,
+        "references_her_life": true,
+        "varied_phrasing": true,
+        "stays_with_feeling": true,
+        "would_talk_again": true
+      }
+    }
+  ],
+  "note": "heuristicScore = deterministic warmth markers; judgeScore = gpt-4o-mini reading the transcript on the holistic \"would an 81-year-old want to talk again\" question. Both are proxies beside golden CORRECTNESS."
+}

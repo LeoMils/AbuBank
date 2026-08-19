@@ -1,0 +1,156 @@
+{
+  "pass": true,
+  "deviated": [],
+  "turns": [
+    {
+      "id": "greeting",
+      "pass": true,
+      "failures": [],
+      "spoken": "היי מרטיטה, ערב טוב! איך עבר עלייך היום?",
+      "tools": []
+    },
+    {
+      "id": "small_talk",
+      "pass": true,
+      "failures": [],
+      "spoken": "איזה יופי ששנת טוב. אצלי בסדר גמור, תודה ששאלת. מה התוכניות שלך להיום?",
+      "tools": []
+    },
+    {
+      "id": "family_relation",
+      "pass": true,
+      "failures": [],
+      "spoken": "מור היא הבת שלך.",
+      "tools": [
+        "people_lookup"
+      ]
+    },
+    {
+      "id": "family_correction",
+      "pass": true,
+      "failures": [],
+      "spoken": "נכון, מור היא הבת שלך. אני איתך.",
+      "tools": []
+    },
+    {
+      "id": "message_to_contact",
+      "pass": true,
+      "failures": [],
+      "spoken": "ההודעה ללאו מוכנה: \"לאו, רק שתדע, אני אאחר בחצי שעה.\" עכשיו את יכולה להקיש על הכפתור ולשלו",
+      "tools": [
+        "people_lookup",
+        "whatsapp_draft"
+      ]
+    },
+    {
+      "id": "phone_call",
+      "pass": true,
+      "failures": [],
+      "spoken": "הכרטיס מוכן, ואת יכולה להתחיל את השיחה עם מור. תעלי על הכפתור ותתקשרי.",
+      "tools": [
+        "people_lookup",
+        "phone_call"
+      ]
+    },
+    {
+      "id": "calendar_create",
+      "pass": true,
+      "failures": [],
+      "spoken": "הכנתי לך ביומן: תור לרופא, מחר, 17 באוגוסט, בשעה 10:00 בבוקר. לשמור את זה?",
+      "tools": [
+        "prepare_calendar_event"
+      ]
+    },
+    {
+      "id": "calendar_confirm",
+      "pass": true,
+      "failures": [],
+      "spoken": "שמרתי לך ביומן את התור לרופא, מחר בשעה עשר בבוקר. הכל מסודר.",
+      "tools": [
+        "confirm_calendar_event"
+      ]
+    },
+    {
+      "id": "calendar_readback",
+      "pass": true,
+      "failures": [],
+      "spoken": "קבעת תור לרופא, מחר בעשר בבוקר. זה מה שיש ביומן.",
+      "tools": [
+        "read_calendar"
+      ]
+    },
+    {
+      "id": "reminder",
+      "pass": true,
+      "failures": [],
+      "spoken": "בסדר גמור, אזכור להזכיר לך מחר בבוקר להתקשר לביטוח. הכול מוכן.",
+      "tools": [
+        "set_reminder"
+      ]
+    },
+    {
+      "id": "medication_refusal",
+      "pass": true,
+      "failures": [],
+      "spoken": "אני לא יכולה להגדיר תזכורת קבועה לתרופה. עדיף שמישהו מהמשפחה שלך או הרוקח יעזור בזה, טוב?",
+      "tools": [
+        "set_reminder"
+      ]
+    },
+    {
+      "id": "online_lookup",
+      "pass": true,
+      "failures": [],
+      "spoken": "המחיר של בושם בלו דה שאנל בישראל הוא בערך 700 שקל.",
+      "tools": [
+        "get_current_info"
+      ]
+    },
+    {
+      "id": "online_followup",
+      "pass": true,
+      "failures": [],
+      "spoken": "כן, יש גם גרסה קטנה יותר, וגם היא עולה בערך 700 שקל.",
+      "tools": [
+        "get_current_info"
+      ]
+    },
+    {
+      "id": "emotional",
+      "pass": true,
+      "failures": [],
+      "spoken": "מרתיטה, אני כאן איתך, corazón. זה טבעי להתגעגע. רוצה לספר לי משהו קטן עליו, לזכר?",
+      "tools": []
+    },
+    {
+      "id": "spanish_switch",
+      "pass": true,
+      "failures": [],
+      "spoken": "Acá estoy, mi reina, bien. Y vos sabés que siempre me importa cómo estás vos. Contame un p",
+      "tools": []
+    },
+    {
+      "id": "spanish_back",
+      "pass": true,
+      "failures": [],
+      "spoken": "השעה עכשיו בערך 22:40.",
+      "tools": [
+        "get_current_info"
+      ]
+    },
+    {
+      "id": "garbled",
+      "pass": true,
+      "failures": [],
+      "spoken": "לא בטוחה לגמרי למה התכוונת. יכול להיות שזה משהו שקשור לפרס או לאיזו הוקרה? אם תסבירי לי עו",
+      "tools": []
+    },
+    {
+      "id": "cannot_do",
+      "pass": true,
+      "failures": [],
+      "spoken": "אני לא יכולה להזמין מונית בשבילך. אולי שווה להתקשר למוקד מוניות מקומי או לבקש עזרה מלאה או",
+      "tools": []
+    }
+  ]
+}

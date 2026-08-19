@@ -1,0 +1,23 @@
+{
+  "$schema": "internal://abu/rc-acceptance-evaluated",
+  "candidate": "abu-bank-qogo99clu-leos-projects-d3c04c09.vercel.app (0.286.0-earonly, clean RC)",
+  "evidenceClass": "PREVIEW (deployed candidate, real gpt-4o via server proxy with the new OPENAI_API_KEY)",
+  "method": "Playwright drove the REAL deployed AbuAI legacy text chat; assistant answers READ and evaluated (not inferred from HTTP). First-turn corroborated by a network+console diagnostic.",
+  "surface_AbuAI_text": {
+    "claims": [
+      { "id": "general-math", "user": "כמה זה שבע כפול שמונה?", "assistant": "שבע כפול שמונה זה חמישים ושש", "verdict": "PROVEN_PASS", "note": "56 correct. First-turn diagnostic: 2x POST /api/abuai-chat -> 200; no console errors. The historical 'hangs after first question' P0 does NOT reproduce." },
+      { "id": "general-knowledge", "user": "מה הבירה של צרפת?", "assistant": "הבירה של צרפת היא פריז...", "verdict": "PROVEN_PASS", "note": "Paris correct; warm, in-persona." },
+      { "id": "family-who", "user": "מי זה מור?", "assistant": "מרטיטה האמא של מור", "verdict": "PROVEN_PASS", "note": "Correct relationship (Mor is Martita's daughter) via family data; terse phrasing (minor quality nuance)." },
+      { "id": "stateful-followup", "user": "בת כמה היא?", "assistant": "אין לי את הגיל המדויק של מור, אבל היא הבת שלך וגרה בהוד השרון עם בת הזוג שלה, יעל.", "verdict": "PROVEN_PASS", "note": "STRONG: resolved 'she'->Mor across turns (stateful) AND honestly refused to invent an age (no fabrication)." },
+      { "id": "calendar-read", "user": "מה יש לי מחר ביומן?", "assistant": "מחר אין כלום. יום שקט.", "verdict": "PROVEN_PASS", "note": "Honest empty; no invented event. (A stronger test would seed an event first — see BLOCKED_ON_REALTIME for calendar WRITE.)" }
+    ],
+    "provenPass": 5, "provenFail": 0
+  },
+  "honest_failure_deployed": { "verdict": "PROVEN_PASS", "note": "Server proxy blocked in a throwaway browser -> 0 direct provider calls -> no fabrication path; deployed client cannot invent a provider answer (honest-failure-probe.mjs)." },
+  "tts_deployed": { "verdict": "PROVEN_PASS", "note": "/api/abuai-tts -> 200 audio/mpeg via OPENAI_API_KEY; keyless Web Speech fallback ships." },
+  "blocked_on_realtime_or_device": [
+    { "claim": "Calendar WRITE -> readback -> modify (stateful cross-surface)", "why": "The write tools (prepare/confirm/update_calendar_event) fire in the REALTIME (gpt-realtime WebRTC) session, not the text chat proxy. Needs a driven realtime session or the calendar voice UI." },
+    { "claim": "Voice / Live conversation (primary product path)", "why": "gpt-realtime WebRTC + audible output is PHYSICAL_DEVICE-class evidence per the repo ladder — not machine-closable headlessly." },
+    { "claim": "WhatsApp send + phone call (real side effects)", "why": "Requires a §12 safe side-effect environment; not exercised against real recipients." }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "sessions": 12,
+  "anomalies": [
+    {
+      "session": "mixed-language",
+      "say": "querida, תגידי לי, ¿mañana hace frío? קר מחר?",
+      "tools": [
+        "get_current_info"
+      ],
+      "spoken": "לא הצלחתי לבדוק את התחזית למחר, מרתיטה. אני לא יודעת להגיד אם יהיה קר או חם. אולי תבדקי במשהו אחר או תשאלי מישהו שגר קרו",
+      "flags": [
+        "LANG (expected Spanish, got Hebrew)"
+      ]
+    }
+  ]
+}

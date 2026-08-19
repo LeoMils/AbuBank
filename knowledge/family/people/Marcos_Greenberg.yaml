@@ -1,0 +1,14 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Marcos Greenberg
+hebrew_name: מרקוס גרינברג
+aliases:
+- Marcos
+- מרקוס
+relationship: historical_acquaintance
+relationship_hebrew: חבר מהנעורים של מרטיטה (היסטורי)
+role: חבר מהנעורים של מרטיטה בבואנוס איירס (היסטורי)
+gender: male
+notes: בגיל ~18, כשמרטיטה נסעה למנדוסה לאירוע סוף תיכון, היה לה חבר בבואנוס איירס בשם מרקוס גרינברג. עובדה היסטורית. אופן ההיכרות של מרטיטה ופפי יסופק בהמשך — לא להמציא את המעבר.
+pronunciation:
+  es: marcos

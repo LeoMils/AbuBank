@@ -17,7 +17,7 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
 
   // Item 1: "מה יש לי היום?" — tools should fire, answer from data
   it('#1 "מה יש לי היום?" routes to tools and returns real data', () => {
-    const today = new Date().toISOString().split('T')[0]!
+    const today = new Date().toLocaleDateString('sv-SE')
     storage['abubank-calendar-appointments'] = JSON.stringify([
       { id: 'a1', title: 'רופא שיניים', date: today, time: '10:00', emoji: '🏥', color: '#C9A84C' },
     ])
@@ -37,7 +37,7 @@ describe('LIVE VALIDATION SIMULATION — 15 items', () => {
 
   // Item 3: "מה יש לי השבוע?"
   it('#3 week query returns real week data only', () => {
-    const today = new Date().toISOString().split('T')[0]!
+    const today = new Date().toLocaleDateString('sv-SE')
     storage['abubank-calendar-appointments'] = JSON.stringify([
       { id: 'a1', title: 'פגישה', date: today, time: '14:00', emoji: '📅', color: '#C9A84C' },
     ])

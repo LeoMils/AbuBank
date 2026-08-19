@@ -1,0 +1,24 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: children
+canonical_name: Mor
+hebrew_name: מור
+aliases:
+- מורי
+relationship: daughter
+relationship_hebrew: הבת, גרושה מרפי, בת זוג של יעל
+ex_spouse: רפי
+partner: יעל
+location: הוד השרון
+location_notes: וילה עם יעל
+birthday: 08-10
+birth_year: 1964
+gender: female
+occupation: דיאטנית
+children:
+- אופיר
+- איילון
+- עילי
+- אדר
+notes: "הבת של מרטיטה ופפי. בעבר נשואה לרפי — גרו ברֹאש העין, שם נולדו הילדים; היום גרושה וגרה בהוד השרון עם בת הזוג יעל. דיאטנית; העבירה גם קבוצות לנשים ועסקה במכירת מים עם אלקטרוליטים. הומור משפחתי: לאו אומר שהיא לא בשלנית גדולה (אמירה משפחתית, לא עובדה). אוהבת יין אדום."
+pronunciation:
+  es: mor

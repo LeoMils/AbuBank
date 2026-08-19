@@ -1,0 +1,51 @@
+/*
+ * theme.css — the Abu-ela themeable palette (M4).
+ * ════════════════════════════════════════════════════════════════════════════
+ * Semantic tokens as CSS variables so the whole product can flip between the dark
+ * "Night Garden" theme (default) and a light "Bright Day" theme by toggling ONE
+ * attribute on <html> — data-abu-theme="day" — with NO rebuild and no re-render.
+ * Components read var(--abu-*); nobody hard-codes a background/text colour.
+ *
+ * Bright Day exists for daylight legibility for an 80-year-old; it is wired now so
+ * the option is cheap later (Leo's condition 1).
+ */
+
+/* Night Garden — the default (also applied explicitly for clarity). */
+:root,
+:root[data-abu-theme='night'] {
+  --abu-bg:            #070B1E;   /* deep indigo-black */
+  --abu-bg-2:          #0B1226;   /* nebula gradient stop */
+  --abu-bg-3:          #05081A;
+  --abu-surface:       rgba(255, 250, 240, 0.05);
+  --abu-surface-strong:rgba(255, 250, 240, 0.10);
+  --abu-text-strong:   rgba(245, 243, 236, 0.96);
+  --abu-text-medium:   rgba(245, 243, 236, 0.72);
+  --abu-text-muted:    rgba(245, 243, 236, 0.50);
+  --abu-border:        rgba(255, 255, 255, 0.14);
+  --abu-border-strong: rgba(255, 255, 255, 0.28);
+  --abu-gold:          #E8B563;   /* warm candle-gold */
+  --abu-star:          rgba(255, 255, 255, 0.85);
+  --abu-scrim:         rgba(5, 8, 24, 0.82);
+  --abu-shadow:        rgba(0, 0, 0, 0.50);
+  /* accent is set per-app at runtime; this is the neutral fallback */
+  --abu-accent:        #7DD3FC;
+}
+
+/* Bright Day — warm paper, near-black text; maximal daylight legibility. */
+:root[data-abu-theme='day'] {
+  --abu-bg:            #FBF6EC;   /* warm ivory */
+  --abu-bg-2:          #F4EAD6;
+  --abu-bg-3:          #FFFBF3;
+  --abu-surface:       rgba(36, 28, 18, 0.05);
+  --abu-surface-strong:rgba(36, 28, 18, 0.10);
+  --abu-text-strong:   #241C12;   /* warm near-black */
+  --abu-text-medium:   rgba(36, 28, 18, 0.78);
+  --abu-text-muted:    rgba(36, 28, 18, 0.56);
+  --abu-border:        rgba(36, 28, 18, 0.16);
+  --abu-border-strong: rgba(36, 28, 18, 0.34);
+  --abu-gold:          #9A6B00;   /* darker gold reads on light */
+  --abu-star:          rgba(36, 28, 18, 0.55);
+  --abu-scrim:         rgba(251, 246, 236, 0.86);
+  --abu-shadow:        rgba(60, 45, 25, 0.18);
+  --abu-accent:        #1E6F8E;
+}

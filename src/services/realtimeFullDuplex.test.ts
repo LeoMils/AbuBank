@@ -1,0 +1,55 @@
+/*
+ * FULL-DUPLEX Realtime config contract — ChatGPT Advanced-Voice behavior.
+ * The live audio loop is device-only, but the SESSION CONFIG that produces
+ * hands-free turn-taking + barge-in is pure and locked here.
+ */
+import { describe, it, expect } from 'vitest'
+import { buildRealtimeSessionUpdate } from './realtimeVoice'
+
+type TD = { type?: string; create_response?: boolean; interrupt_response?: boolean; eagerness?: string } | null
+function td(cfg: Record<string, unknown>): TD {
+  return ((cfg.session as any)?.audio?.input?.turn_detection ?? null) as TD
+}
+
+describe('REALTIME full-duplex session config', () => {
+  const base = { instructions: 'שלום', voice: 'shimmer' }
+
+  it('default (quiet) → semantic_vad, hands-free, BARGE-IN enabled, brain answers', () => {
+    const cfg = buildRealtimeSessionUpdate({ ...base, pushToTalk: false, listenMode: false })
+    expect(cfg.type).toBe('session.update')
+    const t = td(cfg)
+    expect(t?.type).toBe('semantic_vad')      // natural turn-taking (like ChatGPT live)
+    // create_response FALSE: the AbuAI brain answers (family/calendar/online/memory),
+    // not the raw model — the model transcribes + voices the brain reply.
+    expect(t?.create_response).toBe(false)
+    expect(t?.interrupt_response).toBe(true)   // she can still cut the reply off mid-sentence
+  })
+
+  it('input transcription is enabled (user words are captured)', () => {
+    const cfg = buildRealtimeSessionUpdate({ ...base, pushToTalk: false, listenMode: false })
+    expect(((cfg.session as any).audio.input.transcription.model)).toMatch(/transcribe|whisper/)
+  })
+
+  it('input transcription pins a language so short Hebrew is not auto-detected as Cyrillic', () => {
+    const he = buildRealtimeSessionUpdate({ ...base, pushToTalk: false, listenMode: false })
+    expect(((he.session as any).audio.input.transcription.language)).toBe('he') // Hebrew default (Martita primary)
+    const es = buildRealtimeSessionUpdate({ ...base, pushToTalk: false, listenMode: false, transcriptionLanguage: 'es' })
+    expect(((es.session as any).audio.input.transcription.language)).toBe('es') // active Spanish override
+  })
+
+  it('spoken voice is carried through', () => {
+    const cfg = buildRealtimeSessionUpdate({ ...base, pushToTalk: false, listenMode: false, voice: 'marin' })
+    expect(((cfg.session as any).audio.output.voice)).toBe('marin')
+  })
+
+  it('noisy (push-to-talk) → no auto VAD (manual commit)', () => {
+    const cfg = buildRealtimeSessionUpdate({ ...base, pushToTalk: true, listenMode: false })
+    expect(td(cfg)).toBeNull()
+  })
+
+  it('listen mode → transcribe only, never auto-responds', () => {
+    const cfg = buildRealtimeSessionUpdate({ ...base, pushToTalk: false, listenMode: true })
+    expect(td(cfg)?.create_response).toBe(false)
+    expect(td(cfg)?.interrupt_response).toBe(true)
+  })
+})

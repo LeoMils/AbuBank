@@ -26,9 +26,12 @@ describe('WAR ROOM — AbuAI Recovery Test Matrix', () => {
 
   // T2: Tomorrow with seeded event
   it('T2: מה יש לי מחר? (with רופא 10:00) → רופא + time', () => {
-    // Compute tomorrow dynamically (fake timers set to April 29, 2026)
+    // Compute tomorrow dynamically (fake timers set to April 29, 2026).
+    // Seed with the LOCAL date (matching the calendar write path / tools.ts
+    // read path) — toISOString() would UTC-shift local midnight to the prior
+    // day at positive offsets and seed the wrong date.
     const tomorrow = new Date(2026, 3, 30)
-    const tomorrowStr = tomorrow.toISOString().split('T')[0]!
+    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
     storage['abubank-calendar-appointments'] = JSON.stringify([
       { id: 'test-1', title: 'רופא', date: tomorrowStr, time: '10:00', emoji: '🏥', color: '#C9A84C' },
     ])
@@ -36,6 +39,27 @@ describe('WAR ROOM — AbuAI Recovery Test Matrix', () => {
     expect(answer).not.toBeNull()
     expect(answer).toContain('רופא')
     expect(answer).toContain('מחר')
+  })
+
+  // T2b: before-time vs after-time vs exact-time tomorrow
+  it('T2b: before/after/exact-time queries filter correctly', () => {
+    const tomorrow = new Date(2026, 3, 30)
+    const d = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
+    storage['abubank-calendar-appointments'] = JSON.stringify([
+      { id: 'a', title: 'בוקר', date: d, time: '09:00', emoji: '☕', color: '#C9A84C' },
+      { id: 'b', title: 'רופא', date: d, time: '16:00', emoji: '🏥', color: '#C9A84C' },
+    ])
+    // Numeric times (the bare Hebrew word "ארבע" needs a ב/ל prefix to parse,
+    // which "לפני ארבע" cannot provide — a pre-existing parser limit).
+    const before = tryGroundedAnswer('מה יש לי מחר לפני 16:00?')!
+    expect(before).toContain('בוקר')
+    expect(before).not.toContain('רופא')        // before 16:00 excludes the 16:00 event
+    const after = tryGroundedAnswer('מה יש לי מחר אחרי 10:00?')!
+    expect(after).toContain('רופא')
+    expect(after).not.toContain('בוקר')         // after 10:00 excludes the 09:00 event
+    const exact = tryGroundedAnswer('מה יש לי מחר בארבע?')!
+    expect(exact).toContain('רופא')
+    expect(exact).not.toContain('בוקר')
   })
 
   // T3: Past query — אתמול

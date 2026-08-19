@@ -84,12 +84,11 @@ describe('VoiceCard — recording state machine', () => {
     }
   })
 
-  it('parent transitions through recording → transcribing → parsing → parsed', () => {
-    expect(INDEX_SOURCE).toMatch(/setVoiceState\(['"]recording['"]\)/)
-    expect(INDEX_SOURCE).toMatch(/setVoiceState\(['"]transcribing['"]\)/)
-    expect(INDEX_SOURCE).toMatch(/setVoiceState\(['"]parsing['"]\)/)
-    expect(INDEX_SOURCE).toMatch(/setVoiceState\(['"]parsed['"]\)/)
-    expect(INDEX_SOURCE).toMatch(/setVoiceState\(['"]error['"]\)/)
+  it('the calendar screen no longer drives an in-screen voice state machine (D7)', () => {
+    // D7 · one voice engine: the recording→transcribing→parsing state machine moved
+    // to Abu AI. VoiceCard remains a retained component (its own states asserted above).
+    expect(INDEX_SOURCE).not.toMatch(/setVoiceState\(/)
+    expect(INDEX_SOURCE).toContain('setScreen(Screen.AbuAI)')
   })
 })
 
@@ -113,14 +112,10 @@ describe('VoiceCard — failed_to_save header is not speech-not-understood', () 
   })
 })
 
-describe('VoiceCard — retry bypass guard', () => {
-  it('handleVoiceRecord accepts bypassGuard option', () => {
-    expect(INDEX_SOURCE).toContain('bypassGuard')
-    expect(INDEX_SOURCE).toMatch(/async function handleVoiceRecord\(opts\?/)
-  })
-
-  it('handleVoiceRetry passes bypassGuard: true', () => {
-    expect(INDEX_SOURCE).toContain('handleVoiceRecord({ bypassGuard: true })')
+describe('VoiceCard — no in-screen record/retry (post D7)', () => {
+  it('the calendar screen holds no local record/retry handlers', () => {
+    expect(INDEX_SOURCE).not.toContain('handleVoiceRecord')
+    expect(INDEX_SOURCE).not.toContain('bypassGuard')
   })
 })
 
@@ -134,18 +129,10 @@ describe('VoiceCard — error surfaces', () => {
     expect(SOURCE).toMatch(/speak\(confirmationText\)[\s\S]*\.catch/)
   })
 
-  it('parent surfaces a senior-friendly empty-transcript error (P0.6: "לא הצלחתי להבין את ההקלטה")', () => {
-    // P0.6 — the empty-transcript message was upgraded from the
-    // terse "לא שמעתי כלום" to the friendlier
-    // "לא הצלחתי להבין את ההקלטה. ננסה שוב?" so the user knows
-    // exactly what to try next.
-    expect(INDEX_SOURCE).toContain('לא הצלחתי להבין את ההקלטה. ננסה שוב?')
-  })
-
-  it('parent surfaces getUserMedia failures via mediateVoiceCaptureError', () => {
-    // PR #37 moved DOMException handling into errorMediation.ts;
-    // index now delegates to mediateVoiceCaptureError for device errors.
-    expect(INDEX_SOURCE).toContain("mediateVoiceCaptureError(err, 'permission_or_device')")
+  it('the retained VoiceCard still carries the senior-friendly empty/understand copy', () => {
+    // D7 · one voice engine: empty-transcript + device-permission errors are now
+    // surfaced by Abu AI (the single engine). VoiceCard keeps its own honest copy.
+    expect(SOURCE).toContain('לא הצלחתי להבין')
   })
 })
 

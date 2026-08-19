@@ -1,0 +1,58 @@
+{
+  "$schema": "internal://abu/rc-qa-of-qa",
+  "when": "2026-08-17",
+  "question": "What defect relevant to this release could still pass every gate?",
+  "principle": "Each class has a detector proven to FIRE on a planted (synthetic) defect and stay quiet on good input. The certification candidate is never contaminated to calibrate a detector.",
+  "verdict": "ALL_CLASSES_COVERED",
+  "residualNote": "Latent-but-untested: depth-3 in-law (great-grandchild-in-law → נין) code path has no data member to exercise; voice-audio raw-event grading needs a real device FlightRecorder trace (NOT_REPLAYABLE headlessly).",
+  "classes": [
+    {
+      "class": "family-resolution",
+      "detector": "describeRelation.detectSpouseOfDescendant",
+      "caught": true,
+      "note": "resolved=\"ירדן נשואה לעילי, הנכד של מרטיטה.\""
+    },
+    {
+      "class": "secret-output-exposure",
+      "detector": "scanBundleForCredentialMaterial",
+      "caught": true,
+      "note": "plantedFindings=1"
+    },
+    {
+      "class": "grounded-but-stale",
+      "detector": "evaluateFreshness",
+      "caught": true,
+      "note": "stale→STALE"
+    },
+    {
+      "class": "voice-sequencing",
+      "detector": "evaluateToolSequencing.SPOKEN_PREAMBLE",
+      "caught": true,
+      "note": "preamble caught, clean passes"
+    },
+    {
+      "class": "provider-fallback-masking",
+      "detector": "evaluateToolSequencing.MASKED_FALLBACK",
+      "caught": true,
+      "note": "count=2"
+    },
+    {
+      "class": "whatsapp-fact-preservation",
+      "detector": "verifyDraft",
+      "caught": true,
+      "note": "dropped.ok=false"
+    },
+    {
+      "class": "broken-replacement",
+      "detector": "rc-acceptance-replacement-paths (TTS→STT round-trip, deployed)",
+      "caught": true,
+      "note": "PREVIEW 4/4 on njy2ocyw1"
+    },
+    {
+      "class": "calendar-state-persistence",
+      "detector": "rc-acceptance-calendar (write→readback→modify→reload, deployed)",
+      "caught": true,
+      "note": "PREVIEW 7/7 on njy2ocyw1"
+    }
+  ]
+}

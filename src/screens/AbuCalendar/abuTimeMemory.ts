@@ -1,3 +1,5 @@
+import { durable } from '../../services/durableStore'
+
 const STORAGE_KEY = 'abutime-memory'
 
 export interface AbuTimeMemory {
@@ -33,7 +35,7 @@ function defaultMemory(): AbuTimeMemory {
 }
 
 function saveMemory(memory: AbuTimeMemory): void {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(memory)) } catch {}
+  try { durable.setString(STORAGE_KEY, JSON.stringify(memory)) } catch {}
 }
 
 export function getPersonalReminders(eventType: string): string[] {

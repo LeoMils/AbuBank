@@ -1,0 +1,9 @@
+=== QA MONSTER · mode=feature ===
+
+PASS  typecheck                  exit=0  16933ms
+PASS  unit-suite                 exit=0  41727ms
+
+=== areas 2/2 · PRODUCT=N/A · QA_SYSTEM=INCOMPLETE_PRODUCTIZATION · RELEASE=NOT_YET · 59s ===
+identity: runtime=237bef9 harness=ef8329cc build=null · worktree runtime-clean=true
+exit: code=0 state=FEATURE_COMPLETE · feature gates green
+wrote docs/eval/QA_MONSTER_REPORT.json

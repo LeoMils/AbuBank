@@ -1,0 +1,14 @@
+{
+  "$schema": "internal://abu/required-claim-set",
+  "schemaVersion": "denominator/1",
+  "note": "AUTHORITATIVE release denominator — the independent source of truth for Capsule COMPLETENESS (§11/§58). The capsule must cover EVERY claim here in a terminal state; a capsule that is internally hash-consistent but omits one of these is INCOMPLETE and fails verification. This file is NOT derived from the capsule (that would be circular) — it is the contract the capsule is checked against. Claim ids match the qa-monster RC product areas (the evaluator denominator).",
+  "claims": [
+    { "id": "secret-scan", "capability": "deployed-secret-safety", "requiredEvidenceClass": "PREVIEW", "risk": "critical", "why": "a shipped billable/credential secret is a P0" },
+    { "id": "calendar", "capability": "calendar-write-readback", "requiredEvidenceClass": "PREVIEW", "risk": "high", "why": "write→readback→modify must be transactional in-session" },
+    { "id": "whatsapp", "capability": "whatsapp-message-generation", "requiredEvidenceClass": "PREVIEW", "risk": "medium", "why": "Martita-voice composition on the deployed origin" },
+    { "id": "temporal", "capability": "current-info-freshness", "requiredEvidenceClass": "PREVIEW", "risk": "high", "why": "grounding≠freshness; current-info must retrieve or honestly decline" },
+    { "id": "replacement-paths", "capability": "stt-tts-roundtrip", "requiredEvidenceClass": "PREVIEW", "risk": "high", "why": "server-only voice arch replaced the removed client path" },
+    { "id": "tool-sequencing", "capability": "tool-call-ordering", "requiredEvidenceClass": "CODE+golden", "risk": "high", "why": "no spoken preamble before a tool result; no repeated tool turns" },
+    { "id": "historical-corpus", "capability": "escape-regression-closure", "requiredEvidenceClass": "PREVIEW", "risk": "critical", "why": "every known owner escape stays machine-detectable and closed" }
+  ]
+}

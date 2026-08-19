@@ -1,0 +1,209 @@
+{
+ "note": "Resumable QA/fix state. A new session READS this and CONTINUES — never re-enumerate what is recorded. Any row whose sha predates a fix touching its domain is invalidated and must re-run. Mechanism-level for now; cell-level enumeration (Parts 4-6) is seeded per domain as each mechanism is worked.",
+ "branch": "rc5/cognitive-architecture-and-acceptance",
+ "headSha": "37c7e81",
+ "rollbackTag": "known-good-pre-qa-run (6324bfc)",
+ "updated": "session-final-fixes-v0.282 (EAR build all flags, class audit, companion score, reachability list)",
+ "part1Mechanisms": [
+  {
+   "id": "P0-input-oracle",
+   "title": "misheard name resolution (STT variants) — the input-side oracle",
+   "status": "closed",
+   "sha": "eb1b26e",
+   "layer": "L1-deterministic",
+   "closed": [
+    "matres-lectionis skeleton resolves STT yud/vav mangling (גילעד->גלעד)",
+    "resolvePersonId base+prefix dual-index (לאו/מור/מרתה match by true spelling; prefixed forms reduce)",
+    "reach path ambiguous->ask (names deceased match too), never not_found / wrong guess",
+    "sttVariants() generator + inputOracle.test: not_found=0, wrong=0 over 739 generated variants",
+    "STANDING rule: no Layer-1 test feeds a value verbatim from its source"
+   ],
+   "verified": "deterministic oracle 739 variants; instrument spot-check blocked by the .env safety hook (deterministic proof stands)",
+   "open": [
+    "harvest real-transcript variants when a real trace is provided (P0.4)"
+   ],
+   "closed_fullname": [
+    "DEVICE P0 (v0.261): full-name 'גלעד אבורדי'->not_found FIXED. subsetResolve: a spoken multi-word name where exactly ONE person is named by any word wins even with an unknown surname; several people->ambiguous(ask), never a silent pick; also matches the FIRST token of a multi-word display name. Wired into whoIs + resolveContactTarget. fullNameLookup.test: גלעד אבורדי->Gilad, EVERY living person findable by givenName+surname (miss 0), 'מור לאו'->ambiguous. 272 people tests green"
+   ],
+   "closed_p0_misheard": [
+    "MISHEARD->CLARIFY (device P0, v0.263): suggestClosestPerson offers the closest entity (phonetic+edit >=0.5) when a name does not resolve -> people_lookup returns a 'suggest' status so Abu ASKS 'התכוונת ל...?'; garble -> 'לא שמעתי טוב, תגידי שוב', never confirms noise; allowed_to_say forbids stating a fact + forbids lecturing about an unrelated meaning. Regression mishearSuggest.test. 275 people tests green"
+   ],
+   "open_p0_misheard": [
+    "session-level 'never repeat the same failed lookup twice' is model/session state (not deterministic) — needs a per-session failed-name set in liveSession/liveTools, logged open",
+    "'never lecture about an unrelated meaning' is enforced by instruction only — a model that lectures anyway is caught by no deterministic guard"
+   ]
+  },
+  {
+   "id": "M3",
+   "title": "family layer — never null / accept correction / participant resolution",
+   "status": "partially_closed",
+   "sha": "a2072a0",
+   "layer": "L1-deterministic",
+   "closed": [
+    "relationToMartita never null for a connected entity (grandchild_in_law + describePathBetween fallback)",
+    "FAMILY_GROUND_TRUTH oracle generated: 65 people, 0 gaps, 0 not_found pairs",
+    "relationNeverNull.test 100% of entities",
+    "full Hebrew pair matrix green (relationMatrix.test)",
+    "INPUT side closed — see P0-input-oracle"
+   ],
+   "verified": "instrument v0.245 relation tool-call 0/5->5/5; deterministic never-null + input-oracle; TRACK C m3Probe (real instrument, v0.258)",
+   "closed_layer3": [
+    "PARTICIPANT SUBSTITUTION measured + FIXED (v0.258): on the REAL model, 'פגישה עם אח של מור' resolved to Leo but the TITLE carried the raw phrase 1/2 runs. Fixed the # Tools calendar rule + prepare_calendar_event title description to require the resolved NAME everywhere. Re-measured 0/3 wrote the phrase, 3/3 wrote 'פגישה עם לאו'. Harness scripts/eval/m3Probe.ts, report docs/eval/M3_PROBE_REPORT.md",
+    "ACCEPT-CORRECTION verified on the real instrument: 5/5 conceded ('כן, נכון'), 0 argued"
+   ],
+   "open": [
+    "re-run m3Probe after ANY calendar-titling instruction edit (model behaviour, not a deterministic guarantee)",
+    "wider participant cases (several people, a name that is ALSO a relationship) — sample when budget allows"
+   ]
+  },
+  {
+   "id": "M1",
+   "title": "response lifecycle — one active response / silence between tool call and result / barge-in truncation",
+   "status": "partially_closed",
+   "sha": "afcc2cd",
+   "layer": "device",
+   "closed": [
+    "deleted the dead '# Before a Tool Call' instruction text (disobeyed 100% on device); bundle -630 chars",
+    "kept the instantAcknowledgement code-seed guard",
+    "TRACK A BUILT (v0.257): far-field noise_reduction on audio.input behind VITE_LIVE_AUDIO_TUNE_V2 (documented fix for speakerphone self-hearing / second voice); client barge-in truncate behind VITE_LIVE_BARGE_IN_TRUNCATE (response.cancel + conversation.item.truncate to played position — keeps client/server in sync, the likely 'first sentence only' cause). interrupt_response stays FALSE (server never truncates on echo) = correct COMBINED behaviour, not a blind flip. Both env-overridable, OFF by default, payload byte-identical when off. CODE: liveAudioTrackA.test 8 + default-off safety in liveSession.test. bargeInEvents pure-tested."
+   ],
+   "closed_preamble_design": [
+    "PREAMBLE design pass (v0.265): chose the CLIENT COMMIT WINDOW (option 2) over two-response (option 1 fights create_response:true + adds a round-trip to every turn). preambleGate.ts is the pure decision core (5 tests): audio-then-function_call-inside-window -> SUPPRESS (preamble discarded); window elapses no-tool -> PLAY; a tool call after real speech never retro-mutes. MEASURED latency by construction: +400ms to first word of a PLAIN answer (in the 4s budget), +0 on a tool turn. Report docs/eval/M1_PREAMBLE_DESIGN.md"
+   ],
+   "open": [
+    "WIRE preambleGate into LiveScreen via a WebAudio DelayNode on the remote track behind LIVE_PREAMBLE_GATE (default OFF) — DEVICE-validated: preamble gone AND a plain answer not clipped; tune windowMs vs real preamble lengths",
+    "DEVICE A/B (OWNER, docs/eval/AUDIO_CHECK.md): enable VITE_LIVE_AUDIO_TUNE_V2 + VITE_LIVE_BARGE_IN_TRUNCATE TOGETHER on Preview; confirm no second voice, clean barge-in WITHOUT 'one word then silence' echo regression, full-sentence audio",
+    "if ON regresses to echo-truncation, far-field NR did not fully tame it → add client-side echo gate before default-on",
+    "two-concurrent-responses / conversation_already_has_active_response — the truncate should remove the collision; verify on device"
+   ]
+  },
+  {
+   "id": "M2",
+   "title": "output validation layer (deterministic monitor done; classified + repair-enable open)",
+   "status": "partially_closed",
+   "sha": "c49445e",
+   "layer": "L1+device",
+   "closed": [
+    "deterministic detectors: language purity, length, source/URL, read-back, literal-count (outputMonitor.ts, 9 tests, zero FP)",
+    "post-turn monitor wired into liveSession as OBSERVATION (always on, ~0ms, no output change, onMonitorViolations)",
+    "one-attempt next-turn repair for hard violations, stashed + fired on response.done, gated behind LIVE_OUTPUT_MONITOR_REPAIR (default OFF)",
+    "interception measured on instrument: 0/5 real turns (root-cause fixes already clean)",
+    "ADVERSARIAL INTERCEPTION PROVEN (v0.252): adversarialCorpus.ts generates 364 model-free cases (232 engineered violations + 132 clean/borderline built to fool each detector; nothing verbatim from outputMonitor.ts). Per-detector interception: LANGUAGE_IMPURE 65/65, SOURCE_NAMED 105/105, TOO_LONG 25/25, READ_BACK 9/9, LITERAL_COUNT 28/28 = 100%; 0 FP over 128 clean cases. The 0/5 instrument result was clean OUTPUT, not broken detectors — now settled.",
+    "KNOWN GAPS documented + asserted (docs/eval/MONITOR_ADVERSARIAL_REPORT.md): dot-less spoken domain, Hebrew-transliterated source, 'אתר של' w/o domain, punctuation-broken read-back — regex-uncatchable, reported not hidden"
+   ],
+   "verified": "outputMonitor.test 9 + adversarialCorpus.test 12 (100% interception, 0 FP over the generated corpus); monitorProbe 0/5 on the instrument = clean output",
+   "closed_classified": [
+    "CLASSIFIED checks BUILT + FP-MEASURED (v0.255): classifiedMonitor.ts detectors DISTRESS_MENU / METHOD_NARRATION / UNGROUNDED_ENTITY; classifiedCorpus generates 82 model-free cases (40 defects + 42 warm-correct built to fool each; nothing verbatim). MEASURED 100% interception (30/30, 6/6, 4/4) and 0 FALSE POSITIVES over 42 clean cases; detector latency p95 0.0014ms. Wired into liveSession as OBSERVATION (emits/logs, cannot block) with per-turn grounded-tool tracking; classified REPAIR doubly gated OFF (LIVE_CLASSIFIED_MONITOR && LIVE_OUTPUT_MONITOR_REPAIR). Fixed latent bug: JS \\b is ASCII-only so \\b by a Hebrew letter never matched. Report: docs/eval/MONITOR_CLASSIFIED_REPORT.md"
+   ],
+   "closed_gaps": [
+    "TRACK D (v0.259): closed 3 SOURCE gaps (dot-less spoken domain via TLD-pair pattern; named/transliterated source lexicon incl ויקיפדיה/גוגל/ynet/wisebuy; 'אתר של'/'ראיתי באתר' provenance) + 1 READ_BACK gap (strip punctuation so a comma-dropped echo is caught). Re-measured adversarialCorpus 369 cases: SOURCE_NAMED 108/108, READ_BACK 10/10 = 100%, still 0 FP. Remaining gap stated plainly: an INSERTED-word read-back break defeats a contiguous-run check — needs fuzzy/token-overlap matching (real FP risk), not done speculatively"
+   ],
+   "open": [
+    "ENABLE the repair by default (deterministic AND classified) — needs device measurement: repair round-trip latency p50/p95 + warmth/naturalness off vs on (API spend)",
+    "inserted-word read-back gap: only if a real device transcript shows it matters (fuzzy matching adds FP risk)"
+   ]
+  },
+  {
+   "id": "M4",
+   "title": "online — relevance + synthesis (done) / prefetch + non-verbal cue (open)",
+   "status": "partially_closed",
+   "sha": "2d1b699",
+   "layer": "instrument+device",
+   "closed": [
+    "price half: first-wins page fetch, real range, ttft ~3.0s (v0.246)",
+    "RELEVANCE gate: price must be near the queried product term (priceNearProduct) — no more wrong-product prices (v0.249)",
+    "SYNTHESIS: fetched text -> cheap model -> one clean sentence or no_answer, never a raw dump (synthesizeAnswer, v0.249)",
+    "MEASURED: 3 phrasings of Bleu de Chanel -> real price 597-649 shekels, clean single sentence, ttft 3.0-4.2s"
+   ],
+   "closed_extra": [
+    "PREFETCH warm store: cinema/weather/headlines/transit cached with per-topic TTL, served warm (<1s, zero network) or fall through live; background prefetch on session open; warmStore.test 6; behind LIVE_PREFETCH_WARM default OFF (v0.251)",
+    "NON-VERBAL IN-FLIGHT CUE (v0.254): a get_current_info lookup pulses onLookup (liveSession, observation-only, deduped by call_id) -> Live screen plays soundLookup (soft two-note, self-gated silent-while-speaking) + shows distinct word 'מחפשת…' reusing the thinking aura (no new visual); cleared on next state transition, speaking always wins; family/contact lookups do NOT cue. NO words (M1 owns silence). CODE: liveSession.test (pulse only on get_current_info, no double-pulse), presenceState.test, sounds.test. Audibility + render are DEVICE (OWNER_CHECKLIST #6)"
+   ],
+   "closed_general": [
+    "GENERAL SEARCH LOOP (v0.260): DELETED the price-specific relevance gate (isPriceQuery/priceNearProduct/price-token extract) + all per-topic logic. New generalSearch.ts: SEARCH->FETCH first-wins->cheap-model JUDGE+SYNTH (general, no type heuristic)->REFINE once if budget permits->HONEST no_answer never a dump. synthesize generalized; firstWins de-priced to a general content screen; wired into firstWinsFetch (live tool) + abuai-online (endpoint). ACCEPTANCE 63 he/es questions: PASS 55/63=87.3%, 0 hard fails, 0 source leaks, 8 honest misses (JS-rendered listings/live widgets), latency p50 2180 p95 5237 max 5622ms (in the 6s ceiling via a synth-time reserve). Never-worse-than-snippet MEASURED: OFF-only 0, ON-only 2. Consistency 4/5 rephrasing pairs. ORACLE LIMIT stated. generalSearch.test 8 + firstWins.test + flags.test. Report docs/eval/ONLINE_ACCEPTANCE.md",
+    "PRODUCTION-SAFE FLAG (v0.260): ONLINE_DEEP_FETCH moved from a Preview-only env var (vanishes on merge -> silent shallow answers) to a CODE flag flags.ts DEFAULT ON (measured never-worse); env now an ops kill-switch only"
+   ],
+   "open": [
+    "prefetch warm: default OFF pending on-device freshness-vs-latency measurement (warmStore.test proves the <1s warm hit; code default lives in flags.ts ONLINE_PREFETCH_WARM_DEFAULT)",
+    "DEVICE-verify the in-flight cue is audible + 'מחפשת…' renders during a real online lookup (OWNER_CHECKLIST #6)",
+    "consistency: rephrasings occasionally diverge to an honest miss (web/judge non-determinism) — acceptable, not a wrong answer"
+   ]
+  },
+  {
+   "id": "M5",
+   "title": "session weight + startup — <3s connect, bundle <5,000 chars",
+   "status": "partially_closed",
+   "sha": "ddd998b",
+   "layer": "instrument+device",
+   "note": "Bundle is 13,221 instruction chars / 25,521 payload after removing the portrait (v0.245) + anti-preamble text (v0.247). <5,000 is NOT reachable by deletion alone (safety/persona/tool-schemas dominate) — needs per-intent instruction injection or tool-description trimming (BRIEF_AUDIT A4). Startup <3s (pre-warm connection, parallelize) not started.",
+   "closed": [
+    "BASELINE captured (v0.253): 13,221 chars across 14 sections; biggest = Tools/Actions 3,540, persona 2,181, safety 1,329 (docs/eval/BUNDLE_SHRINK_PLAN.md)",
+    "per-intent DECOMPOSITION built: intentInstructions.ts splits the SHIPPED instructions (buildLiveInstructions UNTOUCHED, byte-identical flag-OFF) into always-on CORE + intent blocks; classifySections THROWS on any unclassified section so no rule is silently dropped; loss-less proven (intentInstructions.test 9)",
+    "MEASURED core 5,886 (safety+persona dominate); intent blocks family 2,065, profile 1,201, tools 4,063; projected per-turn chit-chat 5,886 / family 7,951 / tools 9,949 — down from 13,221 every turn",
+    "HONEST LIMIT asserted false-today: core NOT yet <5,000 — reaching it also needs condensing the persona (warmth trade), a DEVICE off/on measurement, not a deletion"
+   ],
+   "open": [
+    "WIRE the ON-path into liveSession behind a flag (default OFF): buildCoreInstructions + inject intentGuidance(intent) per response.create — DEVICE-gated (warmth/parity off vs on, no regression beyond noise floor)",
+    "condense persona toward core <5,000 — device-measured off/on only",
+    "tool-description trimming (the other half of A4) — deterministic to measure, routing-behaviour to verify on instrument",
+    "pre-warm connection + parallelize setup -> <3s (device-measured)"
+   ]
+  }
+ ],
+ "qaBuildOut": {
+  "status": "seeded",
+  "sha": "313123b",
+  "note": "Cell-level QA moved off 0%. SCOPE derived MECHANICALLY from the code (scopeInventory.ts): 17 tools, 30 param cells, 35 failure paths, 15 screens, 19 realtime event types, 65 entities (4160 ordered pairs covered by relationMatrix.test), 6 declared-unbuilt capabilities. Ledger seeded: 172 cells; Layer-1 tool-schema CONTRACT cells EXECUTED 97/97 pass (valid types, non-empty descriptions, required subset of properties, unknown-param rejection additionalProperties:false, well-formed enums) => 56.4% cell coverage. scopeInventory.test 7. Reports: docs/eval/SCOPE_INVENTORY.json + .md",
+  "open": [
+   "Layer-2 tool FAILURE-PATH behaviour: feed GENERATED args (missing-required, out-of-enum, unknown-param, wrong-type) to each handler, assert deterministic handling — never values verbatim from the schema (Gilad circularity)",
+   "Layer-2 realtime EVENT invariants: one assertion per event type (19) on the liveSession switch",
+   "every SCREEN via a browser harness: render, navigation, RTL, >=16px text for an 80yo, NO dev text in a production build",
+   "uncovered-by-any-domain: multi-tool in one turn; 50+ turn sessions; time-passing (fast-forward, never wait)",
+   "Layer-3 sampled: declared-unbuilt-capability declines (taxi/email/med-alarm/money/navigate/game)"
+  ]
+ },
+ "alreadyBuiltVerifyList": [
+  {
+   "id": "v0.239-no-sources",
+   "status": "verified",
+   "sha": "6324bfc",
+   "how": "instrument reproduce: no site names on cinema/price"
+  },
+  {
+   "id": "v0.241-persistent-memory",
+   "status": "verified",
+   "sha": "9110489",
+   "how": "instrument verifyBuilt: remember tool fired on a death update, warm confirm (cross-session durability is unit-tested/device)"
+  },
+  {
+   "id": "v0.242-care-safety",
+   "status": "verified",
+   "sha": "9110489",
+   "how": "instrument verifyBuilt: care_concern fired on a health question, points to a person + Mada 101, no dose/advice"
+  },
+  {
+   "id": "v0.243-reminders",
+   "status": "verified",
+   "sha": "6324bfc",
+   "how": "instrument reproduce: set_reminder fired at a concrete time"
+  },
+  {
+   "id": "v0.244-ui-state+qa-badge",
+   "status": "verified",
+   "sha": "a2072a0",
+   "how": "presenceState.test + version.visibility.test (CODE); render is device"
+  },
+  {
+   "id": "v0.245-family-portrait-removed",
+   "status": "verified",
+   "sha": "a2072a0",
+   "how": "relation tool-call 0/5->5/5 instrument + relationMatrix.test"
+  },
+  {
+   "id": "v0.246-price-first-wins",
+   "status": "verified",
+   "sha": "6324bfc",
+   "how": "priceProbe before/after + Preview endpoint real ₪ range"
+  }
+ ]
+}

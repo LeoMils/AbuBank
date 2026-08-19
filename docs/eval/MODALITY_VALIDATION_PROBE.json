@@ -1,0 +1,40 @@
+[
+  {
+    "output_modalities": [
+      "text"
+    ],
+    "outcome": "OK",
+    "code": null,
+    "param": null,
+    "message": null
+  },
+  {
+    "output_modalities": [
+      "audio"
+    ],
+    "outcome": "OK",
+    "code": null,
+    "param": null,
+    "message": null
+  },
+  {
+    "output_modalities": [
+      "audio",
+      "text"
+    ],
+    "outcome": "ERROR",
+    "code": "invalid_value",
+    "param": "response.output_modalities",
+    "message": "Invalid modalities: ['audio', 'text']. Supported combinations are: ['text'] and ['audio']."
+  },
+  {
+    "output_modalities": [
+      "text",
+      "audio"
+    ],
+    "outcome": "ERROR",
+    "code": "invalid_value",
+    "param": "response.output_modalities",
+    "message": "Invalid modalities: ['text', 'audio']. Supported combinations are: ['text'] and ['audio']."
+  }
+]

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
 import {
   searchFamily,
   getFamilyContext,
@@ -10,6 +10,12 @@ import {
   executeTool,
   TOOL_DEFINITIONS,
 } from './tools'
+
+// CONTROLLED CLOCK (§11): freeze Date only, to a birthday-free window (06-15;
+// nearest birthdays 04-19 / 07-29) so recurring family birthdays the product
+// correctly injects don't make "empty week" date-window assertions flaky.
+vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-06-15T09:00:00'))
+afterAll(() => vi.useRealTimers())
 
 describe('searchFamily', () => {
   it('finds Mor by Hebrew name', () => {

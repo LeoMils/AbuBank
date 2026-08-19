@@ -1,0 +1,190 @@
+{
+  "$schema": "internal://abu/control-plane-live-verdict",
+  "generatedAt": "2026-08-16T22:17:01.344Z",
+  "candidateSha": "47d3aa28664d7e6bf0be0270a404bee361f84769",
+  "candidateBuild": "0.286.0-earonly",
+  "controlPlaneId": "cp_8ed6c773",
+  "frozenControlPlaneId": "cp_8ed6c773",
+  "controlPlaneInputHash": "in_d6a36379",
+  "verdict": "BLOCKED",
+  "inputDriftDuringEvaluation": false,
+  "workingTreeIdentity": {
+    "dirtyStateHash": "53b3e48a322d36e9",
+    "dirtyRuntime": [
+      "src/engineering-os/bundleSecretScan.ts"
+    ]
+  },
+  "deployedCandidateIdentity": {
+    "fingerprint": "0.286.0-earonly",
+    "aliasOk": true
+  },
+  "sources": [
+    {
+      "name": "qa-ownership",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "UNKNOWN",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "evidence",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "STALE",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "meta-qa",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "STALE",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "failure-genome",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "UNKNOWN",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "mission",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "STALE",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "product-universe",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "STALE",
+      "feedsRequiredEvidence": true
+    },
+    {
+      "name": "master-matrix",
+      "critical": true,
+      "parseStatus": "VALID",
+      "freshness": "STALE",
+      "feedsRequiredEvidence": true
+    }
+  ],
+  "sourceConflicts": [],
+  "sourceCoverage": {
+    "consumed": [
+      "qa-ownership",
+      "evidence",
+      "meta-qa",
+      "failure-genome",
+      "mission",
+      "product-universe",
+      "master-matrix"
+    ],
+    "intentionallyIgnored": [
+      {
+        "name": "control-plane own outputs (*-result.json, control-plane-identity.json, control-plane-live-verdict.json)",
+        "reason": "the control plane's OWN outputs, not release-evidence inputs — consuming them would be circular."
+      },
+      {
+        "name": "lifecycle-forensics-result.json",
+        "reason": "forensic output for a prior candidate; superseded, not a current-candidate gate input."
+      },
+      {
+        "name": "production-convergence/*",
+        "reason": "per-experiment scorecard lane for a prior candidate (0.177); superseded by the live candidate. Recorded as stale, not a gate input."
+      },
+      {
+        "name": "realtime-vertical-slice/*",
+        "reason": "prior vertical-slice lane; historical, not current-candidate evidence."
+      },
+      {
+        "name": "e2e/screenshots/*",
+        "reason": "visual artifacts, not machine gate inputs."
+      },
+      {
+        "name": "capability/denominator/evidence producer outputs (capability-manifest, capability-discovery-source-manifest, capability-reconciliation, rc-reachability-observation, tool-firing-evidence, acceptance-denominator, deployed-secret-exposure)",
+        "reason": "the control plane's OWN Stage-3C producer outputs — surfaced via the obligation model + reconciliation, not independent release-evidence inputs; consuming them here would be circular."
+      }
+    ],
+    "notApplicable": [
+      {
+        "name": "gate-a-result.json",
+        "reason": "A→B→C lab output already surfaced via mission.gatesReady.aToC."
+      }
+    ],
+    "unknown": []
+  },
+  "requiredClaimCount": 28,
+  "presentClaimCount": 25,
+  "releaseBlockers": [
+    {
+      "code": "UNCOMMITTED_RUNTIME",
+      "reason": "src/engineering-os/bundleSecretScan.ts"
+    }
+  ],
+  "controlBlockers": [
+    {
+      "code": "EXPECTED_CLAIM_ABSENT",
+      "reason": "required claim 'surface:AbuAI' (P0) is absent from the present claim set"
+    },
+    {
+      "code": "EXPECTED_CLAIM_ABSENT",
+      "reason": "required claim 'surface:AbuWhatsApp' (P0) is absent from the present claim set"
+    },
+    {
+      "code": "EXPECTED_CLAIM_ABSENT",
+      "reason": "required claim 'surface:AbuCalendar' (P0) is absent from the present claim set"
+    },
+    {
+      "code": "EVIDENCE_STALE",
+      "reason": "source 'evidence' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "EVIDENCE_STALE",
+      "reason": "source 'meta-qa' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "EVIDENCE_STALE",
+      "reason": "source 'mission' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "EVIDENCE_STALE",
+      "reason": "source 'product-universe' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "EVIDENCE_STALE",
+      "reason": "source 'master-matrix' is stale for the current candidate — cannot satisfy a required-evidence gate"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'capability-manifest-certified' is NOT_PROVEN (invariant: canonical product capability manifest is discovered + drift-proven)"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'denominator-certified' is NOT_PROVEN (invariant: acceptance denominator is complete + monotonic + specificity-proven)"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'lab-certification-complete' is NOT_PROVEN (invariant: every release-critical lab has PROVEN sensitivity/restoration/specificity)"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'deployment-attested' is NOT_PROVEN (invariant: deployed source identity binds to the certified candidate SHA)"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'sw-runtime-proven' is NOT_PROVEN (invariant: the warm/fresh PWA client actually serves the certified bundle)"
+    },
+    {
+      "code": "CONTROL_MODEL_INCOMPLETE",
+      "reason": "release-critical control claim 'privacy-control-proven' is NOT_PROVEN (invariant: required privacy/security control executed + current)"
+    }
+  ],
+  "ownerHandoff": {
+    "eligible": false,
+    "reason": "no owner action requested"
+  },
+  "assumptions": [
+    "privacyScan not executed by the wiring CLI (recorded, not claimed)"
+  ]
+}

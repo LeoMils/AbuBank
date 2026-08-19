@@ -4,17 +4,33 @@
 //           3) Gemini TTS (Aoede — human but not Israeli/Argentine)
 //           4) Google Translate TTS  5) Web Speech API
 
-// v20: Read user voice settings from Settings screen
-function getVoiceSpeed(): number {
-  try {
-    const saved = localStorage.getItem('abu-voice-speed')
-    if (saved) return parseFloat(saved)
-  } catch {}
-  return 0.88 // default — slower pace for 80+ listener
+import { getVoiceProfile, describeVoiceConfig, type VoiceLang } from './voiceConfig'
+import { getSpeechRate } from './speechProfile'
+
+// v20: Read user voice settings from Settings screen.
+// Rate is language-tuned in voiceConfig (warm but not "old"); a saved user
+// override still wins, clamped to a non-robotic range.
+// The spoken pace lives in ONE place now — the per-user speech profile (NORMAL by
+// default; changes only by explicit user action). See services/speechProfile.
+function getVoiceSpeed(lang: VoiceLang = 'he'): number {
+  return getSpeechRate(lang)
 }
 
 let currentAudio: HTMLAudioElement | null = null
 let _currentAudioSource: AudioBufferSourceNode | null = null // v20.1: track for stopSpeaking
+
+// ── Playback proof (P0-1) ────────────────────────────────────────────────────
+// Incremented ONLY when real TTS audio actually started playing (an <audio>
+// element or an AudioContext BufferSource fired). This is the automated
+// "voice was audible" signal a Preview/browser test can assert — a visible-text
+// answer with this counter unchanged is a SILENT FAILURE, never allowed.
+let _ttsPlayedCount = 0
+function notePlaybackStarted(): void {
+  _ttsPlayedCount++
+  try { (globalThis as unknown as { __abuTTSPlayed?: number }).__abuTTSPlayed = _ttsPlayedCount } catch { /* non-browser */ }
+}
+/** Number of times real TTS audio has started playing this session (playback proof). */
+export function getTTSPlayedCount(): number { return _ttsPlayedCount }
 
 // Shared AudioContext — created once, reused across all unlock calls.
 // iOS Safari: once an AudioContext is resumed inside a user gesture, it stays
@@ -129,7 +145,7 @@ function playBlob(blob: Blob): Promise<boolean> {
     currentAudio = audio
     audio.onended = () => { currentAudio = null; URL.revokeObjectURL(url); resolve(true) }
     audio.onerror = () => { currentAudio = null; URL.revokeObjectURL(url); resolve(false) }
-    audio.play().catch(() => { currentAudio = null; URL.revokeObjectURL(url); resolve(false) })
+    audio.play().then(() => notePlaybackStarted()).catch(() => { currentAudio = null; URL.revokeObjectURL(url); resolve(false) })
   })
 }
 
@@ -155,6 +171,7 @@ async function playBlobViaAudioCtx(blob: Blob): Promise<boolean> {
       _currentAudioSource = src // v20.1: store ref so stopSpeaking can kill it
       src.onended = () => { _currentAudioSource = null; resolve(true) }
       src.start(0)
+      notePlaybackStarted()
     })
   } catch (e) {
     console.log('[TTS] AudioContext playback error:', e)
@@ -173,50 +190,56 @@ function getTTSInstructions(text: string): string {
     : 'You are a warm Israeli woman in her 40s. Speak naturally and gently in casual everyday Hebrew. Native Israeli accent — NOT American. Intimate, like a relaxed phone call with a close friend. Brief natural pauses between sentences. Never robotic, never reading aloud. Sound human, real, kind.'
 }
 
+/**
+ * Server-proxied OpenAI TTS. The OpenAI key lives server-side only
+ * (/api/abuai-tts) and never reaches the client bundle. Returns the audio Blob,
+ * or null + an error code so the caller can fall back to a free TTS tier.
+ */
+async function openAITTSBlob(
+  openaiBody: Record<string, unknown>,
+  opts: { signal?: AbortSignal | null; timeoutMs?: number } = {},
+): Promise<{ blob: Blob | null; error: string | null }> {
+  const local = new AbortController()
+  const t = opts.timeoutMs ? setTimeout(() => local.abort(), opts.timeoutMs) : null
+  const signal = opts.signal ?? local.signal
+  try {
+    const res = await fetch('/api/abuai-tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: openaiBody }),
+      signal,
+    })
+    if (t) clearTimeout(t)
+    const ct = res.headers.get('Content-Type') ?? ''
+    if (!res.ok || ct.includes('application/json')) {
+      let error = 'TTS_PROVIDER_FAILED'
+      try { const j = await res.json() as { error?: string }; if (j?.error) error = j.error } catch { /* ignore */ }
+      return { blob: null, error }
+    }
+    return { blob: await res.blob(), error: null }
+  } catch (e) {
+    if (t) clearTimeout(t)
+    return { blob: null, error: (e as { name?: string } | null)?.name === 'AbortError' ? 'TTS_TIMEOUT' : 'TTS_PROVIDER_FAILED' }
+  }
+}
+
 async function speakOpenAI(text: string): Promise<boolean> {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-  if (!apiKey) return false
-  // Skip if TTS-specific quota exhausted (separate from LLM chat quota)
+  // OpenAI TTS via the server proxy — the OpenAI key never reaches the client.
+  // Skip if TTS-specific quota exhausted (separate from LLM chat quota).
   const qf = localStorage.getItem('abu-openai-tts-quota-failed')
   if (qf && (Date.now() - parseInt(qf, 10)) < 300_000) return false
 
   const chunks = splitText(text, 400)
   for (const chunk of chunks) {
-    try {
-      const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 8000)
-      const res = await fetch('https://api.openai.com/v1/audio/speech', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini-tts',  // v22.4: steerable, best quality
-          input: chunk,
-          voice: 'coral',
-          instructions: getTTSInstructions(chunk),
-          speed: getVoiceSpeed(),
-          response_format: 'mp3',
-        }),
-        signal: controller.signal,
-      })
-      clearTimeout(t)
-      if (!res.ok) {
-        console.log('[TTS] OpenAI status:', res.status)
-        if (res.status === 429 || res.status === 402) {
-          try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
-        }
-        return false
-      }
-      const blob = await res.blob()
-      if (blob.size < 100) { console.log('[TTS] OpenAI: empty audio'); return false }
-      const ok = await playBlob(blob)
-      if (!ok) return false
-    } catch (e) {
-      console.log('[TTS] OpenAI error:', e)
-      return false
-    }
+    const lang = detectLang(chunk)
+    const { blob, error } = await openAITTSBlob(
+      { model: 'gpt-4o-mini-tts', input: chunk, voice: getVoiceProfile(lang).openaiVoice, instructions: getTTSInstructions(chunk), speed: getVoiceSpeed(lang) },
+      { timeoutMs: 8000 },
+    )
+    if (error === 'TTS_QUOTA') { try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {} }
+    if (!blob || blob.size < 100) return false
+    const ok = await playBlob(blob)
+    if (!ok) return false
   }
   return true
 }
@@ -249,76 +272,8 @@ async function speakAzureTTS(text: string): Promise<boolean> {
   return true
 }
 
-// ─── 2. Gemini TTS ─────────────────────────────────────────
-// Uses existing VITE_GEMINI_API_KEY.
-// Returns L16 raw PCM → we convert to WAV before playback.
-
-const GEMINI_TTS_MODELS = [
-  'gemini-2.5-flash-preview-tts',
-  'gemini-2.0-flash',            // fallback: standard flash also supports TTS
-]
-
-async function speakGemini(text: string): Promise<boolean> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-  if (!apiKey) return false
-
-  // For voice, keep text short and natural. No instruction prefix — just the text.
-  for (const model of GEMINI_TTS_MODELS) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text }] }],
-            generationConfig: {
-              responseModalities: ['AUDIO'],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: 'Kore' },  // T4.2: Kore better for Hebrew than Aoede
-                },
-              },
-            },
-          }),
-        }
-      )
-
-      if (!res.ok) {
-        console.log(`[TTS] Gemini (${model}) status:`, res.status)
-        continue  // try next model
-      }
-
-      const data = await res.json()
-      const audioPart = data?.candidates?.[0]?.content?.parts?.find(
-        (p: { inlineData?: { mimeType?: string; data?: string } }) => p.inlineData?.mimeType?.startsWith('audio/')
-      )
-
-      if (!audioPart?.inlineData?.data) {
-        console.log(`[TTS] Gemini (${model}): no audio in response`)
-        continue
-      }
-
-      const { mimeType, data: b64 } = audioPart.inlineData
-      const rawBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
-
-      // Gemini returns raw PCM (audio/L16; codec=pcm; rate=24000) — must wrap in WAV
-      const isRawPcm = mimeType.includes('L16') || mimeType.includes('pcm') || mimeType.includes('raw')
-      const sampleRate = (() => {
-        const m = mimeType.match(/rate=(\d+)/i)
-        return m ? parseInt(m[1]!) : 24000
-      })()
-      const blob = isRawPcm ? pcmToWav(rawBytes, sampleRate) : new Blob([rawBytes], { type: mimeType })
-
-      console.log(`[TTS] Gemini (${model}): ${rawBytes.length} bytes, mimeType=${mimeType}`)
-      const ok = await playBlob(blob)
-      if (ok) return true
-    } catch (e) {
-      console.log(`[TTS] Gemini (${model}) error:`, e)
-    }
-  }
-  return false
-}
+// ─── 2. Gemini TTS — REMOVED (client-side VITE_GEMINI_API_KEY secret; P0 remediation).
+//    OpenAI TTS is primary; Google Translate / Edge / Web Speech remain as free fallbacks.
 
 // ─── 3. Google Translate TTS ───────────────────────────────
 // Free, clear Hebrew female voice. Proxy via Vite dev middleware (/api/gtts).
@@ -393,34 +348,25 @@ function speakWebAPI(text: string): Promise<void> {
     speechSynthesis.cancel()
     loadVoices()
     const lang = detectLang(text)
+    const profile = getVoiceProfile(lang)
     const voices = speechSynthesis.getVoices()
     const prefix = lang === 'es' ? 'es' : 'he'
     const allForLang = voices.filter(v => v.lang.startsWith(prefix))
 
-    // Hebrew priority: Carmit (macOS Israeli) → Google (Android) → any Hebrew female
-    // Spanish priority: Paulina (macOS) → Google (Android) → any Spanish female
+    // Warmest available system voice, ordered by voiceConfig preference
+    // (Carmit/Paulina → Google → any female), then "anything not clearly male".
     let bestVoice: SpeechSynthesisVoice | undefined
-    if (lang === 'he') {
-      bestVoice =
-        allForLang.find(v => /carmit/i.test(v.name)) ??
-        allForLang.find(v => /google/i.test(v.name)) ??
-        allForLang.find(v => /lihi|yael|female|woman/i.test(v.name)) ??
-        allForLang.find(v => !/amit|asaf|male(?!.*fe)/i.test(v.name)) ??
-        allForLang[0]
-    } else {
-      bestVoice =
-        allForLang.find(v => /paulina/i.test(v.name)) ??
-        allForLang.find(v => /google/i.test(v.name)) ??
-        allForLang.find(v => /mónica|penélope|elena|female|woman/i.test(v.name)) ??
-        allForLang.find(v => !/jorge|diego|male(?!.*fe)/i.test(v.name)) ??
-        allForLang[0]
+    for (const matcher of profile.webSpeechPrefer) {
+      bestVoice = allForLang.find(v => matcher.test(v.name))
+      if (bestVoice) break
     }
+    if (!bestVoice) bestVoice = allForLang.find(v => !profile.webSpeechAvoid.test(v.name)) ?? allForLang[0]
 
     const u = new SpeechSynthesisUtterance(text)
-    u.lang = lang === 'es' ? 'es-AR' : 'he-IL'
-    u.rate = lang === 'he' ? 0.88 : 0.90   // natural pace — clear but not robotic
-    u.pitch = 1.0                            // neutral pitch — no robot adjustment
-    u.volume = 1.0
+    u.lang = profile.webSpeechLang
+    u.rate = getVoiceSpeed(lang)   // language-tuned, calm but not "old"
+    u.pitch = profile.pitch        // neutral pitch — no robot adjustment
+    u.volume = profile.volume
     if (bestVoice) u.voice = bestVoice
     console.log('[TTS] Web Speech voice:', bestVoice?.name ?? 'default', 'lang:', u.lang)
     u.onend = () => resolve()
@@ -454,99 +400,67 @@ export function getTTSTrace(): Array<{ provider: string; model: string; voice: s
   try { return JSON.parse(localStorage.getItem('abu-tts-trace') || '[]') } catch { return [] }
 }
 
-export async function speakVoiceMode(text: string): Promise<void> {
-  if (!text.trim()) return
+/**
+ * Debug summary: the configured voice profile + the engine/voice that actually
+ * played last. Surfaced in diagnostics + console so Leo can confirm on a real
+ * device which TTS engine spoke (not just which we intended).
+ */
+export function getVoiceDebug(): { config: string; lastEngine: string; lastVoice: string; lastStatus: string } {
+  const last = getTTSTrace().slice(-1)[0]
+  return {
+    config: describeVoiceConfig(),
+    lastEngine: last?.provider ?? '(none yet)',
+    lastVoice: last?.voice ?? '(none yet)',
+    lastStatus: last?.status ?? '(none yet)',
+  }
+}
+
+export async function speakVoiceMode(text: string): Promise<boolean> {
+  if (!text.trim()) return false
   const ttsStart = Date.now()
 
-  // 1) OpenAI TTS (paid — skip only if TTS-specific quota exhausted)
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
+  // 1) OpenAI TTS (paid — server-proxied; key never in client) — skip only if TTS-specific quota exhausted
   const ttsQuotaFlag = localStorage.getItem('abu-openai-tts-quota-failed')
   const ttsQuotaOk = !ttsQuotaFlag || (Date.now() - parseInt(ttsQuotaFlag, 10)) > 300_000
-  if (apiKey && ttsQuotaOk) {
-    try {
-      const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 6000)
-      const res = await fetch('https://api.openai.com/v1/audio/speech', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed(), response_format: 'mp3' }),
-        signal: controller.signal,
-      })
-      clearTimeout(t)
-      if (res.ok) {
-        const blob = await res.blob()
-        if (blob.size > 100) {
-          const ok = await playBlobViaAudioCtx(blob)
-          if (ok) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via AudioCtx' }); return }
-          if (await playBlob(blob)) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via HTMLAudio' }); return }
-        }
-      }
-      if (res.status === 429 || res.status === 402) {
-        try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
-      }
-      ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: true, status: `❌ HTTP ${res.status}` })
-    } catch (e) {
-      ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: Date.now() - ttsStart, fallback: true, status: `❌ ${e instanceof Error ? e.message : 'error'}` })
+  const vmLang = detectLang(text)
+  const vmVoice = getVoiceProfile(vmLang).openaiVoice
+  if (ttsQuotaOk) {
+    const { blob, error } = await openAITTSBlob(
+      { model: 'gpt-4o-mini-tts', input: text, voice: vmVoice, instructions: getTTSInstructions(text), speed: getVoiceSpeed(vmLang) },
+      { timeoutMs: 6000 },
+    )
+    if (error === 'TTS_QUOTA') { try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {} }
+    if (blob && blob.size > 100) {
+      const ok = await playBlobViaAudioCtx(blob)
+      if (ok) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via AudioCtx' }); return true }
+      if (await playBlob(blob)) { ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: Date.now() - ttsStart, fallback: false, status: '✅ played via HTMLAudio' }); return true }
     }
+    ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: Date.now() - ttsStart, fallback: true, status: `❌ ${error ?? 'no audio'}` })
   } else {
-    ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: 'coral', latencyMs: 0, fallback: true, status: `⏭ skipped: key=${!!apiKey} quotaOk=${ttsQuotaOk}` })
+    ttsTrace({ provider: 'OpenAI', model: 'gpt-4o-mini-tts', voice: vmVoice, latencyMs: 0, fallback: true, status: `⏭ skipped: quotaOk=false` })
   }
 
-  // 2) Gemini TTS (FREE with existing key)
-  if (await speakGeminiViaAudioCtx(text)) {
-    ttsTrace({ provider: 'Gemini', model: 'gemini-2.5-flash-preview-tts', voice: 'Kore', latencyMs: Date.now() - ttsStart, fallback: true, status: '✅ Gemini TTS' })
-    return
-  }
+  // (Gemini TTS tier REMOVED — it read a client-side VITE_GEMINI_API_KEY. OpenAI TTS above is
+  //  primary; Web Speech below is the free last-resort. No client provider secret remains.)
 
-  // All quality TTS failed — NO robot voice
-  ttsTrace({ provider: 'NONE', model: '-', voice: '-', latencyMs: Date.now() - ttsStart, fallback: true, status: '⚠️ ALL FAILED — text only' })
-}
-
-// Gemini TTS via AudioContext for voice mode (bypasses iOS audio restrictions)
-async function speakGeminiViaAudioCtx(text: string): Promise<boolean> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-  if (!apiKey) return false
-
-  for (const model of GEMINI_TTS_MODELS) {
+  // 3) Web Speech API (FREE, last audible resort). Voice mode PREVIOUSLY skipped
+  //    this and returned "text only" — a SILENT failure (visible text, no voice).
+  //    Now we degrade gracefully to the system voice before giving up.
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     try {
-      const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 10000)
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text }] }],
-            generationConfig: {
-              responseModalities: ['AUDIO'],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: 'Kore' },  // T4.2: Kore better for Hebrew than Aoede
-                },
-              },
-            },
-          }),
-          signal: controller.signal,
-        }
-      )
-      clearTimeout(t)
-      if (!res.ok) continue
-      const json = await res.json()
-      const audioData = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
-      if (!audioData) continue
-
-      // Convert base64 L16 PCM to WAV blob
-      const raw = Uint8Array.from(atob(audioData), c => c.charCodeAt(0))
-      const wavBlob = pcmToWav(raw, 24000)
-      const ok = await playBlobViaAudioCtx(wavBlob)
-      if (ok) return true
-    } catch {
-      continue
-    }
+      await speakWebAPI(text)
+      ttsTrace({ provider: 'WebSpeech', model: 'system', voice: '-', latencyMs: Date.now() - ttsStart, fallback: true, status: '✅ Web Speech (fallback)' })
+      return true
+    } catch { /* fall through to explicit failure */ }
   }
+
+  // NO SILENT FAILURE: nothing could speak → the caller MUST surface a visible
+  // recovery ("tap to hear") + a precise failure state. Returns false to force it.
+  ttsTrace({ provider: 'NONE', model: '-', voice: '-', latencyMs: Date.now() - ttsStart, fallback: true, status: '⚠️ ALL FAILED — no audio (recovery required)' })
   return false
 }
+
+// (speakGeminiViaAudioCtx REMOVED — client-side Gemini TTS used a VITE_GEMINI_API_KEY secret.)
 
 // speak — for TEXT CHAT and other non-realtime uses
 // v24.3: OpenAI (paid) → Gemini (FREE) → Web Speech (FREE)
@@ -564,10 +478,9 @@ export async function speak(text: string): Promise<void> {
         // 1) OpenAI TTS (paid, best quality)
         if (await speakOpenAI(text)) return
 
-        // 2) Gemini TTS (FREE)
-        if (await speakGemini(text)) return
+        // (Gemini TTS tier REMOVED — client-side VITE_GEMINI_API_KEY secret.)
 
-        // 3) Web Speech API (FREE, last resort)
+        // 2) Web Speech API (FREE, last resort)
         await speakWebAPI(text)
       })(),
       timeout,
@@ -730,53 +643,19 @@ export async function streamSpeakVoiceMode(
 
   const speakChunk = async (text: string): Promise<void> => {
     if (signal?.aborted) return
-    // OpenAI (paid, skip if TTS quota exhausted) → Gemini (FREE) → Web Speech (FREE)
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
+    // OpenAI (paid, server-proxied; key never in client) → Gemini (FREE) → Web Speech (FREE)
     const sqf = localStorage.getItem('abu-openai-tts-quota-failed')
     const skipOpenAI = sqf && (Date.now() - parseInt(sqf, 10)) < 300_000
-    if (apiKey && !skipOpenAI) {
-      try {
-        const res = await fetch('https://api.openai.com/v1/audio/speech', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: 'gpt-4o-mini-tts', input: text, voice: 'coral', instructions: getTTSInstructions(text), speed: getVoiceSpeed(), response_format: 'mp3' }),
-          signal: signal ?? null,
-        })
-        if (res.ok) {
-          const blob = await res.blob()
-          if (blob.size > 100) { queue.enqueue(blob); return }
-        } else if (res.status === 429 || res.status === 402) {
-          try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {}
-        }
-      } catch { /* try fallback */ }
+    if (!skipOpenAI) {
+      const chunkLang = detectLang(text)
+      const { blob, error } = await openAITTSBlob(
+        { model: 'gpt-4o-mini-tts', input: text, voice: getVoiceProfile(chunkLang).openaiVoice, instructions: getTTSInstructions(text), speed: getVoiceSpeed(chunkLang) },
+        { signal: signal ?? null },
+      )
+      if (error === 'TTS_QUOTA') { try { localStorage.setItem('abu-openai-tts-quota-failed', String(Date.now())) } catch {} }
+      if (blob && blob.size > 100) { queue.enqueue(blob); return }
     }
-    // Gemini TTS (FREE) — convert to blob and enqueue
-    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-    if (geminiKey) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text }] }],
-              generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } },
-            }),
-          }
-        )
-        if (res.ok) {
-          const json = await res.json()
-          const audioData = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
-          if (audioData) {
-            const raw = Uint8Array.from(atob(audioData), c => c.charCodeAt(0))
-            const wavBlob = pcmToWav(raw, 24000)
-            queue.enqueue(wavBlob)
-            return
-          }
-        }
-      } catch { /* try fallback */ }
-    }
+    // (Gemini TTS tier REMOVED — client-side VITE_GEMINI_API_KEY secret. OpenAI above is primary.)
     // Web Speech (FREE, last resort)
     speakWebAPI(text).catch(() => {})
   }
@@ -958,3 +837,15 @@ export function createSilenceDetector(
 
   return { stop: cleanup, getLevel: () => level }
 }
+
+// On-device / e2e voice diagnostics hook (mirrors voiceFlightRecorder's
+// __abuVoiceDiag): lets a browser/Preview test drive the REAL pipeline TTS and
+// read the playback-proof counter, so "audio actually played" is verifiable
+// without a human. Harmless (only speaks text); never exposes keys or data.
+try {
+  ;(globalThis as unknown as { __abuTTS?: Record<string, unknown> }).__abuTTS = {
+    speakVoiceMode,
+    getTTSPlayedCount,
+    getTTSTrace,
+  }
+} catch { /* non-browser */ }

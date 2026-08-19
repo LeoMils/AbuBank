@@ -1,0 +1,30 @@
+{
+  "target": "https://abu-ela-rc.vercel.app",
+  "testedBuild": "0.176.0-latency-vad-instrumentation-rc",
+  "collectedVia": "cache-busted curl time_total against deployed RC endpoints (health x12, online x4, realtime-token x4)",
+  "note": "DEPLOYED_PREVIEW baseline — real deployed API round-trip latency (ms), frozen before optimization. Full mic->audio turn-latency is PHYSICAL (VOICE-DEVICE), not this.",
+  "distributionsMs": {
+    "health": {
+      "count": 12,
+      "min": 339,
+      "median": 378,
+      "p95": 496,
+      "max": 496
+    },
+    "online": {
+      "count": 4,
+      "min": 3159,
+      "median": 3215,
+      "p95": 4171,
+      "max": 4171
+    },
+    "realtimeTokenMint": {
+      "count": 4,
+      "min": 486,
+      "median": 491,
+      "p95": 514,
+      "max": 514
+    }
+  },
+  "aggregatorReuse": "latencyInstrumentation.summarizeDistribution (same nearest-rank method)"
+}

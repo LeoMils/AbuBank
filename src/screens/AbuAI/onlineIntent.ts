@@ -30,13 +30,44 @@ export type OnlineQueryKind =
 // regex) — these patterns rely on substring matching with explicit
 // disambiguating phrasing.
 const ONLINE_HE_MOVIES = /איזה סרטים יש (עכשיו|היום|השבוע)|סרטים חדשים|סרטים בקולנוע|בקולנוע (עכשיו|היום)|מה מקרינים/
-const ONLINE_HE_WEATHER = /מזג ה?אוויר(?:\s+(?:עכשיו|היום|מחר|השבוע))?|מה מזג האוויר|איך מזג האוויר|חם בחוץ|קר בחוץ|טמפרטורה|תחזית|גשם\s+(?:היום|מחר)|שקיעה|זריחה|כמה מעלות/
-const ONLINE_HE_NEWS = /חדשות (היום|עכשיו|אחרונות)|מה ב?חדשות|מה קורה בעולם/
+const ONLINE_HE_WEATHER = /מזג ה?אוויר(?:\s+(?:עכשיו|היום|מחר|השבוע))?|מה מזג האוויר|איך מזג האוויר|חם בחוץ|קר בחוץ|טמפרטורה|תחזית|גשם\s+(?:היום|מחר)|שקיעה|זריחה|שוקעת\s+השמש|זורחת\s+השמש|מתי\s+השמש|כמה מעלות/
+const ONLINE_HE_NEWS = /חדשות\s+(היום|עכשיו|אחרונות)|מה\s+ב?חדשות|מה\s+קורה\s+ב?חדשות|מה\s+קורה\s+בעולם|חדשות\s+אחרונות|איזה\s+חדשות|מה\s+ה?חדשות/
 const ONLINE_HE_OPEN_NOW = /מה פתוח עכשיו|פתוח עכשיו|מה פתוח (היום|בשעה)/
 const ONLINE_HE_LATEST = /מה ה?חדש|מה האחרון|מה התחזית/
-const ONLINE_HE_SPORTS = /כדורגל|כדורסל|מכבי|הפועל|תוצאות|מי ניצח|משחק (?:אתמול|היום|מחר)|ליגה|גביע/
-const ONLINE_HE_CURRENT = /שער ה?דולר|שער ה?יורו|מטבע|בורסה|מניות|bitcoin|ביטקוין|מחיר ה?(זהב|נפט|גז)|מה (ה?מחיר|העלות) של/
+const ONLINE_HE_SPORTS = /כדורגל|כדורסל|מכבי|הפועל|תוצא(?:ה|ות)|מי ניצח|מי ניצחה|מי שיחק|מי משחק|מי שיחקה|כמה\s+יצא|מה\s+התוצאה|משחק(?:ים|י)?\s+(?:אתמול|היום|מחר|הערב|של|ה?יום)|איזה משחקים|מונדיאל|אליפות|ליגה|גביע|נבחרת|של\s+המשחק|מה\s+היה\s+במשחק|תוצאת\s+המשחק|מלך\s+ה?שערים|מלכת\s+ה?שערים|מי\s+ה?בקיע|ה?כובש\s+ה?מוביל/
+const ONLINE_HE_CURRENT = /שער ה?דולר|שער ה?יורו|מטבע|בורסה|מניות|bitcoin|ביטקוין|מחיר ה?(זהב|נפט|גז|בנזין|דלק)|מה (ה?מחיר|העלות) של|כמה\s+עולה|כמה\s+שווה/
+// Live public-transport / flight times — live info the runtime already routes online
+// via ONLINE_EXTRA_RE; keep the tool gate in sync so it isn't a permanent dead-end.
+const ONLINE_HE_TRANSPORT = /מתי\s+ה?אוטובוס|ה?אוטובוס\s+ה?בא|מתי\s+ה?רכבת|ה?רכבת\s+ה?באה|מתי\s+ה?טיסה|תחבורה\s+ציבורית/
 const ONLINE_HE_HOLIDAYS = /מתי\s+(חג\s+)?(פסח|סוכות|ראש השנה|יום כיפור|חנוכה|פורים|שבועות|ט[וּ]?\s*בשבט|ל[״"]ג\s*בעומר|יום העצמאות|יום הזיכרון|יום השואה)/i
+
+// ─── Current-world-fact forms (volatile answers) ─────────────────────────────
+//
+// Questions whose CORRECT answer CHANGES over time — current office holders,
+// election outcomes, championship winners. The offline model answers these from
+// stale memory (the canonical "2022 World Cup for a 2026 question" incident).
+// Detected SEMANTICALLY (question FORM), not by a per-entity list, so the whole
+// CLASS routes to live retrieval — or, on provider failure, to an honest "I can't
+// check that right now" — and is NEVER answered from memory. Present-tense forms
+// only: historical "מי היה" / "who was" must stay evergreen (offline-answerable).
+// NB: no `\b` after Hebrew/accented letters — JS `\b` is ASCII-only and never
+// matches a boundary next to non-word chars (א-ת, é, ó), so it would silently
+// defeat the match (the module rule at the top of this file).
+const CURRENT_FACT_HE = /מי\s+ה?(?:נשיא|נשיאה|ראש\s+ה?ממשלה|רה"?מ|מנהיג|קנצלר|אלופ[הת]?|מנצח[ת]?)|מי\s+ניצח|מי\s+ניצחה|מי\s+זכת?[ה]?\s+ב|מי\s+נבחר|תוצאות\s+ה?בחירות|מי\s+ראש\s+ה?עיר/u
+const CURRENT_FACT_ES = /qui[eé]n\s+es\s+(?:el|la)\s+(?:presidente|presidenta|primer\s+ministro|campe[oó]n|campeona)|qui[eé]n\s+gan[oó]/i
+const CURRENT_FACT_EN = /\bwho\s+is\s+(?:the\s+)?(?:president|prime\s+minister|current\s+\w+|champion)\b|\bwho\s+won\b|\bwho'?s\s+the\s+(?:president|champion)\b/i
+
+/**
+ * True when the query asks for a WORLD FACT whose correct answer changes over
+ * time (office holders / election results / winners). These must reach the online
+ * provider (or an honest refusal), never the offline general/LLM path — that is
+ * the root cause of the stale-answer failure. Pure; no fetch/LLM.
+ */
+export function requiresCurrentInfo(input: string): boolean {
+  const t = input.trim()
+  if (!t) return false
+  return CURRENT_FACT_HE.test(t) || CURRENT_FACT_ES.test(t) || CURRENT_FACT_EN.test(t)
+}
 
 // ─── Spanish patterns ──────────────────────────────────────────────────────
 const ONLINE_ES_MOVIES = /(?:^|[^a-záéíóúñ])(?:qu[eé]\s+)?pel[ií]culas?\s+(?:hay|nuevas|de\s+ahora|de\s+esta\s+semana|en\s+(?:el\s+)?cine|nuevas)|cartelera|cine\s+(?:cerca|hoy|ahora)|qu[eé]\s+(?:hay\s+)?en\s+(?:el\s+)?cine/i
@@ -82,7 +113,11 @@ export function getOnlineQueryKind(input: string): OnlineQueryKind | null {
   if (ONLINE_HE_LATEST.test(t) || ONLINE_ES_LATEST.test(t) || ONLINE_EN_LATEST.test(t)) return 'latest'
   if (ONLINE_HE_SPORTS.test(t) || ONLINE_ES_SPORTS.test(t) || ONLINE_EN_SPORTS.test(t)) return 'sports'
   if (ONLINE_HE_CURRENT.test(t)) return 'general_current'
+  if (ONLINE_HE_TRANSPORT.test(t)) return 'general_current' // transport = live info
   if (ONLINE_HE_HOLIDAYS.test(t)) return 'holidays'
+  // Volatile world facts (office holders / elections / winners) the narrow
+  // category regexes miss — route online instead of answering from stale memory.
+  if (requiresCurrentInfo(t)) return 'general_current'
   return null
 }
 
@@ -91,8 +126,18 @@ export function getOnlineQueryKind(input: string): OnlineQueryKind | null {
  * the query to web search if it ALSO smells personal/calendar/family.
  * The runtime tries `tryGroundedAnswer` first, but this is belt-and-suspenders.
  */
+// Strong sports/match context: when present, a personal-name match is almost
+// always a country/team that happens to share a name (ירדן = Jordan, not Yarden;
+// "נגד"/"בין X ל" framing) — so the personal block must NOT fire.
+const SPORTS_CONTEXT = /מי\s+ניצח|מי\s+ניצחה|כמה\s+יצא|תוצא(?:ה|ות)|מונדיאל|אליפות\s+העולם|כדורגל|כדורסל|ליגה|גביע|נבחרת|משחק(?:ים)?\b|נגד\b|בין\s+\S+\s+ל\S/u
+
 export function shouldBlockOnlineForPersonal(input: string): boolean {
   const t = input.trim()
   if (!t) return false
+  if (SPORTS_CONTEXT.test(t)) return false
+  // A current-world-fact question (office holder / election / winner) is never
+  // "personal" — don't let an over-broad personal pattern (e.g. ES "quién es")
+  // block it from the live provider and push it back to stale memory.
+  if (requiresCurrentInfo(t)) return false
   return PERSONAL_HE.test(t) || PERSONAL_ES.test(t) || PERSONAL_EN.test(t)
 }

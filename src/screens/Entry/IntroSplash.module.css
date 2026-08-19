@@ -1,0 +1,57 @@
+/*
+ * IntroSplash — black-luxury cold-open. Warm matte black, centered champagne
+ * calligraphic "Abu Ela" written stroke by stroke (see IntroSignature), a
+ * whisper of grain for depth. No flashy gold, no particles.
+ */
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Rich, slightly warm deep black — not a flat #000. Radial lift toward center. */
+  background: radial-gradient(120% 90% at 50% 44%, #14110c 0%, #0b0906 45%, #050403 100%);
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity var(--intro-fade, 300ms) ease;
+  -webkit-font-smoothing: antialiased;
+}
+.root.leaving {
+  opacity: 0;
+}
+
+/* Very subtle matte grain — depth without noise. */
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.brandWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  /* A soft settle as the signature completes — restrained, not flashy. */
+  animation: settle 900ms ease both;
+}
+
+@keyframes settle {
+  0% {
+    transform: translateY(4px);
+    opacity: 0.82;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.reduced .brandWrap {
+  animation: none;
+}

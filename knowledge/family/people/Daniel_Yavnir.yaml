@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Daniel Yavnir
+hebrew_name: דניאל יווניר
+aliases: []
+relationship: family_friend
+relationship_hebrew: בעלה של פופה ז"ל
+role: בעלה של פופה יווניר ז"ל; רופא
+gender: male
+deceased: true
+notes: בעלה של פופה; רופא; נפטר. חלק מחוג מנדוסה.
+pronunciation:
+  es: daniel

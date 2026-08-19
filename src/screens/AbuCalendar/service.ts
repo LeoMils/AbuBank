@@ -1,3 +1,5 @@
+import { durable } from '../../services/durableStore'
+
 const STORAGE_KEY = 'abubank-calendar-appointments'
 
 export interface Appointment {
@@ -9,6 +11,12 @@ export interface Appointment {
   color: string
   notes?: string
   location?: string      // v18: venue/address
+  subject?: string       // what the meeting is about ("טיול לאיטליה")
+  purpose?: string       // WHY — synthesized reason ("לסגור את הסכם השכירות")
+  // ─── Understanding-pipeline provenance (calendar intelligence layer) ───
+  rawTranscript?: string       // exactly what STT / the user said
+  cleanedTranscript?: string   // Hebrew/STT-normalized text we parsed
+  confidence?: number          // 0..1 — parse completeness/certainty at save
   // Family Intelligence
   type?: 'regular' | 'birthday' | 'anniversary' | 'memory'
   personName?: string    // for birthdays: the person's name
@@ -43,7 +51,9 @@ export function loadAppointments(): Appointment[] {
 
 export function saveAppointments(appts: Appointment[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appts))
+    // Durable write-through: localStorage mirror (sync, read by loadAppointments)
+    // + IndexedDB (durable, restored to the mirror on next app start).
+    durable.setString(STORAGE_KEY, JSON.stringify(appts))
   } catch {
     // ignore storage errors
   }
@@ -82,7 +92,7 @@ export type CreateResult =
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^\d{2}:\d{2}$/
 
-export function createAppointmentSafe(input: Omit<Appointment, 'id' | 'color'>): CreateResult {
+export function createAppointmentSafe(input: Omit<Appointment, 'id' | 'color'>, opts?: { operationId?: string }): CreateResult {
   // 1) Required-field validation — no silent acceptance.
   if (!input.title || !input.title.trim()) return { ok: false, code: 'missing_title' }
   if (!input.date || !input.date.trim()) return { ok: false, code: 'missing_date' }
@@ -99,6 +109,24 @@ export function createAppointmentSafe(input: Omit<Appointment, 'id' | 'color'>):
     return { ok: false, code: 'invalid_time' }
   }
 
+  // A8 IDEMPOTENCY — OPERATION IDENTITY is the PRIMARY mechanism. A retried tool-result / resumed turn
+  // carries the SAME operationId (the realtime function_call `callId`); that maps to the ONE event it
+  // already produced, regardless of any content variation. Two DISTINCT operations (different ids) are
+  // NEVER collapsed, even with identical content, so a genuinely intended second event is preserved —
+  // and a re-create that adds information is not lost. Persisted (recentOps) so it survives a reload/
+  // retry boundary. Content matching is NOT used here (it both bypasses a slightly-varied retry AND
+  // wrongly collapses two distinct intents). The realtime tool boundary (liveTools.handleFunctionCall +
+  // calendarDraftController) also dedups by callId, so this is defence-in-depth for that path and the
+  // sole idempotency for any caller that supplies an operationId.
+  const opId = opts?.operationId
+  if (opId) {
+    const prior = recentOpAppointmentId(opId)
+    if (prior) {
+      const existing = loadAppointments().find((a) => a.id === prior)
+      if (existing) return { ok: true, appointment: existing }
+    }
+  }
+
   // 3) Attempt persistence. addAppointment + saveAppointments together
   //    will swallow storage errors (private-mode / quota), so we catch
   //    throws from setItem AND we read back to verify presence.
@@ -113,7 +141,30 @@ export function createAppointmentSafe(input: Omit<Appointment, 'id' | 'color'>):
   const persisted = loadAppointments().find((a) => a.id === created.id)
   if (!persisted) return { ok: false, code: 'storage_failed' }
 
+  if (opId) recordOpAppointment(opId, created.id)
   return { ok: true, appointment: created }
+}
+
+// ─── A8 idempotency ledger — operationId → appointmentId, persisted + bounded ──────────────
+// The realtime function_call callId is the stable operation identity that survives the retry
+// boundary. This maps a recent op to the event it produced so a retry (same op) returns that one
+// event, never a duplicate — persisted so it holds across a reload/reconnect, bounded so it cannot grow.
+const OPS_KEY = 'abu-appt-ops-v1'
+const OPS_MAX = 100
+function loadOps(): Record<string, string> {
+  try { const raw = localStorage.getItem(OPS_KEY); const p = raw ? JSON.parse(raw) : {}; return p && typeof p === 'object' ? p : {} } catch { return {} }
+}
+export function recentOpAppointmentId(operationId: string): string | null {
+  return loadOps()[operationId] ?? null
+}
+function recordOpAppointment(operationId: string, appointmentId: string): void {
+  try {
+    const m = loadOps()
+    m[operationId] = appointmentId
+    const keys = Object.keys(m)
+    if (keys.length > OPS_MAX) for (const k of keys.slice(0, keys.length - OPS_MAX)) delete m[k] // FIFO trim
+    localStorage.setItem(OPS_KEY, JSON.stringify(m))
+  } catch { /* storage best-effort — the boundary callId dedup still holds in-session */ }
 }
 
 // ─── P0 — user-facing copy helpers (HE/ES/EN) ─────────────────────────────
@@ -231,100 +282,24 @@ function detectFamilyType(text: string): Pick<Appointment, 'type' | 'isRecurring
   return {}
 }
 
+// The ONE calendar extractor: the semantic Event Builder (calendarEventBuilderV2).
+// No local/LLM divergence, no enhanceSmart bridge — a single source of truth for
+// who/when/where/title/notes. detectEmoji + detectFamilyType add orthogonal metadata.
 export async function parseAppointmentText(text: string): Promise<{ title: string; date: string | null; time: string | null; emoji: string; confidence: number; personName: string | null; location: string | null; notes: string | null; ambiguousTime: boolean; source: 'local' | 'llm' | 'fallback' } & Pick<Appointment, 'type' | 'isRecurring'>> {
-  const today = new Date().toISOString().split('T')[0]!
-  const { parseLocally } = await import('./localParser')
-  const local = parseLocally(text, today)
-  const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-
-  if (groqKey) {
-    try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 10_000)
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${groqKey}`,
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            {
-              role: 'system',
-              content: `You are an expert Hebrew appointment parser. Extract appointment details from spoken Hebrew text.
-Today is ${today} (${new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}).
-Current month: ${new Date().getMonth() + 1}, current year: ${new Date().getFullYear()}.
-
-CRITICAL: The "date" field MUST be a real YYYY-MM-DD date. NEVER return words like "TOMORROW" or "FRIDAY". ALWAYS compute the actual calendar date.
-CRITICAL: If the user did NOT explicitly mention a time, return "time": null.
-CRITICAL: If the user did NOT explicitly mention a date, return "date": null.
-
-RULES:
-- TIME: All times without "בבוקר" default to PM for appointments.
-  "בשלוש" = 15:00. "בארבע" = 16:00. "בחמש" = 17:00. "בשש" = 18:00. "בשבע" = 19:00. "בשמונה" = 20:00.
-  "בעשר בבוקר" = 10:00. "בשמונה בערב" = 20:00. "בשתיים וחצי" = 14:30. "בתשע בבוקר" = 09:00.
-  "בצהריים" = 12:00. "אחרי הצהריים" = prefer 14:00-17:00 range.
-  If no time is mentioned at all, return "time": null.
-- DATE: ALWAYS return YYYY-MM-DD format when a date IS mentioned. Compute the real date:
-  - "מחר" = ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}
-  - "ביום ראשון" = the NEXT Sunday from today. Calculate it.
-  - "ב-15 לחודש" = ${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-15
-  - "בעוד שבוע" = +7 days from today.
-  If no date is mentioned at all, return "date": null.
-- PERSON: "פגישה עם דר כהן" → personName: "דר כהן".
-- LOCATION: "בקניון" → location: "קניון".
-- EMOJI: 🏥 medical, ✂️ haircut, 🛒 shopping, 🎂 birthday, 🍽️ food, ✈️ travel, 👨‍👩‍👧 family, 💼 work, 📅 general.
-
-Return ONLY valid JSON:
-{"title":"short Hebrew title","date":"YYYY-MM-DD or null","time":"HH:MM or null","emoji":"...","location":"","personName":"","confidence":0.0-1.0}
-confidence: 1.0 = all fields explicitly stated. 0.7 = some inferred. 0.3 = very ambiguous.`,
-            },
-            { role: 'user', content: text },
-          ],
-          temperature: 0,
-          max_tokens: 200,
-        }),
-      })
-      clearTimeout(timeout)
-      if (res.ok) {
-        const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
-        const content = data?.choices?.[0]?.message?.content ?? ''
-        const match = content.match(/\{[\s\S]*?\}/)
-        if (match) {
-          const parsed = JSON.parse(match[0]) as { title?: string; date?: string | null; time?: string | null; emoji?: string; location?: string; personName?: string; confidence?: number }
-          // Local extractions (time/location/notes/ambiguity) take precedence over the LLM,
-          // which is prone to silently changing exact numerics like "2:34" → "8:00".
-          const title = local.title || parsed.title || text
-          const date = local.date ?? ((parsed.date && parsed.date !== 'null') ? parsed.date : null)
-          const time = local.time ?? ((parsed.time && parsed.time !== 'null') ? parsed.time : null)
-          const location = local.location ?? (parsed.location || null)
-          const notes = local.notes
-          const emoji = (local.location || local.notes ? detectEmoji(`${title} ${notes ?? ''}`) : (parsed.emoji ?? detectEmoji(title)))
-          const llmConfidence = typeof parsed.confidence === 'number' ? parsed.confidence : (date && time ? 0.9 : date || time ? 0.6 : 0.3)
-          const confidence = Math.max(local.confidence, llmConfidence)
-          const personName = parsed.personName || null
-          const familyType = detectFamilyType(text)
-          return { title, date, time, emoji, confidence, personName, location, notes, ambiguousTime: local.ambiguousTime, source: 'llm', ...familyType }
-        }
-      }
-    } catch {
-      // fall through to fallback (timeout, network error, or parse error)
-    }
-  }
-
+  const { buildEventV2 } = await import('../AbuAI/calendarEventBuilderV2')
+  const e = buildEventV2(text)
+  const title = e.title ?? text
   return {
-    title: local.title || text,
-    date: local.date,
-    time: local.time,
-    emoji: local.emoji,
-    confidence: local.confidence,
-    personName: null,
-    location: local.location,
-    notes: local.notes,
-    ambiguousTime: local.ambiguousTime,
-    source: groqKey ? 'fallback' : 'local',
+    title,
+    date: e.date,
+    time: e.time,
+    emoji: detectEmoji(`${title} ${e.notes ?? ''}`),
+    confidence: e.confidence,
+    personName: e.who,
+    location: e.location,
+    notes: e.notes,
+    ambiguousTime: false,
+    source: 'local',
     ...detectFamilyType(text),
   }
 }

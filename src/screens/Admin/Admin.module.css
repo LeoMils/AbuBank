@@ -5,6 +5,9 @@
   overflow-y: auto;
   padding: var(--abu-space-16);
   gap: var(--abu-space-16);
+  /* Admin is a light-themed utility sheet; give it its own background so its
+     dark text stays readable when mounted on the app's dark shell. */
+  background: var(--abu-color-bg);
 }
 
 /* Loading skeleton */
@@ -15,6 +18,7 @@
   justify-content: center;
   height: 100%;
   gap: var(--abu-space-16);
+  background: var(--abu-color-bg);
 }
 
 .skeletonBlock {
@@ -27,7 +31,7 @@
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.6; }
 }
 
 /* PIN entry */
@@ -39,6 +43,7 @@
   height: 100%;
   gap: var(--abu-space-24);
   padding: var(--abu-space-32);
+  background: var(--abu-color-bg);
 }
 
 .pinIcon {
@@ -70,7 +75,7 @@
   font-weight: var(--abu-font-weight-title);
   line-height: var(--abu-line-height-title);
   text-align: center;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.15em;
   color: var(--abu-color-text-primary);
   background: var(--abu-color-bg);
   direction: ltr;
@@ -107,14 +112,18 @@
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  transition: background var(--abu-dur-tap-press) ease-out,
+              transform var(--abu-dur-tap-press) ease-out;
 }
 
 .pinButton:active {
   background: var(--abu-color-primary-pressed);
+  transform: scale(0.97);
 }
 
 .pinButton:disabled {
   background: var(--abu-color-primary-disabled);
+  color: var(--abu-color-text-disabled);
   cursor: default;
 }
 
@@ -196,7 +205,7 @@
 .fieldGroup {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--abu-space-8);
 }
 
 .fieldLabel {
@@ -265,10 +274,13 @@
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  transition: background var(--abu-dur-tap-press) ease-out,
+              transform var(--abu-dur-tap-press) ease-out;
 }
 
 .actionButton:active {
   background: var(--abu-color-surface);
+  transform: scale(0.98);
 }
 
 .saveButton {

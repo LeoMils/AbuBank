@@ -1,0 +1,366 @@
+{
+  "$schema": "internal://abu/capability-manifest",
+  "producer": "scripts/discover-capabilities.ts",
+  "producedFrom": [
+    "src/screens/*",
+    "src/state/types.ts",
+    "src/services/liveTools.ts",
+    "src/services/deviceGatedFlags.ts",
+    "src/services/online/flags.ts",
+    "src/App.tsx"
+  ],
+  "candidateNote": "static discovery now source-complete (6 source classes; verified by capabilityDiscoverySource oracle). DYNAMIC reachability differential vs deployed RC is PENDING (o-capability stays UNIMPLEMENTED until dynamic + drift proof).",
+  "totalCapabilities": 41,
+  "byType": {
+    "UI_SURFACE": 18,
+    "ACTION_CAPABILITY": 12,
+    "INTEGRATION_CAPABILITY": 3,
+    "VOICE_CHANNEL": 1,
+    "FEATURE_CAPABILITY": 7
+  },
+  "staticBlockers": [],
+  "capabilities": {
+    "AbuAI": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "high"
+    },
+    "AbuBank": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "AbuCalendar": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "high"
+    },
+    "AbuGames": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "AbuNews": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "high"
+    },
+    "AbuWeather": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "AbuWhatsApp": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "high"
+    },
+    "Admin": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "DiagnosticOverlay": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "ROUTE"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "Error": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "FamilyGallery": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "FamilyPhones": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "FamilyRecord": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "Home": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "LIVE_AUDIO_TUNE_V2": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "LIVE_BARGE_IN_TRUNCATE": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "LIVE_CLASSIFIED_MONITOR": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "LIVE_PREAMBLE_TWO_RESPONSE": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "LIVE_PREFETCH_WARM": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "Live": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "high"
+    },
+    "ONLINE_GENERAL_SEARCH": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "ONLINE_PREFETCH_WARM": {
+      "type": "FEATURE_CAPABILITY",
+      "sources": [
+        "FEATURE_FLAG"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "Offline": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "Opening": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "Settings": {
+      "type": "UI_SURFACE",
+      "sources": [
+        "SCREEN_DIR",
+        "SCREEN_ENUM"
+      ],
+      "reachability": "USER_REACHABLE",
+      "riskTier": "medium"
+    },
+    "cancel_calendar_event": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    },
+    "cancel_communication": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "care_concern": {
+      "type": "VOICE_CHANNEL",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "confirm_calendar_event": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    },
+    "correct_calendar_field": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "get_current_info": {
+      "type": "INTEGRATION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    },
+    "history_lookup": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "medium"
+    },
+    "people_lookup": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    },
+    "phone_call": {
+      "type": "INTEGRATION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    },
+    "prepare_calendar_event": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    },
+    "read_calendar": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    },
+    "remember": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    },
+    "resolve_contact": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    },
+    "set_reminder": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    },
+    "update_calendar_event": {
+      "type": "ACTION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    },
+    "whatsapp_draft": {
+      "type": "INTEGRATION_CAPABILITY",
+      "sources": [
+        "TOOL_REGISTRY"
+      ],
+      "reachability": "USER_INVOKABLE",
+      "riskTier": "high"
+    }
+  }
+}

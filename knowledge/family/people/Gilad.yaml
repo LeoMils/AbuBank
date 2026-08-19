@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: grandchildren_spouses
+canonical_name: Gilad
+hebrew_name: גלעד
+aliases: []
+relationship: grandson_in_law
+relationship_hebrew: בן זוג של אופיר
+spouse: אופיר
+gender: male
+occupation: רואה חשבון בחברת הייטק (החברה לא ידועה)
+notes: גלעד ואופיר הם ההורים של אנאבל וארי. אוהב יין אדום.
+pronunciation:
+  es: gilad

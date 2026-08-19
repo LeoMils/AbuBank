@@ -1,0 +1,148 @@
+/*
+ * Saved Memory — durable, user-COMMANDED facts (ChatGPT-style "remember that…").
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Distinct from the passive rolling ConversationSummary (service.ts): these are
+ * facts Martita EXPLICITLY asked AbuAI to keep ("תזכרי שהכלב שלי קוראים לו טוטסי"),
+ * persisted in the PWA via the durable store, loaded every session, listable
+ * ("מה את זוכרת עליי?") and forgettable ("תשכחי ש…"). Only what she actually said
+ * is stored, and NEVER sensitive data (phone / medical / financial / street) —
+ * the privacy rules are enforced here, at the write boundary.
+ *
+ * Persistence is `durable` (IndexedDB + localStorage mirror), so a fact stored in
+ * one session is present in the next — it does NOT live in RuntimeState.
+ */
+import { durable } from '../../services/durableStore'
+
+const KEY = 'abuai-saved-memories'
+
+export interface SavedMemory { id: string; text: string; at: number }
+
+// ── Privacy boundary (see .claude/rules/privacy*.md): never persist these. ──
+const PHONE_RE = /(?:\d[\d\s-]{6,}\d)|\b0\d{1,2}[-\s]?\d{7}\b/u
+const MEDICAL_RE = /תרופ|כדור(?:ים)?(?![א-ת])|מחל[הת]|סוכרת|אינסולין|לחץ\s*דם|רופא|מרשם|ניתוח|medic|pastill|remedio/iu
+const FINANCIAL_RE = /סיסמ|כרטיס\s*אשראי|חשבון\s*בנק|מספר\s*חשבון|קוד\s*סודי|contraseñ|tarjeta\s*de\s*cr[eé]dito|\bpin\b/iu
+const STREET_RE = /רחוב\s+\S+|רח['׳]\s*\S+|כתובת\s+\S+\s*\d|calle\s+\S+\s*\d/iu
+
+/** True when a fact must NOT be persisted (phone / medical / financial / street). */
+export function isSensitive(text: string): boolean {
+  return PHONE_RE.test(text) || MEDICAL_RE.test(text) || FINANCIAL_RE.test(text) || STREET_RE.test(text)
+}
+
+export type SensitiveKind = 'phone' | 'medical' | 'financial' | 'street'
+/** WHICH sensitive category a fact hit (so Abu can say exactly what she keeps private).
+ *  NOTE: a death ("נפטר") is NOT medical here — grief/life facts persist; only ongoing
+ *  medical/phone/financial/street data is kept out of storage. */
+export function sensitiveKind(text: string): SensitiveKind | null {
+  if (PHONE_RE.test(text)) return 'phone'
+  if (FINANCIAL_RE.test(text)) return 'financial'
+  if (STREET_RE.test(text)) return 'street'
+  if (MEDICAL_RE.test(text)) return 'medical'
+  return null
+}
+
+// ── Store (durable-backed) ──
+export function loadMemories(): SavedMemory[] {
+  const list = durable.getJSON<SavedMemory[]>(KEY, [])
+  return Array.isArray(list) ? list : []
+}
+function persist(list: SavedMemory[]): void { durable.setJSON(KEY, list) }
+
+export type SaveResult = { ok: true; memory: SavedMemory } | { ok: false; reason: 'empty' | 'sensitive' | 'duplicate' }
+
+export function saveMemory(text: string, now: number = Date.now()): SaveResult {
+  const t = text.trim().replace(/[.。!,]+$/u, '').trim()
+  if (t.length < 2) return { ok: false, reason: 'empty' }
+  if (isSensitive(t)) return { ok: false, reason: 'sensitive' }
+  const list = loadMemories()
+  if (list.some((m) => m.text === t)) return { ok: false, reason: 'duplicate' }
+  const memory: SavedMemory = { id: `m${now}_${list.length}`, text: t, at: now }
+  persist([...list, memory])
+  return { ok: true, memory }
+}
+
+/** Remove memories matching a free-text query (substring, either direction). */
+export function forgetMemories(query: string): SavedMemory[] {
+  const q = query.trim().replace(/[.。!,]+$/u, '').trim().toLowerCase()
+  if (!q) return []
+  const list = loadMemories()
+  const removed = list.filter((m) => {
+    const mt = m.text.toLowerCase()
+    return mt.includes(q) || q.includes(mt)
+  })
+  if (removed.length) persist(list.filter((m) => !removed.some((r) => r.id === m.id)))
+  return removed
+}
+
+export function clearMemories(): void { persist([]) }
+
+/**
+ * A system-message block of Martita's saved facts, for the general-chat LLM —
+ * loaded every session alongside the rolling ConversationSummary. Empty when
+ * nothing is stored. These are things she EXPLICITLY asked AbuAI to remember, so
+ * they are real grounding the model may use — NOT license to invent more.
+ */
+export function formatSavedMemoriesForLLM(
+  memories: SavedMemory[] = loadMemories(),
+  opts: { maxChars?: number } = {},
+): string {
+  if (!memories.length) return ''
+  // Issue i: HARD token budget so this never grows unbounded and fights the bundle
+  // shrink. Policy = RECENCY: most-recently-saved facts win; older ones drop when the
+  // budget is full. (Per-turn relevance ranking would need the live query, which is
+  // not available when the session is built once — recency is the honest bound here.)
+  const maxChars = opts.maxChars ?? 1200
+  const header = '═══ דברים ש-Martita ביקשה שתזכרי ═══'
+  const footer = 'אלה עובדות אמיתיות שהיא אמרה לך לזכור — מותר להשתמש בהן. אל תמציאי עובדות נוספות עליה.'
+  const NOTE_RESERVE = 48 // room for the "(ועוד N דברים ישנים יותר...)" line so the total stays under maxChars
+  const budget = Math.max(0, maxChars - header.length - footer.length - NOTE_RESERVE - 2)
+  // Recency: newest first. `.reverse()` first so that facts saved in the same
+  // millisecond (a tight loop) tie-break to insertion order NEWEST-first, since
+  // Array.sort is stable. Distinct timestamps still sort strictly by `at`.
+  const byRecent = [...memories].reverse().sort((a, b) => b.at - a.at)
+  const kept: string[] = []
+  let used = 0
+  for (const m of byRecent) {
+    const line = `- ${m.text}`
+    if (used + line.length + 1 > budget) break
+    kept.push(line)
+    used += line.length + 1
+  }
+  if (!kept.length) return ''
+  const dropped = byRecent.length - kept.length
+  const note = dropped > 0 ? `\n(ועוד ${dropped} דברים ישנים יותר ששמורים אצלי)` : ''
+  return `${header}\n${kept.join('\n')}${note}\n${footer}`
+}
+
+// ── Command detection (deterministic; runs before the LLM) ──
+export type MemoryCommand = 'save' | 'recall' | 'forget'
+
+// "תזכרי ש…" / "תרשמי לך ש…" / Spanish "recordá que…". The "ש"/"que" complementizer
+// is required, so a reminder ("תזכירי לי לקנות חלב") is NOT captured here.
+const SAVE_HE_RE = /^(?:תזכרי|תזכור|זכרי|תרשמי)\s+(?:לך\s+|לי\s+)?ש(.+)/u
+const SAVE_ES_RE = /^(?:record[aá]|acord[aá]te|anot[aá])\s+(?:de\s+)?que\s+(.+)/iu
+// "מה את זוכרת/יודעת עליי" / "qué te acordás de mí" — requires an ABOUT-ME marker so a
+// within-session "מה אמרתי קודם" is not captured.
+const RECALL_HE_RE = /(?:מה|אילו\s+דברים)\s+את\s+(?:זוכרת|יודעת)\s+(?:עלי+|על\s+עצמי|ממני)|מה\s+שמור\s+לך\s+עלי+/u
+const RECALL_ES_RE = /qu[eé]\s+(?:te\s+acord[aá]s|record[aá]s|sab[eé]s)\s+de\s+m[ií]/iu
+// "תשכחי ש… / את … / מ…" / "olvidate de …".
+const FORGET_HE_RE = /^(?:תשכחי|שכחי)\s+(?:ש|את\s+|מ)?(.+)/u
+const FORGET_ES_RE = /^olvid[aá](?:te)?\s+(?:de\s+)?(?:que\s+)?(.+)/iu
+
+export function memoryCommandType(text: string): MemoryCommand | null {
+  const t = text.trim()
+  if (SAVE_HE_RE.test(t) || SAVE_ES_RE.test(t)) return 'save'
+  if (FORGET_HE_RE.test(t) || FORGET_ES_RE.test(t)) return 'forget'
+  if (RECALL_HE_RE.test(t) || RECALL_ES_RE.test(t)) return 'recall'
+  return null
+}
+
+export function parseRememberFact(text: string): string | null {
+  const t = text.trim()
+  const m = t.match(SAVE_HE_RE) ?? t.match(SAVE_ES_RE)
+  return m?.[1]?.trim() ?? null
+}
+export function parseForgetQuery(text: string): string | null {
+  const t = text.trim()
+  const m = t.match(FORGET_HE_RE) ?? t.match(FORGET_ES_RE)
+  return m?.[1]?.trim() ?? null
+}

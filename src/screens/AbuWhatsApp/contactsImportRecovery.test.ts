@@ -52,11 +52,16 @@ describe('known contact ids', () => {
 
 // ─── Import validation ─────────────────────────────────────────────────────────
 
-describe('importContactsJSON — unknown id is rejected (#9)', () => {
-  it('fails when an item has an unknown id', () => {
+describe('importContactsJSON — id validation (#9): any SAFE id, no fixed allowlist', () => {
+  it('accepts a previously-"unknown" but SAFE id (store is the source of truth)', () => {
     const r = importContactsJSON(JSON.stringify([{ id: 'stranger', enabled: false, phoneE164: '' }]))
+    expect(r.ok).toBe(true)
+    expect(r.contacts[0]?.id).toBe('stranger')
+  })
+  it('rejects an UNSAFE id (spaces / punctuation / capitals)', () => {
+    const r = importContactsJSON(JSON.stringify([{ id: 'bad id!', enabled: false, phoneE164: '' }]))
     expect(r.ok).toBe(false)
-    expect(r.errors.some((e) => /unknown id/i.test(e))).toBe(true)
+    expect(r.errors.some((e) => /invalid id/i.test(e))).toBe(true)
     expect(r.contacts.length).toBe(0)
   })
 
@@ -85,12 +90,12 @@ describe('importContactsJSON — unknown id is rejected (#9)', () => {
   })
 })
 
-describe('upsertLocalContact — unknown id is rejected', () => {
-  it('refuses to save an unknown id', () => {
+describe('upsertLocalContact — UNSAFE id is rejected', () => {
+  it('refuses to save an unsafe id', () => {
     const s = new MemoryStorage()
-    const r = upsertLocalContact({ id: 'stranger', enabled: false, phoneE164: '' }, s)
+    const r = upsertLocalContact({ id: 'bad id!', enabled: false, phoneE164: '' }, s)
     expect(r.ok).toBe(false)
-    expect(r.errors.some((e) => /unknown contact id/i.test(e))).toBe(true)
+    expect(r.errors.some((e) => /invalid contact id/i.test(e))).toBe(true)
     expect(getLocalContacts(s)).toEqual([])
   })
 })
@@ -174,9 +179,16 @@ describe('operator setup UX — phone-friendly labels & feedback', () => {
 describe('operator entry & privacy guards (source contract)', () => {
   const indexSrc = fs.readFileSync(path.join(PROJECT_ROOT, 'src/screens/AbuWhatsApp/index.tsx'), 'utf8')
 
-  it('?operator=1 reliably opens setup', () => {
-    expect(indexSrc.includes("params.get('operator') === '1'")).toBe(true)
-    expect(indexSrc.includes('FamilyContactsSetup')).toBe(true)
+  it('the WhatsApp screen uses the canonical operator gate but NEVER renders the admin setup', () => {
+    // AbuWhatsApp reads the ONE canonical operator gate (for the tab bar)…
+    expect(indexSrc.includes('isOperatorMode')).toBe(true)
+    // …but the admin contacts editor is NOT a WhatsApp destination anymore —
+    // it lives only in Settings → Contact Management.
+    expect(indexSrc.includes('FamilyContactsSetup')).toBe(false)
+    // The canonical gate handles the ?operator=1 query param + persistence.
+    const gateSrc = fs.readFileSync(path.join(PROJECT_ROOT, 'src/services/operatorMode.ts'), 'utf8')
+    expect(gateSrc.includes("get('operator')")).toBe(true)
+    expect(gateSrc.includes("'abu-operator'")).toBe(true)
   })
 
   it('long-press is an additional (not the only) path to operator setup', () => {

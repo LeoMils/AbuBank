@@ -121,31 +121,25 @@ describe('T9: Self-listening guard', () => {
 })
 
 // ═══ TEST 10: STT routing ═══
-describe('T10: STT iPhone mp4 routing', () => {
+// T10: STT is SERVER-PROXY-ONLY. The iPhone-mp4-skips-Groq / Groq-400 / Groq-429 routing tested a
+// client-Groq STT path that was intentionally REMOVED (client VITE_GROQ_API_KEY secret). STT now goes
+// through /api/abuai-stt (OpenAI whisper-1, server-only). Updated to assert the NEW architecture (not
+// weakened); replacement is DEPLOYED-PROVEN by the TTS→STT round-trip (rc-acceptance-replacement-paths).
+describe('T10: STT server-proxy-only (Groq client path removed)', () => {
   const serviceSrc = fs.readFileSync(path.resolve(__dirname, 'service.ts'), 'utf8')
 
-  it('detects iPhone mp4 mime type', () => {
-    expect(serviceSrc).toContain('isIphoneMp4')
-  })
-
-  it('iPhone mp4 skips Groq', () => {
-    expect(serviceSrc).toContain('!isIphoneMp4')
-  })
-
-  it('falls to /api/abuai-stt server endpoint', () => {
+  it('transcribeAudio uses ONLY /api/abuai-stt (OpenAI whisper-1)', () => {
     expect(serviceSrc).toContain("'/api/abuai-stt'")
+    expect(serviceSrc).toContain("'whisper-1'")
   })
 
   it('server STT endpoint file exists', () => {
     expect(fs.existsSync(path.resolve(__dirname, '../../../api/abuai-stt.ts'))).toBe(true)
   })
 
-  it('Groq 400 triggers OpenAI fallback (not exhaust)', () => {
-    expect(serviceSrc).toContain('Groq disabled after 400')
-    expect(serviceSrc).toContain('Trying OpenAI server proxy')
-  })
-
-  it('Groq 429 triggers OpenAI fallback', () => {
-    expect(serviceSrc).toContain('Groq rate-limited, trying OpenAI server')
+  it('no client-Groq STT remains (removal is intentional + documented)', () => {
+    expect(serviceSrc).not.toContain('api.groq.com/openai/v1/audio')
+    expect(serviceSrc).not.toContain("'whisper-large-v3'")
+    expect(serviceSrc).toMatch(/Groq client-Whisper fallback was removed/i)
   })
 })

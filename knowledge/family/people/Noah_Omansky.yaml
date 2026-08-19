@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Noah Omansky
+hebrew_name: נוח אומנסקי
+aliases:
+- Noah
+- נוח
+relationship: close_friend
+relationship_hebrew: חבר קרוב מאוד
+role: חבר קרוב מאוד של מרטיטה, בעלה של לידיה
+location: כפר סבא
+gender: male
+notes: נוח אומנסקי, גר בכפר סבא, גיל ~90 (בקירוב). בעלה של לידיה. הכירו את המשפחה באולפן בן יהודה, נתניה.
+pronunciation:
+  es: noaj

@@ -1,0 +1,37 @@
+{
+  "$schema": "internal://abu/p2-register",
+  "schemaVersion": "p2/1",
+  "note": "Enumerated P2 set (§45). A P2 may remain only if explicitly classified and proven NOT to hide an intended-capability failure, a security/privacy failure, a safety failure, or P0/P1 severity. OPEN_P0=0, OPEN_P1=0 (from RELEASE_LOCK + acceptance).",
+  "p2": [
+    {
+      "id": "p2-checkpoint-capsule-harness-dirty",
+      "description": "The current Certification Capsule was sealed from a working tree with pre-existing dirty harness files (WORKTREE_HARNESS_CLEAN=false) — it is a CHECKPOINT capsule, not a FINAL clean-isolated one.",
+      "affectedCapability": "certification-reproducibility",
+      "whyP2NotP0P1": "Product evidence (PREVIEW-class RC acceptance) is independent of harness-tree cleanliness; the capsule honestly records the flag. No product capability is affected.",
+      "masksIntendedCapability": false,
+      "releaseRelevance": "blocks FINAL_RELEASE_CERTIFICATION_CAPSULE, not the product verdict",
+      "machineClosable": true,
+      "disposition": "close by re-sealing from a clean isolated worktree/checkout (obligation final-release-capsule)"
+    },
+    {
+      "id": "p2-provenance-version-binding-not-artifact-native",
+      "description": "RUNTIME_SOURCE_SHA provenance is PROVEN_BY_VERSION_BINDING (buildVersion↔commit), not artifact-native (no build-injected commit SHA in /api/health).",
+      "affectedCapability": "deployment-provenance",
+      "whyP2NotP0P1": "The binding is authoritative for the current RC (deployed buildVersion maps to a unique commit with zero runtime drift). Artifact-native SHA is a strengthening, not a correctness fix.",
+      "masksIntendedCapability": false,
+      "releaseRelevance": "productize build-injected SHA into the NEXT materialization/Production path",
+      "machineClosable": true,
+      "disposition": "add a build-injected commit SHA to /api/health in the next runtime build"
+    },
+    {
+      "id": "p2-distributed-rate-limit-absent",
+      "description": "Rate limiting is instance-local (per serverless instance) only; a distributed cross-instance limit is not provisioned.",
+      "affectedCapability": "billing-abuse-boundary",
+      "whyP2NotP0P1": "Per-request caps + per-IP sliding window + per-instance cost circuit breaker are shipped and reduce single-source amplification; the residual (a distributed flood across instances) is bounded per-instance and labelled precisely, not overstated as global.",
+      "masksIntendedCapability": false,
+      "releaseRelevance": "hardening; owner infra decision (distributed-rate-limit-infra)",
+      "machineClosable": false,
+      "disposition": "OWNER: provision shared KV if abuse is observed"
+    }
+  ]
+}

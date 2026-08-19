@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Pupa Yavnir
+hebrew_name: פופה יווניר
+aliases:
+- Pupa
+- פופה
+relationship: close_friend
+relationship_hebrew: חברה מהמנדוסה
+role: חברה של מרטיטה ממנדוסה
+location: בת ים
+gender: female
+notes: פופה יווניר, גרה בבת ים. חלק מחוג מנדוסה. בעלה דניאל יווניר ז"ל (רופא).
+pronunciation:
+  es: pupa

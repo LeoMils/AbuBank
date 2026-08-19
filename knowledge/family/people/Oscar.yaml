@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: extended_family
+canonical_name: Oscar
+hebrew_name: אוסקר
+aliases: []
+relationship: nephew_in_law_of_husband
+relationship_hebrew: בעלה של רוסיטה
+role: בעלה של רוסיטה
+location: לוס אנג'לס, ארה"ב
+gender: male
+spouse: רוסיטה
+name_uncertain: true
+notes: בעלה של רוסיטה. שם משפחה לא מאומת — תמלול קודם נשמע כמו 'Hastman' אך אין לקבוע. ⚠ אדם נפרד מ'אוסקר מינושין' (בעלה של מירטה) — לא לאחד.
+pronunciation:
+  es: oscar

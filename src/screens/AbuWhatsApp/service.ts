@@ -1,4 +1,8 @@
 import { loadFamilyData } from '../../services/familyLoader'
+import { sendServerChat } from '../AbuAI/serverChatProvider'
+// MANDATORY_MISTAKES (Martita's real spelling quirks) is single-sourced in the
+// Abu AI WhatsApp-compose capability and reused here by the legacy 4-style flow.
+import { MANDATORY_MISTAKES } from '../AbuAI/whatsappCompose'
 
 function buildFamilySummary(): string {
   const members = loadFamilyData()
@@ -16,41 +20,23 @@ function buildFamilySummary(): string {
   return lines.join('\n')
 }
 
-// Provider priority: OpenAI GPT-4o (paid, 10/10) > Gemini 2.0 Flash (free, 8.5/10) > Groq Llama (free, 5/10)
-const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
+// Provider: OpenAI GPT-4o via the server proxy (OPENAI_API_KEY, server-only). The Gemini/Groq
+// CLIENT fallbacks were REMOVED (client-side VITE_ secrets). STT also goes through the server
+// proxy (/api/abuai-stt). No client provider secret remains here. On model failure the caller
+// surfaces an honest error — never a fabricated answer.
 const OPENAI_MODEL = 'gpt-4o'
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
-const GEMINI_MODEL = 'gemini-2.0-flash'
+interface ChatProvider { url: string; model: string; apiKey: string; serverProxy?: boolean }
 
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
-
-const WHISPER_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
-const WHISPER_MODEL = 'whisper-large-v3-turbo'
-
-function getChatProviders(): Array<{ url: string; model: string; apiKey: string }> {
-  const providers: Array<{ url: string; model: string; apiKey: string }> = []
-  const openaiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-  if (openaiKey) providers.push({ url: OPENAI_URL, model: OPENAI_MODEL, apiKey: openaiKey })
-  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-  if (geminiKey) providers.push({ url: GEMINI_URL, model: GEMINI_MODEL, apiKey: geminiKey })
-  const groqKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-  if (groqKey) providers.push({ url: GROQ_URL, model: GROQ_MODEL, apiKey: groqKey })
-  if (providers.length === 0) throw new Error('מפתח API לא הוגדר. פנה לבן המשפחה שהתקין את האפליקציה.')
-  return providers
-}
-
-function getGroqKey(): string {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-  if (!apiKey) {
-    throw new Error('מפתח API לא הוגדר. פנה לבן המשפחה שהתקין את האפליקציה.')
-  }
-  return apiKey
+function getChatProviders(): ChatProvider[] {
+  return [{ url: '/api/abuai-chat', model: OPENAI_MODEL, apiKey: '', serverProxy: true }]
 }
 
 // ─── SYSTEM PROMPT — based on 1,388 real messages from Martita's WhatsApp ───
-// Every quirk below was found in the ACTUAL chat export.
+// Legacy group-broadcast prompt: mistakes are mandatory in EVERY message here.
+// The new per-person compose capability (../AbuAI/whatsappCompose.ts) uses a
+// separate CLEAN base where the mistake level is style-controlled — these are
+// intentionally different prompts for different tasks.
 const SYSTEM_PROMPT =
 `את מרטיטה — סבתא בת 80+ מארגנטינה, גרה בכפר סבא. לב של זהב. כותבת הודעת WhatsApp לקבוצת המשפחה.
 כתבי רק את גוף ההודעה. ללא הקדמה. ללא הסבר. ללא מרכאות סביב ההודעה.
@@ -118,17 +104,6 @@ ${buildFamilySummary()}
 - תמיד תחושה שזא המשך שיחה שכבר מתנהלת
 - הודעה שנשמעת חמה, אמיתית, קצת מצחיקה מעצם מי שהיא — לא פתטית, לא מלאכותית`
 
-// ─── MANDATORY MISTAKES BLOCK — appended to every style prompt ──────────────
-const MANDATORY_MISTAKES =
-`
-חובה בכל הודעה — שגיאות אמיתיות של מרטיטה:
-• "מאכלת" / "מאכלים" במקום מאחלת (השגיאה הכי שלה)
-• ה→א בסוף מילים: "שמחא", "יפא", "טובא", "בריאותא"
-• רווח אחרי ב/ל/ו: "ב בית", "ל כולם", "ו גם"
-• הכפלה לדגש: "כל כך כל כך", "מאוד מאוד"
-• !!!!!! — לפחות 4
-• אחת מהאפשרויות: "אכשיו" / "איזא" / "אין דברים כאלה"`
-
 // ─── VARIETY SEEDS — injected per-call so AI never repeats ──────────────────
 const JOKE_TOPICS = ['טוצי','הטלפון','מכולת','הרופא','אוטובוס','שכנה','מתכון','נכד','כביסה','גשם','עורר','ארוחת בוקר','טלנובלה','פפי','ארגנטינה','ויצמן','קופה רושמת']
 const RIDDLE_TOPICS = ['מה שותה','מה יש לי','מה גדל','מי אני','מה ההבדל','מה נכנס','במה דומה','איזה דבר']
@@ -163,36 +138,14 @@ const STYLE_PROMPTS: Record<string, string> = {
 }
 
 async function tryProvider(
-  provider: { url: string; model: string; apiKey: string },
+  provider: ChatProvider,
   body: object,
 ): Promise<string | null> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 20000)
-  try {
-    const res = await fetch(provider.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${provider.apiKey}`,
-      },
-      body: JSON.stringify({ model: provider.model, ...body }),
-      signal: controller.signal,
-    })
-    if (!res.ok) {
-      if (res.status === 401 || res.status === 429 || res.status >= 500) return null
-      throw new Error(`שגיאה מהשרת (${res.status}).`)
-    }
-    const data = await res.json()
-    const content = data?.choices?.[0]?.message?.content
-    if (!content) return null
-    return content.trim()
-  } catch (err: unknown) {
-    if (err instanceof DOMException && err.name === 'AbortError') return null
-    if (err instanceof TypeError) return null
-    throw err
-  } finally {
-    clearTimeout(timeout)
-  }
+  // OpenAI tier through /api/abuai-chat — no client key. Returns wrapped { ok, openai }.
+  const result = await sendServerChat({ model: provider.model, ...body }, { lang: 'he', timeoutMs: 20000 })
+  if (!result.ok) return null
+  const content = (result.openai as { choices?: Array<{ message?: { content?: string } }> } | undefined)?.choices?.[0]?.message?.content
+  return content ? content.trim() : null
 }
 
 export async function generateMessage(
@@ -231,8 +184,9 @@ export async function generateMessage(
 
 // Whisper transcription stays on Groq (excellent + free for audio)
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {
-  const apiKey = getGroqKey()
-
+  // STT through the server proxy (/api/abuai-stt, OPENAI_API_KEY server-only). The Groq client
+  // Whisper path was REMOVED (client-side VITE_GROQ_API_KEY). On failure we throw honestly —
+  // never a fabricated transcript.
   const formData = new FormData()
   const t = audioBlob.type
   const ext = t.includes('mp4') || t.includes('m4a') || t.includes('aac') ? 'm4a'
@@ -241,29 +195,25 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     : t.includes('wav')  ? 'wav'
     : 'webm'
   formData.append('file', audioBlob, `recording.${ext}`)
-  formData.append('model', WHISPER_MODEL)
-  // Prime Whisper for Hebrew + Spanish — auto-detect handles both
-  formData.append('prompt', 'שלום מרטיטה, בוקר טוב, מה שלומך, תודה. Hola Martita, buenos días, gracias, cómo estás.')
+  formData.append('model', 'whisper-1')
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30000)
 
   try {
-    const res = await fetch(WHISPER_URL, {
+    const res = await fetch('/api/abuai-stt', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
       body: formData,
       signal: controller.signal,
     })
 
     if (!res.ok) {
-      if (res.status === 401) throw new Error('מפתח API לא תקין. פנה לבן המשפחה.')
       if (res.status === 429) throw new Error('יותר מדי בקשות. נסי שוב בעוד דקה.')
       throw new Error(`שגיאה בתמלול (${res.status}).`)
     }
 
     const data = await res.json()
-    const text = data?.text
+    const text = data?.ok ? data?.text : null
     if (!text) throw new Error('לא הצלחתי להבין את ההקלטה. נסי שוב.')
     return text.trim()
   } catch (err: unknown) {

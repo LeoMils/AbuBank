@@ -4,7 +4,7 @@
  * Tests the full calendar CRUD pipeline with localStorage simulation.
  * Every test verifies actual storage state, not just function return values.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
 import {
   loadAppointments,
   saveAppointments,
@@ -15,6 +15,14 @@ import {
 import { getTodayEvents, getTomorrowEvents, getWeekEvents, getEventsByDate } from '../AbuAI/tools'
 import { parseLocally } from './localParser'
 import { containsCreateVerb } from './voiceAutoCreate'
+
+// CONTROLLED CLOCK (§11 Calendar controlled-time): freeze Date ONLY (not timers)
+// to a BIRTHDAY-FREE window so recurring family birthdays the product correctly
+// injects (e.g. Mor 08-10) do not make "empty week" assertions flaky. Nearest
+// birthdays to 06-15 are 04-19 and 07-29 — the ±8-day window is clean.
+vi.useFakeTimers({ toFake: ['Date'] })
+vi.setSystemTime(new Date('2026-06-15T09:00:00'))
+afterAll(() => vi.useRealTimers())
 
 // ─── localStorage stub ───────────────────────────────────────────────────
 let storage: Record<string, string> = {}
@@ -30,10 +38,10 @@ beforeEach(() => {
 })
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
-const today = new Date().toISOString().split('T')[0]!
-const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]! })()
-const nextWeek = (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.toISOString().split('T')[0]! })()
-const lastWeek = (() => { const d = new Date(); d.setDate(d.getDate() - 3); return d.toISOString().split('T')[0]! })()
+const today = new Date().toLocaleDateString('sv-SE')
+const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toLocaleDateString('sv-SE') })()
+const nextWeek = (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.toLocaleDateString('sv-SE') })()
+const lastWeek = (() => { const d = new Date(); d.setDate(d.getDate() - 3); return d.toLocaleDateString('sv-SE') })()
 
 function seedEvents() {
   const events: Omit<Appointment, 'id' | 'color'>[] = [

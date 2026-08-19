@@ -61,9 +61,9 @@ export const RELEASE_CANDIDATE_EXPECTATIONS: QaExpectation[] = [
     expectedSaveAllowed: true, expectedCardPolicy: 'confirm', criticality: 'P0',
   },
   {
-    id: 'rc-08', utterance: 'מחר בשמונה בבוקר אני רוצה להיפגש עם אבא של אנאבל',
+    id: 'rc-08', utterance: 'מחר בשמונה בבוקר אני רוצה להיפגש עם הבן של מור',
     expectedRoute: 'appointment_create', expectedDatePolicy: 'tomorrow', expectedTime: '08:00',
-    expectedRelationPolicy: 'אבא של אנאבל', expectedPersonPolicy: 'ambiguous',
+    expectedRelationPolicy: 'הבן של מור', expectedPersonPolicy: 'ambiguous',
     expectedSaveAllowed: false, expectedCardPolicy: 'blocked', criticality: 'P0',
   },
   {
@@ -135,7 +135,8 @@ export const RELEASE_CANDIDATE_EXPECTATIONS: QaExpectation[] = [
   {
     id: 'rc-19', utterance: 'תזכירי לי להתקשר לחברה של מור בערב',
     expectedRoute: 'reminder_create', expectedDatePolicy: 'any', expectedTime: null,
-    expectedRelationPolicy: 'present', expectedPersonPolicy: 'missing',
+    // "החברה של מור" = Mor's partner Yael (RC4 partner alias) — resolved honestly.
+    expectedRelationPolicy: 'present', expectedPersonPolicy: 'any_honest',
     expectedSaveAllowed: null, expectedCardPolicy: 'any', criticality: 'P1',
   },
 

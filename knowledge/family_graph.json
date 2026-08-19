@@ -1,0 +1,339 @@
+{
+  "version": 1,
+  "source": "generated from family_data.json; editable structured graph",
+  "people": [
+    {
+      "id": "מרטיטה",
+      "hebrew": "מרטיטה",
+      "canonical": "Martita",
+      "aliases": [
+        "אבו",
+        "Abu",
+        "Abuela",
+        "מרתה"
+      ],
+      "gender": "female",
+      "parents": [],
+      "children": [
+        "מור",
+        "לאו"
+      ],
+      "spouses": [],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "מרטיטה"
+      ]
+    },
+    {
+      "id": "פפי",
+      "hebrew": "פפי",
+      "canonical": "Papi",
+      "aliases": [
+        "Pepe",
+        "פאפי"
+      ],
+      "gender": "male",
+      "parents": [],
+      "children": [],
+      "spouses": [],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "פפי"
+      ]
+    },
+    {
+      "id": "מור",
+      "hebrew": "מור",
+      "canonical": "Mor",
+      "aliases": [
+        "מורי"
+      ],
+      "gender": "female",
+      "parents": [
+        "מרטיטה"
+      ],
+      "children": [
+        "אופיר",
+        "איילון",
+        "עילי",
+        "אדר"
+      ],
+      "spouses": [],
+      "exSpouses": [
+        "רפי"
+      ],
+      "partners": [
+        "יעל"
+      ],
+      "noteRefs": [
+        "מור"
+      ]
+    },
+    {
+      "id": "לאו",
+      "hebrew": "לאו",
+      "canonical": "Leo",
+      "aliases": [
+        "לאון",
+        "ליאו"
+      ],
+      "gender": "male",
+      "parents": [
+        "מרטיטה"
+      ],
+      "children": [
+        "עדי",
+        "נועם"
+      ],
+      "spouses": [],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "לאו"
+      ]
+    },
+    {
+      "id": "רפי",
+      "hebrew": "רפי",
+      "canonical": "Raphi",
+      "aliases": [
+        "Rafi"
+      ],
+      "gender": "male",
+      "parents": [],
+      "children": [
+        "אופיר",
+        "איילון",
+        "עילי",
+        "אדר"
+      ],
+      "spouses": [],
+      "exSpouses": [
+        "מור"
+      ],
+      "partners": [],
+      "noteRefs": [
+        "רפי"
+      ]
+    },
+    {
+      "id": "יעל",
+      "hebrew": "יעל",
+      "canonical": "Yael",
+      "aliases": [],
+      "gender": "female",
+      "parents": [],
+      "children": [],
+      "spouses": [],
+      "exSpouses": [],
+      "partners": [
+        "מור"
+      ],
+      "noteRefs": [
+        "יעל"
+      ]
+    },
+    {
+      "id": "אופיר",
+      "hebrew": "אופיר",
+      "canonical": "Ofir",
+      "aliases": [],
+      "gender": "female",
+      "parents": [
+        "מור",
+        "רפי"
+      ],
+      "children": [
+        "אנאבל",
+        "ארי"
+      ],
+      "spouses": [
+        "גלעד"
+      ],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "אופיר"
+      ]
+    },
+    {
+      "id": "איילון",
+      "hebrew": "איילון",
+      "canonical": "Ayalon",
+      "aliases": [
+        "Eylon",
+        "אילון"
+      ],
+      "gender": "male",
+      "parents": [
+        "מור",
+        "רפי"
+      ],
+      "children": [],
+      "spouses": [],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "איילון"
+      ]
+    },
+    {
+      "id": "עילי",
+      "hebrew": "עילי",
+      "canonical": "Eili",
+      "aliases": [
+        "Ilai",
+        "עילאי",
+        "איליי"
+      ],
+      "gender": "male",
+      "parents": [
+        "מור",
+        "רפי"
+      ],
+      "children": [],
+      "spouses": [
+        "ירדן"
+      ],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "עילי"
+      ]
+    },
+    {
+      "id": "אדר",
+      "hebrew": "אדר",
+      "canonical": "Adar",
+      "aliases": [
+        "הדר"
+      ],
+      "gender": "male",
+      "parents": [
+        "מור",
+        "רפי"
+      ],
+      "children": [],
+      "spouses": [],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "אדר"
+      ]
+    },
+    {
+      "id": "עדי",
+      "hebrew": "עדי",
+      "canonical": "Adi",
+      "aliases": [
+        "אדי"
+      ],
+      "gender": "male",
+      "parents": [
+        "לאו"
+      ],
+      "children": [],
+      "spouses": [],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "עדי"
+      ]
+    },
+    {
+      "id": "נועם",
+      "hebrew": "נועם",
+      "canonical": "Noam",
+      "aliases": [],
+      "gender": "male",
+      "parents": [
+        "לאו"
+      ],
+      "children": [],
+      "spouses": [],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "נועם"
+      ]
+    },
+    {
+      "id": "ירדן",
+      "hebrew": "ירדן",
+      "canonical": "Yarden",
+      "aliases": [],
+      "gender": "female",
+      "parents": [],
+      "children": [],
+      "spouses": [
+        "עילי"
+      ],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "ירדן"
+      ]
+    },
+    {
+      "id": "גלעד",
+      "hebrew": "גלעד",
+      "canonical": "Gilad",
+      "aliases": [],
+      "gender": "male",
+      "parents": [],
+      "children": [
+        "אנאבל",
+        "ארי"
+      ],
+      "spouses": [
+        "אופיר"
+      ],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "גלעד"
+      ]
+    },
+    {
+      "id": "אנאבל",
+      "hebrew": "אנאבל",
+      "canonical": "Anabel",
+      "aliases": [
+        "Annabel",
+        "אנבל"
+      ],
+      "gender": "female",
+      "parents": [
+        "אופיר",
+        "גלעד"
+      ],
+      "children": [],
+      "spouses": [],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "אנאבל"
+      ]
+    },
+    {
+      "id": "ארי",
+      "hebrew": "ארי",
+      "canonical": "Ari",
+      "aliases": [],
+      "gender": "female",
+      "parents": [
+        "אופיר",
+        "גלעד"
+      ],
+      "children": [],
+      "spouses": [],
+      "exSpouses": [],
+      "partners": [],
+      "noteRefs": [
+        "ארי"
+      ]
+    }
+  ]
+}

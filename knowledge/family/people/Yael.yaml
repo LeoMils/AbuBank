@@ -1,0 +1,13 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: children_related
+canonical_name: Yael
+hebrew_name: יעל
+aliases: []
+relationship: daughter_partner
+relationship_hebrew: בת זוג של מור
+partner: מור
+location: הוד השרון
+gender: female
+notes: גרה עם מור בוילה בהוד השרון. אוהבת יין אדום.
+pronunciation:
+  es: yael

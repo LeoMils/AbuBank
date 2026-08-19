@@ -1,0 +1,1226 @@
+{
+  "generated_from": "code (LIVE_TOOL_SCHEMAS, Screen enum, family_data.json, liveSession switch)",
+  "summary": {
+    "tools": 17,
+    "toolParamCells": 30,
+    "toolFailurePaths": 35,
+    "screens": 15,
+    "entities": 65,
+    "entityOrderedPairs": 4160,
+    "declaredUnbuiltCapabilities": 6,
+    "layer1Cells": 97,
+    "layer1Passed": 97,
+    "layer1Failed": [],
+    "totalCellsSeeded": 183
+  },
+  "realtimeEventCount": 19,
+  "totalRows": 172,
+  "executedRows": 166,
+  "cellCoveragePct": 96.5,
+  "rows": [
+    {
+      "cell": "wait_for_user.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "wait_for_user.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "resolve_contact.name.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "resolve_contact.name.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "resolve_contact.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "resolve_contact.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "read_calendar.date.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "read_calendar.date.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "read_calendar.from.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "read_calendar.from.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "read_calendar.to.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "read_calendar.to.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "read_calendar.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "read_calendar.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "prepare_calendar_event.title.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "prepare_calendar_event.title.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "prepare_calendar_event.date.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "prepare_calendar_event.date.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "prepare_calendar_event.time.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "prepare_calendar_event.time.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "prepare_calendar_event.participant.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "prepare_calendar_event.participant.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "prepare_calendar_event.location.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "prepare_calendar_event.location.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "prepare_calendar_event.notes.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "prepare_calendar_event.notes.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "prepare_calendar_event.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "prepare_calendar_event.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "correct_calendar_field.field.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "correct_calendar_field.field.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "correct_calendar_field.field.enum",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "enum is a non-empty string list"
+    },
+    {
+      "cell": "correct_calendar_field.value.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "correct_calendar_field.value.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "correct_calendar_field.participant.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "correct_calendar_field.participant.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "correct_calendar_field.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "correct_calendar_field.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "confirm_calendar_event.forRevision.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "confirm_calendar_event.forRevision.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "confirm_calendar_event.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "confirm_calendar_event.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "cancel_calendar_event.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "cancel_calendar_event.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "update_calendar_event.date.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "update_calendar_event.date.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "update_calendar_event.field.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "update_calendar_event.field.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "update_calendar_event.field.enum",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "enum is a non-empty string list"
+    },
+    {
+      "cell": "update_calendar_event.value.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "update_calendar_event.value.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "update_calendar_event.title_contains.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "update_calendar_event.title_contains.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "update_calendar_event.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "update_calendar_event.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "whatsapp_draft.recipient.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "whatsapp_draft.recipient.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "whatsapp_draft.message.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "whatsapp_draft.message.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "whatsapp_draft.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "whatsapp_draft.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "phone_call.recipient.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "phone_call.recipient.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "phone_call.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "phone_call.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "cancel_communication.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "cancel_communication.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "get_current_info.query.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "get_current_info.query.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "get_current_info.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "get_current_info.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "people_lookup.want.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "people_lookup.want.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "people_lookup.want.enum",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "enum is a non-empty string list"
+    },
+    {
+      "cell": "people_lookup.person.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "people_lookup.person.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "people_lookup.other.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "people_lookup.other.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "people_lookup.relation.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "people_lookup.relation.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "people_lookup.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "people_lookup.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "history_lookup.topic.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "history_lookup.topic.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "history_lookup.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "history_lookup.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "care_concern.query.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "care_concern.query.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "care_concern.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "care_concern.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "remember.fact.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "remember.fact.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "remember.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "remember.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "set_reminder.text.type",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a valid JSON-schema type"
+    },
+    {
+      "cell": "set_reminder.text.desc",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "param has a non-empty description"
+    },
+    {
+      "cell": "set_reminder.required_subset",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "every required param exists in properties"
+    },
+    {
+      "cell": "set_reminder.rejects_unknown",
+      "dimension": "tool_schema_contract",
+      "layer": 1,
+      "status": "pass",
+      "detail": "additionalProperties:false (unknown params rejected)"
+    },
+    {
+      "cell": "wait_for_user.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "wait_for_user.no_args",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "resolve_contact.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "resolve_contact.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "read_calendar.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "prepare_calendar_event.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "prepare_calendar_event.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "correct_calendar_field.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "correct_calendar_field.out_of_enum_value",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "confirm_calendar_event.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "confirm_calendar_event.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "cancel_calendar_event.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "cancel_calendar_event.no_args",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "update_calendar_event.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "update_calendar_event.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "update_calendar_event.out_of_enum_value",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "whatsapp_draft.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "whatsapp_draft.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "phone_call.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "phone_call.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "cancel_communication.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "cancel_communication.no_args",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "get_current_info.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "get_current_info.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "people_lookup.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "people_lookup.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "people_lookup.out_of_enum_value",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "history_lookup.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "history_lookup.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "care_concern.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "care_concern.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "remember.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "remember.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "set_reminder.missing_required_param",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "set_reminder.unknown_param_rejected",
+      "dimension": "tool_failure_path",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by toolArgFuzz.test (generated args, contract holds)"
+    },
+    {
+      "cell": "screen.Home",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.Opening",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.Offline",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.Error",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.Admin",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.AbuAI",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.AbuWhatsApp",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.Settings",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.AbuGames",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.AbuWeather",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.AbuCalendar",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.AbuBank",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.AbuNews",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.FamilyGallery",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "screen.FamilyRecord",
+      "dimension": "screen_render",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by e2e/screen-invariants.spec (browser vs prod preview, all 15)"
+    },
+    {
+      "cell": "event.AUDIO_ROUTE_ENDED",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.MIC_NOT_FOUND",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.MIC_PERMISSION_DENIED",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.NO_AUDIO_EVENT",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.OPENAI_API_KEY_INVALID",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.OPENAI_API_KEY_MISSING",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.REALTIME_PROVIDER_FAILED",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.REALTIME_QUOTA",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.TOKEN_NETWORK_ERROR",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.conversation.item.input_audio_transcription.completed",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.error",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.input_audio_buffer.speech_started",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.input_audio_buffer.speech_stopped",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.response.audio.delta",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.response.audio_transcript.done",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.response.created",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.response.done",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.response.output_audio.delta",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "event.response.output_audio_transcript.done",
+      "dimension": "realtime_event_invariant",
+      "layer": 2,
+      "status": "pass",
+      "detail": "executed by liveSession.test event-invariant block"
+    },
+    {
+      "cell": "decline.order_a_taxi",
+      "dimension": "declared_unbuilt_capability",
+      "layer": 3,
+      "status": "not_run",
+      "detail": "model must decline warmly, never pretend"
+    },
+    {
+      "cell": "decline.send_an_email",
+      "dimension": "declared_unbuilt_capability",
+      "layer": 3,
+      "status": "not_run",
+      "detail": "model must decline warmly, never pretend"
+    },
+    {
+      "cell": "decline.set_a_medication_alarm",
+      "dimension": "declared_unbuilt_capability",
+      "layer": 3,
+      "status": "not_run",
+      "detail": "model must decline warmly, never pretend"
+    },
+    {
+      "cell": "decline.transfer_money",
+      "dimension": "declared_unbuilt_capability",
+      "layer": 3,
+      "status": "not_run",
+      "detail": "model must decline warmly, never pretend"
+    },
+    {
+      "cell": "decline.drive_or_navigate",
+      "dimension": "declared_unbuilt_capability",
+      "layer": 3,
+      "status": "not_run",
+      "detail": "model must decline warmly, never pretend"
+    },
+    {
+      "cell": "decline.play_a_game",
+      "dimension": "declared_unbuilt_capability",
+      "layer": 3,
+      "status": "not_run",
+      "detail": "model must decline warmly, never pretend"
+    }
+  ]
+}

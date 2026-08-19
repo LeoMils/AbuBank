@@ -1,0 +1,389 @@
+{
+  "$schema": "internal://abu/rc-reachability-observation",
+  "harness": "scripts/observe-rc-reachability.mjs",
+  "base": "https://abu-bank-f3dpms0ta-leos-projects-d3c04c09.vercel.app",
+  "expectVersion": "0.286.0-earonly",
+  "buildMatches": true,
+  "observedAtBuild": "0.286.0-earonly",
+  "evidenceClass": "PREVIEW_READ_ONLY",
+  "uiSurfacesObserved": 18,
+  "toolsDeployedArtifactPresent": 16,
+  "reconInputs": [
+    {
+      "id": "AbuAI",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "AbuBank",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "AbuCalendar",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "AbuGames",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "AbuNews",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "AbuWeather",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "AbuWhatsApp",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "Admin",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "DiagnosticOverlay",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "Error",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "FamilyGallery",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "FamilyPhones",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "FamilyRecord",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "Home",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "LIVE_AUDIO_TUNE_V2",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "LIVE_BARGE_IN_TRUNCATE",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "LIVE_CLASSIFIED_MONITOR",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "LIVE_PREAMBLE_TWO_RESPONSE",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "LIVE_PREFETCH_WARM",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "Live",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "ONLINE_GENERAL_SEARCH",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "ONLINE_PREFETCH_WARM",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": true,
+      "validExplanation": "ships OFF by measured code default / awaiting owner-ear promotion (deviceGatedFlags.ts / online/flags.ts)"
+    },
+    {
+      "id": "Offline",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "Opening",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "Settings",
+      "inStatic": true,
+      "observedReachable": true,
+      "enablingStateExercised": true
+    },
+    {
+      "id": "cancel_calendar_event",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "cancel_communication",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "care_concern",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "confirm_calendar_event",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "correct_calendar_field",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "get_current_info",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "history_lookup",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "people_lookup",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "phone_call",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "prepare_calendar_event",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "read_calendar",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "remember",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "resolve_contact",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "set_reminder",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "update_calendar_event",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    },
+    {
+      "id": "whatsapp_draft",
+      "inStatic": true,
+      "observedReachable": false,
+      "enablingStateExercised": false
+    }
+  ],
+  "observed": {
+    "AbuAI": true,
+    "AbuBank": true,
+    "AbuCalendar": true,
+    "AbuGames": true,
+    "AbuNews": true,
+    "AbuWeather": true,
+    "AbuWhatsApp": true,
+    "Admin": true,
+    "DiagnosticOverlay": true,
+    "Error": true,
+    "FamilyGallery": true,
+    "FamilyPhones": true,
+    "FamilyRecord": true,
+    "Home": true,
+    "LIVE_AUDIO_TUNE_V2": true,
+    "LIVE_BARGE_IN_TRUNCATE": true,
+    "LIVE_CLASSIFIED_MONITOR": true,
+    "LIVE_PREAMBLE_TWO_RESPONSE": true,
+    "LIVE_PREFETCH_WARM": true,
+    "Live": true,
+    "ONLINE_GENERAL_SEARCH": true,
+    "ONLINE_PREFETCH_WARM": false,
+    "Offline": true,
+    "Opening": true,
+    "Settings": true,
+    "cancel_calendar_event": false,
+    "cancel_communication": false,
+    "care_concern": false,
+    "confirm_calendar_event": false,
+    "correct_calendar_field": false,
+    "get_current_info": false,
+    "history_lookup": false,
+    "people_lookup": false,
+    "phone_call": false,
+    "prepare_calendar_event": false,
+    "read_calendar": false,
+    "remember": false,
+    "resolve_contact": false,
+    "set_reminder": false,
+    "update_calendar_event": false,
+    "whatsapp_draft": false
+  },
+  "exercised": {
+    "AbuAI": true,
+    "AbuBank": true,
+    "AbuCalendar": true,
+    "AbuGames": true,
+    "AbuNews": true,
+    "AbuWeather": true,
+    "AbuWhatsApp": true,
+    "Admin": true,
+    "DiagnosticOverlay": true,
+    "Error": true,
+    "FamilyGallery": true,
+    "FamilyPhones": true,
+    "FamilyRecord": true,
+    "Home": true,
+    "LIVE_AUDIO_TUNE_V2": true,
+    "LIVE_BARGE_IN_TRUNCATE": true,
+    "LIVE_CLASSIFIED_MONITOR": true,
+    "LIVE_PREAMBLE_TWO_RESPONSE": true,
+    "LIVE_PREFETCH_WARM": true,
+    "Live": true,
+    "ONLINE_GENERAL_SEARCH": true,
+    "ONLINE_PREFETCH_WARM": true,
+    "Offline": true,
+    "Opening": true,
+    "Settings": true,
+    "cancel_calendar_event": false,
+    "cancel_communication": false,
+    "care_concern": false,
+    "confirm_calendar_event": false,
+    "correct_calendar_field": false,
+    "get_current_info": false,
+    "history_lookup": false,
+    "people_lookup": false,
+    "phone_call": false,
+    "prepare_calendar_event": false,
+    "read_calendar": false,
+    "remember": false,
+    "resolve_contact": false,
+    "set_reminder": false,
+    "update_calendar_event": false,
+    "whatsapp_draft": false
+  },
+  "deployedArtifactPresent": {
+    "cancel_calendar_event": true,
+    "cancel_communication": true,
+    "care_concern": true,
+    "confirm_calendar_event": true,
+    "correct_calendar_field": true,
+    "get_current_info": true,
+    "history_lookup": true,
+    "people_lookup": true,
+    "phone_call": true,
+    "prepare_calendar_event": true,
+    "read_calendar": true,
+    "remember": true,
+    "resolve_contact": true,
+    "set_reminder": true,
+    "update_calendar_event": true,
+    "whatsapp_draft": true
+  },
+  "notes": {
+    "LIVE_AUDIO_TUNE_V2": "active in deployed build-flags.json",
+    "LIVE_BARGE_IN_TRUNCATE": "active in deployed build-flags.json",
+    "LIVE_CLASSIFIED_MONITOR": "active in deployed build-flags.json",
+    "LIVE_PREAMBLE_TWO_RESPONSE": "active in deployed build-flags.json",
+    "LIVE_PREFETCH_WARM": "active in deployed build-flags.json",
+    "ONLINE_GENERAL_SEARCH": "active in deployed build-flags.json",
+    "ONLINE_PREFETCH_WARM": "OFF in deployed build-flags.json (by design)",
+    "cancel_calendar_event": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "cancel_communication": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "care_concern": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "confirm_calendar_event": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "correct_calendar_field": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "get_current_info": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "history_lookup": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "people_lookup": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "phone_call": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "prepare_calendar_event": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "read_calendar": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "remember": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "resolve_contact": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "set_reminder": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "update_calendar_event": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)",
+    "whatsapp_draft": "deployed-artifact-present in RC bundle; live firing not exercised (needs driven realtime conversation + §12 safe side-effect env)"
+  }
+}

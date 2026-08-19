@@ -1,0 +1,29 @@
+{
+  "$schema": "internal://abu/rc-acceptance-tool-sequencing",
+  "when": "2026-08-19T12:35:32.171Z",
+  "contract": "tool_call → (no assistant semantic output) → tool_result → final grounded answer",
+  "rawEventOracle": {
+    "class": "CODE (unit-proven) — DEVICE when a real FlightRecorder trace is supplied",
+    "sensitivityProof": {
+      "detectsPreamble": true,
+      "violationTypes": [
+        "SPOKEN_PREAMBLE"
+      ]
+    },
+    "deviceTrace": {
+      "available": false,
+      "note": "no raw FlightRecorder trace supplied — oracle is unit-proven (CODE) and ready for a device trace"
+    }
+  },
+  "goldenTranscriptCrossCheck": {
+    "class": "transcript (real gpt-realtime golden turns)",
+    "available": true,
+    "turns": 18,
+    "toolTurns": 12,
+    "preambleInToolTurn": [],
+    "repeatedSentences": [],
+    "goldenPass": true,
+    "pass": true
+  },
+  "verdict": "CONTRACT_HELD (oracle proven; real golden corroborates)"
+}

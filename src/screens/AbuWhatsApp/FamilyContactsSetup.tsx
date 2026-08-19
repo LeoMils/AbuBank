@@ -12,13 +12,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { FAMILY_QUICK_FACES, type FamilyQuickFace } from './familyContacts.private'
 import {
   clearLocalContacts,
+  describeImportText,
   exportContactsJSON,
   getLocalContacts,
   importContactsJSON,
   maskPhonePreview,
+  migrateContactsFormat,
   removeLocalContact,
   setLocalContacts,
+  sha256Hex,
   upsertLocalContact,
+  type ImportDebug,
   type LocalFamilyContact,
 } from './familyContactsStorage'
 import { computeInitials, isValidPhoneE164 } from './familyQuickFaces'
@@ -64,6 +68,15 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
   useEffect(() => {
     setDrafts(initialDrafts(stored))
   }, [stored])
+
+  // On open, opportunistically upgrade any legacy-format or partially-corrupt
+  // storage to the current schema (and salvage recoverable entries). Runs once,
+  // operator-only, and only refreshes the view if something actually changed.
+  useEffect(() => {
+    const r = migrateContactsFormat()
+    if (r.migrated) setStored(getLocalContacts())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const storedById = useMemo(() => {
     const m = new Map<string, LocalFamilyContact>()
@@ -177,7 +190,7 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
           fontFamily: "'DM Sans',monospace", direction: 'ltr',
         }}
       >
-        v{APP_VERSION.version} · {APP_VERSION.buildLabel}
+        build v{APP_VERSION.version}
       </div>
 
       {(() => {
@@ -223,6 +236,36 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
         <br />
         אחרי שמירת מספר, יופיעו כפתורי וואטסאפ ושיחה.
       </p>
+
+      {/* Import is the FAST path (paste JSON once) — shown OPEN at the TOP so it
+          is never buried under the per-contact rows. Manual entry stays below. */}
+      <details
+        data-testid="setup-advanced"
+        open
+        style={{
+          marginTop: 4,
+          padding: '10px 12px',
+          borderRadius: 14,
+          background: 'rgba(20,184,166,0.06)',
+          border: '1px solid rgba(20,184,166,0.30)',
+        }}
+      >
+        <summary style={{ cursor: 'pointer', fontSize: 15, fontWeight: 700, color: TEAL }}>
+          ⚡ ייבוא מהיר — הדבקת JSON (מומלץ)
+        </summary>
+        <AdvancedJsonPanel
+          stored={stored}
+          onImport={handleAdvancedImport}
+          onClearAll={handleClearAll}
+          onViewFamily={onClose}
+          confirmClearAll={confirmClearAll}
+          setConfirmClearAll={setConfirmClearAll}
+        />
+      </details>
+
+      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', fontFamily: "'Heebo',sans-serif", marginTop: 2 }}>
+        או הזיני ידנית למטה:
+      </div>
 
       <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {PERSON_SCAFFOLD.map((person) => {
@@ -347,53 +390,98 @@ export function FamilyContactsSetup({ onClose }: FamilyContactsSetupProps) {
         })}
       </ul>
 
-      <details
-        data-testid="setup-advanced"
-        style={{
-          marginTop: 4,
-          padding: '8px 12px',
-          borderRadius: 12,
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        <summary style={{ cursor: 'pointer', fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>מתקדם</summary>
-        <AdvancedJsonPanel
-          stored={stored}
-          onImport={handleAdvancedImport}
-          onClearAll={handleClearAll}
-          confirmClearAll={confirmClearAll}
-          setConfirmClearAll={setConfirmClearAll}
-        />
-      </details>
     </div>
   )
 }
 
 function AdvancedJsonPanel({
-  stored, onImport, onClearAll, confirmClearAll, setConfirmClearAll,
+  stored, onImport, onClearAll, onViewFamily, confirmClearAll, setConfirmClearAll,
 }: {
   stored: LocalFamilyContact[]
   onImport: (jsonText: string) => { ok: boolean; messages: string[] }
   onClearAll: () => void
+  onViewFamily: () => void
   confirmClearAll: boolean
   setConfirmClearAll: (v: boolean) => void
 }) {
   const [draft, setDraft] = useState<string>('')
   const [banner, setBanner] = useState<{ ok: boolean; messages: string[] } | null>(null)
+  const [dbg, setDbg] = useState<ImportDebug | null>(null)
+  const [sha, setSha] = useState<string>('')
 
   function handleExport() {
     setDraft(exportContactsJSON(stored))
     setBanner({ ok: true, messages: ['יוצא לחלון. אל תשתפי בלוגים.'] })
   }
+  function runDiagnostics(text: string) {
+    setDbg(describeImportText(text))
+    setSha('…')
+    // SHA-256 of the EXACT pasted string (not the cleaned one) so the operator
+    // can prove byte-for-byte what is on the device vs. what they meant to paste.
+    sha256Hex(text).then((h) => setSha(h || '(WebCrypto unavailable)')).catch(() => setSha('(error)'))
+  }
   function handleImport() {
     const r = onImport(draft)
     setBanner(r)
-    if (r.ok) setDraft('')
+    if (r.ok) {
+      setDraft(''); setDbg(null)
+      // Import is the ONE-TIME setup step. On success, go straight to the family
+      // board so it becomes the home IMMEDIATELY — no extra tap. The board's
+      // actionable bubbles are the confirmation. (Reachable again via long-press.)
+      onViewFamily()
+    }
+    // On failure, AUTO-surface the full diagnostics (offset, byte-identity,
+    // SHA-256, context) so the operator never has to find the debug button.
+    else runDiagnostics(draft)
+  }
+  function handleDebug() {
+    runDiagnostics(draft)
+  }
+  function handleDownloadExact() {
+    // Save the EXACT pasted string to a file so its raw bytes can be inspected
+    // off-device (hex editor / diff). No sanitation, no re-encoding beyond the
+    // Blob's UTF-8 serialization of the in-memory string.
+    try {
+      const blob = new Blob([draft], { type: 'application/json;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'abu-contacts-paste.json'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch { /* download best-effort */ }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+      {dbg && (
+        <div
+          data-testid="setup-adv-debug-box"
+          style={{
+            fontSize: 12, lineHeight: 1.6, padding: '10px 12px', borderRadius: 10,
+            background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.15)',
+            color: 'rgba(255,255,255,0.85)', direction: 'ltr', textAlign: 'left',
+            fontFamily: "ui-monospace,'SFMono-Regular',Menlo,monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+          }}
+        >
+          {`raw length:   ${dbg.rawLength}\n`}
+          {`clean length: ${dbg.cleanedLength}\n`}
+          {`byte-identical to paste: ${dbg.identicalToRaw ? 'YES (sanitation changed nothing)' : 'NO (see fixed: below)'}\n`}
+          {`sha-256(paste): ${sha}\n`}
+          {`JSON.parse: ${dbg.parseError ? 'ERROR — ' + dbg.parseError : 'OK ✓'}\n`}
+          {dbg.parseError && dbg.parseErrorOffset !== null
+            ? `error at: offset ${dbg.parseErrorOffset}${dbg.parseErrorLine !== null ? ` (line ${dbg.parseErrorLine} column ${dbg.parseErrorColumn})` : ''}\n`
+            : ''}
+          {dbg.parseError && dbg.parseErrorOffset !== null ? `char at offset: ${dbg.charAtOffset}\n` : ''}
+          {dbg.parseError && dbg.parseErrorOffset !== null ? `100 before: ${JSON.stringify(dbg.contextBefore)}\n` : ''}
+          {dbg.parseError && dbg.parseErrorOffset !== null ? `100 after:  ${JSON.stringify(dbg.contextAfter)}\n` : ''}
+          {dbg.notes.length ? `fixed: ${dbg.notes.join('; ')}\n` : ''}
+          {`first100: ${JSON.stringify(dbg.first100)}\n`}
+          {`last100:  ${JSON.stringify(dbg.last100)}`}
+        </div>
+      )}
       {banner && (
         <div
           data-testid={banner.ok ? 'setup-adv-banner-ok' : 'setup-adv-banner-err'}
@@ -405,6 +493,20 @@ function AdvancedJsonPanel({
           }}
         >
           {banner.messages.map((m, i) => <div key={i}>{m}</div>)}
+          {banner.ok && (
+            <button
+              type="button"
+              data-testid="setup-adv-view-family"
+              onClick={onViewFamily}
+              style={{
+                marginTop: 10, minHeight: 44, width: '100%', padding: '0 16px', borderRadius: 12,
+                border: `1.5px solid ${TEAL}88`,
+                background: `linear-gradient(145deg, ${TEAL}, #0d9488)`,
+                color: 'white', fontFamily: "'Heebo',sans-serif", fontSize: 15, fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >צפי במשפחה עכשיו ←</button>
+          )}
         </div>
       )}
       {/* Import instructions */}
@@ -426,6 +528,9 @@ function AdvancedJsonPanel({
         onChange={(e) => setDraft(e.target.value)}
         rows={8}
         spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="none"
+        autoComplete="off"
         placeholder={'דוגמה:\n[\n  { "id": "yael", "enabled": true, "phoneE164": "05XXXXXXXX" },\n  { "id": "mor", "enabled": true, "phoneE164": "05XXXXXXXX" }\n]'}
         style={{
           width: '100%', minHeight: 140,
@@ -453,6 +558,34 @@ function AdvancedJsonPanel({
             cursor: draft.trim().length === 0 ? 'default' : 'pointer',
           }}
         >ייבוא אנשי קשר</button>
+        <button
+          type="button"
+          data-testid="setup-adv-debug"
+          onClick={handleDebug}
+          disabled={draft.trim().length === 0}
+          style={{
+            minHeight: 40, padding: '0 14px', borderRadius: 10,
+            border: '1px solid rgba(255,255,255,0.18)',
+            background: 'rgba(255,255,255,0.05)',
+            color: draft.trim().length === 0 ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.65)',
+            fontFamily: "'Heebo',sans-serif", fontSize: 13, fontWeight: 600,
+            cursor: draft.trim().length === 0 ? 'default' : 'pointer',
+          }}
+        >🔎 בדיקת JSON</button>
+        <button
+          type="button"
+          data-testid="setup-adv-download"
+          onClick={handleDownloadExact}
+          disabled={draft.length === 0}
+          style={{
+            minHeight: 40, padding: '0 14px', borderRadius: 10,
+            border: '1px solid rgba(255,255,255,0.18)',
+            background: 'rgba(255,255,255,0.05)',
+            color: draft.length === 0 ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.65)',
+            fontFamily: "'Heebo',sans-serif", fontSize: 13, fontWeight: 600,
+            cursor: draft.length === 0 ? 'default' : 'pointer',
+          }}
+        >⬇️ הורדת הטקסט המדויק</button>
         <button
           type="button"
           data-testid="setup-adv-export"

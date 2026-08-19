@@ -13,14 +13,14 @@
   font-size: var(--abu-font-size-section);
   font-weight: var(--abu-font-weight-section);
   line-height: var(--abu-line-height-section);
-  color: var(--abu-color-text-primary);
+  color: var(--abu-color-text-on-dark);
 }
 
 .hint {
   font-size: var(--abu-font-size-caption);
   font-weight: var(--abu-font-weight-caption);
   line-height: var(--abu-line-height-caption);
-  color: var(--abu-color-text-secondary);
+  color: var(--abu-color-text-on-dark-secondary);
   max-width: 280px;
 }
 
@@ -28,7 +28,8 @@
   width: var(--abu-tile-icon);
   height: var(--abu-tile-icon);
   border-radius: 50%;
-  background: var(--abu-color-primary);
+  background: var(--abu-brand-gold);
+  box-shadow: 0 0 24px rgba(201,168,76,0.45);
   animation: pulseAnim var(--abu-dur-pulse) ease-in-out infinite;
 }
 
@@ -39,6 +40,6 @@
   }
   50% {
     opacity: 0.5;
-    transform: scale(1.15);
+    transform: scale(1.08);
   }
 }

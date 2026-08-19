@@ -4,7 +4,7 @@
  * Failures here = user-visible bugs on the phone.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterAll, vi } from 'vitest'
 import { tryGroundedAnswer } from './service'
 import { routePersonalQuery } from './router'
 import { resolvePronouns } from './pronounResolver'
@@ -13,6 +13,12 @@ import { isCreateIntent, isConfirm, isCancel } from './calendarCreate'
 import { detectReminderIntent } from '../AbuCalendar/reminders/reminderParser'
 import { detectIntent, getProactiveSeed } from './proactive'
 import type { ChatMessage } from './types'
+
+// CONTROLLED CLOCK (§11): freeze Date only, to a birthday-free window (06-15;
+// nearest birthdays 04-19 / 07-29) so recurring family birthdays the product
+// correctly injects don't make the "empty calendar week" assertion flaky.
+vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-06-15T09:00:00'))
+afterAll(() => vi.useRealTimers())
 
 function msg(role: 'user' | 'assistant', content: string): ChatMessage {
   return { id: String(Math.random()), role, content, timestamp: Date.now() }
@@ -58,7 +64,7 @@ describe('FAMILY — 30 scenarios', () => {
     ['מי זה רפי?', null],                      // 27
     ['מי זאת אילנית?', null],                  // 28
     // Not found
-    ['מי זה דניאל?', /לא מכירה|לא יודעת/],    // 29
+    ['מי זה בוריס?', /לא מכירה|לא יודעת/],    // 29 ("דניאל" is now a real person — Daniel Yavnir; Boris is genuinely unknown)
     // Relationship between
     ['מה הקשר בין מור ללאו?', null],           // 30
   ]
@@ -83,7 +89,7 @@ describe('CALENDAR — 20 scenarios', () => {
     ['מה יש לי מחר?', 'calendar_tomorrow'],
     ['מה יש לי השבוע?', 'calendar_upcoming'],
     ['מתי הרופא?', 'calendar_upcoming'],
-    ['מתי התור הבא שלי?', 'calendar_upcoming'],
+    ['מתי התור הבא שלי?', 'calendar_next'],
     ['יש לי משהו ביום חמישי?', 'calendar_exact_date'],
     ['מה התוכנית להיום?', 'calendar_today'],
     ['מה קורה השבוע?', 'calendar_upcoming'],
@@ -158,9 +164,9 @@ describe('FOLLOW-UPS — 20 scenarios', () => {
     expect(resolvePronouns('מתי יום ההולדת שלה?', h).resolved).toContain('מור')
   })
   it('60. "אליו" pronoun after male', () => {
-    const h = [msg('user', 'מי זה אופיר?'), msg('assistant', 'נכד.')]
+    const h = [msg('user', 'מי זה עילי?'), msg('assistant', 'נכד.')]
     const r = resolvePronouns('תזכירי לי להתקשר אליו', h)
-    expect(r.resolved).toContain('אופיר')
+    expect(r.resolved).toContain('עילי')
   })
   it('61. "אליה" pronoun after female', () => {
     const h = [msg('user', 'מי זאת יעל?'), msg('assistant', 'בת זוג.')]
@@ -176,9 +182,9 @@ describe('FOLLOW-UPS — 20 scenarios', () => {
   it('63. most recent user mention wins', () => {
     const h = [
       msg('user', 'מי זה נועם?'), msg('assistant', 'נכד.'),
-      msg('user', 'מי זה אופיר?'), msg('assistant', 'נכד.'),
+      msg('user', 'מי זה עילי?'), msg('assistant', 'נכד.'),
     ]
-    expect(resolvePronouns('תזכירי לי להתקשר אליו', h).personName).toBe('אופיר')
+    expect(resolvePronouns('תזכירי לי להתקשר אליו', h).personName).toBe('עילי')
   })
   it('64. gender filter — אליה skips males', () => {
     const h = [

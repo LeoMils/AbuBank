@@ -189,47 +189,32 @@ describe('P0.1 — processVoiceTranscript end-to-end', () => {
   })
 })
 
-describe('P0.1 — index.tsx wiring contract', () => {
+describe('P0.1 — processVoiceTranscript is the retained parser (post D7)', () => {
   const SRC = fs.readFileSync(path.resolve(__dirname, 'index.tsx'), 'utf8')
 
-  it('imports processVoiceTranscript', () => {
-    expect(SRC.includes("import { processVoiceTranscript }")).toBe(true)
+  // D7 · one voice engine: the in-screen capture that used to feed
+  // processVoiceTranscript was removed; the calendar mic routes to Abu AI, whose
+  // cognitiveRuntime runs the create/confirm/persist flow on the SAME store. The
+  // parser + auto-create CONTRACT is preserved and still fully exercised by the
+  // pure "processVoiceTranscript end-to-end" block above (auto_created / needs_am_pm
+  // / needs_clarification / show_confirm_card / failed_to_save / not_calendar /
+  // low_confidence). What changed is only WHERE the transcript comes from.
+  it('the calendar screen no longer wires an in-screen transcript pipeline', () => {
+    expect(SRC.includes('processVoiceTranscript(')).toBe(false)
+    expect(SRC.includes('transcribeCalendarAudio')).toBe(false)
+    expect(SRC.includes('setScreen(Screen.AbuAI)')).toBe(true)
   })
 
-  it('voice transcript path calls processVoiceTranscript and handles each action branch', () => {
-    expect(SRC.includes('processVoiceTranscript(')).toBe(true)
-    // The four action branches must all be present in source.
-    expect(SRC.includes("case 'auto_created'")).toBe(true)
-    expect(SRC.includes("case 'needs_am_pm'")).toBe(true)
-    expect(SRC.includes("case 'needs_clarification'")).toBe(true)
-    expect(SRC.includes("case 'show_confirm_card'")).toBe(true)
-    expect(SRC.includes("case 'failed_to_save'")).toBe(true)
-    expect(SRC.includes("case 'failed_to_understand'")).toBe(true)
-    expect(SRC.includes("case 'not_calendar'")).toBe(true)
-    expect(SRC.includes("case 'low_confidence'")).toBe(true)
-  })
-
-  it('after auto_created or successful handleVoiceConfirm, selectedDay jumps to the appointment date (visibility fix)', () => {
-    // Source contract: `setSelectedDay(...appointment.date)` must
-    // appear inside both the auto-create branch and handleVoiceConfirm.
-    expect(/setSelectedDay\(.*\.appointment\.date\)/.test(SRC)).toBe(true)
-    expect(/setSelectedDay\(result\.appointment\.date\)/.test(SRC) ||
-           /setSelectedDay\(r\.appointment\.date\)/.test(SRC)).toBe(true)
-  })
-
-  it('low-confidence drop is no longer a 4-second silent dismiss', () => {
-    // The old branch was: setVoiceStatus('לא הבנתי בדיוק...'); setTimeout(...4000...) → drop.
-    // The new branch must either keep VoiceCard visible OR surface a
-    // failure toast. We assert the silent setTimeout dismiss for the
-    // low-confidence path is gone.
-    expect(SRC.includes("setVoiceStatus('לא הבנתי בדיוק. נסי להגיד יום, שעה ומה האירוע.')")).toBe(false)
+  it('the pure auto-create contract is still owned by voiceAutoCreate.ts (exercised above)', () => {
+    const r = processVoiceTranscript('תקבעי פגישה עם לאו מחר בעשר בבוקר', TODAY)
+    expect(r.action).toBe('auto_created')
   })
 })
 
 describe('P0.1 — hard rules still preserved', () => {
   it('AbuAI useRealtime is enabled with grounding', () => {
     const src = fs.readFileSync(path.resolve(__dirname, '..', 'AbuAI', 'index.tsx'), 'utf8')
-    expect(src.includes('const useRealtime = true')).toBe(true)
+    expect(src.includes('const useRealtime = isRealtimeBetaEnabled()')).toBe(true)
   })
 
   it('no production AbuAI source reads VITE_OPENAI_API_KEY', () => {

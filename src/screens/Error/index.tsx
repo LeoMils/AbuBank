@@ -23,15 +23,7 @@ export function ErrorScreen() {
         type="button"
         onClick={handleGoHome}
         aria-label="חזרה למסך הבית"
-        style={{
-          marginTop: 8, padding: '16px 36px', borderRadius: 14,
-          background: 'linear-gradient(135deg, #D4A853 0%, #C9A84C 100%)',
-          color: 'rgba(0,0,0,0.85)', fontSize: 18,
-          fontWeight: 700, border: 'none', cursor: 'pointer',
-          fontFamily: "'Heebo',sans-serif",
-          minHeight: 56, minWidth: 160,
-          boxShadow: '0 4px 20px rgba(201,168,76,0.40)',
-        }}
+        className={styles.homeButton}
       >
         חזרה הביתה
       </button>

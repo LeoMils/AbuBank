@@ -1,0 +1,21 @@
+{
+  "mission": "Close every AUTOMATABLE Critical/High Abu AI gap through the real application path with permanent regression coverage; classify everything else honestly (physical / live-provider / deployed-telemetry blockers).",
+  "denominator_note": "100% = the fixed Production-Candidate definition. It is NOT redefined down to a slice. Physical iPhone, live OpenAI Realtime account+mic, and deployed-telemetry distributions are explicit blockers, not scope reductions.",
+  "branch": "rc5/cognitive-architecture-and-acceptance",
+  "head_at_start": "1c9e7506e1d196a6dda61308bb58520c05cb5648",
+  "build_at_start": "0.172.0-realtime-exactly-once-dedup-rc",
+  "build_now": "0.173.0-realtime-truthmonitor-forward-hebrew-fp-rc",
+  "certified_adr": "docs/engineering-os/adr/ADR-0001-abu-realtime-conversational-architecture.md",
+  "authority_model": "model owns TALK; control plane owns STATE/lifecycle/ordering/revision/generation; deterministic kernel/tools own PRODUCT TRUTH; UI projects committed state only.",
+  "doNot": ["merge main", "deploy production", "add a second comm classifier / second conversational brain", "fabricate device or live-provider results", "mislabel injected events as microphone evidence"],
+  "baseline_evidence": {
+    "typecheck": "PASS (tsc --noEmit exit 0)",
+    "full_suite": "422 files / 11938 passed / 2 todo (vitest run, 2026-08-04)",
+    "realtime_slice": "81 passed (control plane, kernel adapter, truth monitor, function bridge, live-path injected-event journey)"
+  },
+  "hard_environment_blockers_this_session": [
+    "No physical iPhone -> real mic->model->tool->audio round-trip, Hebrew warmth/prosody, on-device latency feel are PHYSICAL_ONLY.",
+    "No live OpenAI Realtime account/session in this environment -> the configuration tournament (VAD/voice/model/eagerness) and true audio-native duplex cannot be executed; only injected-event production-faithful proofs are possible.",
+    "No access to a deployed instrumented candidate with real traffic -> baseline latency/failure DISTRIBUTIONS cannot be honestly collected; fabricating them is forbidden."
+  ]
+}

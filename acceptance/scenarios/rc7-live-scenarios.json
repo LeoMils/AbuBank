@@ -1,0 +1,62 @@
+{
+  "_doc": "RC7 live-acceptance scenarios. Consumed by acceptance/rc7LiveAcceptance.harness.ts when provider keys exist. Deterministic-path categories (family/calendar/memory) are ALSO covered by acceptance/rc6TextPath.harness.ts which runs WITHOUT keys.",
+  "rubric": {
+    "scale": "0-3 per dimension; a conversation PASSES only if every dimension >= 2 AND no hard-fail",
+    "dimensions": ["humanity", "warmth", "intelligence", "usefulness", "family_awareness", "calendar_correctness", "memory_continuity", "hebrew_naturalness", "spanish_naturalness", "emotional_intelligence", "companion_feeling", "non_robotic"],
+    "hard_fail_any": ["robotic", "database-like", "childish", "customer-support phrase", "raw tool output", "raw LLM output", "stale current fact", "hallucinated current fact", "family graph contradiction", "fake calendar save"]
+  },
+  "target_counts": {
+    "family": 75, "calendar": 75, "boredom_loneliness": 75, "papi_emotional": 50,
+    "online_current": 75, "general_knowledge": 75, "mixed_he_es": 50,
+    "correction_followup": 50, "long_context": 50, "_total": 575
+  },
+  "coverage_note": "Deterministic categories (family, calendar, memory/follow-up) are executed key-free by rc6TextPath.harness.ts. The categories below that depend on real-model prose or live network (online_current, general_knowledge, papi_emotional wording, mixed_he_es prose, long_context coherence) are BLOCKED_BY_KEYS and run here when credentials exist.",
+  "suites": [
+    {
+      "id": "family", "needs": "deterministic", "conversations": [
+        { "id": "fam-seed-1", "turns": ["מי זאת מור?", "ספרי לי עליה", "ועוד?", "ומי סבתא רבתא של אנאבל?", "מי דוד של אופיר?"] },
+        { "id": "fam-seed-2", "turns": ["מי החברה של מור?", "ספרי לי על יעל", "ומי בני הדוד של אופיר?"] }
+      ]
+    },
+    {
+      "id": "calendar", "needs": "deterministic", "conversations": [
+        { "id": "cal-seed-1", "turns": ["תקבעי מחר בשלוש עם מוטי", "כן", "מה קבעתי מחר?", "מה יש לי מחר בארבע?", "ומה יש לפני ארבע?"] }
+      ]
+    },
+    {
+      "id": "boredom_loneliness", "needs": "live_llm", "conversations": [
+        { "id": "lone-seed-1", "turns": ["משעמם לי", "לא יודעת", "קצת בודד לי היום", "תשארי איתי"] }
+      ]
+    },
+    {
+      "id": "papi_emotional", "needs": "live_llm", "conversations": [
+        { "id": "papi-seed-1", "turns": ["אני מתגעגעת לפאפי", "הוא תמיד היה שר בבוקר", "מה השעה?"] }
+      ]
+    },
+    {
+      "id": "online_current", "needs": "live_network", "conversations": [
+        { "id": "on-seed-1", "turns": ["מה מזג האוויר מחר?", "ומה חדש בעולם?", "אילו סרטים יש בכפר סבא?"] }
+      ]
+    },
+    {
+      "id": "general_knowledge", "needs": "live_llm", "conversations": [
+        { "id": "gk-seed-1", "turns": ["ספרי לי על המהפכה הצרפתית", "כן, תמשיכי", "ומה קרה אחר כך?"] }
+      ]
+    },
+    {
+      "id": "mixed_he_es", "needs": "live_llm", "conversations": [
+        { "id": "es-seed-1", "turns": ["contame de Leo", "¿y quién es la hija de Mor?", "dale, seguí"] }
+      ]
+    },
+    {
+      "id": "correction_followup", "needs": "deterministic", "conversations": [
+        { "id": "corr-seed-1", "turns": ["מי זאת מור?", "לא לזה התכוונתי", "תחזרי למור", "עזבי"] }
+      ]
+    },
+    {
+      "id": "long_context", "needs": "live_llm", "conversations": [
+        { "id": "long-seed-1", "turns": ["בוקר טוב", "מה נשמע", "ספרי לי על מור", "ועוד?", "ראית את נועם?", "אני קצת עייפה", "אני מתגעגעת לפאפי", "טוב. תקבעי לי רופא מחר בארבע", "כן", "מה קבעתי?", "תודה לך", "לילה טוב"] }
+      ]
+    }
+  ]
+}

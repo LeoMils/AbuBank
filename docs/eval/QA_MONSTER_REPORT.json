@@ -1,0 +1,184 @@
+{
+  "$schema": "internal://abu/qa-monster",
+  "mode": "rc",
+  "target": "https://abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+  "when": "2026-08-19T12:36:56.067Z",
+  "identity": {
+    "RUNTIME_SOURCE_SHA": "4bb263e",
+    "CERTIFICATION_HARNESS_SHA": "df12de8b472b2f35f292b23e7e1dd928eb2190e3",
+    "EVIDENCE_GENERATION_SHA": "df12de8b472b2f35f292b23e7e1dd928eb2190e3",
+    "DEPLOYED_BUILD_ID": "0.294.0-privauth",
+    "DEPLOYED_ARTIFACT_HOST": "abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+    "CONTROL_PLANE_VERSION": "cp_bfccc899",
+    "note": "RUNTIME_SOURCE_SHA is the last non-test runtime commit (the deployed bundle source); the harness SHA is HEAD. Test/config/doc commits after a deploy change the evaluator identity, not the runtime."
+  },
+  "worktree": {
+    "dirtyTotal": 84,
+    "dirtyRuntime": [],
+    "WORKTREE_RUNTIME_CLEAN": true
+  },
+  "verdicts": {
+    "PRODUCT_CANDIDATE_VERDICT": "GO",
+    "QA_SYSTEM_VERDICT": "READY",
+    "RELEASE_PROMOTION_VERDICT": "ELIGIBLE_PENDING_OWNER",
+    "productizationFloor": {
+      "B1_orchestrator": "DONE",
+      "machineClosableRemaining": 0,
+      "omitted": 0,
+      "externalBlocked": 1,
+      "B2_B13": "DONE"
+    }
+  },
+  "exit": {
+    "code": 0,
+    "state": "RC_ELIGIBLE",
+    "reason": "PRODUCT=GO QA_SYSTEM=READY remaining=0 → ELIGIBLE_PENDING_OWNER",
+    "machineClosableUnknown": 0,
+    "machineClosableRemaining": 0
+  },
+  "verdict": "GO",
+  "counts": {
+    "areas": 9,
+    "pass": 9,
+    "fail": 0,
+    "AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0
+  },
+  "areas": [
+    {
+      "area": "typecheck",
+      "cmd": "npm run typecheck",
+      "pass": true,
+      "exit": 0,
+      "evidence": "CODE",
+      "ms": 10761,
+      "verdict": "PASS",
+      "resultFile": null,
+      "evidencePresent": true,
+      "tail": "> abu-bank@30.14.0 typecheck | > tsc --noEmit"
+    },
+    {
+      "area": "unit-suite",
+      "cmd": "npx vitest run",
+      "pass": true,
+      "exit": 0,
+      "evidence": "CODE",
+      "ms": 39307,
+      "verdict": "PASS",
+      "resultFile": null,
+      "evidencePresent": true,
+      "tail": "      Tests  13678 passed | 1 skipped | 2 todo (13681) |    Start at  15:34:15 |    Duration  38.02s (transform 45.04s, setup 23.05s, import 149.76s, tests 190.00s, environment 164ms)"
+    },
+    {
+      "area": "security-scan",
+      "cmd": "npx tsx scripts/scan-deployed-secrets.ts https://abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 4263,
+      "verdict": "PASS",
+      "resultFile": "docs/engineering-os/qa/deployed-secret-exposure.json",
+      "evidencePresent": true,
+      "tail": " | === ALL CLEAN (1/1 clean) === | wrote docs/engineering-os/qa/deployed-secret-exposure.json"
+    },
+    {
+      "area": "calendar",
+      "cmd": "node scripts/rc-acceptance-calendar.mjs https://abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 10716,
+      "verdict": "PROVEN_PASS",
+      "resultFile": "docs/eval/RC_ACCEPTANCE_CALENDAR.json",
+      "evidencePresent": true,
+      "tail": " | === PROVEN_PASS  7/7 === | wrote docs/eval/RC_ACCEPTANCE_CALENDAR.json"
+    },
+    {
+      "area": "whatsapp",
+      "cmd": "npx tsx scripts/rc-acceptance-whatsapp.mjs https://abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 4373,
+      "verdict": "PROVEN_PASS",
+      "resultFile": "docs/eval/RC_ACCEPTANCE_WHATSAPP.json",
+      "evidencePresent": true,
+      "tail": " | === PROVEN_PASS  5/5 === | wrote docs/eval/RC_ACCEPTANCE_WHATSAPP.json"
+    },
+    {
+      "area": "current-info-freshness",
+      "cmd": "npx tsx scripts/rc-acceptance-temporal.mjs https://abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 12734,
+      "verdict": "GROUNDING_HONEST · LIVE-FACT FRESHNESS CERTIFIED (weather/fx) · other temporal = decline-or-gap",
+      "resultFile": "docs/eval/RC_ACCEPTANCE_TEMPORAL.json",
+      "evidencePresent": true,
+      "tail": "super-bowl: HONEST_DECLINE (no dated source → declines, never stale) | === GROUNDING_HONEST · LIVE-FACT FRESHNESS CERTIFIED (weather/fx) · other temporal = decline-or-gap === | wrote docs/eval/RC_ACCEPTANCE_TEMPORAL.json"
+    },
+    {
+      "area": "replacement-paths",
+      "cmd": "node scripts/rc-acceptance-replacement-paths.mjs https://abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 5045,
+      "verdict": "PROVEN_PASS",
+      "resultFile": "docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json",
+      "evidencePresent": true,
+      "tail": " | === PROVEN_PASS  4/4 === | wrote docs/eval/RC_ACCEPTANCE_REPLACEMENT_PATHS.json"
+    },
+    {
+      "area": "tool-sequencing",
+      "cmd": "npx tsx scripts/rc-acceptance-tool-sequencing.mjs",
+      "pass": true,
+      "exit": 0,
+      "evidence": "CODE+golden",
+      "ms": 1453,
+      "verdict": "CONTRACT_HELD (oracle proven; real golden corroborates)",
+      "resultFile": "docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json",
+      "evidencePresent": true,
+      "tail": "real golden: 12 tool-turns · preamble-in-tool-turn=0 · repeated=0 · goldenPass=true | === CONTRACT_HELD (oracle proven; real golden corroborates) === | wrote docs/eval/RC_ACCEPTANCE_TOOL_SEQUENCING.json"
+    },
+    {
+      "area": "historical-corpus",
+      "cmd": "node scripts/rc-acceptance-historical-corpus.mjs https://abu-bank-pnu9wuotb-leos-projects-d3c04c09.vercel.app",
+      "pass": true,
+      "exit": 0,
+      "evidence": "PREVIEW",
+      "ms": 83279,
+      "verdict": {
+        "HISTORICAL_OWNER_ESCAPES_TOTAL": 9,
+        "NOW_MACHINE_DETECTABLE": 9,
+        "REPLAYED_AND_CLOSED": 6,
+        "NOT_REPLAYABLE_WITH_REASON": 3,
+        "STILL_OPEN": 0,
+        "AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO": 0
+      },
+      "resultFile": "docs/eval/RC_HISTORICAL_CORPUS.json",
+      "evidencePresent": true,
+      "tail": "ESCAPES total=9  detectable=9  closed=6  not-replayable=3  STILL_OPEN=0 | north-star AUTOMATABLE_DEFECT_ESCAPES_DISCOVERED_BY_LEO (still open) = 0 | wrote docs/eval/RC_HISTORICAL_CORPUS.json"
+    }
+  ],
+  "economy": {
+    "tier": "rc",
+    "wallClockMs": 172529,
+    "deterministicMs": 51521,
+    "networkMs": 120410,
+    "networkAreaCount": 6,
+    "perAreaMs": {
+      "typecheck": 10761,
+      "unit-suite": 39307,
+      "security-scan": 4263,
+      "calendar": 10716,
+      "whatsapp": 4373,
+      "current-info-freshness": 12734,
+      "replacement-paths": 5045,
+      "tool-sequencing": 1453,
+      "historical-corpus": 83279
+    },
+    "note": "MEASURED wall-clock/area timings from THIS run. No monetary SLO is asserted (OWNER sets spend). Wall-clock targets are configurable; a tier over target is a QA-system finding, not a license to reduce assurance."
+  },
+  "note": "Machine state is authoritative. Prose is generated FROM this and cannot promote a NO_GO / NOT_YET. A green area roll-up is NOT release promotion — see verdicts.RELEASE_PROMOTION_VERDICT. Production deploy + old-credential revocation are OWNER actions.",
+  "runtimeMs": 172531
+}

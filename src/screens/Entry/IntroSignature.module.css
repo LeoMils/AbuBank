@@ -1,0 +1,43 @@
+/* The Abu Ela calligraphic signature — thin warm-champagne strokes, drawn in. */
+.svg {
+  width: min(76vw, 460px);
+  height: auto;
+  overflow: visible;
+}
+
+.ink {
+  fill: none;
+  stroke: #efe3c8; /* warm ivory / soft champagne */
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* Restrained depth — a soft champagne aura, never a flashy shine. */
+  filter: drop-shadow(0 0 6px rgba(233, 214, 173, 0.28))
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+}
+
+.stroke {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation-name: draw;
+  animation-timing-function: cubic-bezier(0.66, 0.02, 0.28, 1);
+  animation-fill-mode: forwards;
+}
+
+.strokeDone {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stroke {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

@@ -16,39 +16,10 @@
  * Pure module — no React, no fetch, no LLM, no env vars.
  */
 
-import familyRaw from '../../../knowledge/family_data.json'
+import { loadFamilyKnowledge, type LoadedFamilyKnowledge } from './familyKnowledgeLoader'
 
-interface RawMember {
-  canonical_name: string
-  hebrew_name: string
-  aliases?: string[]
-  relationship?: string
-  partner?: string
-  spouse?: string
-  ex_spouse?: string
-  children?: string[]
-  notes?: string
-}
-
-/** Inferred gender from the `relationship` field; "unknown" when neither
- *  list matches. Used to pick the right kinship label (גיס vs גיסה /
- *  cuñado vs cuñada / brother-in-law vs sister-in-law). */
+/** Gender picks the right gendered kinship label (גיס vs גיסה / cuñado vs cuñada). */
 export type Gender = 'female' | 'male' | 'unknown'
-
-const FEMALE_ROLES = new Set([
-  'matriarch', 'daughter', 'granddaughter', 'great_granddaughter',
-  'daughter_partner', 'daughter-partner', 'granddaughter_in_law',
-])
-const MALE_ROLES = new Set([
-  'son', 'grandson', 'husband_deceased',
-  'son_in_law', 'ex_son_in_law', 'grandson_in_law',
-])
-
-function inferGender(role: string): Gender {
-  if (FEMALE_ROLES.has(role)) return 'female'
-  if (MALE_ROLES.has(role)) return 'male'
-  return 'unknown'
-}
 
 export interface GraphNode {
   canonical: string
@@ -71,112 +42,39 @@ export interface GraphNode {
   gender: Gender
 }
 
-function collectRaw(): RawMember[] {
-  const out: RawMember[] = []
-  const f = familyRaw.family as Record<string, unknown>
-  if (f['matriarch']) out.push(f['matriarch'] as RawMember)
-  if (f['deceased']) out.push(f['deceased'] as RawMember)
-  for (const key of ['children', 'children_related', 'grandchildren_mor',
-                     'grandchildren_leo', 'grandchildren_spouses',
-                     'great_grandchildren']) {
-    const arr = f[key]
-    if (Array.isArray(arr)) for (const m of arr) out.push(m as RawMember)
-  }
-  return out
-}
-
 let _nodes: GraphNode[] | null = null
 let _byHebrew: Map<string, GraphNode> | null = null
+let _cacheKey: LoadedFamilyKnowledge | null = null
 
-function buildGraph(): GraphNode[] {
-  const raw = collectRaw()
-  const nodes: GraphNode[] = raw.map((m) => {
-    const aliases = m.aliases ?? []
-    const matchNames = [
-      m.canonical_name.toLowerCase(),
-      m.hebrew_name.toLowerCase(),
-      ...aliases.map((a) => a.toLowerCase()),
-    ]
-    const role = m.relationship ?? ''
-    return {
-      canonical: m.canonical_name,
-      hebrew: m.hebrew_name,
-      aliases,
-      matchNames,
-      childrenHe: [...(m.children ?? [])],
-      parentsHe: [],
-      spousesHe: m.spouse ? [m.spouse] : [],
-      partnersHe: m.partner ? [m.partner] : [],
-      exSpousesHe: m.ex_spouse ? [m.ex_spouse] : [],
-      role,
-      gender: inferGender(role),
-    }
-  })
-
-  const byHe = new Map<string, GraphNode>()
-  for (const n of nodes) byHe.set(n.hebrew, n)
-
-  // ── Backfill family-level parent edges that the JSON only encodes
-  //    structurally (i.e., "children" arrays under matriarch / parents).
-  //
-  // The JSON places Mor and Leo under family.children[] (their parent
-  // is the matriarch). It also places grandchildren under
-  // family.grandchildren_mor / _leo (their parents are Mor / Leo and,
-  // for Mor's side, Rafi as the ex-husband/father). great_grandchildren
-  // are children of Ofir + Gilad. Make every relation explicit so the
-  // resolver can walk parents-of and siblings.
-  const f = familyRaw.family as Record<string, unknown>
-  const matriarchRaw = f['matriarch'] as RawMember | undefined
-  if (matriarchRaw) {
-    const matriarch = byHe.get(matriarchRaw.hebrew_name)
-    const matriarchKids = (f['children'] as RawMember[] | undefined ?? []).map((c) => c.hebrew_name)
-    if (matriarch) matriarch.childrenHe.push(...matriarchKids)
-  }
-
-  // Rafi is the father of Mor's children (per his notes), even though
-  // his record does not enumerate them. Add the edge so siblings-via-
-  // common-parent resolves correctly for grandchild ↔ grandchild and
-  // for in-law detection.
-  const rafi = nodes.find((n) => n.canonical === 'Raphi')
-  if (rafi) {
-    const morKids = (f['grandchildren_mor'] as RawMember[] | undefined ?? []).map((g) => g.hebrew_name)
-    rafi.childrenHe.push(...morKids)
-  }
-
-  // Ofir + Gilad are parents of every great-grandchild.
-  const greatGrandKids = (f['great_grandchildren'] as RawMember[] | undefined ?? []).map((g) => g.hebrew_name)
-  for (const parentCanonical of ['Ofir', 'Gilad']) {
-    const p = nodes.find((n) => n.canonical === parentCanonical)
-    if (p) p.childrenHe.push(...greatGrandKids)
-  }
-
-  // ── Make every relational edge symmetric.
-  for (const n of nodes) {
-    for (const childHe of n.childrenHe) {
-      const child = byHe.get(childHe)
-      if (child && !child.parentsHe.includes(n.hebrew)) child.parentsHe.push(n.hebrew)
-    }
-    for (const sp of n.spousesHe) {
-      const other = byHe.get(sp)
-      if (other && !other.spousesHe.includes(n.hebrew)) other.spousesHe.push(n.hebrew)
-    }
-    for (const pa of n.partnersHe) {
-      const other = byHe.get(pa)
-      if (other && !other.partnersHe.includes(n.hebrew)) other.partnersHe.push(n.hebrew)
-    }
-    for (const ex of n.exSpousesHe) {
-      const other = byHe.get(ex)
-      if (other && !other.exSpousesHe.includes(n.hebrew)) other.exSpousesHe.push(n.hebrew)
-    }
-  }
-
-  _byHebrew = byHe
+/** Project GraphNode[] from the editable Family Knowledge System (family_graph.json,
+ *  via familyKnowledgeLoader). The loader already backfills edge symmetry, so this is
+ *  a straight projection — no more reads from family_data.json for relationships. */
+function buildGraphFromKnowledge(k: LoadedFamilyKnowledge): GraphNode[] {
+  const nodes: GraphNode[] = k.people.map((p) => ({
+    canonical: p.canonical,
+    hebrew: p.hebrew,
+    aliases: p.aliases,
+    matchNames: [p.canonical.toLowerCase(), p.id.toLowerCase(), p.hebrew.toLowerCase(), ...p.aliases.map((a) => a.toLowerCase())],
+    childrenHe: [...p.childrenHe],
+    parentsHe: [...p.parentsHe],
+    spousesHe: [...p.spousesHe],
+    partnersHe: [...p.partnersHe],
+    exSpousesHe: [...p.exSpousesHe],
+    role: '',
+    gender: p.gender ?? 'unknown',
+  }))
+  _byHebrew = new Map(nodes.map((n) => [n.hebrew, n]))
   return nodes
 }
 
+/** The family graph — SINGLE SOURCE: the editable knowledge system. Rebuilds when the
+ *  knowledge is reloaded (reloadFamilyKnowledge), so editing family_graph.json changes
+ *  live relationship answers. */
 export function loadGraph(): GraphNode[] {
-  if (_nodes) return _nodes
-  _nodes = buildGraph()
+  const k = loadFamilyKnowledge()
+  if (_nodes && _cacheKey === k) return _nodes
+  _cacheKey = k
+  _nodes = buildGraphFromKnowledge(k)
   return _nodes
 }
 
@@ -197,7 +95,7 @@ export function findNode(name: string): GraphNode | null {
 }
 
 function nodeByHebrew(he: string): GraphNode | null {
-  if (!_byHebrew) loadGraph()
+  loadGraph() // ensures _byHebrew reflects the current (possibly reloaded) knowledge
   return _byHebrew!.get(he) ?? null
 }
 
@@ -242,20 +140,110 @@ export function describeRelation(aQuery: string, bQuery: string, lang: Lang): st
   const inLaw = detectSiblingOfSpouse(a, b)
   if (inLaw) return phraseSiblingOfSpouse(inLaw, lang)
 
-  // 5) Parent-of-spouse (mother/father-in-law) or spouse-of-child.
+  // 5) Parent-of-spouse (mother/father-in-law) or spouse-of-child (depth-1 in-law: חתן/כלה).
   const parentOfSpouse = detectParentOfSpouse(a, b)
   if (parentOfSpouse) return phraseParentOfSpouse(parentOfSpouse, lang)
 
-  // 6) Grandparent ↔ grandchild (one hop).
-  for (const childHe of a.childrenHe) {
-    const mid = nodeByHebrew(childHe)
-    if (mid && mid.childrenHe.includes(b.hebrew)) return phraseGrandparent(a, b, mid, lang)
-  }
-  for (const childHe of b.childrenHe) {
-    const mid = nodeByHebrew(childHe)
-    if (mid && mid.childrenHe.includes(a.hebrew)) return phraseGrandparent(b, a, mid, lang)
-  }
+  // 5b) Spouse of a DESCENDANT at depth ≥2 (grandchild-in-law and deeper). Generalizes the depth-1
+  //     in-law above so a descendant's spouse is first-class RELATIVE TO THE MATRIARCH, not only to
+  //     their partner — the "מי זאת ירדן" / "מי זה גלעד" decline class. Covers both genders.
+  const spouseOfDesc = detectSpouseOfDescendant(a, b)
+  if (spouseOfDesc) return phraseSpouseOfDescendant(spouseOfDesc, lang)
 
+  // 6) Aunt / uncle: A is a sibling of a parent of B (or vice versa).
+  const auntUncle = detectAuntUncle(a, b)
+  if (auntUncle) return phraseAuntUncle(auntUncle, lang)
+
+  // 7) First cousins: a parent of A and a parent of B are siblings.
+  const cousins = detectCousins(a, b)
+  if (cousins) return phraseCousins(cousins, lang)
+
+  // 8) Ancestor ↔ descendant at any depth (grandparent at 2 hops,
+  //    great-grandparent at 3, …). Generalizes the old one-hop walk so
+  //    Martita ↔ great-grandchild resolves instead of returning null.
+  const aAncOfB = findAncestor(b, a)
+  if (aAncOfB) return phraseAncestor(a, b, aAncOfB.mid, aAncOfB.distance, lang)
+  const bAncOfA = findAncestor(a, b)
+  if (bAncOfA) return phraseAncestor(b, a, bAncOfA.mid, bAncOfA.distance, lang)
+
+  return null
+}
+
+// ─── Generation / collateral detectors ─────────────────────────────────────
+
+interface AuntUncleHit {
+  /** The aunt or uncle. */
+  auntUncle: GraphNode
+  /** The niece or nephew. */
+  nephew: GraphNode
+  /** The connecting parent (auntUncle's sibling, nephew's parent). */
+  via: GraphNode
+}
+
+/** A is aunt/uncle of B when A shares a parent with one of B's parents. */
+function detectAuntUncle(a: GraphNode, b: GraphNode): AuntUncleHit | null {
+  const oneWay = (x: GraphNode, y: GraphNode): AuntUncleHit | null => {
+    for (const pHe of y.parentsHe) {
+      if (pHe === x.hebrew) continue
+      const p = nodeByHebrew(pHe)
+      if (!p) continue
+      const shared = x.parentsHe.find((q) => p.parentsHe.includes(q))
+      if (shared) return { auntUncle: x, nephew: y, via: p }
+    }
+    return null
+  }
+  return oneWay(a, b) ?? oneWay(b, a)
+}
+
+interface CousinHit {
+  a: GraphNode
+  b: GraphNode
+  /** A's parent and B's parent, who are siblings. */
+  via1: GraphNode
+  via2: GraphNode
+}
+
+/** A and B are first cousins when a parent of A and a parent of B are siblings. */
+function detectCousins(a: GraphNode, b: GraphNode): CousinHit | null {
+  for (const paHe of a.parentsHe) {
+    for (const pbHe of b.parentsHe) {
+      if (paHe === pbHe) continue
+      const pa = nodeByHebrew(paHe)
+      const pb = nodeByHebrew(pbHe)
+      if (!pa || !pb) continue
+      const shared = pa.parentsHe.find((q) => pb.parentsHe.includes(q))
+      if (shared) return { a, b, via1: pa, via2: pb }
+    }
+  }
+  return null
+}
+
+/** Walk up B's parent edges to find ancestor A; return generational distance
+ *  (1 = parent, 2 = grandparent, 3 = great-grandparent) and the ancestor's
+ *  direct child on the path (for "דרך X" phrasing). */
+function findAncestor(descendant: GraphNode, ancestor: GraphNode): { distance: number; mid: GraphNode } | null {
+  const targetHe = ancestor.hebrew
+  const visited = new Set<string>([descendant.hebrew])
+  const cameFrom = new Map<string, string>() // parentHe → child-on-path
+  let frontier: Array<{ he: string; dist: number }> = [{ he: descendant.hebrew, dist: 0 }]
+  while (frontier.length) {
+    const next: Array<{ he: string; dist: number }> = []
+    for (const cur of frontier) {
+      const node = nodeByHebrew(cur.he)
+      if (!node) continue
+      for (const pHe of node.parentsHe) {
+        if (visited.has(pHe)) continue
+        visited.add(pHe)
+        cameFrom.set(pHe, cur.he)
+        if (pHe === targetHe) {
+          const mid = nodeByHebrew(cameFrom.get(targetHe)!)
+          return mid ? { distance: cur.dist + 1, mid } : null
+        }
+        next.push({ he: pHe, dist: cur.dist + 1 })
+      }
+    }
+    frontier = next
+  }
   return null
 }
 
@@ -337,6 +325,39 @@ function detectParentOfSpouse(a: GraphNode, b: GraphNode): ParentOfSpouseHit | n
     if (child.exSpousesHe.includes(a.hebrew)) return { parent: b, child, spouse: a, edgeType: 'ex_spouse' }
   }
   return null
+}
+
+interface SpouseOfDescendantHit {
+  /** The in-law — the (ex-)spouse/partner of the descendant. */
+  inlaw: GraphNode
+  /** The descendant they married (the matriarch's grandchild / great-grandchild). */
+  descendant: GraphNode
+  /** The matriarch/ancestor the relation is expressed relative to (B). */
+  matriarch: GraphNode
+  /** Generational distance matriarch→descendant (2 = grandchild, 3 = great-grandchild). */
+  distance: number
+  edgeType: 'spouse' | 'partner' | 'ex_spouse'
+}
+
+/** A is the (ex-)spouse/partner of C, and C is a DESCENDANT of B at distance ≥2 (grandchild or deeper).
+ *  This is the class the depth-1 parent-of-spouse detector missed: a grandchild's spouse (ירדן→עילי,
+ *  גלעד→אופיר) is kin to the matriarch as "אשת/בעל הנכד/ה", not "no relation". Symmetric in A/B. */
+function detectSpouseOfDescendant(a: GraphNode, b: GraphNode): SpouseOfDescendantHit | null {
+  const oneWay = (x: GraphNode, y: GraphNode): SpouseOfDescendantHit | null => {
+    const tries: Array<[string[], 'spouse' | 'partner' | 'ex_spouse']> = [
+      [x.spousesHe, 'spouse'], [x.partnersHe, 'partner'], [x.exSpousesHe, 'ex_spouse'],
+    ]
+    for (const [list, edgeType] of tries) {
+      for (const cHe of list) {
+        const c = nodeByHebrew(cHe)
+        if (!c) continue
+        const anc = findAncestor(c, y) // is y an ancestor of c, and how far?
+        if (anc && anc.distance >= 2) return { inlaw: x, descendant: c, matriarch: y, distance: anc.distance, edgeType }
+      }
+    }
+    return null
+  }
+  return oneWay(a, b) ?? oneWay(b, a)
 }
 
 // ─── Phrase shapers (semantic, kinship-labelled) ───────────────────────────
@@ -458,22 +479,25 @@ function phraseParentOfSpouse(hit: ParentOfSpouseHit, lang: Lang): string {
   const isFormer = edgeType === 'ex_spouse'
 
   if (lang === 'he') {
-    const childRole = child.gender === 'female' ? 'הבת' : 'הבן'
+    // The verb agrees with the SUBJECT of the clause (the child C), not the spouse.
+    // Mor (female) → "הייתה נשואה", never "היה נשוי". Partner label is gendered too.
+    const cf = child.gender === 'female'
     const verb = edgeType === 'partner'
-      ? 'בת/בן הזוג של'
-      : (spouse.gender === 'female'
-          ? (isFormer ? 'הייתה נשואה ל' : 'נשואה ל')
-          : (isFormer ? 'היה נשוי ל' : 'נשוי ל'))
-    return `${P} ${parent.gender === 'female' ? 'אמא' : parent.gender === 'male' ? 'אבא' : 'הורה'} של ${C}, ו${C} ${verb}${S}.`
+      ? (cf ? 'בת הזוג של' : 'בן הזוג של')
+      : (cf ? (isFormer ? 'הייתה נשואה ל' : 'נשואה ל')
+            : (isFormer ? 'היה נשוי ל' : 'נשוי ל'))
+    // Marriage verbs already end in ל (prefix onto the name); partner verb needs a space.
+    const sep = edgeType === 'partner' ? ' ' : ''
+    return `${P} ${parent.gender === 'female' ? 'אמא' : parent.gender === 'male' ? 'אבא' : 'הורה'} של ${C}, ו${C} ${verb}${sep}${S}.`
   }
 
   if (lang === 'es') {
     const parentLabel = parent.gender === 'female' ? 'madre' : parent.gender === 'male' ? 'padre' : 'progenitor/a'
+    const cf = child.gender === 'female'
     const verb = edgeType === 'partner'
       ? 'es pareja de'
-      : (spouse.gender === 'female'
-          ? (isFormer ? 'estuvo casada con' : 'está casada con')
-          : (isFormer ? 'estuvo casado con' : 'está casado con'))
+      : (cf ? (isFormer ? 'estuvo casada con' : 'está casada con')
+            : (isFormer ? 'estuvo casado con' : 'está casado con'))
     return `${P} es ${parentLabel} de ${C}, y ${C} ${verb} ${S}.`
   }
 
@@ -484,16 +508,82 @@ function phraseParentOfSpouse(hit: ParentOfSpouseHit, lang: Lang): string {
   return `${P} is the ${parentLabel} of ${C}, and ${C} ${verb} ${S}.`
 }
 
-function phraseGrandparent(grand: GraphNode, child: GraphNode, mid: GraphNode, lang: Lang): string {
-  const G = displayName(grand, lang), C = displayName(child, lang), M = displayName(mid, lang)
+function phraseSpouseOfDescendant(hit: SpouseOfDescendantHit, lang: Lang): string {
+  const { inlaw, descendant, matriarch, distance, edgeType } = hit
+  const IL = displayName(inlaw, lang), D = displayName(descendant, lang), M = displayName(matriarch, lang)
+  const female = inlaw.gender === 'female'
+  const dFemale = descendant.gender === 'female'
+
   if (lang === 'es') {
-    const role = grand.gender === 'female' ? 'abuela' : grand.gender === 'male' ? 'abuelo' : 'abuelo/a'
+    const rel = edgeType === 'partner' ? 'es pareja de'
+      : edgeType === 'ex_spouse' ? (female ? 'estuvo casada con' : 'estuvo casado con')
+      : (female ? 'está casada con' : 'está casado con')
+    const dRole = distance >= 3 ? (dFemale ? 'bisnieta' : 'bisnieto') : (dFemale ? 'nieta' : 'nieto')
+    return `${IL} ${rel} ${D}, ${dRole} de ${M}.`
+  }
+  if (lang === 'en') {
+    const rel = edgeType === 'partner' ? 'is the partner of' : edgeType === 'ex_spouse' ? 'was married to' : 'is married to'
+    const dRole = distance >= 3 ? (dFemale ? 'great-granddaughter' : 'great-grandson') : (dFemale ? 'granddaughter' : 'grandson')
+    return `${IL} ${rel} ${D}, ${M}'s ${dRole}.`
+  }
+  const dRole = distance >= 3 ? (dFemale ? 'הנינה' : 'הנין') : (dFemale ? 'הנכדה' : 'הנכד')
+  // marriage verbs end in ל (prefix onto the name); partner needs "בת/בן הזוג של".
+  const rel = edgeType === 'partner'
+    ? `${female ? 'בת הזוג' : 'בן הזוג'} של ${D}`
+    : `${female ? (edgeType === 'ex_spouse' ? 'הייתה נשואה' : 'נשואה') : (edgeType === 'ex_spouse' ? 'היה נשוי' : 'נשוי')} ל${D}`
+  return `${IL} ${rel}, ${dRole} של ${M}.`
+}
+
+function phraseAuntUncle(hit: AuntUncleHit, lang: Lang): string {
+  const { auntUncle, nephew, via } = hit
+  const A = displayName(auntUncle, lang), N = displayName(nephew, lang), V = displayName(via, lang)
+  if (lang === 'es') {
+    const role = auntUncle.gender === 'female' ? 'tía' : auntUncle.gender === 'male' ? 'tío' : 'tía/tío'
+    return `${A} es ${role} de ${N}.`
+  }
+  if (lang === 'en') {
+    const role = auntUncle.gender === 'female' ? 'aunt' : auntUncle.gender === 'male' ? 'uncle' : 'aunt/uncle'
+    return `${A} is the ${role} of ${N}.`
+  }
+  const role = auntUncle.gender === 'female' ? 'הדודה' : auntUncle.gender === 'male' ? 'הדוד' : 'הדוד/ה'
+  const sib = via.gender === 'female' ? 'אחות' : 'אח'
+  return `${A} ${role} של ${N} (${sib} של ${V}).`
+}
+
+function phraseCousins(hit: CousinHit, lang: Lang): string {
+  const { a, b, via1, via2 } = hit
+  const A = displayName(a, lang), B = displayName(b, lang)
+  const V1 = displayName(via1, lang), V2 = displayName(via2, lang)
+  const bothFemale = a.gender === 'female' && b.gender === 'female'
+  if (lang === 'es') {
+    const label = bothFemale ? 'primas' : 'primos'
+    return `${A} y ${B} son ${label}, hijos de ${V1} y ${V2}.`
+  }
+  if (lang === 'en') {
+    return `${A} and ${B} are cousins, children of ${V1} and ${V2}.`
+  }
+  const label = bothFemale ? 'בנות דוד' : 'בני דוד'
+  return `${A} ו${B} ${label}, הילדים של ${V1} ו${V2}.`
+}
+
+/** Ancestor phrasing at any depth. distance 2 = grandparent, 3 = great-grandparent. */
+function phraseAncestor(grand: GraphNode, child: GraphNode, mid: GraphNode, distance: number, lang: Lang): string {
+  const G = displayName(grand, lang), C = displayName(child, lang), M = displayName(mid, lang)
+  const f = grand.gender === 'female', m = grand.gender === 'male'
+  if (lang === 'es') {
+    const role = distance >= 3
+      ? (f ? 'bisabuela' : m ? 'bisabuelo' : 'bisabuelo/a')
+      : (f ? 'abuela' : m ? 'abuelo' : 'abuelo/a')
     return `${G} es ${role} de ${C} (a través de ${M}).`
   }
   if (lang === 'en') {
-    const role = grand.gender === 'female' ? 'grandmother' : grand.gender === 'male' ? 'grandfather' : 'grandparent'
+    const role = distance >= 3
+      ? (f ? 'great-grandmother' : m ? 'great-grandfather' : 'great-grandparent')
+      : (f ? 'grandmother' : m ? 'grandfather' : 'grandparent')
     return `${G} is the ${role} of ${C} (through ${M}).`
   }
-  const role = grand.gender === 'female' ? 'הסבתא' : grand.gender === 'male' ? 'הסבא' : 'הסב/ה'
+  const role = distance >= 3
+    ? (f ? 'הסבתא רבתא' : m ? 'הסבא רבא' : 'הסב/ה רבא')
+    : (f ? 'הסבתא' : m ? 'הסבא' : 'הסב/ה')
   return `${G} ${role} של ${C} (דרך ${M}).`
 }

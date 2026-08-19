@@ -66,23 +66,21 @@ describe('BubbleTile direct-action chips (source contract)', () => {
 // ─── Grid plumbing: chips only render for actionable persons / never group ─
 
 describe('FamilyQuickFaces wires chips only to actionable persons', () => {
-  it('actionable person mapping passes actions {onWhatsApp,onCall}', () => {
-    expect(facesSrc.includes('const actionable = isPersonActionable(p)')).toBe(true)
-    // Either inline mapping or a fire helper — both end up calling the
-    // sanitized URL builders.
+  it('the focused-contact card wires WhatsApp/Call to the sanitized URL builders', () => {
+    // Tapping a person opens the focused card; its primary actions call the same
+    // sanitized URL builders via the fire helpers (adapters untouched).
     expect(facesSrc.includes('buildWhatsAppPersonUrl(p)')).toBe(true)
     expect(facesSrc.includes('buildTelUrl(p)')).toBe(true)
-    expect(/onWhatsApp:\s*\(\)\s*=>/.test(facesSrc)).toBe(true)
-    expect(/onCall:\s*\(\)\s*=>/.test(facesSrc)).toBe(true)
+    expect(facesSrc.includes('firePersonWhatsApp(focusedFace)')).toBe(true)
+    expect(facesSrc.includes('firePersonCall(focusedFace)')).toBe(true)
   })
 
-  it('non-actionable persons get NO actions prop (chips do not render)', () => {
-    // The grid uses a conditional spread so non-actionable persons receive
-    // BubbleTile without an `actions` key. Tolerant regex — just checks the
-    // ternary shape `actionable ? { actions: { ... } } : {}` is present.
-    expect(/actionable\s*\?\s*\{/.test(facesSrc)).toBe(true)
-    expect(/\bactions:\s*\{/.test(facesSrc)).toBe(true)
-    expect(/\}\s*:\s*\{\}\)\}/.test(facesSrc)).toBe(true)
+  it('person tiles never pass an actions prop (the focused card provides actions)', () => {
+    // Persons render flipped={false} and pass no `actions:` object literal — the
+    // focused-contact overlay is the single place person actions live now.
+    expect(facesSrc.includes('flipped={false}')).toBe(true)
+    expect(/\bactions:\s*\{/.test(facesSrc)).toBe(false)
+    expect(facesSrc.includes('data-testid="focused-contact"')).toBe(true)
   })
 
   it('group BubbleTile is rendered without an actions prop (no chips ever)', () => {

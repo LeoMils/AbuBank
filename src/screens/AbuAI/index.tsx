@@ -9,22 +9,102 @@ import { chooseContentWorld } from './contentWorldEngine'
 import { compileHumanAnswer } from './answerCompiler'
 import { makeOpenEvidence } from './evidencePacket'
 import { shapeVoiceSafe } from './voiceShaper'
+import { toSpokenText } from './spokenPersona'
+import { runCognitiveTurn, IDLE_RUNTIME, type RuntimeState, type ConversationFocus } from './cognitiveRuntime'
+import { detectWhatsAppTurn } from './whatsappCompose'
+import { buildWhatsAppReply } from './whatsappTurn'
+import { getAdapter } from './communication/registry'
+import { recordComposeEvent } from './whatsappComposeTelemetry'
+import type { CommunicationAction } from './communication/types'
+import { ExecutiveCognitiveController } from './executiveCognitiveController'
+import { buildFullTurnTools } from './fullTurnBridge'
+import { shouldUseWebSpeechPrimary, LISTEN_WATCHDOG_MS } from '../../services/sttStrategy'
+import { isRealtimeBetaEnabled, syncRealtimeBetaFromUrl, isRealtimeSliceEnabled, syncRealtimeSliceFromUrl } from '../../services/voiceModePreference'
+import { RealtimeSliceHarness } from './realtime/RealtimeSliceHarness'
+import { SessionOrchestrator, type ActiveActionViewModel } from './realtime/sessionOrchestrator'
+import { RealtimeCommController } from './realtime/realtimeCommController'
+import { CalendarDraftController } from './realtime/calendarDraftController'
+import { TurnAuthorityArbiter } from './realtime/turnAuthorityArbiter'
+import { buildAbuRealtimeSystemPrompt } from './realtimeSystemPrompt'
+import type { CalendarReceipt, RelationshipResolver } from './realtime/calendarDraft'
+import { resolvePersonPhrase } from '../AbuCalendar/familyResolve'
+import { makeProductionKernel } from './realtime/kernelAdapter'
+import { ActiveActionCard } from '../../components/ActiveActionCard'
+
+// Honor a `?voice=realtime|pipeline` URL override at module load and PERSIST it, so the
+// Realtime beta can be enabled from a link on a phone with no JS console (installed iOS PWA).
+// Runs before any component reads isRealtimeBetaEnabled(), so the first render sees the choice.
+syncRealtimeBetaFromUrl()
+// Independent `?voice=realtime2|slice` override for the deterministic Realtime SLICE
+// harness (ADR §18 falsifier). OFF by default; never touches the certified voice path.
+syncRealtimeSliceFromUrl()
+
+// SINGLE PATH: the Executive Cognitive Controller is the sole RUNTIME path. This is
+// hardcoded on (no env flag) — every text/voice turn returns from the controller
+// before any legacy code runs, so the legacy cascade below is dead at runtime. It
+// is typed `boolean` (not the literal `true`) so the type-checker keeps the legacy
+// reachable — deleting the ~1200 legacy lines would strand ~40 imports and is a
+// deferred cleanup; disabling it (unreachable at runtime) is what matters for
+// "one path / 0 bypasses". Re-run src/eval/runtimePathProof to prove it.
+const COGNITIVE_RUNTIME_FULL: boolean = true
+import {
+  IDLE_CONV, handleConversationTurn, recordAnswer, recordOnline,
+  type ConvState, type OnlineFailReason,
+} from './conversationOS'
+import { planTurn } from './conversationBrain'
 import { diagReset, diagSet, diagCommit, diagCopyText } from '../../services/productDiagnostics'
+import { setProductTruth, recordLastPerson, getProductTruth, formatProductTruthReport } from '../../services/productTruth'
+import { isOperatorMode } from '../../services/operatorMode'
+import { planCompanionTurn, deriveStateFromMessages } from './companionPlanner'
+import { enforceCompanion } from './companionComposer'
+import { durable } from '../../services/durableStore'
 import { getTodayEvents, getTomorrowEvents, getBirthdayFor } from './tools'
 import { startMicStream, createRecorder, assembleBlob, cleanupIndividualRefs } from '../../services/recording'
-import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector } from '../../services/voice'
+import { checkMicPreflight } from '../../services/micPreflight'
+import { speakVoiceMode as _speakVoiceMode, streamSpeakVoiceMode as _streamSpeakVoiceMode, stopSpeaking, unlockIOSAudio, createSilenceDetector, getTTSTrace } from '../../services/voice'
+import { warmOpenersEnabled, getInstantOpener } from '../../services/warmOpeners'
 
-/** speakVoiceMode with 15s safety timeout — prevents stuck speaking state */
-async function speakVoiceMode(text: string): Promise<void> {
-  const timeout = new Promise<void>((_, reject) =>
+/**
+ * speakVoiceMode with 15s safety timeout — prevents stuck speaking state.
+ *
+ * Emits the device-debuggable TTS evidence Leo asked for after EVERY voice
+ * answer (TTS_ENGINE_USED / VOICE_NAME / SPOKEN_TEXT_LENGTH / TTS_SUCCESS|FAIL),
+ * so a "text shows but nothing spoke" report can be traced to the real engine
+ * that ran (or failed) on the phone instead of guessing.
+ */
+// Registered by the AbuAI component so a TTS PLAYBACK failure can raise the
+// visible tap-to-hear recovery. The module-scope wrapper cannot touch React
+// state directly, so it calls this hook when nothing actually played.
+let _ttsRecoveryHandler: ((text: string) => void) | null = null
+
+async function speakVoiceMode(text: string): Promise<boolean> {
+  const timeout = new Promise<boolean>((_, reject) =>
     setTimeout(() => reject(new Error('TTS_TIMEOUT')), 15000)
   )
+  let failed = false
+  let played = false
   try {
-    await Promise.race([_speakVoiceMode(text), timeout])
+    played = (await Promise.race([_speakVoiceMode(text), timeout])) === true
   } catch (err) {
+    failed = true
     stopSpeaking()
     console.warn('[VOICE] TTS timed out or failed, stopping playback:', err)
+  } finally {
+    try {
+      const last = getTTSTrace().slice(-1)[0]
+      const engine = last?.provider ?? 'UNKNOWN'
+      const voice = last?.voice ?? '-'
+      const ok = !failed && played && !!last && !/❌|⚠️|FAIL/i.test(last.status) && engine !== 'NONE'
+      console.log(
+        `[VOICE][TTS_EVIDENCE] TTS_ENGINE_USED=${engine} VOICE_NAME=${voice} ` +
+        `SPOKEN_TEXT_LENGTH=${(text ?? '').length} TTS_${ok ? 'SUCCESS' : 'FAIL'} PLAYED=${played}` +
+        (last ? ` status="${last.status}"` : '')
+      )
+    } catch { /* logging must never throw into the voice flow */ }
   }
+  // NO SILENT FAILURE: if no audio actually played, raise the visible recovery.
+  if (!played && _ttsRecoveryHandler) { try { _ttsRecoveryHandler(text) } catch { /* never break the flow */ } }
+  return played
 }
 import { getRandomMartitaPhoto, handleMartitaImgError } from '../../services/martitaPhotos'
 import type { ChatMessage } from './types'
@@ -32,6 +112,27 @@ import type { SilenceDetector } from '../../services/voice'
 import { injectSharedKeyframes } from '../../design/animations'
 import { soundProcessing, soundSuccess } from '../../services/sounds'
 import { RealtimeVoiceSession } from '../../services/realtimeVoice'
+import { detectUtteranceLanguage, resolveSttLanguage, preferenceFrom, resolveLanguageChain, type Lang as PolicyLang } from '../../services/languagePolicy'
+import { nextVoiceState, failureLine, type VoiceState as CanonicalVoiceState } from '../../services/voiceStateMachine'
+import { startVoiceFlight, currentVoiceFlight, copyVoiceReport } from '../../services/voiceFlightRecorder'
+import { decideRealtimeAudioFallback } from '../../services/ttsFallbackPolicy'
+import { observeTurn } from '../../evolution/observer'
+import { REALTIME_MODEL } from '../../services/realtimeModel'
+import { APP_VERSION } from '../../version'
+
+/** Build the Evolution language-chain trace (§7) for a voice turn. */
+function voiceLangTrace(utteranceText: string, voicePath: 'pipeline_microphone' | 'realtime_voice') {
+  const c = resolveLanguageChain({ utteranceText, preference: preferenceFrom(localStorage.getItem('abu-voice-lang')) })
+  return {
+    preferredLanguage: c.preferredLanguage,
+    detectedUtteranceLanguage: c.detectedUtteranceLanguage,
+    sttConfiguredLanguage: c.sttPlan.whisperLanguage, // Hebrew default; Spanish for an active Spanish conversation
+    responseLanguage: c.responseLanguage,
+    ttsLanguage: c.ttsLanguage,
+    voicePath,
+    transcriptProduced: true,
+  }
+}
 import type { RealtimeState } from '../../services/realtimeVoice'
 import { mediateError } from '../../services/errorMediation'
 import { mediateVoiceCaptureError } from '../../services/errorMediation'
@@ -41,15 +142,20 @@ import { ChatBubble } from './ChatBubble'
 import { BackButton } from '../../components/BackButton'
 import { ScreenHeader } from '../../components/ScreenHeader'
 import { GOLD, BG, SURFACE, TEXT, TEXT_MUTED } from './constants'
-import { type CalendarCreateState, IDLE_STATE, isCreateIntent, isRecurringIntent, startCreate, resolvePendingMessage, isConfirm, isCancel, isSearchIntent, searchAppointments, isDeleteIntent, isModifyIntent } from './calendarCreate'
+import { type CalendarCreateState, IDLE_STATE, isCreateIntent, isRecurringIntent, startCreate, resolvePendingMessage, isConfirm, isCancel, isSearchIntent, searchAppointments } from './calendarCreate'
 import { shapeCreateConfirm, shapeCreateSaved, shapeCreateCancelled, shapeCreateUnclear, shapeCreateClarify, timeInWords, dateLabel } from './responseShaper'
 import { detectReminderIntent, parseReminder } from '../AbuCalendar/reminders/reminderParser'
-import { createReminder, createDefaultAlertPolicy } from '../AbuCalendar/reminders/reminderStore'
+// reminderStore (delivery + durable store, a heavy chunk) is loaded ON DEMAND in
+// the two reminder-confirmation branches only — it must not weigh down AbuAI's
+// first open, since most sessions never create a reminder.
 import type { ReminderDraft } from '../AbuCalendar/reminders/types'
 import { routePersonalQuery } from './router'
-import { addAppointment, deleteAppointment, updateAppointment, loadAppointments, findConflicts } from '../AbuCalendar/service'
+import { understandMeetingSemantic, mergedToCreateState } from './semanticUnderstanding'
+import { orchestrate } from './understandingOrchestrator'
+import { addAppointment, loadAppointments, findConflicts } from '../AbuCalendar/service'
 import { adviseFreeSpeech } from './freeSpeechAdvisory'
 import { resolvePronouns } from './pronounResolver'
+import { loadGraph } from './familyGraph'
 import { resolveFollowUp } from './contextResolver'
 
 let msgCounter = 0
@@ -59,11 +165,14 @@ function nextId(): string {
 
 // ─── Voice State Machine ─────────────────────────────────────────────────────
 // Explicit states with instrumented transitions
-type VoiceState = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'RESPONDING' | 'INTERRUPTED' | 'RECOVERING' | 'ERROR'
+// Coarse UI phase (distinct from the canonical detailed machine in
+// services/voiceStateMachine.ts, which owns the fine-grained + failure states).
+// Renamed from the old `VoiceState` so there is no second competing `VoiceState`.
+type VoiceUIPhase = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'RESPONDING' | 'INTERRUPTED' | 'RECOVERING' | 'ERROR'
 
-const VOICE_STATE_LOG: Array<{ from: VoiceState; to: VoiceState; ts: number; reason: string }> = []
+const VOICE_STATE_LOG: Array<{ from: VoiceUIPhase; to: VoiceUIPhase; ts: number; reason: string }> = []
 
-function logVoiceTransition(from: VoiceState, to: VoiceState, reason: string) {
+function logVoiceTransition(from: VoiceUIPhase, to: VoiceUIPhase, reason: string) {
   const entry = { from, to, ts: Date.now(), reason }
   VOICE_STATE_LOG.push(entry)
   if (VOICE_STATE_LOG.length > 100) VOICE_STATE_LOG.shift()
@@ -100,11 +209,45 @@ const KEYFRAMES = `
   }
 `
 
-// ─── Voice greeting — short, calm, adult ──────────────────────────────────────
+// ─── Voice greeting — one warm line that invites action ───────────────────────
+// The old "...אני כאן." was a dead end — it greeted and then nothing happened.
+// This opens the door: she knows immediately she can just talk, ask, or have me
+// put something in the calendar. One sentence, warm, adult — never a menu.
+// Operator-only diagnostics gate — the Product Truth panel + Copy Diagnostics /
+// Copy Product Truth Report are for LEO (dev, ?operator=1, or persisted operator
+// mode) and must NEVER appear to Martita. Delegates to the ONE canonical gate so
+// it survives PWA launches (no query string) once enabled.
+const isOperatorView = isOperatorMode
+
+// Product Truth: the Realtime path dropped to the free Web-Speech pipeline.
+// Silent to Martita, but NEVER hidden from the truth report / dashboard.
+function stampFallbackTruth(reason: string): void {
+  setProductTruth({ voiceMode: 'pipeline', realtimeStatus: 'fallback', fallbackUsed: true, sttProvider: 'Web Speech (fallback)', ttsProvider: 'pipeline TTS', lastError: reason })
+}
+
+// Map an online provider error code to a human-explainable failure reason.
+function mapOnlineFailReason(code: string | null | undefined): OnlineFailReason {
+  const c = (code ?? '').toUpperCase()
+  if (c.includes('TIMEOUT') || c.includes('TIMED')) return 'timeout'
+  if (c.includes('REALTIME')) return 'realtime_unavailable'
+  if (c.includes('INCOMPLETE') || c.includes('EMPTY') || c.includes('PARSE')) return 'incomplete_data'
+  if (c.includes('FALLBACK')) return 'fallback_used'
+  return 'provider_failed'
+}
+
 function getVoiceGreeting(): string {
   const h = new Date().getHours()
+  // Cached instant warm openers (varied, no LLM) — behind a DEFAULT-OFF flag pending
+  // Leo's blind listening. Off (default) → the existing single line, so no behavior
+  // change. The variant rotates per calendar day so it isn't identical every session.
+  if (warmOpenersEnabled()) {
+    const dayIndex = Math.floor(Date.now() / 86_400_000)
+    return getInstantOpener('he', h, dayIndex)
+  }
   const timeGreet = h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : h < 21 ? 'ערב טוב' : 'לילה טוב'
-  return `${timeGreet}, Martita. אני כאן.`
+  // Warm, short, present — a companion, not a menu. The old "אפשר לדבר איתי,
+  // לשאול משהו, או לבקש…" option-list read as robotic on device.
+  return `${timeGreet}, Martita. אני פה איתך.`
 }
 
 export function AbuAI() {
@@ -128,7 +271,23 @@ export function AbuAI() {
   // Voice conversation mode — explicit state machine (v20)
   const [voiceMode, setVoiceMode] = useState(false)
   const [voicePhase, setVoicePhase] = useState<'greeting' | 'listening' | 'processing' | 'speaking' | null>(null)
-  const [voiceState, setVoiceState] = useState<VoiceState>('IDLE')
+  const [voiceState, setVoiceState] = useState<VoiceUIPhase>('IDLE')
+  // Canonical detailed voice state (services/voiceStateMachine.ts) — drives explicit
+  // failure states so the mic never waits silently after a completed utterance.
+  const canonicalVoiceRef = useRef<CanonicalVoiceState>('IDLE')
+  const [audioBlocked, setAudioBlocked] = useState(false) // playback did not start → show tap-to-hear
+  // P0-1: the last reply that SHOULD have been voiced (for tap-to-hear re-speak),
+  // the last reply handed to Realtime speak(), and a once-per-turn guard so a
+  // Realtime audio failure falls back to pipeline TTS exactly once.
+  const lastSpokenTextRef = useRef<string>('')
+  const lastRealtimeReplyRef = useRef<string>('')
+  const realtimeTtsFallbackUsedRef = useRef<boolean>(false)
+  // Register the module-scope TTS recovery hook: when nothing played, remember the
+  // text and raise the visible tap-to-hear recovery. No silent text-only success.
+  useEffect(() => {
+    _ttsRecoveryHandler = (t: string) => { lastSpokenTextRef.current = t; setAudioBlocked(true) }
+    return () => { _ttsRecoveryHandler = null }
+  }, [])
   const [audioLevel, setAudioLevel] = useState(0)
   const [listenCountdown, setListenCountdown] = useState<number | null>(null)
   const [lastHeardText, setLastHeardText] = useState('')  // v20: transcript feedback
@@ -142,16 +301,21 @@ export function AbuAI() {
     if (messages.length > 0 && messages.length % 10 === 0) {
       const msgData = messages.map(m => ({ role: m.role, content: m.content }))
       if (messages.length % 20 === 0) {
-        // Every 20 messages: generate LLM summary (async, non-blocking)
+        // Every 20 messages: generate LLM summary (async, non-blocking). Guard the
+        // late setState so it never fires after the component unmounts.
+        let cancelled = false
         generateLLMSummary(msgData, conversationSummary).then(updated => {
+          if (cancelled) return
           setConversationSummary(updated)
           saveSummary(updated)
         }).catch(() => {
+          if (cancelled) return
           // Fallback to pattern summary
           const updated = updateSummaryFromMessages(msgData, conversationSummary)
           setConversationSummary(updated)
           saveSummary(updated)
         })
+        return () => { cancelled = true }
       } else {
         // Every 10 messages: pattern-matching summary (instant)
         const updated = updateSummaryFromMessages(msgData, conversationSummary)
@@ -159,6 +323,7 @@ export function AbuAI() {
         saveSummary(updated)
       }
     }
+    return undefined
   }, [messages.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Calendar create conversation state machine
@@ -170,15 +335,46 @@ export function AbuAI() {
   // capture a stale state value otherwise).
   const createStateRef = useRef<CalendarCreateState>(IDLE_STATE)
   useEffect(() => { createStateRef.current = createState }, [createState])
+  // The calendar event currently in FOCUS, persisted ACROSS turns so the runtime can
+  // answer referable reads ("איפה אני פוגשת אותו?") and pronoun mutations ("תבטלי אותה")
+  // about the just-created/discussed event. Set after a save; updated by the runtime.
+  const cogFocusRef = useRef<ConversationFocus | null>(null)
+
+  // Voice single-flight token. A voice turn awaits the controller; if the user
+  // interrupts, a phone call returns, or she speaks again mid-await, we bump this
+  // so the SUPERSEDED turn does not speak over her or clobber the runtime state
+  // (the "it forgot what I just said after I interrupted" race). Only affects a
+  // turn that was overtaken — the normal single-turn flow is untouched.
+  const voiceTurnSeqRef = useRef(0)
+  // When the Realtime path voices the BRAIN's answer via session.speak(), the model's
+  // own transcript of that reply comes back — suppress it so the chat isn't doubled
+  // (the brain's display text is already appended). The greeting is not suppressed.
+  const suppressRealtimeAssistantMsgRef = useRef(false)
 
   // v20.2: OpenAI Realtime API (WebRTC) — true real-time conversation
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
   const [realtimeTranscript, setRealtimeTranscript] = useState('')
+  // realtime2 SLICE: the ONE canonical live-conversation action card (ADR §13), committed
+  // by the control plane via the function-tool path. Null when there is no active action.
+  const [liveSliceCard, setLiveSliceCard] = useState<ActiveActionViewModel | null>(null)
+  // realtime2 SLICE: the committed CALENDAR draft receipt, projected from the control
+  // plane (calendarDraft) at parity with the communication card. Null when none active.
+  const [liveCalendarDraft, setLiveCalendarDraft] = useState<CalendarReceipt | null>(null)
   const realtimeRef = useRef<RealtimeVoiceSession | null>(null)
-  // v32: Realtime ENABLED — grounding is handled by injecting verified facts
-  // into session instructions (calendar snapshot + family data + memory summary).
-  // The Realtime model speaks directly — no TTS pipeline, < 2s response.
-  const useRealtime = true
+  // ONE-RUNTIME-PATH-LIVE: the live turn ownership law. In the realtime2 SLICE the
+  // MODEL owns TALK (create_response=true), so the legacy brain must NOT also speak/act
+  // for the same turn (device-falsified duplicate audio + legacy calendar→call).
+  const arbiterRef = useRef<TurnAuthorityArbiter | null>(null)
+  // True once a Realtime session actually reached a working state. Used to keep
+  // an INITIAL connect failure SILENT (the fatal-error handler falls back to the
+  // pipeline quietly) while still surfacing a mid-conversation error.
+  const realtimeEverConnectedRef = useRef(false)
+  // Option C (docs/VOICE_ARCHITECTURE_VERDICT.md): the reliable pipeline is the DEFAULT
+  // (push-to-talk STT → controller → server TTS via a gesture-unlocked AudioContext, which
+  // is proven to produce audio). The Realtime (WebRTC) path — Live-like but never proven on a
+  // real device and prone to autoplay-blocked remote audio — is now OPT-IN beta. This makes
+  // audible voice the default for the real user; Realtime can be device-iterated behind the flag.
+  const useRealtime = isRealtimeBetaEnabled()
 
   // Auto-clear stale cooldowns on mount — ensures fresh state
   useEffect(() => {
@@ -217,7 +413,7 @@ export function AbuAI() {
     if (messages.length === 0) return
     try {
       const toSave = messages.slice(-50)
-      localStorage.setItem('abuai-conversation-history', JSON.stringify(toSave))
+      durable.setString('abuai-conversation-history', JSON.stringify(toSave))
     } catch { /* quota exceeded — silently skip */ }
   }, [messages])
 
@@ -225,8 +421,8 @@ export function AbuAI() {
     setMessages([])
     setConversationSummary(null)
     try {
-      localStorage.removeItem('abuai-conversation-history')
-      localStorage.removeItem('abuai-conversation-summary')
+      durable.remove('abuai-conversation-history')
+      durable.remove('abuai-conversation-summary')
     } catch {}
   }, [])
 
@@ -259,7 +455,7 @@ export function AbuAI() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const messagesRef = useRef<ChatMessage[]>([])
   const voiceModeRef = useRef(false)
-  const voiceStateRef = useRef<VoiceState>('IDLE')
+  const voiceStateRef = useRef<VoiceUIPhase>('IDLE')
   const silenceRef = useRef<SilenceDetector | null>(null)
   const levelRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recognitionRef = useRef<any>(null)
@@ -269,12 +465,20 @@ export function AbuAI() {
   // B1 patch: track the last proactive seed id so repeated boredom / loneliness
   // queries deterministically rotate to a different seed.
   const lastProactiveSeedIdRef = useRef<string | null>(null)
+  // Conversation Operating System — remembers the last answer (for "תמשיכי") and
+  // the last online failure (to explain "למה?"). Session-scoped.
+  const conversationOSRef = useRef<ConvState>(IDLE_CONV)
+  // Cognitive Runtime v2 frustration state (rotates empathetic replies across turns).
+  const cogFrustrationRef = useRef({ count: 0, variant: 0 })
+  // Persisted full-runtime state (pending calendar draft + conversation memory)
+  // for the flagged full-cutover path, so multi-turn create/confirm survives.
+  const cognitiveRuntimeStateRef = useRef<RuntimeState>(IDLE_RUNTIME)
 
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
 
   // Sync voice state ref
-  const transitionVoice = useCallback((to: VoiceState, reason: string) => {
+  const transitionVoice = useCallback((to: VoiceUIPhase, reason: string) => {
     const from = voiceStateRef.current
     if (from === to) return
     logVoiceTransition(from, to, reason)
@@ -314,7 +518,9 @@ export function AbuAI() {
   useEffect(() => {
     const handleVisibility = () => {
       if (document.hidden && voiceModeRef.current) {
-        // Page hidden (phone call, tab switch) — clean up voice resources
+        // Page hidden (phone call, tab switch) — invalidate any in-flight voice
+        // turn so it can't speak/clobber state when she returns, then clean up.
+        voiceTurnSeqRef.current++
         cleanupIndividualRefs({ recorderRef, streamRef, silenceRef, levelRef })
         stopSpeaking()
         if (recognitionRef.current) {
@@ -361,14 +567,20 @@ export function AbuAI() {
     // "תזכירי לי להתקשר אליו" after talking about נועם → resolves to
     // "תזכירי לי להתקשר לנועם". Scans recent messages for last mentioned
     // family member. Must run before intent detection.
+    // When a calendar EVENT is in focus, a pronoun ("אותו"/"אותה") refers to THAT
+    // event — not to a gendered last-mentioned person. Resolving it to a name here
+    // (e.g. feminine "אותה" → "ארי") corrupts referable reads/mutations; let the
+    // runtime resolve the pronoun against `focus` instead. So skip the UI pronoun/
+    // follow-up rewrite while a calendar event is focused.
+    const hasCalFocus = cognitiveRuntimeStateRef.current.focus?.kind === 'calendar_event'
     const { resolved, personName: _resolvedPerson } = resolvePronouns(msgText, messages)
-    if (resolved !== msgText) msgText = resolved
+    if (resolved !== msgText && !hasCalFocus) msgText = resolved
 
     // ─── Cross-turn follow-up resolution ─────────────────────────────────
     // "ומחר?" after "מה יש לי היום?" → expands to "מה יש לי מחר?"
     // "ומור?" after "מי זה נועם?" → expands to "ספרי לי על מור"
-    const followUp = resolveFollowUp(msgText, messages)
-    if (followUp.wasFollowUp) msgText = followUp.resolved
+    const followUp = resolveFollowUp(msgText, messages, { pendingCreate: createStateRef.current.phase !== 'idle' })
+    if (followUp.wasFollowUp && !hasCalFocus) msgText = followUp.resolved
 
     const userMsg: ChatMessage = { id: nextId(), role: 'user', content: msgText, timestamp: Date.now() }
     const newMessages = [...messages, userMsg]
@@ -376,11 +588,85 @@ export function AbuAI() {
     setInput('')
     setLoading(true)
 
+    // ─── Companion Brain (STEP 1-7): MANDATORY before every response ──────
+    // Decide what Martita needs (goal/emotion/family/memory/calendar/online)
+    // and which act serves her, with the emotional suppression rule. The plan
+    // gates grounding (below) and is surfaced in diagnostics every turn.
+    const companionState = deriveStateFromMessages(messages)
+    const companionPlan = planCompanionTurn(msgText, companionState)
+    diagSet({ companionPlan: `frame=${companionPlan.step7_frame} act=${companionPlan.step7_act} suppress=${companionPlan.suppressLookups} cal=${companionPlan.step5_calendar} online=${companionPlan.step6_onlineNeeded} person=${companionPlan.step4_continuity.resolvedPerson ?? '-'}` })
+
+    // ─── AI Understanding Orchestrator (single front door) ───────────────
+    // EVERY input flows through one understanding pipeline (normalize →
+    // semantic understanding → deterministic validation → memory → shaping)
+    // before any route runs. The decision is recorded each turn so nothing
+    // routes without first passing through orchestration.
+    const orchestration = orchestrate(msgText, { messages })
+    // eslint-disable-next-line no-console
+    console.log(`[AbuAI][ORCH] ORCH_INTENT=${orchestration.intent} clarify=${orchestration.needsClarification} corrections=${orchestration.corrections.length} mem(person=${orchestration.memory.lastPerson ?? '-'},action=${orchestration.memory.lastCalendarAction ?? '-'})`)
+    // Product Truth: record the last person + deterministically-resolved gender/pronoun.
+    setProductTruth({ voiceMode: 'text' })
+    recordLastPerson(orchestration.memory.lastPerson ?? _resolvedPerson ?? null, loadGraph())
+
+    // "תחזרי ל<name>" / "נחזור ל<name>" (go back to X) — the ל prefix on the name
+    // defeats the word-boundary matcher, so rewrite to a groundable form using
+    // the EXPLICIT name (not the last person). Grounding validates the name.
+    const backToMatch = msgText.match(/(?:תחזרי|נחזור|חזרה)\s+ל([֐-׿]{2,})/)
+    if (backToMatch && !companionPlan.suppressLookups) {
+      msgText = `ספרי לי על ${backToMatch[1]}`
+    } else if (
+      // Companion Brain continuity consumption: when the plan resolved a
+      // pronoun/topic-continuation ("ספרי לי עליה/עליו", "תמשיכי", "ועוד?") to a
+      // known person and the message itself names no one, rewrite to a grounded
+      // query so the deterministic family engine answers — not a raw LLM
+      // fallthrough. Skipped during emotion (suppress), task/online turns, and while
+      // a calendar event is focused (the runtime resolves the pronoun via focus).
+      !hasCalFocus &&
+      companionPlan.step4_continuity.continuesTopic &&
+      companionPlan.step4_continuity.resolvedPerson &&
+      !companionPlan.step3_familyEntity &&
+      !companionPlan.suppressLookups &&
+      companionPlan.step5_calendar === 'none' &&
+      !companionPlan.step6_onlineNeeded &&
+      // A conversation-meta phrase ("תמשיכי", "על מה דיברנו") must NOT be rewritten
+      // into a person query — it belongs to the conversation-OS intercept below.
+      // (The real iPhone "continue"/"what did we talk about" → unrelated person bug.)
+      !/תמשיכי|תמשיך|המשיכי|מאיפה\s+ש?(?:עצרת|הפסקת)|על\s+מה\s+דיבר|מה\s+דיברנו/.test(msgText)
+    ) {
+      msgText = `ספרי לי על ${companionPlan.step4_continuity.resolvedPerson}`
+    }
+
     const aiMsgId = nextId()
     streamingMsgIdRef.current = aiMsgId
     let accumulated = ''
 
     try {
+      // ─── FULL CUTOVER (UNCONDITIONAL): the Executive Cognitive Controller is the
+      // SOLE authority. Every text turn is produced by the controller — deterministic
+      // domains answered directly, LLM/online executed as TOOLS and finalized through
+      // the verifier + supervisor. The legacy cascade below is now UNREACHABLE (dead;
+      // no final answer is emitted outside the runtime). Multi-turn state (pending
+      // calendar draft / reminder / conversation memory) survives via
+      // cognitiveRuntimeStateRef. COGNITIVE_RUNTIME_FULL is hardcoded true — the
+      // only runtime path. The legacy cascade below is dead code (never executed).
+      if (COGNITIVE_RUNTIME_FULL) {
+        const tools = buildFullTurnTools(newMessages, voiceMode)
+        const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
+        const result = await ExecutiveCognitiveController.handleTurn(seed, msgText, { messages: newMessages, now: new Date() }, tools)
+        cognitiveRuntimeStateRef.current = result.state
+        conversationOSRef.current = result.state.conv
+        cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
+        // The brain (ExecutiveCognitiveController) produced this answer — record it
+        // so Product Truth is accurate on the TEXT path too (not only realtime voice).
+        setProductTruth({ brainPipelineUsed: true, executiveControllerUsed: true, route: result.intent, toolUsed: result.source, inputSource: 'text' })
+        setMessages(prev => [...prev, {
+          id: aiMsgId, role: 'assistant', content: result.display, timestamp: Date.now(),
+          ...(result.action ? { action: result.action } : {}),
+        }])
+        setLoading(false); streamingMsgIdRef.current = null
+        return
+      }
+
       // ─── Calendar Create State Machine ────────────────────────────────────
       if (createState.phase !== 'idle') {
         // Forgiving recovery: cancel / confirm / replace-with-new-request /
@@ -391,7 +677,7 @@ export function AbuAI() {
         const resolution = resolvePendingMessage(createState, msgText, isCalendarRead)
 
         const pushAssistant = (content: string) => {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(content, companionPlan), timestamp: Date.now() }])
           setLoading(false)
           streamingMsgIdRef.current = null
         }
@@ -403,11 +689,25 @@ export function AbuAI() {
         }
         if (resolution.action === 'save') {
           const d = resolution.draft
-          addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
+          addAppointment({
+            title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅',
+            ...(d.location ? { location: d.location } : {}),
+            ...(d.subject ? { subject: d.subject } : {}),
+            ...(d.purpose ? { purpose: d.purpose } : {}),
+            ...(d.notes ? { notes: d.notes } : {}),
+            ...(d.person ? { personName: d.person } : {}),
+            ...(d.rawTranscript ? { rawTranscript: d.rawTranscript } : {}),
+            ...(d.cleanedTranscript ? { cleanedTranscript: d.cleanedTranscript } : {}),
+            ...(typeof d.confidence === 'number' ? { confidence: d.confidence } : {}),
+          })
           soundSuccess()
           setCreateState(IDLE_STATE)
+          // Focus the just-saved event so a follow-up ("איפה אני פוגשת אותו?", "תבטלי
+          // אותה") is answered by the runtime from THIS event, not the LLM.
+          const savedPerson = d.person ?? ((d.title ?? '').replace(/^פגישה עם\s+/u, '').trim() || null)
+          cogFocusRef.current = savedPerson ? { kind: 'calendar_event', label: savedPerson } : null
           // P0-4: Deterministic readback — verify appointment was saved
-          const verified = loadAppointments().find(a => a.title === d.title && a.date === d.date)
+          const verified = loadAppointments().find(a => a.title === d.title && a.date === d.date && (a.time ?? null) === (d.time ?? null))
           let savedText: string
           if (verified) {
             const timeStr = verified.time ? ` ${timeInWords(verified.time)}` : ''
@@ -435,9 +735,19 @@ export function AbuAI() {
           pushAssistant(tryGroundedAnswer(msgText) ?? shapeCreateUnclear())
           return
         }
-        // resolution.action === 'clarify'
-        pushAssistant(shapeCreateUnclear())
-        return
+        if (resolution.action === 'clarify') {
+          pushAssistant(shapeCreateUnclear())
+          return
+        }
+        if (resolution.action === 'audio_help') {
+          // Audio complaint mid-create → help with sound, KEEP the pending draft.
+          pushAssistant(resolution.message)
+          return
+        }
+        // resolution.action === 'park': an unrelated current-info question arrived
+        // mid-create. Clear the pending draft and fall through to normal routing so
+        // the sports/weather question is answered — never as a calendar confirmation.
+        setCreateState(IDLE_STATE)
       }
 
       // ─── Free Speech first-pass advisory (P04) ──────────────────────────
@@ -446,7 +756,7 @@ export function AbuAI() {
       // no-side-effect responses. Falls through for AbuAI-native domains.
       const advisory = adviseFreeSpeech(msgText)
       if (advisory.response !== null) {
-        const advisoryMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: advisory.response, timestamp: Date.now() }
+        const advisoryMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(advisory.response, companionPlan), timestamp: Date.now() }
         setMessages(prev => [...prev, advisoryMsg])
         setLoading(false)
         streamingMsgIdRef.current = null
@@ -456,7 +766,7 @@ export function AbuAI() {
       // ─── Reminder pending (confirmation or time follow-up) ────────────
       if (pendingReminder) {
         const pushAssistant = (content: string) => {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(content, companionPlan), timestamp: Date.now() }])
           setLoading(false)
           streamingMsgIdRef.current = null
         }
@@ -486,6 +796,7 @@ export function AbuAI() {
 
         // Case 2: waiting for confirmation ("לשמור?")
         if (isConfirm(msgText)) {
+          const { createReminder, createDefaultAlertPolicy } = await import('../AbuCalendar/reminders/reminderStore')
           const { saved } = createReminder({
             category: pendingReminder.category,
             title: pendingReminder.title ?? '',
@@ -513,6 +824,85 @@ export function AbuAI() {
         setPendingReminder(null)
       }
 
+      // ─── Conversation OS (TEXT path) ─────────────────────────────────
+      // "תמשיכי" resumes the cached answer; "על מה דיברנו" recalls the topic; a
+      // challenge ("למה אין לך?") gets a real explanation — instead of falling to
+      // the LLM which loses the thread (the real iPhone "continue → unrelated
+      // answer" / "does not remember" failures). Only fires with real context.
+      {
+        const convTurn = handleConversationTurn(conversationOSRef.current, msgText)
+        if (convTurn.handled && convTurn.speak) {
+          conversationOSRef.current = convTurn.state
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(convTurn.speak!, companionPlan), timestamp: Date.now() }])
+          setLoading(false); streamingMsgIdRef.current = null
+          return
+        }
+        // "על מה דיברנו" / "what did we talk about" → recall the last topic honestly.
+        if (/על מה דיבר(?:נו|ת)|מה דיברנו|do you remember what we|de qu[eé] hablamos|qu[eé] hablamos/i.test(msgText.trim())) {
+          const a = conversationOSRef.current.answer
+          const topic = a?.topic || a?.question
+          const recall = topic ? `דיברנו על ${topic}.` : 'עוד לא דיברנו על משהו מסוים בשיחה הזאת. על מה תרצי?'
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(recall, companionPlan), timestamp: Date.now() }])
+          setLoading(false); streamingMsgIdRef.current = null
+          return
+        }
+      }
+
+      // ─── Cognitive Runtime v2 (single-pipeline authority) ─────────────────
+      // cognitiveRuntime.ts is the central pipeline every turn is routed through
+      // (proven end-to-end by src/eval/latestRealIphoneFullRuntimeReplay). It OWNS
+      // the read-only / relational / conversational intents that previously fell to
+      // the LLM or were broken: date (no more "long unrelated text"), calendar
+      // SEARCH across all days ("מתי יש לי פגישה עם מוטי" — never "באיזה יום?"),
+      // audio complaints (never cancels), and specific frustration recovery. Every
+      // answer it returns is composed + verified inside the runtime. It DEFERS
+      // (falls through) for create / reminder / delete / modify / online / general,
+      // which keep their existing handlers until they are cut over behind the suite.
+      {
+        // Live default authority. `family` is owned only when the runtime RESOLVED
+        // the relation (a "won't guess" answer defers to the legacy grounded path so
+        // birthdays/locations/unknown queries are unaffected). `calendar_read` covers
+        // the narrow "מה יש לי היום/מחר" grounded read.
+        // `memory` is a NEW intent with NO duplicate legacy handler below, so the
+        // runtime owns it outright (durable saved facts: remember / recall / forget).
+        // `calendar_delete` / `calendar_update` are now the runtime's (referable
+        // "cancel it"/"move it" via the persisted focus + a human date readback),
+        // replacing the duplicate handlers that used to live below.
+        const RUNTIME_OWNED = new Set(['date_query', 'calendar_search', 'audio_complaint', 'frustration', 'calendar_read', 'family', 'memory', 'calendar_delete', 'calendar_update'])
+        const decision = runCognitiveTurn(
+          {
+            ...IDLE_RUNTIME,
+            conv: conversationOSRef.current,
+            createState,
+            frustrationCount: cogFrustrationRef.current.count,
+            frustrationVariant: cogFrustrationRef.current.variant,
+            focus: cogFocusRef.current, // referable reads + pronoun mutations
+          },
+          msgText,
+          { messages, now: new Date() },
+        )
+        // WhatsApp / call turn — the controller claimed it ahead of calendar.
+        // Compose the draft (async) and reply; never a calendar answer here.
+        if (decision.whatsapp) {
+          const reply = await buildWhatsAppReply(decision.whatsapp)
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(reply.text, companionPlan), timestamp: Date.now() }])
+          setLoading(false); streamingMsgIdRef.current = null
+          return
+        }
+        const familyUnknown = decision.intent === 'family' && /לא אנחש|לא בטוחה בקשר/u.test(decision.display ?? '')
+        if (decision.handled && decision.display && decision.verifier.ok && RUNTIME_OWNED.has(decision.intent) && !familyUnknown) {
+          conversationOSRef.current = decision.state.conv
+          cogFrustrationRef.current = {
+            count: decision.state.frustrationCount,
+            variant: decision.state.frustrationVariant,
+          }
+          cogFocusRef.current = decision.state.focus ?? null // carry the focused event forward
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(decision.display!, companionPlan), timestamp: Date.now() }])
+          setLoading(false); streamingMsgIdRef.current = null
+          return
+        }
+      }
+
       // ─── Unresolved pronoun guard ─────────────────────────────────────
       // If a create intent still has an unresolved pronoun (אליו/אליה/שלו/שלה)
       // after pronoun resolution failed, ask who instead of creating with
@@ -521,7 +911,7 @@ export function AbuAI() {
       if (isCreateIntent(msgText) && UNRESOLVED_PRONOUN.test(msgText) && !_resolvedPerson) {
         const pronoun = msgText.match(UNRESOLVED_PRONOUN)?.[1] ?? ''
         const genderHint = /אליה|שלה|אותה|איתה/.test(pronoun) ? 'למי את מתכוונת?' : 'למי את מתכוונת?'
-        const aiMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: genderHint, timestamp: Date.now() }
+        const aiMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(genderHint, companionPlan), timestamp: Date.now() }
         setMessages(prev => [...prev, aiMsg])
         setLoading(false)
         streamingMsgIdRef.current = null
@@ -562,7 +952,7 @@ export function AbuAI() {
 
         const draft = parseReminder(reminderText, todayStr)
         const pushAssistant = (content: string) => {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content, timestamp: Date.now() }])
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(content, companionPlan), timestamp: Date.now() }])
           setLoading(false)
           streamingMsgIdRef.current = null
         }
@@ -593,82 +983,12 @@ export function AbuAI() {
         return
       }
 
-      // ─── Calendar Delete ──────────────────────────────────────────────────
-      if (isDeleteIntent(msgText)) {
-        const appts = loadAppointments()
-        const nameMatch = msgText.match(/עם\s+(\S+)|אצל\s+(\S+)/)
-        const searchTerm = nameMatch?.[1] ?? nameMatch?.[2] ?? ''
-
-        const matches = searchTerm
-          ? appts.filter(a => a.title.toLowerCase().includes(searchTerm.toLowerCase()))
-          : appts.slice(-1) // last created if no name specified
-
-        if (matches.length === 0) {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'אין פגישה כזו ביומן.', timestamp: Date.now() }])
-        } else if (matches.length === 1) {
-          deleteAppointment(matches[0]!.id)
-          const time = matches[0]!.time ? ` ${timeInWords(matches[0]!.time)}` : ''
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `מחקתי את ${matches[0]!.title}${time}.`, timestamp: Date.now() }])
-        } else {
-          const lines = matches.map((m, i) => `${i + 1}. ${m.title} — ${m.date}`)
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `יש כמה אפשרויות:\n${lines.join('\n')}\nאיזו למחוק?`, timestamp: Date.now() }])
-        }
-        setLoading(false)
-        streamingMsgIdRef.current = null
-        return
-      }
-
-      // ─── Calendar Modify ─────────────────────────────────────────────────
-      if (isModifyIntent(msgText)) {
-        const appts = loadAppointments()
-        if (appts.length === 0) {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'אין כלום ביומן לשנות.', timestamp: Date.now() }])
-          setLoading(false)
-          streamingMsgIdRef.current = null
-          return
-        }
-
-        // Find target appointment (by name or last created)
-        const nameMatch = msgText.match(/את\s+(ה?(פגישה|תור|ביקור)\s+)?(?:עם\s+)?(\S+)/i)
-        const searchName = nameMatch?.[3] ?? ''
-        let target = searchName
-          ? appts.find(a => a.title.toLowerCase().includes(searchName.toLowerCase()))
-          : appts[appts.length - 1]
-
-        if (!target) target = appts[appts.length - 1]!
-
-        // Parse new date/time from the modify request
-        const { parseCreateDate, parseHebrewTimeDetailed } = await import('./calendarCreate')
-
-        const newDate = parseCreateDate(msgText)
-        const newTimeResult = parseHebrewTimeDetailed ? parseHebrewTimeDetailed(msgText) : null
-        const newTime = newTimeResult?.time ?? null
-
-        // Apply changes
-        const updates: Partial<typeof target> = {}
-        if (newDate) updates.date = newDate
-        if (newTime) updates.time = newTime
-
-        if (Object.keys(updates).length === 0) {
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'לא הבנתי מה לשנות. תגידי לאיזה יום או שעה להזיז.', timestamp: Date.now() }])
-        } else {
-          updateAppointment(target.id, updates)
-          // Use friendly date label (מחר, ביום רביעי) instead of raw YYYY-MM-DD
-          const today = new Date().toISOString().split('T')[0]!
-          const tmrw = new Date(Date.now() + 86400000).toISOString().split('T')[0]!
-          let dateStr = ''
-          if (updates.date) {
-            if (updates.date === today) dateStr = ' להיום'
-            else if (updates.date === tmrw) dateStr = ' למחר'
-            else dateStr = ` ל${updates.date}`
-          }
-          const timeStr = updates.time ? ` ${timeInWords(updates.time)}` : ''
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `עדכנתי: ${target!.title}${dateStr}${timeStr}.`, timestamp: Date.now() }])
-        }
-        setLoading(false)
-        streamingMsgIdRef.current = null
-        return
-      }
+      // ─── Calendar Delete / Modify — cut over to the cognitive runtime ─────
+      // These used to be duplicate handlers here. They are now owned by
+      // runCognitiveTurn (RUNTIME_OWNED includes calendar_delete/calendar_update),
+      // which resolves the target via the persisted `focus` (so "תבטלי אותה" /
+      // "תעבירי אותה" work), reads back a human Hebrew date, and shares the single
+      // deleteReasoner/modifyReasoner. One runtime path per capability.
 
       // Check for new create intent (appointments only — reminders handled above)
       if (isCreateIntent(msgText) && isRecurringIntent(msgText)) {
@@ -680,13 +1000,32 @@ export function AbuAI() {
           const title = next.draft.title || 'פגישה'
           const time = next.draft.time || null
           const dates = getNextOccurrences(recurDay, 4)
+          const d = next.draft
           // Create 4 individual events
           for (const date of dates) {
-            addAppointment({ title, date, time: time || '09:00', emoji: next.draft.emoji || '📅', type: 'regular' })
+            addAppointment({
+              title, date, time: time || '09:00', emoji: next.draft.emoji || '📅', type: 'regular',
+              ...(d.location ? { location: d.location } : {}),
+              ...(d.subject ? { subject: d.subject } : {}),
+              ...(d.purpose ? { purpose: d.purpose } : {}),
+              ...(d.notes ? { notes: d.notes } : {}),
+              ...(d.person ? { personName: d.person } : {}),
+              ...(d.rawTranscript ? { rawTranscript: d.rawTranscript } : {}),
+              ...(d.cleanedTranscript ? { cleanedTranscript: d.cleanedTranscript } : {}),
+              ...(typeof d.confidence === 'number' ? { confidence: d.confidence } : {}),
+            })
           }
           const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
           const timeStr = time ? ` בשעה ${time}` : ''
-          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: `קבעתי ${title} כל יום ${dayNames[recurDay]}${timeStr} ל-4 השבועות הקרובים.`, timestamp: Date.now() }])
+          // Readback: never say "קבעתי" without verifying the events persisted (P0 — no fake-save).
+          const savedRec = loadAppointments()
+          const persisted = dates.filter(date => savedRec.some(a => a.title === title && a.date === date && (a.time ?? null) === (time || '09:00'))).length
+          const recurMsg = persisted === dates.length
+            ? `קבעתי ${title} כל יום ${dayNames[recurDay]}${timeStr} ל-4 השבועות הקרובים.`
+            : persisted > 0
+              ? `קבעתי ${persisted} מתוך ${dates.length} פעמים. ${title} כל יום ${dayNames[recurDay]}${timeStr}.`
+              : 'לא הצליח להישמר. ננסה שוב?'
+          setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(recurMsg, companionPlan), timestamp: Date.now() }])
         } else {
           setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: 'באיזה יום בשבוע? למשל: "כל יום שלישי בעשר"', timestamp: Date.now() }])
         }
@@ -695,11 +1034,28 @@ export function AbuAI() {
         return
       }
       if (isCreateIntent(msgText)) {
-        const next = startCreate(msgText)
+        // Deterministic Meeting Intelligence is the instant floor (and the
+        // offline fallback). The AI Semantic Understanding layer runs on top,
+        // best-effort: it understands messy speech / fixes STT slips, but
+        // deterministic date/time grounding wins and a network/parse failure
+        // simply keeps the deterministic draft. Never blocks the calendar.
+        let next = startCreate(msgText)
+        let clarifyQuestion: string | null = null
+        try {
+          const merged = await understandMeetingSemantic(
+            msgText,
+            { nowISO: new Date().toISOString(), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+            { timeoutMs: 8000 },
+          )
+          if (merged.semanticLayerUsed) {
+            next = mergedToCreateState(merged)
+            if (merged.needsClarification) clarifyQuestion = merged.clarificationQuestion
+          }
+        } catch { /* keep the deterministic draft */ }
         setCreateState(next)
         let response = next.phase === 'confirming'
           ? shapeCreateConfirm(next.draft)
-          : shapeCreateClarify(next.missing, next.draft)
+          : (clarifyQuestion ?? shapeCreateClarify(next.missing, next.draft))
         // Conflict detection — warn if same date+time already has an event
         if (next.phase === 'confirming' && next.draft.date && next.draft.time) {
           const conflicts = findConflicts(next.draft.date, next.draft.time)
@@ -710,6 +1066,20 @@ export function AbuAI() {
         }
         const createMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: response, timestamp: Date.now() }
         setMessages(prev => [...prev, createMsg])
+        setLoading(false)
+        streamingMsgIdRef.current = null
+        return
+      }
+
+      // ─── Standalone "drop it / never mind" (no pending flow) ─────────────
+      // Inside a create/reminder flow these are handled by isCancel; arriving
+      // here means nothing is pending, so acknowledge warmly and reopen instead
+      // of falling through to the LLM with no handler.
+      const ABORT_RE = /^(עזבי|עזבי את זה|תעזבי|תשכחי|שכחי מזה|לא משנה|לא חשוב)\s*\.?$/
+      const NOT_THAT_RE = /^(לא לזה התכוונתי|לא זה|לא לזה)\s*\.?$/
+      if (ABORT_RE.test(msgText.trim()) || NOT_THAT_RE.test(msgText.trim())) {
+        const reply = ABORT_RE.test(msgText.trim()) ? 'בסדר, עזבנו. על מה בא לך לדבר?' : 'אה, סליחה. אז למה התכוונת?'
+        setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: enforceCompanion(reply, companionPlan), timestamp: Date.now() }])
         setLoading(false)
         streamingMsgIdRef.current = null
         return
@@ -728,7 +1098,11 @@ export function AbuAI() {
         return false
       })()
       const isDirectQuestion = /^מי |^מתי |^איפה |^כמה |^מה זה |^מה זאת |[?؟]$/.test(msgText.trim())
-      const skipGroundingForEmotion = lastAssistantWasEmotional && !isDirectQuestion
+      // Companion Brain drives suppression: skip the grounded data lookup when
+      // the plan says this turn is emotional/companionship (grief, worry,
+      // loneliness, boredom) and she did not ask a direct factual question —
+      // so a feeling is never answered with a data dump.
+      const skipGroundingForEmotion = (lastAssistantWasEmotional || companionPlan.suppressLookups) && !isDirectQuestion
 
       // ─── Existing grounded answer path ────────────────────────────────────
       const groundedAnswer = skipGroundingForEmotion ? null : tryGroundedAnswer(msgText)
@@ -747,6 +1121,9 @@ export function AbuAI() {
             groundedAnswer,
           )
         }
+        // Companion Response Composer: no raw tool answer / banned register
+        // reaches Martita — strip database/support/AI-self phrasing as a floor.
+        finalResponse = enforceCompanion(finalResponse, companionPlan)
 
         traceSet({ route: route.type, groundedAnswerUsed: true, groundedAnswer, calendarAction: isCal ? 'read' : 'none', calendarStorageRead: isCal, finalResponse })
         traceEnd()
@@ -800,7 +1177,7 @@ export function AbuAI() {
             ? parts.join('. ') + '.'
             : 'לא זוכרת נושא ברור שדיברנו עליו.'
         }
-        const recallMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: recallContent, timestamp: Date.now() }
+        const recallMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(recallContent, companionPlan), timestamp: Date.now() }
         setMessages(prev => [...prev, recallMsg])
         setLoading(false)
         streamingMsgIdRef.current = null
@@ -827,11 +1204,11 @@ export function AbuAI() {
             messages.map(m => ({ role: m.role, content: m.content })),
             proactiveSeed.text,
           )
-          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enhanced, timestamp: Date.now() }
+          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(enhanced, companionPlan), timestamp: Date.now() }
           setMessages(prev => [...prev, proactiveMsg])
         } else {
           // Voice mode: use deterministic seed for speed
-          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: proactiveSeed.text, timestamp: Date.now() }
+          const proactiveMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(proactiveSeed.text, companionPlan), timestamp: Date.now() }
           setMessages(prev => [...prev, proactiveMsg])
         }
         setLoading(false)
@@ -858,7 +1235,7 @@ export function AbuAI() {
             { lang: world.language, allowFollowUp: true },
             world,
           )
-          const contentMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: compiled.text, timestamp: Date.now() }
+          const contentMsg: ChatMessage = { id: aiMsgId, role: 'assistant', content: enforceCompanion(compiled.text, companionPlan), timestamp: Date.now() }
           setMessages(prev => [...prev, contentMsg])
           setLoading(false)
           streamingMsgIdRef.current = null
@@ -890,6 +1267,7 @@ export function AbuAI() {
               .join('\n')
             if (list) body = `${online.answer}\n\nמקורות:\n${list}`
           }
+          body = enforceCompanion(body, companionPlan)
           setMessages(prev => {
             const updated = [...prev]
             const idx = updated.findIndex(m => m.id === aiMsgId)
@@ -979,6 +1357,9 @@ export function AbuAI() {
           if (finalContent && containsUngroundedClaim(finalContent, false)) {
             finalContent = 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
           }
+          // Companion Response Composer guards the streamed LLM output too —
+          // no banned/customer-support/database register reaches Martita.
+          if (finalContent) finalContent = enforceCompanion(finalContent, companionPlan)
           if (finalContent) {
             updated[idx] = { ...updated[idx]!, content: finalContent }
           } else {
@@ -989,6 +1370,14 @@ export function AbuAI() {
         }
         return updated
       })
+      // Record the general answer so "תמשיכי" continues it and "על מה דיברנו"
+      // recalls the topic (TEXT-path conversation memory).
+      if (accumulated.trim()) {
+        const topic = msgText.trim()
+          .replace(/^(?:ספרי לי על|ספר לי על|תספרי לי על|מה את יודעת על|תסבירי לי על|תסבירי על|מה זה|מה זאת|על|ספרי על)\s+/u, '')
+          .replace(/[?？]+$/u, '').trim() || null
+        conversationOSRef.current = recordAnswer(conversationOSRef.current, { question: msgText, intent: 'general', topic, fullText: accumulated.trim() })
+      }
       traceSet({ finalResponse: accumulated.trim() || null })
       traceEnd()
     } catch (err: unknown) {
@@ -1033,6 +1422,18 @@ export function AbuAI() {
   // ─── Manual voice recording (fills text input) ────────────────────────────
 
   const startRecording = useCallback(async () => {
+    // Same secure-context guard as voice mode — a clear honest message instead
+    // of a confusing "failed to start recording" when mediaDevices is missing.
+    const preflight = checkMicPreflight()
+    if (!preflight.ok) {
+      console.warn(`[AbuAI] Mic unavailable (${preflight.reason}): ${preflight.devReason}`)
+      setMessages(prev => {
+        const last = prev[prev.length - 1]
+        if (last?.role === 'assistant' && last.content === preflight.userMessage) return prev
+        return [...prev, { id: nextId(), role: 'assistant', content: preflight.userMessage, timestamp: Date.now() }]
+      })
+      return
+    }
     try {
       const stream = await startMicStream()
       streamRef.current = stream
@@ -1058,8 +1459,13 @@ export function AbuAI() {
         setTranscribing(true)
         try {
           const text = await transcribeAudio(blob)
+          // Device-debuggable STT evidence (manual mic path).
+          // eslint-disable-next-line no-console
+          console.log(`[AbuAI][VOICE] STT_SUCCESS=${!!text.trim()} STT_CHARS=${text.trim().length} STT_LANG=${/[a-záéíóúñ]/i.test(text) && !/[֐-׿]/.test(text) ? 'es/en' : 'he'}`)
           if (text.trim()) setInput(prev => prev ? `${prev} ${text}` : text)
         } catch (err) {
+          // eslint-disable-next-line no-console
+          console.log(`[AbuAI][VOICE] STT_SUCCESS=false STT_ERROR=${err instanceof Error ? err.message : String(err)}`)
           // Never fail silently — show a friendly local fallback so Martita
           // knows she can simply type instead.
           setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: mediateVoiceCaptureError(err, 'transcription'), timestamp: Date.now() }])
@@ -1104,6 +1510,9 @@ export function AbuAI() {
   const interruptAndListen = useCallback(() => {
     if (!voiceModeRef.current) return
     transitionVoice('INTERRUPTED', 'user-tap')
+
+    // Invalidate any in-flight voice turn so it can't speak/clobber state on return.
+    voiceTurnSeqRef.current++
 
     // Abort any in-flight LLM request
     if (abortControllerRef.current) {
@@ -1164,17 +1573,53 @@ export function AbuAI() {
 
       setLastHeardText(text) // v20: Show what was heard
 
-      // Cross-turn pronoun resolution (voice path)
+      // Cross-turn pronoun resolution (voice path). PARITY with typed: while a calendar
+      // EVENT is in focus, keep the pronoun RAW ("תבטלי אותה" must bind to the focused
+      // event, not a gendered last-person) — the runtime resolves it via `focus`.
+      const vHasCalFocus = cognitiveRuntimeStateRef.current.focus?.kind === 'calendar_event'
       const { resolved: resolvedText } = resolvePronouns(text, messagesRef.current)
-      let effectiveText = resolvedText !== text ? resolvedText : text
+      let effectiveText = (resolvedText !== text && !vHasCalFocus) ? resolvedText : text
 
       // Cross-turn follow-up resolution (voice path)
-      const voiceFollowUp = resolveFollowUp(effectiveText, messagesRef.current)
-      if (voiceFollowUp.wasFollowUp) effectiveText = voiceFollowUp.resolved
+      const voiceFollowUp = resolveFollowUp(effectiveText, messagesRef.current, { pendingCreate: createStateRef.current.phase !== 'idle' })
+      if (voiceFollowUp.wasFollowUp && !vHasCalFocus) effectiveText = voiceFollowUp.resolved
 
       const userMsg: ChatMessage = { id: nextId(), role: 'user', content: effectiveText, timestamp: Date.now() }
       const currentMsgs = [...messagesRef.current, userMsg]
       setMessages(currentMsgs)
+
+      // ─── FULL CUTOVER (UNCONDITIONAL): voice routes through the SAME controller as
+      // text. The voice answer is produced by the Executive Cognitive Controller
+      // (supervised + delivery-planned + RUNTIME_FINALIZED). The legacy voice cascade
+      // below is dead code — voice cannot emit outside the runtime.
+      if (COGNITIVE_RUNTIME_FULL) {
+        const myTurn = ++voiceTurnSeqRef.current
+        const tools = buildFullTurnTools(currentMsgs, true)
+        const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
+        const result = await ExecutiveCognitiveController.handleTurn(seed, effectiveText, { messages: currentMsgs, now: new Date() }, tools, { inputModality: 'pipeline_microphone', language: voiceLangTrace(effectiveText, 'pipeline_microphone') })
+        // Superseded by an interruption / phone-call return / a newer utterance?
+        // Drop this stale turn: do NOT speak over her or overwrite runtime state.
+        if (myTurn !== voiceTurnSeqRef.current || !voiceModeRef.current) return
+        cognitiveRuntimeStateRef.current = result.state
+        conversationOSRef.current = result.state.conv
+        cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
+        // Pipeline (fallback) voice STILL runs the brain — record it so Product Truth
+        // shows BRAIN_PIPELINE_USED: YES + INPUT_SOURCE: voice_fallback even when
+        // Realtime WebRTC is unavailable and STT is Web Speech.
+        setProductTruth({ brainPipelineUsed: true, executiveControllerUsed: true, route: result.intent, toolUsed: result.source, inputSource: 'voice_fallback' })
+        setMessages(prev => [...prev, {
+          id: nextId(), role: 'assistant', content: result.display, timestamp: Date.now(),
+          ...(result.action ? { action: result.action } : {}),
+        }])
+        if (voiceModeRef.current) {
+          transitionVoice('RESPONDING', 'runtime-full')
+          setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(result.display)
+          await speakVoiceMode(result.speak)
+          setIsSpeaking(false); setStreamingText('')
+          if (voiceModeRef.current) startVoiceListening()
+        }
+        return
+      }
 
       // ─── Calendar create (voice) — SAME rules as typed text ──────────────
       // Voice create/confirmation must be confirmation-gated and local-first,
@@ -1191,7 +1636,7 @@ export function AbuAI() {
         if (voiceModeRef.current) {
           transitionVoice('RESPONDING', 'ask-who')
           setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(askWho)
-          await speakVoiceMode(askWho)
+          await speakVoiceMode(toSpokenText(askWho))
           setIsSpeaking(false); setStreamingText('')
           if (voiceModeRef.current) startVoiceListening()
         }
@@ -1219,7 +1664,7 @@ export function AbuAI() {
           if (!voiceModeRef.current) return
           transitionVoice('RESPONDING', 'reminder-turn')
           setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
-          await speakVoiceMode(shapeVoiceSafe(response))
+          await speakVoiceMode(toSpokenText(response))
           setIsSpeaking(false); setStreamingText('')
           if (!voiceModeRef.current) return
           await new Promise(r => setTimeout(r, 120))
@@ -1236,6 +1681,7 @@ export function AbuAI() {
         try {
           let response: string
           if (isConfirm(effectiveText)) {
+            const { createReminder, createDefaultAlertPolicy } = await import('../AbuCalendar/reminders/reminderStore')
             const { saved } = createReminder({
               category: pendingReminder.category,
               title: pendingReminder.title ?? '',
@@ -1256,7 +1702,7 @@ export function AbuAI() {
           if (!voiceModeRef.current) return
           transitionVoice('RESPONDING', 'reminder-confirm-turn')
           setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
-          await speakVoiceMode(shapeVoiceSafe(response))
+          await speakVoiceMode(toSpokenText(response))
           setIsSpeaking(false); setStreamingText('')
           if (!voiceModeRef.current) return
           await new Promise(r => setTimeout(r, 120))
@@ -1276,14 +1722,20 @@ export function AbuAI() {
         transitionVoice('RESPONDING', 'recurring-limitation')
         setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(recurResponse)
         try {
-          await speakVoiceMode(shapeVoiceSafe(recurResponse))
+          await speakVoiceMode(toSpokenText(recurResponse))
         } catch { /* ignore */ }
         setIsSpeaking(false); setStreamingText('')
         if (voiceModeRef.current) { await new Promise(r => setTimeout(r, 120)); startVoiceListening() }
         return
       }
 
-      if (cs.phase !== 'idle' || isCreateIntent(effectiveText)) {
+      // Pending-state hygiene (voice): an unrelated current-info question mid-create
+      // (sports/weather/news) parks the pending draft and routes normally — never
+      // answered as a calendar confirmation.
+      const voiceParkUnrelated = cs.phase !== 'idle' && isOnlineCurrentInfoQuery(text) && !isConfirm(text) && !isCreateIntent(effectiveText)
+      if (voiceParkUnrelated) { setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE }
+
+      if (!voiceParkUnrelated && (cs.phase !== 'idle' || isCreateIntent(effectiveText))) {
         try {
           let response: string
           if (cs.phase !== 'idle') {
@@ -1295,11 +1747,21 @@ export function AbuAI() {
               response = shapeCreateCancelled()
             } else if (resolution.action === 'save') {
               const d = resolution.draft
-              addAppointment({ title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅' })
+              addAppointment({
+                title: d.title!, date: d.date!, time: d.time!, emoji: d.emoji ?? '📅',
+                ...(d.location ? { location: d.location } : {}),
+                ...(d.subject ? { subject: d.subject } : {}),
+                ...(d.purpose ? { purpose: d.purpose } : {}),
+                ...(d.notes ? { notes: d.notes } : {}),
+                ...(d.person ? { personName: d.person } : {}),
+                ...(d.rawTranscript ? { rawTranscript: d.rawTranscript } : {}),
+                ...(d.cleanedTranscript ? { cleanedTranscript: d.cleanedTranscript } : {}),
+                ...(typeof d.confidence === 'number' ? { confidence: d.confidence } : {}),
+              })
               soundSuccess()
               setCreateState(IDLE_STATE); createStateRef.current = IDLE_STATE
               // P0-4: Deterministic readback — verify appointment was saved
-              const verified = loadAppointments().find(a => a.title === d.title && a.date === d.date)
+              const verified = loadAppointments().find(a => a.title === d.title && a.date === d.date && (a.time ?? null) === (d.time ?? null))
               if (verified) {
                 const timeStr = verified.time ? ` ${timeInWords(verified.time)}` : ''
                 response = `קבוע — ${verified.title}${d.date ? ' ' + dateLabel(d.date) : ''}${timeStr}.`
@@ -1321,6 +1783,9 @@ export function AbuAI() {
               }
             } else if (resolution.action === 'read') {
               response = tryGroundedAnswer(text) ?? shapeCreateUnclear()
+            } else if (resolution.action === 'audio_help') {
+              // Audio complaint mid-create → help with sound, KEEP the draft.
+              response = resolution.message
             } else {
               response = shapeCreateUnclear()
             }
@@ -1343,7 +1808,7 @@ export function AbuAI() {
           if (!voiceModeRef.current) return
           transitionVoice('RESPONDING', 'create-turn')
           setVoicePhase('speaking'); setIsSpeaking(true); setStreamingText(response)
-          await speakVoiceMode(shapeVoiceSafe(response))
+          await speakVoiceMode(toSpokenText(response))
           setIsSpeaking(false); setStreamingText('')
           if (!voiceModeRef.current) return
           await new Promise(r => setTimeout(r, 120))
@@ -1378,13 +1843,47 @@ export function AbuAI() {
         }, 20000)
 
         // Product diagnostics: trace the full pipeline
+        const turnStart = Date.now() // for RESPONSE_LATENCY_MS / TTS_START_MS
         diagReset()
         diagSet({ sttProvider: 'WebSpeech', sttFileType: 'n/a', sttTranscript: text, sttStatus: '✅' })
 
+        // Companion Brain (STEP 1-7): MANDATORY before every voice response.
+        const voicePlan = planCompanionTurn(text, deriveStateFromMessages(messages))
+        diagSet({ companionPlan: `frame=${voicePlan.step7_frame} act=${voicePlan.step7_act} suppress=${voicePlan.suppressLookups} cal=${voicePlan.step5_calendar} online=${voicePlan.step6_onlineNeeded} person=${voicePlan.step4_continuity.resolvedPerson ?? '-'}` })
+
+        // Voice inputs flow through the SAME understanding orchestrator as text.
+        const voiceOrch = orchestrate(text, { messages })
+        // eslint-disable-next-line no-console
+        console.log(`[AbuAI][ORCH][voice] ORCH_INTENT=${voiceOrch.intent} clarify=${voiceOrch.needsClarification} corrections=${voiceOrch.corrections.length}`)
+
+        // Conversation Brain: track the GOAL + planned ACTION of this turn (the
+        // pipeline reasons about goals, it is not a bare router).
+        const brain = planTurn(text, { messages, conv: conversationOSRef.current, hasPendingCalendar: createStateRef.current.phase !== 'idle' })
+        // eslint-disable-next-line no-console
+        console.log(`[AbuAI][BRAIN] GOAL=${brain.goal} ACTION=${brain.action} DOMAIN=${brain.domain} ONLINE_KIND=${brain.onlineKind ?? '-'}`)
+
+        // Conversation OS FIRST: "תמשיכי" resumes the cached answer; a challenge
+        // ("למה אין לך?", "יש לך אונליין") gets a real explanation + retry offer —
+        // instead of forgetting and looping. Only fires when there is context.
+        const convTurn = handleConversationTurn(conversationOSRef.current, text)
+
         // Try grounded answer first
+        const isDirectVoiceQ = /^מי |^מתי |^איפה |^כמה |^מה זה |^מה זאת |[?؟]$/.test(text.trim())
         const voiceGrounded = tryGroundedAnswer(text)
+        // WhatsApp / call PRECEDENCE (voice parity with the text controller): a
+        // "תכתבי/שלחי/תתקשרי ל<מישהו>" turn composes a message here — it must never
+        // fall to the calendar/LLM (which produced the wrong "מחר אין כלום ביומן").
+        const voiceWa = detectWhatsAppTurn(text, { source: 'voice' })
         let response: string
-        if (voiceGrounded !== null) {
+        if (voiceWa) {
+          response = (await buildWhatsAppReply(voiceWa)).text
+        } else if (convTurn.handled) {
+          conversationOSRef.current = convTurn.state
+          response = convTurn.speak ?? ''
+          diagSet({ responseSource: `conversation_os:${convTurn.action}`, rawResponse: response })
+          // eslint-disable-next-line no-console
+          console.log(`[AbuAI][CONV_OS] action=${convTurn.action} phase=${convTurn.state.phase}`)
+        } else if (voiceGrounded !== null && !(voicePlan.suppressLookups && !isDirectVoiceQ)) {
           const route = routePersonalQuery(text)
           const isCal = route.type.startsWith('calendar_')
           diagSet({
@@ -1401,6 +1900,8 @@ export function AbuAI() {
             messages.map(m => ({ role: m.role, content: m.content })),
             voiceGrounded,
           )
+          // Companion Response Composer: no raw/banned register reaches Martita.
+          response = enforceCompanion(response, voicePlan)
         } else {
           const voiceProactive = getProactiveSeed(text, {
             previousSeedId: lastProactiveSeedIdRef.current,
@@ -1432,13 +1933,18 @@ export function AbuAI() {
           } else if (isOnlineCurrentInfoQuery(text) && !shouldBlockOnlineForPersonal(text)) {
             // B2: online current-info via server endpoint. Voice mode
             // speaks the answer concisely; sources are not read aloud.
+            const onlineStart = Date.now()
             const online = await answerOnlineCurrentInfo(text, { locationHint: 'Kfar Saba area, Israel' })
+            // eslint-disable-next-line no-console
+            console.log(`[AbuAI][LATENCY] ONLINE_FETCH_MS=${Date.now() - onlineStart} ONLINE_OK=${online.ok}`)
             if (online.ok) {
               _recordOnlineError(null)
               response = online.answer
+              conversationOSRef.current = recordOnline(conversationOSRef.current, { query: text, topic: null, source: null, ok: true, reason: null, summary: online.answer.slice(0, 120) })
             } else {
               _recordOnlineError(online.errorCode)
               response = online.userMessage
+              conversationOSRef.current = recordOnline(conversationOSRef.current, { query: text, topic: null, source: null, ok: false, reason: mapOnlineFailReason(online.errorCode), summary: null })
             }
           } else {
             // ── Streaming LLM + progressive TTS ──────────────────────
@@ -1474,6 +1980,7 @@ export function AbuAI() {
             // streamSpeakVoiceMode detects sentence boundaries and fires
             // TTS per sentence while still consuming the token stream.
             clearTimeout(watchdog)
+            let streamSpeakThrew = false
             await Promise.race([
               _streamSpeakVoiceMode(
                 capturedStream(),
@@ -1485,19 +1992,29 @@ export function AbuAI() {
               new Promise<void>((_, reject) =>
                 setTimeout(() => reject(new Error('STREAM_TTS_TIMEOUT')), 20000)
               ),
-            ]).catch(() => { stopSpeaking() })
+            ]).catch(() => { streamSpeakThrew = true; stopSpeaking() })
 
             // Finalize chat message with full streamed text
             if (streamedText.trim()) {
-              const finalContent = containsUngroundedClaim(streamedText.trim(), false)
-                ? 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
-                : streamedText.trim()
+              const finalContent = enforceCompanion(
+                containsUngroundedClaim(streamedText.trim(), false)
+                  ? 'אני לא יכולה לבדוק את היומן כרגע. תפתחי את היומן או תשאלי אותי בכתב.'
+                  : streamedText.trim(),
+                voicePlan,
+              )
               setMessages(prev => {
                 const updated = [...prev]
                 const idx = updated.findIndex(m => m.id === streamAiMsgId)
                 if (idx !== -1) updated[idx] = { ...updated[idx]!, content: finalContent }
                 return updated
               })
+              // P0 (#3): never leave a voice answer text-only. If the streaming
+              // TTS path threw/timed-out, speak the final text serially through
+              // the reliable wrapper (same engine the greeting uses) so the
+              // answer is actually heard — and TTS_EVIDENCE is logged.
+              if (streamSpeakThrew && voiceModeRef.current && !ac.signal.aborted) {
+                await speakVoiceMode(toSpokenText(finalContent))
+              }
             }
 
             setIsSpeaking(false)
@@ -1518,6 +2035,12 @@ export function AbuAI() {
         setMessages(prev => [...prev, aiMsg])
         if (!voiceModeRef.current) return
 
+        // Cache a substantial fresh answer so "תמשיכי" can resume the rest. (A
+        // continuation/repair is already cached — don't re-cache it.)
+        if (!convTurn.handled && response.trim().length > 40) {
+          conversationOSRef.current = recordAnswer(conversationOSRef.current, { question: text, intent: voiceOrch.intent, fullText: response })
+        }
+
         // Speak the full response (for grounded / proactive / content-world / online).
         // These are fast deterministic answers — serial TTS is fine.
         // B2.4: voice-safe shaping strips bullets, URLs, and multi-line
@@ -1528,14 +2051,31 @@ export function AbuAI() {
         setIsSpeaking(true)
         setStreamingText(response)
 
-        const spokenText = shapeVoiceSafe(response)
+        const responseReady = Date.now()
+        const spokenText = toSpokenText(response)
         diagSet({ spokenResponse: spokenText })
+        // Device-debuggable latency marks — one line, copy from the console.
+        // eslint-disable-next-line no-console
+        console.log(
+          `[AbuAI][LATENCY] TRANSCRIPT_TO_RESPONSE_MS=${responseReady - turnStart} ` +
+          `RESPONSE_TO_TTS_START_MS=${Date.now() - responseReady} ` +
+          `RESPONSE_READY_MS=${responseReady - turnStart} ` +
+          `TTS_REQUEST_START_MS=${Date.now() - turnStart} ` +
+          `TOTAL_TAP_TO_SPEAK_MS=${Date.now() - turnStart} ` +
+          `SPOKEN_CHARS=${spokenText.length} FALLBACK_USED=${realtimeRef.current === null}`,
+        )
         await speakVoiceMode(spokenText)
         // TTS trace is captured by voice.ts ttsTrace() — copy to diagnostics
         try {
           const { getTTSTrace } = await import('../../services/voice')
           const lastTTS = getTTSTrace().slice(-1)[0]
-          if (lastTTS) diagSet({ ttsProvider: lastTTS.provider, ttsModel: lastTTS.model, ttsVoice: lastTTS.voice, ttsLatencyMs: lastTTS.latencyMs, ttsStatus: lastTTS.status, ttsFallback: lastTTS.fallback })
+          if (lastTTS) {
+            diagSet({ ttsProvider: lastTTS.provider, ttsModel: lastTTS.model, ttsVoice: lastTTS.voice, ttsLatencyMs: lastTTS.latencyMs, ttsStatus: lastTTS.status, ttsFallback: lastTTS.fallback })
+            const { profileForProvider, WEB_SPEECH_FALLBACK_DIAG } = await import('../../services/voiceConfig')
+            const prof = profileForProvider(lastTTS.provider)
+            // eslint-disable-next-line no-console
+            console.log(`[AbuAI][VOICE] VOICE_PROFILE_USED=${prof.id} TTS_PROVIDER_USED=${lastTTS.provider} TTS_RATE=${prof.rate} TTS_VOICE=${lastTTS.voice} TTS_FALLBACK_REASON=${lastTTS.fallback ?? '-'}${prof.qualityRisk ? ' ' + WEB_SPEECH_FALLBACK_DIAG : ''}`)
+          }
         } catch {}
         diagCommit()
 
@@ -1558,7 +2098,7 @@ export function AbuAI() {
         setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: errText, timestamp: Date.now() }])
         if (voiceModeRef.current) {
           setVoicePhase('speaking'); setIsSpeaking(true)
-          await speakVoiceMode(errText)
+          await speakVoiceMode(toSpokenText(errText))
           setIsSpeaking(false)
           await new Promise(r => setTimeout(r, 120))
           if (voiceModeRef.current) {
@@ -1569,13 +2109,25 @@ export function AbuAI() {
       }
     }
 
-    // v17.3: Web Speech API as PRIMARY (fastest turn detection), Whisper as FALLBACK
+    // v17.3: Web Speech API as PRIMARY (fastest turn detection), Whisper as FALLBACK.
+    // DEVICE FIX (docs/DEVICE_P0_ROOT_CAUSE.md): on iOS Safari / installed PWA,
+    // webkitSpeechRecognition is unreliable — it can start and then fire NO events,
+    // hanging "מקשיבה..." forever. So on iOS we SKIP Web Speech and go straight to the
+    // Whisper (MediaRecorder→Groq) path below. Non-iOS keeps Web Speech primary.
     const WSR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (WSR) {
+    const nav = typeof navigator !== 'undefined' ? navigator : ({} as Navigator)
+    const useWebSpeech = shouldUseWebSpeechPrimary(nav.userAgent ?? '', (nav as { platform?: string }).platform ?? '', nav.maxTouchPoints ?? 0)
+    if (WSR && useWebSpeech) {
       const rec = new WSR() as any
-      // v20: Respect language setting from Settings
-      const voiceLangSetting = localStorage.getItem('abu-voice-lang') || 'auto'
-      rec.lang = voiceLangSetting === 'es' ? 'es-AR' : 'he-IL'
+      // P0 fix (Hebrew-heard-as-Spanish): the browser recognizer needs ONE language
+      // and cannot auto-detect. Default to Hebrew (Martita's primary); use Spanish
+      // ONLY when the ACTIVE conversation is Spanish — a stale 'es' preference alone
+      // must never pin Spanish and make Hebrew unrecognizable. (Whisper, the primary
+      // STT, now auto-detects; WebSpeech is the fallback.)
+      const lastUser = [...messagesRef.current].reverse().find(m => m.role === 'user')
+      const det = lastUser ? detectUtteranceLanguage(lastUser.content) : 'unknown'
+      const convLang: PolicyLang | null = det === 'es' ? 'es' : det === 'he' ? 'he' : null
+      rec.lang = resolveSttLanguage({ preference: preferenceFrom(localStorage.getItem('abu-voice-lang')), conversationLanguage: convLang }).webSpeechLang
       rec.continuous = false
       rec.interimResults = true
       rec.maxAlternatives = 1
@@ -1583,7 +2135,14 @@ export function AbuAI() {
       let gotResult = false
       let finalTranscript = ''
 
+      // LISTENING WATCHDOG (bounded fallback per .claude/rules/voice.md): if the recognizer
+      // fires NO terminal event within the window (the iOS "no events" hang), abort and fall
+      // to Whisper so "מקשיבה..." can never last forever. Cleared by any result/end/error.
+      let watchdog: ReturnType<typeof setTimeout> | null = null
+      const clearWatchdog = () => { if (watchdog) { clearTimeout(watchdog); watchdog = null } }
+
       rec.onresult = (e: any) => {
+        clearWatchdog()
         let interim = ''
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const result = e.results[i]
@@ -1607,6 +2166,7 @@ export function AbuAI() {
       }
 
       rec.onerror = (e: any) => {
+        clearWatchdog()
         recognitionRef.current = null
         if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
           // Permission denied — never exit silently. Show + speak a friendly
@@ -1622,6 +2182,7 @@ export function AbuAI() {
       }
 
       rec.onend = () => {
+        clearWatchdog()
         recognitionRef.current = null
         if (!gotResult && voiceModeRef.current) {
           // No result from Web Speech — restart with backoff, max 5 empty rounds
@@ -1639,8 +2200,19 @@ export function AbuAI() {
       try {
         rec.start()
         recognitionRef.current = rec
+        // Arm the watchdog: if NO onresult/onend/onerror fires within the window, the
+        // recognizer has hung (the iOS failure) — abort and fall to Whisper.
+        watchdog = setTimeout(() => {
+          watchdog = null
+          if (recognitionRef.current === rec) {
+            try { rec.abort() } catch { /* best-effort */ }
+            recognitionRef.current = null
+            if (voiceModeRef.current) startWhisperFallback()
+          }
+        }, LISTEN_WATCHDOG_MS)
         return
       } catch {
+        clearWatchdog()
         recognitionRef.current = null
         // Fall through to Whisper
       }
@@ -1757,6 +2329,17 @@ export function AbuAI() {
 
   // v30.2: Recompute on each voice session entry, not once at mount
   const buildRealtimeInstructions = useCallback(() => {
+    // Date grounding: the model side (greeting + any self-generated line) must know
+    // the real day/date/time-of-day — never guess "בוקר טוב" at night or the wrong day.
+    let dateGrounding = ''
+    try {
+      const now = new Date()
+      const heDate = now.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      const hour = now.getHours()
+      const partOfDay = hour < 5 ? 'לילה' : hour < 12 ? 'בוקר' : hour < 17 ? 'צהריים' : hour < 21 ? 'ערב' : 'לילה'
+      dateGrounding = `\n═══ תאריך ושעה (עכשיו, אזור זמן ישראל) ═══\nהיום: ${heDate}. חלק היום: ${partOfDay}.\nהשתמשי בזה לברכה לפי שעת היום ולכל שאלה על "היום", "מחר", או "איזה יום היום".\n`
+    } catch { dateGrounding = '' }
+
     let calendarSnapshot = ''
     try {
       const todayResult = getTodayEvents()
@@ -1806,8 +2389,13 @@ export function AbuAI() {
       }
     } catch {}
 
-    return `${SYSTEM_PROMPT}${VOICE_SUFFIX}
-${calendarSnapshot}${familyFacts}${memorySummary}
+    // GPT-Live parity §6: the production conversational-intelligence instructions come
+    // FIRST (highest priority) so the live model talks like an intelligent companion,
+    // not a canned script — then the existing identity/grounding/memory.
+    return `${buildAbuRealtimeSystemPrompt()}
+
+${SYSTEM_PROMPT}${VOICE_SUFFIX}
+${dateGrounding}${calendarSnapshot}${familyFacts}${memorySummary}
 ═══ כלל ברזל — יומן ═══
 יש לך מידע אמיתי מהיומן למעלה. תשתמשי רק בו.
 אם שואלים על יום שאין לך מידע עליו — תגידי:
@@ -1846,7 +2434,7 @@ ${fewShotText}`
     transitionVoice('RESPONDING', 'greeting-speak')
     setVoicePhase('speaking')
     try {
-      await speakVoiceMode(greeting)
+      await speakVoiceMode(toSpokenText(greeting))
     } catch { /* TTS failed, continue to listening anyway */ }
 
     // Now start listening — after TTS finishes so mic doesn't pick up speaker output
@@ -1856,7 +2444,45 @@ ${fewShotText}`
   }, [startVoiceListening, transitionVoice])
 
   const enterVoiceMode = useCallback(() => {
+    // ─── P0 mic preflight (real iPhone Safari) ────────────────────────────
+    // Before we unlock audio, greet, or open WebRTC, answer one question: can
+    // this context record at all? Over plain http on a LAN IP, iOS Safari hides
+    // navigator.mediaDevices, so getUserMedia is impossible. If we entered voice
+    // mode anyway, Realtime would retry → fall back → greet → fail to record →
+    // the user taps again → greeting loop. So we refuse ONCE, calmly, with a
+    // single actionable message — and never enter the loop.
+    const preflight = checkMicPreflight()
+    if (!preflight.ok) {
+      console.warn(`[AbuAI] Mic unavailable (${preflight.reason}): ${preflight.devReason}`)
+      try { diagSet({ micPreflight: `❌ ${preflight.reason}`, micPreflightDetail: preflight.devReason }); diagCommit() } catch {}
+      // Show the calm message once. Don't stack duplicates if she taps again.
+      setMessages(prev => {
+        const last = prev[prev.length - 1]
+        if (last?.role === 'assistant' && last.content === preflight.userMessage) return prev
+        return [...prev, { id: nextId(), role: 'assistant', content: preflight.userMessage, timestamp: Date.now() }]
+      })
+      // Stay in text mode — focus the input so she can type immediately.
+      setTimeout(() => inputRef.current?.focus(), 150)
+      return
+    }
+
     unlockIOSAudio()
+    // ── Voice Flight Recorder: begin a fresh turn recording INSIDE the user gesture.
+    // This is what makes the next iPhone test observable (first missing/failed stage).
+    const secure = typeof window !== 'undefined' && window.isSecureContext
+    const rec = startVoiceFlight(`turn-${Date.now()}`, Date.now())
+    rec.setContext({
+      appVersion: APP_VERSION.version, commit: APP_VERSION.commitHint, model: REALTIME_MODEL,
+      secureContext: secure, ua: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+    })
+    rec.mark('USER_GESTURE_RECEIVED', 'ok', Date.now())
+    rec.mark('SECURE_CONTEXT', secure ? 'ok' : 'fail', Date.now(), secure ? undefined : { errorCode: 'insecure_context' })
+    rec.mark('MICROPHONE_PERMISSION_REQUESTED', 'ok', Date.now())
+    canonicalVoiceRef.current = nextVoiceState('IDLE', 'enter') // → REQUESTING_PERMISSION
+    setAudioBlocked(false)
+    // Device-debuggable audio-unlock evidence (must run inside the tap gesture on iOS).
+    // eslint-disable-next-line no-console
+    console.log(`[AbuAI][VOICE] AUDIO_UNLOCK_STATUS=attempted secureContext=${secure}`)
     acquireWakeLock()
     setVoiceMode(true)
     voiceModeRef.current = true
@@ -1865,6 +2491,11 @@ ${fewShotText}`
     // v25.2: SIMPLE DECISION — can we use Realtime or not?
     const quotaFlag = localStorage.getItem('abu-openai-quota-failed')
     const openaiAvailable = useRealtime && (!quotaFlag || (Date.now() - parseInt(quotaFlag, 10)) > 300_000)
+    // eslint-disable-next-line no-console
+    console.log(`[AbuAI][VOICE] REALTIME_STATUS=${openaiAvailable ? 'attempting' : 'fallback-pipeline'} useRealtime=${useRealtime}`)
+    setProductTruth(openaiAvailable
+      ? { voiceMode: 'realtime', realtimeStatus: 'attempting', fallbackUsed: false, sttProvider: 'Realtime (WebRTC)', ttsProvider: 'OpenAI Realtime' }
+      : { voiceMode: 'pipeline', realtimeStatus: 'unavailable', fallbackUsed: true, sttProvider: 'Web Speech (fallback)', ttsProvider: 'pipeline TTS', lastError: 'Realtime unavailable (OpenAI key/quota) — using Web Speech pipeline' })
 
     // Realtime disabled → use pipeline mode (STT → local-first router → LLM → TTS).
     // OpenAI is still available as LLM provider via sendMessage().
@@ -1877,12 +2508,98 @@ ${fewShotText}`
     // Use OpenAI Realtime API (WebRTC) — native audio, < 2s response
     if (useRealtime) {
       diagReset()
-      diagSet({ sttProvider: 'Realtime (WebRTC)', sttFileType: 'native', ttsProvider: 'OpenAI Realtime', ttsModel: 'gpt-4o-realtime-preview', ttsVoice: 'shimmer', responseSource: 'Realtime native audio' })
+      diagSet({ sttProvider: 'Realtime (WebRTC)', sttFileType: 'native', ttsProvider: 'OpenAI Realtime', ttsModel: REALTIME_MODEL, ttsVoice: 'shimmer', responseSource: 'Realtime native audio' })
       setRealtimeTranscript('')
+      realtimeEverConnectedRef.current = false // fresh session — initial failure stays silent
+      // Pin the Realtime STT language from the active conversation (Hebrew default,
+      // Spanish only for an active Spanish conversation) — never auto-detect, which
+      // misheard short Hebrew ("בוקר טוב") as Russian/Cyrillic.
+      const lastUserForStt = [...messagesRef.current].reverse().find(m => m.role === 'user')
+      const detForStt = lastUserForStt ? detectUtteranceLanguage(lastUserForStt.content) : 'unknown'
+      const realtimeSttLang = resolveSttLanguage({
+        preference: preferenceFrom(localStorage.getItem('abu-voice-lang')),
+        conversationLanguage: detForStt === 'es' ? 'es' : detForStt === 'he' ? 'he' : null,
+      }).whisperLanguage
+      // Shared handler for BOTH realtime audio failure modes (play() blocked AND
+      // no-audio-event timeout): auto-voice the reply via pipeline TTS exactly once,
+      // else raise the visible tap-to-hear recovery. Never wait silently.
+      // iOS AUTOPLAY (muted-then-unmute): create the REAL remote-audio element NOW —
+      // synchronously inside this tap gesture — and start it playing muted with a silent
+      // primer. The Realtime session attaches the WebRTC remote stream to THIS element
+      // later (post-await, outside the gesture) and unmutes it. This is the only reliable
+      // way to make the model's voice audible on iOS Safari PWA, where an element first
+      // played outside a user gesture is autoplay-blocked ("connected but hears nothing").
+      let primedRealtimeAudioEl: HTMLAudioElement | null = null
+      try {
+        const el = document.createElement('audio')
+        el.autoplay = true
+        ;(el as unknown as { playsInline: boolean }).playsInline = true
+        el.muted = true
+        el.setAttribute('aria-hidden', 'true')
+        el.style.display = 'none'
+        // Tiny silent WAV so the muted play() actually starts and USER-ACTIVATES the element.
+        el.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+        document.body.appendChild(el)
+        el.play().catch(() => { /* primer may reject on some browsers; unmute path still best-effort */ })
+        primedRealtimeAudioEl = el
+        // eslint-disable-next-line no-console
+        console.log('[AbuAI][VOICE] REMOTE_AUDIO_PRIMED=muted (in-gesture, awaiting WebRTC track to unmute)')
+      } catch { /* non-DOM env */ }
+      const handleRealtimeAudioFailure = (code: string) => {
+        canonicalVoiceRef.current = nextVoiceState('SPEAKING', 'audio_failed')
+        const dec = decideRealtimeAudioFallback(lastRealtimeReplyRef.current || null, realtimeTtsFallbackUsedRef.current)
+        if (dec.useFallback && dec.reply) {
+          realtimeTtsFallbackUsedRef.current = true
+          // eslint-disable-next-line no-console
+          console.log(`[AbuAI][VOICE] ${code} → pipeline TTS fallback (once)`)
+          void speakVoiceMode(toSpokenText(dec.reply))
+        } else {
+          setAudioBlocked(true)
+          const line = failureLine('AUDIO_PLAYBACK_FAILED')
+          if (line) setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: line, timestamp: Date.now() }])
+        }
+      }
+      // realtime2 SLICE (ADR §12): when the deterministic communication slice is opted in
+      // (needs the WebRTC transport → also requires the realtime beta), build a factory that
+      // wires the live function-tool path — model function_call → control plane + kernel →
+      // committed card → grounded speech. OFF by default → certified path is unchanged.
+      const sliceOn = isRealtimeSliceEnabled() && isRealtimeBetaEnabled()
+      const sliceControllerFactory = sliceOn
+        ? (send: (event: Record<string, unknown>) => void) =>
+            new RealtimeCommController(
+              new SessionOrchestrator({ sessionId: `voice_${Date.now()}`, kernel: makeProductionKernel() }),
+              send,
+              {
+                onCard: (vm) => setLiveSliceCard(vm.visible ? vm : null),
+                onIncident: (i) => { try { console.warn(`[AbuAI][SLICE] truth incident: ${i.kind} [${i.violations.join(',')}]`) } catch { /* */ } },
+              },
+            )
+        : undefined
+      // realtime2 SLICE: the CALENDAR authority, constructed BESIDE communication under the
+      // SAME flag (runtime parity). Relationship truth is DELEGATED to familyResolve; the
+      // draft owns state; the committed receipt projects to liveCalendarDraft.
+      const calendarResolve: RelationshipResolver = (phrase) => {
+        const r = resolvePersonPhrase(phrase)
+        return r.status === 'resolved' ? r.name : null
+      }
+      const calendarControllerFactory = sliceOn
+        ? (send: (event: Record<string, unknown>) => void) =>
+            new CalendarDraftController(calendarResolve, send, {
+              onCard: (r) => setLiveCalendarDraft(r.confirmation === 'CANCELLED' ? null : r),
+            })
+        : undefined
+      // ONE-RUNTIME-PATH-LIVE: arm the turn-authority arbiter. In slice mode the MODEL
+      // owns TALK → the legacy brain is silenced (canLegacySpeak/canLegacyAct = false).
+      arbiterRef.current = new TurnAuthorityArbiter()
+      if (sliceOn) arbiterRef.current.activateRealtime()
       const session = new RealtimeVoiceSession(
         {
           onStateChange: (state) => {
             setRealtimeState(state)
+            // eslint-disable-next-line no-console
+            console.log(`[AbuAI][VOICE] REALTIME_STATUS=${state}`)
+            setProductTruth({ voiceMode: 'realtime', realtimeStatus: state === 'connecting' ? 'attempting' : (state as any), fallbackUsed: false })
+            if (state === 'listening' || state === 'speaking') realtimeEverConnectedRef.current = true
             if (state === 'listening') setVoicePhase('listening')
             else if (state === 'speaking') { setVoicePhase('speaking'); setIsSpeaking(true) }
             else if (state === 'connecting') setVoicePhase('greeting')
@@ -1902,10 +2619,70 @@ ${fewShotText}`
           },
           onUserTranscript: (text) => {
             setLastHeardText(text)
-            setMessages(prev => [...prev, { id: nextId(), role: 'user', content: text, timestamp: Date.now() }])
+            // Faithful entry pipeline — IDENTICAL to typed text: pronoun + follow-up
+            // resolution, then route the transcript through the SAME AbuAI brain
+            // (ExecutiveCognitiveController). Voice must not bypass the brain.
+            const prior = messagesRef.current
+            // PARITY with typed/pipeline: keep a pronoun RAW while a calendar event is
+            // focused so the runtime resolves it via `focus` (referable cancel/move).
+            const rtHasCalFocus = cognitiveRuntimeStateRef.current.focus?.kind === 'calendar_event'
+            const { resolved: pr } = resolvePronouns(text, prior)
+            let eff = (pr !== text && !rtHasCalFocus) ? pr : text
+            const fu = resolveFollowUp(eff, prior, { pendingCreate: createStateRef.current.phase !== 'idle' })
+            if (fu.wasFollowUp && !rtHasCalFocus) eff = fu.resolved
+            const userMsg: ChatMessage = { id: nextId(), role: 'user', content: eff, timestamp: Date.now() }
+            const currentMsgs = [...messagesRef.current, userMsg]
+            setMessages(currentMsgs)
+            setProductTruth({ voiceMode: 'realtime', inputSource: 'voice_realtime', rawTranscript: text, normalizedTranscript: eff, vadType: 'semantic_vad', bargeInEnabled: true, fallbackUsed: false })
+            void (async () => {
+              const myTurn = ++voiceTurnSeqRef.current
+              // ONE-RUNTIME-PATH-LIVE (§1): under REALTIME_ACTIVE the MODEL owns TALK and
+              // the deterministic tools own ACTIONS — the legacy ExecutiveCognitiveController
+              // must NOT RUN at all (no handleTurn, no conv/frustration/productTruth/display
+              // side effects). It runs only on the certified/fallback path. This removes the
+              // SECOND SEMANTIC BRAIN, not merely its audible speech.
+              arbiterRef.current?.beginTurn()
+              if (arbiterRef.current && !arbiterRef.current.legacyBrainAllowed()) {
+                // eslint-disable-next-line no-console
+                console.log('[AbuAI][SLICE] REALTIME_ACTIVE — legacy brain skipped (model owns TALK)')
+                return
+              }
+              const tools = buildFullTurnTools(currentMsgs, true)
+              const seed: RuntimeState = { ...cognitiveRuntimeStateRef.current, conv: conversationOSRef.current }
+              currentVoiceFlight()?.mark('TRANSCRIPT_LANGUAGE_RESOLVED', 'ok', Date.now(), { detail: detectUtteranceLanguage(eff) })
+              currentVoiceFlight()?.mark('ABUAI_BRAIN_STARTED', 'ok', Date.now())
+              const result = await ExecutiveCognitiveController.handleTurn(seed, eff, { messages: currentMsgs, now: new Date() }, tools, { inputModality: 'realtime_voice', language: voiceLangTrace(eff, 'realtime_voice') })
+              currentVoiceFlight()?.mark('ABUAI_BRAIN_COMPLETED', 'ok', Date.now())
+              // Superseded by a barge-in / newer utterance? Drop this stale turn.
+              if (myTurn !== voiceTurnSeqRef.current || !voiceModeRef.current) return
+              cognitiveRuntimeStateRef.current = result.state
+              conversationOSRef.current = result.state.conv
+              cogFrustrationRef.current = { count: result.state.frustrationCount, variant: result.state.frustrationVariant }
+              setProductTruth({ brainPipelineUsed: true, executiveControllerUsed: true, route: result.intent, toolUsed: result.source, memoryUsed: /conversation_os|memory/.test(result.source) })
+              // ONE-RUNTIME-PATH-LIVE: when the MODEL owns TALK (slice mode,
+              // create_response=true) the legacy brain must NOT speak or attach an action
+              // for this turn — that was the device-falsified duplicate audio + legacy
+              // calendar→call. The brain still updates working state; the model speaks and
+              // the function-tool controllers own actions.
+              const modelOwnsTalk = arbiterRef.current ? !arbiterRef.current.canLegacySpeak() : false
+              setMessages(prev => [...prev, {
+                id: nextId(), role: 'assistant', content: result.display, timestamp: Date.now(),
+                ...((result.action && !modelOwnsTalk) ? { action: result.action } : {}),
+              }])
+              // Voice the BRAIN's answer through Realtime ONLY on the certified path (model
+              // create_response:false). In slice mode the model self-answers → suppress the
+              // second TALK authority. Remember the reply for exactly-once fallback voicing.
+              suppressRealtimeAssistantMsgRef.current = true
+              lastRealtimeReplyRef.current = result.speak
+              realtimeTtsFallbackUsedRef.current = false
+              if (!modelOwnsTalk) realtimeRef.current?.speak(result.speak)
+              currentVoiceFlight()?.mark('RESPONSE_CREATE_SENT', 'ok', Date.now())
+            })()
           },
           onAssistantTranscript: (text) => {
             setRealtimeTranscript('')
+            // The greeting is added; a voiced BRAIN reply is suppressed (already appended).
+            if (suppressRealtimeAssistantMsgRef.current) { suppressRealtimeAssistantMsgRef.current = false; return }
             setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: text, timestamp: Date.now() }])
           },
           onAssistantDelta: (delta) => {
@@ -1913,10 +2690,18 @@ ${fewShotText}`
           },
           onError: (error) => {
             console.error('[Realtime] Error:', error)
-            // v27: Mediate error — always Hebrew, always with action buttons
             const mediated = mediateError(error)
             if (mediated.category === 'quota' || mediated.category === 'auth' || mediated.category === 'rate-limit') {
               try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch {}
+            }
+            // QUIET initial fallback: if Realtime never connected, do NOT flash an
+            // error card — onFatalError falls back to the pipeline silently. Only
+            // surface a card for an error AFTER a working conversation began.
+            if (!realtimeEverConnectedRef.current) {
+              // eslint-disable-next-line no-console
+              console.log(`[AbuAI][VOICE] REALTIME_STATUS=error FALLBACK_REASON=${mediated.category ?? 'connect_failed'} (silent → pipeline)`)
+              stampFallbackTruth(`Realtime ${mediated.category ?? 'connect_failed'} → Web Speech pipeline`)
+              return
             }
             // P0-8: Don't spam error cards — replace last error if it was also an error
             const errorMsg = { id: nextId(), role: 'assistant' as const, content: mediated.message, timestamp: Date.now(), error: mediated }
@@ -1928,10 +2713,46 @@ ${fewShotText}`
               return [...prev, errorMsg]
             })
           },
+          // A server transcription FAILURE becomes an explicit state — never silent
+          // indefinite listening (drives the canonical voiceStateMachine).
+          onTranscriptFailed: (code) => {
+            canonicalVoiceRef.current = nextVoiceState('TRANSCRIBING', 'transcript_failed') // → TRANSCRIPTION_FAILED
+            const line = failureLine('TRANSCRIPTION_FAILED')
+            if (line) setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: line, timestamp: Date.now() }])
+            // eslint-disable-next-line no-console
+            console.log(`[AbuAI][VOICE] TRANSCRIPTION_FAILED code=${code}`)
+          },
+          // Realtime audio playback failed (play() blocked) → auto-voice via pipeline
+          // TTS exactly once, else tap-to-hear. Never fail silently.
+          onAudioBlocked: () => handleRealtimeAudioFailure('REALTIME_AUDIO_BLOCKED'),
+          // A response.create succeeded but NO output-audio event arrived in time.
+          // Classify REALTIME_AUDIO_TIMEOUT, record it in Evolution (OBSERVE_ONLY),
+          // and fall back to pipeline TTS — never leave her waiting silently.
+          onAudioTimeout: (code) => {
+            try {
+              observeTurn({
+                ts: Date.now(),
+                sessionId: 'voice', turnId: `voice-audio-timeout-${Date.now()}`,
+                input: '', intent: 'voice', source: 'realtime_voice',
+                finalAnswer: lastRealtimeReplyRef.current || '',
+                inputModality: 'realtime_voice',
+                language: {
+                  voicePath: 'realtime_voice', responseTextProduced: true,
+                  responseAudioProduced: false, audioPlaybackStarted: false, audioPlaybackCompleted: false,
+                  fallbackFrom: 'realtime_voice', fallbackTo: 'pipeline_microphone',
+                  fallbackReason: code, firstDivergence: 'voice_synthesis',
+                },
+              })
+            } catch { /* OBSERVE_ONLY must never break the turn */ }
+            handleRealtimeAudioFailure(code)
+          },
         },
         buildRealtimeInstructions(),
         // v25: onFatalError — Realtime died, remember + fall back to free pipeline
         () => {
+          // eslint-disable-next-line no-console
+          console.log('[AbuAI][VOICE] REALTIME_STATUS=fatal FALLBACK_REASON=realtime_unavailable → pipeline')
+          stampFallbackTruth('Realtime unavailable → Web Speech pipeline')
           console.log('[AbuAI] Realtime failed, saving quota flag, falling back to free pipeline')
           try { localStorage.setItem('abu-openai-quota-failed', String(Date.now())) } catch { /* quota */ }
           realtimeRef.current = null
@@ -1941,6 +2762,10 @@ ${fewShotText}`
           setTimeout(() => startPipelineVoiceMode(), 100) // small delay to let state settle
         },
         noiseMode as 'quiet' | 'noisy',
+        realtimeSttLang,
+        primedRealtimeAudioEl, // gesture-primed remote-audio element (muted-then-unmute, iOS)
+        sliceControllerFactory, // realtime2 SLICE only — undefined on the certified path
+        calendarControllerFactory, // realtime2 SLICE only — calendar authority at parity
       )
       realtimeRef.current = session
       session.connect()
@@ -1961,6 +2786,9 @@ ${fewShotText}`
       setRealtimeState('idle')
       setRealtimeTranscript('')
     }
+    setLiveSliceCard(null) // realtime2: drop the live action card when the session ends
+    setLiveCalendarDraft(null) // realtime2: drop the live calendar draft when the session ends
+    arbiterRef.current?.terminate() // ONE-RUNTIME-PATH-LIVE: release turn ownership
 
     transitionVoice('IDLE', 'exit-voice-mode')
     voiceModeRef.current = false
@@ -2263,6 +3091,38 @@ ${fewShotText}`
           </div>
         )}
 
+        {/* ──────── REALTIME SLICE HARNESS (ADR §18 falsifier, ?voice=realtime2 only) ──────── */}
+        {isRealtimeSliceEnabled() && <RealtimeSliceHarness />}
+
+        {/* ──────── LIVE calendar draft (ADR §13) — the control plane commits it; the UI
+             only PROJECTS the committed receipt (never a relative date, never a guessed person). ── */}
+        {liveCalendarDraft && (
+          <div
+            data-testid="live-calendar-draft"
+            style={{ margin: '8px 16px', padding: '10px 14px', borderRadius: 12, background: '#0a4a45', color: '#eafaf6', fontSize: 16 }}
+          >
+            {liveCalendarDraft.confirmation === 'CONFIRMED'
+              ? '✓ נשמר ביומן'
+              : liveCalendarDraft.unresolvedRelationship
+                ? `יומן — למי? (${liveCalendarDraft.unresolvedRelationship})`
+                : `יומן: ${liveCalendarDraft.date ?? ''} ${liveCalendarDraft.time ?? ''} ${liveCalendarDraft.participant ?? ''}`.trim()}
+          </div>
+        )}
+        {/* ──────── LIVE in-session action card (ADR §13) — the function-tool path commits it;
+             stays visible while the conversation continues; manual open only (never auto-send). ── */}
+        {liveSliceCard && (
+          <ActiveActionCard
+            vm={liveSliceCard}
+            onPrimary={(vm) => {
+              const channel = vm.kind === 'call' ? 'phone' : 'whatsapp'
+              const adapter = getAdapter(channel)
+              if (!adapter || !vm.recipientLabel) return
+              const { url } = adapter.buildHandoff(vm.recipientLabel, '')
+              if (url) { try { navigator.vibrate?.(15) } catch { /* */ } window.location.href = url }
+            }}
+          />
+        )}
+
         {/* ──────── CHAT MESSAGES ──────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {messages.map((msg, idx) => (
@@ -2273,6 +3133,22 @@ ${fewShotText}`
               onRetry={() => setMessages(prev => prev.filter(m => m.id !== msg.id))}
               onHome={() => setScreen(Screen.Home)}
               onDismiss={() => setMessages(prev => prev.filter(m => m.id !== msg.id))}
+              onOpenAction={(action: CommunicationAction, draftText: string) => {
+                // Perform the channel handoff: open the conversation with the
+                // reviewed text PRE-FILLED. Never mutate the draft, never send.
+                const adapter = getAdapter(action.channel)
+                if (!adapter) return false
+                try { navigator.clipboard?.writeText(draftText)?.catch(() => {}) } catch { /* clipboard optional */ }
+                const { url } = adapter.buildHandoff(action.recipient.name, draftText)
+                if (url) {
+                  recordComposeEvent({ type: 'url_opened', recipient: action.recipient.name, draftLen: draftText.length, ok: true })
+                  try { navigator.vibrate?.(15) } catch { /* no haptics */ }
+                  window.location.href = url
+                  return true
+                }
+                recordComposeEvent({ type: 'no_phone_fallback', recipient: action.recipient.name, ok: false })
+                return false
+              }}
             />
           ))}
 
@@ -2353,6 +3229,34 @@ ${fewShotText}`
             gap: 0,
             cursor: 'pointer',
           }}>
+
+          {/* Recovery: playback did not start → a visible gesture button that unlocks
+              audio AND RE-SPEAKS the last reply (tap-to-hear). No silent failure. */}
+          {audioBlocked && (
+            <button
+              data-testid="tap-to-hear"
+              onClick={async (e) => {
+                e.stopPropagation()
+                unlockIOSAudio()
+                setAudioBlocked(false)
+                const t = lastSpokenTextRef.current
+                if (t) { canonicalVoiceRef.current = 'SPEAKING'; await speakVoiceMode(t) }
+                canonicalVoiceRef.current = 'LISTENING'
+              }}
+              style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 20,
+                padding: '12px 20px', minHeight: 48, borderRadius: 14, border: 'none', background: GOLD, color: '#0b1020',
+                fontSize: 18, fontFamily: "'Heebo',sans-serif", fontWeight: 700, cursor: 'pointer' }}
+            >לחצי כאן כדי לשמוע שוב</button>
+          )}
+          {/* Voice Flight Recorder — copy a compact diagnostic Leo can paste (no Safari devtools). */}
+          <button
+            onClick={async (e) => { e.stopPropagation(); const txt = await copyVoiceReport(); const COPIED = 'אבחון הקול הועתק. אפשר להדביק ללאו.'; setMessages(prev => prev[prev.length - 1]?.content === COPIED ? prev : [...prev, { id: nextId(), role: 'assistant', content: COPIED, timestamp: Date.now() }]); console.log(txt) }}
+            aria-label="העתקת אבחון קול"
+            style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 20,
+              padding: '10px 16px', minHeight: 44, borderRadius: 12, border: '1px solid rgba(201,168,76,0.4)',
+              background: 'rgba(255,250,240,0.06)', color: 'rgba(245,240,232,0.8)', fontSize: 15,
+              fontFamily: "'Heebo',sans-serif", cursor: 'pointer' }}
+          >העתקת אבחון קול</button>
 
           {/* Large gold ring — 192px — v20: tappable for interruption */}
           <div
@@ -2793,6 +3697,7 @@ ${fewShotText}`
                 cursor: 'pointer',
               }}
             >ניקוי שיחה</button>
+            {isOperatorView() && (<>
             <button
               type="button"
               onClick={() => {
@@ -2826,7 +3731,81 @@ ${fewShotText}`
                 cursor: 'pointer',
               }}
             >📋 Copy Diagnostics</button>
+            <button
+              type="button"
+              onClick={() => {
+                let now = ''
+                try { now = new Date().toISOString() } catch { /* no clock */ }
+                const text = formatProductTruthReport(now)
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(text).then(() => alert('דוח האמת הועתק! שלחי ללאו.')).catch(() => {
+                    const ta = document.createElement('textarea')
+                    ta.value = text
+                    ta.style.position = 'fixed'
+                    ta.style.left = '-9999px'
+                    document.body.appendChild(ta)
+                    ta.select()
+                    document.execCommand('copy')
+                    document.body.removeChild(ta)
+                    alert('דוח האמת הועתק! שלחי ללאו.')
+                  })
+                } else {
+                  prompt('העתיקי ידנית:', text)
+                }
+              }}
+              style={{
+                marginRight: 8,
+                padding: '10px 16px',
+                borderRadius: 20,
+                background: 'rgba(20,184,166,0.10)',
+                border: '1px solid rgba(20,184,166,0.35)',
+                color: 'rgba(20,184,166,0.9)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >📋 Copy Product Truth Report</button>
+            </>)}
           </div>
+          {/* Team 9 — PRODUCT TRUTH panel (OPERATOR-ONLY: dev or ?operator=1).
+              Live, honest snapshot; the Web-Speech fallback is never hidden here.
+              Recomputed each render. Never shown to Martita (English eng text). */}
+          {isOperatorView() && (() => {
+            const p = getProductTruth()
+            const row = (k: string, v: string, warn = false) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0' }}>
+                <span style={{ color: 'rgba(255,255,255,0.45)' }}>{k}</span>
+                <span style={{ color: warn ? '#f6b26b' : 'rgba(255,255,255,0.85)', fontWeight: warn ? 700 : 400, textAlign: 'right', direction: 'ltr' }}>{v}</span>
+              </div>
+            )
+            return (
+              <div style={{
+                margin: '10px 0 4px',
+                padding: '10px 14px',
+                borderRadius: 12,
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.10)',
+                fontSize: 12,
+                fontFamily: 'ui-monospace, Menlo, monospace',
+                direction: 'ltr',
+                textAlign: 'left',
+              }}>
+                <div style={{ color: 'rgba(20,184,166,0.9)', fontWeight: 700, marginBottom: 6, letterSpacing: 0.5 }}>PRODUCT TRUTH</div>
+                {row('BUILD_ID', p.buildId)}
+                {row('VOICE_MODE', p.voiceMode)}
+                {row('REALTIME_STATUS', p.realtimeStatus, p.realtimeStatus === 'fallback' || p.realtimeStatus === 'unavailable' || p.realtimeStatus === 'error')}
+                {row('FALLBACK_USED', p.fallbackUsed ? 'YES' : 'NO', p.fallbackUsed)}
+                {row('INPUT_SOURCE', p.inputSource ?? 'n/a')}
+                {row('BRAIN_PIPELINE_USED', p.brainPipelineUsed ? 'YES' : 'NO', !p.brainPipelineUsed)}
+                {row('VAD_TYPE', p.vadType ?? 'n/a')}
+                {row('STT', p.sttProvider, /web ?speech/i.test(p.sttProvider))}
+                {row('TTS', p.ttsProvider)}
+                {row('CALENDAR', p.calendarSource)}
+                {row('LAST_PERSON', `${p.lastPerson ?? 'n/a'}${p.lastGender ? ' (' + p.lastGender + ')' : ''}`)}
+                {p.lastError ? row('LAST_ERROR', p.lastError, true) : null}
+              </div>
+            )
+          })()}
         </div>
       )}
     </div>

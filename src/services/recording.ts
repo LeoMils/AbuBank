@@ -1,3 +1,5 @@
+import { MIC_GETUSERMEDIA } from './audioConstraints'
+
 export function getSupportedMimeType(): string {
   const types = [
     'audio/mp4;codecs=mp4a.40.2',
@@ -27,9 +29,7 @@ export function createRecordingRefs(): RecordingRefs {
 }
 
 export async function startMicStream(): Promise<MediaStream> {
-  return navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-  })
+  return navigator.mediaDevices.getUserMedia(MIC_GETUSERMEDIA)
 }
 
 export function createRecorder(stream: MediaStream): MediaRecorder {

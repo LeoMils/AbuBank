@@ -1,0 +1,30 @@
+{
+  "previewUrl": "https://abu-bank-9vwvg4c29-leos-projects-d3c04c09.vercel.app",
+  "rec": [
+    {
+      "id": "relation-gilad-rafi",
+      "input": "מי גלעד עבור רפי",
+      "answer": "גלעד החתן של רפי.",
+      "resolves": true,
+      "deadEnd": false
+    },
+    {
+      "id": "create-relation-phrase",
+      "input": "תקבעי פגישה עם החתן של רפי מחר בשלוש",
+      "answer": "פגישה עם גלעד מחר בשלוש אחר הצהריים. נכון?",
+      "resolvedToGilad": true,
+      "literalPhrase": false
+    },
+    {
+      "id": "create-rambling-story",
+      "input": "אז תשמעי, דיברתי היום עם החתן של רפי, והוא סיפר לי שהוא טס לניו יורק בשבוע הבא, ואנחנו רוצים להיפגש מחר בשלוש אחר הצהריים בבית קפה טולדנו כדי לדבר על הטיול המשפחתי",
+      "answer": "פגישה עם גלעד מחר בשלוש אחר הצהריים. בית קפה טולדנו. בנושא טיול המשפחתי. נכון?",
+      "resolvedToGilad": true,
+      "literalPhrase": false,
+      "hasLocation": true,
+      "dateTomorrow": true,
+      "dateToday": false,
+      "verbatimDump": false
+    }
+  ]
+}

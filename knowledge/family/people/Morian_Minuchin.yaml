@@ -1,0 +1,15 @@
+# GENERATED from knowledge/family_data.json — DO NOT EDIT. Edit the JSON + run generate:knowledge.
+group: close_friends
+canonical_name: Morian Minuchin
+hebrew_name: מוריאן מינושין
+aliases:
+- Morian
+- מוריאן
+relationship: family_friend
+relationship_hebrew: חבר של לאו, בן של מירטה
+role: חבר של לאו; בנם של מירטה ואוסקר מינושין
+location: תל אביב
+gender: male
+notes: אדריכל, בערך בגיל של לאו, גר בתל אביב. חבר של לאו. (פרטים אישיים רגישים נוספים הושמטו בכוונה מטעמי פרטיות.)
+pronunciation:
+  es: morian

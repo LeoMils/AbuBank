@@ -1,0 +1,28 @@
+{
+  "note": "DEPLOYED_PREVIEW evidence — tested == pushed == deployed on the canonical stable RC. Preview deploy + stable-RC alias only; never Production.",
+  "testedCommit": "(see HEAD)",
+  "testedBuild": "0.177.0-calendar-runtime-integration-rc",
+  "deployment": "https://abu-bank-7xtggwket-leos-projects-d3c04c09.vercel.app",
+  "stableRcAlias": "https://abu-ela-rc.vercel.app",
+  "healthProbe": {
+    "url": "https://abu-ela-rc.vercel.app/api/health?cb=<ts>",
+    "cacheBusted": true,
+    "buildVersion": "0.177.0-calendar-runtime-integration-rc",
+    "buildLabelPrefix": "AbuBank 0.177.0 — CALENDAR_RUNTIME_INTEGRATION",
+    "matchesTestedBuild": true
+  },
+  "gates_before_deploy": {
+    "typecheck": 0,
+    "fullSuite": "11995 passed / 2 todo (426 files)",
+    "build": 0
+  },
+  "rollback": {
+    "mechanism": "npx vercel alias set <deployment-url> abu-ela-rc.vercel.app",
+    "roundTrip": "aliased stable RC 0.177.0 -> prior deployment 30cv4zhbq (served 0.176.0, a DIFFERENT older build) -> re-aliased -> 7xtggwket (restored 0.177.0)",
+    "restoredBuild": "0.177.0-calendar-runtime-integration-rc",
+    "restoredOk": true,
+    "servedDifferentBuild": "0.176.0-latency-vad-instrumentation-rc"
+  },
+  "notProduction": true,
+  "postFixHostileRecheck": "removed the calendar runtime routing -> calendarRuntimeIntegration.test.ts 3 RED; restored -> 3 pass (evidence tied to real wiring)"
+}

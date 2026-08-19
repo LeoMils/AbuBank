@@ -71,7 +71,13 @@ const ENGLISH_HINTS = /\b(i'?m|i am|bored|lonely|alone|today|tomorrow|what|do i 
 
 export function detectLanguage(input: string): ProactiveLang {
   const hasHe = HEBREW_LETTER.test(input)
+  // Spanish-specific glyphs (á é í ó ú ü ñ ¿ ¡) are unambiguous and — unlike the
+  // \b-anchored SPANISH_HINTS — match accented words ("qué", "sé", "día") that the
+  // word-boundary regex misses (é/ñ aren't JS word chars). Plus common plain
+  // Spanish words that carry no accent ("gracias", "hola", "dale", "hacer").
   const hasEs = SPANISH_HINTS.test(input)
+    || /[áéíóúüñ¿¡]/.test(input)
+    || /\b(gracias|hola|dale|hacer|nada|bien|che|buen[oa]s?|extra[ñn]o|charl[ae]mos?|charlar|segu[ií])\b/i.test(input)
   const hasEn = ENGLISH_HINTS.test(input)
   const langCount = [hasHe, hasEs, hasEn].filter(Boolean).length
   if (langCount >= 2) return 'mixed'
@@ -95,11 +101,11 @@ const NO_TOPIC_ES = /no\s+s[eé]\s+(de\s+qu[eé]\s+hablar|qu[eé]\s+hacer|qu[eé
 const NO_TOPIC_EN = /\b(i\s+don'?t\s+know\s+what\s+to\s+(talk\s+about|do))\b/i
 
 const LONELINESS_HE = /קצת\s+לבד|אני\s+מרגישה?\s+לבד|מרגישה?\s+לבד|בודדה|בדידות/
-const LONELINESS_ES = /(?:me\s+siento\s+(un\s+poco\s+)?sol[ao]|estoy\s+sol[ao]|hoy\s+me\s+siento\s+sol[ao])/i
+const LONELINESS_ES = /(?:me\s+siento\s+(?:un\s+poco\s+|muy\s+|tan\s+|bastante\s+)?sol[ao]|estoy\s+(?:muy\s+|tan\s+)?sol[ao]|hoy\s+me\s+siento\s+sol[ao])/i
 const LONELINESS_EN = /\b(i'?m\s+(a\s+bit\s+)?lonely|i\s+feel\s+(a\s+little\s+)?(lonely|alone))\b/i
 
 const IDEAS_HE = /תני לי רעיון|מה אפשר לעשות (היום|עכשיו)|רעיונות/
-const IDEAS_ES = /dame\s+ideas?|qu[eé]\s+puedo\s+hacer\s+hoy|alguna\s+idea/i
+const IDEAS_ES = /dame\s+(una\s+|alguna\s+)?ideas?|qu[eé]\s+puedo\s+hacer\s+hoy|alguna\s+idea/i
 const IDEAS_EN = /\bgive me (an?\s+)?ideas?\b|what can i do today/i
 
 // Sadness / low energy — distinct from loneliness (lonely = alone, sad = feeling bad)
@@ -108,8 +114,8 @@ const SADNESS_ES = /estoy\s+triste|me\s+siento\s+mal|no\s+tengo\s+ganas|d[ií]a\
 const SADNESS_EN = /\b(i'?m\s+sad|feeling\s+(down|bad)|tough\s+day|no\s+energy)\b/i
 
 // "Talk to me" — needs company, not a specific intent
-const TALK_HE = /תדברי איתי|דברי איתי|תספרי לי משהו|ספרי לי משהו|בואי נדבר|בוא נדבר/
-const TALK_ES = /habl[aá]me|cont[aá]me\s+algo|cont[aá]me|charlemos|dale.+cont[aá]me/i
+const TALK_HE = /תדברי איתי|דברי איתי|תספרי לי משהו|ספרי לי משהו|בואי נדבר|בוא נדבר|תשארי איתי|תהיי איתי|הישארי איתי|אל תלכי|אל תעזבי/
+const TALK_ES = /habl[aá]me|cont[aá]me\s+algo|cont[aá]me|charlemos|dale.+cont[aá]me|qued[aá]te\s+conmigo|no\s+te\s+vayas/i
 const TALK_EN = /\btalk\s+to\s+me\b|\btell\s+me\s+something\b/i
 
 // Happiness — positive emotional state
@@ -123,7 +129,7 @@ const THANKS_ES = /^gracias[!.\s]*$/i
 const THANKS_EN = /^thanks?(?:\s+you)?[!.\s]*$|^thank\s+you[!.\s]*$/i
 
 // Missing Pepe — deeply emotional, requires gentle specific response
-const MISSING_PEPE = /מתגעגע[ת]?\s+(ל|אל\s+)?(פפ[יה]|פאפי)|געגועים\s+(ל|אל\s+)?(פפ[יה]|פאפי)|חסר\s+לי\s+(פפ[יה]|פאפי)|extra[nñ]o\s+(a\s+)?pep[eé]/i
+const MISSING_PEPE = /מתגעגע[ת]?\s+(ל|אל\s+)?(פפ[יה]|פאפי)|געגועים\s+(ל|אל\s+)?(פפ[יה]|פאפי)|חסר\s+לי\s+(פפ[יה]|פאפי)|extra[nñ]o\b.{0,15}?pep[eé]/i
 
 // Greeting — warm instant response, no menu
 const GREETING_HE = /^(שלום|היי|בוקר טוב|ערב טוב|מה נשמע|מה קורה|מה שלומך|אהלן)[.!?\s]*$/i

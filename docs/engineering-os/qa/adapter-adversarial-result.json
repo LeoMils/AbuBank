@@ -1,0 +1,174 @@
+{
+  "$schema": "internal://abu/adapter-adversarial-result",
+  "generatedFor": "Stage 2 — live-adapter falsification (spec-derived oracle)",
+  "now": "2026-08-16T00:00:00.000Z",
+  "controlPlaneId": "cp_live0001",
+  "note": "Every row flows through reader→parse→normalize→reconcile→evaluateControlPlane via injected readers (no real QA data touched). Two axes: CONTROL STATE + TEST_ASSERTION.",
+  "totalCases": 18,
+  "passed": 18,
+  "failed": 0,
+  "rows": [
+    {
+      "scenario": "R1 missing critical source",
+      "expectedControlState": "BLOCKED",
+      "expectedReason": "SOURCE_MISSING",
+      "actualControlState": "BLOCKED",
+      "actualReason": "SOURCE_MISSING",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R2 malformed critical source (mirrors real meta-qa.json)",
+      "expectedControlState": "BLOCKED",
+      "expectedReason": "SOURCE_PARSE_FAILED",
+      "actualControlState": "BLOCKED",
+      "actualReason": "SOURCE_PARSE_FAILED",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R3 unsupported schema",
+      "expectedControlState": "BLOCKED",
+      "expectedReason": "SCHEMA_VERSION_MISMATCH",
+      "actualControlState": "BLOCKED",
+      "actualReason": "SCHEMA_VERSION_MISMATCH",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R4 wrong deployed fingerprint",
+      "expectedControlState": "NO-GO",
+      "expectedReason": "FINGERPRINT_MISMATCH",
+      "actualControlState": "NO-GO",
+      "actualReason": "FINGERPRINT_MISMATCH",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R5 stale evidence for current candidate",
+      "expectedControlState": "NO-GO",
+      "expectedReason": "EVIDENCE_STALE",
+      "actualControlState": "NO-GO",
+      "actualReason": "EVIDENCE_STALE",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R6 required claim omitted by normalization",
+      "expectedControlState": "NO-GO",
+      "expectedReason": "EXPECTED_CLAIM_ABSENT",
+      "actualControlState": "NO-GO",
+      "actualReason": "EXPECTED_CLAIM_ABSENT",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R7 evaluator crashed",
+      "expectedControlState": "BLOCKED",
+      "expectedReason": "EVALUATOR_CRASHED",
+      "actualControlState": "BLOCKED",
+      "actualReason": "EVALUATOR_CRASHED",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R8 source conflict (READY verdict vs incomplete gates)",
+      "expectedControlState": "BLOCKED",
+      "expectedReason": "SOURCE_CONFLICT",
+      "actualControlState": "BLOCKED",
+      "actualReason": "SOURCE_CONFLICT",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R9 invalid critical N/A (no reason)",
+      "expectedControlState": "NO-GO",
+      "expectedReason": "INVALID_NA",
+      "actualControlState": "NO-GO",
+      "actualReason": "INVALID_NA",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R10 risk data missing → safe floor",
+      "expectedControlState": "NO-GO",
+      "expectedReason": "RISK_FLOOR_VIOLATION",
+      "actualControlState": "NO-GO",
+      "actualReason": "RISK_FLOOR_VIOLATION",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R11 risk tier lowered below floor",
+      "expectedControlState": "NO-GO",
+      "expectedReason": "RISK_FLOOR_VIOLATION",
+      "actualControlState": "NO-GO",
+      "actualReason": "RISK_FLOOR_VIOLATION",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R12 dirty-state drift mid-evaluation",
+      "expectedControlState": "INVALID",
+      "expectedReason": "INPUT_DRIFT_DURING_EVALUATION",
+      "actualControlState": "INVALID",
+      "actualReason": "INPUT_DRIFT_DURING_EVALUATION",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R13 deployment drift mid-evaluation",
+      "expectedControlState": "INVALID",
+      "expectedReason": "INPUT_DRIFT_DURING_EVALUATION",
+      "actualControlState": "INVALID",
+      "actualReason": "INPUT_DRIFT_DURING_EVALUATION",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R14 control-plane drift",
+      "expectedControlState": "NO-GO",
+      "expectedReason": "CONTROL_PLANE_MISMATCH",
+      "actualControlState": "NO-GO",
+      "actualReason": "CONTROL_PLANE_MISMATCH",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R15 unconsumed authoritative source",
+      "expectedControlState": "BLOCKED",
+      "expectedReason": "SOURCE_COVERAGE_UNKNOWN",
+      "actualControlState": "BLOCKED",
+      "actualReason": "SOURCE_COVERAGE_UNKNOWN",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R16 meta never erases a base blocker",
+      "expectedControlState": "NO-GO",
+      "expectedReason": "UNPUSHED_COMMIT",
+      "actualControlState": "NO-GO",
+      "actualReason": "UNPUSHED_COMMIT",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R17 removing evidence cannot improve a blocking verdict",
+      "expectedControlState": "BLOCKED",
+      "expectedReason": "SOURCE_MISSING",
+      "actualControlState": "BLOCKED",
+      "actualReason": "SOURCE_MISSING",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    },
+    {
+      "scenario": "R18 removing a required claim cannot improve the verdict",
+      "expectedControlState": "NO-GO",
+      "expectedReason": "EXPECTED_CLAIM_ABSENT",
+      "actualControlState": "NO-GO",
+      "actualReason": "EXPECTED_CLAIM_ABSENT",
+      "TEST_ASSERTION": "PASS",
+      "evidence": "src/engineering-os/liveSnapshot.adversarial.test.ts"
+    }
+  ]
+}
