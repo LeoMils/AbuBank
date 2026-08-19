@@ -12,16 +12,18 @@
 import { verifyRegistrationResponse } from '@simplewebauthn/server'
 import type { RegistrationResponseJSON } from '@simplewebauthn/server'
 import {
-  COOKIE, TTL, authConfigured, b64urlFromBytes, clearCookie, deriveRp, jsonResponse,
+  COOKIE, TTL, authConfigured, b64urlFromBytes, clearCookie, deriveRp, isProduction, jsonResponse,
   parseCookies, serializeCookie, signToken, verifyToken,
 } from '../_session'
-import { consumeNonce } from '../_replayStore'
+import { consumeNonce, replayProtectionSatisfied } from '../_replayStore'
 
 export const config = { runtime: 'edge' }
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return jsonResponse({ ok: false, error: 'BAD_REQUEST' }, 405)
   if (!authConfigured()) return jsonResponse({ ok: false, error: 'AUTH_NOT_CONFIGURED' }, 503)
+  // Production requires a DISTRIBUTED single-use store (global replay protection) — fail closed otherwise.
+  if (!replayProtectionSatisfied(isProduction())) return jsonResponse({ ok: false, error: 'REPLAY_STORE_REQUIRED' }, 503)
 
   let body: { response?: RegistrationResponseJSON }
   try {

@@ -123,6 +123,19 @@ function buildCorpus(textResults, temporal) {
     replayedClean: null, status: 'NOT_REPLAYABLE_WITH_REASON',
     reason: 'needs a real gpt-realtime session with audio (device or golden FlightRecorder trace); oracle is built and DEVICE-ready',
   })
+  // AUTH-UX escape (Leo, physical device): user set a PIN, was then asked for "another code",
+  // assumed it was the same PIN, was rejected, hit "continue with code only", and entered a
+  // full-looking app with NO server session (false success). Detector is a CODE contract in the
+  // enforced suite (like the voice detectors) — CLOSED: device-activation is now a distinct owner
+  // action and PIN-only entry lands in an explicit RESTRICTED state surfaced by RestrictedBanner.
+  corpus.push({
+    id: 'auth-ux-pin-vs-activation-false-success',
+    escape: 'PIN confused with owner device-activation code → "continue with code only" entered a full-looking app with no server session (device)',
+    class: 'auth-ux', nowMachineDetectable: true,
+    detector: 'src/screens/Entry/entryStateMachine.test.ts (enforced suite): distinct DEVICE_ACTIVATION copy + honest restricted skip + deriveRestricted + RestrictedBanner wired',
+    pathEquivalence: 'PROVEN at the CODE/state-machine layer (copy distinctness + restricted derivation + shell wiring); on-device visual confirmation is a physical residual',
+    replayedClean: true, status: 'REPLAYED_AND_CLOSED',
+  })
   return corpus
 }
 

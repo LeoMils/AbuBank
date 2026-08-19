@@ -19,6 +19,15 @@ import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 export type AuthStatus = { configured: boolean; enrolled: boolean; authed: boolean }
 export type CeremonyResult = 'ok' | 'failed' | 'cancelled' | 'unavailable' | 'no-device' | 'denied' | 'not-configured'
 
+/**
+ * RESTRICTED = server auth is configured for this deployment but this device has NO
+ * live server session. A PIN-only entry (or a device Leo never activated) lands here.
+ * The UI MUST surface this (no false success). Pure so the invariant is unit-testable.
+ */
+export function deriveRestricted(s: AuthStatus): boolean {
+  return s.configured && !s.authed
+}
+
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
 async function postJson(url: string, body?: unknown): Promise<Response> {

@@ -35,6 +35,22 @@ export function replayStoreKind(): 'kv' | 'memory' {
   return kv() ? 'kv' : 'memory'
 }
 
+/** True when a DURABLE, cross-instance store backs single-use + the counter baseline. */
+export function distributedStoreAvailable(): boolean {
+  return kv() !== null
+}
+
+/**
+ * AUTH-CORRECTNESS gate: a horizontally-scaled/serverless PRODUCTION deployment
+ * CANNOT guarantee global one-time challenge consumption or a non-rollback counter
+ * baseline with per-instance memory. So in production the WebAuthn ceremony MUST
+ * have a distributed store — otherwise it fails closed (single-use is not global).
+ * Non-production may run on the in-memory store (denies the same-instance replay).
+ */
+export function replayProtectionSatisfied(isProduction: boolean): boolean {
+  return distributedStoreAvailable() || !isProduction
+}
+
 // ── in-memory fallback ────────────────────────────────────────────────────────
 const consumed = new Map<string, number>() // nonce → expiry ms
 const counters = new Map<string, number>() // credId → max signCount
@@ -100,7 +116,9 @@ export async function recordCounter(credId: string, newCounter: number): Promise
   if (newCounter <= 0) return
   if (kv()) {
     try {
-      await kvCmd(['SET', `ctr:${credId}`, String(newCounter), 'EX', 400 * 24 * 3600])
+      // Monotonic: only advance the stored max (a stale counter must never roll it back).
+      const prev = await serverCounterBaseline(credId)
+      if (newCounter > prev) await kvCmd(['SET', `ctr:${credId}`, String(newCounter), 'EX', 400 * 24 * 3600])
     } catch {
       /* best-effort */
     }

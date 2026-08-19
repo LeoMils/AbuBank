@@ -11,16 +11,19 @@
 import { verifyAuthenticationResponse } from '@simplewebauthn/server'
 import type { AuthenticationResponseJSON, AuthenticatorTransportFuture } from '@simplewebauthn/server'
 import {
-  COOKIE, TTL, authConfigured, bytesFromB64url, clearCookie, deriveRp,
+  COOKIE, TTL, authConfigured, bytesFromB64url, clearCookie, deriveRp, isProduction,
   jsonResponse, parseCookies, serializeCookie, signToken, unauthorized, verifyToken,
 } from '../_session'
-import { consumeNonce, recordCounter, serverCounterBaseline } from '../_replayStore'
+import { consumeNonce, recordCounter, replayProtectionSatisfied, serverCounterBaseline } from '../_replayStore'
 
 export const config = { runtime: 'edge' }
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return jsonResponse({ ok: false, error: 'BAD_REQUEST' }, 405)
   if (!authConfigured()) return jsonResponse({ ok: false, error: 'AUTH_NOT_CONFIGURED' }, 503)
+  // Production requires a DISTRIBUTED single-use store — otherwise global replay protection
+  // is not guaranteed, so we fail closed rather than mint a session on best-effort memory.
+  if (!replayProtectionSatisfied(isProduction())) return jsonResponse({ ok: false, error: 'REPLAY_STORE_REQUIRED' }, 503)
 
   let body: { response?: AuthenticationResponseJSON }
   try {

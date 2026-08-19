@@ -65,6 +65,17 @@
   font-weight: 500;
   color: rgba(246, 239, 224, 0.94);
 }
+.ownerBadge {
+  align-self: center;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #1a1509;
+  background: linear-gradient(180deg, #e7d6b4, #d8c39b);
+  border-radius: 999px;
+  padding: 4px 14px;
+  margin-bottom: 2px;
+}
 .codeInput {
   width: 100%;
   min-height: 52px;

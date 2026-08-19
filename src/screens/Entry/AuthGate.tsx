@@ -186,9 +186,9 @@ export function AuthGate({ mode, onAuthed }: AuthGateProps) {
         )}
 
         {step === 'enroll' && (
-          <EnrollStep
-            onEnrolled={finish}
-            onSkip={finish}
+          <DeviceActivationStep
+            onActivated={() => { writeLockConfig({ biometricEnrolled: true, protectionEnabled: true }); finish() }}
+            onRestricted={finish}
           />
         )}
 
@@ -247,50 +247,54 @@ function BiometricUnlock({
   )
 }
 
-// ── owner-bootstrapped passkey enrollment (setup only; PIN already set) ───────
-function EnrollStep({ onEnrolled, onSkip }: { onEnrolled: () => void; onSkip: () => void }) {
+// ── DEVICE ACTIVATION (owner/Leo, one-time) — deliberately distinct from Martita's PIN ──
+// The physical-device escape (Leo, iPhone): the user confused the activation code with
+// their just-set PIN and then "continued with code only" into a full-looking app with NO
+// server session. This step is now unmistakably an OWNER action, and skipping it enters an
+// explicit RESTRICTED state (never a false success). See entryStateMachine.test.ts.
+function DeviceActivationStep({ onActivated, onRestricted }: { onActivated: () => void; onRestricted: () => void }) {
   const [code, setCode] = useState('')
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const enable = async () => {
+  const activate = async () => {
     if (busy || !code.trim()) return
     setBusy(true)
     setError('')
-    setStatus('מפעילה כניסה מאובטחת…')
+    setStatus('מפעילה את המכשיר…')
     const r = await passkeyRegister(code.trim())
     setStatus('')
     setBusy(false)
-    if (r === 'ok') return onEnrolled()
-    if (r === 'denied') setError('קוד הפעלה לא נכון')
+    if (r === 'ok') return onActivated()
+    if (r === 'denied') setError('קוד הפעלה לא נכון (זה לא הקוד של מרתה)')
     else if (r === 'cancelled') setError('')
-    else if (r === 'unavailable') setError('המכשיר לא תומך בכניסה מאובטחת')
-    else if (r === 'not-configured') setError('כניסה מאובטחת עדיין לא מוגדרת בשרת')
+    else if (r === 'unavailable') setError('המכשיר הזה לא תומך בהפעלה מאובטחת')
+    else if (r === 'not-configured') setError('הפעלה מאובטחת עדיין לא מוגדרת בשרת')
     else setError('לא הצליח, נסו שוב')
   }
 
   return (
     <>
-      <FaceGlyph />
-      <p className={styles.status}>הפעלת כניסה מאובטחת</p>
-      <p className={styles.sub}>לאו מזין קוד הפעלה חד-פעמי במכשיר הזה</p>
+      <div className={styles.ownerBadge}>הפעלה חד-פעמית · לאו</div>
+      <p className={styles.status}>הפעלת המכשיר</p>
+      <p className={styles.sub}>זו פעולה של לאו — קוד ההפעלה שונה מהקוד של מרתה</p>
       <input
         className={styles.codeInput}
         type="password"
         inputMode="text"
         autoComplete="off"
-        placeholder="קוד הפעלה"
+        placeholder="קוד הפעלה מלאו"
         value={code}
         onChange={(e) => { setCode(e.target.value); setError('') }}
         dir="ltr"
       />
       {error && <p className={styles.error}>{error}</p>}
-      <button className={styles.primary} onClick={() => void enable()} disabled={busy}>
+      <button className={styles.primary} onClick={() => void activate()} disabled={busy}>
         הפעלה עם זיהוי פנים
       </button>
-      <button className={styles.ghost} onClick={onSkip}>
-        להמשיך עם הקוד בלבד
+      <button className={styles.ghost} onClick={onRestricted}>
+        כניסה מוגבלת בינתיים (בלי הפעלה)
       </button>
     </>
   )

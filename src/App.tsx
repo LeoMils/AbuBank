@@ -7,7 +7,7 @@ import { openService } from './services/navigationService'
 import * as storageService from './services/storageService'
 import * as adminService from './services/adminService'
 import { Shell } from './components/Shell'
-import { EntryGate } from './screens/Entry'
+import { EntryGate, RestrictedBanner } from './screens/Entry'
 import { MoreModal } from './components/MoreModal'
 import { UpdateToast } from './components/UpdateToast'
 import { StaleBuildBanner } from './components/StaleBuildBanner'
@@ -291,6 +291,9 @@ export function App() {
       {/* Premium cold-open gate: black-luxury intro → biometric/PIN → app. Wraps
           the whole shell so nothing behind it is visible until unlocked. Fail-open. */}
       <EntryGate>
+        {/* Honest restricted-mode indicator: shows when server auth is configured but this
+            device has no live session (e.g. a PIN-only entry without device activation). */}
+        <RestrictedBanner />
         <Shell>
           {renderScreen(currentScreen)}
         </Shell>

@@ -1,38 +1,13 @@
 {
   "$schema": "internal://abu/owner-human-authority",
   "schemaVersion": "authority/1",
-  "note": "OWNER_ACTION and HUMAN_RESIDUAL are escape hatches requiring proof (§44/C11). Engineering difficulty is NOT an authority class. Every owner item records why the machine cannot close it + approaches attempted; every human residual records negative-proof (machine routes attempted + exact irreducible remainder).",
+  "note": "OWNER_ACTION and HUMAN_RESIDUAL are escape hatches requiring proof (§44/C11). Engineering difficulty is NOT an authority class. Every owner item records why the machine cannot close it + approaches attempted; every human residual records negative-proof. DEVICE MODEL: PRIMARY = Martita on Samsung Galaxy / Android / Chrome or installed PWA; SECONDARY = Leo on iPhone / Safari or installed PWA. Canonical auth/session testing = normal Chrome/PWA on Galaxy (never Incognito for normal use).",
+  "completedOwnerActions": [
+    { "id": "revoke-openai-key", "requestedAction": "Revoke historical exposed OpenAI key fp:e39ef3b7", "status": "COMPLETED", "evidence": "owner revoked/deleted + demonstrated (2026-08-19); current RC bundle secret-clean. Do NOT re-open without concrete contradictory evidence." },
+    { "id": "revoke-gemini-key", "requestedAction": "Revoke historical exposed Gemini key fp:69150fc4", "status": "COMPLETED", "evidence": "owner revoked/deleted + demonstrated (2026-08-19)." },
+    { "id": "revoke-groq-key", "requestedAction": "Revoke historical exposed Groq key fp:a2f25d13", "status": "COMPLETED", "evidence": "owner revoked/deleted + demonstrated (2026-08-19)." }
+  ],
   "ownerActions": [
-    {
-      "id": "revoke-openai-key",
-      "requestedAction": "Revoke historical exposed OpenAI key fp:e39ef3b7 at the provider console",
-      "whyMachineCannotClose": "Revocation happens in the owner's OpenAI account; no repo/tool access to that console.",
-      "machineApproachesAttempted": ["scanned deployed bundle (current candidate is secret-clean)", "confirmed the key is not in the current RC assets"],
-      "authorityClass": "EXTERNAL_ACCOUNT_OWNER_ACTION",
-      "releaseBlocking": "production",
-      "requiredOwnerInput": "confirmation of revocation",
-      "evidence": "RELEASE_LOCK.json.ownerActionsOpen; historical exposure on prod alias abu-ela-rc"
-    },
-    {
-      "id": "revoke-gemini-key",
-      "requestedAction": "Revoke historical exposed Gemini key fp:69150fc4",
-      "whyMachineCannotClose": "Owner-account console action; no tool access.",
-      "machineApproachesAttempted": ["current-bundle secret scan clean"],
-      "authorityClass": "EXTERNAL_ACCOUNT_OWNER_ACTION",
-      "releaseBlocking": "production",
-      "requiredOwnerInput": "confirmation of revocation",
-      "evidence": "RELEASE_LOCK.json.ownerActionsOpen"
-    },
-    {
-      "id": "revoke-groq-key",
-      "requestedAction": "Revoke historical exposed Groq key fp:a2f25d13",
-      "whyMachineCannotClose": "Owner-account console action; no tool access.",
-      "machineApproachesAttempted": ["current-bundle secret scan clean"],
-      "authorityClass": "EXTERNAL_ACCOUNT_OWNER_ACTION",
-      "releaseBlocking": "production",
-      "requiredOwnerInput": "confirmation of revocation",
-      "evidence": "RELEASE_LOCK.json.ownerActionsOpen"
-    },
     {
       "id": "authorize-production-deploy",
       "requestedAction": "Authorize a clean Production deploy of the locked candidate",
@@ -44,24 +19,24 @@
       "evidence": "constitution §57"
     },
     {
-      "id": "distributed-rate-limit-infra",
-      "requestedAction": "Decide whether to provision shared-KV distributed rate limiting",
-      "whyMachineCannotClose": "Requires provisioning paid shared infrastructure (Vercel KV/Upstash) — a spend/architecture decision.",
-      "machineApproachesAttempted": ["shipped instance-local per-IP limits + per-request caps + cost circuit breaker", "labelled precisely as INSTANCE_LOCAL (not global)"],
+      "id": "provision-distributed-auth-store",
+      "requestedAction": "Provision a free-tier durable KV (Upstash/Vercel KV) for GLOBAL WebAuthn single-use + durable counter baseline, and set KV_REST_API_URL + KV_REST_API_TOKEN (Preview+Production).",
+      "whyMachineCannotClose": "Creating the store requires an owner marketplace/install authorization; the connector cannot be provisioned from the repo without the owner accepting the (free-tier) integration once.",
+      "machineApproachesAttempted": ["KV adapter fully implemented + atomic SET-NX single-use + durable counter (api/_replayStore) — auto-activates when the env vars exist", "same-instance replay DENIED + unit-proven", "production fail-closed when a distributed store is REQUIRED but absent"],
       "authorityClass": "INFRASTRUCTURE_SPEND",
-      "releaseBlocking": "none",
-      "requiredOwnerInput": "provision-or-defer decision",
-      "evidence": "RELEASE_LOCK.json.rateLimiting"
+      "releaseBlocking": "production",
+      "requiredOwnerInput": "one action: create the free KV in the Vercel dashboard (Storage → KV/Upstash) — env vars are injected automatically",
+      "evidence": "RELEASE_LOCK.json.securityHardening; api/_replayStore.ts; replayStoreDurable.test.ts"
     },
     {
-      "id": "no-login-pwa-auth-policy",
-      "requestedAction": "Decide the authentication/access policy for the no-login PWA",
-      "whyMachineCannotClose": "A product/privacy policy decision about who may use the deployed app.",
-      "machineApproachesAttempted": ["documented the current no-login posture", "session-isolation obligation tracked separately"],
-      "authorityClass": "PRODUCT_POLICY",
+      "id": "set-durable-production-auth-env",
+      "requestedAction": "Set durable PRODUCTION-scope AUTH_SIGNING_SECRET + ENROLLMENT_SECRET (Preview scope is already set).",
+      "whyMachineCannotClose": "Writing PRODUCTION secret values is an explicit owner action; the machine must not set Production env values.",
+      "machineApproachesAttempted": ["set Preview durable env", "build gate (check-prod-auth-config) BLOCKS a Production build without them so a prod deploy cannot ship authEnforced=false", "runtime 503 fail-closed"],
+      "authorityClass": "PRODUCTION_AUTHORIZATION",
       "releaseBlocking": "production",
-      "requiredOwnerInput": "auth policy decision",
-      "evidence": "RELEASE_LOCK.json.ownerActionsOpen"
+      "requiredOwnerInput": "set the two Production env values",
+      "evidence": "RELEASE_LOCK.json.ownerActionsOpen; scripts/check-prod-auth-config.mjs"
     }
   ],
   "humanResiduals": [

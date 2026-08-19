@@ -17,8 +17,8 @@
  */
 
 import { REALTIME_MODEL } from '../src/services/realtimeModel'
-import { authConfigured, authEnforced, productionMisconfigured } from './_session'
-import { replayStoreKind } from './_replayStore'
+import { authConfigured, authEnforced, isProduction, productionMisconfigured } from './_session'
+import { distributedStoreAvailable, replayProtectionSatisfied, replayStoreKind } from './_replayStore'
 
 export const config = { runtime: 'edge' }
 
@@ -36,6 +36,10 @@ interface HealthResponse {
   productionMisconfigured: boolean
   /** 'kv' = distributed single-use replay protection; 'memory' = per-instance best-effort. */
   replayStore: 'kv' | 'memory'
+  /** True only when a durable cross-instance store backs single-use (GLOBAL guarantee). */
+  challengeSingleUseGlobal: boolean
+  /** True when replay protection is adequate for this deployment (prod requires distributed). */
+  replayProtectionSatisfied: boolean
   env: {
     OPENAI_API_KEY: 'present' | 'missing'
   }
@@ -66,6 +70,8 @@ export default function handler(_req: Request): Response {
     authConfigured: authConfigured(),
     productionMisconfigured: productionMisconfigured(),
     replayStore: replayStoreKind(),
+    challengeSingleUseGlobal: distributedStoreAvailable(),
+    replayProtectionSatisfied: replayProtectionSatisfied(isProduction()),
     env: {
       OPENAI_API_KEY: openaiPresent ? 'present' : 'missing',
     },
