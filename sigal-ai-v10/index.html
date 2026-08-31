@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7f4ee">
+<title>SIGAL ZABUROF · AI Studio Navigator V10</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+ <div class="top-inner">
+  <a class="brand" href="#" aria-label="SIGAL ZABUROF"><span class="mark">SZ</span><span><b>SIGAL ZABUROF</b><small>AI STUDIO NAVIGATOR · V10</small></span></a>
+  <nav class="tabs" aria-label="ניווט"><button class="tab active" data-view="do">לעשות עכשיו</button><button class="tab" data-view="find">למצוא במדריך</button><button class="tab" data-view="learn">ללמוד</button><button class="tab" data-view="library">ספרייה</button></nav>
+  <a class="chat-link" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">ChatGPT ↗</a>
+ </div>
+</header>
+
+<main class="main">
+ <section class="view active" id="view-do">
+  <div class="hero-card">
+   <div class="eyebrow">START WITH THE TASK</div>
+   <h1>סיגל, מה את רוצה <em>לעשות עכשיו?</em></h1>
+   <p>לא צריך לדעת AI, לא לזכור Slash ולא לבחור אפליקציה. כתבי את המשימה בשפה רגילה — המערכת תתרגם אותה לדרך עבודה מקצועית.</p>
+   <div class="composer"><textarea id="request" placeholder="לדוגמה: יש לי תוכנית של משרד. אני רוצה פורטפוליו מלא ללקוח, הדמיות מפורטות, תוכניות וחתכים — בלי לשנות גאומטריה."></textarea><div class="composer-foot"><span>אפשר לשלב כמה בקשות במשפט אחד.</span><button class="primary" id="build">בני לי דרך עבודה →</button></div></div>
+   <div class="quick-row" id="examples"></div>
+  </div>
+  <div class="action-grid" id="quickActions"></div>
+  <div class="result" id="result"></div>
+ </section>
+
+ <section class="view" id="view-find">
+  <div class="search-shell"><div class="eyebrow light">FIND ANYTHING</div><h1>חיפוש אחד בכל המדריך</h1><p>כתבי מילה או בקשה. לא צריך לדעת את המונח המקצועי.</p><div class="searchbox"><input id="findInput" type="search" placeholder="למשל: ברביקיו, תאורה טכנית, ריצוף, נגרות TV, BOQ..."><button class="primary gold" id="findBtn">חיפוש</button></div><div class="search-sub"><select id="findType"><option value="all">הכול</option><option value="slash">Slashes</option><option value="recipe">Gold Recipes</option><option value="prompt">Prompts</option><option value="tool">כלים</option><option value="playbook">Playbooks</option><option value="lesson">שיעורים</option></select><span id="findStatus">אפשר בעברית או באנגלית.</span></div></div>
+  <div class="search-results" id="findResults"></div>
+ </section>
+
+ <section class="view" id="view-learn">
+  <div class="section-head"><div><div class="eyebrow">ACADEMY</div><h2>לומדים תוך כדי עבודה</h2><p>כל שיעור מסתיים בתוצר אמיתי לפרויקט.</p></div></div>
+  <div class="lesson-top"><div><b id="nextLessonTitle">השיעור הבא</b><div class="muted" id="nextLessonMeta"></div></div><div><span class="muted" id="progressText"></span><div class="progress"><span id="progressBar"></span></div></div></div>
+  <div class="lesson-grid" id="lessons"></div>
+ </section>
+
+ <section class="view" id="view-library">
+  <div class="section-head"><div><div class="eyebrow">REFERENCE</div><h2>ספריית העומק</h2><p>Reference ל-Slashes, Recipes, Prompts וכלים.</p></div></div>
+  <div class="library-controls"><input id="libInput" type="search" placeholder="חיפוש בספרייה"><select id="libType"><option value="slash">Slashes</option><option value="recipe">Gold Recipes</option><option value="prompt">Prompts</option><option value="tool">כלים</option></select></div>
+  <div class="lib-grid" id="libGrid"></div>
+ </section>
+</main>
+
+<nav class="bottom-nav"><button class="active" data-view="do">עכשיו</button><button data-view="find">חיפוש</button><button data-view="learn">ללמוד</button><button data-view="library">ספרייה</button></nav>
+<div class="drawer" id="drawer"><div class="scrim" id="scrim"></div><aside class="sheet"><button class="close" id="closeDrawer">✕</button><div id="drawerContent"></div></aside></div>
+<div class="toast" id="toast"></div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body></html>
